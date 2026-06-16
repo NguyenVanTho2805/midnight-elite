@@ -1,0 +1,1020 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { Toggle } from "@/components/Toggle";
+
+// ─── TYPES ────────────────────────────────────────────────────────────────────
+type TabId = "cai-dat" | "chuong-bai" | "hoc-vien";
+
+interface LessonDB {
+  id: string;
+  code: string;
+  title: string;
+  type: "record" | "live" | "quiz" | "document";
+  videoUrl?: string | null;
+  zoomUrl?: string | null;
+  azotaUrl?: string | null;
+  azotaDeadline?: string | null;
+  duration?: string | null;
+  documents?: string | null;
+  adminNote?: string | null;
+  isLocked: boolean;
+  isFree: boolean;
+  statsVideos: number;
+  statsMaterials: number;
+  statsViews: number;
+  order: number;
+}
+interface ChapterDB { id: string; title: string; order: number; lessons: LessonDB[] }
+interface SectionDB { id: string; title: string; order: number; chapters: ChapterDB[] }
+interface CourseDB {
+  id: string; adminId: number; name: string; adminName: string;
+  category: string; instructor: string; status: boolean;
+  openDate: string; price: number; originalPrice?: number | null;
+  lessons: number; hours: number; tag?: string | null; tagColor?: string | null;
+  introVideo?: string | null; bg: string; createdAt: string;
+  sections: SectionDB[];
+}
+
+type PanelMode =
+  | { type: "none" }
+  | { type: "add-section" }
+  | { type: "edit-section"; sectionId: string }
+  | { type: "add-chapter"; sectionId: string }
+  | { type: "edit-chapter"; sectionId: string; chapterId: string }
+  | { type: "add-lesson"; sectionId: string; chapterId: string }
+  | { type: "edit-lesson"; sectionId: string; chapterId: string; lessonId: string };
+
+type DelTarget =
+  | { kind: "section"; sectionId: string; label: string }
+  | { kind: "chapter"; sectionId: string; chapterId: string; label: string }
+  | { kind: "lesson"; sectionId: string; chapterId: string; lessonId: string; label: string }
+  | null;
+
+interface TitleForm { title: string }
+interface LsForm {
+  title: string; type: LessonDB["type"]; videoUrl: string; zoomUrl: string;
+  azotaUrl: string; azotaDeadline: string; duration: string;
+  isLocked: boolean; isFree: boolean;
+  documentsRaw: string; // JSON array string: [{name,url,type}]
+  adminNote: string;
+}
+
+const INIT_LS: LsForm = {
+  title: "", type: "record", videoUrl: "", zoomUrl: "", azotaUrl: "",
+  azotaDeadline: "", duration: "", isLocked: true, isFree: false,
+  documentsRaw: "[]", adminNote: "",
+};
+
+const TYPE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  record:   { label: "Video",    color: "#0055D4", bg: "#EFF6FF" },
+  document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
+  quiz:     { label: "Bài Tập",     color: "#7C3AED", bg: "#F5F3FF" },
+  live:     { label: "Live",     color: "#DC2626", bg: "#FEF2F2" },
+};
+
+// ─── SHARED SMALL COMPONENTS ──────────────────────────────────────────────────
+function DrawerToggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <div className="flex items-center justify-between py-0.5">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+function Drawer({ open, title, onClose, onSave, saving, children }: {
+  open: boolean; title: string; onClose: () => void; onSave: () => void;
+  saving?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        style={{
+          width: "min(480px, 100vw)",
+          transform: open ? "translateX(0)" : "translateX(110%)",
+          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
+          pointerEvents: open ? "auto" : "none",
+          visibility: open ? "visible" : "hidden",
+        }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light transition-colors">×</button>
+            <h2 className="text-base font-bold text-gray-800">{title}</h2>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">Huỷ</button>
+            <button onClick={onSave} disabled={saving}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
+              style={{ background: "#16a34a" }}>
+              {saving ? "Đang lưu..." : "Lưu"}
+            </button>
+          </div>
+        </div>
+        <div className="p-5 space-y-5">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function DelModal({ target, onClose, onConfirm }: { target: DelTarget; onClose: () => void; onConfirm: () => void }) {
+  if (!target) return null;
+  const kind = target.kind === "section" ? "phần" : target.kind === "chapter" ? "chương" : "bài học";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+        <div className="text-center mb-5">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "#FEE2E2" }}>
+            <svg viewBox="0 0 20 20" className="w-7 h-7" fill="#DC2626"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
+          </div>
+          <h2 className="text-base font-bold text-gray-800 mb-1">Xoá {kind}?</h2>
+          <p className="text-sm text-gray-500">
+            Xoá <strong className="text-gray-800">"{target.kind === "section" ? target.label : target.kind === "chapter" ? target.label : target.label}"</strong>
+            {target.kind !== "lesson" ? " sẽ xoá toàn bộ nội dung bên trong." : "."} Không thể hoàn tác.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "#dc2626" }}>Xoá</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TAB CÀI ĐẶT ─────────────────────────────────────────────────────────────
+function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseDB }) {
+  const [form, setForm] = useState({
+    name:          course.adminName,
+    publicName:    course.name,
+    slug:          course.id,
+    instructor:    course.instructor,
+    category:      course.category,
+    price:         String(course.price),
+    originalPrice: course.originalPrice ? String(course.originalPrice) : "",
+    openDate:      course.openDate,
+    active:        course.status,
+    tag:           course.tag ?? "",
+    tagColor:      course.tagColor ?? "#FF2157",
+    introVideo:    course.introVideo ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then(r => r.ok ? r.json() : { categories: [] })
+      .then(d => setCategoryOptions((d.categories as { name: string }[]).map(c => c.name)))
+      .catch(() => {});
+  }, []);
+
+  const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await api.courses.update(courseSlug, {
+        adminName:     form.name,
+        name:          form.publicName,
+        instructor:    form.instructor,
+        category:      form.category,
+        price:         +form.price || course.price,
+        originalPrice: form.originalPrice ? +form.originalPrice : null,
+        openDate:      form.openDate,
+        status:        form.active,
+        tag:           form.tag || null,
+        tagColor:      form.tag ? form.tagColor : null,
+        introVideo:    form.introVideo || null,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      alert("Lỗi lưu khoá học: " + (e instanceof Error ? e.message : "Unknown"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      {saved && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm font-semibold text-white" style={{ background: "#16a34a" }}>
+          ✓ Đã lưu thay đổi thành công
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Thông tin cơ bản</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="lg:col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tên nội bộ (admin CMS)</label>
+            <input className={inp} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="lg:col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tên công khai (hiển thị với học viên)</label>
+            <input className={inp} value={form.publicName} onChange={e => setForm(f => ({ ...f, publicName: e.target.value }))} />
+          </div>
+          <div className="lg:col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Slug (URL, không đổi)</label>
+            <div className="flex">
+              <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-xs text-gray-500">/khoa-hoc/</span>
+              <input className="flex-1 px-3 py-2.5 text-sm border border-gray-300 rounded-r-lg bg-gray-50 text-gray-500 cursor-not-allowed" value={form.slug} readOnly />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Giảng viên</label>
+            <input className={inp} value={form.instructor} onChange={e => setForm(f => ({ ...f, instructor: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
+            <select className={inp + " bg-white"} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+              <option value="">— Chọn danh mục —</option>
+              {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+              {/* Luôn giữ giá trị hiện tại nếu chưa load xong */}
+              {form.category && !categoryOptions.includes(form.category) && (
+                <option value={form.category}>{form.category}</option>
+              )}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Giá & hiệu lực</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Giá bán (VNĐ) <span className="text-red-500">*</span></label>
+            <input type="number" className={inp} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Giá gốc (VNĐ)</label>
+            <input type="number" className={inp} value={form.originalPrice} onChange={e => setForm(f => ({ ...f, originalPrice: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Ngày khai giảng</label>
+            <input className={inp} value={form.openDate} onChange={e => setForm(f => ({ ...f, openDate: e.target.value }))} />
+          </div>
+          <div className="flex items-center gap-3 py-2">
+            <Toggle checked={form.active} onChange={() => setForm(f => ({ ...f, active: !f.active }))} />
+            <span className="text-sm text-gray-600">{form.active ? "Đang hiển thị" : "Ẩn"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Nhãn (tuỳ chọn)</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Nhãn hiển thị</label>
+            <input className={inp} placeholder="VD: HOT, SALE, MỚI" value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-2">Màu nhãn</label>
+            <div className="flex gap-2">
+              {["#FF2157","#FE9900","#0068FF","#00A63D"].map(c => (
+                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, tagColor: c }))}
+                  className="w-7 h-7 rounded-full border-2 transition-all"
+                  style={{ background: c, borderColor: form.tagColor === c ? "#1E2938" : "transparent" }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Video giới thiệu</h3>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">YouTube URL (video xem thử miễn phí)</label>
+          <input className={inp} placeholder="https://youtube.com/watch?v=... hoặc https://youtu.be/..."
+            value={form.introVideo} onChange={e => setForm(f => ({ ...f, introVideo: e.target.value }))} />
+          <p className="text-xs text-gray-400 mt-1">Hiện ở đầu trang khoá học. Để trống nếu không có video giới thiệu.</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">
+        <button onClick={() => setForm({
+          name: course.adminName, publicName: course.name, slug: course.id,
+          instructor: course.instructor, category: course.category,
+          price: String(course.price), originalPrice: course.originalPrice ? String(course.originalPrice) : "",
+          openDate: course.openDate, active: course.status,
+          tag: course.tag ?? "", tagColor: course.tagColor ?? "#FF2157",
+          introVideo: course.introVideo ?? "",
+        })} className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">
+          Huỷ thay đổi
+        </button>
+        <button onClick={handleSave} disabled={saving}
+          className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+          style={{ background: "#16a34a" }}>
+          {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── DOCUMENTS EDITOR ─────────────────────────────────────────────────────────
+interface DocItem { name: string; url: string; type: "pdf" | "doc" | "xlsx" }
+
+function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const docs: DocItem[] = (() => { try { return JSON.parse(value || "[]"); } catch { return []; } })();
+  const [newName, setNewName] = useState("");
+  const [newUrl,  setNewUrl]  = useState("");
+  const [newType, setNewType] = useState<DocItem["type"]>("pdf");
+
+  function save(list: DocItem[]) { onChange(JSON.stringify(list)); }
+  function add() {
+    if (!newName.trim() || !newUrl.trim()) return;
+    save([...docs, { name: newName.trim(), url: newUrl.trim(), type: newType }]);
+    setNewName(""); setNewUrl("");
+  }
+  function remove(i: number) { save(docs.filter((_, idx) => idx !== i)); }
+
+  const extColor: Record<string, string> = { pdf: "#FF2157", doc: "#0068FF", xlsx: "#00A63D" };
+  const inp2 = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white";
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Tài liệu đính kèm</p>
+
+      {/* Danh sách tài liệu hiện có */}
+      {docs.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {docs.map((d, i) => (
+            <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
+              <span className="w-8 h-8 rounded flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                style={{ background: extColor[d.type] ?? "#6B7280" }}>
+                {d.type.toUpperCase()}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-800 truncate">{d.name}</p>
+                <p className="text-xs text-gray-400 truncate">{d.url}</p>
+              </div>
+              <a href={d.url} target="_blank" rel="noopener noreferrer"
+                className="text-xs px-2 py-1 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">↗</a>
+              <button onClick={() => remove(i)}
+                className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Form thêm tài liệu mới */}
+      <div className="border border-dashed border-gray-300 rounded-xl p-3 space-y-2">
+        <p className="text-xs font-medium text-gray-500">+ Thêm tài liệu từ Google Drive</p>
+        <input className={inp2 + " w-full"} placeholder="Tên tài liệu (VD: Đề thi thử tháng 5)"
+          value={newName} onChange={e => setNewName(e.target.value)} />
+        <input className={inp2 + " w-full"} placeholder="Link Google Drive (share → Copy link)"
+          value={newUrl} onChange={e => setNewUrl(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && add()} />
+        <div className="flex items-center gap-2">
+          <select className={inp2 + " flex-shrink-0"} value={newType}
+            onChange={e => setNewType(e.target.value as DocItem["type"])}>
+            <option value="pdf">PDF</option>
+            <option value="doc">DOC</option>
+            <option value="xlsx">XLSX</option>
+          </select>
+          <button onClick={add} disabled={!newName.trim() || !newUrl.trim()}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
+            style={{ background: "#16a34a" }}>
+            + Thêm
+          </button>
+        </div>
+      </div>
+
+      {docs.length === 0 && (
+        <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu. Nhập link Drive ở trên.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── TAB CHƯƠNG BÀI ───────────────────────────────────────────────────────────
+function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; initialSections: SectionDB[] }) {
+  const [sections, setSections] = useState<SectionDB[]>(initialSections);
+  const [expanded, setExpanded] = useState<{ sections: Set<string>; chapters: Set<string> }>({
+    sections: new Set(initialSections.map(s => s.id)),
+    chapters: new Set(initialSections.flatMap(s => s.chapters.map(c => c.id))),
+  });
+  const [panel,   setPanel]  = useState<PanelMode>({ type: "none" });
+  const [del,     setDel]    = useState<DelTarget>(null);
+  const [toast,   setToast]  = useState("");
+  const [saving,  setSaving] = useState(false);
+  const [title,   setTitle]  = useState("");
+  const [ls,      setLs]     = useState<LsForm>(INIT_LS);
+
+  function flash(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500); }
+
+  const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
+
+  function toggleSec(id: string) {
+    setExpanded(p => { const s = new Set(p.sections); s.has(id) ? s.delete(id) : s.add(id); return { ...p, sections: s }; });
+  }
+  function toggleCh(id: string) {
+    setExpanded(p => { const c = new Set(p.chapters); c.has(id) ? c.delete(id) : c.add(id); return { ...p, chapters: c }; });
+  }
+
+  // ── Open helpers ──
+  function openAddSection() { setTitle(""); setPanel({ type: "add-section" }); }
+  function openEditSection(sectionId: string) {
+    const s = sections.find(x => x.id === sectionId)!;
+    setTitle(s.title);
+    setPanel({ type: "edit-section", sectionId });
+  }
+  function openAddChapter(sectionId: string) { setTitle(""); setPanel({ type: "add-chapter", sectionId }); }
+  function openEditChapter(sectionId: string, chapterId: string) {
+    const s = sections.find(x => x.id === sectionId)!;
+    const c = s.chapters.find(x => x.id === chapterId)!;
+    setTitle(c.title);
+    setPanel({ type: "edit-chapter", sectionId, chapterId });
+  }
+  function openAddLesson(sectionId: string, chapterId: string) { setLs(INIT_LS); setPanel({ type: "add-lesson", sectionId, chapterId }); }
+  function openEditLesson(sectionId: string, chapterId: string, lessonId: string) {
+    const s = sections.find(x => x.id === sectionId)!;
+    const c = s.chapters.find(x => x.id === chapterId)!;
+    const l = c.lessons.find(x => x.id === lessonId)!;
+    setLs({
+      title: l.title, type: l.type,
+      videoUrl: l.videoUrl ?? "", zoomUrl: l.zoomUrl ?? "",
+      azotaUrl: l.azotaUrl ?? "", azotaDeadline: l.azotaDeadline ?? "",
+      duration: l.duration ?? "", isLocked: l.isLocked, isFree: l.isFree,
+      documentsRaw: l.documents ?? "[]",
+      adminNote: l.adminNote ?? "",
+    });
+    setPanel({ type: "edit-lesson", sectionId, chapterId, lessonId });
+  }
+
+  // Helper: throw nếu response không OK (tránh dùng error response như data thật)
+  async function safeFetch(url: string, init: RequestInit) {
+    const res = await fetch(url, init);
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { /* non-JSON response */ }
+    return { res, data };
+  }
+
+  async function apiPost<T>(url: string, body: unknown): Promise<T> {
+    const { res, data } = await safeFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      if (res.status === 401) throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error((data.error as string) ?? (data.detail as string) ?? `Lỗi ${res.status}`);
+    }
+    return data as T;
+  }
+  async function apiPut(url: string, body: unknown): Promise<void> {
+    const { res, data } = await safeFetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      if (res.status === 401) throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error((data.error as string) ?? `Lỗi ${res.status}`);
+    }
+  }
+
+  // ── Save panel (calls API) ──
+  async function savePanel() {
+    if (panel.type === "none") return;
+    setSaving(true);
+    try {
+      if (panel.type === "add-section") {
+        if (!title.trim()) return;
+        const section = await apiPost<SectionDB>(`/api/courses/${courseSlug}/sections`, { title: title.trim() });
+        setSections(p => [...p, { ...section, chapters: [] }]);
+        setExpanded(p => ({ ...p, sections: new Set([...p.sections, section.id]) }));
+        flash(`Đã thêm phần "${section.title}"`);
+
+      } else if (panel.type === "edit-section") {
+        if (!title.trim()) return;
+        await apiPut(`/api/sections/${panel.sectionId}`, { title: title.trim() });
+        setSections(p => p.map(s => s.id === panel.sectionId ? { ...s, title: title.trim() } : s));
+        flash("Đã cập nhật tên phần");
+
+      } else if (panel.type === "add-chapter") {
+        if (!title.trim()) return;
+        const chapter = await apiPost<ChapterDB>(`/api/sections/${panel.sectionId}/chapters`, { title: title.trim() });
+        setSections(p => p.map(s => s.id === panel.sectionId
+          ? { ...s, chapters: [...s.chapters, { ...chapter, lessons: [] }] } : s));
+        setExpanded(prev => ({ ...prev, chapters: new Set([...prev.chapters, chapter.id]) }));
+        flash(`Đã thêm chương "${chapter.title}"`);
+
+      } else if (panel.type === "edit-chapter") {
+        if (!title.trim()) return;
+        await apiPut(`/api/chapters/${panel.chapterId}`, { title: title.trim() });
+        setSections(p => p.map(s => s.id === panel.sectionId
+          ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId ? { ...c, title: title.trim() } : c) } : s));
+        flash("Đã cập nhật chương");
+
+      } else if (panel.type === "add-lesson") {
+        if (!ls.title.trim()) return;
+        const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
+          title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
+          zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
+          azotaDeadline: ls.azotaDeadline || null,
+          duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
+          // documents không gửi lúc tạo — để DB dùng default "[]", chỉ gửi khi edit
+        });
+        setSections(p => p.map(s => s.id === panel.sectionId
+          ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
+            ? { ...c, lessons: [...c.lessons, lesson] } : c) } : s));
+        flash(`Đã thêm bài "${lesson.title}"`);
+
+      } else if (panel.type === "edit-lesson") {
+        await apiPut(`/api/lessons/${panel.lessonId}`, {
+          title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
+          zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
+          azotaDeadline: ls.azotaDeadline || null,
+          duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
+          documents: ls.documentsRaw || "[]",
+          adminNote: ls.adminNote || null,
+        });
+        setSections(p => p.map(s => s.id === panel.sectionId
+          ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
+            ? { ...c, lessons: c.lessons.map(l => l.id === panel.lessonId
+              ? { ...l, title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
+                  zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
+                  azotaDeadline: ls.azotaDeadline || null,
+                  duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree }
+              : l) }
+            : c) }
+          : s));
+        flash("Đã cập nhật bài học");
+      }
+
+      setPanel({ type: "none" });
+    } catch (e) {
+      alert("Lỗi: " + (e instanceof Error ? e.message : "Unknown"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── Delete (calls API) ──
+  async function delConfirm() {
+    if (!del) return;
+    try {
+      if (del.kind === "section") {
+        const res = await fetch(`/api/sections/${del.sectionId}`, { method: "DELETE" });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? `Lỗi ${res.status}`); }
+        setSections(p => p.filter(s => s.id !== del.sectionId));
+      } else if (del.kind === "chapter") {
+        const res = await fetch(`/api/chapters/${del.chapterId}`, { method: "DELETE" });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? `Lỗi ${res.status}`); }
+        setSections(p => p.map(s => s.id === del.sectionId
+          ? { ...s, chapters: s.chapters.filter(c => c.id !== del.chapterId) } : s));
+      } else if (del.kind === "lesson") {
+        const res = await fetch(`/api/lessons/${del.lessonId}`, { method: "DELETE" });
+        if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? `Lỗi ${res.status}`); }
+        setSections(p => p.map(s => s.id === del.sectionId
+          ? { ...s, chapters: s.chapters.map(c => c.id === del.chapterId
+            ? { ...c, lessons: c.lessons.filter(l => l.id !== del.lessonId) } : c) }
+          : s));
+      }
+      flash("Đã xoá thành công");
+    } catch (e) {
+      alert("Lỗi: " + (e instanceof Error ? e.message : "Unknown"));
+    } finally {
+      setDel(null);
+    }
+  }
+
+  async function toggleLessonLock(sectionId: string, chapterId: string, lessonId: string, current: boolean) {
+    const s = sections.find(x => x.id === sectionId)!;
+    const c = s.chapters.find(x => x.id === chapterId)!;
+    const l = c.lessons.find(x => x.id === lessonId)!;
+    await fetch(`/api/lessons/${lessonId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isLocked: !current }),
+    }).catch(() => {});
+    setSections(p => p.map(sec => sec.id !== sectionId ? sec : {
+      ...sec, chapters: sec.chapters.map(ch => ch.id !== chapterId ? ch : {
+        ...ch, lessons: ch.lessons.map(le => le.id !== lessonId ? le : { ...le, isLocked: !current }),
+      }),
+    }));
+    void l;
+  }
+
+  const panelIsOpen = panel.type !== "none";
+  const isTitlePanel = panel.type.includes("section") || panel.type.includes("chapter");
+  const isLsPanel    = panel.type.includes("lesson");
+  const panelTitle   = {
+    "add-section":    "Thêm phần mới",
+    "edit-section":   "Sửa phần",
+    "add-chapter":    "Thêm chương mới",
+    "edit-chapter":   "Sửa chương",
+    "add-lesson":     "Thêm bài học",
+    "edit-lesson":    "Sửa bài học",
+    none: "",
+  }[panel.type];
+
+  const totals = { ch: sections.reduce((a, s) => a + s.chapters.length, 0), ls: sections.reduce((a, s) => a + s.chapters.reduce((b, c) => b + c.lessons.length, 0), 0) };
+
+  return (
+    <div>
+      <Drawer open={panelIsOpen} title={panelTitle} onClose={() => setPanel({ type: "none" })} onSave={savePanel} saving={saving}>
+        {isTitlePanel && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <span className="text-red-500 mr-0.5">*</span>
+              {panel.type.includes("section") ? "Tên phần" : "Tên chương"}
+            </label>
+            <input className={inp} value={title}
+              onChange={e => setTitle(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && savePanel()}
+              placeholder={panel.type.includes("section") ? "VD: PHẦN 1: TƯ DUY ĐỊNH LƯỢNG" : "VD: Chương 1: Đại số cơ bản"} />
+          </div>
+        )}
+        {isLsPanel && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5"><span className="text-red-500 mr-0.5">*</span>Tên bài học</label>
+              <input className={inp} value={ls.title}
+                onChange={e => setLs(f => ({ ...f, title: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && savePanel()}
+                placeholder="VD: Buổi 1: Hệ phương trình" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Loại bài học</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["record","live","quiz","document"] as LessonDB["type"][]).map(t => {
+                  const tb = TYPE_BADGE[t];
+                  return (
+                    <button key={t} onClick={() => setLs(f => ({ ...f, type: t }))}
+                      className="py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all text-left"
+                      style={ls.type === t
+                        ? { background: tb.bg, color: tb.color, borderColor: tb.color }
+                        : { background: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }}>
+                      {tb.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <DrawerToggle checked={ls.isLocked} onChange={() => setLs(f => ({ ...f, isLocked: !f.isLocked }))} label="Khoá bài (yêu cầu đăng ký)" />
+            <DrawerToggle checked={ls.isFree} onChange={() => setLs(f => ({ ...f, isFree: !f.isFree }))} label="Học thử miễn phí" />
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Video & Links</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">YouTube URL (cho bài Video)</label>
+                  <input className={inp} value={ls.videoUrl} onChange={e => setLs(f => ({ ...f, videoUrl: e.target.value }))} placeholder="https://youtube.com/watch?v=..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Zoom URL (cho bài Live)</label>
+                  <input className={inp} value={ls.zoomUrl} onChange={e => setLs(f => ({ ...f, zoomUrl: e.target.value }))} placeholder="https://zoom.us/j/..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Azota URL (cho bài Tập)</label>
+                  <input className={inp} value={ls.azotaUrl} onChange={e => setLs(f => ({ ...f, azotaUrl: e.target.value }))} placeholder="https://azota.vn/..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Deadline Azota</label>
+                  <input type="datetime-local" className={inp} value={ls.azotaDeadline} onChange={e => setLs(f => ({ ...f, azotaDeadline: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Thời lượng (VD: 45:00)</label>
+                  <input className={inp} value={ls.duration} onChange={e => setLs(f => ({ ...f, duration: e.target.value }))} placeholder="45:00" />
+                </div>
+              </div>
+            </div>
+            <DocumentsEditor
+              value={ls.documentsRaw}
+              onChange={v => setLs(f => ({ ...f, documentsRaw: v }))}
+            />
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-100">
+                Ghi chú cho học viên
+              </p>
+              <p className="text-xs text-gray-400 mb-2">Lưu ý, hướng dẫn, hoặc thông báo hiển thị với học viên khi xem bài này.</p>
+              <textarea
+                className={inp + " resize-none"}
+                rows={4}
+                placeholder="VD: Học viên cần đọc lý thuyết chương 3 trước khi làm bài này. Nộp bài trước 23:59 ngày 31/05."
+                value={ls.adminNote}
+                onChange={e => setLs(f => ({ ...f, adminNote: e.target.value }))}
+              />
+            </div>
+          </>
+        )}
+      </Drawer>
+
+      <DelModal target={del} onClose={() => setDel(null)} onConfirm={delConfirm} />
+
+      {toast && (
+        <div className="mb-4 px-4 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center gap-2" style={{ background: "#16a34a" }}>
+          <svg viewBox="0 0 10 8" className="w-4 h-4 flex-shrink-0"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+          {toast}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-gray-500">{sections.length} phần · {totals.ch} chương · {totals.ls} bài</p>
+        <button onClick={openAddSection}
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+          + Thêm phần
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {sections.map((section, si) => (
+          <div key={section.id || `s-${si}`} className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3" style={{ background: "#f0fdf4" }}>
+              <button onClick={() => toggleSec(section.id)} className="text-green-700 text-xs flex-shrink-0">
+                {expanded.sections.has(section.id) ? "▼" : "▶"}
+              </button>
+              <span className="text-sm font-bold flex-1 min-w-0 truncate" style={{ color: "#166534" }}>{section.title}</span>
+              <div className="flex gap-1.5 flex-shrink-0">
+                <button onClick={() => openAddChapter(section.id)} className="px-2.5 py-1 text-xs rounded-lg font-medium" style={{ background: "#16a34a", color: "white" }}>+ Chương</button>
+                <button onClick={() => openEditSection(section.id)} className="px-2.5 py-1 text-xs rounded-lg font-medium border border-gray-300 text-gray-600 hover:bg-gray-50">Sửa</button>
+                <button onClick={() => setDel({ kind: "section", sectionId: section.id, label: section.title })}
+                  className="px-2.5 py-1 text-xs rounded-lg font-medium border border-red-200 text-red-500 hover:bg-red-50">Xóa</button>
+              </div>
+            </div>
+
+            {expanded.sections.has(section.id) && (
+              <div>
+                {section.chapters.length === 0 && (
+                  <div className="px-6 py-5 text-center">
+                    <p className="text-sm text-gray-400 mb-1">Chưa có chương nào.</p>
+                    <button onClick={() => openAddChapter(section.id)} className="text-sm text-green-600 hover:underline font-medium">+ Thêm chương đầu tiên</button>
+                  </div>
+                )}
+                {section.chapters.map((chapter, ci) => (
+                  <div key={chapter.id || `${section.id}-c-${ci}`} className="border-t border-gray-100">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 transition-colors">
+                      <button onClick={() => toggleCh(chapter.id)} className="text-gray-400 text-xs flex-shrink-0">
+                        {expanded.chapters.has(chapter.id) ? "▼" : "▶"}
+                      </button>
+                      <span className="text-sm font-semibold text-gray-800 flex-1 min-w-0 truncate">{chapter.title}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{chapter.lessons.length} bài</span>
+                      <button onClick={() => openEditChapter(section.id, chapter.id)} className="p-1 text-gray-400 hover:text-blue-600 text-xs transition-colors">Sửa</button>
+                      <button onClick={() => setDel({ kind: "chapter", sectionId: section.id, chapterId: chapter.id, label: chapter.title })}
+                        className="p-1 text-red-300 hover:text-red-500 text-xs transition-colors">Xóa</button>
+                    </div>
+                    {expanded.chapters.has(chapter.id) && (
+                      <div>
+                        {chapter.lessons.length === 0 && (
+                          <div className="px-10 py-3 text-center">
+                            <span className="text-xs text-gray-400">Chưa có bài học. </span>
+                            <button onClick={() => openAddLesson(section.id, chapter.id)} className="text-xs text-blue-500 hover:underline font-medium">Thêm bài đầu tiên</button>
+                          </div>
+                        )}
+                        {chapter.lessons.map((lesson, li) => {
+                          const tb = TYPE_BADGE[lesson.type] ?? TYPE_BADGE.record;
+                          return (
+                            <div key={lesson.id || `${chapter.id}-l-${li}`}
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                              style={{ borderTop: "1px dashed #e5e7eb" }}>
+                              <span className="flex-1 text-sm font-medium text-gray-800 min-w-0 truncate">{lesson.title}</span>
+                              {lesson.isFree && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DCFCE7", color: "#166534" }}>FREE</span>}
+                              {lesson.videoUrl && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>YT</span>}
+                              {lesson.duration && <span className="text-xs text-gray-400 flex-shrink-0">{lesson.duration}</span>}
+                              <span className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button onClick={() => toggleLessonLock(section.id, chapter.id, lesson.id, lesson.isLocked)}
+                                  className="p-1.5 rounded hover:bg-blue-50 transition-colors"
+                                  title={lesson.isLocked ? "Mở khoá" : "Khoá bài"}
+                                  style={{ color: lesson.isLocked ? "#9CA3AF" : "#0055D4" }}>
+                                  <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                                    <rect x="3" y="7.5" width="10" height="6.5" rx="1.2"/>
+                                    <path d={lesson.isLocked ? "M5.5 7.5V5.5a2.5 2.5 0 015 0v2" : "M5.5 7.5V5.5a2.5 2.5 0 015 0"}/>
+                                  </svg>
+                                </button>
+                                <button onClick={() => openEditLesson(section.id, chapter.id, lesson.id)}
+                                  className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="Sửa" style={{ color: "#0055D4" }}>
+                                  <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 2l3 3-8 8H3v-3z"/>
+                                  </svg>
+                                </button>
+                                <button onClick={() => setDel({ kind: "lesson", sectionId: section.id, chapterId: chapter.id, lessonId: lesson.id, label: lesson.title })}
+                                  className="p-1.5 rounded hover:bg-red-50 transition-colors" title="Xoá" style={{ color: "#EF4444" }}>
+                                  <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 4.5h10M6 4.5V3h4v1.5M5.5 4.5v7.5a1 1 0 001 1h3a1 1 0 001-1V4.5"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="flex flex-wrap items-center gap-2 px-4 py-3" style={{ borderTop: "1px dashed #e5e7eb", background: "#fafafa" }}>
+                          <button onClick={() => openAddLesson(section.id, chapter.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#16a34a" }}>
+                            + Thêm bài học
+                          </button>
+                          <button onClick={() => openAddChapter(section.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#16a34a" }}>
+                            + Thêm chương
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <button onClick={openAddSection}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold border-2 border-dashed border-gray-300 text-gray-500 hover:border-green-400 hover:text-green-600 transition-colors">
+          + Thêm phần mới
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── TAB HỌC VIÊN KHOÁ HỌC ───────────────────────────────────────────────────
+interface CourseStudent {
+  userId: string; name: string; email: string;
+  phone?: string | null; school?: string | null;
+  enrolledAt: string; completed: number; totalLessons: number; progress: number;
+}
+
+function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
+  const [students, setStudents] = useState<CourseStudent[]>([]);
+  const [total,    setTotal]    = useState(0);
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/courses/${courseSlug}/students`)
+      .then(r => r.json())
+      .then(d => { setStudents(d.students ?? []); setTotal(d.total ?? 0); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [courseSlug]);
+
+  const filtered = students.filter(s =>
+    !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.email.includes(search)
+  );
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <p className="text-sm font-bold text-gray-800">Học viên đã đăng ký</p>
+          <p className="text-xs text-gray-400 mt-0.5">{total} học viên tổng cộng</p>
+        </div>
+        <input type="text" placeholder="Tìm theo tên, email..."
+          value={search} onChange={e => setSearch(e.target.value)}
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 w-64" />
+      </div>
+
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <div className="flex gap-1.5">
+            {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce bg-blue-400" style={{ animationDelay: `${i*0.15}s` }} />)}
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 text-sm">
+          {total === 0 ? "Chưa có học viên nào đăng ký khoá học này." : "Không tìm thấy học viên."}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {["Học viên","Email","SĐT","Trường","Tiến độ","Ngày đăng ký"].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(s => (
+                <tr key={s.userId} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                        style={{ background: "linear-gradient(145deg,#0055D4,#0042AA)" }}>
+                        {s.name[0]?.toUpperCase()}
+                      </div>
+                      <span className="font-medium text-gray-800">{s.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{s.email}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{s.phone || "—"}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs max-w-[140px] truncate">{s.school || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-200 min-w-[60px]">
+                        <div className="h-1.5 rounded-full" style={{ width: `${s.progress}%`, background: s.progress >= 80 ? "#16a34a" : s.progress >= 40 ? "#f59e0b" : "#0068FF" }} />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
+                        {s.completed}/{s.totalLessons} ({s.progress}%)
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                    {new Date(s.enrolledAt).toLocaleDateString("vi-VN")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PAGE ─────────────────────────────────────────────────────────────────────
+const TABS: { id: TabId; label: string }[] = [
+  { id: "cai-dat",    label: "Cài đặt" },
+  { id: "chuong-bai", label: "Danh sách chương bài" },
+  { id: "hoc-vien",   label: "Học viên đăng ký" },
+];
+
+export default function KhoaHocDetailPage() {
+  const params       = useParams();
+  const searchParams = useSearchParams();
+  const router       = useRouter();
+  const courseSlug   = params.id as string;
+  const rawTab       = searchParams.get("tab");
+  const activeTab: TabId = (rawTab && TABS.some(t => t.id === rawTab) ? rawTab : "cai-dat") as TabId;
+  function setTab(tab: TabId) { router.push(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`); }
+
+  const [course, setCourse] = useState<CourseDB | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]    = useState("");
+
+  const loadCourse = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/courses/${courseSlug}`)
+      .then(r => r.ok ? r.json() : Promise.reject("Not found"))
+      .then(data => { setCourse(data); setError(""); })
+      .catch(() => setError("Không tìm thấy khoá học"))
+      .finally(() => setLoading(false));
+  }, [courseSlug]);
+
+  useEffect(() => { loadCourse(); }, [loadCourse]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
+        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Đang tải khoá học...</p>
+      </div>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
+        <p className="text-red-500 font-semibold mb-2">Không tìm thấy khoá học</p>
+        <Link href="/admin/khoa-hoc" className="text-sm text-blue-600 hover:underline">← Quay lại danh sách</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col" style={{ minHeight: "calc(100vh - 130px)" }}>
+      <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+        <p className="text-sm text-gray-500">
+          Bảng điều khiển /{" "}
+          <Link href="/admin/khoa-hoc" className="hover:text-blue-600 transition-colors">Danh sách khoá học</Link>
+          {" "}/ <span className="font-medium text-gray-800">{course.adminName}</span>
+        </p>
+      </div>
+
+      <div className="px-5 py-4 border-b border-gray-100">
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-11 rounded-lg flex items-center justify-center text-sm font-black text-white flex-shrink-0"
+            style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>ME</div>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-gray-800 leading-tight">{course.adminName}</h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              ID: {course.adminId} · Slug: {course.id} · {course.category}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b border-gray-200">
+        <div className="flex overflow-x-auto">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setTab(tab.id)}
+              className="px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2"
+              style={activeTab === tab.id
+                ? { color: "#16a34a", borderColor: "#16a34a" }
+                : { color: "#6b7280", borderColor: "transparent" }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-5 flex-1">
+        {activeTab === "cai-dat"    && <TabCaiDat courseSlug={courseSlug} course={course} />}
+        {activeTab === "chuong-bai" && <TabChuongBai courseSlug={courseSlug} initialSections={course.sections} />}
+        {activeTab === "hoc-vien"   && <TabHocVienKhoaHoc courseSlug={courseSlug} />}
+      </div>
+    </div>
+  );
+}

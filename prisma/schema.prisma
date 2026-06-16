@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── COURSES ──────────────────────────────────────────────────────────────────
+
+model Course {
+  id            String   @id           // slug: "hsa-tron-goi"
+  adminId       Int      @unique
+  sortOrder     Int      @unique @default(autoincrement())  // thứ tự hiển thị trên trang công khai (theo thứ tự tạo)
+  name          String                 // tên công khai
+  adminName     String                 // tên nội bộ
+  shortTitle    String
+  category      String
+  instructor    String
+  teacherAvatar String
+  openDate      String
+  types         String[]
+  tag           String?
+  tagColor      String?
+  bg            String
+  strip         String   @default("#FDE047")
+  introVideo    String?
+  price         Int
+  originalPrice Int?
+  lessons       Int      @default(0)
+  hours         Int      @default(0)
+  status        Boolean  @default(true)
+  createdAt     String
+
+  sections    Section[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+// ─── CURRICULUM ───────────────────────────────────────────────────────────────
+
+model Section {
+  id       String    @id
+  title    String
+  order    Int       @default(0)
+  courseId String
+  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapters Chapter[]
+
+  @@map("sections")
+}
+
+model Chapter {
+  id        String   @id
+  title     String
+  order     Int      @default(0)
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+
+  @@map("chapters")
+}
+
+model Lesson {
+  id             String  @id
+  code           String
+  title          String
+  type           String  // "record" | "live" | "quiz" | "document"
+  duration       String?
+  videoUrl       String?
+  zoomUrl        String?
+  azotaUrl       String?
+  azotaDeadline  String?
+  documents      String?   @default("[]")
+  adminNote      String?
+  isLocked       Boolean @default(true)
+  isFree         Boolean @default(false)
+  statsVideos    Int     @default(0)
+  statsMaterials Int     @default(0)
+  statsViews     Int     @default(0)
+  order          Int     @default(0)
+  chapterId      String
+  chapter        Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  progress       LessonProgress[]
+
+  @@map("lessons")
+}
+
+// ─── EXAMS ────────────────────────────────────────────────────────────────────
+
+model Exam {
+  id           String  @id
+  code         String  @unique
+  title        String
+  category     String
+  date         String
+  time         String
+  duration     String
+  questions    Int
+  status       String  // "upcoming" | "available" | "completed"
+  azotaUrl     String? @default("")
+  participants Int     @default(0)
+  active       Boolean @default(true)
+  createdAt    String
+  results      ExamResult[]
+
+  @@map("exams")
+}
+
+// ─── USERS ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String
+  phone         String?
+  parentPhone   String?
+  parentName    String?
+  school        String?
+  highSchool    String?
+  city          String?
+  studentId     Int?     @unique
+  avatarBase64  String?  @db.Text
+  facebookUrl   String?
+  zaloPhone     String?
+  role          String   @default("student")  // "student" | "admin"
+  adminRole     String?                       // "admin_super" | "admin_content"
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  enrollments         Enrollment[]
+  verifyTokens        VerifyToken[]
+  passwordResetTokens PasswordResetToken[]
+  lessonProgress      LessonProgress[]
+  examResults         ExamResult[]
+  badges              UserBadge[]
+  threads             Thread[]
+  threadReplies       ThreadReply[]
+  threadLikes         ThreadLike[]
+  replyLikes          ReplyLike[]
+  threadBookmarks     ThreadBookmark[]
+
+  @@map("users")
+}
+
+model VerifyToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verify_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+// ─── ENROLLMENTS ──────────────────────────────────────────────────────────────
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+// ─── LESSON PROGRESS ──────────────────────────────────────────────────────────
+
+model LessonProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  lessonId      String
+  completedAt   DateTime @default(now())
+  watchedSeconds Int     @default(0)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+// ─── EXAM RESULTS ─────────────────────────────────────────────────────────────
+
+model ExamResult {
+  id          String   @id @default(cuid())
+  userId      String
+  examId      String
+  score       Float
+  totalPoints Int      @default(150)
+  completedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, examId])
+  @@map("exam_results")
+}
+
+// ─── BADGES ───────────────────────────────────────────────────────────────────
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  grantedAt DateTime @default(now())
+  grantedBy String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+// ─── COMMUNITY ────────────────────────────────────────────────────────────────
+
+model Thread {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  authorId  String
+  category  String   @default("hoi-dap")
+  isPinned  Boolean  @default(false)
+  imageUrls String[]
+  fileUrl   String?
+  fileName  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author    User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replies   ThreadReply[]
+  likes     ThreadLike[]
+  bookmarks ThreadBookmark[]
+
+  @@map("threads")
+}
+
+model ThreadReply {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  authorId  String
+  threadId  String
+  imageUrls String[]
+  createdAt DateTime @default(now())
+
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  thread Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  likes  ReplyLike[]
+
+  @@map("thread_replies")
+}
+
+model ThreadLike {
+  userId   String
+  threadId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@id([userId, threadId])
+  @@map("thread_likes")
+}
+
+model ReplyLike {
+  userId  String
+  replyId String
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reply ThreadReply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, replyId])
+  @@map("reply_likes")
+}
+
+model ThreadBookmark {
+  userId    String
+  threadId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@id([userId, threadId])
+  @@map("thread_bookmarks")
+}
+
+// ─── NEWS / ARTICLES ──────────────────────────────────────────────────────────
+
+model Article {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String    @db.Text
+  content     String    @db.Text
+  category    String
+  author      String
+  authorId    String
+  tag         String?
+  isPinned    Boolean   @default(false)
+  published   Boolean   @default(false)
+  readTime    Int       @default(5)
+  views       Int       @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("articles")
+}

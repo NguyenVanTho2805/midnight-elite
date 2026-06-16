@@ -1,0 +1,476 @@
+@import "tailwindcss";
+
+:root {
+  /* ── TSIX Brand colors (unchanged) ────────────────────────────── */
+  --color-primary: #0068FF;
+  --color-primary-light: #2680FF;
+  --color-primary-dark: #0042AA;
+  --color-success: #00A63D;
+  --color-warning: #FE9900;
+  --color-danger: #FF2157;
+  --color-info: #0EA5E9;
+
+  /* ── Notion Design Tokens ──────────────────────────────────────── */
+  /* Canvas & Surface */
+  --canvas:        #ffffff;
+  --surface:       #f6f5f4;
+  --surface-soft:  #fafaf9;
+
+  /* Hairline / Borders */
+  --hairline:        #e5e3df;
+  --hairline-soft:   #ede9e4;
+  --hairline-strong: #c8c4be;
+
+  /* Text scale */
+  --ink-deep:  #000000;
+  --ink:       #1a1a1a;
+  --charcoal:  #37352f;
+  --slate:     #5d5b54;
+  --steel:     #787671;
+  --stone:     #a4a097;
+  --muted:     #bbb8b1;
+
+  /* Brand navy (hero bands) */
+  --brand-navy:     #0a1530;
+  --brand-navy-mid: #1a2a52;
+
+  /* Border-radius scale */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-xxl:  20px;
+  --radius-full: 9999px;
+
+  /* Notion elevation shadows */
+  --shadow-0: none;
+  --shadow-1: rgba(15,15,15,0.04) 0px 1px 2px 0px;
+  --shadow-2: rgba(15,15,15,0.08) 0px 4px 12px 0px;
+  --shadow-3: rgba(15,15,15,0.20) 0px 24px 48px -8px;
+  --shadow-4: rgba(15,15,15,0.16) 0px 16px 48px -8px;
+
+  /* Pastel tints (feature card backgrounds) */
+  --tint-peach:       #ffe8d4;
+  --tint-rose:        #fde0ec;
+  --tint-mint:        #d9f3e1;
+  --tint-lavender:    #e6e0f5;
+  --tint-sky:         #dcecfa;
+  --tint-yellow:      #fef7d6;
+  --tint-yellow-bold: #f9e79f;
+  --tint-cream:       #f8f5e8;
+  --tint-gray:        #f0eeec;
+
+  /* Semantic */
+  --semantic-success: #1aae39;
+  --semantic-warning: #dd5b00;
+  --semantic-error:   #e03131;
+
+  /* App base */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+
+  /* Legacy neumorphism vars (kept for backward compat) */
+  --color-surface: #F0F5FF;
+  --color-text: #1E2938;
+  --color-text-muted: #6B7280;
+  --shadow-neu-raised:  8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff;
+  --shadow-neu-flat:    4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff;
+  --shadow-neu-pressed: inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff;
+  --shadow-neu-card:    12px 12px 24px #C5D0EA, -12px -12px 24px #ffffff;
+  --key: 0 2px 4px rgba(0,0,0,0.04);
+  --amb: 0 10px 30px rgba(197,208,234,0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-nunito), "Nunito", "Inter", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+}
+
+/* Neumorphism utility classes */
+.neu-raised {
+  background: #F0F5FF;
+  box-shadow: var(--shadow-neu-raised);
+}
+
+.neu-flat {
+  background: #F0F5FF;
+  box-shadow: var(--shadow-neu-flat);
+}
+
+.neu-pressed {
+  background: #F0F5FF;
+  box-shadow: var(--shadow-neu-pressed);
+}
+
+.neu-card {
+  background: #F0F5FF;
+  box-shadow: var(--shadow-neu-card);
+}
+
+.neu-btn-primary {
+  background: linear-gradient(145deg, #0055D4, #0042AA);
+  box-shadow: 6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.neu-btn-primary:hover {
+  box-shadow: 4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff;
+  transform: translateY(-1px);
+}
+
+.neu-btn-primary:active {
+  box-shadow: var(--shadow-neu-pressed);
+  transform: translateY(0);
+}
+
+.neu-btn-ghost {
+  background: #F0F5FF;
+  box-shadow: var(--shadow-neu-raised);
+  color: var(--color-primary);
+  transition: all 0.2s ease;
+}
+
+.neu-btn-ghost:hover {
+  box-shadow: var(--shadow-neu-flat);
+}
+
+.neu-input {
+  background: #F0F5FF;
+  box-shadow: var(--shadow-neu-pressed);
+  border: none;
+  outline: none;
+  color: var(--color-text);
+}
+
+/* Badge styles */
+.badge-safe { background: #d1fae5; color: #065f46; }
+.badge-warn { background: #fef3c7; color: #92400e; }
+.badge-danger { background: #fee2e2; color: #991b1b; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f6f5f4; }
+::-webkit-scrollbar-thumb { background: #c8c4be; border-radius: 3px; }
+
+/* ── Skeleton shimmer ──────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Global interaction improvements ──────────────────────────── */
+/* Cursor pointer trên tất cả button/link/clickable */
+button, a, [role="button"], label[for] { cursor: pointer; }
+
+/* Smooth transitions mặc định cho interactive elements */
+button, a {
+  transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+/* Active press feedback */
+button:active:not(:disabled) { transform: scale(0.97); }
+
+/* Disabled states */
+button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+
+/* ── Card hover lift ───────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: rgba(15,15,15,0.08) 0px 4px 12px 0px !important;
+}
+.card-hover:active {
+  transform: translateY(0);
+}
+
+/* ── Animated progress bar ─────────────────────────────────────── */
+.progress-bar {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Focus ring ────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #0068FF;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Claymorphism header ───────────────────────────────────────── */
+/* Solid opaque + chunky 3D bottom shadow = clay depth */
+.clay-header {
+  background: #F0F5FF !important;
+  box-shadow:
+    0 4px 0 0 #BBC8DF,
+    0 8px 24px 0 rgba(197, 208, 234, 0.55) !important;
+  border-bottom: none !important;
+}
+
+/* ── Claymorphism cards ────────────────────────────────────────── */
+.clay-card {
+  background: #F0F5FF;
+  box-shadow:
+    8px 8px 0 0 #C5D0EA,
+    12px 12px 24px rgba(197, 208, 234, 0.4);
+  border-radius: 20px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.clay-card:hover {
+  transform: translateY(-3px) translateX(-2px);
+  box-shadow:
+    10px 10px 0 0 #BBC8DF,
+    16px 16px 28px rgba(197, 208, 234, 0.5);
+}
+.clay-card:active {
+  transform: translateY(1px) translateX(1px);
+  box-shadow:
+    4px 4px 0 0 #C5D0EA,
+    6px 6px 12px rgba(197, 208, 234, 0.3);
+}
+
+/* ── Claymorphism button ───────────────────────────────────────── */
+.clay-btn {
+  box-shadow: 0 5px 0 0 #0042AA, 0 8px 16px rgba(0, 85, 212, 0.3) !important;
+  transform: translateY(0);
+  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+}
+.clay-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 7px 0 0 #0042AA, 0 12px 20px rgba(0, 85, 212, 0.35) !important;
+}
+.clay-btn:active, .clay-btn:not(:disabled):active {
+  transform: translateY(4px) !important;
+  box-shadow: 0 1px 0 0 #0042AA, 0 4px 8px rgba(0, 85, 212, 0.2) !important;
+}
+
+
+/* ── Page fade-in ──────────────────────────────────────────────── */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-in 0.25s ease forwards;
+}
+
+/* ── Smooth number counter ─────────────────────────────────────── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-count { animation: count-up 0.4s ease forwards; }
+
+/* ── Liquid Glass surfaces ──────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+}
+
+/* Floating glass pill — CSS scroll-driven border-radius collapse */
+.glass-nav-pill {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-radius: 20px;
+  transition: box-shadow 0.3s ease;
+  will-change: border-radius;
+  animation: nav-pill-compact linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0px 80px;
+}
+
+@keyframes nav-pill-compact {
+  from { border-radius: 20px; }
+  to   { border-radius: 999px; }
+}
+
+@supports not (animation-timeline: scroll()) {
+  .glass-nav-pill { border-radius: 20px; animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-nav-pill { animation: none; border-radius: 20px; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-heavy, .glass-nav-pill {
+    background: #ffffff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Elastic dismiss (iOS 26 style) */
+@keyframes elastic-out {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* ── Notion Design System ───────────────────────────────────────── */
+
+/* Navigation */
+.notion-nav {
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Cards */
+.notion-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.notion-card-feature {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-2);
+}
+
+/* Pastel tint cards */
+.tint-peach       { background: var(--tint-peach);       border-radius: var(--radius-lg); }
+.tint-rose        { background: var(--tint-rose);        border-radius: var(--radius-lg); }
+.tint-mint        { background: var(--tint-mint);        border-radius: var(--radius-lg); }
+.tint-lavender    { background: var(--tint-lavender);    border-radius: var(--radius-lg); }
+.tint-sky         { background: var(--tint-sky);         border-radius: var(--radius-lg); }
+.tint-yellow      { background: var(--tint-yellow);      border-radius: var(--radius-lg); }
+.tint-yellow-bold { background: var(--tint-yellow-bold); border-radius: var(--radius-lg); }
+.tint-cream       { background: var(--tint-cream);       border-radius: var(--radius-lg); }
+
+/* Elevation */
+.elevation-1 { box-shadow: var(--shadow-1); }
+.elevation-2 { box-shadow: var(--shadow-2); }
+.elevation-3 { box-shadow: var(--shadow-3); }
+.elevation-4 { box-shadow: var(--shadow-4); }
+
+/* Notion Buttons — rectangular (8px radius), NOT pills */
+.notion-btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.notion-btn-primary:hover { filter: brightness(1.08); }
+.notion-btn-primary:active { transform: scale(0.98); }
+
+.notion-btn-dark {
+  background: var(--ink-deep);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notion-btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notion-btn-on-dark {
+  background: #ffffff;
+  color: var(--ink);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notion-btn-secondary-on-dark {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid var(--stone);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Badges */
+.notion-badge {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notion-tag-sky    { background: var(--tint-sky);     color: #1D4ED8; border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.notion-tag-mint   { background: var(--tint-mint);    color: #166534; border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.notion-tag-peach  { background: var(--tint-peach);   color: #9a3412; border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.notion-tag-rose   { background: var(--tint-rose);    color: #9d174d; border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }
+
+/* Notion hero band */
+.notion-hero-band {
+  background: var(--brand-navy);
+  color: #ffffff;
+}
+
+/* Input Notion-style */
+.notion-input {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  height: 44px;
+  font-size: 16px;
+  color: var(--ink);
+  transition: border-color 0.15s ease;
+}
+.notion-input:focus {
+  outline: none;
+  border: 2px solid var(--color-primary);
+}
+
+/* Pill tab */
+.notion-pill-tab {
+  background: transparent;
+  color: var(--steel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.notion-pill-tab-active {
+  background: var(--ink-deep);
+  color: #ffffff;
+  border-color: var(--ink-deep);
+}
