@@ -14,18 +14,20 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const watchedSeconds: number = typeof body.watchedSeconds === "number" ? body.watchedSeconds : 0;
 
-  // Verify lesson thuộc khoá học mà student đang enroll
+  // Verify lesson thuộc khoá học mà student đang enroll (hoặc bài học thử miễn phí)
   const lesson = await prisma.lesson.findUnique({
     where:  { id: lessonId },
-    select: { chapter: { select: { section: { select: { courseId: true } } } } },
+    select: { isFree: true, chapter: { select: { section: { select: { courseId: true } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   const courseId = lesson.chapter.section.courseId;
-  const enrolled = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId: session.userId, courseId } },
-  });
-  if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  if (!lesson.isFree) {
+    const enrolled = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: session.userId, courseId } },
+    });
+    if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  }
 
   const row = await prisma.lessonProgress.upsert({
     where:  { userId_lessonId: { userId: session.userId, lessonId } },
@@ -83,18 +85,20 @@ export async function DELETE(
 
   const { lessonId } = await params;
 
-  // Verify enrollment — consistent với POST
+  // Verify enrollment (hoặc bài học thử miễn phí) — consistent với POST
   const lesson = await prisma.lesson.findUnique({
     where:  { id: lessonId },
-    select: { chapter: { select: { section: { select: { courseId: true } } } } },
+    select: { isFree: true, chapter: { select: { section: { select: { courseId: true } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   const courseId = lesson.chapter.section.courseId;
-  const enrolled = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId: session.userId, courseId } },
-  });
-  if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  if (!lesson.isFree) {
+    const enrolled = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: session.userId, courseId } },
+    });
+    if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  }
 
   await prisma.lessonProgress.deleteMany({
     where: { userId: session.userId, lessonId },

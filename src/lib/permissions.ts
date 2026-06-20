@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   MANAGE_ADMINS:        "MANAGE_ADMINS",
   MANAGE_NEWS:          "MANAGE_NEWS",
   MANAGE_COMMUNITY:     "MANAGE_COMMUNITY",
+  VIEW_SALES_LEADS:     "VIEW_SALES_LEADS",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

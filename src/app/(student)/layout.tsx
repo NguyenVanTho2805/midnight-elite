@@ -5,9 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import StudentBottomNav from "@/components/StudentBottomNav";
 import AIChatWidget from "@/components/AIChatWidget";
+import SalesBotWidget from "@/components/SalesBotWidget";
 import AuthGuard from "@/components/AuthGuard";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEnrollments } from "@/hooks/useEnrollments";
 
 const navItems = [
   { label: "Dashboard",  href: "/student"            },
@@ -177,6 +179,16 @@ function StudentHeader() {
   );
 }
 
+// ─── CHAT WIDGET THEO TRẠNG THÁI MUA HÀNG ────────────────────────────────────
+// Học viên CHƯA mua khóa học nào vẫn là lead chưa chốt — hiện sales bot để
+// tiếp tục tư vấn/chốt đơn, thay vì bot hỏi đáp học thuật (chỉ dành cho người
+// đã mua, đang học thật). Đã mua >=1 khóa thì hiện bot học thuật như cũ.
+function StudentChatWidget() {
+  const { enrolledIds, loading } = useEnrollments();
+  if (loading) return null;
+  return enrolledIds.size > 0 ? <AIChatWidget /> : <SalesBotWidget />;
+}
+
 // ─── LAYOUT ──────────────────────────────────────────────────────────────────
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -196,7 +208,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </Suspense>
         </main>
         <StudentBottomNav />
-        <AIChatWidget />
+        <StudentChatWidget />
       </div>
     </AuthGuard>
   );

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
+import { triggerSalesBotSync } from "@/lib/salesBotSync";
 
 export async function GET(req: NextRequest) {
   try {
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
     // createdAt do server sinh ra — không tin giá trị từ client
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
     const course = await prisma.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
+    await triggerSalesBotSync();
     return NextResponse.json(course, { status: 201 });
   } catch (e) {
     console.error("[POST /api/courses]", e);

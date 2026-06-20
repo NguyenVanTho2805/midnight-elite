@@ -1,8 +1,10 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProgress } from "@/hooks/useProgress";
 
 interface DBLesson { id: string; title: string; duration?: string | null; isFree: boolean }
 interface DBChapter { id: string; title: string; lessons: DBLesson[] }
@@ -23,6 +25,9 @@ function extractYouTubeId(url: string): string | null {
 
 export default function KhoaHocDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { completedIds, markComplete, unmarkComplete } = useProgress();
   const [course, setCourse] = useState<DBCourse | null>(null);
 
   useEffect(() => {
@@ -57,7 +62,7 @@ export default function KhoaHocDetailPage() {
           <div className="flex items-center gap-2 text-xs" style={{ color: "#9CA3AF" }}>
             <Link href="/khoa-hoc" style={{ color: "#0068FF" }}>Khóa học</Link>
             <span>›</span>
-            <Link href="/khoa-hoc" style={{ color: "#0068FF" }}>{course.category}</Link>
+            <Link href={`/khoa-hoc?category=${encodeURIComponent(course.category)}`} style={{ color: "#0068FF" }}>{course.category}</Link>
             <span>›</span>
             <span>{course.name}</span>
           </div>
@@ -98,9 +103,21 @@ export default function KhoaHocDetailPage() {
                 <span className="text-xs" style={{ color: "#9CA3AF" }}>Cập nhật: 5/2026</span>
               </div>
               <h1 className="text-2xl font-extrabold mb-3" style={{ color: "#1E2938" }}>{course.name}</h1>
-              <p className="text-sm leading-relaxed mb-5" style={{ color: "#6B7280" }}>
-                {course.instructor && `Giảng viên: ${course.instructor}. `}Khóa học toàn diện với đầy đủ bài giảng video theo chuyên đề.
+              <p className="text-sm leading-relaxed mb-3" style={{ color: "#6B7280" }}>
+                Khóa học toàn diện với đầy đủ bài giảng video theo chuyên đề.
               </p>
+              {course.instructor && (
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #0068FF, #2680FF)" }}>
+                    {course.instructor[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: "#1E2938" }}>{course.instructor}</p>
+                    <p className="text-xs" style={{ color: "#9CA3AF" }}>Giảng viên phụ trách</p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-4 gap-3">
                 {[
@@ -131,20 +148,36 @@ export default function KhoaHocDetailPage() {
                   <h3 className="text-sm font-bold mb-3 px-1" style={{ color: "#1E2938" }}>{chap.title}</h3>
                   <div className="space-y-2">
                     {chap.lessons.map((lesson) => {
+                      const isCompleted = completedIds.has(lesson.id);
+
+                      function toggleComplete(e: React.MouseEvent) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!user) { router.push("/dang-nhap"); return; }
+                        isCompleted ? unmarkComplete(lesson.id) : markComplete(lesson.id);
+                      }
+
                       const inner = (
                         <>
-                          <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                            style={{ borderColor: lesson.isFree ? "#16a34a" : "#e5e3df", background: lesson.isFree ? "#16a34a" : "transparent" }}>
-                            {lesson.isFree ? (
-                              <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
-                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            ) : (
+                          {lesson.isFree ? (
+                            <button onClick={toggleComplete}
+                              title={isCompleted ? "Đã học — bấm để bỏ đánh dấu" : "Đánh dấu đã học"}
+                              className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors"
+                              style={{ borderColor: isCompleted ? "#16a34a" : "#c8c4be", background: isCompleted ? "#16a34a" : "transparent" }}>
+                              {isCompleted && (
+                                <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
+                                  <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                              style={{ borderColor: "#e5e3df", background: "transparent" }}>
                               <svg viewBox="0 0 8 8" width="8" height="8" fill="none">
                                 <path d="M1 4h6M4 1v6" stroke="#c8c4be" strokeWidth="1.2" strokeLinecap="round"/>
                               </svg>
-                            )}
-                          </div>
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <span className="text-sm" style={{ color: lesson.isFree ? "#0068FF" : "#6B7280", fontWeight: lesson.isFree ? 600 : 400 }}>
                               {lesson.title}
@@ -184,6 +217,30 @@ export default function KhoaHocDetailPage() {
             </div>
             <p className="text-xs mt-4 text-center" style={{ color: "#9CA3AF" }}>... và nhiều bài học khác sau khi mua khóa học</p>
           </div>
+
+          {/* Thông tin lớp học */}
+          <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+            <h2 className="text-lg font-extrabold mb-5" style={{ color: "#1E2938" }}>Thông tin lớp học</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { label: "Hình thức học",      value: "Trực tuyến qua Google Meet" },
+                { label: "Bài tập & kiểm tra", value: "Nộp qua Azota, có chấm và sửa bài" },
+                { label: "Tài liệu & Record",  value: "Lưu trên Google Drive, gửi qua nhóm Zalo lớp" },
+                { label: "Khung giờ hỗ trợ",   value: "09:00 – 21:30 hằng ngày" },
+              ].map((row) => (
+                <div key={row.label} className="rounded-xl p-3" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                  <p className="text-xs mb-1" style={{ color: "#9CA3AF" }}>{row.label}</p>
+                  <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{row.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl p-4" style={{ background: "#dbeafe" }}>
+              <p className="text-sm font-bold mb-1" style={{ color: "#0068FF" }}>Cam kết đầu ra</p>
+              <p className="text-xs leading-relaxed" style={{ color: "#1E2938" }}>
+                Đạt 7.5 – 8.0/10 ở môn theo học nếu hoàn thành đầy đủ bài tập, bài kiểm tra và lộ trình ôn tập theo hướng dẫn của giảng viên.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right — Sticky purchase card */}
@@ -219,11 +276,17 @@ export default function KhoaHocDetailPage() {
             </div>
 
             {/* CTA */}
-            <div className="space-y-3 mb-5">
-              <div className="w-full py-4 rounded-xl text-sm font-medium text-center"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671" }}>
-                Liên hệ admin để đăng ký khoá học
-              </div>
+            <div className="space-y-2 mb-5">
+              <a href="tel:0384409051"
+                className="block w-full py-3 rounded-xl text-sm font-bold text-center text-white"
+                style={{ background: "#0068FF", borderRadius: "8px" }}>
+                Gọi tư vấn: 0384 409 051
+              </a>
+              <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
+                className="block w-full py-2.5 rounded-xl text-sm font-medium text-center"
+                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
+                Nhắn Zalo để đăng ký
+              </a>
             </div>
 
             {/* Guarantees */}

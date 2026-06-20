@@ -6,23 +6,33 @@ interface Props {
   originalPrice?: number;
   trialLessonsLeft?: number;
   onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  closeLabel?: string;
 }
 
-export default function PopupBuyRequired({ courseName, price, originalPrice, trialLessonsLeft = 0, onClose }: Props) {
+export default function PopupBuyRequired({
+  courseName, price, originalPrice, trialLessonsLeft = 0, onClose,
+  title, subtitle, closeLabel = "Xem bài miễn phí khác",
+}: Props) {
   const hasDiscount  = originalPrice && originalPrice > price;
   const discountPct  = hasDiscount ? Math.round((1 - price / originalPrice) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4"
-      style={{ background: "rgba(0,0,0,0.5)" }}>
+      style={{ background: "rgba(0,0,0,0.5)" }}
+      onClick={onClose}>
       <div className="w-full max-w-sm rounded-3xl overflow-hidden"
-        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}>
+        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}
+        onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="p-6 text-center"
           style={{ background: "linear-gradient(135deg, #0068FF 0%, #2680FF 100%)" }}>
-          <h2 className="text-lg font-extrabold text-white mb-1">Nội dung có giới hạn</h2>
-          {trialLessonsLeft > 0 ? (
+          <h2 className="text-lg font-extrabold text-white mb-1">{title ?? "Nội dung có giới hạn"}</h2>
+          {subtitle ? (
+            <p className="text-sm text-blue-100">{subtitle}</p>
+          ) : trialLessonsLeft > 0 ? (
             <p className="text-sm text-blue-100">Bạn còn <strong>{trialLessonsLeft} bài học thử</strong> miễn phí</p>
           ) : (
             <p className="text-sm text-blue-100">Hết lượt thử - Đăng ký để tiếp tục</p>
@@ -68,15 +78,20 @@ export default function PopupBuyRequired({ courseName, price, originalPrice, tri
           <div className="rounded-2xl p-4 mb-3 text-center"
             style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
             <p className="text-sm font-semibold mb-1" style={{ color: "#1E2938" }}>Liên hệ để đăng ký</p>
-            <p className="text-xs" style={{ color: "#6B7280" }}>
+            <p className="text-xs mb-3" style={{ color: "#6B7280" }}>
               Chuyển khoản và nhắn admin để được kích hoạt khoá học
             </p>
+            <a href="tel:0384409051"
+              className="block w-full py-2 rounded-xl text-sm font-bold text-center text-white"
+              style={{ background: "#0068FF" }}>
+              Gọi: 0384 409 051
+            </a>
           </div>
 
           <button onClick={onClose}
             className="w-full py-2.5 rounded-2xl text-sm font-semibold transition-all cursor-pointer"
             style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: "#6B7280" }}>
-            Xem bài miễn phí khác
+            {closeLabel}
           </button>
         </div>
       </div>

@@ -47,3 +47,7 @@ next-env.d.ts
 # design references (large, not source code)
 __awesome-design/
 reports/
+
+# TSIX Sales Bot — project Python riêng, KHÔNG liên quan Vercel/Next.js,
+# có .env chứa secrets thật (Gemini API key, DB connection string)
+tsix-sales-bot/

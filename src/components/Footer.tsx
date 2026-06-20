@@ -90,6 +90,38 @@ export default function Footer() {
               ))}
             </ul>
           </div>
+
+          {/* Hỗ trợ học viên */}
+          <div>
+            <p
+              className="mb-4"
+              style={{
+                fontSize: "11px",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                color: "#37352f",
+              }}
+            >
+              Hỗ trợ học viên
+            </p>
+            <ul className="space-y-3 list-none p-0 m-0">
+              <li>
+                <a href="tel:0384409051" className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]" style={{ color: "#787671" }}>
+                  Hotline: 0384 409 051
+                </a>
+              </li>
+              <li>
+                <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
+                  className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]" style={{ color: "#787671" }}>
+                  Zalo tư vấn
+                </a>
+              </li>
+              <li className="text-sm" style={{ color: "#787671" }}>
+                Hỗ trợ: 09:00 – 21:30 hằng ngày
+              </li>
+            </ul>
+          </div>
         </div>
 
         {/* Bottom bar */}

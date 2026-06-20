@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChartBar, BookOpen, ClipboardList, Badge,
-  UsersGroup, Wallet, Edit, FileText, ChatCircle,
+  UsersGroup, Wallet, Edit, FileText, ChatCircle, Robot,
 } from "griddy-icons";
 import { useAuth, hasPermission, getAdminRoleLabel, PERMISSIONS, type Permission } from "@/contexts/AuthContext";
 import type { FC } from "react";
@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Tin tức & Blog",  href: "/admin/tin-tuc",         Icon: FileText,    permission: PERMISSIONS.MANAGE_NEWS      },
   { label: "Cộng đồng",       href: "/admin/cong-dong",       Icon: ChatCircle,  permission: PERMISSIONS.MANAGE_COMMUNITY },
   { label: "Hồ sơ học sinh",  href: "/admin/hoc-sinh",        Icon: UsersGroup,  permission: PERMISSIONS.MANAGE_STUDENTS  },
+  { label: "Lead tư vấn",     href: "/admin/sales-leads",     Icon: Robot,       permission: PERMISSIONS.VIEW_SALES_LEADS },
   { label: "Doanh thu",       href: "/admin/doanh-thu",        Icon: Wallet,     permission: PERMISSIONS.VIEW_REVENUE    },
   { label: "Quản trị viên",   href: "/admin/quan-tri-vien",    Icon: Edit,       permission: PERMISSIONS.MANAGE_ADMINS   },
 ];

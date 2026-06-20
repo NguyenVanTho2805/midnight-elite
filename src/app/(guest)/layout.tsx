@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import AIChatWidget from "@/components/AIChatWidget";
+import SalesBotWidget from "@/components/SalesBotWidget";
 
 function PageSkeleton() {
   return (
@@ -27,7 +27,7 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
         </Suspense>
       </main>
       <Footer />
-      <AIChatWidget />
+      <SalesBotWidget />
     </div>
   );
 }

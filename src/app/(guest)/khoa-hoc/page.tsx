@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
+import PopupBuyRequired from "@/components/PopupBuyRequired";
 import type { CourseFull } from "@/lib/api";
 
 const categories = COURSE_CATEGORIES;
@@ -41,10 +42,23 @@ const categoryTheme = Object.fromEntries(
 
 function CourseCard({ course }: { course: Course }) {
   const router = useRouter();
+  const [showBuyPopup, setShowBuyPopup] = useState(false);
   const discount = Math.round((1 - course.price / course.originalPrice) * 100);
   const theme = categoryTheme[course.category] ?? categoryTheme["ĐGNL HSA"];
 
   return (
+    <>
+      {showBuyPopup && (
+        <PopupBuyRequired
+          courseName={course.title}
+          price={course.price}
+          originalPrice={course.originalPrice}
+          title="Mua khóa học"
+          subtitle="Liên hệ admin để được hướng dẫn thanh toán"
+          closeLabel="Đóng"
+          onClose={() => setShowBuyPopup(false)}
+        />
+      )}
     <div className="card-hover rounded-xl overflow-hidden flex flex-col cursor-pointer"
       style={{ background: "#ffffff", border: "1px solid #e5e3df" }}
       onClick={() => router.push(`/khoa-hoc/${course.slug}`)}>
@@ -142,22 +156,24 @@ function CourseCard({ course }: { course: Course }) {
             style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
             Xem chi tiết
           </Link>
-          <Link href={`/khoa-hoc/${course.slug}`}
-            className="flex-1 py-2 rounded-lg text-xs font-bold text-white text-center"
+          <button onClick={() => setShowBuyPopup(true)}
+            className="flex-1 py-2 rounded-lg text-xs font-bold text-white text-center cursor-pointer"
             style={{ background: "#0068FF", borderRadius: "8px" }}>
-            Xem khoá học
-          </Link>
+            Mua khóa học
+          </button>
         </div>
       </div>
     </div>
+    </>
   );
 }
 
-export default function KhoaHocPage() {
+function KhoaHocContent() {
   const { data: apiCourses } = useCourses();
   const courses = useMemo(() => apiCourses.map(toCourse), [apiCourses]);
+  const searchParams = useSearchParams();
 
-  const [activeCategory, setActiveCategory] = useState("Tất cả");
+  const [activeCategory, setActiveCategory] = useState(searchParams.get("category") ?? "Tất cả");
   const [selectedSlug, setSelectedSlug]     = useState<string | null>(null);
 
   const filtered = selectedSlug
@@ -294,5 +310,13 @@ export default function KhoaHocPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function KhoaHocPage() {
+  return (
+    <Suspense>
+      <KhoaHocContent />
+    </Suspense>
   );
 }

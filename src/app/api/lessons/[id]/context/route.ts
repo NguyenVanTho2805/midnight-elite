@@ -41,13 +41,30 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const course   = lesson.chapter.section.course;
   const courseId = course.id;
 
-  // Admin: full access
-  if (session.role !== "admin") {
-    // Student: phải enroll khoá học chứa bài này
+  let fullAccess = session.role === "admin";
+
+  if (!fullAccess) {
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (!enrolled) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+    if (enrolled) {
+      fullAccess = true;
+    } else if (!lesson.isFree) {
+      // Chưa enroll và bài này không phải học thử miễn phí
+      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+    }
+    // Chưa enroll nhưng bài này isFree → cho xem riêng bài này, không mở khoá cả khoá học
+  }
+
+  if (fullAccess) {
+    // Đã enroll/admin — mọi bài học đều mở khoá, bất kể cờ isLocked tĩnh trong DB.
+    course.sections = course.sections.map(s => ({
+      ...s,
+      chapters: s.chapters.map(c => ({
+        ...c,
+        lessons: c.lessons.map(l => ({ ...l, isLocked: false })),
+      })),
+    }));
   }
 
   return NextResponse.json({ lesson, course });

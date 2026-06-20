@@ -536,11 +536,11 @@ function HocTapContent() {
 
   useEffect(() => {
     const courseId = searchParams.get("course");
-    if (courseId && enrolledIds.has(courseId)) {
+    if (courseId) {
       openCourse(courseId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, enrolledIds]);
+  }, [searchParams]);
 
   const filtered = useMemo(
     () => catFilter === "Tất cả" ? ALL_COURSES : ALL_COURSES.filter(c => c.category === catFilter),

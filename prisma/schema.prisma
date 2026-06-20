@@ -300,6 +300,35 @@ model ThreadBookmark {
   @@map("thread_bookmarks")
 }
 
+// ─── TSIX SALES BOT (lead/hội thoại tư vấn, ghi từ service Python riêng) ──────
+
+model SalesLead {
+  id                  String   @id @default(cuid())
+  sessionId           String   @unique  // session_id sinh ở widget chat (localStorage)
+  leadScore           Int      @default(0)
+  stage               String   @default("awareness") // awareness | consideration | decision
+  conversationSummary String   @default("") @db.Text
+  escalationFlag      Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  messages SalesMessage[]
+
+  @@map("sales_leads")
+}
+
+model SalesMessage {
+  id        String   @id @default(cuid())
+  leadId    String
+  role      String   // "user" | "bot"
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  lead SalesLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("sales_messages")
+}
+
 // ─── NEWS / ARTICLES ──────────────────────────────────────────────────────────
 
 model Article {

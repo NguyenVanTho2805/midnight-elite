@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
-import AIChatWidget from "@/components/AIChatWidget";
+import SalesBotWidget from "@/components/SalesBotWidget";
 import { useCourses } from "@/hooks/useCourses";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
@@ -507,7 +507,7 @@ export default function HomePage() {
 
       </main>
       <Footer />
-      <AIChatWidget />
+      <SalesBotWidget />
     </div>
   );
 }

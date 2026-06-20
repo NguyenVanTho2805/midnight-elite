@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
+import { triggerSalesBotSync } from "@/lib/salesBotSync";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,20 +24,35 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     });
     if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
 
-    // Hidden courses: only admin or enrolled students can access
-    if (!course.status) {
-      const session = await getSession();
-      if (!session) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    const session = await getSession();
+    let hasAccess = false;
 
+    if (session) {
       if (session.role === "admin") {
-        return NextResponse.json(course);
+        hasAccess = true;
+      } else {
+        const enrolled = await prisma.enrollment.findUnique({
+          where: { userId_courseId: { userId: session.userId, courseId: id } },
+        });
+        hasAccess = !!enrolled;
       }
+    }
 
-      // Check if student is enrolled
-      const enrolled = await prisma.enrollment.findUnique({
-        where: { userId_courseId: { userId: session.userId, courseId: id } },
-      });
-      if (!enrolled) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    // Hidden courses: only admin or enrolled students can access
+    if (!course.status && !hasAccess) {
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    }
+
+    // Học viên đã mua/đã enroll (hoặc admin) thì mọi bài học đều mở khoá,
+    // bất kể cờ isLocked tĩnh trong DB — isLocked chỉ còn ý nghĩa cho khách chưa mua.
+    if (hasAccess) {
+      course.sections = course.sections.map(s => ({
+        ...s,
+        chapters: s.chapters.map(c => ({
+          ...c,
+          lessons: c.lessons.map(l => ({ ...l, isLocked: false })),
+        })),
+      }));
     }
 
     return NextResponse.json(course);
@@ -66,6 +82,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const course = await prisma.course.update({ where: { id }, data });
+    await triggerSalesBotSync();
     return NextResponse.json(course);
   } catch (e) {
     console.error("[PUT /api/courses/[id]]", e);
@@ -80,6 +97,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     await prisma.course.delete({ where: { id } });
+    await triggerSalesBotSync();
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("[DELETE /api/courses/[id]]", e);

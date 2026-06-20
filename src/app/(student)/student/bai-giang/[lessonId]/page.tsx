@@ -147,6 +147,9 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
                   clearInterval(timerRef.current!);
                   return;
                 }
+                if (typeof playerRef.current.getCurrentTime !== "function" || typeof playerRef.current.getDuration !== "function") {
+                  return;
+                }
                 const ratio = playerRef.current.getCurrentTime() / playerRef.current.getDuration();
                 if (ratio >= 0.8) {
                   firedRef.current = true;
@@ -158,7 +161,7 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
               // Save watchedSeconds mỗi 30 giây
               if (lessonId) {
                 saveRef.current = setInterval(() => {
-                  if (!playerRef.current) return;
+                  if (!playerRef.current || typeof playerRef.current.getCurrentTime !== "function") return;
                   const secs = Math.floor(playerRef.current.getCurrentTime());
                   fetch(`/api/progress/${lessonId}`, {
                     method:      "PATCH",
