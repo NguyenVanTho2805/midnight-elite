@@ -5,18 +5,17 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, CheckCircle, CloseCircle } from "griddy-icons";
 
+// Danh sách 34 tỉnh/thành sau sáp nhập (2025)
 const PROVINCES = [
-  "An Giang","Bà Rịa - Vũng Tàu","Bắc Giang","Bắc Kạn","Bạc Liêu","Bắc Ninh",
-  "Bến Tre","Bình Định","Bình Dương","Bình Phước","Bình Thuận","Cà Mau",
-  "Cần Thơ","Cao Bằng","Đà Nẵng","Đắk Lắk","Đắk Nông","Điện Biên",
-  "Đồng Nai","Đồng Tháp","Gia Lai","Hà Giang","Hà Nam","Hà Nội",
-  "Hà Tĩnh","Hải Dương","Hải Phòng","Hậu Giang","Hòa Bình","Hưng Yên",
-  "Khánh Hòa","Kiên Giang","Kon Tum","Lai Châu","Lạng Sơn","Lào Cai",
-  "Lâm Đồng","Long An","Nam Định","Nghệ An","Ninh Bình","Ninh Thuận",
-  "Phú Thọ","Phú Yên","Quảng Bình","Quảng Nam","Quảng Ngãi","Quảng Ninh",
-  "Quảng Trị","Sóc Trăng","Sơn La","Tây Ninh","Thái Bình","Thái Nguyên",
-  "Thanh Hóa","Thừa Thiên Huế","Tiền Giang","TP. Hồ Chí Minh","Trà Vinh",
-  "Tuyên Quang","Vĩnh Long","Vĩnh Phúc","Yên Bái",
+  "Tỉnh An Giang","Tỉnh Bắc Ninh","Tỉnh Cà Mau","Tỉnh Cao Bằng",
+  "Thành phố Cần Thơ","Thành phố Đà Nẵng","Tỉnh Đắk Lắk","Tỉnh Điện Biên",
+  "Tỉnh Đồng Nai","Tỉnh Đồng Tháp","Tỉnh Gia Lai","Thành phố Hà Nội",
+  "Tỉnh Hà Tĩnh","Thành phố Hải Phòng","Thành phố Hồ Chí Minh","Thành phố Huế",
+  "Tỉnh Hưng Yên","Tỉnh Khánh Hòa","Tỉnh Lai Châu","Tỉnh Lâm Đồng",
+  "Tỉnh Lạng Sơn","Tỉnh Lào Cai","Tỉnh Nghệ An","Tỉnh Ninh Bình",
+  "Tỉnh Phú Thọ","Tỉnh Quảng Ngãi","Tỉnh Quảng Ninh","Tỉnh Quảng Trị",
+  "Tỉnh Sơn La","Tỉnh Tây Ninh","Tỉnh Thái Nguyên","Tỉnh Thanh Hóa",
+  "Tỉnh Tuyên Quang","Tỉnh Vĩnh Long",
 ];
 
 interface Step1Fields {

@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",      href: "/admin",               Icon: ChartBar     },
+  { label: "Tổng quan",      href: "/admin",               Icon: ChartBar     },
   {
     label:      "Khóa học (CMS)",
     href:       "/admin/khoa-hoc",
@@ -42,7 +42,16 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: "Bảng vinh danh",  href: "/admin/vinh-danh",       Icon: Badge,      permission: PERMISSIONS.MANAGE_HONOR    },
   { label: "Tin tức & Blog",  href: "/admin/tin-tuc",         Icon: FileText,    permission: PERMISSIONS.MANAGE_NEWS      },
-  { label: "Cộng đồng",       href: "/admin/cong-dong",       Icon: ChatCircle,  permission: PERMISSIONS.MANAGE_COMMUNITY },
+  {
+    label:      "Cộng đồng",
+    href:       "/admin/cong-dong",
+    Icon:       ChatCircle,
+    permission: PERMISSIONS.MANAGE_COMMUNITY,
+    children: [
+      { label: "Bài viết",          href: "/admin/cong-dong" },
+      { label: "Báo cáo trả lời",   href: "/admin/cong-dong/bao-cao" },
+    ],
+  },
   { label: "Hồ sơ học sinh",  href: "/admin/hoc-sinh",        Icon: UsersGroup,  permission: PERMISSIONS.MANAGE_STUDENTS  },
   { label: "Lead tư vấn",     href: "/admin/sales-leads",     Icon: Robot,       permission: PERMISSIONS.VIEW_SALES_LEADS },
   { label: "Doanh thu",       href: "/admin/doanh-thu",        Icon: Wallet,     permission: PERMISSIONS.VIEW_REVENUE    },

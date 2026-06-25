@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
+import TeacherTag from "@/components/TeacherTag";
 import type { CourseFull } from "@/lib/api";
 
 const categories = COURSE_CATEGORIES;
@@ -107,13 +108,7 @@ function CourseCard({ course }: { course: Course }) {
             <p className="text-white text-xs opacity-70 leading-none mb-0.5">Khai giảng</p>
             <p className="text-white text-xs font-bold">{course.openDate}</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white"
-              style={{ background: "rgba(255,255,255,0.25)", border: "2px solid rgba(255,255,255,0.6)", backdropFilter: "blur(4px)" }}>
-              {course.teacherAvatar}
-            </div>
-            <span className="text-white text-xs opacity-80 font-semibold max-w-[80px] truncate">{course.teacher}</span>
-          </div>
+          <TeacherTag name={course.teacher} avatar={course.teacherAvatar} size={32} variant="onDark" blur maxNameWidth={80} />
         </div>
       </div>
 

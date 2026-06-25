@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id: chapterId } = await params;
     const body = await req.json();
 
-    if (!body.title?.trim()) return NextResponse.json({ error: "Title required" }, { status: 400 });
+    if (!body.title?.trim()) return NextResponse.json({ error: "Thiếu tiêu đề" }, { status: 400 });
     if (body.order !== undefined && body.order !== null && (typeof body.order !== "number" || !Number.isFinite(body.order))) {
       return NextResponse.json({ error: "order phải là số" }, { status: 400 });
     }
@@ -53,6 +53,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json(lesson, { status: 201 });
   } catch (e) {
     console.error("[POST /api/chapters/[id]/lessons]", e);
-    return NextResponse.json({ error: "Failed to create lesson", detail: String(e) }, { status: 500 });
+    return NextResponse.json({ error: "Tạo bài học thất bại", detail: String(e) }, { status: 500 });
   }
 }

@@ -222,7 +222,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh }: {
                   className="px-2 py-0.5 rounded-lg text-xs font-semibold"
                   style={{ background: copied ? "#dcfce7" : "#F0F5FF", color: copied ? "#166534" : "#0068FF",
                     boxShadow: "2px 2px 4px #C5D0EA, -2px -2px 4px #ffffff" }}>
-                  {copied ? "✓" : "Copy"}
+                  {copied ? "✓" : "Sao chép"}
                 </button>
               )}
             </div>

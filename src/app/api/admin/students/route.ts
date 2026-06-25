@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { computeCompletion, computeGpa } from "@/lib/gpa";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { grantSignupBonus } from "@/lib/wallet";
 
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(PERMISSIONS.VIEW_STUDENTS);
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result);
   } catch (e) {
     console.error("[GET /api/admin/students]", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
 
@@ -123,6 +124,8 @@ export async function POST(req: Request) {
         emailVerified: true,
       },
     });
+
+    await grantSignupBonus(user.id);
 
     if (courseId) {
       const course = await prisma.course.findUnique({ where: { id: courseId } });

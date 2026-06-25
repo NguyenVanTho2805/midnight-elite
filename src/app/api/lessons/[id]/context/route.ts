@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  if (!lesson) return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
+  if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   const course   = lesson.chapter.section.course;
   const courseId = course.id;

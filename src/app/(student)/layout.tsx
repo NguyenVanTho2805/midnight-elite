@@ -4,6 +4,8 @@ import { Suspense, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import StudentBottomNav from "@/components/StudentBottomNav";
+import NotificationBell from "@/components/NotificationBell";
+import CoinBalance from "@/components/CoinBalance";
 import AIChatWidget from "@/components/AIChatWidget";
 import SalesBotWidget from "@/components/SalesBotWidget";
 import AuthGuard from "@/components/AuthGuard";
@@ -12,12 +14,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEnrollments } from "@/hooks/useEnrollments";
 
 const navItems = [
-  { label: "Dashboard",  href: "/student"            },
+  { label: "Tổng quan",  href: "/student"            },
   { label: "Khóa học",   href: "/student/hoc-tap"    },
   { label: "Thi thử",    href: "/student/thi-thu"    },
   { label: "Xếp hạng",  href: "/student/bang-xep-hang" },
   { label: "Tin tức",   href: "/student/tin-tuc"     },
   { label: "Cộng đồng", href: "/student/cong-dong"   },
+  { label: "Hỏi đáp",   href: "/student/hoi-dap"     },
   { label: "Tra cứu",   href: "/student/tra-cuu"     },
 ];
 
@@ -165,7 +168,11 @@ function StudentHeader() {
             );
           })}
         </nav>
-        <UserPanel />
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <CoinBalance />
+          <NotificationBell />
+          <UserPanel />
+        </div>
       </header>
 
       {/* Mobile */}
@@ -173,7 +180,11 @@ function StudentHeader() {
         <Link href="/student">
           <span className="text-base font-bold" style={{ color: "#0068FF" }}>Midnight Elite</span>
         </Link>
-        <UserPanel />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <CoinBalance />
+          <NotificationBell />
+          <UserPanel />
+        </div>
       </header>
     </>
   );

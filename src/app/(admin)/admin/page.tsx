@@ -131,7 +131,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
               style={copied
                 ? { background: "#dcfce7", color: "#166534" }
                 : { background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff", color: "#0068FF" }}>
-              {copied ? "✓ Đã copy" : "Copy"}
+              {copied ? "✓ Đã sao chép" : "Sao chép"}
             </button>
           )}
         </div>
@@ -315,7 +315,7 @@ export default function AdminDashboardPage() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Admin Dashboard</h1>
+          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Tổng quan quản trị</h1>
           <p className="text-sm mt-1" style={{ color: "#6B7280" }}>Tổng quan sức khỏe hệ thống</p>
         </div>
         <div className="px-3 py-1.5 rounded-full text-xs font-bold"

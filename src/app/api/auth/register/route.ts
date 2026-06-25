@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
+import { grantSignupBonus } from "@/lib/wallet";
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
         emailVerified: false,
       },
     });
+
+    await grantSignupBonus(user.id);
 
     // Tạo verification token (24 giờ)
     const token = randomBytes(32).toString("hex");

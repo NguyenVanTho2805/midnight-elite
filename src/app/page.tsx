@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
 import SalesBotWidget from "@/components/SalesBotWidget";
+import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
@@ -125,13 +126,7 @@ function CourseCard({ course }: { course: HomeCourse }) {
             <p className="text-white text-xs opacity-70 leading-none mb-0.5">Khai giảng</p>
             <p className="text-white text-xs font-bold">{course.openDate}</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
-              style={{ background: "rgba(255,255,255,0.25)", border: "2px solid rgba(255,255,255,0.6)" }}>
-              {course.teacherAvatar}
-            </div>
-            <span className="text-white text-xs opacity-80 font-semibold max-w-[80px] truncate">{course.teacher}</span>
-          </div>
+          <TeacherTag name={course.teacher} avatar={course.teacherAvatar} size={28} variant="onDark" maxNameWidth={80} />
         </div>
       </div>
 

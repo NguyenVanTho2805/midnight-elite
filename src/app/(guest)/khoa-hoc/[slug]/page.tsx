@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgress } from "@/hooks/useProgress";
+import TeacherTag from "@/components/TeacherTag";
 
 interface DBLesson { id: string; title: string; duration?: string | null; isFree: boolean }
 interface DBChapter { id: string; title: string; lessons: DBLesson[] }
@@ -107,16 +108,7 @@ export default function KhoaHocDetailPage() {
                 Khóa học toàn diện với đầy đủ bài giảng video theo chuyên đề.
               </p>
               {course.instructor && (
-                <div className="flex items-center gap-2.5 mb-5">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg, #0068FF, #2680FF)" }}>
-                    {course.instructor[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: "#1E2938" }}>{course.instructor}</p>
-                    <p className="text-xs" style={{ color: "#9CA3AF" }}>Giảng viên phụ trách</p>
-                  </div>
-                </div>
+                <TeacherTag className="mb-5" name={course.instructor} avatar={course.instructor[0]} size={36} role="Giảng viên phụ trách" />
               )}
 
               <div className="grid grid-cols-4 gap-3">

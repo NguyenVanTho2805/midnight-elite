@@ -382,17 +382,44 @@ function TabBaiTap({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: strin
 }
 
 function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: string | null }) {
-  const key = `note_${lessonId}`;
-  const [note,  setNote]  = useState(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem(key) ?? "";
-  });
-  const [saved, setSaved] = useState(false);
+  const [note,    setNote]    = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
 
-  function handleSave() {
-    localStorage.setItem(key, note);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/lesson-notes/${lessonId}`)
+      .then(res => res.ok ? res.json() : { text: "" })
+      .then(data => { if (!cancelled) setNote(data.text ?? ""); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [lessonId]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await fetch(`/api/lesson-notes/${lessonId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: note }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleClear() {
+    setNote("");
+    await fetch(`/api/lesson-notes/${lessonId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "" }),
+    });
   }
 
   return (
@@ -411,18 +438,19 @@ function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: stri
         <p className="text-xs font-semibold mb-2" style={{ color: "#6B7280" }}>Ghi chú cá nhân (chỉ bạn thấy)</p>
         <textarea
           value={note} onChange={(e) => { setNote(e.target.value); setSaved(false); }}
-          rows={5} placeholder="Ghi chú của bạn về bài học này..."
+          rows={5} placeholder={loading ? "Đang tải ghi chú..." : "Ghi chú của bạn về bài học này..."}
+          disabled={loading}
           className="w-full p-4 rounded-xl text-sm resize-none outline-none"
           style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }}
         />
         <div className="flex items-center gap-3 mt-2">
-          <button onClick={handleSave}
+          <button onClick={handleSave} disabled={loading || saving}
             className="px-5 py-2 text-sm font-bold transition-all"
-            style={{ background: saved ? "#00A63D" : "#0068FF", borderRadius: "8px", color: "white" }}>
-            {saved ? "✓ Đã lưu" : "Lưu ghi chú"}
+            style={{ background: saved ? "#00A63D" : "#0068FF", borderRadius: "8px", color: "white", opacity: saving ? 0.7 : 1 }}>
+            {saved ? "✓ Đã lưu" : saving ? "Đang lưu..." : "Lưu ghi chú"}
           </button>
           {note && (
-            <button onClick={() => { setNote(""); localStorage.removeItem(key); }}
+            <button onClick={handleClear}
               className="text-xs" style={{ color: "#9CA3AF" }}>
               Xoá
             </button>
@@ -700,7 +728,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs flex-wrap" style={{ color: "#9CA3AF" }}>
-        <Link href="/student" style={{ color: "#0068FF" }}>Dashboard</Link>
+        <Link href="/student" style={{ color: "#0068FF" }}>Tổng quan</Link>
         <span>/</span>
         <Link href={`/student/hoc-tap?course=${dbCourse.id}`} style={{ color: "#0068FF" }}>{dbCourse.name}</Link>
         <span>/</span>

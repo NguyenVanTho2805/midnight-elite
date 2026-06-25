@@ -90,10 +90,11 @@
 body {
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-nunito), "Nunito", "Inter", Arial, sans-serif;
+  font-family: var(--font-inter), "Inter", -apple-system, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
 }
 
 code, pre, .font-mono {

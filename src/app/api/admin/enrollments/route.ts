@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { notify } from "@/lib/notify";
 
 // POST — kích hoạt khoá học cho học sinh
 export async function POST(req: Request) {
@@ -18,6 +19,13 @@ export async function POST(req: Request) {
     create: { userId, courseId },
     update: {},
     include: { course: { select: { name: true } } },
+  });
+
+  await notify(userId, {
+    type:    "enrollment",
+    title:   "Khóa học đã được kích hoạt",
+    message: `Bạn đã được kích hoạt khóa học "${enrollment.course.name}"`,
+    link:    `/student/hoc-tap?course=${courseId}`,
   });
 
   return NextResponse.json(enrollment);

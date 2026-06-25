@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id: courseId } = await params;
   const { title, order } = await req.json();
-  if (!title?.trim()) return NextResponse.json({ error: "Title required" }, { status: 400 });
+  if (!title?.trim()) return NextResponse.json({ error: "Thiếu tiêu đề" }, { status: 400 });
   if (order !== undefined && order !== null && (typeof order !== "number" || !Number.isFinite(order))) {
     return NextResponse.json({ error: "order phải là số" }, { status: 400 });
   }

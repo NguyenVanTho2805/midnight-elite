@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: { chapter: { select: { section: { select: { courseId: true } } } } },
   });
-  if (!lesson) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   // Admin: full access
   if (session.role === "admin") return NextResponse.json(lesson);
@@ -55,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json(lesson);
   } catch (e) {
     console.error("[PUT /api/lessons/[id]]", e);
-    return NextResponse.json({ error: "Failed to update lesson" }, { status: 400 });
+    return NextResponse.json({ error: "Cập nhật bài học thất bại" }, { status: 400 });
   }
 }
 
@@ -79,6 +79,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     });
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Failed to delete lesson" }, { status: 400 });
+    return NextResponse.json({ error: "Xoá bài học thất bại" }, { status: 400 });
   }
 }

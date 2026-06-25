@@ -13,7 +13,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const section = await prisma.section.update({ where: { id }, data: { title: body.title, order: body.order } });
     return NextResponse.json(section);
   } catch {
-    return NextResponse.json({ error: "Failed to update section" }, { status: 400 });
+    return NextResponse.json({ error: "Cập nhật phần thất bại" }, { status: 400 });
   }
 }
 
@@ -26,6 +26,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     await prisma.section.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Failed to delete section" }, { status: 400 });
+    return NextResponse.json({ error: "Xoá phần thất bại" }, { status: 400 });
   }
 }

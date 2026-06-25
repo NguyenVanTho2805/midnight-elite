@@ -4,10 +4,12 @@ import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Edit, Lock, ChevronDown, PlayCircle, Tv, FileText, CheckCircle } from "griddy-icons";
+import { Edit, Lock, ChevronDown, PlayCircle, Tv, FileText, CheckCircle, Heart } from "griddy-icons";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
 import { useEnrollments } from "@/hooks/useEnrollments";
+import { useFavorites } from "@/hooks/useFavorites";
+import TeacherTag from "@/components/TeacherTag";
 import { useProgress } from "@/hooks/useProgress";
 import { toCatalogCourse, toEnrolledCourse } from "@/lib/apiAdapters";
 import { SkeletonCourseCard } from "@/components/Skeleton";
@@ -67,13 +69,7 @@ function CourseThumbnail({ course, totalLessons, doneLessons }: {
           ))}
         </div>
         <div className="relative z-10 flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-1.5">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
-              style={{ background:"rgba(255,255,255,0.25)", border:"2px solid rgba(255,255,255,0.6)" }}>
-              {course.teacherAvatar}
-            </div>
-            <span className="text-white text-xs opacity-80 font-semibold truncate max-w-[100px]">{course.instructor}</span>
-          </div>
+          <TeacherTag name={course.instructor} avatar={course.teacherAvatar} size={28} variant="onDark" maxNameWidth={100} />
           <div className="flex gap-1">
             {course.types.map(t => (
               <span key={t} className="text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -106,8 +102,9 @@ function CourseThumbnail({ course, totalLessons, doneLessons }: {
 }
 
 // ─── CATALOG CARD (all courses tab) ───────────────────────────────────────────
-function CatalogCard({ course, isEnrolled, onLearn }: {
+function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorite }: {
   course: CatalogCourse; isEnrolled: boolean; onLearn: () => void;
+  isFavorited?: boolean; onToggleFavorite?: () => void;
 }) {
   const discount = course.originalPrice
     ? Math.round((1 - course.price / course.originalPrice) * 100)
@@ -122,6 +119,16 @@ function CatalogCard({ course, isEnrolled, onLearn }: {
           <path d="M0,20 C100,40 300,0 400,20 L400,40 L0,40 Z" fill="rgba(255,255,255,0.12)" />
         </svg>
         <div className="absolute rounded-full" style={{ width:100, height:100, background:"rgba(255,255,255,0.1)", top:-25, right:-10 }} />
+
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+            className="absolute z-20 top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+            style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(4px)" }}
+            aria-label={isFavorited ? "Bỏ yêu thích" : "Thêm vào yêu thích"}>
+            <Heart size={16} fill={isFavorited ? "#FF2157" : "none"} style={{ color: isFavorited ? "#FF2157" : "#ffffff" }} />
+          </button>
+        )}
 
         <div className="relative z-10 flex items-center justify-between px-4 pt-3">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
@@ -170,11 +177,7 @@ function CatalogCard({ course, isEnrolled, onLearn }: {
         <h3 className="text-sm font-bold mb-2 leading-snug" style={{ color: "#1E2938" }}>{course.title}</h3>
 
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-            style={{ background:"linear-gradient(135deg,#0068FF,#2680FF)" }}>
-            {course.teacherAvatar}
-          </div>
-          <span className="text-xs font-semibold flex-1 truncate" style={{ color:"#6B7280" }}>{course.instructor}</span>
+          <TeacherTag className="flex-1 min-w-0" name={course.instructor} avatar={course.teacherAvatar} size={24} />
           <div className="flex gap-1">
             {course.types.map(t => (
               <span key={t} className="text-xs font-semibold px-1.5 py-0.5 rounded-full"
@@ -507,6 +510,7 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
 function HocTapContent() {
   const searchParams = useSearchParams();
   const [showMy,  setShowMy]  = useState(true);
+  const [showFav, setShowFav] = useState(true);
   const [showAll, setShowAll] = useState(true);
   const [catFilter, setCat]   = useState("Tất cả");
   const [selectedCourse, setSelectedCourse] = useState<EnrolledCourse | null>(null);
@@ -515,9 +519,11 @@ function HocTapContent() {
   // ── Fetch từ API ──
   const { data: apiCourses, loading: coursesLoading } = useCourses();
   const { enrolledIds }                               = useEnrollments();
+  const { favoriteIds, toggleFavorite }                = useFavorites();
   const { completedIds, courseCompletion }             = useProgress();
   const ALL_COURSES    = apiCourses.map(toCatalogCourse);
   const ENROLLED_COURSES = apiCourses.filter(c => enrolledIds.has(c.id));
+  const FAVORITE_COURSES = ALL_COURSES.filter(c => favoriteIds.has(c.id));
 
   // Fetch full course (with sections/chapters/lessons) từ DB
   async function openCourse(courseId: string) {
@@ -616,6 +622,48 @@ function HocTapContent() {
         )}
       </div>
 
+      {/* ── Section: Khóa học yêu thích ── */}
+      {FAVORITE_COURSES.length > 0 && (
+        <div className="rounded-xl overflow-hidden"
+          style={{ background:"#ffffff", border: "1px solid #e5e3df" }}>
+
+          {/* Dropdown header */}
+          <button onClick={() => setShowFav(p => !p)}
+            className="w-full flex items-center gap-3 px-5 py-4 text-left"
+            style={{ borderBottom: showFav ? "1px solid #e5e3df" : "none" }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background:"linear-gradient(135deg,#FF2157,#cc0033)" }}>
+              <span className="text-base">❤️</span>
+            </div>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <p className="text-sm font-extrabold" style={{ color:"#1E2938" }}>Khóa học yêu thích</p>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ background:"#fee2e2", color:"#FF2157" }}>
+                {FAVORITE_COURSES.length}
+              </span>
+            </div>
+            <svg className="w-5 h-5 flex-shrink-0 transition-transform" style={{ color:"#9CA3AF", transform: showFav ? "rotate(180deg)" : "none" }}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showFav && (
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {FAVORITE_COURSES.map(c => (
+                  <CatalogCard key={c.id} course={c}
+                    isEnrolled={enrolledIds.has(c.id)}
+                    onLearn={() => openCourse(c.id)}
+                    isFavorited
+                    onToggleFavorite={() => toggleFavorite(c.id)} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Section: Tất cả khóa học ── */}
       <div className="rounded-xl overflow-hidden"
         style={{ background:"#ffffff", border: "1px solid #e5e3df" }}>
@@ -662,6 +710,8 @@ function HocTapContent() {
                       course={course}
                       isEnrolled={enrolledIds.has(course.id)}
                       onLearn={() => openCourse(course.id)}
+                      isFavorited={favoriteIds.has(course.id)}
+                      onToggleFavorite={() => toggleFavorite(course.id)}
                     />
                   ))
               }

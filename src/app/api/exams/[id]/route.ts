@@ -7,11 +7,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const exam = await prisma.exam.findUnique({ where: { id } });
-    if (!exam) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     return NextResponse.json(exam);
   } catch (e) {
     console.error("[GET /api/exams/[id]]", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
 
@@ -38,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025") {
       return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     }
-    return NextResponse.json({ error: "Failed to update exam" }, { status: 400 });
+    return NextResponse.json({ error: "Cập nhật đề thi thất bại" }, { status: 400 });
   }
 }
 

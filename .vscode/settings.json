@@ -4,5 +4,6 @@
   "cSpell.diagnosticLevel": "Hint",
   "editor.spell.language": "vi",
   "spellright.language": ["vi"],
-  "spellright.documentTypes": []
+  "spellright.documentTypes": [],
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

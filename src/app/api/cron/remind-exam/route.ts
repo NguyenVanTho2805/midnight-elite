@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendExamReminderEmail } from "@/lib/email";
+import { notifyMany } from "@/lib/notify";
 
 const BATCH_SIZE  = 20;
 const BATCH_DELAY = 1200;
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (secret) {
     const auth = req.headers.get("authorization");
     if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
     }
   }
 
@@ -67,6 +68,13 @@ export async function GET(req: NextRequest) {
       totalSent += results.filter(r => r.status === "fulfilled").length;
       if (i + BATCH_SIZE < students.length) await sleep(BATCH_DELAY);
     }
+
+    await notifyMany(students.map(s => s.id), {
+      type:    "exam_reminder",
+      title:   "Nhắc nhở thi thử",
+      message: `Đề thi "${exam.title}" sẽ diễn ra vào ${exam.date} lúc ${exam.time}`,
+      link:    `/student/thi-thu`,
+    });
 
     log.push(`${exam.title}: ${students.length} học viên`);
   }

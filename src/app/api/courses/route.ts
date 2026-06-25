@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(courses);
   } catch (e) {
     console.error("[GET /api/courses]", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
 
@@ -77,6 +77,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(course, { status: 201 });
   } catch (e) {
     console.error("[POST /api/courses]", e);
-    return NextResponse.json({ error: "Failed to create course" }, { status: 400 });
+    return NextResponse.json({ error: "Tạo khóa học thất bại" }, { status: 400 });
   }
 }

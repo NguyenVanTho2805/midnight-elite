@@ -35,8 +35,21 @@ model Course {
 
   sections    Section[]
   enrollments Enrollment[]
+  favorites   CourseFavorite[]
 
   @@map("courses")
+}
+
+model CourseFavorite {
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseId])
+  @@map("course_favorites")
 }
 
 // ─── CURRICULUM ───────────────────────────────────────────────────────────────
@@ -84,6 +97,7 @@ model Lesson {
   chapterId      String
   chapter        Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress       LessonProgress[]
+  notes          LessonNote[]
 
   @@map("lessons")
 }
@@ -135,6 +149,9 @@ model User {
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]
   lessonProgress      LessonProgress[]
+  lessonNotes         LessonNote[]
+  courseFavorites     CourseFavorite[]
+  notifications       Notification[]
   examResults         ExamResult[]
   badges              UserBadge[]
   threads             Thread[]
@@ -142,6 +159,11 @@ model User {
   threadLikes         ThreadLike[]
   replyLikes          ReplyLike[]
   threadBookmarks     ThreadBookmark[]
+  wallet              Wallet?
+  coinTransactions    CoinTransaction[]
+  questions           Question[]
+  answers             Answer[]
+  answerReports       AnswerReport[]
 
   @@map("users")
 }
@@ -181,6 +203,24 @@ model Enrollment {
   @@map("enrollments")
 }
 
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new"
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
 // ─── LESSON PROGRESS ──────────────────────────────────────────────────────────
 
 model LessonProgress {
@@ -195,6 +235,24 @@ model LessonProgress {
 
   @@unique([userId, lessonId])
   @@map("lesson_progress")
+}
+
+// ─── LESSON NOTES ─────────────────────────────────────────────────────────────
+// Ghi chú cá nhân của học sinh cho từng bài học — trước đây lưu localStorage
+// nên không đồng bộ giữa các thiết bị (mobile/web riêng), giờ lưu DB thật.
+
+model LessonNote {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  text      String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_notes")
 }
 
 // ─── EXAM RESULTS ─────────────────────────────────────────────────────────────
@@ -298,6 +356,83 @@ model ThreadBookmark {
 
   @@id([userId, threadId])
   @@map("thread_bookmarks")
+}
+
+// ─── COIN ECONOMY & HỎI ĐÁP (Knowledge Bounty) ────────────────────────────────
+// Đặt câu hỏi mất xu (phí cố định), trả lời được chấp nhận nhận xu thưởng
+// (hệ thống cấp riêng, không lấy từ phí người hỏi). Report sai/spam do admin
+// duyệt — nếu đúng, trừ lại xu thưởng đã nhận.
+
+model Wallet {
+  userId  String @id
+  balance Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+model CoinTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int      // dương = cộng, âm = trừ
+  reason    String   // "signup_bonus" | "question_cost" | "answer_reward" | "report_penalty"
+  refId     String?  // id câu hỏi/trả lời liên quan (để truy vết)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("coin_transactions")
+}
+
+model Question {
+  id               String   @id @default(cuid())
+  authorId         String
+  title            String
+  content          String   @db.Text
+  bountyPaid       Int      // số xu đã trừ khi đăng (lưu lại để minh bạch)
+  status           String   @default("open") // "open" | "answered"
+  acceptedAnswerId String?  @unique
+  createdAt        DateTime @default(now())
+
+  author         User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  answers        Answer[] @relation("QuestionAnswers")
+  acceptedAnswer Answer?  @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
+
+  @@map("questions")
+}
+
+model Answer {
+  id          String   @id @default(cuid())
+  questionId  String
+  authorId    String
+  content     String   @db.Text
+  rewardPaid  Int?     // số xu đã thưởng (null nếu chưa được chấp nhận)
+  isPenalized Boolean  @default(false) // đã bị admin duyệt report và trừ xu
+  createdAt   DateTime @default(now())
+
+  question    Question       @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
+  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acceptedFor Question?       @relation("AcceptedAnswer")
+  reports     AnswerReport[]
+
+  @@map("answers")
+}
+
+model AnswerReport {
+  id         String   @id @default(cuid())
+  answerId   String
+  reporterId String
+  reason     String
+  status     String   @default("pending") // "pending" | "approved" | "rejected"
+  createdAt  DateTime @default(now())
+
+  answer   Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  reporter User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([answerId, reporterId])
+  @@map("answer_reports")
 }
 
 // ─── TSIX SALES BOT (lead/hội thoại tư vấn, ghi từ service Python riêng) ──────

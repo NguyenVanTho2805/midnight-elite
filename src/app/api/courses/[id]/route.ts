@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
       },
     });
-    if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
 
     const session = await getSession();
     let hasAccess = false;
@@ -40,7 +40,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     // Hidden courses: only admin or enrolled students can access
     if (!course.status && !hasAccess) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     }
 
     // Học viên đã mua/đã enroll (hoặc admin) thì mọi bài học đều mở khoá,
@@ -58,7 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json(course);
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
 
@@ -86,7 +86,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json(course);
   } catch (e) {
     console.error("[PUT /api/courses/[id]]", e);
-    return NextResponse.json({ error: "Failed to update course" }, { status: 400 });
+    return NextResponse.json({ error: "Cập nhật khóa học thất bại" }, { status: 400 });
   }
 }
 
@@ -101,6 +101,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("[DELETE /api/courses/[id]]", e);
-    return NextResponse.json({ error: "Failed to delete course" }, { status: 400 });
+    return NextResponse.json({ error: "Xoá khóa học thất bại" }, { status: 400 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { notify } from "@/lib/notify";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSession();
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Tối đa 2 ảnh mỗi trả lời" }, { status: 400 });
   }
 
-  const exists = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true } });
+  const exists = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true } });
   if (!exists) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
 
   const reply = await prisma.threadReply.create({
@@ -35,6 +36,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       likes:  { where: { userId: auth.userId }, select: { userId: true } },
     },
   });
+
+  if (exists.authorId !== auth.userId) {
+    await notify(exists.authorId, {
+      type:    "thread_reply",
+      title:   "Có trả lời mới",
+      message: `${reply.author.name} đã trả lời bài viết của bạn`,
+      link:    `/student/cong-dong/${threadId}`,
+    });
+  }
 
   return NextResponse.json({
     id:        reply.id,

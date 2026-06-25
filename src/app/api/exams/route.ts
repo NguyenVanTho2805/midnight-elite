@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
+import { notifyMany } from "@/lib/notify";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(exams);
   } catch (e) {
     console.error("[GET /api/exams]", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
 
@@ -47,9 +48,25 @@ export async function POST(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exam = await prisma.exam.create({ data: data as any });
+
+    // Thông báo cho học viên đã đăng ký khoá học cùng category với đề thi
+    if (exam.active) {
+      const enrollments = await prisma.enrollment.findMany({
+        where:  { course: { category: { contains: exam.category.split(" ")[0] } } },
+        select: { userId: true },
+      });
+      const studentIds = [...new Set(enrollments.map(e => e.userId))];
+      await notifyMany(studentIds, {
+        type:    "exam_new",
+        title:   "Có đề thi mới",
+        message: `Đề thi mới: "${exam.title}" — diễn ra ngày ${exam.date}`,
+        link:    `/student/thi-thu`,
+      });
+    }
+
     return NextResponse.json(exam, { status: 201 });
   } catch (e) {
     console.error("[POST /api/exams]", e);
-    return NextResponse.json({ error: "Failed to create exam" }, { status: 400 });
+    return NextResponse.json({ error: "Tạo đề thi thất bại" }, { status: 400 });
   }
 }

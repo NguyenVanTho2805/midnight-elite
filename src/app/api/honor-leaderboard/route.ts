@@ -88,6 +88,6 @@ export async function GET() {
     return NextResponse.json(result);
   } catch (e) {
     console.error("[GET /api/honor-leaderboard]", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }

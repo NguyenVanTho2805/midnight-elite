@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { notifyMany } from "@/lib/notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -48,6 +49,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(!wasPublished && willPublish && { publishedAt: new Date() }),
       },
     });
+
+    if (!wasPublished && willPublish) {
+      const students = await prisma.user.findMany({ where: { role: "student" }, select: { id: true } });
+      await notifyMany(students.map(s => s.id), {
+        type:    "article_new",
+        title:   "Bài viết mới",
+        message: `Bài viết mới: "${updated.title}"`,
+        link:    `/tin-tuc/${updated.slug}`,
+      });
+    }
 
     return NextResponse.json(updated);
   } catch (e) {
