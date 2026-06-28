@@ -26,6 +26,7 @@ model Course {
   bg            String
   strip         String   @default("#FDE047")
   introVideo    String?
+  zaloGroupLink String?
   price         Int
   originalPrice Int?
   lessons       Int      @default(0)

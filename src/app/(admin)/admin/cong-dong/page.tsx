@@ -85,7 +85,33 @@ function CommunityAdmin() {
     }
   }, []);
 
+  // Refetch âm thầm trang đầu — gộp bài mới vào đầu, giữ lại các bài đã "Tải thêm" phía dưới
+  const refreshSilent = useCallback(async () => {
+    try {
+      const res = await fetch("/api/community/threads?limit=100", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data: ThreadsResponse = await res.json();
+      const freshIds = new Set(data.threads.map(t => t.id));
+      setAllThreads(prev => [...data.threads, ...prev.filter(t => !freshIds.has(t.id))]);
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => { load(); }, [load]);
+
+  // Polling 30s + refetch ngay khi quay lại tab, để đồng bộ với bài viết mới từ học viên
+  useEffect(() => {
+    const interval = setInterval(refreshSilent, 30_000);
+    function onVisible() {
+      if (document.visibilityState === "visible") refreshSilent();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshSilent);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshSilent);
+    };
+  }, [refreshSilent]);
 
   async function loadMore() {
     if (!nextCursor) return;

@@ -74,7 +74,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const data: Record<string, unknown> = {};
     const allowed = [
       "name","adminName","shortTitle","category","instructor","teacherAvatar",
-      "openDate","types","tag","tagColor","introVideo","bg","strip",
+      "openDate","types","tag","tagColor","introVideo","zaloGroupLink","bg","strip",
       "price","originalPrice","lessons","hours","status",
     ];
     for (const key of allowed) {

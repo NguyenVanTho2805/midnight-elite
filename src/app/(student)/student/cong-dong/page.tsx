@@ -492,7 +492,34 @@ export default function CongDongPage() {
     }
   }, [catFilter]);
 
+  // Refetch âm thầm trang đầu — gộp bài mới vào đầu, giữ lại các bài đã "Tải thêm" phía dưới
+  const refreshSilent = useCallback(async () => {
+    try {
+      const q   = catFilter === "all" ? "" : `&category=${catFilter}`;
+      const res = await fetch(`/api/community/threads?limit=20${q}`, { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const freshIds = new Set((data.threads as ThreadDTO[]).map(t => t.id));
+      setThreads(prev => [...data.threads, ...prev.filter(t => !freshIds.has(t.id))]);
+    } catch { /* silent */ }
+  }, [catFilter]);
+
   useEffect(() => { load(); }, [load]);
+
+  // Polling 30s + refetch ngay khi quay lại tab, để bài viết mới từ học viên khác tự hiện ra
+  useEffect(() => {
+    const interval = setInterval(refreshSilent, 30_000);
+    function onVisible() {
+      if (document.visibilityState === "visible") refreshSilent();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshSilent);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshSilent);
+    };
+  }, [refreshSilent]);
 
   async function loadMore() {
     if (!nextCursor) return;

@@ -35,7 +35,7 @@ interface CourseDB {
   category: string; instructor: string; status: boolean;
   openDate: string; price: number; originalPrice?: number | null;
   lessons: number; hours: number; tag?: string | null; tagColor?: string | null;
-  introVideo?: string | null; bg: string; createdAt: string;
+  introVideo?: string | null; zaloGroupLink?: string | null; bg: string; createdAt: string;
   sections: SectionDB[];
 }
 
@@ -162,6 +162,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
     tag:           course.tag ?? "",
     tagColor:      course.tagColor ?? "#FF2157",
     introVideo:    course.introVideo ?? "",
+    zaloGroupLink: course.zaloGroupLink ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
@@ -191,6 +192,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         tag:           form.tag || null,
         tagColor:      form.tag ? form.tagColor : null,
         introVideo:    form.introVideo || null,
+        zaloGroupLink: form.zaloGroupLink || null,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -297,6 +299,16 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         </div>
       </div>
 
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Nhóm Zalo lớp học</h3>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Link nhóm Zalo</label>
+          <input className={inp} placeholder="https://zalo.me/g/..."
+            value={form.zaloGroupLink} onChange={e => setForm(f => ({ ...f, zaloGroupLink: e.target.value }))} />
+          <p className="text-xs text-gray-400 mt-1">Đính kèm trong email kích hoạt gửi học viên. Để trống nếu chưa có nhóm.</p>
+        </div>
+      </div>
+
       <div className="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">
         <button onClick={() => setForm({
           name: course.adminName, publicName: course.name, slug: course.id,
@@ -305,6 +317,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           openDate: course.openDate, active: course.status,
           tag: course.tag ?? "", tagColor: course.tagColor ?? "#FF2157",
           introVideo: course.introVideo ?? "",
+          zaloGroupLink: course.zaloGroupLink ?? "",
         })} className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">
           Huỷ thay đổi
         </button>

@@ -790,17 +790,19 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
           {/* Sections — luôn hiển thị cả 3, không cần chọn tab */}
           <div className="space-y-3">
-            {/* Bài tập */}
-            <div className="rounded-xl overflow-hidden"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-              <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
-                <Edit size={14} style={{ color: "#FE9900" }} />
-                <span className="text-xs font-bold" style={{ color: "#FE9900" }}>Bài tập</span>
+            {/* Bài tập — ẩn khi bài học chính là quiz, vì khối to ở đầu trang đã hiển thị link Azota rồi */}
+            {lesson.type !== "quiz" && (
+              <div className="rounded-xl overflow-hidden"
+                style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+                <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
+                  <Edit size={14} style={{ color: "#FE9900" }} />
+                  <span className="text-xs font-bold" style={{ color: "#FE9900" }}>Bài tập</span>
+                </div>
+                <div className="p-4">
+                  <TabBaiTap azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />
+                </div>
               </div>
-              <div className="p-4">
-                <TabBaiTap azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />
-              </div>
-            </div>
+            )}
 
             {/* Tài liệu */}
             <div className="rounded-xl overflow-hidden"

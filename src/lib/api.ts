@@ -51,6 +51,7 @@ export interface CourseFull {
   openDate: string; types: string[];
   tag?: string | null; tagColor?: string | null;
   introVideo?: string | null;
+  zaloGroupLink?: string | null;
   bg: string; strip: string;
   price: number; originalPrice?: number | null;
   lessons: number; hours: number;

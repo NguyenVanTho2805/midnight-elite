@@ -282,6 +282,27 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
     return () => { cancelled = true; };
   }, [id]);
 
+  // Polling 30s + refetch khi quay lại tab, để trả lời mới từ học viên khác tự hiện ra
+  useEffect(() => {
+    function refreshSilent() {
+      fetch(`/api/community/threads/${id}`, { credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : null)
+        .then((data: ThreadDetail | null) => { if (data) setThread(data); })
+        .catch(() => {});
+    }
+    const interval = setInterval(refreshSilent, 30_000);
+    function onVisible() {
+      if (document.visibilityState === "visible") refreshSilent();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshSilent);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshSilent);
+    };
+  }, [id]);
+
   async function handleLike() {
     if (!thread || liking) return;
     setLiking(true); setLikeError(null);
