@@ -10,7 +10,7 @@ import type { CourseFull } from "@/lib/api";
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 interface Student {
   id: string; userId: string;
-  sbd: string;             // Số báo danh: MD.00001
+  sbd: string;
   name: string; phone: string; email: string;
   school: string; course: string;
   enrolledCourseIds: string[];
@@ -33,30 +33,27 @@ interface ApiStudent {
 }
 
 function toStudent(u: ApiStudent): Student {
-  const courseNames      = u.enrollments.map(e => e.courseName).join(", ") || "—";
+  const courseNames       = u.enrollments.map(e => e.courseName).join(", ") || "—";
   const enrolledCourseIds = u.enrollments.map(e => e.courseId);
-
-  // Status dựa trên GPA thật (không dùng emailVerified)
   const status: Student["status"] =
-    u.gpa === 0   ? "warn"   :  // chưa có hoạt động
-    u.gpa >= 7.0  ? "safe"   :
-    u.gpa >= 5.0  ? "warn"   : "danger";
-
+    u.gpa === 0  ? "warn"   :
+    u.gpa >= 7.0 ? "safe"   :
+    u.gpa >= 5.0 ? "warn"   : "danger";
   return {
-    id:               u.id.slice(-6).toUpperCase(),
-    userId:           u.id,
-    sbd:              u.sbd,
-    name:             u.name,
-    phone:            u.phone ?? "—",
-    email:            u.email,
-    school:           u.school ?? "—",
-    course:           courseNames,
+    id:              u.id.slice(-6).toUpperCase(),
+    userId:          u.id,
+    sbd:             u.sbd,
+    name:            u.name,
+    phone:           u.phone ?? "—",
+    email:           u.email,
+    school:          u.school ?? "—",
+    course:          courseNames,
     enrolledCourseIds,
-    gpa:        u.gpa,
-    completion: u.completion,
-    role:       enrolledCourseIds.length > 0 ? "hoc-vien" : "chua-kich-hoat",
+    gpa:             u.gpa,
+    completion:      u.completion,
+    role:            enrolledCourseIds.length > 0 ? "hoc-vien" : "chua-kich-hoat",
     status,
-    lastSeen:         new Date(u.createdAt).toLocaleDateString("vi-VN"),
+    lastSeen:        new Date(u.createdAt).toLocaleDateString("vi-VN"),
   };
 }
 
@@ -65,13 +62,6 @@ const STATUS_CONFIG = {
   warn:   { label: "Cảnh báo", bg: "#fef3c7", color: "#92400e" },
   danger: { label: "Báo động", bg: "#fee2e2", color: "#991b1b" },
 };
-
-const STATUS_FILTERS = [
-  { key: "all"    as const, label: "Tất cả"   },
-  { key: "safe"   as const, label: "An toàn"  },
-  { key: "warn"   as const, label: "Cảnh báo" },
-  { key: "danger" as const, label: "Báo động" },
-];
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
@@ -162,178 +152,175 @@ function DetailModal({ student, dbCourses, onClose, onRefresh }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="rounded-3xl p-6 w-full max-w-md mx-4 overflow-y-auto max-h-[90vh]"
-        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}>
+      <div className="rounded-2xl w-full max-w-md mx-4 overflow-y-auto max-h-[90vh] bg-white"
+        style={{ border: "1px solid #e5e3df", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-extrabold text-base" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h2>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #e5e3df" }}>
+          <h2 className="font-bold text-base" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h2>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors text-xl"
-            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff" }}>
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg">
             ×
           </button>
         </div>
 
-        {/* Avatar + name */}
-        <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-extrabold text-2xl flex-shrink-0"
-            style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff" }}>
-            {student.name[0]}
+        <div className="p-5 space-y-4">
+          {/* Avatar + name */}
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
+              style={{ background: "#0068FF" }}>
+              {student.name[0]}
+            </div>
+            <div>
+              <p className="font-bold text-base" style={{ color: "#1E2938" }}>{student.name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>{student.sbd}</span>
+                <span className="text-xs" style={{ color: "#9CA3AF" }}>· {student.lastSeen}</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                  style={{ background: cfg.bg, color: cfg.color }}>
+                  {cfg.label}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                  style={{ background: ROLE_CONFIG[student.role].bg, color: ROLE_CONFIG[student.role].color }}>
+                  {ROLE_CONFIG[student.role].labelFull}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Info grid */}
+          <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+            {[
+              { label: "Trường",   value: student.school },
+              { label: "Khoá học", value: student.course },
+              { label: "Email",    value: student.email  },
+            ].map(r => (
+              <div key={r.label} className="flex justify-between items-center text-xs">
+                <span style={{ color: "#6B7280" }}>{r.label}</span>
+                <span className="font-semibold text-right ml-2 truncate max-w-[180px]" style={{ color: "#1E2938" }}>{r.value}</span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center text-xs">
+              <span style={{ color: "#6B7280" }}>SĐT</span>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold" style={{ color: "#1E2938" }}>{student.phone}</span>
+                {student.phone !== "—" && (
+                  <button onClick={() => copy(student.phone.replace(/\s/g, ""))}
+                    className="px-2 py-0.5 rounded text-xs font-semibold border transition-colors"
+                    style={{ borderColor: "#e5e3df", background: copied ? "#d1fae5" : "#fff", color: copied ? "#166534" : "#0068FF" }}>
+                    {copied ? "✓" : "Sao chép"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "#9CA3AF" : student.gpa < 5 ? "#FF2157" : student.gpa < 7 ? "#FE9900" : "#0068FF" },
+              { label: "Tiến độ", value: `${student.completion}%`, color: "#8B5CF6" },
+            ].map(s => (
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
+                <div className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Progress bar */}
           <div>
-            <p className="font-extrabold text-lg" style={{ color: "#1E2938" }}>{student.name}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs font-semibold" style={{ color: "#1D4ED8" }}>{student.sbd}</span>
-              <span className="text-xs" style={{ color: "#9CA3AF" }}>{student.lastSeen}</span>
+            <div className="flex justify-between text-xs mb-1.5">
+              <span style={{ color: "#6B7280" }}>Tiến độ khóa học</span>
+              <span className="font-bold" style={{ color: "#8B5CF6" }}>{student.completion}%</span>
             </div>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold"
-                style={{ background: cfg.bg, color: cfg.color }}>
-                {cfg.label}
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold"
-                style={{ background: ROLE_CONFIG[student.role].bg, color: ROLE_CONFIG[student.role].color }}>
-                {ROLE_CONFIG[student.role].labelFull}
-              </span>
+            <div className="h-2 rounded-full" style={{ background: "#e5e3df" }}>
+              <div className="h-2 rounded-full transition-all"
+                style={{ width: `${student.completion}%`, background: "#8B5CF6" }} />
             </div>
           </div>
-        </div>
 
-        {/* Info grid */}
-        <div className="rounded-2xl p-4 mb-4 space-y-2.5"
-          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}>
-          {[
-            { label: "Trường",   value: student.school },
-            { label: "Khoá học", value: student.course },
-            { label: "Email",    value: student.email  },
-          ].map(r => (
-            <div key={r.label} className="flex justify-between items-center text-xs">
-              <span style={{ color: "#6B7280" }}>{r.label}</span>
-              <span className="font-semibold text-right ml-2" style={{ color: "#1E2938" }}>{r.value}</span>
+          {/* Email học sinh */}
+          <a href={`mailto:${student.email}`}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-semibold border transition-colors hover:bg-blue-50"
+            style={{ borderColor: "#e5e3df", color: "#0068FF", background: "#fff" }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            Gửi email cho {student.name}
+          </a>
+
+          {toast && (
+            <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white text-center"
+              style={{ background: toast.ok ? "#16a34a" : "#dc2626" }}>
+              {toast.ok ? "✓" : "✗"} {toast.msg}
             </div>
-          ))}
-          <div className="flex justify-between items-center text-xs">
-            <span style={{ color: "#6B7280" }}>SĐT</span>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold" style={{ color: "#1E2938" }}>{student.phone}</span>
-              {student.phone !== "—" && (
-                <button onClick={() => copy(student.phone.replace(/\s/g, ""))}
-                  className="px-2 py-0.5 rounded-lg text-xs font-semibold"
-                  style={{ background: copied ? "#dcfce7" : "#F0F5FF", color: copied ? "#166534" : "#0068FF",
-                    boxShadow: "2px 2px 4px #C5D0EA, -2px -2px 4px #ffffff" }}>
-                  {copied ? "✓" : "Sao chép"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+          )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {[
-            { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "#9CA3AF" : student.gpa < 5 ? "#FF2157" : student.gpa < 7 ? "#FE9900" : "#0068FF" },
-            { label: "Tiến độ", value: `${student.completion}%`,                        color: "#8B5CF6" },
-          ].map(s => (
-            <div key={s.label} className="rounded-2xl p-3 text-center"
-              style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff" }}>
-              <div className="text-xl font-extrabold" style={{ color: s.color }}>{s.value}</div>
-              <div className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Progress bar */}
-        <div className="mb-5">
-          <div className="flex justify-between text-xs mb-1.5">
-            <span style={{ color: "#6B7280" }}>Tiến độ khóa học</span>
-            <span className="font-bold" style={{ color: "#8B5CF6" }}>{student.completion}%</span>
-          </div>
-          <div className="h-3 rounded-full"
-            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
-            <div className="h-3 rounded-full transition-all"
-              style={{ width: `${student.completion}%`, background: "linear-gradient(90deg, #8B5CF6, #6D28D9)" }} />
-          </div>
-        </div>
-
-        {/* Email học sinh */}
-        <a href={`mailto:${student.email}`}
-          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl text-xs font-semibold mb-3"
-          style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: "#0068FF" }}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
-          Gửi email cho {student.name} →
-        </a>
-
-        {/* Toast trong modal */}
-        {toast && (
-          <div className="mb-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-white text-center"
-            style={{ background: toast.ok ? "#16a34a" : "#dc2626" }}>
-            {toast.ok ? "✓" : "✗"} {toast.msg}
-          </div>
-        )}
-
-        {/* Kích hoạt khoá học — dùng DB courses */}
-        <div className="mb-4">
-          <p className="text-xs font-bold mb-3" style={{ color: "#1E2938" }}>Kích hoạt / Thu hồi khoá học</p>
-          {dbCourses.length === 0 ? (
-            <p className="text-xs text-center py-3" style={{ color: "#9CA3AF" }}>Chưa có khoá học nào trong hệ thống</p>
-          ) : (
-            <div className="space-y-2">
-              {dbCourses.map(course => {
-                const enrolled = enrolledIds.includes(course.id);
-                const busy     = activating === course.id;
-                return (
-                  <div key={course.id}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-xl"
-                    style={{ background: enrolled ? "#D1FAE5" : "#F0F5FF",
-                      boxShadow: enrolled ? "inset 2px 2px 4px #A7F3D0,inset -2px -2px 4px #ffffff" : "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="flex-shrink-0 text-sm">{enrolled ? "✓" : "○"}</span>
-                      <span className="text-xs font-semibold truncate"
-                        style={{ color: enrolled ? "#065F46" : "#1E2938" }}>
-                        {course.name}
-                      </span>
+          {/* Kích hoạt khoá học */}
+          <div>
+            <p className="text-xs font-bold mb-2.5" style={{ color: "#1E2938" }}>Kích hoạt / Thu hồi khoá học</p>
+            {dbCourses.length === 0 ? (
+              <p className="text-xs text-center py-3" style={{ color: "#9CA3AF" }}>Chưa có khoá học nào trong hệ thống</p>
+            ) : (
+              <div className="space-y-2">
+                {dbCourses.map(course => {
+                  const enrolled = enrolledIds.includes(course.id);
+                  const busy     = activating === course.id;
+                  return (
+                    <div key={course.id}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+                      style={{ background: enrolled ? "#f0fdf4" : "#f6f5f4", border: `1px solid ${enrolled ? "#bbf7d0" : "#e5e3df"}` }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex-shrink-0 text-sm font-bold" style={{ color: enrolled ? "#16a34a" : "#d1d5db" }}>
+                          {enrolled ? "✓" : "○"}
+                        </span>
+                        <span className="text-xs font-semibold truncate"
+                          style={{ color: enrolled ? "#065F46" : "#1E2938" }}>
+                          {course.name}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => toggleCourse(course.id)}
+                        disabled={busy}
+                        className="flex-shrink-0 ml-2 px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer"
+                        style={enrolled
+                          ? { background: "#fee2e2", color: "#DC2626" }
+                          : { background: "#0068FF", color: "white" }}>
+                        {busy ? "..." : enrolled ? "Thu hồi" : "Kích hoạt"}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => toggleCourse(course.id)}
-                      disabled={busy}
-                      className="flex-shrink-0 ml-2 px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer active:scale-[0.97]"
-                      style={enrolled
-                        ? { background: "#FEE2E2", color: "#DC2626" }
-                        : { background: "linear-gradient(135deg,#0068FF,#0052DD)", color: "white" }}>
-                      {busy ? "..." : enrolled ? "Thu hồi" : "Kích hoạt"}
-                    </button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Nhắc nhở */}
+          <button onClick={() => setShowRemind(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors border"
+            style={showRemind
+              ? { background: "#fff7ed", color: "#FE9900", borderColor: "#fed7aa" }
+              : { background: "#FE9900", color: "white", borderColor: "transparent" }}>
+            Nhắc nhở học tập
+          </button>
+
+          {showRemind && (
+            <div className="space-y-2">
+              <textarea rows={3} value={remindMsg} onChange={e => setRemindMsg(e.target.value)}
+                placeholder={DEFAULT_REMIND}
+                className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
+                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }} />
+              <button onClick={sendRemind} disabled={reminding}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
+                style={{ background: "#FE9900" }}>
+                {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
+              </button>
             </div>
           )}
         </div>
-
-        {/* Nhắc nhở */}
-        <button onClick={() => setShowRemind(v => !v)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold cursor-pointer transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
-          style={showRemind
-            ? { background: "#FFF7ED", color: "#FE9900", border: "1px solid rgba(254,153,0,0.4)" }
-            : { background: "linear-gradient(135deg, #FE9900, #E07800)", color: "white" }}>
-          Nhắc nhở học tập
-        </button>
-
-        {showRemind && (
-          <div className="mt-3 space-y-2">
-            <textarea rows={3} value={remindMsg} onChange={e => setRemindMsg(e.target.value)}
-              placeholder={DEFAULT_REMIND}
-              className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
-            <button onClick={sendRemind} disabled={reminding}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg, #FE9900, #E07800)" }}>
-              {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -369,26 +356,24 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
   async function handleSave() {
     if (!form.name.trim() || !form.email.trim()) return;
     setSaving(true);
-    try {
-      await onSave(form);
-    } finally {
-      setSaving(false);
-    }
+    try { await onSave(form); } finally { setSaving(false); }
   }
 
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto"
         style={{
           width: "min(440px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(110%)",
           transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
+          borderLeft: "1px solid #e5e3df",
+          boxShadow: "-8px 0 32px rgba(0,0,0,0.08)",
         }}>
 
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #e5e3df" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -398,7 +383,8 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           </div>
           <div className="flex gap-2">
             <button onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+              className="px-3 py-1.5 rounded-lg text-sm border text-gray-600 hover:bg-gray-50 transition-colors"
+              style={{ borderColor: "#e5e3df" }}>
               Huỷ
             </button>
             <button onClick={handleSave}
@@ -440,7 +426,6 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
               {dbCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-
           <div className="rounded-lg p-3 bg-blue-50 border border-blue-100">
             <p className="text-xs text-blue-700">
               Hệ thống sẽ gửi <strong>email đặt mật khẩu</strong> tới học sinh sau khi tạo tài khoản.
@@ -472,7 +457,6 @@ export default function HocSinhPage() {
         .then(r => r.ok ? r.json() : []) as ApiStudent[];
       const updated = data.map(toStudent);
       setStudents(updated);
-      // Sync detailTarget nếu modal đang mở — tránh hiển thị GPA/status cũ
       setDetailTarget(prev =>
         prev ? (updated.find(s => s.userId === prev.userId) ?? prev) : null
       );
@@ -485,7 +469,6 @@ export default function HocSinhPage() {
 
   useEffect(() => {
     loadStudents();
-    // Load courses từ DB thật (không dùng MASTER_COURSES hardcode)
     fetch("/api/courses?all=1", { credentials: "same-origin" })
       .then(r => r.ok ? r.json() : [])
       .then(setDbCourses)
@@ -530,7 +513,7 @@ export default function HocSinhPage() {
     if (!res.ok) { showToast(result.error ?? "Lỗi thêm học sinh", false); return; }
     setShowAdd(false);
     showToast(`Đã thêm học sinh ${data.name}`);
-    loadStudents(); // reload thay vì double-fetch
+    loadStudents();
   }
 
   return (
@@ -551,176 +534,165 @@ export default function HocSinhPage() {
         onSave={handleAddStudent}
       />
 
-      <div className="space-y-6 max-w-7xl flex flex-col" style={{ height: "calc(100vh - 104px)" }}>
+      <div className="space-y-5 max-w-7xl flex flex-col" style={{ height: "calc(100vh - 104px)" }}>
+
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h1>
-            <p className="text-sm mt-1" style={{ color: "#6B7280" }}>
-              GPA tự động từ DB · {counts.hocVien} học viên · {counts.chuaKH} chưa KH
+            <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h1>
+            <p className="text-sm mt-0.5" style={{ color: "#9CA3AF" }}>
+              {students.length} học sinh · {counts.hocVien} có khóa học · {counts.chuaKH} chưa kích hoạt
             </p>
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-150 hover:brightness-110 active:scale-[0.98] cursor-pointer"
-            style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
+            style={{ background: "#0068FF" }}>
             + Thêm học sinh
           </button>
         </div>
 
-        {/* Status summary */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Stat cards — bấm để lọc theo trạng thái */}
+        <div className="grid grid-cols-3 gap-3">
           {(["safe", "warn", "danger"] as const).map(s => {
             const cfg = STATUS_CONFIG[s];
+            const active = statusFilter === s;
             return (
               <button key={s}
-                onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-                className="rounded-2xl p-4 text-center transition-all cursor-pointer"
+                onClick={() => setStatusFilter(active ? "all" : s)}
+                className="rounded-xl p-4 text-center transition-all cursor-pointer"
                 style={{
-                  background: "#F0F5FF",
-                  boxShadow: statusFilter === s ? "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" : "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff",
-                  outline: statusFilter === s ? `2px solid ${cfg.color}` : "none",
+                  background: active ? cfg.bg : "#ffffff",
+                  border: `1px solid ${active ? cfg.color : "#e5e3df"}`,
                 }}>
-                <div className="text-2xl font-extrabold" style={{ color: cfg.color }}>{counts[s]}</div>
-                <div className="text-xs" style={{ color: "#6B7280" }}>{cfg.label}</div>
+                <div className="text-2xl font-bold" style={{ color: cfg.color }}>{counts[s]}</div>
+                <div className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{cfg.label}</div>
               </button>
             );
           })}
         </div>
 
-        {/* Role filter */}
-        <div className="flex gap-2">
-          {([
-            { key: "all"             as const, label: "Tất cả"                          },
-            { key: "hoc-vien"        as const, label: `Học viên (${counts.hocVien})`    },
-            { key: "chua-kich-hoat"  as const, label: `Chưa KH (${counts.chuaKH})`     },
-          ]).map(f => (
-            <button key={f.key} onClick={() => setRoleFilter(f.key)}
-              className="px-4 py-2.5 rounded-2xl text-sm font-semibold flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-              style={roleFilter === f.key
-                ? { background: "linear-gradient(135deg, #0068FF, #0052DD)", color: "white" }
-                : { background: "#F0F5FF", border: "1px solid rgba(197,208,234,0.8)", color: "#6B7280" }}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search + status filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <input type="text" placeholder="Tìm theo tên, SĐT, email, SBD (MD.00001)..."
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full px-4 py-3 pl-10 rounded-2xl text-sm outline-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff", color: "#1E2938", border: "none" }} />
-            <div className="absolute left-3 top-3.5" style={{ color: "#9CA3AF" }}>
-              <Search size={16} />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {STATUS_FILTERS.map(f => (
-              <button key={f.key} onClick={() => setStatusFilter(f.key)}
-                className="px-4 py-3 rounded-2xl text-sm font-semibold flex-shrink-0 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                style={statusFilter === f.key
-                  ? { background: "linear-gradient(135deg, #0068FF, #0052DD)", color: "white" }
-                  : { background: "#F0F5FF", border: "1px solid rgba(197,208,234,0.8)", color: "#6B7280" }}>
+        {/* Filter row: role tabs trái + search phải */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+            {([
+              { key: "all"            as const, label: "Tất cả"                       },
+              { key: "hoc-vien"       as const, label: `Học viên · ${counts.hocVien}` },
+              { key: "chua-kich-hoat" as const, label: `Chưa KH · ${counts.chuaKH}`  },
+            ]).map(f => (
+              <button key={f.key} onClick={() => setRoleFilter(f.key)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+                style={roleFilter === f.key
+                  ? { background: "#ffffff", color: "#1E2938", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e3df" }
+                  : { background: "transparent", color: "#6B7280", border: "1px solid transparent" }}>
                 {f.label}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Table — flex-1 để đẩy footer xuống đáy màn hình */}
-        <div className="rounded-2xl overflow-hidden flex flex-col flex-1"
-          style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
-          <div className="grid grid-cols-12 px-5 py-3 text-xs font-bold uppercase tracking-wider"
-            style={{ color: "#6B7280", boxShadow: "0 2px 4px #C5D0EA" }}>
-            <div className="col-span-1 hidden sm:block">SBD</div>
-            <div className="col-span-3">Học sinh</div>
-            <div className="col-span-2 hidden sm:block">Liên hệ</div>
-            <div className="col-span-1">Role</div>
-            <div className="col-span-2 hidden md:block">Khoá học</div>
-            <div className="col-span-1 text-center">GPA</div>
-            <div className="col-span-1 text-center">Trạng thái</div>
-            <div className="col-span-1 text-right">Chi tiết</div>
+          <div className="flex-1 relative min-w-[200px]">
+            <input type="text" placeholder="Tìm theo tên, SĐT, email, SBD..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full px-4 py-2.5 pl-9 rounded-xl text-sm outline-none"
+              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1E2938" }} />
+            <div className="absolute left-3 top-3" style={{ color: "#9CA3AF" }}>
+              <Search size={15} />
+            </div>
           </div>
 
-          <div className="flex-1">
-          {loading && (
-            <div className="px-5 py-10 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
-              ))}
-            </div>
+          {statusFilter !== "all" && (
+            <button onClick={() => setStatusFilter("all")}
+              className="px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors"
+              style={{ background: STATUS_CONFIG[statusFilter].bg, color: STATUS_CONFIG[statusFilter].color, borderColor: STATUS_CONFIG[statusFilter].color }}>
+              {STATUS_CONFIG[statusFilter].label} ×
+            </button>
           )}
-          {!loading && filtered.length === 0 && (
-            <div className="px-5 py-10 text-center" style={{ color: "#9CA3AF" }}>
-              <p className="font-semibold">Không tìm thấy học sinh</p>
-              <button onClick={() => { setSearch(""); setStatusFilter("all"); }}
-                className="text-sm mt-2 cursor-pointer" style={{ color: "#0068FF" }}>
-                Xóa bộ lọc
-              </button>
-            </div>
-          )}
-          {!loading && filtered.map((s, i) => {
-            const cfg = STATUS_CONFIG[s.status];
-            return (
-              <div key={s.userId} className="grid grid-cols-12 items-center px-5 py-4"
-                style={{ borderTop: i > 0 ? "1px solid #C5D0EA" : "none" }}>
-                {/* SBD */}
-                <div className="col-span-1 hidden sm:block">
-                  <span className="text-xs" style={{ color: "#1D4ED8" }}>{s.sbd}</span>
-                </div>
-                {/* Học sinh */}
-                <div className="col-span-3">
-                  <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
-                  <div className="text-xs" style={{ color: "#9CA3AF" }}>{s.lastSeen}</div>
-                </div>
-                {/* Liên hệ */}
-                <div className="col-span-2 hidden sm:block">
-                  <div className="text-xs" style={{ color: "#4B5563" }}>{s.phone}</div>
-                  <div className="text-xs truncate" style={{ color: "#9CA3AF" }}>{s.email}</div>
-                </div>
-                {/* Role */}
-                <div className="col-span-1">
-                  <span className="px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
-                    style={{ background: ROLE_CONFIG[s.role].bg, color: ROLE_CONFIG[s.role].color }}>
-                    {ROLE_CONFIG[s.role].label}
-                  </span>
-                </div>
-                {/* Khoá học */}
-                <div className="col-span-2 hidden md:block">
-                  <span className="text-xs truncate block" style={{ color: s.course === "—" ? "#9CA3AF" : "#1E2938" }}>
-                    {s.course}
-                  </span>
-                </div>
-                {/* GPA */}
-                <div className="col-span-1 text-center">
-                  <span className="text-sm font-extrabold"
-                    style={{ color: s.gpa === 0 ? "#9CA3AF" : s.gpa < 5 ? "#FF2157" : s.gpa < 7 ? "#FE9900" : "#0068FF" }}>
-                    {s.gpa > 0 ? s.gpa.toFixed(1) : "—"}
-                  </span>
-                </div>
-                {/* Trạng thái */}
-                <div className="col-span-1 text-center">
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                    style={{ background: cfg.bg, color: cfg.color }}>
-                    {cfg.label}
-                  </span>
-                </div>
-                <div className="col-span-1 text-right">
-                  <button
-                    onClick={() => setDetailTarget(s)}
-                    className="px-2 py-1 rounded-lg text-xs font-semibold transition-all hover:-translate-y-0.5 cursor-pointer"
-                    style={{ background: "#F0F5FF", boxShadow: "2px 2px 4px #C5D0EA, -2px -2px 4px #ffffff", color: "#0068FF" }}>
-                    Chi tiết
-                  </button>
-                </div>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white"
+          style={{ border: "1px solid #e5e3df" }}>
+          <div className="grid grid-cols-12 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "#9CA3AF", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+            <div className="col-span-1 hidden sm:block">SBD</div>
+            <div className="col-span-4 sm:col-span-3">Học sinh</div>
+            <div className="col-span-2 hidden sm:block">Liên hệ</div>
+            <div className="col-span-2">Khóa học</div>
+            <div className="col-span-1 text-center">GPA</div>
+            <div className="col-span-2 text-center">Trạng thái</div>
+            <div className="col-span-1 text-right"></div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {loading && (
+              <div className="px-5 py-8 space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-11 rounded-lg animate-pulse" style={{ background: "#f6f5f4" }} />
+                ))}
               </div>
-            );
-          })}
-          </div>{/* end flex-1 rows */}
-          <div className="px-5 py-3 text-xs text-right flex-shrink-0" style={{ borderTop: "1px solid #C5D0EA", color: "#9CA3AF" }}>
-            Hiển thị {filtered.length}/{students.length} học sinh · GPA = 40% tiến độ + 60% điểm thi
+            )}
+            {!loading && filtered.length === 0 && (
+              <div className="px-5 py-12 text-center">
+                <p className="font-semibold text-sm" style={{ color: "#6B7280" }}>Không tìm thấy học sinh</p>
+                <button onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); }}
+                  className="text-xs mt-2 cursor-pointer" style={{ color: "#0068FF" }}>
+                  Xóa bộ lọc
+                </button>
+              </div>
+            )}
+            {!loading && filtered.map((s, i) => {
+              const cfg    = STATUS_CONFIG[s.status];
+              const isHV   = s.role === "hoc-vien";
+              return (
+                <div key={s.userId} className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                  style={{ borderTop: i > 0 ? "1px solid #f0eeeb" : "none" }}>
+                  <div className="col-span-1 hidden sm:block">
+                    <span className="text-xs font-mono" style={{ color: "#0068FF" }}>{s.sbd}</span>
+                  </div>
+                  <div className="col-span-4 sm:col-span-3">
+                    <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
+                    <div className="text-xs" style={{ color: "#9CA3AF" }}>{s.lastSeen}</div>
+                  </div>
+                  <div className="col-span-2 hidden sm:block">
+                    <div className="text-xs" style={{ color: "#4B5563" }}>{s.phone}</div>
+                    <div className="text-xs truncate" style={{ color: "#9CA3AF" }}>{s.email}</div>
+                  </div>
+                  <div className="col-span-2">
+                    {isHV ? (
+                      <span className="text-xs truncate block" style={{ color: "#1E2938" }}>{s.course}</span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-xs font-medium"
+                        style={{ background: "#F3F4F6", color: "#6B7280" }}>Chưa KH</span>
+                    )}
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <span className="text-sm font-bold"
+                      style={{ color: s.gpa === 0 ? "#d1d5db" : s.gpa < 5 ? "#FF2157" : s.gpa < 7 ? "#FE9900" : "#0068FF" }}>
+                      {s.gpa > 0 ? s.gpa.toFixed(1) : "—"}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ background: cfg.bg, color: cfg.color }}>
+                      {cfg.label}
+                    </span>
+                  </div>
+                  <div className="col-span-1 text-right">
+                    <button
+                      onClick={() => setDetailTarget(s)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-blue-50 cursor-pointer"
+                      style={{ color: "#0068FF", border: "1px solid #e5e3df" }}>
+                      Chi tiết
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="px-5 py-3 text-xs text-right flex-shrink-0"
+            style={{ borderTop: "1px solid #e5e3df", color: "#9CA3AF" }}>
+            {filtered.length}/{students.length} học sinh · GPA = 40% tiến độ + 60% điểm thi
           </div>
         </div>
       </div>
