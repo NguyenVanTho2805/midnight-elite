@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ANSWER_REWARD } from "@/lib/wallet-constants";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -167,7 +168,7 @@ export default function QuestionModal({
   if (!questionId) return null;
   const answered = question?.status === "answered";
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes modalSlideUp {
@@ -375,6 +376,7 @@ export default function QuestionModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

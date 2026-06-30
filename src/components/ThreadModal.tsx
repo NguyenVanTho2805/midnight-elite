@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadMany, cloudinaryConfigured } from "@/lib/cloudinary";
 
@@ -382,7 +383,7 @@ export default function ThreadModal({
 
   const cat = thread ? (CAT_MAP[thread.category] ?? { label: thread.category, color: "#787671", bg: "#f6f5f4" }) : null;
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes modalSlideUp {
@@ -619,6 +620,7 @@ export default function ThreadModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
