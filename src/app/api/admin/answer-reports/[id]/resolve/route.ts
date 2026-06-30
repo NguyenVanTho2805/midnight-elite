@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { addCoins, ANSWER_REWARD } from "@/lib/wallet";
+import { addCoins } from "@/lib/wallet";
 import { notify } from "@/lib/notify";
 
 // POST /api/admin/answer-reports/[id]/resolve — admin duyệt report: { decision: "approved" | "rejected" }
@@ -30,14 +30,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Chỉ trừ xu nếu câu trả lời đã từng được chấp nhận và nhận thưởng
     if (report.answer.rewardPaid) {
-      await addCoins(report.answer.authorId, -ANSWER_REWARD, "report_penalty", report.answer.id);
+      await addCoins(report.answer.authorId, -report.answer.rewardPaid, "report_penalty", report.answer.id);
     }
 
     await notify(report.answer.authorId, {
       type:    "report_penalty",
       title:   "Câu trả lời bị báo cáo",
       message: report.answer.rewardPaid
-        ? `Câu trả lời của bạn bị xác nhận vi phạm, bạn bị trừ ${ANSWER_REWARD} xu`
+        ? `Câu trả lời của bạn bị xác nhận vi phạm, bạn bị trừ ${report.answer.rewardPaid} xu`
         : `Câu trả lời của bạn bị xác nhận vi phạm chất lượng`,
       link:    `/student/hoi-dap/${report.answer.questionId}`,
     });

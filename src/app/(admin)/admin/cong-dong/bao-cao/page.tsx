@@ -33,7 +33,10 @@ export default function BaoCaoTraLoiPage() {
 
   function load() {
     fetch("/api/admin/answer-reports")
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(setReports)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -44,12 +47,19 @@ export default function BaoCaoTraLoiPage() {
   async function resolve(id: string, decision: "approved" | "rejected") {
     setBusyId(id);
     try {
-      await fetch(`/api/admin/answer-reports/${id}/resolve`, {
+      const res = await fetch(`/api/admin/answer-reports/${id}/resolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decision }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert("Lỗi: " + ((err as { error?: string }).error ?? `HTTP ${res.status}`));
+        return;
+      }
       setReports(prev => prev.filter(r => r.id !== id));
+    } catch {
+      alert("Lỗi kết nối, vui lòng thử lại.");
     } finally {
       setBusyId(null);
     }
