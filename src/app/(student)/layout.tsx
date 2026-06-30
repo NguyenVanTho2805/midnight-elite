@@ -20,7 +20,6 @@ const navItems = [
   { label: "Xếp hạng",  href: "/student/bang-xep-hang" },
   { label: "Tin tức",   href: "/student/tin-tuc"     },
   { label: "Cộng đồng", href: "/student/cong-dong"   },
-  { label: "Hỏi đáp",   href: "/student/hoi-dap"     },
   { label: "Tra cứu",   href: "/student/tra-cuu"     },
 ];
 
