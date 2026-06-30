@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/hooks/useWallet";
 import { uploadMany, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QUESTION_COST } from "@/lib/wallet-constants";
+import ThreadModal from "@/components/ThreadModal";
+import QuestionModal from "@/components/QuestionModal";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -456,11 +457,12 @@ function PostForm({ user, balance, onThread, onQuestion }: {
 
 // ─── THREAD CARD ──────────────────────────────────────────────────────────────
 
-function ThreadCard({ thread: t, onLike, onBookmark, onDelete, currentUser }: {
+function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUser }: {
   thread:      ThreadDTO;
   onLike:      (id: string) => void;
   onBookmark:  (id: string) => void;
   onDelete:    (id: string) => void;
+  onOpen:      (id: string) => void;
   currentUser: { id: string; role?: string } | null;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -523,13 +525,13 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, currentUser }: {
         )}
       </div>
 
-      <Link href={`/student/cong-dong/${t.id}`} className="block mt-3">
+      <button className="block mt-3 w-full text-left cursor-pointer" onClick={() => onOpen(t.id)}>
         <p className="text-sm leading-relaxed line-clamp-4 whitespace-pre-wrap" style={{ color: "#37352f" }}>
           {t.content}
         </p>
         <MediaGrid urls={t.imageUrls} />
         {t.fileUrl && <FileChip url={t.fileUrl} name={t.fileName} />}
-      </Link>
+      </button>
 
       <div className="flex items-center gap-0.5 mt-3 pt-2" style={{ borderTop: "1px solid #f6f5f4" }}>
         <button onClick={() => onLike(t.id)}
@@ -539,7 +541,7 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, currentUser }: {
           <span className="text-xs font-semibold">{t.likeCount}</span>
         </button>
 
-        <Link href={`/student/cong-dong/${t.id}`}
+        <button onClick={() => onOpen(t.id)}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
           style={{ color: "#a4a097" }}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,7 +549,7 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, currentUser }: {
               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           <span className="text-xs font-semibold">{t.replyCount}</span>
-        </Link>
+        </button>
 
         <div className="flex-1" />
 
@@ -576,10 +578,10 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, currentUser }: {
 
 // ─── QUESTION CARD ────────────────────────────────────────────────────────────
 
-function QuestionCard({ q }: { q: QuestionDTO }) {
+function QuestionCard({ q, onOpen }: { q: QuestionDTO; onOpen: (id: string) => void }) {
   const answered = q.status === "answered";
   return (
-    <Link href={`/student/hoi-dap/${q.id}`}>
+    <button className="block w-full text-left" onClick={() => onOpen(q.id)}>
       <article className="rounded-xl border p-4 transition-all hover:border-amber-300"
         style={{ background: "#ffffff", borderColor: answered ? "#bbf7d0" : "#fde68a" }}>
 
@@ -612,7 +614,7 @@ function QuestionCard({ q }: { q: QuestionDTO }) {
           </div>
         </div>
       </article>
-    </Link>
+    </button>
   );
 }
 
@@ -633,6 +635,8 @@ function CongDongInner() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor]   = useState<string | null>(null);
   const [fetchError, setFetchError]   = useState(false);
+  const [openThreadId, setOpenThreadId]     = useState<string | null>(null);
+  const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
 
   function switchTab(tab: TabKey) {
     setActiveTab(tab);
@@ -823,10 +827,11 @@ function CongDongInner() {
       {/* Feed */}
       {!loading && feedItems.map(item =>
         item._type === "question"
-          ? <QuestionCard key={`q-${item.id}`} q={item} />
+          ? <QuestionCard key={`q-${item.id}`} q={item} onOpen={setOpenQuestionId} />
           : <ThreadCard key={`t-${item.id}`} thread={item}
               onLike={handleLike} onBookmark={handleBookmark}
               onDelete={id => setThreads(prev => prev.filter(x => x.id !== id))}
+              onOpen={setOpenThreadId}
               currentUser={currentUser} />
       )}
 
@@ -855,6 +860,20 @@ function CongDongInner() {
           </button>
         </div>
       )}
+
+      {/* Modals */}
+      <ThreadModal
+        threadId={openThreadId}
+        onClose={() => setOpenThreadId(null)}
+        onLikeUpdate={(id, likedByMe, likeCount) =>
+          setThreads(prev => prev.map(t => t.id === id ? { ...t, likedByMe, likeCount } : t))}
+        onBookmarkUpdate={(id, bookmarkedByMe) =>
+          setThreads(prev => prev.map(t => t.id === id ? { ...t, bookmarkedByMe } : t))}
+      />
+      <QuestionModal
+        questionId={openQuestionId}
+        onClose={() => setOpenQuestionId(null)}
+      />
     </div>
   );
 }
