@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
+import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "hoc-vien";
@@ -332,38 +333,81 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
 }
 
 // ─── DOCUMENTS EDITOR ─────────────────────────────────────────────────────────
-interface DocItem { name: string; url: string; type: "pdf" | "doc" | "xlsx" }
+interface DocItem { name: string; url: string; type?: string }
+
+function detectType(url: string, name: string): string {
+  if (/docs\.google\.com\/document/i.test(url))      return "doc";
+  if (/docs\.google\.com\/spreadsheets/i.test(url))  return "xls";
+  if (/docs\.google\.com\/presentation/i.test(url))  return "ppt";
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (["pdf"].includes(ext))                          return "pdf";
+  if (["doc","docx"].includes(ext))                   return "doc";
+  if (["xls","xlsx"].includes(ext))                   return "xls";
+  if (["ppt","pptx"].includes(ext))                   return "ppt";
+  return "file";
+}
+
+const TYPE_COLOR: Record<string, string> = {
+  pdf: "#FF2157", doc: "#0068FF", xls: "#00A63D", ppt: "#F97316", file: "#6B7280",
+};
+
+function DocBadge({ type }: { type: string }) {
+  const t = type ?? "file";
+  return (
+    <span className="w-8 h-8 rounded flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 uppercase"
+      style={{ background: TYPE_COLOR[t] ?? "#6B7280" }}>
+      {t}
+    </span>
+  );
+}
 
 function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const docs: DocItem[] = (() => { try { return JSON.parse(value || "[]"); } catch { return []; } })();
-  const [newName, setNewName] = useState("");
-  const [newUrl,  setNewUrl]  = useState("");
-  const [newType, setNewType] = useState<DocItem["type"]>("pdf");
+  const [newName,    setNewName]    = useState("");
+  const [newUrl,     setNewUrl]     = useState("");
+  const [uploading,  setUploading]  = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function save(list: DocItem[]) { onChange(JSON.stringify(list)); }
+
   function add() {
     if (!newName.trim() || !newUrl.trim()) return;
-    save([...docs, { name: newName.trim(), url: newUrl.trim(), type: newType }]);
+    const type = detectType(newUrl.trim(), newName.trim());
+    save([...docs, { name: newName.trim(), url: newUrl.trim(), type }]);
     setNewName(""); setNewUrl("");
   }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const result = await uploadToCloudinary(file, "lessons/documents");
+      const name = newName.trim() || file.name.replace(/\.[^.]+$/, "");
+      const type = detectType(result.url, file.name);
+      save([...docs, { name, url: result.url, type }]);
+      setNewName("");
+    } catch (err) {
+      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function remove(i: number) { save(docs.filter((_, idx) => idx !== i)); }
 
-  const extColor: Record<string, string> = { pdf: "#FF2157", doc: "#0068FF", xlsx: "#00A63D" };
-  const inp2 = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white";
+  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white";
 
   return (
     <div>
       <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Tài liệu đính kèm</p>
 
-      {/* Danh sách tài liệu hiện có */}
       {docs.length > 0 && (
         <div className="space-y-2 mb-3">
           {docs.map((d, i) => (
             <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
-              <span className="w-8 h-8 rounded flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                style={{ background: extColor[d.type] ?? "#6B7280" }}>
-                {d.type.toUpperCase()}
-              </span>
+              <DocBadge type={detectType(d.url, d.name)} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-gray-800 truncate">{d.name}</p>
                 <p className="text-xs text-gray-400 truncate">{d.url}</p>
@@ -377,31 +421,46 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
         </div>
       )}
 
-      {/* Form thêm tài liệu mới */}
       <div className="border border-dashed border-gray-300 rounded-xl p-3 space-y-2">
-        <p className="text-xs font-medium text-gray-500">+ Thêm tài liệu từ Google Drive</p>
-        <input className={inp2 + " w-full"} placeholder="Tên tài liệu (VD: Đề thi thử tháng 5)"
+        <input className={inp + " w-full"} placeholder="Tên tài liệu (VD: File Lý thuyết, File BTVN...)"
           value={newName} onChange={e => setNewName(e.target.value)} />
-        <input className={inp2 + " w-full"} placeholder="Link Google Drive (share → Copy link)"
-          value={newUrl} onChange={e => setNewUrl(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && add()} />
-        <div className="flex items-center gap-2">
-          <select className={inp2 + " flex-shrink-0"} value={newType}
-            onChange={e => setNewType(e.target.value as DocItem["type"])}>
-            <option value="pdf">PDF</option>
-            <option value="doc">DOC</option>
-            <option value="xlsx">XLSX</option>
-          </select>
+
+        <div className="flex gap-2">
+          <input className={inp + " flex-1"} placeholder="Hoặc paste link Google Drive..."
+            value={newUrl} onChange={e => setNewUrl(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && add()} />
           <button onClick={add} disabled={!newName.trim() || !newUrl.trim()}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
-            style={{ background: "#16a34a" }}>
-            + Thêm
+            className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 flex-shrink-0"
+            style={{ background: "#0068FF" }}>
+            + Thêm link
           </button>
         </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400">hoặc</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <input ref={fileRef} type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+          className="hidden" onChange={handleFileUpload} />
+
+        {cloudinaryConfigured ? (
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+            style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+            {uploading ? "⏳ Đang upload..." : "📎 Chọn file từ máy tính (PDF, Word, Excel...)"}
+          </button>
+        ) : (
+          <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>
+            ⚠ Chưa cấu hình Cloudinary — chỉ dùng được link Drive
+          </p>
+        )}
       </div>
 
       {docs.length === 0 && (
-        <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu. Nhập link Drive ở trên.</p>
+        <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}
     </div>
   );
@@ -549,7 +608,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
               ? { ...l, title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
                   zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
                   azotaDeadline: ls.azotaDeadline || null,
-                  duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree }
+                  duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
+                  documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null }
               : l) }
             : c) }
           : s));
