@@ -79,6 +79,7 @@ export default function QuestionModal({
   questionId: string | null;
   onClose:    () => void;
 }) {
+  const [mounted, setMounted]           = useState(false);
   const [question, setQuestion]         = useState<QuestionDetail | null>(null);
   const [loading, setLoading]           = useState(false);
   const [fetchError, setFetchError]     = useState(false);
@@ -100,6 +101,8 @@ export default function QuestionModal({
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!questionId) { setQuestion(null); setFetchError(false); return; }
@@ -165,7 +168,7 @@ export default function QuestionModal({
     if (res.ok && question) fetchQuestion(question.id);
   }
 
-  if (!questionId) return null;
+  if (!questionId || !mounted) return null;
   const answered = question?.status === "answered";
 
   return createPortal(
@@ -191,11 +194,11 @@ export default function QuestionModal({
 
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        className="fixed top-0 left-0 z-[9999] flex items-end sm:items-center justify-center"
         style={{
-          background: "rgba(15,15,15,0.55)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
+          width: "100vw",
+          height: "100vh",
+          background: "rgba(15,15,15,0.6)",
           animation: "backdropIn 0.18s ease-out",
         }}
         onClick={onClose}

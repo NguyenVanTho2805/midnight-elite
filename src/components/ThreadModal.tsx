@@ -238,6 +238,7 @@ export default function ThreadModal({
 }) {
   const { user } = useAuth();
 
+  const [mounted, setMounted]             = useState(false);
   const [thread, setThread]               = useState<ThreadDetail | null>(null);
   const [loading, setLoading]             = useState(false);
   const [fetchError, setFetchError]       = useState(false);
@@ -265,6 +266,8 @@ export default function ThreadModal({
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!threadId) { setThread(null); setFetchError(false); return; }
@@ -379,7 +382,7 @@ export default function ThreadModal({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!threadId) return null;
+  if (!threadId || !mounted) return null;
 
   const cat = thread ? (CAT_MAP[thread.category] ?? { label: thread.category, color: "#787671", bg: "#f6f5f4" }) : null;
 
@@ -403,11 +406,11 @@ export default function ThreadModal({
 
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        className="fixed top-0 left-0 z-[9999] flex items-end sm:items-center justify-center"
         style={{
-          background: "rgba(15,15,15,0.55)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
+          width: "100vw",
+          height: "100vh",
+          background: "rgba(15,15,15,0.6)",
           animation: "backdropIn 0.18s ease-out",
         }}
         onClick={onClose}
