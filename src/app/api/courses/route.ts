@@ -80,12 +80,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // adminId: server tự tính — tránh collision do client gửi sai
-    const maxRow = await prisma.course.findFirst({ orderBy: { adminId: "desc" }, select: { adminId: true } });
-    data.adminId  = (maxRow?.adminId ?? 0) + 1;
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
 
-    const course = await prisma.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
+    // adminId trong transaction để tránh race condition giữa hai POST đồng thời
+    const course = await prisma.$transaction(async (tx) => {
+      const maxRow = await tx.course.findFirst({ orderBy: { adminId: "desc" }, select: { adminId: true } });
+      data.adminId = (maxRow?.adminId ?? 0) + 1;
+      return tx.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
+    });
     await triggerSalesBotSync();
     return NextResponse.json(course, { status: 201 });
   } catch (e) {

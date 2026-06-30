@@ -95,7 +95,6 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
     try {
       await api.courses.create({
         id:            toSlug(form.name),
-        adminId:       0,
         name:          form.name.trim(),
         adminName:     form.adminName.trim(),
         shortTitle:    form.name.trim().toUpperCase().split(" ").slice(0, 2).join("\n"),
@@ -113,7 +112,6 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
         lessons:       +form.lessons,
         hours:         form.hours ? +form.hours : 0,
         status:        form.status,
-        createdAt:     new Date().toLocaleDateString("vi-VN") + " 08:00:00",
       });
       onCreated();
       onClose();

@@ -19,7 +19,7 @@ export function useCourses(params?: Record<string, string>) {
 
   return { data, loading, error, refetch: () => {
     setLoading(true);
-    api.courses.list(params).then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
+    return api.courses.list(params).then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
   }};
 }
 
