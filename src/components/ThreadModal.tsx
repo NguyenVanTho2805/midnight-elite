@@ -413,17 +413,11 @@ export default function ThreadModal({
       >
         {/* Panel */}
         <div
-          className="relative w-full sm:max-w-2xl sm:mx-4 flex flex-col overflow-hidden"
+          className="relative w-full sm:max-w-2xl sm:mx-4 flex flex-col overflow-hidden rounded-t-[20px] sm:rounded-[20px]"
           style={{
             background: "#ffffff",
-            borderRadius: "20px 20px 0 0",
             maxHeight: "92dvh",
             animation: "modalSlideUp 0.22s cubic-bezier(0.16,1,0.3,1)",
-          }}
-          // On desktop: fully rounded
-          onMouseEnter={e => {
-            const el = e.currentTarget;
-            el.style.borderRadius = window.innerWidth >= 640 ? "20px" : "20px 20px 0 0";
           }}
           onClick={e => e.stopPropagation()}
         >
