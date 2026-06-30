@@ -95,7 +95,7 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
     try {
       await api.courses.create({
         id:            toSlug(form.name),
-        adminId:       Date.now() % 10000,
+        adminId:       0,
         name:          form.name.trim(),
         adminName:     form.adminName.trim(),
         shortTitle:    form.name.trim().toUpperCase().split(" ").slice(0, 2).join("\n"),
@@ -351,7 +351,7 @@ interface Course {
 }
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
-function ActionMenu({ courseId, onDelete }: { courseId: string; onDelete: () => void }) {
+function ActionMenu({ courseId, lessonCount, onDelete }: { courseId: string; lessonCount: number; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -395,7 +395,12 @@ function ActionMenu({ courseId, onDelete }: { courseId: string; onDelete: () => 
           <div className="border-t border-gray-100 my-1" />
           {confirmDel ? (
             <div className="px-4 py-2.5">
-              <p className="text-xs text-red-600 font-semibold mb-2">Xác nhận xoá khoá học?</p>
+              <p className="text-xs text-red-600 font-semibold mb-1">Xác nhận xoá khoá học?</p>
+              {lessonCount > 0 && (
+                <p className="text-xs text-red-500 mb-2">
+                  Toàn bộ {lessonCount} bài học, chương và tài liệu sẽ bị xoá vĩnh viễn.
+                </p>
+              )}
               <div className="flex gap-2">
                 <button onClick={() => setConfirmDel(false)}
                   className="flex-1 py-1.5 rounded text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
@@ -434,6 +439,7 @@ function KhoaHocListInner() {
   const [search, setSearch]         = useState("");
   const [catFilter, setCat]         = useState(searchParams.get("category") ?? "");
   const [statusFilter, setStatus]   = useState("");
+  const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
 
   // Derive categories directly from loaded courses (no extra API call)
   const apiCategories = [...new Set(apiCourses.map(c => c.category))].filter(Boolean).sort() as string[];
@@ -533,13 +539,37 @@ function KhoaHocListInner() {
                 </td>
                 <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{course.instructor || "—"}</td>
                 <td className="px-4 py-3">
-                  <Toggle checked={course.status}
-                    onChange={() => api.courses.update(course.slug, { status: !course.status }).then(refetch).catch(e => alert("Lỗi: " + e.message))} />
+                  <Toggle
+                    checked={course.status}
+                    disabled={togglingSlug === course.slug}
+                    onChange={async () => {
+                      if (togglingSlug) return;
+                      setTogglingSlug(course.slug);
+                      try {
+                        await api.courses.update(course.slug, { status: !course.status });
+                        await refetch();
+                      } catch (e) {
+                        alert("Lỗi: " + (e instanceof Error ? e.message : "Unknown"));
+                      } finally {
+                        setTogglingSlug(null);
+                      }
+                    }}
+                  />
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{course.createdAt}</td>
                 <td className="px-4 py-3 text-center">
-                  <ActionMenu courseId={course.slug}
-                    onDelete={() => api.courses.remove(course.slug).then(refetch).catch(e => alert("Lỗi xoá: " + e.message))} />
+                  <ActionMenu
+                    courseId={course.slug}
+                    lessonCount={apiCourses.find(c => c.id === course.slug)?.lessons ?? 0}
+                    onDelete={async () => {
+                      try {
+                        await api.courses.remove(course.slug);
+                        await refetch();
+                      } catch (e) {
+                        alert("Lỗi xoá: " + (e instanceof Error ? e.message : "Unknown"));
+                      }
+                    }}
+                  />
                 </td>
               </tr>
             ))}

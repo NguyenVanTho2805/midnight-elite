@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const allowed = [
-      "id","adminId","name","adminName","shortTitle","category","instructor",
+      "id","name","adminName","shortTitle","category","instructor",
       "teacherAvatar","openDate","types","tag","tagColor","bg","strip",
       "introVideo","price","originalPrice","lessons","hours","status",
     ];
@@ -70,8 +70,21 @@ export async function POST(req: NextRequest) {
     if (!data.name || !data.id) {
       return NextResponse.json({ error: "Thiếu id hoặc name" }, { status: 400 });
     }
-    // createdAt do server sinh ra — không tin giá trị từ client
+
+    // Kiểm tra slug trùng trước khi insert
+    const existing = await prisma.course.findUnique({ where: { id: data.id as string } });
+    if (existing) {
+      return NextResponse.json(
+        { error: `Slug "${data.id}" đã tồn tại. Hãy đặt tên khác để tạo slug duy nhất.` },
+        { status: 409 },
+      );
+    }
+
+    // adminId: server tự tính — tránh collision do client gửi sai
+    const maxRow = await prisma.course.findFirst({ orderBy: { adminId: "desc" }, select: { adminId: true } });
+    data.adminId  = (maxRow?.adminId ?? 0) + 1;
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
+
     const course = await prisma.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
     await triggerSalesBotSync();
     return NextResponse.json(course, { status: 201 });
