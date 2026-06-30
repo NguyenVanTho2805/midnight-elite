@@ -376,6 +376,9 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         replyCount: prev.replyCount + 1,
         replies: [...prev.replies, data],
       } : prev);
+      if (data.coinsEarned > 0) {
+        window.dispatchEvent(new CustomEvent("coin:earned", { detail: { amount: data.coinsEarned } }));
+      }
       setReplyText(""); setReplyImages([]);
       setTimeout(() => replyRef.current?.focus(), 50);
     } catch (e) {

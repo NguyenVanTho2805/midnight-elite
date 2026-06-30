@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { addCoins } from "@/lib/wallet";
+import { LESSON_REWARD } from "@/lib/wallet-constants";
 
 // POST /api/progress/[lessonId] — đánh dấu bài học đã hoàn thành (kèm watchedSeconds tùy chọn)
 export async function POST(
@@ -29,13 +31,26 @@ export async function POST(
     if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
   }
 
+  // Phát hiện lần đầu hoàn thành trước khi upsert
+  const existing = await prisma.lessonProgress.findUnique({
+    where:  { userId_lessonId: { userId: session.userId, lessonId } },
+    select: { userId: true },
+  });
+  const isFirstCompletion = !existing;
+
   const row = await prisma.lessonProgress.upsert({
     where:  { userId_lessonId: { userId: session.userId, lessonId } },
     create: { userId: session.userId, lessonId, watchedSeconds },
     update: { completedAt: new Date(), watchedSeconds },
   });
 
-  return NextResponse.json(row);
+  let coinsEarned = 0;
+  if (isFirstCompletion) {
+    await addCoins(session.userId, LESSON_REWARD, "lesson_reward", lessonId);
+    coinsEarned = LESSON_REWARD;
+  }
+
+  return NextResponse.json({ ...row, coinsEarned });
 }
 
 // PATCH /api/progress/[lessonId] — lưu watchedSeconds mà chưa mark complete

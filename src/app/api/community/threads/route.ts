@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { addCoins } from "@/lib/wallet";
+import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY } from "@/lib/wallet-constants";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
 const DEFAULT_PAGE_SIZE  = 20;
@@ -87,7 +89,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(toDTO(auth.userId, thread), { status: 201 });
+    // Thưởng xu cho bài viết, tối đa MAX_THREAD_REWARDS_PER_DAY lần/ngày
+    let coinsEarned = 0;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayCount = await prisma.coinTransaction.count({
+      where: { userId: auth.userId, reason: "thread_reward", createdAt: { gte: todayStart } },
+    });
+    if (todayCount < MAX_THREAD_REWARDS_PER_DAY) {
+      await addCoins(auth.userId, THREAD_REWARD, "thread_reward", thread.id);
+      coinsEarned = THREAD_REWARD;
+    }
+
+    return NextResponse.json({ ...toDTO(auth.userId, thread), coinsEarned }, { status: 201 });
   } catch (e) {
     console.error("[community/POST]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });

@@ -18,8 +18,12 @@ export function useProgress() {
   }, []);
 
   const markComplete = useCallback(async (lessonId: string) => {
-    await fetch(`/api/progress/${lessonId}`, { method: "POST", credentials: "same-origin" });
+    const res  = await fetch(`/api/progress/${lessonId}`, { method: "POST", credentials: "same-origin" });
+    const data = await res.json().catch(() => ({}));
     setCompleted(prev => new Set([...prev, lessonId]));
+    if (data.coinsEarned > 0) {
+      window.dispatchEvent(new CustomEvent("coin:earned", { detail: { amount: data.coinsEarned } }));
+    }
   }, []);
 
   const unmarkComplete = useCallback(async (lessonId: string) => {

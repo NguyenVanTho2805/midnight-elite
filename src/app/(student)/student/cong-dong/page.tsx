@@ -251,6 +251,9 @@ function PostForm({ user, onPost }: {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Lỗi đăng bài");
       onPost(data as ThreadDTO);
+      if (data.coinsEarned > 0) {
+        window.dispatchEvent(new CustomEvent("coin:earned", { detail: { amount: data.coinsEarned } }));
+      }
       reset();
     } catch (e) {
       setUploading(false);
