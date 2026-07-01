@@ -243,14 +243,14 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
             <div className="space-y-2">
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
+                  <p className="text-sm font-medium text-gray-700">Trạng thái</p>
                   <p className="text-xs text-gray-400">Tắt = kết thúc · trạng thái tự động từ lịch</p>
                 </div>
                 <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
               </div>
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Hiển thị cho guest</p>
+                  <p className="text-sm font-medium text-gray-700">Công khai</p>
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
@@ -515,14 +515,14 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
             <div className="space-y-2">
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
+                  <p className="text-sm font-medium text-gray-700">Trạng thái</p>
                   <p className="text-xs text-gray-400">Tắt = kết thúc đề thi · trạng thái tự động từ lịch</p>
                 </div>
                 <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
               </div>
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Hiển thị cho guest</p>
+                  <p className="text-sm font-medium text-gray-700">Công khai</p>
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
