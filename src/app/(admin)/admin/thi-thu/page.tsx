@@ -754,9 +754,12 @@ export default function ThiThuAdminPage() {
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Tình trạng", "Trạng thái", "Công khai", "Hành động"].map(h => (
+                {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Tình trạng"].map(h => (
                   <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
+                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
+                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Công khai</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -793,12 +796,16 @@ export default function ThiThuAdminPage() {
                         style={{ background: s.bg, color: s.color }}>{s.label}</span>
                     </td>
                     <td className="px-4 py-2.5">
-                      <Toggle checked={exam.active} onChange={() => toggleActive(exam.id)} />
+                      <div className="flex justify-center">
+                        <Toggle checked={exam.active} onChange={() => toggleActive(exam.id)} />
+                      </div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <Toggle checked={exam.activeGuest ?? true} onChange={() => {
-                        api.exams.update(exam.id, { activeGuest: !(exam.activeGuest ?? true) }).then(refetch).catch(e => alert("Lỗi: " + e.message));
-                      }} />
+                      <div className="flex justify-center">
+                        <Toggle checked={exam.activeGuest ?? true} onChange={() => {
+                          api.exams.update(exam.id, { activeGuest: !(exam.activeGuest ?? true) }).then(refetch).catch(e => alert("Lỗi: " + e.message));
+                        }} />
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <ActionMenu exam={exam} onEdit={() => setEditTarget(exam)} onDelete={() => deleteExam(exam.id)} />
