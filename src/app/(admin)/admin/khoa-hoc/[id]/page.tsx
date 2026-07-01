@@ -57,7 +57,7 @@ type DelTarget =
 
 interface TitleForm { title: string }
 interface LsForm {
-  title: string; type: LessonDB["type"];
+  title: string; types: LessonDB["type"][];
   videoUrls: string[]; zoomUrls: string[]; azotaUrls: string[];
   azotaDeadline: string; duration: string;
   isLocked: boolean; isFree: boolean;
@@ -66,7 +66,7 @@ interface LsForm {
 }
 
 const INIT_LS: LsForm = {
-  title: "", type: "record",
+  title: "", types: ["record"],
   videoUrls: [""], zoomUrls: [""], azotaUrls: [""],
   azotaDeadline: "", duration: "", isLocked: true, isFree: false,
   documentsRaw: "[]", adminNote: "",
@@ -93,6 +93,20 @@ function detectLessonType(url: string): LessonDB["type"] | null {
   if (/zoom\.us/i.test(url)) return "live";
   if (/azota\.vn/i.test(url)) return "quiz";
   return null;
+}
+
+function parseTypes(raw: string | null | undefined): LessonDB["type"][] {
+  if (!raw) return ["record"];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length) return parsed as LessonDB["type"][];
+  } catch { /* plain string */ }
+  return [raw as LessonDB["type"]];
+}
+
+function serializeTypes(types: LessonDB["type"][]): string {
+  if (types.length === 1) return types[0];
+  return JSON.stringify(types);
 }
 
 function UrlListEditor({ label, placeholder, urls, onChange }: {
@@ -637,7 +651,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     const c = s.chapters.find(x => x.id === chapterId)!;
     const l = c.lessons.find(x => x.id === lessonId)!;
     setLs({
-      title: l.title, type: l.type,
+      title: l.title, types: parseTypes(l.type),
       videoUrls: parseUrls(l.videoUrl), zoomUrls: parseUrls(l.zoomUrl),
       azotaUrls: parseUrls(l.azotaUrl), azotaDeadline: l.azotaDeadline ?? "",
       duration: l.duration ?? "", isLocked: l.isLocked, isFree: l.isFree,
@@ -708,7 +722,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
       } else if (panel.type === "add-lesson") {
         if (!ls.title.trim()) return;
         const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
-          title: ls.title.trim(), type: ls.type,
+          title: ls.title.trim(), type: serializeTypes(ls.types),
           videoUrl: serializeUrls(ls.videoUrls), zoomUrl: serializeUrls(ls.zoomUrls),
           azotaUrl: serializeUrls(ls.azotaUrls), azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
@@ -723,7 +737,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         const zUrl = serializeUrls(ls.zoomUrls);
         const aUrl = serializeUrls(ls.azotaUrls);
         await apiPut(`/api/lessons/${panel.lessonId}`, {
-          title: ls.title.trim(), type: ls.type, videoUrl: vUrl, zoomUrl: zUrl, azotaUrl: aUrl,
+          title: ls.title.trim(), type: serializeTypes(ls.types), videoUrl: vUrl, zoomUrl: zUrl, azotaUrl: aUrl,
           azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
           documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null,
@@ -731,7 +745,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         setSections(p => p.map(s => s.id === panel.sectionId
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
             ? { ...c, lessons: c.lessons.map(l => l.id === panel.lessonId
-              ? { ...l, title: ls.title.trim(), type: ls.type, videoUrl: vUrl,
+              ? { ...l, title: ls.title.trim(), type: serializeTypes(ls.types) as LessonDB["type"], videoUrl: vUrl,
                   zoomUrl: zUrl, azotaUrl: aUrl, azotaDeadline: ls.azotaDeadline || null,
                   duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
                   documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null }
@@ -834,16 +848,25 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                 placeholder="VD: Buổi 1: Hệ phương trình" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Loại bài học</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Loại bài học</label>
+              <p className="text-xs text-gray-400 mb-2">Có thể chọn nhiều loại — tự động chọn khi điền link</p>
               <div className="grid grid-cols-2 gap-2">
                 {(["record","live","quiz","document"] as LessonDB["type"][]).map(t => {
                   const tb = TYPE_BADGE[t];
+                  const active = ls.types.includes(t);
                   return (
-                    <button key={t} onClick={() => setLs(f => ({ ...f, type: t }))}
-                      className="py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all text-left"
-                      style={ls.type === t
+                    <button key={t} onClick={() => setLs(f => {
+                      const already = f.types.includes(t);
+                      const next = already
+                        ? (f.types.length > 1 ? f.types.filter(x => x !== t) : f.types)
+                        : [...f.types, t];
+                      return { ...f, types: next };
+                    })}
+                      className="py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all text-left flex items-center gap-1.5"
+                      style={active
                         ? { background: tb.bg, color: tb.color, borderColor: tb.color }
                         : { background: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }}>
+                      {active && <span style={{ color: tb.color }}>✓</span>}
                       {tb.label}
                     </button>
                   );
@@ -861,7 +884,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                   urls={ls.videoUrls}
                   onChange={urls => setLs(f => {
                     const detected = urls.map(detectLessonType).find(Boolean);
-                    return { ...f, videoUrls: urls, ...(detected ? { type: detected } : {}) };
+                    const types = detected && !f.types.includes(detected) ? [...f.types, detected] : f.types;
+                    return { ...f, videoUrls: urls, types };
                   })}
                 />
                 <UrlListEditor
@@ -870,7 +894,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                   urls={ls.zoomUrls}
                   onChange={urls => setLs(f => {
                     const detected = urls.map(detectLessonType).find(Boolean);
-                    return { ...f, zoomUrls: urls, ...(detected ? { type: detected } : {}) };
+                    const types = detected && !f.types.includes(detected) ? [...f.types, detected] : f.types;
+                    return { ...f, zoomUrls: urls, types };
                   })}
                 />
                 <UrlListEditor
@@ -879,7 +904,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                   urls={ls.azotaUrls}
                   onChange={urls => setLs(f => {
                     const detected = urls.map(detectLessonType).find(Boolean);
-                    return { ...f, azotaUrls: urls, ...(detected ? { type: detected } : {}) };
+                    const types = detected && !f.types.includes(detected) ? [...f.types, detected] : f.types;
+                    return { ...f, azotaUrls: urls, types };
                   })}
                 />
                 <div>
@@ -1004,7 +1030,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                           </div>
                         )}
                         {chapter.lessons.map((lesson, li) => {
-                          const tb = TYPE_BADGE[lesson.type] ?? TYPE_BADGE.record;
+                          const lessonTypes = parseTypes(lesson.type);
                           return (
                             <div key={lesson.id || `${chapter.id}-l-${li}`}
                               className="flex items-center gap-3 px-4 py-2.5 transition-colors"
@@ -1027,7 +1053,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                               {lesson.isFree && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DCFCE7", color: "#166534" }}>FREE</span>}
                               {lesson.videoUrl && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>YT</span>}
                               {lesson.duration && <span className="text-xs text-gray-400 flex-shrink-0">{lesson.duration}</span>}
-                              <span className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>
+                              {lessonTypes.map(t => { const tb = TYPE_BADGE[t] ?? TYPE_BADGE.record; return <span key={t} className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>; })}
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <button onClick={() => toggleLessonLock(section.id, chapter.id, lesson.id, lesson.isLocked)}
                                   className="p-1.5 rounded hover:bg-blue-50 transition-colors"
