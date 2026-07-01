@@ -81,5 +81,5 @@ export interface ExamFull {
   id: string; code: string; title: string; category: string;
   date: string; time: string; duration: string; questions: number;
   status: string; azotaUrl?: string | null;
-  participants: number; active: boolean; activeGuest: boolean; createdAt: string;
+  participants: number; active: boolean; activeGuest: boolean; guestCanTake: boolean; createdAt: string;
 }
