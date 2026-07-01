@@ -13,6 +13,14 @@ import { toSlug } from "@/lib/slug";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
+function computeExamStatus(date: string, time: string, active: boolean): ExamStatus {
+  if (!active) return "completed";
+  const [day, month, year] = (date || "01/01/2000").split("/");
+  const [hh, mm] = (time || "00:00").split(":");
+  const examDt = new Date(+year, +month - 1, +day, +hh, +mm);
+  return examDt <= new Date() ? "available" : "upcoming";
+}
+
 // ─── CREATE EXAM DRAWER ───────────────────────────────────────────────────────
 const DURATIONS = ["45 phút", "60 phút", "90 phút", "120 phút", "150 phút", "180 phút"];
 
@@ -571,14 +579,6 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
   );
 }
 
-function computeExamStatus(date: string, time: string, active: boolean): ExamStatus {
-  if (!active) return "completed";
-  const [day, month, year] = (date || "01/01/2000").split("/");
-  const [hh, mm] = (time || "00:00").split(":");
-  const examDt = new Date(+year, +month - 1, +day, +hh, +mm);
-  return examDt <= new Date() ? "available" : "upcoming";
-}
-
 function countByStatus(exams: ExamRow[]) {
   return {
     total:     exams.length,
@@ -669,7 +669,11 @@ export default function ThiThuAdminPage() {
   function toggleActive(id: string) {
     const exam = exams.find(e => e.id === id);
     if (!exam) return;
-    api.exams.update(id, { active: !exam.active })
+    const newActive = !exam.active;
+    api.exams.update(id, {
+      active: newActive,
+      status: computeExamStatus(exam.date, exam.time, newActive),
+    })
       .then(refetch)
       .catch(e => alert("Lỗi cập nhật: " + e.message));
   }
@@ -757,7 +761,7 @@ export default function ThiThuAdminPage() {
                 {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Tình trạng"].map(h => (
                   <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
-                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Trạng thái</th>
+                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Học viên</th>
                 <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Công khai</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Hành động</th>
               </tr>
