@@ -14,10 +14,10 @@ import { useCourses } from "@/hooks/useCourses";
 
 const courseCategories = [
   { key: "all",             label: "Tất cả"           },
-  { key: "Tốt nghiệp THPT", label: "Tốt nghiệp THPT" },
   { key: "ĐGNL HSA",        label: "ĐGNL HSA"          },
-  { key: "ĐGNL HCM",        label: "ĐGNL HCM"          },
+  { key: "Tốt nghiệp THPT", label: "Tốt nghiệp THPT" },
   { key: "TSA Bách Khoa",   label: "TSA Bách Khoa"     },
+  { key: "BCA",             label: "BCA"               },
 ];
 
 interface HomeCourse {
@@ -37,14 +37,6 @@ const whyItems = [
   { Icon: CheckCircle, title: "Hỗ trợ học tập 7 ngày",     desc: "Đặt câu hỏi trong cộng đồng, AI trả lời ngay, mentor hỗ trợ theo lịch cố định.", tint: "var(--tint-cream)", iconColor: "#0068FF" },
 ];
 
-const team = [
-  { name: "Thầy Nguyễn Minh", role: "Toán học & ĐGNL HSA", bio: "10 năm kinh nghiệm luyện thi. Cựu giảng viên ĐH Bách Khoa Hà Nội.", avatar: "M", color: "#0068FF" },
-  { name: "Cô Trần Hương",    role: "Hóa học",              bio: "Thạc sĩ Hóa học ứng dụng. Chuyên luyện thi THPT & ĐGNL.",         avatar: "H", color: "#FE9900" },
-  { name: "Thầy Lê Long",     role: "Vật lý",               bio: "Tiến sĩ Vật lý lý thuyết. Tác giả nhiều tài liệu luyện thi nổi tiếng.", avatar: "L", color: "#0EA5E9" },
-  { name: "Cô Phạm Lan",      role: "Tiếng Anh & IELTS",   bio: "IELTS 8.5. Chuyên luyện Speaking & Writing cho HS cấp 3.",        avatar: "L", color: "#00A63D" },
-  { name: "Thầy Đỗ Đức",     role: "ĐGNL HSA - Trưởng nhóm", bio: "Cựu chuyên viên ra đề ĐGNL. Người dẫn dắt đội ngũ học thuật Midnight Elite.", avatar: "Đ", color: "#FF2157" },
-  { name: "Cô Vũ Mai",        role: "Ngữ văn",              bio: "15 năm dạy văn. Chuyên luyện nghị luận xã hội và văn học.",       avatar: "M", color: "#8B5CF6" },
-];
 
 const timeline = [
   { year: "09/2024", event: "Midnight Elite ra đời từ một nhóm giáo viên trẻ muốn thay đổi cách luyện thi ĐGNL." },
@@ -57,9 +49,9 @@ const timeline = [
 
 const HERO_CATEGORIES = [
   { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội",  tint: "var(--tint-sky)",     text: "#1D4ED8" },
-  { label: "ĐGNL HCM",        desc: "ĐH Quốc gia HCM",     tint: "var(--tint-lavender)", text: "#6D28D9" },
   { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",     tint: "var(--tint-peach)",   text: "#c2410c" },
   { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",  tint: "var(--tint-mint)",    text: "#166534" },
+  { label: "BCA",             desc: "Bách Chuyên Anh",      tint: "var(--tint-lavender)", text: "#6D28D9" },
 ];
 
 // ─── CATEGORY THEME ───────────────────────────────────────────────────────────
@@ -226,8 +218,8 @@ export default function HomePage() {
                   className="font-bold text-white mb-5 leading-tight"
                   style={{ fontSize: "clamp(2rem,5vw,3.25rem)", letterSpacing: "-0.03em" }}
                 >
-                  Chinh phục kỳ thi<br />
-                  <span style={{ color: "#93C5FD" }}>với giáo viên thực</span>
+                  Mua 1 lần,<br />
+                  <span style={{ color: "#93C5FD" }}>học trọn đời</span>
                 </h1>
                 <p className="text-base mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "38ch" }}>
                   Học live mỗi tối. Thi thử sát đề. Theo dõi tiến độ từng bài. Không phải video cũ.
@@ -273,7 +265,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
               Khóa học nổi bật
             </h2>
-            <p className="text-sm" style={{ color: "#787671" }}>Ưu đãi có thời hạn. Mua 1 lần, học trọn đời.</p>
+            <p className="text-sm" style={{ color: "#787671" }}>Đăng ký 1 lần, học trọn đời không giới hạn.</p>
           </div>
 
           {/* Mobile pills */}
@@ -404,35 +396,6 @@ export default function HomePage() {
                 </div>
                 <h3 className="font-semibold text-sm mb-2" style={{ color: "#37352f" }}>{title}</h3>
                 <p className="text-xs leading-relaxed" style={{ color: "#5d5b54" }}>{desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── TEAM ─────────────────────────────────────────────────────────── */}
-        <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Đội ngũ giảng viên
-          </h2>
-          <p className="text-sm text-center mb-10" style={{ color: "#787671" }}>Giáo viên thực với kinh nghiệm luyện thi được chứng minh</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {team.map((t) => (
-              <div
-                key={t.name}
-                className="rounded-xl p-5 flex items-start gap-4"
-                style={{ border: "1px solid #e5e3df", background: "#ffffff", boxShadow: "rgba(15,15,15,0.04) 0px 1px 2px 0px" }}
-              >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-base flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg, ${t.color}, ${t.color}aa)` }}
-                >
-                  {t.avatar}
-                </div>
-                <div>
-                  <p className="font-semibold text-sm mb-0.5" style={{ color: "#1a1a1a" }}>{t.name}</p>
-                  <p className="text-xs font-medium mb-2" style={{ color: t.color }}>{t.role}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#787671" }}>{t.bio}</p>
-                </div>
               </div>
             ))}
           </div>

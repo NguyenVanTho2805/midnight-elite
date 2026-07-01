@@ -227,7 +227,6 @@ export const COURSE_CATEGORIES = [
   "Tất cả",
   "ĐGNL HSA",
   "Tốt nghiệp THPT",
-  "ĐGNL HCM",
   "TSA Bách Khoa",
   "BCA",
 ] as const;
