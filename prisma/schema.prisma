@@ -118,6 +118,7 @@ model Exam {
   azotaUrl     String? @default("")
   participants Int     @default(0)
   active       Boolean @default(true)
+  activeGuest  Boolean @default(true)
   createdAt    String
   results      ExamResult[]
 

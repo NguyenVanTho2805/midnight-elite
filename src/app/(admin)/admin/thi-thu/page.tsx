@@ -18,12 +18,14 @@ const DURATIONS = ["45 phút", "60 phút", "90 phút", "120 phút", "150 phút",
 
 interface CreateForm {
   title: string; category: string; date: string; time: string;
-  duration: string; questions: string; azotaUrl: string; active: boolean;
+  duration: string; questions: string; azotaUrl: string;
+  active: boolean; activeGuest: boolean;
 }
 
 const CREATE_INIT: CreateForm = {
   title: "", category: "ĐGNL HSA", date: "", time: "08:00",
-  duration: "90 phút", questions: "80", azotaUrl: "", active: true,
+  duration: "90 phút", questions: "80", azotaUrl: "",
+  active: true, activeGuest: true,
 };
 
 function autoCode(category: string, exams: ExamRow[]): string {
@@ -101,6 +103,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
         azotaUrl:     form.azotaUrl || null,
         participants: 0,
         active:       form.active,
+        activeGuest:  form.activeGuest,
         createdAt:    new Date().toLocaleDateString("vi-VN"),
       });
       onCreated();
@@ -229,12 +232,21 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
           {/* Xuất bản */}
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Xuất bản</h3>
-            <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-              <div>
-                <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
-                <p className="text-xs text-gray-400">Tắt để ẩn — trạng thái tự động từ lịch thi</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
+                  <p className="text-xs text-gray-400">Tắt = kết thúc · trạng thái tự động từ lịch</p>
+                </div>
+                <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
               </div>
-              <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Hiển thị cho guest</p>
+                  <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
+                </div>
+                <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
+              </div>
             </div>
           </section>
 
@@ -278,7 +290,8 @@ function fromInputDate(d: string) {
 // ─── EDIT EXAM DRAWER ────────────────────────────────────────────────────────
 interface EditForm {
   title: string; category: string; date: string; time: string;
-  duration: string; questions: string; azotaUrl: string; active: boolean;
+  duration: string; questions: string; azotaUrl: string;
+  active: boolean; activeGuest: boolean;
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
@@ -304,8 +317,9 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
         time:      exam.time,
         duration:  exam.duration,
         questions: String(exam.questions),
-        azotaUrl:  exam.azotaUrl ?? "",
-        active:    exam.active,
+        azotaUrl:     exam.azotaUrl ?? "",
+        active:       exam.active,
+        activeGuest:  exam.activeGuest ?? true,
       });
       setErrors({});
     }
@@ -349,8 +363,9 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
         duration:  form.duration,
         questions: +form.questions,
         status:    computeExamStatus(examDate, form.time, form.active),
-        azotaUrl:  form.azotaUrl || null,
-        active:    form.active,
+        azotaUrl:    form.azotaUrl || null,
+        active:      form.active,
+        activeGuest: form.activeGuest,
       } as Partial<ExamFull>);
       onSaved();
       onClose();
@@ -489,7 +504,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
           {/* Xuất bản */}
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Xuất bản</h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
@@ -497,8 +512,15 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
                 </div>
                 <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
               </div>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Hiển thị cho guest</p>
+                  <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
+                </div>
+                <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
+              </div>
               <div className="flex items-center gap-2 px-1">
-                <span className="text-xs text-gray-400">Trạng thái hiện tại:</span>
+                <span className="text-xs text-gray-400">Trạng thái:</span>
                 {(() => {
                   const st = computeExamStatus(fromInputDate(form.date), form.time, form.active);
                   const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
@@ -715,7 +737,7 @@ export default function ThiThuAdminPage() {
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Trạng thái", "Hiển thị", "Hành động"].map(h => (
+                {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Trạng thái", "HV / Guest", "Hành động"].map(h => (
                   <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -754,7 +776,18 @@ export default function ThiThuAdminPage() {
                         style={{ background: s.bg, color: s.color }}>{s.label}</span>
                     </td>
                     <td className="px-4 py-2.5">
-                      <Toggle checked={exam.active} onChange={() => toggleActive(exam.id)} />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Toggle checked={exam.active} onChange={() => toggleActive(exam.id)} />
+                          <span className="text-xs text-gray-400">HV</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Toggle checked={exam.activeGuest ?? true} onChange={() => {
+                            api.exams.update(exam.id, { activeGuest: !exam.activeGuest }).then(refetch).catch(e => alert("Lỗi: " + e.message));
+                          }} />
+                          <span className="text-xs text-gray-400">Guest</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <ActionMenu exam={exam} onEdit={() => setEditTarget(exam)} onDelete={() => deleteExam(exam.id)} />

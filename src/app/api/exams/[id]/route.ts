@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Allowlist — không cho ghi đè id, code, participants, createdAt
     const allowed = ["title", "category", "date", "time", "duration", "questions",
-                     "status", "azotaUrl", "active"];
+                     "status", "azotaUrl", "active", "activeGuest"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];

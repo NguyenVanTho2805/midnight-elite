@@ -13,13 +13,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
     const status   = searchParams.get("status");
-    const activeOnly = searchParams.get("active") === "true";
+    const activeOnly      = searchParams.get("active") === "true";
+    const activeGuestOnly = searchParams.get("activeGuest") === "true";
 
     const exams = await prisma.exam.findMany({
       where: {
-        ...(category   ? { category }     : {}),
-        ...(status     ? { status }       : {}),
-        ...(activeOnly ? { active: true } : {}),
+        ...(category        ? { category }             : {}),
+        ...(status          ? { status }               : {}),
+        ...(activeOnly      ? { active: true }         : {}),
+        ...(activeGuestOnly ? { activeGuest: true }    : {}),
       },
       orderBy: { createdAt: "desc" },
     });
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // Allowlist — chỉ nhận fields đúng với Prisma schema
     const allowed = ["id", "code", "title", "category", "date", "time", "duration",
-                     "questions", "status", "azotaUrl", "participants", "active", "createdAt"];
+                     "questions", "status", "azotaUrl", "participants", "active", "activeGuest", "createdAt"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];

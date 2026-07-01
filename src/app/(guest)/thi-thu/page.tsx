@@ -16,7 +16,7 @@ const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string 
 export default function GuestThiThuPage() {
   const [cat, setCat] = useState("Tất cả");
 
-  const { data: apiExams } = useExams({ active: "true" });
+  const { data: apiExams } = useExams({ activeGuest: "true" });
   const PUBLIC_EXAMS = apiExams.map(e => ({ ...e, status: e.status as ExamStatus }));
 
   const filtered = cat === "Tất cả"
