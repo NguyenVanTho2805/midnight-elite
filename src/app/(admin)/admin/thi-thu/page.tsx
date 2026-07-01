@@ -754,7 +754,7 @@ export default function ThiThuAdminPage() {
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Trạng thái", "HV / Guest", "Hành động"].map(h => (
+                {["Mã đề", "Tên đề thi", "Danh mục", "Ngày thi", "Thời lượng", "Câu hỏi", "Tình trạng", "Trạng thái", "Công khai", "Hành động"].map(h => (
                   <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -762,7 +762,7 @@ export default function ThiThuAdminPage() {
             <tbody className="divide-y divide-gray-100">
               {loading && Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  {Array.from({ length: 9 }).map((_, j) => (
+                  {Array.from({ length: 10 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 rounded bg-gray-200" style={{ width: j === 1 ? 160 : 60 }} />
                     </td>
@@ -793,24 +793,12 @@ export default function ThiThuAdminPage() {
                         style={{ background: s.bg, color: s.color }}>{s.label}</span>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <Toggle checked={exam.active} onChange={() => toggleActive(exam.id)} />
-                          <span className="text-xs text-gray-400">HV</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Toggle checked={exam.activeGuest ?? true} onChange={() => {
-                            api.exams.update(exam.id, { activeGuest: !(exam.activeGuest ?? true) }).then(refetch).catch(e => alert("Lỗi: " + e.message));
-                          }} />
-                          <span className="text-xs text-gray-400">Xem</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Toggle checked={exam.guestCanTake ?? false} onChange={() => {
-                            api.exams.update(exam.id, { guestCanTake: !(exam.guestCanTake ?? false) }).then(refetch).catch(e => alert("Lỗi: " + e.message));
-                          }} />
-                          <span className="text-xs text-gray-400">Thi</span>
-                        </div>
-                      </div>
+                      <Toggle checked={exam.active} onChange={() => toggleActive(exam.id)} />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Toggle checked={exam.activeGuest ?? true} onChange={() => {
+                        api.exams.update(exam.id, { activeGuest: !(exam.activeGuest ?? true) }).then(refetch).catch(e => alert("Lỗi: " + e.message));
+                      }} />
                     </td>
                     <td className="px-4 py-3 text-center">
                       <ActionMenu exam={exam} onEdit={() => setEditTarget(exam)} onDelete={() => deleteExam(exam.id)} />
@@ -820,12 +808,12 @@ export default function ThiThuAdminPage() {
               })}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center text-gray-400 text-sm">Không tìm thấy đề thi nào</td>
+                  <td colSpan={10} className="py-16 text-center text-gray-400 text-sm">Không tìm thấy đề thi nào</td>
                 </tr>
               )}
               {!loading && filtered.length > 0 && paged.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center text-gray-400 text-sm">Trang này không có dữ liệu</td>
+                  <td colSpan={10} className="py-16 text-center text-gray-400 text-sm">Trang này không có dữ liệu</td>
                 </tr>
               )}
             </tbody>
