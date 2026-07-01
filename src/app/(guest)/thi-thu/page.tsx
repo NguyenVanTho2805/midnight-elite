@@ -131,14 +131,14 @@ export default function GuestThiThuPage() {
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md"
                       style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>Đã kết thúc</span>
                   )}
-                  {exam.status === "available" && exam.guestCanTake && exam.azotaUrl && (
+                  {exam.status === "available" && exam.azotaUrl && (
                     <a href={exam.azotaUrl} target="_blank" rel="noreferrer"
                       className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white"
                       style={{ background: "#0068FF", borderRadius: "8px" }}>
                       Vào thi
                     </a>
                   )}
-                  {exam.status === "available" && (!exam.guestCanTake || !exam.azotaUrl) && (
+                  {exam.status === "available" && !exam.azotaUrl && (
                     <Link href="/dang-nhap"
                       className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white"
                       style={{ background: "#0068FF", borderRadius: "8px" }}>

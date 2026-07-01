@@ -27,13 +27,13 @@ const DURATIONS = ["45 phút", "60 phút", "90 phút", "120 phút", "150 phút",
 interface CreateForm {
   title: string; category: string; date: string; time: string;
   duration: string; questions: string; azotaUrl: string;
-  active: boolean; activeGuest: boolean; guestCanTake: boolean;
+  active: boolean; activeGuest: boolean;
 }
 
 const CREATE_INIT: CreateForm = {
   title: "", category: "ĐGNL HSA", date: "", time: "08:00",
   duration: "90 phút", questions: "80", azotaUrl: "",
-  active: true, activeGuest: true, guestCanTake: false,
+  active: true, activeGuest: true,
 };
 
 function autoCode(category: string, exams: ExamRow[]): string {
@@ -112,7 +112,6 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
         participants: 0,
         active:       form.active,
         activeGuest:  form.activeGuest,
-        guestCanTake: form.guestCanTake,
         createdAt:    new Date().toLocaleDateString("vi-VN"),
       });
       onCreated();
@@ -256,13 +255,6 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
               </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Guest được thi</p>
-                  <p className="text-xs text-gray-400">Cho phép chưa đăng nhập vào thi qua Azota</p>
-                </div>
-                <Toggle checked={form.guestCanTake} onChange={() => set("guestCanTake", !form.guestCanTake)} />
-              </div>
             </div>
           </section>
 
@@ -307,7 +299,7 @@ function fromInputDate(d: string) {
 interface EditForm {
   title: string; category: string; date: string; time: string;
   duration: string; questions: string; azotaUrl: string;
-  active: boolean; activeGuest: boolean; guestCanTake: boolean;
+  active: boolean; activeGuest: boolean;
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
@@ -336,7 +328,6 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
         azotaUrl:     exam.azotaUrl ?? "",
         active:       exam.active,
         activeGuest:  exam.activeGuest ?? true,
-        guestCanTake: exam.guestCanTake ?? false,
       });
       setErrors({});
     }
@@ -383,7 +374,6 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
         azotaUrl:    form.azotaUrl || null,
         active:       form.active,
         activeGuest:  form.activeGuest,
-        guestCanTake: form.guestCanTake,
       } as Partial<ExamFull>);
       onSaved();
       onClose();
@@ -536,13 +526,6 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
-              </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Guest được thi</p>
-                  <p className="text-xs text-gray-400">Cho phép chưa đăng nhập vào thi qua Azota</p>
-                </div>
-                <Toggle checked={form.guestCanTake} onChange={() => set("guestCanTake", !form.guestCanTake)} />
               </div>
               <div className="flex items-center gap-2 px-1">
                 <span className="text-xs text-gray-400">Trạng thái:</span>
