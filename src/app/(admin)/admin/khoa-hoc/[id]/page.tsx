@@ -467,20 +467,91 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
 }
 
 // ─── TAB CHƯƠNG BÀI ───────────────────────────────────────────────────────────
+type DragState =
+  | { type: "section"; sectionIdx: number }
+  | { type: "chapter"; sectionIdx: number; chapterIdx: number }
+  | { type: "lesson"; sectionIdx: number; chapterIdx: number; lessonIdx: number };
+
+function DragHandle() {
+  return (
+    <svg viewBox="0 0 10 16" className="w-2.5 h-4 flex-shrink-0 cursor-grab active:cursor-grabbing" fill="#CBD5E1">
+      <circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/>
+      <circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/>
+      <circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/>
+    </svg>
+  );
+}
+
 function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; initialSections: SectionDB[] }) {
   const [sections, setSections] = useState<SectionDB[]>(initialSections);
   const [expanded, setExpanded] = useState<{ sections: Set<string>; chapters: Set<string> }>({
     sections: new Set(initialSections.map(s => s.id)),
     chapters: new Set(initialSections.flatMap(s => s.chapters.map(c => c.id))),
   });
-  const [panel,   setPanel]  = useState<PanelMode>({ type: "none" });
-  const [del,     setDel]    = useState<DelTarget>(null);
-  const [toast,   setToast]  = useState("");
-  const [saving,  setSaving] = useState(false);
-  const [title,   setTitle]  = useState("");
-  const [ls,      setLs]     = useState<LsForm>(INIT_LS);
+  const [panel,       setPanel]      = useState<PanelMode>({ type: "none" });
+  const [del,         setDel]        = useState<DelTarget>(null);
+  const [toast,       setToast]      = useState("");
+  const [saving,      setSaving]     = useState(false);
+  const [title,       setTitle]      = useState("");
+  const [ls,          setLs]         = useState<LsForm>(INIT_LS);
+  const [dragItem,    setDragItem]   = useState<DragState | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const prevSections = useRef<SectionDB[]>([]);
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500); }
+
+  function reorderSections(fromIdx: number, toIdx: number) {
+    prevSections.current = sections;
+    const arr = [...sections];
+    const [moved] = arr.splice(fromIdx, 1);
+    arr.splice(toIdx, 0, moved);
+    setSections(arr);
+    const items = arr.map((s, i) => ({ id: s.id, order: i + 1 }));
+    fetch(`/api/courses/${courseSlug}/reorder`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "section", items }),
+    }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi sắp xếp, đã hoàn tác"); } });
+  }
+
+  function reorderChapters(sectionIdx: number, fromIdx: number, toIdx: number) {
+    prevSections.current = sections;
+    const arr = sections.map((s, si) => {
+      if (si !== sectionIdx) return s;
+      const chs = [...s.chapters];
+      const [moved] = chs.splice(fromIdx, 1);
+      chs.splice(toIdx, 0, moved);
+      return { ...s, chapters: chs };
+    });
+    setSections(arr);
+    const items = arr[sectionIdx].chapters.map((c, i) => ({ id: c.id, order: i + 1 }));
+    fetch(`/api/courses/${courseSlug}/reorder`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "chapter", items }),
+    }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi sắp xếp, đã hoàn tác"); } });
+  }
+
+  function reorderLessons(sectionIdx: number, chapterIdx: number, fromIdx: number, toIdx: number) {
+    prevSections.current = sections;
+    const arr = sections.map((s, si) => {
+      if (si !== sectionIdx) return s;
+      return {
+        ...s,
+        chapters: s.chapters.map((c, ci) => {
+          if (ci !== chapterIdx) return c;
+          const lss = [...c.lessons];
+          const [moved] = lss.splice(fromIdx, 1);
+          lss.splice(toIdx, 0, moved);
+          return { ...c, lessons: lss };
+        }),
+      };
+    });
+    setSections(arr);
+    const items = arr[sectionIdx].chapters[chapterIdx].lessons.map((l, i) => ({ id: l.id, order: i + 1 }));
+    fetch(`/api/courses/${courseSlug}/reorder`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "lesson", items }),
+    }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi sắp xếp, đã hoàn tác"); } });
+  }
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
@@ -792,8 +863,24 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
 
       <div className="space-y-3">
         {sections.map((section, si) => (
-          <div key={section.id || `s-${si}`} className="border border-gray-200 rounded-xl overflow-hidden">
+          <div key={section.id || `s-${si}`}
+            className="border rounded-xl overflow-hidden transition-colors"
+            style={{
+              borderColor: dragOverKey === `s-${section.id}` ? "#16a34a" : "#e5e7eb",
+              boxShadow: dragItem?.type === "section" && dragItem.sectionIdx === si ? "0 4px 16px rgba(0,0,0,0.12)" : undefined,
+            }}
+            draggable
+            onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "section", sectionIdx: si }); }}
+            onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "section") setDragOverKey(`s-${section.id}`); }}
+            onDrop={e => {
+              e.preventDefault(); e.stopPropagation();
+              if (dragItem?.type === "section" && dragItem.sectionIdx !== si) reorderSections(dragItem.sectionIdx, si);
+              setDragItem(null); setDragOverKey(null);
+            }}
+            onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
+          >
             <div className="flex items-center gap-3 px-4 py-3" style={{ background: "#f0fdf4" }}>
+              <DragHandle />
               <button onClick={() => toggleSec(section.id)} className="text-green-700 text-xs flex-shrink-0">
                 {expanded.sections.has(section.id) ? "▼" : "▶"}
               </button>
@@ -815,8 +902,21 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                   </div>
                 )}
                 {section.chapters.map((chapter, ci) => (
-                  <div key={chapter.id || `${section.id}-c-${ci}`} className="border-t border-gray-100">
+                  <div key={chapter.id || `${section.id}-c-${ci}`}
+                    className="border-t border-gray-100 transition-colors"
+                    style={{ background: dragOverKey === `c-${chapter.id}` ? "#EFF6FF" : undefined }}
+                    draggable
+                    onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "chapter", sectionIdx: si, chapterIdx: ci }); }}
+                    onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "chapter") setDragOverKey(`c-${chapter.id}`); }}
+                    onDrop={e => {
+                      e.preventDefault(); e.stopPropagation();
+                      if (dragItem?.type === "chapter" && dragItem.sectionIdx === si && dragItem.chapterIdx !== ci) reorderChapters(si, dragItem.chapterIdx, ci);
+                      setDragItem(null); setDragOverKey(null);
+                    }}
+                    onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
+                  >
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 transition-colors">
+                      <DragHandle />
                       <button onClick={() => toggleCh(chapter.id)} className="text-gray-400 text-xs flex-shrink-0">
                         {expanded.chapters.has(chapter.id) ? "▼" : "▶"}
                       </button>
@@ -838,8 +938,22 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                           const tb = TYPE_BADGE[lesson.type] ?? TYPE_BADGE.record;
                           return (
                             <div key={lesson.id || `${chapter.id}-l-${li}`}
-                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
-                              style={{ borderTop: "1px dashed #e5e7eb" }}>
+                              className="flex items-center gap-3 px-4 py-2.5 transition-colors"
+                              style={{
+                                borderTop: "1px dashed #e5e7eb",
+                                background: dragOverKey === `l-${lesson.id}` ? "#F0FDF4" : undefined,
+                              }}
+                              draggable
+                              onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "lesson", sectionIdx: si, chapterIdx: ci, lessonIdx: li }); }}
+                              onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "lesson") setDragOverKey(`l-${lesson.id}`); }}
+                              onDrop={e => {
+                                e.preventDefault(); e.stopPropagation();
+                                if (dragItem?.type === "lesson" && dragItem.sectionIdx === si && dragItem.chapterIdx === ci && dragItem.lessonIdx !== li) reorderLessons(si, ci, dragItem.lessonIdx, li);
+                                setDragItem(null); setDragOverKey(null);
+                              }}
+                              onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
+                            >
+                              <DragHandle />
                               <span className="flex-1 text-sm font-medium text-gray-800 min-w-0 truncate">{lesson.title}</span>
                               {lesson.isFree && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DCFCE7", color: "#166534" }}>FREE</span>}
                               {lesson.videoUrl && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>YT</span>}
