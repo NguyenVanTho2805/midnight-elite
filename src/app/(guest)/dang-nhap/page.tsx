@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function DangNhapPage() {
   const { login, user, isLoading } = useAuth();
-  const router = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo   = searchParams.get("redirect");
+
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [error, setError]           = useState("");
@@ -16,9 +19,13 @@ export default function DangNhapPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace(user.role === "admin" ? "/admin" : "/student");
+      if (redirectTo) {
+        router.replace(redirectTo);
+      } else {
+        router.replace(user.role === "admin" ? "/admin" : "/student");
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, redirectTo]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
