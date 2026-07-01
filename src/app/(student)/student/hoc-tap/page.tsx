@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Edit, Lock, ChevronDown, PlayCircle, Tv, FileText, CheckCircle, Heart } from "griddy-icons";
+import { Edit, ChevronDown, PlayCircle, Tv, FileText, CheckCircle, Heart } from "griddy-icons";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -232,9 +232,7 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
 // ─── CURRICULUM VIEW ───────────────────────────────────────────────────────────
 function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: () => void }) {
   const router = useRouter();
-  const [showLockedToast, setShowLockedToast] = useState(false);
-
-  const allLessons = course.sections.flatMap(s => s.chapters.flatMap(c => c.lessons));
+  const allLessons = course.sections.flatMap(s => s.chapters.flatMap(c => c.lessons.filter(l => !l.isLocked)));
   const done = allLessons.filter(l => l.isCompleted).length;
   const pct  = Math.round(done * 100 / Math.max(allLessons.length, 1));
   const circumference = 2 * Math.PI * 32;
@@ -246,11 +244,6 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
 
   function toggleS(id: string) { setOpenS(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
   function toggleC(id: string) { setOpenC(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
-
-  function handleLessonNav(id: string, locked: boolean) {
-    if (locked) { setShowLockedToast(true); setTimeout(() => setShowLockedToast(false), 2500); return; }
-    router.push(`/student/bai-giang/${id}`);
-  }
 
   const TYPE_STATS: { type: LessonType; label: string; color: string }[] = [
     { type: "record",   label: "Record",   color: "#0068FF" },
@@ -264,13 +257,6 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
 
   return (
     <div className="space-y-5">
-      {showLockedToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-semibold text-white shadow-lg"
-          style={{ background: "linear-gradient(145deg,#FF2157,#cc0033)" }}>
-          🔒 Bài học chưa mở khóa
-        </div>
-      )}
-
       {/* ── Header ── */}
       <div className="flex items-start gap-4">
         <button onClick={onBack}
@@ -344,7 +330,7 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
       {/* ── Sections ── */}
       <div className="space-y-4">
         {course.sections.map((section, sIdx) => {
-          const secLessons = section.chapters.flatMap(c => c.lessons);
+          const secLessons = section.chapters.flatMap(c => c.lessons.filter(l => !l.isLocked));
           const secDone    = secLessons.filter(l => l.isCompleted).length;
           const isOpenS    = openS.has(section.id);
           const sc = SC;
@@ -400,8 +386,9 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
                 >
                 <div className="px-4 pb-4 space-y-3">
                   {section.chapters.map((chapter, cIdx) => {
-                    const chDone  = chapter.lessons.filter(l => l.isCompleted).length;
-                    const chAll   = chapter.lessons.length;
+                    const visibleLessons = chapter.lessons.filter(l => !l.isLocked);
+                    const chDone  = visibleLessons.filter(l => l.isCompleted).length;
+                    const chAll   = visibleLessons.length;
                     const isDone  = chDone === chAll && chAll > 0;
                     const isOpenC = openC.has(chapter.id);
 
@@ -437,33 +424,29 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
                             style={{ overflow: "hidden" }}
                           >
                           <div className="mt-1.5 rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-                            {chapter.lessons.map((lesson, lIdx) => {
+                            {visibleLessons.map((lesson, lIdx) => {
                               const cfg = TYPE_CFG[lesson.type];
-                              const isLast = lIdx === chapter.lessons.length - 1;
+                              const isLast = lIdx === visibleLessons.length - 1;
                               return (
                                 <button key={lesson.id}
-                                  onClick={() => handleLessonNav(lesson.id, lesson.isLocked)}
+                                  onClick={() => router.push(`/student/bai-giang/${lesson.id}`)}
                                   className="w-full flex items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-white/60"
                                   style={{
                                     borderBottom: isLast ? "none" : "1px solid #e5e3df",
-                                    opacity: lesson.isLocked ? 0.5 : 1,
-                                    cursor: lesson.isLocked ? "not-allowed" : "pointer",
+                                    cursor: "pointer",
                                   }}>
 
                                   {/* Left icon */}
                                   <div className="flex-shrink-0 w-6 flex items-center justify-center">
-                                    {lesson.isLocked
-                                      ? <Lock size={16} style={{ color: "#c8c4be" }} />
-                                      : lesson.isCompleted
-                                        ? <CheckCircle size={20} style={{ color: "#00A63D" }} />
-                                        : <cfg.Icon size={20} style={{ color: cfg.color }} />
+                                    {lesson.isCompleted
+                                      ? <CheckCircle size={20} style={{ color: "#00A63D" }} />
+                                      : <cfg.Icon size={20} style={{ color: cfg.color }} />
                                     }
                                   </div>
 
                                   {/* Content */}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium leading-snug"
-                                      style={{ color: lesson.isLocked ? "#9CA3AF" : "#1E2938" }}>
+                                    <p className="text-sm font-medium leading-snug" style={{ color: "#1E2938" }}>
                                       {lesson.title}
                                     </p>
                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -477,11 +460,9 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
 
                                   {/* Right indicator */}
                                   <div className="flex-shrink-0 w-5 text-center">
-                                    {lesson.isLocked
-                                      ? null
-                                      : lesson.isCompleted
-                                        ? <CheckCircle size={16} style={{ color: "#00A63D" }} />
-                                        : <span className="text-base font-light" style={{ color: "#c8c4be" }}>−</span>
+                                    {lesson.isCompleted
+                                      ? <CheckCircle size={16} style={{ color: "#00A63D" }} />
+                                      : <span className="text-base font-light" style={{ color: "#c8c4be" }}>−</span>
                                     }
                                   </div>
                                 </button>
