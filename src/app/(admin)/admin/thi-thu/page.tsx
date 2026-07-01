@@ -639,6 +639,14 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
 
 export default function ThiThuAdminPage() {
   const { data: apiExams, loading, refetch } = useExams();
+
+  // Re-compute status mỗi phút để badge tự cập nhật không cần reload
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const exams: ExamRow[] = apiExams.map(e => ({ ...e, status: computeExamStatus(e.date, e.time, e.active) }));
   const stats = countByStatus(exams);
 
