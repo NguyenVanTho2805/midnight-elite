@@ -18,14 +18,12 @@ const DURATIONS = ["45 phút", "60 phút", "90 phút", "120 phút", "150 phút",
 
 interface CreateForm {
   title: string; category: string; date: string; time: string;
-  duration: string; questions: string; azotaUrl: string;
-  status: ExamStatus; active: boolean;
+  duration: string; questions: string; azotaUrl: string; active: boolean;
 }
 
 const CREATE_INIT: CreateForm = {
   title: "", category: "ĐGNL HSA", date: "", time: "08:00",
-  duration: "90 phút", questions: "80", azotaUrl: "",
-  status: "upcoming", active: true,
+  duration: "90 phút", questions: "80", azotaUrl: "", active: true,
 };
 
 function autoCode(category: string, exams: ExamRow[]): string {
@@ -89,16 +87,17 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
     if (!validate()) return;
     setSaving(true);
     try {
+      const examDate = form.date.split("-").reverse().join("/");
       await api.exams.create({
         id:           toSlug(form.title),
         code:         autoCode(form.category, exams),
         title:        form.title.trim(),
         category:     form.category,
-        date:         form.date.split("-").reverse().join("/"),
+        date:         examDate,
         time:         form.time,
         duration:     form.duration,
         questions:    +form.questions,
-        status:       form.status,
+        status:       computeExamStatus(examDate, form.time, form.active),
         azotaUrl:     form.azotaUrl || null,
         participants: 0,
         active:       form.active,
@@ -230,45 +229,30 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
           {/* Xuất bản */}
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Xuất bản</h3>
-            <div className="space-y-3">
+            <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">Trạng thái ban đầu</label>
-                <div className="flex gap-2">
-                  {(["upcoming", "available"] as ExamStatus[]).map(s => (
-                    <button key={s} type="button" onClick={() => set("status", s)}
-                      className="flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all"
-                      style={form.status === s
-                        ? { background: s === "upcoming" ? "#DBEAFE" : "#D1FAE5", color: s === "upcoming" ? "#0068FF" : "#00A63D", borderColor: s === "upcoming" ? "#0068FF" : "#00A63D" }
-                        : { background: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }}>
-                      {s === "upcoming" ? "⏳ Sắp diễn ra" : "✅ Mở ngay"}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
+                <p className="text-xs text-gray-400">Tắt để ẩn — trạng thái tự động từ lịch thi</p>
               </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
-                  <p className="text-xs text-gray-400">Tắt để ẩn khỏi portal học viên</p>
-                </div>
-                <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
-              </div>
+              <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
             </div>
           </section>
 
           {/* Preview */}
-          {form.title && (
+          {form.title && form.date && (
             <div className="p-4 rounded-xl border border-dashed border-blue-300 bg-blue-50">
-              <p className="text-xs font-bold text-blue-600 mb-2">Preview — học viên sẽ thấy:</p>
+              <p className="text-xs font-bold text-blue-600 mb-2">Preview — trạng thái tự động:</p>
               <div className="flex items-center gap-3">
                 <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
                   style={{ background: CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
                   {previewCode}
                 </span>
                 <span className="text-sm font-medium text-gray-800 flex-1 truncate">{form.title}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                  style={{ background: form.status === "upcoming" ? "#DBEAFE" : "#D1FAE5", color: form.status === "upcoming" ? "#0068FF" : "#00A63D" }}>
-                  {form.status === "upcoming" ? "Sắp diễn ra" : "Có thể thi"}
-                </span>
+                {(() => {
+                  const st = computeExamStatus(form.date.split("-").reverse().join("/"), form.time, form.active);
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
+                })()}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 {form.date.split("-").reverse().join("/")} · {form.time} · {form.duration} · {form.questions} câu
@@ -294,8 +278,7 @@ function fromInputDate(d: string) {
 // ─── EDIT EXAM DRAWER ────────────────────────────────────────────────────────
 interface EditForm {
   title: string; category: string; date: string; time: string;
-  duration: string; questions: string; azotaUrl: string;
-  status: ExamStatus; active: boolean;
+  duration: string; questions: string; azotaUrl: string; active: boolean;
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
@@ -322,7 +305,6 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
         duration:  exam.duration,
         questions: String(exam.questions),
         azotaUrl:  exam.azotaUrl ?? "",
-        status:    exam.status,
         active:    exam.active,
       });
       setErrors({});
@@ -358,14 +340,15 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
     if (!validate() || !form || !exam) return;
     setSaving(true);
     try {
+      const examDate = fromInputDate(form.date);
       await api.exams.update(exam.id, {
         title:     form.title.trim(),
         category:  form.category,
-        date:      fromInputDate(form.date),
+        date:      examDate,
         time:      form.time,
         duration:  form.duration,
         questions: +form.questions,
-        status:    form.status,
+        status:    computeExamStatus(examDate, form.time, form.active),
         azotaUrl:  form.azotaUrl || null,
         active:    form.active,
       } as Partial<ExamFull>);
@@ -507,30 +490,20 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Xuất bản</h3>
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">Trạng thái</label>
-                <div className="flex gap-2">
-                  {([
-                    { s: "upcoming" as ExamStatus,  label: "⏳ Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" },
-                    { s: "available" as ExamStatus, label: "✅ Đang mở",      bg: "#D1FAE5", color: "#00A63D" },
-                    { s: "completed" as ExamStatus, label: "🏁 Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" },
-                  ]).map(({ s, label, bg, color }) => (
-                    <button key={s} type="button" onClick={() => set("status", s)}
-                      className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-all"
-                      style={form.status === s
-                        ? { background: bg, color, borderColor: color }
-                        : { background: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Hiển thị cho học viên</p>
-                  <p className="text-xs text-gray-400">Tắt để ẩn khỏi portal học viên</p>
+                  <p className="text-xs text-gray-400">Tắt = kết thúc đề thi · trạng thái tự động từ lịch</p>
                 </div>
                 <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
+              </div>
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-xs text-gray-400">Trạng thái hiện tại:</span>
+                {(() => {
+                  const st = computeExamStatus(fromInputDate(form.date), form.time, form.active);
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
+                })()}
               </div>
             </div>
           </section>
@@ -557,6 +530,14 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
       </div>
     </>
   );
+}
+
+function computeExamStatus(date: string, time: string, active: boolean): ExamStatus {
+  if (!active) return "completed";
+  const [day, month, year] = (date || "01/01/2000").split("/");
+  const [hh, mm] = (time || "00:00").split(":");
+  const examDt = new Date(+year, +month - 1, +day, +hh, +mm);
+  return examDt <= new Date() ? "available" : "upcoming";
 }
 
 function countByStatus(exams: ExamRow[]) {
@@ -619,7 +600,7 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
 
 export default function ThiThuAdminPage() {
   const { data: apiExams, loading, refetch } = useExams();
-  const exams: ExamRow[] = apiExams.map(e => ({ ...e, status: e.status as ExamStatus }));
+  const exams: ExamRow[] = apiExams.map(e => ({ ...e, status: computeExamStatus(e.date, e.time, e.active) }));
   const stats = countByStatus(exams);
 
   // Derive categories from loaded exams (no hardcoded list)
