@@ -237,9 +237,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
             </div>
           </section>
 
-          {/* Xuất bản */}
+          {/* Công khai & Trạng thái */}
           <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Xuất bản</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Công khai & Trạng thái</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
@@ -509,9 +509,9 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
             )}
           </section>
 
-          {/* Xuất bản */}
+          {/* Công khai & Trạng thái */}
           <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Xuất bản</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Công khai & Trạng thái</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <div>
