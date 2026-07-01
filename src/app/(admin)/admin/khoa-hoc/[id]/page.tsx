@@ -57,18 +57,73 @@ type DelTarget =
 
 interface TitleForm { title: string }
 interface LsForm {
-  title: string; type: LessonDB["type"]; videoUrl: string; zoomUrl: string;
-  azotaUrl: string; azotaDeadline: string; duration: string;
+  title: string; type: LessonDB["type"];
+  videoUrls: string[]; zoomUrls: string[]; azotaUrls: string[];
+  azotaDeadline: string; duration: string;
   isLocked: boolean; isFree: boolean;
-  documentsRaw: string; // JSON array string: [{name,url,type}]
+  documentsRaw: string;
   adminNote: string;
 }
 
 const INIT_LS: LsForm = {
-  title: "", type: "record", videoUrl: "", zoomUrl: "", azotaUrl: "",
+  title: "", type: "record",
+  videoUrls: [""], zoomUrls: [""], azotaUrls: [""],
   azotaDeadline: "", duration: "", isLocked: true, isFree: false,
   documentsRaw: "[]", adminNote: "",
 };
+
+function parseUrls(raw: string | null | undefined): string[] {
+  if (!raw) return [""];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length) return parsed as string[];
+  } catch { /* plain string */ }
+  return [raw];
+}
+
+function serializeUrls(urls: string[]): string | null {
+  const filtered = urls.map(u => u.trim()).filter(Boolean);
+  if (!filtered.length) return null;
+  if (filtered.length === 1) return filtered[0];
+  return JSON.stringify(filtered);
+}
+
+function detectLessonType(url: string): LessonDB["type"] | null {
+  if (/youtube\.com|youtu\.be/i.test(url)) return "record";
+  if (/zoom\.us/i.test(url)) return "live";
+  if (/azota\.vn/i.test(url)) return "quiz";
+  return null;
+}
+
+function UrlListEditor({ label, placeholder, urls, onChange }: {
+  label: string; placeholder: string; urls: string[]; onChange: (urls: string[]) => void;
+}) {
+  function update(idx: number, val: string) { const n = [...urls]; n[idx] = val; onChange(n); }
+  function add() { onChange([...urls, ""]); }
+  function remove(idx: number) { const n = urls.filter((_, i) => i !== idx); onChange(n.length ? n : [""]); }
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1.5">{label}</label>
+      <div className="space-y-2">
+        {urls.map((url, idx) => (
+          <div key={idx} className="flex gap-2">
+            <input
+              className="flex-1 px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+              value={url}
+              onChange={e => update(idx, e.target.value)}
+              placeholder={placeholder}
+            />
+            {urls.length > 1 && (
+              <button type="button" onClick={() => remove(idx)}
+                className="px-2.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-sm flex-shrink-0">✕</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add} className="mt-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700">+ Thêm link</button>
+    </div>
+  );
+}
 
 const TYPE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   record:   { label: "Video",    color: "#0055D4", bg: "#EFF6FF" },
@@ -583,8 +638,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     const l = c.lessons.find(x => x.id === lessonId)!;
     setLs({
       title: l.title, type: l.type,
-      videoUrl: l.videoUrl ?? "", zoomUrl: l.zoomUrl ?? "",
-      azotaUrl: l.azotaUrl ?? "", azotaDeadline: l.azotaDeadline ?? "",
+      videoUrls: parseUrls(l.videoUrl), zoomUrls: parseUrls(l.zoomUrl),
+      azotaUrls: parseUrls(l.azotaUrl), azotaDeadline: l.azotaDeadline ?? "",
       duration: l.duration ?? "", isLocked: l.isLocked, isFree: l.isFree,
       documentsRaw: l.documents ?? "[]",
       adminNote: l.adminNote ?? "",
@@ -653,11 +708,10 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
       } else if (panel.type === "add-lesson") {
         if (!ls.title.trim()) return;
         const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
-          title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
-          zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
-          azotaDeadline: ls.azotaDeadline || null,
+          title: ls.title.trim(), type: ls.type,
+          videoUrl: serializeUrls(ls.videoUrls), zoomUrl: serializeUrls(ls.zoomUrls),
+          azotaUrl: serializeUrls(ls.azotaUrls), azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
-          // documents không gửi lúc tạo — để DB dùng default "[]", chỉ gửi khi edit
         });
         setSections(p => p.map(s => s.id === panel.sectionId
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
@@ -665,20 +719,20 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         flash(`Đã thêm bài "${lesson.title}"`);
 
       } else if (panel.type === "edit-lesson") {
+        const vUrl = serializeUrls(ls.videoUrls);
+        const zUrl = serializeUrls(ls.zoomUrls);
+        const aUrl = serializeUrls(ls.azotaUrls);
         await apiPut(`/api/lessons/${panel.lessonId}`, {
-          title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
-          zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
+          title: ls.title.trim(), type: ls.type, videoUrl: vUrl, zoomUrl: zUrl, azotaUrl: aUrl,
           azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
-          documents: ls.documentsRaw || "[]",
-          adminNote: ls.adminNote || null,
+          documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null,
         });
         setSections(p => p.map(s => s.id === panel.sectionId
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
             ? { ...c, lessons: c.lessons.map(l => l.id === panel.lessonId
-              ? { ...l, title: ls.title.trim(), type: ls.type, videoUrl: ls.videoUrl || null,
-                  zoomUrl: ls.zoomUrl || null, azotaUrl: ls.azotaUrl || null,
-                  azotaDeadline: ls.azotaDeadline || null,
+              ? { ...l, title: ls.title.trim(), type: ls.type, videoUrl: vUrl,
+                  zoomUrl: zUrl, azotaUrl: aUrl, azotaDeadline: ls.azotaDeadline || null,
                   duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
                   documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null }
               : l) }
@@ -800,19 +854,34 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
             <DrawerToggle checked={ls.isFree} onChange={() => setLs(f => ({ ...f, isFree: !f.isFree }))} label="Học thử miễn phí" />
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Video & Links</p>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">YouTube URL (cho bài Video)</label>
-                  <input className={inp} value={ls.videoUrl} onChange={e => setLs(f => ({ ...f, videoUrl: e.target.value }))} placeholder="https://youtube.com/watch?v=..." />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Zoom URL (cho bài Live)</label>
-                  <input className={inp} value={ls.zoomUrl} onChange={e => setLs(f => ({ ...f, zoomUrl: e.target.value }))} placeholder="https://zoom.us/j/..." />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Azota URL (cho bài Tập)</label>
-                  <input className={inp} value={ls.azotaUrl} onChange={e => setLs(f => ({ ...f, azotaUrl: e.target.value }))} placeholder="https://azota.vn/..." />
-                </div>
+              <div className="space-y-4">
+                <UrlListEditor
+                  label="YouTube URL (cho bài Video)"
+                  placeholder="https://youtube.com/watch?v=..."
+                  urls={ls.videoUrls}
+                  onChange={urls => setLs(f => {
+                    const detected = urls.map(detectLessonType).find(Boolean);
+                    return { ...f, videoUrls: urls, ...(detected ? { type: detected } : {}) };
+                  })}
+                />
+                <UrlListEditor
+                  label="Zoom URL (cho bài Live)"
+                  placeholder="https://zoom.us/j/..."
+                  urls={ls.zoomUrls}
+                  onChange={urls => setLs(f => {
+                    const detected = urls.map(detectLessonType).find(Boolean);
+                    return { ...f, zoomUrls: urls, ...(detected ? { type: detected } : {}) };
+                  })}
+                />
+                <UrlListEditor
+                  label="Azota URL (cho bài Tập)"
+                  placeholder="https://azota.vn/..."
+                  urls={ls.azotaUrls}
+                  onChange={urls => setLs(f => {
+                    const detected = urls.map(detectLessonType).find(Boolean);
+                    return { ...f, azotaUrls: urls, ...(detected ? { type: detected } : {}) };
+                  })}
+                />
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Deadline Azota</label>
                   <input type="datetime-local" className={inp} value={ls.azotaDeadline} onChange={e => setLs(f => ({ ...f, azotaDeadline: e.target.value }))} />
