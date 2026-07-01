@@ -57,7 +57,7 @@ type DelTarget =
 
 interface TitleForm { title: string }
 interface LsForm {
-  title: string; types: LessonDB["type"][];
+  title: string;
   videoUrls: string[]; zoomUrls: string[]; azotaUrls: string[];
   azotaDeadline: string; duration: string;
   isLocked: boolean; isFree: boolean;
@@ -66,7 +66,7 @@ interface LsForm {
 }
 
 const INIT_LS: LsForm = {
-  title: "", types: ["record"],
+  title: "",
   videoUrls: [""], zoomUrls: [""], azotaUrls: [""],
   azotaDeadline: "", duration: "", isLocked: true, isFree: false,
   documentsRaw: "[]", adminNote: "",
@@ -88,20 +88,21 @@ function serializeUrls(urls: string[]): string | null {
   return JSON.stringify(filtered);
 }
 
-function detectLessonType(url: string): LessonDB["type"] | null {
-  if (/youtube\.com|youtu\.be/i.test(url)) return "record";
-  if (/zoom\.us/i.test(url)) return "live";
-  if (/azota\.vn/i.test(url)) return "quiz";
-  return null;
-}
-
 function parseTypes(raw: string | null | undefined): LessonDB["type"][] {
-  if (!raw) return ["record"];
+  if (!raw) return ["document"];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length) return parsed as LessonDB["type"][];
   } catch { /* plain string */ }
   return [raw as LessonDB["type"]];
+}
+
+function deriveTypes(vUrls: string[], zUrls: string[], aUrls: string[]): LessonDB["type"][] {
+  const types: LessonDB["type"][] = [];
+  if (vUrls.some(u => u.trim())) types.push("record");
+  if (zUrls.some(u => u.trim())) types.push("live");
+  if (aUrls.some(u => u.trim())) types.push("quiz");
+  return types.length ? types : ["document"];
 }
 
 function serializeTypes(types: LessonDB["type"][]): string {
@@ -651,7 +652,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     const c = s.chapters.find(x => x.id === chapterId)!;
     const l = c.lessons.find(x => x.id === lessonId)!;
     setLs({
-      title: l.title, types: parseTypes(l.type),
+      title: l.title,
       videoUrls: parseUrls(l.videoUrl), zoomUrls: parseUrls(l.zoomUrl),
       azotaUrls: parseUrls(l.azotaUrl), azotaDeadline: l.azotaDeadline ?? "",
       duration: l.duration ?? "", isLocked: l.isLocked, isFree: l.isFree,
@@ -722,7 +723,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
       } else if (panel.type === "add-lesson") {
         if (!ls.title.trim()) return;
         const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
-          title: ls.title.trim(), type: serializeTypes(ls.types),
+          title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)),
           videoUrl: serializeUrls(ls.videoUrls), zoomUrl: serializeUrls(ls.zoomUrls),
           azotaUrl: serializeUrls(ls.azotaUrls), azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
@@ -737,7 +738,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         const zUrl = serializeUrls(ls.zoomUrls);
         const aUrl = serializeUrls(ls.azotaUrls);
         await apiPut(`/api/lessons/${panel.lessonId}`, {
-          title: ls.title.trim(), type: serializeTypes(ls.types), videoUrl: vUrl, zoomUrl: zUrl, azotaUrl: aUrl,
+          title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)), videoUrl: vUrl, zoomUrl: zUrl, azotaUrl: aUrl,
           azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
           documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null,
@@ -745,7 +746,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         setSections(p => p.map(s => s.id === panel.sectionId
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
             ? { ...c, lessons: c.lessons.map(l => l.id === panel.lessonId
-              ? { ...l, title: ls.title.trim(), type: serializeTypes(ls.types) as LessonDB["type"], videoUrl: vUrl,
+              ? { ...l, title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)) as LessonDB["type"], videoUrl: vUrl,
                   zoomUrl: zUrl, azotaUrl: aUrl, azotaDeadline: ls.azotaDeadline || null,
                   duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
                   documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null }
@@ -847,32 +848,6 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                 onKeyDown={e => e.key === "Enter" && savePanel()}
                 placeholder="VD: Buổi 1: Hệ phương trình" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Loại bài học</label>
-              <p className="text-xs text-gray-400 mb-2">Có thể chọn nhiều loại — tự động chọn khi điền link</p>
-              <div className="grid grid-cols-2 gap-2">
-                {(["record","live","quiz","document"] as LessonDB["type"][]).map(t => {
-                  const tb = TYPE_BADGE[t];
-                  const active = ls.types.includes(t);
-                  return (
-                    <button key={t} onClick={() => setLs(f => {
-                      const already = f.types.includes(t);
-                      const next = already
-                        ? (f.types.length > 1 ? f.types.filter(x => x !== t) : f.types)
-                        : [...f.types, t];
-                      return { ...f, types: next };
-                    })}
-                      className="py-2 px-3 rounded-lg text-sm font-semibold border-2 transition-all text-left flex items-center gap-1.5"
-                      style={active
-                        ? { background: tb.bg, color: tb.color, borderColor: tb.color }
-                        : { background: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }}>
-                      {active && <span style={{ color: tb.color }}>✓</span>}
-                      {tb.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
             <DrawerToggle checked={ls.isLocked} onChange={() => setLs(f => ({ ...f, isLocked: !f.isLocked }))} label="Khoá bài (yêu cầu đăng ký)" />
             <DrawerToggle checked={ls.isFree} onChange={() => setLs(f => ({ ...f, isFree: !f.isFree }))} label="Học thử miễn phí" />
             <div>
@@ -882,32 +857,27 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                   label="YouTube URL (cho bài Video)"
                   placeholder="https://youtube.com/watch?v=..."
                   urls={ls.videoUrls}
-                  onChange={urls => setLs(f => {
-                    const detected = urls.map(detectLessonType).find(Boolean);
-                    const types = detected && !f.types.includes(detected) ? [...f.types, detected] : f.types;
-                    return { ...f, videoUrls: urls, types };
-                  })}
+                  onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
                 />
                 <UrlListEditor
                   label="Zoom URL (cho bài Live)"
                   placeholder="https://zoom.us/j/..."
                   urls={ls.zoomUrls}
-                  onChange={urls => setLs(f => {
-                    const detected = urls.map(detectLessonType).find(Boolean);
-                    const types = detected && !f.types.includes(detected) ? [...f.types, detected] : f.types;
-                    return { ...f, zoomUrls: urls, types };
-                  })}
+                  onChange={urls => setLs(f => ({ ...f, zoomUrls: urls }))}
                 />
                 <UrlListEditor
                   label="Azota URL (cho bài Tập)"
                   placeholder="https://azota.vn/..."
                   urls={ls.azotaUrls}
-                  onChange={urls => setLs(f => {
-                    const detected = urls.map(detectLessonType).find(Boolean);
-                    const types = detected && !f.types.includes(detected) ? [...f.types, detected] : f.types;
-                    return { ...f, azotaUrls: urls, types };
-                  })}
+                  onChange={urls => setLs(f => ({ ...f, azotaUrls: urls }))}
                 />
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <span className="text-xs text-gray-400">Loại bài:</span>
+                  {deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls).map(t => {
+                    const tb = TYPE_BADGE[t];
+                    return <span key={t} className="px-2 py-0.5 text-xs rounded-full font-semibold" style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>;
+                  })}
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Deadline Azota</label>
                   <input type="datetime-local" className={inp} value={ls.azotaDeadline} onChange={e => setLs(f => ({ ...f, azotaDeadline: e.target.value }))} />
