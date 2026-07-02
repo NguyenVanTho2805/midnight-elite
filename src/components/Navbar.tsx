@@ -6,11 +6,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 const navLinks = [
-  { label: "Khóa học", href: "/khoa-hoc" },
-  { label: "Thi thử ĐGNL", href: "/thi-thu" },
-  { label: "Tra cứu", href: "/tra-cuu" },
-  { label: "Bảng xếp hạng", href: "/bang-xep-hang" },
-  { label: "Tin tức", href: "/tin-tuc" },
+  { label: "Khóa học",      href: "/khoa-hoc"           },
+  { label: "Thi thử ĐGNL",  href: "/thi-thu"             },
+  { label: "Cộng đồng",     href: "/student/cong-dong"   },
+  { label: "Tra cứu",       href: "/tra-cuu"             },
+  { label: "Bảng xếp hạng", href: "/bang-xep-hang"       },
+  { label: "Tin tức",       href: "/tin-tuc"             },
 ];
 
 export default function Navbar() {

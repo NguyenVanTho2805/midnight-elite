@@ -39,8 +39,8 @@ function validateStep1(f: Step1Fields): Step1Errors {
   if (!f.name.trim())        e.name = "Vui lòng nhập họ và tên";
   if (!f.phone.trim())       e.phone = "Vui lòng nhập số điện thoại có Zalo";
   else if (!validatePhone(f.phone)) e.phone = "Số điện thoại không hợp lệ";
-  if (!f.parentPhone.trim()) e.parentPhone = "Vui lòng nhập số điện thoại phụ huynh";
-  else if (!validatePhone(f.parentPhone)) e.parentPhone = "Số điện thoại không hợp lệ";
+  if (f.parentPhone.trim() && !validatePhone(f.parentPhone))
+                             e.parentPhone = "Số điện thoại không hợp lệ";
   if (!f.city)               e.city = "Vui lòng chọn tỉnh / thành phố";
   if (!f.school.trim())      e.school = "Vui lòng nhập tên trường";
   return e;
@@ -105,7 +105,7 @@ export default function DangKyPage() {
   const e2 = validateStep2(s2);
   const strength = getPasswordStrength(s2.password);
 
-  function blurAll1() { setT1({ name: true, phone: true, parentPhone: true, city: true, school: true }); }
+  function blurAll1() { setT1({ name: true, phone: true, city: true, school: true }); }
   function blurAll2() { setT2({ email: true, password: true, confirmPassword: true }); }
 
   function goNext(ev: React.FormEvent) {
@@ -282,15 +282,19 @@ export default function DangKyPage() {
                   <FieldError msg={t1.phone ? e1.phone : undefined} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>SĐT phụ huynh *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>
+                    SĐT phụ huynh
+                    <span className="ml-1 font-normal" style={{ color: "#a4a097" }}>(tuỳ chọn)</span>
+                  </label>
                   <div className="relative">
                     <input type="tel" placeholder="0901 234 567" value={s1.parentPhone}
                       onChange={e => setS1(p => ({ ...p, parentPhone: e.target.value }))}
                       onBlur={() => setT1(p => ({ ...p, parentPhone: true }))}
                       className="notion-input w-full text-sm pr-9" style={{ color: "#1a1a1a",
-                        borderColor: t1.parentPhone && e1.parentPhone ? "#fca5a5" : t1.parentPhone && !e1.parentPhone ? "#86efac" : undefined }} />
+                        borderColor: t1.parentPhone && e1.parentPhone ? "#fca5a5"
+                          : t1.parentPhone && s1.parentPhone && !e1.parentPhone ? "#86efac" : undefined }} />
                     <span className="absolute right-3 top-3">
-                      <FieldIcon touched={!!t1.parentPhone} hasError={!!e1.parentPhone} hasValue={validatePhone(s1.parentPhone)} />
+                      <FieldIcon touched={!!t1.parentPhone && !!s1.parentPhone} hasError={!!e1.parentPhone} hasValue={validatePhone(s1.parentPhone)} />
                     </span>
                   </div>
                   <FieldError msg={t1.parentPhone ? e1.parentPhone : undefined} />

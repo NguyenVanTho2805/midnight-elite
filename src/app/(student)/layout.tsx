@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEnrollments } from "@/hooks/useEnrollments";
 
 const navItems = [
-  { label: "Tổng quan",  href: "/student"            },
+  { label: "Tôi",        href: "/student"             },
   { label: "Khóa học",   href: "/student/hoc-tap"    },
   { label: "Thi thử",    href: "/student/thi-thu"    },
   { label: "Xếp hạng",  href: "/student/bang-xep-hang" },
@@ -147,11 +147,20 @@ function StudentHeader() {
     <>
       {/* Desktop */}
       <header className="notion-nav hidden md:flex items-center justify-between px-6 h-16 sticky top-0 z-40">
-        <Link href="/student" className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-base font-bold" style={{ color: "#0068FF" }}>Midnight Elite</span>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
-            style={{ background: "#0068FF" }}>Học viên</span>
-        </Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link href="/" title="Trang chủ"
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[#f6f5f4]"
+            style={{ border: "1px solid #e5e3df" }}>
+            <svg className="w-4 h-4" fill="none" stroke="#787671" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" />
+            </svg>
+          </Link>
+          <Link href="/student" className="flex items-center gap-2">
+            <span className="text-base font-bold" style={{ color: "#0068FF" }}>Midnight Elite</span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
+              style={{ background: "#0068FF" }}>Học viên</span>
+          </Link>
+        </div>
         <nav className="flex items-center gap-0.5 flex-1 ml-6">
           {navItems.map(item => {
             const active = pathname === item.href || (item.href !== "/student" && pathname.startsWith(item.href));
@@ -176,9 +185,18 @@ function StudentHeader() {
 
       {/* Mobile */}
       <header className="notion-nav flex md:hidden items-center justify-between px-4 h-14 sticky top-0 z-40">
-        <Link href="/student">
-          <span className="text-base font-bold" style={{ color: "#0068FF" }}>Midnight Elite</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/" title="Trang chủ"
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ border: "1px solid #e5e3df" }}>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="#787671" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" />
+            </svg>
+          </Link>
+          <Link href="/student">
+            <span className="text-base font-bold" style={{ color: "#0068FF" }}>Midnight Elite</span>
+          </Link>
+        </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <CoinBalance />
           <NotificationBell />
