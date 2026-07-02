@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCourses } from "@/hooks/useCourses";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useProgress } from "@/hooks/useProgress";
+import { useFavorites } from "@/hooks/useFavorites";
 import { toEnrolledCourse } from "@/lib/apiAdapters";
 
 interface Deadline {
@@ -39,7 +40,13 @@ export default function StudentDashboardPage() {
   const { enrolledIds }         = useEnrollments();
   const { completedIds }        = useProgress();
   const { data: deadlines }     = useDeadlines();
+  const { favoriteIds, loading: favLoading } = useFavorites();
   const catalogCourses = apiCourses.map(c => ({ slug: c.id, title: c.name }));
+
+  const savedCourses = useMemo(
+    () => apiCourses.filter(c => favoriteIds.has(c.id)),
+    [apiCourses, favoriteIds]
+  );
 
   const enrolledCourses = useMemo(() => apiCourses
     .filter(c => enrolledIds.has(c.id))
@@ -130,6 +137,47 @@ export default function StudentDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* ── Right column — Đã lưu ── */}
+          <div className="order-first lg:order-last space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Đã lưu</h2>
+              <Link href="/khoa-hoc" className="text-xs font-semibold" style={{ color: "#0068FF" }}>Khám phá →</Link>
+            </div>
+            {favLoading ? (
+              <div className="space-y-2 animate-pulse">
+                {[1, 2].map(i => <div key={i} className="h-14 rounded-xl" style={{ background: "#f6f5f4" }} />)}
+              </div>
+            ) : savedCourses.length === 0 ? (
+              <div className="p-4 rounded-xl text-center space-y-1" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                <p className="text-xs" style={{ color: "#a4a097" }}>Chưa lưu khóa học nào.</p>
+                <Link href="/khoa-hoc" className="text-xs font-semibold block" style={{ color: "#0068FF" }}>
+                  Xem các khóa học →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {savedCourses.map(c => (
+                  <Link key={c.id} href={`/khoa-hoc/${c.id}`}
+                    className="flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-[#f0eeec]"
+                    style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+                    <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-black"
+                      style={{ background: "#0068FF" }}>
+                      ME
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold leading-snug truncate" style={{ color: "#1a1a1a" }}>{c.name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#787671" }}>
+                        {c.price.toLocaleString("vi-VN")} đ
+                      </p>
+                    </div>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c8c4be" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Khóa học của tôi</h2>
@@ -206,6 +254,7 @@ export default function StudentDashboardPage() {
               </div>
             ))}
           </div>
+
         </div>
       </div>
     </div>

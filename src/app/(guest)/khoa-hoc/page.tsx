@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useAuth } from "@/contexts/AuthContext";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import TeacherTag from "@/components/TeacherTag";
 import type { CourseFull } from "@/lib/api";
@@ -41,7 +43,11 @@ const categoryTheme = Object.fromEntries(
   Object.entries(CATEGORY_GRADIENT).map(([k, bg]) => [k, { bg, strip: "#FDE047", stripText: "#1E2938" }])
 ) as Record<string, { bg: string; strip: string; stripText: string }>;
 
-function CourseCard({ course }: { course: Course }) {
+function CourseCard({ course, isFavorited, onToggleFavorite }: {
+  course: Course;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
+}) {
   const router = useRouter();
   const [showBuyPopup, setShowBuyPopup] = useState(false);
   const discount = Math.round((1 - course.price / course.originalPrice) * 100);
@@ -128,7 +134,7 @@ function CourseCard({ course }: { course: Course }) {
           ))}
         </div>
 
-        <div className="flex items-end justify-between mb-3">
+        <div className="flex items-start justify-between mb-3">
           <div>
             <div className="text-base font-bold" style={{ color: "#0068FF" }}>
               {course.price.toLocaleString("vi-VN")} đ
@@ -137,12 +143,30 @@ function CourseCard({ course }: { course: Course }) {
               {course.originalPrice.toLocaleString("vi-VN")} đ
             </div>
           </div>
-          {course.tag && (
-            <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-              style={{ background: course.tagColor + "22", color: course.tagColor }}>
-              {course.tag}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            {course.tag && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ background: course.tagColor + "22", color: course.tagColor }}>
+                {course.tag}
+              </span>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+              title={isFavorited ? "Bỏ lưu" : "Lưu khóa học"}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              style={{
+                background: isFavorited ? "#0068FF" : "#f6f5f4",
+                border: `1px solid ${isFavorited ? "#0068FF" : "#e5e3df"}`,
+                color: isFavorited ? "white" : "#787671",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24"
+                fill={isFavorited ? "currentColor" : "none"}
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
@@ -167,6 +191,13 @@ function KhoaHocContent() {
   const { data: apiCourses } = useCourses();
   const courses = useMemo(() => apiCourses.map(toCourse), [apiCourses]);
   const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const { favoriteIds, toggleFavorite } = useFavorites();
+
+  function handleToggle(slug: string) {
+    if (!user) { window.location.href = `/dang-nhap?redirect=/khoa-hoc`; return; }
+    toggleFavorite(slug);
+  }
 
   const [activeCategory, setActiveCategory] = useState(searchParams.get("category") ?? "Tất cả");
   const [selectedSlug, setSelectedSlug]     = useState<string | null>(null);
@@ -276,7 +307,12 @@ function KhoaHocContent() {
           {/* Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filtered.map(course => (
-              <CourseCard key={course.slug} course={course} />
+              <CourseCard
+                key={course.slug}
+                course={course}
+                isFavorited={favoriteIds.has(course.slug)}
+                onToggleFavorite={() => handleToggle(course.slug)}
+              />
             ))}
           </div>
 
@@ -296,7 +332,7 @@ function KhoaHocContent() {
         {[
           { title: "Kích hoạt nhanh chóng", desc: "Admin duyệt và kích hoạt tài khoản trong vòng 24 giờ" },
           { title: "Học trọn đời",          desc: "Mua 1 lần, xem không giới hạn" },
-          { title: "AI hỗ trợ 24/7",        desc: "Hỏi bài bất cứ lúc nào, AI trả lời ngay" },
+          { title: "Hỏi bài không giới hạn",  desc: "Trợ giảng người thật phản hồi trong ngày, AI hỗ trợ ngoài giờ" },
         ].map(g => (
           <div key={g.title}>
             <div className="text-sm font-bold mb-1" style={{ color: "#1a1a1a" }}>{g.title}</div>

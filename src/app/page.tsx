@@ -9,6 +9,8 @@ import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from
 import SalesBotWidget from "@/components/SalesBotWidget";
 import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -62,8 +64,23 @@ const categoryTheme: Record<string, { bg: string; strip: string; stripText: stri
   "TSA Bách Khoa":   { bg: "linear-gradient(135deg,#C2410C 0%,#EA580C 60%,#FB923C 100%)", strip: "#FDE047", stripText: "#1E2938" },
 };
 
+// ─── BOOKMARK ICON ────────────────────────────────────────────────────────────
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+    </svg>
+  );
+}
+
 // ─── COURSE CARD (Notion flat style) ─────────────────────────────────────────
-function CourseCard({ course }: { course: HomeCourse }) {
+function CourseCard({ course, isFavorited, onToggleFavorite }: {
+  course: HomeCourse;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
+}) {
   const router = useRouter();
   const discount = course.originalPrice > 0 && course.originalPrice > course.price
     ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
@@ -138,7 +155,7 @@ function CourseCard({ course }: { course: HomeCourse }) {
           ))}
         </div>
 
-        <div className="flex items-end justify-between mb-3">
+        <div className="flex items-start justify-between mb-3">
           <div>
             <div className="text-base font-bold" style={{ color: "#0068FF" }}>
               {course.price.toLocaleString("vi-VN")} đ
@@ -147,11 +164,25 @@ function CourseCard({ course }: { course: HomeCourse }) {
               {course.originalPrice.toLocaleString("vi-VN")} đ
             </div>
           </div>
-          {course.tag && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--tint-peach)", color: "#9a3412" }}>
-              {course.tag}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            {course.tag && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--tint-peach)", color: "#9a3412" }}>
+                {course.tag}
+              </span>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+              title={isFavorited ? "Bỏ lưu" : "Lưu khóa học"}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              style={{
+                background: isFavorited ? "#0068FF" : "#f6f5f4",
+                border: `1px solid ${isFavorited ? "#0068FF" : "#e5e3df"}`,
+                color: isFavorited ? "white" : "#787671",
+              }}
+            >
+              <BookmarkIcon filled={isFavorited} />
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
@@ -175,6 +206,13 @@ function CourseCard({ course }: { course: HomeCourse }) {
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const { data: apiCourses, loading: coursesLoading } = useCourses();
+  const { user } = useAuth();
+  const { favoriteIds, toggleFavorite } = useFavorites();
+
+  function handleToggle(slug: string) {
+    if (!user) { window.location.href = "/dang-nhap"; return; }
+    toggleFavorite(slug);
+  }
 
   const courses: HomeCourse[] = useMemo(() => apiCourses.map(c => ({
     slug:          c.id,
@@ -354,7 +392,12 @@ export default function HomePage() {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {filtered.map((course) => (
-                      <CourseCard key={course.slug} course={course} />
+                      <CourseCard
+                        key={course.slug}
+                        course={course}
+                        isFavorited={favoriteIds.has(course.slug)}
+                        onToggleFavorite={() => handleToggle(course.slug)}
+                      />
                     ))}
                   </div>
                   {filtered.length === 0 && (
