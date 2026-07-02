@@ -249,7 +249,7 @@ function KhoaHocContent() {
           Chọn <span style={{ color: "#0068FF" }}>lộ trình</span> phù hợp với bạn
         </h1>
         <p className="text-sm max-w-xl mx-auto" style={{ color: "#787671" }}>
-          Mỗi khóa học được thiết kế sát đề thi thực tế. Mua 1 lần, học trọn đời.
+          Mỗi khóa học được thiết kế sát đề thi thực tế.
         </p>
       </div>
 
