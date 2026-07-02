@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import PopupDeviceLimit from "@/components/PopupDeviceLimit";
 import Cropper from "react-easy-crop";
@@ -90,6 +90,87 @@ function InputField({ label, value, onChange, type = "text", placeholder }:
   );
 }
 
+interface UserStats {
+  gpa: number | null;
+  streak: number;
+  rank: number | null;
+  totalStudents: number;
+  exp: number;
+}
+
+// ─── GPA Sparkline ────────────────────────────────────────────────────────────
+function ScoreSparkline({ results }: { results: ExamResultItem[] }) {
+  if (results.length < 2) return null;
+  const scores = results.map(r => r.score / r.totalPoints * 10);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const range = max - min || 1;
+  const W = 200; const H = 48; const PAD = 4;
+  const pts = scores.map((s, i) => {
+    const x = PAD + (i / (scores.length - 1)) * (W - PAD * 2);
+    const y = H - PAD - ((s - min) / range) * (H - PAD * 2);
+    return `${x},${y}`;
+  });
+  const last = pts[pts.length - 1].split(",");
+  return (
+    <div className="mt-3 rounded-xl p-3" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+      <p className="text-xs font-semibold mb-2" style={{ color: "#9CA3AF" }}>Xu hướng điểm số</p>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ height: H }}>
+        <polyline points={pts.join(" ")} fill="none" stroke="#0068FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={last[0]} cy={last[1]} r="3.5" fill="#0068FF" />
+      </svg>
+      <div className="flex justify-between mt-1">
+        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>{results[0].exam?.title?.slice(0, 18) ?? "Đề 1"}</span>
+        <span className="text-[10px] font-bold" style={{ color: "#0068FF" }}>
+          Mới nhất: {scores[scores.length - 1].toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Streak Calendar ─────────────────────────────────────────────────────────
+function StreakCalendar({ counts }: { counts: Record<string, number> }) {
+  const days = useMemo(() => {
+    const arr: { date: string; count: number }[] = [];
+    const today = new Date();
+    for (let i = 59; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      arr.push({ date: key, count: counts[key] ?? 0 });
+    }
+    return arr;
+  }, [counts]);
+
+  function cellColor(count: number) {
+    if (count === 0) return "#e5e3df";
+    if (count === 1) return "#bfdbfe";
+    if (count <= 3) return "#60a5fa";
+    return "#0068FF";
+  }
+
+  return (
+    <div className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <p className="text-sm font-bold mb-3" style={{ color: "#37352f" }}>Lịch học 60 ngày</p>
+      <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(12, 1fr)" }}>
+        {days.map(d => (
+          <div key={d.date} title={`${d.date}: ${d.count} bài`}
+            className="aspect-square rounded-sm"
+            style={{ background: cellColor(d.count) }} />
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mt-2 justify-end">
+        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>Ít</span>
+        {["#e5e3df","#bfdbfe","#60a5fa","#0068FF"].map(c => (
+          <div key={c} className="w-3 h-3 rounded-sm" style={{ background: c }} />
+        ))}
+        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>Nhiều</span>
+      </div>
+    </div>
+  );
+}
+
 interface ProfileData {
   studentId: number | null;
   name: string;
@@ -113,6 +194,8 @@ export default function HoSoPage() {
   const [examResults,       setExamResults]       = useState<ExamResultItem[]>([]);
   const [earnedBadgeIds,    setEarnedBadgeIds]    = useState<Set<string>>(new Set());
   const [kickedDevices,     setKickedDevices]     = useState<Set<number>>(new Set());
+  const [userStats,         setUserStats]         = useState<UserStats | null>(null);
+  const [activityCounts,    setActivityCounts]    = useState<Record<string, number>>({});
 
   // ── Avatar ──
   const [avatarSrc,    setAvatarSrc]    = useState<string | null>(null);
@@ -176,6 +259,14 @@ export default function HoSoPage() {
     fetch("/api/users/me/avatar")
       .then(r => r.ok ? r.json() : {})
       .then((d: { avatarBase64?: string | null }) => { if (d.avatarBase64) setAvatarSrc(d.avatarBase64); })
+      .catch(() => {});
+    fetch("/api/users/me/stats")
+      .then(r => r.ok ? r.json() : null)
+      .then((d: UserStats | null) => { if (d) setUserStats(d); })
+      .catch(() => {});
+    fetch("/api/users/me/activity")
+      .then(r => r.ok ? r.json() : { counts: {} })
+      .then((d: { counts: Record<string, number> }) => setActivityCounts(d.counts))
       .catch(() => {});
   }, []);
 
@@ -543,6 +634,7 @@ export default function HoSoPage() {
                 ))}
               </div>
             )}
+            <ScoreSparkline results={examResults} />
           </div>
 
           {/* ── Khóa học ── */}
@@ -558,13 +650,33 @@ export default function HoSoPage() {
         {/* ── Right column ── */}
         <div className="space-y-5">
 
-          {/* ── Stats (mock) ── */}
+          {/* ── Stats (real) ── */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "GPA tháng này", value: "8.4",     color: "#b45309", bg: "#fef3c7", border: "#fde68a", sub: "Tăng 0.3 ↑" },
-              { label: "Rank",          value: "#47",      color: "#0068FF", bg: "#dbeafe", border: "#93c5fd", sub: "/ 312 HV"   },
-              { label: "Streak",        value: "12 ngày",  color: "#dc2626", bg: "#fee2e2", border: "#fca5a5", sub: "liên tiếp"  },
-              { label: "EXP tổng",      value: "1,240",    color: "#0891b2", bg: "#e0f2fe", border: "#7dd3fc", sub: "điểm"      },
+              {
+                label: "GPA trung bình",
+                value: userStats?.gpa != null ? userStats.gpa.toFixed(1) : "—",
+                color: "#b45309", bg: "#fef3c7", border: "#fde68a",
+                sub: "/ 10 điểm",
+              },
+              {
+                label: "Xếp hạng",
+                value: userStats?.rank != null ? `#${userStats.rank}` : "—",
+                color: "#0068FF", bg: "#dbeafe", border: "#93c5fd",
+                sub: userStats?.totalStudents ? `/ ${userStats.totalStudents} HV` : "toàn trường",
+              },
+              {
+                label: "Streak",
+                value: userStats != null ? `${userStats.streak} ngày` : "—",
+                color: "#dc2626", bg: "#fee2e2", border: "#fca5a5",
+                sub: "liên tiếp",
+              },
+              {
+                label: "EXP tổng",
+                value: userStats != null ? userStats.exp.toLocaleString("vi-VN") : "—",
+                color: "#0891b2", bg: "#e0f2fe", border: "#7dd3fc",
+                sub: "điểm kinh nghiệm",
+              },
             ].map((s) => (
               <div key={s.label} className="rounded-xl p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
                 <div className="text-lg font-bold mb-0.5" style={{ color: s.color }}>{s.value}</div>
@@ -592,6 +704,9 @@ export default function HoSoPage() {
               })}
             </div>
           </div>
+
+          {/* ── Streak Calendar ── */}
+          <StreakCalendar counts={activityCounts} />
 
           {/* ── Thiết bị (mock) ── */}
           <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
