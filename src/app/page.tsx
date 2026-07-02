@@ -205,6 +205,7 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: apiCourses, loading: coursesLoading } = useCourses();
   const { user } = useAuth();
   const { favoriteIds, toggleFavorite } = useFavorites();
@@ -231,9 +232,16 @@ export default function HomePage() {
     tagColor:      c.tagColor ?? "#FF2157",
   })), [apiCourses]);
 
-  const filtered = activeCategory === "all"
-    ? courses
-    : courses.filter((c) => c.category === activeCategory);
+  const filtered = useMemo(() => {
+    let result = activeCategory === "all" ? courses : courses.filter(c => c.category === activeCategory);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) result = result.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.teacher.toLowerCase().includes(q) ||
+      c.category.toLowerCase().includes(q)
+    );
+    return result;
+  }, [courses, activeCategory, searchQuery]);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
@@ -375,6 +383,28 @@ export default function HomePage() {
 
             {/* Course grid */}
             <div className="flex-1 min-w-0">
+              {/* Search input */}
+              <div className="relative mb-5">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#a4a097" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Tìm khóa học, giáo viên..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-shadow focus:shadow-[0_0_0_2px_#0068FF33]"
+                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1a1a1a" }}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full"
+                    style={{ background: "#c8c4be", color: "#fff" }}>
+                    <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                  </button>
+                )}
+              </div>
+
               {coursesLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
@@ -405,8 +435,12 @@ export default function HomePage() {
                       className="text-center py-16 rounded-xl"
                       style={{ border: "1px solid #e5e3df", background: "#f6f5f4" }}
                     >
-                      <p className="text-sm font-medium mb-2" style={{ color: "#a4a097" }}>Không có khóa học</p>
-                      <button onClick={() => setActiveCategory("all")} className="text-sm font-semibold" style={{ color: "#0068FF" }}>
+                      <p className="text-sm font-medium mb-2" style={{ color: "#a4a097" }}>
+                        {searchQuery ? `Không tìm thấy "${searchQuery}"` : "Không có khóa học"}
+                      </p>
+                      <button
+                        onClick={() => { setActiveCategory("all"); setSearchQuery(""); }}
+                        className="text-sm font-semibold" style={{ color: "#0068FF" }}>
                         Xem tất cả
                       </button>
                     </div>
