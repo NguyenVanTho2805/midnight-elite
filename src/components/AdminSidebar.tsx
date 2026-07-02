@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChartBar, BookOpen, ClipboardList, Badge,
-  UsersGroup, Wallet, Edit, FileText, ChatCircle, Robot,
+  UsersGroup, Wallet, Edit, FileText, ChatCircle, Robot, Star,
 } from "griddy-icons";
 import { useAuth, hasPermission, getAdminRoleLabel, PERMISSIONS, type Permission } from "@/contexts/AuthContext";
 import type { FC } from "react";
@@ -40,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Danh sách đề thi", href: "/admin/thi-thu" },
     ],
   },
+  { label: "Đánh giá khóa học", href: "/admin/danh-gia",      Icon: Star,       permission: PERMISSIONS.MANAGE_COURSES   },
   { label: "Bảng vinh danh",  href: "/admin/vinh-danh",       Icon: Badge,      permission: PERMISSIONS.MANAGE_HONOR    },
   { label: "Tin tức & Blog",  href: "/admin/tin-tuc",         Icon: FileText,    permission: PERMISSIONS.MANAGE_NEWS      },
   {

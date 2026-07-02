@@ -236,6 +236,18 @@ export type CourseCategory = typeof COURSE_CATEGORIES[number];
 /** Admin filter — không có "Tất cả" */
 export const ADMIN_CATEGORIES = COURSE_CATEGORIES.slice(1) as readonly string[];
 
+/** Hashtag mô tả nhanh cho từng khóa học — dùng trên card và trang chi tiết */
+export const COURSE_HASHTAGS: Record<string, string[]> = {
+  "hsa-tron-goi":  ["Trọn gói", "Video", "Live"],
+  "toan-12":       ["Toán 12", "Video", "Live"],
+  "combo-8-mon":   ["8 môn", "Combo", "Video", "Live"],
+  "hsa-toan":      ["Toán", "Video", "Chuyên sâu"],
+  "hsa-van":       ["Ngữ văn", "Video", "Live"],
+  "hcm-tron-goi":  ["Trọn gói", "Video", "Live"],
+  "tsa-bach-khoa": ["TSA", "Video", "Live"],
+  "bca-2k8":       ["BCA", "Video", "2K8"],
+};
+
 /** Gradient màu theo danh mục — dùng chung admin/guest/student */
 export const CATEGORY_GRADIENT: Record<string, string> = {
   "ĐGNL HSA":        "linear-gradient(135deg,#0042AA,#0068FF,#38BDF8)",

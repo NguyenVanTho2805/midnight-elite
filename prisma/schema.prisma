@@ -37,6 +37,7 @@ model Course {
   sections    Section[]
   enrollments Enrollment[]
   favorites   CourseFavorite[]
+  reviews     CourseReview[]
 
   @@map("courses")
 }
@@ -51,6 +52,23 @@ model CourseFavorite {
 
   @@id([userId, courseId])
   @@map("course_favorites")
+}
+
+model CourseReview {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  rating    Int      // 1–5
+  comment   String   @db.Text
+  status    String   @default("pending") // "pending" | "approved" | "rejected"
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@map("course_reviews")
 }
 
 // ─── CURRICULUM ───────────────────────────────────────────────────────────────
@@ -154,6 +172,7 @@ model User {
   lessonProgress      LessonProgress[]
   lessonNotes         LessonNote[]
   courseFavorites     CourseFavorite[]
+  courseReviews       CourseReview[]
   notifications       Notification[]
   examResults         ExamResult[]
   badges              UserBadge[]

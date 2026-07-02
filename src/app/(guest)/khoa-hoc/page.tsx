@@ -3,7 +3,7 @@
 import { useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
+import { COURSE_CATEGORIES, CATEGORY_GRADIENT, COURSE_HASHTAGS } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAuth } from "@/contexts/AuthContext";
@@ -122,7 +122,7 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
       <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
         <h3 className="text-sm font-bold mb-2 leading-snug" style={{ color: "#1a1a1a" }}>{course.title}</h3>
 
-        <div className="flex gap-1.5 mb-3">
+        <div className="flex gap-1.5 mb-2">
           {course.types.map((t) => (
             <span key={t}
               className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold"
@@ -133,6 +133,15 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
             </span>
           ))}
         </div>
+        {(COURSE_HASHTAGS[course.slug] ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 3).map(tag => (
+              <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-start justify-between mb-3">
           <div>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgress } from "@/hooks/useProgress";
 import TeacherTag from "@/components/TeacherTag";
+import { COURSE_HASHTAGS } from "@/lib/courseData";
 
 interface DBLesson { id: string; title: string; duration?: string | null; isFree: boolean }
 interface DBChapter { id: string; title: string; lessons: DBLesson[] }
@@ -15,6 +16,135 @@ interface DBCourse {
   lessons: number; hours: number; price: number; originalPrice?: number | null;
   introVideo?: string | null;
   sections: DBSection[];
+}
+
+interface Review {
+  id: string; rating: number; comment: string; createdAt: string;
+  user: { name: string };
+}
+
+function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      {[1,2,3,4,5].map(s => (
+        <button key={s} type={onChange ? "button" : undefined}
+          onClick={() => onChange?.(s)}
+          className={onChange ? "transition-transform hover:scale-110" : ""}
+          style={{ cursor: onChange ? "pointer" : "default", background: "none", border: "none", padding: 0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={s <= value ? "#FE9900" : "none"} stroke={s <= value ? "#FE9900" : "#D1D5DB"} strokeWidth="1.5">
+            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReviewsSection({ courseId }: { courseId: string }) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [avg, setAvg] = useState<number | null>(null);
+  const [total, setTotal] = useState(0);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    fetch(`/api/courses/${courseId}/reviews`)
+      .then(r => r.json())
+      .then(d => { setReviews(d.reviews ?? []); setAvg(d.avg); setTotal(d.total ?? 0); })
+      .catch(() => {});
+  }, [courseId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) { router.push("/dang-nhap"); return; }
+    setError(""); setSubmitting(true);
+    const res = await fetch(`/api/courses/${courseId}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating, comment }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok) { setError(data.error ?? "Có lỗi xảy ra"); return; }
+    setSubmitted(true);
+    setComment(""); setRating(5);
+  }
+
+  return (
+    <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Đánh giá khóa học</h2>
+        {avg !== null && (
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-black" style={{ color: "#FE9900" }}>{avg.toFixed(1)}</span>
+            <div>
+              <StarRating value={Math.round(avg)} />
+              <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{total} đánh giá</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Submit form */}
+      {!submitted ? (
+        <form onSubmit={handleSubmit} className="mb-6 p-4 rounded-xl" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+          <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>Chia sẻ trải nghiệm của bạn</p>
+          <div className="flex items-center gap-3 mb-3">
+            <StarRating value={rating} onChange={setRating} />
+            <span className="text-sm" style={{ color: "#6B7280" }}>{["", "Kém", "Dưới trung bình", "Trung bình", "Tốt", "Xuất sắc"][rating]}</span>
+          </div>
+          <textarea
+            value={comment} onChange={e => setComment(e.target.value)}
+            placeholder="Nhận xét về nội dung, giảng viên, tài liệu..."
+            rows={3}
+            className="w-full text-sm rounded-lg px-3 py-2 resize-none outline-none"
+            style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1E2938" }}
+          />
+          {error && <p className="text-xs mt-1" style={{ color: "#FF2157" }}>{error}</p>}
+          <button type="submit" disabled={submitting || !comment.trim()}
+            className="mt-3 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50"
+            style={{ background: "#0068FF" }}>
+            {submitting ? "Đang gửi..." : "Gửi đánh giá"}
+          </button>
+        </form>
+      ) : (
+        <div className="mb-6 p-4 rounded-xl text-sm font-semibold text-center" style={{ background: "#dcfce7", color: "#166534" }}>
+          Cảm ơn bạn! Đánh giá đang chờ duyệt và sẽ hiển thị sau khi admin xét duyệt.
+        </div>
+      )}
+
+      {/* Reviews list */}
+      {reviews.length === 0 ? (
+        <p className="text-sm text-center py-4" style={{ color: "#9CA3AF" }}>Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
+      ) : (
+        <div className="space-y-4">
+          {reviews.map(r => (
+            <div key={r.id} className="pb-4" style={{ borderBottom: "1px solid #e5e3df" }}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#0068FF,#2680FF)" }}>
+                  {r.user.name[0]}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold leading-none" style={{ color: "#1E2938" }}>{r.user.name}</p>
+                  <p className="text-xs" style={{ color: "#9CA3AF" }}>{new Date(r.createdAt).toLocaleDateString("vi-VN")}</p>
+                </div>
+                <div className="ml-auto"><StarRating value={r.rating} /></div>
+              </div>
+              <p className="text-sm leading-relaxed" style={{ color: "#4B5563" }}>{r.comment}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -96,11 +226,16 @@ export default function KhoaHocDetailPage() {
 
             {/* Course info */}
             <div className="p-6">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium"
                   style={{ background: "#dbeafe", color: "#0068FF" }}>
                   {course.category}
                 </span>
+                {(COURSE_HASHTAGS[course.id] ?? []).map(tag => (
+                  <span key={tag} className="text-xs px-2 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
+                    #{tag}
+                  </span>
+                ))}
                 <span className="text-xs" style={{ color: "#9CA3AF" }}>Cập nhật: 5/2026</span>
               </div>
               <h1 className="text-2xl font-extrabold mb-3" style={{ color: "#1E2938" }}>{course.name}</h1>
@@ -233,6 +368,8 @@ export default function KhoaHocDetailPage() {
               </p>
             </div>
           </div>
+          {/* Reviews */}
+          <ReviewsSection courseId={course.id} />
         </div>
 
         {/* Right — Sticky purchase card */}
