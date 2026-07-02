@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { TEACHERS } from "@/lib/teacherData";
 import { COURSES } from "@/lib/courseData";
 import { Trophy } from "griddy-icons";
@@ -152,10 +150,8 @@ function TopStudentsSection() {
 
 export default function GiangVienPage() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
-      <Navbar />
-      <main className="flex-1">
-        {/* Hero */}
+    <div>
+      {/* Hero */}
         <section style={{ background: "var(--brand-navy)" }}>
           <div className="max-w-7xl mx-auto px-6 py-14 text-center">
             <p className="text-xs font-semibold uppercase tracking-widest mb-3"
@@ -190,8 +186,6 @@ export default function GiangVienPage() {
             <a href="tel:0384409051" className="notion-btn-secondary text-sm">Gọi 0384 409 051</a>
           </div>
         </section>
-      </main>
-      <Footer />
     </div>
   );
 }
