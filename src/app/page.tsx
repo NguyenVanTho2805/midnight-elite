@@ -32,9 +32,9 @@ const whyItems = [
   { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với giáo viên thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức.", tint: "var(--tint-yellow-bold)", iconColor: "#b45309" },
   { Icon: ChartBar,    title: "Theo dõi tiến độ realtime", desc: "Dashboard cá nhân hiển thị tiến độ từng môn, GPA, streak và thứ hạng toàn server.", tint: "var(--tint-sky)", iconColor: "#1D4ED8" },
   { Icon: BookOpen,    title: "Kho tài liệu 10,000+ đề",  desc: "Đề thi thử từ năm 2015 đến nay, kèm giải thích chi tiết từng câu.", tint: "var(--tint-mint)", iconColor: "#166534" },
-  { Icon: Trophy,      title: "Hệ thống gamification",     desc: "EXP, streak, badge, bảng xếp hạng. Học như chơi game nhưng kết quả thật.", tint: "var(--tint-lavender)", iconColor: "#6D28D9" },
-  { Icon: Star,        title: "Mentor 1-1 hỗ trợ",         desc: "Mỗi học viên được phân công mentor riêng để hỏi đáp và định hướng lộ trình.", tint: "var(--tint-peach)", iconColor: "#c2410c" },
-  { Icon: CheckCircle, title: "Hỗ trợ học tập 7 ngày",     desc: "Đặt câu hỏi trong cộng đồng, AI trả lời ngay, mentor hỗ trợ theo lịch cố định.", tint: "var(--tint-cream)", iconColor: "#0068FF" },
+  { Icon: Trophy,      title: "Điểm thưởng & bảng xếp hạng", desc: "Tích điểm, giữ chuỗi ngày học, leo hạng mỗi tuần. Học có mục tiêu, tiến bộ rõ ràng.", tint: "var(--tint-lavender)", iconColor: "#6D28D9" },
+  { Icon: Star,        title: "Trợ giảng riêng 1-1",         desc: "Mỗi học viên được phân công trợ giảng người thật để hỏi bài và định hướng lộ trình.", tint: "var(--tint-peach)", iconColor: "#c2410c" },
+  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",       desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày. Ngoài giờ có AI hỗ trợ thêm.", tint: "var(--tint-cream)", iconColor: "#0068FF" },
 ];
 
 
@@ -51,7 +51,7 @@ const HERO_CATEGORIES = [
   { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội",  tint: "var(--tint-sky)",     text: "#1D4ED8" },
   { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",     tint: "var(--tint-peach)",   text: "#c2410c" },
   { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",  tint: "var(--tint-mint)",    text: "#166534" },
-  { label: "BCA",             desc: "Bách Chuyên Anh",      tint: "var(--tint-lavender)", text: "#6D28D9" },
+  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-lavender)", text: "#6D28D9" },
 ];
 
 // ─── CATEGORY THEME ───────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export default function HomePage() {
               <div>
                 <div className="inline-block mb-5 text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                  Midnight Elite · Luyện thi ĐGNL &amp; THPT
+                  Midnight Elite · Luyện thi ĐGNL, THPT &amp; BCA
                 </div>
                 <h1
                   className="font-bold text-white mb-5 leading-tight"
@@ -222,7 +222,7 @@ export default function HomePage() {
                   <span style={{ color: "#93C5FD" }}>học trọn đời</span>
                 </h1>
                 <p className="text-base mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "38ch" }}>
-                  Học live mỗi tối. Thi thử sát đề. Theo dõi tiến độ từng bài. Không phải video cũ.
+                  Thầy cô dạy live mỗi tối — không phải video cũ. Thi thử đề thật, theo dõi tiến độ từng ngày cùng lớp.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
@@ -241,6 +241,10 @@ export default function HomePage() {
               </div>
 
               {/* Right — category tiles (Notion tint style) */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  Đang mở luyện thi
+                </p>
               <div className="grid grid-cols-2 gap-3">
                 {HERO_CATEGORIES.map(c => (
                   <Link
@@ -254,6 +258,7 @@ export default function HomePage() {
                   </Link>
                 ))}
               </div>
+              </div>
 
             </div>
           </div>
@@ -265,7 +270,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
               Khóa học nổi bật
             </h2>
-            <p className="text-sm" style={{ color: "#787671" }}>Đăng ký 1 lần, học trọn đời không giới hạn.</p>
+            <p className="text-sm" style={{ color: "#787671" }}>Chọn kỳ thi, bắt đầu học ngay — không cần chờ khai giảng.</p>
           </div>
 
           {/* Mobile pills */}
@@ -381,9 +386,9 @@ export default function HomePage() {
         {/* ── WHY — Notion pastel tint cards ──────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold text-center mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Tại sao chọn Midnight Elite?
+            Học ở đây thì được gì?
           </h2>
-          <p className="text-sm text-center mb-10" style={{ color: "#787671" }}>Những điểm tạo nên sự khác biệt thật sự</p>
+          <p className="text-sm text-center mb-10" style={{ color: "#787671" }}>Những thứ học viên thực tế dùng mỗi ngày</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {whyItems.map(({ Icon, title, desc, tint, iconColor }) => (
               <div
