@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -11,6 +11,26 @@ import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useAuth } from "@/contexts/AuthContext";
+
+// ─── COUNTDOWN ────────────────────────────────────────────────────────────────
+const NEXT_EXAM = { label: "ĐGNL HSA vòng 2", date: new Date("2026-11-01T08:00:00") };
+
+function useCountdown(target: Date) {
+  const calc = () => Math.max(0, target.getTime() - Date.now());
+  const [ms, setMs] = useState(calc);
+  useEffect(() => {
+    const id = setInterval(() => setMs(calc()), 1000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return {
+    days:    Math.floor(ms / 86_400_000),
+    hours:   Math.floor((ms % 86_400_000) / 3_600_000),
+    minutes: Math.floor((ms % 3_600_000) / 60_000),
+    seconds: Math.floor((ms % 60_000) / 1_000),
+    expired: ms === 0,
+  };
+}
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -63,6 +83,102 @@ const categoryTheme: Record<string, { bg: string; strip: string; stripText: stri
   "ĐGNL HCM":        { bg: "linear-gradient(135deg,#6D28D9 0%,#8B5CF6 60%,#C4B5FD 100%)", strip: "#FDE047", stripText: "#1E2938" },
   "TSA Bách Khoa":   { bg: "linear-gradient(135deg,#C2410C 0%,#EA580C 60%,#FB923C 100%)", strip: "#FDE047", stripText: "#1E2938" },
 };
+
+// ─── STATS STRIP ──────────────────────────────────────────────────────────────
+const STATS = [
+  { value: "1,200+", label: "Học viên đang học" },
+  { value: "10,000+", label: "Đề thi thử" },
+  { value: "6",      label: "Giáo viên & trợ giảng" },
+];
+
+function StatsStrip() {
+  const cd = useCountdown(NEXT_EXAM.date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <section style={{ background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+      <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center gap-6 justify-between">
+        {/* Stats */}
+        <div className="flex items-center gap-8 flex-wrap">
+          {STATS.map(s => (
+            <div key={s.label} className="text-center">
+              <p className="text-lg font-black leading-none" style={{ color: "#0068FF" }}>{s.value}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#787671" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+        {/* Countdown */}
+        {!cd.expired && (
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="text-xs font-semibold" style={{ color: "#787671" }}>Kỳ thi tiếp theo</p>
+              <p className="text-xs font-bold" style={{ color: "#1a1a1a" }}>{NEXT_EXAM.label}</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {[{ v: cd.days, u: "ngày" }, { v: cd.hours, u: "giờ" }, { v: cd.minutes, u: "phút" }, { v: cd.seconds, u: "giây" }].map(({ v, u }) => (
+                <div key={u} className="flex flex-col items-center px-2 py-1 rounded-lg min-w-[36px]"
+                  style={{ background: "var(--brand-navy)" }}>
+                  <span className="text-sm font-black text-white leading-none">{pad(v)}</span>
+                  <span className="text-[9px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>{u}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── KHÓA HỌC MỚI ─────────────────────────────────────────────────────────────
+function parseDateVN(s: string): number {
+  const [d, m, y] = s.split("/");
+  return new Date(`${y}-${m}-${d}`).getTime();
+}
+
+function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
+  const newest = useMemo(() =>
+    [...courses].sort((a, b) => parseDateVN(b.openDate) - parseDateVN(a.openDate)).slice(0, 4),
+    [courses]
+  );
+  if (newest.length === 0) return null;
+  return (
+    <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+            Vừa mở đăng ký
+          </h2>
+          <p className="text-sm mt-0.5" style={{ color: "#787671" }}>Khóa học mới nhất — đăng ký sớm để có giá tốt nhất</p>
+        </div>
+        <Link href="/khoa-hoc" className="text-sm font-semibold flex-shrink-0" style={{ color: "#0068FF" }}>
+          Xem tất cả →
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {newest.map(c => {
+          const theme = categoryTheme[c.category] ?? categoryTheme["ĐGNL HSA"];
+          return (
+            <Link key={c.slug} href={`/khoa-hoc/${c.slug}`}
+              className="flex items-center gap-3 p-3 rounded-xl transition-all hover:shadow-sm hover:-translate-y-0.5"
+              style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+              <div className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-black"
+                style={{ background: theme.bg }}>
+                ME
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold leading-snug truncate" style={{ color: "#1a1a1a" }}>{c.title}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#787671" }}>Khai giảng {c.openDate}</p>
+                <p className="text-xs font-semibold mt-0.5" style={{ color: "#0068FF" }}>
+                  {c.price.toLocaleString("vi-VN")} đ
+                </p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 // ─── BOOKMARK ICON ────────────────────────────────────────────────────────────
 function BookmarkIcon({ filled }: { filled: boolean }) {
@@ -310,6 +426,9 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* ── STATS + COUNTDOWN ────────────────────────────────────────────── */}
+        <StatsStrip />
+
         {/* ── COURSES WITH SIDEBAR ──────────────────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">
           <div className="mb-8">
@@ -459,6 +578,9 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ── KHÓA HỌC MỚI ─────────────────────────────────────────────────── */}
+        <NewCoursesSection courses={courses} />
 
         {/* ── WHY — Notion pastel tint cards ──────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-5xl mx-auto">
