@@ -50,7 +50,8 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
 }) {
   const router = useRouter();
   const [showBuyPopup, setShowBuyPopup] = useState(false);
-  const discount = Math.round((1 - course.price / course.originalPrice) * 100);
+  const discount = course.originalPrice > course.price
+    ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
   const theme = categoryTheme[course.category] ?? categoryTheme["ĐGNL HSA"];
 
   return (
@@ -84,10 +85,12 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
             <span className="text-white font-black text-sm leading-none">ME</span>
             <span className="text-white text-xs opacity-80 leading-none font-semibold">Midnight Elite</span>
           </div>
-          <div className="px-2.5 py-1 rounded-xl text-xs font-black text-white"
-            style={{ background: course.tagColor, boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
-            -{discount}%
-          </div>
+          {discount > 0 && (
+            <div className="px-2.5 py-1 rounded-xl text-xs font-black text-white"
+              style={{ background: course.tagColor ?? "#FF2157", boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+              -{discount}%
+            </div>
+          )}
         </div>
 
         <div className="relative z-10 px-4 pt-2 pb-1">
@@ -120,73 +123,62 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
 
       {/* ── Card body ── */}
       <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-        <h3 className="text-sm font-bold mb-2 leading-snug" style={{ color: "#1a1a1a" }}>{course.title}</h3>
+        <h3 className="text-sm font-bold mb-2.5 leading-snug" style={{ color: "#1a1a1a" }}>{course.title}</h3>
 
-        <div className="flex gap-1.5 mb-2">
+        {/* Types + hashtags in one row */}
+        <div className="flex flex-wrap items-center gap-1 mb-3">
           {course.types.map((t) => (
             <span key={t}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold"
+              className="px-2 py-0.5 rounded text-[11px] font-semibold"
               style={t === "Live"
                 ? { background: "#FEE2E2", color: "#DC2626" }
                 : { background: "#DBEAFE", color: "#1D4ED8" }}>
-              {t === "Live" ? "Live" : "Video"}
+              {t}
+            </span>
+          ))}
+          {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 2).map(tag => (
+            <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
+              #{tag}
             </span>
           ))}
         </div>
-        {(COURSE_HASHTAGS[course.slug] ?? []).length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 3).map(tag => (
-              <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
 
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <div className="text-base font-bold" style={{ color: "#0068FF" }}>
-              {course.price.toLocaleString("vi-VN")} đ
-            </div>
-            <div className="text-xs line-through" style={{ color: "#9CA3AF" }}>
+        {/* Price row */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-base font-bold" style={{ color: "#0068FF" }}>
+            {course.price.toLocaleString("vi-VN")} đ
+          </span>
+          {course.originalPrice > course.price && (
+            <span className="text-xs line-through" style={{ color: "#bbb8b1" }}>
               {course.originalPrice.toLocaleString("vi-VN")} đ
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {course.tag && (
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: course.tagColor + "22", color: course.tagColor }}>
-                {course.tag}
-              </span>
-            )}
-            <button
-              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-              title={isFavorited ? "Bỏ lưu" : "Lưu khóa học"}
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-              style={{
-                background: isFavorited ? "#0068FF" : "#f6f5f4",
-                border: `1px solid ${isFavorited ? "#0068FF" : "#e5e3df"}`,
-                color: isFavorited ? "white" : "#787671",
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24"
-                fill={isFavorited ? "currentColor" : "none"}
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
-              </svg>
-            </button>
-          </div>
+            </span>
+          )}
+          {course.tag && (
+            <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{ background: (course.tagColor ?? "#FF2157") + "22", color: course.tagColor ?? "#FF2157" }}>
+              {course.tag}
+            </span>
+          )}
         </div>
 
+        {/* Action buttons */}
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
-          <Link href={`/khoa-hoc/${course.slug}`}
-            className="flex-1 py-2 rounded-lg text-xs font-medium text-center"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
-            Xem chi tiết
-          </Link>
+          <button
+            onClick={() => onToggleFavorite()}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
+            style={isFavorited
+              ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
+              : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24"
+              fill={isFavorited ? "currentColor" : "none"}
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+            </svg>
+            {isFavorited ? "Đã lưu" : "Lưu Khóa Học"}
+          </button>
           <button onClick={() => setShowBuyPopup(true)}
-            className="flex-1 py-2 rounded-lg text-xs font-bold text-white text-center cursor-pointer"
-            style={{ background: "#0068FF", borderRadius: "8px" }}>
+            className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center cursor-pointer transition-all hover:brightness-105 active:scale-95"
+            style={{ background: "#0068FF" }}>
             Mua khóa học
           </button>
         </div>
