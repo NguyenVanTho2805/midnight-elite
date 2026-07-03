@@ -387,29 +387,6 @@ export default function KhoaHocDetailPage() {
             <p className="text-xs mt-4 text-center" style={{ color: "#9CA3AF" }}>... và nhiều bài học khác sau khi mua khóa học</p>
           </div>
 
-          {/* Thông tin lớp học */}
-          <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <h2 className="text-lg font-extrabold mb-5" style={{ color: "#1E2938" }}>Thông tin lớp học</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: "Hình thức học",      value: "Trực tuyến qua Google Meet" },
-                { label: "Bài tập & kiểm tra", value: "Nộp qua Azota, có chấm và sửa bài" },
-                { label: "Tài liệu & Record",  value: "Lưu trên Google Drive, gửi qua nhóm Zalo lớp" },
-                { label: "Khung giờ hỗ trợ",   value: "09:00 – 21:30 hằng ngày" },
-              ].map((row) => (
-                <div key={row.label} className="rounded-xl p-3" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-                  <p className="text-xs mb-1" style={{ color: "#9CA3AF" }}>{row.label}</p>
-                  <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{row.value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 rounded-xl p-4" style={{ background: "#dbeafe" }}>
-              <p className="text-sm font-bold mb-1" style={{ color: "#0068FF" }}>Cam kết đầu ra</p>
-              <p className="text-xs leading-relaxed" style={{ color: "#1E2938" }}>
-                Đạt 7.5 – 8.0/10 ở môn theo học nếu hoàn thành đầy đủ bài tập, bài kiểm tra và lộ trình ôn tập theo hướng dẫn của giảng viên.
-              </p>
-            </div>
-          </div>
           {/* Reviews */}
           <ReviewsSection courseId={course.id} />
         </div>
