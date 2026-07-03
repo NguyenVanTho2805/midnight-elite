@@ -107,8 +107,11 @@ export default function AdminSidebar() {
         {visibleItems.map(item => {
           const active     = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           const hasChildren = item.children && item.children.length > 0;
-          const childActive = hasChildren && item.children!.some(
-            ch => pathname === ch.href || pathname.startsWith(ch.href + "/")
+          const childActive = hasChildren && item.children!.some(ch =>
+            pathname === ch.href || (
+              pathname.startsWith(ch.href + "/") &&
+              !item.children!.some(s => s.href !== ch.href && pathname.startsWith(s.href))
+            )
           );
           const isExpanded = active || childActive;
 
@@ -134,7 +137,10 @@ export default function AdminSidebar() {
               {hasChildren && isExpanded && (
                 <div className="ml-3 mt-0.5 space-y-0.5 pl-3" style={{ borderLeft: "1px solid rgba(255,255,255,0.1)" }}>
                   {item.children!.map(ch => {
-                    const chActive = pathname === ch.href || pathname.startsWith(ch.href + "/");
+                    const chActive = pathname === ch.href || (
+                      pathname.startsWith(ch.href + "/") &&
+                      !item.children!.some(s => s.href !== ch.href && pathname.startsWith(s.href))
+                    );
                     return (
                       <Link key={ch.href} href={ch.href}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150"
