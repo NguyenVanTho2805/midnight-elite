@@ -127,9 +127,11 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
     ? Math.round((1 - course.price / course.originalPrice) * 100)
     : 0;
 
+  const router = useRouter();
   return (
-    <div className="rounded-xl overflow-hidden flex flex-col h-full"
-      style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+    <div className="rounded-xl overflow-hidden flex flex-col h-full cursor-pointer card-hover"
+      style={{ background: "#ffffff", border: "1px solid #e5e3df" }}
+      onClick={() => router.push(`/khoa-hoc/${course.id}`)}>
 
       {/* Thumbnail */}
       <div className="relative overflow-hidden" style={{ background: course.bg, minHeight: 148 }}>
@@ -197,7 +199,7 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
 
         <p className="text-xs mb-3" style={{ color:"#9CA3AF" }}>Khai giảng: {course.openDate}</p>
 
-        <div className="mt-auto">
+        <div className="mt-auto" onClick={e => e.stopPropagation()}>
           {isEnrolled ? (
             <button onClick={onLearn}
               className="w-full py-2.5 rounded-lg text-xs font-bold text-white"
