@@ -272,12 +272,12 @@ export default function KhoaHocDetailPage() {
               )}
               {course.sections.map((section) => (
                 <div key={section.id}>
-                  <p className="text-xs font-bold uppercase tracking-wide mb-2 px-1" style={{ color: "#9CA3AF" }}>{section.title}</p>
-                  <div className="space-y-3">
+                  <p className="text-base font-extrabold mb-3" style={{ color: "#1E2938" }}>{section.title}</p>
+                  <div className="space-y-3 pl-4">
                   {section.chapters.map((chap) => (
                 <div key={chap.id}>
-                  <h3 className="text-sm font-bold mb-2 px-1" style={{ color: "#1E2938" }}>{chap.title}</h3>
-                  <div className="space-y-2">
+                  <h3 className="text-sm font-bold mb-2" style={{ color: "#374151" }}>{chap.title}</h3>
+                  <div className="space-y-2 pl-4">
                     {chap.lessons.map((lesson) => {
                       const isCompleted = completedIds.has(lesson.id);
 
