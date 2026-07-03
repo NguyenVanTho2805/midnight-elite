@@ -169,7 +169,7 @@ function Drawer({ open, title, onClose, onSave, saving, children }: {
       <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
         style={{
           width: "min(480px, 100vw)",
-          transform: open ? "translateX(0)" : "translateX(110%)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",

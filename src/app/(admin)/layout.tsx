@@ -60,7 +60,7 @@ function AdminTopbar() {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard requiredRole="admin">
-      <div className="flex min-h-screen" style={{ background: "#F0F5FF" }}>
+      <div className="flex min-h-screen overflow-x-hidden" style={{ background: "#F0F5FF" }}>
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <AdminTopbar />
