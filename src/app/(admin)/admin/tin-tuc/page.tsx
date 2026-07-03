@@ -476,11 +476,10 @@ function PageInner() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
         style={{ height: "calc(100vh - 104px)" }}>
 
-        {/* Breadcrumb */}
-        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex-shrink-0">
-          <p className="text-sm text-gray-500">
-            Bảng điều khiển / <span className="font-medium text-gray-800">Tin tức & Blog</span>
-          </p>
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
+          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Tin tức & Blog</h1>
+          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Quản lý bài viết và tin tức</p>
         </div>
 
         {/* Filters */}
@@ -515,7 +514,7 @@ function PageInner() {
             </button>
             <button onClick={openCreate}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}>
               + Thêm bài viết
             </button>
           </div>

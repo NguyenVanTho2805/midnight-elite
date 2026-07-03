@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus } from "@/lib/examData";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
@@ -46,12 +47,13 @@ function autoCode(category: string, exams: ExamRow[]): string {
   return `${prefix}.${String(count + 1).padStart(2, "0")}`;
 }
 
-function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: {
+function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, showToast }: {
   open: boolean;
   exams: ExamRow[];
   categoryOptions: string[];
   onClose: () => void;
   onCreated: () => void;
+  showToast: (msg: string, ok?: boolean) => void;
 }) {
   const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
@@ -117,7 +119,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated }: 
       onCreated();
       onClose();
     } catch (e) {
-      alert("Lỗi tạo đề thi: " + (e instanceof Error ? e.message : "Unknown"));
+      showToast("Lỗi tạo đề thi: " + (e instanceof Error ? e.message : "Unknown"), false);
     } finally {
       setSaving(false);
     }
@@ -302,11 +304,12 @@ interface EditForm {
   active: boolean; activeGuest: boolean;
 }
 
-function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
+function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: {
   exam: ExamRow | null;
   categoryOptions: string[];
   onClose: () => void;
   onSaved: () => void;
+  showToast: (msg: string, ok?: boolean) => void;
 }) {
   const open = exam !== null;
   const [form, setForm]     = useState<EditForm | null>(null);
@@ -378,7 +381,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved }: {
       onSaved();
       onClose();
     } catch (e) {
-      alert("Lỗi lưu đề thi: " + (e instanceof Error ? e.message : "Unknown"));
+      showToast("Lỗi lưu đề thi: " + (e instanceof Error ? e.message : "Unknown"), false);
     } finally {
       setSaving(false);
     }
@@ -636,6 +639,7 @@ export default function ThiThuAdminPage() {
   // Derive categories from loaded exams (no hardcoded list)
   const examCategories = [...new Set(exams.map(e => e.category))].filter(Boolean).sort();
 
+  const { toast, showToast } = useAdminToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ExamRow | null>(null);
   const [search, setSearch]         = useState("");
@@ -666,24 +670,24 @@ export default function ThiThuAdminPage() {
       status: computeExamStatus(exam.date, exam.time, newActive),
     })
       .then(refetch)
-      .catch(e => alert("Lỗi cập nhật: " + e.message));
+      .catch(e => showToast("Lỗi cập nhật: " + e.message, false));
   }
   function deleteExam(id: string) {
     if (!confirm("Xóa đề thi này?")) return;
     api.exams.remove(id)
       .then(refetch)
-      .catch(e => alert("Lỗi xóa đề thi: " + e.message));
+      .catch(e => showToast("Lỗi xóa đề thi: " + e.message, false));
   }
 
   return (
     <PermissionGuard required={PERMISSIONS.MANAGE_CURRICULUM}>
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
-        {/* Breadcrumb */}
-        <div className="px-5 py-2 border-b border-gray-100 bg-gray-50">
-          <p className="text-sm text-gray-500">
-            Bảng điều khiển / <span className="font-medium text-gray-800">Quản lý Thi thử</span>
-          </p>
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
+          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Quản lý Thi thử</h1>
+          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Tạo và quản lý đề thi thử ĐGNL, THPT</p>
         </div>
 
         {/* Stats — compact inline */}
@@ -798,7 +802,7 @@ export default function ThiThuAdminPage() {
                     <td className="px-4 py-2.5">
                       <div className="flex justify-center">
                         <Toggle checked={exam.activeGuest ?? true} onChange={() => {
-                          api.exams.update(exam.id, { activeGuest: !(exam.activeGuest ?? true) }).then(refetch).catch(e => alert("Lỗi: " + e.message));
+                          api.exams.update(exam.id, { activeGuest: !(exam.activeGuest ?? true) }).then(refetch).catch(e => showToast("Lỗi: " + e.message, false));
                         }} />
                       </div>
                     </td>
@@ -861,13 +865,15 @@ export default function ThiThuAdminPage() {
         exams={exams}
         categoryOptions={examCategories}
         onClose={() => setCreateOpen(false)}
-        onCreated={refetch}
+        onCreated={() => { showToast("Đã tạo đề thi mới"); refetch(); }}
+        showToast={showToast}
       />
       <EditExamDrawer
         exam={editTarget}
         categoryOptions={examCategories}
         onClose={() => setEditTarget(null)}
-        onSaved={refetch}
+        onSaved={() => { showToast("Đã lưu đề thi"); refetch(); }}
+        showToast={showToast}
       />
     </PermissionGuard>
   );

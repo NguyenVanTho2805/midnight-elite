@@ -10,6 +10,7 @@ import { Toggle } from "@/components/Toggle";
 import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { toSlug } from "@/lib/slug";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
@@ -32,8 +33,8 @@ const TAG_LABELS: Record<string, string> = {
   "#FF2157": "HOT", "#FE9900": "SALE", "#0068FF": "MỚI", "#00A63D": "FREE",
 };
 
-function CreateCourseDrawer({ open, onClose, onCreated }: {
-  open: boolean; onClose: () => void; onCreated: () => void;
+function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
+  open: boolean; onClose: () => void; onCreated: () => void; showToast: (msg: string, ok?: boolean) => void;
 }) {
   const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
@@ -85,7 +86,7 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
       const result = await uploadToCloudinary(file, "courses/backgrounds");
       setForm(p => ({ ...p, bgImage: result.url }));
     } catch (err) {
-      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi"));
+      showToast("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi"), false);
     } finally {
       setBgUploading(false);
     }
@@ -133,7 +134,7 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
       onCreated();
       onClose();
     } catch (e) {
-      alert("Lỗi tạo khoá học: " + (e instanceof Error ? e.message : "Unknown error"));
+      showToast("Lỗi tạo khoá học: " + (e instanceof Error ? e.message : "Unknown"), false);
     } finally {
       setSaving(false);
     }
@@ -489,6 +490,7 @@ function KhoaHocListInner() {
     createdAt:  c.createdAt,
   }));
 
+  const { toast, showToast } = useAdminToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch]         = useState("");
   const [catFilter, setCat]         = useState(searchParams.get("category") ?? "");
@@ -516,11 +518,12 @@ function KhoaHocListInner() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
-      {/* Breadcrumb */}
-      <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex-shrink-0">
-        <p className="text-sm text-gray-500">
-          Bảng điều khiển / <span className="font-medium text-gray-800">Danh sách khoá học</span>
-        </p>
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
+
+      {/* Header */}
+      <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
+        <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Danh sách khoá học</h1>
+        <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Quản lý toàn bộ khoá học trong hệ thống</p>
       </div>
 
       {/* Filters */}
@@ -602,7 +605,7 @@ function KhoaHocListInner() {
                         await api.courses.update(course.slug, { status: !course.status });
                         await refetch();
                       } catch (e) {
-                        alert("Lỗi: " + (e instanceof Error ? e.message : "Unknown"));
+                        showToast("Lỗi cập nhật: " + (e instanceof Error ? e.message : "Unknown"), false);
                       } finally {
                         setTogglingSlug(null);
                       }
@@ -619,12 +622,13 @@ function KhoaHocListInner() {
                         await api.courses.remove(course.slug);
                         await refetch();
                       } catch (e) {
-                        alert("Lỗi xoá: " + (e instanceof Error ? e.message : "Unknown"));
+                        showToast("Lỗi xoá khoá học", false);
                       }
                     }}
                     onDuplicate={async () => {
                       const res = await fetch(`/api/courses/${course.slug}/duplicate`, { method: "POST" });
-                      if (!res.ok) { alert("Sao chép thất bại"); return; }
+                      if (!res.ok) { showToast("Sao chép thất bại", false); return; }
+                      showToast("Đã sao chép khoá học");
                       await refetch();
                     }}
                   />
@@ -650,7 +654,8 @@ function KhoaHocListInner() {
       <CreateCourseDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={refetch}
+        onCreated={() => { showToast("Đã tạo khoá học mới"); refetch(); }}
+        showToast={showToast}
       />
     </div>
   );

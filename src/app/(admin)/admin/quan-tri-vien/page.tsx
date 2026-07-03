@@ -124,11 +124,10 @@ export default function QuanTriVienPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
         style={{ height: "calc(100vh - 104px)" }}>
 
-        {/* Breadcrumb */}
-        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex-shrink-0">
-          <p className="text-sm text-gray-500">
-            Bảng điều khiển / <span className="font-medium text-gray-800">Quản trị viên</span>
-          </p>
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
+          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Quản trị viên</h1>
+          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
         </div>
 
         {/* Stats compact inline */}

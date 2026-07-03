@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
 
 interface Review {
   id: string;
@@ -35,6 +36,7 @@ const STATUS_TAB = [
 ];
 
 function DanhGiaContent() {
+  const { toast, showToast } = useAdminToast();
   const [tab, setTab] = useState("pending");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,20 +54,22 @@ function DanhGiaContent() {
 
   async function act(id: string, status: "approved" | "rejected") {
     setActing(id);
-    await fetch(`/api/admin/reviews/${id}`, {
+    const res = await fetch(`/api/admin/reviews/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
     setActing(null);
+    showToast(res.ok ? (status === "approved" ? "Đã duyệt đánh giá" : "Đã từ chối đánh giá") : "Lỗi cập nhật", res.ok);
     load();
   }
 
   async function del(id: string) {
     if (!confirm("Xóa đánh giá này?")) return;
     setActing(id);
-    await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
     setActing(null);
+    showToast(res.ok ? "Đã xóa đánh giá" : "Lỗi xóa", res.ok);
     load();
   }
 
@@ -73,9 +77,10 @@ function DanhGiaContent() {
 
   return (
     <div>
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-black" style={{ color: "#1E2938" }}>Đánh giá khóa học</h1>
+        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Đánh giá khóa học</h1>
         <p className="text-sm mt-1" style={{ color: "#9CA3AF" }}>Duyệt hoặc từ chối đánh giá của học viên</p>
       </div>
 
@@ -95,7 +100,17 @@ function DanhGiaContent() {
       {/* Table */}
       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
         {loading ? (
-          <div className="py-16 text-center text-sm" style={{ color: "#9CA3AF" }}>Đang tải...</div>
+          <div className="space-y-3">
+            {[1,2,3].map(i => (
+              <div key={i} className="p-4 rounded-xl animate-pulse" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                <div className="flex gap-3">
+                  <div className="h-4 w-24 rounded bg-gray-200" />
+                  <div className="h-4 w-32 rounded bg-gray-200" />
+                </div>
+                <div className="h-3 w-3/4 rounded bg-gray-200 mt-3" />
+              </div>
+            ))}
+          </div>
         ) : reviews.length === 0 ? (
           <div className="py-16 text-center text-sm" style={{ color: "#9CA3AF" }}>
             Không có đánh giá nào
