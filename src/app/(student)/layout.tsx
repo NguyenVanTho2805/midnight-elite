@@ -14,13 +14,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEnrollments } from "@/hooks/useEnrollments";
 
 const navItems = [
-  { label: "Tôi",        href: "/student"             },
-  { label: "Khóa học",   href: "/student/hoc-tap"    },
-  { label: "Thi thử",    href: "/student/thi-thu"    },
+  { label: "Khóa học",   href: "/student"               },
+  { label: "Thi thử",    href: "/student/thi-thu"       },
   { label: "Xếp hạng",  href: "/student/bang-xep-hang" },
-  { label: "Tin tức",   href: "/student/tin-tuc"     },
-  { label: "Cộng đồng", href: "/student/cong-dong"   },
-  { label: "Tra cứu",   href: "/student/tra-cuu"     },
+  { label: "Tin tức",   href: "/student/tin-tuc"        },
+  { label: "Cộng đồng", href: "/student/cong-dong"      },
+  { label: "Tra cứu",   href: "/student/tra-cuu"        },
 ];
 
 // ─── USER DROPDOWN PANEL ─────────────────────────────────────────────────────
