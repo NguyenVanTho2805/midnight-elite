@@ -549,7 +549,7 @@ function KhoaHocListInner() {
           </select>
         </div>
         <div className="flex items-end">
-          <button onClick={() => { setSearch(""); setCat(""); setStatus(""); }}
+          <button onClick={() => { setSearch(""); setCat(""); setStatus(""); refetch(); }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
             ↺ Làm mới
           </button>
