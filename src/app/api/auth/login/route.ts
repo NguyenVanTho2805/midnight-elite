@@ -26,6 +26,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email hoặc mật khẩu không đúng" }, { status: 401 });
     }
 
+    if (user.banned) {
+      return NextResponse.json({ error: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ." }, { status: 403 });
+    }
+
     const payload: SessionPayload = {
       userId: user.id,
       role:   user.role as "student" | "admin",

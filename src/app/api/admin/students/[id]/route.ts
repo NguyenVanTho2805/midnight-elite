@@ -37,6 +37,31 @@ export async function PUT(
   }
 }
 
+// PATCH /api/admin/students/[id] — toggle ban học sinh
+export async function PATCH(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requirePermission(PERMISSIONS.MANAGE_STUDENTS);
+  if (isNextResponse(auth)) return auth;
+
+  const { id } = await params;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id }, select: { banned: true } });
+    if (!user) return NextResponse.json({ error: "Không tìm thấy học sinh" }, { status: 404 });
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { banned: !user.banned },
+      select: { id: true, banned: true },
+    });
+    return NextResponse.json(updated);
+  } catch {
+    return NextResponse.json({ error: "Lỗi cập nhật" }, { status: 500 });
+  }
+}
+
 // DELETE /api/admin/students/[id] — xóa tài khoản học sinh
 export async function DELETE(
   _req: NextRequest,

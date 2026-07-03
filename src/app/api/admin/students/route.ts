@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       prisma.user.findMany({
       where: { role: "student" },
       select: {
-        id: true, name: true, email: true, phone: true, school: true, createdAt: true,
+        id: true, name: true, email: true, phone: true, school: true, createdAt: true, banned: true,
         enrollments: {
           select: {
             courseId: true,
@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
         phone:       u.phone,
         school:      u.school,
         createdAt:   u.createdAt,
+        banned:      u.banned,
         enrollments: u.enrollments.map(e => ({ courseId: e.courseId, courseName: e.course.name })),
         gpa,
         completion,

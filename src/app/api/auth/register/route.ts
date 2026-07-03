@@ -23,6 +23,9 @@ export async function POST(req: Request) {
 
     const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (existing) {
+      if (existing.banned) {
+        return NextResponse.json({ error: "Email này đã bị khóa và không thể đăng ký lại." }, { status: 403 });
+      }
       return NextResponse.json({ error: "Email này đã được đăng ký" }, { status: 409 });
     }
 

@@ -17,6 +17,7 @@ interface Student {
   gpa: number; completion: number;
   role: "hoc-vien" | "chua-kich-hoat";
   status: "safe" | "warn" | "danger"; lastSeen: string;
+  banned: boolean;
 }
 
 const ROLE_CONFIG = {
@@ -26,7 +27,7 @@ const ROLE_CONFIG = {
 
 interface ApiStudent {
   id: string; name: string; email: string; phone: string | null;
-  school: string | null; createdAt: string;
+  school: string | null; createdAt: string; banned: boolean;
   enrollments: { courseId: string; courseName: string }[];
   gpa: number; completion: number;
   sbd: string;
@@ -54,6 +55,7 @@ function toStudent(u: ApiStudent): Student {
     role:            enrolledCourseIds.length > 0 ? "hoc-vien" : "chua-kich-hoat",
     status,
     lastSeen:        new Date(u.createdAt).toLocaleDateString("vi-VN"),
+    banned:          u.banned,
   };
 }
 
@@ -74,11 +76,12 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
 }
 
 // ─── STUDENT DETAIL MODAL ─────────────────────────────────────────────────────
-function DetailModal({ student, dbCourses, onClose, onRefresh }: {
+function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
   student: Student;
   dbCourses: CourseFull[];
   onClose: () => void;
   onRefresh: () => void;
+  onDelete: () => void;
 }) {
   const cfg = STATUS_CONFIG[student.status];
   const [copied,      setCopied]      = useState(false);
@@ -88,6 +91,10 @@ function DetailModal({ student, dbCourses, onClose, onRefresh }: {
   const [showRemind,  setShowRemind]  = useState(false);
   const [remindMsg,   setRemindMsg]   = useState("");
   const [reminding,   setReminding]   = useState(false);
+  const [banned,      setBanned]      = useState(student.banned);
+  const [banning,     setBanning]     = useState(false);
+  const [confirmDel,  setConfirmDel]  = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -146,6 +153,44 @@ function DetailModal({ student, dbCourses, onClose, onRefresh }: {
       showToast("Lỗi kết nối", false);
     } finally {
       setReminding(false);
+    }
+  }
+
+  async function toggleBan() {
+    setBanning(true);
+    try {
+      const res = await fetch(`/api/admin/students/${student.userId}`, { method: "PATCH", credentials: "same-origin" });
+      if (res.ok) {
+        const d = await res.json();
+        setBanned(d.banned);
+        showToast(d.banned ? "Đã ban học sinh" : "Đã gỡ ban học sinh");
+        onRefresh();
+      } else {
+        showToast("Lỗi cập nhật", false);
+      }
+    } catch {
+      showToast("Lỗi kết nối", false);
+    } finally {
+      setBanning(false);
+    }
+  }
+
+  async function deleteStudent() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/students/${student.userId}`, { method: "DELETE", credentials: "same-origin" });
+      if (res.ok) {
+        onRefresh();
+        onDelete();
+        onClose();
+      } else {
+        showToast("Lỗi xóa học sinh", false);
+        setDeleting(false);
+        setConfirmDel(false);
+      }
+    } catch {
+      showToast("Lỗi kết nối", false);
+      setDeleting(false);
     }
   }
 
@@ -242,15 +287,37 @@ function DetailModal({ student, dbCourses, onClose, onRefresh }: {
             </div>
           </div>
 
-          {/* Email học sinh */}
-          <a href={`mailto:${student.email}`}
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-semibold border transition-colors hover:bg-blue-50"
-            style={{ borderColor: "#e5e3df", color: "#0068FF", background: "#fff" }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-            </svg>
-            Gửi email cho {student.name}
-          </a>
+          {/* Ban + Xóa học sinh */}
+          <div className="flex gap-2">
+            <button
+              onClick={toggleBan}
+              disabled={banning}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50"
+              style={banned
+                ? { borderColor: "#d1fae5", background: "#f0fdf4", color: "#16a34a" }
+                : { borderColor: "#fed7aa", background: "#fff7ed", color: "#c2410c" }}>
+              {banning ? "Đang xử lý…" : banned ? "✓ Gỡ ban" : "Ban học sinh"}
+            </button>
+            {!confirmDel ? (
+              <button
+                onClick={() => setConfirmDel(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors"
+                style={{ borderColor: "#fecaca", background: "#fff5f5", color: "#dc2626" }}>
+                Xóa học sinh
+              </button>
+            ) : (
+              <div className="flex-1 rounded-xl border p-2.5 space-y-1.5" style={{ borderColor: "#fecaca", background: "#fff5f5" }}>
+                <p className="text-xs font-bold text-center" style={{ color: "#dc2626" }}>Xác nhận xóa?</p>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setConfirmDel(false)}
+                    className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "#e5e3df", color: "#6B7280" }}>Huỷ</button>
+                  <button onClick={deleteStudent} disabled={deleting}
+                    className="flex-1 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                    style={{ background: "#dc2626" }}>{deleting ? "…" : "Xóa"}</button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {toast && (
             <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white text-center"
@@ -525,6 +592,7 @@ export default function HocSinhPage() {
           dbCourses={dbCourses}
           onClose={() => setDetailTarget(null)}
           onRefresh={loadStudents}
+          onDelete={() => setDetailTarget(null)}
         />
       )}
       <AddDrawer

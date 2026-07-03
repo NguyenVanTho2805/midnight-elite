@@ -164,6 +164,7 @@ model User {
   role          String   @default("student")  // "student" | "admin"
   adminRole     String?                       // "admin_super" | "admin_content"
   emailVerified Boolean  @default(false)
+  banned        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   enrollments         Enrollment[]
