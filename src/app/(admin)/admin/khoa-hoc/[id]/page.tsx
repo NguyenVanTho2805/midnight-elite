@@ -683,6 +683,36 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi sắp xếp, đã hoàn tác"); } });
   }
 
+  function moveChapterAcross(fromSI: number, fromCI: number, toSI: number, toCI: number) {
+    if (fromSI === toSI) { reorderChapters(fromSI, fromCI, toCI); return; }
+    prevSections.current = sections;
+    const arr = sections.map(s => ({ ...s, chapters: [...s.chapters] }));
+    const [moved] = arr[fromSI].chapters.splice(fromCI, 1);
+    arr[toSI].chapters.splice(toCI, 0, moved);
+    setSections(arr);
+    const fromItems = arr[fromSI].chapters.map((c, i) => ({ id: c.id, order: i + 1 }));
+    const toItems   = arr[toSI].chapters.map((c, i) => ({ id: c.id, order: i + 1, ...(c.id === moved.id ? { parentId: arr[toSI].id } : {}) }));
+    fetch(`/api/courses/${courseSlug}/reorder`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "chapter", items: [...fromItems, ...toItems] }),
+    }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi di chuyển chương"); } });
+  }
+
+  function moveLessonAcross(fromSI: number, fromCI: number, fromLI: number, toSI: number, toCI: number, toLI: number) {
+    if (fromSI === toSI && fromCI === toCI) { reorderLessons(fromSI, fromCI, fromLI, toLI); return; }
+    prevSections.current = sections;
+    const arr = sections.map(s => ({ ...s, chapters: s.chapters.map(c => ({ ...c, lessons: [...c.lessons] })) }));
+    const [moved] = arr[fromSI].chapters[fromCI].lessons.splice(fromLI, 1);
+    arr[toSI].chapters[toCI].lessons.splice(toLI, 0, moved);
+    setSections(arr);
+    const fromItems = arr[fromSI].chapters[fromCI].lessons.map((l, i) => ({ id: l.id, order: i + 1 }));
+    const toItems   = arr[toSI].chapters[toCI].lessons.map((l, i) => ({ id: l.id, order: i + 1, ...(l.id === moved.id ? { parentId: arr[toSI].chapters[toCI].id } : {}) }));
+    fetch(`/api/courses/${courseSlug}/reorder`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "lesson", items: [...fromItems, ...toItems] }),
+    }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi di chuyển bài học"); } });
+  }
+
   async function duplicateChapter(sectionId: string, chapterId: string) {
     const sec = sections.find(s => s.id === sectionId)!;
     const ch  = sec.chapters.find(c => c.id === chapterId)!;
@@ -1048,10 +1078,11 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
             }}
             draggable
             onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "section", sectionIdx: si }); }}
-            onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "section") setDragOverKey(`s-${section.id}`); }}
+            onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "section" || dragItem?.type === "chapter") setDragOverKey(`s-${section.id}`); }}
             onDrop={e => {
               e.preventDefault(); e.stopPropagation();
               if (dragItem?.type === "section" && dragItem.sectionIdx !== si) reorderSections(dragItem.sectionIdx, si);
+              else if (dragItem?.type === "chapter" && dragItem.sectionIdx !== si) moveChapterAcross(dragItem.sectionIdx, dragItem.chapterIdx, si, sections[si].chapters.length);
               setDragItem(null); setDragOverKey(null);
             }}
             onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
@@ -1084,10 +1115,11 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                     style={{ background: dragOverKey === `c-${chapter.id}` ? "#EFF6FF" : undefined }}
                     draggable
                     onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "chapter", sectionIdx: si, chapterIdx: ci }); }}
-                    onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "chapter") setDragOverKey(`c-${chapter.id}`); }}
+                    onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "chapter" || dragItem?.type === "lesson") setDragOverKey(`c-${chapter.id}`); }}
                     onDrop={e => {
                       e.preventDefault(); e.stopPropagation();
-                      if (dragItem?.type === "chapter" && dragItem.sectionIdx === si && dragItem.chapterIdx !== ci) reorderChapters(si, dragItem.chapterIdx, ci);
+                      if (dragItem?.type === "chapter" && !(dragItem.sectionIdx === si && dragItem.chapterIdx === ci)) moveChapterAcross(dragItem.sectionIdx, dragItem.chapterIdx, si, ci);
+                      else if (dragItem?.type === "lesson" && !(dragItem.sectionIdx === si && dragItem.chapterIdx === ci)) moveLessonAcross(dragItem.sectionIdx, dragItem.chapterIdx, dragItem.lessonIdx, si, ci, sections[si].chapters[ci].lessons.length);
                       setDragItem(null); setDragOverKey(null);
                     }}
                     onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
@@ -1125,7 +1157,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                               onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "lesson") setDragOverKey(`l-${lesson.id}`); }}
                               onDrop={e => {
                                 e.preventDefault(); e.stopPropagation();
-                                if (dragItem?.type === "lesson" && dragItem.sectionIdx === si && dragItem.chapterIdx === ci && dragItem.lessonIdx !== li) reorderLessons(si, ci, dragItem.lessonIdx, li);
+                                if (dragItem?.type === "lesson" && !(dragItem.sectionIdx === si && dragItem.chapterIdx === ci && dragItem.lessonIdx === li)) moveLessonAcross(dragItem.sectionIdx, dragItem.chapterIdx, dragItem.lessonIdx, si, ci, li);
                                 setDragItem(null); setDragOverKey(null);
                               }}
                               onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
