@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 const navLinks = [
   { label: "Khóa học",      href: "/khoa-hoc"           },
-  { label: "Giảng viên",    href: "/giang-vien"          },
+  { label: "Gia sư",    href: "/giang-vien"          },
   { label: "Thi thử ĐGNL",  href: "/thi-thu"             },
   { label: "Cộng đồng",     href: "/student/cong-dong"   },
   { label: "Bảng xếp hạng", href: "/bang-xep-hang"       },

@@ -323,7 +323,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Giảng viên</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Gia sư</label>
             <input className={inp} value={form.instructor} onChange={e => setForm(f => ({ ...f, instructor: e.target.value }))} />
           </div>
           <div>

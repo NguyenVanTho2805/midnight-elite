@@ -3,7 +3,7 @@ type Props = {
   avatar: string;
   size?: number;                    // đường kính avatar (px), mặc định 28
   variant?: "onDark" | "onLight";   // nền tối (overlay trên ảnh/màu) hay nền sáng
-  role?: string;                    // chú thích dưới tên, vd "Giảng viên phụ trách"
+  role?: string;                    // chú thích dưới tên, vd "Gia sư phụ trách"
   blur?: boolean;                   // backdrop-blur cho avatar (khi nền là ảnh)
   maxNameWidth?: number;            // px, giới hạn độ rộng tên khi không gian hẹp
   className?: string;

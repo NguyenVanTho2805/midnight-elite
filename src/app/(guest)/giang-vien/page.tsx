@@ -155,13 +155,13 @@ export default function GiangVienPage() {
         <section style={{ background: "var(--brand-navy)" }}>
           <div className="max-w-7xl mx-auto px-6 py-14 text-center">
             <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-              style={{ color: "rgba(255,255,255,0.45)" }}>Đội ngũ giảng viên</p>
+              style={{ color: "rgba(255,255,255,0.45)" }}>Đội ngũ gia sư</p>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ letterSpacing: "-0.03em" }}>
               Học từ người thật,<br />
               <span style={{ color: "#93C5FD" }}>kết quả thật</span>
             </h1>
             <p className="text-sm max-w-lg mx-auto" style={{ color: "rgba(255,255,255,0.6)" }}>
-              Đội ngũ giảng viên Midnight Elite — những người đang dạy live mỗi tối và theo sát từng học sinh.
+              Đội ngũ gia sư Midnight Elite — những người đang dạy live mỗi tối và theo sát từng học sinh.
             </p>
           </div>
         </section>
@@ -179,7 +179,7 @@ export default function GiangVienPage() {
 
         {/* CTA */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-2xl mx-auto text-center">
-          <h2 className="text-xl font-bold mb-3" style={{ color: "#1a1a1a" }}>Bắt đầu học với giảng viên ngay hôm nay</h2>
+          <h2 className="text-xl font-bold mb-3" style={{ color: "#1a1a1a" }}>Bắt đầu học với gia sư ngay hôm nay</h2>
           <p className="text-sm mb-6" style={{ color: "#787671" }}>Gọi tư vấn miễn phí để được ghép lớp phù hợp với lộ trình của bạn</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/khoa-hoc"

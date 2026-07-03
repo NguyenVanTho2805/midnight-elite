@@ -264,7 +264,7 @@ export async function sendEnrollmentEmail(
         <p style="color:#1a1a1a;font-size:16px;font-weight:800;margin:0 0 14px;letter-spacing:-0.2px">${courseName}</p>
         <div style="display:flex;gap:24px">
           <div>
-            <p style="color:#a4a097;font-size:11px;margin:0 0 2px">Giảng viên</p>
+            <p style="color:#a4a097;font-size:11px;margin:0 0 2px">Gia sư</p>
             <p style="color:#1a1a1a;font-size:14px;font-weight:700;margin:0">${instructor}</p>
           </div>
           <div>

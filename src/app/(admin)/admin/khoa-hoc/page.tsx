@@ -570,7 +570,7 @@ function KhoaHocListInner() {
         <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {["ID","Tên khoá học","Slug","Danh mục","Giảng viên","Trạng thái","Ngày tạo","Hành động"].map(h => (
+              {["ID","Tên khoá học","Slug","Danh mục","Gia sư","Trạng thái","Ngày tạo","Hành động"].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>

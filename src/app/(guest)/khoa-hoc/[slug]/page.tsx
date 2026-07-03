@@ -103,7 +103,7 @@ function ReviewsSection({ courseId }: { courseId: string }) {
           </div>
           <textarea
             value={comment} onChange={e => setComment(e.target.value)}
-            placeholder="Nhận xét về nội dung, giảng viên, tài liệu..."
+            placeholder="Nhận xét về nội dung, gia sư, tài liệu..."
             rows={3}
             className="w-full text-sm rounded-lg px-3 py-2 resize-none outline-none"
             style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1E2938" }}
@@ -276,7 +276,7 @@ export default function KhoaHocDetailPage() {
                 Khóa học toàn diện với đầy đủ bài giảng video theo chuyên đề.
               </p>
               {course.instructor && (
-                <TeacherTag className="mb-5" name={course.instructor} avatar={course.instructor[0]} size={36} role="Giảng viên phụ trách" />
+                <TeacherTag className="mb-5" name={course.instructor} avatar={course.instructor[0]} size={36} role="Gia sư phụ trách" />
               )}
 
               <div className="grid grid-cols-2 gap-3">
