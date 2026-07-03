@@ -12,15 +12,15 @@ import { toSlug } from "@/lib/slug";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
-  name: string; adminName: string; category: string; instructor: string;
-  openDate: string; types: string[]; price: string; originalPrice: string;
+  name: string; category: string; instructor: string;
+  openDate: string; price: string; originalPrice: string;
   lessons: string; hours: string; tag: string; tagColor: string; status: boolean;
 }
 
 const CREATE_INIT: CreateForm = {
-  name: "", adminName: "", category: "ĐGNL HSA",
+  name: "", category: "ĐGNL HSA",
   instructor: "Midnight Elite", openDate: "",
-  types: ["Video"], price: "", originalPrice: "",
+  price: "", originalPrice: "",
   lessons: "", hours: "", tag: "", tagColor: "#FF2157", status: true,
 };
 
@@ -63,24 +63,14 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
   }, [onClose]);
 
   function set<K extends keyof CreateForm>(k: K, v: CreateForm[K]) {
-    setForm(p => {
-      const next = { ...p, [k]: v };
-      // Auto-fill adminName từ name nếu chưa sửa thủ công
-      if (k === "name" && !p.adminName) next.adminName = v as string;
-      return next;
-    });
+    setForm(p => ({ ...p, [k]: v }));
     setErrors(p => ({ ...p, [k]: undefined }));
-  }
-
-  function toggleType(t: string) {
-    setForm(p => ({ ...p, types: p.types.includes(t) ? p.types.filter(x => x !== t) : [...p.types, t] }));
   }
 
   function validate(): boolean {
     const e: typeof errors = {};
-    if (!form.name.trim())      e.name      = "Tên công khai không được để trống";
-    if (!form.adminName.trim()) e.adminName = "Tên nội bộ không được để trống";
-    if (!form.openDate)         e.openDate  = "Chọn ngày khai giảng";
+    if (!form.name.trim()) e.name     = "Tên khoá học không được để trống";
+    if (!form.openDate)    e.openDate = "Chọn ngày khai giảng";
     if (!form.price || isNaN(+form.price) || +form.price <= 0)
       e.price   = "Giá bán phải là số dương";
     if (!form.lessons || isNaN(+form.lessons))
@@ -96,13 +86,13 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
       await api.courses.create({
         id:            toSlug(form.name),
         name:          form.name.trim(),
-        adminName:     form.adminName.trim(),
+        adminName:     form.name.trim(),
         shortTitle:    form.name.trim().toUpperCase().split(" ").slice(0, 2).join("\n"),
         category:      form.category,
         instructor:    form.instructor,
         teacherAvatar: form.instructor[0] ?? "?",
         openDate:      form.openDate.split("-").reverse().join("/"),
-        types:         form.types,
+        types:         ["Video"],
         tag:           form.tag || null,
         tagColor:      form.tag ? form.tagColor : null,
         bg:            CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)",
@@ -173,23 +163,13 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
           {/* Tên */}
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Tên khoá học</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Tên công khai (hiển thị học viên) <span className="text-red-500">*</span>
-                </label>
-                <input className={inp} placeholder="VD: ĐGNL HSA — Trọn gói lộ trình"
-                  value={form.name} onChange={e => set("name", e.target.value)} />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Tên nội bộ (admin CMS) <span className="text-red-500">*</span>
-                </label>
-                <input className={inp} placeholder="VD: HSA Premium 2K9 — Toàn diện luyện thi ĐGNL HSA 2026"
-                  value={form.adminName} onChange={e => set("adminName", e.target.value)} />
-                {errors.adminName && <p className="text-xs text-red-500 mt-1">{errors.adminName}</p>}
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                Tên khoá học <span className="text-red-500">*</span>
+              </label>
+              <input className={inp} placeholder="VD: ĐGNL HSA — Trọn gói lộ trình"
+                value={form.name} onChange={e => set("name", e.target.value)} />
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
             </div>
           </section>
 
@@ -214,20 +194,6 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
                 </label>
                 <input type="date" className={inp} value={form.openDate} onChange={e => set("openDate", e.target.value)} />
                 {errors.openDate && <p className="text-xs text-red-500 mt-1">{errors.openDate}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Hình thức</label>
-                <div className="flex gap-2">
-                  {["Video", "Live"].map(t => (
-                    <button key={t} type="button" onClick={() => toggleType(t)}
-                      className="flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-all"
-                      style={form.types.includes(t)
-                        ? { background: "#DBEAFE", color: "#0068FF", borderColor: "#0068FF" }
-                        : { background: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }}>
-                      {t === "Live" ? "● Live" : "▶ Video"}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           </section>
@@ -527,7 +493,6 @@ function KhoaHocListInner() {
                 <td className="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">{course.id}</td>
                 <td className="px-4 py-3 max-w-[260px]">
                   <p className="font-medium text-gray-800 truncate">{course.publicName}</p>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{course.name}</p>
                 </td>
                 <td className="px-4 py-3 max-w-[160px]">
                   <span className="text-blue-600 text-xs font-mono truncate block">{course.slug}</span>

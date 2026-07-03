@@ -184,18 +184,6 @@ export function getCourseByAdminId(adminId: number): MasterCourse | undefined {
   return COURSES.find(c => c.adminId === adminId);
 }
 
-// ─── Helper: slug → adminId mapping ──────────────────────────────────────────
-// Tìm slug theo cả tên công khai (name) lẫn tên nội bộ (adminName)
-export function getSlugByAdminName(displayName: string): string {
-  const q = displayName.toLowerCase();
-  return COURSES.find(c =>
-    c.name.toLowerCase().includes(q) ||
-    q.includes(c.name.toLowerCase()) ||
-    c.adminName.toLowerCase().includes(q) ||
-    q.includes(c.adminName.toLowerCase())
-  )?.id ?? "";
-}
-
 // ─── Derived views cho từng role ─────────────────────────────────────────────
 
 /** Admin CMS: danh sách khóa học */

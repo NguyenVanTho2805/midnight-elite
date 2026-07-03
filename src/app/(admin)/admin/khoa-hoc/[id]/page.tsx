@@ -32,7 +32,7 @@ interface LessonDB {
 interface ChapterDB { id: string; title: string; order: number; lessons: LessonDB[] }
 interface SectionDB { id: string; title: string; order: number; chapters: ChapterDB[] }
 interface CourseDB {
-  id: string; adminId: number; name: string; adminName: string;
+  id: string; adminId: number; name: string;
   category: string; instructor: string; status: boolean;
   openDate: string; price: number; originalPrice?: number | null;
   lessons: number; hours: number; tag?: string | null; tagColor?: string | null;
@@ -221,7 +221,6 @@ function DelModal({ target, onClose, onConfirm }: { target: DelTarget; onClose: 
 // ─── TAB CÀI ĐẶT ─────────────────────────────────────────────────────────────
 function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseDB }) {
   const [form, setForm] = useState({
-    name:          course.adminName,
     publicName:    course.name,
     slug:          course.id,
     instructor:    course.instructor,
@@ -252,7 +251,6 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
     setSaving(true);
     try {
       await api.courses.update(courseSlug, {
-        adminName:     form.name,
         name:          form.publicName,
         instructor:    form.instructor,
         category:      form.category,
@@ -286,11 +284,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Thông tin cơ bản</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="lg:col-span-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Tên nội bộ (admin CMS)</label>
-            <input className={inp} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          </div>
-          <div className="lg:col-span-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Tên công khai (hiển thị với học viên)</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tên khoá học</label>
             <input className={inp} value={form.publicName} onChange={e => setForm(f => ({ ...f, publicName: e.target.value }))} />
           </div>
           <div className="lg:col-span-2">
@@ -382,7 +376,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
 
       <div className="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">
         <button onClick={() => setForm({
-          name: course.adminName, publicName: course.name, slug: course.id,
+          publicName: course.name, slug: course.id,
           instructor: course.instructor, category: course.category,
           price: String(course.price), originalPrice: course.originalPrice ? String(course.originalPrice) : "",
           openDate: course.openDate, active: course.status,
@@ -1231,7 +1225,7 @@ export default function KhoaHocDetailPage() {
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}
           <Link href="/admin/khoa-hoc" className="hover:text-blue-600 transition-colors">Danh sách khoá học</Link>
-          {" "}/ <span className="font-medium text-gray-800">{course.adminName}</span>
+          {" "}/ <span className="font-medium text-gray-800">{course.name}</span>
         </p>
       </div>
 
@@ -1240,7 +1234,7 @@ export default function KhoaHocDetailPage() {
           <div className="w-16 h-11 rounded-lg flex items-center justify-center text-sm font-black text-white flex-shrink-0"
             style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>ME</div>
           <div className="min-w-0">
-            <h1 className="text-base font-bold text-gray-800 leading-tight">{course.adminName}</h1>
+            <h1 className="text-base font-bold text-gray-800 leading-tight">{course.name}</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               ID: {course.adminId} · Slug: {course.id} · {course.category}
             </p>
