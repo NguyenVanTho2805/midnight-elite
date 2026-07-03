@@ -77,14 +77,6 @@ function CourseThumbnail({ course, totalLessons, doneLessons }: {
             ✓ Đã đăng ký
           </div>
         </div>
-        <div className="relative z-10 px-4 pt-2 pb-1">
-          {course.shortTitle.split("\n").map((line, i, arr) => (
-            <div key={i} className="text-white font-black leading-tight select-none"
-              style={{ fontSize: arr.length === 1 ? "1.45rem" : "1.3rem", textShadow:"1px 2px 6px rgba(0,0,0,0.25)" }}>
-              {line}
-            </div>
-          ))}
-        </div>
         <div className="relative z-10 flex items-center justify-between px-4 py-2.5">
           <TeacherTag name={course.instructor} avatar={course.teacherAvatar} size={28} variant="onDark" maxNameWidth={100} />
           <div className="flex gap-1">
@@ -165,14 +157,6 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
           </div>
         </div>
 
-        <div className="relative z-10 px-4 pt-2 pb-1">
-          {course.shortTitle.split("\n").map((line, i, arr) => (
-            <div key={i} className="text-white font-black leading-tight select-none"
-              style={{ fontSize: arr.length === 1 ? "1.45rem" : "1.3rem", textShadow:"1px 2px 6px rgba(0,0,0,0.25)" }}>
-              {line}
-            </div>
-          ))}
-        </div>
 
         <div className="relative z-10 flex items-center gap-3 px-4 py-1.5" style={{ background: course.strip }}>
           <span className="text-xs font-bold" style={{ color:"#1E2938" }}>📚 {course.lessons} bài</span>

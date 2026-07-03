@@ -218,14 +218,6 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
           )}
         </div>
 
-        <div className="relative z-10 px-4 pt-2 pb-1">
-          {course.shortTitle.split("\n").map((line, i, arr) => (
-            <div key={i} className="text-white font-black leading-tight select-none"
-              style={{ fontSize: arr.length === 1 ? "1.6rem" : "1.45rem", letterSpacing: "0.02em" }}>
-              {line}
-            </div>
-          ))}
-        </div>
 
         <div className="relative z-10 mx-3 mt-2 px-3 py-1.5 rounded-md flex items-center justify-between"
           style={{ background: theme.strip }}>
