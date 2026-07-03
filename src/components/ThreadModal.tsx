@@ -189,7 +189,7 @@ function ReplyCard({ r, onLike, onDelete }: {
               <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{r.author.name}</span>
               {r.author.isTeacher && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                  style={{ background: "#fef3c7", color: "#b45309" }}>Giáo viên</span>
+                  style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
               )}
               <span className="text-xs" style={{ color: "#a4a097" }}>· {timeAgo(r.createdAt)}</span>
             </div>
@@ -485,7 +485,7 @@ export default function ThreadModal({
                       <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{thread.author.name}</span>
                       {thread.author.isTeacher && (
                         <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                          style={{ background: "#fef3c7", color: "#b45309" }}>Giáo viên</span>
+                          style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
                       )}
                     </div>
                     <p className="text-xs" style={{ color: "#a4a097" }}>{timeAgo(thread.createdAt)}</p>

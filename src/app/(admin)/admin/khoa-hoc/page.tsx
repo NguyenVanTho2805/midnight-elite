@@ -264,7 +264,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Giáo viên</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Gia sư</label>
                 <input className={inp} placeholder="Thầy Nguyễn Minh"
                   value={form.instructor} onChange={e => set("instructor", e.target.value)} />
               </div>

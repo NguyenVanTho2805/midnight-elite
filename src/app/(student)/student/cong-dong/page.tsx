@@ -425,7 +425,7 @@ function PostForm({ user, balance, onThread, onQuestion }: {
                   Trừ {QUESTION_COST} xu · Số dư hiện tại: {balance} xu
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#b45309" }}>
-                  Người trả lời được chấp nhận sẽ nhận 20 xu thưởng. Câu hỏi được đặt ẩn danh với giáo viên.
+                  Người trả lời được chấp nhận sẽ nhận 20 xu thưởng. Câu hỏi được đặt ẩn danh với gia sư.
                 </p>
               </div>
             </div>
@@ -502,7 +502,7 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUs
               <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{t.author.name}</span>
               {t.author.isTeacher && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: "#fef3c7", color: "#b45309" }}>Giáo viên</span>
+                  style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
               )}
               <CatBadge cat={t.category} />
             </div>

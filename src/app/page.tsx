@@ -52,7 +52,7 @@ interface HomeCourse {
 
 // tint per why-item
 const whyItems = [
-  { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với giáo viên thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức.", tint: "var(--tint-yellow-bold)", iconColor: "#b45309" },
+  { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với gia sư thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức.", tint: "var(--tint-yellow-bold)", iconColor: "#b45309" },
   { Icon: ChartBar,    title: "Theo dõi tiến độ realtime", desc: "Dashboard cá nhân hiển thị tiến độ từng môn, GPA, streak và thứ hạng toàn server.", tint: "var(--tint-sky)", iconColor: "#1D4ED8" },
   { Icon: BookOpen,    title: "Kho tài liệu 10,000+ đề",  desc: "Đề thi thử từ năm 2015 đến nay, kèm giải thích chi tiết từng câu.", tint: "var(--tint-mint)", iconColor: "#166534" },
   { Icon: Trophy,      title: "Điểm thưởng & bảng xếp hạng", desc: "Tích điểm, giữ chuỗi ngày học, leo hạng mỗi tuần. Học có mục tiêu, tiến bộ rõ ràng.", tint: "var(--tint-lavender)", iconColor: "#6D28D9" },
@@ -62,12 +62,12 @@ const whyItems = [
 
 
 const timeline = [
-  { year: "09/2024", event: "Midnight Elite ra đời từ một nhóm giáo viên trẻ muốn thay đổi cách luyện thi ĐGNL." },
+  { year: "09/2024", event: "Midnight Elite ra đời từ một nhóm gia sư trẻ muốn thay đổi cách luyện thi ĐGNL." },
   { year: "01/2025", event: "Ra mắt hệ thống thi thử ĐGNL HSA trực tuyến, đầu tiên tại Việt Nam tích hợp Azota." },
   { year: "05/2025", event: "Đạt mốc 1,000 học viên. Ra mắt ĐGNL HCM và TSA Bách Khoa." },
   { year: "09/2025", event: "Mở rộng sang luyện thi Tốt nghiệp THPT 8 môn. Bổ sung đội ngũ 6 mentor chuyên biệt." },
   { year: "01/2026", event: "Triển khai AI Hỏi đáp 24/7 và hệ thống quản lý kỷ luật (Strike) học viên." },
-  { year: "Hiện tại", event: "Học viên học live mỗi tối. Bảng xếp hạng cập nhật mỗi ngày. Đội ngũ giáo viên và mentor liên tục mở rộng." },
+  { year: "Hiện tại", event: "Học viên học live mỗi tối. Bảng xếp hạng cập nhật mỗi ngày. Đội ngũ gia sư và mentor liên tục mở rộng." },
 ];
 
 const HERO_CATEGORIES = [
@@ -89,7 +89,7 @@ const categoryTheme: Record<string, { bg: string; strip: string; stripText: stri
 const STATS = [
   { value: "1,200+", label: "Học viên đang học" },
   { value: "10,000+", label: "Đề thi thử" },
-  { value: "6",      label: "Giáo viên & trợ giảng" },
+  { value: "6",      label: "Gia sư & trợ giảng" },
 ];
 
 function StatsStrip() {
@@ -495,7 +495,7 @@ export default function HomePage() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Tìm khóa học, giáo viên..."
+                  placeholder="Tìm khóa học, gia sư..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-shadow focus:shadow-[0_0_0_2px_#0068FF33]"
@@ -634,7 +634,7 @@ export default function HomePage() {
               Gia nhập cộng đồng Midnight Elite ngay hôm nay
             </h2>
             <p className="text-sm mb-8" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "42ch", margin: "0 auto 32px" }}>
-              Thi thử miễn phí. Kết quả thật sau 30 ngày học nghiêm túc cùng giáo viên thực.
+              Thi thử miễn phí. Kết quả thật sau 30 ngày học nghiêm túc cùng gia sư thực.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link

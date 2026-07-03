@@ -286,7 +286,7 @@ function KhoaHocContent() {
             </svg>
             <input
               type="text"
-              placeholder="Tìm khóa học, giáo viên..."
+              placeholder="Tìm khóa học, gia sư..."
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSelectedSlug(null); }}
               className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-shadow focus:shadow-[0_0_0_2px_#0068FF33]"

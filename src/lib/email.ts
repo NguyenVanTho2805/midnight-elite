@@ -283,7 +283,7 @@ export async function sendEnrollmentEmail(
       ${zaloGroupLink ? `
       <div style="background:#ecfdf5;border-radius:10px;padding:16px 20px;margin-bottom:16px;border:1px solid #a7f3d0">
         <p style="color:#065f46;font-size:13px;font-weight:700;margin:0 0 10px">📱 Bước 1 — Tham gia nhóm Zalo lớp học</p>
-        <p style="color:#047857;font-size:12px;margin:0 0 12px">Vào nhóm để nhận tài liệu, lịch học và thông báo từ giáo viên.</p>
+        <p style="color:#047857;font-size:12px;margin:0 0 12px">Vào nhóm để nhận tài liệu, lịch học và thông báo từ gia sư.</p>
         <a href="${zaloGroupLink}" style="display:inline-block;background:#16a34a;color:#fff;font-size:13px;font-weight:700;text-decoration:none;padding:10px 20px;border-radius:8px">
           Vào nhóm Zalo lớp →
         </a>

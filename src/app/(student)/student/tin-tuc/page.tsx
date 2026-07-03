@@ -54,7 +54,7 @@ const ARTICLES: Article[] = [
   {
     id:"5", slug:"phuong-phap-doc-hieu-tieng-anh-dgnl", category:"hoc-thuat",
     title:"Phương pháp đọc hiểu Tiếng Anh ĐGNL: Từ 30% lên 80% trong 8 tuần",
-    excerpt:"Cô Lan — Giáo viên Tiếng Anh Midnight Elite hướng dẫn chiến lược làm bài đọc hiểu theo từng dạng câu hỏi, giúp học viên tiết kiệm thời gian và tránh bẫy đề.",
+    excerpt:"Cô Lan — Gia sư Tiếng Anh Midnight Elite hướng dẫn chiến lược làm bài đọc hiểu theo từng dạng câu hỏi, giúp học viên tiết kiệm thời gian và tránh bẫy đề.",
     author:"Cô Lan", date:"15/05/2026", readTime:9,
   },
   {

@@ -423,7 +423,7 @@ function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: stri
         <div className="rounded-xl p-4" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm">📌</span>
-            <span className="text-xs font-bold" style={{ color: "#92400E" }}>Lưu ý từ giáo viên</span>
+            <span className="text-xs font-bold" style={{ color: "#92400E" }}>Lưu ý từ gia sư</span>
           </div>
           <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "#78350F" }}>{adminNote}</p>
         </div>

@@ -20,10 +20,10 @@ interface MentorData {
 const MENTORS: Record<string, MentorData> = {
   "thay-minh": {
     id: "thay-minh", name: "Thầy Nguyễn Hoàng Minh", subject: "Toán học", avatar: "M",
-    bio: "Giáo viên Toán với hơn 8 năm kinh nghiệm luyện thi ĐGNL và THPT. Từng đạt giải Ba Olympic Toán Quốc gia, thầy Minh nổi tiếng với phương pháp giảng dạy trực quan, giúp học sinh hiểu sâu thay vì học vẹt. Hơn 2.000 học viên đã đạt điểm Toán từ 8.0 trở lên dưới sự hướng dẫn của thầy.",
+    bio: "Gia sư Toán với hơn 8 năm kinh nghiệm luyện thi ĐGNL và THPT. Từng đạt giải Ba Olympic Toán Quốc gia, thầy Minh nổi tiếng với phương pháp giảng dạy trực quan, giúp học sinh hiểu sâu thay vì học vẹt. Hơn 2.000 học viên đã đạt điểm Toán từ 8.0 trở lên dưới sự hướng dẫn của thầy.",
     rating: 4.9, totalStudents: 2140, totalSessions: 380, experience: "8 năm",
     education: ["Cử nhân Sư phạm Toán — ĐHSP Hà Nội (Loại Giỏi)", "Thạc sĩ Toán học ứng dụng — ĐH Bách Khoa Hà Nội"],
-    achievements: ["Giải Ba Olympic Toán Quốc gia 2012", "Top 10 giáo viên được yêu thích Midnight Elite 2025", "Tỉ lệ học viên đạt 8.0+ Toán: 78%"],
+    achievements: ["Giải Ba Olympic Toán Quốc gia 2012", "Top 10 gia sư được yêu thích Midnight Elite 2025", "Tỉ lệ học viên đạt 8.0+ Toán: 78%"],
     courses: [
       { id: "toan-dgnl-hsa", title: "Toán ĐGNL HSA — Từ cơ bản đến nâng cao", students: 1240, rating: 4.9 },
       { id: "toan-thpt-2026", title: "Toán THPT Quốc gia 2026 — Luyện đề chuyên sâu", students: 890, rating: 4.8 },
@@ -35,7 +35,7 @@ const MENTORS: Record<string, MentorData> = {
     bio: "Cô Hương là chuyên gia Hóa học với 6 năm kinh nghiệm giảng dạy tại các trường chuyên và trung tâm luyện thi uy tín. Chuyên sâu về Hóa Vô cơ và Hóa Hữu cơ — hai phần trọng tâm trong đề thi ĐGNL. Cô nổi bật với các sơ đồ tư duy màu sắc giúp học viên ghi nhớ phản ứng hóa học dễ dàng.",
     rating: 4.8, totalStudents: 1560, totalSessions: 290, experience: "6 năm",
     education: ["Cử nhân Hóa học — ĐHKH Tự nhiên TP.HCM (Loại Xuất sắc)", "Chứng chỉ Sư phạm Quốc tế Cambridge"],
-    achievements: ["Học viên đạt điểm Hóa tuyệt đối ĐGNL 2025: 12 người", "Giáo viên được vote nhiều nhất tháng 3/2026 — Midnight Elite"],
+    achievements: ["Học viên đạt điểm Hóa tuyệt đối ĐGNL 2025: 12 người", "Gia sư được vote nhiều nhất tháng 3/2026 — Midnight Elite"],
     courses: [
       { id: "hoa-dgnl", title: "Hóa học ĐGNL — Toàn bộ chương trình", students: 980, rating: 4.8 },
     ],
