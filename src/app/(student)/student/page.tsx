@@ -78,9 +78,9 @@ function CourseThumbnail({ course, totalLessons, doneLessons }: {
           </div>
         </div>
         <div className="relative z-10 px-4 pt-2 pb-1">
-          {course.shortTitle.split("\n").map((line, i) => (
+          {course.shortTitle.split("\n").map((line, i, arr) => (
             <div key={i} className="text-white font-black leading-tight select-none"
-              style={{ fontSize: i === 0 ? "1.1rem" : "1.3rem", textShadow:"1px 2px 6px rgba(0,0,0,0.25)" }}>
+              style={{ fontSize: arr.length === 1 ? "1.45rem" : "1.3rem", textShadow:"1px 2px 6px rgba(0,0,0,0.25)" }}>
               {line}
             </div>
           ))}
@@ -164,9 +164,9 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
         </div>
 
         <div className="relative z-10 px-4 pt-2 pb-1">
-          {course.shortTitle.split("\n").map((line, i) => (
+          {course.shortTitle.split("\n").map((line, i, arr) => (
             <div key={i} className="text-white font-black leading-tight select-none"
-              style={{ fontSize: i === 0 ? "1.1rem" : "1.3rem", textShadow:"1px 2px 6px rgba(0,0,0,0.25)" }}>
+              style={{ fontSize: arr.length === 1 ? "1.45rem" : "1.3rem", textShadow:"1px 2px 6px rgba(0,0,0,0.25)" }}>
               {line}
             </div>
           ))}

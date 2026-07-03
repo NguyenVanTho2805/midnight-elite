@@ -219,9 +219,9 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
         </div>
 
         <div className="relative z-10 px-4 pt-2 pb-1">
-          {course.shortTitle.split("\n").map((line, i) => (
+          {course.shortTitle.split("\n").map((line, i, arr) => (
             <div key={i} className="text-white font-black leading-tight select-none"
-              style={{ fontSize: i === 0 ? "1.25rem" : "1.45rem", letterSpacing: "0.02em" }}>
+              style={{ fontSize: arr.length === 1 ? "1.6rem" : "1.45rem", letterSpacing: "0.02em" }}>
               {line}
             </div>
           ))}
