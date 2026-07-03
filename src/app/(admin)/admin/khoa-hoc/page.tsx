@@ -394,9 +394,10 @@ interface Course {
 }
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
-function ActionMenu({ courseId, lessonCount, onDelete }: { courseId: string; lessonCount: number; onDelete: () => void }) {
+function ActionMenu({ courseId, lessonCount, onDelete, onDuplicate }: { courseId: string; lessonCount: number; onDelete: () => void; onDuplicate: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -435,6 +436,16 @@ function ActionMenu({ courseId, lessonCount, onDelete }: { courseId: string; les
             style={{ color: "#0068FF" }}>
             Xem portal học viên
           </Link>
+          <button
+            disabled={duplicating}
+            onClick={async () => {
+              setDuplicating(true);
+              try { await onDuplicate(); } finally { setDuplicating(false); setOpen(false); }
+            }}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
+            style={{ color: "#16a34a" }}>
+            {duplicating ? "Đang sao chép…" : "Sao chép khóa học"}
+          </button>
           <div className="border-t border-gray-100 my-1" />
           {confirmDel ? (
             <div className="px-4 py-2.5">
@@ -610,6 +621,11 @@ function KhoaHocListInner() {
                       } catch (e) {
                         alert("Lỗi xoá: " + (e instanceof Error ? e.message : "Unknown"));
                       }
+                    }}
+                    onDuplicate={async () => {
+                      const res = await fetch(`/api/courses/${course.slug}/duplicate`, { method: "POST" });
+                      if (!res.ok) { alert("Sao chép thất bại"); return; }
+                      await refetch();
                     }}
                   />
                 </td>
