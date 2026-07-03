@@ -332,22 +332,6 @@ function QuizContent({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: str
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-function detectDocType(url: string, name: string): string {
-  if (/docs\.google\.com\/document/i.test(url))      return "doc";
-  if (/docs\.google\.com\/spreadsheets/i.test(url))  return "xls";
-  if (/docs\.google\.com\/presentation/i.test(url))  return "ppt";
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (ext === "pdf")                      return "pdf";
-  if (["doc","docx"].includes(ext))       return "doc";
-  if (["xls","xlsx"].includes(ext))       return "xls";
-  if (["ppt","pptx"].includes(ext))       return "ppt";
-  return "file";
-}
-
-const DOC_COLOR: Record<string, string> = {
-  pdf: "#FF2157", doc: "#0068FF", xls: "#00A63D", ppt: "#F97316", file: "#6B7280",
-};
-
 function TabTaiLieu({ materials }: { materials: Material[] }) {
   if (!materials.length) return (
     <div className="text-center py-8">
@@ -356,25 +340,18 @@ function TabTaiLieu({ materials }: { materials: Material[] }) {
     </div>
   );
   return (
-    <div className="space-y-2">
-      {materials.map((m, i) => {
-        const t = detectDocType(m.url, m.name);
-        return (
+    <div>
+      <p className="text-xs font-semibold mb-2" style={{ color: "#6B7280" }}>Tài liệu:</p>
+      <div className="space-y-1.5">
+        {materials.map((m, i) => (
           <a key={i} href={m.url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 rounded-xl hover:opacity-80 transition-opacity"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 text-white uppercase"
-              style={{ background: DOC_COLOR[t] ?? "#6B7280" }}>
-              {t}
-            </div>
-            <p className="text-sm font-semibold flex-1 truncate" style={{ color: "#1E2938" }}>{m.name}</p>
-            <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold flex-shrink-0"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#0068FF" }}>
-              <FileDownload size={13} /> Tải
-            </div>
+            className="flex items-center gap-2 hover:underline"
+            style={{ color: "#00A63D" }}>
+            <FileDownload size={16} style={{ flexShrink: 0 }} />
+            <span className="text-sm font-medium truncate">{m.name}</span>
           </a>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
