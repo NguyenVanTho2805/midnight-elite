@@ -266,13 +266,17 @@ export default function KhoaHocDetailPage() {
           {/* Curriculum */}
           <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
             <h2 className="text-lg font-extrabold mb-5" style={{ color: "#1E2938" }}>Nội dung khóa học</h2>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {course.sections.length === 0 && (
                 <p className="text-sm text-center py-4" style={{ color: "#9CA3AF" }}>Chương trình học đang được cập nhật.</p>
               )}
-              {course.sections.flatMap(s => s.chapters).map((chap) => (
+              {course.sections.map((section) => (
+                <div key={section.id}>
+                  <p className="text-xs font-bold uppercase tracking-wide mb-2 px-1" style={{ color: "#9CA3AF" }}>{section.title}</p>
+                  <div className="space-y-3">
+                  {section.chapters.map((chap) => (
                 <div key={chap.id}>
-                  <h3 className="text-sm font-bold mb-3 px-1" style={{ color: "#1E2938" }}>{chap.title}</h3>
+                  <h3 className="text-sm font-bold mb-2 px-1" style={{ color: "#1E2938" }}>{chap.title}</h3>
                   <div className="space-y-2">
                     {chap.lessons.map((lesson) => {
                       const isCompleted = completedIds.has(lesson.id);
@@ -338,6 +342,9 @@ export default function KhoaHocDetailPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+                  ))}
                   </div>
                 </div>
               ))}
