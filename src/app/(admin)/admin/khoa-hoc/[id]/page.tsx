@@ -1173,6 +1173,16 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#16a34a" }}>
                             + Thêm bài học
                           </button>
+                          {chapter.lessons.length > 0 && (
+                            <button onClick={() => duplicateLesson(section.id, chapter.id, chapter.lessons[chapter.lessons.length - 1].id)} disabled={saving}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                              style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#16a34a" }}>
+                              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="5" y="5" width="8" height="9" rx="1.2"/><path d="M3 11V3a1 1 0 011-1h8"/>
+                              </svg>
+                              Sao chép bài học
+                            </button>
+                          )}
                           <button onClick={() => openAddChapter(section.id)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#16a34a" }}>
                             + Thêm chương
