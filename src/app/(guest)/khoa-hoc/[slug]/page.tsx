@@ -159,15 +159,30 @@ export default function KhoaHocDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { completedIds, markComplete, unmarkComplete } = useProgress();
-  const [course, setCourse] = useState<DBCourse | null>(null);
+  const [course, setCourse]           = useState<DBCourse | null>(null);
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [openChapters, setOpenChapters] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!slug) return;
     fetch(`/api/courses/${slug}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => setCourse(data))
+      .then((data: DBCourse | null) => {
+        setCourse(data);
+        if (data) {
+          setOpenSections(new Set(data.sections.map(s => s.id)));
+          setOpenChapters(new Set(data.sections.flatMap(s => s.chapters.map(c => c.id))));
+        }
+      })
       .catch(() => {});
   }, [slug]);
+
+  function toggleSection(id: string) {
+    setOpenSections(p => { const s = new Set(p); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
+  function toggleChapter(id: string) {
+    setOpenChapters(p => { const s = new Set(p); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
 
   if (!course) {
     return (
@@ -272,11 +287,29 @@ export default function KhoaHocDetailPage() {
               )}
               {course.sections.map((section) => (
                 <div key={section.id}>
-                  <p className="text-base font-extrabold mb-3" style={{ color: "#1E2938" }}>{section.title}</p>
-                  <div className="space-y-3 pl-4">
+                  <button onClick={() => toggleSection(section.id)}
+                    className="w-full flex items-center justify-between gap-2 mb-2 text-left"
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                    <p className="text-base font-extrabold" style={{ color: "#1E2938" }}>{section.title}</p>
+                    <svg className="flex-shrink-0 transition-transform duration-200" style={{ transform: openSections.has(section.id) ? "rotate(180deg)" : "rotate(0deg)" }}
+                      width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round">
+                      <path d="M3 6l5 5 5-5"/>
+                    </svg>
+                  </button>
+                  {openSections.has(section.id) && (
+                  <div className="space-y-2 pl-4">
                   {section.chapters.map((chap) => (
                 <div key={chap.id}>
-                  <h3 className="text-sm font-bold mb-2" style={{ color: "#374151" }}>{chap.title}</h3>
+                  <button onClick={() => toggleChapter(chap.id)}
+                    className="w-full flex items-center justify-between gap-2 mb-1.5 text-left"
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                    <h3 className="text-sm font-bold" style={{ color: "#374151" }}>{chap.title}</h3>
+                    <svg className="flex-shrink-0 transition-transform duration-200" style={{ transform: openChapters.has(chap.id) ? "rotate(180deg)" : "rotate(0deg)" }}
+                      width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round">
+                      <path d="M3 6l5 5 5-5"/>
+                    </svg>
+                  </button>
+                  {openChapters.has(chap.id) && (
                   <div className="space-y-2 pl-4">
                     {chap.lessons.map((lesson) => {
                       const isCompleted = completedIds.has(lesson.id);
@@ -343,9 +376,11 @@ export default function KhoaHocDetailPage() {
                       );
                     })}
                   </div>
+                  )}
                 </div>
                   ))}
                   </div>
+                  )}
                 </div>
               ))}
             </div>
