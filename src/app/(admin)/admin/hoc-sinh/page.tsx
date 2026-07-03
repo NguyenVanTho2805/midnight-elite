@@ -602,7 +602,7 @@ export default function HocSinhPage() {
         onSave={handleAddStudent}
       />
 
-      <div className="space-y-5 max-w-7xl flex flex-col" style={{ height: "calc(100vh - 104px)" }}>
+      <div className="space-y-5 flex flex-col" style={{ height: "calc(100vh - 104px)" }}>
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
