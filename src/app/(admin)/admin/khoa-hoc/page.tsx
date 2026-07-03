@@ -9,19 +9,22 @@ import { SkeletonTable } from "@/components/Skeleton";
 import { Toggle } from "@/components/Toggle";
 import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { toSlug } from "@/lib/slug";
+import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
-  name: string; category: string; instructor: string;
+  name: string; slug: string; category: string; instructor: string;
   openDate: string; price: string; originalPrice: string;
-  lessons: string; hours: string; tag: string; tagColor: string; status: boolean;
+  lessons: string; hours: string; tag: string; tagColor: string;
+  bgImage: string; status: boolean;
 }
 
 const CREATE_INIT: CreateForm = {
-  name: "", category: "ĐGNL HSA",
+  name: "", slug: "", category: "ĐGNL HSA",
   instructor: "Midnight Elite", openDate: "",
   price: "", originalPrice: "",
-  lessons: "", hours: "", tag: "", tagColor: "#FF2157", status: true,
+  lessons: "", hours: "", tag: "", tagColor: "#FF2157",
+  bgImage: "", status: true,
 };
 
 const TAG_COLORS = ["#FF2157", "#FE9900", "#0068FF", "#00A63D"];
@@ -35,6 +38,8 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
   const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [bgUploading, setBgUploading] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([...ADMIN_CATEGORIES]);
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -63,8 +68,27 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
   }, [onClose]);
 
   function set<K extends keyof CreateForm>(k: K, v: CreateForm[K]) {
-    setForm(p => ({ ...p, [k]: v }));
+    setForm(p => {
+      const next = { ...p, [k]: v };
+      if (k === "name") next.slug = toSlug(v as string);
+      return next;
+    });
     setErrors(p => ({ ...p, [k]: undefined }));
+  }
+
+  async function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setBgUploading(true);
+    try {
+      const result = await uploadToCloudinary(file, "courses/backgrounds");
+      setForm(p => ({ ...p, bgImage: result.url }));
+    } catch (err) {
+      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi"));
+    } finally {
+      setBgUploading(false);
+    }
   }
 
   function validate(): boolean {
@@ -83,8 +107,9 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
     if (!validate()) return;
     setSaving(true);
     try {
+      const slug = form.slug.trim() || toSlug(form.name);
       await api.courses.create({
-        id:            toSlug(form.name),
+        id:            slug,
         name:          form.name.trim(),
         adminName:     form.name.trim(),
         shortTitle:    form.name.trim().toUpperCase().split(" ").slice(0, 2).join("\n"),
@@ -95,7 +120,9 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
         types:         ["Video"],
         tag:           form.tag || null,
         tagColor:      form.tag ? form.tagColor : null,
-        bg:            CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)",
+        bg:            form.bgImage
+                         ? `url(${form.bgImage}) center/cover no-repeat`
+                         : CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)",
         strip:         "#FDE047",
         price:         +form.price,
         originalPrice: form.originalPrice ? +form.originalPrice : null,
@@ -160,16 +187,68 @@ function CreateCourseDrawer({ open, onClose, onCreated }: {
         {/* Form */}
         <div className="p-5 space-y-6">
 
-          {/* Tên */}
+          {/* Tên + Slug */}
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Tên khoá học</h3>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                Tên khoá học <span className="text-red-500">*</span>
-              </label>
-              <input className={inp} placeholder="VD: ĐGNL HSA — Trọn gói lộ trình"
-                value={form.name} onChange={e => set("name", e.target.value)} />
-              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Tên khoá học <span className="text-red-500">*</span>
+                </label>
+                <input className={inp} placeholder="VD: ĐGNL HSA — Trọn gói lộ trình"
+                  value={form.name} onChange={e => set("name", e.target.value)} />
+                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Slug (URL)</label>
+                <div className="flex items-center gap-0">
+                  <span className="inline-flex items-center px-3 py-2.5 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-xs text-gray-400 whitespace-nowrap">/khoa-hoc/</span>
+                  <input className="flex-1 px-3 py-2.5 text-sm border border-gray-300 rounded-r-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"
+                    placeholder="tu-dong-tao-tu-ten"
+                    value={form.slug}
+                    onChange={e => setForm(p => ({ ...p, slug: toSlug(e.target.value) }))} />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Tự tạo từ tên. Chỉnh nếu cần URL riêng.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Ảnh nền */}
+          <section>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Ảnh nền thẻ khoá học</h3>
+            <div className="space-y-3">
+              {/* Preview */}
+              <div className="w-full h-24 rounded-xl overflow-hidden flex items-center justify-center relative"
+                style={{ background: form.bgImage ? `url(${form.bgImage}) center/cover no-repeat` : (CATEGORY_GRADIENT[form.category] ?? "#374151") }}>
+                <span className="text-white text-xs font-bold opacity-60 select-none">
+                  {form.bgImage ? "Ảnh nền" : "Gradient mặc định theo danh mục"}
+                </span>
+                {form.bgImage && (
+                  <button onClick={() => setForm(p => ({ ...p, bgImage: "" }))}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70">
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
+
+              {cloudinaryConfigured ? (
+                <button onClick={() => bgFileRef.current?.click()} disabled={bgUploading}
+                  className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+                  style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                  {bgUploading ? "⏳ Đang upload..." : "🖼 Tải ảnh lên (JPG, PNG, WebP)"}
+                </button>
+              ) : (
+                <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Hoặc paste URL ảnh</label>
+                <input className={inp} placeholder="https://..."
+                  value={form.bgImage}
+                  onChange={e => setForm(p => ({ ...p, bgImage: e.target.value.trim() }))} />
+              </div>
             </div>
           </section>
 

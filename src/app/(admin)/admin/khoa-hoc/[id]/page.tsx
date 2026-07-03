@@ -6,6 +6,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
+import { CATEGORY_GRADIENT } from "@/lib/courseData";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "hoc-vien";
@@ -37,6 +38,7 @@ interface CourseDB {
   openDate: string; price: number; originalPrice?: number | null;
   lessons: number; hours: number; tag?: string | null; tagColor?: string | null;
   introVideo?: string | null; zaloGroupLink?: string | null; bg: string; createdAt: string;
+  types: string[];
   sections: SectionDB[];
 }
 
@@ -219,6 +221,11 @@ function DelModal({ target, onClose, onConfirm }: { target: DelTarget; onClose: 
 }
 
 // ─── TAB CÀI ĐẶT ─────────────────────────────────────────────────────────────
+function extractBgImage(bg: string): string {
+  const m = bg?.match(/url\(["']?(.+?)["']?\)/);
+  return m?.[1] ?? "";
+}
+
 function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseDB }) {
   const [form, setForm] = useState({
     publicName:    course.name,
@@ -233,9 +240,12 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
     tagColor:      course.tagColor ?? "#FF2157",
     introVideo:    course.introVideo ?? "",
     zaloGroupLink: course.zaloGroupLink ?? "",
+    bgImage:       extractBgImage(course.bg),
   });
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [saved,  setSaved]            = useState(false);
+  const [bgUploading, setBgUploading] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -246,6 +256,21 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
   }, []);
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
+
+  async function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setBgUploading(true);
+    try {
+      const result = await uploadToCloudinary(file, "courses/backgrounds");
+      setForm(f => ({ ...f, bgImage: result.url }));
+    } catch (err) {
+      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi"));
+    } finally {
+      setBgUploading(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -262,6 +287,9 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         tagColor:      form.tag ? form.tagColor : null,
         introVideo:    form.introVideo || null,
         zaloGroupLink: form.zaloGroupLink || null,
+        bg:            form.bgImage
+                         ? `url(${form.bgImage}) center/cover no-repeat`
+                         : CATEGORY_GRADIENT[form.category] ?? course.bg,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -308,6 +336,43 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
                 <option value={form.category}>{form.category}</option>
               )}
             </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Ảnh nền thẻ khoá học</h3>
+        <div className="space-y-3">
+          <div className="w-full h-24 rounded-xl overflow-hidden flex items-center justify-center relative"
+            style={{ background: form.bgImage ? `url(${form.bgImage}) center/cover no-repeat` : (CATEGORY_GRADIENT[form.category] ?? course.bg) }}>
+            <span className="text-white text-xs font-bold opacity-60 select-none">
+              {form.bgImage ? "Ảnh nền" : "Gradient mặc định"}
+            </span>
+            {form.bgImage && (
+              <button onClick={() => setForm(f => ({ ...f, bgImage: "" }))}
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70">
+                ✕
+              </button>
+            )}
+          </div>
+
+          <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
+
+          {cloudinaryConfigured ? (
+            <button onClick={() => bgFileRef.current?.click()} disabled={bgUploading}
+              className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+              style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+              {bgUploading ? "⏳ Đang upload..." : "🖼 Tải ảnh lên (JPG, PNG, WebP)"}
+            </button>
+          ) : (
+            <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Hoặc paste URL ảnh</label>
+            <input className={inp} placeholder="https://..."
+              value={form.bgImage}
+              onChange={e => setForm(f => ({ ...f, bgImage: e.target.value.trim() }))} />
           </div>
         </div>
       </div>
@@ -383,6 +448,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           tag: course.tag ?? "", tagColor: course.tagColor ?? "#FF2157",
           introVideo: course.introVideo ?? "",
           zaloGroupLink: course.zaloGroupLink ?? "",
+          bgImage: extractBgImage(course.bg),
         })} className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">
           Huỷ thay đổi
         </button>
