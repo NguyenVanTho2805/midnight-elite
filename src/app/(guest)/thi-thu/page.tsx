@@ -16,7 +16,7 @@ const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string 
 export default function GuestThiThuPage() {
   const [cat, setCat] = useState("Tất cả");
 
-  const { data: apiExams } = useExams({ activeGuest: "true" });
+  const { data: apiExams, loading: examsLoading } = useExams({ activeGuest: "true" });
   const PUBLIC_EXAMS = apiExams.map(e => ({ ...e, status: e.status as ExamStatus }));
 
   const filtered = cat === "Tất cả"
@@ -94,7 +94,17 @@ export default function GuestThiThuPage() {
 
         {/* Exam list */}
         <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          {filtered.map((exam, idx) => {
+          {examsLoading && [1,2,3].map(i => (
+            <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse border-b last:border-0" style={{ borderColor:"#e5e3df" }}>
+              <div className="w-10 h-10 rounded-xl flex-shrink-0" style={{ background:"#e5e3df" }} />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-48 rounded bg-gray-100" />
+                <div className="h-3 w-32 rounded bg-gray-100" />
+              </div>
+              <div className="h-6 w-20 rounded-full" style={{ background:"#e5e3df" }} />
+            </div>
+          ))}
+          {!examsLoading && filtered.map((exam, idx) => {
             const s = STATUS_CFG[exam.status];
             const grad = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
             const isLast = idx === filtered.length - 1;
@@ -143,7 +153,7 @@ export default function GuestThiThuPage() {
               </div>
             );
           })}
-          {filtered.length === 0 && (
+          {!examsLoading && filtered.length === 0 && (
             <div className="py-16 text-center text-sm" style={{ color: "#a4a097" }}>
               Không có đề thi nào trong danh mục này
             </div>

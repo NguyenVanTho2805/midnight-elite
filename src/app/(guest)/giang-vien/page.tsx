@@ -182,8 +182,16 @@ export default function GiangVienPage() {
           <h2 className="text-xl font-bold mb-3" style={{ color: "#1a1a1a" }}>Bắt đầu học với giảng viên ngay hôm nay</h2>
           <p className="text-sm mb-6" style={{ color: "#787671" }}>Gọi tư vấn miễn phí để được ghép lớp phù hợp với lộ trình của bạn</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/khoa-hoc" className="notion-btn-primary text-sm">Xem khóa học</Link>
-            <a href="tel:0384409051" className="notion-btn-secondary text-sm">Gọi 0384 409 051</a>
+            <Link href="/khoa-hoc"
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white text-center transition-all hover:brightness-105 active:scale-[0.98]"
+              style={{ background: "#0068FF" }}>
+              Xem khóa học
+            </Link>
+            <a href="tel:0384409051"
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:brightness-105 active:scale-[0.98]"
+              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#37352f" }}>
+              Gọi 0384 409 051
+            </a>
           </div>
         </section>
     </div>

@@ -14,6 +14,7 @@ interface DBSection { id: string; title: string; chapters: DBChapter[] }
 interface DBCourse {
   id: string; name: string; category: string; instructor: string;
   lessons: number; hours: number; price: number; originalPrice?: number | null;
+  openDate?: string | null;
   introVideo?: string | null;
   sections: DBSection[];
 }
@@ -159,7 +160,8 @@ export default function KhoaHocDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { completedIds, markComplete, unmarkComplete } = useProgress();
-  const [course, setCourse]           = useState<DBCourse | null>(null);
+  const [course, setCourse]             = useState<DBCourse | null>(null);
+  const [loaded, setLoaded]             = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set());
 
@@ -174,7 +176,8 @@ export default function KhoaHocDetailPage() {
           setOpenChapters(new Set(data.sections.flatMap(s => s.chapters.map(c => c.id))));
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, [slug]);
 
   function toggleSection(id: string) {
@@ -184,7 +187,7 @@ export default function KhoaHocDetailPage() {
     setOpenChapters(p => { const s = new Set(p); s.has(id) ? s.delete(id) : s.add(id); return s; });
   }
 
-  if (!course) {
+  if (!loaded) {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="flex gap-1.5">
@@ -192,6 +195,21 @@ export default function KhoaHocDetailPage() {
             <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "#0068FF", animationDelay: `${i*0.15}s` }} />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-center px-4">
+        <div className="text-5xl mb-4">🔍</div>
+        <h1 className="text-xl font-extrabold mb-2" style={{ color: "#1E2938" }}>Không tìm thấy khóa học</h1>
+        <p className="text-sm mb-6" style={{ color: "#9CA3AF" }}>Khóa học này không tồn tại hoặc đã bị gỡ xuống.</p>
+        <Link href="/khoa-hoc"
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+          style={{ background: "#0068FF" }}>
+          Xem tất cả khóa học
+        </Link>
       </div>
     );
   }
@@ -251,7 +269,7 @@ export default function KhoaHocDetailPage() {
                     #{tag}
                   </span>
                 ))}
-                <span className="text-xs" style={{ color: "#9CA3AF" }}>Cập nhật: 5/2026</span>
+                {course.openDate && <span className="text-xs" style={{ color: "#9CA3AF" }}>Khai giảng: {course.openDate}</span>}
               </div>
               <h1 className="text-2xl font-extrabold mb-3" style={{ color: "#1E2938" }}>{course.name}</h1>
               <p className="text-sm leading-relaxed mb-3" style={{ color: "#6B7280" }}>
@@ -261,12 +279,10 @@ export default function KhoaHocDetailPage() {
                 <TeacherTag className="mb-5" name={course.instructor} avatar={course.instructor[0]} size={36} role="Giảng viên phụ trách" />
               )}
 
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Bài giảng", value: String(course.lessons || course.sections.reduce((t, s) => t + s.chapters.reduce((tc, c) => tc + c.lessons.length, 0), 0)) },
                   { label: "Thời lượng", value: `${course.hours}h` },
-                  { label: "Học viên", value: "2.4k" },
-                  { label: "Đánh giá", value: "4.9" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-3 text-center"
                     style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>

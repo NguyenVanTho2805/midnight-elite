@@ -508,14 +508,13 @@ function StudentContent() {
             <p className="text-sm font-medium mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>{getGreeting()}</p>
             <h1 className="text-2xl font-bold text-white mb-2" style={{ letterSpacing: "-0.5px" }}>{user?.name ?? "Học viên"}</h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-medium text-white" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>Rank #47 / 312</span>
-              <span className="px-3 py-1 rounded-full text-xs font-medium text-white" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>Streak 12 ngày</span>
-              <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ background: "#FDE047", color: "#1a1a1a" }}>GPA 8.4</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium text-white" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>{enrolledIds.size} khóa học</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium text-white" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>{completedIds.size} bài đã học</span>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-bold text-white">1,240</div>
-            <div className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>EXP tích lũy</div>
+            <div className="text-4xl font-bold text-white">{completedIds.size}</div>
+            <div className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Bài hoàn thành</div>
           </div>
         </div>
       </div>

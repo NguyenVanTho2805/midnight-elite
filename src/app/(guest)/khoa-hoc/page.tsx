@@ -181,7 +181,7 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
 }
 
 function KhoaHocContent() {
-  const { data: apiCourses } = useCourses();
+  const { data: apiCourses, loading: coursesLoading } = useCourses();
   const courses = useMemo(() => apiCourses.map(toCourse), [apiCourses]);
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -331,7 +331,17 @@ function KhoaHocContent() {
 
           {/* Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filtered.map(course => (
+            {coursesLoading && [1,2,3,4,5,6].map(i => (
+              <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ background:"#f6f5f4", border:"1px solid #e5e3df" }}>
+                <div className="h-36" style={{ background:"#e5e3df" }} />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 w-3/4 rounded bg-gray-200" />
+                  <div className="h-3 w-1/2 rounded bg-gray-200" />
+                  <div className="h-6 w-24 rounded bg-gray-200 mt-3" />
+                </div>
+              </div>
+            ))}
+            {!coursesLoading && filtered.map(course => (
               <CourseCard
                 key={course.slug}
                 course={course}
@@ -341,7 +351,7 @@ function KhoaHocContent() {
             ))}
           </div>
 
-          {filtered.length === 0 && (
+          {!coursesLoading && filtered.length === 0 && (
             <div className="text-center py-16 rounded-xl"
               style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
               <p className="text-base font-semibold mb-2" style={{ color: "#9CA3AF" }}>

@@ -142,7 +142,7 @@ export default function ThiThuPage() {
                 ) : exam.status === "available" ? (
                   <Link href={`/student/thi-thu/${exam.id}`}
                     className="text-xs font-semibold px-4 py-2 rounded-lg text-white"
-                    style={{ background: "#16a34a", borderRadius: "8px" }}>
+                    style={{ background: "#0068FF", borderRadius: "8px" }}>
                     Vào thi
                   </Link>
                 ) : (

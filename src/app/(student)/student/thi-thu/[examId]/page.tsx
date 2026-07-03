@@ -99,7 +99,7 @@ export default function ExamEntryPage() {
   if (phase === "error" || !exam) {
     return (
       <div className="max-w-lg mx-auto text-center py-20">
-        <p className="text-red-500 font-semibold">Không tìm thấy đề thi</p>
+        <p className="font-semibold" style={{ color: "#dc2626" }}>Không tìm thấy đề thi</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ export default function ExamEntryPage() {
             className="w-full px-4 py-3 rounded-xl text-lg font-bold border-2 outline-none mb-4"
             style={{ borderColor: submitErr ? "#fca5a5" : "#e5e3df", background: "#ffffff" }}
           />
-          {submitErr && <p className="text-xs text-red-500 mb-3">{submitErr}</p>}
+          {submitErr && <p className="text-xs mb-3" style={{ color: "#dc2626" }}>{submitErr}</p>}
 
           <button
             onClick={submitScore}

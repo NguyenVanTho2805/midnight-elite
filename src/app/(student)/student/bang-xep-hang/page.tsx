@@ -97,7 +97,7 @@ function TabThiThu({ myName, myId }: { myName: string; myId: string }) {
         ))}
       </div>
 
-      {loading && <div className="text-center py-6 text-sm" style={{ color: "#9CA3AF" }}>Đang tải...</div>}
+      {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background:"#f6f5f4" }} />)}</div>}
 
       {!loading && leaderboard.length === 0 && (
         <div className="rounded-xl p-12 mb-8 text-center" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
@@ -209,7 +209,6 @@ function TabThiThu({ myName, myId }: { myName: string; myId: string }) {
 // ─── TAB VINH DANH ────────────────────────────────────────────────────────────
 function TabVinhDanh({ myName, myId }: { myName: string; myId: string }) {
   const [sortKey, setSortKey] = useState<SortKey>("gpa");
-  const [period, setPeriod]   = useState<Period>("thang5");
   const [students, setStudents] = useState<HonorStudent[]>([]);
   const [loading, setLoading]   = useState(true);
 
@@ -245,7 +244,7 @@ function TabVinhDanh({ myName, myId }: { myName: string; myId: string }) {
         <div className="flex-1 min-w-0">
           <p className="text-white font-extrabold text-sm truncate">{myName}</p>
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>
-            Bảng vinh danh Midnight Elite · {PERIOD_LABELS[period]}
+            Bảng vinh danh Midnight Elite
           </p>
         </div>
         <div className="text-right flex-shrink-0">
@@ -263,22 +262,11 @@ function TabVinhDanh({ myName, myId }: { myName: string; myId: string }) {
       </div>
 
       <div className="text-center mb-6">
-        <p className="text-sm" style={{ color: "#6B7280" }}>{PERIOD_LABELS[period]} · {students.length} học sinh</p>
+        <p className="text-sm" style={{ color: "#6B7280" }}>{students.length} học sinh trong bảng</p>
       </div>
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-        <div className="flex gap-1 p-1 rounded-lg" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-          {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
-            <button key={k} onClick={() => setPeriod(k)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-              style={period === k
-                ? { background: "#ffffff", color: "#37352f", border: "1px solid #e5e3df" }
-                : { color: "#787671" }}>
-              {v}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3 mb-8">
         <div className="flex gap-1.5">
           {([
             { key: "gpa" as SortKey, label: "GPA" },
@@ -296,7 +284,7 @@ function TabVinhDanh({ myName, myId }: { myName: string; myId: string }) {
         </div>
       </div>
 
-      {loading && <div className="text-center py-8 text-sm" style={{ color: "#9CA3AF" }}>Đang tải dữ liệu...</div>}
+      {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background:"#f6f5f4" }} />)}</div>}
 
       {!loading && students.length === 0 && (
         <div className="text-center py-12 rounded-xl" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 type Category = "all" | "hoc-thuat" | "tuyen-sinh" | "tin-midnight" | "kinh-nghiem";
@@ -149,8 +149,20 @@ function ArticleCard({ article: a }: { article: Article }) {
 export default function StudentTinTucPage() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [search, setSearch] = useState("");
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loadingArticles, setLoadingArticles] = useState(true);
 
-  const filtered = ARTICLES.filter(a => {
+  useEffect(() => {
+    fetch("/api/articles?published=true&limit=50")
+      .then(r => r.ok ? r.json() : { articles: [] })
+      .then(d => setArticles(d.articles ?? []))
+      .catch(() => setArticles(ARTICLES))
+      .finally(() => setLoadingArticles(false));
+  }, []);
+
+  const source = articles.length > 0 ? articles : ARTICLES;
+
+  const filtered = source.filter(a => {
     const matchCat    = activeCategory === "all" || a.category === activeCategory;
     const matchSearch = search === "" || a.title.toLowerCase().includes(search.toLowerCase()) || a.excerpt.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
@@ -193,7 +205,21 @@ export default function StudentTinTucPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loadingArticles ? (
+        <div className="space-y-4">
+          {[1,2,3].map(i => (
+            <div key={i} className="rounded-xl p-5 animate-pulse" style={{ background:"#f6f5f4", border:"1px solid #e5e3df" }}>
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-20 rounded bg-gray-200" />
+                  <div className="h-4 w-3/4 rounded bg-gray-200" />
+                  <div className="h-3 w-full rounded bg-gray-200" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="rounded-xl p-12 text-center" style={{ background:"#f6f5f4", border:"1px solid #e5e3df" }}>
           <p className="text-4xl mb-3">🔍</p>
           <p className="font-semibold" style={{ color:"#1E2938" }}>Không tìm thấy bài viết nào</p>

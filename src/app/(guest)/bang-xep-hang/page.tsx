@@ -66,7 +66,7 @@ function TabThiThu() {
         ))}
       </div>
 
-      {loading && <div className="text-center py-6 text-sm" style={{ color: "#a4a097" }}>Đang tải...</div>}
+      {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background:"#f6f5f4" }} />)}</div>}
 
       {!loading && leaderboard.length === 0 && (
         <div className="rounded-xl p-12 mb-8 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
@@ -228,7 +228,7 @@ function TabVinhDanh() {
         </div>
       </div>
 
-      {loading && <div className="text-center py-8 text-sm" style={{ color: "#a4a097" }}>Đang tải...</div>}
+      {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background:"#f6f5f4" }} />)}</div>}
 
       {!loading && students.length === 0 && (
         <div className="text-center py-12 rounded-xl" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
