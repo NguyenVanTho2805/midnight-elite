@@ -677,7 +677,7 @@ export default function ThiThuAdminPage() {
 
   return (
     <PermissionGuard required={PERMISSIONS.MANAGE_CURRICULUM}>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col" style={{ height: "calc(100vh - 104px)" }}>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
         {/* Breadcrumb */}
         <div className="px-5 py-2 border-b border-gray-100 bg-gray-50">

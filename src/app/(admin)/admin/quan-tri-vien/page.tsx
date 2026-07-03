@@ -121,7 +121,7 @@ export default function QuanTriVienPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
         style={{ height: "calc(100vh - 104px)" }}>
 
         {/* Breadcrumb */}
