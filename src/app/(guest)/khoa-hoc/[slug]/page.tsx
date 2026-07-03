@@ -288,26 +288,26 @@ export default function KhoaHocDetailPage() {
               {course.sections.map((section) => (
                 <div key={section.id}>
                   <button onClick={() => toggleSection(section.id)}
-                    className="w-full flex items-center justify-between gap-2 mb-2 text-left"
+                    className="w-full flex items-center gap-2 mb-2 text-left"
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-                    <p className="text-base font-extrabold" style={{ color: "#1E2938" }}>{section.title}</p>
-                    <svg className="flex-shrink-0 transition-transform duration-200" style={{ transform: openSections.has(section.id) ? "rotate(180deg)" : "rotate(0deg)" }}
-                      width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round">
-                      <path d="M3 6l5 5 5-5"/>
+                    <svg className="flex-shrink-0 transition-transform duration-200" style={{ transform: openSections.has(section.id) ? "rotate(90deg)" : "rotate(0deg)" }}
+                      width="10" height="10" viewBox="0 0 10 10">
+                      <polygon points="2,1 9,5 2,9" fill="#1E2938"/>
                     </svg>
+                    <p className="text-base font-extrabold" style={{ color: "#1E2938" }}>{section.title}</p>
                   </button>
                   {openSections.has(section.id) && (
                   <div className="space-y-2 pl-4">
                   {section.chapters.map((chap) => (
                 <div key={chap.id}>
                   <button onClick={() => toggleChapter(chap.id)}
-                    className="w-full flex items-center justify-between gap-2 mb-1.5 text-left"
+                    className="w-full flex items-center gap-2 mb-1.5 text-left"
                     style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-                    <h3 className="text-sm font-bold" style={{ color: "#374151" }}>{chap.title}</h3>
-                    <svg className="flex-shrink-0 transition-transform duration-200" style={{ transform: openChapters.has(chap.id) ? "rotate(180deg)" : "rotate(0deg)" }}
-                      width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round">
-                      <path d="M3 6l5 5 5-5"/>
+                    <svg className="flex-shrink-0 transition-transform duration-200" style={{ transform: openChapters.has(chap.id) ? "rotate(90deg)" : "rotate(0deg)" }}
+                      width="8" height="8" viewBox="0 0 10 10">
+                      <polygon points="2,1 9,5 2,9" fill="#6B7280"/>
                     </svg>
+                    <h3 className="text-sm font-bold" style={{ color: "#374151" }}>{chap.title}</h3>
                   </button>
                   {openChapters.has(chap.id) && (
                   <div className="space-y-2 pl-4">
