@@ -87,6 +87,10 @@
   --color-foreground: var(--foreground);
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--canvas);
   color: var(--ink);
