@@ -1395,7 +1395,7 @@ export default function KhoaHocDetailPage() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col" style={{ minHeight: "calc(100vh - 130px)" }}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ minHeight: "calc(100vh - 130px)" }}>
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}

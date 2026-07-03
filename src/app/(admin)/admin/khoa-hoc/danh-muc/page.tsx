@@ -305,7 +305,7 @@ export default function DanhMucPage() {
   const totalCourses = categories.reduce((a, c) => a + c.courseCount, 0);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col" style={{ minHeight: "calc(100vh - 130px)" }}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ minHeight: "calc(100vh - 130px)" }}>
 
       {/* Toast */}
       {toast && (

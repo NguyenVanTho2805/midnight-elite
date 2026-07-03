@@ -225,7 +225,7 @@ function SalesLeadsContent() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white"
+        <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white min-w-0"
           style={{ border: "1px solid #e5e3df" }}>
           <div className="grid grid-cols-12 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
             style={{ color: "#9CA3AF", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
