@@ -404,25 +404,6 @@ export default function KhoaHocDetailPage() {
               {course.originalPrice && <div className="text-sm line-through" style={{ color: "#9CA3AF" }}>{course.originalPrice.toLocaleString("vi-VN")}đ</div>}
             </div>
 
-            {/* Giá */}
-            <div className="rounded-xl p-4 mb-5 flex items-center justify-between"
-              style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-              <div>
-                <p className="text-2xl font-extrabold" style={{ color: "#0068FF" }}>
-                  {course.price.toLocaleString("vi-VN")}đ
-                </p>
-                {discount > 0 && course.originalPrice && (
-                  <p className="text-sm line-through" style={{ color: "#9CA3AF" }}>
-                    {course.originalPrice.toLocaleString("vi-VN")}đ
-                  </p>
-                )}
-              </div>
-              {discount > 0 && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white"
-                  style={{ background: "#FF2157" }}>-{discount}%</span>
-              )}
-            </div>
-
             {/* CTA */}
             <div className="space-y-2 mb-5">
               <a href="tel:0384409051"
