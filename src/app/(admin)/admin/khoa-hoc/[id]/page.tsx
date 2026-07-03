@@ -1040,7 +1040,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                     }}
                     onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
                   >
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white hover:bg-gray-50 transition-colors">
                       <DragHandle />
                       <button onClick={() => toggleCh(chapter.id)} className="text-gray-400 text-xs flex-shrink-0">
                         {expanded.chapters.has(chapter.id) ? "▼" : "▶"}
@@ -1063,7 +1063,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                           const lessonTypes = parseTypes(lesson.type);
                           return (
                             <div key={lesson.id || `${chapter.id}-l-${li}`}
-                              className="flex items-center gap-3 px-4 py-2.5 transition-colors"
+                              className="flex items-center gap-3 pl-12 pr-4 py-2.5 transition-colors"
                               style={{
                                 borderTop: "1px dashed #e5e7eb",
                                 background: dragOverKey === `l-${lesson.id}` ? "#F0FDF4" : undefined,
@@ -1110,7 +1110,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                             </div>
                           );
                         })}
-                        <div className="flex flex-wrap items-center gap-2 px-4 py-3" style={{ borderTop: "1px dashed #e5e7eb", background: "#fafafa" }}>
+                        <div className="flex flex-wrap items-center gap-2 pl-8 pr-4 py-3" style={{ borderTop: "1px dashed #e5e7eb", background: "#fafafa" }}>
                           <button onClick={() => openAddLesson(section.id, chapter.id)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#16a34a" }}>
                             + Thêm bài học
