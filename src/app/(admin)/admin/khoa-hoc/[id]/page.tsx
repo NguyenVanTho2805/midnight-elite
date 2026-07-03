@@ -683,6 +683,58 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     }).then(r => { if (!r.ok) { setSections(prevSections.current); flash("Lỗi sắp xếp, đã hoàn tác"); } });
   }
 
+  async function duplicateChapter(sectionId: string, chapterId: string) {
+    const sec = sections.find(s => s.id === sectionId)!;
+    const ch  = sec.chapters.find(c => c.id === chapterId)!;
+    setSaving(true);
+    try {
+      const newCh = await apiPost<ChapterDB>(`/api/sections/${sectionId}/chapters`, { title: `${ch.title} (bản sao)` });
+      const newLessons: LessonDB[] = [];
+      for (const l of ch.lessons) {
+        const nl = await apiPost<LessonDB>(`/api/chapters/${newCh.id}/lessons`, {
+          title: l.title, type: l.type,
+          videoUrl: l.videoUrl, zoomUrl: l.zoomUrl, azotaUrl: l.azotaUrl,
+          azotaDeadline: l.azotaDeadline, duration: l.duration,
+          isLocked: l.isLocked, isFree: l.isFree,
+          documents: l.documents, adminNote: l.adminNote,
+        });
+        newLessons.push(nl);
+      }
+      setSections(p => p.map(s => s.id === sectionId
+        ? { ...s, chapters: [...s.chapters, { ...newCh, lessons: newLessons }] } : s));
+      setExpanded(p => ({ ...p, chapters: new Set([...p.chapters, newCh.id]) }));
+      flash(`Đã sao chép chương "${ch.title}"`);
+    } catch (e: unknown) {
+      flash((e as Error).message ?? "Lỗi sao chép chương");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function duplicateLesson(sectionId: string, chapterId: string, lessonId: string) {
+    const sec = sections.find(s => s.id === sectionId)!;
+    const ch  = sec.chapters.find(c => c.id === chapterId)!;
+    const l   = ch.lessons.find(x => x.id === lessonId)!;
+    setSaving(true);
+    try {
+      const nl = await apiPost<LessonDB>(`/api/chapters/${chapterId}/lessons`, {
+        title: `${l.title} (bản sao)`, type: l.type,
+        videoUrl: l.videoUrl, zoomUrl: l.zoomUrl, azotaUrl: l.azotaUrl,
+        azotaDeadline: l.azotaDeadline, duration: l.duration,
+        isLocked: l.isLocked, isFree: l.isFree,
+        documents: l.documents, adminNote: l.adminNote,
+      });
+      setSections(p => p.map(s => s.id === sectionId
+        ? { ...s, chapters: s.chapters.map(c => c.id === chapterId
+            ? { ...c, lessons: [...c.lessons, nl] } : c) } : s));
+      flash(`Đã sao chép bài "${l.title}"`);
+    } catch (e: unknown) {
+      flash((e as Error).message ?? "Lỗi sao chép bài");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
   function toggleSec(id: string) {
@@ -1100,6 +1152,12 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                                     <path d="M11 2l3 3-8 8H3v-3z"/>
                                   </svg>
                                 </button>
+                                <button onClick={() => duplicateLesson(section.id, chapter.id, lesson.id)} disabled={saving}
+                                  className="p-1.5 rounded hover:bg-green-50 transition-colors disabled:opacity-40" title="Sao chép bài" style={{ color: "#16a34a" }}>
+                                  <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="5" y="5" width="8" height="9" rx="1.2"/><path d="M3 11V3a1 1 0 011-1h8"/>
+                                  </svg>
+                                </button>
                                 <button onClick={() => setDel({ kind: "lesson", sectionId: section.id, chapterId: chapter.id, lessonId: lesson.id, label: lesson.title })}
                                   className="p-1.5 rounded hover:bg-red-50 transition-colors" title="Xoá" style={{ color: "#EF4444" }}>
                                   <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -1118,6 +1176,14 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                           <button onClick={() => openAddChapter(section.id)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#16a34a" }}>
                             + Thêm chương
+                          </button>
+                          <button onClick={() => duplicateChapter(section.id, chapter.id)} disabled={saving}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                            style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#16a34a" }}>
+                            <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="5" y="5" width="8" height="9" rx="1.2"/><path d="M3 11V3a1 1 0 011-1h8"/>
+                            </svg>
+                            Sao chép chương
                           </button>
                         </div>
                       </div>
