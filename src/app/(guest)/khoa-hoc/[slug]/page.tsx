@@ -380,7 +380,8 @@ export default function KhoaHocDetailPage() {
                       const sharedStyle = { background: lesson.isFree ? "#ffffff" : "#f6f5f4", border: "1px solid #e5e3df" };
 
                       return lesson.isFree ? (
-                        <Link key={lesson.id} href={`/student/bai-giang/${lesson.id}`}
+                        <Link key={lesson.id}
+                          href={user ? `/student/bai-giang/${lesson.id}` : `/dang-nhap?redirect=/student/bai-giang/${lesson.id}`}
                           className={sharedClass + " hover:opacity-80 cursor-pointer"}
                           style={sharedStyle}>
                           {inner}

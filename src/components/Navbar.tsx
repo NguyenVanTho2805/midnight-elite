@@ -5,19 +5,28 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
-const navLinks = [
+const guestNavLinks = [
   { label: "Khóa học",      href: "/khoa-hoc"           },
-  { label: "Gia sư",    href: "/giang-vien"          },
-  { label: "Thi thử ĐGNL",  href: "/thi-thu"             },
-  { label: "Cộng đồng",     href: "/student/cong-dong"   },
-  { label: "Bảng xếp hạng", href: "/bang-xep-hang"       },
-  { label: "Tin tức",       href: "/tin-tuc"             },
+  { label: "Gia sư",        href: "/giang-vien"         },
+  { label: "Thi thử ĐGNL",  href: "/thi-thu"            },
+  { label: "Bảng xếp hạng", href: "/bang-xep-hang"      },
+  { label: "Tin tức",       href: "/tin-tuc"            },
+];
+
+const studentNavLinks = [
+  { label: "Khóa học",      href: "/khoa-hoc"           },
+  { label: "Gia sư",        href: "/giang-vien"         },
+  { label: "Thi thử ĐGNL",  href: "/thi-thu"            },
+  { label: "Cộng đồng",     href: "/student/cong-dong"  },
+  { label: "Bảng xếp hạng", href: "/bang-xep-hang"      },
+  { label: "Tin tức",       href: "/tin-tuc"            },
 ];
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
+  const navLinks = user ? studentNavLinks : guestNavLinks;
 
   function handleLogout() {
     setMenuOpen(false);

@@ -729,11 +729,19 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           </p>
         </div>
         <div className="flex gap-3">
-          <Link href="/khoa-hoc"
-            className="px-4 py-2 text-sm font-bold text-white rounded-xl"
-            style={{ background: "#0068FF" }}>
-            {isForbidden ? "Xem các khóa học" : "← Về trang học"}
-          </Link>
+          {isForbidden ? (
+            <Link href="/khoa-hoc"
+              className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+              style={{ background: "#FE9900" }}>
+              Xem các khóa học
+            </Link>
+          ) : (
+            <Link href="/student"
+              className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+              style={{ background: "#0068FF" }}>
+              ← Về trang học
+            </Link>
+          )}
           <Link href="/student"
             className="px-4 py-2 text-sm font-semibold rounded-xl"
             style={{ border: "1px solid #e5e3df", color: "#787671" }}>
