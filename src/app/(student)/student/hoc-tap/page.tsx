@@ -90,7 +90,7 @@ function HocTapContent() {
 
   if (loading || progressLoading || enrollmentsLoading) {
     return (
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="space-y-4">
         <div className="h-7 w-48 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
         <div className="h-24 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
         {[1,2,3].map(i => (
@@ -115,16 +115,16 @@ function HocTapContent() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="space-y-5">
 
-      {/* Back button + title */}
+      {/* Back button + breadcrumb */}
       <div className="flex items-center gap-3">
         <Link href="/student"
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-[#eceae6]"
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors hover:bg-[#eceae6]"
           style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF" }}>
           ← Trang học
         </Link>
-        <span className="text-sm truncate" style={{ color: "#9CA3AF" }}>{course.name}</span>
+        <span className="text-sm font-medium truncate" style={{ color: "#9CA3AF" }}>{course.name}</span>
       </div>
 
       {/* Course header card */}
