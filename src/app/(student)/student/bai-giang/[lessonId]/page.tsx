@@ -56,7 +56,11 @@ interface DBCourse {
   id: string; name: string; instructor: string; price: number; originalPrice?: number | null;
   sections: DBSection[];
 }
+// enrolled=true: admin hoặc đã mua; false: xem bài free chưa mua
+interface LessonContext { lesson: DBLesson; course: DBCourse; enrolled: boolean }
 
+// API đã normalise isLocked: enrolled→false, not-enrolled→!isFree.
+// Chỉ cần map 1-1, không tính lại ở frontend.
 function dbToLocalSections(dbSections: DBSection[], completedIds: Set<string>): Section[] {
   return dbSections.map(s => ({
     id: s.id,
@@ -71,7 +75,7 @@ function dbToLocalSections(dbSections: DBSection[], completedIds: Set<string>): 
         type:        l.type as LessonType,
         duration:    l.duration ?? undefined,
         isCompleted: completedIds.has(l.id),
-        isLocked:    l.isLocked && !completedIds.has(l.id),
+        isLocked:    l.isLocked,
         isFree:      l.isFree,
         stats: { videos: l.statsVideos, materials: l.statsMaterials, views: l.statsViews },
       })),
@@ -673,16 +677,21 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     });
   }
 
-  const [ctx, setCtx]           = useState<{ lesson: DBLesson; course: DBCourse } | null>(null);
+  const [ctx, setCtx]               = useState<LessonContext | null>(null);
+  const [ctxStatus, setCtxStatus]   = useState<number | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
 
   useEffect(() => {
     setCtxLoading(true);
     setCtx(null);
+    setCtxStatus(null);
     fetch(`/api/lessons/${params.lessonId}/context`)
-      .then(r => r.ok ? r.json() : null)
+      .then(async r => {
+        setCtxStatus(r.status);
+        return r.ok ? r.json() : null;
+      })
       .then(data => setCtx(data))
-      .catch(() => {})
+      .catch(() => setCtxStatus(500))
       .finally(() => setCtxLoading(false));
   }, [params.lessonId]);
 
@@ -699,17 +708,45 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   }
 
   if (!ctx) {
+    const isForbidden = ctxStatus === 403;
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <p className="text-lg font-bold" style={{ color: "#1E2938" }}>Không tìm thấy bài học</p>
-        <Link href="/student/hoc-tap" className="px-4 py-2 text-sm font-bold text-white"
-          style={{ background: "#0068FF", borderRadius: "8px" }}>← Về khóa học</Link>
+      <div className="flex flex-col items-center justify-center py-24 gap-5 text-center px-4">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: isForbidden ? "#FFF7ED" : "#f6f5f4" }}>
+          {isForbidden
+            ? <Lock size={28} style={{ color: "#FE9900" }} />
+            : <FileDownload size={28} style={{ color: "#9CA3AF" }} />
+          }
+        </div>
+        <div>
+          <p className="text-lg font-extrabold mb-1" style={{ color: "#1E2938" }}>
+            {isForbidden ? "Bài học này yêu cầu mua khóa học" : "Không tìm thấy bài học"}
+          </p>
+          <p className="text-sm" style={{ color: "#9CA3AF" }}>
+            {isForbidden
+              ? "Bạn chưa đăng ký khóa học này. Vui lòng mua khóa học để truy cập."
+              : "Bài học không tồn tại hoặc đã bị xóa."}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Link href="/khoa-hoc"
+            className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+            style={{ background: "#0068FF" }}>
+            {isForbidden ? "Xem các khóa học" : "← Về trang học"}
+          </Link>
+          <Link href="/student"
+            className="px-4 py-2 text-sm font-semibold rounded-xl"
+            style={{ border: "1px solid #e5e3df", color: "#787671" }}>
+            Tổng quan
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const dbLesson = ctx.lesson;
-  const dbCourse = ctx.course;
+  const dbLesson  = ctx.lesson;
+  const dbCourse  = ctx.course;
+  const enrolled  = ctx.enrolled;
 
   const sections   = dbToLocalSections(dbCourse.sections, completedIds);
   const allLessons = sections.flatMap(s => s.chapters.flatMap(c => c.lessons));

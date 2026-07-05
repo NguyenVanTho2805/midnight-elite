@@ -56,16 +56,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Chưa enroll nhưng bài này isFree → cho xem riêng bài này, không mở khoá cả khoá học
   }
 
-  if (fullAccess) {
-    // Đã enroll/admin — mọi bài học đều mở khoá, bất kể cờ isLocked tĩnh trong DB.
-    course.sections = course.sections.map(s => ({
-      ...s,
-      chapters: s.chapters.map(c => ({
-        ...c,
-        lessons: c.lessons.map(l => ({ ...l, isLocked: false })),
+  // Normalise isLocked for every lesson so the frontend can trust this flag blindly:
+  // - enrolled/admin → all unlocked (regardless of DB value)
+  // - not enrolled   → locked iff not free (regardless of DB value)
+  // This prevents admins forgetting to set isLocked=true from leaking paid content.
+  course.sections = course.sections.map(s => ({
+    ...s,
+    chapters: s.chapters.map(c => ({
+      ...c,
+      lessons: c.lessons.map(l => ({
+        ...l,
+        isLocked: fullAccess ? false : !l.isFree,
       })),
-    }));
-  }
+    })),
+  }));
 
-  return NextResponse.json({ lesson, course });
+  return NextResponse.json({ lesson, course, enrolled: fullAccess });
 }
