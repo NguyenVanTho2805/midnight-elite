@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import CoinBalance from "@/components/CoinBalance";
+import NotificationBell from "@/components/NotificationBell";
 
 const guestNavLinks = [
   { label: "Khóa học",      href: "/khoa-hoc"           },
@@ -34,7 +36,7 @@ export default function Navbar() {
   }
 
   function goToDashboard() {
-    router.push(user?.role === "admin" ? "/admin" : "/student");
+    router.push(user?.role === "admin" ? "/admin" : "/khoa-hoc");
   }
 
   return (
@@ -72,6 +74,8 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
           {user ? (
             <>
+              <CoinBalance />
+              <NotificationBell />
               <button
                 onClick={goToDashboard}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
@@ -149,7 +153,7 @@ export default function Navbar() {
                   className="flex-1 py-2 rounded-md text-sm font-medium text-center hover:bg-[#f6f5f4]"
                   style={{ color: "#0068FF" }}
                 >
-                  Dashboard
+                  Khóa học của tôi
                 </button>
                 <button
                   onClick={handleLogout}

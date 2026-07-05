@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalesBotWidget from "@/components/SalesBotWidget";
+import StudentBottomNav from "@/components/StudentBottomNav";
 
 function PageSkeleton() {
   return (
@@ -21,13 +22,14 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
       <Navbar />
-      <main className="flex-1">
+      <main className="flex-1 pb-24 md:pb-0">
         <Suspense fallback={<PageSkeleton />}>
           <div className="page-enter">{children}</div>
         </Suspense>
       </main>
       <Footer />
       <SalesBotWidget />
+      <StudentBottomNav />
     </div>
   );
 }

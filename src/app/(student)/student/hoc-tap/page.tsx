@@ -81,7 +81,7 @@ function HocTapContent() {
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <BookOpen size={40} style={{ color: "#9CA3AF" }} />
         <p className="text-sm" style={{ color: "#9CA3AF" }}>Không có khóa học nào được chọn.</p>
-        <Link href="/student" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Quay lại tổng quan</Link>
+        <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Khóa học</Link>
       </div>
     );
   }
@@ -109,7 +109,7 @@ function HocTapContent() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <p className="text-sm" style={{ color: "#DC2626" }}>{error || "Không tìm thấy khóa học"}</p>
-        <Link href="/student" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Quay lại tổng quan</Link>
+        <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Khóa học</Link>
       </div>
     );
   }
@@ -119,10 +119,10 @@ function HocTapContent() {
 
       {/* Back button + breadcrumb */}
       <div className="flex items-center gap-3">
-        <Link href="/student"
+        <Link href="/khoa-hoc"
           className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors hover:bg-[#eceae6]"
           style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF" }}>
-          ← Trang học
+          ← Khóa học
         </Link>
         <span className="text-sm font-medium truncate" style={{ color: "#9CA3AF" }}>{course.name}</span>
       </div>

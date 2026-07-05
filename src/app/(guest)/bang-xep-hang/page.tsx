@@ -6,6 +6,7 @@ import { Trophy, Crown } from "griddy-icons";
 import { COURSE_CATEGORIES } from "@/lib/courseData";
 import { BADGE_RULES, PERIOD_LABELS, computeRankings, type HonorStudent, type SortKey, type Period } from "@/lib/honorData";
 import { GpaBar } from "@/components/GpaBar";
+import { useAuth } from "@/contexts/AuthContext";
 
 function Avatar({ name, size = 44 }: { name: string; size?: number }) {
   const colors = ["#0055D4", "#7C3AED", "#16a34a", "#EF4444", "#FE9900", "#0891B2"];
@@ -24,6 +25,7 @@ interface LeaderboardEntry {
 }
 
 function TabThiThu() {
+  const { user } = useAuth();
   const [activeFilter, setActiveFilter] = useState("Tất cả");
   const [apiData, setApiData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,51 +131,64 @@ function TabThiThu() {
             <div className="col-span-3 hidden sm:block">Trường</div>
             <div className="col-span-3 text-right">Điểm cao nhất</div>
           </div>
-          {leaderboard.map((s, idx) => (
-            <div key={`${s.name}-${idx}`} className="grid grid-cols-12 items-center px-6 py-4"
-              style={{ borderBottom: idx < leaderboard.length - 1 ? "1px solid #e5e3df" : "none", background: idx < 3 ? "#fafafa" : "transparent" }}>
-              <div className="col-span-1 flex items-center">
-                {idx === 0 ? <Trophy size={20} style={{ color: "#b45309" }} /> : (
-                  <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: idx < 3 ? "#0068FF" : "#787671" }}>
-                    {idx + 1}
-                  </span>
-                )}
+          {leaderboard.map((s, idx) => {
+            const isMe = !!user && apiData[idx]?.userId === user.id;
+            return (
+              <div key={`${s.name}-${idx}`} className="grid grid-cols-12 items-center px-6 py-4"
+                style={{
+                  borderBottom: idx < leaderboard.length - 1 ? "1px solid #e5e3df" : "none",
+                  background: isMe ? "#EFF6FF" : idx < 3 ? "#fafafa" : "transparent",
+                  borderLeft: isMe ? "3px solid #0068FF" : "3px solid transparent",
+                }}>
+                <div className="col-span-1 flex items-center">
+                  {idx === 0 ? <Trophy size={20} style={{ color: "#b45309" }} /> : (
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
+                      style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: idx < 3 ? "#0068FF" : "#787671" }}>
+                      {idx + 1}
+                    </span>
+                  )}
+                </div>
+                <div className="col-span-5 flex items-center gap-2">
+                  <div className="font-semibold text-sm" style={{ color: isMe ? "#0068FF" : "#1a1a1a" }}>{s.name}</div>
+                  {isMe && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "#0068FF" }}>Bạn</span>
+                  )}
+                </div>
+                <div className="col-span-3 hidden sm:block text-xs" style={{ color: "#a4a097" }}>{s.school.split(",")[0]}</div>
+                <div className="col-span-3 text-right">
+                  <span className="text-base font-bold" style={{ color: "#0068FF" }}>{s.score}</span>
+                  <span className="text-xs ml-0.5" style={{ color: "#a4a097" }}>/150</span>
+                </div>
               </div>
-              <div className="col-span-5">
-                <div className="font-semibold text-sm" style={{ color: "#1a1a1a" }}>{s.name}</div>
-              </div>
-              <div className="col-span-3 hidden sm:block text-xs" style={{ color: "#a4a097" }}>{s.school.split(",")[0]}</div>
-              <div className="col-span-3 text-right">
-                <span className="text-base font-bold" style={{ color: "#0068FF" }}>{s.score}</span>
-                <span className="text-xs ml-0.5" style={{ color: "#a4a097" }}>/150</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* CTA */}
-      <div className="notion-hero-band rounded-xl p-8 text-center">
-        <div className="flex justify-center mb-3" style={{ color: "#FDE047" }}><Trophy size={40} /></div>
-        <h2 className="text-xl font-bold text-white mb-2">Tên bạn sẽ xuất hiện ở đây!</h2>
-        <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.7)" }}>Thi thử để lên bảng xếp hạng toàn server.</p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/thi-thu" className="px-6 py-2.5 rounded-lg text-sm font-semibold"
-            style={{ background: "#ffffff", color: "#0068FF", borderRadius: "8px" }}>
-            Thi thử ngay
-          </Link>
-          <Link href="/dang-ky" className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white"
-            style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "8px" }}>
-            Tạo tài khoản miễn phí
-          </Link>
+      {/* CTA — only for guests */}
+      {!user && (
+        <div className="notion-hero-band rounded-xl p-8 text-center">
+          <div className="flex justify-center mb-3" style={{ color: "#FDE047" }}><Trophy size={40} /></div>
+          <h2 className="text-xl font-bold text-white mb-2">Tên bạn sẽ xuất hiện ở đây!</h2>
+          <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.7)" }}>Thi thử để lên bảng xếp hạng toàn server.</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/thi-thu" className="px-6 py-2.5 rounded-lg text-sm font-semibold"
+              style={{ background: "#ffffff", color: "#0068FF", borderRadius: "8px" }}>
+              Thi thử ngay
+            </Link>
+            <Link href="/dang-ky" className="px-6 py-2.5 rounded-lg text-sm font-semibold text-white"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "8px" }}>
+              Tạo tài khoản miễn phí
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
 
 function TabVinhDanh() {
+  const { user } = useAuth();
   const [sortKey, setSortKey] = useState<SortKey>("gpa");
   const [period, setPeriod]   = useState<Period>("thang5");
   const [students, setStudents] = useState<HonorStudent[]>([]);
@@ -287,9 +302,14 @@ function TabVinhDanh() {
           </div>
           {ranked.map((s, idx) => {
             const badges = getBadges(s);
+            const isMe = !!user && s.id === user.id;
             return (
               <div key={s.id} className="flex items-center gap-4 px-6 py-4"
-                style={{ borderBottom: idx < ranked.length - 1 ? "1px solid #e5e3df" : "none", background: idx < 3 ? "#fafafa" : "transparent" }}>
+                style={{
+                  borderBottom: idx < ranked.length - 1 ? "1px solid #e5e3df" : "none",
+                  background: isMe ? "#EFF6FF" : idx < 3 ? "#fafafa" : "transparent",
+                  borderLeft: isMe ? "3px solid #0068FF" : "3px solid transparent",
+                }}>
                 <div className="w-8 flex-shrink-0 text-center">
                   {idx === 0 ? <Trophy size={18} style={{ color: "#b45309" }} /> : (
                     <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto"
@@ -301,7 +321,10 @@ function TabVinhDanh() {
                 <Avatar name={s.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-sm" style={{ color: "#1a1a1a" }}>{s.name}</span>
+                    <span className="font-semibold text-sm" style={{ color: isMe ? "#0068FF" : "#1a1a1a" }}>{s.name}</span>
+                    {isMe && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "#0068FF" }}>Bạn</span>
+                    )}
                     {badges.map(b => (
                       <span key={b.id} title={b.title} className="px-1.5 py-0.5 text-xs rounded-full font-bold leading-none"
                         style={{ background: b.bg, color: b.color, border: `1px solid ${b.borderColor}` }}>
