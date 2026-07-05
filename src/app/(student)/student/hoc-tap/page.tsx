@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { ChevronDown, Play, Eye, Lock, ArrowRight, BookOpen } from "griddy-icons";
 import { useProgress } from "@/hooks/useProgress";
+import { useEnrollments } from "@/hooks/useEnrollments";
 
 interface Lesson {
   id: string; code: string; title: string; type: string;
@@ -44,6 +45,7 @@ function HocTapContent() {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
 
   const { completedIds, loading: progressLoading } = useProgress();
+  const { enrolledIds, loading: enrollmentsLoading } = useEnrollments();
 
   useEffect(() => {
     if (!courseId) { setLoading(false); return; }
@@ -84,7 +86,9 @@ function HocTapContent() {
     );
   }
 
-  if (loading || progressLoading) {
+  const isEnrolled = !enrollmentsLoading && courseId ? enrolledIds.has(courseId) : null;
+
+  if (loading || progressLoading || enrollmentsLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="h-7 w-48 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
@@ -148,7 +152,16 @@ function HocTapContent() {
 
         {/* CTA */}
         <div className="px-5 pb-5">
-          {nextLesson ? (
+          {isEnrolled === false ? (
+            <div className="space-y-2">
+              <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>Bạn chưa đăng ký khóa học này</p>
+              <Link href={`/khoa-hoc/${courseId}`}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white"
+                style={{ background: "#FE9900" }}>
+                Mua khóa học ngay →
+              </Link>
+            </div>
+          ) : nextLesson ? (
             <Link href={`/student/bai-giang/${nextLesson.id}`}
               className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white"
               style={{ background: "#0068FF" }}>

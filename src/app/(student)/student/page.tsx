@@ -123,7 +123,7 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
   return (
     <div className="rounded-xl overflow-hidden flex flex-col h-full cursor-pointer card-hover"
       style={{ background: "#ffffff", border: "1px solid #e5e3df" }}
-      onClick={() => router.push(isEnrolled ? `/student/hoc-tap?course=${course.id}` : `/khoa-hoc/${course.id}`)}>
+      onClick={() => router.push(`/student/hoc-tap?course=${course.id}`)}>
 
       {/* Thumbnail */}
       <div className="relative overflow-hidden" style={{ background: course.bg, minHeight: 148 }}>
