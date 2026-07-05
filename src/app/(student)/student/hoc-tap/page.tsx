@@ -117,11 +117,14 @@ function HocTapContent() {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
 
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs" style={{ color: "#9CA3AF" }}>
-        <Link href="/student" style={{ color: "#0068FF" }}>Tổng quan</Link>
-        <span>/</span>
-        <span style={{ color: "#1E2938" }} className="truncate">{course.name}</span>
+      {/* Back button + title */}
+      <div className="flex items-center gap-3">
+        <Link href="/student"
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-[#eceae6]"
+          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF" }}>
+          ← Trang học
+        </Link>
+        <span className="text-sm truncate" style={{ color: "#9CA3AF" }}>{course.name}</span>
       </div>
 
       {/* Course header card */}
