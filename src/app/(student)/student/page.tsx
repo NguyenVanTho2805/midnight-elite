@@ -123,7 +123,7 @@ function CatalogCard({ course, isEnrolled, onLearn, isFavorited, onToggleFavorit
   return (
     <div className="rounded-xl overflow-hidden flex flex-col h-full cursor-pointer card-hover"
       style={{ background: "#ffffff", border: "1px solid #e5e3df" }}
-      onClick={() => router.push(`/khoa-hoc/${course.id}`)}>
+      onClick={() => router.push(isEnrolled ? `/student/hoc-tap?course=${course.id}` : `/khoa-hoc/${course.id}`)}>
 
       {/* Thumbnail */}
       <div className="relative overflow-hidden" style={{ background: course.bg, minHeight: 148 }}>
@@ -452,13 +452,12 @@ function CurriculumView({ course, onBack }: { course: EnrolledCourse; onBack: ()
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 function StudentContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuth();
   const [showMy,  setShowMy]  = useState(true);
   const [showFav, setShowFav] = useState(true);
   const [showAll, setShowAll] = useState(true);
   const [catFilter, setCat]   = useState("Tất cả");
-  const [selectedCourse, setSelectedCourse] = useState<EnrolledCourse | null>(null);
-  const [loadingCourseId, setLoadingCourseId] = useState<string | null>(null);
 
   const { data: apiCourses, loading: coursesLoading } = useCourses();
   const { enrolledIds }                               = useEnrollments();
@@ -470,34 +469,15 @@ function StudentContent() {
   const ENROLLED_COURSES = apiCourses.filter(c => enrolledIds.has(c.id));
   const FAVORITE_COURSES = ALL_COURSES.filter(c => favoriteIds.has(c.id));
 
-  async function openCourse(courseId: string) {
-    setLoadingCourseId(courseId);
-    try {
-      const full = await fetch(`/api/courses/${courseId}`).then(r => r.json());
-      setSelectedCourse(toEnrolledCourse(full, completedIds));
-    } catch {
-      const base = ENROLLED_COURSES.find(c => c.id === courseId);
-      if (base) setSelectedCourse(toEnrolledCourse(base as Parameters<typeof toEnrolledCourse>[0], completedIds));
-    } finally {
-      setLoadingCourseId(null);
-    }
+  function openCourse(courseId: string) {
+    router.push(`/student/hoc-tap?course=${courseId}`);
   }
-
-  useEffect(() => {
-    const courseId = searchParams.get("course");
-    if (courseId) openCourse(courseId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
 
   const filtered = useMemo(
     () => catFilter === "Tất cả" ? ALL_COURSES : ALL_COURSES.filter(c => c.category === catFilter),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [catFilter, apiCourses],
   );
-
-  if (selectedCourse) {
-    return <CurriculumView course={selectedCourse} onBack={() => setSelectedCourse(null)} />;
-  }
 
   return (
     <div className="space-y-4">
@@ -546,22 +526,15 @@ function StudentContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {ENROLLED_COURSES.map(c => {
-                  const isLoading = loadingCourseId === c.id;
-                  const enrolled  = toEnrolledCourse(c as Parameters<typeof toEnrolledCourse>[0], completedIds);
-                  return (
-                    <div key={c.id} className="cursor-pointer card-hover relative" onClick={() => !isLoading && openCourse(c.id)}>
-                      {isLoading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl" style={{ background: "rgba(255,255,255,0.85)" }}>
-                          <div className="flex gap-1.5">
-                            {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "#0068FF", animationDelay: `${i*0.15}s` }} />)}
-                          </div>
-                        </div>
-                      )}
-                      <CourseThumbnail course={enrolled} totalLessons={c.lessons} doneLessons={courseCompletion[c.id] ?? 0} />
-                    </div>
-                  );
-                })}
+                {ENROLLED_COURSES.map(c => (
+                  <div key={c.id} className="cursor-pointer card-hover" onClick={() => openCourse(c.id)}>
+                    <CourseThumbnail
+                      course={toEnrolledCourse(c as Parameters<typeof toEnrolledCourse>[0], completedIds)}
+                      totalLessons={c.lessons}
+                      doneLessons={courseCompletion[c.id] ?? 0}
+                    />
+                  </div>
+                ))}
               </div>
             )}
           </div>
