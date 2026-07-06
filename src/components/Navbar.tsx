@@ -120,7 +120,7 @@ export default function Navbar() {
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a4a097", flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
                       Khoá học của tôi
                     </Link>
-                    <Link href="/gio-hang" onClick={() => setDropdown(false)}
+                    <Link href="/khoa-hoc-da-luu" onClick={() => setDropdown(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
                       style={{ color: "#37352f" }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a4a097", flexShrink: 0 }}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/></svg>
@@ -200,7 +200,7 @@ export default function Navbar() {
                   style={{ color: "#37352f" }}>
                   Khoá học của tôi
                 </Link>
-                <Link href="/gio-hang" onClick={() => setMenuOpen(false)}
+                <Link href="/khoa-hoc-da-luu" onClick={() => setMenuOpen(false)}
                   className="block px-3 py-2.5 rounded-md text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
                   style={{ color: "#37352f" }}>
                   Giỏ hàng
