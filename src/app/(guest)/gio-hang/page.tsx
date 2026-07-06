@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -29,10 +27,8 @@ export default function GioHangPage() {
   // ── Guest ──────────────────────────────────────────────────────────────────
   if (!user && !loading) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: "#f6f5f4" }}>
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center px-4 py-20">
-          <div className="text-center max-w-sm">
+      <div className="flex items-center justify-center px-4 py-20">
+        <div className="text-center max-w-sm">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
               style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a4a097" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -48,17 +44,14 @@ export default function GioHangPage() {
               Đăng nhập
             </Link>
           </div>
-        </main>
-        <Footer />
-      </div>
+        </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#f6f5f4" }}>
-      <Navbar />
+    <div>
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-10">
+      <div className="max-w-5xl mx-auto w-full px-4 py-10">
 
         {/* Header */}
         <div className="mb-7">
@@ -225,9 +218,7 @@ export default function GioHangPage() {
             </div>
           </div>
         )}
-      </main>
-
-      <Footer />
+      </div>
 
       {/* Checkout modal */}
       {checkoutOpen && (
