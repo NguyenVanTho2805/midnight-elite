@@ -161,7 +161,7 @@ export default function Navbar() {
                 Bắt đầu miễn phí
               </Link>
             </>
-          ) : null}
+          )}
         </div>
 
         {/* Mobile hamburger */}
