@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const auth = await requireSession();
-  if (isNextResponse(auth)) return auth;
+  const session = await getSession();
+  const userId  = session?.userId ?? "";
 
   const { id } = await params;
 
@@ -16,14 +17,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     include: {
       author:    { select: { id: true, name: true, role: true, adminRole: true } },
       _count:    { select: { replies: true, likes: true } },
-      likes:     { where: { userId: auth.userId }, select: { userId: true } },
-      bookmarks: { where: { userId: auth.userId }, select: { userId: true } },
+      likes:     { where: { userId }, select: { userId: true } },
+      bookmarks: { where: { userId }, select: { userId: true } },
       replies: {
         orderBy: { createdAt: "asc" },
         include: {
           author: { select: { id: true, name: true, role: true, adminRole: true } },
           _count: { select: { likes: true } },
-          likes:  { where: { userId: auth.userId }, select: { userId: true } },
+          likes:  { where: { userId }, select: { userId: true } },
         },
       },
     },
@@ -47,8 +48,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     },
     likeCount:      thread._count.likes,
     replyCount:     thread._count.replies,
-    likedByMe:      thread.likes.some(l => l.userId === auth.userId),
-    bookmarkedByMe: thread.bookmarks.some(b => b.userId === auth.userId),
+    likedByMe:      thread.likes.some(l => l.userId === userId),
+    bookmarkedByMe: thread.bookmarks.some(b => b.userId === userId),
     replies: thread.replies.map(r => ({
       id:        r.id,
       content:   r.content,
@@ -60,8 +61,8 @@ export async function GET(req: NextRequest, { params }: Params) {
         isTeacher: r.author.role === "admin",
       },
       likeCount:  r._count.likes,
-      likedByMe:  r.likes.some(l => l.userId === auth.userId),
-      isOwn:      r.authorId === auth.userId,
+      likedByMe:  r.likes.some(l => l.userId === userId),
+      isOwn:      r.authorId === userId,
     })),
   });
 }

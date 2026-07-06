@@ -214,6 +214,7 @@ export const ALL_COURSES = getCatalogCourses();
 export const COURSE_CATEGORIES = [
   "Tất cả",
   "ĐGNL HSA",
+  "ĐGNL HCM",
   "Tốt nghiệp THPT",
   "TSA Bách Khoa",
   "BCA",

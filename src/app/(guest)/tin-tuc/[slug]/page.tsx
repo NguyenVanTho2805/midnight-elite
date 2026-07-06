@@ -58,18 +58,20 @@ function renderContent(content: string) {
 export default function ArticleDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
 
-  const [article, setArticle] = useState<Article | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [article, setArticle]   = useState<Article | null>(null);
+  const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     fetch(`/api/articles?slug=${encodeURIComponent(slug)}`)
       .then(r => {
         if (r.status === 404) { setNotFound(true); return null; }
+        if (!r.ok) throw new Error();
         return r.json();
       })
       .then(data => { if (data) setArticle(data); })
-      .catch(() => setNotFound(true))
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -79,6 +81,21 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         {[80, 60, 40, 100, 90, 70].map((w, i) => (
           <div key={i} className="h-4 rounded animate-pulse" style={{ background: "#e5e3df", width: `${w}%` }} />
         ))}
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <p className="text-5xl mb-4">⚠️</p>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Không thể tải bài viết</h1>
+        <p className="text-sm mb-6" style={{ color: "#787671" }}>Kiểm tra kết nối và thử lại.</p>
+        <Link href="/tin-tuc"
+          className="inline-flex px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
+          style={{ background: "#0068FF" }}>
+          ← Quay lại Tin tức
+        </Link>
       </div>
     );
   }

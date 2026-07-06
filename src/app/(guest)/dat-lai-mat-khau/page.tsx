@@ -46,7 +46,7 @@ function ResetContent() {
       const data = await res.json();
       if (!res.ok) { setErrMsg(data.error); setStatus("error"); return; }
       setStatus("success");
-      setTimeout(() => router.push(data.role === "admin" ? "/admin" : "/student"), 2000);
+      setTimeout(() => router.push(data.role === "admin" ? "/admin" : "/student/hoc-tap"), 2000);
     } catch {
       setErrMsg("Lỗi kết nối, vui lòng thử lại");
       setStatus("error");

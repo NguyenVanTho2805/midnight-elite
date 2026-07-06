@@ -13,14 +13,20 @@ export async function POST(
 
   const { id } = await params;
 
-  const exam = await prisma.$transaction(async (tx) => {
-    const actual = await tx.examResult.count({ where: { examId: id } });
-    return tx.exam.update({
-      where: { id },
-      data:  { participants: actual },
-      select: { id: true, participants: true },
+  try {
+    const exam = await prisma.$transaction(async (tx) => {
+      const actual = await tx.examResult.count({ where: { examId: id } });
+      return tx.exam.update({
+        where: { id },
+        data:  { participants: actual },
+        select: { id: true, participants: true },
+      });
     });
-  });
-
-  return NextResponse.json({ id: exam.id, participants: exam.participants, recalculated: true });
+    return NextResponse.json({ id: exam.id, participants: exam.participants, recalculated: true });
+  } catch (e) {
+    const isNotFound = typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025";
+    if (isNotFound) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    console.error("[POST /api/exams/[id]/recalculate]", e);
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
+  }
 }

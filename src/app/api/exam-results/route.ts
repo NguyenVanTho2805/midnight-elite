@@ -19,7 +19,7 @@ export async function GET(req: Request) {
       orderBy: { completedAt: "desc" },
     });
 
-    // Tính rank cho mỗi kết quả (đếm số người có điểm cao hơn + 1)
+    // Tính rank song song — N queries chạy concurrent, không sequential
     const withRank = await Promise.all(
       results.map(async r => {
         const above = await prisma.examResult.count({
@@ -54,15 +54,14 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
 
-  const { examId, score, totalPoints } = await req.json();
-  const points = totalPoints ?? 150;
+  const { examId, score } = await req.json();
+  const points = 150; // Thang điểm chuẩn HSA — không nhận từ client để tránh injection
+
   if (
     !examId ||
-    typeof score !== "number" || !Number.isFinite(score) || score < 0 ||
-    typeof points !== "number" || !Number.isFinite(points) || points <= 0 ||
-    score > points
+    typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > points
   ) {
-    return NextResponse.json({ error: "Thông tin điểm không hợp lệ" }, { status: 400 });
+    return NextResponse.json({ error: "Thông tin điểm không hợp lệ (0–150)" }, { status: 400 });
   }
 
   const exam = await prisma.exam.findUnique({ where: { id: examId } });

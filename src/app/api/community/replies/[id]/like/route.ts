@@ -26,7 +26,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         type:    "reply_like",
         title:   "Có lượt thích mới",
         message: `${liker?.name ?? "Một học viên"} đã thích trả lời của bạn`,
-        link:    `/student/cong-dong/${exists.threadId}`,
+        link:    `/cong-dong/${exists.threadId}`,
       });
     }
   }

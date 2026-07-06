@@ -5,6 +5,9 @@ import { notify } from "@/lib/notify";
 import { addCoins } from "@/lib/wallet";
 import { REPLY_REWARD, MAX_REPLY_REWARDS_PER_DAY } from "@/lib/wallet-constants";
 
+const RATE_LIMIT_REPLIES = 20;
+const RATE_LIMIT_WINDOW  = 60 * 60 * 1000;
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSession();
   if (isNextResponse(auth)) return auth;
@@ -20,6 +23,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (imageUrls && (!Array.isArray(imageUrls) || imageUrls.length > 2)) {
     return NextResponse.json({ error: "Tối đa 2 ảnh mỗi trả lời" }, { status: 400 });
+  }
+
+  const windowStart   = new Date(Date.now() - RATE_LIMIT_WINDOW);
+  const recentReplies = await prisma.threadReply.count({
+    where: { authorId: auth.userId, createdAt: { gte: windowStart } },
+  });
+  if (recentReplies >= RATE_LIMIT_REPLIES) {
+    return NextResponse.json(
+      { error: "Bạn đã trả lời quá nhiều lần trong 1 giờ. Vui lòng chờ trước khi tiếp tục." },
+      { status: 429 },
+    );
   }
 
   const exists = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true } });
@@ -44,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       type:    "thread_reply",
       title:   "Có trả lời mới",
       message: `${reply.author.name} đã trả lời bài viết của bạn`,
-      link:    `/student/cong-dong/${threadId}`,
+      link:    `/cong-dong/${threadId}`,
     });
   }
 

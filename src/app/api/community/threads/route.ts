@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { addCoins } from "@/lib/wallet";
 import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY } from "@/lib/wallet-constants";
@@ -7,10 +8,12 @@ import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY } from "@/lib/wallet-constant
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
 const DEFAULT_PAGE_SIZE  = 20;
 const MAX_PAGE_SIZE      = 100;
+const RATE_LIMIT_THREADS = 5;   // max posts per hour
+const RATE_LIMIT_WINDOW  = 60 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
-  const auth = await requireSession();
-  if (isNextResponse(auth)) return auth;
+  const session = await getSession();
+  const userId  = session?.userId ?? "";
 
   const { searchParams } = new URL(req.url);
   const category   = searchParams.get("category") ?? undefined;
@@ -21,8 +24,8 @@ export async function GET(req: NextRequest) {
   const include = {
     author:    { select: { id: true, name: true, role: true, adminRole: true } },
     _count:    { select: { replies: true, likes: true } },
-    likes:     { where: { userId: auth.userId }, select: { userId: true } },
-    bookmarks: { where: { userId: auth.userId }, select: { userId: true } },
+    likes:     { where: { userId }, select: { userId: true } },
+    bookmarks: { where: { userId }, select: { userId: true } },
   } as const;
 
   const [pinned, regular] = await Promise.all([
@@ -49,7 +52,7 @@ export async function GET(req: NextRequest) {
     ? regular[regular.length - 1].createdAt.toISOString()
     : null;
 
-  return NextResponse.json({ threads: combined.map(toDTO.bind(null, auth.userId)), nextCursor });
+  return NextResponse.json({ threads: combined.map(toDTO.bind(null, userId)), nextCursor });
 }
 
 export async function POST(req: NextRequest) {
@@ -70,6 +73,17 @@ export async function POST(req: NextRequest) {
     }
     if (imageUrls && (!Array.isArray(imageUrls) || imageUrls.length > 4)) {
       return NextResponse.json({ error: "Tối đa 4 ảnh mỗi bài" }, { status: 400 });
+    }
+
+    const windowStart  = new Date(Date.now() - RATE_LIMIT_WINDOW);
+    const recentPosts  = await prisma.thread.count({
+      where: { authorId: auth.userId, createdAt: { gte: windowStart } },
+    });
+    if (recentPosts >= RATE_LIMIT_THREADS) {
+      return NextResponse.json(
+        { error: "Bạn đã đăng quá nhiều bài trong 1 giờ. Vui lòng chờ trước khi đăng tiếp." },
+        { status: 429 },
+      );
     }
 
     const thread = await prisma.thread.create({

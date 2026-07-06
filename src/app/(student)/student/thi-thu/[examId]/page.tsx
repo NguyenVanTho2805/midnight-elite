@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
 import type { ExamFull } from "@/lib/api";
@@ -16,7 +16,7 @@ interface MyResult {
 
 export default function ExamEntryPage() {
   const { examId } = useParams<{ examId: string }>();
-  const { user }   = useRouter() && useAuth();
+  const { user }   = useAuth();
 
   const [exam,      setExam]      = useState<ExamFull | null>(null);
   const [myResult,  setMyResult]  = useState<MyResult | null>(null);
@@ -174,7 +174,7 @@ export default function ExamEntryPage() {
             min="0"
             value={scoreInput}
             onChange={e => { setScore(e.target.value); setSubmitErr(""); }}
-            placeholder={`0 — ${exam.questions}`}
+            placeholder="0 — 150"
             className="w-full px-4 py-3 rounded-xl text-lg font-bold border-2 outline-none mb-4"
             style={{ borderColor: submitErr ? "#fca5a5" : "#e5e3df", background: "#ffffff" }}
           />

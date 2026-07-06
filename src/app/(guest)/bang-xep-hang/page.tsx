@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Trophy, Crown } from "griddy-icons";
 import { COURSE_CATEGORIES } from "@/lib/courseData";
-import { BADGE_RULES, PERIOD_LABELS, computeRankings, type HonorStudent, type SortKey, type Period } from "@/lib/honorData";
+import { BADGE_RULES, computeRankings, type HonorStudent, type SortKey } from "@/lib/honorData";
 import { GpaBar } from "@/components/GpaBar";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -28,14 +28,20 @@ function TabThiThu() {
   const { user } = useAuth();
   const [activeFilter, setActiveFilter] = useState("Tất cả");
   const [apiData, setApiData] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]     = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setFetchError(false);
     const url = activeFilter === "Tất cả"
       ? "/api/leaderboard"
       : `/api/leaderboard?category=${encodeURIComponent(activeFilter)}`;
-    fetch(url).then(r => r.ok ? r.json() : []).then(setApiData).catch(() => {}).finally(() => setLoading(false));
+    fetch(url)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(setApiData)
+      .catch(() => setFetchError(true))
+      .finally(() => setLoading(false));
   }, [activeFilter]);
 
   const leaderboard = apiData.map((u, i) => ({
@@ -70,7 +76,20 @@ function TabThiThu() {
 
       {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background:"#f6f5f4" }} />)}</div>}
 
-      {!loading && leaderboard.length === 0 && (
+      {fetchError && (
+        <div className="flex items-center justify-between p-4 rounded-xl mb-4"
+          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
+          <span className="text-sm font-semibold" style={{ color: "#dc2626" }}>Không thể tải bảng xếp hạng</span>
+          <button onClick={() => { setFetchError(false); setLoading(true);
+            const url = activeFilter === "Tất cả" ? "/api/leaderboard" : `/api/leaderboard?category=${encodeURIComponent(activeFilter)}`;
+            fetch(url).then(r => r.ok ? r.json() : Promise.reject()).then(setApiData).catch(() => setFetchError(true)).finally(() => setLoading(false));
+          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#dc2626" }}>
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {!loading && !fetchError && leaderboard.length === 0 && (
         <div className="rounded-xl p-12 mb-8 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
           <p className="text-base font-semibold mb-1" style={{ color: "#1a1a1a" }}>Chưa có kết quả cho {activeFilter}</p>
           <button onClick={() => setActiveFilter("Tất cả")} className="mt-3 text-sm font-semibold" style={{ color: "#0068FF" }}>
@@ -189,15 +208,18 @@ function TabThiThu() {
 
 function TabVinhDanh() {
   const { user } = useAuth();
-  const [sortKey, setSortKey] = useState<SortKey>("gpa");
-  const [period, setPeriod]   = useState<Period>("thang5");
+  const [sortKey, setSortKey]   = useState<SortKey>("gpa");
   const [students, setStudents] = useState<HonorStudent[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
+    setFetchError(false);
     fetch("/api/honor-leaderboard")
-      .then(r => r.ok ? r.json() : [])
-      .then(setStudents).catch(() => {}).finally(() => setLoading(false));
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(setStudents)
+      .catch(() => setFetchError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   const ranked = useMemo(() => computeRankings(students, sortKey), [students, sortKey]);
@@ -209,23 +231,8 @@ function TabVinhDanh() {
 
   return (
     <>
-      <div className="text-center mb-6">
-        <p className="text-sm" style={{ color: "#787671" }}>{PERIOD_LABELS[period]} · {students.length} học sinh Midnight Elite</p>
-      </div>
-
-      {/* Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-        <div className="flex gap-1 p-1 rounded-lg" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-          {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([k, v]) => (
-            <button key={k} onClick={() => setPeriod(k)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-              style={period === k
-                ? { background: "#ffffff", color: "#1a1a1a", border: "1px solid #e5e3df" }
-                : { color: "#787671" }}>
-              {v}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
+        <p className="text-sm" style={{ color: "#787671" }}>{students.length} học sinh Midnight Elite</p>
         <div className="flex gap-1.5">
           {([
             { key: "gpa" as SortKey, label: "GPA" },
@@ -245,7 +252,19 @@ function TabVinhDanh() {
 
       {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background:"#f6f5f4" }} />)}</div>}
 
-      {!loading && students.length === 0 && (
+      {fetchError && (
+        <div className="flex items-center justify-between p-4 rounded-xl mb-4"
+          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
+          <span className="text-sm font-semibold" style={{ color: "#dc2626" }}>Không thể tải bảng vinh danh</span>
+          <button onClick={() => { setFetchError(false);
+            fetch("/api/honor-leaderboard").then(r => r.ok ? r.json() : Promise.reject()).then(setStudents).catch(() => setFetchError(true));
+          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#dc2626" }}>
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {!loading && !fetchError && students.length === 0 && (
         <div className="text-center py-12 rounded-xl" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
           <p className="text-sm" style={{ color: "#a4a097" }}>Chưa có dữ liệu vinh danh.</p>
         </div>

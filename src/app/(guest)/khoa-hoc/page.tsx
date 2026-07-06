@@ -9,6 +9,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useAuth } from "@/contexts/AuthContext";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import TeacherTag from "@/components/TeacherTag";
+import { useEnrollments } from "@/hooks/useEnrollments";
 import type { CourseFull } from "@/lib/api";
 
 const categories = COURSE_CATEGORIES;
@@ -43,10 +44,11 @@ const categoryTheme = Object.fromEntries(
   Object.entries(CATEGORY_GRADIENT).map(([k, bg]) => [k, { bg, strip: "#FDE047", stripText: "#1E2938" }])
 ) as Record<string, { bg: string; strip: string; stripText: string }>;
 
-function CourseCard({ course, isFavorited, onToggleFavorite }: {
+function CourseCard({ course, isFavorited, onToggleFavorite, isEnrolled }: {
   course: Course;
   isFavorited: boolean;
   onToggleFavorite: () => void;
+  isEnrolled: boolean;
 }) {
   const router = useRouter();
   const [showBuyPopup, setShowBuyPopup] = useState(false);
@@ -168,11 +170,21 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
             </svg>
             {isFavorited ? "Đã lưu" : "Lưu Khóa Học"}
           </button>
-          <button onClick={() => setShowBuyPopup(true)}
-            className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center cursor-pointer transition-all hover:brightness-105 active:scale-95"
-            style={{ background: "#0068FF" }}>
-            Mua khóa học
-          </button>
+          {isEnrolled ? (
+            <Link
+              href={`/student/hoc-tap?course=${course.slug}`}
+              onClick={e => e.stopPropagation()}
+              className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center transition-all hover:brightness-105 active:scale-95"
+              style={{ background: "#16a34a" }}>
+              Tiếp tục học →
+            </Link>
+          ) : (
+            <button onClick={() => setShowBuyPopup(true)}
+              className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center cursor-pointer transition-all hover:brightness-105 active:scale-95"
+              style={{ background: "#0068FF" }}>
+              Mua khóa học
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -186,6 +198,7 @@ function KhoaHocContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { favoriteIds, toggleFavorite } = useFavorites();
+  const { enrolledIds } = useEnrollments();
 
   function handleToggle(slug: string) {
     if (!user) { window.location.href = `/dang-nhap?redirect=/khoa-hoc`; return; }
@@ -347,6 +360,7 @@ function KhoaHocContent() {
                 course={course}
                 isFavorited={favoriteIds.has(course.slug)}
                 onToggleFavorite={() => handleToggle(course.slug)}
+                isEnrolled={enrolledIds.has(course.slug)}
               />
             ))}
           </div>

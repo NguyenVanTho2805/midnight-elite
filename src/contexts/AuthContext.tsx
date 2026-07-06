@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại" };
     setUser(toAuthUser(data));
-    router.push(data.role === "admin" ? "/admin" : "/student");
+    router.push(data.role === "admin" ? "/admin" : "/student/hoc-tap");
     return { success: true };
   }
 

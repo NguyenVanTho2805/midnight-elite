@@ -8,16 +8,20 @@ export async function GET() {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
   if (isNextResponse(auth)) return auth;
 
-  const articles = await prisma.article.findMany({
-    orderBy: [{ createdAt: "desc" }],
-    select: {
-      id: true, slug: true, title: true, category: true, author: true,
-      tag: true, isPinned: true, published: true, readTime: true,
-      views: true, publishedAt: true, createdAt: true,
-    },
-  });
-
-  return NextResponse.json(articles);
+  try {
+    const articles = await prisma.article.findMany({
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        id: true, slug: true, title: true, category: true, author: true,
+        tag: true, isPinned: true, published: true, readTime: true,
+        views: true, publishedAt: true, createdAt: true,
+      },
+    });
+    return NextResponse.json(articles);
+  } catch (e) {
+    console.error("[GET /api/admin/articles]", e);
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

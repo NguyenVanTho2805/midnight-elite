@@ -377,7 +377,7 @@ export default function ThreadModal({
 
   function copyLink() {
     if (!thread) return;
-    navigator.clipboard.writeText(`${window.location.origin}/student/cong-dong/${thread.id}`);
+    navigator.clipboard.writeText(`${window.location.origin}/cong-dong/${thread.id}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

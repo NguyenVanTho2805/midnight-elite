@@ -9,9 +9,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (isNextResponse(auth)) return auth;
 
   const { id } = await params;
-  const article = await prisma.article.findUnique({ where: { id } });
-  if (!article) return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 });
-  return NextResponse.json(article);
+  try {
+    const article = await prisma.article.findUnique({ where: { id } });
+    if (!article) return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 });
+    return NextResponse.json(article);
+  } catch (e) {
+    console.error("[GET /api/admin/articles/:id]", e);
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

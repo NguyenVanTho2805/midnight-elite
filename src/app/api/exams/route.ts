@@ -6,16 +6,20 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const { searchParams } = new URL(req.url);
+  const category = searchParams.get("category");
+  const status   = searchParams.get("status");
+  const activeOnly      = searchParams.get("active") === "true";
+  const activeGuestOnly = searchParams.get("activeGuest") === "true";
+
+  // activeGuest=true là public endpoint — không cần auth
+  // Các query khác (active=true, category, status) yêu cầu session
+  if (!activeGuestOnly) {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  }
 
   try {
-    const { searchParams } = new URL(req.url);
-    const category = searchParams.get("category");
-    const status   = searchParams.get("status");
-    const activeOnly      = searchParams.get("active") === "true";
-    const activeGuestOnly = searchParams.get("activeGuest") === "true";
-
     const exams = await prisma.exam.findMany({
       where: {
         ...(category        ? { category }             : {}),
@@ -62,7 +66,7 @@ export async function POST(req: NextRequest) {
         type:    "exam_new",
         title:   "Có đề thi mới",
         message: `Đề thi mới: "${exam.title}" — diễn ra ngày ${exam.date}`,
-        link:    `/student/thi-thu`,
+        link:    `/thi-thu`,
       });
     }
 

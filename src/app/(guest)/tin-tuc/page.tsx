@@ -51,16 +51,21 @@ function formatDate(iso: string | null | undefined): string {
 export default function TinTucPage() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [search, setSearch]     = useState("");
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [articles, setArticles]   = useState<Article[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
-  useEffect(() => {
+  function loadArticles() {
+    setLoading(true);
+    setFetchError(false);
     fetch("/api/articles")
-      .then(r => r.ok ? r.json() : [])
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => setArticles(Array.isArray(data) ? data : []))
-      .catch(() => setArticles([]))
+      .catch(() => { setArticles([]); setFetchError(true); })
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadArticles(); }, []);
 
   const filtered = articles.filter((a) => {
     const matchCat = activeCategory === "all" || a.category === activeCategory;
@@ -122,8 +127,21 @@ export default function TinTucPage() {
         </div>
       )}
 
+      {/* Fetch error */}
+      {!loading && fetchError && (
+        <div className="rounded-xl p-12 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+          <p className="font-semibold" style={{ color: "#1a1a1a" }}>Không thể tải bài viết</p>
+          <p className="text-sm mt-1" style={{ color: "#a4a097" }}>Kiểm tra kết nối và thử lại</p>
+          <button onClick={loadArticles}
+            className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white"
+            style={{ background: "#0068FF" }}>
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* Empty / no results */}
-      {!loading && filtered.length === 0 && (
+      {!loading && !fetchError && filtered.length === 0 && (
         <div className="rounded-xl p-12 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
           <p className="font-semibold" style={{ color: "#1a1a1a" }}>
             {articles.length === 0 ? "Chưa có bài viết nào" : "Không tìm thấy bài viết nào"}
@@ -135,7 +153,7 @@ export default function TinTucPage() {
       )}
 
       {/* Articles */}
-      {!loading && filtered.length > 0 && (
+      {!loading && !fetchError && filtered.length > 0 && (
         <div className="space-y-6">
           {pinned.map((a) => <ArticleCardFeatured key={a.id} article={a} />)}
           <div className="grid sm:grid-cols-2 gap-4">

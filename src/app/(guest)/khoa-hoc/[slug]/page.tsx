@@ -13,6 +13,7 @@ interface DBChapter { id: string; title: string; lessons: DBLesson[] }
 interface DBSection { id: string; title: string; chapters: DBChapter[] }
 interface DBCourse {
   id: string; name: string; category: string; instructor: string;
+  teacherAvatar?: string | null;
   lessons: number; hours: number; price: number; originalPrice?: number | null;
   openDate?: string | null;
   introVideo?: string | null;
@@ -276,7 +277,7 @@ export default function KhoaHocDetailPage() {
                 Khóa học toàn diện với đầy đủ bài giảng video theo chuyên đề.
               </p>
               {course.instructor && (
-                <TeacherTag className="mb-5" name={course.instructor} avatar={course.instructor[0]} size={36} role="Gia sư phụ trách" />
+                <TeacherTag className="mb-5" name={course.instructor} avatar={course.teacherAvatar ?? course.instructor[0]} size={36} role="Gia sư phụ trách" />
               )}
 
               <div className="grid grid-cols-2 gap-3">
@@ -416,7 +417,9 @@ export default function KhoaHocDetailPage() {
             <div className="mb-5">
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-3xl font-extrabold" style={{ color: "#0068FF" }}>{course.price.toLocaleString("vi-VN")}đ</span>
-                <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white" style={{ background: "#FF2157" }}>-{discount}%</span>
+                {discount > 0 && (
+                  <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white" style={{ background: "#FF2157" }}>-{discount}%</span>
+                )}
               </div>
               {course.originalPrice && <div className="text-sm line-through" style={{ color: "#9CA3AF" }}>{course.originalPrice.toLocaleString("vi-VN")}đ</div>}
             </div>

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+
   try {
     const { id } = await params;
     const exam = await prisma.exam.findUnique({ where: { id } });

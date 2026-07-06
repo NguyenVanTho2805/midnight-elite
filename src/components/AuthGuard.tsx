@@ -24,7 +24,7 @@ export default function AuthGuard({ requiredRole, children }: Props) {
       return;
     }
     if (!allowed) {
-      router.replace(user.role === "admin" ? "/admin" : "/student");
+      router.replace(user.role === "admin" ? "/admin" : "/student/hoc-tap");
     }
   }, [user, isLoading, allowed, router]);
 

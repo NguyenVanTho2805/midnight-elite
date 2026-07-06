@@ -22,7 +22,7 @@ export default function DangNhapPage() {
       if (redirectTo) {
         router.replace(redirectTo);
       } else {
-        router.replace(user.role === "admin" ? "/admin" : "/student");
+        router.replace(user.role === "admin" ? "/admin" : "/student/hoc-tap");
       }
     }
   }, [user, isLoading, router, redirectTo]);

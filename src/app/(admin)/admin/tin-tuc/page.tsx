@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -64,17 +65,6 @@ const DRAWER_INIT: DrawerForm = {
 };
 
 const INP = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
-
-// ─── TOAST ────────────────────────────────────────────────────────────────────
-
-function Toast({ msg, ok }: { msg: string; ok: boolean }) {
-  return (
-    <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
-      style={{ background: ok ? "#16a34a" : "#dc2626" }}>
-      {ok ? "✓" : "✗"} {msg}
-    </div>
-  );
-}
 
 // ─── ACTION MENU ──────────────────────────────────────────────────────────────
 
@@ -376,7 +366,7 @@ function PageInner() {
   const [search, setSearch]       = useState("");
   const [catFilter, setCat]       = useState("");
   const [statusFilter, setStatus] = useState("");
-  const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
+  const { toast, showToast }      = useAdminToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -392,11 +382,6 @@ function PageInner() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  }
 
   function openCreate() {
     setEditId(null);
@@ -429,12 +414,13 @@ function PageInner() {
 
   async function handleTogglePublish(a: ApiArticle) {
     try {
-      await fetch(`/api/admin/articles/${a.id}`, {
+      const res = await fetch(`/api/admin/articles/${a.id}`, {
         method: "PATCH",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ published: !a.published }),
       });
+      if (!res.ok) throw new Error();
       await loadData();
       showToast(a.published ? "Đã chuyển về nháp" : "Đã xuất bản");
     } catch {
@@ -444,7 +430,8 @@ function PageInner() {
 
   async function handleDelete(id: string) {
     try {
-      await fetch(`/api/admin/articles/${id}`, { method: "DELETE", credentials: "same-origin" });
+      const res = await fetch(`/api/admin/articles/${id}`, { method: "DELETE", credentials: "same-origin" });
+      if (!res.ok) throw new Error();
       await loadData();
       showToast("Đã xoá bài viết");
     } catch {
@@ -463,7 +450,7 @@ function PageInner() {
 
   return (
     <>
-      {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
 
       <ArticleDrawer
         open={drawerOpen}

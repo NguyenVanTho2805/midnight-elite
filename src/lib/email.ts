@@ -205,7 +205,7 @@ export async function sendExamReminderEmail(
           ? `<a href="${azotaUrl}" style="display:inline-block;background:#0068FF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px">
               Vào phòng thi →
             </a>`
-          : `<a href="${APP_URL}/student/thi-thu" style="display:inline-block;background:#0068FF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px">
+          : `<a href="${APP_URL}/thi-thu" style="display:inline-block;background:#0068FF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px">
               Xem lịch thi →
             </a>`
         }

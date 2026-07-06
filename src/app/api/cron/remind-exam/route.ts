@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       type:    "exam_reminder",
       title:   "Nhắc nhở thi thử",
       message: `Đề thi "${exam.title}" sẽ diễn ra vào ${exam.date} lúc ${exam.time}`,
-      link:    `/student/thi-thu`,
+      link:    `/thi-thu`,
     });
 
     log.push(`${exam.title}: ${students.length} học viên`);

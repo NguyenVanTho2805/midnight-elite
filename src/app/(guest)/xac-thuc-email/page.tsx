@@ -21,7 +21,7 @@ function VerifyContent() {
         if (data.success) {
           setName(data.name ?? "");
           setStatus("success");
-          setTimeout(() => router.push("/student"), 3000);
+          setTimeout(() => router.push("/student/hoc-tap"), 3000);
         } else if (data.already) {
           setStatus("already");
         } else {

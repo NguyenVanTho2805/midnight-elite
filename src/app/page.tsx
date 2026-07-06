@@ -9,9 +9,9 @@ import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from
 import SalesBotWidget from "@/components/SalesBotWidget";
 import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
-import { useFavorites } from "@/hooks/useFavorites";
+import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
-import { COURSE_HASHTAGS } from "@/lib/courseData";
+import { COURSE_CATEGORIES, COURSE_HASHTAGS } from "@/lib/courseData";
 
 // ─── COUNTDOWN ────────────────────────────────────────────────────────────────
 const NEXT_EXAM = { label: "ĐGNL HSA vòng 2", date: new Date("2026-11-01T08:00:00") };
@@ -36,11 +36,8 @@ function useCountdown(target: Date) {
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
 const courseCategories = [
-  { key: "all",             label: "Tất cả"           },
-  { key: "ĐGNL HSA",        label: "ĐGNL HSA"          },
-  { key: "Tốt nghiệp THPT", label: "Tốt nghiệp THPT" },
-  { key: "TSA Bách Khoa",   label: "TSA Bách Khoa"     },
-  { key: "BCA",             label: "BCA"               },
+  { key: "all", label: "Tất cả" },
+  ...COURSE_CATEGORIES.filter(c => c !== "Tất cả").map(c => ({ key: c, label: c })),
 ];
 
 interface HomeCourse {
@@ -71,10 +68,11 @@ const timeline = [
 ];
 
 const HERO_CATEGORIES = [
-  { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội",  tint: "var(--tint-sky)",     text: "#1D4ED8" },
-  { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",     tint: "var(--tint-peach)",   text: "#c2410c" },
-  { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",  tint: "var(--tint-mint)",    text: "#166534" },
-  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-lavender)", text: "#6D28D9" },
+  { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội",           tint: "var(--tint-sky)",       text: "#1D4ED8" },
+  { label: "ĐGNL HCM",        desc: "ĐH Quốc gia TP.HCM",           tint: "var(--tint-lavender)",  text: "#6D28D9" },
+  { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",           tint: "var(--tint-mint)",      text: "#166534" },
+  { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",              tint: "var(--tint-peach)",     text: "#c2410c" },
+  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-cream)",   text: "#787671" },
 ];
 
 // ─── CATEGORY THEME ───────────────────────────────────────────────────────────
@@ -183,10 +181,10 @@ function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
 
 
 // ─── COURSE CARD (Notion flat style) ─────────────────────────────────────────
-function CourseCard({ course, isFavorited, onToggleFavorite }: {
+function CourseCard({ course, inCart, onToggleCart }: {
   course: HomeCourse;
-  isFavorited: boolean;
-  onToggleFavorite: () => void;
+  inCart: boolean;
+  onToggleCart: () => void;
 }) {
   const router = useRouter();
   const discount = course.originalPrice > 0 && course.originalPrice > course.price
@@ -281,17 +279,17 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
         {/* Action buttons */}
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+            onClick={(e) => { e.stopPropagation(); onToggleCart(); }}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
-            style={isFavorited
+            style={inCart
               ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
               : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24"
-              fill={isFavorited ? "currentColor" : "none"}
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
+              {inCart && <path d="M9 11l2 2 4-4" strokeWidth="2.5"/>}
             </svg>
-            {isFavorited ? "Đã lưu" : "Lưu Khóa Học"}
+            {inCart ? "Đã thêm" : "Thêm vào giỏ"}
           </button>
           <Link href={`/khoa-hoc/${course.slug}`}
             className="flex-1 flex items-center justify-center py-2.5 rounded-lg text-xs font-bold text-white text-center hover:brightness-105 transition-all"
@@ -308,13 +306,14 @@ function CourseCard({ course, isFavorited, onToggleFavorite }: {
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
   const { data: apiCourses, loading: coursesLoading } = useCourses();
   const { user } = useAuth();
-  const { favoriteIds, toggleFavorite } = useFavorites();
+  const { inCart, addToCart, removeFromCart } = useCart();
 
-  function handleToggle(slug: string) {
-    if (!user) { window.location.href = "/dang-nhap"; return; }
-    toggleFavorite(slug);
+  function handleToggleCart(slug: string) {
+    if (!user) { router.push("/dang-nhap"); return; }
+    inCart(slug) ? removeFromCart(slug) : addToCart(slug);
   }
 
   const courses: HomeCourse[] = useMemo(() => apiCourses.map(c => ({
@@ -394,11 +393,11 @@ export default function HomePage() {
                   Đang mở luyện thi
                 </p>
               <div className="grid grid-cols-2 gap-3">
-                {HERO_CATEGORIES.map(c => (
+                {HERO_CATEGORIES.map((c, i) => (
                   <Link
                     href="/khoa-hoc"
                     key={c.label}
-                    className="p-4 rounded-xl transition-all hover:brightness-95"
+                    className={`p-4 rounded-xl transition-all hover:brightness-95${i === HERO_CATEGORIES.length - 1 && HERO_CATEGORIES.length % 2 !== 0 ? " col-span-2" : ""}`}
                     style={{ background: c.tint }}
                   >
                     <div className="text-sm font-bold mb-1" style={{ color: c.text }}>{c.label}</div>
@@ -530,8 +529,8 @@ export default function HomePage() {
                       <CourseCard
                         key={course.slug}
                         course={course}
-                        isFavorited={favoriteIds.has(course.slug)}
-                        onToggleFavorite={() => handleToggle(course.slug)}
+                        inCart={inCart(course.slug)}
+                        onToggleCart={() => handleToggleCart(course.slug)}
                       />
                     ))}
                   </div>
