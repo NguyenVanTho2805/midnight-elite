@@ -64,7 +64,7 @@ export default function GioHangPage() {
               </span>
             )}
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#787671" }}>Các khóa học bạn đã chọn</p>
+          <p className="text-sm mt-1" style={{ color: "#787671" }}>Các khóa học bạn đã lưu lại</p>
         </div>
 
         {/* Loading */}

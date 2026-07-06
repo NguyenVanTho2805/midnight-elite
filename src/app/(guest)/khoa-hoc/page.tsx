@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT, COURSE_HASHTAGS } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
-import { useFavorites } from "@/hooks/useFavorites";
+import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import TeacherTag from "@/components/TeacherTag";
@@ -44,10 +44,10 @@ const categoryTheme = Object.fromEntries(
   Object.entries(CATEGORY_GRADIENT).map(([k, bg]) => [k, { bg, strip: "#FDE047", stripText: "#1E2938" }])
 ) as Record<string, { bg: string; strip: string; stripText: string }>;
 
-function CourseCard({ course, isFavorited, onToggleFavorite, isEnrolled }: {
+function CourseCard({ course, inCart, onToggleCart, isEnrolled }: {
   course: Course;
-  isFavorited: boolean;
-  onToggleFavorite: () => void;
+  inCart: boolean;
+  onToggleCart: () => void;
   isEnrolled: boolean;
 }) {
   const router = useRouter();
@@ -158,17 +158,17 @@ function CourseCard({ course, isFavorited, onToggleFavorite, isEnrolled }: {
         {/* Action buttons */}
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
           <button
-            onClick={() => onToggleFavorite()}
+            onClick={() => onToggleCart()}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
-            style={isFavorited
+            style={inCart
               ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
               : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
             <svg width="12" height="12" viewBox="0 0 24 24"
-              fill={isFavorited ? "currentColor" : "none"}
+              fill={inCart ? "currentColor" : "none"}
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
             </svg>
-            {isFavorited ? "Đã lưu" : "Lưu Khóa Học"}
+            {inCart ? "Đã lưu" : "Lưu Khóa Học"}
           </button>
           {isEnrolled ? (
             <Link
@@ -197,12 +197,12 @@ function KhoaHocContent() {
   const courses = useMemo(() => apiCourses.map(toCourse), [apiCourses]);
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { favoriteIds, toggleFavorite } = useFavorites();
+  const { inCart, addToCart, removeFromCart } = useCart();
   const { enrolledIds } = useEnrollments();
 
   function handleToggle(slug: string) {
     if (!user) { window.location.href = `/dang-nhap?redirect=/khoa-hoc`; return; }
-    toggleFavorite(slug);
+    inCart(slug) ? removeFromCart(slug) : addToCart(slug);
   }
 
   const [activeCategory, setActiveCategory] = useState(searchParams.get("category") ?? "Tất cả");
@@ -358,8 +358,8 @@ function KhoaHocContent() {
               <CourseCard
                 key={course.slug}
                 course={course}
-                isFavorited={favoriteIds.has(course.slug)}
-                onToggleFavorite={() => handleToggle(course.slug)}
+                inCart={inCart(course.slug)}
+                onToggleCart={() => handleToggle(course.slug)}
                 isEnrolled={enrolledIds.has(course.slug)}
               />
             ))}
