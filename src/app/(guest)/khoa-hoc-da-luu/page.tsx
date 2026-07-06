@@ -36,8 +36,8 @@ export default function GioHangPage() {
                 <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
               </svg>
             </div>
-            <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Đăng nhập để xem giỏ hàng</h1>
-            <p className="text-sm mb-6" style={{ color: "#787671" }}>Giỏ hàng được lưu theo tài khoản của bạn</p>
+            <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Đăng nhập để xem khóa học đã lưu</h1>
+            <p className="text-sm mb-6" style={{ color: "#787671" }}>Khóa học được lưu theo tài khoản của bạn</p>
             <Link href="/dang-nhap?redirect=/khoa-hoc-da-luu"
               className="inline-flex px-6 py-2.5 rounded-lg text-sm font-semibold text-white"
               style={{ background: "#0068FF" }}>
@@ -56,7 +56,7 @@ export default function GioHangPage() {
         {/* Header */}
         <div className="mb-7">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Giỏ hàng
+            Khóa học đã lưu
             {!loading && items.length > 0 && (
               <span className="ml-2 text-sm font-semibold px-2 py-0.5 rounded-full align-middle"
                 style={{ background: "#0068FF", color: "#fff" }}>
@@ -95,8 +95,8 @@ export default function GioHangPage() {
                 <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
               </svg>
             </div>
-            <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>Giỏ hàng trống</p>
-            <p className="text-sm mb-6" style={{ color: "#a4a097" }}>Khám phá các khóa học và thêm vào giỏ hàng</p>
+            <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>Chưa có khóa học nào được lưu</p>
+            <p className="text-sm mb-6" style={{ color: "#a4a097" }}>Khám phá các khóa học và lưu lại để học sau</p>
             <Link href="/khoa-hoc"
               className="inline-flex px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
               style={{ background: "#0068FF" }}>

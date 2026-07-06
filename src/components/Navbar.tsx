@@ -130,7 +130,7 @@ export default function Navbar() {
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
                       style={{ color: "#37352f" }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a4a097", flexShrink: 0 }}><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/></svg>
-                      Giỏ hàng
+                      Khóa học đã lưu
                     </Link>
                     <div className="my-1" style={{ borderTop: "1px solid #e5e3df" }} />
                     <button
@@ -209,7 +209,7 @@ export default function Navbar() {
                 <Link href="/khoa-hoc-da-luu" onClick={() => setMenuOpen(false)}
                   className="block px-3 py-2.5 rounded-md text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
                   style={{ color: "#37352f" }}>
-                  Giỏ hàng
+                  Khóa học đã lưu
                 </Link>
                 <button
                   onClick={handleLogout}
