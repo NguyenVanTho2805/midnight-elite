@@ -22,10 +22,12 @@ export function useWallet() {
     return fetch("/api/wallet")
       .then(r => r.json())
       .then(data => {
-        _balance = data.balance ?? 0;
-        _transactions = data.transactions ?? [];
-        setBalance(_balance);
-        setTransactions(_transactions);
+        const b = data.balance ?? 0;
+        const t = data.transactions ?? [];
+        _balance = b;
+        _transactions = t;
+        setBalance(b);
+        setTransactions(t);
       })
       .catch(() => {});
   }, []);
