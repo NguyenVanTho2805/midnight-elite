@@ -26,8 +26,8 @@ const studentNavLinks = [
 export default function Navbar() {
   const [menuOpen, setMenuOpen]       = useState(false);
   const [dropdownOpen, setDropdown]   = useState(false);
-  const { user, logout } = useAuth();
-  const navLinks = user ? studentNavLinks : guestNavLinks;
+  const { user, isLoading, logout } = useAuth();
+  const navLinks = (isLoading || user) ? studentNavLinks : guestNavLinks;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,7 +79,13 @@ export default function Navbar() {
 
         {/* Auth area */}
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-          {user ? (
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-8 rounded-lg animate-pulse" style={{ background: "#f0eeec" }} />
+              <div className="w-9 h-9 rounded-lg animate-pulse" style={{ background: "#f0eeec" }} />
+              <div className="w-24 h-9 rounded-md animate-pulse" style={{ background: "#f0eeec" }} />
+            </div>
+          ) : user ? (
             <>
               <CoinBalance />
               <NotificationBell />
@@ -155,7 +161,7 @@ export default function Navbar() {
                 Bắt đầu miễn phí
               </Link>
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Mobile hamburger */}

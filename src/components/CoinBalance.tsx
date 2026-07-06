@@ -19,7 +19,9 @@ export default function CoinBalance() {
     return () => window.removeEventListener("coin:earned", handler);
   }, [refetch]);
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="w-16 h-8 rounded-lg animate-pulse" style={{ background: "#f0eeec" }} />
+  );
 
   return (
     <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg flex-shrink-0"
