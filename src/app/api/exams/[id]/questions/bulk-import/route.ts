@@ -26,7 +26,9 @@ export async function POST(
     const { questions, errors } = parseBulkText(text);
 
     if (questions.length === 0) {
-      return NextResponse.json({ imported: 0, errors }, { status: 400 });
+      // Không phải lỗi server — trả 200 kèm danh sách lỗi để client hiển thị
+      // rõ lý do (status 400 sẽ bị apiFetch nuốt thành "Request failed" chung chung)
+      return NextResponse.json({ imported: 0, errors });
     }
 
     const maxOrder = await prisma.examQuestion.aggregate({
