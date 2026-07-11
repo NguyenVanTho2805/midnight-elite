@@ -10,9 +10,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     const { id } = await params;
-    const exam = await prisma.exam.findUnique({ where: { id } });
+    const exam = await prisma.exam.findUnique({
+      where: { id },
+      include: { _count: { select: { examQuestions: true } } },
+    });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
-    return NextResponse.json(exam);
+    const { _count, ...rest } = exam;
+    return NextResponse.json({ ...rest, hasQuestions: _count.examQuestions > 0 });
   } catch (e) {
     console.error("[GET /api/exams/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

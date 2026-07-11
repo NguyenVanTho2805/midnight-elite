@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
-import type { ExamFull } from "@/lib/api";
+import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem } from "@/lib/api";
 
-type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "done";
+type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done";
 
 interface MyResult {
   score: number;
   totalPoints: number;
   rank: number;
+}
+
+interface LeaderboardRow {
+  score: number;
+  completedAt: string;
+  user: { name: string };
 }
 
 export default function ExamEntryPage() {
@@ -25,6 +31,15 @@ export default function ExamEntryPage() {
   const [scoreInput, setScore]    = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitErr,  setSubmitErr]  = useState("");
+
+  // ── In-platform exam taking (exam.hasQuestions) ──────────────────────────
+  const [attempt,  setAttempt]  = useState<ExamAttemptState | null>(null);
+  const [selected, setSelected] = useState<Record<string, string>>({});
+  const [startErr, setStartErr] = useState("");
+  const [nowTick,  setNowTick]  = useState(0);
+  const autoSubmitted = useRef(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
+  const [history,     setHistory]     = useState<ExamAttemptHistoryItem[]>([]);
 
   // Load exam + student's existing result
   useEffect(() => {
@@ -44,6 +59,22 @@ export default function ExamEntryPage() {
       }
     }).catch(() => setPhase("error"));
   }, [examId]);
+
+  // Top 10 leaderboard + lịch sử làm bài — chỉ cho đề có câu hỏi trong platform
+  function refreshLeaderboardAndHistory() {
+    if (!examId) return;
+    fetch(`/api/exam-results?examId=${examId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: LeaderboardRow[]) => setLeaderboard(rows.slice(0, 10)))
+      .catch(() => {});
+    api.examAttempts.history(examId).then(setHistory).catch(() => {});
+  }
+
+  useEffect(() => {
+    if (!exam?.hasQuestions || !examId) return;
+    refreshLeaderboardAndHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam?.hasQuestions, examId]);
 
   // Countdown khi đang chuyển hướng
   useEffect(() => {
@@ -79,6 +110,59 @@ export default function ExamEntryPage() {
       setSubmitting(false);
     }
   }
+
+  async function startAttempt() {
+    setStartErr("");
+    try {
+      const state = await api.examAttempts.start(examId);
+      setAttempt(state);
+      setSelected((state.answers ?? {}) as Record<string, string>);
+      setPhase("taking");
+    } catch (e) {
+      setStartErr(e instanceof Error ? e.message : "Không thể bắt đầu bài thi");
+    }
+  }
+
+  function selectAnswer(questionId: string, optionId: string) {
+    setSelected(prev => ({ ...prev, [questionId]: optionId }));
+    if (attempt) {
+      api.examAttempts.answer(attempt.attemptId, questionId, optionId).catch(() => {});
+    }
+  }
+
+  async function submitAttempt() {
+    if (!attempt || submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await api.examAttempts.submit(attempt.attemptId);
+      setMyResult({ score: result.score, totalPoints: result.totalPoints, rank: result.rank });
+      setPhase("done");
+      refreshLeaderboardAndHistory();
+    } catch {
+      setStartErr("Nộp bài thất bại, thử lại");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Đếm ngược hiển thị (client-side, chỉ để hiển thị — server tự enforce hạn giờ thật)
+  useEffect(() => {
+    if (phase !== "taking" || !attempt?.expiresAt) return;
+    const t = setInterval(() => setNowTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [phase, attempt?.expiresAt]);
+
+  const remainingSec = attempt?.expiresAt
+    ? Math.max(0, Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000))
+    : 0;
+
+  useEffect(() => {
+    if (phase === "taking" && attempt?.expiresAt && remainingSec <= 0 && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      submitAttempt();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, remainingSec]);
 
   const studentName = user?.name ?? "Học viên";
 
@@ -199,6 +283,94 @@ export default function ExamEntryPage() {
     );
   }
 
+  // ── Taking: render toàn bộ câu hỏi trong platform + thanh sticky đáy màn hình ──
+  if (phase === "taking" && attempt?.questions) {
+    const total = attempt.questions.length;
+    const answeredCount = attempt.questions.filter(q => selected[q.id]).length;
+    const mm = String(Math.floor(remainingSec / 60)).padStart(2, "0");
+    const ss = String(remainingSec % 60).padStart(2, "0");
+
+    return (
+      <div className="max-w-2xl mx-auto pb-28">
+        <div className="mb-5">
+          <h1 className="text-xl font-extrabold" style={{ color: "#1E2938" }}>{exam.title}</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>Làm bài nghiêm túc — điểm được chấm và ghi nhận tự động khi nộp bài.</p>
+        </div>
+
+        <div className="space-y-5">
+          {attempt.questions.map((q, idx) => (
+            <div key={q.id} id={`q-${q.id}`} className="rounded-xl p-5"
+              style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+              <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>
+                Câu {idx + 1}: {q.text}
+              </p>
+              {q.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={q.imageUrl} alt="" className="max-w-full rounded-lg mb-3" />
+              )}
+              <div className="space-y-2">
+                {q.options.map((o, oi) => (
+                  <label key={o.id}
+                    className="flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer hover:bg-[#f6f5f4]"
+                    style={{ border: `1px solid ${selected[q.id] === o.id ? "#0068FF" : "#e5e3df"}` }}>
+                    <input type="radio" name={`q-${q.id}`} className="mt-0.5"
+                      checked={selected[q.id] === o.id}
+                      onChange={() => selectAnswer(q.id, o.id)} />
+                    <span className="text-sm" style={{ color: "#37352f" }}>
+                      <strong>{String.fromCharCode(65 + oi)}.</strong> {o.text}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {startErr && (
+          <p className="fixed bottom-24 left-1/2 -translate-x-1/2 text-xs px-3 py-2 rounded-lg z-50"
+            style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>{startErr}</p>
+        )}
+
+        {/* Thanh sticky đáy màn hình: đếm ngược, tiến độ, jump-grid, nút nộp bài */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t" style={{ borderColor: "#e5e3df" }}>
+          <div className="max-w-2xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-xs" style={{ color: "#a4a097" }}>Thời gian còn lại</p>
+                <p className="text-lg font-bold" style={{ color: remainingSec < 60 ? "#dc2626" : "#1E2938" }}>{mm}:{ss}</p>
+              </div>
+              <div className="flex-1 mx-4">
+                <p className="text-xs mb-1" style={{ color: "#a4a097" }}>Đã hoàn thành {answeredCount}/{total}</p>
+                <div className="h-1.5 rounded-full" style={{ background: "#f6f5f4" }}>
+                  <div className="h-1.5 rounded-full" style={{ width: `${(answeredCount / total) * 100}%`, background: "#0068FF" }} />
+                </div>
+              </div>
+              <button onClick={submitAttempt} disabled={submitting}
+                className="px-5 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: "#dc2626" }}>
+                {submitting ? "..." : "Kết thúc"}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {attempt.questions.map((q, idx) => (
+                <button key={q.id}
+                  onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                  className="w-7 h-7 rounded text-xs font-semibold flex-shrink-0"
+                  style={{
+                    background: selected[q.id] ? "#dbeafe" : "#f6f5f4",
+                    color: selected[q.id] ? "#0068FF" : "#787671",
+                    border: "1px solid #e5e3df",
+                  }}>
+                  {idx + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Ready + Entering (default exam info view) ────────────────────────────────
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -264,7 +436,17 @@ export default function ExamEntryPage() {
 
         {/* Redirect button / Countdown */}
         {phase === "ready" ? (
-          !exam.azotaUrl ? (
+          exam.hasQuestions ? (
+            <>
+              <button
+                onClick={startAttempt}
+                className="w-full py-4 rounded-lg text-base font-bold text-white"
+                style={{ background: "#0068FF", borderRadius: "8px" }}>
+                ▶ Bắt đầu làm bài
+              </button>
+              {startErr && <p className="text-xs mt-2 text-center" style={{ color: "#dc2626" }}>{startErr}</p>}
+            </>
+          ) : !exam.azotaUrl ? (
             <div className="p-4 rounded-2xl text-center" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
               <p className="text-sm text-red-600 font-semibold">Đề thi chưa có link Azota</p>
               <p className="text-xs text-red-400 mt-1">Admin cần cập nhật Azota URL cho đề thi này.</p>
@@ -308,6 +490,40 @@ export default function ExamEntryPage() {
           ))}
         </ul>
       </div>
+
+      {exam.hasQuestions && leaderboard.length > 0 && (
+        <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "#1E2938" }}>Bảng xếp hạng Top 10</h3>
+          <div className="space-y-2">
+            {leaderboard.map((row, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 text-xs font-bold" style={{ color: "#a4a097" }}>{i + 1}</span>
+                  <span style={{ color: "#37352f" }}>{row.user.name}</span>
+                </div>
+                <span className="font-bold" style={{ color: "#0068FF" }}>{row.score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {exam.hasQuestions && history.length > 0 && (
+        <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "#1E2938" }}>Lịch sử làm bài</h3>
+          <div className="space-y-2">
+            {history.map(h => (
+              <div key={h.id} className="flex items-center justify-between text-sm">
+                <span style={{ color: "#787671" }}>
+                  {h.submittedAt ? new Date(h.submittedAt).toLocaleString("vi-VN") : "—"}
+                  {h.status === "expired" && " (hết giờ)"}
+                </span>
+                <span className="font-bold" style={{ color: "#0068FF" }}>{h.score ?? 0}/150</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

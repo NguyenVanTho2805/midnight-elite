@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { PERMISSIONS } from "@/lib/permissions";
+
+// PUT /api/exams/[id]/questions/[qid] — admin: sửa câu hỏi, thay toàn bộ options
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; qid: string }> }
+) {
+  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
+  if (isNextResponse(auth)) return auth;
+
+  const { qid } = await params;
+
+  try {
+    const body = await req.json();
+    const { text, imageUrl, points, explanation, options } = body as {
+      text?: string;
+      imageUrl?: string;
+      points?: number;
+      explanation?: string;
+      options?: { text: string; isCorrect: boolean }[];
+    };
+
+    if (!text?.trim()) {
+      return NextResponse.json({ error: "Thiếu nội dung câu hỏi" }, { status: 400 });
+    }
+    if (!Array.isArray(options) || options.length < 2) {
+      return NextResponse.json({ error: "Cần ít nhất 2 đáp án" }, { status: 400 });
+    }
+    if (!options.some(o => o.isCorrect)) {
+      return NextResponse.json({ error: "Phải có ít nhất 1 đáp án đúng" }, { status: 400 });
+    }
+
+    const question = await prisma.$transaction(async (tx) => {
+      await tx.examOption.deleteMany({ where: { questionId: qid } });
+      return tx.examQuestion.update({
+        where: { id: qid },
+        data: {
+          text: text.trim(),
+          imageUrl: imageUrl?.trim() || null,
+          points: typeof points === "number" && points > 0 ? points : 1,
+          explanation: explanation?.trim() || null,
+          options: {
+            create: options.map((o, idx) => ({
+              id: `eo-${crypto.randomUUID()}`,
+              order: idx,
+              text: o.text.trim(),
+              isCorrect: !!o.isCorrect,
+            })),
+          },
+        },
+        include: { options: { orderBy: { order: "asc" } } },
+      });
+    });
+
+    return NextResponse.json(question);
+  } catch (e) {
+    console.error("[PUT /api/exams/[id]/questions/[qid]]", e);
+    if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025") {
+      return NextResponse.json({ error: "Không tìm thấy câu hỏi" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Cập nhật câu hỏi thất bại" }, { status: 400 });
+  }
+}
+
+// DELETE /api/exams/[id]/questions/[qid] — admin: xóa câu hỏi
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string; qid: string }> }
+) {
+  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
+  if (isNextResponse(auth)) return auth;
+
+  const { qid } = await params;
+
+  try {
+    await prisma.examQuestion.delete({ where: { id: qid } });
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[DELETE /api/exams/[id]/questions/[qid]]", qid, msg);
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
+}

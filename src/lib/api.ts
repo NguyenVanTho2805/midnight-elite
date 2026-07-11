@@ -40,6 +40,48 @@ export const api = {
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/exams/${id}`, { method: "DELETE" }),
   },
+  // ── Exam questions (admin authoring) ────────────────────────────────────
+  examQuestions: {
+    list: (examId: string) =>
+      apiFetch<ExamQuestionFull[]>(`/api/exams/${examId}/questions`),
+    create: (examId: string, data: ExamQuestionInput) =>
+      apiFetch<ExamQuestionFull>(`/api/exams/${examId}/questions`, {
+        method: "POST", body: JSON.stringify(data),
+      }),
+    update: (examId: string, qid: string, data: ExamQuestionInput) =>
+      apiFetch<ExamQuestionFull>(`/api/exams/${examId}/questions/${qid}`, {
+        method: "PUT", body: JSON.stringify(data),
+      }),
+    remove: (examId: string, qid: string) =>
+      apiFetch<{ success: boolean }>(`/api/exams/${examId}/questions/${qid}`, { method: "DELETE" }),
+    reorder: (examId: string, order: { id: string; order: number }[]) =>
+      apiFetch<{ success: boolean }>(`/api/exams/${examId}/questions/reorder`, {
+        method: "PUT", body: JSON.stringify({ order }),
+      }),
+    bulkImport: (examId: string, text: string) =>
+      apiFetch<{ imported: number; errors: { block: number; message: string }[] }>(
+        `/api/exams/${examId}/questions/bulk-import`,
+        { method: "POST", body: JSON.stringify({ text }) }
+      ),
+  },
+  // ── Exam attempts (học viên làm bài) ────────────────────────────────────
+  examAttempts: {
+    start: (examId: string) =>
+      apiFetch<ExamAttemptState>(`/api/exams/${examId}/start`, { method: "POST" }),
+    get: (attemptId: string) =>
+      apiFetch<ExamAttemptState>(`/api/exams/attempts/${attemptId}`),
+    answer: (attemptId: string, questionId: string, optionId: string) =>
+      apiFetch<{ success: boolean }>(`/api/exams/attempts/${attemptId}/answer`, {
+        method: "PATCH", body: JSON.stringify({ questionId, optionId }),
+      }),
+    submit: (attemptId: string) =>
+      apiFetch<{ score: number; totalPoints: number; rank: number }>(
+        `/api/exams/attempts/${attemptId}/submit`,
+        { method: "POST" }
+      ),
+    history: (examId: string) =>
+      apiFetch<ExamAttemptHistoryItem[]>(`/api/exams/${examId}/attempts?mine=true`),
+  },
 };
 
 // ─── API types (mirrors Prisma models) ───────────────────────────────────────
@@ -82,4 +124,45 @@ export interface ExamFull {
   date: string; time: string; duration: string; questions: number;
   status: string; azotaUrl?: string | null;
   participants: number; active: boolean; activeGuest: boolean; guestCanTake: boolean; createdAt: string;
+  hasQuestions: boolean;
+}
+
+// Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)
+export interface ExamOptionFull {
+  id: string; order: number; text: string; isCorrect: boolean;
+}
+export interface ExamQuestionFull {
+  id: string; examId: string; order: number; text: string;
+  imageUrl?: string | null; points: number; explanation?: string | null;
+  options: ExamOptionFull[];
+}
+export interface ExamQuestionInput {
+  text: string; imageUrl?: string; points?: number; explanation?: string;
+  options: { text: string; isCorrect: boolean }[];
+}
+
+// Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài
+export interface ExamOptionPublic {
+  id: string; order: number; text: string;
+}
+export interface ExamQuestionPublic {
+  id: string; order: number; text: string;
+  imageUrl?: string | null; points: number;
+  options: ExamOptionPublic[];
+}
+export interface ExamAttemptState {
+  attemptId: string;
+  status?: string;
+  expiresAt?: string;
+  questions?: ExamQuestionPublic[];
+  answers?: Record<string, string | null>;
+  score?: number | null;
+  totalPoints?: number;
+}
+export interface ExamAttemptHistoryItem {
+  id: string;
+  status: string;
+  score: number | null;
+  submittedAt: string | null;
+  startedAt: string;
 }

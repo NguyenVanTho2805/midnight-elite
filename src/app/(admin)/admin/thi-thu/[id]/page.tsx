@@ -1,11 +1,433 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import PermissionGuard from "@/components/PermissionGuard";
+import { PERMISSIONS } from "@/contexts/AuthContext";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput } from "@/lib/api";
 
-// Form chỉnh sửa đề thi đã chuyển sang drawer trong trang danh sách
-export default function EditThiThuRedirect() {
-  const router = useRouter();
-  useEffect(() => { router.replace("/admin/thi-thu"); }, [router]);
-  return null;
+const EMPTY_OPTIONS = ["", "", "", ""];
+
+interface QuestionForm {
+  text: string;
+  imageUrl: string;
+  points: string;
+  explanation: string;
+  options: string[];
+  correctIndex: number;
+}
+
+const INIT_FORM: QuestionForm = {
+  text: "", imageUrl: "", points: "1", explanation: "",
+  options: [...EMPTY_OPTIONS], correctIndex: 0,
+};
+
+function toForm(q: ExamQuestionFull): QuestionForm {
+  return {
+    text: q.text,
+    imageUrl: q.imageUrl ?? "",
+    points: String(q.points),
+    explanation: q.explanation ?? "",
+    options: q.options.map(o => o.text),
+    correctIndex: Math.max(0, q.options.findIndex(o => o.isCorrect)),
+  };
+}
+
+function toInput(form: QuestionForm): ExamQuestionInput | null {
+  const options = form.options.map(t => t.trim()).filter(Boolean);
+  if (!form.text.trim() || options.length < 2) return null;
+  return {
+    text: form.text.trim(),
+    imageUrl: form.imageUrl.trim() || undefined,
+    points: Number(form.points) > 0 ? Number(form.points) : 1,
+    explanation: form.explanation.trim() || undefined,
+    options: options.map((text, idx) => ({ text, isCorrect: idx === form.correctIndex })),
+  };
+}
+
+// ─── DRAWER: thêm/sửa 1 câu hỏi ───────────────────────────────────────────────
+function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
+  open: boolean;
+  initial: QuestionForm | null;
+  onClose: () => void;
+  onSave: (form: QuestionForm) => void;
+  saving: boolean;
+}) {
+  const [form, setForm] = useState<QuestionForm>(initial ?? INIT_FORM);
+  useEffect(() => { if (open) setForm(initial ?? INIT_FORM); }, [open, initial]);
+
+  function updateOption(idx: number, val: string) {
+    const opts = [...form.options];
+    opts[idx] = val;
+    setForm({ ...form, options: opts });
+  }
+  function addOption() { setForm({ ...form, options: [...form.options, ""] }); }
+  function removeOption(idx: number) {
+    const opts = form.options.filter((_, i) => i !== idx);
+    const correctIndex = form.correctIndex === idx ? 0 : form.correctIndex > idx ? form.correctIndex - 1 : form.correctIndex;
+    setForm({ ...form, options: opts.length >= 2 ? opts : form.options, correctIndex });
+  }
+
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        style={{
+          width: "min(560px, 100vw)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
+          pointerEvents: open ? "auto" : "none",
+          visibility: open ? "visible" : "hidden",
+        }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
+            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>{initial ? "Sửa câu hỏi" : "Thêm câu hỏi"}</h2>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+            <button onClick={() => { const input = toInput(form); if (input) onSave(form); }} disabled={saving}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+              {saving ? "Đang lưu..." : "Lưu"}
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Nội dung câu hỏi</label>
+            <textarea
+              className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+              style={{ borderColor: "#e5e3df" }}
+              rows={3}
+              value={form.text}
+              onChange={e => setForm({ ...form, text: e.target.value })}
+              placeholder="Nhập nội dung câu hỏi..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Điểm</label>
+              <input type="number" min={0.25} step={0.25}
+                className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                style={{ borderColor: "#e5e3df" }}
+                value={form.points}
+                onChange={e => setForm({ ...form, points: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Ảnh minh hoạ (URL, tùy chọn)</label>
+              <input
+                className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                style={{ borderColor: "#e5e3df" }}
+                value={form.imageUrl}
+                onChange={e => setForm({ ...form, imageUrl: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đáp án (chọn đáp án đúng)</label>
+            <div className="space-y-2">
+              {form.options.map((opt, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input type="radio" name="correct" checked={form.correctIndex === idx}
+                    onChange={() => setForm({ ...form, correctIndex: idx })} />
+                  <span className="text-xs font-semibold text-gray-400 w-4">{String.fromCharCode(65 + idx)}.</span>
+                  <input
+                    className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                    style={{ borderColor: "#e5e3df" }}
+                    value={opt}
+                    onChange={e => updateOption(idx, e.target.value)}
+                    placeholder={`Đáp án ${String.fromCharCode(65 + idx)}`}
+                  />
+                  {form.options.length > 2 && (
+                    <button type="button" onClick={() => removeOption(idx)}
+                      className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-sm">✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Giải thích (hiện sau khi nộp bài, tùy chọn)</label>
+            <textarea
+              className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+              style={{ borderColor: "#e5e3df" }}
+              rows={2}
+              value={form.explanation}
+              onChange={e => setForm({ ...form, explanation: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── DRAWER: nhập hàng loạt ────────────────────────────────────────────────────
+function BulkImportDrawer({ open, onClose, onImport, saving, result }: {
+  open: boolean;
+  onClose: () => void;
+  onImport: (text: string) => void;
+  saving: boolean;
+  result: { imported: number; errors: { block: number; message: string }[] } | null;
+}) {
+  const [text, setText] = useState("");
+  useEffect(() => { if (open) setText(""); }, [open]);
+
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        style={{
+          width: "min(640px, 100vw)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
+          pointerEvents: open ? "auto" : "none",
+          visibility: open ? "visible" : "hidden",
+        }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
+            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Nhập hàng loạt câu hỏi</h2>
+          </div>
+          <button onClick={() => onImport(text)} disabled={saving || !text.trim()}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+            {saving ? "Đang nhập..." : "Nhập"}
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+            Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống. Định dạng:
+            <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Nội dung câu hỏi...
+A. Đáp án A
+B. Đáp án B
+C. Đáp án C
+D. Đáp án D
+Đáp án: B`}</pre>
+          </div>
+          <textarea
+            className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"
+            style={{ borderColor: "#e5e3df" }}
+            rows={16}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Dán danh sách câu hỏi vào đây..."
+          />
+          {result && (
+            <div className="text-sm space-y-1.5">
+              <p className="font-semibold" style={{ color: result.imported > 0 ? "#16a34a" : "#dc2626" }}>
+                Đã nhập {result.imported} câu hỏi.
+              </p>
+              {result.errors.length > 0 && (
+                <ul className="space-y-1 text-xs text-red-600">
+                  {result.errors.map((e, i) => (
+                    <li key={i}>Khối {e.block}: {e.message}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DelModal({ target, onClose, onConfirm }: { target: { id: string; label: string } | null; onClose: () => void; onConfirm: () => void }) {
+  if (!target) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+        <div className="text-center mb-5">
+          <h2 className="text-base font-bold mb-1" style={{ color: "#1a1a1a" }}>Xoá câu hỏi?</h2>
+          <p className="text-sm text-gray-500">Xoá "{target.label}". Không thể hoàn tác.</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "#dc2626" }}>Xoá</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TRANG CHÍNH ───────────────────────────────────────────────────────────────
+function ThiThuQuestionsPage() {
+  const { id } = useParams<{ id: string }>();
+  const [exam, setExam] = useState<ExamFull | null>(null);
+  const [questions, setQuestions] = useState<ExamQuestionFull[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<ExamQuestionFull | null | "new">(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ imported: number; errors: { block: number; message: string }[] } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [del, setDel] = useState<{ id: string; label: string } | null>(null);
+  const { toast, showToast } = useAdminToast();
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([api.exams.get(id), api.examQuestions.list(id)])
+      .then(([e, qs]) => { setExam(e); setQuestions(qs); })
+      .catch(() => showToast("Không tải được dữ liệu đề thi", false))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSave(form: QuestionForm) {
+    const input = toInput(form);
+    if (!input) return;
+    setSaving(true);
+    try {
+      if (editing && editing !== "new") {
+        await api.examQuestions.update(id, editing.id, input);
+        showToast("Đã cập nhật câu hỏi", true);
+      } else {
+        await api.examQuestions.create(id, input);
+        showToast("Đã thêm câu hỏi", true);
+      }
+      setEditing(null);
+      load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Lưu thất bại", false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!del) return;
+    try {
+      await api.examQuestions.remove(id, del.id);
+      showToast("Đã xoá câu hỏi", true);
+      setDel(null);
+      load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Xoá thất bại", false);
+    }
+  }
+
+  async function handleBulkImport(text: string) {
+    setBulkSaving(true);
+    try {
+      const result = await api.examQuestions.bulkImport(id, text);
+      setBulkResult(result);
+      if (result.imported > 0) load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Nhập hàng loạt thất bại", false);
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
+  async function move(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= questions.length) return;
+    const arr = [...questions];
+    [arr[idx], arr[target]] = [arr[target], arr[idx]];
+    setQuestions(arr);
+    const order = arr.map((q, i) => ({ id: q.id, order: i + 1 }));
+    try {
+      await api.examQuestions.reorder(id, order);
+    } catch {
+      showToast("Lỗi sắp xếp lại", false);
+      load();
+    }
+  }
+
+  if (loading) return <div className="p-8 text-sm text-gray-500">Đang tải...</div>;
+  if (!exam) return <div className="p-8 text-sm text-gray-500">Không tìm thấy đề thi.</div>;
+
+  return (
+    <div className="min-h-screen" style={{ background: "#f6f5f4" }}>
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <Link href="/admin/thi-thu" className="text-sm mb-3 inline-block" style={{ color: "#787671" }}>← Quay lại danh sách đề thi</Link>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold" style={{ color: "#1a1a1a" }}>{exam.title}</h1>
+            <p className="text-sm" style={{ color: "#787671" }}>{questions.length} câu hỏi đã soạn</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { setBulkResult(null); setBulkOpen(true); }}
+              className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#1a1a1a" }}>
+              Nhập hàng loạt
+            </button>
+            <button onClick={() => setEditing("new")}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+              + Thêm câu hỏi
+            </button>
+          </div>
+        </div>
+
+        {questions.length === 0 ? (
+          <div className="text-center py-16 rounded-xl border" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+            <p className="text-sm" style={{ color: "#787671" }}>Đề thi này chưa có câu hỏi nào — học viên sẽ dùng luồng thi Azota cũ cho tới khi có câu hỏi đầu tiên.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {questions.map((q, idx) => (
+              <div key={q.id} className="rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-col gap-0.5 pt-0.5">
+                    <button onClick={() => move(idx, -1)} disabled={idx === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs">▲</button>
+                    <button onClick={() => move(idx, 1)} disabled={idx === questions.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs">▼</button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: {q.text}</p>
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                      {q.options.map((o, oi) => (
+                        <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#787671" }}>
+                          <span className="font-semibold">{String.fromCharCode(65 + oi)}.</span> {o.text} {o.isCorrect && "✓"}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>{q.points} điểm</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => setEditing(q)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
+                    <button onClick={() => setDel({ id: q.id, label: `Câu ${idx + 1}` })} className="text-xs font-semibold text-red-500">Xoá</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <QuestionDrawer
+        open={editing !== null}
+        initial={editing && editing !== "new" ? toForm(editing) : null}
+        onClose={() => setEditing(null)}
+        onSave={handleSave}
+        saving={saving}
+      />
+      <BulkImportDrawer
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onImport={handleBulkImport}
+        saving={bulkSaving}
+        result={bulkResult}
+      />
+      <DelModal target={del} onClose={() => setDel(null)} onConfirm={handleDelete} />
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <PermissionGuard required={PERMISSIONS.MANAGE_CURRICULUM}>
+      <ThiThuQuestionsPage />
+    </PermissionGuard>
+  );
 }

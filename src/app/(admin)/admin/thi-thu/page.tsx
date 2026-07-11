@@ -612,6 +612,11 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
             style={{ color: "#0068FF" }}>
             <span className="w-5 text-center">👁</span> Xem portal học viên
           </Link>
+          <Link href={`/admin/thi-thu/${exam.id}`} onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-gray-50"
+            style={{ color: "#0068FF" }}>
+            <span className="w-5 text-center">📝</span> Quản lý câu hỏi
+          </Link>
           <div className="border-t border-gray-100 my-1" />
           <button onClick={() => { setOpen(false); onDelete(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50">

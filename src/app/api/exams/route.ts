@@ -28,9 +28,12 @@ export async function GET(req: NextRequest) {
         ...(activeGuestOnly ? { activeGuest: true }    : {}),
       },
       orderBy: { createdAt: "desc" },
+      include: { _count: { select: { examQuestions: true } } },
     });
 
-    return NextResponse.json(exams);
+    return NextResponse.json(
+      exams.map(({ _count, ...e }) => ({ ...e, hasQuestions: _count.examQuestions > 0 }))
+    );
   } catch (e) {
     console.error("[GET /api/exams]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

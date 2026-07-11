@@ -152,9 +152,82 @@ model Exam {
   activeGuest  Boolean @default(true)
   guestCanTake Boolean @default(false)
   createdAt    String
-  results      ExamResult[]
+  results       ExamResult[]
+  examQuestions ExamQuestion[]
+  attempts      ExamAttempt[]
 
   @@map("exams")
+}
+
+// Câu hỏi thi trắc nghiệm trong platform — KHÔNG liên quan đến model
+// Question/Answer bên dưới (đó là module Hỏi Đáp cộng đồng, khác hoàn toàn).
+model ExamQuestion {
+  id          String   @id
+  examId      String
+  order       Int      @default(0)
+  text        String   @db.Text
+  imageUrl    String?
+  points      Float    @default(1)
+  explanation String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  exam    Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options ExamOption[]
+  answers ExamAnswer[]
+
+  @@index([examId, order])
+  @@map("exam_questions")
+}
+
+model ExamOption {
+  id         String  @id
+  questionId String
+  order      Int     @default(0) // vị trí A/B/C/D suy ra từ order, không lưu chữ cái
+  text       String  @db.Text
+  isCorrect  Boolean @default(false)
+
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  ExamAnswer[]
+
+  @@index([questionId])
+  @@map("exam_options")
+}
+
+// Một lần học viên làm bài. Thời gian làm bài enforce ở server qua expiresAt,
+// không tin đồng hồ đếm ngược phía client.
+model ExamAttempt {
+  id          String    @id @default(cuid())
+  userId      String
+  examId      String
+  startedAt   DateTime  @default(now())
+  expiresAt   DateTime
+  submittedAt DateTime?
+  status      String    @default("in_progress") // "in_progress" | "submitted" | "expired"
+  score       Float?
+  totalPoints Float?    // snapshot sum(points) lúc bắt đầu
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers ExamAnswer[]
+
+  @@index([userId, examId])
+  @@index([examId, status])
+  @@map("exam_attempts")
+}
+
+model ExamAnswer {
+  id         String   @id @default(cuid())
+  attemptId  String
+  questionId String
+  optionId   String? // null = chưa trả lời
+  answeredAt DateTime @updatedAt
+
+  attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  option   ExamOption?  @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+  @@map("exam_answers")
 }
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
@@ -190,6 +263,7 @@ model User {
   courseReviews       CourseReview[]
   notifications       Notification[]
   examResults         ExamResult[]
+  examAttempts        ExamAttempt[]
   badges              UserBadge[]
   threads             Thread[]
   threadReplies       ThreadReply[]
