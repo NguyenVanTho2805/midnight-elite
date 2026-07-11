@@ -6,11 +6,12 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus } from "@/lib/examData";
-import { CATEGORY_GRADIENT } from "@/lib/courseData";
+import { CATEGORY_GRADIENT, ADMIN_CATEGORIES } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
-import { api, type ExamFull } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionInput } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
+import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -37,6 +38,54 @@ const CREATE_INIT: CreateForm = {
   active: true, activeGuest: true,
 };
 
+// Select danh mục + khả năng gõ danh mục hoàn toàn mới (Exam.category là String tự do, không phải enum)
+function CategoryField({ value, options, onChange, className }: {
+  value: string; options: string[]; onChange: (v: string) => void; className: string;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newCat, setNewCat] = useState("");
+
+  function commit() {
+    if (newCat.trim()) onChange(newCat.trim());
+    setAdding(false);
+    setNewCat("");
+  }
+
+  if (adding) {
+    return (
+      <div className="flex gap-2">
+        <input
+          autoFocus
+          className={className}
+          placeholder="Tên danh mục mới..."
+          value={newCat}
+          onChange={e => setNewCat(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") { setAdding(false); setNewCat(""); }
+          }}
+        />
+        <button type="button" onClick={commit}
+          className="px-3 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 flex-shrink-0">
+          Xong
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      className={className}
+      value={value}
+      onChange={e => e.target.value === "__add__" ? setAdding(true) : onChange(e.target.value)}
+    >
+      {options.map(c => <option key={c} value={c}>{c}</option>)}
+      {value && !options.includes(value) && <option value={value}>{value}</option>}
+      <option value="__add__">+ Thêm danh mục mới…</option>
+    </select>
+  );
+}
+
 function autoCode(category: string, exams: ExamRow[]): string {
   const prefix = category.includes("HSA") ? "HSA"
     : category.includes("HCM") ? "HCM"
@@ -59,11 +108,96 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
   const [saving, setSaving] = useState(false);
 
+  // ── Nhập câu hỏi trực tiếp lúc tạo đề (tùy chọn) ──────────────────────────
+  const [rawText, setRawText]             = useState("");
+  const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
+  const [parseErrs, setParseErrs]         = useState<ParseError[]>([]);
+  const [fileErr, setFileErr]             = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
   useEffect(() => {
-    if (!open) { setForm(CREATE_INIT); setErrors({}); setSaving(false); }
+    if (!open) {
+      setForm(CREATE_INIT); setErrors({}); setSaving(false);
+      setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
+    }
   }, [open]);
+
+  // Số câu hỏi tự đồng bộ theo danh sách đã review
+  useEffect(() => {
+    if (reviewQuestions && reviewQuestions.length > 0) {
+      setForm(p => ({ ...p, questions: String(reviewQuestions.length) }));
+    }
+  }, [reviewQuestions?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function runPreview() {
+    const { questions, errors } = parseBulkText(rawText);
+    setReviewQuestions(questions);
+    setParseErrs(errors);
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileErr("");
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    try {
+      if (ext === "txt") {
+        const text = await file.text();
+        setRawText(text);
+        const { questions, errors } = parseBulkText(text);
+        setReviewQuestions(questions);
+        setParseErrs(errors);
+      } else if (ext === "csv") {
+        const Papa = await import("papaparse");
+        const text = await file.text();
+        const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
+        const { questions, errors } = parseSpreadsheetRows(parsed.data);
+        setReviewQuestions(questions);
+        setParseErrs(errors);
+      } else if (ext === "xlsx") {
+        const { Workbook } = await import("exceljs");
+        const wb = new Workbook();
+        await wb.xlsx.load(await file.arrayBuffer());
+        const sheet = wb.worksheets[0];
+        const rows: unknown[][] = [];
+        sheet?.eachRow(row => {
+          const values = row.values as unknown[];
+          rows.push(values.slice(1)); // row.values đánh số từ 1, index 0 rỗng
+        });
+        const { questions, errors } = parseSpreadsheetRows(rows);
+        setReviewQuestions(questions);
+        setParseErrs(errors);
+      } else {
+        setFileErr("Chỉ hỗ trợ file .txt, .csv, .xlsx");
+      }
+    } catch (err) {
+      setFileErr("Không đọc được file: " + (err instanceof Error ? err.message : "lỗi không xác định"));
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function updateReviewQuestion(idx: number, text: string) {
+    setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
+  }
+  function updateReviewOption(idx: number, oi: number, text: string) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: q.options.map((o, j) => j === oi ? { ...o, text } : o) } : q
+    ) ?? null);
+  }
+  function setReviewCorrect(idx: number, oi: number) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: q.options.map((o, j) => ({ ...o, isCorrect: j === oi })) } : q
+    ) ?? null);
+  }
+  function removeReviewQuestion(idx: number) {
+    setReviewQuestions(prev => {
+      const next = prev?.filter((_, i) => i !== idx) ?? null;
+      return next && next.length > 0 ? next : null;
+    });
+  }
 
   // Cập nhật category mặc định khi options load xong (tránh hiển thị blank)
   useEffect(() => {
@@ -100,7 +234,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     setSaving(true);
     try {
       const examDate = form.date.split("-").reverse().join("/");
-      await api.exams.create({
+      const exam = await api.exams.create({
         id:           toSlug(form.title),
         code:         autoCode(form.category, exams),
         title:        form.title.trim(),
@@ -116,6 +250,13 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         activeGuest:  form.activeGuest,
         createdAt:    new Date().toLocaleDateString("vi-VN"),
       });
+      if (reviewQuestions && reviewQuestions.length > 0) {
+        try {
+          await api.examQuestions.bulkCreate(exam.id, reviewQuestions);
+        } catch {
+          showToast("Đề thi đã tạo nhưng lưu câu hỏi thất bại — vào \"Quản lý câu hỏi\" để thêm lại", false);
+        }
+      }
       onCreated();
       onClose();
     } catch (e) {
@@ -188,9 +329,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <select className={inp + " bg-white"} value={form.category} onChange={e => set("category", e.target.value)}>
-                  {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <CategoryField className={inp + " bg-white"} value={form.category} options={categoryOptions}
+                  onChange={v => set("category", v)} />
               </div>
             </div>
           </section>
@@ -221,10 +361,100 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
                   Số câu hỏi <span className="text-red-500">*</span>
                 </label>
                 <input type="number" min="1" max="300" className={inp} value={form.questions}
+                  readOnly={!!reviewQuestions?.length}
                   onChange={e => set("questions", e.target.value)} />
                 {errors.questions && <p className="text-xs text-red-500 mt-1">{errors.questions}</p>}
+                {!!reviewQuestions?.length && <p className="text-xs text-gray-400 mt-1">Tự động theo số câu đã nhập bên dưới</p>}
               </div>
             </div>
+          </section>
+
+          {/* Câu hỏi thi */}
+          <section>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Câu hỏi thi (tùy chọn)</h3>
+
+            {reviewQuestions === null ? (
+              <div className="space-y-3">
+                <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+                  Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống:
+                  <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Nội dung câu hỏi...
+A. Đáp án A
+B. Đáp án B
+C. Đáp án C
+D. Đáp án D
+Đáp án: B`}</pre>
+                  <p className="mt-1.5">File .csv/.xlsx: cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
+                </div>
+                <textarea
+                  className={inp + " font-mono"}
+                  rows={6}
+                  placeholder="Dán câu hỏi vào đây..."
+                  value={rawText}
+                  onChange={e => setRawText(e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={runPreview} disabled={!rawText.trim()}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    Xem trước câu hỏi
+                  </button>
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    Tải file lên
+                  </button>
+                  <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx" className="hidden" onChange={handleFile} />
+                </div>
+                {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>
+                    {reviewQuestions.length} câu hỏi hợp lệ — xem lại trước khi lưu
+                  </p>
+                  <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); }}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                    ← Quay lại chỉnh sửa
+                  </button>
+                </div>
+
+                {parseErrs.length > 0 && (
+                  <ul className="text-xs text-red-600 space-y-1 p-2 rounded-lg" style={{ background: "#fef2f2" }}>
+                    {parseErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
+                  </ul>
+                )}
+
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {reviewQuestions.map((q, idx) => (
+                    <div key={idx} className="rounded-lg p-3 border border-gray-200 bg-gray-50">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-xs font-semibold text-gray-400 mt-2">Câu {idx + 1}</span>
+                        <textarea
+                          className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400"
+                          rows={2}
+                          value={q.text}
+                          onChange={e => updateReviewQuestion(idx, e.target.value)}
+                        />
+                        <button type="button" onClick={() => removeReviewQuestion(idx)}
+                          className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 pl-6">
+                        {q.options.map((o, oi) => (
+                          <div key={oi} className="flex items-center gap-1.5">
+                            <input type="radio" checked={o.isCorrect} onChange={() => setReviewCorrect(idx, oi)} />
+                            <span className="text-xs font-semibold text-gray-400 w-3.5">{String.fromCharCode(65 + oi)}</span>
+                            <input
+                              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                              value={o.text}
+                              onChange={e => updateReviewOption(idx, oi, e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Azota */}
@@ -455,12 +685,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                  <select className={inp + " bg-white"} value={form.category} onChange={e => set("category", e.target.value)}>
-                    {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                    {form.category && !categoryOptions.includes(form.category) && (
-                      <option value={form.category}>{form.category}</option>
-                    )}
-                  </select>
+                  <CategoryField className={inp + " bg-white"} value={form.category} options={categoryOptions}
+                    onChange={v => set("category", v)} />
                 </div>
               </div>
             </div>
@@ -641,8 +867,10 @@ export default function ThiThuAdminPage() {
   const exams: ExamRow[] = apiExams.map(e => ({ ...e, status: computeExamStatus(e.date, e.time, e.active) }));
   const stats = countByStatus(exams);
 
-  // Derive categories from loaded exams (no hardcoded list)
+  // Filter dropdown: chỉ hiện danh mục thực sự đang có đề thi
   const examCategories = [...new Set(exams.map(e => e.category))].filter(Boolean).sort();
+  // Danh mục cho drawer tạo/sửa: danh sách chuẩn + danh mục custom đã dùng (không phụ thuộc đề thi hiện có)
+  const categoryOptions = [...new Set([...ADMIN_CATEGORIES, ...examCategories])];
 
   const { toast, showToast } = useAdminToast();
   const [createOpen, setCreateOpen] = useState(false);
@@ -868,14 +1096,14 @@ export default function ThiThuAdminPage() {
       <CreateExamDrawer
         open={createOpen}
         exams={exams}
-        categoryOptions={examCategories}
+        categoryOptions={categoryOptions}
         onClose={() => setCreateOpen(false)}
         onCreated={() => { showToast("Đã tạo đề thi mới"); refetch(); }}
         showToast={showToast}
       />
       <EditExamDrawer
         exam={editTarget}
-        categoryOptions={examCategories}
+        categoryOptions={categoryOptions}
         onClose={() => setEditTarget(null)}
         onSaved={() => { showToast("Đã lưu đề thi"); refetch(); }}
         showToast={showToast}

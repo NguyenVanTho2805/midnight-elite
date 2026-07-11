@@ -63,6 +63,11 @@ export const api = {
         `/api/exams/${examId}/questions/bulk-import`,
         { method: "POST", body: JSON.stringify({ text }) }
       ),
+    bulkCreate: (examId: string, items: ExamQuestionInput[]) =>
+      apiFetch<{ created: number }>(
+        `/api/exams/${examId}/questions/bulk-create`,
+        { method: "POST", body: JSON.stringify({ items }) }
+      ),
   },
   // ── Exam attempts (học viên làm bài) ────────────────────────────────────
   examAttempts: {
