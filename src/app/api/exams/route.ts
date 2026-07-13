@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
 
     // Allowlist — chỉ nhận fields đúng với Prisma schema
     const allowed = ["id", "code", "title", "category", "date", "time", "duration",
-                     "questions", "status", "azotaUrl", "participants", "active", "activeGuest", "guestCanTake", "createdAt"];
+                     "questions", "status", "azotaUrl", "participants", "active", "activeGuest", "guestCanTake",
+                     "createdAt", "courseId", "price"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];

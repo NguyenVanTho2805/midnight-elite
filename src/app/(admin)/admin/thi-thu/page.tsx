@@ -8,7 +8,7 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus } from "@/lib/examData";
 import { CATEGORY_GRADIENT, ADMIN_CATEGORIES } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
-import { api, type ExamFull, type ExamQuestionInput } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionInput, type CourseFull } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
@@ -531,6 +531,8 @@ interface EditForm {
   title: string; category: string; date: string; time: string;
   duration: string; questions: string; azotaUrl: string;
   active: boolean; activeGuest: boolean;
+  price: string; // rỗng = miễn phí
+  courseId: string; // rỗng = không gắn khoá học nào
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: {
@@ -544,6 +546,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
   const [form, setForm]     = useState<EditForm | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof EditForm, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [courses, setCourses] = useState<CourseFull[]>([]);
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
@@ -560,10 +563,17 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         azotaUrl:     exam.azotaUrl ?? "",
         active:       exam.active,
         activeGuest:  exam.activeGuest ?? true,
+        price:        exam.price ? String(exam.price) : "",
+        courseId:     exam.courseId ?? "",
       });
       setErrors({});
     }
   }, [exam?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Danh sách khoá học để gắn đề thi — chỉ tải khi drawer mở
+  useEffect(() => {
+    if (open) api.courses.list({ all: "1" }).then(setCourses).catch(() => setCourses([]));
+  }, [open]);
 
   // Escape key
   useEffect(() => {
@@ -586,6 +596,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
       e.questions = "Số câu phải là số dương";
     if (form.azotaUrl && !/^https?:\/\//.test(form.azotaUrl))
       e.azotaUrl = "URL không hợp lệ";
+    if (form.price && (isNaN(+form.price) || +form.price < 0))
+      e.price = "Phí phải là số không âm";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -606,6 +618,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         azotaUrl:    form.azotaUrl || null,
         active:       form.active,
         activeGuest:  form.activeGuest,
+        price:        form.price ? +form.price : null,
+        courseId:     form.courseId || null,
       } as Partial<ExamFull>);
       onSaved();
       onClose();
@@ -754,6 +768,21 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
+              </div>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <p className="text-sm font-medium text-gray-700 mb-1">Khoá học liên quan</p>
+                <p className="text-xs text-gray-400 mb-2">Học viên đã đăng ký khoá học này luôn thi miễn phí, bất kể phí bên dưới.</p>
+                <select className={inp} value={form.courseId} onChange={e => set("courseId", e.target.value)}>
+                  <option value="">— Không gắn khoá học nào —</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <p className="text-sm font-medium text-gray-700 mb-1">Phí thi (VNĐ)</p>
+                <p className="text-xs text-gray-400 mb-2">Bỏ trống = miễn phí cho tất cả. Có phí thì học viên khoá học ở trên vẫn miễn phí, người khác cần admin duyệt thủ công ở trang quản lý câu hỏi.</p>
+                <input type="number" min="0" placeholder="Miễn phí" className={inp}
+                  value={form.price} onChange={e => set("price", e.target.value)} />
+                {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
               </div>
               <div className="flex items-center gap-2 px-1">
                 <span className="text-xs text-gray-400">Trạng thái:</span>

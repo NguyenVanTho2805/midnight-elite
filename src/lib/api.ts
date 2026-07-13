@@ -40,6 +40,17 @@ export const api = {
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/exams/${id}`, { method: "DELETE" }),
   },
+  // ── Exam guest access (duyệt phí thủ công cho guest) ────────────────────────
+  examGuestAccess: {
+    list: (examId: string) =>
+      apiFetch<ExamGuestAccessFull[]>(`/api/exams/${examId}/guest-access`),
+    grant: (examId: string, email: string) =>
+      apiFetch<ExamGuestAccessFull>(`/api/exams/${examId}/guest-access`, {
+        method: "POST", body: JSON.stringify({ email }),
+      }),
+    revoke: (examId: string, userId: string) =>
+      apiFetch<{ success: boolean }>(`/api/exams/${examId}/guest-access/${userId}`, { method: "DELETE" }),
+  },
   // ── Exam questions (admin authoring) ────────────────────────────────────
   examQuestions: {
     list: (examId: string) =>
@@ -130,6 +141,12 @@ export interface ExamFull {
   status: string; azotaUrl?: string | null;
   participants: number; active: boolean; activeGuest: boolean; guestCanTake: boolean; createdAt: string;
   hasQuestions: boolean;
+  courseId?: string | null; price?: number | null;
+}
+
+export interface ExamGuestAccessFull {
+  id: string; userId: string; examId: string; grantedBy: string; grantedAt: string;
+  user: { id: string; name: string; email: string };
 }
 
 // Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)

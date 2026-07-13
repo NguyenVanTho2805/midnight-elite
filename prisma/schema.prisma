@@ -45,6 +45,7 @@ model Course {
   favorites   CourseFavorite[]
   cartItems   CartItem[]
   reviews     CourseReview[]
+  exams       Exam[]
 
   @@index([ownerId])
   @@map("courses")
@@ -164,11 +165,24 @@ model Exam {
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
+  // Đề thi có thể gắn với 1 khoá học cụ thể (null = đề thi chung, không thuộc
+  // khoá nào). Dùng để quyết định ai được thi miễn phí khi có price: học viên
+  // đã Enrollment vào courseId này thì miễn phí, còn lại phải có ExamGuestAccess.
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  // null/0 = miễn phí cho tất cả (theo activeGuest/guestCanTake như cũ).
+  // Có giá trị = học viên đã đăng ký courseId ở trên thi miễn phí, người khác
+  // (guest hoặc học viên khoá khác) cần được duyệt qua ExamGuestAccess.
+  price Int?
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]
+  guestAccess   ExamGuestAccess[]
 
   @@index([ownerId])
+  @@index([courseId])
   @@map("exams")
 }
 
@@ -243,6 +257,23 @@ model ExamAnswer {
   @@map("exam_answers")
 }
 
+// Admin (trung tâm/giáo viên sở hữu đề) gắn cờ này thủ công sau khi xác nhận
+// guest đã trả phí qua quy trình sales hiện có (KHÔNG có cổng thanh toán tự
+// động — xem plan Giai đoạn 3, reports/2026-07-13.md). Có bản ghi = được thi.
+model ExamGuestAccess {
+  id        String   @id @default(cuid())
+  userId    String
+  examId    String
+  grantedBy String // userId của admin/giáo viên đã duyệt
+  grantedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, examId])
+  @@map("exam_guest_access")
+}
+
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -268,6 +299,7 @@ model User {
 
   ownedCourses        Course[]
   ownedExams          Exam[]
+  examGuestAccess     ExamGuestAccess[]
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]

@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull } from "@/lib/api";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 
@@ -258,6 +258,85 @@ function DelModal({ target, onClose, onConfirm }: { target: { id: string; label:
   );
 }
 
+// ─── DUYỆT PHÍ GUEST (đề thi có price, tái dùng quy trình sales thủ công) ──────
+function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (msg: string, ok?: boolean) => void }) {
+  const [grants, setGrants] = useState<ExamGuestAccessFull[]>([]);
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.examGuestAccess.list(examId).then(setGrants).finally(() => setLoading(false));
+  }, [examId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function grant() {
+    if (!email.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.examGuestAccess.grant(examId, email.trim());
+      showToast("Đã duyệt quyền vào thi cho " + email.trim(), true);
+      setEmail("");
+      load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Duyệt thất bại", false);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function revoke(userId: string, label: string) {
+    try {
+      await api.examGuestAccess.revoke(examId, userId);
+      showToast("Đã thu hồi quyền của " + label, true);
+      load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Thu hồi thất bại", false);
+    }
+  }
+
+  return (
+    <div className="mb-6 rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+      <h3 className="text-sm font-bold mb-1" style={{ color: "#1a1a1a" }}>Duyệt phí guest</h3>
+      <p className="text-xs mb-3" style={{ color: "#787671" }}>
+        Đề thi này thu phí — học viên đã đăng ký khoá học liên quan vẫn thi miễn phí.
+        Guest khác cần duyệt tay ở đây sau khi xác nhận đã thanh toán qua tư vấn/sales.
+      </p>
+      <div className="flex gap-2 mb-3">
+        <input type="email" placeholder="Email học viên/guest đã trả phí..."
+          className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400"
+          style={{ borderColor: "#e5e3df" }}
+          value={email} onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") grant(); }} />
+        <button onClick={grant} disabled={submitting || !email.trim()}
+          className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+          {submitting ? "Đang duyệt..." : "Duyệt"}
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-xs" style={{ color: "#787671" }}>Đang tải...</p>
+      ) : grants.length === 0 ? (
+        <p className="text-xs" style={{ color: "#787671" }}>Chưa có guest nào được duyệt.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {grants.map(g => (
+            <li key={g.id} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg" style={{ background: "#f6f5f4" }}>
+              <span>
+                <span className="font-medium" style={{ color: "#1a1a1a" }}>{g.user.name}</span>
+                <span style={{ color: "#787671" }}> — {g.user.email}</span>
+              </span>
+              <button onClick={() => revoke(g.userId, g.user.email)}
+                className="text-red-500 hover:underline">Thu hồi</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ─── TRANG CHÍNH ───────────────────────────────────────────────────────────────
 function ThiThuQuestionsPage() {
   const { id } = useParams<{ id: string }>();
@@ -367,6 +446,8 @@ function ThiThuQuestionsPage() {
             </button>
           </div>
         </div>
+
+        {!!exam.price && <GuestAccessPanel examId={id} showToast={showToast} />}
 
         {questions.length === 0 ? (
           <div className="text-center py-16 rounded-xl border" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>

@@ -33,6 +33,30 @@ export async function POST(
       );
     }
 
+    // Đề thi thu phí: miễn phí cho học viên đã đăng ký đúng khoá học gắn với
+    // đề, người khác (guest hoặc học viên khoá khác) cần được admin duyệt
+    // qua ExamGuestAccess (thủ công, tái dùng quy trình sales hiện có —
+    // không có cổng thanh toán tự động, xem reports/2026-07-13.md Giai đoạn 3).
+    if (exam.price && exam.price > 0) {
+      const isEnrolledInExamCourse = exam.courseId
+        ? !!(await prisma.enrollment.findUnique({
+            where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
+          }))
+        : false;
+
+      if (!isEnrolledInExamCourse) {
+        const granted = await prisma.examGuestAccess.findUnique({
+          where: { userId_examId: { userId: session.userId, examId } },
+        });
+        if (!granted) {
+          return NextResponse.json(
+            { error: "Đề thi này yêu cầu phí — liên hệ tư vấn để được duyệt quyền vào thi" },
+            { status: 402 }
+          );
+        }
+      }
+    }
+
     let attempt = await prisma.examAttempt.findFirst({
       where: { userId: session.userId, examId, status: "in_progress" },
       orderBy: { startedAt: "desc" },
