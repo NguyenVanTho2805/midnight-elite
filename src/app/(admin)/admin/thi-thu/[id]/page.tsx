@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type QuestionType } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType } from "@/lib/api";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -434,17 +434,158 @@ function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (m
   );
 }
 
+// ─── DRAWER: xem bài làm 1 lượt thi + chấm tự luận ─────────────────────────────
+function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
+  attemptId: string | null;
+  onClose: () => void;
+  onGraded: () => void;
+}) {
+  const open = attemptId !== null;
+  const [detail, setDetail] = useState<ExamAttemptAdminDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, { points: string; comment: string }>>({});
+  const [saving, setSaving] = useState<string | null>(null); // questionId đang lưu
+
+  useEffect(() => {
+    if (!attemptId) return;
+    setLoading(true);
+    api.examAttemptsAdmin.detail(attemptId).then(d => {
+      setDetail(d);
+      const init: Record<string, { points: string; comment: string }> = {};
+      for (const q of d.questions) {
+        if (q.type === "ESSAY") {
+          init[q.id] = { points: q.pointsAwarded != null ? String(q.pointsAwarded) : "", comment: q.teacherComment ?? "" };
+        }
+      }
+      setDrafts(init);
+    }).finally(() => setLoading(false));
+  }, [attemptId]);
+
+  async function saveGrade(questionId: string, maxPoints: number) {
+    if (!attemptId) return;
+    const draft = drafts[questionId];
+    const points = Number(draft?.points);
+    if (!draft?.points || isNaN(points) || points < 0 || points > maxPoints) return;
+    setSaving(questionId);
+    try {
+      const res = await api.examAttemptsAdmin.gradeEssay(attemptId, questionId, points, draft.comment);
+      setDetail(prev => prev
+        ? { ...prev, score: res.score, questions: prev.questions.map(q => q.id === questionId ? { ...q, pointsAwarded: points, teacherComment: draft.comment } : q) }
+        : prev);
+      onGraded();
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        style={{
+          width: "min(640px, 100vw)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
+          pointerEvents: open ? "auto" : "none",
+          visibility: open ? "visible" : "hidden",
+        }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
+            <div>
+              <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Bài làm của {detail?.user.name ?? "..."}</h2>
+              {detail && <p className="text-xs" style={{ color: "#787671" }}>{detail.user.email} — Điểm: {detail.score ?? "—"}/{detail.totalPoints}</p>}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {loading || !detail ? (
+            <p className="text-sm" style={{ color: "#787671" }}>Đang tải...</p>
+          ) : (
+            detail.questions.map((q, idx) => (
+              <div key={q.id} className="rounded-xl border p-4" style={{ borderColor: "#e5e3df" }}>
+                <p className="text-sm font-medium mb-2" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: {q.text}</p>
+
+                {q.type === "MC" && (
+                  <div className="space-y-1">
+                    {q.options.map(o => (
+                      <div key={o.id} className="text-xs flex items-center gap-1.5"
+                        style={{ color: o.id === q.studentOptionId ? (o.isCorrect ? "#16a34a" : "#dc2626") : "#a4a097" }}>
+                        {o.id === q.studentOptionId && "→ "}{o.text} {o.isCorrect && "✓"}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {q.type === "TRUE_FALSE_CLUSTER" && (
+                  <div className="space-y-1">
+                    {q.options.map(o => (
+                      <div key={o.id} className="text-xs flex items-center gap-1.5"
+                        style={{ color: o.studentAnswerTrue === o.isCorrect ? "#16a34a" : "#dc2626" }}>
+                        <strong>{o.subLabel})</strong> {o.text} — học viên chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {q.type === "ESSAY" && (
+                  <div>
+                    <div className="text-sm p-3 rounded-lg mb-3" style={{ background: "#f6f5f4", color: "#37352f" }}>
+                      {q.textAnswer?.trim() ? q.textAnswer : <em style={{ color: "#a4a097" }}>Học viên chưa trả lời</em>}
+                    </div>
+                    <div className="flex gap-2 items-start">
+                      <div className="w-28">
+                        <label className="block text-[11px] text-gray-500 mb-1">Điểm (tối đa {q.points})</label>
+                        <input type="number" min={0} max={q.points} step={0.25}
+                          className="w-full px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
+                          style={{ borderColor: "#e5e3df" }}
+                          value={drafts[q.id]?.points ?? ""}
+                          onChange={e => setDrafts(prev => ({ ...prev, [q.id]: { points: e.target.value, comment: prev[q.id]?.comment ?? "" } }))}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[11px] text-gray-500 mb-1">Nhận xét (tùy chọn)</label>
+                        <input
+                          className="w-full px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
+                          style={{ borderColor: "#e5e3df" }}
+                          value={drafts[q.id]?.comment ?? ""}
+                          onChange={e => setDrafts(prev => ({ ...prev, [q.id]: { points: prev[q.id]?.points ?? "", comment: e.target.value } }))}
+                        />
+                      </div>
+                      <button onClick={() => saveGrade(q.id, q.points)} disabled={saving === q.id}
+                        className="mt-5 px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-60"
+                        style={{ background: "#16a34a" }}>
+                        {saving === q.id ? "..." : "Lưu điểm"}
+                      </button>
+                    </div>
+                    {q.pointsAwarded != null && (
+                      <p className="text-[11px] mt-1.5" style={{ color: "#16a34a" }}>Đã chấm: {q.pointsAwarded}/{q.points} điểm</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── DANH SÁCH ĐÃ THI (điểm + số lần rời tab lúc thi) ──────────────────────────
 function AttemptsPanel({ examId }: { examId: string }) {
   const [attempts, setAttempts] = useState<ExamAttemptAdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [grading, setGrading] = useState<string | null>(null); // attemptId đang mở drawer chấm bài
 
-  useEffect(() => {
-    if (!open) return;
+  const load = useCallback(() => {
     setLoading(true);
     api.examAttemptsAdmin.list(examId).then(setAttempts).finally(() => setLoading(false));
-  }, [examId, open]);
+  }, [examId]);
+
+  useEffect(() => { if (open) load(); }, [open, load]);
 
   return (
     <div className="mb-6 rounded-xl border" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
@@ -468,6 +609,8 @@ function AttemptsPanel({ examId }: { examId: string }) {
                     <th className="py-2 pr-3 font-medium">Điểm</th>
                     <th className="py-2 pr-3 font-medium">Nộp lúc</th>
                     <th className="py-2 pr-3 font-medium">Số lần rời tab</th>
+                    <th className="py-2 pr-3 font-medium">Trạng thái</th>
+                    <th className="py-2 pr-3 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -488,6 +631,18 @@ function AttemptsPanel({ examId }: { examId: string }) {
                           <span style={{ color: "#787671" }}>0</span>
                         )}
                       </td>
+                      <td className="py-2 pr-3">
+                        {a.ungradedEssayCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#b45309" }}>
+                            Chưa chấm tự luận
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <button onClick={() => setGrading(a.id)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+                          Xem bài làm
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -496,6 +651,7 @@ function AttemptsPanel({ examId }: { examId: string }) {
           )}
         </div>
       )}
+      <GradeAttemptDrawer attemptId={grading} onClose={() => setGrading(null)} onGraded={load} />
     </div>
   );
 }

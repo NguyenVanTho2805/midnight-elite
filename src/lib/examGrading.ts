@@ -82,6 +82,80 @@ export function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+type Tx = Prisma.TransactionClient;
+
+// Tính tổng điểm thô (thang gốc theo points từng câu, chưa quy đổi /150) của
+// 1 attempt — dùng chung cho lúc nộp bài lần đầu (finalizeAttempt) và lúc
+// chấm/sửa điểm tự luận sau đó (regradeAttempt). Tách riêng vì 2 nơi gọi có
+// vòng đời transaction khác nhau nhưng công thức tính điểm phải giống hệt.
+async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string }): Promise<number> {
+  // MC: cộng điểm nếu optionId đã chọn đúng là đáp án đúng. ESSAY dùng điểm
+  // giáo viên đã chấm tay (pointsAwarded), null = chưa chấm = cộng 0.
+  // TRUE_FALSE_CLUSTER không nằm trong bảng này (xem dưới, trả lời ở bảng khác).
+  const answers = await tx.examAnswer.findMany({
+    where: { attemptId: attempt.id },
+    include: {
+      option: { select: { isCorrect: true } },
+      question: { select: { points: true, type: true } },
+    },
+  });
+  let rawEarned = answers.reduce((sum, a) => {
+    if (a.question.type === "MC") return sum + (a.option?.isCorrect ? a.question.points : 0);
+    if (a.question.type === "ESSAY") return sum + (a.pointsAwarded ?? 0);
+    return sum;
+  }, 0);
+
+  // TRUE_FALSE_CLUSTER: chấm theo % số ý đúng trong cụm 4 ý (xem
+  // CLUSTER_PERCENT_BY_CORRECT_COUNT) — trả lời nằm ở ExamAnswerBoolean,
+  // không phải ExamAnswer, nên cộng riêng ở đây.
+  const clusterQuestions = await tx.examQuestion.findMany({
+    where: { examId: attempt.examId, type: "TRUE_FALSE_CLUSTER" },
+    include: { options: true },
+  });
+  if (clusterQuestions.length > 0) {
+    const boolAnswers = await tx.examAnswerBoolean.findMany({
+      where: { attemptId: attempt.id },
+      include: { option: { select: { questionId: true, isCorrect: true } } },
+    });
+    const byQuestion = new Map<string, typeof boolAnswers>();
+    for (const a of boolAnswers) {
+      const qid = a.option.questionId;
+      const list = byQuestion.get(qid) ?? [];
+      list.push(a);
+      byQuestion.set(qid, list);
+    }
+    for (const q of clusterQuestions) {
+      const given = byQuestion.get(q.id) ?? [];
+      const correctCount = given.filter(a => a.answerTrue !== null && a.answerTrue === a.option.isCorrect).length;
+      const pct = CLUSTER_PERCENT_BY_CORRECT_COUNT[Math.min(correctCount, 4)];
+      rawEarned += q.points * pct;
+    }
+  }
+
+  return rawEarned;
+}
+
+// Cập nhật ExamResult (bảng xếp hạng) theo đúng quy tắc "giữ điểm tốt nhất
+// qua các lần làm lại" đã dùng xuyên suốt hệ thống — dùng chung cho nộp bài
+// lần đầu và cho chấm lại tự luận sau đó.
+async function upsertBestResult(tx: Tx, attempt: { userId: string; examId: string }, score: number, at: Date) {
+  const existing = await tx.examResult.findUnique({
+    where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
+  });
+
+  if (!existing) {
+    await tx.examResult.create({
+      data: { userId: attempt.userId, examId: attempt.examId, score, totalPoints: 150, completedAt: at },
+    });
+    await tx.exam.update({ where: { id: attempt.examId }, data: { participants: { increment: 1 } } });
+  } else if (score > existing.score) {
+    await tx.examResult.update({
+      where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
+      data: { score, completedAt: at },
+    });
+  }
+}
+
 // Chấm điểm 1 attempt hoàn toàn ở server (không tin điểm từ client), rồi cập nhật
 // ExamResult chỉ khi điểm mới cao hơn điểm cũ (leaderboard giữ điểm tốt nhất qua các lần làm lại).
 // No-op nếu attempt đã submitted/expired từ trước (idempotent).
@@ -93,48 +167,7 @@ export async function finalizeAttempt(
     const attempt = await tx.examAttempt.findUnique({ where: { id: attemptId } });
     if (!attempt || attempt.status !== "in_progress") return attempt;
 
-    // MC: cộng điểm nếu optionId đã chọn đúng là đáp án đúng. ESSAY tự nhiên
-    // cộng 0 ở đây (answer không có optionId, chờ giáo viên chấm tay riêng —
-    // xem Giai đoạn 6). TRUE_FALSE_CLUSTER không nằm trong bảng này (xem dưới).
-    const answers = await tx.examAnswer.findMany({
-      where: { attemptId },
-      include: {
-        option: { select: { isCorrect: true } },
-        question: { select: { points: true, type: true } },
-      },
-    });
-    let rawEarned = answers.reduce(
-      (sum, a) => sum + (a.question.type === "MC" && a.option?.isCorrect ? a.question.points : 0),
-      0
-    );
-
-    // TRUE_FALSE_CLUSTER: chấm theo % số ý đúng trong cụm 4 ý (xem
-    // CLUSTER_PERCENT_BY_CORRECT_COUNT) — trả lời nằm ở ExamAnswerBoolean,
-    // không phải ExamAnswer, nên cộng riêng ở đây.
-    const clusterQuestions = await tx.examQuestion.findMany({
-      where: { examId: attempt.examId, type: "TRUE_FALSE_CLUSTER" },
-      include: { options: true },
-    });
-    if (clusterQuestions.length > 0) {
-      const boolAnswers = await tx.examAnswerBoolean.findMany({
-        where: { attemptId },
-        include: { option: { select: { questionId: true, isCorrect: true } } },
-      });
-      const byQuestion = new Map<string, typeof boolAnswers>();
-      for (const a of boolAnswers) {
-        const qid = a.option.questionId;
-        const list = byQuestion.get(qid) ?? [];
-        list.push(a);
-        byQuestion.set(qid, list);
-      }
-      for (const q of clusterQuestions) {
-        const given = byQuestion.get(q.id) ?? [];
-        const correctCount = given.filter(a => a.answerTrue !== null && a.answerTrue === a.option.isCorrect).length;
-        const pct = CLUSTER_PERCENT_BY_CORRECT_COUNT[Math.min(correctCount, 4)];
-        rawEarned += q.points * pct;
-      }
-    }
-
+    const rawEarned = await computeRawEarned(tx, attempt);
     const rawTotal = attempt.totalPoints ?? 0;
     const score = rawTotal > 0 ? Math.round((rawEarned / rawTotal) * 150 * 100) / 100 : 0;
 
@@ -143,30 +176,26 @@ export async function finalizeAttempt(
       data: { status: opts.status, submittedAt: opts.at, score },
     });
 
-    const existing = await tx.examResult.findUnique({
-      where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
-    });
+    await upsertBestResult(tx, attempt, score, opts.at);
 
-    if (!existing) {
-      await tx.examResult.create({
-        data: {
-          userId: attempt.userId,
-          examId: attempt.examId,
-          score,
-          totalPoints: 150,
-          completedAt: opts.at,
-        },
-      });
-      await tx.exam.update({
-        where: { id: attempt.examId },
-        data: { participants: { increment: 1 } },
-      });
-    } else if (score > existing.score) {
-      await tx.examResult.update({
-        where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
-        data: { score, completedAt: opts.at },
-      });
-    }
+    return updated;
+  });
+}
+
+// Chấm lại điểm sau khi giáo viên sửa điểm 1 câu tự luận (Giai đoạn 6) — khác
+// finalizeAttempt ở chỗ áp dụng được cho attempt đã "submitted" từ trước
+// (không no-op), vì mục đích chính là cập nhật điểm sau khi bài đã nộp.
+export async function regradeAttempt(attemptId: string) {
+  return prisma.$transaction(async (tx) => {
+    const attempt = await tx.examAttempt.findUnique({ where: { id: attemptId } });
+    if (!attempt || attempt.status === "in_progress") return attempt;
+
+    const rawEarned = await computeRawEarned(tx, attempt);
+    const rawTotal = attempt.totalPoints ?? 0;
+    const score = rawTotal > 0 ? Math.round((rawEarned / rawTotal) * 150 * 100) / 100 : 0;
+
+    const updated = await tx.examAttempt.update({ where: { id: attemptId }, data: { score } });
+    await upsertBestResult(tx, attempt, score, attempt.submittedAt ?? new Date());
 
     return updated;
   });

@@ -276,6 +276,11 @@ model ExamAnswer {
   textAnswer String?  @db.Text // chỉ dùng cho câu ESSAY
   answeredAt DateTime @updatedAt
 
+  // Chấm tay câu ESSAY (Giai đoạn 6) — null = chưa chấm, không phải 0 điểm.
+  // Không dùng cho MC/CLUSTER (chấm tự động lúc nộp bài).
+  pointsAwarded  Float?
+  teacherComment String? @db.Text
+
   attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   option   ExamOption?  @relation(fields: [optionId], references: [id], onDelete: SetNull)

@@ -30,7 +30,25 @@ export async function GET(
         user: { select: { id: true, name: true, email: true } },
       },
     });
-    return NextResponse.json(attempts);
+
+    // Đếm số câu tự luận chưa chấm (pointsAwarded null) theo từng attempt —
+    // dùng để hiện nhãn "Chưa chấm tự luận" mà không cần mở từng bài.
+    const ungradedEssays = await prisma.examAnswer.findMany({
+      where: {
+        attemptId: { in: attempts.map(a => a.id) },
+        pointsAwarded: null,
+        question: { type: "ESSAY" },
+      },
+      select: { attemptId: true },
+    });
+    const ungradedCountByAttempt = new Map<string, number>();
+    for (const a of ungradedEssays) {
+      ungradedCountByAttempt.set(a.attemptId, (ungradedCountByAttempt.get(a.attemptId) ?? 0) + 1);
+    }
+
+    return NextResponse.json(
+      attempts.map(a => ({ ...a, ungradedEssayCount: ungradedCountByAttempt.get(a.id) ?? 0 }))
+    );
   } catch (e) {
     console.error("[GET /api/exams/[id]/attempts/admin]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

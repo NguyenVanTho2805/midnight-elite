@@ -84,6 +84,13 @@ export const api = {
   examAttemptsAdmin: {
     list: (examId: string) =>
       apiFetch<ExamAttemptAdminRow[]>(`/api/exams/${examId}/attempts/admin`),
+    detail: (attemptId: string) =>
+      apiFetch<ExamAttemptAdminDetail>(`/api/exams/attempts/${attemptId}/admin`),
+    gradeEssay: (attemptId: string, questionId: string, points: number, comment: string) =>
+      apiFetch<{ success: boolean; score: number | null }>(
+        `/api/exams/attempts/${attemptId}/answers/${questionId}/grade`,
+        { method: "PATCH", body: JSON.stringify({ points, comment }) }
+      ),
   },
   // ── Exam attempts (học viên làm bài) ────────────────────────────────────
   examAttempts: {
@@ -170,7 +177,28 @@ export interface ExamGuestAccessFull {
 export interface ExamAttemptAdminRow {
   id: string; status: string; score: number | null; totalPoints: number | null;
   startedAt: string; submittedAt: string | null; tabSwitchCount: number;
+  ungradedEssayCount: number;
   user: { id: string; name: string; email: string };
+}
+
+export interface ExamAttemptAdminDetailOption {
+  id: string; text: string; isCorrect: boolean;
+  subLabel?: "a" | "b" | "c" | "d" | null;
+  studentAnswerTrue: boolean | null;
+}
+export interface ExamAttemptAdminDetailQuestion {
+  id: string; type: QuestionType; text: string; points: number;
+  options: ExamAttemptAdminDetailOption[];
+  studentOptionId: string | null;
+  textAnswer: string | null;
+  pointsAwarded: number | null;
+  teacherComment: string | null;
+}
+export interface ExamAttemptAdminDetail {
+  id: string; status: string; score: number | null; totalPoints: number;
+  startedAt: string; submittedAt: string | null; tabSwitchCount: number;
+  user: { id: string; name: string; email: string };
+  questions: ExamAttemptAdminDetailQuestion[];
 }
 
 export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER";
