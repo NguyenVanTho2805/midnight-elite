@@ -181,6 +181,16 @@ model Exam {
   // (xem CLUSTER_PERCENT_BY_CORRECT_COUNT trong src/lib/examGrading.ts).
   clusterScorePercents Json?
 
+  // null = không yêu cầu mật khẩu. Có giá trị = học viên phải nhập đúng mật
+  // khẩu này mới bắt đầu làm bài được (đọc tại chỗ trong phòng thi có giám
+  // sát, giống Azota) — KHÔNG BAO GIỜ trả field này qua API GET, chỉ trả
+  // `hasPassword: boolean` (xem exams/route.ts, exams/[id]/route.ts).
+  password String?
+
+  // true = học viên xem được bảng xếp hạng Top 10 của đề này; false = ẩn
+  // hoàn toàn (giáo viên không muốn học viên so điểm công khai).
+  showLeaderboard Boolean @default(true)
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]

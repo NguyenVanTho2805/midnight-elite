@@ -62,6 +62,15 @@ export async function POST(
       orderBy: { startedAt: "desc" },
     });
 
+    // Mật khẩu đề thi: chỉ kiểm tra lúc bắt đầu lượt MỚI (không hỏi lại khi
+    // resume/refresh trang giữa chừng — đã vào phòng thi rồi thì không hỏi nữa).
+    if (exam.password && !attempt) {
+      const { password } = await req.json().catch(() => ({})) as { password?: string };
+      if (password !== exam.password) {
+        return NextResponse.json({ error: "Sai mật khẩu đề thi" }, { status: 403 });
+      }
+    }
+
     // Lazy-expiry: attempt cũ đã hết giờ nhưng chưa được chấm — chấm luôn rồi tạo attempt mới
     if (attempt && attempt.expiresAt.getTime() <= Date.now()) {
       await finalizeAttempt(attempt.id, { status: "expired", at: attempt.expiresAt });

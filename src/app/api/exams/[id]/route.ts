@@ -15,8 +15,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       include: { _count: { select: { examQuestions: true } } },
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
-    const { _count, ...rest } = exam;
-    return NextResponse.json({ ...rest, hasQuestions: _count.examQuestions > 0 });
+    // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
+    const { _count, password, ...rest } = exam;
+    return NextResponse.json({ ...rest, hasQuestions: _count.examQuestions > 0, hasPassword: !!password });
   } catch (e) {
     console.error("[GET /api/exams/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -40,7 +41,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Allowlist — không cho ghi đè id, code, participants, createdAt
     const allowed = ["title", "category", "date", "time", "duration", "questions",
                      "status", "azotaUrl", "active", "activeGuest", "guestCanTake", "courseId", "price",
-                     "clusterScorePercents"];
+                     "clusterScorePercents", "password", "showLeaderboard"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
@@ -54,9 +55,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         return NextResponse.json({ error: "Thang % Đúng-Sai phải là mảng 4 số từ 0-100" }, { status: 400 });
       }
     }
+    if (typeof data.password === "string") data.password = data.password.trim() || null;
 
     const exam = await prisma.exam.update({ where: { id }, data });
-    return NextResponse.json(exam);
+    // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
+    const { password, ...rest } = exam;
+    return NextResponse.json({ ...rest, hasPassword: !!password });
   } catch (e) {
     console.error("[PUT /api/exams/[id]]", e);
     if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025") {

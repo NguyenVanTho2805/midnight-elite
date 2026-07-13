@@ -36,8 +36,9 @@ export async function GET(req: NextRequest) {
       include: { _count: { select: { examQuestions: true } } },
     });
 
+    // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     return NextResponse.json(
-      exams.map(({ _count, ...e }) => ({ ...e, hasQuestions: _count.examQuestions > 0 }))
+      exams.map(({ _count, password, ...e }) => ({ ...e, hasQuestions: _count.examQuestions > 0, hasPassword: !!password }))
     );
   } catch (e) {
     console.error("[GET /api/exams]", e);
@@ -55,12 +56,13 @@ export async function POST(req: NextRequest) {
     // Allowlist — chỉ nhận fields đúng với Prisma schema
     const allowed = ["id", "code", "title", "category", "date", "time", "duration",
                      "questions", "status", "azotaUrl", "participants", "active", "activeGuest", "guestCanTake",
-                     "createdAt", "courseId", "price"];
+                     "createdAt", "courseId", "price", "password", "showLeaderboard"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
     data.ownerId = auth.userId;
+    if (typeof data.password === "string") data.password = data.password.trim() || null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exam = await prisma.exam.create({ data: data as any });
@@ -80,7 +82,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(exam, { status: 201 });
+    // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
+    const { password, ...rest } = exam;
+    return NextResponse.json({ ...rest, hasPassword: !!password }, { status: 201 });
   } catch (e) {
     console.error("[POST /api/exams]", e);
     return NextResponse.json({ error: "Tạo đề thi thất bại" }, { status: 400 });

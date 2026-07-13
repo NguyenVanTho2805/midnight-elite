@@ -38,6 +38,7 @@ export default function ExamEntryPage() {
   const [essayText, setEssayText] = useState<Record<string, string>>({}); // ESSAY: questionId -> text
   const [clusterAnswers, setClusterAnswers] = useState<Record<string, boolean | null>>({}); // CLUSTER: optionId -> đúng/sai
   const [startErr, setStartErr] = useState("");
+  const [examPassword, setExamPassword] = useState("");
   const [nowTick,  setNowTick]  = useState(0);
   const autoSubmitted = useRef(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
@@ -116,7 +117,7 @@ export default function ExamEntryPage() {
   async function startAttempt() {
     setStartErr("");
     try {
-      const state = await api.examAttempts.start(examId);
+      const state = await api.examAttempts.start(examId, examPassword || undefined);
       setAttempt(state);
       setSelected((state.answers ?? {}) as Record<string, string>);
       setEssayText(state.textAnswers ?? {});
@@ -517,6 +518,16 @@ export default function ExamEntryPage() {
         {phase === "ready" ? (
           exam.hasQuestions ? (
             <>
+              {exam.hasPassword && (
+                <input
+                  type="text"
+                  placeholder="Nhập mật khẩu đề thi (hỏi giáo viên)"
+                  className="w-full px-4 py-3 rounded-lg text-sm border-2 outline-none mb-3"
+                  style={{ borderColor: "#e5e3df" }}
+                  value={examPassword}
+                  onChange={e => setExamPassword(e.target.value)}
+                />
+              )}
               <button
                 onClick={startAttempt}
                 className="w-full py-4 rounded-lg text-base font-bold text-white"
@@ -570,7 +581,7 @@ export default function ExamEntryPage() {
         </ul>
       </div>
 
-      {exam.hasQuestions && leaderboard.length > 0 && (
+      {exam.hasQuestions && (exam.showLeaderboard ?? true) && leaderboard.length > 0 && (
         <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
           <h3 className="text-sm font-bold mb-3" style={{ color: "#1E2938" }}>Bảng xếp hạng Top 10</h3>
           <div className="space-y-2">

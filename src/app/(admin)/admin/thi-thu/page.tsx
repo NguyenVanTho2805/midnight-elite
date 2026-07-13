@@ -564,6 +564,9 @@ interface EditForm {
   price: string; // rỗng = miễn phí
   courseId: string; // rỗng = không gắn khoá học nào
   clusterPercents: string[]; // 4 ô % cho câu Đúng-Sai (1-4 ý đúng)
+  requirePassword: boolean;
+  password: string; // rỗng khi requirePassword=true nghĩa là giữ nguyên mật khẩu cũ (nếu đã có)
+  showLeaderboard: boolean;
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: {
@@ -599,6 +602,9 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         clusterPercents: exam.clusterScorePercents?.length === 4
           ? exam.clusterScorePercents.map(String)
           : [...DEFAULT_CLUSTER_PERCENTS],
+        requirePassword: exam.hasPassword ?? false,
+        password:        "", // để trống = giữ nguyên mật khẩu cũ (nếu có); server không bao giờ trả mật khẩu thật
+        showLeaderboard: exam.showLeaderboard ?? true,
       });
       setErrors({});
     }
@@ -634,6 +640,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
       e.price = "Phí phải là số không âm";
     if (form.clusterPercents.some(p => p === "" || isNaN(+p) || +p < 0 || +p > 100))
       e.clusterPercents = "Mỗi ô phải là số từ 0 đến 100";
+    if (form.requirePassword && !form.password.trim() && !(exam?.hasPassword))
+      e.password = "Nhập mật khẩu cho đề thi";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -658,6 +666,14 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         price:        form.price ? +form.price : null,
         courseId:     form.courseId || null,
         clusterScorePercents: isDefaultPercents ? null : form.clusterPercents.map(Number),
+        // requirePassword=false → xoá mật khẩu. true + có gõ mới → đổi.
+        // true + để trống + đã có mật khẩu cũ → giữ nguyên (không gửi key này).
+        ...(!form.requirePassword
+          ? { password: null }
+          : form.password.trim()
+          ? { password: form.password.trim() }
+          : {}),
+        showLeaderboard: form.showLeaderboard,
       } as Partial<ExamFull>);
       onSaved();
       onClose();
@@ -806,6 +822,28 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
+              </div>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Bảng xếp hạng</p>
+                  <p className="text-xs text-gray-400">Học viên xem được Top 10 điểm cao nhất của đề này</p>
+                </div>
+                <Toggle checked={form.showLeaderboard} onChange={() => set("showLeaderboard", !form.showLeaderboard)} />
+              </div>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium text-gray-700">Mật khẩu vào thi</p>
+                  <Toggle checked={form.requirePassword} onChange={() => set("requirePassword", !form.requirePassword)} />
+                </div>
+                <p className="text-xs text-gray-400 mb-2">Học viên phải nhập đúng mật khẩu này mới bắt đầu làm bài — đọc tại chỗ trong phòng thi có giám sát.</p>
+                {form.requirePassword && (
+                  <>
+                    <input type="text" className={inp}
+                      placeholder={exam?.hasPassword ? "Để trống để giữ nguyên mật khẩu cũ" : "Nhập mật khẩu"}
+                      value={form.password} onChange={e => set("password", e.target.value)} />
+                    {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
+                  </>
+                )}
               </div>
               <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
                 <p className="text-sm font-medium text-gray-700 mb-1">Khoá học liên quan</p>

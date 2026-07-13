@@ -94,8 +94,10 @@ export const api = {
   },
   // ── Exam attempts (học viên làm bài) ────────────────────────────────────
   examAttempts: {
-    start: (examId: string) =>
-      apiFetch<ExamAttemptState>(`/api/exams/${examId}/start`, { method: "POST" }),
+    start: (examId: string, password?: string) =>
+      apiFetch<ExamAttemptState>(`/api/exams/${examId}/start`, {
+        method: "POST", body: JSON.stringify({ password }),
+      }),
     get: (attemptId: string) =>
       apiFetch<ExamAttemptState>(`/api/exams/attempts/${attemptId}`),
     answer: (attemptId: string, questionId: string, optionId: string) =>
@@ -168,6 +170,9 @@ export interface ExamFull {
   hasQuestions: boolean;
   courseId?: string | null; price?: number | null;
   clusterScorePercents?: number[] | null; // [1 ý, 2 ý, 3 ý, 4 ý đúng] theo %, null = mặc định 10/25/50/100
+  hasPassword?: boolean; // KHÔNG BAO GIỜ có field password thô trong response — server chỉ trả cờ này
+  password?: string; // chỉ dùng khi GỬI lên để đặt/đổi mật khẩu, không bao giờ có mặt khi server trả về
+  showLeaderboard?: boolean;
 }
 
 export interface ExamGuestAccessFull {
