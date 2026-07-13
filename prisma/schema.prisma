@@ -233,6 +233,17 @@ model ExamAttempt {
   score       Float?
   totalPoints Float? // snapshot sum(points) lúc bắt đầu
 
+  // Snapshot thứ tự đã xáo lúc tạo attempt — cố định suốt 1 lượt, xáo lại
+  // hoàn toàn ở lượt sau. questionOrder: mảng ExamQuestion.id theo thứ tự
+  // hiển thị. optionOrderByQuestion: { [questionId]: ExamOption.id[] }.
+  questionOrder         Json?
+  optionOrderByQuestion Json?
+
+  // Giám sát thoát tab/rời màn hình — chỉ đếm sự kiện, không quay màn hình
+  // (giống cơ chế Azota). tabSwitchLog: mảng ISO timestamp mỗi lần rời tab.
+  tabSwitchCount Int   @default(0)
+  tabSwitchLog   Json?
+
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   answers ExamAnswer[]

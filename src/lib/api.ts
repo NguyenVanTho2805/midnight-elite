@@ -80,6 +80,11 @@ export const api = {
         { method: "POST", body: JSON.stringify({ items }) }
       ),
   },
+  // ── Exam attempts nhìn từ phía admin/giáo viên ──────────────────────────────
+  examAttemptsAdmin: {
+    list: (examId: string) =>
+      apiFetch<ExamAttemptAdminRow[]>(`/api/exams/${examId}/attempts/admin`),
+  },
   // ── Exam attempts (học viên làm bài) ────────────────────────────────────
   examAttempts: {
     start: (examId: string) =>
@@ -97,6 +102,11 @@ export const api = {
       ),
     history: (examId: string) =>
       apiFetch<ExamAttemptHistoryItem[]>(`/api/exams/${examId}/attempts?mine=true`),
+    tabEvent: (attemptId: string) =>
+      apiFetch<{ success: boolean; tabSwitchCount: number }>(
+        `/api/exams/attempts/${attemptId}/tab-event`,
+        { method: "PATCH" }
+      ),
   },
 };
 
@@ -146,6 +156,12 @@ export interface ExamFull {
 
 export interface ExamGuestAccessFull {
   id: string; userId: string; examId: string; grantedBy: string; grantedAt: string;
+  user: { id: string; name: string; email: string };
+}
+
+export interface ExamAttemptAdminRow {
+  id: string; status: string; score: number | null; totalPoints: number | null;
+  startedAt: string; submittedAt: string | null; tabSwitchCount: number;
   user: { id: string; name: string; email: string };
 }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt, parseDurationMinutes } from "@/lib/examGrading";
+import { finalizeAttempt, parseDurationMinutes, shuffleArray, applyAttemptOrder } from "@/lib/examGrading";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -71,12 +71,23 @@ export async function POST(
     if (!attempt) {
       const totalPoints = exam.examQuestions.reduce((sum, q) => sum + q.points, 0);
       const minutes = parseDurationMinutes(exam.duration);
+
+      // Xáo thứ tự câu hỏi + đáp án riêng cho lượt này, cố định suốt attempt
+      // (chống chép bài — học sinh ngồi cạnh nhau thấy thứ tự khác nhau).
+      const questionOrder = shuffleArray(exam.examQuestions.map(q => q.id));
+      const optionOrderByQuestion: Record<string, string[]> = {};
+      for (const q of exam.examQuestions) {
+        optionOrderByQuestion[q.id] = shuffleArray(q.options.map(o => o.id));
+      }
+
       attempt = await prisma.examAttempt.create({
         data: {
           userId: session.userId,
           examId,
           expiresAt: new Date(Date.now() + minutes * 60_000),
           totalPoints,
+          questionOrder,
+          optionOrderByQuestion,
         },
       });
     }
@@ -85,14 +96,7 @@ export async function POST(
     const answers: Record<string, string | null> = {};
     for (const a of savedAnswers) answers[a.questionId] = a.optionId;
 
-    const questions = exam.examQuestions.map(q => ({
-      id: q.id,
-      order: q.order,
-      text: q.text,
-      imageUrl: q.imageUrl,
-      points: q.points,
-      options: q.options.map(o => ({ id: o.id, order: o.order, text: o.text })),
-    }));
+    const questions = applyAttemptOrder(exam.examQuestions, attempt);
 
     return NextResponse.json({
       attemptId: attempt.id,

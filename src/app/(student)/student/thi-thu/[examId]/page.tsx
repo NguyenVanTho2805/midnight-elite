@@ -152,6 +152,22 @@ export default function ExamEntryPage() {
     return () => clearInterval(t);
   }, [phase, attempt?.expiresAt]);
 
+  // Giám sát rời màn hình/chuyển tab lúc đang thi — chỉ đếm sự kiện gửi lên
+  // server, không quay màn hình/webcam, không làm gián đoạn bài thi.
+  // Chỉ dùng visibilitychange (không thêm window blur) để tránh đếm trùng —
+  // hầu hết trình duyệt bắn cả 2 sự kiện cùng lúc khi chuyển tab thật.
+  useEffect(() => {
+    if (phase !== "taking" || !attempt?.attemptId) return;
+    const attemptId = attempt.attemptId;
+    function report() {
+      if (document.visibilityState === "hidden") {
+        api.examAttempts.tabEvent(attemptId).catch(() => {});
+      }
+    }
+    document.addEventListener("visibilitychange", report);
+    return () => document.removeEventListener("visibilitychange", report);
+  }, [phase, attempt?.attemptId]);
+
   const remainingSec = attempt?.expiresAt
     ? Math.max(0, Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000))
     : 0;

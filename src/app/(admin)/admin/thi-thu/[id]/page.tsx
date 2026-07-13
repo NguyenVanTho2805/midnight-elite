@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow } from "@/lib/api";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 
@@ -337,6 +337,72 @@ function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (m
   );
 }
 
+// ─── DANH SÁCH ĐÃ THI (điểm + số lần rời tab lúc thi) ──────────────────────────
+function AttemptsPanel({ examId }: { examId: string }) {
+  const [attempts, setAttempts] = useState<ExamAttemptAdminRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    api.examAttemptsAdmin.list(examId).then(setAttempts).finally(() => setLoading(false));
+  }, [examId, open]);
+
+  return (
+    <div className="mb-6 rounded-xl border" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left">
+        <h3 className="text-sm font-bold" style={{ color: "#1a1a1a" }}>Danh sách đã thi</h3>
+        <span className="text-xs" style={{ color: "#787671" }}>{open ? "Thu gọn ▲" : "Xem ▼"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          {loading ? (
+            <p className="text-xs" style={{ color: "#787671" }}>Đang tải...</p>
+          ) : attempts.length === 0 ? (
+            <p className="text-xs" style={{ color: "#787671" }}>Chưa có ai nộp bài.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left" style={{ color: "#a4a097" }}>
+                    <th className="py-2 pr-3 font-medium">Học viên</th>
+                    <th className="py-2 pr-3 font-medium">Điểm</th>
+                    <th className="py-2 pr-3 font-medium">Nộp lúc</th>
+                    <th className="py-2 pr-3 font-medium">Số lần rời tab</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attempts.map(a => (
+                    <tr key={a.id} className="border-t" style={{ borderColor: "#f6f5f4" }}>
+                      <td className="py-2 pr-3">
+                        <span className="font-medium" style={{ color: "#1a1a1a" }}>{a.user.name}</span>
+                        <span style={{ color: "#787671" }}> — {a.user.email}</span>
+                      </td>
+                      <td className="py-2 pr-3">{a.score ?? "—"}/{a.totalPoints ?? "—"}</td>
+                      <td className="py-2 pr-3">{a.submittedAt ? new Date(a.submittedAt).toLocaleString("vi-VN") : "—"}</td>
+                      <td className="py-2 pr-3">
+                        {a.tabSwitchCount > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#b45309" }}>
+                            {a.tabSwitchCount} lần
+                          </span>
+                        ) : (
+                          <span style={{ color: "#787671" }}>0</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── TRANG CHÍNH ───────────────────────────────────────────────────────────────
 function ThiThuQuestionsPage() {
   const { id } = useParams<{ id: string }>();
@@ -446,6 +512,8 @@ function ThiThuQuestionsPage() {
             </button>
           </div>
         </div>
+
+        <AttemptsPanel examId={id} />
 
         {!!exam.price && <GuestAccessPanel examId={id} showToast={showToast} />}
 

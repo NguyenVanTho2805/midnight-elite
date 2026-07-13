@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt } from "@/lib/examGrading";
+import { finalizeAttempt, applyAttemptOrder } from "@/lib/examGrading";
 
 // GET /api/exams/attempts/[attemptId] — trạng thái attempt hiện tại (phục vụ resume)
 export async function GET(
@@ -49,14 +49,7 @@ export async function GET(
     const answers: Record<string, string | null> = {};
     for (const a of savedAnswers) answers[a.questionId] = a.optionId;
 
-    const questions = exam.examQuestions.map(q => ({
-      id: q.id,
-      order: q.order,
-      text: q.text,
-      imageUrl: q.imageUrl,
-      points: q.points,
-      options: q.options.map(o => ({ id: o.id, order: o.order, text: o.text })),
-    }));
+    const questions = applyAttemptOrder(exam.examQuestions, attempt);
 
     return NextResponse.json({
       attemptId: attempt.id,
