@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
-import type { ParsedQuestion } from "@/lib/examQuestionParser";
+import { validateQuestionOptions, type ParsedQuestion } from "@/lib/examQuestionParser";
 
 // POST /api/exams/[id]/questions/bulk-create — admin: tạo hàng loạt câu hỏi ĐÃ CẤU TRÚC SẴN
 // (không parse text — dùng khi client đã parse + cho admin review/sửa trước, ví dụ lúc tạo đề thi mới)
@@ -31,12 +31,8 @@ export async function POST(
       if (!item.text?.trim()) {
         return NextResponse.json({ error: `Câu ${idx + 1}: thiếu nội dung` }, { status: 400 });
       }
-      if (!Array.isArray(item.options) || item.options.length < 2) {
-        return NextResponse.json({ error: `Câu ${idx + 1}: cần ít nhất 2 đáp án` }, { status: 400 });
-      }
-      if (item.options.filter(o => o.isCorrect).length !== 1) {
-        return NextResponse.json({ error: `Câu ${idx + 1}: phải có đúng 1 đáp án đúng` }, { status: 400 });
-      }
+      const optionsErr = validateQuestionOptions(item.type ?? "MC", item.options ?? []);
+      if (optionsErr) return NextResponse.json({ error: `Câu ${idx + 1}: ${optionsErr}` }, { status: 400 });
     }
 
     const maxOrder = await prisma.examQuestion.aggregate({
@@ -48,11 +44,13 @@ export async function POST(
     await prisma.$transaction(
       items.map(q => {
         const order = nextOrder++;
+        const type = q.type ?? "MC";
         return prisma.examQuestion.create({
           data: {
             id: `eq-${crypto.randomUUID()}`,
             examId,
             order,
+            type,
             text: q.text.trim(),
             points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
             options: {
@@ -61,6 +59,7 @@ export async function POST(
                 order: idx,
                 text: o.text.trim(),
                 isCorrect: !!o.isCorrect,
+                subLabel: o.subLabel ?? null,
               })),
             },
           },

@@ -27,19 +27,34 @@ export async function PATCH(
       return NextResponse.json({ error: "Bài thi đã kết thúc" }, { status: 409 });
     }
 
-    const { questionId, optionId } = await req.json() as { questionId?: string; optionId?: string };
-    if (!questionId || !optionId) {
-      return NextResponse.json({ error: "Thiếu questionId/optionId" }, { status: 400 });
+    const { questionId, optionId, textAnswer } = await req.json() as {
+      questionId?: string; optionId?: string; textAnswer?: string;
+    };
+    if (!questionId || (!optionId && textAnswer === undefined)) {
+      return NextResponse.json({ error: "Thiếu questionId/optionId hoặc textAnswer" }, { status: 400 });
     }
 
-    const option = await prisma.examOption.findFirst({ where: { id: optionId, questionId } });
-    if (!option) return NextResponse.json({ error: "Đáp án không hợp lệ" }, { status: 400 });
+    if (optionId) {
+      // Câu MC — chọn 1 trong N đáp án.
+      const option = await prisma.examOption.findFirst({ where: { id: optionId, questionId } });
+      if (!option) return NextResponse.json({ error: "Đáp án không hợp lệ" }, { status: 400 });
 
-    await prisma.examAnswer.upsert({
-      where: { attemptId_questionId: { attemptId, questionId } },
-      create: { attemptId, questionId, optionId },
-      update: { optionId },
-    });
+      await prisma.examAnswer.upsert({
+        where: { attemptId_questionId: { attemptId, questionId } },
+        create: { attemptId, questionId, optionId },
+        update: { optionId, textAnswer: null },
+      });
+    } else {
+      // Câu ESSAY — gõ chữ tự do, chờ giáo viên chấm tay (Giai đoạn 6).
+      const question = await prisma.examQuestion.findFirst({ where: { id: questionId, type: "ESSAY" } });
+      if (!question) return NextResponse.json({ error: "Câu hỏi không hợp lệ" }, { status: 400 });
+
+      await prisma.examAnswer.upsert({
+        where: { attemptId_questionId: { attemptId, questionId } },
+        create: { attemptId, questionId, textAnswer: textAnswer ?? "" },
+        update: { textAnswer: textAnswer ?? "", optionId: null },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {

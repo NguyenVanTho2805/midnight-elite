@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt, parseDurationMinutes, shuffleArray, applyAttemptOrder } from "@/lib/examGrading";
+import { finalizeAttempt, parseDurationMinutes, shuffleArray, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -92,10 +92,7 @@ export async function POST(
       });
     }
 
-    const savedAnswers = await prisma.examAnswer.findMany({ where: { attemptId: attempt.id } });
-    const answers: Record<string, string | null> = {};
-    for (const a of savedAnswers) answers[a.questionId] = a.optionId;
-
+    const { answers, textAnswers, boolAnswersByOption } = await loadAnswerState(attempt.id);
     const questions = applyAttemptOrder(exam.examQuestions, attempt);
 
     return NextResponse.json({
@@ -103,6 +100,8 @@ export async function POST(
       expiresAt: attempt.expiresAt,
       questions,
       answers,
+      textAnswers,
+      boolAnswers: boolAnswersByOption,
     });
   } catch (e) {
     console.error("[POST /api/exams/[id]/start]", e);

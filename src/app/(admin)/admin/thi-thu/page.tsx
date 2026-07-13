@@ -192,6 +192,12 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       i === idx ? { ...q, options: q.options.map((o, j) => ({ ...o, isCorrect: j === oi })) } : q
     ) ?? null);
   }
+  // Đúng-Sai 4 ý: mỗi ý đúng/sai độc lập — không giống radio 1-trong-N của MC
+  function toggleReviewClusterCorrect(idx: number, oi: number) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: q.options.map((o, j) => j === oi ? { ...o, isCorrect: !o.isCorrect } : o) } : q
+    ) ?? null);
+  }
   function removeReviewQuestion(idx: number) {
     setReviewQuestions(prev => {
       const next = prev?.filter((_, i) => i !== idx) ?? null;
@@ -376,13 +382,17 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
             {reviewQuestions === null ? (
               <div className="space-y-3">
                 <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
-                  Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống. Đánh dấu đáp án đúng bằng dấu <code>*</code> ngay trước chữ cái, hoặc thêm dòng "Đáp án: X":
-                  <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Nội dung câu hỏi...
+                  Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
+                  <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Trắc nghiệm...
 *A. Đáp án đúng
 B. Đáp án sai
-C. Đáp án sai
-D. Đáp án sai`}</pre>
-                  <p className="mt-1.5">File .csv/.xlsx: cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
+
+Câu 2: Đoạn dẫn cho 4 ý Đúng-Sai...
+*a)[0,NB] Ý đúng
+b)[1,NB] Ý sai
+
+Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
+                  <p className="mt-1.5">File .csv/.xlsx: chỉ hỗ trợ trắc nghiệm, cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
                 </div>
                 <textarea
                   className={inp + " font-mono"}
@@ -436,19 +446,37 @@ D. Đáp án sai`}</pre>
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
                       </div>
-                      <div className="grid grid-cols-2 gap-1.5 pl-6">
-                        {q.options.map((o, oi) => (
-                          <div key={oi} className="flex items-center gap-1.5">
-                            <input type="radio" checked={o.isCorrect} onChange={() => setReviewCorrect(idx, oi)} />
-                            <span className="text-xs font-semibold text-gray-400 w-3.5">{String.fromCharCode(65 + oi)}</span>
-                            <input
-                              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                              value={o.text}
-                              onChange={e => updateReviewOption(idx, oi, e.target.value)}
-                            />
-                          </div>
-                        ))}
-                      </div>
+                      {q.type === "ESSAY" ? (
+                        <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
+                      ) : q.type === "TRUE_FALSE_CLUSTER" ? (
+                        <div className="grid grid-cols-2 gap-1.5 pl-6">
+                          {q.options.map((o, oi) => (
+                            <div key={oi} className="flex items-center gap-1.5">
+                              <input type="checkbox" checked={o.isCorrect} onChange={() => toggleReviewClusterCorrect(idx, oi)} />
+                              <span className="text-xs font-semibold text-gray-400 w-3.5">{o.subLabel}</span>
+                              <input
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                value={o.text}
+                                onChange={e => updateReviewOption(idx, oi, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5 pl-6">
+                          {q.options.map((o, oi) => (
+                            <div key={oi} className="flex items-center gap-1.5">
+                              <input type="radio" checked={o.isCorrect} onChange={() => setReviewCorrect(idx, oi)} />
+                              <span className="text-xs font-semibold text-gray-400 w-3.5">{String.fromCharCode(65 + oi)}</span>
+                              <input
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                value={o.text}
+                                onChange={e => updateReviewOption(idx, oi, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

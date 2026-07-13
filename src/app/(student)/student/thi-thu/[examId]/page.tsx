@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
-import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem } from "@/lib/api";
+import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic } from "@/lib/api";
 
 type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done";
 
@@ -34,7 +34,9 @@ export default function ExamEntryPage() {
 
   // ── In-platform exam taking (exam.hasQuestions) ──────────────────────────
   const [attempt,  setAttempt]  = useState<ExamAttemptState | null>(null);
-  const [selected, setSelected] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Record<string, string>>({}); // MC: questionId -> optionId
+  const [essayText, setEssayText] = useState<Record<string, string>>({}); // ESSAY: questionId -> text
+  const [clusterAnswers, setClusterAnswers] = useState<Record<string, boolean | null>>({}); // CLUSTER: optionId -> đúng/sai
   const [startErr, setStartErr] = useState("");
   const [nowTick,  setNowTick]  = useState(0);
   const autoSubmitted = useRef(false);
@@ -117,6 +119,8 @@ export default function ExamEntryPage() {
       const state = await api.examAttempts.start(examId);
       setAttempt(state);
       setSelected((state.answers ?? {}) as Record<string, string>);
+      setEssayText(state.textAnswers ?? {});
+      setClusterAnswers(state.boolAnswers ?? {});
       setPhase("taking");
     } catch (e) {
       setStartErr(e instanceof Error ? e.message : "Không thể bắt đầu bài thi");
@@ -128,6 +132,29 @@ export default function ExamEntryPage() {
     if (attempt) {
       api.examAttempts.answer(attempt.attemptId, questionId, optionId).catch(() => {});
     }
+  }
+
+  function updateEssayAnswer(questionId: string, text: string) {
+    setEssayText(prev => ({ ...prev, [questionId]: text }));
+  }
+  // Lưu câu tự luận khi rời khỏi ô nhập (không autosave từng ký tự — tránh spam request)
+  function saveEssayAnswer(questionId: string) {
+    if (!attempt) return;
+    api.examAttempts.answerEssay(attempt.attemptId, questionId, essayText[questionId] ?? "").catch(() => {});
+  }
+
+  function selectClusterAnswer(optionId: string, answerTrue: boolean) {
+    setClusterAnswers(prev => ({ ...prev, [optionId]: answerTrue }));
+    if (attempt) {
+      api.examAttempts.answerBool(attempt.attemptId, optionId, answerTrue).catch(() => {});
+    }
+  }
+
+  // Đã trả lời hay chưa — dùng cho thanh tiến độ + lưới nhảy câu (khác cách tính theo type)
+  function isQuestionAnswered(q: ExamQuestionPublic): boolean {
+    if (q.type === "ESSAY") return !!essayText[q.id]?.trim();
+    if (q.type === "TRUE_FALSE_CLUSTER") return q.options.every(o => clusterAnswers[o.id] !== null && clusterAnswers[o.id] !== undefined);
+    return !!selected[q.id];
   }
 
   async function submitAttempt() {
@@ -302,7 +329,7 @@ export default function ExamEntryPage() {
   // ── Taking: render toàn bộ câu hỏi trong platform + thanh sticky đáy màn hình ──
   if (phase === "taking" && attempt?.questions) {
     const total = attempt.questions.length;
-    const answeredCount = attempt.questions.filter(q => selected[q.id]).length;
+    const answeredCount = attempt.questions.filter(isQuestionAnswered).length;
     const mm = String(Math.floor(remainingSec / 60)).padStart(2, "0");
     const ss = String(remainingSec % 60).padStart(2, "0");
 
@@ -324,20 +351,56 @@ export default function ExamEntryPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={q.imageUrl} alt="" className="max-w-full rounded-lg mb-3" />
               )}
-              <div className="space-y-2">
-                {q.options.map((o, oi) => (
-                  <label key={o.id}
-                    className="flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer hover:bg-[#f6f5f4]"
-                    style={{ border: `1px solid ${selected[q.id] === o.id ? "#0068FF" : "#e5e3df"}` }}>
-                    <input type="radio" name={`q-${q.id}`} className="mt-0.5"
-                      checked={selected[q.id] === o.id}
-                      onChange={() => selectAnswer(q.id, o.id)} />
-                    <span className="text-sm" style={{ color: "#37352f" }}>
-                      <strong>{String.fromCharCode(65 + oi)}.</strong> {o.text}
-                    </span>
-                  </label>
-                ))}
-              </div>
+
+              {q.type === "ESSAY" ? (
+                <textarea
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400"
+                  style={{ border: "1px solid #e5e3df" }}
+                  rows={5}
+                  placeholder="Nhập câu trả lời của bạn..."
+                  value={essayText[q.id] ?? ""}
+                  onChange={e => updateEssayAnswer(q.id, e.target.value)}
+                  onBlur={() => saveEssayAnswer(q.id)}
+                />
+              ) : q.type === "TRUE_FALSE_CLUSTER" ? (
+                <div className="space-y-2">
+                  {q.options.map(o => (
+                    <div key={o.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg"
+                      style={{ border: "1px solid #e5e3df" }}>
+                      <span className="text-sm flex-1" style={{ color: "#37352f" }}>
+                        <strong>{o.subLabel})</strong> {o.text}
+                      </span>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
+                          <button key={label} type="button"
+                            onClick={() => selectClusterAnswer(o.id, val)}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold border"
+                            style={clusterAnswers[o.id] === val
+                              ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                              : { borderColor: "#e5e3df", color: "#787671" }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {q.options.map((o, oi) => (
+                    <label key={o.id}
+                      className="flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer hover:bg-[#f6f5f4]"
+                      style={{ border: `1px solid ${selected[q.id] === o.id ? "#0068FF" : "#e5e3df"}` }}>
+                      <input type="radio" name={`q-${q.id}`} className="mt-0.5"
+                        checked={selected[q.id] === o.id}
+                        onChange={() => selectAnswer(q.id, o.id)} />
+                      <span className="text-sm" style={{ color: "#37352f" }}>
+                        <strong>{String.fromCharCode(65 + oi)}.</strong> {o.text}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -373,8 +436,8 @@ export default function ExamEntryPage() {
                   onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
                   className="w-7 h-7 rounded text-xs font-semibold flex-shrink-0"
                   style={{
-                    background: selected[q.id] ? "#dbeafe" : "#f6f5f4",
-                    color: selected[q.id] ? "#0068FF" : "#787671",
+                    background: isQuestionAnswered(q) ? "#dbeafe" : "#f6f5f4",
+                    color: isQuestionAnswered(q) ? "#0068FF" : "#787671",
                     border: "1px solid #e5e3df",
                   }}>
                   {idx + 1}

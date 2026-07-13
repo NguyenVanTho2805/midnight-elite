@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionParser";
 
 // PUT /api/exams/[id]/questions/[qid] — admin: sửa câu hỏi, thay toàn bộ options
 export async function PUT(
@@ -21,39 +22,39 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { text, imageUrl, points, explanation, options } = body as {
+    const { text, type, imageUrl, points, explanation, options } = body as {
       text?: string;
+      type?: QuestionType;
       imageUrl?: string;
       points?: number;
       explanation?: string;
-      options?: { text: string; isCorrect: boolean }[];
+      options?: { text: string; isCorrect: boolean; subLabel?: string }[];
     };
 
     if (!text?.trim()) {
       return NextResponse.json({ error: "Thiếu nội dung câu hỏi" }, { status: 400 });
     }
-    if (!Array.isArray(options) || options.length < 2) {
-      return NextResponse.json({ error: "Cần ít nhất 2 đáp án" }, { status: 400 });
-    }
-    if (!options.some(o => o.isCorrect)) {
-      return NextResponse.json({ error: "Phải có ít nhất 1 đáp án đúng" }, { status: 400 });
-    }
+    const questionType = type ?? "MC";
+    const optionsErr = validateQuestionOptions(questionType, options ?? []);
+    if (optionsErr) return NextResponse.json({ error: optionsErr }, { status: 400 });
 
     const question = await prisma.$transaction(async (tx) => {
       await tx.examOption.deleteMany({ where: { questionId: qid } });
       return tx.examQuestion.update({
         where: { id: qid },
         data: {
+          type: questionType,
           text: text.trim(),
           imageUrl: imageUrl?.trim() || null,
           points: typeof points === "number" && points > 0 ? points : 1,
           explanation: explanation?.trim() || null,
           options: {
-            create: options.map((o, idx) => ({
+            create: (options ?? []).map((o, idx) => ({
               id: `eo-${crypto.randomUUID()}`,
               order: idx,
               text: o.text.trim(),
               isCorrect: !!o.isCorrect,
+              subLabel: o.subLabel ?? null,
             })),
           },
         },

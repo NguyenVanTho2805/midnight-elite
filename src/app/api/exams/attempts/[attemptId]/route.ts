@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt, applyAttemptOrder } from "@/lib/examGrading";
+import { finalizeAttempt, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 
 // GET /api/exams/attempts/[attemptId] — trạng thái attempt hiện tại (phục vụ resume)
 export async function GET(
@@ -45,10 +45,7 @@ export async function GET(
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const savedAnswers = await prisma.examAnswer.findMany({ where: { attemptId: attempt.id } });
-    const answers: Record<string, string | null> = {};
-    for (const a of savedAnswers) answers[a.questionId] = a.optionId;
-
+    const { answers, textAnswers, boolAnswersByOption } = await loadAnswerState(attempt.id);
     const questions = applyAttemptOrder(exam.examQuestions, attempt);
 
     return NextResponse.json({
@@ -57,6 +54,8 @@ export async function GET(
       expiresAt: attempt.expiresAt,
       questions,
       answers,
+      textAnswers,
+      boolAnswers: boolAnswersByOption,
     });
   } catch (e) {
     console.error("[GET /api/exams/attempts/[attemptId]]", e);

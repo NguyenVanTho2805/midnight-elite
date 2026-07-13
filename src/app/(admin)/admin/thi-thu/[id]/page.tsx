@@ -6,45 +6,77 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type QuestionType } from "@/lib/api";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
+const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
 
 interface QuestionForm {
+  type: QuestionType;
   text: string;
   imageUrl: string;
   points: string;
   explanation: string;
-  options: string[];
-  correctIndex: number;
+  options: string[]; // MC: N đáp án; TRUE_FALSE_CLUSTER: đúng 4 ý a-d; ESSAY: không dùng
+  correctIndex: number; // chỉ MC
+  clusterCorrect: boolean[]; // chỉ TRUE_FALSE_CLUSTER, length 4 khớp CLUSTER_LABELS
 }
 
 const INIT_FORM: QuestionForm = {
-  text: "", imageUrl: "", points: "1", explanation: "",
-  options: [...EMPTY_OPTIONS], correctIndex: 0,
+  type: "MC", text: "", imageUrl: "", points: "1", explanation: "",
+  options: [...EMPTY_OPTIONS], correctIndex: 0, clusterCorrect: [false, false, false, false],
 };
 
 function toForm(q: ExamQuestionFull): QuestionForm {
+  const base = {
+    type: q.type, text: q.text, imageUrl: q.imageUrl ?? "",
+    points: String(q.points), explanation: q.explanation ?? "",
+  };
+  if (q.type === "TRUE_FALSE_CLUSTER") {
+    const bySubLabel = new Map(q.options.map(o => [o.subLabel, o]));
+    return {
+      ...base,
+      options: CLUSTER_LABELS.map(l => bySubLabel.get(l)?.text ?? ""),
+      correctIndex: 0,
+      clusterCorrect: CLUSTER_LABELS.map(l => !!bySubLabel.get(l)?.isCorrect),
+    };
+  }
+  if (q.type === "ESSAY") {
+    return { ...base, options: [], correctIndex: 0, clusterCorrect: [false, false, false, false] };
+  }
   return {
-    text: q.text,
-    imageUrl: q.imageUrl ?? "",
-    points: String(q.points),
-    explanation: q.explanation ?? "",
+    ...base,
     options: q.options.map(o => o.text),
     correctIndex: Math.max(0, q.options.findIndex(o => o.isCorrect)),
+    clusterCorrect: [false, false, false, false],
   };
 }
 
 function toInput(form: QuestionForm): ExamQuestionInput | null {
-  const options = form.options.map(t => t.trim()).filter(Boolean);
-  if (!form.text.trim() || options.length < 2) return null;
-  return {
+  if (!form.text.trim()) return null;
+  const base = {
     text: form.text.trim(),
+    type: form.type,
     imageUrl: form.imageUrl.trim() || undefined,
     points: Number(form.points) > 0 ? Number(form.points) : 1,
     explanation: form.explanation.trim() || undefined,
-    options: options.map((text, idx) => ({ text, isCorrect: idx === form.correctIndex })),
   };
+
+  if (form.type === "ESSAY") return { ...base, options: [] };
+
+  if (form.type === "TRUE_FALSE_CLUSTER") {
+    const options = CLUSTER_LABELS.map((label, idx) => ({
+      text: (form.options[idx] ?? "").trim(),
+      isCorrect: form.clusterCorrect[idx] ?? false,
+      subLabel: label,
+    }));
+    if (options.some(o => !o.text)) return null;
+    return { ...base, options };
+  }
+
+  const options = form.options.map(t => t.trim()).filter(Boolean);
+  if (options.length < 2) return null;
+  return { ...base, options: options.map((text, idx) => ({ text, isCorrect: idx === form.correctIndex })) };
 }
 
 // ─── DRAWER: thêm/sửa 1 câu hỏi ───────────────────────────────────────────────
@@ -97,7 +129,29 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
 
         <div className="p-5 space-y-5">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Nội dung câu hỏi</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Loại câu hỏi</label>
+            <div className="flex gap-2">
+              {([
+                { v: "MC", label: "Trắc nghiệm" },
+                { v: "TRUE_FALSE_CLUSTER", label: "Đúng-Sai 4 ý" },
+                { v: "ESSAY", label: "Tự luận" },
+              ] as const).map(t => (
+                <button key={t.v} type="button"
+                  onClick={() => setForm({ ...form, type: t.v })}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+                  style={form.type === t.v
+                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                    : { borderColor: "#e5e3df", color: "#787671" }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+              {form.type === "TRUE_FALSE_CLUSTER" ? "Đoạn dẫn" : "Nội dung câu hỏi"}
+            </label>
             <textarea
               className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
               style={{ borderColor: "#e5e3df" }}
@@ -129,30 +183,69 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đáp án (chọn đáp án đúng)</label>
-            <div className="space-y-2">
-              {form.options.map((opt, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input type="radio" name="correct" checked={form.correctIndex === idx}
-                    onChange={() => setForm({ ...form, correctIndex: idx })} />
-                  <span className="text-xs font-semibold text-gray-400 w-4">{String.fromCharCode(65 + idx)}.</span>
-                  <input
-                    className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                    style={{ borderColor: "#e5e3df" }}
-                    value={opt}
-                    onChange={e => updateOption(idx, e.target.value)}
-                    placeholder={`Đáp án ${String.fromCharCode(65 + idx)}`}
-                  />
-                  {form.options.length > 2 && (
-                    <button type="button" onClick={() => removeOption(idx)}
-                      className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-sm">✕</button>
-                  )}
-                </div>
-              ))}
+          {form.type === "MC" && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đáp án (chọn đáp án đúng)</label>
+              <div className="space-y-2">
+                {form.options.map((opt, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input type="radio" name="correct" checked={form.correctIndex === idx}
+                      onChange={() => setForm({ ...form, correctIndex: idx })} />
+                    <span className="text-xs font-semibold text-gray-400 w-4">{String.fromCharCode(65 + idx)}.</span>
+                    <input
+                      className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                      style={{ borderColor: "#e5e3df" }}
+                      value={opt}
+                      onChange={e => updateOption(idx, e.target.value)}
+                      placeholder={`Đáp án ${String.fromCharCode(65 + idx)}`}
+                    />
+                    {form.options.length > 2 && (
+                      <button type="button" onClick={() => removeOption(idx)}
+                        className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-sm">✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
             </div>
-            <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
-          </div>
+          )}
+
+          {form.type === "TRUE_FALSE_CLUSTER" && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">4 ý (tích ô nếu ý đó ĐÚNG)</label>
+              <div className="space-y-2">
+                {CLUSTER_LABELS.map((label, idx) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <input type="checkbox" checked={form.clusterCorrect[idx] ?? false}
+                      onChange={() => {
+                        const next = [...form.clusterCorrect];
+                        next[idx] = !next[idx];
+                        setForm({ ...form, clusterCorrect: next });
+                      }} />
+                    <span className="text-xs font-semibold text-gray-400 w-4">{label})</span>
+                    <input
+                      className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                      style={{ borderColor: "#e5e3df" }}
+                      value={form.options[idx] ?? ""}
+                      onChange={e => {
+                        const next = [...form.options];
+                        next[idx] = e.target.value;
+                        setForm({ ...form, options: next });
+                      }}
+                      placeholder={`Ý ${label}`}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs" style={{ color: "#a4a097" }}>Mỗi ý đúng/sai độc lập — học viên trả lời riêng từng ý, không phải chọn 1 trong 4.</p>
+            </div>
+          )}
+
+          {form.type === "ESSAY" && (
+            <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+              Câu tự luận không có đáp án cố định — học viên gõ câu trả lời, giáo viên chấm điểm thủ công sau khi nộp bài.
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Giải thích (hiện sau khi nộp bài, tùy chọn)</label>
@@ -204,12 +297,16 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result }: {
         </div>
         <div className="p-5 space-y-4">
           <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
-            Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống. Đánh dấu đáp án đúng bằng dấu <code>*</code> ngay trước chữ cái, hoặc thêm dòng "Đáp án: X":
-            <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Nội dung câu hỏi...
+            Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
+            <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Trắc nghiệm...
 *A. Đáp án đúng
 B. Đáp án sai
-C. Đáp án sai
-D. Đáp án sai`}</pre>
+
+Câu 2: Đoạn dẫn cho 4 ý Đúng-Sai...
+*a)[0,NB] Ý đúng
+b)[1,NB] Ý sai
+
+Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
           </div>
           <textarea
             className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"
@@ -531,14 +628,35 @@ function ThiThuQuestionsPage() {
                     <button onClick={() => move(idx, 1)} disabled={idx === questions.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs">▼</button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: {q.text}</p>
-                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                      {q.options.map((o, oi) => (
-                        <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#787671" }}>
-                          <span className="font-semibold">{String.fromCharCode(65 + oi)}.</span> {o.text} {o.isCorrect && "✓"}
-                        </div>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: {q.text}</p>
+                      {q.type !== "MC" && (
+                        <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase"
+                          style={{ background: "#f6f5f4", color: "#787671" }}>
+                          {q.type === "ESSAY" ? "Tự luận" : "Đúng-Sai"}
+                        </span>
+                      )}
                     </div>
+                    {q.type === "ESSAY" ? (
+                      <p className="mt-1.5 text-xs italic" style={{ color: "#a4a097" }}>Câu tự luận — chấm điểm thủ công sau khi nộp bài.</p>
+                    ) : q.type === "TRUE_FALSE_CLUSTER" ? (
+                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                        {q.options.map(o => (
+                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#dc2626" }}>
+                            <span className="font-semibold">{o.subLabel})</span> {o.text}
+                            <span className="font-semibold">{o.isCorrect ? "Đúng" : "Sai"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                        {q.options.map((o, oi) => (
+                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#787671" }}>
+                            <span className="font-semibold">{String.fromCharCode(65 + oi)}.</span> {o.text} {o.isCorrect && "✓"}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>{q.points} điểm</p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">

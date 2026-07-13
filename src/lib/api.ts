@@ -95,6 +95,14 @@ export const api = {
       apiFetch<{ success: boolean }>(`/api/exams/attempts/${attemptId}/answer`, {
         method: "PATCH", body: JSON.stringify({ questionId, optionId }),
       }),
+    answerEssay: (attemptId: string, questionId: string, textAnswer: string) =>
+      apiFetch<{ success: boolean }>(`/api/exams/attempts/${attemptId}/answer`, {
+        method: "PATCH", body: JSON.stringify({ questionId, textAnswer }),
+      }),
+    answerBool: (attemptId: string, optionId: string, answerTrue: boolean) =>
+      apiFetch<{ success: boolean }>(`/api/exams/attempts/${attemptId}/answer-bool`, {
+        method: "PATCH", body: JSON.stringify({ optionId, answerTrue }),
+      }),
     submit: (attemptId: string) =>
       apiFetch<{ score: number; totalPoints: number; rank: number }>(
         `/api/exams/attempts/${attemptId}/submit`,
@@ -165,26 +173,30 @@ export interface ExamAttemptAdminRow {
   user: { id: string; name: string; email: string };
 }
 
+export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER";
+
 // Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)
 export interface ExamOptionFull {
   id: string; order: number; text: string; isCorrect: boolean;
+  subLabel?: "a" | "b" | "c" | "d" | null; // chỉ có ở TRUE_FALSE_CLUSTER
 }
 export interface ExamQuestionFull {
-  id: string; examId: string; order: number; text: string;
+  id: string; examId: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number; explanation?: string | null;
   options: ExamOptionFull[];
 }
 export interface ExamQuestionInput {
-  text: string; imageUrl?: string; points?: number; explanation?: string;
-  options: { text: string; isCorrect: boolean }[];
+  text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
+  options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài
 export interface ExamOptionPublic {
   id: string; order: number; text: string;
+  subLabel?: "a" | "b" | "c" | "d" | null;
 }
 export interface ExamQuestionPublic {
-  id: string; order: number; text: string;
+  id: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number;
   options: ExamOptionPublic[];
 }
@@ -194,6 +206,8 @@ export interface ExamAttemptState {
   expiresAt?: string;
   questions?: ExamQuestionPublic[];
   answers?: Record<string, string | null>;
+  textAnswers?: Record<string, string>;
+  boolAnswers?: Record<string, boolean | null>; // key = optionId (mệnh đề con)
   score?: number | null;
   totalPoints?: number;
 }

@@ -198,6 +198,11 @@ model ExamQuestion {
   explanation String?  @db.Text
   createdAt   DateTime @default(now())
 
+  // "MC" (trắc nghiệm 1 đáp án, mặc định) | "ESSAY" (tự luận, chấm tay) |
+  // "TRUE_FALSE_CLUSTER" (1 đoạn dẫn + 4 mệnh đề con, mỗi ý tự đúng/sai độc
+  // lập — không phải chọn 1 trong 4, xem ExamOption.subLabel/ExamAnswerBoolean).
+  type String @default("MC")
+
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]
   answers ExamAnswer[]
@@ -211,10 +216,16 @@ model ExamOption {
   questionId String
   order      Int     @default(0) // vị trí A/B/C/D suy ra từ order, không lưu chữ cái
   text       String  @db.Text
+  // MC: đây có phải đáp án đúng không. TRUE_FALSE_CLUSTER: mệnh đề này có
+  // đúng không (giá trị đúng/sai thật của phát biểu, không phải câu trả lời
+  // của học sinh — câu trả lời của học sinh nằm ở ExamAnswerBoolean).
   isCorrect  Boolean @default(false)
+  // Chỉ dùng cho TRUE_FALSE_CLUSTER: "a" | "b" | "c" | "d" — null với MC/ESSAY.
+  subLabel   String?
 
-  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  answers  ExamAnswer[]
+  question       ExamQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers        ExamAnswer[]
+  booleanAnswers ExamAnswerBoolean[]
 
   @@index([questionId])
   @@map("exam_options")
@@ -244,20 +255,25 @@ model ExamAttempt {
   tabSwitchCount Int   @default(0)
   tabSwitchLog   Json?
 
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
-  answers ExamAnswer[]
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers        ExamAnswer[]
+  booleanAnswers ExamAnswerBoolean[]
 
   @@index([userId, examId])
   @@index([examId, status])
   @@map("exam_attempts")
 }
 
+// Trả lời cho câu MC (optionId) hoặc ESSAY (textAnswer) — 1 câu hỏi luôn có
+// đúng 1 dòng ExamAnswer/attempt. Câu TRUE_FALSE_CLUSTER dùng bảng riêng
+// ExamAnswerBoolean bên dưới vì cần 4 câu trả lời độc lập cho 1 câu hỏi.
 model ExamAnswer {
   id         String   @id @default(cuid())
   attemptId  String
   questionId String
-  optionId   String? // null = chưa trả lời
+  optionId   String? // null = chưa trả lời (MC) hoặc câu ESSAY
+  textAnswer String?  @db.Text // chỉ dùng cho câu ESSAY
   answeredAt DateTime @updatedAt
 
   attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
@@ -266,6 +282,23 @@ model ExamAnswer {
 
   @@unique([attemptId, questionId])
   @@map("exam_answers")
+}
+
+// Trả lời cho từng mệnh đề con (subLabel a/b/c/d) của 1 câu TRUE_FALSE_CLUSTER
+// — mỗi mệnh đề là 1 dòng riêng vì học sinh đánh đúng/sai độc lập cho từng ý,
+// không phải chọn 1 trong 4 như MC (nên không dùng chung ExamAnswer được).
+model ExamAnswerBoolean {
+  id         String   @id @default(cuid())
+  attemptId  String
+  optionId   String // ExamOption của mệnh đề con (có subLabel)
+  answerTrue Boolean? // null = chưa trả lời ý này
+  answeredAt DateTime @updatedAt
+
+  attempt ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  option  ExamOption  @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, optionId])
+  @@map("exam_answer_booleans")
 }
 
 // Admin (trung tâm/giáo viên sở hữu đề) gắn cờ này thủ công sau khi xác nhận

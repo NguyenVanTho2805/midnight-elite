@@ -48,6 +48,7 @@ export async function POST(
             id: `eq-${crypto.randomUUID()}`,
             examId,
             order,
+            type: q.type,
             text: q.text,
             points: 1,
             options: {
@@ -56,6 +57,7 @@ export async function POST(
                 order: idx,
                 text: o.text,
                 isCorrect: o.isCorrect,
+                subLabel: o.subLabel ?? null,
               })),
             },
           },
