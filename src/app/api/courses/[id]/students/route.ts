@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,10 +13,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const courseData = await prisma.course.findUnique({
     where:  { id: courseId },
     select: {
+      ownerId: true,
       lessons: true,
       sections: { select: { chapters: { select: { lessons: { select: { id: true } } } } } },
     },
   });
+  if (!courseData) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
+  if (!ownsResource(auth, courseData.ownerId)) {
+    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+  }
 
   const allLessonIds = courseData?.sections
     .flatMap(s => s.chapters.flatMap(c => c.lessons.map(l => l.id))) ?? [];

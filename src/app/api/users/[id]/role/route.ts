@@ -4,7 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 const ALLOWED_ROLES       = ["admin", "student"] as const;
-const ALLOWED_ADMIN_ROLES = ["admin_super", "admin_content"] as const;
+const ALLOWED_ADMIN_ROLES = ["admin_super", "admin_content", "teacher"] as const;
 
 export async function PUT(
   req: Request,

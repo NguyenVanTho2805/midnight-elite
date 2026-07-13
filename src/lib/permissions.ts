@@ -16,8 +16,12 @@ export const PERMISSIONS = {
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
-export type AdminRole  = "admin_super" | "admin_content";
+export type AdminRole  = "admin_super" | "admin_content" | "teacher";
 
+// "teacher" = giáo viên trong 1 trung tâm nhiều giáo viên — chỉ quản lý được
+// khoá học/đề thi do chính mình tạo (scope theo Course.ownerId/Exam.ownerId,
+// xem src/lib/auth-guard.ts). admin_super/admin_content là quản lý trung tâm,
+// thấy & sửa được mọi nội dung bất kể ai tạo.
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   admin_super:   Object.values(PERMISSIONS) as Permission[],
   admin_content: [
@@ -26,6 +30,10 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     PERMISSIONS.MANAGE_HONOR,
     PERMISSIONS.MANAGE_NEWS,
     PERMISSIONS.MANAGE_COMMUNITY,
+  ],
+  teacher: [
+    PERMISSIONS.MANAGE_COURSES,
+    PERMISSIONS.MANAGE_CURRICULUM,
   ],
 };
 

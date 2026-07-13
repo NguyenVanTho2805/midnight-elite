@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 // PUT /api/exams/[id]/questions/[qid] — admin: sửa câu hỏi, thay toàn bộ options
@@ -11,9 +11,15 @@ export async function PUT(
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
 
-  const { qid } = await params;
+  const { id: examId, qid } = await params;
 
   try {
+    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
+    if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, exam.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { text, imageUrl, points, explanation, options } = body as {
       text?: string;
@@ -73,9 +79,15 @@ export async function DELETE(
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
 
-  const { qid } = await params;
+  const { id: examId, qid } = await params;
 
   try {
+    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
+    if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, exam.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     await prisma.examQuestion.delete({ where: { id: qid } });
     return NextResponse.json({ success: true });
   } catch (e) {

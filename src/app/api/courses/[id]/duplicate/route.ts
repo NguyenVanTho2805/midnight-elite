@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,6 +25,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       },
     });
     if (!source) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
+    if (!ownsResource(auth, source.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
 
     // Tạo slug mới, tránh trùng
     const baseSlug = `${source.id}-ban-sao`;
@@ -52,6 +55,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           introVideo: source.introVideo, zaloGroupLink: source.zaloGroupLink,
           price: source.price, originalPrice: source.originalPrice,
           lessons: 0, hours: source.hours, status: false, createdAt: today,
+          ownerId: auth.userId,
         },
       });
 

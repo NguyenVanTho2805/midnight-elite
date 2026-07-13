@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -29,6 +29,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     const { id } = await params;
+    const existing = await prisma.exam.findUnique({ where: { id }, select: { ownerId: true } });
+    if (!existing) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, existing.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     const body   = await req.json();
 
     // Allowlist — không cho ghi đè id, code, participants, createdAt
@@ -56,6 +62,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   try {
+    const existing = await prisma.exam.findUnique({ where: { id }, select: { ownerId: true } });
+    if (!existing) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, existing.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     await prisma.exam.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (e) {

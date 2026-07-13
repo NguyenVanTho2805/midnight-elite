@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,6 +9,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     const { id: chapterId } = await params;
+
+    const chapterWithCourse = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      include: { section: { include: { course: { select: { ownerId: true } } } } },
+    });
+    if (!chapterWithCourse) return NextResponse.json({ error: "Không tìm thấy chương" }, { status: 404 });
+    if (!ownsResource(auth, chapterWithCourse.section.course.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     if (!body.title?.trim()) return NextResponse.json({ error: "Thiếu tiêu đề" }, { status: 400 });
@@ -38,8 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       chapterId,
     };
 
-    const chapter = await prisma.chapter.findUnique({ where: { id: chapterId }, include: { section: true } });
-    const courseId = chapter?.section?.courseId;
+    const courseId = chapterWithCourse.section.courseId;
 
     // Tạo lesson và đồng bộ course.lessons trong cùng 1 transaction — tránh đếm bị lệch
     const lesson = await prisma.$transaction(async (tx) => {

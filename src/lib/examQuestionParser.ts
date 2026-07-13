@@ -22,18 +22,22 @@ export interface ParseResult {
   errors: ParseError[];
 }
 
-// Định dạng nhập hàng loạt, mỗi câu hỏi là 1 khối:
+// Định dạng nhập hàng loạt, mỗi câu hỏi là 1 khối. Đáp án đúng đánh dấu bằng
+// 1 trong 2 cách (không bắt buộc dùng cùng lúc, ưu tiên dấu * nếu có cả 2):
 //   Câu 1: Nội dung câu hỏi...
+//   *A. Đáp án đúng   ← dấu * ngay trước chữ cái, gọn hơn, không cần dòng riêng
+//   B. Đáp án sai
+//   C. Đáp án sai
+//   D. Đáp án sai
+// hoặc cú pháp cũ:
 //   A. Đáp án A
 //   B. Đáp án B
-//   C. Đáp án C
-//   D. Đáp án D
 //   Đáp án: B
 // Các khối cách nhau bởi 1+ dòng trống. Lỗi ở khối nào chỉ bỏ qua khối đó,
 // không làm hỏng cả batch (đề thật 35-150 câu, cần import dễ dãi với lỗi gõ).
 
 const QUESTION_START = /^C[âa]u\s*\d+\s*[:.]?\s*/i;
-const OPTION_LINE = /^([A-D])[.):]\s*(.+)$/i;
+const OPTION_LINE = /^(\*)?[A-D][.):]\s*(.+)$/i;
 const ANSWER_LINE = /^Đ[áa]p\s*[áa]n\s*(?:đ[úu]ng)?\s*[:.]?\s*([A-D])/i;
 
 export function parseBulkText(raw: string): ParseResult {
@@ -52,6 +56,8 @@ export function parseBulkText(raw: string): ParseResult {
     let questionText = "";
     const options: ParsedOption[] = [];
     let answerLetter: string | null = null;
+    let markedIdx: number | null = null;
+    let markedCount = 0;
 
     for (const line of lines) {
       const answerMatch = line.match(ANSWER_LINE);
@@ -61,6 +67,10 @@ export function parseBulkText(raw: string): ParseResult {
       }
       const optionMatch = line.match(OPTION_LINE);
       if (optionMatch) {
+        if (optionMatch[1]) {
+          markedCount++;
+          markedIdx = options.length;
+        }
         options.push({ text: optionMatch[2].trim(), isCorrect: false });
         continue;
       }
@@ -79,14 +89,24 @@ export function parseBulkText(raw: string): ParseResult {
       errors.push({ block: idx + 1, message: "Cần ít nhất 2 đáp án (dòng bắt đầu bằng A./B./C./D.)" });
       return;
     }
-    if (!answerLetter) {
-      errors.push({ block: idx + 1, message: "Thiếu dòng 'Đáp án: X'" });
+    if (markedCount > 1) {
+      errors.push({ block: idx + 1, message: "Chỉ được đánh dấu * trước 1 đáp án đúng, không được nhiều hơn" });
       return;
     }
-    const answerIdx = answerLetter.charCodeAt(0) - "A".charCodeAt(0);
-    if (answerIdx < 0 || answerIdx >= options.length) {
-      errors.push({ block: idx + 1, message: `Đáp án "${answerLetter}" không khớp với danh sách lựa chọn` });
-      return;
+
+    let answerIdx: number;
+    if (markedCount === 1) {
+      answerIdx = markedIdx!;
+    } else {
+      if (!answerLetter) {
+        errors.push({ block: idx + 1, message: "Thiếu đáp án đúng — đánh dấu * trước đáp án (vd *A.) hoặc thêm dòng 'Đáp án: X'" });
+        return;
+      }
+      answerIdx = answerLetter.charCodeAt(0) - "A".charCodeAt(0);
+      if (answerIdx < 0 || answerIdx >= options.length) {
+        errors.push({ block: idx + 1, message: `Đáp án "${answerLetter}" không khớp với danh sách lựa chọn` });
+        return;
+      }
     }
     options[answerIdx].isCorrect = true;
 

@@ -10,11 +10,11 @@ datasource db {
 // ─── COURSES ──────────────────────────────────────────────────────────────────
 
 model Course {
-  id            String   @id           // slug: "hsa-tron-goi"
+  id            String   @id // slug: "hsa-tron-goi"
   adminId       Int      @unique
-  sortOrder     Int      @unique @default(autoincrement())  // thứ tự hiển thị trên trang công khai (theo thứ tự tạo)
-  name          String                 // tên công khai
-  adminName     String                 // tên nội bộ
+  sortOrder     Int      @unique @default(autoincrement()) // thứ tự hiển thị trên trang công khai (theo thứ tự tạo)
+  name          String // tên công khai
+  adminName     String // tên nội bộ
   shortTitle    String
   category      String
   instructor    String
@@ -34,12 +34,19 @@ model Course {
   status        Boolean  @default(true)
   createdAt     String
 
+  // Giáo viên sở hữu (null = nội dung cũ/của quản lý trung tâm). Chỉ dùng để
+  // scope quyền khi User.adminRole === "teacher" — admin_super/admin_content
+  // luôn thấy & sửa được mọi Course bất kể ownerId.
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
   sections    Section[]
   enrollments Enrollment[]
   favorites   CourseFavorite[]
   cartItems   CartItem[]
   reviews     CourseReview[]
 
+  @@index([ownerId])
   @@map("courses")
 }
 
@@ -71,7 +78,7 @@ model CourseReview {
   id        String   @id @default(cuid())
   userId    String
   courseId  String
-  rating    Int      // 1–5
+  rating    Int // 1–5
   comment   String   @db.Text
   status    String   @default("pending") // "pending" | "approved" | "rejected"
   createdAt DateTime @default(now())
@@ -109,25 +116,25 @@ model Chapter {
 }
 
 model Lesson {
-  id             String  @id
+  id             String           @id
   code           String
   title          String
-  type           String  // "record" | "live" | "quiz" | "document"
+  type           String // "record" | "live" | "quiz" | "document"
   duration       String?
   videoUrl       String?
   zoomUrl        String?
   azotaUrl       String?
   azotaDeadline  String?
-  documents      String?   @default("[]")
+  documents      String?          @default("[]")
   adminNote      String?
-  isLocked       Boolean @default(true)
-  isFree         Boolean @default(false)
-  statsVideos    Int     @default(0)
-  statsMaterials Int     @default(0)
-  statsViews     Int     @default(0)
-  order          Int     @default(0)
+  isLocked       Boolean          @default(true)
+  isFree         Boolean          @default(false)
+  statsVideos    Int              @default(0)
+  statsMaterials Int              @default(0)
+  statsViews     Int              @default(0)
+  order          Int              @default(0)
   chapterId      String
-  chapter        Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress       LessonProgress[]
   notes          LessonNote[]
 
@@ -145,17 +152,23 @@ model Exam {
   time         String
   duration     String
   questions    Int
-  status       String  // "upcoming" | "available" | "completed"
+  status       String // "upcoming" | "available" | "completed"
   azotaUrl     String? @default("")
   participants Int     @default(0)
   active       Boolean @default(true)
   activeGuest  Boolean @default(true)
   guestCanTake Boolean @default(false)
   createdAt    String
+
+  // Xem ghi chú ở Course.ownerId — cùng quy tắc scope quyền.
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]
 
+  @@index([ownerId])
   @@map("exams")
 }
 
@@ -171,7 +184,7 @@ model ExamQuestion {
   explanation String?  @db.Text
   createdAt   DateTime @default(now())
 
-  exam    Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]
   answers ExamAnswer[]
 
@@ -204,7 +217,7 @@ model ExamAttempt {
   submittedAt DateTime?
   status      String    @default("in_progress") // "in_progress" | "submitted" | "expired"
   score       Float?
-  totalPoints Float?    // snapshot sum(points) lúc bắt đầu
+  totalPoints Float? // snapshot sum(points) lúc bắt đầu
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
@@ -247,12 +260,14 @@ model User {
   avatarBase64  String?  @db.Text
   facebookUrl   String?
   zaloPhone     String?
-  role          String   @default("student")  // "student" | "admin"
-  adminRole     String?                       // "admin_super" | "admin_content"
+  role          String   @default("student") // "student" | "admin"
+  adminRole     String? // "admin_super" | "admin_content" | "teacher"
   emailVerified Boolean  @default(false)
   banned        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
+  ownedCourses        Course[]
+  ownedExams          Exam[]
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]
@@ -319,7 +334,7 @@ model Enrollment {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new"
+  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new"
   title     String
   message   String
   link      String?
@@ -335,11 +350,11 @@ model Notification {
 // ─── LESSON PROGRESS ──────────────────────────────────────────────────────────
 
 model LessonProgress {
-  id            String   @id @default(cuid())
-  userId        String
-  lessonId      String
-  completedAt   DateTime @default(now())
-  watchedSeconds Int     @default(0)
+  id             String   @id @default(cuid())
+  userId         String
+  lessonId       String
+  completedAt    DateTime @default(now())
+  watchedSeconds Int      @default(0)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -486,9 +501,9 @@ model Wallet {
 model CoinTransaction {
   id        String   @id @default(cuid())
   userId    String
-  amount    Int      // dương = cộng, âm = trừ
-  reason    String   // "signup_bonus" | "question_cost" | "answer_reward" | "report_penalty"
-  refId     String?  // id câu hỏi/trả lời liên quan (để truy vết)
+  amount    Int // dương = cộng, âm = trừ
+  reason    String // "signup_bonus" | "question_cost" | "answer_reward" | "report_penalty"
+  refId     String? // id câu hỏi/trả lời liên quan (để truy vết)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -502,12 +517,12 @@ model Question {
   authorId         String
   title            String
   content          String   @db.Text
-  bountyPaid       Int      // số xu đã trừ khi đăng (lưu lại để minh bạch)
+  bountyPaid       Int // số xu đã trừ khi đăng (lưu lại để minh bạch)
   status           String   @default("open") // "open" | "answered"
   acceptedAnswerId String?  @unique
   createdAt        DateTime @default(now())
 
-  author         User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author         User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   answers        Answer[] @relation("QuestionAnswers")
   acceptedAnswer Answer?  @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
 
@@ -519,13 +534,13 @@ model Answer {
   questionId  String
   authorId    String
   content     String   @db.Text
-  rewardPaid  Int?     // số xu đã thưởng (null nếu chưa được chấp nhận)
+  rewardPaid  Int? // số xu đã thưởng (null nếu chưa được chấp nhận)
   isPenalized Boolean  @default(false) // đã bị admin duyệt report và trừ xu
   createdAt   DateTime @default(now())
 
   question    Question       @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
-  author      User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  acceptedFor Question?       @relation("AcceptedAnswer")
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acceptedFor Question?      @relation("AcceptedAnswer")
   reports     AnswerReport[]
 
   @@map("answers")
@@ -550,7 +565,7 @@ model AnswerReport {
 
 model SalesLead {
   id                  String   @id @default(cuid())
-  sessionId           String   @unique  // session_id sinh ở widget chat (localStorage)
+  sessionId           String   @unique // session_id sinh ở widget chat (localStorage)
   leadScore           Int      @default(0)
   stage               String   @default("awareness") // awareness | consideration | decision
   conversationSummary String   @default("") @db.Text
@@ -566,7 +581,7 @@ model SalesLead {
 model SalesMessage {
   id        String   @id @default(cuid())
   leadId    String
-  role      String   // "user" | "bot"
+  role      String // "user" | "bot"
   text      String   @db.Text
   createdAt DateTime @default(now())
 

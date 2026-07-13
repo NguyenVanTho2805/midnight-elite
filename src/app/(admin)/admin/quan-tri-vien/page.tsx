@@ -17,6 +17,7 @@ interface UserRow {
 const ROLE_CFG: Record<string, { label: string; color: string; bg: string }> = {
   admin_super:    { label: "Super Admin (Cấp 1)",   color: "#FE9900", bg: "#FFF7ED" },
   admin_content:  { label: "Content Admin (Cấp 2)", color: "#0068FF", bg: "#EFF6FF" },
+  teacher:        { label: "Giáo viên",             color: "#16a34a", bg: "#F0FDF4" },
   hoc_vien:       { label: "Học viên",              color: "#1D4ED8", bg: "#DBEAFE" },
   chua_kich_hoat: { label: "Chưa KH",               color: "#6B7280", bg: "#F3F4F6" },
 };
@@ -63,7 +64,7 @@ export default function QuanTriVienPage() {
   async function changeRole(
     id: string,
     role: "admin" | "student",
-    adminRole?: "admin_super" | "admin_content" | null
+    adminRole?: "admin_super" | "admin_content" | "teacher" | null
   ) {
     setPending(id);
     try {
@@ -225,6 +226,7 @@ export default function QuanTriVienPage() {
                 const isMe      = u.id === me?.id;
                 const isAdmin   = u.role === "admin";
                 const isSuper   = u.adminRole === "admin_super";
+                const isTeacher = u.adminRole === "teacher";
                 const busy      = pending === u.id;
                 const confirming = confirmRevoke === u.id;
                 return (
@@ -256,7 +258,21 @@ export default function QuanTriVienPage() {
                               {busy ? "..." : "Thêm Admin Cấp 2"}
                             </button>
                           )}
-                          {isAdmin && !isSuper && (
+                          {!isAdmin && (
+                            <button onClick={() => changeRole(u.id, "admin", "teacher")} disabled={busy}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
+                              style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+                              {busy ? "..." : "Thêm Giáo viên"}
+                            </button>
+                          )}
+                          {isAdmin && isTeacher && (
+                            <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
+                              style={{ background: "linear-gradient(135deg,#0068FF,#0052DD)" }}>
+                              {busy ? "..." : "Nâng lên Content Admin"}
+                            </button>
+                          )}
+                          {isAdmin && !isSuper && !isTeacher && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_super")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
                               style={{ background: "linear-gradient(135deg,#FE9900,#E07800)" }}>

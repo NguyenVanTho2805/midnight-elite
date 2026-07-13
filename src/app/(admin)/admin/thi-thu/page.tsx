@@ -376,13 +376,12 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
             {reviewQuestions === null ? (
               <div className="space-y-3">
                 <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
-                  Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống:
+                  Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống. Đánh dấu đáp án đúng bằng dấu <code>*</code> ngay trước chữ cái, hoặc thêm dòng "Đáp án: X":
                   <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Nội dung câu hỏi...
-A. Đáp án A
-B. Đáp án B
-C. Đáp án C
-D. Đáp án D
-Đáp án: B`}</pre>
+*A. Đáp án đúng
+B. Đáp án sai
+C. Đáp án sai
+D. Đáp án sai`}</pre>
                   <p className="mt-1.5">File .csv/.xlsx: cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
                 </div>
                 <textarea

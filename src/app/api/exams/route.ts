@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
@@ -14,9 +14,13 @@ export async function GET(req: NextRequest) {
 
   // activeGuest=true là public endpoint — không cần auth
   // Các query khác (active=true, category, status) yêu cầu session
+  let scopeWhere: { ownerId?: string } = {};
   if (!activeGuestOnly) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+    // Danh sách quản trị (admin panel) — giáo viên chỉ thấy đề của mình.
+    // Học viên xem danh sách đề (không phải panel admin) không bị scope này.
+    if (session.role === "admin") scopeWhere = ownerScopeWhere(session);
   }
 
   try {
@@ -26,6 +30,7 @@ export async function GET(req: NextRequest) {
         ...(status          ? { status }               : {}),
         ...(activeOnly      ? { active: true }         : {}),
         ...(activeGuestOnly ? { activeGuest: true }    : {}),
+        ...scopeWhere,
       },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { examQuestions: true } } },
@@ -54,6 +59,7 @@ export async function POST(req: NextRequest) {
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
+    data.ownerId = auth.userId;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exam = await prisma.exam.create({ data: data as any });

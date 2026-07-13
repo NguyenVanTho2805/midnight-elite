@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { parseBulkText } from "@/lib/examQuestionParser";
 
@@ -20,8 +20,11 @@ export async function POST(
       return NextResponse.json({ error: "Thiếu nội dung để nhập" }, { status: 400 });
     }
 
-    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true } });
+    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, exam.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
 
     const { questions, errors } = parseBulkText(text);
 

@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
 
-  await params;
+  const { id: courseId } = await params;
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
+  if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
+  if (!ownsResource(auth, course.ownerId)) {
+    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+  }
+
   const body = await req.json();
   const { type, items } = body as { type: "section" | "chapter" | "lesson"; items: { id: string; order: number }[] };
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { triggerSalesBotSync } from "@/lib/salesBotSync";
@@ -68,6 +68,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     const { id } = await params;
+    const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true } });
+    if (!existing) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
+    if (!ownsResource(auth, existing.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+
     const body   = await req.json();
 
     // Chỉ pick các scalar fields của Course, tránh Unknown argument error khi Prisma client chưa reload
@@ -96,6 +102,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const { id } = await params;
+    const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true } });
+    if (!existing) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
+    if (!ownsResource(auth, existing.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+
     await prisma.course.delete({ where: { id } });
     await triggerSalesBotSync();
     return NextResponse.json({ success: true });

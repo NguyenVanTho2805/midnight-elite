@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 // PUT /api/exams/[id]/questions/reorder — admin: cập nhật order hàng loạt
@@ -14,6 +14,12 @@ export async function PUT(
   const { id: examId } = await params;
 
   try {
+    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
+    if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, exam.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     const { order } = await req.json() as { order?: { id: string; order: number }[] };
     if (!Array.isArray(order) || order.length === 0) {
       return NextResponse.json({ error: "Thiếu danh sách thứ tự" }, { status: 400 });

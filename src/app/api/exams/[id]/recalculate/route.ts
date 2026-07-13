@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 // POST /api/exams/[id]/recalculate — đồng bộ lại exam.participants từ DB thật
@@ -14,6 +14,12 @@ export async function POST(
   const { id } = await params;
 
   try {
+    const existing = await prisma.exam.findUnique({ where: { id }, select: { ownerId: true } });
+    if (!existing) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, existing.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     const exam = await prisma.$transaction(async (tx) => {
       const actual = await tx.examResult.count({ where: { examId: id } });
       return tx.exam.update({

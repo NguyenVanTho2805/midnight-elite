@@ -19,6 +19,7 @@ export function hasPermission(user: AuthUser | null, permission: Permission): bo
 export function getAdminRoleLabel(adminRole?: AdminRole): string {
   if (adminRole === "admin_super")   return "Super Admin";
   if (adminRole === "admin_content") return "Content Admin";
+  if (adminRole === "teacher")       return "Giáo viên";
   return "Admin";
 }
 

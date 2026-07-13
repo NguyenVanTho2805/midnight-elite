@@ -7,7 +7,7 @@ const EXPIRES_IN  = 7 * 24 * 60 * 60 * 1000; // 7 ngày
 export interface SessionPayload {
   userId:    string;
   role:      "student" | "admin";
-  adminRole?: "admin_super" | "admin_content";
+  adminRole?: "admin_super" | "admin_content" | "teacher";
 }
 
 function getKey() {

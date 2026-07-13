@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import type { ParsedQuestion } from "@/lib/examQuestionParser";
 
@@ -16,6 +16,12 @@ export async function POST(
   const { id: examId } = await params;
 
   try {
+    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
+    if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (!ownsResource(auth, exam.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
+    }
+
     const { items } = await req.json() as { items?: ParsedQuestion[] };
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Thiếu danh sách câu hỏi" }, { status: 400 });
@@ -32,9 +38,6 @@ export async function POST(
         return NextResponse.json({ error: `Câu ${idx + 1}: phải có đúng 1 đáp án đúng` }, { status: 400 });
       }
     }
-
-    const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true } });
-    if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
     const maxOrder = await prisma.examQuestion.aggregate({
       where: { examId },

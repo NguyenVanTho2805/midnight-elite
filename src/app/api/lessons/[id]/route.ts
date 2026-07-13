@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -33,6 +33,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (isNextResponse(auth)) return auth;
 
   const { id } = await params;
+  const existing = await prisma.lesson.findUnique({
+    where: { id },
+    include: { chapter: { include: { section: { include: { course: { select: { ownerId: true } } } } } } },
+  });
+  if (!existing) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+  if (!ownsResource(auth, existing.chapter.section.course.ownerId)) {
+    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+  }
+
   const body   = await req.json();
   try {
     const data: Record<string, unknown> = {};
@@ -68,9 +77,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     // Get course ID before deleting to update count
     const lesson = await prisma.lesson.findUnique({
       where: { id },
-      include: { chapter: { include: { section: true } } },
+      include: { chapter: { include: { section: { include: { course: { select: { ownerId: true } } } } } } },
     });
-    const courseId = lesson?.chapter?.section?.courseId;
+    if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+    if (!ownsResource(auth, lesson.chapter.section.course.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+
+    const courseId = lesson.chapter.section.courseId;
     await prisma.$transaction(async (tx) => {
       await tx.lesson.delete({ where: { id } });
       if (courseId) {

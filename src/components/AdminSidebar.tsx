@@ -62,6 +62,7 @@ const NAV_ITEMS: NavItem[] = [
 const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   admin_super:   { label: "Cấp 1 - Super Admin",   color: "#FE9900", bg: "rgba(254,153,0,0.15)"  },
   admin_content: { label: "Cấp 2 - Content Admin", color: "#60A5FA", bg: "rgba(96,165,250,0.12)" },
+  teacher:       { label: "Giáo viên",             color: "#16a34a", bg: "rgba(22,163,74,0.12)"  },
 };
 
 export default function AdminSidebar() {

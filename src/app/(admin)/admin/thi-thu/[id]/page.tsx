@@ -204,13 +204,12 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result }: {
         </div>
         <div className="p-5 space-y-4">
           <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
-            Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống. Định dạng:
+            Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống. Đánh dấu đáp án đúng bằng dấu <code>*</code> ngay trước chữ cái, hoặc thêm dòng "Đáp án: X":
             <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Nội dung câu hỏi...
-A. Đáp án A
-B. Đáp án B
-C. Đáp án C
-D. Đáp án D
-Đáp án: B`}</pre>
+*A. Đáp án đúng
+B. Đáp án sai
+C. Đáp án sai
+D. Đáp án sai`}</pre>
           </div>
           <textarea
             className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"

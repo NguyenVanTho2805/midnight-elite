@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
 import { triggerSalesBotSync } from "@/lib/salesBotSync";
@@ -21,7 +21,9 @@ export async function GET(req: NextRequest) {
       if (!isAdmin) {
         return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
       }
-      statusWhere = {};
+      // Giáo viên (adminRole "teacher") chỉ thấy khoá học do chính mình tạo;
+      // admin_super/admin_content thấy tất cả.
+      statusWhere = ownerScopeWhere(session!);
     } else {
       // Public access (homepage, catalog, student page):
       // Always show only active courses.
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest) {
     }
 
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
+    data.ownerId = auth.userId;
 
     // adminId trong transaction để tránh race condition giữa hai POST đồng thời
     const course = await prisma.$transaction(async (tx) => {
