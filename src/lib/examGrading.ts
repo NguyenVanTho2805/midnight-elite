@@ -38,9 +38,21 @@ export function applyAttemptOrder(
 }
 
 // Thang % điểm câu Đúng-Sai 4 ý theo số ý trả lời đúng (index = số ý đúng
-// 0-4) — mặc định theo Azota (10/25/50/100%), chưa cho giáo viên chỉnh
-// (xem Giai đoạn 7 trong reports/2026-07-13.md).
-const CLUSTER_PERCENT_BY_CORRECT_COUNT = [0, 0.1, 0.25, 0.5, 1] as const;
+// 0-4) — mặc định theo Azota (10/25/50/100%). Giáo viên có thể tuỳ chỉnh qua
+// Exam.clusterScorePercents (Giai đoạn 7) — mảng 4 số [1 ý, 2 ý, 3 ý, 4 ý đúng]
+// tính theo %, vd [10,25,50,100].
+const DEFAULT_CLUSTER_PERCENT_BY_CORRECT_COUNT = [0, 0.1, 0.25, 0.5, 1] as const;
+
+function getClusterPercentTable(clusterScorePercents: unknown): readonly number[] {
+  if (!Array.isArray(clusterScorePercents) || clusterScorePercents.length !== 4) {
+    return DEFAULT_CLUSTER_PERCENT_BY_CORRECT_COUNT;
+  }
+  const nums = clusterScorePercents.map(Number);
+  if (nums.some(n => !Number.isFinite(n) || n < 0 || n > 100)) {
+    return DEFAULT_CLUSTER_PERCENT_BY_CORRECT_COUNT;
+  }
+  return [0, ...nums.map(n => n / 100)];
+}
 
 // Tải toàn bộ câu trả lời đã lưu của 1 attempt, gộp cả 3 dạng (MC: optionId,
 // ESSAY: textAnswer, TRUE_FALSE_CLUSTER: answers theo từng optionId con) —
@@ -105,14 +117,17 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
     return sum;
   }, 0);
 
-  // TRUE_FALSE_CLUSTER: chấm theo % số ý đúng trong cụm 4 ý (xem
-  // CLUSTER_PERCENT_BY_CORRECT_COUNT) — trả lời nằm ở ExamAnswerBoolean,
-  // không phải ExamAnswer, nên cộng riêng ở đây.
+  // TRUE_FALSE_CLUSTER: chấm theo % số ý đúng trong cụm 4 ý (thang mặc định
+  // hoặc Exam.clusterScorePercents nếu giáo viên đã tuỳ chỉnh) — trả lời nằm
+  // ở ExamAnswerBoolean, không phải ExamAnswer, nên cộng riêng ở đây.
   const clusterQuestions = await tx.examQuestion.findMany({
     where: { examId: attempt.examId, type: "TRUE_FALSE_CLUSTER" },
     include: { options: true },
   });
   if (clusterQuestions.length > 0) {
+    const exam = await tx.exam.findUnique({ where: { id: attempt.examId }, select: { clusterScorePercents: true } });
+    const percentTable = getClusterPercentTable(exam?.clusterScorePercents);
+
     const boolAnswers = await tx.examAnswerBoolean.findMany({
       where: { attemptId: attempt.id },
       include: { option: { select: { questionId: true, isCorrect: true } } },
@@ -127,7 +142,7 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
     for (const q of clusterQuestions) {
       const given = byQuestion.get(q.id) ?? [];
       const correctCount = given.filter(a => a.answerTrue !== null && a.answerTrue === a.option.isCorrect).length;
-      const pct = CLUSTER_PERCENT_BY_CORRECT_COUNT[Math.min(correctCount, 4)];
+      const pct = percentTable[Math.min(correctCount, 4)];
       rawEarned += q.points * pct;
     }
   }

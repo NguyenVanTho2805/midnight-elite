@@ -555,12 +555,15 @@ function fromInputDate(d: string) {
 }
 
 // ─── EDIT EXAM DRAWER ────────────────────────────────────────────────────────
+const DEFAULT_CLUSTER_PERCENTS = ["10", "25", "50", "100"];
+
 interface EditForm {
   title: string; category: string; date: string; time: string;
   duration: string; questions: string; azotaUrl: string;
   active: boolean; activeGuest: boolean;
   price: string; // rỗng = miễn phí
   courseId: string; // rỗng = không gắn khoá học nào
+  clusterPercents: string[]; // 4 ô % cho câu Đúng-Sai (1-4 ý đúng)
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: {
@@ -593,6 +596,9 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         activeGuest:  exam.activeGuest ?? true,
         price:        exam.price ? String(exam.price) : "",
         courseId:     exam.courseId ?? "",
+        clusterPercents: exam.clusterScorePercents?.length === 4
+          ? exam.clusterScorePercents.map(String)
+          : [...DEFAULT_CLUSTER_PERCENTS],
       });
       setErrors({});
     }
@@ -626,6 +632,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
       e.azotaUrl = "URL không hợp lệ";
     if (form.price && (isNaN(+form.price) || +form.price < 0))
       e.price = "Phí phải là số không âm";
+    if (form.clusterPercents.some(p => p === "" || isNaN(+p) || +p < 0 || +p > 100))
+      e.clusterPercents = "Mỗi ô phải là số từ 0 đến 100";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -635,6 +643,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
     setSaving(true);
     try {
       const examDate = fromInputDate(form.date);
+      const isDefaultPercents = form.clusterPercents.every((p, i) => p === DEFAULT_CLUSTER_PERCENTS[i]);
       await api.exams.update(exam.id, {
         title:     form.title.trim(),
         category:  form.category,
@@ -648,6 +657,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         activeGuest:  form.activeGuest,
         price:        form.price ? +form.price : null,
         courseId:     form.courseId || null,
+        clusterScorePercents: isDefaultPercents ? null : form.clusterPercents.map(Number),
       } as Partial<ExamFull>);
       onSaved();
       onClose();
@@ -811,6 +821,25 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <input type="number" min="0" placeholder="Miễn phí" className={inp}
                   value={form.price} onChange={e => set("price", e.target.value)} />
                 {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
+              </div>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <p className="text-sm font-medium text-gray-700 mb-1">Thang điểm câu Đúng-Sai 4 ý (%)</p>
+                <p className="text-xs text-gray-400 mb-2">% điểm câu nhận được theo số ý trả lời đúng — mặc định 10/25/50/100% (giống Azota).</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {form.clusterPercents.map((p, idx) => (
+                    <div key={idx}>
+                      <label className="block text-[11px] text-gray-500 mb-1">{idx + 1} ý đúng</label>
+                      <input type="number" min="0" max="100" className={inp}
+                        value={p}
+                        onChange={e => {
+                          const next = [...form.clusterPercents];
+                          next[idx] = e.target.value;
+                          set("clusterPercents", next);
+                        }} />
+                    </div>
+                  ))}
+                </div>
+                {errors.clusterPercents && <p className="text-xs text-red-500 mt-1">{errors.clusterPercents}</p>}
               </div>
               <div className="flex items-center gap-2 px-1">
                 <span className="text-xs text-gray-400">Trạng thái:</span>

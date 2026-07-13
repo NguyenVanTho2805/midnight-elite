@@ -167,6 +167,7 @@ export interface ExamFull {
   participants: number; active: boolean; activeGuest: boolean; guestCanTake: boolean; createdAt: string;
   hasQuestions: boolean;
   courseId?: string | null; price?: number | null;
+  clusterScorePercents?: number[] | null; // [1 ý, 2 ý, 3 ý, 4 ý đúng] theo %, null = mặc định 10/25/50/100
 }
 
 export interface ExamGuestAccessFull {

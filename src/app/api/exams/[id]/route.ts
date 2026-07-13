@@ -39,10 +39,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Allowlist — không cho ghi đè id, code, participants, createdAt
     const allowed = ["title", "category", "date", "time", "duration", "questions",
-                     "status", "azotaUrl", "active", "activeGuest", "guestCanTake", "courseId", "price"];
+                     "status", "azotaUrl", "active", "activeGuest", "guestCanTake", "courseId", "price",
+                     "clusterScorePercents"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
+    }
+
+    if (data.clusterScorePercents !== undefined && data.clusterScorePercents !== null) {
+      const percents = data.clusterScorePercents;
+      const valid = Array.isArray(percents) && percents.length === 4
+        && percents.every(n => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100);
+      if (!valid) {
+        return NextResponse.json({ error: "Thang % Đúng-Sai phải là mảng 4 số từ 0-100" }, { status: 400 });
+      }
     }
 
     const exam = await prisma.exam.update({ where: { id }, data });
