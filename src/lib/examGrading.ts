@@ -4,14 +4,15 @@ import type { Prisma } from "@/generated/prisma/client";
 type ExamQuestionWithOptions = Prisma.ExamQuestionGetPayload<{ include: { options: true } }>;
 
 // Sắp lại câu hỏi/đáp án theo đúng snapshot đã xáo lúc tạo attempt (persist ở
-// ExamAttempt.questionOrder/optionOrderByQuestion) — dùng chung cho cả lúc
-// bắt đầu và lúc resume (GET), để 2 lần gọi luôn trả về đúng 1 thứ tự suốt
-// attempt. Attempt cũ (tạo trước khi có tính năng này) không có snapshot —
-// fallback về thứ tự gốc theo `order`, không phá dữ liệu đang làm dở.
-export function applyAttemptOrder(
+// ExamAttempt.questionOrder/optionOrderByQuestion) — giữ nguyên toàn bộ field
+// gốc (kể cả isCorrect/explanation). CHỈ dùng cho các route đã tự kiểm tra
+// quyền xem đáp án (admin, hoặc review sau khi nộp) — KHÔNG dùng trực tiếp
+// cho lúc học viên đang làm bài (dùng applyAttemptOrder bên dưới, đã lược
+// isCorrect/explanation, cho trường hợp đó).
+export function orderQuestionsAndOptionsFull(
   examQuestions: ExamQuestionWithOptions[],
   attempt: { questionOrder: unknown; optionOrderByQuestion: unknown }
-) {
+): ExamQuestionWithOptions[] {
   const questionsById = new Map(examQuestions.map(q => [q.id, q]));
   const savedQuestionOrder = attempt.questionOrder as string[] | null;
   const orderedQuestions = savedQuestionOrder?.length
@@ -25,16 +26,26 @@ export function applyAttemptOrder(
     const orderedOptions = optionOrder?.length
       ? optionOrder.map(oid => optionsById.get(oid)).filter((o): o is ExamQuestionWithOptions["options"][number] => !!o)
       : q.options;
-    return {
-      id: q.id,
-      order: q.order,
-      type: q.type,
-      text: q.text,
-      imageUrl: q.imageUrl,
-      points: q.points,
-      options: orderedOptions.map(o => ({ id: o.id, order: o.order, text: o.text, subLabel: o.subLabel })),
-    };
+    return { ...q, options: orderedOptions };
   });
+}
+
+// Bản "an toàn cho học viên" của trên — lược isCorrect/explanation, dùng lúc
+// đang làm bài (start/resume), trước khi biết học viên có được xem đáp án
+// hay không.
+export function applyAttemptOrder(
+  examQuestions: ExamQuestionWithOptions[],
+  attempt: { questionOrder: unknown; optionOrderByQuestion: unknown }
+) {
+  return orderQuestionsAndOptionsFull(examQuestions, attempt).map(q => ({
+    id: q.id,
+    order: q.order,
+    type: q.type,
+    text: q.text,
+    imageUrl: q.imageUrl,
+    points: q.points,
+    options: q.options.map(o => ({ id: o.id, order: o.order, text: o.text, subLabel: o.subLabel })),
+  }));
 }
 
 // Thang % điểm câu Đúng-Sai 4 ý theo số ý trả lời đúng (index = số ý đúng
@@ -43,7 +54,7 @@ export function applyAttemptOrder(
 // tính theo %, vd [10,25,50,100].
 const DEFAULT_CLUSTER_PERCENT_BY_CORRECT_COUNT = [0, 0.1, 0.25, 0.5, 1] as const;
 
-function getClusterPercentTable(clusterScorePercents: unknown): readonly number[] {
+export function getClusterPercentTable(clusterScorePercents: unknown): readonly number[] {
   if (!Array.isArray(clusterScorePercents) || clusterScorePercents.length !== 4) {
     return DEFAULT_CLUSTER_PERCENT_BY_CORRECT_COUNT;
   }
@@ -80,6 +91,18 @@ export async function loadAnswerState(attemptId: string) {
 export function parseDurationMinutes(duration: string): number {
   const m = duration.match(/\d+/);
   return m ? parseInt(m[0], 10) : 60;
+}
+
+// "Đã hết thời hạn làm bài của đề" (không phải hết giờ của 1 attempt cụ thể)
+// — dùng cho answerVisibility === "after_exam_ends". Tính tại chỗ từ
+// date+time+duration thay vì dựa vào Exam.status (field đó chỉ được cập nhật
+// khi admin sửa đề, có thể cũ so với thời gian thật).
+export function hasExamWindowEnded(exam: { date: string; time: string; duration: string }): boolean {
+  const [day, month, year] = (exam.date || "01/01/2000").split("/");
+  const [hh, mm] = (exam.time || "00:00").split(":");
+  const startsAt = new Date(+year, +month - 1, +day, +hh, +mm);
+  const endsAt = new Date(startsAt.getTime() + parseDurationMinutes(exam.duration) * 60_000);
+  return endsAt.getTime() <= Date.now();
 }
 
 // Fisher-Yates — dùng để xáo thứ tự câu hỏi/đáp án mỗi lượt thi mới (chống

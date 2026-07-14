@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
-import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic } from "@/lib/api";
+import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic, type ExamAttemptReview } from "@/lib/api";
 
-type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done";
+type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done" | "review";
 
 interface MyResult {
   score: number;
@@ -43,6 +43,9 @@ export default function ExamEntryPage() {
   const autoSubmitted = useRef(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
   const [history,     setHistory]     = useState<ExamAttemptHistoryItem[]>([]);
+  const [reviewData, setReviewData] = useState<ExamAttemptReview | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewErr, setReviewErr] = useState("");
 
   // Load exam + student's existing result
   useEffect(() => {
@@ -173,6 +176,25 @@ export default function ExamEntryPage() {
     }
   }
 
+  // Lượt thi để xem lại: ưu tiên attempt vừa làm trong phiên này, nếu không
+  // có (vd vào thẳng trang đã có kết quả từ trước) thì dùng lượt gần nhất trong lịch sử.
+  const reviewableAttemptId = attempt?.attemptId ?? history[0]?.id ?? null;
+
+  async function openReview() {
+    if (!reviewableAttemptId) return;
+    setReviewErr("");
+    setReviewLoading(true);
+    setPhase("review");
+    try {
+      const data = await api.examAttempts.review(reviewableAttemptId);
+      setReviewData(data);
+    } catch (e) {
+      setReviewErr(e instanceof Error ? e.message : "Không tải được bài làm");
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
   // Đếm ngược hiển thị (client-side, chỉ để hiển thị — server tự enforce hạn giờ thật)
   useEffect(() => {
     if (phase !== "taking" || !attempt?.expiresAt) return;
@@ -266,12 +288,114 @@ export default function ExamEntryPage() {
           </div>
         </div>
 
+        {exam.hasQuestions && reviewableAttemptId && (
+          <button
+            onClick={openReview}
+            className="w-full py-3 rounded-lg text-sm font-semibold text-white"
+            style={{ background: "#0068FF", borderRadius: "8px" }}>
+            Xem lại bài làm
+          </button>
+        )}
+
         <button
           onClick={() => { setMyResult(null); setPhase("ready"); setCountdown(5); setScore(""); }}
           className="w-full py-3 rounded-lg text-sm font-medium transition-colors hover:bg-[#fafafa]"
           style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
           Thi lại đề này
         </button>
+      </div>
+    );
+  }
+
+  // ── Review: xem lại bài làm sau khi nộp ──────────────────────────────────────
+  if (phase === "review") {
+    return (
+      <div className="max-w-2xl mx-auto space-y-5 pb-10">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-extrabold" style={{ color: "#1E2938" }}>Xem lại bài làm</h1>
+            <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>{exam.title}</p>
+          </div>
+          <button onClick={() => setPhase("done")}
+            className="text-sm font-semibold" style={{ color: "#0068FF" }}>
+            ← Quay lại kết quả
+          </button>
+        </div>
+
+        {reviewLoading ? (
+          <p className="text-sm text-center py-10" style={{ color: "#787671" }}>Đang tải...</p>
+        ) : reviewErr ? (
+          <p className="text-sm text-center py-10" style={{ color: "#dc2626" }}>{reviewErr}</p>
+        ) : reviewData ? (
+          <>
+            {!reviewData.canSeeAnswers && (
+              <div className="rounded-xl p-3 text-xs" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
+                Đề thi này chưa cho phép xem đáp án lúc này — chỉ hiện câu trả lời của bạn.
+              </div>
+            )}
+            <div className="space-y-3">
+              {reviewData.questions.map((q, idx) => (
+                <div key={q.id} className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+                  <p className="text-sm font-semibold mb-2" style={{ color: "#1E2938" }}>Câu {idx + 1}: {q.text}</p>
+
+                  {q.type === "MC" && (
+                    <div className="space-y-1.5">
+                      {q.options.map(o => {
+                        const isMine = o.id === q.studentOptionId;
+                        const color = o.isCorrect === true ? "#16a34a" : o.isCorrect === false && isMine ? "#dc2626" : "#787671";
+                        return (
+                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color }}>
+                            {isMine && <strong>→</strong>} {o.text}
+                            {o.isCorrect === true && " ✓"}
+                          </div>
+                        );
+                      })}
+                      {q.explanation && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+                          <strong>Giải thích:</strong> {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {q.type === "TRUE_FALSE_CLUSTER" && (
+                    <div className="space-y-1.5">
+                      {q.options.map(o => (
+                        <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: "#37352f" }}>
+                          <strong>{o.subLabel})</strong> {o.text}
+                          <span style={{ color: "#a4a097" }}>
+                            — bạn chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}
+                          </span>
+                          {o.isCorrect !== null && (
+                            <span style={{ color: o.isCorrect === o.studentAnswerTrue ? "#16a34a" : "#dc2626" }}>
+                              (đáp án đúng: {o.isCorrect ? "Đúng" : "Sai"})
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.type === "ESSAY" && (
+                    <div>
+                      <div className="text-sm p-3 rounded-lg mb-2" style={{ background: "#f6f5f4", color: "#37352f" }}>
+                        {q.textAnswer?.trim() ? q.textAnswer : <em style={{ color: "#a4a097" }}>Bạn chưa trả lời</em>}
+                      </div>
+                      {q.pointsAwarded != null ? (
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>Điểm: {q.pointsAwarded}/{q.points}</p>
+                          {q.teacherComment && <p className="text-xs mt-1" style={{ color: "#787671" }}>Nhận xét: {q.teacherComment}</p>}
+                        </div>
+                      ) : (
+                        <p className="text-xs" style={{ color: "#a4a097" }}>Chưa chấm</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
       </div>
     );
   }

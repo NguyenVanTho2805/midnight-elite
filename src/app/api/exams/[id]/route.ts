@@ -41,7 +41,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Allowlist — không cho ghi đè id, code, participants, createdAt
     const allowed = ["title", "category", "date", "time", "duration", "questions",
                      "status", "azotaUrl", "active", "activeGuest", "guestCanTake", "courseId", "price",
-                     "clusterScorePercents", "password", "showLeaderboard"];
+                     "clusterScorePercents", "password", "showLeaderboard",
+                     "answerVisibility", "hideAnswerForWrong"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
@@ -54,6 +55,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!valid) {
         return NextResponse.json({ error: "Thang % Đúng-Sai phải là mảng 4 số từ 0-100" }, { status: 400 });
       }
+    }
+    if (data.answerVisibility !== undefined
+        && !["never", "after_submit", "after_exam_ends"].includes(data.answerVisibility as string)) {
+      return NextResponse.json({ error: "answerVisibility không hợp lệ" }, { status: 400 });
     }
     if (typeof data.password === "string") data.password = data.password.trim() || null;
 

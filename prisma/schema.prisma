@@ -191,6 +191,17 @@ model Exam {
   // hoàn toàn (giáo viên không muốn học viên so điểm công khai).
   showLeaderboard Boolean @default(true)
 
+  // Khi nào học viên xem được màn "Xem lại bài làm" (đáp án đúng/giải thích):
+  // "never" | "after_submit" (ngay sau khi nộp) | "after_exam_ends" (chỉ sau
+  // khi hết thời hạn làm bài của đề — tính từ date+time+duration, xem
+  // hasExamWindowEnded() trong src/lib/examGrading.ts).
+  answerVisibility String @default("after_submit")
+
+  // true = câu học sinh trả lời SAI chỉ hiện "Sai", không lộ đáp án đúng thật
+  // (chặn kiểu nộp bừa để dò đáp án rồi thi lại) — áp dụng khi answerVisibility
+  // đã cho phép xem đáp án. Câu trả lời ĐÚNG vẫn luôn hiện đáp án bình thường.
+  hideAnswerForWrong Boolean @default(false)
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]

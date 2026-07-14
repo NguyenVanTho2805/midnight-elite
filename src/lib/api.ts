@@ -124,6 +124,8 @@ export const api = {
         `/api/exams/attempts/${attemptId}/tab-event`,
         { method: "PATCH" }
       ),
+    review: (attemptId: string) =>
+      apiFetch<ExamAttemptReview>(`/api/exams/attempts/${attemptId}/review`),
   },
 };
 
@@ -173,6 +175,8 @@ export interface ExamFull {
   hasPassword?: boolean; // KHÔNG BAO GIỜ có field password thô trong response — server chỉ trả cờ này
   password?: string; // chỉ dùng khi GỬI lên để đặt/đổi mật khẩu, không bao giờ có mặt khi server trả về
   showLeaderboard?: boolean;
+  answerVisibility?: "never" | "after_submit" | "after_exam_ends";
+  hideAnswerForWrong?: boolean;
 }
 
 export interface ExamGuestAccessFull {
@@ -208,6 +212,21 @@ export interface ExamAttemptAdminDetail {
 }
 
 export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER";
+
+// ─── Xem lại bài làm (học viên, sau khi nộp) ───────────────────────────────────
+export interface ExamReviewOptionMC { id: string; text: string; isCorrect: boolean | null; }
+export interface ExamReviewOptionCluster {
+  id: string; text: string; subLabel?: "a" | "b" | "c" | "d" | null;
+  studentAnswerTrue: boolean | null; isCorrect: boolean | null;
+}
+export type ExamReviewQuestion =
+  | { id: string; type: "MC"; text: string; points: number; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null }
+  | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; options: ExamReviewOptionCluster[] }
+  | { id: string; type: "ESSAY"; text: string; points: number; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null };
+export interface ExamAttemptReview {
+  attemptId: string; score: number | null; totalPoints: number;
+  canSeeAnswers: boolean; questions: ExamReviewQuestion[];
+}
 
 // Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)
 export interface ExamOptionFull {

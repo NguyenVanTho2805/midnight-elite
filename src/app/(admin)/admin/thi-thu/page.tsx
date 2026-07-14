@@ -567,6 +567,8 @@ interface EditForm {
   requirePassword: boolean;
   password: string; // rỗng khi requirePassword=true nghĩa là giữ nguyên mật khẩu cũ (nếu đã có)
   showLeaderboard: boolean;
+  answerVisibility: "never" | "after_submit" | "after_exam_ends";
+  hideAnswerForWrong: boolean;
 }
 
 function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: {
@@ -605,6 +607,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         requirePassword: exam.hasPassword ?? false,
         password:        "", // để trống = giữ nguyên mật khẩu cũ (nếu có); server không bao giờ trả mật khẩu thật
         showLeaderboard: exam.showLeaderboard ?? true,
+        answerVisibility: exam.answerVisibility ?? "after_submit",
+        hideAnswerForWrong: exam.hideAnswerForWrong ?? false,
       });
       setErrors({});
     }
@@ -674,6 +678,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
           ? { password: form.password.trim() }
           : {}),
         showLeaderboard: form.showLeaderboard,
+        answerVisibility: form.answerVisibility,
+        hideAnswerForWrong: form.hideAnswerForWrong,
       } as Partial<ExamFull>);
       onSaved();
       onClose();
@@ -843,6 +849,23 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                       value={form.password} onChange={e => set("password", e.target.value)} />
                     {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                   </>
+                )}
+              </div>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <p className="text-sm font-medium text-gray-700 mb-1">Khi nào cho xem đáp án (màn "Xem lại bài làm")</p>
+                <p className="text-xs text-gray-400 mb-2">Điểm luôn hiện ngay sau khi nộp — mục này chỉ áp dụng cho đáp án đúng/giải thích.</p>
+                <select className={inp} value={form.answerVisibility}
+                  onChange={e => set("answerVisibility", e.target.value as EditForm["answerVisibility"])}>
+                  <option value="never">Không bao giờ</option>
+                  <option value="after_submit">Ngay khi học viên nộp bài</option>
+                  <option value="after_exam_ends">Chỉ sau khi hết thời hạn làm bài của đề</option>
+                </select>
+                {form.answerVisibility !== "never" && (
+                  <label className="flex items-center gap-2 mt-3 text-xs text-gray-600">
+                    <input type="checkbox" checked={form.hideAnswerForWrong}
+                      onChange={() => set("hideAnswerForWrong", !form.hideAnswerForWrong)} />
+                    Ẩn đáp án đúng cho câu học viên trả lời sai (chặn dò đáp án rồi thi lại)
+                  </label>
                 )}
               </div>
               <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
