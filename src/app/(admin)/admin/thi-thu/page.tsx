@@ -393,6 +393,7 @@ b)[1,NB] Ý sai
 
 Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">File .csv/.xlsx: chỉ hỗ trợ trắc nghiệm, cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
+                  <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
                 </div>
                 <textarea
                   className={inp + " font-mono"}

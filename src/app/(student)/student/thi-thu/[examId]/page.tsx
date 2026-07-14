@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
 import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic, type ExamAttemptReview } from "@/lib/api";
+import { MathText } from "@/components/MathText";
 
 type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done" | "review";
 
@@ -336,7 +337,7 @@ export default function ExamEntryPage() {
             <div className="space-y-3">
               {reviewData.questions.map((q, idx) => (
                 <div key={q.id} className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-                  <p className="text-sm font-semibold mb-2" style={{ color: "#1E2938" }}>Câu {idx + 1}: {q.text}</p>
+                  <p className="text-sm font-semibold mb-2" style={{ color: "#1E2938" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
 
                   {q.type === "MC" && (
                     <div className="space-y-1.5">
@@ -345,14 +346,14 @@ export default function ExamEntryPage() {
                         const color = o.isCorrect === true ? "#16a34a" : o.isCorrect === false && isMine ? "#dc2626" : "#787671";
                         return (
                           <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color }}>
-                            {isMine && <strong>→</strong>} {o.text}
+                            {isMine && <strong>→</strong>} <MathText text={o.text} />
                             {o.isCorrect === true && " ✓"}
                           </div>
                         );
                       })}
                       {q.explanation && (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
-                          <strong>Giải thích:</strong> {q.explanation}
+                          <strong>Giải thích:</strong> <MathText text={q.explanation} />
                         </p>
                       )}
                     </div>
@@ -362,7 +363,7 @@ export default function ExamEntryPage() {
                     <div className="space-y-1.5">
                       {q.options.map(o => (
                         <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: "#37352f" }}>
-                          <strong>{o.subLabel})</strong> {o.text}
+                          <strong>{o.subLabel})</strong> <MathText text={o.text} />
                           <span style={{ color: "#a4a097" }}>
                             — bạn chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}
                           </span>
@@ -470,7 +471,7 @@ export default function ExamEntryPage() {
             <div key={q.id} id={`q-${q.id}`} className="rounded-xl p-5"
               style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
               <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>
-                Câu {idx + 1}: {q.text}
+                Câu {idx + 1}: <MathText text={q.text} />
               </p>
               {q.imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -493,7 +494,7 @@ export default function ExamEntryPage() {
                     <div key={o.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg"
                       style={{ border: "1px solid #e5e3df" }}>
                       <span className="text-sm flex-1" style={{ color: "#37352f" }}>
-                        <strong>{o.subLabel})</strong> {o.text}
+                        <strong>{o.subLabel})</strong> <MathText text={o.text} />
                       </span>
                       <div className="flex gap-1.5 flex-shrink-0">
                         {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
@@ -520,7 +521,7 @@ export default function ExamEntryPage() {
                         checked={selected[q.id] === o.id}
                         onChange={() => selectAnswer(q.id, o.id)} />
                       <span className="text-sm" style={{ color: "#37352f" }}>
-                        <strong>{String.fromCharCode(65 + oi)}.</strong> {o.text}
+                        <strong>{String.fromCharCode(65 + oi)}.</strong> <MathText text={o.text} />
                       </span>
                     </label>
                   ))}

@@ -7,6 +7,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType } from "@/lib/api";
+import { MathText } from "@/components/MathText";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -307,6 +308,7 @@ Câu 2: Đoạn dẫn cho 4 ý Đúng-Sai...
 b)[1,NB] Ý sai
 
 Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
+            <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
           </div>
           <textarea
             className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"
@@ -505,14 +507,14 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
           ) : (
             detail.questions.map((q, idx) => (
               <div key={q.id} className="rounded-xl border p-4" style={{ borderColor: "#e5e3df" }}>
-                <p className="text-sm font-medium mb-2" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: {q.text}</p>
+                <p className="text-sm font-medium mb-2" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
 
                 {q.type === "MC" && (
                   <div className="space-y-1">
                     {q.options.map(o => (
                       <div key={o.id} className="text-xs flex items-center gap-1.5"
                         style={{ color: o.id === q.studentOptionId ? (o.isCorrect ? "#16a34a" : "#dc2626") : "#a4a097" }}>
-                        {o.id === q.studentOptionId && "→ "}{o.text} {o.isCorrect && "✓"}
+                        {o.id === q.studentOptionId && "→ "}<MathText text={o.text} /> {o.isCorrect && "✓"}
                       </div>
                     ))}
                   </div>
@@ -523,7 +525,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                     {q.options.map(o => (
                       <div key={o.id} className="text-xs flex items-center gap-1.5"
                         style={{ color: o.studentAnswerTrue === o.isCorrect ? "#16a34a" : "#dc2626" }}>
-                        <strong>{o.subLabel})</strong> {o.text} — học viên chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}
+                        <strong>{o.subLabel})</strong> <MathText text={o.text} /> — học viên chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}
                       </div>
                     ))}
                   </div>
@@ -785,7 +787,7 @@ function ThiThuQuestionsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: {q.text}</p>
+                      <p className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
                       {q.type !== "MC" && (
                         <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase"
                           style={{ background: "#f6f5f4", color: "#787671" }}>
@@ -799,7 +801,7 @@ function ThiThuQuestionsPage() {
                       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
                         {q.options.map(o => (
                           <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#dc2626" }}>
-                            <span className="font-semibold">{o.subLabel})</span> {o.text}
+                            <span className="font-semibold">{o.subLabel})</span> <MathText text={o.text} />
                             <span className="font-semibold">{o.isCorrect ? "Đúng" : "Sai"}</span>
                           </div>
                         ))}
@@ -808,7 +810,7 @@ function ThiThuQuestionsPage() {
                       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
                         {q.options.map((o, oi) => (
                           <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#787671" }}>
-                            <span className="font-semibold">{String.fromCharCode(65 + oi)}.</span> {o.text} {o.isCorrect && "✓"}
+                            <span className="font-semibold">{String.fromCharCode(65 + oi)}.</span> <MathText text={o.text} /> {o.isCorrect && "✓"}
                           </div>
                         ))}
                       </div>
