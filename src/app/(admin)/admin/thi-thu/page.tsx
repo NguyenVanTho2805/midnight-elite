@@ -13,6 +13,7 @@ import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
 import { distributePoints } from "@/lib/scoreDistribution";
+import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -178,6 +179,32 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Upload ảnh minh hoạ trực tiếp cho từng câu (Cloudinary) ───────────────
+  const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const imageUploadTargetIdx = useRef<number | null>(null);
+
+  function triggerImageUpload(idx: number) {
+    imageUploadTargetIdx.current = idx;
+    imageFileInputRef.current?.click();
+  }
+
+  async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const idx = imageUploadTargetIdx.current;
+    if (!file || idx === null) return;
+    setUploadingImageIdx(idx);
+    try {
+      const result = await uploadToCloudinary(file, "exams/questions");
+      updateReviewImageUrl(idx, result.url);
+    } catch (err) {
+      showToast("Upload ảnh thất bại: " + (err instanceof Error ? err.message : "Lỗi"), false);
+    } finally {
+      setUploadingImageIdx(null);
+    }
+  }
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
@@ -503,7 +530,7 @@ b)[1,NB] Ý sai
 
 Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">File .csv/.xlsx: chỉ hỗ trợ trắc nghiệm, cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
-                  <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn (Cloudinary hoặc bất kỳ nơi lưu trữ nào), áp dụng cho cả 3 loại câu hỏi.</p>
+                  <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn, áp dụng cho cả 3 loại câu hỏi. Sau khi xem lại danh sách câu hỏi bên dưới, có thể bấm nút &quot;🖼 Tải ảnh&quot; ở từng câu để tải trực tiếp ảnh PNG/JPG/WebP thay vì dán URL.</p>
                   <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
                   <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải bên dưới (tùy chọn) để AI xác định đáp án đúng chính xác hơn — nếu không có, AI sẽ tự giải để suy đáp án, độ chính xác thấp hơn. Luôn kiểm tra lại kết quả trước khi lưu.</p>
                 </div>
@@ -578,13 +605,25 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
                       </div>
-                      <input
-                        className="w-full mb-2 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400 ml-6"
-                        style={{ width: "calc(100% - 1.5rem)" }}
-                        placeholder="Ảnh minh hoạ (URL, tùy chọn)"
-                        value={q.imageUrl ?? ""}
-                        onChange={e => updateReviewImageUrl(idx, e.target.value)}
-                      />
+                      <div className="flex items-center gap-1.5 mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
+                        <input
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          placeholder="Ảnh minh hoạ (URL, tùy chọn)"
+                          value={q.imageUrl ?? ""}
+                          onChange={e => updateReviewImageUrl(idx, e.target.value)}
+                        />
+                        {cloudinaryConfigured && (
+                          <button type="button" onClick={() => triggerImageUpload(idx)}
+                            disabled={uploadingImageIdx === idx}
+                            className="px-2 py-1 text-xs font-semibold rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
+                            {uploadingImageIdx === idx ? "⏳ Đang tải..." : "🖼 Tải ảnh"}
+                          </button>
+                        )}
+                      </div>
+                      {q.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={q.imageUrl} alt="" className="ml-6 mb-2 max-h-24 rounded border border-gray-200" />
+                      )}
                       {q.type === "ESSAY" ? (
                         <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
                       ) : q.type === "TRUE_FALSE_CLUSTER" ? (
@@ -619,6 +658,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                     </div>
                   ))}
                 </div>
+                <input ref={imageFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFileChange} />
               </div>
             )}
           </section>
