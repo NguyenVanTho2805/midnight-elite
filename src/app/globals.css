@@ -87,7 +87,13 @@
   --color-foreground: var(--foreground);
 }
 
-html, body {
+html {
+  /* Chỉ đặt overflow-x ở html (root scroller thật) — nếu đặt luôn ở body,
+     browser buộc overflow-y của body tính thành "auto" (quy tắc CSS: chỉ
+     set 1 trục thì trục còn lại tự thành auto), khiến body vô tình trở
+     thành scroll container mà position:sticky bên trong dùng làm mốc —
+     nhưng body không bao giờ tự cuộn (html mới là cái cuộn), nên mọi
+     sticky trong toàn app im lìm không dính khi cuộn trang. */
   overflow-x: hidden;
 }
 
@@ -272,7 +278,11 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
   to   { opacity: 1; transform: translateY(0); }
 }
 .page-enter {
-  animation: page-in 0.25s ease forwards;
+  /* Không dùng "forwards": giữ transform sau khi animation kết thúc sẽ tạo
+     containing block mới, làm hỏng position:sticky của MỌI phần tử con
+     trong toàn app (vd sidebar sticky ở trang thi). "to" đã khớp giá trị
+     mặc định (opacity:1, transform:none) nên bỏ forwards không gây giật hình. */
+  animation: page-in 0.25s ease;
 }
 
 /* ── Smooth number counter ─────────────────────────────────────── */

@@ -12,6 +12,7 @@ import { api, type ExamFull, type ExamQuestionInput, type CourseFull } from "@/l
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
+import { distributePoints } from "@/lib/scoreDistribution";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -26,15 +27,20 @@ function computeExamStatus(date: string, time: string, active: boolean): ExamSta
 // ─── CREATE EXAM DRAWER ───────────────────────────────────────────────────────
 const DURATIONS = ["45 phút", "60 phút", "90 phút", "120 phút", "150 phút", "180 phút"];
 
+// Định dạng file đề thi gốc dùng luồng AI (Gemini) thay vì parse cơ học —
+// khớp với SUPPORTED_AI_MIME_TYPES ở src/lib/aiExamImport.ts.
+const AI_FILE_EXTENSIONS = new Set(["pdf", "docx", "jpg", "jpeg", "png", "webp"]);
+const MAX_AI_FILE_BYTES = 4 * 1024 * 1024; // ~4MB — giới hạn body request của Vercel Serverless
+
 interface CreateForm {
   title: string; category: string; date: string; time: string;
-  duration: string; questions: string; azotaUrl: string;
+  duration: string; questions: string; totalPoints: string; azotaUrl: string;
   active: boolean; activeGuest: boolean;
 }
 
 const CREATE_INIT: CreateForm = {
   title: "", category: "ĐGNL HSA", date: "", time: "08:00",
-  duration: "90 phút", questions: "80", azotaUrl: "",
+  duration: "90 phút", questions: "80", totalPoints: "150", azotaUrl: "",
   active: true, activeGuest: true,
 };
 
@@ -86,6 +92,61 @@ function CategoryField({ value, options, onChange, className }: {
   );
 }
 
+// Dropdown giá trị số có sẵn mốc phổ biến + tùy chọn "Khác..." để gõ số tự do —
+// cùng cơ chế toggle select↔input như CategoryField ở trên, tổng quát hoá cho
+// giá trị dạng số bất kỳ (Số câu hỏi, Tổng điểm).
+function PresetSelectField({ value, presets, onChange, className, placeholder }: {
+  value: string; presets: string[]; onChange: (v: string) => void; className: string; placeholder?: string;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [custom, setCustom] = useState("");
+
+  function commit() {
+    if (custom.trim()) onChange(custom.trim());
+    setAdding(false);
+    setCustom("");
+  }
+
+  if (adding) {
+    return (
+      <div className="flex gap-2">
+        <input
+          autoFocus
+          type="number"
+          min="1"
+          className={className}
+          placeholder={placeholder ?? "Nhập số..."}
+          value={custom}
+          onChange={e => setCustom(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") { setAdding(false); setCustom(""); }
+          }}
+        />
+        <button type="button" onClick={commit}
+          className="px-3 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 flex-shrink-0">
+          Xong
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      className={className}
+      value={value}
+      onChange={e => e.target.value === "__other__" ? setAdding(true) : onChange(e.target.value)}
+    >
+      {presets.map(p => <option key={p} value={p}>{p}</option>)}
+      {value && !presets.includes(value) && <option value={value}>{value}</option>}
+      <option value="__other__">Khác…</option>
+    </select>
+  );
+}
+
+const QUESTION_COUNT_PRESETS = ["10", "12", "20", "25", "30", "40", "50", "60", "80", "100", "120", "150"];
+const TOTAL_POINTS_PRESETS = ["10", "20", "50", "100", "150", "200", "300"];
+
 function autoCode(category: string, exams: ExamRow[]): string {
   const prefix = category.includes("HSA") ? "HSA"
     : category.includes("HCM") ? "HCM"
@@ -113,7 +174,10 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
   const [parseErrs, setParseErrs]         = useState<ParseError[]>([]);
   const [fileErr, setFileErr]             = useState("");
+  const [aiLoading, setAiLoading]         = useState(false);
+  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
@@ -121,6 +185,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!open) {
       setForm(CREATE_INIT); setErrors({}); setSaving(false);
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
+      setAnswerKeyFile(null); setAiLoading(false);
     }
   }, [open]);
 
@@ -143,7 +208,20 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     setFileErr("");
     const ext = file.name.split(".").pop()?.toLowerCase();
     try {
-      if (ext === "txt") {
+      if (AI_FILE_EXTENSIONS.has(ext ?? "")) {
+        if (file.size > MAX_AI_FILE_BYTES) {
+          setFileErr("File đề thi vượt quá 4MB");
+          return;
+        }
+        setAiLoading(true);
+        try {
+          const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
+          setReviewQuestions(questions);
+          setParseErrs(errors);
+        } finally {
+          setAiLoading(false);
+        }
+      } else if (ext === "txt") {
         const text = await file.text();
         setRawText(text);
         const { questions, errors } = parseBulkText(text);
@@ -181,6 +259,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
   function updateReviewQuestion(idx: number, text: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
+  }
+  function updateReviewImageUrl(idx: number, imageUrl: string) {
+    setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, imageUrl } : q) ?? null);
   }
   function updateReviewOption(idx: number, oi: number, text: string) {
     setReviewQuestions(prev => prev?.map((q, i) =>
@@ -229,6 +310,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!form.date)         e.date  = "Chọn ngày thi";
     if (!form.questions || isNaN(+form.questions) || +form.questions <= 0)
       e.questions = "Số câu phải là số dương";
+    if (!form.totalPoints || isNaN(+form.totalPoints) || +form.totalPoints <= 0)
+      e.totalPoints = "Tổng điểm phải là số dương";
     if (form.azotaUrl && !/^https?:\/\//.test(form.azotaUrl))
       e.azotaUrl = "URL không hợp lệ";
     setErrors(e);
@@ -249,6 +332,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         time:         form.time,
         duration:     form.duration,
         questions:    +form.questions,
+        totalPoints:  +form.totalPoints || 150,
         status:       computeExamStatus(examDate, form.time, form.active),
         azotaUrl:     form.azotaUrl || null,
         participants: 0,
@@ -366,11 +450,36 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Số câu hỏi <span className="text-red-500">*</span>
                 </label>
-                <input type="number" min="1" max="300" className={inp} value={form.questions}
-                  readOnly={!!reviewQuestions?.length}
-                  onChange={e => set("questions", e.target.value)} />
+                {reviewQuestions?.length ? (
+                  <input type="number" className={inp + " bg-gray-50"} value={form.questions} readOnly />
+                ) : (
+                  <PresetSelectField className={inp + " bg-white"} value={form.questions}
+                    presets={QUESTION_COUNT_PRESETS} onChange={v => set("questions", v)} placeholder="Nhập số câu..." />
+                )}
                 {errors.questions && <p className="text-xs text-red-500 mt-1">{errors.questions}</p>}
                 {!!reviewQuestions?.length && <p className="text-xs text-gray-400 mt-1">Tự động theo số câu đã nhập bên dưới</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Tổng điểm</label>
+                <PresetSelectField className={inp + " bg-white"} value={form.totalPoints}
+                  presets={TOTAL_POINTS_PRESETS} onChange={v => set("totalPoints", v)} placeholder="Nhập tổng điểm..." />
+              </div>
+              <div className="col-span-2 flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  {+form.questions > 0 && +form.totalPoints > 0
+                    ? `Điểm mỗi câu ≈ ${(+form.totalPoints / +form.questions).toFixed(2)}`
+                    : ""}
+                </p>
+                {!!reviewQuestions?.length && (
+                  <button type="button"
+                    onClick={() => {
+                      const distributed = distributePoints(+form.totalPoints, reviewQuestions.length);
+                      setReviewQuestions(prev => prev?.map((q, i) => ({ ...q, points: distributed[i] })) ?? null);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    Áp dụng điểm cho {reviewQuestions.length} câu
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -384,6 +493,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
                 <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
                   Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
                   <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Trắc nghiệm...
+Ảnh: https://... (tùy chọn, ảnh đã tải lên sẵn)
 *A. Đáp án đúng
 B. Đáp án sai
 
@@ -393,7 +503,9 @@ b)[1,NB] Ý sai
 
 Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">File .csv/.xlsx: chỉ hỗ trợ trắc nghiệm, cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
+                  <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn (Cloudinary hoặc bất kỳ nơi lưu trữ nào), áp dụng cho cả 3 loại câu hỏi.</p>
                   <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
+                  <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải bên dưới (tùy chọn) để AI xác định đáp án đúng chính xác hơn — nếu không có, AI sẽ tự giải để suy đáp án, độ chính xác thấp hơn. Luôn kiểm tra lại kết quả trước khi lưu.</p>
                 </div>
                 <textarea
                   className={inp + " font-mono"}
@@ -402,16 +514,35 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                   value={rawText}
                   onChange={e => setRawText(e.target.value)}
                 />
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    File đáp án / hướng dẫn giải (tùy chọn — chỉ dùng khi tải file đề thi gốc bằng AI)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => answerKeyInputRef.current?.click()}
+                      className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                      {answerKeyFile ? "Đổi file đáp án" : "Chọn file đáp án"}
+                    </button>
+                    {answerKeyFile && (
+                      <span className="text-xs text-gray-500">
+                        {answerKeyFile.name} <button type="button" onClick={() => setAnswerKeyFile(null)} className="text-red-500 ml-1">✕</button>
+                      </span>
+                    )}
+                    <input ref={answerKeyInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
+                      className="hidden" onChange={e => setAnswerKeyFile(e.target.files?.[0] ?? null)} />
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={runPreview} disabled={!rawText.trim()}
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                     Xem trước câu hỏi
                   </button>
-                  <button type="button" onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                    Tải file lên
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải file lên"}
                   </button>
-                  <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx" className="hidden" onChange={handleFile} />
+                  <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx,.pdf,.docx,.jpg,.jpeg,.png,.webp"
+                    className="hidden" onChange={handleFile} disabled={aiLoading} />
                 </div>
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
               </div>
@@ -447,6 +578,13 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
                       </div>
+                      <input
+                        className="w-full mb-2 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400 ml-6"
+                        style={{ width: "calc(100% - 1.5rem)" }}
+                        placeholder="Ảnh minh hoạ (URL, tùy chọn)"
+                        value={q.imageUrl ?? ""}
+                        onChange={e => updateReviewImageUrl(idx, e.target.value)}
+                      />
                       {q.type === "ESSAY" ? (
                         <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
                       ) : q.type === "TRUE_FALSE_CLUSTER" ? (
@@ -560,7 +698,7 @@ const DEFAULT_CLUSTER_PERCENTS = ["10", "25", "50", "100"];
 
 interface EditForm {
   title: string; category: string; date: string; time: string;
-  duration: string; questions: string; azotaUrl: string;
+  duration: string; questions: string; totalPoints: string; azotaUrl: string;
   active: boolean; activeGuest: boolean;
   price: string; // rỗng = miễn phí
   courseId: string; // rỗng = không gắn khoá học nào
@@ -583,6 +721,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
   const [form, setForm]     = useState<EditForm | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof EditForm, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [applyingPoints, setApplyingPoints] = useState(false);
   const [courses, setCourses] = useState<CourseFull[]>([]);
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -597,6 +736,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         time:      exam.time,
         duration:  exam.duration,
         questions: String(exam.questions),
+        totalPoints: String(exam.totalPoints ?? 150),
         azotaUrl:     exam.azotaUrl ?? "",
         active:       exam.active,
         activeGuest:  exam.activeGuest ?? true,
@@ -639,6 +779,8 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
     if (!form.date)         e.date  = "Chọn ngày thi";
     if (!form.questions || isNaN(+form.questions) || +form.questions <= 0)
       e.questions = "Số câu phải là số dương";
+    if (!form.totalPoints || isNaN(+form.totalPoints) || +form.totalPoints <= 0)
+      e.totalPoints = "Tổng điểm phải là số dương";
     if (form.azotaUrl && !/^https?:\/\//.test(form.azotaUrl))
       e.azotaUrl = "URL không hợp lệ";
     if (form.price && (isNaN(+form.price) || +form.price < 0))
@@ -664,6 +806,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         time:      form.time,
         duration:  form.duration,
         questions: +form.questions,
+        totalPoints: +form.totalPoints,
         status:    computeExamStatus(examDate, form.time, form.active),
         azotaUrl:    form.azotaUrl || null,
         active:       form.active,
@@ -688,6 +831,23 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
       showToast("Lỗi lưu đề thi: " + (e instanceof Error ? e.message : "Unknown"), false);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleApplyPoints() {
+    if (!form || !exam) return;
+    const totalPoints = +form.totalPoints;
+    if (!totalPoints || totalPoints <= 0) return;
+    if (!confirm(`Ghi đè điểm của toàn bộ câu hỏi hiện có trong đề này theo tổng ${totalPoints} điểm?`)) return;
+    setApplyingPoints(true);
+    try {
+      const { updated } = await api.examQuestions.setPoints(exam.id, totalPoints);
+      showToast(`Đã chia đều điểm cho ${updated} câu hỏi`, true);
+      onSaved();
+    } catch (e) {
+      showToast("Áp dụng điểm thất bại: " + (e instanceof Error ? e.message : "Unknown"), false);
+    } finally {
+      setApplyingPoints(false);
     }
   }
 
@@ -791,9 +951,28 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Số câu hỏi <span className="text-red-500">*</span>
                 </label>
-                <input type="number" min="1" max="300" className={inp} value={form.questions}
-                  onChange={e => set("questions", e.target.value)} />
+                <PresetSelectField className={inp + " bg-white"} value={form.questions}
+                  presets={QUESTION_COUNT_PRESETS} onChange={v => set("questions", v)} placeholder="Nhập số câu..." />
                 {errors.questions && <p className="text-xs text-red-500 mt-1">{errors.questions}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Tổng điểm</label>
+                <PresetSelectField className={inp + " bg-white"} value={form.totalPoints}
+                  presets={TOTAL_POINTS_PRESETS} onChange={v => set("totalPoints", v)} placeholder="Nhập tổng điểm..." />
+                {errors.totalPoints && <p className="text-xs text-red-500 mt-1">{errors.totalPoints}</p>}
+              </div>
+              <div className="col-span-2 flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  {+form.questions > 0 && +form.totalPoints > 0
+                    ? `Điểm mỗi câu ≈ ${(+form.totalPoints / +form.questions).toFixed(2)}`
+                    : ""}
+                </p>
+                {exam?.hasQuestions && (
+                  <button type="button" onClick={handleApplyPoints} disabled={applyingPoints}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    {applyingPoints ? "Đang áp dụng..." : "Áp dụng điểm cho câu hỏi hiện có"}
+                  </button>
+                )}
               </div>
             </div>
           </section>

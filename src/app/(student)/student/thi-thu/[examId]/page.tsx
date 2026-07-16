@@ -452,126 +452,134 @@ export default function ExamEntryPage() {
     );
   }
 
-  // ── Taking: render toàn bộ câu hỏi trong platform + thanh sticky đáy màn hình ──
+  // ── Taking: render câu hỏi + sidebar trái sticky (đếm ngược, tiến độ, jump-grid) ──
   if (phase === "taking" && attempt?.questions) {
     const total = attempt.questions.length;
     const answeredCount = attempt.questions.filter(isQuestionAnswered).length;
     const mm = String(Math.floor(remainingSec / 60)).padStart(2, "0");
     const ss = String(remainingSec % 60).padStart(2, "0");
+    const cardStyle = { background: "#ffffff", border: "1px solid #e5e3df" };
 
     return (
-      <div className="max-w-2xl mx-auto pb-28">
+      <div className="max-w-6xl mx-auto pb-10">
         <div className="mb-5">
           <h1 className="text-xl font-extrabold" style={{ color: "#1E2938" }}>{exam.title}</h1>
           <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>Làm bài nghiêm túc — điểm được chấm và ghi nhận tự động khi nộp bài.</p>
         </div>
 
-        <div className="space-y-5">
-          {attempt.questions.map((q, idx) => (
-            <div key={q.id} id={`q-${q.id}`} className="rounded-xl p-5"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-              <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>
-                Câu {idx + 1}: <MathText text={q.text} />
-              </p>
-              {q.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={q.imageUrl} alt="" className="max-w-full rounded-lg mb-3" />
-              )}
-
-              {q.type === "ESSAY" ? (
-                <textarea
-                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400"
-                  style={{ border: "1px solid #e5e3df" }}
-                  rows={5}
-                  placeholder="Nhập câu trả lời của bạn..."
-                  value={essayText[q.id] ?? ""}
-                  onChange={e => updateEssayAnswer(q.id, e.target.value)}
-                  onBlur={() => saveEssayAnswer(q.id)}
-                />
-              ) : q.type === "TRUE_FALSE_CLUSTER" ? (
-                <div className="space-y-2">
-                  {q.options.map(o => (
-                    <div key={o.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg"
-                      style={{ border: "1px solid #e5e3df" }}>
-                      <span className="text-sm flex-1" style={{ color: "#37352f" }}>
-                        <strong>{o.subLabel})</strong> <MathText text={o.text} />
-                      </span>
-                      <div className="flex gap-1.5 flex-shrink-0">
-                        {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
-                          <button key={label} type="button"
-                            onClick={() => selectClusterAnswer(o.id, val)}
-                            className="px-3 py-1 rounded-lg text-xs font-semibold border"
-                            style={clusterAnswers[o.id] === val
-                              ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
-                              : { borderColor: "#e5e3df", color: "#787671" }}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {q.options.map((o, oi) => (
-                    <label key={o.id}
-                      className="flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer hover:bg-[#f6f5f4]"
-                      style={{ border: `1px solid ${selected[q.id] === o.id ? "#0068FF" : "#e5e3df"}` }}>
-                      <input type="radio" name={`q-${q.id}`} className="mt-0.5"
-                        checked={selected[q.id] === o.id}
-                        onChange={() => selectAnswer(q.id, o.id)} />
-                      <span className="text-sm" style={{ color: "#37352f" }}>
-                        <strong>{String.fromCharCode(65 + oi)}.</strong> <MathText text={o.text} />
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )}
+        <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
+          {/* Sidebar trái: sticky ngay cả khi cuộn — đếm ngược luôn hiện, không bị che bởi thanh điều hướng dưới.
+              Không đặt items-start ở grid cha: cột trái cần "thừa hưởng" chiều cao của cột phải (câu hỏi) để
+              còn khoảng trống mà dính (sticky) trong lúc cuộn — nếu chỉ cao bằng nội dung của chính nó thì
+              sticky sẽ hết tác dụng ngay khi cuộn qua khỏi chiều cao đó. */}
+          <div className="space-y-3 md:sticky md:top-20 md:self-start order-1">
+            <div className="rounded-xl p-4 text-center" style={cardStyle}>
+              <p className="text-xs mb-1" style={{ color: "#a4a097" }}>Thời gian còn lại</p>
+              <p className="text-3xl font-extrabold tabular-nums" style={{ color: remainingSec < 60 ? "#dc2626" : "#1E2938" }}>{mm}:{ss}</p>
             </div>
-          ))}
+
+            <div className="rounded-xl p-4" style={cardStyle}>
+              <p className="text-xs mb-1.5" style={{ color: "#a4a097" }}>Đã hoàn thành {answeredCount}/{total}</p>
+              <div className="h-1.5 rounded-full" style={{ background: "#f6f5f4" }}>
+                <div className="h-1.5 rounded-full" style={{ width: `${(answeredCount / total) * 100}%`, background: "#0068FF" }} />
+              </div>
+            </div>
+
+            <div className="rounded-xl p-4" style={cardStyle}>
+              <p className="text-xs mb-2" style={{ color: "#a4a097" }}>Chọn câu hỏi</p>
+              <div className="grid grid-cols-5 md:grid-cols-4 gap-1.5">
+                {attempt.questions.map((q, idx) => (
+                  <button key={q.id}
+                    onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                    className="w-full aspect-square rounded text-xs font-semibold"
+                    style={{
+                      background: isQuestionAnswered(q) ? "#dbeafe" : "#f6f5f4",
+                      color: isQuestionAnswered(q) ? "#0068FF" : "#787671",
+                      border: "1px solid #e5e3df",
+                    }}>
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={submitAttempt} disabled={submitting}
+              className="w-full py-3 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: "#dc2626" }}>
+              {submitting ? "Đang nộp..." : "Kết thúc bài thi"}
+            </button>
+          </div>
+
+          {/* Danh sách câu hỏi */}
+          <div className="space-y-5 order-2">
+            {attempt.questions.map((q, idx) => (
+              <div key={q.id} id={`q-${q.id}`} className="rounded-xl p-5" style={cardStyle}>
+                <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>
+                  Câu {idx + 1}: <MathText text={q.text} />
+                </p>
+                {q.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={q.imageUrl} alt="" className="max-w-full rounded-lg mb-3" />
+                )}
+
+                {q.type === "ESSAY" ? (
+                  <textarea
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400"
+                    style={{ border: "1px solid #e5e3df" }}
+                    rows={5}
+                    placeholder="Nhập câu trả lời của bạn..."
+                    value={essayText[q.id] ?? ""}
+                    onChange={e => updateEssayAnswer(q.id, e.target.value)}
+                    onBlur={() => saveEssayAnswer(q.id)}
+                  />
+                ) : q.type === "TRUE_FALSE_CLUSTER" ? (
+                  <div className="space-y-2">
+                    {q.options.map(o => (
+                      <div key={o.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg"
+                        style={{ border: "1px solid #e5e3df" }}>
+                        <span className="text-sm flex-1" style={{ color: "#37352f" }}>
+                          <strong>{o.subLabel})</strong> <MathText text={o.text} />
+                        </span>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
+                            <button key={label} type="button"
+                              onClick={() => selectClusterAnswer(o.id, val)}
+                              className="px-3 py-1 rounded-lg text-xs font-semibold border"
+                              style={clusterAnswers[o.id] === val
+                                ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                                : { borderColor: "#e5e3df", color: "#787671" }}>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {q.options.map((o, oi) => (
+                      <label key={o.id}
+                        className="flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer hover:bg-[#f6f5f4]"
+                        style={{ border: `1px solid ${selected[q.id] === o.id ? "#0068FF" : "#e5e3df"}` }}>
+                        <input type="radio" name={`q-${q.id}`} className="mt-0.5"
+                          checked={selected[q.id] === o.id}
+                          onChange={() => selectAnswer(q.id, o.id)} />
+                        <span className="text-sm" style={{ color: "#37352f" }}>
+                          <strong>{String.fromCharCode(65 + oi)}.</strong> <MathText text={o.text} />
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {startErr && (
-          <p className="fixed bottom-24 left-1/2 -translate-x-1/2 text-xs px-3 py-2 rounded-lg z-50"
+          <p className="fixed bottom-4 left-1/2 -translate-x-1/2 text-xs px-3 py-2 rounded-lg z-50"
             style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>{startErr}</p>
         )}
-
-        {/* Thanh sticky đáy màn hình: đếm ngược, tiến độ, jump-grid, nút nộp bài */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t" style={{ borderColor: "#e5e3df" }}>
-          <div className="max-w-2xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-xs" style={{ color: "#a4a097" }}>Thời gian còn lại</p>
-                <p className="text-lg font-bold" style={{ color: remainingSec < 60 ? "#dc2626" : "#1E2938" }}>{mm}:{ss}</p>
-              </div>
-              <div className="flex-1 mx-4">
-                <p className="text-xs mb-1" style={{ color: "#a4a097" }}>Đã hoàn thành {answeredCount}/{total}</p>
-                <div className="h-1.5 rounded-full" style={{ background: "#f6f5f4" }}>
-                  <div className="h-1.5 rounded-full" style={{ width: `${(answeredCount / total) * 100}%`, background: "#0068FF" }} />
-                </div>
-              </div>
-              <button onClick={submitAttempt} disabled={submitting}
-                className="px-5 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-                style={{ background: "#dc2626" }}>
-                {submitting ? "..." : "Kết thúc"}
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {attempt.questions.map((q, idx) => (
-                <button key={q.id}
-                  onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                  className="w-7 h-7 rounded text-xs font-semibold flex-shrink-0"
-                  style={{
-                    background: isQuestionAnswered(q) ? "#dbeafe" : "#f6f5f4",
-                    color: isQuestionAnswered(q) ? "#0068FF" : "#787671",
-                    border: "1px solid #e5e3df",
-                  }}>
-                  {idx + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
     );
   }
@@ -733,7 +741,7 @@ export default function ExamEntryPage() {
                   {h.submittedAt ? new Date(h.submittedAt).toLocaleString("vi-VN") : "—"}
                   {h.status === "expired" && " (hết giờ)"}
                 </span>
-                <span className="font-bold" style={{ color: "#0068FF" }}>{h.score ?? 0}/150</span>
+                <span className="font-bold" style={{ color: "#0068FF" }}>{h.score ?? 0}/{exam.totalPoints}</span>
               </div>
             ))}
           </div>

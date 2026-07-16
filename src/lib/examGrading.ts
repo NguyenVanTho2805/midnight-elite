@@ -176,14 +176,14 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
 // Cập nhật ExamResult (bảng xếp hạng) theo đúng quy tắc "giữ điểm tốt nhất
 // qua các lần làm lại" đã dùng xuyên suốt hệ thống — dùng chung cho nộp bài
 // lần đầu và cho chấm lại tự luận sau đó.
-async function upsertBestResult(tx: Tx, attempt: { userId: string; examId: string }, score: number, at: Date) {
+async function upsertBestResult(tx: Tx, attempt: { userId: string; examId: string }, score: number, totalPoints: number, at: Date) {
   const existing = await tx.examResult.findUnique({
     where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
   });
 
   if (!existing) {
     await tx.examResult.create({
-      data: { userId: attempt.userId, examId: attempt.examId, score, totalPoints: 150, completedAt: at },
+      data: { userId: attempt.userId, examId: attempt.examId, score, totalPoints, completedAt: at },
     });
     await tx.exam.update({ where: { id: attempt.examId }, data: { participants: { increment: 1 } } });
   } else if (score > existing.score) {
@@ -205,16 +205,19 @@ export async function finalizeAttempt(
     const attempt = await tx.examAttempt.findUnique({ where: { id: attemptId } });
     if (!attempt || attempt.status !== "in_progress") return attempt;
 
+    const exam = await tx.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } });
+    const totalPoints = exam?.totalPoints ?? 150;
+
     const rawEarned = await computeRawEarned(tx, attempt);
     const rawTotal = attempt.totalPoints ?? 0;
-    const score = rawTotal > 0 ? Math.round((rawEarned / rawTotal) * 150 * 100) / 100 : 0;
+    const score = rawTotal > 0 ? Math.round((rawEarned / rawTotal) * totalPoints * 100) / 100 : 0;
 
     const updated = await tx.examAttempt.update({
       where: { id: attemptId },
       data: { status: opts.status, submittedAt: opts.at, score },
     });
 
-    await upsertBestResult(tx, attempt, score, opts.at);
+    await upsertBestResult(tx, attempt, score, totalPoints, opts.at);
 
     return updated;
   });
@@ -228,12 +231,15 @@ export async function regradeAttempt(attemptId: string) {
     const attempt = await tx.examAttempt.findUnique({ where: { id: attemptId } });
     if (!attempt || attempt.status === "in_progress") return attempt;
 
+    const exam = await tx.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } });
+    const totalPoints = exam?.totalPoints ?? 150;
+
     const rawEarned = await computeRawEarned(tx, attempt);
     const rawTotal = attempt.totalPoints ?? 0;
-    const score = rawTotal > 0 ? Math.round((rawEarned / rawTotal) * 150 * 100) / 100 : 0;
+    const score = rawTotal > 0 ? Math.round((rawEarned / rawTotal) * totalPoints * 100) / 100 : 0;
 
     const updated = await tx.examAttempt.update({ where: { id: attemptId }, data: { score } });
-    await upsertBestResult(tx, attempt, score, attempt.submittedAt ?? new Date());
+    await upsertBestResult(tx, attempt, score, totalPoints, attempt.submittedAt ?? new Date());
 
     return updated;
   });

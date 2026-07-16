@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const allowed = ["title", "category", "date", "time", "duration", "questions",
                      "status", "azotaUrl", "active", "activeGuest", "guestCanTake", "courseId", "price",
                      "clusterScorePercents", "password", "showLeaderboard",
-                     "answerVisibility", "hideAnswerForWrong"];
+                     "answerVisibility", "hideAnswerForWrong", "totalPoints"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
@@ -55,6 +55,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!valid) {
         return NextResponse.json({ error: "Thang % Đúng-Sai phải là mảng 4 số từ 0-100" }, { status: 400 });
       }
+    }
+    if (data.totalPoints !== undefined
+        && !(typeof data.totalPoints === "number" && Number.isFinite(data.totalPoints) && data.totalPoints > 0)) {
+      return NextResponse.json({ error: "Tổng điểm phải là số dương" }, { status: 400 });
     }
     if (data.answerVisibility !== undefined
         && !["never", "after_submit", "after_exam_ends"].includes(data.answerVisibility as string)) {

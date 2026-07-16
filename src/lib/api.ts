@@ -39,6 +39,21 @@ export const api = {
       apiFetch<ExamFull>(`/api/exams/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/exams/${id}`, { method: "DELETE" }),
+    // Trích xuất câu hỏi bằng AI từ file đề thi gốc (PDF/Word/ảnh) — không dùng
+    // apiFetch vì nó ép Content-Type: application/json, không hợp với FormData.
+    aiExtractQuestions: async (examFile: File, answerKeyFile?: File): Promise<AiExtractResult> => {
+      const formData = new FormData();
+      formData.append("examFile", examFile);
+      if (answerKeyFile) formData.append("answerKeyFile", answerKeyFile);
+      const res = await fetch(`${BASE}/api/exams/ai-extract-questions`, {
+        method: "POST", credentials: "same-origin", body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error ?? "Trích xuất thất bại");
+      }
+      return res.json() as Promise<AiExtractResult>;
+    },
   },
   // ── Exam guest access (duyệt phí thủ công cho guest) ────────────────────────
   examGuestAccess: {
@@ -78,6 +93,11 @@ export const api = {
       apiFetch<{ created: number }>(
         `/api/exams/${examId}/questions/bulk-create`,
         { method: "POST", body: JSON.stringify({ items }) }
+      ),
+    setPoints: (examId: string, totalPoints: number) =>
+      apiFetch<{ updated: number; totalPoints: number }>(
+        `/api/exams/${examId}/questions/set-points`,
+        { method: "PUT", body: JSON.stringify({ totalPoints }) }
       ),
   },
   // ── Exam attempts nhìn từ phía admin/giáo viên ──────────────────────────────
@@ -177,6 +197,7 @@ export interface ExamFull {
   showLeaderboard?: boolean;
   answerVisibility?: "never" | "after_submit" | "after_exam_ends";
   hideAnswerForWrong?: boolean;
+  totalPoints: number; // tổng điểm hiển thị cuối cùng cho học viên — mặc định 150
 }
 
 export interface ExamGuestAccessFull {
@@ -241,6 +262,13 @@ export interface ExamQuestionFull {
 export interface ExamQuestionInput {
   text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
+}
+
+// Kết quả trích xuất câu hỏi bằng AI — cùng shape với ParseResult của
+// examQuestionParser.ts để màn hình review dùng chung không cần sửa.
+export interface AiExtractResult {
+  questions: ExamQuestionInput[];
+  errors: { block: number; message: string }[];
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài

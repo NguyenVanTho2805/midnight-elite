@@ -5,6 +5,28 @@ import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
 
+// Sinh mã đề duy nhất ở server (không tin mã client tự tính) — client chỉ thấy
+// đề của mình (ownerScopeWhere), nên đếm số đề theo prefix ở phía client dễ bị
+// trùng mã với đề của giáo viên/admin khác (Exam.code có ràng buộc @unique).
+function examCodePrefix(category: string): string {
+  if (category.includes("HSA")) return "HSA";
+  if (category.includes("HCM")) return "HCM";
+  if (category.includes("TSA")) return "TSA";
+  if (category.includes("BCA")) return "BCA";
+  return "THPT";
+}
+
+async function generateUniqueExamCode(category: string): Promise<string> {
+  const prefix = examCodePrefix(category);
+  const count = await prisma.exam.count({ where: { code: { startsWith: `${prefix}.` } } });
+  for (let i = 0; i < 50; i++) {
+    const code = `${prefix}.${String(count + 1 + i).padStart(2, "0")}`;
+    const exists = await prisma.exam.findUnique({ where: { code }, select: { id: true } });
+    if (!exists) return code;
+  }
+  throw new Error("Không tạo được mã đề duy nhất");
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
@@ -56,12 +78,13 @@ export async function POST(req: NextRequest) {
     // Allowlist — chỉ nhận fields đúng với Prisma schema
     const allowed = ["id", "code", "title", "category", "date", "time", "duration",
                      "questions", "status", "azotaUrl", "participants", "active", "activeGuest", "guestCanTake",
-                     "createdAt", "courseId", "price", "password", "showLeaderboard"];
+                     "createdAt", "courseId", "price", "password", "showLeaderboard", "totalPoints"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
     data.ownerId = auth.userId;
+    data.code = await generateUniqueExamCode(typeof data.category === "string" ? data.category : "");
     if (typeof data.password === "string") data.password = data.password.trim() || null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

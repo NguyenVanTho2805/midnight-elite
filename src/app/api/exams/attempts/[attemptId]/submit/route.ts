@@ -27,9 +27,12 @@ export async function POST(
       finalized = (await finalizeAttempt(attemptId, { status: "submitted", at: cappedAt })) ?? attempt;
     }
 
-    const bestResult = await prisma.examResult.findUnique({
-      where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
-    });
+    const [bestResult, exam] = await Promise.all([
+      prisma.examResult.findUnique({
+        where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
+      }),
+      prisma.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } }),
+    ]);
     const rankBase = bestResult?.score ?? finalized.score ?? 0;
     const above = await prisma.examResult.count({
       where: { examId: attempt.examId, score: { gt: rankBase } },
@@ -37,7 +40,7 @@ export async function POST(
 
     return NextResponse.json({
       score: finalized.score,
-      totalPoints: 150,
+      totalPoints: exam?.totalPoints ?? 150,
       rank: above + 1,
     });
   } catch (e) {

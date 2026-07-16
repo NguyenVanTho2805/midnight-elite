@@ -50,6 +50,7 @@ export async function POST(
             order,
             type: q.type,
             text: q.text,
+            imageUrl: q.imageUrl?.trim() || null,
             points: 1,
             options: {
               create: q.options.map((o, idx) => ({
@@ -62,7 +63,8 @@ export async function POST(
             },
           },
         });
-      })
+      }),
+      { timeout: 30000 }
     );
 
     return NextResponse.json({ imported: questions.length, errors });

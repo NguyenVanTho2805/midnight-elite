@@ -181,6 +181,12 @@ model Exam {
   // (xem CLUSTER_PERCENT_BY_CORRECT_COUNT trong src/lib/examGrading.ts).
   clusterScorePercents Json?
 
+  // Tổng điểm hiển thị cuối cùng cho học viên (thang quy đổi, KHÁC với tổng
+  // điểm thô = sum(ExamQuestion.points)) — điểm thô luôn được rescale về
+  // đúng thang này khi chấm (xem finalizeAttempt/regradeAttempt trong
+  // src/lib/examGrading.ts). Mặc định 150 để khớp hành vi hardcode trước đây.
+  totalPoints Float @default(150)
+
   // null = không yêu cầu mật khẩu. Có giá trị = học viên phải nhập đúng mật
   // khẩu này mới bắt đầu làm bài được (đọc tại chỗ trong phòng thi có giám
   // sát, giống Azota) — KHÔNG BAO GIỜ trả field này qua API GET, chỉ trả

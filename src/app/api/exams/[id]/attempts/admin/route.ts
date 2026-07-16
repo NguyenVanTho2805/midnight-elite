@@ -14,7 +14,7 @@ export async function GET(
 
   const { id: examId } = await params;
 
-  const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
+  const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true, totalPoints: true } });
   if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
   if (!ownsResource(auth, exam.ownerId)) {
     return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
@@ -25,7 +25,7 @@ export async function GET(
       where: { examId, status: { not: "in_progress" } },
       orderBy: { submittedAt: "desc" },
       select: {
-        id: true, status: true, score: true, totalPoints: true,
+        id: true, status: true, score: true,
         startedAt: true, submittedAt: true, tabSwitchCount: true,
         user: { select: { id: true, name: true, email: true } },
       },
@@ -47,7 +47,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      attempts.map(a => ({ ...a, ungradedEssayCount: ungradedCountByAttempt.get(a.id) ?? 0 }))
+      attempts.map(a => ({ ...a, totalPoints: exam.totalPoints, ungradedEssayCount: ungradedCountByAttempt.get(a.id) ?? 0 }))
     );
   } catch (e) {
     console.error("[GET /api/exams/[id]/attempts/admin]", e);

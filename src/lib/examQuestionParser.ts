@@ -13,6 +13,7 @@ export interface ParsedQuestion {
   text: string;
   type: QuestionType;
   points?: number;
+  imageUrl?: string;
   options: ParsedOption[]; // rỗng với ESSAY
 }
 
@@ -79,6 +80,9 @@ const OPTION_LINE = /^(\*)?[A-D][.):]\s*(.+)$/i;
 const ANSWER_LINE = /^Đ[áa]p\s*[áa]n\s*(?:đ[úu]ng)?\s*[:.]?\s*([A-D])/i;
 // Bắt buộc có ngoặc vuông [..] để không đụng OPTION_LINE (a)/b)/... không ngoặc vẫn là MC)
 const CLUSTER_LINE = /^(\*)?([a-d])\)\s*\[[^\]]*\]\s*(.+)$/;
+// Dòng ảnh minh hoạ — URL đã host sẵn (Cloudinary/bất kỳ), giống field "Ảnh minh hoạ (URL)"
+// ở form soạn từng câu. Chỉ dòng riêng biệt "Ảnh: <url>" mới được nhận diện.
+const IMAGE_LINE = /^Ảnh\s*[:.]\s*(\S+)$/i;
 
 export function parseBulkText(raw: string): ParseResult {
   const blocks = raw
@@ -127,8 +131,11 @@ function parseMCBlock(lines: string[]): { question: ParsedQuestion } | { error: 
   let answerLetter: string | null = null;
   let markedIdx: number | null = null;
   let markedCount = 0;
+  let imageUrl: string | undefined;
 
   for (const line of lines) {
+    const imageMatch = line.match(IMAGE_LINE);
+    if (imageMatch) { imageUrl = imageMatch[1]; continue; }
     const answerMatch = line.match(ANSWER_LINE);
     if (answerMatch) { answerLetter = answerMatch[1].toUpperCase(); continue; }
     const optionMatch = line.match(OPTION_LINE);
@@ -158,13 +165,16 @@ function parseMCBlock(lines: string[]): { question: ParsedQuestion } | { error: 
   }
   options[answerIdx].isCorrect = true;
 
-  return { question: { text: questionText, type: "MC", options } };
+  return { question: { text: questionText, type: "MC", imageUrl, options } };
 }
 
 function parseClusterBlock(lines: string[]): { question: ParsedQuestion } | { error: string } {
   const options: ParsedOption[] = [];
+  let imageUrl: string | undefined;
 
   const questionText = extractQuestionText(lines, line => {
+    const imageMatch = line.match(IMAGE_LINE);
+    if (imageMatch) { imageUrl = imageMatch[1]; return true; }
     const m = line.match(CLUSTER_LINE);
     if (!m) return false;
     const [, star, label, text] = m;
@@ -181,18 +191,21 @@ function parseClusterBlock(lines: string[]): { question: ParsedQuestion } | { er
     return { error: "4 ý phải đủ và đúng thứ tự nhãn a) b) c) d), không trùng/thiếu nhãn nào" };
   }
 
-  return { question: { text: questionText, type: "TRUE_FALSE_CLUSTER", options } };
+  return { question: { text: questionText, type: "TRUE_FALSE_CLUSTER", imageUrl, options } };
 }
 
 function parseEssayBlock(lines: string[]): { question: ParsedQuestion } | { error: string } {
-  // Chỉ dòng đầu bỏ tiền tố "Câu N:", các dòng sau giữ nguyên
-  const text = lines
-    .map((l, i) => (i === 0 ? l.replace(QUESTION_START, "") : l))
-    .join(" ")
-    .trim();
+  let imageUrl: string | undefined;
+  const textLines: string[] = [];
+  lines.forEach((l, i) => {
+    const imageMatch = l.match(IMAGE_LINE);
+    if (imageMatch) { imageUrl = imageMatch[1]; return; }
+    textLines.push(i === 0 ? l.replace(QUESTION_START, "") : l);
+  });
+  const text = textLines.join(" ").trim();
 
   if (!text) return { error: "Không tìm thấy nội dung câu hỏi" };
-  return { question: { text, type: "ESSAY", options: [] } };
+  return { question: { text, type: "ESSAY", imageUrl, options: [] } };
 }
 
 // Dùng cho file Excel/CSV — chỉ hỗ trợ trắc nghiệm (MC), dòng đầu là header

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
@@ -264,16 +264,107 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
   );
 }
 
+// Định dạng file đề thi gốc dùng luồng AI (Gemini) thay vì parse cơ học —
+// khớp với SUPPORTED_AI_MIME_TYPES ở src/lib/aiExamImport.ts.
+const AI_FILE_EXTENSIONS = new Set(["pdf", "docx", "jpg", "jpeg", "png", "webp"]);
+const MAX_AI_FILE_BYTES = 4 * 1024 * 1024; // ~4MB — giới hạn body request của Vercel Serverless
+
 // ─── DRAWER: nhập hàng loạt ────────────────────────────────────────────────────
-function BulkImportDrawer({ open, onClose, onImport, saving, result }: {
+function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, showToast, onSaved }: {
   open: boolean;
   onClose: () => void;
   onImport: (text: string) => void;
   saving: boolean;
   result: { imported: number; errors: { block: number; message: string }[] } | null;
+  examId: string;
+  showToast: (msg: string, ok?: boolean) => void;
+  onSaved: () => void;
 }) {
   const [text, setText] = useState("");
-  useEffect(() => { if (open) setText(""); }, [open]);
+
+  // ── Trích xuất bằng AI từ file đề thi gốc (PDF/Word/ảnh) — có bước review
+  // trước khi lưu, tách biệt hoàn toàn với luồng dán text ở trên (lưu ngay). ──
+  const [aiLoading, setAiLoading]         = useState(false);
+  const [aiSaving, setAiSaving]           = useState(false);
+  const [aiFileErr, setAiFileErr]         = useState("");
+  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
+  const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
+  const [parseErrs, setParseErrs]         = useState<{ block: number; message: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const answerKeyInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setText(""); setAiFileErr(""); setAnswerKeyFile(null);
+      setReviewQuestions(null); setParseErrs([]); setAiLoading(false); setAiSaving(false);
+    }
+  }, [open]);
+
+  async function handleAiFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAiFileErr("");
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!ext || !AI_FILE_EXTENSIONS.has(ext)) {
+      setAiFileErr("Chỉ hỗ trợ file .pdf, .docx, .jpg, .png, .webp");
+      return;
+    }
+    if (file.size > MAX_AI_FILE_BYTES) {
+      setAiFileErr("File đề thi vượt quá 4MB");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
+      setReviewQuestions(questions);
+      setParseErrs(errors);
+    } catch (err) {
+      setAiFileErr(err instanceof Error ? err.message : "Trích xuất thất bại");
+    } finally {
+      setAiLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function updateReviewQuestion(idx: number, text: string) {
+    setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
+  }
+  function updateReviewOption(idx: number, oi: number, text: string) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: q.options.map((o, j) => j === oi ? { ...o, text } : o) } : q
+    ) ?? null);
+  }
+  function setReviewCorrect(idx: number, oi: number) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: q.options.map((o, j) => ({ ...o, isCorrect: j === oi })) } : q
+    ) ?? null);
+  }
+  function toggleReviewClusterCorrect(idx: number, oi: number) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: q.options.map((o, j) => j === oi ? { ...o, isCorrect: !o.isCorrect } : o) } : q
+    ) ?? null);
+  }
+  function removeReviewQuestion(idx: number) {
+    setReviewQuestions(prev => {
+      const next = prev?.filter((_, i) => i !== idx) ?? null;
+      return next && next.length > 0 ? next : null;
+    });
+  }
+
+  async function saveAiQuestions() {
+    if (!reviewQuestions || reviewQuestions.length === 0) return;
+    setAiSaving(true);
+    try {
+      await api.examQuestions.bulkCreate(examId, reviewQuestions);
+      showToast(`Đã thêm ${reviewQuestions.length} câu hỏi`, true);
+      setReviewQuestions(null); setParseErrs([]); setAnswerKeyFile(null);
+      onSaved();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Lưu câu hỏi thất bại", false);
+    } finally {
+      setAiSaving(false);
+    }
+  }
 
   return (
     <>
@@ -300,6 +391,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result }: {
           <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
             Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
             <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Trắc nghiệm...
+Ảnh: https://... (tùy chọn, ảnh đã tải lên sẵn)
 *A. Đáp án đúng
 B. Đáp án sai
 
@@ -308,6 +400,7 @@ Câu 2: Đoạn dẫn cho 4 ý Đúng-Sai...
 b)[1,NB] Ý sai
 
 Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
+            <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn, áp dụng cho cả 3 loại câu hỏi.</p>
             <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
           </div>
           <textarea
@@ -332,6 +425,115 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
               )}
             </div>
           )}
+
+          <div className="border-t pt-4" style={{ borderColor: "#e5e3df" }}>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Hoặc tải file đề thi gốc (AI)</h3>
+            {reviewQuestions === null ? (
+              <div className="space-y-3">
+                <p className="text-xs" style={{ color: "#787671" }}>
+                  Tải file đề thi gốc (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải (tùy chọn) để AI xác định đáp án đúng chính xác hơn. Kết quả luôn qua bước xem lại trước khi lưu.
+                </p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    File đáp án / hướng dẫn giải (tùy chọn)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => answerKeyInputRef.current?.click()}
+                      className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                      {answerKeyFile ? "Đổi file đáp án" : "Chọn file đáp án"}
+                    </button>
+                    {answerKeyFile && (
+                      <span className="text-xs text-gray-500">
+                        {answerKeyFile.name} <button type="button" onClick={() => setAnswerKeyFile(null)} className="text-red-500 ml-1">✕</button>
+                      </span>
+                    )}
+                    <input ref={answerKeyInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
+                      className="hidden" onChange={e => setAnswerKeyFile(e.target.files?.[0] ?? null)} />
+                  </div>
+                </div>
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
+                  className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                  {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải file đề thi lên"}
+                </button>
+                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
+                  className="hidden" onChange={handleAiFile} disabled={aiLoading} />
+                {aiFileErr && <p className="text-xs text-red-500">{aiFileErr}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>
+                    {reviewQuestions.length} câu hỏi hợp lệ — xem lại trước khi lưu
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); }}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      ← Quay lại
+                    </button>
+                    <button type="button" onClick={saveAiQuestions} disabled={aiSaving}
+                      className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+                      {aiSaving ? "Đang lưu..." : "Lưu câu hỏi này"}
+                    </button>
+                  </div>
+                </div>
+
+                {parseErrs.length > 0 && (
+                  <ul className="text-xs text-red-600 space-y-1 p-2 rounded-lg" style={{ background: "#fef2f2" }}>
+                    {parseErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
+                  </ul>
+                )}
+
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {reviewQuestions.map((q, idx) => (
+                    <div key={idx} className="rounded-lg p-3 border border-gray-200 bg-gray-50">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-xs font-semibold text-gray-400 mt-2">Câu {idx + 1}</span>
+                        <textarea
+                          className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400"
+                          rows={2}
+                          value={q.text}
+                          onChange={e => updateReviewQuestion(idx, e.target.value)}
+                        />
+                        <button type="button" onClick={() => removeReviewQuestion(idx)}
+                          className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
+                      </div>
+                      {q.type === "ESSAY" ? (
+                        <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
+                      ) : q.type === "TRUE_FALSE_CLUSTER" ? (
+                        <div className="grid grid-cols-2 gap-1.5 pl-6">
+                          {q.options.map((o, oi) => (
+                            <div key={oi} className="flex items-center gap-1.5">
+                              <input type="checkbox" checked={o.isCorrect} onChange={() => toggleReviewClusterCorrect(idx, oi)} />
+                              <span className="text-xs font-semibold text-gray-400 w-3.5">{o.subLabel}</span>
+                              <input
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                value={o.text}
+                                onChange={e => updateReviewOption(idx, oi, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5 pl-6">
+                          {q.options.map((o, oi) => (
+                            <div key={oi} className="flex items-center gap-1.5">
+                              <input type="radio" checked={o.isCorrect} onChange={() => setReviewCorrect(idx, oi)} />
+                              <span className="text-xs font-semibold text-gray-400 w-3.5">{String.fromCharCode(65 + oi)}</span>
+                              <input
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                value={o.text}
+                                onChange={e => updateReviewOption(idx, oi, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>
@@ -841,6 +1043,9 @@ function ThiThuQuestionsPage() {
         onImport={handleBulkImport}
         saving={bulkSaving}
         result={bulkResult}
+        examId={id}
+        showToast={showToast}
+        onSaved={load}
       />
       <DelModal target={del} onClose={() => setDel(null)} onConfirm={handleDelete} />
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}

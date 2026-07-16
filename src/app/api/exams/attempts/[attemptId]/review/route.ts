@@ -92,7 +92,7 @@ export async function GET(
     return NextResponse.json({
       attemptId: attempt.id,
       score: attempt.score,
-      totalPoints: 150,
+      totalPoints: exam.totalPoints,
       canSeeAnswers,
       questions,
     });

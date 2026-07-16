@@ -52,6 +52,7 @@ export async function POST(
             order,
             type,
             text: q.text.trim(),
+            imageUrl: q.imageUrl?.trim() || null,
             points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
             options: {
               create: q.options.map((o, idx) => ({
@@ -64,7 +65,8 @@ export async function POST(
             },
           },
         });
-      })
+      }),
+      { timeout: 30000 }
     );
 
     return NextResponse.json({ created: items.length });

@@ -26,11 +26,12 @@ export async function GET(
     }
 
     if (attempt.status !== "in_progress") {
+      const examMeta = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } });
       return NextResponse.json({
         attemptId: attempt.id,
         status: attempt.status,
         score: attempt.score,
-        totalPoints: 150,
+        totalPoints: examMeta?.totalPoints ?? 150,
       });
     }
 

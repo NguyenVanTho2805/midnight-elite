@@ -21,7 +21,7 @@ export async function GET(
     });
     if (!attempt) return NextResponse.json({ error: "Không tìm thấy bài thi" }, { status: 404 });
 
-    const exam = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { ownerId: true } });
+    const exam = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { ownerId: true, totalPoints: true } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     if (!ownsResource(auth, exam.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
@@ -59,7 +59,7 @@ export async function GET(
       id: attempt.id,
       status: attempt.status,
       score: attempt.score,
-      totalPoints: 150,
+      totalPoints: exam.totalPoints,
       startedAt: attempt.startedAt,
       submittedAt: attempt.submittedAt,
       tabSwitchCount: attempt.tabSwitchCount,

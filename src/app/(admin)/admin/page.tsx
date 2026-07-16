@@ -191,8 +191,10 @@ const BULK_DEFAULT = "Xin chào các bạn học viên, thầy/cô nhắc nhở 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const isSuper        = user?.adminRole === "admin_super";
-  const canViewRevenue = hasPermission(user, PERMISSIONS.VIEW_REVENUE);
+  const isSuper         = user?.adminRole === "admin_super";
+  const isTeacher       = user?.adminRole === "teacher";
+  const canViewRevenue  = hasPermission(user, PERMISSIONS.VIEW_REVENUE);
+  const canViewStudents = hasPermission(user, PERMISSIONS.VIEW_STUDENTS);
 
   const [analytics,      setAnalytics]      = useState<Analytics | null>(null);
   const [students,       setStudents]       = useState<ApiStudent[]>([]);
@@ -211,14 +213,17 @@ export default function AdminDashboardPage() {
       setLoading(true);
       try {
         const calls: Promise<Response>[] = [
-          fetch("/api/admin/students", { credentials: "same-origin" }),
+          ...(canViewStudents ? [fetch("/api/admin/students", { credentials: "same-origin" })] : []),
           ...(canViewRevenue ? [fetch("/api/admin/analytics", { credentials: "same-origin" })] : []),
         ];
         const results = await Promise.all(calls);
-        const studentsData = results[0].ok ? await results[0].json() : [];
-        setStudents(Array.isArray(studentsData) ? studentsData : []);
-        if (canViewRevenue && results[1]?.ok) {
-          setAnalytics(await results[1].json());
+        if (canViewStudents) {
+          const studentsData = results[0].ok ? await results[0].json() : [];
+          setStudents(Array.isArray(studentsData) ? studentsData : []);
+        }
+        const analyticsIdx = canViewStudents ? 1 : 0;
+        if (canViewRevenue && results[analyticsIdx]?.ok) {
+          setAnalytics(await results[analyticsIdx].json());
         }
       } catch {
         // dashboard is best-effort
@@ -227,7 +232,7 @@ export default function AdminDashboardPage() {
       }
     }
     load();
-  }, [authLoading, canViewRevenue]);
+  }, [authLoading, canViewRevenue, canViewStudents]);
 
   // Chỉ hiện học sinh thực sự cần can thiệp (GPA < 7), tối đa 4
   const dangerStudents = useMemo(() =>
@@ -321,8 +326,10 @@ export default function AdminDashboardPage() {
         <div className="px-3 py-1.5 rounded-full text-xs font-bold"
           style={isSuper
             ? { background: "rgba(254,153,0,0.12)", color: "#FE9900", border: "1px solid rgba(254,153,0,0.3)" }
+            : isTeacher
+            ? { background: "rgba(22,163,74,0.12)", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }
             : { background: "rgba(96,165,250,0.12)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.3)" }}>
-          {isSuper ? "Cấp 1 - Super Admin" : "Cấp 2 - Content Admin"}
+          {isSuper ? "Cấp 1 - Super Admin" : isTeacher ? "Giáo viên" : "Cấp 2 - Content Admin"}
         </div>
       </div>
 
@@ -450,6 +457,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Danger Zone ─────────────────────────────────────────────────────── */}
+      {canViewStudents && (
       <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
@@ -530,6 +538,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Quick Actions ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
