@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-g
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
+import { toSlug } from "@/lib/slug";
 
 // Sinh mã đề duy nhất ở server (không tin mã client tự tính) — client chỉ thấy
 // đề của mình (ownerScopeWhere), nên đếm số đề theo prefix ở phía client dễ bị
@@ -25,6 +26,18 @@ async function generateUniqueExamCode(category: string): Promise<string> {
     if (!exists) return code;
   }
   throw new Error("Không tạo được mã đề duy nhất");
+}
+
+// Client gửi id gợi ý (slug từ tiêu đề) nhưng Exam.id là khoá chính unique —
+// nếu trùng tiêu đề (hoặc trùng slug) với đề đã có, tự thêm hậu tố -2, -3...
+async function generateUniqueExamId(hint: string): Promise<string> {
+  const base = toSlug(hint) || "de-thi";
+  for (let i = 0; i < 50; i++) {
+    const id = i === 0 ? base : `${base}-${i + 1}`;
+    const exists = await prisma.exam.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) return id;
+  }
+  throw new Error("Không tạo được mã định danh đề thi duy nhất");
 }
 
 export async function GET(req: NextRequest) {
@@ -85,6 +98,9 @@ export async function POST(req: NextRequest) {
     }
     data.ownerId = auth.userId;
     data.code = await generateUniqueExamCode(typeof data.category === "string" ? data.category : "");
+    data.id = await generateUniqueExamId(typeof data.id === "string" && data.id
+      ? data.id
+      : (typeof data.title === "string" ? data.title : ""));
     if (typeof data.password === "string") data.password = data.password.trim() || null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
