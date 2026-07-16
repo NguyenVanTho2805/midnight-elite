@@ -9,8 +9,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     ...init,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? "Request failed");
+    // HTTP/2 luôn trả statusText rỗng — không rơi về chuỗi rỗng nếu JSON parse lỗi.
+    const fallback = `Request failed (${res.status})`;
+    const err = await res.json().catch(() => ({ error: fallback }));
+    throw new Error(err.error || fallback);
   }
   return res.json() as Promise<T>;
 }
@@ -49,8 +51,13 @@ export const api = {
         method: "POST", credentials: "same-origin", body: formData,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error ?? "Trích xuất thất bại");
+        // HTTP/2 luôn trả statusText rỗng, và lỗi 504 timeout của Vercel không
+        // phải JSON — không được rơi về chuỗi rỗng, phải luôn có nội dung rõ ràng.
+        const fallback = res.status === 504
+          ? "Quá thời gian xử lý — thử lại với file ít câu hơn hoặc ít ảnh hơn"
+          : `Trích xuất thất bại (lỗi ${res.status})`;
+        const err = await res.json().catch(() => ({ error: fallback }));
+        throw new Error(err.error || fallback);
       }
       return res.json() as Promise<AiExtractResult>;
     },

@@ -3,8 +3,9 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { extractQuestionsFromFiles, SUPPORTED_AI_MIME_TYPES, type AiInputFile } from "@/lib/aiExamImport";
 
-// Trích xuất bằng Gemini có thể mất 20-40s với đề dài — cần headroom hơn mặc định.
-export const maxDuration = 60;
+// Trích xuất bằng Gemini có thể mất >60s với đề nhiều câu/nhiều ảnh (đã đo thực tế
+// timeout ở 60s với đề 28 câu có ảnh biểu đồ) — cần headroom lớn hơn hẳn mặc định.
+export const maxDuration = 180;
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024; // ~4MB — giới hạn body request của Vercel Serverless
 
