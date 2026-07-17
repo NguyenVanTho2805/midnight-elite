@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import { useProgress } from "@/hooks/useProgress";
 import {
-  Flash, Alarm, Edit, ClipboardList, Play,
+  Flash, Alarm, Edit, ClipboardList, Play, Pause,
+  SkipBack, SkipForward, Volume, VolumeOff, Maximize,
   FileDownload, Eye, Lock, CheckCircle,
   ChevronDown, ArrowLeft, ArrowRight,
   StickyNote,
@@ -117,6 +118,13 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
+function formatTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }: {
   videoUrl?: string | null;
   userEmail?: string;
@@ -124,47 +132,92 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
   onAutoComplete?: () => void;
   lessonId?: string;
 }) {
-  const ytId        = videoUrl ? extractYouTubeId(videoUrl) : null;
+  const ytId         = videoUrl ? extractYouTubeId(videoUrl) : null;
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef   = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const playerRef   = useRef<any>(null);
-  const firedRef    = useRef(false);
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const saveRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const playerRef      = useRef<any>(null);
+  const firedRef        = useRef(false);
+  const syncTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const completeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const saveTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [ready, setReady]     = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [total, setTotal]     = useState(0);
+  const [muted, setMuted]     = useState(false);
+  const [volume, setVolume]   = useState(100);
+
+  // Luôn dùng 1 loại player (YT.Player + control bar tự dựng) bất kể có
+  // onAutoComplete hay không — trước đây đổi hẳn sang <iframe> thường khi
+  // isCompleted=true khiến React unmount player cũ, video bị reset về đầu
+  // đúng lúc vừa đạt 80% (mất vị trí đang xem).
   useEffect(() => {
-    if (!ytId || !onAutoComplete || !containerRef.current) return;
+    if (!ytId || !containerRef.current) return;
     firedRef.current = false;
 
+    // YT.Player thay hẳn node được truyền vào bằng 1 iframe khác — nếu truyền
+    // thẳng containerRef.current (node do React quản lý), lần effect chạy lại
+    // thứ 2 do React Strict Mode (dev) sẽ gắn player vào 1 node đã bị thay thế
+    // ở lượt trước, hỏng luôn playerRef (thiếu hẳn method như playVideo). Tạo
+    // 1 node con mới, dùng-1-lần cho mỗi lượt effect để tránh việc này.
+    const mountEl = document.createElement("div");
+    mountEl.style.width = "100%";
+    mountEl.style.height = "100%";
+    containerRef.current.appendChild(mountEl);
+
     function createPlayer() {
-      if (!containerRef.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      playerRef.current = new (window as any).YT.Player(containerRef.current, {
+      playerRef.current = new (window as any).YT.Player(mountEl, {
         videoId:    ytId,
-        playerVars: { rel: 0, modestbranding: 1 },
+        // controls:0 tắt hẳn thanh điều khiển/logo YouTube gốc — control bar
+        // hiển thị cho học viên là tự dựng bên dưới, gọi qua JS API.
+        playerVars: {
+          rel: 0, modestbranding: 1, controls: 0, disablekb: 1,
+          playsinline: 1, showinfo: 0, iv_load_policy: 3, cc_load_policy: 0,
+        },
         events: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onReady(e: any) {
+            setReady(true);
+            setTotal(e.target.getDuration());
+            setVolume(e.target.getVolume());
+          },
           onStateChange(e: { data: number }) {
-            if (e.data === 1) { // playing
+            const isPlaying = e.data === 1; // YT.PlayerState.PLAYING
+            setPlaying(isPlaying);
+
+            if (isPlaying) {
+              // Đồng bộ thanh trượt/thời gian hiển thị
+              syncTimerRef.current = setInterval(() => {
+                if (!playerRef.current || typeof playerRef.current.getCurrentTime !== "function") return;
+                setCurrent(playerRef.current.getCurrentTime());
+                setTotal(playerRef.current.getDuration());
+              }, 500);
+
               // Track 80% auto-complete
-              timerRef.current = setInterval(() => {
-                if (!playerRef.current || firedRef.current) {
-                  clearInterval(timerRef.current!);
-                  return;
-                }
-                if (typeof playerRef.current.getCurrentTime !== "function" || typeof playerRef.current.getDuration !== "function") {
-                  return;
-                }
-                const ratio = playerRef.current.getCurrentTime() / playerRef.current.getDuration();
-                if (ratio >= 0.8) {
-                  firedRef.current = true;
-                  clearInterval(timerRef.current!);
-                  onAutoComplete?.();
-                }
-              }, 2000);
+              if (onAutoComplete) {
+                completeTimerRef.current = setInterval(() => {
+                  if (!playerRef.current || firedRef.current) {
+                    if (completeTimerRef.current) clearInterval(completeTimerRef.current);
+                    return;
+                  }
+                  if (typeof playerRef.current.getCurrentTime !== "function" || typeof playerRef.current.getDuration !== "function") {
+                    return;
+                  }
+                  const ratio = playerRef.current.getCurrentTime() / playerRef.current.getDuration();
+                  if (ratio >= 0.8) {
+                    firedRef.current = true;
+                    if (completeTimerRef.current) clearInterval(completeTimerRef.current);
+                    onAutoComplete?.();
+                  }
+                }, 2000);
+              }
 
               // Save watchedSeconds mỗi 30 giây
               if (lessonId) {
-                saveRef.current = setInterval(() => {
+                saveTimerRef.current = setInterval(() => {
                   if (!playerRef.current || typeof playerRef.current.getCurrentTime !== "function") return;
                   const secs = Math.floor(playerRef.current.getCurrentTime());
                   fetch(`/api/progress/${lessonId}`, {
@@ -176,13 +229,16 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
                 }, 30_000);
               }
             } else {
-              if (timerRef.current) clearInterval(timerRef.current);
-              if (saveRef.current)  clearInterval(saveRef.current);
+              if (syncTimerRef.current)     clearInterval(syncTimerRef.current);
+              if (completeTimerRef.current) clearInterval(completeTimerRef.current);
+              if (saveTimerRef.current)     clearInterval(saveTimerRef.current);
             }
           },
         },
       });
     }
+
+    let cancelled = false;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
@@ -199,38 +255,115 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
       const prev = w.onYouTubeIframeAPIReady;
       w.onYouTubeIframeAPIReady = () => {
         if (typeof prev === "function") prev();
-        createPlayer();
+        if (!cancelled) createPlayer();
       };
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (saveRef.current)  clearInterval(saveRef.current);
+      cancelled = true;
+      if (syncTimerRef.current)     clearInterval(syncTimerRef.current);
+      if (completeTimerRef.current) clearInterval(completeTimerRef.current);
+      if (saveTimerRef.current)     clearInterval(saveTimerRef.current);
       playerRef.current?.destroy?.();
+      playerRef.current = null;
+      mountEl.remove();
+      setReady(false);
     };
-  }, [ytId, onAutoComplete, lessonId]);
+    // onAutoComplete cố ý không nằm trong deps — chỉ đọc giá trị mới nhất qua
+    // closure, không cần huỷ/tạo lại player khi cờ isCompleted đổi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ytId, lessonId]);
+
+  function togglePlay() {
+    if (!ready || !playerRef.current) return;
+    if (playing) playerRef.current.pauseVideo();
+    else playerRef.current.playVideo();
+  }
+  function skip(delta: number) {
+    if (!ready || !playerRef.current || typeof playerRef.current.getCurrentTime !== "function") return;
+    const next = Math.max(0, Math.min(total, playerRef.current.getCurrentTime() + delta));
+    playerRef.current.seekTo(next, true);
+    setCurrent(next);
+  }
+  function seekTo(sec: number) {
+    if (!ready || !playerRef.current) return;
+    playerRef.current.seekTo(sec, true);
+    setCurrent(sec);
+  }
+  function toggleMute() {
+    if (!ready || !playerRef.current) return;
+    if (muted) { playerRef.current.unMute(); setMuted(false); }
+    else { playerRef.current.mute(); setMuted(true); }
+  }
+  function changeVolume(v: number) {
+    if (!ready || !playerRef.current) return;
+    playerRef.current.setVolume(v);
+    setVolume(v);
+    if (v === 0) { playerRef.current.mute(); setMuted(true); }
+    else if (muted) { playerRef.current.unMute(); setMuted(false); }
+  }
+  function toggleFullscreen() {
+    if (!wrapperRef.current) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else wrapperRef.current.requestFullscreen();
+  }
 
   if (ytId) {
     return (
-      <div className="rounded-xl overflow-hidden relative"
+      <div ref={wrapperRef} className="rounded-xl overflow-hidden relative bg-black"
         style={{ border: "1px solid #e5e3df" }}>
         <div className="relative" style={{ paddingBottom: "56.25%" }}>
-          {onAutoComplete
-            ? <div ref={containerRef} className="absolute inset-0 w-full h-full" />
-            : <iframe
-                className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`}
-                title="Video bài giảng"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-          }
+          {/* pointer-events-none trên wrapper để click luôn đi qua control bar
+              tự dựng, không lọt xuống iframe YouTube bên dưới */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div ref={containerRef} className="w-full h-full" />
+          </div>
           {userEmail && (
-            <div className="absolute bottom-8 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10"
-              style={{ color: "#000" }}>
+            <div className="absolute bottom-12 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10"
+              style={{ color: "#fff" }}>
               {userEmail}
             </div>
           )}
+          {!ready && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            </div>
+          )}
+          {/* Control bar tự dựng — thay thế hoàn toàn control bar gốc của YouTube
+              (đã tắt bằng controls=0) nên không còn logo/link "Watch on YouTube". */}
+          <div className="absolute inset-x-0 bottom-0 z-20 px-3 py-2 flex items-center gap-2"
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }}>
+            <button type="button" onClick={() => skip(-10)} className="text-white/90 hover:text-white p-1" aria-label="Lùi 10 giây">
+              <SkipBack size={18} />
+            </button>
+            <button type="button" onClick={togglePlay} className="text-white p-1" aria-label={playing ? "Tạm dừng" : "Phát"}>
+              {playing ? <Pause size={20} /> : <Play size={20} />}
+            </button>
+            <button type="button" onClick={() => skip(10)} className="text-white/90 hover:text-white p-1" aria-label="Tiến 10 giây">
+              <SkipForward size={18} />
+            </button>
+            <input
+              type="range" min={0} max={total || 0} step={0.5} value={current}
+              onChange={e => seekTo(+e.target.value)}
+              className="flex-1 accent-white h-1 cursor-pointer"
+              aria-label="Thanh trượt video"
+            />
+            <span className="text-white/90 text-xs tabular-nums whitespace-nowrap">
+              {formatTime(current)} / {formatTime(total)}
+            </span>
+            <button type="button" onClick={toggleMute} className="text-white/90 hover:text-white p-1" aria-label={muted ? "Bật tiếng" : "Tắt tiếng"}>
+              {muted || volume === 0 ? <VolumeOff size={18} /> : <Volume size={18} />}
+            </button>
+            <input
+              type="range" min={0} max={100} step={1} value={muted ? 0 : volume}
+              onChange={e => changeVolume(+e.target.value)}
+              className="w-16 accent-white h-1 cursor-pointer hidden sm:block"
+              aria-label="Âm lượng"
+            />
+            <button type="button" onClick={toggleFullscreen} className="text-white/90 hover:text-white p-1" aria-label="Toàn màn hình">
+              <Maximize size={18} />
+            </button>
+          </div>
         </div>
       </div>
     );
