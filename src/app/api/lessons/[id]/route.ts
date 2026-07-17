@@ -84,13 +84,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
     }
 
-    const courseId = lesson.chapter.section.courseId;
-    await prisma.$transaction(async (tx) => {
-      await tx.lesson.delete({ where: { id } });
-      if (courseId) {
-        await tx.course.update({ where: { id: courseId }, data: { lessons: { decrement: 1 } } });
-      }
-    });
+    // Course.lessons là số bài quảng cáo admin tự đặt — không tự đồng bộ theo
+    // số Lesson thật (xem ghi chú tương tự ở route tạo bài học).
+    await prisma.lesson.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Xoá bài học thất bại" }, { status: 400 });

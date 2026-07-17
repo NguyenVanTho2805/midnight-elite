@@ -48,15 +48,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       chapterId,
     };
 
-    const courseId = chapterWithCourse.section.courseId;
-
-    // Tạo lesson và đồng bộ course.lessons trong cùng 1 transaction — tránh đếm bị lệch
-    const lesson = await prisma.$transaction(async (tx) => {
-      const created = await tx.lesson.create({ data: createData as Parameters<typeof prisma.lesson.create>[0]["data"] });
-      if (courseId) {
-        await tx.course.update({ where: { id: courseId }, data: { lessons: { increment: 1 } } });
-      }
-      return created;
+    // Course.lessons là số bài quảng cáo admin tự đặt (vd đề mục tiêu "103 bài"
+    // dù giáo trình thật chưa soạn hết) — KHÔNG tự đồng bộ theo số Lesson thật,
+    // nếu không số quảng cáo sẽ bị trôi lệch âm thầm mỗi lần soạn bài.
+    const lesson = await prisma.lesson.create({
+      data: createData as Parameters<typeof prisma.lesson.create>[0]["data"],
     });
 
     return NextResponse.json(lesson, { status: 201 });
