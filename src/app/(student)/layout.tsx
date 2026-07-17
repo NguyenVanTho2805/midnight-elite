@@ -21,7 +21,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <div className="min-h-screen" style={{ background: "#ffffff" }}>
         <VerifyEmailBanner />
         <Navbar />
-        <main className="pb-24 md:pb-8 px-4 md:px-8 py-6 max-w-6xl mx-auto">
+        <main className="pb-24 md:pb-8 px-4 md:px-8 py-6 max-w-screen-2xl mx-auto">
           <Suspense fallback={
             <div className="animate-pulse space-y-4">
               {[1, 2, 3].map(i => (
