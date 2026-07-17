@@ -15,6 +15,7 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
+type SidebarTabKey = "tailieu" | "baitap" | "ghichu";
 
 interface Material { name: string; url: string; type?: string }
 
@@ -796,7 +797,10 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const [showBuyPopup, setShowBuyPopup] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<SidebarTabKey>("tailieu");
   const { completedIds, markComplete, unmarkComplete } = useProgress();
+
+  useEffect(() => { setActiveTab("tailieu"); }, [params.lessonId]);
 
   useEffect(() => {
     const saved = localStorage.getItem("lessonSidebar");
@@ -920,6 +924,12 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const completedCount = allLessons.filter(l => completedIds.has(l.id)).length;
   const isCompleted    = completedIds.has(params.lessonId);
 
+  const sidebarTabs: { key: SidebarTabKey; label: string; icon: React.ReactNode }[] = [
+    { key: "tailieu", label: "Tài liệu", icon: <FileDownload size={14} /> },
+    ...(lesson.type !== "quiz" ? [{ key: "baitap" as const, label: "Bài tập", icon: <Edit size={14} /> }] : []),
+    { key: "ghichu", label: "Ghi chú", icon: <StickyNote size={14} /> },
+  ];
+
   return (
     <div className="-mx-4 md:-mx-8 -my-6">
       {showBuyPopup && (
@@ -972,98 +982,81 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           {lesson.type === "quiz"     && <QuizContent azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
           {lesson.type === "document" && <QuizContent />}
 
-          {/* Lesson info */}
-          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                  <TypeBadge type={lesson.type} />
-                  <span className="text-xs font-mono px-2 py-0.5 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
-                    {lesson.code}
-                  </span>
-                </div>
-                <h1 className="text-xl font-extrabold leading-snug" style={{ color: "#1E2938" }}>{lesson.title}</h1>
-                <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "#9CA3AF" }}>
-                  {lesson.teacherName && <span>{lesson.teacherName}</span>}
-                  {lesson.duration && <span className="flex items-center gap-1"><Play size={11} />{lesson.duration}</span>}
-                  <span className="flex items-center gap-1"><Eye size={11} />{lesson.views?.toLocaleString()} lượt xem</span>
-                  {lesson.materials.length > 0 && <span className="flex items-center gap-1"><FileDownload size={11} />{lesson.materials.length} tài liệu</span>}
-                </div>
+          {/* Lesson info — không đóng khung, chỉ là phần mở rộng tự nhiên của video */}
+          <div className="flex items-start justify-between gap-3 pt-1">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                <TypeBadge type={lesson.type} />
+                <span className="text-xs font-mono px-2 py-0.5 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+                  {lesson.code}
+                </span>
               </div>
-              <button
-                onClick={() => isCompleted ? unmarkComplete(params.lessonId) : markComplete(params.lessonId)}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                style={{
-                  background: isCompleted ? "#D1FAE5" : "#f6f5f4",
-                  border: `1px solid ${isCompleted ? "#86efac" : "#e5e3df"}`,
-                  color: isCompleted ? "#065F46" : "#9CA3AF",
-                }}>
-                <CheckCircle size={14} />
-                {isCompleted ? "Đã hoàn thành ✓" : "Đánh dấu xong"}
-              </button>
-            </div>
-          </div>
-
-          {/* Bài tập */}
-          {lesson.type !== "quiz" && (
-            <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-              <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
-                <Edit size={14} style={{ color: "#FE9900" }} />
-                <span className="text-xs font-bold" style={{ color: "#FE9900" }}>Bài tập</span>
+              <h1 className="text-xl font-extrabold leading-snug" style={{ color: "#1E2938" }}>{lesson.title}</h1>
+              <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "#9CA3AF" }}>
+                {lesson.teacherName && <span>{lesson.teacherName}</span>}
+                {lesson.duration && <span className="flex items-center gap-1"><Play size={11} />{lesson.duration}</span>}
+                <span className="flex items-center gap-1"><Eye size={11} />{lesson.views?.toLocaleString()} lượt xem</span>
+                {lesson.materials.length > 0 && <span className="flex items-center gap-1"><FileDownload size={11} />{lesson.materials.length} tài liệu</span>}
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#00A63D" }} />
+                  Đang theo dõi phiên học · Thiết bị 1/2
+                </span>
               </div>
-              <div className="p-4"><TabBaiTap azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} /></div>
             </div>
-          )}
+            <button
+              onClick={() => isCompleted ? unmarkComplete(params.lessonId) : markComplete(params.lessonId)}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+              style={{
+                background: isCompleted ? "#D1FAE5" : "#f6f5f4",
+                border: `1px solid ${isCompleted ? "#86efac" : "#e5e3df"}`,
+                color: isCompleted ? "#065F46" : "#9CA3AF",
+              }}>
+              <CheckCircle size={14} />
+              {isCompleted ? "Đã hoàn thành ✓" : "Đánh dấu xong"}
+            </button>
+          </div>
 
-          {/* Tài liệu */}
+          {/* Tài liệu / Bài tập / Ghi chú — gộp thành 1 khối duy nhất dạng tab
+              thay vì 3 ô riêng biệt xếp chồng, đỡ rối mắt hơn. */}
           <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
-              <FileDownload size={14} style={{ color: "#0068FF" }} />
-              <span className="text-xs font-bold" style={{ color: "#0068FF" }}>Tài liệu</span>
+            <div className="flex" style={{ borderBottom: "1px solid #e5e3df" }}>
+              {sidebarTabs.map(t => (
+                <button key={t.key} type="button" onClick={() => setActiveTab(t.key)}
+                  className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold transition-colors"
+                  style={{
+                    borderBottom: `2px solid ${activeTab === t.key ? "#0068FF" : "transparent"}`,
+                    marginBottom: "-1px",
+                    color: activeTab === t.key ? "#0068FF" : "#9CA3AF",
+                  }}>
+                  {t.icon}
+                  {t.label}
+                </button>
+              ))}
             </div>
-            <div className="p-4"><TabTaiLieu materials={lesson.materials} /></div>
+            <div className="p-4">
+              {activeTab === "tailieu" && <TabTaiLieu materials={lesson.materials} />}
+              {activeTab === "baitap"  && <TabBaiTap azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
+              {activeTab === "ghichu"  && <TabGhiChu lessonId={params.lessonId} adminNote={dbLesson.adminNote} />}
+            </div>
           </div>
 
-          {/* Ghi chú */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
-              <StickyNote size={14} style={{ color: "#6B7280" }} />
-              <span className="text-xs font-bold" style={{ color: "#6B7280" }}>Ghi chú</span>
-            </div>
-            <div className="p-4"><TabGhiChu lessonId={params.lessonId} adminNote={dbLesson.adminNote} /></div>
-          </div>
-
-          {/* Security */}
-          <div className="rounded-xl p-3" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#00A63D" }} />
-              <span className="text-xs font-semibold" style={{ color: "#00A63D" }}>Đang theo dõi phiên học</span>
-            </div>
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>Heartbeat · Thiết bị 1/2 · AES-128</p>
-          </div>
-
-          {/* Prev / Next */}
-          <div className="flex gap-3 pb-6">
+          {/* Prev / Next — chỉ 1 dòng phân cách mảnh, không phải 2 ô riêng */}
+          <div className="flex items-stretch gap-4 pt-4 pb-6" style={{ borderTop: "1px solid #e5e3df" }}>
             {prevLesson ? (
-              <Link href={`/student/bai-giang/${prevLesson.id}`}
-                className="flex-1 p-4 rounded-xl text-left"
-                style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+              <Link href={`/student/bai-giang/${prevLesson.id}`} className="flex-1 min-w-0 group">
                 <p className="text-xs mb-1 flex items-center gap-1" style={{ color: "#9CA3AF" }}>
                   <ArrowLeft size={12} /> Bài trước
                 </p>
-                <p className="text-sm font-semibold truncate" style={{ color: "#1E2938" }}>{prevLesson.title}</p>
-                <TypeBadge type={prevLesson.type} small />
+                <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "#1E2938" }}>{prevLesson.title}</p>
               </Link>
             ) : <div className="flex-1" />}
+            <div className="w-px" style={{ background: "#e5e3df" }} />
             {nextLesson ? (
-              <Link href={`/student/bai-giang/${nextLesson.id}`}
-                className="flex-1 p-4 rounded-xl text-right"
-                style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+              <Link href={`/student/bai-giang/${nextLesson.id}`} className="flex-1 min-w-0 text-right group">
                 <p className="text-xs mb-1 flex items-center gap-1 justify-end" style={{ color: "#9CA3AF" }}>
                   Bài tiếp <ArrowRight size={12} />
                 </p>
-                <p className="text-sm font-semibold truncate" style={{ color: "#1E2938" }}>{nextLesson.title}</p>
-                <div className="flex justify-end mt-1"><TypeBadge type={nextLesson.type} small /></div>
+                <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "#1E2938" }}>{nextLesson.title}</p>
               </Link>
             ) : <div className="flex-1" />}
           </div>
