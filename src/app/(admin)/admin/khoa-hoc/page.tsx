@@ -45,13 +45,18 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
-  // Load categories từ DB
+  // Load categories từ DB — hợp nhất với danh mục tĩnh (không thay thế hẳn),
+  // nếu không category mặc định của form ("ĐGNL HSA") có thể biến mất khỏi
+  // danh sách option khi DB chưa có khoá nào thuộc category đó. <select> HTML
+  // khi đó âm thầm hiển thị fallback sang option khác trong khi state form
+  // vẫn giữ giá trị cũ không còn hợp lệ — admin tưởng đã chọn đúng nhưng thực
+  // ra lưu sai category.
   useEffect(() => {
     fetch("/api/categories")
       .then(r => r.ok ? r.json() : { categories: [] })
       .then(d => {
         const cats = (d.categories as { name: string }[]).map(c => c.name);
-        if (cats.length > 0) setCategoryOptions(cats);
+        if (cats.length > 0) setCategoryOptions([...new Set([...ADMIN_CATEGORIES, ...cats])]);
       })
       .catch(() => {});
   }, []);
