@@ -7,7 +7,7 @@ import PopupBuyRequired from "@/components/PopupBuyRequired";
 import { useProgress } from "@/hooks/useProgress";
 import {
   Flash, Alarm, Edit, ClipboardList, Play, Pause,
-  SkipBack, SkipForward, Volume, VolumeOff, Maximize,
+  SkipBack, SkipForward, Volume, VolumeOff, Maximize, Settings,
   FileDownload, Eye, Lock, CheckCircle,
   ChevronDown, ArrowLeft, ArrowRight,
   StickyNote,
@@ -149,6 +149,8 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
   const [total, setTotal]     = useState(0);
   const [muted, setMuted]     = useState(false);
   const [volume, setVolume]   = useState(100);
+  const [speed, setSpeed]     = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
   // Luôn dùng 1 loại player (YT.Player + control bar tự dựng) bất kể có
   // onAutoComplete hay không — trước đây đổi hẳn sang <iframe> thường khi
@@ -308,6 +310,12 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
     if (document.fullscreenElement) document.exitFullscreen();
     else wrapperRef.current.requestFullscreen();
   }
+  function changeSpeed(rate: number) {
+    if (!ready || !playerRef.current) return;
+    playerRef.current.setPlaybackRate(rate);
+    setSpeed(rate);
+    setShowSpeedMenu(false);
+  }
 
   if (ytId) {
     return (
@@ -330,10 +338,21 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
               <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             </div>
           )}
+          {/* Nút Play lớn giữa màn hình khi video đang dừng — bấm để phát,
+              không lộ khung preview gốc của YouTube phía dưới. */}
+          {ready && !playing && (
+            <button type="button" onClick={togglePlay} aria-label="Phát"
+              className="absolute inset-0 z-10 flex items-center justify-center group">
+              <span className="w-16 h-16 rounded-full flex items-center justify-center transition-transform group-hover:scale-105"
+                style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.3)" }}>
+                <Play size={26} style={{ color: "#fff", marginLeft: 3 }} />
+              </span>
+            </button>
+          )}
           {/* Control bar tự dựng — thay thế hoàn toàn control bar gốc của YouTube
               (đã tắt bằng controls=0) nên không còn logo/link "Watch on YouTube". */}
           <div className="absolute inset-x-0 bottom-0 z-20 px-3 py-2 flex items-center gap-2"
-            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0))" }}>
+            style={{ background: "rgba(15,15,15,0.85)" }}>
             <button type="button" onClick={() => skip(-10)} className="text-white/90 hover:text-white p-1" aria-label="Lùi 10 giây">
               <SkipBack size={18} />
             </button>
@@ -361,6 +380,27 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
               className="w-16 accent-white h-1 cursor-pointer hidden sm:block"
               aria-label="Âm lượng"
             />
+            <div className="relative">
+              <button type="button" onClick={() => setShowSpeedMenu(v => !v)}
+                className="text-white/90 hover:text-white p-1" aria-label="Tốc độ phát">
+                <Settings size={18} />
+              </button>
+              {showSpeedMenu && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowSpeedMenu(false)} />
+                  <div className="absolute bottom-full right-0 mb-2 z-40 rounded-lg overflow-hidden text-xs"
+                    style={{ background: "rgba(20,20,20,0.95)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => (
+                      <button key={r} type="button" onClick={() => changeSpeed(r)}
+                        className="block w-full text-right px-4 py-1.5 whitespace-nowrap hover:bg-white/10"
+                        style={{ color: r === speed ? "#0068FF" : "#fff", fontWeight: r === speed ? 700 : 400 }}>
+                        {r === 1 ? "Chuẩn" : `${r}x`}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button type="button" onClick={toggleFullscreen} className="text-white/90 hover:text-white p-1" aria-label="Toàn màn hình">
               <Maximize size={18} />
             </button>
