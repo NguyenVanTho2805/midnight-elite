@@ -5,7 +5,7 @@ import Link from "next/link";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
 import { useAuth } from "@/contexts/AuthContext";
-import type { ExamStatus } from "@/lib/examData";
+import { computeExamStatus, type ExamStatus } from "@/lib/examData";
 
 interface MyResult {
   examId: string; score: number; totalPoints: number; rank: number;
@@ -37,7 +37,10 @@ export default function ThiThuPage() {
       }).catch(() => {});
   }, [user]);
 
-  const exams = apiExams.map(e => ({ ...e, status: e.status as ExamStatus, myResult: myResults[e.id] }));
+  // Tính status theo thời gian thực thay vì tin field Exam.status lưu tĩnh
+  // trong DB — field đó chỉ được ghi lúc tạo/sửa đề rồi đứng yên, khiến đề đã
+  // đến giờ thi vẫn hiện "Sắp diễn ra" và khoá nhầm nút vào thi.
+  const exams = apiExams.map(e => ({ ...e, status: computeExamStatus(e.date, e.time, e.active), myResult: myResults[e.id] }));
   const filtered = cat === "Tất cả" ? exams : exams.filter(e => e.category === cat);
 
   if (examsLoading) {

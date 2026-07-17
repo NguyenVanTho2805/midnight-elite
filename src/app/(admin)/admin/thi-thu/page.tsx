@@ -5,7 +5,7 @@ import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { type ExamStatus } from "@/lib/examData";
+import { type ExamStatus, computeExamStatus } from "@/lib/examData";
 import { CATEGORY_GRADIENT, ADMIN_CATEGORIES } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
 import { api, type ExamFull, type ExamQuestionInput, type CourseFull } from "@/lib/api";
@@ -16,14 +16,6 @@ import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 
 type ExamRow = ExamFull & { status: ExamStatus };
-
-function computeExamStatus(date: string, time: string, active: boolean): ExamStatus {
-  if (!active) return "completed";
-  const [day, month, year] = (date || "01/01/2000").split("/");
-  const [hh, mm] = (time || "00:00").split(":");
-  const examDt = new Date(+year, +month - 1, +day, +hh, +mm);
-  return examDt <= new Date() ? "available" : "upcoming";
-}
 
 // ─── CREATE EXAM DRAWER ───────────────────────────────────────────────────────
 const DURATIONS = ["45 phút", "60 phút", "90 phút", "120 phút", "150 phút", "180 phút"];

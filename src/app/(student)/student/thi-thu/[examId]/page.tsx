@@ -166,6 +166,16 @@ export default function ExamEntryPage() {
     if (!attempt || submitting) return;
     setSubmitting(true);
     try {
+      // saveEssayAnswer chỉ lưu lúc rời ô nhập (blur) — nếu học viên gõ xong
+      // câu tự luận rồi bấm "Kết thúc bài thi" ngay mà chưa từng blur, câu trả
+      // lời chỉ tồn tại trong state cục bộ, chưa từng gửi lên server. Flush lại
+      // toàn bộ câu tự luận đang có trước khi nộp để không mất bài làm.
+      const essayEntries = Object.entries(essayText).filter(([, text]) => text.trim());
+      await Promise.all(
+        essayEntries.map(([questionId, text]) =>
+          api.examAttempts.answerEssay(attempt.attemptId, questionId, text).catch(() => {})
+        )
+      );
       const result = await api.examAttempts.submit(attempt.attemptId);
       setMyResult({ score: result.score, totalPoints: result.totalPoints, rank: result.rank });
       setPhase("done");
