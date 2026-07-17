@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { addCoins } from "@/lib/wallet";
 import { LESSON_REWARD } from "@/lib/wallet-constants";
+
+const LESSON_REWARD_REASON = "lesson_reward";
 
 // POST /api/progress/[lessonId] — đánh dấu bài học đã hoàn thành (kèm watchedSeconds tùy chọn)
 export async function POST(
@@ -31,24 +32,37 @@ export async function POST(
     if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
   }
 
-  // Phát hiện lần đầu hoàn thành trước khi upsert
-  const existing = await prisma.lessonProgress.findUnique({
-    where:  { userId_lessonId: { userId: session.userId, lessonId } },
-    select: { userId: true },
-  });
-  const isFirstCompletion = !existing;
+  // Thưởng coin chỉ 1 lần/bài học — dựa vào đã từng có giao dịch thưởng cho
+  // lessonId này chưa (KHÔNG dựa vào LessonProgress còn tồn tại hay không, vì
+  // DELETE xoá hẳn row khi "bỏ đánh dấu" — nếu dựa vào đó, đánh dấu lại sau khi
+  // bỏ đánh dấu sẽ bị coi là "lần đầu" và cộng coin lặp lại vô hạn).
+  const { row, coinsEarned } = await prisma.$transaction(async (tx) => {
+    const alreadyRewarded = await tx.coinTransaction.findFirst({
+      where: { userId: session.userId, reason: LESSON_REWARD_REASON, refId: lessonId },
+      select: { id: true },
+    });
 
-  const row = await prisma.lessonProgress.upsert({
-    where:  { userId_lessonId: { userId: session.userId, lessonId } },
-    create: { userId: session.userId, lessonId, watchedSeconds },
-    update: { completedAt: new Date(), watchedSeconds },
-  });
+    const row = await tx.lessonProgress.upsert({
+      where:  { userId_lessonId: { userId: session.userId, lessonId } },
+      create: { userId: session.userId, lessonId, watchedSeconds },
+      update: { completedAt: new Date(), watchedSeconds },
+    });
 
-  let coinsEarned = 0;
-  if (isFirstCompletion) {
-    await addCoins(session.userId, LESSON_REWARD, "lesson_reward", lessonId);
-    coinsEarned = LESSON_REWARD;
-  }
+    let coinsEarned = 0;
+    if (!alreadyRewarded) {
+      await tx.wallet.upsert({
+        where: { userId: session.userId },
+        create: { userId: session.userId, balance: LESSON_REWARD },
+        update: { balance: { increment: LESSON_REWARD } },
+      });
+      await tx.coinTransaction.create({
+        data: { userId: session.userId, amount: LESSON_REWARD, reason: LESSON_REWARD_REASON, refId: lessonId },
+      });
+      coinsEarned = LESSON_REWARD;
+    }
+
+    return { row, coinsEarned };
+  });
 
   return NextResponse.json({ ...row, coinsEarned });
 }
