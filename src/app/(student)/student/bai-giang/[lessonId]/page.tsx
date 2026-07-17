@@ -142,6 +142,11 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
   const syncTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const completeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const saveTimerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafIdRef        = useRef<number | null>(null);
+  const lastSyncRef     = useRef<{ time: number; ts: number }>({ time: 0, ts: 0 });
+  const seekingRef      = useRef(false);
+  const speedRef        = useRef(1);
+  const hideTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [ready, setReady]     = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -151,6 +156,29 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
   const [volume, setVolume]   = useState(100);
   const [speed, setSpeed]     = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+
+  // Tự ẩn control bar sau 2.5s không tương tác trong lúc đang phát — giữ hiện
+  // liên tục khi đang dừng hoặc đang mở menu tốc độ, giống player chuyên nghiệp
+  // thay vì 1 thanh dán cứng cố định.
+  useEffect(() => {
+    if (!playing || showSpeedMenu) {
+      setControlsVisible(true);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      return;
+    }
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 2500);
+    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
+  }, [playing, showSpeedMenu]);
+
+  function bumpControls() {
+    if (!playing || showSpeedMenu) return;
+    setControlsVisible(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 2500);
+  }
 
   // Luôn dùng 1 loại player (YT.Player + control bar tự dựng) bất kể có
   // onAutoComplete hay không — trước đây đổi hẳn sang <iframe> thường khi
@@ -192,12 +220,27 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
             setPlaying(isPlaying);
 
             if (isPlaying) {
-              // Đồng bộ thanh trượt/thời gian hiển thị
+              // Nội suy thời gian hiển thị bằng requestAnimationFrame (mượt, ~60fps)
+              // thay vì poll getCurrentTime() liên tục — postMessage qua YouTube
+              // iframe khá tốn, dồn dập gọi mỗi frame sẽ giật. Chỉ poll thật mỗi 1s
+              // để hiệu chỉnh lệch, còn lại nội suy dựa trên đồng hồ hệ thống.
+              if (playerRef.current && typeof playerRef.current.getCurrentTime === "function") {
+                lastSyncRef.current = { time: playerRef.current.getCurrentTime(), ts: performance.now() };
+              }
+              function tick() {
+                if (!seekingRef.current) {
+                  const elapsed = (performance.now() - lastSyncRef.current.ts) / 1000;
+                  setCurrent(lastSyncRef.current.time + elapsed * speedRef.current);
+                }
+                rafIdRef.current = requestAnimationFrame(tick);
+              }
+              rafIdRef.current = requestAnimationFrame(tick);
+
               syncTimerRef.current = setInterval(() => {
                 if (!playerRef.current || typeof playerRef.current.getCurrentTime !== "function") return;
-                setCurrent(playerRef.current.getCurrentTime());
+                lastSyncRef.current = { time: playerRef.current.getCurrentTime(), ts: performance.now() };
                 setTotal(playerRef.current.getDuration());
-              }, 500);
+              }, 1000);
 
               // Track 80% auto-complete
               if (onAutoComplete) {
@@ -232,6 +275,7 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
                 }, 30_000);
               }
             } else {
+              if (rafIdRef.current)         cancelAnimationFrame(rafIdRef.current);
               if (syncTimerRef.current)     clearInterval(syncTimerRef.current);
               if (completeTimerRef.current) clearInterval(completeTimerRef.current);
               if (saveTimerRef.current)     clearInterval(saveTimerRef.current);
@@ -264,6 +308,7 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
 
     return () => {
       cancelled = true;
+      if (rafIdRef.current)         cancelAnimationFrame(rafIdRef.current);
       if (syncTimerRef.current)     clearInterval(syncTimerRef.current);
       if (completeTimerRef.current) clearInterval(completeTimerRef.current);
       if (saveTimerRef.current)     clearInterval(saveTimerRef.current);
@@ -281,17 +326,21 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
     if (!ready || !playerRef.current) return;
     if (playing) playerRef.current.pauseVideo();
     else playerRef.current.playVideo();
+    bumpControls();
   }
   function skip(delta: number) {
     if (!ready || !playerRef.current || typeof playerRef.current.getCurrentTime !== "function") return;
     const next = Math.max(0, Math.min(total, playerRef.current.getCurrentTime() + delta));
     playerRef.current.seekTo(next, true);
     setCurrent(next);
+    lastSyncRef.current = { time: next, ts: performance.now() };
+    bumpControls();
   }
   function seekTo(sec: number) {
     if (!ready || !playerRef.current) return;
     playerRef.current.seekTo(sec, true);
     setCurrent(sec);
+    lastSyncRef.current = { time: sec, ts: performance.now() };
   }
   function toggleMute() {
     if (!ready || !playerRef.current) return;
@@ -320,13 +369,20 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
   if (ytId) {
     return (
       <div ref={wrapperRef} className="rounded-xl overflow-hidden relative bg-black"
-        style={{ border: "1px solid #e5e3df" }}>
+        style={{ border: "1px solid #e5e3df" }}
+        onMouseMove={bumpControls}>
         <div className="relative" style={{ paddingBottom: "56.25%" }}>
           {/* pointer-events-none trên wrapper để click luôn đi qua control bar
               tự dựng, không lọt xuống iframe YouTube bên dưới */}
           <div className="absolute inset-0 pointer-events-none">
             <div ref={containerRef} className="w-full h-full" />
           </div>
+          {/* Bấm bất kỳ đâu trên video để play/pause — cảm giác tương tác tự
+              nhiên như player gốc, thay vì chỉ bấm được nút trên thanh dưới. */}
+          {ready && (
+            <button type="button" onClick={togglePlay} aria-hidden="true" tabIndex={-1}
+              className="absolute inset-0 z-[5] cursor-pointer" style={{ background: "transparent" }} />
+          )}
           {userEmail && (
             <div className="absolute bottom-12 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10"
               style={{ color: "#fff" }}>
@@ -341,18 +397,22 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
           {/* Nút Play lớn giữa màn hình khi video đang dừng — bấm để phát,
               không lộ khung preview gốc của YouTube phía dưới. */}
           {ready && !playing && (
-            <button type="button" onClick={togglePlay} aria-label="Phát"
-              className="absolute inset-0 z-10 flex items-center justify-center group">
-              <span className="w-16 h-16 rounded-full flex items-center justify-center transition-transform group-hover:scale-105"
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <span className="w-16 h-16 rounded-full flex items-center justify-center"
                 style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.3)" }}>
                 <Play size={26} style={{ color: "#fff", marginLeft: 3 }} />
               </span>
-            </button>
+            </div>
           )}
           {/* Control bar tự dựng — thay thế hoàn toàn control bar gốc của YouTube
-              (đã tắt bằng controls=0) nên không còn logo/link "Watch on YouTube". */}
-          <div className="absolute inset-x-0 bottom-0 z-20 px-3 py-2 flex items-center gap-2"
-            style={{ background: "rgba(15,15,15,0.85)" }}>
+              (đã tắt bằng controls=0) nên không còn logo/link "Watch on YouTube".
+              Tự ẩn sau vài giây không tương tác lúc đang phát, giống player thật. */}
+          <div className="absolute inset-x-0 bottom-0 z-20 px-3 py-2 flex items-center gap-2 transition-opacity duration-300"
+            style={{
+              background: "rgba(15,15,15,0.85)",
+              opacity: controlsVisible ? 1 : 0,
+              pointerEvents: controlsVisible ? "auto" : "none",
+            }}>
             <button type="button" onClick={() => skip(-10)} className="text-white/90 hover:text-white p-1" aria-label="Lùi 10 giây">
               <SkipBack size={18} />
             </button>
@@ -363,8 +423,12 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
               <SkipForward size={18} />
             </button>
             <input
-              type="range" min={0} max={total || 0} step={0.5} value={current}
-              onChange={e => seekTo(+e.target.value)}
+              type="range" min={0} max={total || 0} step={0.1} value={current}
+              onChange={e => setCurrent(+e.target.value)}
+              onMouseDown={() => { seekingRef.current = true; }}
+              onTouchStart={() => { seekingRef.current = true; }}
+              onMouseUp={e => { seekingRef.current = false; seekTo(+(e.target as HTMLInputElement).value); }}
+              onTouchEnd={e => { seekingRef.current = false; seekTo(+(e.target as HTMLInputElement).value); }}
               className="flex-1 accent-white h-1 cursor-pointer"
               aria-label="Thanh trượt video"
             />
