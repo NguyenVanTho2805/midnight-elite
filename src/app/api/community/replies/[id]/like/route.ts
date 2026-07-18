@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
-import { notify } from "@/lib/notify";
+import { notifyLikeAggregate } from "@/lib/notify";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSession();
@@ -22,11 +22,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     await prisma.replyLike.create({ data: { userId: auth.userId, replyId } });
     if (exists.authorId !== auth.userId) {
       const liker = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
-      await notify(exists.authorId, {
-        type:    "reply_like",
-        title:   "Có lượt thích mới",
-        message: `${liker?.name ?? "Một học viên"} đã thích trả lời của bạn`,
-        link:    `/cong-dong/${exists.threadId}`,
+      const likerName = liker?.name ?? "Một học viên";
+      await notifyLikeAggregate(exists.authorId, {
+        type:          "reply_like",
+        link:          `/cong-dong/${exists.threadId}`,
+        singularTitle: "Có lượt thích mới",
+        buildMessage:  count => count === 1
+          ? `${likerName} đã thích trả lời của bạn`
+          : `${likerName} và ${count - 1} người khác đã thích trả lời của bạn`,
       });
     }
   }

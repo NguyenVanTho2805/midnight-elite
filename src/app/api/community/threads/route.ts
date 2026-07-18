@@ -23,20 +23,21 @@ export async function GET(req: NextRequest) {
 
   const include = {
     author:    { select: { id: true, name: true, role: true, adminRole: true } },
-    _count:    { select: { replies: true, likes: true } },
+    _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
     likes:     { where: { userId }, select: { userId: true } },
     bookmarks: { where: { userId }, select: { userId: true } },
   } as const;
 
   const [pinned, regular] = await Promise.all([
     prisma.thread.findMany({
-      where:   { isPinned: true, ...(category ? { category } : {}) },
+      where:   { isPinned: true, deletedAt: null, ...(category ? { category } : {}) },
       orderBy: { createdAt: "desc" },
       include,
     }),
     prisma.thread.findMany({
       where: {
         isPinned: false,
+        deletedAt: null,
         ...(category ? { category } : {}),
         ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
       },
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         author:    { select: { id: true, name: true, role: true, adminRole: true } },
-        _count:    { select: { replies: true, likes: true } },
+        _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
         likes:     { where: { userId: auth.userId }, select: { userId: true } },
         bookmarks: { where: { userId: auth.userId }, select: { userId: true } },
       },

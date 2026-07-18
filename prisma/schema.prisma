@@ -403,6 +403,7 @@ model User {
   questions           Question[]
   answers             Answer[]
   answerReports       AnswerReport[]
+  threadReports       ThreadReport[]
 
   @@map("users")
 }
@@ -452,6 +453,7 @@ model Notification {
   message   String
   link      String?
   isRead    Boolean  @default(false)
+  count     Int      @default(1) // số lượt gộp — vd "X và 4 người khác đã thích..."
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -529,32 +531,50 @@ model UserBadge {
 // ─── COMMUNITY ────────────────────────────────────────────────────────────────
 
 model Thread {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
+  id        String    @id @default(cuid())
+  content   String    @db.Text
   authorId  String
-  category  String   @default("hoi-dap")
-  isPinned  Boolean  @default(false)
+  category  String    @default("hoi-dap")
+  isPinned  Boolean   @default(false)
   imageUrls String[]
   fileUrl   String?
   fileName  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deletedAt DateTime? // soft-delete — xoá thật để lại dấu vết, tránh mất bằng chứng khi có tranh chấp
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   author    User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replies   ThreadReply[]
   likes     ThreadLike[]
   bookmarks ThreadBookmark[]
+  reports   ThreadReport[]
 
   @@map("threads")
 }
 
+model ThreadReport {
+  id         String   @id @default(cuid())
+  threadId   String
+  reporterId String
+  reason     String
+  status     String   @default("pending") // "pending" | "approved" | "rejected"
+  createdAt  DateTime @default(now())
+
+  thread   Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  reporter User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, reporterId])
+  @@map("thread_reports")
+}
+
 model ThreadReply {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
+  id        String    @id @default(cuid())
+  content   String    @db.Text
   authorId  String
   threadId  String
   imageUrls String[]
-  createdAt DateTime @default(now())
+  deletedAt DateTime? // soft-delete, xem giải thích ở Thread.deletedAt
+  createdAt DateTime  @default(now())
 
   author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   thread Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)

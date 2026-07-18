@@ -9,8 +9,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
 
-  const reply = await prisma.threadReply.findUnique({ where: { id }, select: { authorId: true } });
-  if (!reply) return NextResponse.json({ error: "Không tìm thấy trả lời" }, { status: 404 });
+  const reply = await prisma.threadReply.findUnique({ where: { id }, select: { authorId: true, deletedAt: true } });
+  if (!reply || reply.deletedAt) return NextResponse.json({ error: "Không tìm thấy trả lời" }, { status: 404 });
 
   const canModerate = auth.role === "admin" && checkPermission(auth.adminRole, PERMISSIONS.MANAGE_COMMUNITY);
   const isOwner = reply.authorId === auth.userId;
@@ -18,6 +18,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Không có quyền xoá trả lời này" }, { status: 403 });
   }
 
-  await prisma.threadReply.delete({ where: { id } });
+  await prisma.threadReply.update({ where: { id }, data: { deletedAt: new Date() } });
   return NextResponse.json({ ok: true });
 }

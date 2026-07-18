@@ -16,10 +16,11 @@ export async function GET(req: NextRequest, { params }: Params) {
     where: { id },
     include: {
       author:    { select: { id: true, name: true, role: true, adminRole: true } },
-      _count:    { select: { replies: true, likes: true } },
+      _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
       likes:     { where: { userId }, select: { userId: true } },
       bookmarks: { where: { userId }, select: { userId: true } },
       replies: {
+        where:   { deletedAt: null },
         orderBy: { createdAt: "asc" },
         include: {
           author: { select: { id: true, name: true, role: true, adminRole: true } },
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     },
   });
 
-  if (!thread) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
+  if (!thread || thread.deletedAt) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
 
   return NextResponse.json({
     id:           thread.id,
@@ -92,8 +93,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
 
-  const thread = await prisma.thread.findUnique({ where: { id }, select: { authorId: true } });
-  if (!thread) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
+  const thread = await prisma.thread.findUnique({ where: { id }, select: { authorId: true, deletedAt: true } });
+  if (!thread || thread.deletedAt) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
 
   const canModerate = auth.role === "admin" && checkPermission(auth.adminRole, PERMISSIONS.MANAGE_COMMUNITY);
   const isOwner = thread.authorId === auth.userId;
@@ -101,6 +102,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Không có quyền xoá bài này" }, { status: 403 });
   }
 
-  await prisma.thread.delete({ where: { id } });
+  // Soft-delete — giữ lại bằng chứng để tra cứu khi có tranh chấp, thay vì xoá cứng
+  await prisma.thread.update({ where: { id }, data: { deletedAt: new Date() } });
   return NextResponse.json({ ok: true });
 }

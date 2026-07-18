@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/hooks/useWallet";
 import { uploadMany, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QUESTION_COST } from "@/lib/wallet-constants";
+import { PERMISSIONS, checkPermission, type AdminRole } from "@/lib/permissions";
 import ThreadModal from "@/components/ThreadModal";
 import QuestionModal from "@/components/QuestionModal";
 
@@ -483,15 +484,20 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUs
   onBookmark:     (id: string) => void;
   onDelete:       (id: string) => void;
   onOpen:         (id: string) => void;
-  currentUser:    { id: string; role?: string } | null;
+  currentUser:    { id: string; role?: string; adminRole?: AdminRole } | null;
   onRequireLogin: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting]           = useState(false);
   const [copied, setCopied]               = useState(false);
+  const [reporting, setReporting]         = useState(false);
+  const [reportReason, setReportReason]   = useState("");
+  const [reportSending, setReportSending] = useState(false);
+  const [reportDone, setReportDone]       = useState(false);
+  const [reportError, setReportError]     = useState("");
 
-  const isOwn   = currentUser?.id === t.author.id;
-  const isAdmin = currentUser?.role === "admin";
+  const isOwn        = currentUser?.id === t.author.id;
+  const canModerate  = currentUser?.role === "admin" && checkPermission(currentUser.adminRole, PERMISSIONS.MANAGE_COMMUNITY);
 
   async function handleDelete() {
     setDeleting(true);
@@ -505,6 +511,27 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUs
     navigator.clipboard.writeText(`${window.location.origin}/cong-dong/${t.id}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleReport() {
+    if (!reportReason.trim()) { setReportError("Vui lòng nêu lý do báo cáo"); return; }
+    setReportSending(true);
+    setReportError("");
+    try {
+      const res  = await fetch(`/api/community/threads/${t.id}/report`, {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ reason: reportReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Lỗi gửi báo cáo");
+      setReportDone(true);
+      setTimeout(() => { setReporting(false); setReportDone(false); setReportReason(""); }, 1500);
+    } catch (e) {
+      setReportError((e as Error).message);
+    } finally {
+      setReportSending(false);
+    }
   }
 
   return (
@@ -530,7 +557,7 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUs
             <p className="text-xs mt-0.5" style={{ color: "#a4a097" }}>{timeAgo(t.createdAt)}</p>
           </div>
         </div>
-        {(isOwn || isAdmin) && !confirmDelete && (
+        {(isOwn || canModerate) && !confirmDelete && (
           <button onClick={() => setConfirmDelete(true)} className="text-xs px-2 py-1 rounded flex-shrink-0"
             style={{ color: "#a4a097" }}>✕</button>
         )}
@@ -592,7 +619,39 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUs
             : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>Chia sẻ</>
           }
         </button>
+
+        {currentUser && !isOwn && (
+          <button onClick={() => setReporting(p => !p)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            title="Báo cáo bài viết"
+            style={{ color: reporting ? "#dc2626" : "#a4a097" }}>🚩</button>
+        )}
       </div>
+
+      {reporting && (
+        <div className="mt-2 p-3 rounded-lg" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+          {reportDone ? (
+            <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
+          ) : (
+            <>
+              <textarea rows={2} maxLength={300} value={reportReason}
+                onChange={e => { setReportReason(e.target.value); setReportError(""); }}
+                placeholder="Lý do báo cáo bài viết này..."
+                className="w-full text-xs rounded-lg px-2.5 py-2 outline-none resize-none"
+                style={{ background: "#ffffff", color: "#1a1a1a", border: "1px solid #fecaca" }} />
+              {reportError && <p className="text-xs mt-1" style={{ color: "#dc2626" }}>{reportError}</p>}
+              <div className="flex gap-1.5 mt-2">
+                <button onClick={handleReport} disabled={reportSending}
+                  className="px-3 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                  style={{ background: "#dc2626" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
+                <button onClick={() => { setReporting(false); setReportReason(""); setReportError(""); }}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold"
+                  style={{ background: "#f6f5f4", color: "#787671" }}>Huỷ</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -790,7 +849,7 @@ function CongDongInner() {
     return threads.map(t => ({ ...t, _type: "thread" as const }));
   })();
 
-  const currentUser = user ? { id: user.id, role: user.role as string } : null;
+  const currentUser = user ? { id: user.id, role: user.role as string, adminRole: user.adminRole } : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
