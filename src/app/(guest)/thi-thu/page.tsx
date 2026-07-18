@@ -278,7 +278,7 @@ export default function ThiThuPage() {
                       style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>Đã kết thúc</span>
                   )}
                   {exam.status === "available" && (
-                    <Link href={`/dang-nhap?redirect=/thi-thu`}
+                    <Link href={`/dang-nhap?redirect=${encodeURIComponent(`/student/thi-thu/${exam.id}`)}`}
                       className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white"
                       style={{ background: "#0068FF" }}>
                       Đăng nhập để thi
