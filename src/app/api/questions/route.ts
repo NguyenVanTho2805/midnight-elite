@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { spendCoins, InsufficientBalanceError, QUESTION_COST } from "@/lib/wallet";
 
-// GET /api/questions — danh sách câu hỏi (mới nhất trước)
+// GET /api/questions — danh sách câu hỏi (mới nhất trước), đọc được cả khi
+// chưa đăng nhập (giống GET /api/community/threads) vì tab "Hỏi đáp" hiển
+// thị công khai cho guest trên trang /cong-dong.
 export async function GET(req: NextRequest) {
-  const auth = await requireSession();
-  if (isNextResponse(auth)) return auth;
+  const session = await getSession();
+  const userId  = session?.userId ?? "";
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status"); // "open" | "answered"
@@ -30,7 +33,7 @@ export async function GET(req: NextRequest) {
     createdAt:    q.createdAt.toISOString(),
     author:       q.author,
     answerCount:  q._count.answers,
-    isOwn:        q.authorId === auth.userId,
+    isOwn:        q.authorId === userId,
   })));
 }
 

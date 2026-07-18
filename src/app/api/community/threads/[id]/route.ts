@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
-import { PERMISSIONS } from "@/lib/permissions";
+import { PERMISSIONS, checkPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 type Params = { params: Promise<{ id: string }> };
@@ -95,9 +95,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const thread = await prisma.thread.findUnique({ where: { id }, select: { authorId: true } });
   if (!thread) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
 
-  const isAdmin = auth.role === "admin";
+  const canModerate = auth.role === "admin" && checkPermission(auth.adminRole, PERMISSIONS.MANAGE_COMMUNITY);
   const isOwner = thread.authorId === auth.userId;
-  if (!isAdmin && !isOwner) {
+  if (!canModerate && !isOwner) {
     return NextResponse.json({ error: "Không có quyền xoá bài này" }, { status: 403 });
   }
 
