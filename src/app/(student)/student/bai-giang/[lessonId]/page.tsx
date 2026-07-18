@@ -156,7 +156,7 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
         controls: PLYR_CONTROLS,
         settings: ["speed"],
         iconUrl: "/plyr.svg",
-        youtube: { rel: 0, modestbranding: 1 },
+        youtube: { rel: 0, modestbranding: 1, noCookie: true },
       });
       playerRef.current = player;
 
