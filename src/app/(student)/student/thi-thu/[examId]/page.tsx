@@ -230,17 +230,34 @@ export default function ExamEntryPage() {
     return () => document.removeEventListener("visibilitychange", report);
   }, [phase, attempt?.attemptId]);
 
-  const remainingSec = attempt?.expiresAt
+  // Giờ riêng từng Phần (vd đề ĐGNL HSA) — null nếu đề không dùng (hành vi cũ,
+  // chỉ 1 đồng hồ chung). currentSectionIndex = Phần đang hiển thị: Phần đầu
+  // tiên còn endsAt ở tương lai, hoặc Phần cuối nếu tất cả đã qua (sắp tự nộp).
+  const sectionWindows = attempt?.sectionWindows ?? null;
+  const currentSectionIndex = sectionWindows && sectionWindows.length > 0
+    ? (() => {
+        const idx = sectionWindows.findIndex(w => new Date(w.endsAt).getTime() > Date.now());
+        return idx === -1 ? sectionWindows.length - 1 : idx;
+      })()
+    : -1;
+  const isLastSection = !sectionWindows || currentSectionIndex === sectionWindows.length - 1;
+
+  const remainingSec = sectionWindows && currentSectionIndex >= 0
+    ? Math.max(0, Math.floor((new Date(sectionWindows[currentSectionIndex].endsAt).getTime() - Date.now()) / 1000))
+    : attempt?.expiresAt
     ? Math.max(0, Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000))
     : 0;
 
+  // Chỉ tự nộp TOÀN đề khi Phần đang hiển thị là Phần CUỐI (hoặc đề không
+  // chia Phần) — hết giờ 1 Phần giữa chừng chỉ tự chuyển sang Phần kế tiếp
+  // (suy ra lại từ currentSectionIndex mỗi giây qua nowTick, không cần state riêng).
   useEffect(() => {
-    if (phase === "taking" && attempt?.expiresAt && remainingSec <= 0 && !autoSubmitted.current) {
+    if (phase === "taking" && attempt?.expiresAt && isLastSection && remainingSec <= 0 && !autoSubmitted.current) {
       autoSubmitted.current = true;
       submitAttempt();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, remainingSec]);
+  }, [phase, remainingSec, isLastSection]);
 
   const studentName = user?.name ?? "Học viên";
 
@@ -492,6 +509,19 @@ export default function ExamEntryPage() {
     const ss = String(remainingSec % 60).padStart(2, "0");
     const cardStyle = { background: "#ffffff", border: "1px solid #e5e3df" };
 
+    // Đề dùng giờ riêng Phần: Phần chưa tới lượt ẨN HOÀN TOÀN (chỉ hiện Phần
+    // đang làm + các Phần đã xong, khoá chỉ đọc) — đề không dùng giờ riêng
+    // Phần (sectionWindows null) thì hiện toàn bộ như cũ, không đổi gì.
+    const visibleSectionLabels = sectionWindows
+      ? new Set(sectionWindows.slice(0, currentSectionIndex + 1).map(w => w.label))
+      : null;
+    const lockedSectionLabels = sectionWindows
+      ? new Set(sectionWindows.slice(0, currentSectionIndex).map(w => w.label))
+      : null;
+    const visibleQuestions = visibleSectionLabels
+      ? attempt.questions.filter(q => visibleSectionLabels.has(q.sectionLabel ?? null))
+      : attempt.questions;
+
     return (
       <div className="max-w-6xl mx-auto pb-10">
         <div className="mb-5">
@@ -506,7 +536,9 @@ export default function ExamEntryPage() {
               sticky sẽ hết tác dụng ngay khi cuộn qua khỏi chiều cao đó. */}
           <div className="space-y-3 md:sticky md:top-20 md:self-start order-1">
             <div className="rounded-xl p-4 text-center" style={cardStyle}>
-              <p className="text-xs mb-1" style={{ color: "#a4a097" }}>Thời gian còn lại</p>
+              <p className="text-xs mb-1" style={{ color: "#a4a097" }}>
+                {sectionWindows ? `Thời gian còn lại — ${sectionWindows[currentSectionIndex]?.label ?? ""}` : "Thời gian còn lại"}
+              </p>
               <p className="text-3xl font-extrabold tabular-nums" style={{ color: remainingSec < 60 ? "#dc2626" : "#1E2938" }}>{mm}:{ss}</p>
             </div>
 
@@ -520,7 +552,7 @@ export default function ExamEntryPage() {
             <div className="rounded-xl p-4" style={cardStyle}>
               <p className="text-xs mb-2" style={{ color: "#a4a097" }}>Chọn câu hỏi</p>
               <div className="grid grid-cols-5 md:grid-cols-4 gap-1.5">
-                {attempt.questions.map((q, idx) => (
+                {visibleQuestions.map((q, idx) => (
                   <button key={q.id}
                     onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
                     className="w-full aspect-square rounded text-xs font-semibold"
@@ -544,18 +576,22 @@ export default function ExamEntryPage() {
 
           {/* Danh sách câu hỏi */}
           <div className="space-y-5 order-2">
-            {attempt.questions.map((q, idx) => {
-              const prevSection = idx > 0 ? attempt.questions?.[idx - 1].sectionLabel : undefined;
+            {visibleQuestions.map((q, idx) => {
+              const prevSection = idx > 0 ? visibleQuestions[idx - 1].sectionLabel : undefined;
               const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
+              const isLocked = lockedSectionLabels?.has(q.sectionLabel ?? null) ?? false;
               return (
               <Fragment key={q.id}>
                 {showSectionHeader && (
                   <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
                 )}
-              <div id={`q-${q.id}`} className="rounded-xl p-5" style={cardStyle}>
-                <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>
+              <div id={`q-${q.id}`} className="rounded-xl p-5" style={isLocked ? { ...cardStyle, opacity: 0.6 } : cardStyle}>
+                <p className="text-sm font-semibold mb-1" style={{ color: "#1E2938" }}>
                   Câu {idx + 1}: <MathText text={q.text} />
                 </p>
+                {isLocked && (
+                  <p className="text-xs font-semibold mb-2" style={{ color: "#dc2626" }}>Đã hết giờ Phần này — không thể sửa câu trả lời.</p>
+                )}
                 {q.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={q.imageUrl} alt="" className="max-w-full rounded-lg mb-3" />
@@ -563,9 +599,10 @@ export default function ExamEntryPage() {
 
                 {q.type === "ESSAY" ? (
                   <textarea
-                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400 disabled:cursor-not-allowed"
                     style={{ border: "1px solid #e5e3df" }}
                     rows={5}
+                    disabled={isLocked}
                     placeholder="Nhập câu trả lời của bạn..."
                     value={essayText[q.id] ?? ""}
                     onChange={e => updateEssayAnswer(q.id, e.target.value)}
@@ -573,8 +610,9 @@ export default function ExamEntryPage() {
                   />
                 ) : q.type === "SHORT_ANSWER" ? (
                   <input
-                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400 disabled:cursor-not-allowed"
                     style={{ border: "1px solid #e5e3df" }}
+                    disabled={isLocked}
                     placeholder="Nhập đáp án..."
                     value={essayText[q.id] ?? ""}
                     onChange={e => updateEssayAnswer(q.id, e.target.value)}
@@ -590,9 +628,9 @@ export default function ExamEntryPage() {
                         </span>
                         <div className="flex gap-1.5 flex-shrink-0">
                           {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
-                            <button key={label} type="button"
+                            <button key={label} type="button" disabled={isLocked}
                               onClick={() => selectClusterAnswer(o.id, val)}
-                              className="px-3 py-1 rounded-lg text-xs font-semibold border"
+                              className="px-3 py-1 rounded-lg text-xs font-semibold border disabled:cursor-not-allowed"
                               style={clusterAnswers[o.id] === val
                                 ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
                                 : { borderColor: "#e5e3df", color: "#787671" }}>
@@ -607,9 +645,9 @@ export default function ExamEntryPage() {
                   <div className="space-y-2">
                     {q.options.map((o, oi) => (
                       <label key={o.id}
-                        className="flex items-start gap-2.5 p-2.5 rounded-lg cursor-pointer hover:bg-[#f6f5f4]"
+                        className={`flex items-start gap-2.5 p-2.5 rounded-lg ${isLocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-[#f6f5f4]"}`}
                         style={{ border: `1px solid ${selected[q.id] === o.id ? "#0068FF" : "#e5e3df"}` }}>
-                        <input type="radio" name={`q-${q.id}`} className="mt-0.5"
+                        <input type="radio" name={`q-${q.id}`} className="mt-0.5" disabled={isLocked}
                           checked={selected[q.id] === o.id}
                           onChange={() => selectAnswer(q.id, o.id)} />
                         <span className="text-sm" style={{ color: "#37352f" }}>

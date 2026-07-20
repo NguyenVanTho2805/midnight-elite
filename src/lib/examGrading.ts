@@ -144,6 +144,51 @@ export function shuffleQuestionOrderBySections(
   return sectionOrder.flatMap(label => shuffleArray(bySection.get(label)!));
 }
 
+export interface SectionWindow {
+  label: string | null;
+  endsAt: string; // ISO
+}
+
+// Tính mốc hết giờ từng Phần (giờ riêng, vd đề ĐGNL HSA) — CHỈ bật khi MỌI
+// Phần trong đề đều có sectionLabel khác null và có ít nhất 1 câu mang
+// sectionMinutes khác null; nếu có bất kỳ Phần nào không thoả (kể cả nhóm
+// sectionLabel: null — đề không chia Phần) → trả null, đề dùng lại hành vi
+// cũ (1 đồng hồ chung qua ExamAttempt.expiresAt). Cộng dồn theo đúng thứ tự
+// Phần xuất hiện trong đề (giống shuffleQuestionOrderBySections).
+export function computeSectionWindows(
+  questions: { sectionLabel: string | null; sectionMinutes: number | null }[],
+  startedAt: Date
+): SectionWindow[] | null {
+  const sectionOrder: string[] = [];
+  const minutesByLabel = new Map<string, number | null>();
+  for (const q of questions) {
+    if (q.sectionLabel === null) return null; // có câu không thuộc Phần nào → tắt tính năng
+    if (!minutesByLabel.has(q.sectionLabel)) {
+      sectionOrder.push(q.sectionLabel);
+      minutesByLabel.set(q.sectionLabel, null);
+    }
+    if (q.sectionMinutes != null) minutesByLabel.set(q.sectionLabel, q.sectionMinutes);
+  }
+  if (sectionOrder.length === 0) return null;
+  if (sectionOrder.some(label => minutesByLabel.get(label) == null)) return null;
+
+  let cursor = startedAt.getTime();
+  return sectionOrder.map(label => {
+    cursor += minutesByLabel.get(label)! * 60_000;
+    return { label, endsAt: new Date(cursor).toISOString() };
+  });
+}
+
+// Phần ứng với sectionLabel đã hết giờ riêng chưa — dùng ở các route ghi câu
+// trả lời để chặn sửa đáp án sau khi Phần đó đã khoá. sectionWindows null
+// (đề không dùng giờ riêng Phần) → luôn false, không ảnh hưởng đề cũ.
+export function isSectionLocked(sectionWindows: unknown, sectionLabel: string | null): boolean {
+  if (!Array.isArray(sectionWindows)) return false;
+  const window = (sectionWindows as SectionWindow[]).find(w => w.label === sectionLabel);
+  if (!window) return false;
+  return Date.now() > new Date(window.endsAt).getTime();
+}
+
 type Tx = Prisma.TransactionClient;
 
 // Chuẩn hoá đáp án Trả lời ngắn trước khi so khớp: bỏ khoảng trắng thừa,

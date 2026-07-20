@@ -19,13 +19,14 @@ interface QuestionForm {
   points: string;
   explanation: string;
   sectionLabel: string; // tên Phần thi, tùy chọn — rỗng = không thuộc phần nào
+  sectionMinutes: string; // số phút riêng cho Phần (giờ riêng HSA), tùy chọn — rỗng = không dùng
   options: string[]; // MC: N đáp án; TRUE_FALSE_CLUSTER: đúng 4 ý a-d; ESSAY: không dùng
   correctIndex: number; // chỉ MC
   clusterCorrect: boolean[]; // chỉ TRUE_FALSE_CLUSTER, length 4 khớp CLUSTER_LABELS
 }
 
 const INIT_FORM: QuestionForm = {
-  type: "MC", text: "", imageUrl: "", points: "1", explanation: "", sectionLabel: "",
+  type: "MC", text: "", imageUrl: "", points: "1", explanation: "", sectionLabel: "", sectionMinutes: "",
   options: [...EMPTY_OPTIONS], correctIndex: 0, clusterCorrect: [false, false, false, false],
 };
 
@@ -34,6 +35,7 @@ function toForm(q: ExamQuestionFull): QuestionForm {
     type: q.type, text: q.text, imageUrl: q.imageUrl ?? "",
     points: String(q.points), explanation: q.explanation ?? "",
     sectionLabel: q.sectionLabel ?? "",
+    sectionMinutes: q.sectionMinutes != null ? String(q.sectionMinutes) : "",
   };
   if (q.type === "TRUE_FALSE_CLUSTER") {
     const bySubLabel = new Map(q.options.map(o => [o.subLabel, o]));
@@ -67,6 +69,7 @@ function toInput(form: QuestionForm): ExamQuestionInput | null {
     points: Number(form.points) > 0 ? Number(form.points) : 1,
     explanation: form.explanation.trim() || undefined,
     sectionLabel: form.sectionLabel.trim() || null,
+    sectionMinutes: Number(form.sectionMinutes) > 0 ? Number(form.sectionMinutes) : null,
   };
 
   if (form.type === "ESSAY") return { ...base, options: [] };
@@ -197,15 +200,28 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Phần thi (tùy chọn)</label>
-            <input
-              className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-              style={{ borderColor: "#e5e3df" }}
-              value={form.sectionLabel}
-              onChange={e => setForm({ ...form, sectionLabel: e.target.value })}
-              placeholder="VD: Phần Trắc nghiệm — để trống nếu đề không chia phần"
-            />
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Phần thi (tùy chọn)</label>
+              <input
+                className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                style={{ borderColor: "#e5e3df" }}
+                value={form.sectionLabel}
+                onChange={e => setForm({ ...form, sectionLabel: e.target.value })}
+                placeholder="VD: Phần Trắc nghiệm — để trống nếu đề không chia phần"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Phút/Phần</label>
+              <input
+                type="number" min={1}
+                className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                style={{ borderColor: "#e5e3df" }}
+                value={form.sectionMinutes}
+                onChange={e => setForm({ ...form, sectionMinutes: e.target.value })}
+                placeholder="VD: 60"
+              />
+            </div>
           </div>
 
           {form.type === "MC" && (
@@ -413,6 +429,12 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
       i === idx ? { ...q, sectionLabel: sectionLabel || null } : q
     ) ?? null);
   }
+  function updateReviewSectionMinutes(idx: number, minutes: string) {
+    const n = minutes.trim() === "" ? null : Number(minutes);
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, sectionMinutes: n != null && Number.isFinite(n) && n > 0 ? n : null } : q
+    ) ?? null);
+  }
   function applyScorePreset() {
     if (!reviewQuestions) return;
     const preset = SCORE_PRESETS[scorePreset];
@@ -594,12 +616,19 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
                       </div>
-                      <div className="mb-2 pl-6">
+                      <div className="flex items-center gap-1.5 mb-2 pl-6">
                         <input
-                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
                           placeholder="Phần (tùy chọn, vd: Phần Trắc nghiệm)"
                           value={q.sectionLabel ?? ""}
                           onChange={e => updateReviewSection(idx, e.target.value)}
+                        />
+                        <input
+                          type="number" min={1}
+                          className="w-24 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400 flex-shrink-0"
+                          placeholder="Phút/Phần"
+                          value={q.sectionMinutes ?? ""}
+                          onChange={e => updateReviewSectionMinutes(idx, e.target.value)}
                         />
                       </div>
                       {q.type === "ESSAY" ? (
@@ -1121,7 +1150,9 @@ function ThiThuQuestionsPage() {
               return (
               <Fragment key={q.id}>
                 {showSectionHeader && (
-                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>
+                    {q.sectionLabel}{q.sectionMinutes != null && ` (${q.sectionMinutes} phút)`}
+                  </p>
                 )}
               <div className="rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
                 <div className="flex items-start gap-3">

@@ -53,6 +53,7 @@ export async function GET(
       attemptId: attempt.id,
       status: attempt.status,
       expiresAt: attempt.expiresAt,
+      sectionWindows: attempt.sectionWindows,
       questions,
       answers,
       textAnswers,

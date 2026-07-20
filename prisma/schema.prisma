@@ -243,6 +243,12 @@ model ExamQuestion {
   // trong examGrading.ts), không ảnh hưởng tới cách tính điểm.
   sectionLabel String?
 
+  // Số phút riêng cho Phần này (vd đề ĐGNL HSA: mỗi Phần có giờ riêng, hết
+  // giờ Phần nào khoá Phần đó). Lặp lại giống nhau ở mọi câu cùng
+  // sectionLabel — admin tự nhập đồng bộ. null = không dùng giờ riêng Phần
+  // (xem computeSectionWindows trong examGrading.ts để biết điều kiện bật).
+  sectionMinutes Int?
+
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]
   answers ExamAnswer[]
@@ -294,6 +300,13 @@ model ExamAttempt {
   // (giống cơ chế Azota). tabSwitchLog: mảng ISO timestamp mỗi lần rời tab.
   tabSwitchCount Int   @default(0)
   tabSwitchLog   Json?
+
+  // Mốc hết giờ từng Phần, tính 1 lần lúc bắt đầu attempt, cố định suốt
+  // lượt thi. null = đề này không dùng giờ riêng Phần (hành vi cũ — chỉ 1
+  // đồng hồ chung qua expiresAt). Dạng [{ label: string|null, endsAt: ISO
+  // string }], cộng dồn theo thứ tự Phần xuất hiện trong đề — phần tử cuối
+  // == expiresAt ở trên (xem computeSectionWindows trong examGrading.ts).
+  sectionWindows Json?
 
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt } from "@/lib/examGrading";
+import { finalizeAttempt, isSectionLocked } from "@/lib/examGrading";
 
 // PATCH /api/exams/attempts/[attemptId]/answer-bool — autosave 1 ý (a/b/c/d)
 // của câu TRUE_FALSE_CLUSTER. Mỗi ý là 1 dòng ExamAnswerBoolean riêng vì học
@@ -36,8 +36,12 @@ export async function PATCH(
 
     const option = await prisma.examOption.findFirst({
       where: { id: optionId, question: { type: "TRUE_FALSE_CLUSTER" } },
+      include: { question: { select: { sectionLabel: true } } },
     });
     if (!option) return NextResponse.json({ error: "Ý trả lời không hợp lệ" }, { status: 400 });
+    if (isSectionLocked(attempt.sectionWindows, option.question.sectionLabel)) {
+      return NextResponse.json({ error: "Phần này đã hết giờ" }, { status: 409 });
+    }
 
     await prisma.examAnswerBoolean.upsert({
       where: { attemptId_optionId: { attemptId, optionId } },

@@ -45,13 +45,14 @@ export async function POST(
 
   try {
     const body = await req.json();
-    const { text, type, imageUrl, points, explanation, sectionLabel, options } = body as {
+    const { text, type, imageUrl, points, explanation, sectionLabel, sectionMinutes, options } = body as {
       text?: string;
       type?: QuestionType;
       imageUrl?: string;
       points?: number;
       explanation?: string;
       sectionLabel?: string | null;
+      sectionMinutes?: number | null;
       options?: { text: string; isCorrect: boolean; subLabel?: string }[];
     };
 
@@ -84,6 +85,7 @@ export async function POST(
         points: typeof points === "number" && points > 0 ? points : 1,
         explanation: explanation?.trim() || null,
         sectionLabel: sectionLabel?.trim() || null,
+        sectionMinutes: sectionMinutes ?? null,
         options: {
           create: (options ?? []).map((o, idx) => ({
             id: `eo-${crypto.randomUUID()}`,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt } from "@/lib/examGrading";
+import { finalizeAttempt, isSectionLocked } from "@/lib/examGrading";
 
 // PATCH /api/exams/attempts/[attemptId]/answer — autosave 1 câu trả lời
 export async function PATCH(
@@ -36,8 +36,14 @@ export async function PATCH(
 
     if (optionId) {
       // Câu MC — chọn 1 trong N đáp án.
-      const option = await prisma.examOption.findFirst({ where: { id: optionId, questionId } });
+      const option = await prisma.examOption.findFirst({
+        where: { id: optionId, questionId },
+        include: { question: { select: { sectionLabel: true } } },
+      });
       if (!option) return NextResponse.json({ error: "Đáp án không hợp lệ" }, { status: 400 });
+      if (isSectionLocked(attempt.sectionWindows, option.question.sectionLabel)) {
+        return NextResponse.json({ error: "Phần này đã hết giờ" }, { status: 409 });
+      }
 
       await prisma.examAnswer.upsert({
         where: { attemptId_questionId: { attemptId, questionId } },
@@ -52,6 +58,9 @@ export async function PATCH(
         where: { id: questionId, type: { in: ["ESSAY", "SHORT_ANSWER"] } },
       });
       if (!question) return NextResponse.json({ error: "Câu hỏi không hợp lệ" }, { status: 400 });
+      if (isSectionLocked(attempt.sectionWindows, question.sectionLabel)) {
+        return NextResponse.json({ error: "Phần này đã hết giờ" }, { status: 409 });
+      }
 
       await prisma.examAnswer.upsert({
         where: { attemptId_questionId: { attemptId, questionId } },

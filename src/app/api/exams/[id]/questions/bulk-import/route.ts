@@ -53,6 +53,7 @@ export async function POST(
             imageUrl: q.imageUrl?.trim() || null,
             points: 1,
             sectionLabel: q.sectionLabel?.trim() || null,
+            sectionMinutes: q.sectionMinutes ?? null,
             options: {
               create: q.options.map((o, idx) => ({
                 id: `eo-${crypto.randomUUID()}`,

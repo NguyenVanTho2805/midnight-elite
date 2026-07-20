@@ -332,6 +332,12 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       i === idx ? { ...q, sectionLabel: sectionLabel || null } : q
     ) ?? null);
   }
+  function updateReviewSectionMinutes(idx: number, minutes: string) {
+    const n = minutes.trim() === "" ? null : Number(minutes);
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, sectionMinutes: n != null && Number.isFinite(n) && n > 0 ? n : null } : q
+    ) ?? null);
+  }
 
   // Áp điểm/câu (+ gán Phần nếu khuôn có quy định) theo khuôn tính điểm đã
   // chọn — theo LOẠI câu hỏi, không theo vị trí/thứ tự. Loại không có rule
@@ -690,12 +696,19 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           </button>
                         )}
                       </div>
-                      <div className="mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
+                      <div className="flex items-center gap-1.5 mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
                         <input
-                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
                           placeholder="Phần (tùy chọn, vd: Phần Trắc nghiệm)"
                           value={q.sectionLabel ?? ""}
                           onChange={e => updateReviewSection(idx, e.target.value)}
+                        />
+                        <input
+                          type="number" min={1}
+                          className="w-24 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400 flex-shrink-0"
+                          placeholder="Phút/Phần"
+                          value={q.sectionMinutes ?? ""}
+                          onChange={e => updateReviewSectionMinutes(idx, e.target.value)}
                         />
                       </div>
                       {q.imageUrl && (

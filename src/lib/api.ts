@@ -266,11 +266,13 @@ export interface ExamQuestionFull {
   id: string; examId: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number; explanation?: string | null;
   sectionLabel?: string | null;
+  sectionMinutes?: number | null;
   options: ExamOptionFull[];
 }
 export interface ExamQuestionInput {
   text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
   sectionLabel?: string | null;
+  sectionMinutes?: number | null;
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 
@@ -292,10 +294,15 @@ export interface ExamQuestionPublic {
   sectionLabel?: string | null;
   options: ExamOptionPublic[];
 }
+export interface ExamSectionWindow {
+  label: string | null;
+  endsAt: string; // ISO
+}
 export interface ExamAttemptState {
   attemptId: string;
   status?: string;
   expiresAt?: string;
+  sectionWindows?: ExamSectionWindow[] | null;
   questions?: ExamQuestionPublic[];
   answers?: Record<string, string | null>;
   textAnswers?: Record<string, string>;
