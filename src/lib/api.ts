@@ -154,6 +154,23 @@ export const api = {
     review: (attemptId: string) =>
       apiFetch<ExamAttemptReview>(`/api/exams/attempts/${attemptId}/review`),
   },
+  // ── Ngân hàng câu hỏi (dùng chung giữa các giáo viên) ────────────────────
+  questionBank: {
+    list: (params?: { search?: string; subject?: string; topic?: string; difficulty?: string; page?: number; pageSize?: number }) => {
+      const qs = params
+        ? Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
+        : [];
+      return apiFetch<{ items: QuestionBankItemFull[]; total: number }>(
+        `/api/question-bank${qs.length ? "?" + new URLSearchParams(qs) : ""}`
+      );
+    },
+    create: (data: QuestionBankItemInput) =>
+      apiFetch<QuestionBankItemFull>("/api/question-bank", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: QuestionBankItemInput) =>
+      apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/question-bank/${id}`, { method: "DELETE" }),
+  },
 };
 
 // ─── API types (mirrors Prisma models) ───────────────────────────────────────
@@ -281,6 +298,27 @@ export interface ExamQuestionInput {
 export interface AiExtractResult {
   questions: ExamQuestionInput[];
   errors: { block: number; message: string }[];
+}
+
+// Ngân hàng câu hỏi — độc lập với ExamQuestion (xem ghi chú ở
+// QuestionBankItem trong prisma/schema.prisma: không share row trực tiếp).
+export type Difficulty = "NB" | "TH" | "VD" | "VDC";
+export interface QuestionBankOptionFull {
+  id: string; order: number; text: string; isCorrect: boolean;
+  subLabel?: "a" | "b" | "c" | "d" | null;
+}
+export interface QuestionBankItemFull {
+  id: string; type: QuestionType; text: string;
+  imageUrl?: string | null; points: number; explanation?: string | null;
+  subject: string; topic: string; difficulty: Difficulty; tags: string[] | null;
+  ownerId: string | null; owner: { name: string } | null;
+  createdAt: string; updatedAt: string;
+  options: QuestionBankOptionFull[];
+}
+export interface QuestionBankItemInput {
+  type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string;
+  subject: string; topic: string; difficulty: Difficulty; tags?: string[];
+  options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài

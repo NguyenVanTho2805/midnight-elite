@@ -218,6 +218,56 @@ model Exam {
   @@map("exams")
 }
 
+// Ngân hàng câu hỏi dùng chung giữa các giáo viên — kho bản mẫu ĐỘC LẬP với
+// ExamQuestion, KHÔNG share row trực tiếp: ExamAnswer trỏ thẳng vào row sống
+// của câu hỏi/đáp án trong đề (không phải snapshot đóng băng), nên sửa/xoá 1
+// câu dùng chung sẽ phá lịch sử chấm điểm của học viên đã thi. Khi thêm 1 câu
+// từ ngân hàng vào đề (tính năng sau), hệ thống COPY nội dung thành
+// ExamQuestion mới — ngân hàng và đề sau đó hoàn toàn độc lập.
+model QuestionBankItem {
+  id          String   @id @default(cuid())
+  type        String   @default("MC") // "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER" — giống ExamQuestion.type
+  text        String   @db.Text
+  imageUrl    String?
+  points      Float    @default(1)
+  explanation String?  @db.Text
+
+  // Phân loại bắt buộc — dùng để thu hẹp phạm vi so trùng khi làm phát hiện
+  // trùng lặp (tính năng sau), và để lọc/tìm trong danh sách.
+  subject    String // môn học, bắt buộc (vd "Toán", "Ngữ Văn")
+  topic      String // chủ đề, bắt buộc (vd "Hàm số", "Đạo hàm")
+  difficulty String // "NB" | "TH" | "VD" | "VDC" (nhận biết/thông hiểu/vận dụng/vận dụng cao)
+  tags       Json? // string[] tự do, tùy chọn
+
+  // Người soạn — dùng chung giữa mọi giáo viên (ai cũng xem/lọc được tất cả),
+  // nhưng chỉ chủ sở hữu (hoặc admin_super/admin_content) mới sửa/xoá được,
+  // xem ownsResource()/requireOwnedResource() trong src/lib/auth-guard.ts.
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options QuestionBankOption[]
+
+  @@index([subject, topic])
+  @@map("question_bank_items")
+}
+
+model QuestionBankOption {
+  id        String  @id @default(cuid())
+  itemId    String
+  order     Int     @default(0)
+  text      String  @db.Text
+  isCorrect Boolean @default(false)
+  subLabel  String? // chỉ dùng cho TRUE_FALSE_CLUSTER: "a"|"b"|"c"|"d"
+
+  item QuestionBankItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("question_bank_options")
+}
+
 // Câu hỏi thi trắc nghiệm trong platform — KHÔNG liên quan đến model
 // Question/Answer bên dưới (đó là module Hỏi Đáp cộng đồng, khác hoàn toàn).
 model ExamQuestion {
@@ -401,6 +451,7 @@ model User {
 
   ownedCourses        Course[]
   ownedExams          Exam[]
+  questionBankItems   QuestionBankItem[]
   examGuestAccess     ExamGuestAccess[]
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]
