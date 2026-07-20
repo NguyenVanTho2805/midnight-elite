@@ -8,6 +8,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType } from "@/lib/api";
 import { MathText } from "@/components/MathText";
+import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -1032,6 +1033,7 @@ function ThiThuQuestionsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ExamQuestionFull | null | "new">(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ imported: number; errors: { block: number; message: string }[] } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -1082,6 +1084,19 @@ function ThiThuQuestionsPage() {
     }
   }
 
+  // Thêm câu đã chọn từ Ngân hàng câu hỏi thẳng vào đề đã tồn tại — lưu ngay
+  // qua bulkCreate (khác CreateExamDrawer, ở đây exam đã có id, không cần
+  // qua state nháp).
+  async function handleAddFromBank(items: ExamQuestionInput[]) {
+    try {
+      await api.examQuestions.bulkCreate(id, items);
+      showToast(`Đã thêm ${items.length} câu từ ngân hàng`, true);
+      load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Thêm câu từ ngân hàng thất bại", false);
+    }
+  }
+
   async function handleBulkImport(text: string) {
     setBulkSaving(true);
     try {
@@ -1123,6 +1138,10 @@ function ThiThuQuestionsPage() {
             <p className="text-sm" style={{ color: "#787671" }}>{questions.length} câu hỏi đã soạn</p>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => setBankPickerOpen(true)}
+              className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#1a1a1a" }}>
+              + Từ ngân hàng
+            </button>
             <button onClick={() => { setBulkResult(null); setBulkOpen(true); }}
               className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#1a1a1a" }}>
               Nhập hàng loạt
@@ -1225,6 +1244,7 @@ function ThiThuQuestionsPage() {
         onSaved={load}
       />
       <DelModal target={del} onClose={() => setDel(null)} onConfirm={handleDelete} />
+      <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
     </div>
   );

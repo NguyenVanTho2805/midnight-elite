@@ -284,12 +284,14 @@ export interface ExamQuestionFull {
   imageUrl?: string | null; points: number; explanation?: string | null;
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
+  sourceBankItemId?: string | null;
   options: ExamOptionFull[];
 }
 export interface ExamQuestionInput {
   text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
+  sourceBankItemId?: string | null;
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 

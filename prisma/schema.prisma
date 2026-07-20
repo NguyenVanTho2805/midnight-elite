@@ -248,7 +248,8 @@ model QuestionBankItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  options QuestionBankOption[]
+  options       QuestionBankOption[]
+  examQuestions ExamQuestion[]
 
   @@index([subject, topic])
   @@map("question_bank_items")
@@ -298,6 +299,14 @@ model ExamQuestion {
   // sectionLabel — admin tự nhập đồng bộ. null = không dùng giờ riêng Phần
   // (xem computeSectionWindows trong examGrading.ts để biết điều kiện bật).
   sectionMinutes Int?
+
+  // Truy vết câu này được copy từ đâu trong Ngân hàng câu hỏi (null = soạn
+  // tay/AI trích xuất, không từ ngân hàng). CHỈ để tham khảo nguồn gốc — nội
+  // dung đã copy độc lập hoàn toàn, sửa/xoá câu gốc trong ngân hàng KHÔNG
+  // ảnh hưởng câu này (onDelete: SetNull, không Cascade — xem ghi chú ở
+  // QuestionBankItem về nguyên tắc không share row).
+  sourceBankItemId String?
+  sourceBankItem   QuestionBankItem? @relation(fields: [sourceBankItemId], references: [id], onDelete: SetNull)
 
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]

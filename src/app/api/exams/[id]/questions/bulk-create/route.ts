@@ -56,6 +56,7 @@ export async function POST(
             points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
             sectionLabel: q.sectionLabel?.trim() || null,
             sectionMinutes: q.sectionMinutes ?? null,
+            sourceBankItemId: q.sourceBankItemId ?? null,
             options: {
               create: q.options.map((o, idx) => ({
                 id: `eo-${crypto.randomUUID()}`,

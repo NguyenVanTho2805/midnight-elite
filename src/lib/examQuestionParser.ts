@@ -16,6 +16,7 @@ export interface ParsedQuestion {
   imageUrl?: string;
   sectionLabel?: string | null; // tên Phần thi — xem SECTION_HEADER bên dưới
   sectionMinutes?: number | null; // số phút riêng cho Phần (giờ riêng HSA) — nhập tay ở admin, không parse từ bulk text
+  sourceBankItemId?: string | null; // truy vết câu này copy từ Ngân hàng câu hỏi (null = soạn tay/AI trích xuất)
   // rỗng với ESSAY. Với SHORT_ANSWER: đúng 1 phần tử {text: <đáp án đúng>,
   // isCorrect:true} — tái dùng cấu trúc ExamOption có sẵn thay vì thêm field
   // riêng, chấm bằng cách so khớp text (chuẩn hoá) thay vì chọn optionId.

@@ -14,6 +14,7 @@ import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
 import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
+import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -186,6 +187,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [fileErr, setFileErr]             = useState("");
   const [aiLoading, setAiLoading]         = useState(false);
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
@@ -236,6 +238,12 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     const { questions, errors } = parseBulkText(rawText);
     setReviewQuestions(questions);
     setParseErrs(errors);
+  }
+
+  // Thêm câu đã chọn từ Ngân hàng câu hỏi vào danh sách review — nối thêm
+  // vào reviewQuestions hiện có (khởi tạo [] nếu chưa có câu nào khác).
+  function handleAddFromBank(items: ExamQuestionInput[]) {
+    setReviewQuestions(prev => [...(prev ?? []), ...items]);
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -639,6 +647,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   </button>
                   <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx,.pdf,.docx,.jpg,.jpeg,.png,.webp"
                     className="hidden" onChange={handleFile} disabled={aiLoading} />
+                  <button type="button" onClick={() => setBankPickerOpen(true)}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    + Từ ngân hàng
+                  </button>
                 </div>
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
               </div>
@@ -648,10 +660,16 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>
                     {reviewQuestions.length} câu hỏi hợp lệ — xem lại trước khi lưu
                   </p>
-                  <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); }}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                    ← Quay lại chỉnh sửa
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setBankPickerOpen(true)}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      + Từ ngân hàng
+                    </button>
+                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); }}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      ← Quay lại chỉnh sửa
+                    </button>
+                  </div>
                 </div>
 
                 {parseErrs.length > 0 && (
@@ -821,6 +839,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
           )}
         </div>
       </div>
+      <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
     </>
   );
 }
