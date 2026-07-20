@@ -106,6 +106,11 @@ export const api = {
         `/api/exams/${examId}/questions/set-points`,
         { method: "PUT", body: JSON.stringify({ totalPoints }) }
       ),
+    saveToBank: (examId: string, qid: string, data: SaveToBankInput) =>
+      apiFetch<QuestionBankItemFull>(
+        `/api/exams/${examId}/questions/${qid}/save-to-bank`,
+        { method: "POST", body: JSON.stringify(data) }
+      ),
   },
   // ── Exam attempts nhìn từ phía admin/giáo viên ──────────────────────────────
   examAttemptsAdmin: {
@@ -321,6 +326,11 @@ export interface QuestionBankItemInput {
   type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string;
   subject: string; topic: string; difficulty: Difficulty; tags?: string[];
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
+}
+// Lưu 1 câu có sẵn trong đề vào ngân hàng (hồi tố) — chỉ cần phân loại, nội
+// dung/đáp án server tự copy từ ExamQuestion hiện có, xem save-to-bank/route.ts.
+export interface SaveToBankInput {
+  subject: string; topic: string; difficulty: Difficulty; tags?: string[];
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài

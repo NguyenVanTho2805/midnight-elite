@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType, type SaveToBankInput, type Difficulty } from "@/lib/api";
 import { MathText } from "@/components/MathText";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 
@@ -705,6 +705,86 @@ function DelModal({ target, onClose, onConfirm }: { target: { id: string; label:
   );
 }
 
+// ─── LƯU CÂU CÓ SẴN VÀO NGÂN HÀNG (hồi tố, chiều ngược của QuestionBankPicker) ──
+const SAVE_TO_BANK_DIFFICULTIES: { value: Difficulty; label: string }[] = [
+  { value: "NB",  label: "Nhận biết" },
+  { value: "TH",  label: "Thông hiểu" },
+  { value: "VD",  label: "Vận dụng" },
+  { value: "VDC", label: "Vận dụng cao" },
+];
+
+function SaveToBankModal({ target, onClose, onSave, saving }: {
+  target: { id: string; label: string } | null;
+  onClose: () => void;
+  onSave: (data: SaveToBankInput) => void;
+  saving: boolean;
+}) {
+  const [subject, setSubject] = useState("");
+  const [topic, setTopic] = useState("");
+  const [difficulty, setDifficulty] = useState<Difficulty>("NB");
+  const [tagsText, setTagsText] = useState("");
+
+  useEffect(() => {
+    if (target) { setSubject(""); setTopic(""); setDifficulty("NB"); setTagsText(""); }
+  }, [target]);
+
+  if (!target) return null;
+
+  function handleSave() {
+    if (!subject.trim() || !topic.trim()) return;
+    const tags = tagsText.split(",").map(t => t.trim()).filter(Boolean);
+    onSave({ subject: subject.trim(), topic: topic.trim(), difficulty, tags: tags.length > 0 ? tags : undefined });
+  }
+
+  const inp = "w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400";
+  const inpStyle = { borderColor: "#e5e3df" };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+        <h2 className="text-base font-bold mb-1" style={{ color: "#1a1a1a" }}>Lưu vào ngân hàng câu hỏi</h2>
+        <p className="text-sm text-gray-500 mb-4">"{target.label}"</p>
+        <div className="space-y-3 mb-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Môn học *</label>
+            <input className={inp} style={inpStyle} value={subject} onChange={e => setSubject(e.target.value)} placeholder="VD: Toán" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Chủ đề *</label>
+            <input className={inp} style={inpStyle} value={topic} onChange={e => setTopic(e.target.value)} placeholder="VD: Hàm số" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Độ khó *</label>
+            <div className="flex gap-2 flex-wrap">
+              {SAVE_TO_BANK_DIFFICULTIES.map(d => (
+                <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+                  style={difficulty === d.value
+                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                    : { borderColor: "#e5e3df", color: "#787671" }}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Tags (tùy chọn, cách nhau bởi dấu phẩy)</label>
+            <input className={inp} style={inpStyle} value={tagsText} onChange={e => setTagsText(e.target.value)} placeholder="VD: đề thi thử, chương 1" />
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
+          <button onClick={handleSave} disabled={saving || !subject.trim() || !topic.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{ background: "#16a34a" }}>
+            {saving ? "Đang lưu..." : "Lưu"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── DUYỆT PHÍ GUEST (đề thi có price, tái dùng quy trình sales thủ công) ──────
 function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (msg: string, ok?: boolean) => void }) {
   const [grants, setGrants] = useState<ExamGuestAccessFull[]>([]);
@@ -1038,6 +1118,8 @@ function ThiThuQuestionsPage() {
   const [bulkResult, setBulkResult] = useState<{ imported: number; errors: { block: number; message: string }[] } | null>(null);
   const [saving, setSaving] = useState(false);
   const [del, setDel] = useState<{ id: string; label: string } | null>(null);
+  const [saveToBank, setSaveToBank] = useState<{ id: string; label: string } | null>(null);
+  const [savingToBank, setSavingToBank] = useState(false);
   const { toast, showToast } = useAdminToast();
 
   const load = useCallback(() => {
@@ -1094,6 +1176,21 @@ function ThiThuQuestionsPage() {
       load();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Thêm câu từ ngân hàng thất bại", false);
+    }
+  }
+
+  async function handleSaveToBank(data: SaveToBankInput) {
+    if (!saveToBank) return;
+    setSavingToBank(true);
+    try {
+      await api.examQuestions.saveToBank(id, saveToBank.id, data);
+      showToast("Đã lưu vào ngân hàng câu hỏi", true);
+      setSaveToBank(null);
+      load();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Lưu vào ngân hàng thất bại", false);
+    } finally {
+      setSavingToBank(false);
     }
   }
 
@@ -1214,6 +1311,10 @@ function ThiThuQuestionsPage() {
                     <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>{q.points} điểm</p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
+                    {!q.sourceBankItemId && (
+                      <button onClick={() => setSaveToBank({ id: q.id, label: `Câu ${idx + 1}` })}
+                        className="text-xs font-semibold" style={{ color: "#16a34a" }}>Lưu vào ngân hàng</button>
+                    )}
                     <button onClick={() => setEditing(q)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
                     <button onClick={() => setDel({ id: q.id, label: `Câu ${idx + 1}` })} className="text-xs font-semibold text-red-500">Xoá</button>
                   </div>
@@ -1244,6 +1345,7 @@ function ThiThuQuestionsPage() {
         onSaved={load}
       />
       <DelModal target={del} onClose={() => setDel(null)} onConfirm={handleDelete} />
+      <SaveToBankModal target={saveToBank} onClose={() => setSaveToBank(null)} onSave={handleSaveToBank} saving={savingToBank} />
       <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
     </div>
