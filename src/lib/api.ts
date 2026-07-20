@@ -175,6 +175,10 @@ export const api = {
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/question-bank/${id}`, { method: "DELETE" }),
+    checkDuplicate: (data: { text: string; subject: string; topic: string }) =>
+      apiFetch<{ match: QuestionBankItemFull | null }>("/api/question-bank/check-duplicate", {
+        method: "POST", body: JSON.stringify(data),
+      }),
   },
 };
 

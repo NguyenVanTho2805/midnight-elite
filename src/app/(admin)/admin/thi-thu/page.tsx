@@ -8,7 +8,7 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus, computeExamStatus } from "@/lib/examData";
 import { CATEGORY_GRADIENT, ADMIN_CATEGORIES } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
-import { api, type ExamFull, type ExamQuestionInput, type CourseFull } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionInput, type CourseFull, type Difficulty, type QuestionBankItemFull } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
@@ -36,6 +36,38 @@ const CREATE_INIT: CreateForm = {
   title: "", category: "ĐGNL HSA", date: "", time: "08:00",
   duration: "90 phút", questions: "80", totalPoints: "150", azotaUrl: "",
   active: true, activeGuest: true,
+};
+
+// Trùng với DIFFICULTIES/DIFFICULTY_COLOR ở admin/thi-thu/ngan-hang-cau-hoi/page.tsx
+// — lặp lại cục bộ (đúng quy ước đã dùng cho SCORE_PRESETS) vì chỉ dùng ở đây.
+const DIFFICULTIES: { value: Difficulty; label: string }[] = [
+  { value: "NB",  label: "Nhận biết" },
+  { value: "TH",  label: "Thông hiểu" },
+  { value: "VD",  label: "Vận dụng" },
+  { value: "VDC", label: "Vận dụng cao" },
+];
+const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
+  NB:  { bg: "#dbeafe", color: "#0068FF" },
+  TH:  { bg: "#dcfce7", color: "#16a34a" },
+  VD:  { bg: "#fef3c7", color: "#b45309" },
+  VDC: { bg: "#fee2e2", color: "#dc2626" },
+};
+
+// Giai đoạn 3.5 Cấp 1 — metadata song song với reviewQuestions[idx] cho cổng
+// opt-in "thêm vào ngân hàng" (không gộp vào ExamQuestionInput vì đây là dữ
+// liệu chỉ dùng lúc soạn, không gửi lên bulkCreate).
+interface BankMeta {
+  addToBank: boolean;
+  subject: string;
+  topic: string;
+  difficulty: Difficulty;
+  dupMatch: QuestionBankItemFull | null;
+  resolution: "new" | "reuse";
+  checking: boolean;
+}
+const BANK_META_INIT: BankMeta = {
+  addToBank: true, subject: "", topic: "", difficulty: "NB",
+  dupMatch: null, resolution: "new", checking: false,
 };
 
 // Select danh mục + khả năng gõ danh mục hoàn toàn mới (Exam.category là String tự do, không phải enum)
@@ -191,6 +223,30 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Giai đoạn 3.5 Cấp 1: cổng opt-in "thêm vào ngân hàng" + phát hiện trùng ──
+  const [bankGateOn, setBankGateOn] = useState(false);
+  const [bankMeta, setBankMeta]     = useState<BankMeta[]>([]);
+
+  function setReviewQuestionsWithMeta(questions: ExamQuestionInput[]) {
+    setReviewQuestions(questions);
+    setBankMeta(questions.map(() => ({ ...BANK_META_INIT })));
+  }
+  function updateBankMeta(idx: number, patch: Partial<BankMeta>) {
+    setBankMeta(prev => prev.map((m, i) => i === idx ? { ...m, ...patch } : m));
+  }
+  async function checkDupForIndex(idx: number) {
+    const meta = bankMeta[idx];
+    const q = reviewQuestions?.[idx];
+    if (!meta?.addToBank || !q || !meta.subject.trim() || !meta.topic.trim()) return;
+    updateBankMeta(idx, { checking: true });
+    try {
+      const { match } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
+      updateBankMeta(idx, { dupMatch: match, resolution: "new", checking: false });
+    } catch {
+      updateBankMeta(idx, { checking: false });
+    }
+  }
+
   // ── Upload ảnh minh hoạ trực tiếp cho từng câu (Cloudinary) ───────────────
   const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
@@ -224,6 +280,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       setForm(CREATE_INIT); setErrors({}); setSaving(false);
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
       setAnswerKeyFile(null); setAiLoading(false);
+      setBankGateOn(false); setBankMeta([]);
     }
   }, [open]);
 
@@ -236,7 +293,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
   function runPreview() {
     const { questions, errors } = parseBulkText(rawText);
-    setReviewQuestions(questions);
+    setReviewQuestionsWithMeta(questions);
     setParseErrs(errors);
   }
 
@@ -244,6 +301,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   // vào reviewQuestions hiện có (khởi tạo [] nếu chưa có câu nào khác).
   function handleAddFromBank(items: ExamQuestionInput[]) {
     setReviewQuestions(prev => [...(prev ?? []), ...items]);
+    // Câu từ ngân hàng đã có sourceBankItemId sẵn — không hiện lại cổng opt-in.
+    setBankMeta(prev => [...prev, ...items.map(() => ({ ...BANK_META_INIT, addToBank: false }))]);
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -260,7 +319,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         setAiLoading(true);
         try {
           const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
-          setReviewQuestions(questions);
+          setReviewQuestionsWithMeta(questions);
           setParseErrs(errors);
         } finally {
           setAiLoading(false);
@@ -269,14 +328,14 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         const text = await file.text();
         setRawText(text);
         const { questions, errors } = parseBulkText(text);
-        setReviewQuestions(questions);
+        setReviewQuestionsWithMeta(questions);
         setParseErrs(errors);
       } else if (ext === "csv") {
         const Papa = await import("papaparse");
         const text = await file.text();
         const parsed = Papa.parse<string[]>(text, { skipEmptyLines: true });
         const { questions, errors } = parseSpreadsheetRows(parsed.data);
-        setReviewQuestions(questions);
+        setReviewQuestionsWithMeta(questions);
         setParseErrs(errors);
       } else if (ext === "xlsx") {
         const { Workbook } = await import("exceljs");
@@ -289,7 +348,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
           rows.push(values.slice(1)); // row.values đánh số từ 1, index 0 rỗng
         });
         const { questions, errors } = parseSpreadsheetRows(rows);
-        setReviewQuestions(questions);
+        setReviewQuestionsWithMeta(questions);
         setParseErrs(errors);
       } else {
         setFileErr("Chỉ hỗ trợ file .txt, .csv, .xlsx");
@@ -303,6 +362,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
   function updateReviewQuestion(idx: number, text: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
+    // Nội dung đổi sau khi đã check trùng — cảnh báo cũ không còn đúng ngữ cảnh.
+    updateBankMeta(idx, { dupMatch: null, resolution: "new" });
   }
   function updateReviewImageUrl(idx: number, imageUrl: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, imageUrl } : q) ?? null);
@@ -328,6 +389,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       const next = prev?.filter((_, i) => i !== idx) ?? null;
       return next && next.length > 0 ? next : null;
     });
+    setBankMeta(prev => prev.filter((_, i) => i !== idx));
   }
   // SHORT_ANSWER chỉ có đúng 1 option (đáp án đúng) — sửa thẳng options[0].text
   function updateReviewShortAnswer(idx: number, text: string) {
@@ -405,10 +467,45 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     return Object.keys(e).length === 0;
   }
 
+  // Giai đoạn 3.5 Cấp 1: với mỗi câu có addToBank, "Dùng câu cũ" → link thẳng
+  // sourceBankItemId về bản ghi trùng đã tìm thấy; ngược lại tạo bản ghi ngân
+  // hàng mới rồi link. Câu thiếu subject/topic (bắt buộc) bị bỏ qua, giữ
+  // nguyên không thêm vào ngân hàng — không chặn việc lưu đề.
+  async function resolveBankLinkedQuestions(questions: ExamQuestionInput[]): Promise<ExamQuestionInput[]> {
+    if (!bankGateOn) return questions;
+    return Promise.all(questions.map(async (q, idx) => {
+      const meta = bankMeta[idx];
+      if (!meta?.addToBank) return q;
+      if (meta.resolution === "reuse" && meta.dupMatch) {
+        return { ...q, sourceBankItemId: meta.dupMatch.id };
+      }
+      if (!meta.subject.trim() || !meta.topic.trim()) return q;
+      try {
+        const created = await api.questionBank.create({
+          type: q.type ?? "MC",
+          text: q.text,
+          imageUrl: q.imageUrl,
+          points: q.points ?? 1,
+          explanation: q.explanation,
+          subject: meta.subject.trim(),
+          topic: meta.topic.trim(),
+          difficulty: meta.difficulty,
+          options: q.options,
+        });
+        return { ...q, sourceBankItemId: created.id };
+      } catch {
+        return q;
+      }
+    }));
+  }
+
   async function handleSave() {
     if (!validate()) return;
     setSaving(true);
     try {
+      const questionsToSave = reviewQuestions && reviewQuestions.length > 0
+        ? await resolveBankLinkedQuestions(reviewQuestions)
+        : reviewQuestions;
       const examDate = form.date.split("-").reverse().join("/");
       const exam = await api.exams.create({
         id:           toSlug(form.title),
@@ -427,9 +524,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         activeGuest:  form.activeGuest,
         createdAt:    new Date().toLocaleDateString("vi-VN"),
       });
-      if (reviewQuestions && reviewQuestions.length > 0) {
+      if (questionsToSave && questionsToSave.length > 0) {
         try {
-          await api.examQuestions.bulkCreate(exam.id, reviewQuestions);
+          await api.examQuestions.bulkCreate(exam.id, questionsToSave);
         } catch {
           showToast("Đề thi đã tạo nhưng lưu câu hỏi thất bại — vào \"Quản lý câu hỏi\" để thêm lại", false);
         }
@@ -665,7 +762,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       + Từ ngân hàng
                     </button>
-                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); }}
+                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); }}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       ← Quay lại chỉnh sửa
                     </button>
@@ -677,6 +774,14 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     {parseErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
                   </ul>
                 )}
+
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                  <div>
+                    <p className="text-xs font-medium text-gray-700">Thêm các câu hỏi này vào ngân hàng câu hỏi luôn?</p>
+                    <p className="text-xs text-gray-400">Kiểm tra trùng lặp theo Môn/Chủ đề trước khi lưu</p>
+                  </div>
+                  <Toggle checked={bankGateOn} onChange={() => setBankGateOn(v => !v)} />
+                </div>
 
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                   {reviewQuestions.map((q, idx) => {
@@ -729,6 +834,70 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           onChange={e => updateReviewSectionMinutes(idx, e.target.value)}
                         />
                       </div>
+                      {bankGateOn && !q.sourceBankItemId && bankMeta[idx] && (
+                        <div className="ml-6 mb-2 p-2 rounded-lg border border-dashed"
+                          style={{ width: "calc(100% - 1.5rem)", borderColor: "#93c5fd", background: "#eff6ff" }}>
+                          <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
+                            <input type="checkbox" checked={bankMeta[idx].addToBank}
+                              onChange={e => updateBankMeta(idx, { addToBank: e.target.checked })} />
+                            Thêm vào ngân hàng câu hỏi
+                          </label>
+                          {bankMeta[idx].addToBank && (
+                            <>
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <input
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                  placeholder="Môn học *"
+                                  value={bankMeta[idx].subject}
+                                  onChange={e => updateBankMeta(idx, { subject: e.target.value })}
+                                  onBlur={() => checkDupForIndex(idx)}
+                                />
+                                <input
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                  placeholder="Chủ đề *"
+                                  value={bankMeta[idx].topic}
+                                  onChange={e => updateBankMeta(idx, { topic: e.target.value })}
+                                  onBlur={() => checkDupForIndex(idx)}
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {DIFFICULTIES.map(d => (
+                                  <button key={d.value} type="button" onClick={() => updateBankMeta(idx, { difficulty: d.value })}
+                                    className="px-2 py-0.5 rounded-full text-xs font-semibold border"
+                                    style={bankMeta[idx].difficulty === d.value
+                                      ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
+                                      : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                                    {d.label}
+                                  </button>
+                                ))}
+                              </div>
+                              {bankMeta[idx].checking && (
+                                <p className="text-xs text-gray-400 mt-1">Đang kiểm tra trùng lặp...</p>
+                              )}
+                              {bankMeta[idx].dupMatch && (
+                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#fef3c7", color: "#92400e" }}>
+                                  <p className="font-semibold">
+                                    ⚠️ Trùng khớp với câu đã có trong ngân hàng
+                                    (tạo bởi {bankMeta[idx].dupMatch.owner?.name ?? "?"}, {bankMeta[idx].dupMatch.subject}/{bankMeta[idx].dupMatch.topic})
+                                  </p>
+                                  <div className="flex gap-2 mt-1.5">
+                                    <button type="button" onClick={() => updateBankMeta(idx, { resolution: "reuse" })}
+                                      className="px-2 py-1 rounded font-semibold"
+                                      style={bankMeta[idx].resolution === "reuse" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
+                                      Dùng câu cũ
+                                    </button>
+                                    <button type="button" onClick={() => updateBankMeta(idx, { resolution: "new" })}
+                                      className="px-2 py-1 rounded font-semibold"
+                                      style={bankMeta[idx].resolution === "new" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
+                                      Vẫn thêm câu mới
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                       {q.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={q.imageUrl} alt="" className="ml-6 mb-2 max-h-24 rounded border border-gray-200" />

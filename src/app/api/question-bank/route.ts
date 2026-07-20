@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionParser";
+import { computeContentHash } from "@/lib/questionDedup";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
         topic: topic.trim(),
         difficulty,
         tags: tags && tags.length > 0 ? tags : undefined,
+        contentHash: computeContentHash(text),
         ownerId: auth.userId,
         options: {
           create: (options ?? []).map((o, idx) => ({

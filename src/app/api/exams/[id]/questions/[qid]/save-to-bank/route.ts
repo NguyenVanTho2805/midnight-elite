@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { computeContentHash } from "@/lib/questionDedup";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -60,6 +61,7 @@ export async function POST(
           topic: topic.trim(),
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,
+          contentHash: computeContentHash(question.text),
           ownerId: auth.userId,
           options: {
             create: question.options.map((o, idx) => ({

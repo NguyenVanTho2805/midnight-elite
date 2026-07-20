@@ -239,6 +239,12 @@ model QuestionBankItem {
   difficulty String // "NB" | "TH" | "VD" | "VDC" (nhận biết/thông hiểu/vận dụng/vận dụng cao)
   tags       Json? // string[] tự do, tùy chọn
 
+  // Hash nội dung đã chuẩn hoá (xem computeContentHash trong
+  // src/lib/questionDedup.ts) — tra trùng Y HỆT trong phạm vi subject+topic
+  // (Giai đoạn 3.5 Cấp 1). null = chưa từng tính (bản ghi cũ trước tính năng
+  // này, được tính lại khi sửa).
+  contentHash String?
+
   // Người soạn — dùng chung giữa mọi giáo viên (ai cũng xem/lọc được tất cả),
   // nhưng chỉ chủ sở hữu (hoặc admin_super/admin_content) mới sửa/xoá được,
   // xem ownsResource()/requireOwnedResource() trong src/lib/auth-guard.ts.
@@ -252,6 +258,7 @@ model QuestionBankItem {
   examQuestions ExamQuestion[]
 
   @@index([subject, topic])
+  @@index([subject, topic, contentHash])
   @@map("question_bank_items")
 }
 
