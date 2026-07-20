@@ -161,7 +161,7 @@ export const api = {
   },
   // ── Ngân hàng câu hỏi (dùng chung giữa các giáo viên) ────────────────────
   questionBank: {
-    list: (params?: { search?: string; subject?: string; topic?: string; difficulty?: string; page?: number; pageSize?: number }) => {
+    list: (params?: { search?: string; subject?: string; topic?: string; difficulty?: string; page?: number; pageSize?: number; withStats?: boolean }) => {
       const qs = params
         ? Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
         : [];
@@ -325,6 +325,10 @@ export interface QuestionBankItemFull {
   ownerId: string | null; owner: { name: string } | null;
   createdAt: string; updatedAt: string;
   options: QuestionBankOptionFull[];
+  // Giai đoạn 4 — chỉ có khi gọi questionBank.list({ withStats: true }).
+  usageCount?: number;
+  examCount?: number;
+  correctRatio?: number | null;
 }
 export interface QuestionBankItemInput {
   type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string;

@@ -195,7 +195,7 @@ type Tx = Prisma.TransactionClient;
 // không phân biệt hoa/thường, đổi dấu phẩy thập phân "," → "." (đúng quy
 // định THPT: sai 1 ký tự/dấu phẩy là mất toàn bộ điểm câu đó — không chấm
 // gần đúng, không bỏ dấu tiếng Việt).
-function normalizeShortAnswer(s: string): string {
+export function normalizeShortAnswer(s: string): string {
   return s.trim().toLowerCase().replace(/,/g, ".");
 }
 

@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionParser";
 import { computeContentHash } from "@/lib/questionDedup";
+import { computeBankItemStats } from "@/lib/questionBankStats";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -21,6 +22,10 @@ export async function GET(req: NextRequest) {
   const difficulty = searchParams.get("difficulty")?.trim();
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize")) || 20));
+  // Giai đoạn 4 — tính usageCount/examCount/correctRatio chỉ khi cần (trang
+  // danh sách chính), KHÔNG bật ở QuestionBankPicker (chọn câu lúc soạn đề)
+  // để tránh cõng thêm truy vấn cho luồng không cần thống kê.
+  const withStats = searchParams.get("withStats") === "true";
 
   const where = {
     ...(search ? { text: { contains: search, mode: "insensitive" as const } } : {}),
@@ -43,7 +48,15 @@ export async function GET(req: NextRequest) {
       }),
       prisma.questionBankItem.count({ where }),
     ]);
-    return NextResponse.json({ items, total });
+
+    if (!withStats) return NextResponse.json({ items, total });
+
+    const statsById = await computeBankItemStats(items.map(i => i.id));
+    const itemsWithStats = items.map(item => ({
+      ...item,
+      ...(statsById.get(item.id) ?? { usageCount: 0, examCount: 0, correctRatio: null }),
+    }));
+    return NextResponse.json({ items: itemsWithStats, total });
   } catch (e) {
     console.error("[GET /api/question-bank]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

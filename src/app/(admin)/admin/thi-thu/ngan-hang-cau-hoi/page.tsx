@@ -20,6 +20,13 @@ const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
 };
+// Giai đoạn 4 — màu badge tỉ lệ trả lời đúng: xanh (dễ/ổn), vàng (trung
+// bình), đỏ (khó bất thường — có thể đề sai đáp án, đáng xem lại).
+function CORRECT_RATIO_COLOR(ratio: number): { bg: string; color: string } {
+  if (ratio >= 0.7) return { bg: "#dcfce7", color: "#16a34a" };
+  if (ratio >= 0.4) return { bg: "#fef3c7", color: "#b45309" };
+  return { bg: "#fee2e2", color: "#dc2626" };
+}
 const TYPE_LABEL: Record<QuestionType, string> = {
   MC: "Trắc nghiệm", ESSAY: "Tự luận", TRUE_FALSE_CLUSTER: "Đúng-Sai 4 ý", SHORT_ANSWER: "Trả lời ngắn",
 };
@@ -394,7 +401,7 @@ function PageInner() {
         subject: subjectFilter || undefined,
         topic: topicFilter || undefined,
         difficulty: difficultyFilter || undefined,
-        page, pageSize,
+        page, pageSize, withStats: true,
       });
       setItems(data.items);
       setTotal(data.total);
@@ -518,15 +525,16 @@ function PageInner() {
               <th className="px-4 py-3">Độ khó</th>
               <th className="px-4 py-3">Loại</th>
               <th className="px-4 py-3">Người soạn</th>
+              <th className="px-4 py-3">Sử dụng</th>
               <th className="px-4 py-3">Cập nhật</th>
               <th className="px-4 py-3">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Chưa có câu hỏi nào</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Chưa có câu hỏi nào</td></tr>
             ) : items.map(item => (
               <tr key={item.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
                 <td className="px-4 py-3 max-w-sm truncate" title={item.text}>{item.text}</td>
@@ -538,6 +546,20 @@ function PageInner() {
                 </td>
                 <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[item.type]}</td>
                 <td className="px-4 py-3 text-gray-600">{item.owner?.name ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {!item.usageCount ? (
+                    <span className="text-xs text-gray-300">Chưa dùng</span>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs">{item.examCount} đề{item.usageCount !== item.examCount ? ` (${item.usageCount} lượt)` : ""}</span>
+                      {item.correctRatio != null && (
+                        <span className="px-1.5 py-0.5 rounded-full text-xs font-semibold" style={CORRECT_RATIO_COLOR(item.correctRatio)}>
+                          {Math.round(item.correctRatio * 100)}% đúng
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(item.updatedAt).toLocaleDateString("vi-VN")}</td>
                 <td className="px-4 py-3">
                   {canEdit(item) ? (
