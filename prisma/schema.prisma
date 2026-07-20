@@ -232,8 +232,16 @@ model ExamQuestion {
 
   // "MC" (trắc nghiệm 1 đáp án, mặc định) | "ESSAY" (tự luận, chấm tay) |
   // "TRUE_FALSE_CLUSTER" (1 đoạn dẫn + 4 mệnh đề con, mỗi ý tự đúng/sai độc
-  // lập — không phải chọn 1 trong 4, xem ExamOption.subLabel/ExamAnswerBoolean).
+  // lập — không phải chọn 1 trong 4, xem ExamOption.subLabel/ExamAnswerBoolean) |
+  // "SHORT_ANSWER" (điền đáp án ngắn, chấm tự động so khớp text — đáp án đúng
+  // lưu trong ExamOption duy nhất của câu, xem examGrading.ts).
   type String @default("MC")
+
+  // Tên Phần thi (vd "Phần Trắc nghiệm") để nhóm hiển thị — null = không
+  // thuộc phần nào (đề cũ, hoặc đề không cần chia phần). Chỉ dùng để nhóm
+  // hiển thị + xáo trong phạm vi từng phần (shuffleQuestionOrderBySections
+  // trong examGrading.ts), không ảnh hưởng tới cách tính điểm.
+  sectionLabel String?
 
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]

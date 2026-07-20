@@ -52,7 +52,7 @@ export async function GET(
       if (q.type === "ESSAY") {
         const graded = essayByQuestion.get(q.id);
         return {
-          id: q.id, type: q.type, text: q.text, points: q.points,
+          id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           textAnswer: textAnswers[q.id] ?? null,
           pointsAwarded: graded?.pointsAwarded ?? null,
           teacherComment: graded?.teacherComment ?? null,
@@ -70,7 +70,7 @@ export async function GET(
             isCorrect: reveal ? o.isCorrect : null,
           };
         });
-        return { id: q.id, type: q.type, text: q.text, points: q.points, options };
+        return { id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel, options };
       }
 
       if (q.type === "SHORT_ANSWER") {
@@ -80,7 +80,7 @@ export async function GET(
         const wasCorrect = !!studentAnswer?.trim() && !!correctOption && normalize(studentAnswer) === normalize(correctOption.text);
         const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
         return {
-          id: q.id, type: q.type, text: q.text, points: q.points,
+          id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           studentAnswer,
           correctAnswer: reveal ? (correctOption?.text ?? null) : null,
           isCorrect: reveal ? wasCorrect : null,
@@ -93,7 +93,7 @@ export async function GET(
       const wasCorrect = !!chosenOption?.isCorrect;
       const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
       return {
-        id: q.id, type: q.type, text: q.text, points: q.points,
+        id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
         studentOptionId,
         options: q.options.map(o => ({
           id: o.id, text: o.text,

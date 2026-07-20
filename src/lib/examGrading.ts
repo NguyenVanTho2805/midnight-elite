@@ -44,6 +44,7 @@ export function applyAttemptOrder(
     text: q.text,
     imageUrl: q.imageUrl,
     points: q.points,
+    sectionLabel: q.sectionLabel,
     // SHORT_ANSWER lưu đáp án đúng ngay trong ExamOption.text — tuyệt đối
     // không được lộ cho học viên trước khi nộp bài, nên trả options rỗng
     // (học viên gõ tự do, không chọn từ danh sách).
@@ -120,6 +121,27 @@ export function shuffleArray<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+// Xáo thứ tự câu hỏi để chống chép bài, nhưng CHỈ xáo trong phạm vi từng
+// Phần thi (sectionLabel) — giữ nguyên thứ tự các Phần với nhau (theo lần
+// xuất hiện đầu tiên trong `order`), nếu không câu hỏi giữa các Phần sẽ bị
+// trộn lẫn ngẫu nhiên, phá vỡ mục đích hiển thị theo Phần. Đề không dùng
+// Phần (sectionLabel toàn null) → đúng 1 nhóm duy nhất → hành vi y hệt xáo
+// phẳng cũ (shuffleArray), không đổi gì cho đề hiện có.
+export function shuffleQuestionOrderBySections(
+  questions: { id: string; sectionLabel: string | null }[]
+): string[] {
+  const sectionOrder: (string | null)[] = [];
+  const bySection = new Map<string | null, string[]>();
+  for (const q of questions) {
+    if (!bySection.has(q.sectionLabel)) {
+      sectionOrder.push(q.sectionLabel);
+      bySection.set(q.sectionLabel, []);
+    }
+    bySection.get(q.sectionLabel)!.push(q.id);
+  }
+  return sectionOrder.flatMap(label => shuffleArray(bySection.get(label)!));
 }
 
 type Tx = Prisma.TransactionClient;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { finalizeAttempt, parseDurationMinutes, shuffleArray, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
+import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -83,7 +83,8 @@ export async function POST(
 
       // Xáo thứ tự câu hỏi + đáp án riêng cho lượt này, cố định suốt attempt
       // (chống chép bài — học sinh ngồi cạnh nhau thấy thứ tự khác nhau).
-      const questionOrder = shuffleArray(exam.examQuestions.map(q => q.id));
+      // Chỉ xáo TRONG PHẠM VI TỪNG PHẦN — giữ nguyên thứ tự các Phần.
+      const questionOrder = shuffleQuestionOrderBySections(exam.examQuestions);
       const optionOrderByQuestion: Record<string, string[]> = {};
       for (const q of exam.examQuestions) {
         optionOrderByQuestion[q.id] = shuffleArray(q.options.map(o => o.id));

@@ -248,10 +248,10 @@ export interface ExamReviewOptionCluster {
   studentAnswerTrue: boolean | null; isCorrect: boolean | null;
 }
 export type ExamReviewQuestion =
-  | { id: string; type: "MC"; text: string; points: number; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null }
-  | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; options: ExamReviewOptionCluster[] }
-  | { id: string; type: "ESSAY"; text: string; points: number; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null }
-  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null };
+  | { id: string; type: "MC"; text: string; points: number; sectionLabel: string | null; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null }
+  | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; sectionLabel: string | null; options: ExamReviewOptionCluster[] }
+  | { id: string; type: "ESSAY"; text: string; points: number; sectionLabel: string | null; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null }
+  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null };
 export interface ExamAttemptReview {
   attemptId: string; score: number | null; totalPoints: number;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];
@@ -265,10 +265,12 @@ export interface ExamOptionFull {
 export interface ExamQuestionFull {
   id: string; examId: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number; explanation?: string | null;
+  sectionLabel?: string | null;
   options: ExamOptionFull[];
 }
 export interface ExamQuestionInput {
   text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
+  sectionLabel?: string | null;
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 
@@ -287,6 +289,7 @@ export interface ExamOptionPublic {
 export interface ExamQuestionPublic {
   id: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number;
+  sectionLabel?: string | null;
   options: ExamOptionPublic[];
 }
 export interface ExamAttemptState {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
@@ -18,13 +18,14 @@ interface QuestionForm {
   imageUrl: string;
   points: string;
   explanation: string;
+  sectionLabel: string; // tên Phần thi, tùy chọn — rỗng = không thuộc phần nào
   options: string[]; // MC: N đáp án; TRUE_FALSE_CLUSTER: đúng 4 ý a-d; ESSAY: không dùng
   correctIndex: number; // chỉ MC
   clusterCorrect: boolean[]; // chỉ TRUE_FALSE_CLUSTER, length 4 khớp CLUSTER_LABELS
 }
 
 const INIT_FORM: QuestionForm = {
-  type: "MC", text: "", imageUrl: "", points: "1", explanation: "",
+  type: "MC", text: "", imageUrl: "", points: "1", explanation: "", sectionLabel: "",
   options: [...EMPTY_OPTIONS], correctIndex: 0, clusterCorrect: [false, false, false, false],
 };
 
@@ -32,6 +33,7 @@ function toForm(q: ExamQuestionFull): QuestionForm {
   const base = {
     type: q.type, text: q.text, imageUrl: q.imageUrl ?? "",
     points: String(q.points), explanation: q.explanation ?? "",
+    sectionLabel: q.sectionLabel ?? "",
   };
   if (q.type === "TRUE_FALSE_CLUSTER") {
     const bySubLabel = new Map(q.options.map(o => [o.subLabel, o]));
@@ -64,6 +66,7 @@ function toInput(form: QuestionForm): ExamQuestionInput | null {
     imageUrl: form.imageUrl.trim() || undefined,
     points: Number(form.points) > 0 ? Number(form.points) : 1,
     explanation: form.explanation.trim() || undefined,
+    sectionLabel: form.sectionLabel.trim() || null,
   };
 
   if (form.type === "ESSAY") return { ...base, options: [] };
@@ -194,6 +197,17 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Phần thi (tùy chọn)</label>
+            <input
+              className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+              style={{ borderColor: "#e5e3df" }}
+              value={form.sectionLabel}
+              onChange={e => setForm({ ...form, sectionLabel: e.target.value })}
+              placeholder="VD: Phần Trắc nghiệm — để trống nếu đề không chia phần"
+            />
+          </div>
+
           {form.type === "MC" && (
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đáp án (chọn đáp án đúng)</label>
@@ -293,6 +307,20 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
 const AI_FILE_EXTENSIONS = new Set(["pdf", "docx", "jpg", "jpeg", "png", "webp"]);
 const MAX_AI_FILE_BYTES = 4 * 1024 * 1024; // ~4MB — giới hạn body request của Vercel Serverless
 
+// Điểm/câu (+ tuỳ chọn gán Phần thi) theo khuôn tính điểm chính thức — áp
+// dụng theo LOẠI câu hỏi, không theo vị trí. Xem giải thích đầy đủ ở hằng số
+// cùng tên trong src/app/(admin)/admin/thi-thu/page.tsx (2 nơi lặp lại vì
+// mỗi trang có state review câu hỏi riêng, không chia sẻ component).
+interface ScoreRule { points: number; section?: string | null }
+interface ScorePreset { label: string; mc?: ScoreRule; cluster?: ScoreRule; short?: ScoreRule; essay?: ScoreRule }
+const SCORE_PRESETS: Record<string, ScorePreset> = {
+  thpt_toan:     { label: "THPT - Toán",          mc: { points: 0.25 }, cluster: { points: 1 }, short: { points: 0.5 } },
+  thpt_tunhien:  { label: "THPT - Tự nhiên & CN",  mc: { points: 0.25 }, cluster: { points: 1 }, short: { points: 0.25 } },
+  thpt_xahoi:    { label: "THPT - Xã hội",         mc: { points: 0.25 }, cluster: { points: 1 } },
+  thpt_ngoaingu: { label: "THPT - Ngoại ngữ",      mc: { points: 0.25 } },
+  bca:           { label: "Bộ Công An",            mc: { points: 1, section: "Phần Trắc nghiệm" }, essay: { points: 25, section: "Phần Tự luận" } },
+};
+
 // ─── DRAWER: nhập hàng loạt ────────────────────────────────────────────────────
 function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, showToast, onSaved }: {
   open: boolean;
@@ -314,6 +342,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
   const [parseErrs, setParseErrs]         = useState<{ block: number; message: string }[]>([]);
+  const [scorePreset, setScorePreset]     = useState<keyof typeof SCORE_PRESETS>("thpt_toan");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
@@ -378,6 +407,26 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
     setReviewQuestions(prev => prev?.map((q, i) =>
       i === idx ? { ...q, options: [{ text, isCorrect: true }] } : q
     ) ?? null);
+  }
+  function updateReviewSection(idx: number, sectionLabel: string) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, sectionLabel: sectionLabel || null } : q
+    ) ?? null);
+  }
+  function applyScorePreset() {
+    if (!reviewQuestions) return;
+    const preset = SCORE_PRESETS[scorePreset];
+    const ruleFor = (type: string): ScoreRule | undefined =>
+      type === "MC" ? preset.mc
+      : type === "TRUE_FALSE_CLUSTER" ? preset.cluster
+      : type === "SHORT_ANSWER" ? preset.short
+      : type === "ESSAY" ? preset.essay
+      : undefined;
+    setReviewQuestions(prev => prev?.map(q => {
+      const rule = ruleFor(q.type ?? "MC");
+      if (!rule) return q;
+      return { ...q, points: rule.points, sectionLabel: rule.section !== undefined ? rule.section : q.sectionLabel };
+    }) ?? null);
   }
 
   async function saveAiQuestions() {
@@ -512,9 +561,28 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                   </ul>
                 )}
 
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 flex-shrink-0">Khuôn điểm đề thi:</span>
+                  <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+                    value={scorePreset} onChange={e => setScorePreset(e.target.value as keyof typeof SCORE_PRESETS)}>
+                    {Object.entries(SCORE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                  </select>
+                  <button type="button" onClick={applyScorePreset}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex-shrink-0">
+                    Áp dụng khuôn
+                  </button>
+                </div>
+
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  {reviewQuestions.map((q, idx) => (
-                    <div key={idx} className="rounded-lg p-3 border border-gray-200 bg-gray-50">
+                  {reviewQuestions.map((q, idx) => {
+                    const prevSection = idx > 0 ? reviewQuestions[idx - 1].sectionLabel : undefined;
+                    const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
+                    return (
+                    <Fragment key={idx}>
+                      {showSectionHeader && (
+                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                      )}
+                    <div className="rounded-lg p-3 border border-gray-200 bg-gray-50">
                       <div className="flex items-start gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-400 mt-2">Câu {idx + 1}</span>
                         <textarea
@@ -525,6 +593,14 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                         />
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
+                      </div>
+                      <div className="mb-2 pl-6">
+                        <input
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          placeholder="Phần (tùy chọn, vd: Phần Trắc nghiệm)"
+                          value={q.sectionLabel ?? ""}
+                          onChange={e => updateReviewSection(idx, e.target.value)}
+                        />
                       </div>
                       {q.type === "ESSAY" ? (
                         <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
@@ -567,7 +643,9 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                         </div>
                       )}
                     </div>
-                  ))}
+                    </Fragment>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1037,8 +1115,15 @@ function ThiThuQuestionsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {questions.map((q, idx) => (
-              <div key={q.id} className="rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+            {questions.map((q, idx) => {
+              const prevSection = idx > 0 ? questions[idx - 1].sectionLabel : undefined;
+              const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
+              return (
+              <Fragment key={q.id}>
+                {showSectionHeader && (
+                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                )}
+              <div className="rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col gap-0.5 pt-0.5">
                     <button onClick={() => move(idx, -1)} disabled={idx === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs">▲</button>
@@ -1084,7 +1169,9 @@ function ThiThuQuestionsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              </Fragment>
+              );
+            })}
           </div>
         )}
       </div>

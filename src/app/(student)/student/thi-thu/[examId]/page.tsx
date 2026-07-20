@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
@@ -346,8 +346,15 @@ export default function ExamEntryPage() {
               </div>
             )}
             <div className="space-y-3">
-              {reviewData.questions.map((q, idx) => (
-                <div key={q.id} className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+              {reviewData.questions.map((q, idx) => {
+                const prevSection = idx > 0 ? reviewData.questions[idx - 1].sectionLabel : undefined;
+                const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
+                return (
+                <Fragment key={q.id}>
+                  {showSectionHeader && (
+                    <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                  )}
+                <div className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
                   <p className="text-sm font-semibold mb-2" style={{ color: "#1E2938" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
 
                   {q.type === "MC" && (
@@ -416,7 +423,9 @@ export default function ExamEntryPage() {
                     </div>
                   )}
                 </div>
-              ))}
+                </Fragment>
+                );
+              })}
             </div>
           </>
         ) : null}
@@ -535,8 +544,15 @@ export default function ExamEntryPage() {
 
           {/* Danh sách câu hỏi */}
           <div className="space-y-5 order-2">
-            {attempt.questions.map((q, idx) => (
-              <div key={q.id} id={`q-${q.id}`} className="rounded-xl p-5" style={cardStyle}>
+            {attempt.questions.map((q, idx) => {
+              const prevSection = idx > 0 ? attempt.questions?.[idx - 1].sectionLabel : undefined;
+              const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
+              return (
+              <Fragment key={q.id}>
+                {showSectionHeader && (
+                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                )}
+              <div id={`q-${q.id}`} className="rounded-xl p-5" style={cardStyle}>
                 <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>
                   Câu {idx + 1}: <MathText text={q.text} />
                 </p>
@@ -604,7 +620,9 @@ export default function ExamEntryPage() {
                   </div>
                 )}
               </div>
-            ))}
+              </Fragment>
+              );
+            })}
           </div>
         </div>
 

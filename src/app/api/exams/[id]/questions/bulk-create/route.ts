@@ -54,6 +54,7 @@ export async function POST(
             text: q.text.trim(),
             imageUrl: q.imageUrl?.trim() || null,
             points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
+            sectionLabel: q.sectionLabel?.trim() || null,
             options: {
               create: q.options.map((o, idx) => ({
                 id: `eo-${crypto.randomUUID()}`,

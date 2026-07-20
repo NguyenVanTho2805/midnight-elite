@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
@@ -140,15 +140,20 @@ function PresetSelectField({ value, presets, onChange, className, placeholder }:
 const QUESTION_COUNT_PRESETS = ["10", "12", "20", "25", "30", "40", "50", "60", "80", "100", "120", "150"];
 const TOTAL_POINTS_PRESETS = ["10", "20", "50", "100", "150", "200", "300"];
 
-// Điểm/câu theo khuôn tính điểm THPT 2025 chính thức — áp dụng THEO LOẠI CÂU
-// HỎI (không theo vị trí/thứ tự), nên không phụ thuộc đúng-số-lượng-đúng-thứ-tự
-// khi admin dán/nhập câu hỏi. `short: null` = môn đó không có dạng Trả lời
-// ngắn, giữ nguyên điểm hiện có của câu (không đè).
-const THPT_PRESETS: Record<string, { label: string; mc: number; cluster: number; short: number | null }> = {
-  toan:      { label: "Toán",              mc: 0.25, cluster: 1, short: 0.5 },
-  tunhien:   { label: "Tự nhiên & CN",      mc: 0.25, cluster: 1, short: 0.25 },
-  xahoi:     { label: "Xã hội",             mc: 0.25, cluster: 1, short: null },
-  ngoaingu:  { label: "Ngoại ngữ",          mc: 0.25, cluster: 1, short: null },
+// Điểm/câu (+ tuỳ chọn gán Phần thi) theo khuôn tính điểm chính thức từng kỳ
+// thi — áp dụng THEO LOẠI CÂU HỎI (không theo vị trí/thứ tự), nên không phụ
+// thuộc đúng-số-lượng-đúng-thứ-tự khi admin dán/nhập câu hỏi. `null` (điểm)
+// = loại đó không có trong khuôn, giữ nguyên điểm hiện có của câu (không đè).
+// `section` chỉ set khi khuôn cần gán Phần (Bộ Công An); `undefined` = không
+// đổi sectionLabel hiện có của câu.
+interface ScoreRule { points: number; section?: string | null }
+interface ScorePreset { label: string; mc?: ScoreRule; cluster?: ScoreRule; short?: ScoreRule; essay?: ScoreRule }
+const SCORE_PRESETS: Record<string, ScorePreset> = {
+  thpt_toan:     { label: "THPT - Toán",          mc: { points: 0.25 }, cluster: { points: 1 }, short: { points: 0.5 } },
+  thpt_tunhien:  { label: "THPT - Tự nhiên & CN",  mc: { points: 0.25 }, cluster: { points: 1 }, short: { points: 0.25 } },
+  thpt_xahoi:    { label: "THPT - Xã hội",         mc: { points: 0.25 }, cluster: { points: 1 } },
+  thpt_ngoaingu: { label: "THPT - Ngoại ngữ",      mc: { points: 0.25 } },
+  bca:           { label: "Bộ Công An",            mc: { points: 1, section: "Phần Trắc nghiệm" }, essay: { points: 25, section: "Phần Tự luận" } },
 };
 
 function autoCode(category: string, exams: ExamRow[]): string {
@@ -177,7 +182,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [rawText, setRawText]             = useState("");
   const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
   const [parseErrs, setParseErrs]         = useState<ParseError[]>([]);
-  const [thptSubject, setThptSubject]     = useState<keyof typeof THPT_PRESETS>("toan");
+  const [scorePreset, setScorePreset]     = useState<keyof typeof SCORE_PRESETS>("thpt_toan");
   const [fileErr, setFileErr]             = useState("");
   const [aiLoading, setAiLoading]         = useState(false);
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
@@ -322,18 +327,32 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       i === idx ? { ...q, options: [{ text, isCorrect: true }] } : q
     ) ?? null);
   }
+  function updateReviewSection(idx: number, sectionLabel: string) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, sectionLabel: sectionLabel || null } : q
+    ) ?? null);
+  }
 
-  // Áp điểm/câu theo khuôn THPT 2025 — theo LOẠI câu hỏi, không theo vị trí.
-  // Môn không có dạng Trả lời ngắn (short:null) thì giữ nguyên điểm câu đó.
-  function applyThptPreset() {
+  // Áp điểm/câu (+ gán Phần nếu khuôn có quy định) theo khuôn tính điểm đã
+  // chọn — theo LOẠI câu hỏi, không theo vị trí/thứ tự. Loại không có rule
+  // trong khuôn thì giữ nguyên điểm/Phần hiện có của câu đó (không đè).
+  function applyScorePreset() {
     if (!reviewQuestions) return;
-    const cfg = THPT_PRESETS[thptSubject];
+    const preset = SCORE_PRESETS[scorePreset];
+    const ruleFor = (type: string): ScoreRule | undefined =>
+      type === "MC" ? preset.mc
+      : type === "TRUE_FALSE_CLUSTER" ? preset.cluster
+      : type === "SHORT_ANSWER" ? preset.short
+      : type === "ESSAY" ? preset.essay
+      : undefined;
     const updated = reviewQuestions.map(q => {
-      let points = q.points ?? 1;
-      if (q.type === "MC") points = cfg.mc;
-      else if (q.type === "TRUE_FALSE_CLUSTER") points = cfg.cluster;
-      else if (q.type === "SHORT_ANSWER" && cfg.short !== null) points = cfg.short;
-      return { ...q, points };
+      const rule = ruleFor(q.type ?? "MC");
+      if (!rule) return q;
+      return {
+        ...q,
+        points: rule.points,
+        sectionLabel: rule.section !== undefined ? rule.section : q.sectionLabel,
+      };
     });
     const total = updated.reduce((sum, q) => sum + (q.points ?? 0), 0);
     setReviewQuestions(updated);
@@ -537,12 +556,12 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               </div>
               {!!reviewQuestions?.length && (
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs text-gray-500 flex-shrink-0">Khuôn điểm THPT:</span>
+                  <span className="text-xs text-gray-500 flex-shrink-0">Khuôn điểm đề thi:</span>
                   <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
-                    value={thptSubject} onChange={e => setThptSubject(e.target.value as keyof typeof THPT_PRESETS)}>
-                    {Object.entries(THPT_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    value={scorePreset} onChange={e => setScorePreset(e.target.value as keyof typeof SCORE_PRESETS)}>
+                    {Object.entries(SCORE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
-                  <button type="button" onClick={applyThptPreset}
+                  <button type="button" onClick={applyScorePreset}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex-shrink-0">
                     Áp dụng khuôn
                   </button>
@@ -575,6 +594,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">File .csv/.xlsx: chỉ hỗ trợ trắc nghiệm, cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
                   <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn, áp dụng cho cả 3 loại câu hỏi. Sau khi xem lại danh sách câu hỏi bên dưới, có thể bấm nút &quot;🖼 Tải ảnh&quot; ở từng câu để tải trực tiếp ảnh PNG/JPG/WebP thay vì dán URL.</p>
                   <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
+                  <p className="mt-1.5">Phần thi: thêm 1 khối riêng chỉ chứa <code>=== Tên phần ===</code> (vd <code>=== Phần Trắc nghiệm ===</code>) — mọi câu hỏi phía sau được gán vào Phần đó cho tới mốc tiếp theo. Không bắt buộc, chỉ để nhóm hiển thị.</p>
                   <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải bên dưới (tùy chọn) để AI xác định đáp án đúng chính xác hơn — nếu không có, AI sẽ tự giải để suy đáp án, độ chính xác thấp hơn. Luôn kiểm tra lại kết quả trước khi lưu.</p>
                 </div>
                 <textarea
@@ -635,8 +655,15 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                 )}
 
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  {reviewQuestions.map((q, idx) => (
-                    <div key={idx} className="rounded-lg p-3 border border-gray-200 bg-gray-50">
+                  {reviewQuestions.map((q, idx) => {
+                    const prevSection = idx > 0 ? reviewQuestions[idx - 1].sectionLabel : undefined;
+                    const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
+                    return (
+                    <Fragment key={idx}>
+                      {showSectionHeader && (
+                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                      )}
+                    <div className="rounded-lg p-3 border border-gray-200 bg-gray-50">
                       <div className="flex items-start gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-400 mt-2">Câu {idx + 1}</span>
                         <textarea
@@ -662,6 +689,14 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                             {uploadingImageIdx === idx ? "⏳ Đang tải..." : "🖼 Tải ảnh"}
                           </button>
                         )}
+                      </div>
+                      <div className="mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
+                        <input
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          placeholder="Phần (tùy chọn, vd: Phần Trắc nghiệm)"
+                          value={q.sectionLabel ?? ""}
+                          onChange={e => updateReviewSection(idx, e.target.value)}
+                        />
                       </div>
                       {q.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -708,7 +743,9 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                         </div>
                       )}
                     </div>
-                  ))}
+                    </Fragment>
+                    );
+                  })}
                 </div>
                 <input ref={imageFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFileChange} />
               </div>

@@ -14,6 +14,7 @@ export interface ParsedQuestion {
   type: QuestionType;
   points?: number;
   imageUrl?: string;
+  sectionLabel?: string | null; // tên Phần thi — xem SECTION_HEADER bên dưới
   // rỗng với ESSAY. Với SHORT_ANSWER: đúng 1 phần tử {text: <đáp án đúng>,
   // isCorrect:true} — tái dùng cấu trúc ExamOption có sẵn thay vì thêm field
   // riêng, chấm bằng cách so khớp text (chuẩn hoá) thay vì chọn optionId.
@@ -96,6 +97,11 @@ const IMAGE_LINE = /^Ảnh\s*[:.]\s*(\S+)$/i;
 // chỉ có 1 dòng "Đáp án: <giá trị tự do>" (số hoặc text, không giới hạn A-D
 // như ANSWER_LINE của MC). Khối không khớp dòng này thì fallback ESSAY như cũ.
 const SHORT_ANSWER_LINE = /^Đ[áa]p\s*[áa]n\s*(?:đ[úu]ng)?\s*[:.]?\s*(.+)$/i;
+// Mốc đổi Phần thi — 1 khối (cách các khối khác bởi dòng trống) CHỈ chứa
+// đúng 1 dòng dạng "=== Tên phần ===" được hiểu là đổi Phần hiện tại, không
+// tính là câu hỏi, không báo lỗi. Mọi câu hỏi parse được SAU mốc này (cho
+// tới mốc tiếp theo, nếu có) được gắn sectionLabel tương ứng.
+const SECTION_HEADER = /^===\s*(.+?)\s*===$/;
 
 export function parseBulkText(raw: string): ParseResult {
   const blocks = raw
@@ -105,10 +111,19 @@ export function parseBulkText(raw: string): ParseResult {
 
   const questions: ParsedQuestion[] = [];
   const errors: ParseError[] = [];
+  let currentSection: string | null = null;
 
   blocks.forEach((block, idx) => {
     const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
+
+    if (lines.length === 1) {
+      const sectionMatch = lines[0].match(SECTION_HEADER);
+      if (sectionMatch) {
+        currentSection = sectionMatch[1].trim();
+        return;
+      }
+    }
 
     const hasClusterLine = lines.some(l => CLUSTER_LINE.test(l));
     const hasOptionLine = lines.some(l => OPTION_LINE.test(l));
@@ -126,7 +141,7 @@ export function parseBulkText(raw: string): ParseResult {
       errors.push({ block: idx + 1, message: result.error });
       return;
     }
-    questions.push(result.question);
+    questions.push({ ...result.question, sectionLabel: currentSection });
   });
 
   return { questions, errors };
