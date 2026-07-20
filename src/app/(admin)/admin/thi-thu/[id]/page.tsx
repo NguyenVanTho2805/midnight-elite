@@ -45,6 +45,9 @@ function toForm(q: ExamQuestionFull): QuestionForm {
   if (q.type === "ESSAY") {
     return { ...base, options: [], correctIndex: 0, clusterCorrect: [false, false, false, false] };
   }
+  if (q.type === "SHORT_ANSWER") {
+    return { ...base, options: [q.options[0]?.text ?? ""], correctIndex: 0, clusterCorrect: [false, false, false, false] };
+  }
   return {
     ...base,
     options: q.options.map(o => o.text),
@@ -64,6 +67,12 @@ function toInput(form: QuestionForm): ExamQuestionInput | null {
   };
 
   if (form.type === "ESSAY") return { ...base, options: [] };
+
+  if (form.type === "SHORT_ANSWER") {
+    const answer = (form.options[0] ?? "").trim();
+    if (!answer) return null;
+    return { ...base, options: [{ text: answer, isCorrect: true }] };
+  }
 
   if (form.type === "TRUE_FALSE_CLUSTER") {
     const options = CLUSTER_LABELS.map((label, idx) => ({
@@ -135,6 +144,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               {([
                 { v: "MC", label: "Trắc nghiệm" },
                 { v: "TRUE_FALSE_CLUSTER", label: "Đúng-Sai 4 ý" },
+                { v: "SHORT_ANSWER", label: "Trả lời ngắn" },
                 { v: "ESSAY", label: "Tự luận" },
               ] as const).map(t => (
                 <button key={t.v} type="button"
@@ -239,6 +249,20 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                 ))}
               </div>
               <p className="mt-2 text-xs" style={{ color: "#a4a097" }}>Mỗi ý đúng/sai độc lập — học viên trả lời riêng từng ý, không phải chọn 1 trong 4.</p>
+            </div>
+          )}
+
+          {form.type === "SHORT_ANSWER" && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đáp án đúng</label>
+              <input
+                className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                style={{ borderColor: "#e5e3df" }}
+                value={form.options[0] ?? ""}
+                onChange={e => setForm({ ...form, options: [e.target.value] })}
+                placeholder="VD: 42"
+              />
+              <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>Chấm tự động bằng so khớp chính xác (không phân biệt hoa/thường, tự đổi dấu phẩy thập phân).</p>
             </div>
           )}
 
@@ -349,6 +373,11 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
       const next = prev?.filter((_, i) => i !== idx) ?? null;
       return next && next.length > 0 ? next : null;
     });
+  }
+  function updateReviewShortAnswer(idx: number, text: string) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: [{ text, isCorrect: true }] } : q
+    ) ?? null);
   }
 
   async function saveAiQuestions() {
@@ -499,6 +528,15 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                       </div>
                       {q.type === "ESSAY" ? (
                         <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
+                      ) : q.type === "SHORT_ANSWER" ? (
+                        <div className="pl-6">
+                          <input
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                            placeholder="Đáp án đúng"
+                            value={q.options[0]?.text ?? ""}
+                            onChange={e => updateReviewShortAnswer(idx, e.target.value)}
+                          />
+                        </div>
                       ) : q.type === "TRUE_FALSE_CLUSTER" ? (
                         <div className="grid grid-cols-2 gap-1.5 pl-6">
                           {q.options.map((o, oi) => (
@@ -732,6 +770,25 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                     ))}
                   </div>
                 )}
+
+                {q.type === "SHORT_ANSWER" && (() => {
+                  const normalize = (s: string) => s.trim().toLowerCase().replace(/,/g, ".");
+                  const correct = q.options[0]?.text ?? "";
+                  const isCorrect = !!q.textAnswer?.trim() && normalize(q.textAnswer) === normalize(correct);
+                  return (
+                    <div className="text-xs space-y-1">
+                      <p>
+                        Học viên trả lời: <strong style={{ color: q.textAnswer?.trim() ? undefined : "#a4a097" }}>
+                          {q.textAnswer?.trim() || "chưa trả lời"}
+                        </strong>
+                      </p>
+                      <p style={{ color: "#787671" }}>Đáp án đúng: {correct || "—"}</p>
+                      <p style={{ color: isCorrect ? "#16a34a" : "#dc2626" }}>
+                        Chấm tự động — {isCorrect ? `Đúng (${q.points} điểm)` : "Sai (0 điểm)"}
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {q.type === "ESSAY" && (
                   <div>
@@ -993,12 +1050,14 @@ function ThiThuQuestionsPage() {
                       {q.type !== "MC" && (
                         <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase"
                           style={{ background: "#f6f5f4", color: "#787671" }}>
-                          {q.type === "ESSAY" ? "Tự luận" : "Đúng-Sai"}
+                          {q.type === "ESSAY" ? "Tự luận" : q.type === "SHORT_ANSWER" ? "Trả lời ngắn" : "Đúng-Sai"}
                         </span>
                       )}
                     </div>
                     {q.type === "ESSAY" ? (
                       <p className="mt-1.5 text-xs italic" style={{ color: "#a4a097" }}>Câu tự luận — chấm điểm thủ công sau khi nộp bài.</p>
+                    ) : q.type === "SHORT_ANSWER" ? (
+                      <p className="mt-1.5 text-xs" style={{ color: "#16a34a" }}>Đáp án: <strong>{q.options[0]?.text ?? "—"}</strong></p>
                     ) : q.type === "TRUE_FALSE_CLUSTER" ? (
                       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
                         {q.options.map(o => (

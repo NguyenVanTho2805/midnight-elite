@@ -73,6 +73,20 @@ export async function GET(
         return { id: q.id, type: q.type, text: q.text, points: q.points, options };
       }
 
+      if (q.type === "SHORT_ANSWER") {
+        const studentAnswer = textAnswers[q.id] ?? null;
+        const correctOption = q.options.find(o => o.isCorrect);
+        const normalize = (s: string) => s.trim().toLowerCase().replace(/,/g, ".");
+        const wasCorrect = !!studentAnswer?.trim() && !!correctOption && normalize(studentAnswer) === normalize(correctOption.text);
+        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+        return {
+          id: q.id, type: q.type, text: q.text, points: q.points,
+          studentAnswer,
+          correctAnswer: reveal ? (correctOption?.text ?? null) : null,
+          isCorrect: reveal ? wasCorrect : null,
+        };
+      }
+
       // MC
       const studentOptionId = answers[q.id] ?? null;
       const chosenOption = q.options.find(o => o.id === studentOptionId);

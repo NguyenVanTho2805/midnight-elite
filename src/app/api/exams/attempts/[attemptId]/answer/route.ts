@@ -45,8 +45,12 @@ export async function PATCH(
         update: { optionId, textAnswer: null },
       });
     } else {
-      // Câu ESSAY — gõ chữ tự do, chờ giáo viên chấm tay (Giai đoạn 6).
-      const question = await prisma.examQuestion.findFirst({ where: { id: questionId, type: "ESSAY" } });
+      // Câu ESSAY (gõ chữ tự do, chờ giáo viên chấm tay) hoặc SHORT_ANSWER
+      // (gõ tự do, chấm tự động bằng so khớp text lúc nộp — xem examGrading.ts) —
+      // cả 2 đều lưu vào textAnswer, chỉ khác nhau ở cách chấm sau này.
+      const question = await prisma.examQuestion.findFirst({
+        where: { id: questionId, type: { in: ["ESSAY", "SHORT_ANSWER"] } },
+      });
       if (!question) return NextResponse.json({ error: "Câu hỏi không hợp lệ" }, { status: 400 });
 
       await prisma.examAnswer.upsert({

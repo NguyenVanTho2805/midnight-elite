@@ -44,7 +44,12 @@ export function applyAttemptOrder(
     text: q.text,
     imageUrl: q.imageUrl,
     points: q.points,
-    options: q.options.map(o => ({ id: o.id, order: o.order, text: o.text, subLabel: o.subLabel })),
+    // SHORT_ANSWER lưu đáp án đúng ngay trong ExamOption.text — tuyệt đối
+    // không được lộ cho học viên trước khi nộp bài, nên trả options rỗng
+    // (học viên gõ tự do, không chọn từ danh sách).
+    options: q.type === "SHORT_ANSWER"
+      ? []
+      : q.options.map(o => ({ id: o.id, order: o.order, text: o.text, subLabel: o.subLabel })),
   }));
 }
 
@@ -119,6 +124,14 @@ export function shuffleArray<T>(arr: T[]): T[] {
 
 type Tx = Prisma.TransactionClient;
 
+// Chuẩn hoá đáp án Trả lời ngắn trước khi so khớp: bỏ khoảng trắng thừa,
+// không phân biệt hoa/thường, đổi dấu phẩy thập phân "," → "." (đúng quy
+// định THPT: sai 1 ký tự/dấu phẩy là mất toàn bộ điểm câu đó — không chấm
+// gần đúng, không bỏ dấu tiếng Việt).
+function normalizeShortAnswer(s: string): string {
+  return s.trim().toLowerCase().replace(/,/g, ".");
+}
+
 // Tính tổng điểm thô (thang gốc theo points từng câu, chưa quy đổi /150) của
 // 1 attempt — dùng chung cho lúc nộp bài lần đầu (finalizeAttempt) và lúc
 // chấm/sửa điểm tự luận sau đó (regradeAttempt). Tách riêng vì 2 nơi gọi có
@@ -137,7 +150,7 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
   let rawEarned = answers.reduce((sum, a) => {
     if (a.question.type === "MC") return sum + (a.option?.isCorrect ? a.question.points : 0);
     if (a.question.type === "ESSAY") return sum + (a.pointsAwarded ?? 0);
-    return sum;
+    return sum; // TRUE_FALSE_CLUSTER và SHORT_ANSWER được tính ở khối riêng bên dưới
   }, 0);
 
   // TRUE_FALSE_CLUSTER: chấm theo % số ý đúng trong cụm 4 ý (thang mặc định
@@ -167,6 +180,26 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
       const correctCount = given.filter(a => a.answerTrue !== null && a.answerTrue === a.option.isCorrect).length;
       const pct = percentTable[Math.min(correctCount, 4)];
       rawEarned += q.points * pct;
+    }
+  }
+
+  // SHORT_ANSWER: đáp án đúng lưu trong ExamOption duy nhất (isCorrect:true)
+  // của câu — so khớp text đã chuẩn hoá với ExamAnswer.textAnswer (không
+  // dùng optionId, học viên gõ tự do). Trả lời nằm ở `answers` đã fetch trên,
+  // nhưng bị bỏ qua trong reduce vì cần đối chiếu với đáp án đúng riêng.
+  const shortAnswerQuestions = await tx.examQuestion.findMany({
+    where: { examId: attempt.examId, type: "SHORT_ANSWER" },
+    include: { options: true },
+  });
+  if (shortAnswerQuestions.length > 0) {
+    const answerByQuestion = new Map(answers.map(a => [a.questionId, a]));
+    for (const q of shortAnswerQuestions) {
+      const correctOption = q.options.find(o => o.isCorrect);
+      const given = answerByQuestion.get(q.id);
+      if (!correctOption || !given?.textAnswer) continue;
+      if (normalizeShortAnswer(given.textAnswer) === normalizeShortAnswer(correctOption.text)) {
+        rawEarned += q.points;
+      }
     }
   }
 

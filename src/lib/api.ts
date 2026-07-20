@@ -239,7 +239,7 @@ export interface ExamAttemptAdminDetail {
   questions: ExamAttemptAdminDetailQuestion[];
 }
 
-export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER";
+export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER";
 
 // ─── Xem lại bài làm (học viên, sau khi nộp) ───────────────────────────────────
 export interface ExamReviewOptionMC { id: string; text: string; isCorrect: boolean | null; }
@@ -250,7 +250,8 @@ export interface ExamReviewOptionCluster {
 export type ExamReviewQuestion =
   | { id: string; type: "MC"; text: string; points: number; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null }
   | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; options: ExamReviewOptionCluster[] }
-  | { id: string; type: "ESSAY"; text: string; points: number; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null };
+  | { id: string; type: "ESSAY"; text: string; points: number; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null }
+  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null };
 export interface ExamAttemptReview {
   attemptId: string; score: number | null; totalPoints: number;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];

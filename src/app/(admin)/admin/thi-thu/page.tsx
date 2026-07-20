@@ -140,6 +140,17 @@ function PresetSelectField({ value, presets, onChange, className, placeholder }:
 const QUESTION_COUNT_PRESETS = ["10", "12", "20", "25", "30", "40", "50", "60", "80", "100", "120", "150"];
 const TOTAL_POINTS_PRESETS = ["10", "20", "50", "100", "150", "200", "300"];
 
+// Điểm/câu theo khuôn tính điểm THPT 2025 chính thức — áp dụng THEO LOẠI CÂU
+// HỎI (không theo vị trí/thứ tự), nên không phụ thuộc đúng-số-lượng-đúng-thứ-tự
+// khi admin dán/nhập câu hỏi. `short: null` = môn đó không có dạng Trả lời
+// ngắn, giữ nguyên điểm hiện có của câu (không đè).
+const THPT_PRESETS: Record<string, { label: string; mc: number; cluster: number; short: number | null }> = {
+  toan:      { label: "Toán",              mc: 0.25, cluster: 1, short: 0.5 },
+  tunhien:   { label: "Tự nhiên & CN",      mc: 0.25, cluster: 1, short: 0.25 },
+  xahoi:     { label: "Xã hội",             mc: 0.25, cluster: 1, short: null },
+  ngoaingu:  { label: "Ngoại ngữ",          mc: 0.25, cluster: 1, short: null },
+};
+
 function autoCode(category: string, exams: ExamRow[]): string {
   const prefix = category.includes("HSA") ? "HSA"
     : category.includes("HCM") ? "HCM"
@@ -166,6 +177,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [rawText, setRawText]             = useState("");
   const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
   const [parseErrs, setParseErrs]         = useState<ParseError[]>([]);
+  const [thptSubject, setThptSubject]     = useState<keyof typeof THPT_PRESETS>("toan");
   const [fileErr, setFileErr]             = useState("");
   const [aiLoading, setAiLoading]         = useState(false);
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
@@ -303,6 +315,29 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       const next = prev?.filter((_, i) => i !== idx) ?? null;
       return next && next.length > 0 ? next : null;
     });
+  }
+  // SHORT_ANSWER chỉ có đúng 1 option (đáp án đúng) — sửa thẳng options[0].text
+  function updateReviewShortAnswer(idx: number, text: string) {
+    setReviewQuestions(prev => prev?.map((q, i) =>
+      i === idx ? { ...q, options: [{ text, isCorrect: true }] } : q
+    ) ?? null);
+  }
+
+  // Áp điểm/câu theo khuôn THPT 2025 — theo LOẠI câu hỏi, không theo vị trí.
+  // Môn không có dạng Trả lời ngắn (short:null) thì giữ nguyên điểm câu đó.
+  function applyThptPreset() {
+    if (!reviewQuestions) return;
+    const cfg = THPT_PRESETS[thptSubject];
+    const updated = reviewQuestions.map(q => {
+      let points = q.points ?? 1;
+      if (q.type === "MC") points = cfg.mc;
+      else if (q.type === "TRUE_FALSE_CLUSTER") points = cfg.cluster;
+      else if (q.type === "SHORT_ANSWER" && cfg.short !== null) points = cfg.short;
+      return { ...q, points };
+    });
+    const total = updated.reduce((sum, q) => sum + (q.points ?? 0), 0);
+    setReviewQuestions(updated);
+    setForm(p => ({ ...p, totalPoints: String(Math.round(total * 100) / 100) }));
   }
 
   // Cập nhật category mặc định khi options load xong (tránh hiển thị blank)
@@ -500,6 +535,19 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
                   </button>
                 )}
               </div>
+              {!!reviewQuestions?.length && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-gray-500 flex-shrink-0">Khuôn điểm THPT:</span>
+                  <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+                    value={thptSubject} onChange={e => setThptSubject(e.target.value as keyof typeof THPT_PRESETS)}>
+                    {Object.entries(THPT_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                  </select>
+                  <button type="button" onClick={applyThptPreset}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 flex-shrink-0">
+                    Áp dụng khuôn
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -520,7 +568,10 @@ Câu 2: Đoạn dẫn cho 4 ý Đúng-Sai...
 *a)[0,NB] Ý đúng
 b)[1,NB] Ý sai
 
-Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
+Câu 3: Trả lời ngắn — điền đáp án, chấm tự động so khớp chính xác...
+Đáp án: 42
+
+Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">File .csv/.xlsx: chỉ hỗ trợ trắc nghiệm, cột theo thứ tự Câu hỏi | Đáp án A | B | C | D | Đáp án đúng | Điểm (tùy chọn), dòng đầu là tiêu đề.</p>
                   <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn, áp dụng cho cả 3 loại câu hỏi. Sau khi xem lại danh sách câu hỏi bên dưới, có thể bấm nút &quot;🖼 Tải ảnh&quot; ở từng câu để tải trực tiếp ảnh PNG/JPG/WebP thay vì dán URL.</p>
                   <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
@@ -618,6 +669,15 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                       )}
                       {q.type === "ESSAY" ? (
                         <p className="pl-6 text-xs italic text-gray-400">Tự luận — không cần đáp án, chấm tay sau khi nộp bài.</p>
+                      ) : q.type === "SHORT_ANSWER" ? (
+                        <div className="pl-6">
+                          <input
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                            placeholder="Đáp án đúng (chấm tự động so khớp chính xác)"
+                            value={q.options[0]?.text ?? ""}
+                            onChange={e => updateReviewShortAnswer(idx, e.target.value)}
+                          />
+                        </div>
                       ) : q.type === "TRUE_FALSE_CLUSTER" ? (
                         <div className="grid grid-cols-2 gap-1.5 pl-6">
                           {q.options.map((o, oi) => (

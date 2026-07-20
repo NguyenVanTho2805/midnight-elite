@@ -1,7 +1,7 @@
 // Parser thuần TS dùng chung cả client lẫn server — không import gì server-only,
 // để trang admin có thể parse ngay trên trình duyệt (review tức thì trước khi lưu DB).
 
-export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER";
+export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER";
 
 export interface ParsedOption {
   text: string;
@@ -14,7 +14,10 @@ export interface ParsedQuestion {
   type: QuestionType;
   points?: number;
   imageUrl?: string;
-  options: ParsedOption[]; // rỗng với ESSAY
+  // rỗng với ESSAY. Với SHORT_ANSWER: đúng 1 phần tử {text: <đáp án đúng>,
+  // isCorrect:true} — tái dùng cấu trúc ExamOption có sẵn thay vì thêm field
+  // riêng, chấm bằng cách so khớp text (chuẩn hoá) thay vì chọn optionId.
+  options: ParsedOption[];
 }
 
 export interface ParseError {
@@ -37,6 +40,12 @@ export function validateQuestionOptions(
     if (labels !== "a,b,c,d") {
       return "4 ý phải đủ và đúng nhãn a) b) c) d), không trùng/thiếu nhãn nào";
     }
+    return null;
+  }
+  if (type === "SHORT_ANSWER") {
+    if (!Array.isArray(options) || options.length !== 1) return "Câu Trả lời ngắn cần đúng 1 đáp án";
+    if (!options[0].isCorrect) return "Đáp án phải được đánh dấu đúng";
+    if (!options[0].text?.trim()) return "Đáp án không được để trống";
     return null;
   }
   // MC
@@ -83,6 +92,10 @@ const CLUSTER_LINE = /^(\*)?([a-d])\)\s*\[[^\]]*\]\s*(.+)$/;
 // Dòng ảnh minh hoạ — URL đã host sẵn (Cloudinary/bất kỳ), giống field "Ảnh minh hoạ (URL)"
 // ở form soạn từng câu. Chỉ dòng riêng biệt "Ảnh: <url>" mới được nhận diện.
 const IMAGE_LINE = /^Ảnh\s*[:.]\s*(\S+)$/i;
+// Trả lời ngắn — khối không có dòng A./B./C./D. và không có a)[..]/b)[..]/...,
+// chỉ có 1 dòng "Đáp án: <giá trị tự do>" (số hoặc text, không giới hạn A-D
+// như ANSWER_LINE của MC). Khối không khớp dòng này thì fallback ESSAY như cũ.
+const SHORT_ANSWER_LINE = /^Đ[áa]p\s*[áa]n\s*(?:đ[úu]ng)?\s*[:.]?\s*(.+)$/i;
 
 export function parseBulkText(raw: string): ParseResult {
   const blocks = raw
@@ -99,11 +112,14 @@ export function parseBulkText(raw: string): ParseResult {
 
     const hasClusterLine = lines.some(l => CLUSTER_LINE.test(l));
     const hasOptionLine = lines.some(l => OPTION_LINE.test(l));
+    const hasShortAnswerLine = !hasClusterLine && !hasOptionLine && lines.some(l => SHORT_ANSWER_LINE.test(l));
 
     const result = hasClusterLine
       ? parseClusterBlock(lines)
       : hasOptionLine
       ? parseMCBlock(lines)
+      : hasShortAnswerLine
+      ? parseShortAnswerBlock(lines)
       : parseEssayBlock(lines);
 
     if ("error" in result) {
@@ -206,6 +222,24 @@ function parseEssayBlock(lines: string[]): { question: ParsedQuestion } | { erro
 
   if (!text) return { error: "Không tìm thấy nội dung câu hỏi" };
   return { question: { text, type: "ESSAY", imageUrl, options: [] } };
+}
+
+function parseShortAnswerBlock(lines: string[]): { question: ParsedQuestion } | { error: string } {
+  let imageUrl: string | undefined;
+  let answer: string | undefined;
+  const textLines: string[] = [];
+  lines.forEach((l, i) => {
+    const imageMatch = l.match(IMAGE_LINE);
+    if (imageMatch) { imageUrl = imageMatch[1]; return; }
+    const answerMatch = l.match(SHORT_ANSWER_LINE);
+    if (answerMatch) { answer = answerMatch[1].trim(); return; }
+    textLines.push(i === 0 ? l.replace(QUESTION_START, "") : l);
+  });
+  const text = textLines.join(" ").trim();
+
+  if (!text) return { error: "Không tìm thấy nội dung câu hỏi" };
+  if (!answer) return { error: "Thiếu đáp án — thêm dòng 'Đáp án: <giá trị>'" };
+  return { question: { text, type: "SHORT_ANSWER", imageUrl, options: [{ text: answer, isCorrect: true }] } };
 }
 
 // Dùng cho file Excel/CSV — chỉ hỗ trợ trắc nghiệm (MC), dòng đầu là header

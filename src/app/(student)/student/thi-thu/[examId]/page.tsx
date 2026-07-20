@@ -157,7 +157,7 @@ export default function ExamEntryPage() {
 
   // Đã trả lời hay chưa — dùng cho thanh tiến độ + lưới nhảy câu (khác cách tính theo type)
   function isQuestionAnswered(q: ExamQuestionPublic): boolean {
-    if (q.type === "ESSAY") return !!essayText[q.id]?.trim();
+    if (q.type === "ESSAY" || q.type === "SHORT_ANSWER") return !!essayText[q.id]?.trim();
     if (q.type === "TRUE_FALSE_CLUSTER") return q.options.every(o => clusterAnswers[o.id] !== null && clusterAnswers[o.id] !== undefined);
     return !!selected[q.id];
   }
@@ -167,9 +167,10 @@ export default function ExamEntryPage() {
     setSubmitting(true);
     try {
       // saveEssayAnswer chỉ lưu lúc rời ô nhập (blur) — nếu học viên gõ xong
-      // câu tự luận rồi bấm "Kết thúc bài thi" ngay mà chưa từng blur, câu trả
-      // lời chỉ tồn tại trong state cục bộ, chưa từng gửi lên server. Flush lại
-      // toàn bộ câu tự luận đang có trước khi nộp để không mất bài làm.
+      // câu tự luận/trả lời ngắn (dùng chung state essayText, cùng cơ chế lưu)
+      // rồi bấm "Kết thúc bài thi" ngay mà chưa từng blur, câu trả lời chỉ tồn
+      // tại trong state cục bộ, chưa từng gửi lên server. Flush lại toàn bộ
+      // trước khi nộp để không mất bài làm.
       const essayEntries = Object.entries(essayText).filter(([, text]) => text.trim());
       await Promise.all(
         essayEntries.map(([questionId, text]) =>
@@ -402,6 +403,18 @@ export default function ExamEntryPage() {
                       )}
                     </div>
                   )}
+
+                  {q.type === "SHORT_ANSWER" && (
+                    <div className="text-xs space-y-1">
+                      <p style={{ color: q.isCorrect ? "#16a34a" : "#dc2626" }}>
+                        Bạn trả lời: <strong>{q.studentAnswer?.trim() || "chưa trả lời"}</strong>
+                        {q.isCorrect === true && " ✓"}
+                      </p>
+                      {q.correctAnswer !== null && (
+                        <p style={{ color: "#787671" }}>Đáp án đúng: {q.correctAnswer}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -538,6 +551,15 @@ export default function ExamEntryPage() {
                     style={{ border: "1px solid #e5e3df" }}
                     rows={5}
                     placeholder="Nhập câu trả lời của bạn..."
+                    value={essayText[q.id] ?? ""}
+                    onChange={e => updateEssayAnswer(q.id, e.target.value)}
+                    onBlur={() => saveEssayAnswer(q.id)}
+                  />
+                ) : q.type === "SHORT_ANSWER" ? (
+                  <input
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400"
+                    style={{ border: "1px solid #e5e3df" }}
+                    placeholder="Nhập đáp án..."
                     value={essayText[q.id] ?? ""}
                     onChange={e => updateEssayAnswer(q.id, e.target.value)}
                     onBlur={() => saveEssayAnswer(q.id)}
