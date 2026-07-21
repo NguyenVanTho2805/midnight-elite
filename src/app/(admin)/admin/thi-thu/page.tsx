@@ -1389,7 +1389,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
       <div
         className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
         style={{
-          width: "min(520px, 100vw)",
+          width: "100vw",
           transform: open ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
           pointerEvents: open ? "auto" : "none",
@@ -1397,7 +1397,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         }}>
 
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-8 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -1427,7 +1427,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         </div>
 
         {/* Form */}
-        <div className="p-5 space-y-6">
+        <div className="max-w-5xl mx-auto p-8 space-y-6">
 
           {/* Thông tin cơ bản */}
           <section>
