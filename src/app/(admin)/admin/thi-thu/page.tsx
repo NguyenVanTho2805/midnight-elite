@@ -17,6 +17,7 @@ import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { AutoDrawModal } from "@/components/AutoDrawModal";
 import { SubjectField } from "@/components/SubjectField";
+import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -269,6 +270,46 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     setReviewQuestions(questions);
     setBankMeta(questions.map(() => ({ ...BANK_META_INIT })));
   }
+
+  // ── Chế độ 2 khung: rendered form (trái) + mã nguồn text đồng bộ (phải) ───
+  // Lấy cảm hứng bố cục từ Azota nhưng cú pháp là của riêng site này (xem
+  // src/lib/examMarkup.ts) — không sao chép token nội bộ của họ.
+  const [splitViewOn, setSplitViewOn] = useState(false);
+  const [markupText, setMarkupText] = useState("");
+  const [markupErrs, setMarkupErrs] = useState<ParseError[]>([]);
+  // true = khung phải đang là nguồn thay đổi (người dùng vừa gõ) — khi đó
+  // KHÔNG được re-serialize từ reviewQuestions đè lại markupText, nếu không
+  // con trỏ đang gõ dở sẽ bị nhảy lung tung mỗi lần state cha cập nhật.
+  const editingRightRef = useRef(false);
+  const markupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (editingRightRef.current) return;
+    setMarkupText(reviewQuestions ? serializeQuestionsToMarkup(reviewQuestions) : "");
+  }, [reviewQuestions]);
+
+  // Sửa bên trái (form) → cập nhật reviewQuestions bình thường → useEffect
+  // trên tự re-serialize sang khung phải (editingRightRef đang false).
+  // Sửa bên phải (mã nguồn) → gọi hàm này, debounce parse rồi ghi ngược lại
+  // reviewQuestions — giữ nguyên bankMeta/sourceBankItemId theo vị trí nếu số
+  // câu không đổi (đổi số câu thì không map 1-1 tin cậy được nữa, đành reset
+  // về mặc định — đúng hành vi "Xem trước câu hỏi" đã có từ trước).
+  function handleMarkupChange(text: string) {
+    setMarkupText(text);
+    editingRightRef.current = true;
+    if (markupDebounceRef.current) clearTimeout(markupDebounceRef.current);
+    markupDebounceRef.current = setTimeout(() => {
+      const { questions: parsed, errors } = parseMarkupToQuestions(text);
+      setMarkupErrs(errors);
+      const merged = parsed.map((q, i) => {
+        const src = reviewQuestions?.[i]?.sourceBankItemId;
+        return src ? { ...q, sourceBankItemId: src } : q;
+      });
+      setReviewQuestions(merged.length > 0 ? merged : null);
+      setBankMeta(prev => prev.length === merged.length ? prev : merged.map(() => ({ ...BANK_META_INIT })));
+      editingRightRef.current = false;
+    }, 500);
+  }
   function updateBankMeta(idx: number, patch: Partial<BankMeta>) {
     setBankMeta(prev => prev.map((m, i) => i === idx ? { ...m, ...patch } : m));
   }
@@ -320,6 +361,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       setAnswerKeyFile(null); setAiLoading(false);
       setBankGateOn(false); setBankMeta([]);
       setBulkSubject(""); setBulkTopic(""); setBulkDifficulty("NB");
+      setSplitViewOn(false); setMarkupText(""); setMarkupErrs([]);
     }
   }, [open]);
 
@@ -825,6 +867,11 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       🎲 Rút đề tự động
                     </button>
+                    <button type="button" onClick={() => setSplitViewOn(v => !v)}
+                      className="text-xs font-semibold"
+                      style={{ color: splitViewOn ? "#7e22ce" : "#0068FF" }}>
+                      {splitViewOn ? "✓ " : ""}🪟 Chế độ 2 khung
+                    </button>
                     <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); }}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       ← Quay lại chỉnh sửa
@@ -876,6 +923,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   </div>
                 )}
 
+                <div className={splitViewOn ? "grid grid-cols-2 gap-3" : ""}>
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                   {reviewQuestions.map((q, idx) => {
                     const prevSection = idx > 0 ? reviewQuestions[idx - 1].sectionLabel : undefined;
@@ -1075,6 +1123,26 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     </Fragment>
                     );
                   })}
+                </div>
+                {splitViewOn && (
+                  <div className="flex flex-col">
+                    <textarea
+                      className="flex-1 min-h-[24rem] max-h-96 px-3 py-2 text-xs font-mono border rounded-lg outline-none focus:border-purple-400 resize-none"
+                      style={{ borderColor: "#e5e3df" }}
+                      value={markupText}
+                      onChange={e => handleMarkupChange(e.target.value)}
+                      spellCheck={false}
+                    />
+                    {markupErrs.length > 0 && (
+                      <ul className="text-xs text-red-600 space-y-1 mt-1.5 p-2 rounded-lg" style={{ background: "#fef2f2" }}>
+                        {markupErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
+                      </ul>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      Sửa trực tiếp mã nguồn ở đây, form bên trái tự cập nhật sau khi dừng gõ ~0.5s. Đánh dấu đáp án đúng bằng *A) (trắc nghiệm) hoặc +a)/-a) (Đúng-Sai).
+                    </p>
+                  </div>
+                )}
                 </div>
                 <input ref={imageFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFileChange} />
               </div>
