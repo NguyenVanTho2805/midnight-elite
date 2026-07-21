@@ -684,7 +684,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         </div>
 
         {/* Form body */}
-        <div className="max-w-5xl mx-auto p-8 space-y-6">
+        <div className="mx-auto p-8" style={{ maxWidth: "1500px" }}>
+        <div className="grid gap-8 items-start" style={{ gridTemplateColumns: "360px 1fr" }}>
+        <div className="space-y-6 sticky self-start" style={{ top: "84px" }}>
 
           {/* Thông tin cơ bản */}
           <section>
@@ -777,6 +779,65 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               )}
             </div>
           </section>
+
+          {/* Liên kết Azota */}
+          <section>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Liên kết Azota</h3>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">URL đề thi trên Azota</label>
+              <input className={inp} placeholder="https://azota.vn/de-thi/..."
+                value={form.azotaUrl} onChange={e => set("azotaUrl", e.target.value)} />
+              {errors.azotaUrl && <p className="text-xs text-red-500 mt-1">{errors.azotaUrl}</p>}
+              <p className="text-xs text-gray-400 mt-1">Học viên sẽ được chuyển hướng đến đây khi bấm "Vào thi"</p>
+            </div>
+          </section>
+
+          {/* Công khai & Trạng thái */}
+          <section>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Công khai & Trạng thái</h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Trạng thái</p>
+                  <p className="text-xs text-gray-400">Tắt = kết thúc · trạng thái tự động từ lịch</p>
+                </div>
+                <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
+              </div>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Công khai</p>
+                  <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
+                </div>
+                <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
+              </div>
+            </div>
+          </section>
+
+          {/* Preview */}
+          {form.title && form.date && (
+            <div className="p-4 rounded-xl border border-dashed border-blue-300 bg-blue-50">
+              <p className="text-xs font-bold text-blue-600 mb-2">Preview — trạng thái tự động:</p>
+              <div className="flex items-center gap-3">
+                <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
+                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
+                  {previewCode}
+                </span>
+                <span className="text-sm font-medium text-gray-800 flex-1 truncate">{form.title}</span>
+                {(() => {
+                  const st = computeExamStatus(form.date.split("-").reverse().join("/"), form.time, form.active);
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
+                })()}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {form.date.split("-").reverse().join("/")} · {form.time} · {form.duration} · {form.questions} câu
+              </p>
+            </div>
+          )}
+
+        </div>
+
+        <div className="space-y-6 lg:border-l lg:pl-8" style={{ borderColor: "#eeece8" }}>
 
           {/* Câu hỏi thi */}
           <section>
@@ -1149,60 +1210,8 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
             )}
           </section>
 
-          {/* Azota */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Liên kết Azota</h3>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">URL đề thi trên Azota</label>
-              <input className={inp} placeholder="https://azota.vn/de-thi/..."
-                value={form.azotaUrl} onChange={e => set("azotaUrl", e.target.value)} />
-              {errors.azotaUrl && <p className="text-xs text-red-500 mt-1">{errors.azotaUrl}</p>}
-              <p className="text-xs text-gray-400 mt-1">Học viên sẽ được chuyển hướng đến đây khi bấm "Vào thi"</p>
-            </div>
-          </section>
-
-          {/* Công khai & Trạng thái */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Công khai & Trạng thái</h3>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Trạng thái</p>
-                  <p className="text-xs text-gray-400">Tắt = kết thúc · trạng thái tự động từ lịch</p>
-                </div>
-                <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
-              </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Công khai</p>
-                  <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
-                </div>
-                <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
-              </div>
-            </div>
-          </section>
-
-          {/* Preview */}
-          {form.title && form.date && (
-            <div className="p-4 rounded-xl border border-dashed border-blue-300 bg-blue-50">
-              <p className="text-xs font-bold text-blue-600 mb-2">Preview — trạng thái tự động:</p>
-              <div className="flex items-center gap-3">
-                <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
-                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
-                  {previewCode}
-                </span>
-                <span className="text-sm font-medium text-gray-800 flex-1 truncate">{form.title}</span>
-                {(() => {
-                  const st = computeExamStatus(form.date.split("-").reverse().join("/"), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
-                  return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
-                })()}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {form.date.split("-").reverse().join("/")} · {form.time} · {form.duration} · {form.questions} câu
-              </p>
-            </div>
-          )}
+        </div>
+        </div>
         </div>
       </div>
       <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
