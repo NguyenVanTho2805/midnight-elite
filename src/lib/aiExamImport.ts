@@ -11,6 +11,10 @@ import {
   type ParseResult,
   type QuestionType,
 } from "@/lib/examQuestionParser";
+import { renderPdfPageToPng, getPdfPageCount } from "@/lib/pdfRaster";
+import { cropImageBox } from "@/lib/imageCrop";
+import { uploadBufferToCloudinary, cloudinaryServerConfigured } from "@/lib/cloudinaryServer";
+import sharp from "sharp";
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -56,6 +60,15 @@ const questionSchema = {
   properties: {
     text: { type: Type.STRING, description: "Nội dung câu hỏi, giữ nguyên công thức toán dạng LaTeX trong $...$ (inline) hoặc $$...$$ (khối riêng)" },
     type: { type: Type.STRING, enum: ["MC", "TRUE_FALSE_CLUSTER", "ESSAY"] },
+    pageIndex: {
+      type: Type.INTEGER,
+      description: "CHỈ điền khi câu hỏi này đi kèm 1 hình ảnh/biểu đồ/bảng số liệu/đồ thị nằm ngay trên trang đề (không phải công thức toán trong text). Số trang 0-based trong file đề thi. Bỏ trống nếu câu không có hình đi kèm.",
+    },
+    chartBox: {
+      type: Type.ARRAY,
+      description: "CHỈ điền cùng với pageIndex: toạ độ khung bao quanh SÁT phần hình ảnh/biểu đồ (không lấy cả câu chữ đề bài) dạng [yMin, xMin, yMax, xMax], mỗi giá trị số nguyên 0-1000 chuẩn hoá theo kích thước trang.",
+      items: { type: Type.INTEGER },
+    },
     options: {
       type: Type.ARRAY,
       description: "MC: các đáp án A/B/C/D. TRUE_FALSE_CLUSTER: đúng 4 ý a/b/c/d. ESSAY: mảng rỗng.",
@@ -96,12 +109,29 @@ Quy tắc xác định đáp án đúng:
 
 Công thức toán: giữ nguyên dạng LaTeX, bọc trong $...$ (inline) hoặc $$...$$ (khối riêng dòng), không tự ý đơn giản hóa hay bỏ qua công thức.
 
+Hình ảnh/biểu đồ đi kèm câu hỏi: nếu câu hỏi có 1 hình ảnh/biểu đồ/đồ thị/bảng số liệu/hình vẽ minh hoạ nằm ngay trên trang đề (KHÔNG phải công thức toán viết bằng chữ), điền "pageIndex" (số trang 0-based) và "chartBox" (khung toạ độ [yMin,xMin,yMax,xMax], 0-1000) SÁT quanh đúng vùng hình đó — không lấy lẫn phần chữ đề bài xung quanh. Nếu không chắc chắn vị trí chính xác, hoặc câu không có hình đi kèm, để trống cả 2 trường — TUYỆT ĐỐI không đoán bừa toạ độ.
+
 Chỉ trả về đúng JSON theo schema, không thêm giải thích ngoài JSON.`;
 
 interface RawQuestion {
   text?: unknown;
   type?: unknown;
   options?: unknown;
+  pageIndex?: unknown;
+  chartBox?: unknown;
+}
+
+interface ChartRef {
+  pageIndex: number;
+  box: { yMin: number; xMin: number; yMax: number; xMax: number };
+}
+
+function coerceChartRef(raw: RawQuestion): ChartRef | undefined {
+  if (typeof raw.pageIndex !== "number" || !Array.isArray(raw.chartBox) || raw.chartBox.length !== 4) return undefined;
+  const [yMin, xMin, yMax, xMax] = raw.chartBox;
+  if (![yMin, xMin, yMax, xMax].every(n => typeof n === "number" && n >= 0 && n <= 1000)) return undefined;
+  if (yMax <= yMin || xMax <= xMin) return undefined;
+  return { pageIndex: raw.pageIndex, box: { yMin, xMin, yMax, xMax } };
 }
 
 function coerceOptions(raw: unknown): ParsedOption[] {
@@ -117,7 +147,7 @@ function coerceOptions(raw: unknown): ParsedOption[] {
     }));
 }
 
-function coerceQuestion(raw: RawQuestion, idx: number): { question: ParsedQuestion } | { error: string } {
+function coerceQuestion(raw: RawQuestion, idx: number): { question: ParsedQuestion; chartRef?: ChartRef } | { error: string } {
   const text = typeof raw.text === "string" ? raw.text.trim() : "";
   if (!text) return { error: `Câu ${idx + 1}: thiếu nội dung câu hỏi` };
 
@@ -127,7 +157,61 @@ function coerceQuestion(raw: RawQuestion, idx: number): { question: ParsedQuesti
   const optionsErr = validateQuestionOptions(type, options);
   if (optionsErr) return { error: `Câu ${idx + 1}: ${optionsErr}` };
 
-  return { question: { text, type, options } };
+  return { question: { text, type, options }, chartRef: coerceChartRef(raw) };
+}
+
+// Cắt ảnh biểu đồ THẬT từ file đề gốc theo toạ độ Gemini xác định, upload
+// Cloudinary, gán vào question.imageUrl — không tự vẽ/tạo ảnh mới, chỉ cắt
+// đúng pixel từ file người dùng đã tải lên. Chỉ áp dụng cho examFile (PDF/ảnh
+// gốc) — không hỗ trợ ảnh trong file .docx hay trong answerKeyFile.
+async function resolveChartImages(
+  examFile: AiInputFile,
+  items: { question: ParsedQuestion; chartRef?: ChartRef }[]
+): Promise<void> {
+  if (!cloudinaryServerConfigured) return; // chưa cấu hình Cloudinary — bỏ qua, không fail cả batch
+  const isPdf = examFile.mimeType === "application/pdf";
+  const isImage = ["image/jpeg", "image/png", "image/webp"].includes(examFile.mimeType);
+  if (!isPdf && !isImage) return; // .docx — không có ảnh gốc để cắt
+
+  let pageCount = 1;
+  if (isPdf) {
+    try {
+      pageCount = await getPdfPageCount(examFile.buffer);
+    } catch {
+      return; // file PDF hỏng/không đọc được — bỏ qua toàn bộ chartRef, không fail batch
+    }
+  }
+
+  const pageCache = new Map<number, { buffer: Buffer; width: number; height: number }>();
+  async function getPageRaster(pageIndex: number) {
+    const cached = pageCache.get(pageIndex);
+    if (cached) return cached;
+    let raster: { buffer: Buffer; width: number; height: number };
+    if (isPdf) {
+      const { png, width, height } = await renderPdfPageToPng(examFile.buffer, pageIndex);
+      raster = { buffer: png, width, height };
+    } else {
+      const meta = await sharp(examFile.buffer).metadata();
+      raster = { buffer: examFile.buffer, width: meta.width ?? 0, height: meta.height ?? 0 };
+    }
+    pageCache.set(pageIndex, raster);
+    return raster;
+  }
+
+  for (const item of items) {
+    const ref = item.chartRef;
+    if (!ref) continue;
+    if (ref.pageIndex < 0 || ref.pageIndex >= pageCount) continue;
+    try {
+      const page = await getPageRaster(ref.pageIndex);
+      if (!page.width || !page.height) continue;
+      const cropped = await cropImageBox(page.buffer, ref.box, page.width, page.height);
+      const url = await uploadBufferToCloudinary(cropped, `chart-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
+      item.question.imageUrl = url;
+    } catch (e) {
+      console.error("[resolveChartImages] cắt/upload ảnh thất bại cho 1 câu, bỏ qua:", e);
+    }
+  }
 }
 
 export async function extractQuestionsFromFiles(
@@ -161,14 +245,16 @@ export async function extractQuestionsFromFiles(
     throw new Error("Gemini trả về JSON không hợp lệ");
   }
 
-  const questions: ParsedQuestion[] = [];
+  const items: { question: ParsedQuestion; chartRef?: ChartRef }[] = [];
   const errors: ParseError[] = [];
 
   (parsed.questions ?? []).forEach((rawQuestion, idx) => {
     const result = coerceQuestion(rawQuestion, idx);
     if ("error" in result) errors.push({ block: idx + 1, message: result.error });
-    else questions.push(result.question);
+    else items.push(result);
   });
 
-  return { questions, errors };
+  await resolveChartImages(examFile, items);
+
+  return { questions: items.map(i => i.question), errors };
 }
