@@ -63,12 +63,16 @@ interface BankMeta {
   topic: string;
   difficulty: Difficulty;
   dupMatch: QuestionBankItemFull | null;
+  // Giai đoạn 3.5 Cấp 2 — chỉ có giá trị khi dupMatch (Cấp 1, trùng y hệt)
+  // là null — danh sách câu GIỐNG CHUỖI (pg_trgm), admin tự chọn "Dùng câu
+  // này" cho 1 gợi ý cụ thể thay vì cảnh báo nhị phân như Cấp 1.
+  similarMatches: { item: QuestionBankItemFull; similarity: number }[];
   resolution: "new" | "reuse";
   checking: boolean;
 }
 const BANK_META_INIT: BankMeta = {
   addToBank: true, subject: "", topic: "", difficulty: "NB",
-  dupMatch: null, resolution: "new", checking: false,
+  dupMatch: null, similarMatches: [], resolution: "new", checking: false,
 };
 
 // Select danh mục + khả năng gõ danh mục hoàn toàn mới (Exam.category là String tự do, không phải enum)
@@ -242,8 +246,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!meta?.addToBank || !q || !meta.subject.trim() || !meta.topic.trim()) return;
     updateBankMeta(idx, { checking: true });
     try {
-      const { match } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
-      updateBankMeta(idx, { dupMatch: match, resolution: "new", checking: false });
+      const { match, similar } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
+      updateBankMeta(idx, { dupMatch: match, similarMatches: similar, resolution: "new", checking: false });
     } catch {
       updateBankMeta(idx, { checking: false });
     }
@@ -365,7 +369,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   function updateReviewQuestion(idx: number, text: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
     // Nội dung đổi sau khi đã check trùng — cảnh báo cũ không còn đúng ngữ cảnh.
-    updateBankMeta(idx, { dupMatch: null, resolution: "new" });
+    updateBankMeta(idx, { dupMatch: null, similarMatches: [], resolution: "new" });
   }
   function updateReviewImageUrl(idx: number, imageUrl: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, imageUrl } : q) ?? null);
@@ -901,6 +905,24 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                       style={bankMeta[idx].resolution === "new" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
                                       Vẫn thêm câu mới
                                     </button>
+                                  </div>
+                                </div>
+                              )}
+                              {!bankMeta[idx].dupMatch && bankMeta[idx].similarMatches.length > 0 && (
+                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#eff6ff", color: "#1d4ed8" }}>
+                                  <p className="font-semibold mb-1.5">🔎 Có {bankMeta[idx].similarMatches.length} câu gần giống trong ngân hàng</p>
+                                  <div className="space-y-1.5">
+                                    {bankMeta[idx].similarMatches.map(s => (
+                                      <div key={s.item.id} className="flex items-center gap-2 justify-between">
+                                        <span className="truncate flex-1" title={s.item.text}>
+                                          {Math.round(s.similarity * 100)}% · {s.item.text} <span className="text-blue-400">({s.item.owner?.name ?? "?"})</span>
+                                        </span>
+                                        <button type="button" onClick={() => updateBankMeta(idx, { dupMatch: s.item, resolution: "reuse" })}
+                                          className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid #1d4ed8" }}>
+                                          Dùng câu này
+                                        </button>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               )}

@@ -4,10 +4,13 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { computeContentHash } from "@/lib/questionDedup";
 import { isReviewer } from "@/lib/questionBankWorkflow";
+import { findSimilarBankItems } from "@/lib/questionBankSimilarity";
 
-// POST /api/question-bank/check-duplicate — Giai đoạn 3.5 Cấp 1 (trùng Y HỆT).
-// Tra theo hash nội dung đã chuẩn hoá, LUÔN thu hẹp theo subject+topic trước
-// (đúng tối ưu bắt buộc trong tài liệu thiết kế — tránh so toàn bộ ngân hàng).
+// POST /api/question-bank/check-duplicate — Cấp 1 (trùng Y HỆT, hash) LUÔN
+// chạy trước; Cấp 2 (trùng GIỐNG CHUỖI, pg_trgm) CHỈ chạy khi Cấp 1 không
+// tìm thấy gì — đã có câu trả lời chắc chắn hơn (y hệt) thì không cần tốn
+// thêm 1 truy vấn similarity() nữa. Cả 2 cấp đều thu hẹp theo subject+topic
+// trước khi so (đúng tối ưu bắt buộc trong tài liệu thiết kế).
 //
 // Giai đoạn 6 — chỉ so khớp với câu đã "approved" (công khai) hoặc câu CỦA
 // CHÍNH NGƯỜI ĐANG GỌI (mọi trạng thái) — không để lộ sự tồn tại của
@@ -30,7 +33,11 @@ export async function POST(req: NextRequest) {
       include: { options: { orderBy: { order: "asc" } }, owner: { select: { name: true } } },
     });
 
-    return NextResponse.json({ match });
+    const similar = match
+      ? []
+      : await findSimilarBankItems({ text, subject: subject.trim(), topic: topic.trim(), userId: auth.userId, isReviewer: isReviewer(auth.adminRole) });
+
+    return NextResponse.json({ match, similar });
   } catch (e) {
     console.error("[POST /api/question-bank/check-duplicate]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

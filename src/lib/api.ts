@@ -176,9 +176,9 @@ export const api = {
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/question-bank/${id}`, { method: "DELETE" }),
     checkDuplicate: (data: { text: string; subject: string; topic: string }) =>
-      apiFetch<{ match: QuestionBankItemFull | null }>("/api/question-bank/check-duplicate", {
-        method: "POST", body: JSON.stringify(data),
-      }),
+      apiFetch<{ match: QuestionBankItemFull | null; similar: { item: QuestionBankItemFull; similarity: number }[] }>(
+        "/api/question-bank/check-duplicate", { method: "POST", body: JSON.stringify(data) }
+      ),
     draw: (data: DrawInput) =>
       apiFetch<DrawResult>("/api/question-bank/draw", { method: "POST", body: JSON.stringify(data) }),
     submit: (id: string) =>
