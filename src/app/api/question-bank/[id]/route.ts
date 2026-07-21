@@ -4,6 +4,7 @@ import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionParser";
 import { computeContentHash } from "@/lib/questionDedup";
+import { initialStatusFor } from "@/lib/questionBankWorkflow";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -65,6 +66,13 @@ export async function PUT(
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,
           contentHash: computeContentHash(text),
+          // Giai đoạn 6 — sửa nội dung làm mất hiệu lực trạng thái duyệt cũ:
+          // teacher sửa → luôn về "draft" (kể cả đang "pending"/"approved",
+          // phải gửi duyệt lại) và xoá lý do từ chối cũ (đã sửa theo góp ý);
+          // admin_content/admin_super sửa → luôn "approved" ngay (họ là
+          // người duyệt, không cần tự duyệt lại bài mình vừa sửa).
+          status: initialStatusFor(auth.adminRole),
+          rejectionReason: null,
           options: {
             create: (options ?? []).map((o, idx) => ({
               order: idx,

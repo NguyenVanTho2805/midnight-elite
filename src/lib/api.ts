@@ -161,7 +161,7 @@ export const api = {
   },
   // ── Ngân hàng câu hỏi (dùng chung giữa các giáo viên) ────────────────────
   questionBank: {
-    list: (params?: { search?: string; subject?: string; topic?: string; difficulty?: string; page?: number; pageSize?: number; withStats?: boolean }) => {
+    list: (params?: { search?: string; subject?: string; topic?: string; difficulty?: string; status?: BankItemStatus; mine?: boolean; page?: number; pageSize?: number; withStats?: boolean }) => {
       const qs = params
         ? Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
         : [];
@@ -181,6 +181,10 @@ export const api = {
       }),
     draw: (data: DrawInput) =>
       apiFetch<DrawResult>("/api/question-bank/draw", { method: "POST", body: JSON.stringify(data) }),
+    submit: (id: string) =>
+      apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/submit`, { method: "PATCH" }),
+    review: (id: string, data: { decision: "approve" | "reject"; reason?: string }) =>
+      apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/review`, { method: "POST", body: JSON.stringify(data) }),
   },
 };
 
@@ -316,6 +320,9 @@ export interface AiExtractResult {
 // Ngân hàng câu hỏi — độc lập với ExamQuestion (xem ghi chú ở
 // QuestionBankItem trong prisma/schema.prisma: không share row trực tiếp).
 export type Difficulty = "NB" | "TH" | "VD" | "VDC";
+// Giai đoạn 6 — quy trình duyệt, xem ghi chú ở QuestionBankItem.status trong
+// prisma/schema.prisma.
+export type BankItemStatus = "draft" | "pending" | "approved";
 export interface QuestionBankOptionFull {
   id: string; order: number; text: string; isCorrect: boolean;
   subLabel?: "a" | "b" | "c" | "d" | null;
@@ -327,6 +334,10 @@ export interface QuestionBankItemFull {
   ownerId: string | null; owner: { name: string } | null;
   createdAt: string; updatedAt: string;
   options: QuestionBankOptionFull[];
+  status: BankItemStatus;
+  rejectionReason?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
   // Giai đoạn 4 — chỉ có khi gọi questionBank.list({ withStats: true }).
   usageCount?: number;
   examCount?: number;

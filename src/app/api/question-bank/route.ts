@@ -5,12 +5,22 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionParser";
 import { computeContentHash } from "@/lib/questionDedup";
 import { computeBankItemStats } from "@/lib/questionBankStats";
+import { initialStatusFor, isReviewer } from "@/lib/questionBankWorkflow";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
 // GET /api/question-bank — danh sách ngân hàng câu hỏi, DÙNG CHUNG giữa mọi
 // giáo viên (không lọc theo ownerId — khác Course/Exam) — hỗ trợ search + lọc
-// theo subject/topic/difficulty + phân trang.
+// theo subject/topic/difficulty/status + phân trang.
+//
+// Giai đoạn 6 — phạm vi hiển thị theo status: MẶC ĐỊNH (không truyền `mine`)
+// chỉ trả về status="approved" — đây là an toàn ngầm định, đảm bảo
+// QuestionBankPicker/AutoDrawModal (đều gọi list() không kèm `mine`) không
+// bao giờ vô tình rút phải câu draft/pending của người khác vào đề đang
+// soạn. Trang quản lý chính (`ngan-hang-cau-hoi/page.tsx`) truyền
+// `mine=true` để giáo viên thấy thêm câu NHÁP/CHỜ DUYỆT của chính mình bên
+// cạnh mọi câu đã duyệt của người khác. admin_content/admin_super luôn thấy
+// TẤT CẢ mọi trạng thái (cần để duyệt hàng chờ), bất kể `mine`.
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
@@ -20,6 +30,8 @@ export async function GET(req: NextRequest) {
   const subject = searchParams.get("subject")?.trim();
   const topic = searchParams.get("topic")?.trim();
   const difficulty = searchParams.get("difficulty")?.trim();
+  const status = searchParams.get("status")?.trim();
+  const mine = searchParams.get("mine") === "true";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize")) || 20));
   // Giai đoạn 4 — tính usageCount/examCount/correctRatio chỉ khi cần (trang
@@ -27,11 +39,19 @@ export async function GET(req: NextRequest) {
   // để tránh cõng thêm truy vấn cho luồng không cần thống kê.
   const withStats = searchParams.get("withStats") === "true";
 
+  const statusScope = isReviewer(auth.adminRole)
+    ? {}
+    : mine
+      ? { OR: [{ status: "approved" }, { ownerId: auth.userId }] }
+      : { status: "approved" };
+
   const where = {
+    ...statusScope,
     ...(search ? { text: { contains: search, mode: "insensitive" as const } } : {}),
     ...(subject ? { subject } : {}),
     ...(topic ? { topic } : {}),
     ...(difficulty ? { difficulty } : {}),
+    ...(status ? { status } : {}),
   };
 
   try {
@@ -110,6 +130,7 @@ export async function POST(req: NextRequest) {
         tags: tags && tags.length > 0 ? tags : undefined,
         contentHash: computeContentHash(text),
         ownerId: auth.userId,
+        status: initialStatusFor(auth.adminRole),
         options: {
           create: (options ?? []).map((o, idx) => ({
             order: idx,

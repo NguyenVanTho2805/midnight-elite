@@ -65,7 +65,9 @@ export async function POST(req: NextRequest) {
     const chosenIds: string[] = [];
     for (const [difficulty, count] of wantedEntries) {
       const eligible = await prisma.questionBankItem.findMany({
-        where: { subject: subject.trim(), difficulty, id: { notIn: [...excludedIds, ...chosenIds] } },
+        // Giai đoạn 6 — CHỈ rút từ câu đã "approved". Draft/pending chưa qua
+        // duyệt tuyệt đối không được lọt vào đề thi thật.
+        where: { subject: subject.trim(), difficulty, status: "approved", id: { notIn: [...excludedIds, ...chosenIds] } },
         select: { id: true },
       });
       const picked = shuffleArray(eligible).slice(0, count).map(e => e.id);

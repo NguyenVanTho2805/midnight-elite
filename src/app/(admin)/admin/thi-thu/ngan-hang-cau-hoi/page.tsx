@@ -5,7 +5,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty } from "@/lib/api";
+import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty, type BankItemStatus } from "@/lib/api";
 
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -29,6 +29,13 @@ function CORRECT_RATIO_COLOR(ratio: number): { bg: string; color: string } {
 }
 const TYPE_LABEL: Record<QuestionType, string> = {
   MC: "Trắc nghiệm", ESSAY: "Tự luận", TRUE_FALSE_CLUSTER: "Đúng-Sai 4 ý", SHORT_ANSWER: "Trả lời ngắn",
+};
+// Giai đoạn 6 — quy trình duyệt.
+const STATUS_LABEL: Record<BankItemStatus, string> = { draft: "Nháp", pending: "Chờ duyệt", approved: "Đã duyệt" };
+const STATUS_COLOR: Record<BankItemStatus, { bg: string; color: string }> = {
+  draft:    { bg: "#f3f4f6", color: "#6b7280" },
+  pending:  { bg: "#fef3c7", color: "#b45309" },
+  approved: { bg: "#dcfce7", color: "#16a34a" },
 };
 
 // Select môn học + khả năng gõ môn hoàn toàn mới (subject là String tự do,
@@ -379,12 +386,15 @@ function PageInner() {
   const [drawerOpen, setDrawer] = useState(false);
   const [editItem, setEditItem] = useState<QuestionBankItemFull | null>(null);
   const [delId, setDelId]       = useState<string | null>(null);
+  const [rejectItem, setRejectItem] = useState<QuestionBankItemFull | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [saving, setSaving]     = useState(false);
 
   const [search, setSearch]         = useState("");
   const [subjectFilter, setSubject] = useState("");
   const [topicFilter, setTopic]     = useState("");
   const [difficultyFilter, setDiff] = useState("");
+  const [statusFilter, setStatusFilter] = useState<BankItemStatus | "">("");
   const [page, setPage]             = useState(1);
   const pageSize = 20;
 
@@ -401,6 +411,8 @@ function PageInner() {
         subject: subjectFilter || undefined,
         topic: topicFilter || undefined,
         difficulty: difficultyFilter || undefined,
+        status: statusFilter || undefined,
+        mine: true, // trang quản lý chính — thấy thêm câu nháp/chờ duyệt của chính mình
         page, pageSize, withStats: true,
       });
       setItems(data.items);
@@ -411,7 +423,7 @@ function PageInner() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, subjectFilter, topicFilter, difficultyFilter, page]);
+  }, [search, subjectFilter, topicFilter, difficultyFilter, statusFilter, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -419,7 +431,7 @@ function PageInner() {
   // trang (đủ dùng cho quy mô ngân hàng ở Giai đoạn 1).
   const loadTaxonomy = useCallback(async () => {
     try {
-      const data = await api.questionBank.list({ pageSize: 500 });
+      const data = await api.questionBank.list({ pageSize: 500, mine: true });
       setAllSubjects([...new Set(data.items.map(i => i.subject))].sort());
       setAllTopics([...new Set(data.items.map(i => i.topic))].sort());
     } catch { /* không chặn trang nếu lỗi — chỉ ảnh hưởng gợi ý dropdown */ }
@@ -475,6 +487,38 @@ function PageInner() {
     }
   }
 
+  // Giai đoạn 6 — gửi duyệt (chủ sở hữu, câu đang "draft").
+  async function handleSubmit(id: string) {
+    try {
+      await api.questionBank.submit(id);
+      showToast("Đã gửi duyệt");
+      await loadData();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Gửi duyệt thất bại", false);
+    }
+  }
+
+  async function handleApprove(id: string) {
+    try {
+      await api.questionBank.review(id, { decision: "approve" });
+      showToast("Đã duyệt câu hỏi");
+      await loadData();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Duyệt thất bại", false);
+    }
+  }
+
+  async function handleReject(id: string, reason: string) {
+    try {
+      await api.questionBank.review(id, { decision: "reject", reason });
+      showToast("Đã từ chối câu hỏi");
+      setRejectItem(null);
+      await loadData();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Từ chối thất bại", false);
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -486,7 +530,7 @@ function PageInner() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng câu hỏi</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} câu hỏi — dùng chung giữa mọi giáo viên, mỗi người chỉ sửa/xoá được câu của mình</p>
+          <p className="text-sm text-gray-500 mt-0.5">{total} câu hỏi — chỉ câu Đã duyệt mới dùng chung/rút vào đề được, câu Nháp/Chờ duyệt chỉ chủ sở hữu và quản trị viên thấy</p>
         </div>
         <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
           + Thêm câu hỏi
@@ -514,6 +558,11 @@ function PageInner() {
           <option value="">Tất cả độ khó</option>
           {DIFFICULTIES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
         </select>
+        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
+          value={statusFilter} onChange={e => { setStatusFilter(e.target.value as BankItemStatus | ""); setPage(1); }}>
+          <option value="">Tất cả trạng thái</option>
+          {(Object.keys(STATUS_LABEL) as BankItemStatus[]).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+        </select>
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
@@ -524,6 +573,7 @@ function PageInner() {
               <th className="px-4 py-3">Môn / Chủ đề</th>
               <th className="px-4 py-3">Độ khó</th>
               <th className="px-4 py-3">Loại</th>
+              <th className="px-4 py-3">Trạng thái</th>
               <th className="px-4 py-3">Người soạn</th>
               <th className="px-4 py-3">Sử dụng</th>
               <th className="px-4 py-3">Cập nhật</th>
@@ -532,9 +582,9 @@ function PageInner() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Chưa có câu hỏi nào</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Chưa có câu hỏi nào</td></tr>
             ) : items.map(item => (
               <tr key={item.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
                 <td className="px-4 py-3 max-w-sm truncate" title={item.text}>{item.text}</td>
@@ -545,6 +595,16 @@ function PageInner() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[item.type]}</td>
+                <td className="px-4 py-3">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={STATUS_COLOR[item.status]}>
+                    {STATUS_LABEL[item.status]}
+                  </span>
+                  {item.status === "draft" && item.rejectionReason && (
+                    <p className="text-xs text-red-500 mt-1 max-w-[160px]" title={item.rejectionReason}>
+                      Bị từ chối: {item.rejectionReason}
+                    </p>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-gray-600">{item.owner?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-600">
                   {!item.usageCount ? (
@@ -562,14 +622,26 @@ function PageInner() {
                 </td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(item.updatedAt).toLocaleDateString("vi-VN")}</td>
                 <td className="px-4 py-3">
-                  {canEdit(item) ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(item)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
-                      <button onClick={() => setDelId(item.id)} className="text-xs font-semibold text-red-500">Xoá</button>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-300">—</span>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {canEdit(item) && (
+                      <>
+                        <button onClick={() => openEdit(item)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
+                        <button onClick={() => setDelId(item.id)} className="text-xs font-semibold text-red-500">Xoá</button>
+                        {item.status === "draft" && (
+                          <button onClick={() => handleSubmit(item.id)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Gửi duyệt</button>
+                        )}
+                      </>
+                    )}
+                    {!isTeacher && item.status === "pending" && (
+                      <>
+                        <button onClick={() => handleApprove(item.id)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Duyệt</button>
+                        <button onClick={() => { setRejectItem(item); setRejectReason(""); }} className="text-xs font-semibold text-red-500">Từ chối</button>
+                      </>
+                    )}
+                    {!canEdit(item) && !(!isTeacher && item.status === "pending") && (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -604,6 +676,27 @@ function PageInner() {
             <div className="flex justify-end gap-2">
               <button onClick={() => setDelId(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
               <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
+          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+            <p className="text-sm font-semibold mb-1">Từ chối câu hỏi này?</p>
+            <p className="text-xs text-gray-500 mb-3">Câu sẽ về trạng thái Nháp kèm lý do, người soạn có thể sửa lại và gửi duyệt lần nữa.</p>
+            <textarea autoFocus rows={3}
+              className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400"
+              style={{ borderColor: "#e5e3df" }}
+              placeholder="Lý do từ chối..."
+              value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setRejectItem(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+              <button onClick={() => handleReject(rejectItem.id, rejectReason)} disabled={!rejectReason.trim()}
+                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#dc2626" }}>
+                Từ chối
+              </button>
             </div>
           </div>
         </div>

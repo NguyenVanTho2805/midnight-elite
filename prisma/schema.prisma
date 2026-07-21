@@ -245,6 +245,24 @@ model QuestionBankItem {
   // này, được tính lại khi sửa).
   contentHash String?
 
+  // Giai đoạn 6 — quy trình duyệt. "draft" (đang soạn, chỉ chủ sở hữu +
+  // admin_content/admin_super thấy) | "pending" (đã gửi duyệt, chờ admin
+  // xét) | "approved" (đã duyệt, vào kho dùng chung — CHỈ trạng thái này mới
+  // được rút vào đề qua QuestionBankPicker/AutoDrawModal). Mặc định
+  // "approved" để KHÔNG đổi hành vi của mọi bản ghi đã có trước Giai đoạn 6
+  // (route tạo/sửa mới sẽ tự set giá trị tường minh, default chỉ áp cho dữ
+  // liệu cũ). admin_content/admin_super tạo/sửa → luôn "approved" ngay
+  // (không cần tự duyệt bài của mình); "teacher" tạo → "draft", phải chủ
+  // động gửi duyệt (PATCH .../submit) mới thành "pending".
+  status String @default("approved")
+
+  // Lý do admin từ chối lần gần nhất — chỉ có ý nghĩa khi status="draft" sau
+  // khi bị từ chối (khác "draft" do chưa từng gửi, lúc đó null). Xoá khi gửi
+  // duyệt lại.
+  rejectionReason String? @db.Text
+  reviewedBy      String? // userId admin đã duyệt/từ chối gần nhất
+  reviewedAt      DateTime?
+
   // Người soạn — dùng chung giữa mọi giáo viên (ai cũng xem/lọc được tất cả),
   // nhưng chỉ chủ sở hữu (hoặc admin_super/admin_content) mới sửa/xoá được,
   // xem ownsResource()/requireOwnedResource() trong src/lib/auth-guard.ts.
@@ -259,6 +277,7 @@ model QuestionBankItem {
 
   @@index([subject, topic])
   @@index([subject, topic, contentHash])
+  @@index([status])
   @@map("question_bank_items")
 }
 

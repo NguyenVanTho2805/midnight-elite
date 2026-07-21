@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { computeContentHash } from "@/lib/questionDedup";
+import { initialStatusFor } from "@/lib/questionBankWorkflow";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -63,6 +64,7 @@ export async function POST(
           tags: tags && tags.length > 0 ? tags : undefined,
           contentHash: computeContentHash(question.text),
           ownerId: auth.userId,
+          status: initialStatusFor(auth.adminRole),
           options: {
             create: question.options.map((o, idx) => ({
               order: idx,
