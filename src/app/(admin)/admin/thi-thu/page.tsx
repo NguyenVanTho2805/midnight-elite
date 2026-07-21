@@ -647,7 +647,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       <div
         className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
         style={{
-          width: "min(520px, 100vw)",
+          width: "100vw",
           transform: open ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
           pointerEvents: open ? "auto" : "none",
@@ -655,7 +655,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         }}>
 
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-8 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -684,7 +684,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         </div>
 
         {/* Form body */}
-        <div className="p-5 space-y-6">
+        <div className="max-w-5xl mx-auto p-8 space-y-6">
 
           {/* Thông tin cơ bản */}
           <section>
@@ -924,7 +924,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                 )}
 
                 <div className={splitViewOn ? "grid grid-cols-2 gap-3" : ""}>
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[36rem] overflow-y-auto pr-1">
                   {reviewQuestions.map((q, idx) => {
                     const prevSection = idx > 0 ? reviewQuestions[idx - 1].sectionLabel : undefined;
                     const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
@@ -1127,7 +1127,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                 {splitViewOn && (
                   <div className="flex flex-col">
                     <textarea
-                      className="flex-1 min-h-[24rem] max-h-96 px-3 py-2 text-xs font-mono border rounded-lg outline-none focus:border-purple-400 resize-none"
+                      className="flex-1 min-h-[24rem] max-h-[36rem] px-3 py-2 text-xs font-mono border rounded-lg outline-none focus:border-purple-400 resize-none"
                       style={{ borderColor: "#e5e3df" }}
                       value={markupText}
                       onChange={e => handleMarkupChange(e.target.value)}
