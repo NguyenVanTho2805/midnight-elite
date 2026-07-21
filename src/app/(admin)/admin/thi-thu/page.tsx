@@ -16,6 +16,7 @@ import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { AutoDrawModal } from "@/components/AutoDrawModal";
+import { SubjectField } from "@/components/SubjectField";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -213,7 +214,11 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   exams: ExamRow[];
   categoryOptions: string[];
   onClose: () => void;
-  onCreated: () => void;
+  // warningMsg: nếu có (vd 1 số câu không thêm được vào ngân hàng), cha hiện
+  // đúng cảnh báo này thay vì toast "Đã tạo đề thi mới" mặc định — 1 toast
+  // duy nhất tại 1 thời điểm (useAdminToast không xếp hàng), nên KHÔNG được
+  // gọi showToast 2 lần liên tiếp ở đây rồi để cha ghi đè mất cảnh báo.
+  onCreated: (warningMsg?: string) => void;
   showToast: (msg: string, ok?: boolean) => void;
 }) {
   const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
@@ -236,6 +241,29 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   // ── Giai đoạn 3.5 Cấp 1: cổng opt-in "thêm vào ngân hàng" + phát hiện trùng ──
   const [bankGateOn, setBankGateOn] = useState(false);
   const [bankMeta, setBankMeta]     = useState<BankMeta[]>([]);
+  // "Áp dụng cho tất cả câu" — với đề import hàng loạt, bắt điền Môn/Chủ đề
+  // riêng từng câu là không thực tế (thường không ai điền hết → âm thầm
+  // không câu nào được lưu vào ngân hàng). Điền 1 lần rồi áp dụng cho mọi
+  // câu đang tích "Thêm vào ngân hàng" — vẫn sửa lại riêng từng câu được sau
+  // khi áp dụng nếu cần.
+  const [bulkSubject, setBulkSubject]       = useState("");
+  const [bulkTopic, setBulkTopic]           = useState("");
+  const [bulkDifficulty, setBulkDifficulty] = useState<Difficulty>("NB");
+  const [allBankSubjects, setAllBankSubjects] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    api.questionBank.list({ pageSize: 500 }).then(data => {
+      setAllBankSubjects([...new Set(data.items.map(i => i.subject))].sort());
+    }).catch(() => {});
+  }, [open]);
+
+  function applyBulkBankMeta() {
+    if (!bulkSubject.trim() || !bulkTopic.trim()) return;
+    setBankMeta(prev => prev.map(m => m.addToBank
+      ? { ...m, subject: bulkSubject.trim(), topic: bulkTopic.trim(), difficulty: bulkDifficulty, dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new" }
+      : m));
+  }
 
   function setReviewQuestionsWithMeta(questions: ExamQuestionInput[]) {
     setReviewQuestions(questions);
@@ -291,6 +319,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
       setAnswerKeyFile(null); setAiLoading(false);
       setBankGateOn(false); setBankMeta([]);
+      setBulkSubject(""); setBulkTopic(""); setBulkDifficulty("NB");
     }
   }, [open]);
 
@@ -479,17 +508,23 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
   // Giai đoạn 3.5 Cấp 1: với mỗi câu có addToBank, "Dùng câu cũ" → link thẳng
   // sourceBankItemId về bản ghi trùng đã tìm thấy; ngược lại tạo bản ghi ngân
-  // hàng mới rồi link. Câu thiếu subject/topic (bắt buộc) bị bỏ qua, giữ
-  // nguyên không thêm vào ngân hàng — không chặn việc lưu đề.
-  async function resolveBankLinkedQuestions(questions: ExamQuestionInput[]): Promise<ExamQuestionInput[]> {
-    if (!bankGateOn) return questions;
-    return Promise.all(questions.map(async (q, idx) => {
+  // hàng mới rồi link. Câu thiếu subject/topic (bắt buộc) hoặc tạo lỗi bị bỏ
+  // qua, giữ nguyên không thêm vào ngân hàng — không chặn việc lưu đề, nhưng
+  // ĐẾM lại để handleSave báo cho người soạn biết (trước đây bỏ qua âm thầm,
+  // với đề import hàng loạt rất dễ không ai để ý).
+  async function resolveBankLinkedQuestions(questions: ExamQuestionInput[]): Promise<{
+    questions: ExamQuestionInput[]; skippedMissingInfo: number; failedCreate: number;
+  }> {
+    if (!bankGateOn) return { questions, skippedMissingInfo: 0, failedCreate: 0 };
+    let skippedMissingInfo = 0;
+    let failedCreate = 0;
+    const resolved = await Promise.all(questions.map(async (q, idx) => {
       const meta = bankMeta[idx];
       if (!meta?.addToBank) return q;
       if (meta.resolution === "reuse" && meta.dupMatch) {
         return { ...q, sourceBankItemId: meta.dupMatch.id };
       }
-      if (!meta.subject.trim() || !meta.topic.trim()) return q;
+      if (!meta.subject.trim() || !meta.topic.trim()) { skippedMissingInfo++; return q; }
       try {
         const created = await api.questionBank.create({
           type: q.type ?? "MC",
@@ -504,18 +539,21 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         });
         return { ...q, sourceBankItemId: created.id };
       } catch {
+        failedCreate++;
         return q;
       }
     }));
+    return { questions: resolved, skippedMissingInfo, failedCreate };
   }
 
   async function handleSave() {
     if (!validate()) return;
     setSaving(true);
     try {
-      const questionsToSave = reviewQuestions && reviewQuestions.length > 0
+      const bankResult = reviewQuestions && reviewQuestions.length > 0
         ? await resolveBankLinkedQuestions(reviewQuestions)
-        : reviewQuestions;
+        : { questions: reviewQuestions, skippedMissingInfo: 0, failedCreate: 0 };
+      const questionsToSave = bankResult.questions;
       const examDate = form.date.split("-").reverse().join("/");
       const exam = await api.exams.create({
         id:           toSlug(form.title),
@@ -534,14 +572,21 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         activeGuest:  form.activeGuest,
         createdAt:    new Date().toLocaleDateString("vi-VN"),
       });
+      let warningMsg: string | undefined;
       if (questionsToSave && questionsToSave.length > 0) {
         try {
           await api.examQuestions.bulkCreate(exam.id, questionsToSave);
         } catch {
-          showToast("Đề thi đã tạo nhưng lưu câu hỏi thất bại — vào \"Quản lý câu hỏi\" để thêm lại", false);
+          warningMsg = "Đề thi đã tạo nhưng lưu câu hỏi thất bại — vào \"Quản lý câu hỏi\" để thêm lại";
         }
       }
-      onCreated();
+      if (!warningMsg && (bankResult.skippedMissingInfo > 0 || bankResult.failedCreate > 0)) {
+        const parts: string[] = [];
+        if (bankResult.skippedMissingInfo > 0) parts.push(`${bankResult.skippedMissingInfo} câu thiếu Môn/Chủ đề`);
+        if (bankResult.failedCreate > 0) parts.push(`${bankResult.failedCreate} câu lỗi khi tạo`);
+        warningMsg = `Đã tạo đề nhưng ${parts.join(", ")} nên chưa vào được ngân hàng câu hỏi`;
+      }
+      onCreated(warningMsg);
       onClose();
     } catch (e) {
       showToast("Lỗi tạo đề thi: " + (e instanceof Error ? e.message : "Unknown"), false);
@@ -800,6 +845,36 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   </div>
                   <Toggle checked={bankGateOn} onChange={() => setBankGateOn(v => !v)} />
                 </div>
+
+                {bankGateOn && (
+                  <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Môn/Chủ đề/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="flex-1 min-w-[140px]">
+                        <SubjectField className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          value={bulkSubject} options={allBankSubjects} onChange={setBulkSubject} />
+                      </div>
+                      <input className="flex-1 min-w-[140px] px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                        placeholder="Chủ đề" value={bulkTopic} onChange={e => setBulkTopic(e.target.value)} />
+                      <div className="flex items-center gap-1">
+                        {DIFFICULTIES.map(d => (
+                          <button key={d.value} type="button" onClick={() => setBulkDifficulty(d.value)}
+                            className="px-2 py-1 rounded-full text-xs font-semibold border"
+                            style={bulkDifficulty === d.value
+                              ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
+                              : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button type="button" onClick={applyBulkBankMeta} disabled={!bulkSubject.trim() || !bulkTopic.trim()}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-50 flex-shrink-0"
+                        style={{ background: "#0068FF" }}>
+                        Áp dụng cho tất cả
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                   {reviewQuestions.map((q, idx) => {
@@ -1809,7 +1884,7 @@ export default function ThiThuAdminPage() {
         exams={exams}
         categoryOptions={categoryOptions}
         onClose={() => setCreateOpen(false)}
-        onCreated={() => { showToast("Đã tạo đề thi mới"); refetch(); }}
+        onCreated={(warningMsg) => { showToast(warningMsg ?? "Đã tạo đề thi mới", !warningMsg); refetch(); }}
         showToast={showToast}
       />
       <EditExamDrawer

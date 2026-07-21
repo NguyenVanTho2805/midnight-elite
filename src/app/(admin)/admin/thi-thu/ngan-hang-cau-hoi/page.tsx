@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty, type BankItemStatus } from "@/lib/api";
+import { SubjectField } from "@/components/SubjectField";
 
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -38,43 +39,6 @@ const STATUS_COLOR: Record<BankItemStatus, { bg: string; color: string }> = {
   approved: { bg: "#dcfce7", color: "#16a34a" },
 };
 
-// Select môn học + khả năng gõ môn hoàn toàn mới (subject là String tự do,
-// không phải enum) — cùng cơ chế toggle select↔input như CategoryField ở
-// src/app/(admin)/admin/thi-thu/page.tsx.
-function SubjectField({ value, options, onChange, className }: {
-  value: string; options: string[]; onChange: (v: string) => void; className: string;
-}) {
-  const [adding, setAdding] = useState(false);
-  const [newVal, setNewVal] = useState("");
-
-  function commit() {
-    if (newVal.trim()) onChange(newVal.trim());
-    setAdding(false);
-    setNewVal("");
-  }
-
-  if (adding) {
-    return (
-      <div className="flex gap-2">
-        <input autoFocus className={className} placeholder="Tên môn mới..."
-          value={newVal} onChange={e => setNewVal(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setAdding(false); setNewVal(""); } }} />
-        <button type="button" onClick={commit}
-          className="px-3 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 flex-shrink-0">Xong</button>
-      </div>
-    );
-  }
-
-  return (
-    <select className={className} value={value}
-      onChange={e => e.target.value === "__add__" ? setAdding(true) : onChange(e.target.value)}>
-      <option value="">Chọn môn...</option>
-      {options.map(s => <option key={s} value={s}>{s}</option>)}
-      {value && !options.includes(value) && <option value={value}>{value}</option>}
-      <option value="__add__">+ Thêm môn mới…</option>
-    </select>
-  );
-}
 
 // ─── FORM CÂU HỎI (mirror QuestionForm ở admin/thi-thu/[id]/page.tsx, bỏ
 // sectionLabel/sectionMinutes vì bank item không thuộc đề nào, thêm 4 field
