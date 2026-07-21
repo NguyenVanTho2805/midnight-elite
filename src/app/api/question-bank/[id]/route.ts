@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionParser";
 import { computeContentHash } from "@/lib/questionDedup";
 import { initialStatusFor } from "@/lib/questionBankWorkflow";
+import { setBankItemEmbedding } from "@/lib/embeddings";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -85,6 +86,10 @@ export async function PUT(
         include: { options: { orderBy: { order: "asc" } }, owner: { select: { name: true } } },
       });
     });
+
+    // Giai đoạn 3.5 Cấp 3 — ngoài transaction (network call chậm, không nên
+    // giữ lock DB) + best-effort (xem ghi chú trong setBankItemEmbedding).
+    await setBankItemEmbedding(item.id, text);
 
     return NextResponse.json(item);
   } catch (e) {

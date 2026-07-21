@@ -5,12 +5,15 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { computeContentHash } from "@/lib/questionDedup";
 import { isReviewer } from "@/lib/questionBankWorkflow";
 import { findSimilarBankItems } from "@/lib/questionBankSimilarity";
+import { findSemanticBankItems } from "@/lib/embeddings";
 
-// POST /api/question-bank/check-duplicate — Cấp 1 (trùng Y HỆT, hash) LUÔN
-// chạy trước; Cấp 2 (trùng GIỐNG CHUỖI, pg_trgm) CHỈ chạy khi Cấp 1 không
-// tìm thấy gì — đã có câu trả lời chắc chắn hơn (y hệt) thì không cần tốn
-// thêm 1 truy vấn similarity() nữa. Cả 2 cấp đều thu hẹp theo subject+topic
-// trước khi so (đúng tối ưu bắt buộc trong tài liệu thiết kế).
+// POST /api/question-bank/check-duplicate — 3 tầng chạy TUẦN TỰ, tầng sau
+// chỉ chạy khi tầng trước không tìm thấy gì (mỗi tầng đắt hơn tầng trước,
+// không lãng phí khi đã có câu trả lời chắc chắn hơn): Cấp 1 (trùng Y HỆT,
+// hash) → Cấp 2 (trùng GIỐNG CHUỖI, pg_trgm) → Cấp 3 (trùng GIỐNG NGHĨA,
+// embedding — 1 lệnh gọi Gemini + 1 truy vấn vector, tầng tốn kém nhất). Cả
+// 3 cấp đều thu hẹp theo subject+topic trước khi so (đúng tối ưu bắt buộc
+// trong tài liệu thiết kế).
 //
 // Giai đoạn 6 — chỉ so khớp với câu đã "approved" (công khai) hoặc câu CỦA
 // CHÍNH NGƯỜI ĐANG GỌI (mọi trạng thái) — không để lộ sự tồn tại của
@@ -37,7 +40,11 @@ export async function POST(req: NextRequest) {
       ? []
       : await findSimilarBankItems({ text, subject: subject.trim(), topic: topic.trim(), userId: auth.userId, isReviewer: isReviewer(auth.adminRole) });
 
-    return NextResponse.json({ match, similar });
+    const semantic = match || similar.length > 0
+      ? []
+      : await findSemanticBankItems({ text, subject: subject.trim(), topic: topic.trim(), userId: auth.userId, isReviewer: isReviewer(auth.adminRole) });
+
+    return NextResponse.json({ match, similar, semantic });
   } catch (e) {
     console.error("[POST /api/question-bank/check-duplicate]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

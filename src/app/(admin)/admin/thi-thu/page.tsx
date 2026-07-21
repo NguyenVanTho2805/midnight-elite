@@ -67,12 +67,16 @@ interface BankMeta {
   // là null — danh sách câu GIỐNG CHUỖI (pg_trgm), admin tự chọn "Dùng câu
   // này" cho 1 gợi ý cụ thể thay vì cảnh báo nhị phân như Cấp 1.
   similarMatches: { item: QuestionBankItemFull; similarity: number }[];
+  // Giai đoạn 3.5 Cấp 3 — chỉ có giá trị khi CẢ dupMatch lẫn similarMatches
+  // đều rỗng — danh sách câu GIỐNG NGHĨA (embedding), từ ngữ có thể khác
+  // hẳn nhưng hỏi cùng 1 nội dung.
+  semanticMatches: { item: QuestionBankItemFull; similarity: number }[];
   resolution: "new" | "reuse";
   checking: boolean;
 }
 const BANK_META_INIT: BankMeta = {
   addToBank: true, subject: "", topic: "", difficulty: "NB",
-  dupMatch: null, similarMatches: [], resolution: "new", checking: false,
+  dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new", checking: false,
 };
 
 // Select danh mục + khả năng gõ danh mục hoàn toàn mới (Exam.category là String tự do, không phải enum)
@@ -246,8 +250,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!meta?.addToBank || !q || !meta.subject.trim() || !meta.topic.trim()) return;
     updateBankMeta(idx, { checking: true });
     try {
-      const { match, similar } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
-      updateBankMeta(idx, { dupMatch: match, similarMatches: similar, resolution: "new", checking: false });
+      const { match, similar, semantic } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
+      updateBankMeta(idx, { dupMatch: match, similarMatches: similar, semanticMatches: semantic, resolution: "new", checking: false });
     } catch {
       updateBankMeta(idx, { checking: false });
     }
@@ -369,7 +373,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   function updateReviewQuestion(idx: number, text: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
     // Nội dung đổi sau khi đã check trùng — cảnh báo cũ không còn đúng ngữ cảnh.
-    updateBankMeta(idx, { dupMatch: null, similarMatches: [], resolution: "new" });
+    updateBankMeta(idx, { dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new" });
   }
   function updateReviewImageUrl(idx: number, imageUrl: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, imageUrl } : q) ?? null);
@@ -919,6 +923,24 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                         </span>
                                         <button type="button" onClick={() => updateBankMeta(idx, { dupMatch: s.item, resolution: "reuse" })}
                                           className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid #1d4ed8" }}>
+                                          Dùng câu này
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {!bankMeta[idx].dupMatch && bankMeta[idx].similarMatches.length === 0 && bankMeta[idx].semanticMatches.length > 0 && (
+                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#faf5ff", color: "#7e22ce" }}>
+                                  <p className="font-semibold mb-1.5">🧠 Có {bankMeta[idx].semanticMatches.length} câu giống nghĩa trong ngân hàng (từ ngữ khác nhưng cùng nội dung)</p>
+                                  <div className="space-y-1.5">
+                                    {bankMeta[idx].semanticMatches.map(s => (
+                                      <div key={s.item.id} className="flex items-center gap-2 justify-between">
+                                        <span className="truncate flex-1" title={s.item.text}>
+                                          {Math.round(s.similarity * 100)}% · {s.item.text} <span className="text-purple-400">({s.item.owner?.name ?? "?"})</span>
+                                        </span>
+                                        <button type="button" onClick={() => updateBankMeta(idx, { dupMatch: s.item, resolution: "reuse" })}
+                                          className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid #7e22ce" }}>
                                           Dùng câu này
                                         </button>
                                       </div>

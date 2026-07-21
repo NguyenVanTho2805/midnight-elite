@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { PERMISSIONS } from "@/lib/permissions";
 import { computeContentHash } from "@/lib/questionDedup";
 import { initialStatusFor } from "@/lib/questionBankWorkflow";
+import { setBankItemEmbedding } from "@/lib/embeddings";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -79,6 +80,9 @@ export async function POST(
       await tx.examQuestion.update({ where: { id: qid }, data: { sourceBankItemId: created.id } });
       return created;
     });
+
+    // Giai đoạn 3.5 Cấp 3 — best-effort (xem ghi chú trong setBankItemEmbedding).
+    await setBankItemEmbedding(item.id, item.text);
 
     return NextResponse.json(item);
   } catch (e) {

@@ -6,6 +6,7 @@ import { validateQuestionOptions, type QuestionType } from "@/lib/examQuestionPa
 import { computeContentHash } from "@/lib/questionDedup";
 import { computeBankItemStats } from "@/lib/questionBankStats";
 import { initialStatusFor, isReviewer } from "@/lib/questionBankWorkflow";
+import { setBankItemEmbedding } from "@/lib/embeddings";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"];
 
@@ -142,6 +143,10 @@ export async function POST(req: NextRequest) {
       },
       include: { options: { orderBy: { order: "asc" } }, owner: { select: { name: true } } },
     });
+
+    // Giai đoạn 3.5 Cấp 3 — best-effort, không chặn phản hồi nếu Gemini lỗi/chậm
+    // (xem ghi chú trong setBankItemEmbedding).
+    await setBankItemEmbedding(item.id, text);
 
     return NextResponse.json(item);
   } catch (e) {

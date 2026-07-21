@@ -245,6 +245,16 @@ model QuestionBankItem {
   // này, được tính lại khi sửa).
   contentHash String?
 
+  // Giai đoạn 3.5 Cấp 3 — vector embedding (Gemini gemini-embedding-001, 768
+  // chiều) để tra trùng GIỐNG NGHĨA (semantic), khác Cấp 1 (y hệt/hash) và
+  // Cấp 2 (giống chuỗi/pg_trgm). `Unsupported` vì Prisma Client không thao
+  // tác trực tiếp kiểu `vector` — mọi đọc/ghi cột này đều qua $queryRaw/
+  // $executeRaw trong src/lib/embeddings.ts. null = chưa từng tính (bản ghi
+  // cũ trước tính năng này, hoặc lần gọi Gemini gần nhất lỗi — không chặn
+  // lưu câu hỏi nếu tính embedding thất bại, chỉ đơn giản bỏ qua câu đó khi
+  // so Cấp 3 lần sau, được tính lại khi sửa).
+  embedding Unsupported("vector(768)")?
+
   // Giai đoạn 6 — quy trình duyệt. "draft" (đang soạn, chỉ chủ sở hữu +
   // admin_content/admin_super thấy) | "pending" (đã gửi duyệt, chờ admin
   // xét) | "approved" (đã duyệt, vào kho dùng chung — CHỈ trạng thái này mới
