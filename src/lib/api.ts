@@ -179,6 +179,8 @@ export const api = {
       apiFetch<{ match: QuestionBankItemFull | null }>("/api/question-bank/check-duplicate", {
         method: "POST", body: JSON.stringify(data),
       }),
+    draw: (data: DrawInput) =>
+      apiFetch<DrawResult>("/api/question-bank/draw", { method: "POST", body: JSON.stringify(data) }),
   },
 };
 
@@ -339,6 +341,17 @@ export interface QuestionBankItemInput {
 // dung/đáp án server tự copy từ ExamQuestion hiện có, xem save-to-bank/route.ts.
 export interface SaveToBankInput {
   subject: string; topic: string; difficulty: Difficulty; tags?: string[];
+}
+
+// Giai đoạn 5 — rút đề tự động theo ma trận môn×độ khó, xem draw/route.ts.
+export interface DrawInput {
+  subject: string;
+  counts: Partial<Record<Difficulty, number>>;
+  excludeRecentExams?: number;
+}
+export interface DrawResult {
+  questions: ExamQuestionInput[];
+  shortfall: Partial<Record<Difficulty, { requested: number; drawn: number }>>;
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài

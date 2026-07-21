@@ -15,6 +15,7 @@ import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/exam
 import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
+import { AutoDrawModal } from "@/components/AutoDrawModal";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -220,6 +221,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [aiLoading, setAiLoading]         = useState(false);
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
+  const [autoDrawOpen, setAutoDrawOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
@@ -748,6 +750,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
                     + Từ ngân hàng
                   </button>
+                  <button type="button" onClick={() => setAutoDrawOpen(true)}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    🎲 Rút đề tự động
+                  </button>
                 </div>
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
               </div>
@@ -761,6 +767,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     <button type="button" onClick={() => setBankPickerOpen(true)}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       + Từ ngân hàng
+                    </button>
+                    <button type="button" onClick={() => setAutoDrawOpen(true)}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      🎲 Rút đề tự động
                     </button>
                     <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); }}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
@@ -1009,6 +1019,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
         </div>
       </div>
       <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
+      <AutoDrawModal open={autoDrawOpen} onClose={() => setAutoDrawOpen(false)} onAdd={handleAddFromBank} />
     </>
   );
 }
