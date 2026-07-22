@@ -1,14 +1,14 @@
 ﻿import type { Metadata } from "next";
-import { Inter, Space_Mono } from "next/font/google";
+import { Be_Vietnam_Pro, Space_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 
-const inter = Inter({
+const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
   weight: ["300", "400", "500", "600", "700", "800", "900"],
-  variable: "--font-inter",
+  variable: "--font-sans",
   display: "swap",
 });
 
@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${inter.variable} ${spaceMono.variable} h-full scroll-smooth`}
+      className={`${sans.variable} ${spaceMono.variable} h-full scroll-smooth`}
     >
       <body className="min-h-full flex flex-col antialiased">
           <AuthProvider>{children}</AuthProvider>

@@ -17,19 +17,23 @@ import { COURSE_CATEGORIES, COURSE_HASHTAGS } from "@/lib/courseData";
 const NEXT_EXAM = { label: "ĐGNL HSA vòng 2", date: new Date("2026-11-01T08:00:00") };
 
 function useCountdown(target: Date) {
-  const calc = () => Math.max(0, target.getTime() - Date.now());
-  const [ms, setMs] = useState(calc);
+  // ms bắt đầu là null (thay vì tính Date.now() ngay khi render) để lần render
+  // đầu tiên trên client khớp với HTML server render — tránh hydration mismatch
+  // do server và client tính Date.now() ở 2 thời điểm khác nhau.
+  const [ms, setMs] = useState<number | null>(null);
   useEffect(() => {
+    const calc = () => Math.max(0, target.getTime() - Date.now());
+    setMs(calc());
     const id = setInterval(() => setMs(calc()), 1000);
     return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [target]);
+  const safeMs = ms ?? 0;
   return {
-    days:    Math.floor(ms / 86_400_000),
-    hours:   Math.floor((ms % 86_400_000) / 3_600_000),
-    minutes: Math.floor((ms % 3_600_000) / 60_000),
-    seconds: Math.floor((ms % 60_000) / 1_000),
-    expired: ms === 0,
+    days:    Math.floor(safeMs / 86_400_000),
+    hours:   Math.floor((safeMs % 86_400_000) / 3_600_000),
+    minutes: Math.floor((safeMs % 3_600_000) / 60_000),
+    seconds: Math.floor((safeMs % 60_000) / 1_000),
+    expired: ms !== null && safeMs === 0,
   };
 }
 
@@ -90,41 +94,42 @@ const STATS = [
   { value: "6",      label: "Gia sư & trợ giảng" },
 ];
 
-function StatsStrip() {
+// Gộp thống kê + đếm ngược vào 1 panel trong hero (thay vì dải riêng bên dưới),
+// tránh hero tách rời khỏi phần dữ liệu tin cậy ngay bên dưới nó.
+function HeroStatsPanel() {
   const cd = useCountdown(NEXT_EXAM.date);
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
-    <section style={{ background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
-      <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center gap-6 justify-between">
-        {/* Stats */}
-        <div className="flex items-center gap-8 flex-wrap">
-          {STATS.map(s => (
-            <div key={s.label} className="text-center">
-              <p className="text-lg font-black leading-none" style={{ color: "#0068FF" }}>{s.value}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#787671" }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-        {/* Countdown */}
-        {!cd.expired && (
-          <div className="flex items-center gap-3">
+    <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {STATS.map(s => (
+          <div key={s.label}>
+            <p className="text-lg font-black leading-none text-white tabular-nums">{s.value}</p>
+            <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>{s.label}</p>
+          </div>
+        ))}
+      </div>
+      {!cd.expired && (
+        <>
+          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} className="mb-4" />
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-xs font-semibold" style={{ color: "#787671" }}>Kỳ thi tiếp theo</p>
-              <p className="text-xs font-bold" style={{ color: "#1a1a1a" }}>{NEXT_EXAM.label}</p>
+              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>Kỳ thi tiếp theo</p>
+              <p className="text-xs font-bold text-white">{NEXT_EXAM.label}</p>
             </div>
             <div className="flex items-center gap-1.5">
               {[{ v: cd.days, u: "ngày" }, { v: cd.hours, u: "giờ" }, { v: cd.minutes, u: "phút" }, { v: cd.seconds, u: "giây" }].map(({ v, u }) => (
                 <div key={u} className="flex flex-col items-center px-2 py-1 rounded-lg min-w-[36px]"
-                  style={{ background: "var(--brand-navy)" }}>
-                  <span className="text-sm font-black text-white leading-none">{pad(v)}</span>
-                  <span className="text-[9px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>{u}</span>
+                  style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <span className="text-sm font-black text-white leading-none tabular-nums">{pad(v)}</span>
+                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.45)" }}>{u}</span>
                 </div>
               ))}
             </div>
           </div>
-        )}
-      </div>
-    </section>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -387,32 +392,32 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right — category tiles (Notion tint style) */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  Đang mở luyện thi
-                </p>
-              <div className="grid grid-cols-2 gap-3">
-                {HERO_CATEGORIES.map((c, i) => (
-                  <Link
-                    href="/khoa-hoc"
-                    key={c.label}
-                    className={`p-4 rounded-xl transition-all hover:brightness-95${i === HERO_CATEGORIES.length - 1 && HERO_CATEGORIES.length % 2 !== 0 ? " col-span-2" : ""}`}
-                    style={{ background: c.tint }}
-                  >
-                    <div className="text-sm font-bold mb-1" style={{ color: c.text }}>{c.label}</div>
-                    <div className="text-xs" style={{ color: c.text, opacity: 0.65 }}>{c.desc}</div>
-                  </Link>
-                ))}
-              </div>
+              {/* Right — category tiles + gộp thống kê/đếm ngược */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    Đang mở luyện thi
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {HERO_CATEGORIES.map((c, i) => (
+                      <Link
+                        href="/khoa-hoc"
+                        key={c.label}
+                        className={`p-4 rounded-xl transition-all hover:brightness-95${i === HERO_CATEGORIES.length - 1 && HERO_CATEGORIES.length % 2 !== 0 ? " col-span-2" : ""}`}
+                        style={{ background: c.tint }}
+                      >
+                        <div className="text-sm font-bold mb-1" style={{ color: c.text }}>{c.label}</div>
+                        <div className="text-xs" style={{ color: c.text, opacity: 0.65 }}>{c.desc}</div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <HeroStatsPanel />
               </div>
 
             </div>
           </div>
         </section>
-
-        {/* ── STATS + COUNTDOWN ────────────────────────────────────────────── */}
-        <StatsStrip />
 
         {/* ── COURSES WITH SIDEBAR ──────────────────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">

@@ -100,7 +100,7 @@ html {
 body {
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-inter), "Inter", -apple-system, "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-sans), "Be Vietnam Pro", -apple-system, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
