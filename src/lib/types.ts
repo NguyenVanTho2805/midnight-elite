@@ -2,6 +2,23 @@
 
 export type LessonType = "record" | "live" | "quiz" | "document";
 
+const LESSON_TYPES: LessonType[] = ["record", "live", "quiz", "document"];
+
+// DB lưu type là string, nhưng bài học có nhiều nội dung (VD: video + quiz)
+// được lưu dạng JSON array stringify, VD: '["record","quiz"]'. Chuẩn hoá về
+// 1 LessonType hợp lệ, ưu tiên video > live > quiz > tài liệu.
+export function parseLessonType(raw: string): LessonType {
+  if ((LESSON_TYPES as string[]).includes(raw)) return raw as LessonType;
+  try {
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) {
+      const found = LESSON_TYPES.find(t => arr.includes(t));
+      if (found) return found;
+    }
+  } catch { /* not JSON — fall through to default */ }
+  return "document";
+}
+
 export interface LessonStats {
   videos: number;
   materials: number;

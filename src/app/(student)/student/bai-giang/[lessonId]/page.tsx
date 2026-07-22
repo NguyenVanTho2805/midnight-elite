@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import { useProgress } from "@/hooks/useProgress";
+import { parseLessonType } from "@/lib/types";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
   FileDownload, Eye, Lock, CheckCircle,
@@ -74,7 +75,7 @@ function dbToLocalSections(dbSections: DBSection[], completedIds: Set<string>): 
         id:          l.id,
         code:        l.code,
         title:       l.title,
-        type:        l.type as LessonType,
+        type:        parseLessonType(l.type),
         duration:    l.duration ?? undefined,
         isCompleted: completedIds.has(l.id),
         isLocked:    l.isLocked,

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, Play, Eye, Lock, ArrowRight, BookOpen } from "griddy-icons";
 import { useProgress } from "@/hooks/useProgress";
 import { useEnrollments } from "@/hooks/useEnrollments";
+import { parseLessonType } from "@/lib/types";
 
 interface Lesson {
   id: string; code: string; title: string; type: string;
@@ -26,7 +27,7 @@ function TypeBadge({ type }: { type: string }) {
     quiz:     { label: "Bài tập", color: "#FE9900", bg: "#FFF7ED" },
     document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
   };
-  const s = map[type] ?? map.document;
+  const s = map[parseLessonType(type)];
   return (
     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: s.color, background: s.bg }}>
       {s.label}

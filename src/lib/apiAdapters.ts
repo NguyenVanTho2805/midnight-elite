@@ -1,7 +1,8 @@
 // Chuyển đổi data từ API sang các type frontend đang dùng
 
 import type { CourseFull, CourseWithCurriculum, LessonFull, ExamFull } from "./api";
-import type { EnrolledCourse, Section, Chapter, Lesson, LessonType } from "./types";
+import type { EnrolledCourse, Section, Chapter, Lesson } from "./types";
+import { parseLessonType } from "./types";
 
 // CourseFull (API) → CatalogCourse (hoc-tap catalog tab)
 export function toCatalogCourse(c: CourseFull) {
@@ -34,7 +35,7 @@ function toLesson(l: LessonFull, completedIds: Set<string>): Lesson {
     id:          l.id,
     code:        l.code,
     title:       l.title,
-    type:        l.type as LessonType,
+    type:        parseLessonType(l.type),
     duration:    l.duration ?? undefined,
     isCompleted: completedIds.has(l.id),
     isLocked:    l.isLocked && !completedIds.has(l.id),
