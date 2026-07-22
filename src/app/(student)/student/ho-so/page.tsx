@@ -17,6 +17,10 @@ interface ExamResultItem {
   exam: { title: string; code: string };
 }
 
+interface EnrolledCourseItem {
+  id: string; name: string; category: string; lessons: number;
+}
+
 type ToastType = { msg: string; type: "success" | "error" | "info" };
 
 interface Area { x: number; y: number; width: number; height: number; }
@@ -196,6 +200,7 @@ export default function HoSoPage() {
   const [kickedDevices,     setKickedDevices]     = useState<Set<number>>(new Set());
   const [userStats,         setUserStats]         = useState<UserStats | null>(null);
   const [activityCounts,    setActivityCounts]    = useState<Record<string, number>>({});
+  const [enrolledCourses,   setEnrolledCourses]   = useState<EnrolledCourseItem[]>([]);
 
   // ── Avatar ──
   const [avatarSrc,    setAvatarSrc]    = useState<string | null>(null);
@@ -267,6 +272,20 @@ export default function HoSoPage() {
     fetch("/api/users/me/activity")
       .then(r => r.ok ? r.json() : { counts: {} })
       .then((d: { counts: Record<string, number> }) => setActivityCounts(d.counts))
+      .catch(() => {});
+
+    fetch("/api/enrollments")
+      .then(r => r.ok ? r.json() : { courseIds: [] })
+      .then((d: { courseIds: string[] }) => {
+        if (!d.courseIds?.length) return;
+        fetch("/api/courses")
+          .then(r => r.ok ? r.json() : [])
+          .then((courses: EnrolledCourseItem[]) => {
+            const ids = new Set(d.courseIds);
+            setEnrolledCourses(courses.filter(c => ids.has(c.id)));
+          })
+          .catch(() => {});
+      })
       .catch(() => {});
   }, []);
 
@@ -640,7 +659,24 @@ export default function HoSoPage() {
           {/* ── Khóa học ── */}
           <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
             <h2 className="text-sm font-bold mb-4" style={{ color: "#37352f" }}>Khóa học đã đăng ký</h2>
-            <p className="text-sm text-center py-4" style={{ color: "#a4a097" }}>
+            {enrolledCourses.length === 0 ? (
+              <p className="text-sm text-center py-4" style={{ color: "#a4a097" }}>Chưa đăng ký khóa học nào.</p>
+            ) : (
+              <div className="space-y-2">
+                {enrolledCourses.map(c => (
+                  <a key={c.id} href={`/student/hoc-tap?course=${c.id}`}
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl hover:opacity-80"
+                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: "#37352f" }}>{c.name}</p>
+                      <p className="text-xs" style={{ color: "#a4a097" }}>{c.category} · {c.lessons} bài</p>
+                    </div>
+                    <span className="text-xs font-semibold flex-shrink-0" style={{ color: "#0068FF" }}>Vào học →</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-center pt-3" style={{ color: "#a4a097" }}>
               Xem tiến độ chi tiết tại{" "}
               <a href="/student/hoc-tap" className="font-semibold" style={{ color: "#0068FF" }}>Trang khóa học</a>
             </p>
