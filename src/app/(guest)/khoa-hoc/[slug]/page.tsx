@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProgress } from "@/hooks/useProgress";
+import { useEnrollments } from "@/hooks/useEnrollments";
 import TeacherTag from "@/components/TeacherTag";
 import { COURSE_HASHTAGS } from "@/lib/courseData";
 
@@ -161,6 +162,7 @@ export default function KhoaHocDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { completedIds, markComplete, unmarkComplete } = useProgress();
+  const { enrolledIds, loading: enrollmentsLoading } = useEnrollments();
   const [course, setCourse]             = useState<DBCourse | null>(null);
   const [loaded, setLoaded]             = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
@@ -216,6 +218,7 @@ export default function KhoaHocDetailPage() {
   }
 
   const discount = course.originalPrice ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
+  const isEnrolled = !enrollmentsLoading && enrolledIds.has(course.id);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto">
@@ -329,7 +332,8 @@ export default function KhoaHocDetailPage() {
                   {openChapters.has(chap.id) && (
                   <div className="space-y-2 pl-4">
                     {chap.lessons.map((lesson) => {
-                      const isCompleted = completedIds.has(lesson.id);
+                      const isCompleted  = completedIds.has(lesson.id);
+                      const isAccessible = lesson.isFree || isEnrolled;
 
                       function toggleComplete(e: React.MouseEvent) {
                         e.preventDefault();
@@ -340,7 +344,7 @@ export default function KhoaHocDetailPage() {
 
                       const inner = (
                         <>
-                          {lesson.isFree ? (
+                          {isAccessible ? (
                             <button onClick={toggleComplete}
                               title={isCompleted ? "Đã học — bấm để bỏ đánh dấu" : "Đánh dấu đã học"}
                               className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors"
@@ -360,7 +364,7 @@ export default function KhoaHocDetailPage() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm" style={{ color: lesson.isFree ? "#0068FF" : "#6B7280", fontWeight: lesson.isFree ? 600 : 400 }}>
+                            <span className="text-sm" style={{ color: isAccessible ? "#0068FF" : "#6B7280", fontWeight: isAccessible ? 600 : 400 }}>
                               {lesson.title}
                             </span>
                             {lesson.isFree && (
@@ -368,7 +372,7 @@ export default function KhoaHocDetailPage() {
                             )}
                           </div>
                           <span className="text-xs flex-shrink-0" style={{ color: "#9CA3AF" }}>{lesson.duration ?? ""}</span>
-                          {lesson.isFree && (
+                          {isAccessible && (
                             <span className="text-xs flex-shrink-0 flex items-center gap-0.5" style={{ color: "#0068FF" }}>
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.5"><polygon points="5,3 13,8 5,13" fill="#0068FF" stroke="none"/></svg>
                               Xem
@@ -378,9 +382,9 @@ export default function KhoaHocDetailPage() {
                       );
 
                       const sharedClass = "flex items-center gap-3 px-4 py-3 rounded-xl transition-all";
-                      const sharedStyle = { background: lesson.isFree ? "#ffffff" : "#f6f5f4", border: "1px solid #e5e3df" };
+                      const sharedStyle = { background: isAccessible ? "#ffffff" : "#f6f5f4", border: "1px solid #e5e3df" };
 
-                      return lesson.isFree ? (
+                      return isAccessible ? (
                         <Link key={lesson.id}
                           href={user ? `/student/bai-giang/${lesson.id}` : `/dang-nhap?redirect=/student/bai-giang/${lesson.id}`}
                           className={sharedClass + " hover:opacity-80 cursor-pointer"}
@@ -426,16 +430,26 @@ export default function KhoaHocDetailPage() {
 
             {/* CTA */}
             <div className="space-y-2 mb-5">
-              <a href="tel:0384409051"
-                className="block w-full py-3 rounded-xl text-sm font-bold text-center text-white"
-                style={{ background: "#0068FF", borderRadius: "8px" }}>
-                Gọi tư vấn: 0384 409 051
-              </a>
-              <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
-                className="block w-full py-2.5 rounded-xl text-sm font-medium text-center"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
-                Nhắn Zalo để đăng ký
-              </a>
+              {isEnrolled ? (
+                <Link href={`/student/hoc-tap?course=${course.id}`}
+                  className="block w-full py-3 rounded-xl text-sm font-bold text-center text-white"
+                  style={{ background: "#00A63D", borderRadius: "8px" }}>
+                  Vào học →
+                </Link>
+              ) : (
+                <>
+                  <a href="tel:0384409051"
+                    className="block w-full py-3 rounded-xl text-sm font-bold text-center text-white"
+                    style={{ background: "#0068FF", borderRadius: "8px" }}>
+                    Gọi tư vấn: 0384 409 051
+                  </a>
+                  <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
+                    className="block w-full py-2.5 rounded-xl text-sm font-medium text-center"
+                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
+                    Nhắn Zalo để đăng ký
+                  </a>
+                </>
+              )}
             </div>
 
             {/* Guarantees */}
