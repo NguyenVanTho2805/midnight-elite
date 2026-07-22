@@ -61,6 +61,14 @@ function HocTapContent() {
       .finally(() => setLoading(false));
   }, [courseId]);
 
+  // Thiếu ?course= nhưng học viên đã có khóa học → tự chọn khóa đầu tiên
+  // thay vì hiện ngõ cụt "Không có khóa học nào được chọn".
+  useEffect(() => {
+    if (courseId || enrollmentsLoading) return;
+    const firstEnrolled = enrolledIds.values().next().value;
+    if (firstEnrolled) router.replace(`/student/hoc-tap?course=${firstEnrolled}`);
+  }, [courseId, enrollmentsLoading, enrolledIds, router]);
+
   const allLessons = useMemo(
     () => course?.sections.flatMap(s => s.chapters.flatMap(c => c.lessons)) ?? [],
     [course]
@@ -78,10 +86,19 @@ function HocTapContent() {
   }
 
   if (!courseId) {
+    // Đang chờ danh sách ghi danh để tự chọn khóa học (xem effect ở trên).
+    if (enrollmentsLoading || enrolledIds.size > 0) {
+      return (
+        <div className="space-y-4">
+          <div className="h-7 w-48 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
+          <div className="h-24 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <BookOpen size={40} style={{ color: "#9CA3AF" }} />
-        <p className="text-sm" style={{ color: "#9CA3AF" }}>Không có khóa học nào được chọn.</p>
+        <p className="text-sm" style={{ color: "#9CA3AF" }}>Bạn chưa có khóa học nào.</p>
         <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Khóa học</Link>
       </div>
     );
