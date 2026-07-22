@@ -736,14 +736,27 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const sections   = dbToLocalSections(dbCourse.sections, completedIds);
   const allLessons = sections.flatMap(s => s.chapters.flatMap(c => c.lessons));
   const lessonIdx  = allLessons.findIndex(l => l.id === params.lessonId);
-  const rawLesson  = allLessons[lessonIdx] ?? allLessons[0];
+  // dbLesson (từ context API, luôn tồn tại) là nguồn dữ liệu chuẩn — chỉ dùng
+  // allLessons[lessonIdx] khi tìm thấy, tránh crash khi bài học không nằm
+  // trong dbCourse.sections (mismatch cấu trúc khoá học).
+  const rawLesson: ChapterLesson = lessonIdx >= 0 ? allLessons[lessonIdx] : {
+    id:          dbLesson.id,
+    code:        dbLesson.code,
+    title:       dbLesson.title,
+    type:        parseLessonType(dbLesson.type),
+    duration:    dbLesson.duration ?? undefined,
+    isCompleted: completedIds.has(dbLesson.id),
+    isLocked:    dbLesson.isLocked,
+    isFree:      dbLesson.isFree,
+    stats: { videos: dbLesson.statsVideos, materials: dbLesson.statsMaterials, views: dbLesson.statsViews },
+  };
   const prevLesson = lessonIdx > 0 ? allLessons[lessonIdx - 1] : null;
-  const nextLesson = lessonIdx < allLessons.length - 1 ? allLessons[lessonIdx + 1] : null;
+  const nextLesson = lessonIdx >= 0 && lessonIdx < allLessons.length - 1 ? allLessons[lessonIdx + 1] : null;
 
   const lesson = {
     ...rawLesson,
     teacherName:     dbCourse.instructor,
-    views:           rawLesson?.stats.views ?? 0,
+    views:           rawLesson.stats.views,
     materials:       (() => { try { return JSON.parse(dbLesson.documents ?? "[]") as Material[]; } catch { return [] as Material[]; } })(),
     azotaUrl:        dbLesson.azotaUrl ?? null,
     azotaDeadline:   dbLesson.azotaDeadline ?? "",
