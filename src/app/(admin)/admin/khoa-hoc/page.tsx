@@ -41,6 +41,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
   const [saving, setSaving] = useState(false);
   const [bgUploading, setBgUploading] = useState(false);
   const bgFileRef = useRef<HTMLInputElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([...ADMIN_CATEGORIES]);
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -97,7 +98,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
     }
   }
 
-  function validate(): boolean {
+  function validate(): typeof errors {
     const e: typeof errors = {};
     if (!form.name.trim()) e.name     = "Tên khoá học không được để trống";
     if (!form.openDate)    e.openDate = "Chọn ngày khai giảng";
@@ -106,11 +107,18 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
     if (!form.lessons || isNaN(+form.lessons))
       e.lessons = "Số bài học phải là số";
     setErrors(e);
-    return Object.keys(e).length === 0;
+    return e;
   }
 
   async function handleSave() {
-    if (!validate()) return;
+    const e = validate();
+    const firstErrorField = Object.keys(e)[0];
+    if (firstErrorField) {
+      drawerRef.current
+        ?.querySelector(`[data-field="${firstErrorField}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setSaving(true);
     try {
       const slug = form.slug.trim() || toSlug(form.name);
@@ -154,6 +162,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />
       )}
       <div
+        ref={drawerRef}
         className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
         style={{
           width: "min(540px, 100vw)",
@@ -197,7 +206,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Tên khoá học</h3>
             <div className="space-y-3">
-              <div>
+              <div data-field="name">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Tên khoá học <span className="text-red-500">*</span>
                 </label>
@@ -273,7 +282,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                 <input className={inp} placeholder="Thầy Nguyễn Minh"
                   value={form.instructor} onChange={e => set("instructor", e.target.value)} />
               </div>
-              <div>
+              <div data-field="openDate">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Ngày khai giảng <span className="text-red-500">*</span>
                 </label>
@@ -287,7 +296,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Giá bán</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div data-field="price">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Giá bán (đ) <span className="text-red-500">*</span>
                 </label>
@@ -308,7 +317,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Nội dung</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div data-field="lessons">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Số bài học <span className="text-red-500">*</span>
                 </label>
@@ -400,7 +409,7 @@ interface Course {
 }
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
-function ActionMenu({ courseId, lessonCount, onDelete, onDuplicate }: { courseId: string; lessonCount: number; onDelete: () => void; onDuplicate: () => Promise<void> }) {
+function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onDelete: () => void; onDuplicate: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -456,11 +465,9 @@ function ActionMenu({ courseId, lessonCount, onDelete, onDuplicate }: { courseId
           {confirmDel ? (
             <div className="px-4 py-2.5">
               <p className="text-xs text-red-600 font-semibold mb-1">Xác nhận xoá khoá học?</p>
-              {lessonCount > 0 && (
-                <p className="text-xs text-red-500 mb-2">
-                  Toàn bộ {lessonCount} bài học, chương và tài liệu sẽ bị xoá vĩnh viễn.
-                </p>
-              )}
+              <p className="text-xs text-red-500 mb-2">
+                Toàn bộ bài học, chương và tài liệu sẽ bị xoá vĩnh viễn.
+              </p>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmDel(false)}
                   className="flex-1 py-1.5 rounded text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
@@ -621,7 +628,6 @@ function KhoaHocListInner() {
                 <td className="px-4 py-3 text-center">
                   <ActionMenu
                     courseId={course.slug}
-                    lessonCount={apiCourses.find(c => c.id === course.slug)?.lessons ?? 0}
                     onDelete={async () => {
                       try {
                         await api.courses.remove(course.slug);
