@@ -129,6 +129,14 @@ const PLYR_CONTROLS = [
   "current-time", "mute", "volume", "settings", "fullscreen",
 ];
 
+// Plyr's built-in "captions" control chỉ hoạt động với HTML5 <track> — với
+// YouTube provider nó không bao giờ phát hiện được track nào (nút luôn ẩn),
+// và cc_load_policy chỉ là "gợi ý" — nếu tài khoản YouTube của người xem có
+// bật "luôn hiện phụ đề" thì YouTube vẫn tự bật bất kể cc_load_policy. Cách
+// duy nhất tắt được thật sự là gọi thẳng loadModule/unloadModule('captions')
+// trên YT.Player (lộ ra qua player.embed) — nên phải tự vẽ nút bật/tắt riêng.
+const SUBTITLES_STORAGE_KEY = "lessonSubtitlesOn";
+
 function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }: {
   videoUrl?: string | null;
   userEmail?: string;
@@ -142,6 +150,33 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
   const playerRef = useRef<any>(null);
   const firedRef  = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // false lúc render đầu (khớp SSR) — đọc lại lựa chọn đã lưu ngay sau khi
+  // mount để tránh hydration mismatch (không tính vào lúc render như hàm
+  // khởi tạo useState).
+  const [subtitlesOn, setSubtitlesOn] = useState(false);
+  const subtitlesOnRef = useRef(subtitlesOn);
+  subtitlesOnRef.current = subtitlesOn;
+
+  useEffect(() => {
+    setSubtitlesOn(localStorage.getItem(SUBTITLES_STORAGE_KEY) === "1");
+  }, []);
+
+  function applyCaptions(on: boolean) {
+    const yt = playerRef.current?.embed;
+    if (!yt) return;
+    try {
+      if (on) yt.loadModule("captions");
+      else yt.unloadModule("captions");
+    } catch { /* module chưa sẵn sàng — bỏ qua, không phải lỗi nghiêm trọng */ }
+  }
+
+  function toggleSubtitles() {
+    const next = !subtitlesOn;
+    setSubtitlesOn(next);
+    localStorage.setItem(SUBTITLES_STORAGE_KEY, next ? "1" : "0");
+    applyCaptions(next);
+  }
 
   useEffect(() => {
     if (!ytId || !elRef.current) return;
@@ -160,6 +195,10 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
         youtube: { rel: 0, modestbranding: 1, noCookie: true },
       });
       playerRef.current = player;
+
+      // Áp lựa chọn phụ đề đã lưu ngay khi YouTube player thật sự sẵn sàng
+      // (embed.loadModule/unloadModule chỉ dùng được từ lúc này).
+      player.on("ready", () => applyCaptions(subtitlesOnRef.current));
 
       player.on("timeupdate", () => {
         if (!onAutoComplete || firedRef.current) return;
@@ -200,6 +239,14 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
     return (
       <div className="rounded-xl overflow-hidden relative" style={{ border: "1px solid #e5e3df" }}>
         <div ref={elRef} data-plyr-provider="youtube" data-plyr-embed-id={ytId} />
+        <button type="button" onClick={toggleSubtitles}
+          title={subtitlesOn ? "Tắt phụ đề" : "Bật phụ đề"}
+          className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors"
+          style={subtitlesOn
+            ? { background: "#0068FF", color: "#fff" }
+            : { background: "rgba(0,0,0,0.55)", color: "#fff" }}>
+          CC
+        </button>
         {userEmail && (
           <div className="absolute bottom-14 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10"
             style={{ color: "#fff" }}>
