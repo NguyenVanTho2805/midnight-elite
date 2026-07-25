@@ -244,7 +244,7 @@ export interface ExamFull {
   status: string; azotaUrl?: string | null;
   participants: number; active: boolean; activeGuest: boolean; guestCanTake: boolean; createdAt: string;
   hasQuestions: boolean;
-  courseId?: string | null; price?: number | null;
+  courseId?: string | null; courseName?: string | null; price?: number | null;
   clusterScorePercents?: number[] | null; // [1 ý, 2 ý, 3 ý, 4 ý đúng] theo %, null = mặc định 10/25/50/100
   hasPassword?: boolean; // KHÔNG BAO GIỜ có field password thô trong response — server chỉ trả cờ này
   password?: string; // chỉ dùng khi GỬI lên để đặt/đổi mật khẩu, không bao giờ có mặt khi server trả về

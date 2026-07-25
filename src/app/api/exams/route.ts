@@ -68,12 +68,20 @@ export async function GET(req: NextRequest) {
         ...scopeWhere,
       },
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { examQuestions: true } } },
+      include: {
+        _count: { select: { examQuestions: true } },
+        course: { select: { name: true } },
+      },
     });
 
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     return NextResponse.json(
-      exams.map(({ _count, password, ...e }) => ({ ...e, hasQuestions: _count.examQuestions > 0, hasPassword: !!password }))
+      exams.map(({ _count, password, course, ...e }) => ({
+        ...e,
+        hasQuestions: _count.examQuestions > 0,
+        hasPassword: !!password,
+        courseName: course?.name ?? null,
+      }))
     );
   } catch (e) {
     console.error("[GET /api/exams]", e);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEnrollments } from "@/hooks/useEnrollments";
 import { computeExamStatus, type ExamStatus } from "@/lib/examData";
 
 interface MyResult {
@@ -21,6 +22,7 @@ export default function ThiThuPage() {
   const { user } = useAuth();
   const [cat, setCat] = useState("Tất cả");
   const [myResults, setMyResults] = useState<Record<string, MyResult>>({});
+  const { enrolledIds } = useEnrollments();
 
   const { data: apiExams, loading: examsLoading } = useExams(
     user ? { active: "true" } : { activeGuest: "true" }
@@ -99,11 +101,15 @@ export default function ThiThuPage() {
         {/* Exam list */}
         <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
           {filtered.map((exam, idx) => {
-            const result  = exam.myResult;
-            const hasDone = !!result;
-            const s       = STATUS_CFG[hasDone ? "completed" : exam.status];
-            const grad    = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
-            const isLast  = idx === filtered.length - 1;
+            const result   = exam.myResult;
+            const hasDone  = !!result;
+            const s        = STATUS_CFG[hasDone ? "completed" : exam.status];
+            const grad     = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+            const isLast   = idx === filtered.length - 1;
+            // Đề gắn courseId mà học viên chưa ghi danh — vẫn hiện trong danh
+            // sách (không ẩn hẳn) nhưng khoá nút vào thi, ghi rõ lý do thay vì
+            // để học viên bấm vào rồi mới biết bị chặn ở bước sau.
+            const isLocked = !!exam.courseId && !enrolledIds.has(exam.courseId);
             return (
               <div key={exam.id} className="flex items-center gap-4 px-5 py-4"
                 style={{ borderBottom: isLast ? "none" : "1px solid #e5e3df" }}>
@@ -142,6 +148,11 @@ export default function ThiThuPage() {
                       style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671" }}>
                       Xem lại
                     </Link>
+                  ) : isLocked ? (
+                    <span className="text-xs font-medium px-3 py-1.5 rounded-md text-right block"
+                      style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
+                      Thuộc khóa {exam.courseName ?? "khác"} — chưa ghi danh
+                    </span>
                   ) : exam.status === "upcoming" ? (
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md"
                       style={{ background: "#dbeafe", color: "#0068FF" }}>Chờ mở</span>

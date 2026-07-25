@@ -34,25 +34,33 @@ export async function POST(
       );
     }
 
-    // Đề thi thu phí: miễn phí cho học viên đã đăng ký đúng khoá học gắn với
-    // đề, người khác (guest hoặc học viên khoá khác) cần được admin duyệt
-    // qua ExamGuestAccess (thủ công, tái dùng quy trình sales hiện có —
-    // không có cổng thanh toán tự động, xem reports/2026-07-13.md Giai đoạn 3).
-    if (exam.price && exam.price > 0) {
-      const isEnrolledInExamCourse = exam.courseId
-        ? !!(await prisma.enrollment.findUnique({
-            where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
-          }))
-        : false;
+    // Đề gắn courseId: chỉ học viên đã ghi danh ĐÚNG khoá đó mới thi được —
+    // áp dụng bất kể đề có thu phí hay không (trước đây chỉ check khi
+    // price>0, khiến đề MIỄN PHÍ gắn khoá vẫn mở cho mọi học viên bất kỳ khoá
+    // nào). Đề thu phí vẫn giữ đường thoát ExamGuestAccess (thủ công, tái
+    // dùng quy trình sales hiện có — không có cổng thanh toán tự động, xem
+    // reports/2026-07-13.md Giai đoạn 3); đề miễn phí gắn khoá thì chặn thẳng,
+    // không có đường thoát trả phí.
+    if (exam.courseId) {
+      const isEnrolledInExamCourse = !!(await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
+      }));
 
       if (!isEnrolledInExamCourse) {
-        const granted = await prisma.examGuestAccess.findUnique({
-          where: { userId_examId: { userId: session.userId, examId } },
-        });
-        if (!granted) {
+        if (exam.price && exam.price > 0) {
+          const granted = await prisma.examGuestAccess.findUnique({
+            where: { userId_examId: { userId: session.userId, examId } },
+          });
+          if (!granted) {
+            return NextResponse.json(
+              { error: "Đề thi này yêu cầu phí — liên hệ tư vấn để được duyệt quyền vào thi" },
+              { status: 402 }
+            );
+          }
+        } else {
           return NextResponse.json(
-            { error: "Đề thi này yêu cầu phí — liên hệ tư vấn để được duyệt quyền vào thi" },
-            { status: 402 }
+            { error: "Đề thi này chỉ dành cho học viên đã ghi danh khoá học liên quan" },
+            { status: 403 }
           );
         }
       }
