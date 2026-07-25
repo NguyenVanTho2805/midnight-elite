@@ -305,6 +305,30 @@ model QuestionBankOption {
   @@map("question_bank_options")
 }
 
+// Ma trận đề thi chuẩn Bộ GDĐT — lưu lại để rút đề nhiều lần với cùng cấu
+// trúc Chủ đề × Độ khó × Loại câu (mỗi đề rút ra vẫn khác nhau vì câu được
+// chọn ngẫu nhiên từ Ngân hàng câu hỏi). Dùng chung giữa giáo viên như Ngân
+// hàng câu hỏi (ai cũng xem/tải được, chỉ chủ sở hữu/admin sửa/xoá) — xem
+// ownsResource()/requireOwnedResource() trong src/lib/auth-guard.ts.
+model ExamMatrixTemplate {
+  id      String @id @default(cuid())
+  name    String
+  subject String
+
+  // ExamMatrixCell[] — [{ topic, difficulty: "NB"|"TH"|"VD"|"VDC", type:
+  // QuestionType | null, count }]. type=null nghĩa là không lọc loại câu cho
+  // dòng đó (xem src/lib/api.ts).
+  cells Json
+
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([subject])
+  @@map("exam_matrix_templates")
+}
+
 // Câu hỏi thi trắc nghiệm trong platform — KHÔNG liên quan đến model
 // Question/Answer bên dưới (đó là module Hỏi Đáp cộng đồng, khác hoàn toàn).
 model ExamQuestion {
@@ -497,6 +521,7 @@ model User {
   ownedCourses        Course[]
   ownedExams          Exam[]
   questionBankItems   QuestionBankItem[]
+  examMatrixTemplates ExamMatrixTemplate[]
   examGuestAccess     ExamGuestAccess[]
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]

@@ -183,10 +183,23 @@ export const api = {
       }>("/api/question-bank/check-duplicate", { method: "POST", body: JSON.stringify(data) }),
     draw: (data: DrawInput) =>
       apiFetch<DrawResult>("/api/question-bank/draw", { method: "POST", body: JSON.stringify(data) }),
+    drawMatrix: (data: DrawMatrixInput) =>
+      apiFetch<DrawMatrixResult>("/api/question-bank/draw-matrix", { method: "POST", body: JSON.stringify(data) }),
     submit: (id: string) =>
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/submit`, { method: "PATCH" }),
     review: (id: string, data: { decision: "approve" | "reject"; reason?: string }) =>
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/review`, { method: "POST", body: JSON.stringify(data) }),
+  },
+  // ── Ma trận đề chuẩn Bộ GDĐT (dùng chung giữa các giáo viên) ─────────────
+  examMatrixTemplates: {
+    list: (subject?: string) =>
+      apiFetch<{ items: ExamMatrixTemplateFull[] }>(
+        `/api/exam-matrix-templates${subject ? "?subject=" + encodeURIComponent(subject) : ""}`
+      ),
+    create: (data: { name: string; subject: string; cells: ExamMatrixCell[] }) =>
+      apiFetch<ExamMatrixTemplateFull>("/api/exam-matrix-templates", { method: "POST", body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/exam-matrix-templates/${id}`, { method: "DELETE" }),
   },
 };
 
@@ -365,6 +378,29 @@ export interface DrawInput {
 export interface DrawResult {
   questions: ExamQuestionInput[];
   shortfall: Partial<Record<Difficulty, { requested: number; drawn: number }>>;
+}
+
+// Ma trận đề chuẩn Bộ GDĐT — Chủ đề × Độ khó × Loại câu (loại câu tuỳ chọn
+// theo từng dòng, undefined/null = không lọc), xem draw-matrix/route.ts.
+export interface ExamMatrixCell {
+  topic: string;
+  difficulty: Difficulty;
+  type?: QuestionType | null;
+  count: number;
+}
+export interface ExamMatrixTemplateFull {
+  id: string; name: string; subject: string; cells: ExamMatrixCell[];
+  ownerId: string | null; owner: { name: string } | null;
+  createdAt: string;
+}
+export interface DrawMatrixInput {
+  subject: string;
+  cells: ExamMatrixCell[];
+  excludeRecentExams?: number;
+}
+export interface DrawMatrixResult {
+  questions: ExamQuestionInput[];
+  shortfall: (ExamMatrixCell & { drawn: number })[];
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài

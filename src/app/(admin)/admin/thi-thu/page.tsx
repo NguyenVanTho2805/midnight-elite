@@ -16,6 +16,7 @@ import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { AutoDrawModal } from "@/components/AutoDrawModal";
+import { ExamMatrixModal } from "@/components/ExamMatrixModal";
 import { SubjectField } from "@/components/SubjectField";
 import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
 
@@ -236,6 +237,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const [autoDrawOpen, setAutoDrawOpen] = useState(false);
+  const [matrixOpen, setMatrixOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
@@ -910,6 +912,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
                     🎲 Rút đề tự động
                   </button>
+                  <button type="button" onClick={() => setMatrixOpen(true)}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    📐 Ma trận đề
+                  </button>
                 </div>
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
               </div>
@@ -927,6 +933,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     <button type="button" onClick={() => setAutoDrawOpen(true)}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       🎲 Rút đề tự động
+                    </button>
+                    <button type="button" onClick={() => setMatrixOpen(true)}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      📐 Ma trận đề
                     </button>
                     <button type="button" onClick={() => setSplitViewOn(v => !v)}
                       className="text-xs font-semibold"
@@ -1216,6 +1226,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
       </div>
       <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
       <AutoDrawModal open={autoDrawOpen} onClose={() => setAutoDrawOpen(false)} onAdd={handleAddFromBank} />
+      <ExamMatrixModal open={matrixOpen} onClose={() => setMatrixOpen(false)} onAdd={handleAddFromBank} />
     </>
   );
 }

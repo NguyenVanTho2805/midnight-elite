@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { shuffleArray } from "@/lib/examGrading";
+import { computeExcludedBankItemIds } from "@/lib/questionBankDraw";
 import type { QuestionType } from "@/lib/examQuestionParser";
 
 const DIFFICULTIES = ["NB", "TH", "VD", "VDC"] as const;
@@ -38,28 +39,7 @@ export async function POST(req: NextRequest) {
     // Tập bản ghi ngân hàng cần loại trừ — lấy từ N đề GẦN NHẤT (theo lần gần
     // nhất có câu được copy từ ngân hàng vào đề, không phải N đề tạo gần nhất
     // nói chung) đã dùng ngân hàng, để không rút trùng câu vừa ra ở đề trước.
-    const excludedIds = new Set<string>();
-    const n = Number(excludeRecentExams) || 0;
-    if (n > 0) {
-      const recentLinks = await prisma.examQuestion.findMany({
-        where: { sourceBankItemId: { not: null } },
-        select: { examId: true, sourceBankItemId: true },
-        orderBy: { createdAt: "desc" },
-        take: 2000, // đủ rộng để phủ N đề gần nhất mà không kéo toàn bộ bảng
-      });
-      const recentExamIds: string[] = [];
-      for (const link of recentLinks) {
-        if (!recentExamIds.includes(link.examId)) {
-          if (recentExamIds.length >= n) continue;
-          recentExamIds.push(link.examId);
-        }
-      }
-      for (const link of recentLinks) {
-        if (recentExamIds.includes(link.examId) && link.sourceBankItemId) {
-          excludedIds.add(link.sourceBankItemId);
-        }
-      }
-    }
+    const excludedIds = await computeExcludedBankItemIds(Number(excludeRecentExams) || 0);
 
     const shortfall: Partial<Record<Difficulty, { requested: number; drawn: number }>> = {};
     const chosenIds: string[] = [];
