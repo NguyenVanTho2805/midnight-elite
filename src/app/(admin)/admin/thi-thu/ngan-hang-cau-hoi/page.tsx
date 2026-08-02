@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
+import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty, type BankItemStatus } from "@/lib/api";
-import { SubjectField } from "@/components/SubjectField";
+import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty, type BankItemStatus, type QuestionCategoryFull } from "@/lib/api";
+import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -41,16 +42,15 @@ const STATUS_COLOR: Record<BankItemStatus, { bg: string; color: string }> = {
 
 
 // ─── FORM CÂU HỎI (mirror QuestionForm ở admin/thi-thu/[id]/page.tsx, bỏ
-// sectionLabel/sectionMinutes vì bank item không thuộc đề nào, thêm 4 field
-// phân loại bắt buộc/tùy chọn: subject, topic, difficulty, tags). ──────────
+// sectionLabel/sectionMinutes vì bank item không thuộc đề nào, thêm phân loại
+// bắt buộc/tùy chọn: categoryId, difficulty, tags). ──────────────────────────
 interface ItemForm {
   type: QuestionType;
   text: string;
   imageUrl: string;
   points: string;
   explanation: string;
-  subject: string;
-  topic: string;
+  categoryId: string;
   difficulty: Difficulty;
   tagsText: string; // tách theo dấu phẩy khi lưu
   options: string[];
@@ -60,7 +60,7 @@ interface ItemForm {
 
 const INIT_FORM: ItemForm = {
   type: "MC", text: "", imageUrl: "", points: "1", explanation: "",
-  subject: "", topic: "", difficulty: "NB", tagsText: "",
+  categoryId: "", difficulty: "NB", tagsText: "",
   options: ["", "", "", ""], correctIndex: 0, clusterCorrect: [false, false, false, false],
 };
 
@@ -68,7 +68,7 @@ function toForm(item: QuestionBankItemFull): ItemForm {
   const base = {
     type: item.type, text: item.text, imageUrl: item.imageUrl ?? "",
     points: String(item.points), explanation: item.explanation ?? "",
-    subject: item.subject, topic: item.topic, difficulty: item.difficulty,
+    categoryId: item.categoryId, difficulty: item.difficulty,
     tagsText: (item.tags ?? []).join(", "),
   };
   if (item.type === "TRUE_FALSE_CLUSTER") {
@@ -95,7 +95,7 @@ function toForm(item: QuestionBankItemFull): ItemForm {
 }
 
 function toInput(form: ItemForm): QuestionBankItemInput | null {
-  if (!form.text.trim() || !form.subject.trim() || !form.topic.trim()) return null;
+  if (!form.text.trim() || !form.categoryId) return null;
   const tags = form.tagsText.split(",").map(t => t.trim()).filter(Boolean);
   const base = {
     text: form.text.trim(),
@@ -103,8 +103,7 @@ function toInput(form: ItemForm): QuestionBankItemInput | null {
     imageUrl: form.imageUrl.trim() || undefined,
     points: Number(form.points) > 0 ? Number(form.points) : 1,
     explanation: form.explanation.trim() || undefined,
-    subject: form.subject.trim(),
-    topic: form.topic.trim(),
+    categoryId: form.categoryId,
     difficulty: form.difficulty,
     tags: tags.length > 0 ? tags : undefined,
   };
@@ -131,10 +130,11 @@ function toInput(form: ItemForm): QuestionBankItemInput | null {
   };
 }
 
-function ItemDrawer({ open, initial, subjectOptions, onClose, onSave, saving }: {
+function ItemDrawer({ open, initial, categories, onCategoriesChange, onClose, onSave, saving }: {
   open: boolean;
   initial: ItemForm | null;
-  subjectOptions: string[];
+  categories: QuestionCategoryFull[];
+  onCategoriesChange: () => void | Promise<void>;
   onClose: () => void;
   onSave: (form: ItemForm) => void;
   saving: boolean;
@@ -183,17 +183,10 @@ function ItemDrawer({ open, initial, subjectOptions, onClose, onSave, saving }: 
         </div>
 
         <div className="p-5 space-y-5">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Môn học <span className="text-red-500">*</span></label>
-              <SubjectField className={inp} value={form.subject} options={subjectOptions} onChange={v => setForm({ ...form, subject: v })} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Chủ đề <span className="text-red-500">*</span></label>
-              <input className={inp} style={inpStyle} list="bank-topics"
-                value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })}
-                placeholder="VD: Hàm số" />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đầu mục <span className="text-red-500">*</span></label>
+            <CategoryPicker className={inp} value={form.categoryId} categories={categories}
+              onCategoriesChange={onCategoriesChange} onChange={v => setForm({ ...form, categoryId: v })} />
           </div>
 
           <div>
@@ -355,15 +348,14 @@ function PageInner() {
   const [saving, setSaving]     = useState(false);
 
   const [search, setSearch]         = useState("");
-  const [subjectFilter, setSubject] = useState("");
-  const [topicFilter, setTopic]     = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [difficultyFilter, setDiff] = useState("");
   const [statusFilter, setStatusFilter] = useState<BankItemStatus | "">("");
   const [page, setPage]             = useState(1);
   const pageSize = 20;
 
-  const [allSubjects, setAllSubjects] = useState<string[]>([]);
-  const [allTopics, setAllTopics]     = useState<string[]>([]);
+  const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
+  const refetchCategories = useCallback(() => api.questionCategories.list().then(setCategories).catch(() => {}), []);
 
   const { toast, showToast } = useAdminToast();
 
@@ -372,8 +364,7 @@ function PageInner() {
     try {
       const data = await api.questionBank.list({
         search: search || undefined,
-        subject: subjectFilter || undefined,
-        topic: topicFilter || undefined,
+        categoryId: categoryFilter || undefined,
         difficulty: difficultyFilter || undefined,
         status: statusFilter || undefined,
         mine: true, // trang quản lý chính — thấy thêm câu nháp/chờ duyệt của chính mình
@@ -387,21 +378,10 @@ function PageInner() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, subjectFilter, topicFilter, difficultyFilter, statusFilter, page]);
+  }, [search, categoryFilter, difficultyFilter, statusFilter, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  // Danh sách môn/chủ đề cho dropdown lọc + form — tải riêng, không phân
-  // trang (đủ dùng cho quy mô ngân hàng ở Giai đoạn 1).
-  const loadTaxonomy = useCallback(async () => {
-    try {
-      const data = await api.questionBank.list({ pageSize: 500, mine: true });
-      setAllSubjects([...new Set(data.items.map(i => i.subject))].sort());
-      setAllTopics([...new Set(data.items.map(i => i.topic))].sort());
-    } catch { /* không chặn trang nếu lỗi — chỉ ảnh hưởng gợi ý dropdown */ }
-  }, []);
-
-  useEffect(() => { loadTaxonomy(); }, [loadTaxonomy]);
+  useEffect(() => { refetchCategories(); }, [refetchCategories]);
 
   function canEdit(item: QuestionBankItemFull): boolean {
     if (!user) return false;
@@ -431,7 +411,7 @@ function PageInner() {
         showToast("Đã thêm câu hỏi vào ngân hàng");
       }
       setDrawer(false);
-      await Promise.all([loadData(), loadTaxonomy()]);
+      await loadData();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Lưu thất bại", false);
     } finally {
@@ -487,18 +467,20 @@ function PageInner() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <datalist id="bank-topics">
-        {allTopics.map(t => <option key={t} value={t} />)}
-      </datalist>
-
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng câu hỏi</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} câu hỏi — chỉ câu Đã duyệt mới dùng chung/rút vào đề được, câu Nháp/Chờ duyệt chỉ chủ sở hữu và quản trị viên thấy</p>
         </div>
-        <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
-          + Thêm câu hỏi
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/thi-thu/ngan-hang-cau-hoi/danh-muc"
+            className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+            Quản lý đầu mục
+          </Link>
+          <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+            + Thêm câu hỏi
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -507,15 +489,10 @@ function PageInner() {
           style={{ borderColor: "#e5e3df" }}
           placeholder="Tìm theo nội dung câu hỏi..."
           value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
-          value={subjectFilter} onChange={e => { setSubject(e.target.value); setPage(1); }}>
-          <option value="">Tất cả môn</option>
-          {allSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
-          value={topicFilter} onChange={e => { setTopic(e.target.value); setPage(1); }}>
-          <option value="">Tất cả chủ đề</option>
-          {allTopics.map(t => <option key={t} value={t}>{t}</option>)}
+        <select className="px-3 py-2 text-sm border rounded-lg outline-none max-w-[260px]" style={{ borderColor: "#e5e3df" }}
+          value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}>
+          <option value="">Tất cả đầu mục</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{categoryPath(c.id, categories)}</option>)}
         </select>
         <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
           value={difficultyFilter} onChange={e => { setDiff(e.target.value); setPage(1); }}>
@@ -534,7 +511,7 @@ function PageInner() {
           <thead>
             <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
               <th className="px-4 py-3">Câu hỏi</th>
-              <th className="px-4 py-3">Môn / Chủ đề</th>
+              <th className="px-4 py-3">Đầu mục</th>
               <th className="px-4 py-3">Độ khó</th>
               <th className="px-4 py-3">Loại</th>
               <th className="px-4 py-3">Trạng thái</th>
@@ -552,7 +529,7 @@ function PageInner() {
             ) : items.map(item => (
               <tr key={item.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
                 <td className="px-4 py-3 max-w-sm truncate" title={item.text}>{item.text}</td>
-                <td className="px-4 py-3 text-gray-600">{item.subject} / {item.topic}</td>
+                <td className="px-4 py-3 text-gray-600">{categoryPath(item.categoryId, categories)}</td>
                 <td className="px-4 py-3">
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={DIFFICULTY_COLOR[item.difficulty]}>
                     {DIFFICULTIES.find(d => d.value === item.difficulty)?.label ?? item.difficulty}
@@ -626,7 +603,8 @@ function PageInner() {
       <ItemDrawer
         open={drawerOpen}
         initial={editItem ? toForm(editItem) : null}
-        subjectOptions={allSubjects}
+        categories={categories}
+        onCategoriesChange={refetchCategories}
         onClose={() => setDrawer(false)}
         onSave={handleSave}
         saving={saving}

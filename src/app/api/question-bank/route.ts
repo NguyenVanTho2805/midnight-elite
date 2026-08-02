@@ -28,8 +28,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search")?.trim();
-  const subject = searchParams.get("subject")?.trim();
-  const topic = searchParams.get("topic")?.trim();
+  const categoryId = searchParams.get("categoryId")?.trim();
   const difficulty = searchParams.get("difficulty")?.trim();
   const status = searchParams.get("status")?.trim();
   const mine = searchParams.get("mine") === "true";
@@ -49,8 +48,7 @@ export async function GET(req: NextRequest) {
   const where = {
     ...statusScope,
     ...(search ? { text: { contains: search, mode: "insensitive" as const } } : {}),
-    ...(subject ? { subject } : {}),
-    ...(topic ? { topic } : {}),
+    ...(categoryId ? { categoryId } : {}),
     ...(difficulty ? { difficulty } : {}),
     ...(status ? { status } : {}),
   };
@@ -92,14 +90,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { text, type, imageUrl, points, explanation, subject, topic, difficulty, tags, options } = body as {
+    const { text, type, imageUrl, points, explanation, categoryId, difficulty, tags, options } = body as {
       text?: string;
       type?: QuestionType;
       imageUrl?: string;
       points?: number;
       explanation?: string;
-      subject?: string;
-      topic?: string;
+      categoryId?: string;
       difficulty?: string;
       tags?: string[];
       options?: { text: string; isCorrect: boolean; subLabel?: string }[];
@@ -108,8 +105,12 @@ export async function POST(req: NextRequest) {
     if (!text?.trim()) {
       return NextResponse.json({ error: "Thiếu nội dung câu hỏi" }, { status: 400 });
     }
-    if (!subject?.trim() || !topic?.trim()) {
-      return NextResponse.json({ error: "Thiếu môn học hoặc chủ đề" }, { status: 400 });
+    if (!categoryId?.trim()) {
+      return NextResponse.json({ error: "Thiếu đầu mục" }, { status: 400 });
+    }
+    const category = await prisma.questionCategory.findUnique({ where: { id: categoryId } });
+    if (!category) {
+      return NextResponse.json({ error: "Đầu mục không tồn tại" }, { status: 400 });
     }
     if (!difficulty || !DIFFICULTIES.includes(difficulty)) {
       return NextResponse.json({ error: "Độ khó không hợp lệ" }, { status: 400 });
@@ -125,8 +126,7 @@ export async function POST(req: NextRequest) {
         imageUrl: imageUrl?.trim() || null,
         points: typeof points === "number" && points > 0 ? points : 1,
         explanation: explanation?.trim() || null,
-        subject: subject.trim(),
-        topic: topic.trim(),
+        categoryId,
         difficulty,
         tags: tags && tags.length > 0 ? tags : undefined,
         contentHash: computeContentHash(text),

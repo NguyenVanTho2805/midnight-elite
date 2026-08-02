@@ -8,16 +8,14 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus, computeExamStatus } from "@/lib/examData";
 import { CATEGORY_GRADIENT, ADMIN_CATEGORIES } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
-import { api, type ExamFull, type ExamQuestionInput, type CourseFull, type Difficulty, type QuestionBankItemFull } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionInput, type CourseFull, type Difficulty, type QuestionBankItemFull, type QuestionCategoryFull } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
 import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
-import { AutoDrawModal } from "@/components/AutoDrawModal";
-import { ExamMatrixModal } from "@/components/ExamMatrixModal";
-import { SubjectField } from "@/components/SubjectField";
+import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
 
 type ExamRow = ExamFull & { status: ExamStatus };
@@ -62,8 +60,7 @@ const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
 // liệu chỉ dùng lúc soạn, không gửi lên bulkCreate).
 interface BankMeta {
   addToBank: boolean;
-  subject: string;
-  topic: string;
+  categoryId: string;
   difficulty: Difficulty;
   dupMatch: QuestionBankItemFull | null;
   // Giai đoạn 3.5 Cấp 2 — chỉ có giá trị khi dupMatch (Cấp 1, trùng y hệt)
@@ -78,7 +75,7 @@ interface BankMeta {
   checking: boolean;
 }
 const BANK_META_INIT: BankMeta = {
-  addToBank: true, subject: "", topic: "", difficulty: "NB",
+  addToBank: true, categoryId: "", difficulty: "NB",
   dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new", checking: false,
 };
 
@@ -236,8 +233,6 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [aiLoading, setAiLoading]         = useState(false);
   const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
-  const [autoDrawOpen, setAutoDrawOpen] = useState(false);
-  const [matrixOpen, setMatrixOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
@@ -249,22 +244,20 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   // không câu nào được lưu vào ngân hàng). Điền 1 lần rồi áp dụng cho mọi
   // câu đang tích "Thêm vào ngân hàng" — vẫn sửa lại riêng từng câu được sau
   // khi áp dụng nếu cần.
-  const [bulkSubject, setBulkSubject]       = useState("");
-  const [bulkTopic, setBulkTopic]           = useState("");
+  const [bulkCategoryId, setBulkCategoryId]   = useState("");
   const [bulkDifficulty, setBulkDifficulty] = useState<Difficulty>("NB");
-  const [allBankSubjects, setAllBankSubjects] = useState<string[]>([]);
+  const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
+  const refetchCategories = () => api.questionCategories.list().then(setCategories).catch(() => {});
 
   useEffect(() => {
     if (!open) return;
-    api.questionBank.list({ pageSize: 500 }).then(data => {
-      setAllBankSubjects([...new Set(data.items.map(i => i.subject))].sort());
-    }).catch(() => {});
+    refetchCategories();
   }, [open]);
 
   function applyBulkBankMeta() {
-    if (!bulkSubject.trim() || !bulkTopic.trim()) return;
+    if (!bulkCategoryId) return;
     setBankMeta(prev => prev.map(m => m.addToBank
-      ? { ...m, subject: bulkSubject.trim(), topic: bulkTopic.trim(), difficulty: bulkDifficulty, dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new" }
+      ? { ...m, categoryId: bulkCategoryId, difficulty: bulkDifficulty, dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new" }
       : m));
   }
 
@@ -315,13 +308,14 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   function updateBankMeta(idx: number, patch: Partial<BankMeta>) {
     setBankMeta(prev => prev.map((m, i) => i === idx ? { ...m, ...patch } : m));
   }
-  async function checkDupForIndex(idx: number) {
+  async function checkDupForIndex(idx: number, categoryIdOverride?: string) {
     const meta = bankMeta[idx];
     const q = reviewQuestions?.[idx];
-    if (!meta?.addToBank || !q || !meta.subject.trim() || !meta.topic.trim()) return;
+    const categoryId = categoryIdOverride ?? meta?.categoryId;
+    if (!meta?.addToBank || !q || !categoryId) return;
     updateBankMeta(idx, { checking: true });
     try {
-      const { match, similar, semantic } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
+      const { match, similar, semantic } = await api.questionBank.checkDuplicate({ text: q.text, categoryId });
       updateBankMeta(idx, { dupMatch: match, similarMatches: similar, semanticMatches: semantic, resolution: "new", checking: false });
     } catch {
       updateBankMeta(idx, { checking: false });
@@ -362,7 +356,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
       setAnswerKeyFile(null); setAiLoading(false);
       setBankGateOn(false); setBankMeta([]);
-      setBulkSubject(""); setBulkTopic(""); setBulkDifficulty("NB");
+      setBulkCategoryId(""); setBulkDifficulty("NB");
       setSplitViewOn(false); setMarkupText(""); setMarkupErrs([]);
     }
   }, [open]);
@@ -552,7 +546,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
   // Giai đoạn 3.5 Cấp 1: với mỗi câu có addToBank, "Dùng câu cũ" → link thẳng
   // sourceBankItemId về bản ghi trùng đã tìm thấy; ngược lại tạo bản ghi ngân
-  // hàng mới rồi link. Câu thiếu subject/topic (bắt buộc) hoặc tạo lỗi bị bỏ
+  // hàng mới rồi link. Câu thiếu đầu mục (bắt buộc) hoặc tạo lỗi bị bỏ
   // qua, giữ nguyên không thêm vào ngân hàng — không chặn việc lưu đề, nhưng
   // ĐẾM lại để handleSave báo cho người soạn biết (trước đây bỏ qua âm thầm,
   // với đề import hàng loạt rất dễ không ai để ý).
@@ -568,7 +562,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       if (meta.resolution === "reuse" && meta.dupMatch) {
         return { ...q, sourceBankItemId: meta.dupMatch.id };
       }
-      if (!meta.subject.trim() || !meta.topic.trim()) { skippedMissingInfo++; return q; }
+      if (!meta.categoryId) { skippedMissingInfo++; return q; }
       try {
         const created = await api.questionBank.create({
           type: q.type ?? "MC",
@@ -576,8 +570,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
           imageUrl: q.imageUrl,
           points: q.points ?? 1,
           explanation: q.explanation,
-          subject: meta.subject.trim(),
-          topic: meta.topic.trim(),
+          categoryId: meta.categoryId,
           difficulty: meta.difficulty,
           options: q.options,
         });
@@ -908,14 +901,6 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
                     + Từ ngân hàng
                   </button>
-                  <button type="button" onClick={() => setAutoDrawOpen(true)}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                    🎲 Rút đề tự động
-                  </button>
-                  <button type="button" onClick={() => setMatrixOpen(true)}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                    📐 Ma trận đề
-                  </button>
                 </div>
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
               </div>
@@ -929,14 +914,6 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     <button type="button" onClick={() => setBankPickerOpen(true)}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       + Từ ngân hàng
-                    </button>
-                    <button type="button" onClick={() => setAutoDrawOpen(true)}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                      🎲 Rút đề tự động
-                    </button>
-                    <button type="button" onClick={() => setMatrixOpen(true)}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                      📐 Ma trận đề
                     </button>
                     <button type="button" onClick={() => setSplitViewOn(v => !v)}
                       className="text-xs font-semibold"
@@ -966,14 +943,12 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
 
                 {bankGateOn && (
                   <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Môn/Chủ đề/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Đầu mục/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
                     <div className="flex flex-wrap items-end gap-2">
-                      <div className="flex-1 min-w-[140px]">
-                        <SubjectField className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                          value={bulkSubject} options={allBankSubjects} onChange={setBulkSubject} />
+                      <div className="flex-1 min-w-[200px]">
+                        <CategoryPicker className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          value={bulkCategoryId} categories={categories} onCategoriesChange={refetchCategories} onChange={setBulkCategoryId} />
                       </div>
-                      <input className="flex-1 min-w-[140px] px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                        placeholder="Chủ đề" value={bulkTopic} onChange={e => setBulkTopic(e.target.value)} />
                       <div className="flex items-center gap-1">
                         {DIFFICULTIES.map(d => (
                           <button key={d.value} type="button" onClick={() => setBulkDifficulty(d.value)}
@@ -985,7 +960,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           </button>
                         ))}
                       </div>
-                      <button type="button" onClick={applyBulkBankMeta} disabled={!bulkSubject.trim() || !bulkTopic.trim()}
+                      <button type="button" onClick={applyBulkBankMeta} disabled={!bulkCategoryId}
                         className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-50 flex-shrink-0"
                         style={{ background: "#0068FF" }}>
                         Áp dụng cho tất cả
@@ -1056,21 +1031,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           </label>
                           {bankMeta[idx].addToBank && (
                             <>
-                              <div className="flex items-center gap-1.5 mb-1.5">
-                                <input
-                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                                  placeholder="Môn học *"
-                                  value={bankMeta[idx].subject}
-                                  onChange={e => updateBankMeta(idx, { subject: e.target.value })}
-                                  onBlur={() => checkDupForIndex(idx)}
-                                />
-                                <input
-                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                                  placeholder="Chủ đề *"
-                                  value={bankMeta[idx].topic}
-                                  onChange={e => updateBankMeta(idx, { topic: e.target.value })}
-                                  onBlur={() => checkDupForIndex(idx)}
-                                />
+                              <div className="mb-1.5">
+                                <CategoryPicker className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                  value={bankMeta[idx].categoryId} categories={categories} onCategoriesChange={refetchCategories}
+                                  onChange={v => { updateBankMeta(idx, { categoryId: v }); checkDupForIndex(idx, v); }} />
                               </div>
                               <div className="flex items-center gap-1 flex-wrap">
                                 {DIFFICULTIES.map(d => (
@@ -1090,7 +1054,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                 <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#fef3c7", color: "#92400e" }}>
                                   <p className="font-semibold">
                                     ⚠️ Trùng khớp với câu đã có trong ngân hàng
-                                    (tạo bởi {bankMeta[idx].dupMatch.owner?.name ?? "?"}, {bankMeta[idx].dupMatch.subject}/{bankMeta[idx].dupMatch.topic})
+                                    (tạo bởi {bankMeta[idx].dupMatch.owner?.name ?? "?"}, {categoryPath(bankMeta[idx].dupMatch.categoryId, categories)})
                                   </p>
                                   <div className="flex gap-2 mt-1.5">
                                     <button type="button" onClick={() => updateBankMeta(idx, { resolution: "reuse" })}
@@ -1225,8 +1189,6 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
         </div>
       </div>
       <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
-      <AutoDrawModal open={autoDrawOpen} onClose={() => setAutoDrawOpen(false)} onAdd={handleAddFromBank} />
-      <ExamMatrixModal open={matrixOpen} onClose={() => setMatrixOpen(false)} onAdd={handleAddFromBank} />
     </>
   );
 }

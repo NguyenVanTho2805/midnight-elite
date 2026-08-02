@@ -10,7 +10,7 @@ const MAX_RESULTS = 5;
 // Giai đoạn 3.5 Cấp 2 — phát hiện trùng GIỐNG CHUỖI (lỗi chính tả, đổi vài
 // từ, đảo câu...) bằng pg_trgm.similarity(), khác Cấp 1 (chỉ bắt trùng Y HỆT
 // tuyệt đối qua hash). Vẫn giữ nguyên "tối ưu bắt buộc" của tài liệu thiết
-// kế: LUÔN thu hẹp theo subject+topic trước khi so — pg_trgm không rẻ bằng
+// kế: LUÔN thu hẹp theo categoryId trước khi so — pg_trgm không rẻ bằng
 // tra hash nên càng cần thu hẹp phạm vi. Chỉ gọi khi Cấp 1 KHÔNG tìm thấy
 // trùng y hệt (route gọi hàm này có điều kiện, xem check-duplicate/route.ts)
 // — tránh lãng phí 1 truy vấn khi đã có câu trả lời chắc chắn hơn.
@@ -20,7 +20,7 @@ const MAX_RESULTS = 5;
 // INDEX ... USING gin (lower("text") gin_trgm_ops)), KHÔNG khai báo trong
 // schema.prisma (dự án dùng `db push`, không quản lý extension qua Prisma).
 export async function findSimilarBankItems(opts: {
-  text: string; subject: string; topic: string;
+  text: string; categoryId: string;
   userId: string; isReviewer: boolean;
 }) {
   const normalized = normalizeQuestionText(opts.text);
@@ -31,7 +31,7 @@ export async function findSimilarBankItems(opts: {
   const rows = await prisma.$queryRaw<{ id: string; similarity: number }[]>(Prisma.sql`
     SELECT "id", similarity(lower("text"), ${normalized}) AS similarity
     FROM "question_bank_items"
-    WHERE "subject" = ${opts.subject} AND "topic" = ${opts.topic} AND ${statusFilter}
+    WHERE "categoryId" = ${opts.categoryId} AND ${statusFilter}
       AND similarity(lower("text"), ${normalized}) > ${SIMILARITY_THRESHOLD}
     ORDER BY similarity DESC
     LIMIT ${MAX_RESULTS}

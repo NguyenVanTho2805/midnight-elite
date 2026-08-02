@@ -60,7 +60,7 @@ const MAX_RESULTS = 5;
 // check-duplicate/route.ts) — đây là tầng tốn kém nhất (1 lệnh gọi Gemini +
 // 1 truy vấn vector), chỉ dùng khi 2 tầng rẻ hơn đã chắc chắn không đủ.
 export async function findSemanticBankItems(opts: {
-  text: string; subject: string; topic: string;
+  text: string; categoryId: string;
   userId: string; isReviewer: boolean;
 }) {
   const values = await computeEmbedding(opts.text);
@@ -74,7 +74,7 @@ export async function findSemanticBankItems(opts: {
   const rows = await prisma.$queryRaw<{ id: string; similarity: number }[]>(Prisma.sql`
     SELECT "id", 1 - ("embedding" <=> ${vectorLiteral}::vector) AS similarity
     FROM "question_bank_items"
-    WHERE "subject" = ${opts.subject} AND "topic" = ${opts.topic} AND "embedding" IS NOT NULL AND ${statusFilter}
+    WHERE "categoryId" = ${opts.categoryId} AND "embedding" IS NOT NULL AND ${statusFilter}
       AND 1 - ("embedding" <=> ${vectorLiteral}::vector) > ${SEMANTIC_SIMILARITY_THRESHOLD}
     ORDER BY "embedding" <=> ${vectorLiteral}::vector
     LIMIT ${MAX_RESULTS}

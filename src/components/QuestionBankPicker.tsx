@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { api, type QuestionBankItemFull, type ExamQuestionInput, type QuestionType, type Difficulty } from "@/lib/api";
+import { api, type QuestionBankItemFull, type ExamQuestionInput, type QuestionType, type Difficulty, type QuestionCategoryFull } from "@/lib/api";
+import { categoryPath } from "@/components/CategoryPicker";
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "NB",  label: "Nhận biết" },
@@ -52,20 +53,17 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
   const [selected, setSelected] = useState<Map<string, QuestionBankItemFull>>(new Map());
 
   const [search, setSearch]         = useState("");
-  const [subjectFilter, setSubject] = useState("");
-  const [topicFilter, setTopic]     = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [difficultyFilter, setDiff] = useState("");
 
-  const [allSubjects, setAllSubjects] = useState<string[]>([]);
-  const [allTopics, setAllTopics]     = useState<string[]>([]);
+  const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.questionBank.list({
         search: search || undefined,
-        subject: subjectFilter || undefined,
-        topic: topicFilter || undefined,
+        categoryId: categoryFilter || undefined,
         difficulty: difficultyFilter || undefined,
         pageSize: 50,
       });
@@ -73,20 +71,17 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
       setTotal(data.total);
     } catch { /* im lặng — không chặn modal nếu lỗi tải */ }
     finally { setLoading(false); }
-  }, [search, subjectFilter, topicFilter, difficultyFilter]);
+  }, [search, categoryFilter, difficultyFilter]);
 
   useEffect(() => { if (open) loadData(); }, [open, loadData]);
 
   useEffect(() => {
     if (!open) return;
-    api.questionBank.list({ pageSize: 500 }).then(data => {
-      setAllSubjects([...new Set(data.items.map(i => i.subject))].sort());
-      setAllTopics([...new Set(data.items.map(i => i.topic))].sort());
-    }).catch(() => {});
+    api.questionCategories.list().then(setCategories).catch(() => {});
   }, [open]);
 
   useEffect(() => {
-    if (open) { setSelected(new Map()); setSearch(""); setSubject(""); setTopic(""); setDiff(""); }
+    if (open) { setSelected(new Map()); setSearch(""); setCategoryFilter(""); setDiff(""); }
   }, [open]);
 
   function toggle(item: QuestionBankItemFull) {
@@ -122,15 +117,10 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
             style={{ borderColor: "#e5e3df" }}
             placeholder="Tìm theo nội dung câu hỏi..."
             value={search} onChange={e => setSearch(e.target.value)} />
-          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
-            value={subjectFilter} onChange={e => setSubject(e.target.value)}>
-            <option value="">Tất cả môn</option>
-            {allSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
-            value={topicFilter} onChange={e => setTopic(e.target.value)}>
-            <option value="">Tất cả chủ đề</option>
-            {allTopics.map(t => <option key={t} value={t}>{t}</option>)}
+          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none max-w-[220px]" style={{ borderColor: "#e5e3df" }}
+            value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+            <option value="">Tất cả đầu mục</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{categoryPath(c.id, categories)}</option>)}
           </select>
           <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
             value={difficultyFilter} onChange={e => setDiff(e.target.value)}>
@@ -152,7 +142,7 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate" style={{ color: "#1a1a1a" }}>{item.text}</p>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-xs text-gray-500">{item.subject} / {item.topic}</span>
+                  <span className="text-xs text-gray-500">{categoryPath(item.categoryId, categories)}</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={DIFFICULTY_COLOR[item.difficulty]}>
                     {DIFFICULTIES.find(d => d.value === item.difficulty)?.label ?? item.difficulty}
                   </span>

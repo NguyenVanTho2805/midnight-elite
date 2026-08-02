@@ -30,3 +30,33 @@ export async function uploadBufferToCloudinary(buffer: Buffer, filename: string,
   const data = await res.json();
   return data.secure_url as string;
 }
+
+// Upload file GỐC (PDF/Word...) lên Cloudinary — khác uploadBufferToCloudinary
+// ở trên (chỉ dành riêng cho ảnh PNG cắt từ biểu đồ, hard-code content-type).
+// Dùng endpoint /raw/upload + resource_type=raw vì đây không phải ảnh, giữ
+// nguyên byte gốc để tải về sau. Dùng cho Ngân hàng đề thi (lưu trữ file đề
+// gốc), KHÔNG đụng tới hàm cũ để tránh ảnh hưởng luồng cắt ảnh biểu đồ đang
+// chạy tốt.
+export async function uploadRawFileToCloudinary(
+  buffer: Buffer, filename: string, mimeType: string, folder = "de-thi-goc"
+): Promise<string> {
+  if (!cloudinaryServerConfigured) throw new Error("Cloudinary chưa được cấu hình");
+
+  const formData = new FormData();
+  formData.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }), filename);
+  formData.append("upload_preset", UPLOAD_PRESET!);
+  formData.append("folder", folder);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: { message?: string } }).error?.message ?? "Upload file thất bại");
+  }
+
+  const data = await res.json();
+  return data.secure_url as string;
+}

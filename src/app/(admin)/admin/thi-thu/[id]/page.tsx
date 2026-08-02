@@ -6,9 +6,10 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType, type SaveToBankInput, type Difficulty } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType, type SaveToBankInput, type Difficulty, type QuestionCategoryFull } from "@/lib/api";
 import { MathText } from "@/components/MathText";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
+import { CategoryPicker } from "@/components/CategoryPicker";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -719,21 +720,22 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
   onSave: (data: SaveToBankInput) => void;
   saving: boolean;
 }) {
-  const [subject, setSubject] = useState("");
-  const [topic, setTopic] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty>("NB");
   const [tagsText, setTagsText] = useState("");
+  const refetchCategories = () => api.questionCategories.list().then(setCategories).catch(() => {});
 
   useEffect(() => {
-    if (target) { setSubject(""); setTopic(""); setDifficulty("NB"); setTagsText(""); }
+    if (target) { setCategoryId(""); setDifficulty("NB"); setTagsText(""); refetchCategories(); }
   }, [target]);
 
   if (!target) return null;
 
   function handleSave() {
-    if (!subject.trim() || !topic.trim()) return;
+    if (!categoryId) return;
     const tags = tagsText.split(",").map(t => t.trim()).filter(Boolean);
-    onSave({ subject: subject.trim(), topic: topic.trim(), difficulty, tags: tags.length > 0 ? tags : undefined });
+    onSave({ categoryId, difficulty, tags: tags.length > 0 ? tags : undefined });
   }
 
   const inp = "w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400";
@@ -747,12 +749,9 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
         <p className="text-sm text-gray-500 mb-4">"{target.label}"</p>
         <div className="space-y-3 mb-5">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Môn học *</label>
-            <input className={inp} style={inpStyle} value={subject} onChange={e => setSubject(e.target.value)} placeholder="VD: Toán" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Chủ đề *</label>
-            <input className={inp} style={inpStyle} value={topic} onChange={e => setTopic(e.target.value)} placeholder="VD: Hàm số" />
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đầu mục *</label>
+            <CategoryPicker className={inp} value={categoryId} categories={categories}
+              onCategoriesChange={refetchCategories} onChange={setCategoryId} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Độ khó *</label>
@@ -775,7 +774,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
-          <button onClick={handleSave} disabled={saving || !subject.trim() || !topic.trim()}
+          <button onClick={handleSave} disabled={saving || !categoryId}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{ background: "#16a34a" }}>
             {saving ? "Đang lưu..." : "Lưu"}
           </button>
