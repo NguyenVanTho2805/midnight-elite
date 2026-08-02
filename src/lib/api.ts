@@ -1,6 +1,10 @@
 // ─── API fetch helpers ────────────────────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "";
+// Luôn tương đối (same-origin) — admin.* và domain chính là 2 origin khác nhau
+// từ khi tách domain (src/middleware.ts). Dùng NEXT_PUBLIC_APP_URL ở đây sẽ đẩy
+// request sang origin khác, làm mất cookie phiên đăng nhập (credentials:
+// "same-origin" không gửi cookie cross-origin) dù request tới cùng 1 deployment.
+const BASE = "";
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

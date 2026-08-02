@@ -446,11 +446,12 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
             </Link>
           ))}
           <div className="border-t border-gray-100 my-1" />
-          <Link href="/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
+          {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
+          <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
             style={{ color: "#0068FF" }}>
             Xem portal học viên
-          </Link>
+          </a>
           <button
             disabled={duplicating}
             onClick={async () => {
