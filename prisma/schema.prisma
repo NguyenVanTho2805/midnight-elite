@@ -138,8 +138,62 @@ model Lesson {
   chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress       LessonProgress[]
   notes          LessonNote[]
+  assignments    Assignment[]
 
   @@map("lessons")
+}
+
+// Bài tập tự nộp trên nền tảng — song song với Lesson.azotaUrl (link Azota
+// ngoài), KHÔNG thay thế. 1 Lesson có thể có nhiều Assignment (giống
+// azotaUrls cho phép nhiều link/lesson). Điểm bài tập là chỉ số RIÊNG, không
+// gộp vào công thức GPA (xem computeAssignmentAverage trong src/lib/gpa.ts).
+model Assignment {
+  id           String    @id @default(cuid())
+  lessonId     String
+  lesson       Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String?   @db.Text
+  fileUrl      String? // đề bài giáo viên cung cấp — học viên tải về làm, null = chỉ có hướng dẫn text
+  fileName     String?
+  maxPoints    Float     @default(10)
+  dueDate      DateTime?
+
+  // Xem ghi chú ở Course.ownerId — cùng quy tắc scope quyền (chỉ chủ sở
+  // hữu/admin_content/admin_super sửa/xoá/chấm).
+  ownerId String?
+  owner   User?   @relation("OwnedAssignments", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submissions AssignmentSubmission[]
+
+  @@index([lessonId])
+  @@map("assignments")
+}
+
+// Bài học viên nộp cho 1 Assignment — @@unique([assignmentId, userId]) nghĩa
+// là nộp lại sẽ GHI ĐÈ bản cũ (không tích luỹ nhiều lần nộp). Nộp lại một bài
+// đã chấm sẽ xoá score/gradedAt/comment cũ (bắt chấm lại), tránh điểm cũ gắn
+// nhầm với nội dung đã sửa — xem submit/route.ts.
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation("AssignmentSubmissions", fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl      String
+  fileName     String?
+  submittedAt  DateTime   @default(now())
+
+  // null = chưa chấm. Cả 2 field dưới null nếu chưa chấm.
+  score    Float?
+  comment  String?   @db.Text
+  gradedAt DateTime?
+  gradedBy String? // userId giáo viên đã chấm gần nhất
+
+  @@unique([assignmentId, userId])
+  @@map("assignment_submissions")
 }
 
 // ─── EXAMS ────────────────────────────────────────────────────────────────────
@@ -542,6 +596,8 @@ model User {
   questionBankItems   QuestionBankItem[]
   examGuestAccess     ExamGuestAccess[]
   examFiles           ExamFile[]
+  ownedAssignments      Assignment[]           @relation("OwnedAssignments")
+  assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmissions")
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]

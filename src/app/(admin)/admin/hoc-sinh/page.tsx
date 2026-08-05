@@ -14,7 +14,7 @@ interface Student {
   name: string; phone: string; email: string;
   school: string; course: string;
   enrolledCourseIds: string[];
-  gpa: number; completion: number;
+  gpa: number; completion: number; assignmentAvg: number | null;
   role: "hoc-vien" | "chua-kich-hoat";
   status: "safe" | "warn" | "danger"; lastSeen: string;
   banned: boolean;
@@ -29,7 +29,7 @@ interface ApiStudent {
   id: string; name: string; email: string; phone: string | null;
   school: string | null; createdAt: string; banned: boolean;
   enrollments: { courseId: string; courseName: string }[];
-  gpa: number; completion: number;
+  gpa: number; completion: number; assignmentAvg: number | null;
   sbd: string;
 }
 
@@ -52,6 +52,7 @@ function toStudent(u: ApiStudent): Student {
     enrolledCourseIds,
     gpa:             u.gpa,
     completion:      u.completion,
+    assignmentAvg:   u.assignmentAvg,
     role:            enrolledCourseIds.length > 0 ? "hoc-vien" : "chua-kich-hoat",
     status,
     lastSeen:        new Date(u.createdAt).toLocaleDateString("vi-VN"),
@@ -263,10 +264,11 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "#9CA3AF" : student.gpa < 5 ? "#FF2157" : student.gpa < 7 ? "#FE9900" : "#0068FF" },
               { label: "Tiến độ", value: `${student.completion}%`, color: "#8B5CF6" },
+              { label: "Điểm bài tập", value: student.assignmentAvg != null ? student.assignmentAvg.toFixed(1) : "—", color: "#16a34a" },
             ].map(s => (
               <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
                 <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>

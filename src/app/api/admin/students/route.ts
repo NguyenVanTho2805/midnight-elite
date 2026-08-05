@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { computeCompletion, computeGpa } from "@/lib/gpa";
+import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/gpa";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { grantSignupBonus } from "@/lib/wallet";
 
@@ -36,6 +36,10 @@ export async function GET(req: NextRequest) {
           select: { score: true, totalPoints: true },
           orderBy: { score: "desc" },
           take: 1,
+        },
+        assignmentSubmissions: {
+          where: { score: { not: null } },
+          select: { score: true, assignment: { select: { maxPoints: true } } },
         },
       },
       orderBy: { createdAt: "asc" },
@@ -70,6 +74,9 @@ export async function GET(req: NextRequest) {
       const completion   = computeCompletion(completedLessons, totalLessons);
       const gpa          = computeGpa(completion, u.examResults[0]);
       const sbd          = `MD.${String(globalOffset + index + 1).padStart(5, "0")}`;
+      const assignmentAvg = computeAssignmentAverage(
+        u.assignmentSubmissions.map(a => ({ score: a.score!, maxPoints: a.assignment.maxPoints }))
+      );
 
       return {
         id:          u.id,
@@ -82,6 +89,7 @@ export async function GET(req: NextRequest) {
         enrollments: u.enrollments.map(e => ({ courseId: e.courseId, courseName: e.course.name })),
         gpa,
         completion,
+        assignmentAvg,
         sbd,
       };
     });

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, type AssignmentFull, type AssignmentInput, type AssignmentSubmissionFull } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
@@ -596,6 +596,279 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
   );
 }
 
+// ─── BÀI TẬP TỰ NỘP (song song Azota — xem prisma/schema.prisma Assignment) ───
+function fmtDue(d: string | null): string {
+  if (!d) return "";
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
+}
+
+function AssignmentForm({ initial, onCancel, onSave, saving }: {
+  initial: AssignmentFull | null;
+  onCancel: () => void;
+  onSave: (data: AssignmentInput) => void;
+  saving: boolean;
+}) {
+  const [title, setTitle]               = useState(initial?.title ?? "");
+  const [instructions, setInstructions] = useState(initial?.instructions ?? "");
+  const [fileUrl, setFileUrl]           = useState(initial?.fileUrl ?? "");
+  const [fileName, setFileName]         = useState(initial?.fileName ?? "");
+  const [maxPoints, setMaxPoints]       = useState(String(initial?.maxPoints ?? 10));
+  const [dueDate, setDueDate]           = useState(initial?.dueDate ? initial.dueDate.slice(0, 10) : "");
+  const [uploading, setUploading]       = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const result = await uploadToCloudinary(file, "assignments/files");
+      setFileUrl(result.url);
+      setFileName(file.name);
+    } catch (err) {
+      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white w-full";
+
+  return (
+    <div className="border border-dashed border-gray-300 rounded-xl p-3 space-y-2">
+      <input className={inp} placeholder="Tiêu đề bài tập *" value={title} onChange={e => setTitle(e.target.value)} />
+      <textarea className={inp + " resize-none"} rows={2} placeholder="Hướng dẫn làm bài (tuỳ chọn)"
+        value={instructions} onChange={e => setInstructions(e.target.value)} />
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Điểm tối đa</label>
+          <input type="number" min={1} step={0.5} className={inp} value={maxPoints} onChange={e => setMaxPoints(e.target.value)} />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Hạn nộp (tuỳ chọn)</label>
+          <input type="date" className={inp} value={dueDate} onChange={e => setDueDate(e.target.value)} />
+        </div>
+      </div>
+
+      {fileUrl ? (
+        <div className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 bg-gray-50">
+          <DocBadge type={detectType(fileUrl, fileName || "file")} />
+          <p className="flex-1 text-xs font-semibold text-gray-800 truncate">{fileName || fileUrl}</p>
+          <button onClick={() => { setFileUrl(""); setFileName(""); }} className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+        </div>
+      ) : (
+        <>
+          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" className="hidden" onChange={handleFileUpload} />
+          {cloudinaryConfigured ? (
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="w-full py-2 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+              style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+              {uploading ? "⏳ Đang upload..." : "📎 Đính kèm file đề bài (tuỳ chọn)"}
+            </button>
+          ) : (
+            <p className="text-xs text-center py-1" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+          )}
+        </>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <button onClick={onCancel} className="px-3 py-1.5 text-xs border rounded-lg text-gray-600 hover:bg-gray-50">Huỷ</button>
+        <button onClick={() => onSave({
+            title: title.trim(), instructions: instructions.trim() || undefined,
+            fileUrl: fileUrl || undefined, fileName: fileName || undefined,
+            maxPoints: Number(maxPoints) > 0 ? Number(maxPoints) : 10,
+            dueDate: dueDate || null,
+          })}
+          disabled={!title.trim() || saving}
+          className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-40" style={{ background: "#16a34a" }}>
+          {saving ? "Đang lưu..." : "Lưu bài tập"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GradeSubmissionsModal({ assignment, onClose, onGraded }: {
+  assignment: AssignmentFull | null;
+  onClose: () => void;
+  onGraded: () => void;
+}) {
+  const [subs, setSubs] = useState<AssignmentSubmissionFull[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, { score: string; comment: string }>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!assignment) return;
+    setLoading(true);
+    api.assignments.listSubmissions(assignment.id)
+      .then(list => {
+        setSubs(list);
+        setDrafts(Object.fromEntries(list.map(s => [s.id, { score: s.score != null ? String(s.score) : "", comment: s.comment ?? "" }])));
+      })
+      .catch(() => alert("Lỗi tải danh sách bài nộp"))
+      .finally(() => setLoading(false));
+  }, [assignment]);
+
+  if (!assignment) return null;
+
+  async function handleGrade(sub: AssignmentSubmissionFull) {
+    const draft = drafts[sub.id];
+    const score = Number(draft?.score);
+    if (!draft?.score || Number.isNaN(score)) { alert("Nhập điểm hợp lệ"); return; }
+    setSavingId(sub.id);
+    try {
+      const updated = await api.assignments.grade(assignment!.id, sub.id, { score, comment: draft.comment || undefined });
+      setSubs(prev => prev.map(s => s.id === sub.id ? updated : s));
+      onGraded();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Chấm điểm thất bại");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-base font-bold text-gray-800">Bài nộp — {assignment.title}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Điểm tối đa: {assignment.maxPoints}</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+          {loading ? (
+            <p className="text-center text-sm text-gray-400 py-8">Đang tải...</p>
+          ) : subs.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-8">Chưa có học viên nào nộp bài</p>
+          ) : subs.map(s => (
+            <div key={s.id} className="rounded-lg border border-gray-100 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-sm font-semibold text-gray-800">{s.user?.name ?? "?"}</p>
+                <p className="text-xs text-gray-400">{new Date(s.submittedAt).toLocaleString("vi-VN")}</p>
+              </div>
+              <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+                📎 {s.fileName || "Xem bài làm"}
+              </a>
+              <div className="flex items-center gap-2 mt-2">
+                <input type="number" min={0} max={assignment.maxPoints} step={0.5}
+                  className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
+                  placeholder="Điểm" value={drafts[s.id]?.score ?? ""}
+                  onChange={e => setDrafts(prev => ({ ...prev, [s.id]: { ...prev[s.id], score: e.target.value } }))} />
+                <input className="flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400"
+                  placeholder="Nhận xét (tuỳ chọn)" value={drafts[s.id]?.comment ?? ""}
+                  onChange={e => setDrafts(prev => ({ ...prev, [s.id]: { ...prev[s.id], comment: e.target.value } }))} />
+                <button onClick={() => handleGrade(s)} disabled={savingId === s.id}
+                  className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-50 flex-shrink-0" style={{ background: "#16a34a" }}>
+                  {savingId === s.id ? "..." : s.score != null ? "Cập nhật" : "Chấm"}
+                </button>
+              </div>
+              {s.gradedAt && <p className="text-xs text-gray-400 mt-1">Đã chấm {new Date(s.gradedAt).toLocaleString("vi-VN")}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssignmentEditor({ lessonId }: { lessonId: string }) {
+  const [items, setItems]     = useState<AssignmentFull[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding]   = useState(false);
+  const [editing, setEditing] = useState<AssignmentFull | null>(null);
+  const [grading, setGrading] = useState<AssignmentFull | null>(null);
+  const [saving, setSaving]   = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.assignments.listByLesson(lessonId).then(setItems).catch(() => {}).finally(() => setLoading(false));
+  }, [lessonId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleCreate(data: AssignmentInput) {
+    setSaving(true);
+    try {
+      await api.assignments.create(lessonId, data);
+      setAdding(false);
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Tạo bài tập thất bại");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdate(data: AssignmentInput) {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await api.assignments.update(editing.id, data);
+      setEditing(null);
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Cập nhật bài tập thất bại");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Xoá bài tập này? Toàn bộ bài học viên đã nộp cũng sẽ mất.")) return;
+    try {
+      await api.assignments.remove(id);
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Xoá thất bại");
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 pb-1 border-b border-gray-100">
+        <p className="text-sm font-semibold text-gray-700">Bài tập tự nộp</p>
+        {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm bài tập</button>}
+      </div>
+      <p className="text-xs text-gray-400 -mt-2 mb-3">Song song với Azota ở trên — dùng khi muốn học viên nộp bài trực tiếp trên nền tảng để chấm điểm.</p>
+
+      {loading ? (
+        <p className="text-xs text-gray-400 text-center py-3">Đang tải...</p>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {items.map(a => editing?.id === a.id ? (
+            <AssignmentForm key={a.id} initial={a} onCancel={() => setEditing(null)} onSave={handleUpdate} saving={saving} />
+          ) : (
+            <div key={a.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-800 truncate">{a.title}</p>
+                <p className="text-xs text-gray-400">
+                  Tối đa {a.maxPoints}đ{a.dueDate ? ` · Hạn ${fmtDue(a.dueDate)}` : ""} · {a.submissionCount} bài nộp
+                </p>
+              </div>
+              <button onClick={() => setGrading(a)} className="text-xs px-2 py-1 rounded text-green-600 hover:bg-green-50 flex-shrink-0">Chấm bài</button>
+              <button onClick={() => setEditing(a)} className="text-xs px-2 py-1 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">Sửa</button>
+              <button onClick={() => handleDelete(a.id)} className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {adding && <AssignmentForm initial={null} onCancel={() => setAdding(false)} onSave={handleCreate} saving={saving} />}
+
+      {items.length === 0 && !loading && !adding && (
+        <p className="text-xs text-gray-400 text-center">Chưa có bài tập tự nộp nào.</p>
+      )}
+
+      <GradeSubmissionsModal assignment={grading} onClose={() => setGrading(null)} onGraded={load} />
+    </div>
+  );
+}
+
 // ─── TAB CHƯƠNG BÀI ───────────────────────────────────────────────────────────
 type DragState =
   | { type: "section"; sectionIdx: number }
@@ -1034,6 +1307,9 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
               value={ls.documentsRaw}
               onChange={v => setLs(f => ({ ...f, documentsRaw: v }))}
             />
+            {panel.type === "edit-lesson" && (
+              <AssignmentEditor lessonId={panel.lessonId} />
+            )}
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-2 pb-1 border-b border-gray-100">
                 Ghi chú cho học viên

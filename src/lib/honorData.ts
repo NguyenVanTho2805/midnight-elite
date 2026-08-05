@@ -22,6 +22,9 @@ export interface HonorStudent {
   submissions: number;    // bài đã hoàn thành
   submissionRate: number; // % bài nộp đúng hạn
   lastExamScore: number;  // điểm thi thử gần nhất
+  // Điểm trung bình bài tập tự nộp (Assignment) — RIÊNG, không nằm trong gpa.
+  // null = chưa có bài nào được chấm.
+  assignmentAvg: number | null;
 }
 
 export interface BadgeRule {

@@ -257,6 +257,12 @@ export default function VinhDanhPage() {
                           <div className="text-sm font-bold" style={{ color: "#7C3AED" }}>{s.completion}%</div>
                           <div className="text-xs text-gray-400">Tiến độ</div>
                         </div>
+                        <div className="text-center">
+                          <div className="text-sm font-bold" style={{ color: "#16a34a" }}>
+                            {s.assignmentAvg != null ? s.assignmentAvg : "—"}
+                          </div>
+                          <div className="text-xs text-gray-400">Điểm bài tập</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -265,7 +271,7 @@ export default function VinhDanhPage() {
             </div>
 
             <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>
-              GPA = 40% tiến độ + 60% điểm thi · Tự động cập nhật từ DB
+              GPA = 40% tiến độ + 60% điểm thi (không tính điểm bài tập) · Tự động cập nhật từ DB
             </p>
           </div>
         )}

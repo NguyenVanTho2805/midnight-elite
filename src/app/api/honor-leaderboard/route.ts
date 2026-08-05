@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { computeCompletion, computeGpa } from "@/lib/gpa";
+import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/gpa";
 
 export async function GET() {
   try {
@@ -19,6 +19,10 @@ export async function GET() {
         lessonProgress: { select: { lessonId: true } },
         examResults: {
           select: { score: true, totalPoints: true },
+        },
+        assignmentSubmissions: {
+          where: { score: { not: null } },
+          select: { score: true, assignment: { select: { maxPoints: true } } },
         },
       },
     });
@@ -66,6 +70,11 @@ export async function GET() {
 
       const gpa = computeGpa(completion, bestExam);
 
+      // Điểm bài tập tự nộp — RIÊNG, không đưa vào computeGpa (xem src/lib/gpa.ts).
+      const assignmentAvg = computeAssignmentAverage(
+        s.assignmentSubmissions.map(a => ({ score: a.score!, maxPoints: a.assignment.maxPoints }))
+      );
+
       return {
         id:             s.id,
         name:           s.name,
@@ -77,6 +86,7 @@ export async function GET() {
         submissions:    completedLessons,
         submissionRate: completion,
         lastExamScore:  bestExam?.score ?? 0,
+        assignmentAvg,
         badges:         userBadgeMap.get(s.id) ?? [],
       };
     });

@@ -219,6 +219,23 @@ export const api = {
     extract: (id: string) =>
       apiFetch<AiExtractResult>(`/api/exam-files/${id}/extract`, { method: "POST" }),
   },
+  // ── Bài tập tự nộp (song song với Lesson.azotaUrl, không thay thế) ───────
+  assignments: {
+    listByLesson: (lessonId: string) =>
+      apiFetch<AssignmentFull[]>(`/api/lessons/${lessonId}/assignments`),
+    create: (lessonId: string, data: AssignmentInput) =>
+      apiFetch<AssignmentFull>(`/api/lessons/${lessonId}/assignments`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: AssignmentInput) =>
+      apiFetch<AssignmentFull>(`/api/assignments/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/assignments/${id}`, { method: "DELETE" }),
+    submit: (id: string, data: { fileUrl: string; fileName?: string }) =>
+      apiFetch<AssignmentSubmissionFull>(`/api/assignments/${id}/submit`, { method: "POST", body: JSON.stringify(data) }),
+    listSubmissions: (id: string) =>
+      apiFetch<AssignmentSubmissionFull[]>(`/api/assignments/${id}/submissions`),
+    grade: (id: string, submissionId: string, data: { score: number; comment?: string }) =>
+      apiFetch<AssignmentSubmissionFull>(`/api/assignments/${id}/submissions/${submissionId}/grade`, { method: "PATCH", body: JSON.stringify(data) }),
+  },
 };
 
 // ─── API types (mirrors Prisma models) ───────────────────────────────────────
@@ -375,6 +392,27 @@ export interface ExamFileFull {
   id: string; fileName: string; fileUrl: string; fileType: string;
   ownerId: string | null; owner: { name: string } | null;
   createdAt: string;
+}
+
+// Bài tập tự nộp — song song với Lesson.azotaUrl, xem prisma/schema.prisma.
+export interface AssignmentFull {
+  id: string; lessonId: string; title: string; instructions: string | null;
+  fileUrl: string | null; fileName: string | null; maxPoints: number;
+  dueDate: string | null; ownerId: string | null; createdAt: string;
+  submissionCount: number;
+  // Chỉ có giá trị khi người gọi là học viên (xem GET /api/lessons/[lessonId]/assignments) — undefined với admin.
+  mySubmission?: AssignmentSubmissionFull | null;
+}
+export interface AssignmentInput {
+  title: string; instructions?: string; fileUrl?: string; fileName?: string;
+  maxPoints?: number; dueDate?: string | null;
+}
+export interface AssignmentSubmissionFull {
+  id: string; assignmentId: string; userId: string;
+  fileUrl: string; fileName: string | null; submittedAt: string;
+  score: number | null; comment: string | null; gradedAt: string | null; gradedBy: string | null;
+  // Chỉ có khi admin gọi listSubmissions (include user).
+  user?: { id: string; name: string; studentId: number | null };
 }
 export interface QuestionBankItemFull {
   id: string; type: QuestionType; text: string;
