@@ -269,10 +269,15 @@ function PostForm({ user, balance, onThread, onQuestion }: {
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting]     = useState(false);
   const [error, setError]         = useState("");
+  // Cache URL đã upload thành công theo từng File — nếu đăng thất bại (vd lỗi
+  // tạo bài sau khi ảnh đã lên Cloudinary) rồi bấm lại, chỉ upload lại những
+  // file CHƯA có URL, tránh mỗi lần retry lại đẩy thêm rác lên Cloudinary.
+  const uploadedUrlCache = useRef(new Map<File, string>());
 
   function reset() {
     setContent(""); setTitle(""); setCategory("kinh-nghiem");
     setImages([]); setFile(null); setError(""); setExpanded(false); setPostType("thread");
+    uploadedUrlCache.current.clear();
   }
 
   async function handlePost() {
@@ -312,11 +317,26 @@ function PostForm({ user, balance, onThread, onQuestion }: {
       }
       if (images.length > 0 || file) {
         setUploading(true);
-        if (images.length > 0) imageUrls = await uploadMany(images, "community/images");
+        const cache = uploadedUrlCache.current;
+        if (images.length > 0) {
+          imageUrls = await Promise.all(images.map(async img => {
+            const cached = cache.get(img);
+            if (cached) return cached;
+            const [url] = await uploadMany([img], "community/images");
+            cache.set(img, url);
+            return url;
+          }));
+        }
         if (file) {
-          const { uploadToCloudinary } = await import("@/lib/cloudinary");
-          const r = await uploadToCloudinary(file, "community/files");
-          fileUrl  = r.url;
+          const cached = cache.get(file);
+          if (cached) {
+            fileUrl = cached;
+          } else {
+            const { uploadToCloudinary } = await import("@/lib/cloudinary");
+            const r = await uploadToCloudinary(file, "community/files");
+            fileUrl = r.url;
+            cache.set(file, r.url);
+          }
           fileName = file.name;
         }
         setUploading(false);

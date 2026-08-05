@@ -64,6 +64,9 @@ interface LsForm {
   azotaDeadline: string; duration: string;
   isLocked: boolean; isFree: boolean;
   documentsRaw: string;
+  // File tài liệu đã chọn nhưng CHƯA upload — chỉ thật sự lên Cloudinary lúc
+  // bấm Lưu (xem savePanel), tránh file mồ côi nếu đóng Drawer mà không lưu.
+  pendingDocuments: { name: string; file: File }[];
   adminNote: string;
 }
 
@@ -71,7 +74,7 @@ const INIT_LS: LsForm = {
   title: "",
   videoUrls: [""], zoomUrls: [""], azotaUrls: [""],
   azotaDeadline: "", duration: "", isLocked: true, isFree: false,
-  documentsRaw: "[]", adminNote: "",
+  documentsRaw: "[]", pendingDocuments: [], adminNote: "",
 };
 
 function parseUrls(raw: string | null | undefined): string[] {
@@ -244,7 +247,9 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
   });
   const [saving, setSaving]           = useState(false);
   const [saved,  setSaved]            = useState(false);
-  const [bgUploading, setBgUploading] = useState(false);
+  // File gốc CHƯA upload — chỉ thật sự lên Cloudinary lúc bấm "Lưu thay đổi"
+  // (xem handleSave), tránh file mồ côi nếu rời trang mà không lưu.
+  const [bgImageFile, setBgImageFile] = useState<File | null>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
 
@@ -257,24 +262,29 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
-  async function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Chỉ giữ File + preview tạm — KHÔNG upload ngay (xem ghi chú ở bgImageFile).
+  function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    setBgUploading(true);
-    try {
-      const result = await uploadToCloudinary(file, "courses/backgrounds");
-      setForm(f => ({ ...f, bgImage: result.url }));
-    } catch (err) {
-      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi"));
-    } finally {
-      setBgUploading(false);
-    }
+    if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
+    setBgImageFile(file);
+    setForm(f => ({ ...f, bgImage: URL.createObjectURL(file) }));
   }
 
   async function handleSave() {
     setSaving(true);
     try {
+      // Chỉ thật sự upload lên Cloudinary ở đây — ngay trước khi lưu khoá
+      // học, không còn khoảng hở nào giữa lúc file lên Cloudinary và lúc DB
+      // biết tới nó (tránh file mồ côi nếu rời trang giữa chừng).
+      let bgImage = form.bgImage;
+      if (bgImageFile) {
+        const result = await uploadToCloudinary(bgImageFile, "courses/backgrounds");
+        bgImage = result.url;
+        setBgImageFile(null);
+      }
+
       await api.courses.update(courseSlug, {
         name:          form.publicName,
         instructor:    form.instructor,
@@ -287,10 +297,11 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         tagColor:      form.tag ? form.tagColor : null,
         introVideo:    form.introVideo || null,
         zaloGroupLink: form.zaloGroupLink || null,
-        bg:            form.bgImage
-                         ? `url(${form.bgImage}) center/cover no-repeat`
+        bg:            bgImage
+                         ? `url(${bgImage}) center/cover no-repeat`
                          : CATEGORY_GRADIENT[form.category] ?? course.bg,
       });
+      setForm(f => ({ ...f, bgImage }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -349,7 +360,11 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
               {form.bgImage ? "Ảnh nền" : "Gradient mặc định"}
             </span>
             {form.bgImage && (
-              <button onClick={() => setForm(f => ({ ...f, bgImage: "" }))}
+              <button onClick={() => {
+                  if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
+                  setBgImageFile(null);
+                  setForm(f => ({ ...f, bgImage: "" }));
+                }}
                 className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70">
                 ✕
               </button>
@@ -359,10 +374,10 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
 
           {cloudinaryConfigured ? (
-            <button onClick={() => bgFileRef.current?.click()} disabled={bgUploading}
+            <button onClick={() => bgFileRef.current?.click()} disabled={saving}
               className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
               style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
-              {bgUploading ? "⏳ Đang upload..." : "🖼 Tải ảnh lên (JPG, PNG, WebP)"}
+              {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn ảnh (JPG, PNG, WebP)"}
             </button>
           ) : (
             <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
@@ -371,8 +386,8 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Hoặc paste URL ảnh</label>
             <input className={inp} placeholder="https://..."
-              value={form.bgImage}
-              onChange={e => setForm(f => ({ ...f, bgImage: e.target.value.trim() }))} />
+              value={bgImageFile ? "" : form.bgImage}
+              onChange={e => { setBgImageFile(null); setForm(f => ({ ...f, bgImage: e.target.value.trim() })); }} />
           </div>
         </div>
       </div>
@@ -491,11 +506,17 @@ function DocBadge({ type }: { type: string }) {
   );
 }
 
-function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+// Tài liệu đính kèm — file chọn từ máy tính CHỈ giữ lại (không upload ngay),
+// thật sự lên Cloudinary lúc bấm Lưu (xem savePanel + resolvePendingDocuments)
+// để tránh mồ côi file nếu đóng Drawer mà không lưu. Paste link thì lưu thẳng
+// (không cần upload).
+function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
+  value: string; onChange: (v: string) => void;
+  pending: { name: string; file: File }[]; onPendingChange: (p: { name: string; file: File }[]) => void;
+}) {
   const docs: DocItem[] = (() => { try { return JSON.parse(value || "[]"); } catch { return []; } })();
-  const [newName,    setNewName]    = useState("");
-  const [newUrl,     setNewUrl]     = useState("");
-  const [uploading,  setUploading]  = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newUrl,  setNewUrl]  = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   function save(list: DocItem[]) { onChange(JSON.stringify(list)); }
@@ -507,25 +528,17 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
     setNewName(""); setNewUrl("");
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    setUploading(true);
-    try {
-      const result = await uploadToCloudinary(file, "lessons/documents");
-      const name = newName.trim() || file.name.replace(/\.[^.]+$/, "");
-      const type = detectType(result.url, file.name);
-      save([...docs, { name, url: result.url, type }]);
-      setNewName("");
-    } catch (err) {
-      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
-    } finally {
-      setUploading(false);
-    }
+    const name = newName.trim() || file.name.replace(/\.[^.]+$/, "");
+    onPendingChange([...pending, { name, file }]);
+    setNewName("");
   }
 
   function remove(i: number) { save(docs.filter((_, idx) => idx !== i)); }
+  function removePending(i: number) { onPendingChange(pending.filter((_, idx) => idx !== i)); }
 
   const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white";
 
@@ -533,10 +546,10 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
     <div>
       <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Tài liệu đính kèm</p>
 
-      {docs.length > 0 && (
+      {(docs.length > 0 || pending.length > 0) && (
         <div className="space-y-2 mb-3">
           {docs.map((d, i) => (
-            <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
+            <div key={`doc-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
               <DocBadge type={detectType(d.url, d.name)} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-gray-800 truncate">{d.name}</p>
@@ -545,6 +558,17 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
               <a href={d.url} target="_blank" rel="noopener noreferrer"
                 className="text-xs px-2 py-1 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">↗</a>
               <button onClick={() => remove(i)}
+                className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+            </div>
+          ))}
+          {pending.map((p, i) => (
+            <div key={`pending-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+              <DocBadge type={detectType(p.file.name, p.file.name)} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-800 truncate">{p.name}</p>
+                <p className="text-xs" style={{ color: "#0068FF" }}>⏳ Sẽ tải lên khi bấm Lưu</p>
+              </div>
+              <button onClick={() => removePending(i)}
                 className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
             </div>
           ))}
@@ -574,13 +598,13 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
 
         <input ref={fileRef} type="file"
           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-          className="hidden" onChange={handleFileUpload} />
+          className="hidden" onChange={handleFileSelect} />
 
         {cloudinaryConfigured ? (
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+          <button onClick={() => fileRef.current?.click()}
+            className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors"
             style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
-            {uploading ? "⏳ Đang upload..." : "📎 Chọn file từ máy tính (PDF, Word, Excel...)"}
+            📎 Chọn file từ máy tính (PDF, Word, Excel...)
           </button>
         ) : (
           <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>
@@ -589,7 +613,7 @@ function DocumentsEditor({ value, onChange }: { value: string; onChange: (v: str
         )}
       </div>
 
-      {docs.length === 0 && (
+      {docs.length === 0 && pending.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}
     </div>
@@ -613,25 +637,43 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
   const [instructions, setInstructions] = useState(initial?.instructions ?? "");
   const [fileUrl, setFileUrl]           = useState(initial?.fileUrl ?? "");
   const [fileName, setFileName]         = useState(initial?.fileName ?? "");
+  // File mới chọn nhưng CHƯA upload — chỉ thật sự lên Cloudinary lúc bấm "Lưu
+  // bài tập" (xem handleSaveClick), tránh mồ côi nếu Huỷ giữa chừng.
+  const [pendingFile, setPendingFile]   = useState<File | null>(null);
   const [maxPoints, setMaxPoints]       = useState(String(initial?.maxPoints ?? 10));
   const [dueDate, setDueDate]           = useState(initial?.dueDate ? initial.dueDate.slice(0, 10) : "");
-  const [uploading, setUploading]       = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    setUploading(true);
-    try {
-      const result = await uploadToCloudinary(file, "assignments/files");
-      setFileUrl(result.url);
-      setFileName(file.name);
-    } catch (err) {
-      alert("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
-    } finally {
-      setUploading(false);
+    setPendingFile(file);
+    setFileName(file.name);
+  }
+
+  const [uploading, setUploading] = useState(false);
+
+  async function handleSaveClick() {
+    let url = fileUrl;
+    if (pendingFile) {
+      setUploading(true);
+      try {
+        const result = await uploadToCloudinary(pendingFile, "assignments/files");
+        url = result.url;
+      } catch (err) {
+        alert("Upload file thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
+        return;
+      } finally {
+        setUploading(false);
+      }
     }
+    onSave({
+      title: title.trim(), instructions: instructions.trim() || undefined,
+      fileUrl: url || undefined, fileName: fileName || undefined,
+      maxPoints: Number(maxPoints) > 0 ? Number(maxPoints) : 10,
+      dueDate: dueDate || null,
+    });
   }
 
   const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white w-full";
@@ -652,20 +694,22 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
         </div>
       </div>
 
-      {fileUrl ? (
+      {fileName || fileUrl ? (
         <div className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 bg-gray-50">
-          <DocBadge type={detectType(fileUrl, fileName || "file")} />
-          <p className="flex-1 text-xs font-semibold text-gray-800 truncate">{fileName || fileUrl}</p>
-          <button onClick={() => { setFileUrl(""); setFileName(""); }} className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+          <DocBadge type={detectType(fileUrl || fileName, fileName || "file")} />
+          <p className="flex-1 text-xs font-semibold text-gray-800 truncate">
+            {fileName || fileUrl}{pendingFile && " (chưa lưu — sẽ tải lên khi bấm Lưu)"}
+          </p>
+          <button onClick={() => { setPendingFile(null); setFileUrl(""); setFileName(""); }} className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
         </div>
       ) : (
         <>
-          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" className="hidden" onChange={handleFileUpload} />
+          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" className="hidden" onChange={handleFileSelect} />
           {cloudinaryConfigured ? (
-            <button onClick={() => fileRef.current?.click()} disabled={uploading}
-              className="w-full py-2 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+            <button onClick={() => fileRef.current?.click()}
+              className="w-full py-2 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors"
               style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
-              {uploading ? "⏳ Đang upload..." : "📎 Đính kèm file đề bài (tuỳ chọn)"}
+              📎 Đính kèm file đề bài (tuỳ chọn)
             </button>
           ) : (
             <p className="text-xs text-center py-1" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
@@ -675,15 +719,10 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-xs border rounded-lg text-gray-600 hover:bg-gray-50">Huỷ</button>
-        <button onClick={() => onSave({
-            title: title.trim(), instructions: instructions.trim() || undefined,
-            fileUrl: fileUrl || undefined, fileName: fileName || undefined,
-            maxPoints: Number(maxPoints) > 0 ? Number(maxPoints) : 10,
-            dueDate: dueDate || null,
-          })}
-          disabled={!title.trim() || saving}
+        <button onClick={handleSaveClick}
+          disabled={!title.trim() || saving || uploading}
           className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-40" style={{ background: "#16a34a" }}>
-          {saving ? "Đang lưu..." : "Lưu bài tập"}
+          {uploading ? "Đang tải file..." : saving ? "Đang lưu..." : "Lưu bài tập"}
         </button>
       </div>
     </div>
@@ -1072,6 +1111,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
       azotaUrls: parseUrls(l.azotaUrl), azotaDeadline: l.azotaDeadline ?? "",
       duration: l.duration ?? "", isLocked: l.isLocked, isFree: l.isFree,
       documentsRaw: l.documents ?? "[]",
+      pendingDocuments: [],
       adminNote: l.adminNote ?? "",
     });
     setPanel({ type: "edit-lesson", sectionId, chapterId, lessonId });
@@ -1103,6 +1143,19 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
   }
 
   // ── Save panel (calls API) ──
+  // Upload các file tài liệu đang chờ (chưa lên Cloudinary) rồi gộp vào JSON
+  // documents hiện có — gọi ngay trước khi lưu bài học (add/edit), không còn
+  // khoảng hở giữa lúc file lên Cloudinary và lúc DB biết tới nó.
+  async function resolvePendingDocuments(): Promise<string> {
+    const existing: DocItem[] = (() => { try { return JSON.parse(ls.documentsRaw || "[]"); } catch { return []; } })();
+    if (ls.pendingDocuments.length === 0) return JSON.stringify(existing);
+    const uploaded = await Promise.all(ls.pendingDocuments.map(async p => {
+      const result = await uploadToCloudinary(p.file, "lessons/documents");
+      return { name: p.name, url: result.url, type: detectType(result.url, p.file.name) };
+    }));
+    return JSON.stringify([...existing, ...uploaded]);
+  }
+
   async function savePanel() {
     if (panel.type === "none") return;
     setSaving(true);
@@ -1137,11 +1190,13 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
 
       } else if (panel.type === "add-lesson") {
         if (!ls.title.trim()) return;
+        const documents = await resolvePendingDocuments();
         const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
           title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)),
           videoUrl: serializeUrls(ls.videoUrls), zoomUrl: serializeUrls(ls.zoomUrls),
           azotaUrl: serializeUrls(ls.azotaUrls), azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
+          documents, adminNote: ls.adminNote || null,
         });
         setSections(p => p.map(s => s.id === panel.sectionId
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
@@ -1152,11 +1207,12 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         const vUrl = serializeUrls(ls.videoUrls);
         const zUrl = serializeUrls(ls.zoomUrls);
         const aUrl = serializeUrls(ls.azotaUrls);
+        const documents = await resolvePendingDocuments();
         await apiPut(`/api/lessons/${panel.lessonId}`, {
           title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)), videoUrl: vUrl, zoomUrl: zUrl, azotaUrl: aUrl,
           azotaDeadline: ls.azotaDeadline || null,
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
-          documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null,
+          documents, adminNote: ls.adminNote || null,
         });
         setSections(p => p.map(s => s.id === panel.sectionId
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId
@@ -1164,12 +1220,13 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
               ? { ...l, title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)) as LessonDB["type"], videoUrl: vUrl,
                   zoomUrl: zUrl, azotaUrl: aUrl, azotaDeadline: ls.azotaDeadline || null,
                   duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree,
-                  documents: ls.documentsRaw || "[]", adminNote: ls.adminNote || null }
+                  documents, adminNote: ls.adminNote || null }
               : l) }
             : c) }
           : s));
         flash("Đã cập nhật bài học");
       }
+      setLs(f => ({ ...f, pendingDocuments: [] }));
 
       setPanel({ type: "none" });
     } catch (e) {
@@ -1306,6 +1363,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
             <DocumentsEditor
               value={ls.documentsRaw}
               onChange={v => setLs(f => ({ ...f, documentsRaw: v }))}
+              pending={ls.pendingDocuments}
+              onPendingChange={p => setLs(f => ({ ...f, pendingDocuments: p }))}
             />
             {panel.type === "edit-lesson" && (
               <AssignmentEditor lessonId={panel.lessonId} />

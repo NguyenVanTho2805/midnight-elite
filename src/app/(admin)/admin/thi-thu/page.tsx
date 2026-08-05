@@ -302,6 +302,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       });
       setReviewQuestions(merged.length > 0 ? merged : null);
       setBankMeta(prev => prev.length === merged.length ? prev : merged.map(() => ({ ...BANK_META_INIT })));
+      // Số câu đổi thì chỉ số ảnh đang chờ không còn tin cậy được nữa — reset
+      // (giống cách bankMeta reset ở trên) thay vì gán nhầm ảnh sang câu khác.
+      setPendingImageFiles(prev => (reviewQuestions?.length === merged.length ? prev : {}));
       editingRightRef.current = false;
     }, 500);
   }
@@ -322,8 +325,10 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     }
   }
 
-  // ── Upload ảnh minh hoạ trực tiếp cho từng câu (Cloudinary) ───────────────
-  const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(null);
+  // ── Ảnh minh hoạ cho từng câu — chỉ giữ File + preview tạm lúc chọn, thật sự
+  // upload lên Cloudinary lúc bấm "Lưu đề thi" (xem handleSave), tránh mồ côi
+  // file nếu đóng drawer mà không lưu.
+  const [pendingImageFiles, setPendingImageFiles] = useState<Record<number, File>>({});
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const imageUploadTargetIdx = useRef<number | null>(null);
 
@@ -332,20 +337,15 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     imageFileInputRef.current?.click();
   }
 
-  async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     const idx = imageUploadTargetIdx.current;
     if (!file || idx === null) return;
-    setUploadingImageIdx(idx);
-    try {
-      const result = await uploadToCloudinary(file, "exams/questions");
-      updateReviewImageUrl(idx, result.url);
-    } catch (err) {
-      showToast("Upload ảnh thất bại: " + (err instanceof Error ? err.message : "Lỗi"), false);
-    } finally {
-      setUploadingImageIdx(null);
-    }
+    const prevUrl = reviewQuestions?.[idx]?.imageUrl;
+    if (prevUrl?.startsWith("blob:")) URL.revokeObjectURL(prevUrl);
+    setPendingImageFiles(prev => ({ ...prev, [idx]: file }));
+    updateReviewImageUrl(idx, URL.createObjectURL(file));
   }
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -355,7 +355,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       setForm(CREATE_INIT); setErrors({}); setSaving(false);
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
       setAnswerKeyFile(null); setAiLoading(false);
-      setBankGateOn(false); setBankMeta([]);
+      setBankGateOn(false); setBankMeta([]); setPendingImageFiles({});
       setBulkCategoryId(""); setBulkDifficulty("NB");
       setSplitViewOn(false); setMarkupText(""); setMarkupErrs([]);
     }
@@ -467,6 +467,17 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       return next && next.length > 0 ? next : null;
     });
     setBankMeta(prev => prev.filter((_, i) => i !== idx));
+    // Đánh lại chỉ số ảnh đang chờ upload cho khớp mảng câu hỏi sau khi xoá
+    // (cùng cách bankMeta re-index ở trên) — không thì ảnh gán nhầm câu.
+    setPendingImageFiles(prev => {
+      const next: Record<number, File> = {};
+      Object.entries(prev).forEach(([k, file]) => {
+        const i = Number(k);
+        if (i < idx) next[i] = file;
+        else if (i > idx) next[i - 1] = file;
+      });
+      return next;
+    });
   }
   // SHORT_ANSWER chỉ có đúng 1 option (đáp án đúng) — sửa thẳng options[0].text
   function updateReviewShortAnswer(idx: number, text: string) {
@@ -587,9 +598,23 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!validate()) return;
     setSaving(true);
     try {
-      const bankResult = reviewQuestions && reviewQuestions.length > 0
-        ? await resolveBankLinkedQuestions(reviewQuestions)
-        : { questions: reviewQuestions, skippedMissingInfo: 0, failedCreate: 0 };
+      // Chỉ thật sự upload ảnh minh hoạ lên Cloudinary ở đây — ngay trước khi
+      // tạo đề, không còn khoảng hở nào giữa lúc ảnh lên Cloudinary và lúc DB
+      // biết tới nó (tránh mồ côi nếu đóng drawer giữa chừng).
+      let questions = reviewQuestions;
+      if (questions && Object.keys(pendingImageFiles).length > 0) {
+        questions = await Promise.all(questions.map(async (q, idx) => {
+          const file = pendingImageFiles[idx];
+          if (!file) return q;
+          const result = await uploadToCloudinary(file, "exams/questions");
+          return { ...q, imageUrl: result.url };
+        }));
+        setPendingImageFiles({});
+      }
+
+      const bankResult = questions && questions.length > 0
+        ? await resolveBankLinkedQuestions(questions)
+        : { questions, skippedMissingInfo: 0, failedCreate: 0 };
       const questionsToSave = bankResult.questions;
       const examDate = form.date.split("-").reverse().join("/");
       const exam = await api.exams.create({
@@ -920,7 +945,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       style={{ color: splitViewOn ? "#7e22ce" : "#0068FF" }}>
                       {splitViewOn ? "✓ " : ""}🪟 Chế độ 2 khung
                     </button>
-                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); }}
+                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); setPendingImageFiles({}); }}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       ← Quay lại chỉnh sửa
                     </button>
@@ -996,13 +1021,15 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
                           placeholder="Ảnh minh hoạ (URL, tùy chọn)"
                           value={q.imageUrl ?? ""}
-                          onChange={e => updateReviewImageUrl(idx, e.target.value)}
+                          onChange={e => {
+                            setPendingImageFiles(prev => { const { [idx]: _drop, ...rest } = prev; return rest; });
+                            updateReviewImageUrl(idx, e.target.value);
+                          }}
                         />
                         {cloudinaryConfigured && (
                           <button type="button" onClick={() => triggerImageUpload(idx)}
-                            disabled={uploadingImageIdx === idx}
                             className="px-2 py-1 text-xs font-semibold rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
-                            {uploadingImageIdx === idx ? "⏳ Đang tải..." : "🖼 Tải ảnh"}
+                            {pendingImageFiles[idx] ? "🖼 Đã chọn (chờ lưu)" : "🖼 Tải ảnh"}
                           </button>
                         )}
                       </div>
