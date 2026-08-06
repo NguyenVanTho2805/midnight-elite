@@ -203,9 +203,10 @@ export const api = {
   // ── Ngân hàng đề thi (lưu trữ file gốc, tách câu riêng theo yêu cầu) ─────
   examFiles: {
     list: () => apiFetch<ExamFileFull[]>("/api/exam-files"),
-    upload: async (file: File): Promise<ExamFileFull> => {
+    upload: async (file: File, folderId?: string | null): Promise<ExamFileFull> => {
       const formData = new FormData();
       formData.append("file", file);
+      if (folderId) formData.append("folderId", folderId);
       const res = await fetch("/api/exam-files", { method: "POST", credentials: "same-origin", body: formData });
       if (!res.ok) {
         const fallback = `Upload thất bại (${res.status})`;
@@ -214,10 +215,22 @@ export const api = {
       }
       return res.json() as Promise<ExamFileFull>;
     },
+    move: (id: string, folderId: string | null) =>
+      apiFetch<ExamFileFull>(`/api/exam-files/${id}`, { method: "PATCH", body: JSON.stringify({ folderId }) }),
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/exam-files/${id}`, { method: "DELETE" }),
     extract: (id: string) =>
       apiFetch<AiExtractResult>(`/api/exam-files/${id}/extract`, { method: "POST" }),
+  },
+  // ── Thư mục Ngân hàng đề thi (1 cấp phẳng, có chủ sở hữu) ────────────────
+  examFileFolders: {
+    list: () => apiFetch<ExamFileFolderFull[]>("/api/exam-file-folders"),
+    create: (name: string) =>
+      apiFetch<ExamFileFolderFull>("/api/exam-file-folders", { method: "POST", body: JSON.stringify({ name }) }),
+    update: (id: string, name: string) =>
+      apiFetch<ExamFileFolderFull>(`/api/exam-file-folders/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/exam-file-folders/${id}`, { method: "DELETE" }),
   },
   // ── Bài tập tự nộp (song song với Lesson.azotaUrl, không thay thế) ───────
   assignments: {
@@ -391,7 +404,13 @@ export interface QuestionCategoryFull {
 export interface ExamFileFull {
   id: string; fileName: string; fileUrl: string; fileType: string;
   ownerId: string | null; owner: { name: string } | null;
+  folderId: string | null; folder: { id: string; name: string } | null;
   createdAt: string;
+}
+
+// Thư mục Ngân hàng đề thi — 1 cấp phẳng, xem src/app/api/exam-file-folders/route.ts.
+export interface ExamFileFolderFull {
+  id: string; name: string; ownerId: string | null; createdAt: string;
 }
 
 // Bài tập tự nộp — song song với Lesson.azotaUrl, xem prisma/schema.prisma.

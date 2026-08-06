@@ -5,7 +5,7 @@ import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFileFull, type ExamQuestionInput, type QuestionBankItemFull, type QuestionCategoryFull, type Difficulty } from "@/lib/api";
+import { api, type ExamFileFull, type ExamFileFolderFull, type ExamQuestionInput, type QuestionBankItemFull, type QuestionCategoryFull, type Difficulty } from "@/lib/api";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -227,9 +227,118 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
   );
 }
 
+// ─── DẢI THƯ MỤC (1 cấp phẳng) ─────────────────────────────────────────────────
+type ActiveFolder = "all" | "unfiled" | string;
+
+function FolderBar({ folders, active, onSelect, onCreated, onRenamed, onDeleted, showToast }: {
+  folders: ExamFileFolderFull[];
+  active: ActiveFolder;
+  onSelect: (f: ActiveFolder) => void;
+  onCreated: () => void;
+  onRenamed: () => void;
+  onDeleted: () => void;
+  showToast: (msg: string, ok?: boolean) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+
+  async function handleCreate() {
+    if (!newName.trim()) return;
+    try {
+      const created = await api.examFileFolders.create(newName.trim());
+      setAdding(false); setNewName("");
+      onCreated();
+      onSelect(created.id);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Tạo thư mục thất bại", false);
+    }
+  }
+
+  async function handleRename(id: string) {
+    if (!renameValue.trim()) return;
+    try {
+      await api.examFileFolders.update(id, renameValue.trim());
+      setRenaming(null);
+      onRenamed();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Đổi tên thất bại", false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Xoá thư mục này? (chỉ xoá được nếu không còn file bên trong)")) return;
+    try {
+      await api.examFileFolders.remove(id);
+      if (active === id) onSelect("all");
+      onDeleted();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Xoá thất bại", false);
+    }
+  }
+
+  const pillBase = "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border flex-shrink-0";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      <button onClick={() => onSelect("all")} className={pillBase}
+        style={active === "all" ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" } : { borderColor: "#e5e3df", color: "#6B7280" }}>
+        Tất cả
+      </button>
+      <button onClick={() => onSelect("unfiled")} className={pillBase}
+        style={active === "unfiled" ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" } : { borderColor: "#e5e3df", color: "#6B7280" }}>
+        Chưa phân loại
+      </button>
+      {folders.map(f => (
+        <div key={f.id} className="relative">
+          {renaming === f.id ? (
+            <div className="flex items-center gap-1">
+              <input autoFocus className="px-2 py-1 text-xs border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+                value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleRename(f.id); if (e.key === "Escape") setRenaming(null); }} />
+              <button onClick={() => handleRename(f.id)} className="text-xs font-semibold text-blue-600">Lưu</button>
+            </div>
+          ) : (
+            <button onClick={() => onSelect(f.id)} onDoubleClick={() => setMenuOpen(menuOpen === f.id ? null : f.id)}
+              className={pillBase}
+              style={active === f.id ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" } : { borderColor: "#e5e3df", color: "#6B7280" }}>
+              📁 {f.name}
+              <span onClick={e => { e.stopPropagation(); setMenuOpen(menuOpen === f.id ? null : f.id); }} className="ml-0.5">⋯</span>
+            </button>
+          )}
+          {menuOpen === f.id && (
+            <div className="absolute z-10 top-full left-0 mt-1 w-32 rounded-lg border bg-white shadow-lg py-1" style={{ borderColor: "#e5e3df" }}>
+              <button onClick={() => { setRenaming(f.id); setRenameValue(f.name); setMenuOpen(null); }}
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50">Đổi tên</button>
+              <button onClick={() => { setMenuOpen(null); handleDelete(f.id); }}
+                className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50">Xoá</button>
+            </div>
+          )}
+        </div>
+      ))}
+      {adding ? (
+        <div className="flex items-center gap-1">
+          <input autoFocus className="px-2 py-1 text-xs border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+            placeholder="Tên thư mục..." value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
+          <button onClick={handleCreate} className="text-xs font-semibold text-blue-600">Thêm</button>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)} className={pillBase} style={{ borderColor: "#93c5fd", color: "#0068FF", borderStyle: "dashed" }}>
+          + Thư mục mới
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 function PageInner() {
   const [items, setItems] = useState<ExamFileFull[]>([]);
+  const [folders, setFolders] = useState<ExamFileFolderFull[]>([]);
+  const [activeFolder, setActiveFolder] = useState<ActiveFolder>("all");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [extractTarget, setExtractTarget] = useState<ExamFileFull | null>(null);
@@ -248,15 +357,25 @@ function PageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const loadFolders = useCallback(() => {
+    api.examFileFolders.list().then(setFolders).catch(() => {});
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadFolders(); }, [load, loadFolders]);
+
+  const filteredItems = items.filter(item => {
+    if (activeFolder === "all") return true;
+    if (activeFolder === "unfiled") return !item.folderId;
+    return item.folderId === activeFolder;
+  });
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
-      await api.examFiles.upload(file);
+      const folderId = activeFolder !== "all" && activeFolder !== "unfiled" ? activeFolder : null;
+      await api.examFiles.upload(file, folderId);
       showToast("Đã tải lên file đề thi");
       await load();
     } catch (err) {
@@ -264,6 +383,15 @@ function PageInner() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleMove(item: ExamFileFull, folderId: string) {
+    try {
+      const updated = await api.examFiles.move(item.id, folderId || null);
+      setItems(prev => prev.map(x => x.id === item.id ? updated : x));
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Chuyển thư mục thất bại", false);
     }
   }
 
@@ -298,11 +426,15 @@ function PageInner() {
         <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleUpload} />
       </div>
 
+      <FolderBar folders={folders} active={activeFolder} onSelect={setActiveFolder}
+        onCreated={loadFolders} onRenamed={loadFolders} onDeleted={loadFolders} showToast={showToast} />
+
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
               <th className="px-4 py-3">Tên file</th>
+              <th className="px-4 py-3">Thư mục</th>
               <th className="px-4 py-3">Người tải lên</th>
               <th className="px-4 py-3">Ngày tải lên</th>
               <th className="px-4 py-3">Hành động</th>
@@ -310,12 +442,19 @@ function PageInner() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Chưa có file đề thi nào</td></tr>
-            ) : items.map(item => (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
+            ) : filteredItems.length === 0 ? (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Chưa có file đề thi nào</td></tr>
+            ) : filteredItems.map(item => (
               <tr key={item.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
                 <td className="px-4 py-3 max-w-sm truncate" title={item.fileName}>{item.fileName}</td>
+                <td className="px-4 py-3">
+                  <select className="px-2 py-1 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: "#e5e3df" }}
+                    value={item.folderId ?? ""} onChange={e => handleMove(item, e.target.value)}>
+                    <option value="">— Chưa phân loại —</option>
+                    {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  </select>
+                </td>
                 <td className="px-4 py-3 text-gray-600">{item.owner?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</td>
                 <td className="px-4 py-3">

@@ -564,8 +564,32 @@ model ExamFile {
   owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
+  // null = "Chưa phân loại". Xoá thư mục KHÔNG xoá theo file (SetNull) — API
+  // xoá thư mục vẫn tự chặn nếu còn file để tránh mất tổ chức, xem
+  // exam-file-folders/[id]/route.ts.
+  folderId String?
+  folder   ExamFileFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
   @@index([ownerId])
+  @@index([folderId])
   @@map("exam_files")
+}
+
+// Thư mục Ngân hàng đề thi — 1 CẤP PHẲNG (không thư mục lồng thư mục, khác
+// QuestionCategory). Có chủ sở hữu (khác QuestionCategory dùng chung) — mỗi
+// giáo viên tự tổ chức file của mình, cùng quy tắc ownerScopeWhere/
+// requireOwnedResource như ExamFile.
+model ExamFileFolder {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  files ExamFile[]
+
+  @@index([ownerId])
+  @@map("exam_file_folders")
 }
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
@@ -596,6 +620,7 @@ model User {
   questionBankItems   QuestionBankItem[]
   examGuestAccess     ExamGuestAccess[]
   examFiles           ExamFile[]
+  examFileFolders     ExamFileFolder[]
   ownedAssignments      Assignment[]           @relation("OwnedAssignments")
   assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmissions")
   enrollments         Enrollment[]

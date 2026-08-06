@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownerScopeWhere, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { uploadRawFileToCloudinary } from "@/lib/cloudinaryServer";
 import { SUPPORTED_AI_MIME_TYPES } from "@/lib/aiExamImport";
@@ -17,7 +17,7 @@ export async function GET() {
     const items = await prisma.examFile.findMany({
       where: ownerScopeWhere(auth),
       orderBy: { createdAt: "desc" },
-      include: { owner: { select: { name: true } } },
+      include: { owner: { select: { name: true } }, folder: { select: { id: true, name: true } } },
     });
     return NextResponse.json(items);
   } catch (e) {
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file");
+    const folderId = formData.get("folderId");
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Thiếu file" }, { status: 400 });
     }
@@ -45,12 +46,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Định dạng file không hỗ trợ: ${file.type || "không xác định"}` }, { status: 400 });
     }
 
+    let resolvedFolderId: string | null = null;
+    if (typeof folderId === "string" && folderId) {
+      const folder = await prisma.examFileFolder.findUnique({ where: { id: folderId }, select: { ownerId: true } });
+      if (!folder) return NextResponse.json({ error: "Thư mục không tồn tại" }, { status: 400 });
+      if (!ownsResource(auth, folder.ownerId)) {
+        return NextResponse.json({ error: "Bạn không có quyền với thư mục này" }, { status: 403 });
+      }
+      resolvedFolderId = folderId;
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileUrl = await uploadRawFileToCloudinary(buffer, file.name, file.type);
 
     const item = await prisma.examFile.create({
-      data: { fileName: file.name, fileUrl, fileType: file.type, ownerId: auth.userId },
-      include: { owner: { select: { name: true } } },
+      data: { fileName: file.name, fileUrl, fileType: file.type, ownerId: auth.userId, folderId: resolvedFolderId },
+      include: { owner: { select: { name: true } }, folder: { select: { id: true, name: true } } },
     });
     return NextResponse.json(item, { status: 201 });
   } catch (e) {
