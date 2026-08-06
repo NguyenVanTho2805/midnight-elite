@@ -270,23 +270,10 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
   showToast: (msg: string, ok?: boolean) => void;
   loading: boolean;
 }) {
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  async function handleCreate() {
-    if (!newName.trim()) return;
-    try {
-      await api.examFileFolders.create(newName.trim());
-      setAdding(false); setNewName("");
-      onRenamed();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : "Tạo thư mục thất bại", false);
-    }
-  }
 
   async function handleRenameFolder(id: string) {
     if (!renameValue.trim()) return;
@@ -397,20 +384,6 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
       {!loading && sortedFolders.length === 0 && sortedFiles.length === 0 && (
         <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có thư mục hay file nào ở đây</p>
       )}
-
-      <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e3df" }}>
-        {adding ? (
-          <div className="flex items-center gap-2">
-            <input autoFocus className="flex-1 max-w-xs px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
-              placeholder="Tên thư mục..." value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
-            <button onClick={handleCreate} className="text-xs font-semibold text-blue-600">Thêm</button>
-            <button onClick={() => { setAdding(false); setNewName(""); }} className="text-xs text-gray-400">Huỷ</button>
-          </div>
-        ) : (
-          <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thư mục mới</button>
-        )}
-      </div>
     </div>
   );
 }
@@ -424,6 +397,9 @@ function PageInner() {
   const [uploading, setUploading] = useState(false);
   const [extractTarget, setExtractTarget] = useState<ExamFileFull | null>(null);
   const [delTarget, setDelTarget] = useState<ExamFileFull | null>(null);
+  const [search, setSearch] = useState("");
+  const [addingFolder, setAddingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast, showToast } = useAdminToast();
 
@@ -444,10 +420,13 @@ function PageInner() {
 
   useEffect(() => { load(); loadFolders(); }, [load, loadFolders]);
 
-  const foldersToShow = view.type === "root" ? folders : []; // thư mục phẳng — không có thư mục con
-  const filesToShow = items.filter(item =>
-    view.type === "root" ? !item.folderId : item.folderId === view.id
-  );
+  const q = search.trim().toLowerCase();
+  const foldersToShow = (view.type === "root" ? folders : []) // thư mục phẳng — không có thư mục con
+    .filter(f => !q || f.name.toLowerCase().includes(q));
+  const filesToShow = items
+    .filter(item => view.type === "root" ? !item.folderId : item.folderId === view.id)
+    .filter(item => !q || item.fileName.toLowerCase().includes(q));
+  const recentFiles = [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -491,24 +470,74 @@ function PageInner() {
     setDelTarget(null);
   }
 
+  async function handleCreateFolder() {
+    if (!newFolderName.trim()) return;
+    try {
+      await api.examFileFolders.create(newFolderName.trim());
+      setAddingFolder(false); setNewFolderName("");
+      loadFolders();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Tạo thư mục thất bại", false);
+    }
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
 
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng đề thi</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Lưu trữ file đề gốc (PDF/Word) để xem lại sau — bấm &quot;Tách câu hỏi&quot; khi cần đưa câu vào{" "}
-            <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="text-blue-600 hover:underline">Ngân hàng câu hỏi</Link>
-          </p>
-        </div>
-        <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-          className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#0068FF" }}>
-          {uploading ? "Đang tải lên..." : "+ Tải file lên"}
-        </button>
-        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleUpload} />
+      <div className="mb-5">
+        <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng đề thi</h1>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Lưu trữ file đề gốc (PDF/Word) để xem lại sau — bấm &quot;Tách câu hỏi&quot; khi cần đưa câu vào{" "}
+          <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="text-blue-600 hover:underline">Ngân hàng câu hỏi</Link>
+        </p>
       </div>
+
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm kiếm..."
+          className="flex-1 min-w-[200px] max-w-xs px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400"
+          style={{ borderColor: "#e5e3df" }} />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {addingFolder ? (
+            <div className="flex items-center gap-2">
+              <input autoFocus className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+                placeholder="Tên thư mục..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") { setAddingFolder(false); setNewFolderName(""); } }} />
+              <button onClick={handleCreateFolder} className="px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>Thêm</button>
+              <button onClick={() => { setAddingFolder(false); setNewFolderName(""); }} className="text-sm text-gray-400">Huỷ</button>
+            </div>
+          ) : (
+            <button onClick={() => setAddingFolder(true)}
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0052DD" }}>
+              📁+ Tạo thư mục
+            </button>
+          )}
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+            className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+            {uploading ? "Đang tải lên..." : "+ Tải file lên"}
+          </button>
+          <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleUpload} />
+        </div>
+      </div>
+
+      {view.type === "root" && recentFiles.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-bold mb-3" style={{ color: "#1a1a1a" }}>Tải lên gần đây</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {recentFiles.map(f => (
+              <a key={f.id} href={f.fileUrl} target="_blank" rel="noopener noreferrer"
+                className="rounded-xl border p-3 hover:shadow-sm transition-shadow" style={{ borderColor: "#e5e3df" }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "#fff7ed" }}>
+                  <span className="text-lg">📄</span>
+                </div>
+                <p className="text-xs font-semibold truncate" style={{ color: "#1a1a1a" }} title={f.fileName}>{f.fileName}</p>
+                <p className="text-xs text-gray-400 mt-1">Ngày tải: {new Date(f.createdAt).toLocaleDateString("vi-VN")}</p>
+                {f.folder && <p className="text-xs text-gray-400 truncate">📁 {f.folder.name}</p>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Breadcrumb view={view} onRoot={() => setView({ type: "root" })} />
 
