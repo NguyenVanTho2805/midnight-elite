@@ -25,7 +25,7 @@ const TYPE_LABEL: Record<QuestionType, string> = {
 // vết nguồn gốc, KHÔNG share row (xem ghi chú ở QuestionBankItem trong
 // prisma/schema.prisma). Sửa/xoá câu gốc trong ngân hàng sau này không ảnh
 // hưởng câu đã copy vào đề.
-function bankItemToExamQuestionInput(item: QuestionBankItemFull): ExamQuestionInput {
+export function bankItemToExamQuestionInput(item: QuestionBankItemFull): ExamQuestionInput {
   return {
     text: item.text,
     type: item.type,

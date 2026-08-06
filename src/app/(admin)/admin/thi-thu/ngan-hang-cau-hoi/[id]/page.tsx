@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
@@ -9,28 +10,47 @@ import { api, type QuestionCategoryFull } from "@/lib/api";
 
 interface TreeNode extends QuestionCategoryFull {
   children: TreeNode[];
+  total: number; // count của node + cộng dồn toàn bộ con cháu
 }
 
-function buildTree(items: QuestionCategoryFull[]): TreeNode[] {
-  const byId = new Map<string, TreeNode>(items.map(c => [c.id, { ...c, children: [] }]));
-  const roots: TreeNode[] = [];
+function buildTree(items: QuestionCategoryFull[], rootId: string): TreeNode | null {
+  const byId = new Map<string, TreeNode>(items.map(c => [c.id, { ...c, children: [], total: c.count }]));
   for (const node of byId.values()) {
     if (node.parentId && byId.has(node.parentId)) {
       byId.get(node.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
     }
   }
   const sortRec = (nodes: TreeNode[]) => {
     nodes.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
     nodes.forEach(n => sortRec(n.children));
   };
-  sortRec(roots);
-  return roots;
+  function computeTotal(node: TreeNode): number {
+    node.total = node.count + node.children.reduce((sum, c) => sum + computeTotal(c), 0);
+    return node.total;
+  }
+  const root = byId.get(rootId) ?? null;
+  if (root) {
+    sortRec(root.children);
+    computeTotal(root);
+  }
+  return root;
 }
 
-function CategoryRow({ node, depth, onRefetch, showToast }: {
-  node: TreeNode; depth: number;
+// Tìm kiếm trong cây theo tên — nếu chính node khớp thì giữ nguyên toàn bộ
+// cây con của nó (không lọc tiếp, vì user đã tìm đúng node này); nếu không
+// khớp thì chỉ giữ những nhánh con có ít nhất 1 kết quả khớp bên trong.
+function filterTree(node: TreeNode, query: string): TreeNode | null {
+  const matchesSelf = node.name.toLowerCase().includes(query);
+  if (matchesSelf) return node;
+  const filteredChildren = node.children
+    .map(c => filterTree(c, query))
+    .filter((c): c is TreeNode => c !== null);
+  if (filteredChildren.length === 0) return null;
+  return { ...node, children: filteredChildren };
+}
+
+function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
+  node: TreeNode; depth: number; forceOpen?: boolean;
   onRefetch: () => Promise<void>;
   showToast: (msg: string, ok?: boolean) => void;
 }) {
@@ -41,6 +61,10 @@ function CategoryRow({ node, depth, onRefetch, showToast }: {
   const [newName, setNewName] = useState("");
   const [confirmDel, setConfirmDel] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Đang tìm kiếm — mở hết những mục bị thu gọn tay trước đó, để hiện đủ
+  // đường dẫn tới kết quả khớp (mục mới hiện lần đầu đã mặc định mở sẵn).
+  useEffect(() => { if (forceOpen) setExpanded(true); }, [forceOpen]);
 
   async function handleRename() {
     if (!editName.trim() || editName.trim() === node.name) { setEditing(false); return; }
@@ -109,7 +133,10 @@ function CategoryRow({ node, depth, onRefetch, showToast }: {
           </>
         ) : (
           <>
-            <span className="text-sm text-gray-800">{node.name}</span>
+            <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${node.id}`} className="text-sm text-gray-800 hover:text-blue-600 hover:underline">
+              {node.name}
+            </Link>
+            <span className="text-xs text-gray-400">({node.total} câu hỏi)</span>
             <div className="flex items-center gap-2.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => setAdding(true)} className="text-xs font-semibold text-blue-600">+ Thêm con</button>
               <button onClick={() => { setEditing(true); setEditName(node.name); }} className="text-xs font-semibold text-gray-500">Sửa</button>
@@ -143,17 +170,24 @@ function CategoryRow({ node, depth, onRefetch, showToast }: {
       )}
 
       {expanded && node.children.map(child => (
-        <CategoryRow key={child.id} node={child} depth={depth + 1} onRefetch={onRefetch} showToast={showToast} />
+        <CategoryRow key={child.id} node={child} depth={depth + 1} forceOpen={forceOpen} onRefetch={onRefetch} showToast={showToast} />
       ))}
     </div>
   );
 }
 
 function PageInner() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const bankId = params.id;
+
   const [items, setItems] = useState<QuestionCategoryFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [search, setSearch] = useState("");
+  const [copying, setCopying] = useState(false);
+  const [copyName, setCopyName] = useState("");
   const { toast, showToast } = useAdminToast();
 
   const load = useCallback(async () => {
@@ -161,7 +195,7 @@ function PageInner() {
       const data = await api.questionCategories.list();
       setItems(data);
     } catch {
-      showToast("Lỗi tải danh sách đầu mục", false);
+      showToast("Lỗi tải dữ liệu ngân hàng", false);
     } finally {
       setLoading(false);
     }
@@ -170,12 +204,20 @@ function PageInner() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleAddRoot() {
+  const root = useMemo(() => buildTree(items, bankId), [items, bankId]);
+  const trimmedSearch = search.trim().toLowerCase();
+  const displayedChildren = useMemo(() => {
+    if (!root) return [];
+    if (!trimmedSearch) return root.children;
+    return root.children.map(c => filterTree(c, trimmedSearch)).filter((c): c is TreeNode => c !== null);
+  }, [root, trimmedSearch]);
+
+  async function handleAddChild() {
     if (!newName.trim()) return;
     try {
-      await api.questionCategories.create({ name: newName.trim(), parentId: null });
+      await api.questionCategories.create({ name: newName.trim(), parentId: bankId });
       await load();
-      showToast("Đã thêm đầu mục gốc");
+      showToast("Đã thêm đầu mục con");
       setNewName("");
       setAdding(false);
     } catch (e) {
@@ -183,7 +225,27 @@ function PageInner() {
     }
   }
 
-  const tree = buildTree(items);
+  async function handleDuplicate() {
+    if (!root) return;
+    try {
+      const result = await api.questionCategories.duplicate(root.id, copyName.trim() || undefined);
+      setCopying(false);
+      router.push(`/admin/thi-thu/ngan-hang-cau-hoi/${result.id}`);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Copy thất bại", false);
+    }
+  }
+
+  if (!loading && !root) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <p className="text-sm text-gray-500 mb-1">
+          <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
+        </p>
+        <p className="text-center text-gray-400 text-sm py-12">Không tìm thấy ngân hàng này</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -191,42 +253,89 @@ function PageInner() {
 
       <p className="text-sm text-gray-500 mb-1">
         <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
-        {" "}/ <span className="font-medium text-gray-800">Quản lý đầu mục</span>
+        {" "}/ <span className="font-medium text-gray-800">{root?.name ?? "..."}</span>
       </p>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Cây đầu mục</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Tổ chức câu hỏi theo đầu mục từ to đến bé — không giới hạn số tầng</p>
+          <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>{root?.name ?? "Đang tải..."}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{root ? `${root.total} câu hỏi` : ""}</p>
         </div>
-        <button onClick={() => setAdding(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
-          + Thêm đầu mục gốc
-        </button>
+        <div className="flex items-center gap-2">
+          {root && (
+            <>
+              <button onClick={() => { setCopyName(`${root.name} (bản sao)`); setCopying(true); }}
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+                Copy ngân hàng
+              </button>
+              <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}&select=1`}
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+                Tự chọn câu hỏi
+              </Link>
+              <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}`}
+                className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+                + Thêm câu hỏi
+              </Link>
+            </>
+          )}
+          <button onClick={() => setAdding(true)} className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+            + Thêm đầu mục con
+          </button>
+        </div>
       </div>
+
+      {copying && root && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
+          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+            <p className="text-sm font-semibold mb-1">Copy ngân hàng &quot;{root.name}&quot;</p>
+            <p className="text-xs text-gray-500 mb-3">Nhân bản toàn bộ cây đầu mục + câu hỏi bên trong sang 1 ngân hàng mới.</p>
+            <input autoFocus className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+              value={copyName} onChange={e => setCopyName(e.target.value)} />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+              <button onClick={handleDuplicate} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {adding && (
         <div className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
           <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
-            placeholder="Tên đầu mục gốc (vd: Toán, Ngữ Văn...)" value={newName} onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleAddRoot(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
-          <button onClick={handleAddRoot} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#0068FF" }}>Thêm</button>
+            placeholder="Tên đầu mục con (vd: Phần 1...)" value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleAddChild(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
+          <button onClick={handleAddChild} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#0068FF" }}>Thêm</button>
           <button onClick={() => { setAdding(false); setNewName(""); }} className="px-2 text-xs text-gray-400">Huỷ</button>
         </div>
+      )}
+
+      {root && root.children.length > 0 && (
+        <input
+          className="w-full max-w-sm px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 mb-3"
+          style={{ borderColor: "#e5e3df" }}
+          placeholder="Tìm theo tên mục..."
+          value={search} onChange={e => setSearch(e.target.value)} />
       )}
 
       <div className="rounded-xl border p-3" style={{ borderColor: "#e5e3df" }}>
         {loading ? (
           <p className="text-center text-gray-400 text-sm py-8">Đang tải...</p>
-        ) : tree.length === 0 ? (
-          <p className="text-center text-gray-400 text-sm py-8">Chưa có đầu mục nào</p>
+        ) : !root || root.children.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-8">Chưa có đầu mục con nào</p>
+        ) : displayedChildren.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-8">Không tìm thấy mục nào khớp</p>
         ) : (
-          tree.map(node => <CategoryRow key={node.id} node={node} depth={0} onRefetch={load} showToast={showToast} />)
+          displayedChildren.map(node => (
+            <CategoryRow key={node.id} node={node} depth={0} forceOpen={!!trimmedSearch} onRefetch={load} showToast={showToast} />
+          ))
         )}
       </div>
     </div>
   );
 }
 
-export default function CategoryTreeAdminPage() {
+export default function QuestionBankDetailPage() {
   return (
     <PermissionGuard required={PERMISSIONS.MANAGE_CURRICULUM}>
       <PageInner />

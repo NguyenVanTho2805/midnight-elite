@@ -199,6 +199,10 @@ export const api = {
       apiFetch<QuestionCategoryFull>(`/api/question-categories/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/question-categories/${id}`, { method: "DELETE" }),
+    duplicate: (id: string, name?: string) =>
+      apiFetch<{ id: string; name: string }>(`/api/question-categories/${id}/duplicate`, {
+        method: "POST", body: JSON.stringify({ name }),
+      }),
   },
   // ── Ngân hàng đề thi (lưu trữ file gốc, tách câu riêng theo yêu cầu) ─────
   examFiles: {
@@ -398,6 +402,9 @@ export interface QuestionBankOptionFull {
 // src/app/api/question-categories/route.ts.
 export interface QuestionCategoryFull {
   id: string; name: string; parentId: string | null; sortOrder: number;
+  // Số câu hỏi gắn TRỰC TIẾP vào đầu mục này (chưa gồm con cháu) — cộng dồn
+  // lên cây ở client để có tổng số câu kiểu "PHẦN 1 (1036 câu)".
+  count: number;
 }
 
 // Ngân hàng đề thi — chỉ lưu trữ file gốc, xem src/app/api/exam-files/route.ts.
