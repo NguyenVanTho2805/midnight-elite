@@ -227,11 +227,11 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
   );
 }
 
-// ─── DUYỆT THƯ MỤC KIỂU FILE MANAGER (1 cấp phẳng, giống Kho đề Azota) ────────
-// Root = danh sách thư mục (+ "Chưa phân loại" nếu có file lẻ) — bấm vào 1
-// thư mục mới thấy file bên trong (khác FolderBar dạng dải pill cũ, đây là
-// điều hướng "vào/ra" từng cấp qua breadcrumb).
-type View = { type: "root" } | { type: "folder"; id: string; name: string } | { type: "unfiled" };
+// ─── DUYỆT THƯ MỤC KIỂU FILE MANAGER (1 cấp phẳng, giống trang "Đề thi" của
+// Azota — thư mục VÀ file gộp chung 1 bảng, không tách view riêng). Root =
+// mọi thư mục + file chưa phân loại; bấm vào 1 thư mục để xem file bên
+// trong (không có thư mục con vì thư mục ở đây là 1 cấp phẳng).
+type View = { type: "root" } | { type: "folder"; id: string; name: string };
 
 function Breadcrumb({ view, onRoot }: { view: View; onRoot: () => void }) {
   return (
@@ -240,29 +240,42 @@ function Breadcrumb({ view, onRoot }: { view: View; onRoot: () => void }) {
         style={view.type === "root" ? { color: "#1a1a1a" } : undefined}>
         Tất cả
       </button>
-      {view.type !== "root" && (
+      {view.type === "folder" && (
         <>
           <span className="text-gray-400">›</span>
-          <span className="font-bold" style={{ color: "#1a1a1a" }}>{view.type === "folder" ? view.name : "Chưa phân loại"}</span>
+          <span className="font-bold" style={{ color: "#1a1a1a" }}>{view.name}</span>
         </>
       )}
     </div>
   );
 }
 
-function FolderListRoot({ folders, unfiledCount, onOpen, onOpenUnfiled, onRenamed, onDeleted, showToast }: {
+// Bảng gộp thư mục + file trong CÙNG 1 danh sách (giống trang "Đề thi" gốc
+// của Azota — họ cũng gộp icon thư mục lẫn file trong 1 bảng, không tách
+// view riêng). `folders` chỉ khác rỗng khi đang ở root (thư mục phẳng,
+// không có thư mục con để liệt kê khi đã ở trong 1 thư mục).
+function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, onDeleted, onExtract, onMove, onRequestDeleteFile, onDeleteFileNow, showToast, loading }: {
   folders: ExamFileFolderFull[];
-  unfiledCount: number;
-  onOpen: (f: ExamFileFolderFull) => void;
-  onOpenUnfiled: () => void;
+  files: ExamFileFull[];
+  allFolders: ExamFileFolderFull[];
+  onOpenFolder: (f: ExamFileFolderFull) => void;
   onRenamed: () => void;
   onDeleted: () => void;
+  onExtract: (f: ExamFileFull) => void;
+  onMove: (f: ExamFileFull, folderId: string) => void;
+  // Xoá từng file: mở modal xác nhận (nút Xoá ở từng dòng). Xoá hàng loạt:
+  // xoá thẳng luôn (đã có 1 lần confirm() gộp cho cả nhóm ở handleDeleteSelected).
+  onRequestDeleteFile: (f: ExamFileFull) => void;
+  onDeleteFileNow: (f: ExamFileFull) => Promise<void>;
   showToast: (msg: string, ok?: boolean) => void;
+  loading: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [sortAsc, setSortAsc] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function handleCreate() {
     if (!newName.trim()) return;
@@ -275,7 +288,7 @@ function FolderListRoot({ folders, unfiledCount, onOpen, onOpenUnfiled, onRename
     }
   }
 
-  async function handleRename(id: string) {
+  async function handleRenameFolder(id: string) {
     if (!renameValue.trim()) return;
     try {
       await api.examFileFolders.update(id, renameValue.trim());
@@ -286,7 +299,7 @@ function FolderListRoot({ folders, unfiledCount, onOpen, onOpenUnfiled, onRename
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDeleteFolder(id: string) {
     if (!confirm("Xoá thư mục này? (chỉ xoá được nếu không còn file bên trong)")) return;
     try {
       await api.examFileFolders.remove(id);
@@ -296,45 +309,93 @@ function FolderListRoot({ folders, unfiledCount, onOpen, onOpenUnfiled, onRename
     }
   }
 
+  async function handleDeleteSelected() {
+    if (selected.size === 0) return;
+    if (!confirm(`Xoá ${selected.size} file đã chọn?`)) return;
+    for (const f of files) {
+      if (selected.has(f.id)) await onDeleteFileNow(f);
+    }
+    setSelected(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const sortedFolders = [...folders].sort((a, b) => sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+  const sortedFiles = [...files].sort((a, b) => sortAsc ? a.fileName.localeCompare(b.fileName) : b.fileName.localeCompare(a.fileName));
+  const allFileIdsSelected = files.length > 0 && files.every(f => selected.has(f.id));
+
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
-      <div className="px-4 py-3 text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>Tên</div>
+      <div className="flex items-center gap-3 px-4 py-3 text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+        <input type="checkbox" checked={allFileIdsSelected} disabled={files.length === 0}
+          onChange={e => setSelected(e.target.checked ? new Set(files.map(f => f.id)) : new Set())} />
+        <button onClick={() => setSortAsc(v => !v)} className="flex items-center gap-1 hover:text-gray-700">
+          Tên <span>{sortAsc ? "▲" : "▼"}</span>
+        </button>
+        <span className="flex-1" />
+        {selected.size > 0 && (
+          <button onClick={handleDeleteSelected} className="text-xs font-semibold text-red-500 normal-case">Xoá {selected.size} đã chọn</button>
+        )}
+        <span className="w-28 text-right">Người tải lên</span>
+        <span className="w-24 text-right">Ngày tải</span>
+        <span className="w-56 text-right">Hành động</span>
+      </div>
 
-      {folders.map(f => (
-        <div key={f.id} className="flex items-center justify-between px-4 py-3 border-t group" style={{ borderColor: "#e5e3df" }}>
+      {sortedFolders.map(f => (
+        <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-t group" style={{ borderColor: "#e5e3df" }}>
+          <span className="w-4 flex-shrink-0" />
           {renaming === f.id ? (
             <div className="flex items-center gap-2 flex-1">
               <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
                 value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleRename(f.id); if (e.key === "Escape") setRenaming(null); }} />
-              <button onClick={() => handleRename(f.id)} className="text-xs font-semibold text-blue-600 flex-shrink-0">Lưu</button>
+                onKeyDown={e => { if (e.key === "Enter") handleRenameFolder(f.id); if (e.key === "Escape") setRenaming(null); }} />
+              <button onClick={() => handleRenameFolder(f.id)} className="text-xs font-semibold text-blue-600 flex-shrink-0">Lưu</button>
               <button onClick={() => setRenaming(null)} className="text-xs text-gray-400 flex-shrink-0">Huỷ</button>
             </div>
           ) : (
             <>
-              <button onClick={() => onOpen(f)} className="flex items-center gap-2.5 flex-1 text-left py-1">
-                <span className="text-lg">📁</span>
-                <span className="text-sm font-medium" style={{ color: "#1a1a1a" }}>{f.name}</span>
+              <button onClick={() => onOpenFolder(f)} className="flex items-center gap-2.5 flex-1 text-left py-0.5 min-w-0">
+                <span className="text-lg flex-shrink-0">📁</span>
+                <span className="text-sm font-medium truncate" style={{ color: "#1a1a1a" }}>{f.name}</span>
               </button>
-              <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ width: "17.5rem" }}>
                 <button onClick={() => { setRenaming(f.id); setRenameValue(f.name); }} className="text-xs font-semibold text-blue-600">Đổi tên</button>
-                <button onClick={() => handleDelete(f.id)} className="text-xs font-semibold text-red-500">Xoá</button>
+                <button onClick={() => handleDeleteFolder(f.id)} className="text-xs font-semibold text-red-500">Xoá</button>
               </div>
             </>
           )}
         </div>
       ))}
 
-      {unfiledCount > 0 && (
-        <button onClick={onOpenUnfiled} className="w-full flex items-center gap-2.5 px-4 py-3 border-t text-left hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>
-          <span className="text-lg">📄</span>
-          <span className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Chưa phân loại</span>
-          <span className="text-xs text-gray-400">({unfiledCount} file)</span>
-        </button>
-      )}
+      {sortedFiles.map(item => (
+        <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-t" style={{ borderColor: "#e5e3df" }}>
+          <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} className="flex-shrink-0" />
+          <span className="text-lg flex-shrink-0">📄</span>
+          <span className="text-sm flex-1 truncate" title={item.fileName}>{item.fileName}</span>
+          <span className="w-28 text-right text-xs text-gray-500 truncate">{item.owner?.name ?? "—"}</span>
+          <span className="w-24 text-right text-xs text-gray-400">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
+          <div className="flex items-center justify-end gap-2 flex-wrap" style={{ width: "17.5rem" }}>
+            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>Xem</a>
+            <button onClick={() => onExtract(item)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Tách câu</button>
+            <select className="px-1 py-1 text-xs border rounded outline-none bg-white max-w-[6rem]" style={{ borderColor: "#e5e3df" }}
+              value={item.folderId ?? ""} onChange={e => onMove(item, e.target.value)}>
+              <option value="">Chưa phân loại</option>
+              {allFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+            <button onClick={() => onRequestDeleteFile(item)} className="text-xs font-semibold text-red-500">Xoá</button>
+          </div>
+        </div>
+      ))}
 
-      {folders.length === 0 && unfiledCount === 0 && (
-        <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có thư mục hay file nào</p>
+      {loading && <p className="px-4 py-8 text-center text-sm text-gray-400">Đang tải...</p>}
+      {!loading && sortedFolders.length === 0 && sortedFiles.length === 0 && (
+        <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có thư mục hay file nào ở đây</p>
       )}
 
       <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e3df" }}>
@@ -383,12 +444,10 @@ function PageInner() {
 
   useEffect(() => { load(); loadFolders(); }, [load, loadFolders]);
 
-  const unfiledCount = items.filter(i => !i.folderId).length;
-  const filteredItems = items.filter(item => {
-    if (view.type === "root") return false;
-    if (view.type === "unfiled") return !item.folderId;
-    return item.folderId === view.id;
-  });
+  const foldersToShow = view.type === "root" ? folders : []; // thư mục phẳng — không có thư mục con
+  const filesToShow = items.filter(item =>
+    view.type === "root" ? !item.folderId : item.folderId === view.id
+  );
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -416,16 +475,20 @@ function PageInner() {
     }
   }
 
-  async function handleDelete() {
-    if (!delTarget) return;
+  async function handleDeleteFileNow(file: ExamFileFull) {
     try {
-      await api.examFiles.remove(delTarget.id);
-      showToast("Đã xoá file");
-      setDelTarget(null);
-      await load();
+      await api.examFiles.remove(file.id);
+      setItems(prev => prev.filter(x => x.id !== file.id));
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Xoá thất bại", false);
     }
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!delTarget) return;
+    await handleDeleteFileNow(delTarget);
+    showToast("Đã xoá file");
+    setDelTarget(null);
   }
 
   return (
@@ -449,59 +512,20 @@ function PageInner() {
 
       <Breadcrumb view={view} onRoot={() => setView({ type: "root" })} />
 
-      {view.type === "root" ? (
-        <FolderListRoot
-          folders={folders}
-          unfiledCount={unfiledCount}
-          onOpen={f => setView({ type: "folder", id: f.id, name: f.name })}
-          onOpenUnfiled={() => setView({ type: "unfiled" })}
-          onRenamed={loadFolders}
-          onDeleted={loadFolders}
-          showToast={showToast}
-        />
-      ) : (
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
-              <th className="px-4 py-3">Tên file</th>
-              <th className="px-4 py-3">Người tải lên</th>
-              <th className="px-4 py-3">Ngày tải lên</th>
-              <th className="px-4 py-3">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Đang tải...</td></tr>
-            ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Chưa có file đề thi nào trong đây</td></tr>
-            ) : filteredItems.map(item => (
-              <tr key={item.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
-                <td className="px-4 py-3 max-w-sm truncate" title={item.fileName}>{item.fileName}</td>
-                <td className="px-4 py-3 text-gray-600">{item.owner?.name ?? "—"}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
-                      Xem/Tải về
-                    </a>
-                    <button onClick={() => setExtractTarget(item)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>
-                      Tách câu hỏi
-                    </button>
-                    <select className="px-1.5 py-1 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: "#e5e3df" }}
-                      value={item.folderId ?? ""} onChange={e => handleMove(item, e.target.value)}>
-                      <option value="">Chưa phân loại</option>
-                      {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                    </select>
-                    <button onClick={() => setDelTarget(item)} className="text-xs font-semibold text-red-500">Xoá</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      )}
+      <FileFolderTable
+        folders={foldersToShow}
+        files={filesToShow}
+        allFolders={folders}
+        onOpenFolder={f => setView({ type: "folder", id: f.id, name: f.name })}
+        onRenamed={loadFolders}
+        onDeleted={loadFolders}
+        onExtract={setExtractTarget}
+        onMove={handleMove}
+        onRequestDeleteFile={setDelTarget}
+        onDeleteFileNow={handleDeleteFileNow}
+        showToast={showToast}
+        loading={loading}
+      />
 
       <ExtractReviewModal
         examFile={extractTarget}
@@ -517,7 +541,7 @@ function PageInner() {
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá file lưu trữ — không ảnh hưởng câu hỏi đã tách và lưu vào ngân hàng trước đó.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDelTarget(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
-              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
             </div>
           </div>
         </div>
