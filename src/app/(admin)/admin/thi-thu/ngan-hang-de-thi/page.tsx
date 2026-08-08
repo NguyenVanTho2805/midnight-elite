@@ -49,18 +49,49 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
   const [saving, setSaving] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [targetBankId, setTargetBankId] = useState("");
+  const [targetBankName, setTargetBankName] = useState("");
   const [placing, setPlacing] = useState(false);
   const placedForRef = useRef<string | null>(null); // bankId đã tự xếp rồi — tránh chạy lại/tạo trùng
   const refetchCategories = () => api.questionCategories.list().then(setCategories).catch(() => {});
 
+  // Tìm đầu mục con tên khớp `name` (không phân biệt hoa/thường, đã trim)
+  // trong `parentId` (null = tầng gốc/ngân hàng) — không thấy thì tạo mới.
+  // Trả về id + danh sách category đã cập nhật (để lượt gọi sau trong cùng
+  // phiên tự khớp thấy đầu mục vừa tạo, không tạo trùng).
+  async function findOrCreateCategory(
+    parentId: string | null, name: string, cats: QuestionCategoryFull[]
+  ): Promise<{ id: string; name: string; cats: QuestionCategoryFull[] }> {
+    const normalized = name.trim().toLowerCase();
+    const existing = cats.find(c => c.parentId === parentId && c.name.trim().toLowerCase() === normalized);
+    if (existing) return { id: existing.id, name: existing.name, cats };
+    const created = await api.questionCategories.create({ name: name.trim(), parentId });
+    return { id: created.id, name: created.name, cats: [...cats, { ...created, count: 0, difficultyCounts: { NB: 0, TH: 0, VD: 0, VDC: 0 } }] };
+  }
+
+  // Bỏ tên phần mở rộng (".pdf"/".docx"/...) khỏi tên file để làm tên ngân
+  // hàng đích — không xử lý gì thêm (không viết hoa/chuẩn hoá), giữ nguyên ý
+  // định đặt tên của giáo viên khi lưu file.
+  function bankNameFromFilename(fileName: string): string {
+    const dot = fileName.lastIndexOf(".");
+    return (dot > 0 ? fileName.slice(0, dot) : fileName).trim();
+  }
+
   useEffect(() => {
-    if (!examFile) { setQuestions([]); setMeta([]); setErrors([]); setTargetBankId(""); placedForRef.current = null; return; }
-    refetchCategories();
+    if (!examFile) {
+      setQuestions([]); setMeta([]); setErrors([]);
+      setTargetBankId(""); setTargetBankName(""); placedForRef.current = null;
+      return;
+    }
     setLoading(true);
-    setTargetBankId("");
+    setTargetBankId(""); setTargetBankName("");
     placedForRef.current = null;
-    api.examFiles.extract(examFile.id)
-      .then(({ questions: qs, errors: errs }) => {
+
+    (async () => {
+      try {
+        const [cats, { questions: qs, errors: errs }] = await Promise.all([
+          api.questionCategories.list(),
+          api.examFiles.extract(examFile.id),
+        ]);
         setQuestions(qs);
         setErrors(errs);
         setMeta(qs.map(q => ({
@@ -70,28 +101,28 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
           aiSuggested: !!q.difficulty,
           dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new", checking: false,
         })));
-      })
-      .catch(e => showToast(e instanceof Error ? e.message : "Tách câu hỏi thất bại", false))
-      .finally(() => setLoading(false));
+
+        // Ngân hàng đích lấy thẳng theo tên file — khớp ngân hàng đã có
+        // trùng tên, chưa có thì tự tạo mới, không cần chọn tay.
+        if (qs.length > 0) {
+          const bank = await findOrCreateCategory(null, bankNameFromFilename(examFile.fileName), cats);
+          setCategories(bank.cats);
+          setTargetBankName(bank.name);
+          setTargetBankId(bank.id);
+        } else {
+          setCategories(cats);
+        }
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "Tách câu hỏi thất bại", false);
+      } finally {
+        setLoading(false);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examFile]);
 
   function updateMeta(idx: number, patch: Partial<ExtractMeta>) {
     setMeta(prev => prev.map((m, i) => i === idx ? { ...m, ...patch } : m));
-  }
-
-  // Tìm đầu mục con tên khớp `name` (không phân biệt hoa/thường, đã trim)
-  // trong `parentId` — không thấy thì tạo mới. Trả về id + danh sách category
-  // đã cập nhật (để câu tiếp theo trong cùng lượt tự khớp thấy đầu mục vừa
-  // tạo, không tạo trùng).
-  async function findOrCreateCategory(
-    parentId: string, name: string, cats: QuestionCategoryFull[]
-  ): Promise<{ id: string; cats: QuestionCategoryFull[] }> {
-    const normalized = name.trim().toLowerCase();
-    const existing = cats.find(c => c.parentId === parentId && c.name.trim().toLowerCase() === normalized);
-    if (existing) return { id: existing.id, cats };
-    const created = await api.questionCategories.create({ name: name.trim(), parentId });
-    return { id: created.id, cats: [...cats, { ...created, count: 0, difficultyCounts: { NB: 0, TH: 0, VD: 0, VDC: 0 } }] };
   }
 
   // AI gợi ý Chương/Bài cho từng câu (bố cục file không có tiêu đề rõ ràng,
@@ -200,14 +231,12 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
         </div>
 
-        {!loading && questions.length > 0 && (
+        {!loading && questions.length > 0 && targetBankName && (
           <div className="px-5 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
-            <p className="text-xs font-semibold text-gray-600 mb-1">Ngân hàng đích</p>
-            <select className="w-full max-w-xs px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-              value={targetBankId} onChange={e => setTargetBankId(e.target.value)}>
-              <option value="">-- Chọn ngân hàng để AI tự xếp Chương/Bài --</option>
-              {categories.filter(c => !c.parentId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <p className="text-xs text-gray-500">
+              Ngân hàng đích: <span className="font-semibold" style={{ color: "#1a1a1a" }}>{targetBankName}</span>
+              <span className="text-gray-400"> (theo tên file — có thể đổi tên ngân hàng sau ở trang Ngân hàng câu hỏi)</span>
+            </p>
             {placing && <p className="text-xs mt-1.5" style={{ color: "#0068FF" }}>AI đang xếp câu hỏi vào Chương/Bài...</p>}
           </div>
         )}
