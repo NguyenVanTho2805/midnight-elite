@@ -377,6 +377,10 @@ export interface ExamQuestionInput {
   // Mức độ AI gợi ý khi tách câu từ Ngân hàng đề thi (xem ParsedQuestion.difficulty
   // trong examQuestionParser.ts) — không dùng ở luồng tạo/sửa đề thi thông thường.
   difficulty?: Difficulty | null;
+  // Gợi ý Chương/Bài AI suy luận được — cùng phạm vi sử dụng với difficulty ở
+  // trên, xem ParsedQuestion.suggestedChapter/suggestedLesson.
+  suggestedChapter?: string;
+  suggestedLesson?: string;
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 

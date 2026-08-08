@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFileFull, type ExamFileFolderFull, type ExamQuestionInput, type QuestionBankItemFull, type QuestionCategoryFull, type Difficulty } from "@/lib/api";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
+import { MathText } from "@/components/MathText";
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "NB",  label: "Nhận biết" },
@@ -47,12 +48,17 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
   const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
   const [saving, setSaving] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState("");
+  const [targetBankId, setTargetBankId] = useState("");
+  const [placing, setPlacing] = useState(false);
+  const placedForRef = useRef<string | null>(null); // bankId đã tự xếp rồi — tránh chạy lại/tạo trùng
   const refetchCategories = () => api.questionCategories.list().then(setCategories).catch(() => {});
 
   useEffect(() => {
-    if (!examFile) { setQuestions([]); setMeta([]); setErrors([]); return; }
+    if (!examFile) { setQuestions([]); setMeta([]); setErrors([]); setTargetBankId(""); placedForRef.current = null; return; }
     refetchCategories();
     setLoading(true);
+    setTargetBankId("");
+    placedForRef.current = null;
     api.examFiles.extract(examFile.id)
       .then(({ questions: qs, errors: errs }) => {
         setQuestions(qs);
@@ -73,6 +79,58 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
   function updateMeta(idx: number, patch: Partial<ExtractMeta>) {
     setMeta(prev => prev.map((m, i) => i === idx ? { ...m, ...patch } : m));
   }
+
+  // Tìm đầu mục con tên khớp `name` (không phân biệt hoa/thường, đã trim)
+  // trong `parentId` — không thấy thì tạo mới. Trả về id + danh sách category
+  // đã cập nhật (để câu tiếp theo trong cùng lượt tự khớp thấy đầu mục vừa
+  // tạo, không tạo trùng).
+  async function findOrCreateCategory(
+    parentId: string, name: string, cats: QuestionCategoryFull[]
+  ): Promise<{ id: string; cats: QuestionCategoryFull[] }> {
+    const normalized = name.trim().toLowerCase();
+    const existing = cats.find(c => c.parentId === parentId && c.name.trim().toLowerCase() === normalized);
+    if (existing) return { id: existing.id, cats };
+    const created = await api.questionCategories.create({ name: name.trim(), parentId });
+    return { id: created.id, cats: [...cats, { ...created, count: 0, difficultyCounts: { NB: 0, TH: 0, VD: 0, VDC: 0 } }] };
+  }
+
+  // AI gợi ý Chương/Bài cho từng câu (bố cục file không có tiêu đề rõ ràng,
+  // nên đây là suy luận — xem SYSTEM_INSTRUCTION trong aiExamImport.ts) — tự
+  // khớp vào đầu mục có sẵn theo tên trong ngân hàng đích, chưa có thì tự
+  // tạo. Chạy tuần tự (không Promise.all) vì câu sau cần thấy đầu mục câu
+  // trước vừa tạo để không tạo trùng. Vẫn qua bước duyệt (checkDup + màn hình
+  // review) trước khi lưu thật — không lưu thẳng.
+  useEffect(() => {
+    if (!targetBankId || questions.length === 0 || placedForRef.current === targetBankId) return;
+    placedForRef.current = targetBankId;
+
+    (async () => {
+      setPlacing(true);
+      let cats = categories;
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!q.suggestedChapter) continue;
+        try {
+          const chapter = await findOrCreateCategory(targetBankId, q.suggestedChapter, cats);
+          cats = chapter.cats;
+          let finalId = chapter.id;
+          if (q.suggestedLesson) {
+            const lesson = await findOrCreateCategory(chapter.id, q.suggestedLesson, cats);
+            cats = lesson.cats;
+            finalId = lesson.id;
+          }
+          updateMeta(i, { categoryId: finalId });
+          checkDup(i, finalId);
+        } catch {
+          // 1 câu lỗi khi tự xếp không chặn các câu còn lại — giáo viên tự
+          // chọn tay đầu mục cho câu đó ở màn hình duyệt.
+        }
+      }
+      setCategories(cats);
+      setPlacing(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetBankId, questions]);
 
   async function checkDup(idx: number, categoryId: string) {
     const q = questions[idx];
@@ -143,6 +201,18 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
         </div>
 
         {!loading && questions.length > 0 && (
+          <div className="px-5 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
+            <p className="text-xs font-semibold text-gray-600 mb-1">Ngân hàng đích</p>
+            <select className="w-full max-w-xs px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+              value={targetBankId} onChange={e => setTargetBankId(e.target.value)}>
+              <option value="">-- Chọn ngân hàng để AI tự xếp Chương/Bài --</option>
+              {categories.filter(c => !c.parentId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {placing && <p className="text-xs mt-1.5" style={{ color: "#0068FF" }}>AI đang xếp câu hỏi vào Chương/Bài...</p>}
+          </div>
+        )}
+
+        {!loading && questions.length > 0 && (
           <div className="px-5 py-3 border-b" style={{ borderColor: "#e5e3df", background: "#eff6ff" }}>
             <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Đầu mục cho tất cả câu đang chọn</p>
             <div className="flex items-center gap-2">
@@ -171,13 +241,24 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
               <div key={idx} className="rounded-lg p-3 border" style={{ borderColor: "#e5e3df", background: m.include ? "#fff" : "#f6f5f4" }}>
                 <div className="flex items-start gap-2 mb-2">
                   <input type="checkbox" checked={m.include} onChange={e => updateMeta(idx, { include: e.target.checked })} className="mt-1" />
-                  <p className="flex-1 text-sm" style={{ color: "#1a1a1a" }}>{q.text}</p>
+                  <div className="flex-1">
+                    <p className="text-sm" style={{ color: "#1a1a1a" }}><MathText text={q.text} /></p>
+                    {q.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={q.imageUrl} alt="Hình/biểu đồ AI đã cắt từ đề gốc" className="mt-2 max-w-xs rounded-lg border" style={{ borderColor: "#e5e3df" }} />
+                    )}
+                  </div>
                 </div>
                 {m.include && (
                   <div className="ml-6 space-y-2" style={{ width: "calc(100% - 1.5rem)" }}>
                     <CategoryPicker className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
                       value={m.categoryId} categories={categories} onCategoriesChange={refetchCategories}
                       onChange={v => { updateMeta(idx, { categoryId: v }); checkDup(idx, v); }} />
+                    {q.suggestedChapter && (
+                      <p className="text-xs text-gray-400">
+                        AI gợi ý: {q.suggestedChapter}{q.suggestedLesson ? ` › ${q.suggestedLesson}` : ""}
+                      </p>
+                    )}
                     <div className="flex items-center gap-1 flex-wrap">
                       {DIFFICULTIES.map(d => (
                         <button key={d.value} type="button" onClick={() => updateMeta(idx, { difficulty: d.value })}
@@ -217,7 +298,7 @@ function ExtractReviewModal({ examFile, onClose, onSaved, showToast }: {
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "#e5e3df" }}>
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
-          <button onClick={handleSaveAll} disabled={saving || loading || questions.length === 0}
+          <button onClick={handleSaveAll} disabled={saving || loading || placing || questions.length === 0}
             className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
             {saving ? "Đang lưu..." : "Lưu vào ngân hàng"}
           </button>

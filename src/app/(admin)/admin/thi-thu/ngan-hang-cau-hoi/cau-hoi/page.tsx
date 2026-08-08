@@ -10,6 +10,7 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty, type BankItemStatus, type QuestionCategoryFull } from "@/lib/api";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { AddToExamModal } from "@/components/AddToExamModal";
+import { MathText } from "@/components/MathText";
 
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -576,7 +577,7 @@ function PageInner() {
                       onChange={() => toggleSelectItem(item)} />
                   </td>
                 )}
-                <td className="px-4 py-3 max-w-sm truncate" title={item.text}>{item.text}</td>
+                <td className="px-4 py-3 max-w-sm truncate" title={item.text}><MathText text={item.text} /></td>
                 <td className="px-4 py-3 text-gray-600">{categoryPath(item.categoryId, categories)}</td>
                 <td className="px-4 py-3">
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={DIFFICULTY_COLOR[item.difficulty]}>
