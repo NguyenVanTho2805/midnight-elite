@@ -3,25 +3,39 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
+const EMPTY_DIFFICULTY_COUNTS = { NB: 0, TH: 0, VD: 0, VDC: 0 };
+
 // GET /api/question-categories — toàn bộ cây đầu mục (danh sách PHẲNG, client
 // tự dựng cây/breadcrumb qua parentId) — dùng chung giữa mọi giáo viên, không
 // có khái niệm chủ sở hữu (khác QuestionBankItem/Course/Exam). Kèm `count`
-// (số câu hỏi gắn TRỰC TIẾP vào đầu mục đó, chưa gồm con cháu) — client tự
-// cộng dồn lên cây để hiện tổng số câu như "PHẦN 1 (1036 câu)" kiểu Azota,
-// không cần route riêng vì cây thường chỉ vài chục-vài trăm node.
+// (số câu hỏi gắn TRỰC TIẾP vào đầu mục đó, chưa gồm con cháu) và
+// `difficultyCounts` (cùng ý nghĩa, tách theo NB/TH/VD/VDC) — client tự cộng
+// dồn lên cây để hiện tổng số câu + phân bổ mức độ như "PHẦN 1 (1036 câu)"
+// kiểu Azota, không cần route riêng vì cây thường chỉ vài chục-vài trăm node.
 export async function GET() {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
 
   try {
-    const [items, counts] = await Promise.all([
+    const [items, counts, difficultyCounts] = await Promise.all([
       prisma.questionCategory.findMany({
         orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
       }),
       prisma.questionBankItem.groupBy({ by: ["categoryId"], _count: true }),
+      prisma.questionBankItem.groupBy({ by: ["categoryId", "difficulty"], _count: true }),
     ]);
     const countByCategory = new Map(counts.map(c => [c.categoryId, c._count]));
-    const shaped = items.map(item => ({ ...item, count: countByCategory.get(item.id) ?? 0 }));
+    const difficultyByCategory = new Map<string, typeof EMPTY_DIFFICULTY_COUNTS>();
+    for (const row of difficultyCounts) {
+      const entry = difficultyByCategory.get(row.categoryId) ?? { ...EMPTY_DIFFICULTY_COUNTS };
+      if (row.difficulty in entry) entry[row.difficulty as keyof typeof EMPTY_DIFFICULTY_COUNTS] = row._count;
+      difficultyByCategory.set(row.categoryId, entry);
+    }
+    const shaped = items.map(item => ({
+      ...item,
+      count: countByCategory.get(item.id) ?? 0,
+      difficultyCounts: difficultyByCategory.get(item.id) ?? EMPTY_DIFFICULTY_COUNTS,
+    }));
     return NextResponse.json(shaped);
   } catch (e) {
     console.error("[GET /api/question-categories]", e);

@@ -405,6 +405,9 @@ export interface QuestionCategoryFull {
   // Số câu hỏi gắn TRỰC TIẾP vào đầu mục này (chưa gồm con cháu) — cộng dồn
   // lên cây ở client để có tổng số câu kiểu "PHẦN 1 (1036 câu)".
   count: number;
+  // Cùng ý nghĩa với count nhưng tách theo mức độ — cộng dồn lên cây để hiện
+  // phân bổ NB/TH/VD/VDC mỗi Chương/Bài.
+  difficultyCounts: Record<Difficulty, number>;
 }
 
 // Ngân hàng đề thi — chỉ lưu trữ file gốc, xem src/app/api/exam-files/route.ts.
