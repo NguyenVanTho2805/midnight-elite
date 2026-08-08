@@ -6,6 +6,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionCategoryFull } from "@/lib/api";
+import { UploadAndExtractButton } from "@/components/UploadAndExtractButton";
 
 interface BankCard {
   id: string;
@@ -197,9 +198,12 @@ function PageInner() {
           <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng câu hỏi</h1>
           <p className="text-sm text-gray-500 mt-0.5">Mỗi ngân hàng là 1 đầu mục gốc, bên trong tổ chức theo cây không giới hạn cấp</p>
         </div>
-        <button onClick={() => setCreating(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
-          + Tạo ngân hàng mới
-        </button>
+        <div className="flex items-center gap-2">
+          <UploadAndExtractButton onSaved={load} showToast={showToast} />
+          <button onClick={() => setCreating(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+            + Tạo ngân hàng mới
+          </button>
+        </div>
       </div>
 
       <input

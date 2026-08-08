@@ -7,6 +7,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionCategoryFull, type Difficulty } from "@/lib/api";
+import { UploadAndExtractButton } from "@/components/UploadAndExtractButton";
 
 const DIFFICULTY_KEYS: Difficulty[] = ["NB", "TH", "VD", "VDC"];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
@@ -303,6 +304,7 @@ function PageInner() {
         <div className="flex items-center gap-2">
           {root && (
             <>
+              <UploadAndExtractButton fixedBankId={root.id} onSaved={load} showToast={showToast} label="+ Tải file lên & tách câu hỏi" />
               <button onClick={() => { setCopyName(`${root.name} (bản sao)`); setCopying(true); }}
                 className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
                 Copy ngân hàng
