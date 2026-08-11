@@ -189,6 +189,8 @@ export const api = {
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/submit`, { method: "PATCH" }),
     review: (id: string, data: { decision: "approve" | "reject"; reason?: string }) =>
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/review`, { method: "POST", body: JSON.stringify(data) }),
+    copy: (ids: string[], targetCategoryId: string) =>
+      apiFetch<{ copied: number }>("/api/question-bank/copy", { method: "POST", body: JSON.stringify({ ids, targetCategoryId }) }),
   },
   // ── Cây đầu mục ngân hàng câu hỏi (không giới hạn số tầng) ───────────────
   questionCategories: {
@@ -203,6 +205,8 @@ export const api = {
       apiFetch<{ id: string; name: string }>(`/api/question-categories/${id}/duplicate`, {
         method: "POST", body: JSON.stringify({ name }),
       }),
+    duplicates: (id: string) =>
+      apiFetch<{ groups: DuplicateGroup[] }>(`/api/question-categories/${id}/duplicates`),
   },
   // ── Ngân hàng đề thi (lưu trữ file gốc, tách câu riêng theo yêu cầu) ─────
   examFiles: {
@@ -412,6 +416,22 @@ export interface QuestionCategoryFull {
   // Cùng ý nghĩa với count nhưng tách theo mức độ — cộng dồn lên cây để hiện
   // phân bổ NB/TH/VD/VDC mỗi Chương/Bài.
   difficultyCounts: Record<Difficulty, number>;
+  // Cùng ý nghĩa với count nhưng tách theo dạng câu hỏi — cộng dồn lên cây để
+  // hiện phân bổ MC/Tự luận/Đúng-Sai/Trả lời ngắn mỗi Chương/Bài.
+  typeCounts: Record<QuestionType, number>;
+}
+
+// Kết quả quét trùng lặp hàng loạt 1 ngân hàng, xem
+// src/app/api/question-categories/[id]/duplicates/route.ts — "exact" có thể
+// nhiều hơn 2 câu (cùng nhóm hash), "fuzzy"/"semantic" luôn đúng 2 câu (so
+// theo cặp, không gom cụm).
+export interface DuplicateItem {
+  id: string; text: string; categoryPath: string; status: BankItemStatus;
+}
+export interface DuplicateGroup {
+  tier: "exact" | "fuzzy" | "semantic";
+  similarity: number;
+  items: DuplicateItem[];
 }
 
 // Ngân hàng đề thi — chỉ lưu trữ file gốc, xem src/app/api/exam-files/route.ts.

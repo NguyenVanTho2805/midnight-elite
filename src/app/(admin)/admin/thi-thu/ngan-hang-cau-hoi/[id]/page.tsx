@@ -6,8 +6,9 @@ import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type QuestionCategoryFull, type Difficulty } from "@/lib/api";
+import { api, type QuestionCategoryFull, type Difficulty, type QuestionType } from "@/lib/api";
 import { UploadAndExtractButton } from "@/components/UploadAndExtractButton";
+import { DuplicateScanModal } from "@/components/DuplicateScanModal";
 
 const DIFFICULTY_KEYS: Difficulty[] = ["NB", "TH", "VD", "VDC"];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
@@ -15,6 +16,11 @@ const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   TH:  { bg: "#dcfce7", color: "#16a34a" },
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
+};
+
+const TYPE_KEYS: QuestionType[] = ["MC", "ESSAY", "TRUE_FALSE_CLUSTER", "SHORT_ANSWER"];
+const TYPE_LABEL: Record<QuestionType, string> = {
+  MC: "Trắc nghiệm", ESSAY: "Tự luận", TRUE_FALSE_CLUSTER: "Đúng-Sai", SHORT_ANSWER: "Trả lời ngắn",
 };
 
 // Cây không giới hạn tầng vẫn giữ nguyên (không thêm field "loại tầng") —
@@ -31,10 +37,14 @@ interface TreeNode extends QuestionCategoryFull {
   children: TreeNode[];
   total: number; // count của node + cộng dồn toàn bộ con cháu
   difficultyTotals: Record<Difficulty, number>; // difficultyCounts của node + cộng dồn con cháu
+  typeTotals: Record<QuestionType, number>; // typeCounts của node + cộng dồn con cháu
 }
 
 function buildTree(items: QuestionCategoryFull[], rootId: string): TreeNode | null {
-  const byId = new Map<string, TreeNode>(items.map(c => [c.id, { ...c, children: [], total: c.count, difficultyTotals: { ...c.difficultyCounts } }]));
+  const byId = new Map<string, TreeNode>(items.map(c => [c.id, {
+    ...c, children: [], total: c.count,
+    difficultyTotals: { ...c.difficultyCounts }, typeTotals: { ...c.typeCounts },
+  }]));
   for (const node of byId.values()) {
     if (node.parentId && byId.has(node.parentId)) {
       byId.get(node.parentId)!.children.push(node);
@@ -46,13 +56,16 @@ function buildTree(items: QuestionCategoryFull[], rootId: string): TreeNode | nu
   };
   function computeTotal(node: TreeNode): number {
     const diff = { ...node.difficultyCounts };
+    const types = { ...node.typeCounts };
     let total = node.count;
     for (const child of node.children) {
       total += computeTotal(child);
       for (const k of DIFFICULTY_KEYS) diff[k] += child.difficultyTotals[k];
+      for (const k of TYPE_KEYS) types[k] += child.typeTotals[k];
     }
     node.total = total;
     node.difficultyTotals = diff;
+    node.typeTotals = types;
     return total;
   }
   const root = byId.get(rootId) ?? null;
@@ -229,6 +242,7 @@ function PageInner() {
   const [copying, setCopying] = useState(false);
   const [copyName, setCopyName] = useState("");
   const [view, setView] = useState<"tree" | "stats">("tree");
+  const [scanOpen, setScanOpen] = useState(false);
   const { toast, showToast } = useAdminToast();
 
   const load = useCallback(async () => {
@@ -308,6 +322,10 @@ function PageInner() {
               <button onClick={() => { setCopyName(`${root.name} (bản sao)`); setCopying(true); }}
                 className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
                 Copy ngân hàng
+              </button>
+              <button onClick={() => setScanOpen(true)}
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+                Quét trùng lặp
               </button>
               <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}&select=1`}
                 className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
@@ -395,39 +413,76 @@ function PageInner() {
         </>
       ) : (
         root && root.children.length > 0 && (
-          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
-                  <th className="px-4 py-3">Chương</th>
-                  {DIFFICULTY_KEYS.map(k => <th key={k} className="px-4 py-3 text-right">{k}</th>)}
-                  <th className="px-4 py-3 text-right">Tổng</th>
-                </tr>
-              </thead>
-              <tbody>
-                {root.children.map(chapter => (
-                  <tr key={chapter.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
-                    <td className="px-4 py-3">{chapter.name}</td>
-                    {DIFFICULTY_KEYS.map(k => (
-                      <td key={k} className="px-4 py-3 text-right" style={chapter.difficultyTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
-                        {chapter.difficultyTotals[k]}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 text-right font-semibold">{chapter.total}</td>
+          <>
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+                    <th className="px-4 py-3">Chương</th>
+                    {DIFFICULTY_KEYS.map(k => <th key={k} className="px-4 py-3 text-right">{k}</th>)}
+                    <th className="px-4 py-3 text-right">Tổng</th>
                   </tr>
-                ))}
-                <tr className="border-t font-semibold" style={{ borderColor: "#e5e3df", background: "#f6f5f4" }}>
-                  <td className="px-4 py-3">Tổng cộng</td>
-                  {DIFFICULTY_KEYS.map(k => (
-                    <td key={k} className="px-4 py-3 text-right">{root.difficultyTotals[k]}</td>
+                </thead>
+                <tbody>
+                  {root.children.map(chapter => (
+                    <tr key={chapter.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
+                      <td className="px-4 py-3">{chapter.name}</td>
+                      {DIFFICULTY_KEYS.map(k => (
+                        <td key={k} className="px-4 py-3 text-right" style={chapter.difficultyTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
+                          {chapter.difficultyTotals[k]}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right font-semibold">{chapter.total}</td>
+                    </tr>
                   ))}
-                  <td className="px-4 py-3 text-right">{root.total}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  <tr className="border-t font-semibold" style={{ borderColor: "#e5e3df", background: "#f6f5f4" }}>
+                    <td className="px-4 py-3">Tổng cộng</td>
+                    {DIFFICULTY_KEYS.map(k => (
+                      <td key={k} className="px-4 py-3 text-right">{root.difficultyTotals[k]}</td>
+                    ))}
+                    <td className="px-4 py-3 text-right">{root.total}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-sm font-semibold mt-6 mb-2" style={{ color: "#1a1a1a" }}>Dạng câu hỏi theo Chương</p>
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+                    <th className="px-4 py-3">Chương</th>
+                    {TYPE_KEYS.map(k => <th key={k} className="px-4 py-3 text-right">{TYPE_LABEL[k]}</th>)}
+                    <th className="px-4 py-3 text-right">Tổng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {root.children.map(chapter => (
+                    <tr key={chapter.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
+                      <td className="px-4 py-3">{chapter.name}</td>
+                      {TYPE_KEYS.map(k => (
+                        <td key={k} className="px-4 py-3 text-right" style={chapter.typeTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
+                          {chapter.typeTotals[k]}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right font-semibold">{chapter.total}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t font-semibold" style={{ borderColor: "#e5e3df", background: "#f6f5f4" }}>
+                    <td className="px-4 py-3">Tổng cộng</td>
+                    {TYPE_KEYS.map(k => (
+                      <td key={k} className="px-4 py-3 text-right">{root.typeTotals[k]}</td>
+                    ))}
+                    <td className="px-4 py-3 text-right">{root.total}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
         )
       )}
+
+      <DuplicateScanModal open={scanOpen} bankId={bankId} onClose={() => setScanOpen(false)} />
     </div>
   );
 }

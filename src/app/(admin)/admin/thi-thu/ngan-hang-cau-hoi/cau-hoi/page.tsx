@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
@@ -10,7 +10,10 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionBankItemFull, type QuestionBankItemInput, type QuestionType, type Difficulty, type BankItemStatus, type QuestionCategoryFull } from "@/lib/api";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { AddToExamModal } from "@/components/AddToExamModal";
+import { CopyToCategoryModal } from "@/components/CopyToCategoryModal";
 import { MathText } from "@/components/MathText";
+import { uploadToCloudinary } from "@/lib/cloudinary";
+import { DropZone } from "@/components/DropZone";
 
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -144,7 +147,51 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
   saving: boolean;
 }) {
   const [form, setForm] = useState<ItemForm>(initial);
-  useEffect(() => { if (open) setForm(initial); }, [open, initial]);
+  // Ảnh chọn nhưng CHƯA upload — chỉ thật sự lên Cloudinary lúc bấm "Lưu"
+  // (tránh file mồ côi nếu đóng drawer không lưu), giống pattern đã dùng ở
+  // admin/khoa-hoc/page.tsx.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (open) { setForm(initial); setImageFile(null); }
+  }, [open, initial]);
+
+  function setQuestionImageFile(file: File) {
+    if (form.imageUrl.startsWith("blob:")) URL.revokeObjectURL(form.imageUrl);
+    setImageFile(file);
+    setForm(f => ({ ...f, imageUrl: URL.createObjectURL(file) }));
+  }
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setQuestionImageFile(file);
+  }
+  function handleRemoveImage() {
+    if (form.imageUrl.startsWith("blob:")) URL.revokeObjectURL(form.imageUrl);
+    setImageFile(null);
+    setForm(f => ({ ...f, imageUrl: "" }));
+  }
+
+  async function handleSaveClick() {
+    let finalForm = form;
+    if (imageFile) {
+      setUploadingImage(true);
+      try {
+        const result = await uploadToCloudinary(imageFile, "question-bank");
+        finalForm = { ...form, imageUrl: result.url };
+        setForm(finalForm);
+        setImageFile(null);
+      } catch {
+        setUploadingImage(false);
+        return; // giữ nguyên form, không lưu nếu upload ảnh thất bại
+      }
+      setUploadingImage(false);
+    }
+    const input = toInput(finalForm);
+    if (input) onSave(finalForm);
+  }
 
   function updateOption(idx: number, val: string) {
     const opts = [...form.options];
@@ -179,9 +226,9 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={inpStyle}>Huỷ</button>
-            <button onClick={() => { const input = toInput(form); if (input) onSave(form); }} disabled={saving}
+            <button onClick={handleSaveClick} disabled={saving || uploadingImage}
               className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
-              {saving ? "Đang lưu..." : "Lưu"}
+              {uploadingImage ? "Đang tải ảnh..." : saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </div>
@@ -244,9 +291,24 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 value={form.points} onChange={e => setForm({ ...form, points: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Ảnh minh hoạ (URL, tùy chọn)</label>
-              <input className={inp} style={inpStyle}
-                value={form.imageUrl} onChange={e => setForm({ ...form, imageUrl: e.target.value })} />
+              <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Ảnh minh hoạ (tùy chọn)</label>
+              <DropZone onFiles={files => files[0] && setQuestionImageFile(files[0])} className="rounded-lg">
+                {form.imageUrl ? (
+                  <div className="flex items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.imageUrl} alt="Ảnh minh hoạ" className="h-9 w-14 object-cover rounded border" style={inpStyle} />
+                    <button type="button" onClick={() => imageInputRef.current?.click()} className="px-3 py-2 text-xs font-semibold border rounded-lg" style={inpStyle}>
+                      Đổi ảnh
+                    </button>
+                    <button type="button" onClick={handleRemoveImage} className="px-2 py-2 text-xs text-red-500">Xoá</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full px-3 py-2.5 text-sm border rounded-lg text-gray-500" style={inpStyle}>
+                    + Tải hoặc kéo-thả ảnh lên
+                  </button>
+                )}
+              </DropZone>
+              <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
             </div>
           </div>
 
@@ -359,6 +421,7 @@ function PageInner() {
   const [selectMode, setSelectMode] = useState(searchParams.get("select") === "1");
   const [selected, setSelected] = useState<Map<string, QuestionBankItemFull>>(new Map());
   const [addToExamOpen, setAddToExamOpen] = useState(false);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
 
   const [search, setSearch]         = useState("");
   const [categoryFilter, setCategoryFilter] = useState(initialCategoryId);
@@ -416,7 +479,6 @@ function PageInner() {
     setSelected(new Map());
   }
   function toggleSelectItem(item: QuestionBankItemFull) {
-    if (item.status !== "approved") return;
     setSelected(prev => {
       const next = new Map(prev);
       if (next.has(item.id)) next.delete(item.id);
@@ -425,9 +487,17 @@ function PageInner() {
     });
   }
   function handleAddedToExam(examTitle: string) {
-    showToast(`Đã thêm ${selected.size} câu vào đề "${examTitle}"`);
+    const approvedCount = [...selected.values()].filter(i => i.status === "approved").length;
+    const skipped = selected.size - approvedCount;
+    showToast(`Đã thêm ${approvedCount} câu vào đề "${examTitle}"${skipped > 0 ? ` — bỏ qua ${skipped} câu chưa duyệt` : ""}`);
     setSelected(new Map());
     setSelectMode(false);
+  }
+  function handleCopied(count: number) {
+    showToast(`Đã copy ${count} câu sang đầu mục mới`);
+    setSelected(new Map());
+    setSelectMode(false);
+    loadData();
   }
 
   async function handleSave(form: ItemForm) {
@@ -497,6 +567,7 @@ function PageInner() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const activeCategoryName = categoryFilter ? categoryPath(categoryFilter, categories) : "";
+  const approvedSelectedCount = [...selected.values()].filter(i => i.status === "approved").length;
 
   return (
     <div className={`p-6 max-w-7xl mx-auto ${selectMode && selected.size > 0 ? "pb-24" : ""}`}>
@@ -572,8 +643,6 @@ function PageInner() {
                 {selectMode && (
                   <td className="px-4 py-3">
                     <input type="checkbox" checked={selected.has(item.id)}
-                      disabled={item.status !== "approved"}
-                      title={item.status !== "approved" ? "Chỉ thêm được câu đã duyệt vào đề" : undefined}
                       onChange={() => toggleSelectItem(item)} />
                   </td>
                 )}
@@ -699,8 +768,13 @@ function PageInner() {
           <div className="flex items-center gap-4 mb-4 px-5 py-3 rounded-xl shadow-lg bg-white border" style={{ borderColor: "#e5e3df" }}>
             <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Đã chọn {selected.size} câu</span>
             <button onClick={() => setSelected(new Map())} className="text-sm text-gray-500 hover:text-gray-700">Bỏ chọn tất cả</button>
-            <button onClick={() => setAddToExamOpen(true)} className="px-4 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#16a34a" }}>
-              Thêm vào đề
+            <button onClick={() => setCopyModalOpen(true)} className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+              Copy vào đầu mục khác
+            </button>
+            <button onClick={() => setAddToExamOpen(true)} disabled={approvedSelectedCount === 0}
+              title={approvedSelectedCount === 0 ? "Chỉ thêm được câu đã duyệt vào đề" : undefined}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+              Thêm vào đề{approvedSelectedCount > 0 ? ` (${approvedSelectedCount})` : ""}
             </button>
           </div>
         </div>
@@ -708,9 +782,16 @@ function PageInner() {
 
       <AddToExamModal
         open={addToExamOpen}
-        items={[...selected.values()]}
+        items={[...selected.values()].filter(i => i.status === "approved")}
         onClose={() => setAddToExamOpen(false)}
         onAdded={handleAddedToExam}
+      />
+
+      <CopyToCategoryModal
+        open={copyModalOpen}
+        items={[...selected.values()]}
+        onClose={() => setCopyModalOpen(false)}
+        onCopied={handleCopied}
       />
 
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
