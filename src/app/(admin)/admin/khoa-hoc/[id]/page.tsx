@@ -30,6 +30,7 @@ interface LessonDB {
   statsMaterials: number;
   statsViews: number;
   order: number;
+  _count?: { assignments: number };
 }
 interface ChapterDB { id: string; title: string; order: number; lessons: LessonDB[] }
 interface SectionDB { id: string; title: string; order: number; chapters: ChapterDB[] }
@@ -146,12 +147,27 @@ function UrlListEditor({ label, placeholder, urls, onChange }: {
   );
 }
 
+// Nhãn "quiz" cố tình KHÔNG ghi "Bài Tập" — dễ hiểu nhầm là tính năng "Bài tập
+// tự nộp" (AssignmentEditor, bảng Assignment riêng). "quiz" ở đây chỉ nghĩa là
+// có link Azota ngoài (xem deriveTypes) — badge riêng cho bài tập tự nộp thật
+// xem ASSIGNMENT_BADGE bên dưới, tính từ lesson._count.assignments.
 const TYPE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   record:   { label: "Video",    color: "#0055D4", bg: "#EFF6FF" },
   document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
-  quiz:     { label: "Bài Tập",     color: "#7C3AED", bg: "#F5F3FF" },
+  quiz:     { label: "Azota",    color: "#7C3AED", bg: "#F5F3FF" },
   live:     { label: "Live",     color: "#DC2626", bg: "#FEF2F2" },
 };
+const ASSIGNMENT_BADGE = { color: "#B45309", bg: "#FFFBEB" };
+
+function hasRealDocuments(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 // ─── SHARED SMALL COMPONENTS ──────────────────────────────────────────────────
 function DrawerToggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
@@ -1354,7 +1370,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                   onChange={urls => setLs(f => ({ ...f, zoomUrls: urls }))}
                 />
                 <UrlListEditor
-                  label="Azota URL (cho bài Tập)"
+                  label="Azota URL (bài tập ngoài Azota, không bắt buộc)"
                   placeholder="https://azota.vn/..."
                   urls={ls.azotaUrls}
                   onChange={urls => setLs(f => ({ ...f, azotaUrls: urls }))}
@@ -1519,6 +1535,14 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                               {lesson.videoUrl && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>YT</span>}
                               {lesson.duration && <span className="text-xs text-gray-400 flex-shrink-0">{lesson.duration}</span>}
                               {lessonTypes.map(t => { const tb = TYPE_BADGE[t] ?? TYPE_BADGE.record; return <span key={t} className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>; })}
+                              {!lessonTypes.includes("document") && hasRealDocuments(lesson.documents) && (
+                                <span className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: TYPE_BADGE.document.bg, color: TYPE_BADGE.document.color }}>{TYPE_BADGE.document.label}</span>
+                              )}
+                              {!!lesson._count?.assignments && (
+                                <span className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: ASSIGNMENT_BADGE.bg, color: ASSIGNMENT_BADGE.color }}>
+                                  {lesson._count.assignments} Bài tập
+                                </span>
+                              )}
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <button onClick={() => toggleLessonLock(section.id, chapter.id, lesson.id, lesson.isLocked)}
                                   className="p-1.5 rounded hover:bg-blue-50 transition-colors"
