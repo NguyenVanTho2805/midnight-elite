@@ -9,6 +9,7 @@ import {
   Trophy, Key, Mobile, Laptop, Edit, PhotoCamera,
 } from "griddy-icons";
 import { BADGE_RULES } from "@/lib/honorData";
+import { DropZone } from "@/components/DropZone";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -290,13 +291,16 @@ export default function HoSoPage() {
   }, []);
 
   // ── Avatar crop ──
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function loadAvatarFile(file: File) {
     const reader = new FileReader();
     reader.onload = () => setCropSrc(reader.result as string);
     reader.readAsDataURL(file);
+  }
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
     e.target.value = "";
+    loadAvatarFile(file);
   }
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
@@ -482,7 +486,7 @@ export default function HoSoPage() {
       {/* ── Profile header ── */}
       <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
         <div className="flex items-start gap-5 flex-wrap">
-          <div className="relative flex-shrink-0">
+          <DropZone onFiles={files => files[0] && loadAvatarFile(files[0])} className="relative flex-shrink-0 rounded-xl">
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
             {avatarSrc ? (
               <img src={avatarSrc} alt="avatar"
@@ -497,10 +501,10 @@ export default function HoSoPage() {
             <button onClick={() => fileInputRef.current?.click()}
               className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg flex items-center justify-center"
               style={{ background: "#0068FF", border: "2px solid #ffffff" }}
-              title="Đổi ảnh đại diện">
+              title="Đổi ảnh đại diện (hoặc kéo-thả ảnh vào đây)">
               <PhotoCamera size={13} style={{ color: "#ffffff" }} />
             </button>
-          </div>
+          </DropZone>
 
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>{displayName}</h1>

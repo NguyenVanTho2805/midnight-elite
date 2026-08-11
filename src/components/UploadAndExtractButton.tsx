@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { api, type ExamFileFull } from "@/lib/api";
 import { ExtractReviewModal } from "@/components/ExtractReviewModal";
+import { DropZone } from "@/components/DropZone";
 
 // Nút "Tải file lên & tách câu hỏi" dùng ngay trong Ngân hàng câu hỏi (gallery
 // hoặc trang 1 ngân hàng cụ thể) — gộp 2 bước vốn tách rời (tải file vào
@@ -22,9 +23,7 @@ export function UploadAndExtractButton({ fixedBankId, onSaved, showToast, classN
   const [uploadedFile, setUploadedFile] = useState<ExamFileFull | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function processUpload(file: File) {
     setUploading(true);
     try {
       const uploaded = await api.examFiles.upload(file, null);
@@ -36,14 +35,20 @@ export function UploadAndExtractButton({ fixedBankId, onSaved, showToast, classN
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
+  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processUpload(file);
+  }
 
   return (
     <>
-      <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-        className={className ?? "px-4 py-2.5 text-sm font-semibold rounded-lg border disabled:opacity-50"}
-        style={style ?? { borderColor: "#e5e3df", color: "#787671" }}>
-        {uploading ? "Đang tải lên..." : (label ?? "+ Tải file lên & tách câu hỏi")}
-      </button>
+      <DropZone onFiles={files => files[0] && processUpload(files[0])} disabled={uploading} className="inline-block rounded-lg">
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+          className={className ?? "px-4 py-2.5 text-sm font-semibold rounded-lg border disabled:opacity-50"}
+          style={style ?? { borderColor: "#e5e3df", color: "#787671" }}>
+          {uploading ? "Đang tải lên..." : (label ?? "+ Tải file lên & tách câu hỏi")}
+        </button>
+      </DropZone>
       <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleUpload} />
       <ExtractReviewModal
         examFile={uploadedFile}

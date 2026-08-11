@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFileFull, type ExamFileFolderFull } from "@/lib/api";
 import { ExtractReviewModal } from "@/components/ExtractReviewModal";
+import { DropZone } from "@/components/DropZone";
 
 // ─── DUYỆT THƯ MỤC KIỂU FILE MANAGER (1 cấp phẳng, giống trang "Đề thi" của
 // Azota — thư mục VÀ file gộp chung 1 bảng, không tách view riêng). Root =
@@ -209,9 +210,7 @@ function PageInner() {
     .filter(item => !q || item.fileName.toLowerCase().includes(q));
   const recentFiles = [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function processUpload(file: File) {
     setUploading(true);
     try {
       const folderId = view.type === "folder" ? view.id : null;
@@ -224,6 +223,10 @@ function PageInner() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processUpload(file);
   }
 
   async function handleMove(item: ExamFileFull, folderId: string) {
@@ -293,10 +296,12 @@ function PageInner() {
               📁+ Tạo thư mục
             </button>
           )}
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-            className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
-            {uploading ? "Đang tải lên..." : "+ Tải file lên"}
-          </button>
+          <DropZone onFiles={files => files[0] && processUpload(files[0])} disabled={uploading} className="inline-block rounded-lg">
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+              {uploading ? "Đang tải lên..." : "+ Tải hoặc kéo-thả file lên"}
+            </button>
+          </DropZone>
           <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleUpload} />
         </div>
       </div>

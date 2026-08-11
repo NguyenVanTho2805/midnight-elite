@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadMany, cloudinaryConfigured } from "@/lib/cloudinary";
+import { DropZone } from "@/components/DropZone";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -267,7 +268,8 @@ export function ReplyForm({
   const imgRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="rounded-xl border p-4" style={{ background: wrapperBg, borderColor: "#e5e3df" }}>
+    <DropZone onFiles={files => setReplyImages(p => [...p, ...files.filter(f => f.type.startsWith("image/"))].slice(0, 2))}
+      className="rounded-xl border p-4" style={{ background: wrapperBg, borderColor: "#e5e3df" }}>
       <div className="flex gap-3">
         <Avatar name={user.name} size={32} />
         <div className="flex-1 min-w-0">
@@ -311,7 +313,7 @@ export function ReplyForm({
           </div>
         </div>
       </div>
-    </div>
+    </DropZone>
   );
 }
 

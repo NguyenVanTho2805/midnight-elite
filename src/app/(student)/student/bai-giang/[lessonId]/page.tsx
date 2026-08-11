@@ -8,6 +8,7 @@ import { useProgress } from "@/hooks/useProgress";
 import { parseLessonType } from "@/lib/types";
 import { api, type AssignmentFull } from "@/lib/api";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
+import { DropZone } from "@/components/DropZone";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
   FileDownload, Eye, Lock, CheckCircle,
@@ -394,10 +395,7 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
   const fileRef = useRef<HTMLInputElement>(null);
   const sub = assignment.mySubmission;
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
+  async function submitFile(file: File) {
     if (sub && sub.gradedAt && !confirm("Bài này đã được chấm điểm — nộp lại sẽ xoá điểm cũ và chờ chấm lại. Tiếp tục?")) return;
     setUploading(true);
     try {
@@ -410,9 +408,15 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
       setUploading(false);
     }
   }
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) submitFile(file);
+  }
 
   return (
-    <div className="rounded-xl p-4" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+    <DropZone onFiles={files => files[0] && submitFile(files[0])} disabled={uploading || !cloudinaryConfigured}
+      className="rounded-xl p-4" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <p className="font-semibold text-sm" style={{ color: "#1E2938" }}>{assignment.title}</p>
@@ -447,11 +451,11 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
             className="px-4 py-2 text-xs font-bold text-white rounded-lg disabled:opacity-50"
             style={{ background: "#FE9900" }}>
-            {uploading ? "Đang nộp..." : sub ? "Nộp lại bài" : "Nộp bài"}
+            {uploading ? "Đang nộp..." : sub ? "Nộp lại bài (hoặc kéo-thả file)" : "Nộp bài (hoặc kéo-thả file)"}
           </button>
         </>
       )}
-    </div>
+    </DropZone>
   );
 }
 

@@ -11,6 +11,7 @@ import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { toSlug } from "@/lib/slug";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { DropZone } from "@/components/DropZone";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
@@ -86,13 +87,16 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
   }
 
   // Chỉ giữ File + preview tạm — KHÔNG upload ngay (xem ghi chú ở bgImageFile).
+  function setBgFile(file: File) {
+    if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
+    setBgImageFile(file);
+    setForm(p => ({ ...p, bgImage: URL.createObjectURL(file) }));
+  }
   function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
-    setBgImageFile(file);
-    setForm(p => ({ ...p, bgImage: URL.createObjectURL(file) }));
+    setBgFile(file);
   }
 
   function validate(): typeof errors {
@@ -259,11 +263,13 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
 
               {cloudinaryConfigured ? (
-                <button onClick={() => bgFileRef.current?.click()} disabled={saving}
-                  className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-                  style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
-                  {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn ảnh (JPG, PNG, WebP)"}
-                </button>
+                <DropZone onFiles={files => files[0] && setBgFile(files[0])} disabled={saving} className="rounded-lg">
+                  <button onClick={() => bgFileRef.current?.click()} disabled={saving}
+                    className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+                    style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                    {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn hoặc kéo-thả ảnh (JPG, PNG, WebP)"}
+                  </button>
+                </DropZone>
               ) : (
                 <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
               )}

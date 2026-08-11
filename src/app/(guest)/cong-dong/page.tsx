@@ -10,6 +10,7 @@ import { QUESTION_COST } from "@/lib/wallet-constants";
 import { PERMISSIONS, checkPermission, type AdminRole } from "@/lib/permissions";
 import ThreadModal from "@/components/ThreadModal";
 import QuestionModal from "@/components/QuestionModal";
+import { DropZone } from "@/components/DropZone";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -399,7 +400,15 @@ function PostForm({ user, balance, onThread, onQuestion }: {
 
       <div className="flex gap-3">
         <Avatar name={user.name} size={34} />
-        <div className="flex-1 min-w-0">
+        <DropZone
+          onFiles={files => {
+            const imgs = files.filter(f => f.type.startsWith("image/"));
+            const docs = files.filter(f => !f.type.startsWith("image/"));
+            if (imgs.length > 0) setImages(p => [...p, ...imgs].slice(0, 4));
+            if (docs.length > 0 && !file) setFile(docs[0]);
+          }}
+          disabled={postType !== "thread" || uploading || posting}
+          className="flex-1 min-w-0 rounded-lg">
 
           {/* Question title */}
           {postType === "question" && (
@@ -490,7 +499,7 @@ function PostForm({ user, balance, onThread, onQuestion }: {
               </button>
             </div>
           </div>
-        </div>
+        </DropZone>
       </div>
     </div>
   );
