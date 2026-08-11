@@ -78,7 +78,7 @@ export default function AdminSidebar() {
   );
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col min-h-screen" style={{ background: "#1E2938" }}>
+    <aside className="w-64 flex-shrink-0 flex flex-col h-screen" style={{ background: "#1E2938" }}>
       {/* Logo + user info */}
       <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-3 mb-3">
@@ -106,7 +106,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5">
         {visibleItems.map(item => {
           const active     = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           const hasChildren = item.children && item.children.length > 0;
