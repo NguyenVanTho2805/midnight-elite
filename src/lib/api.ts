@@ -1,6 +1,10 @@
 // ─── API fetch helpers ────────────────────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "";
+// Luôn tương đối (same-origin) — admin.* và domain chính là 2 origin khác nhau
+// từ khi tách domain (src/middleware.ts). Dùng NEXT_PUBLIC_APP_URL ở đây sẽ đẩy
+// request sang origin khác, làm mất cookie phiên đăng nhập (credentials:
+// "same-origin" không gửi cookie cross-origin) dù request tới cùng 1 deployment.
+const BASE = "";
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -161,7 +165,7 @@ export const api = {
   },
   // ── Ngân hàng câu hỏi (dùng chung giữa các giáo viên) ────────────────────
   questionBank: {
-    list: (params?: { search?: string; subject?: string; topic?: string; difficulty?: string; status?: BankItemStatus; mine?: boolean; page?: number; pageSize?: number; withStats?: boolean }) => {
+    list: (params?: { search?: string; categoryId?: string; difficulty?: string; status?: BankItemStatus; mine?: boolean; page?: number; pageSize?: number; withStats?: boolean }) => {
       const qs = params
         ? Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
         : [];
@@ -175,31 +179,83 @@ export const api = {
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     remove: (id: string) =>
       apiFetch<{ success: boolean }>(`/api/question-bank/${id}`, { method: "DELETE" }),
-    checkDuplicate: (data: { text: string; subject: string; topic: string }) =>
+    checkDuplicate: (data: { text: string; categoryId: string }) =>
       apiFetch<{
         match: QuestionBankItemFull | null;
         similar: { item: QuestionBankItemFull; similarity: number }[];
         semantic: { item: QuestionBankItemFull; similarity: number }[];
       }>("/api/question-bank/check-duplicate", { method: "POST", body: JSON.stringify(data) }),
-    draw: (data: DrawInput) =>
-      apiFetch<DrawResult>("/api/question-bank/draw", { method: "POST", body: JSON.stringify(data) }),
-    drawMatrix: (data: DrawMatrixInput) =>
-      apiFetch<DrawMatrixResult>("/api/question-bank/draw-matrix", { method: "POST", body: JSON.stringify(data) }),
     submit: (id: string) =>
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/submit`, { method: "PATCH" }),
     review: (id: string, data: { decision: "approve" | "reject"; reason?: string }) =>
       apiFetch<QuestionBankItemFull>(`/api/question-bank/${id}/review`, { method: "POST", body: JSON.stringify(data) }),
+    copy: (ids: string[], targetCategoryId: string) =>
+      apiFetch<{ copied: number }>("/api/question-bank/copy", { method: "POST", body: JSON.stringify({ ids, targetCategoryId }) }),
   },
-  // ── Ma trận đề chuẩn Bộ GDĐT (dùng chung giữa các giáo viên) ─────────────
-  examMatrixTemplates: {
-    list: (subject?: string) =>
-      apiFetch<{ items: ExamMatrixTemplateFull[] }>(
-        `/api/exam-matrix-templates${subject ? "?subject=" + encodeURIComponent(subject) : ""}`
-      ),
-    create: (data: { name: string; subject: string; cells: ExamMatrixCell[] }) =>
-      apiFetch<ExamMatrixTemplateFull>("/api/exam-matrix-templates", { method: "POST", body: JSON.stringify(data) }),
+  // ── Cây đầu mục ngân hàng câu hỏi (không giới hạn số tầng) ───────────────
+  questionCategories: {
+    list: () => apiFetch<QuestionCategoryFull[]>("/api/question-categories"),
+    create: (data: { name: string; parentId?: string | null }) =>
+      apiFetch<QuestionCategoryFull>("/api/question-categories", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: { name?: string; parentId?: string | null; sortOrder?: number }) =>
+      apiFetch<QuestionCategoryFull>(`/api/question-categories/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (id: string) =>
-      apiFetch<{ success: boolean }>(`/api/exam-matrix-templates/${id}`, { method: "DELETE" }),
+      apiFetch<{ success: boolean }>(`/api/question-categories/${id}`, { method: "DELETE" }),
+    duplicate: (id: string, name?: string) =>
+      apiFetch<{ id: string; name: string }>(`/api/question-categories/${id}/duplicate`, {
+        method: "POST", body: JSON.stringify({ name }),
+      }),
+    duplicates: (id: string) =>
+      apiFetch<{ groups: DuplicateGroup[] }>(`/api/question-categories/${id}/duplicates`),
+  },
+  // ── Ngân hàng đề thi (lưu trữ file gốc, tách câu riêng theo yêu cầu) ─────
+  examFiles: {
+    list: () => apiFetch<ExamFileFull[]>("/api/exam-files"),
+    upload: async (file: File, folderId?: string | null): Promise<ExamFileFull> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (folderId) formData.append("folderId", folderId);
+      const res = await fetch("/api/exam-files", { method: "POST", credentials: "same-origin", body: formData });
+      if (!res.ok) {
+        const fallback = `Upload thất bại (${res.status})`;
+        const err = await res.json().catch(() => ({ error: fallback }));
+        throw new Error(err.error || fallback);
+      }
+      return res.json() as Promise<ExamFileFull>;
+    },
+    move: (id: string, folderId: string | null) =>
+      apiFetch<ExamFileFull>(`/api/exam-files/${id}`, { method: "PATCH", body: JSON.stringify({ folderId }) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/exam-files/${id}`, { method: "DELETE" }),
+    extract: (id: string) =>
+      apiFetch<AiExtractResult>(`/api/exam-files/${id}/extract`, { method: "POST" }),
+  },
+  // ── Thư mục Ngân hàng đề thi (1 cấp phẳng, có chủ sở hữu) ────────────────
+  examFileFolders: {
+    list: () => apiFetch<ExamFileFolderFull[]>("/api/exam-file-folders"),
+    create: (name: string) =>
+      apiFetch<ExamFileFolderFull>("/api/exam-file-folders", { method: "POST", body: JSON.stringify({ name }) }),
+    update: (id: string, name: string) =>
+      apiFetch<ExamFileFolderFull>(`/api/exam-file-folders/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/exam-file-folders/${id}`, { method: "DELETE" }),
+  },
+  // ── Bài tập tự nộp (song song với Lesson.azotaUrl, không thay thế) ───────
+  assignments: {
+    listByLesson: (lessonId: string) =>
+      apiFetch<AssignmentFull[]>(`/api/lessons/${lessonId}/assignments`),
+    create: (lessonId: string, data: AssignmentInput) =>
+      apiFetch<AssignmentFull>(`/api/lessons/${lessonId}/assignments`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: AssignmentInput) =>
+      apiFetch<AssignmentFull>(`/api/assignments/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/assignments/${id}`, { method: "DELETE" }),
+    submit: (id: string, data: { fileUrl: string; fileName?: string }) =>
+      apiFetch<AssignmentSubmissionFull>(`/api/assignments/${id}/submit`, { method: "POST", body: JSON.stringify(data) }),
+    listSubmissions: (id: string) =>
+      apiFetch<AssignmentSubmissionFull[]>(`/api/assignments/${id}/submissions`),
+    grade: (id: string, submissionId: string, data: { score: number; comment?: string }) =>
+      apiFetch<AssignmentSubmissionFull>(`/api/assignments/${id}/submissions/${submissionId}/grade`, { method: "PATCH", body: JSON.stringify(data) }),
   },
 };
 
@@ -322,6 +378,13 @@ export interface ExamQuestionInput {
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
   sourceBankItemId?: string | null;
+  // Mức độ AI gợi ý khi tách câu từ Ngân hàng đề thi (xem ParsedQuestion.difficulty
+  // trong examQuestionParser.ts) — không dùng ở luồng tạo/sửa đề thi thông thường.
+  difficulty?: Difficulty | null;
+  // Gợi ý Chương/Bài AI suy luận được — cùng phạm vi sử dụng với difficulty ở
+  // trên, xem ParsedQuestion.suggestedChapter/suggestedLesson.
+  suggestedChapter?: string;
+  suggestedLesson?: string;
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 
@@ -342,10 +405,72 @@ export interface QuestionBankOptionFull {
   id: string; order: number; text: string; isCorrect: boolean;
   subLabel?: "a" | "b" | "c" | "d" | null;
 }
+// Cây đầu mục ngân hàng câu hỏi — không giới hạn số tầng, client tự dựng cây/
+// đường dẫn (breadcrumb) từ danh sách phẳng này qua parentId, xem
+// src/app/api/question-categories/route.ts.
+export interface QuestionCategoryFull {
+  id: string; name: string; parentId: string | null; sortOrder: number;
+  // Số câu hỏi gắn TRỰC TIẾP vào đầu mục này (chưa gồm con cháu) — cộng dồn
+  // lên cây ở client để có tổng số câu kiểu "PHẦN 1 (1036 câu)".
+  count: number;
+  // Cùng ý nghĩa với count nhưng tách theo mức độ — cộng dồn lên cây để hiện
+  // phân bổ NB/TH/VD/VDC mỗi Chương/Bài.
+  difficultyCounts: Record<Difficulty, number>;
+  // Cùng ý nghĩa với count nhưng tách theo dạng câu hỏi — cộng dồn lên cây để
+  // hiện phân bổ MC/Tự luận/Đúng-Sai/Trả lời ngắn mỗi Chương/Bài.
+  typeCounts: Record<QuestionType, number>;
+}
+
+// Kết quả quét trùng lặp hàng loạt 1 ngân hàng, xem
+// src/app/api/question-categories/[id]/duplicates/route.ts — "exact" có thể
+// nhiều hơn 2 câu (cùng nhóm hash), "fuzzy"/"semantic" luôn đúng 2 câu (so
+// theo cặp, không gom cụm).
+export interface DuplicateItem {
+  id: string; text: string; categoryPath: string; status: BankItemStatus;
+}
+export interface DuplicateGroup {
+  tier: "exact" | "fuzzy" | "semantic";
+  similarity: number;
+  items: DuplicateItem[];
+}
+
+// Ngân hàng đề thi — chỉ lưu trữ file gốc, xem src/app/api/exam-files/route.ts.
+export interface ExamFileFull {
+  id: string; fileName: string; fileUrl: string; fileType: string;
+  ownerId: string | null; owner: { name: string } | null;
+  folderId: string | null; folder: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+// Thư mục Ngân hàng đề thi — 1 cấp phẳng, xem src/app/api/exam-file-folders/route.ts.
+export interface ExamFileFolderFull {
+  id: string; name: string; ownerId: string | null; createdAt: string;
+}
+
+// Bài tập tự nộp — song song với Lesson.azotaUrl, xem prisma/schema.prisma.
+export interface AssignmentFull {
+  id: string; lessonId: string; title: string; instructions: string | null;
+  fileUrl: string | null; fileName: string | null; maxPoints: number;
+  dueDate: string | null; ownerId: string | null; createdAt: string;
+  submissionCount: number;
+  // Chỉ có giá trị khi người gọi là học viên (xem GET /api/lessons/[lessonId]/assignments) — undefined với admin.
+  mySubmission?: AssignmentSubmissionFull | null;
+}
+export interface AssignmentInput {
+  title: string; instructions?: string; fileUrl?: string; fileName?: string;
+  maxPoints?: number; dueDate?: string | null;
+}
+export interface AssignmentSubmissionFull {
+  id: string; assignmentId: string; userId: string;
+  fileUrl: string; fileName: string | null; submittedAt: string;
+  score: number | null; comment: string | null; gradedAt: string | null; gradedBy: string | null;
+  // Chỉ có khi admin gọi listSubmissions (include user).
+  user?: { id: string; name: string; studentId: number | null };
+}
 export interface QuestionBankItemFull {
   id: string; type: QuestionType; text: string;
   imageUrl?: string | null; points: number; explanation?: string | null;
-  subject: string; topic: string; difficulty: Difficulty; tags: string[] | null;
+  categoryId: string; difficulty: Difficulty; tags: string[] | null;
   ownerId: string | null; owner: { name: string } | null;
   createdAt: string; updatedAt: string;
   options: QuestionBankOptionFull[];
@@ -360,47 +485,13 @@ export interface QuestionBankItemFull {
 }
 export interface QuestionBankItemInput {
   type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string;
-  subject: string; topic: string; difficulty: Difficulty; tags?: string[];
+  categoryId: string; difficulty: Difficulty; tags?: string[];
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }
 // Lưu 1 câu có sẵn trong đề vào ngân hàng (hồi tố) — chỉ cần phân loại, nội
 // dung/đáp án server tự copy từ ExamQuestion hiện có, xem save-to-bank/route.ts.
 export interface SaveToBankInput {
-  subject: string; topic: string; difficulty: Difficulty; tags?: string[];
-}
-
-// Giai đoạn 5 — rút đề tự động theo ma trận môn×độ khó, xem draw/route.ts.
-export interface DrawInput {
-  subject: string;
-  counts: Partial<Record<Difficulty, number>>;
-  excludeRecentExams?: number;
-}
-export interface DrawResult {
-  questions: ExamQuestionInput[];
-  shortfall: Partial<Record<Difficulty, { requested: number; drawn: number }>>;
-}
-
-// Ma trận đề chuẩn Bộ GDĐT — Chủ đề × Độ khó × Loại câu (loại câu tuỳ chọn
-// theo từng dòng, undefined/null = không lọc), xem draw-matrix/route.ts.
-export interface ExamMatrixCell {
-  topic: string;
-  difficulty: Difficulty;
-  type?: QuestionType | null;
-  count: number;
-}
-export interface ExamMatrixTemplateFull {
-  id: string; name: string; subject: string; cells: ExamMatrixCell[];
-  ownerId: string | null; owner: { name: string } | null;
-  createdAt: string;
-}
-export interface DrawMatrixInput {
-  subject: string;
-  cells: ExamMatrixCell[];
-  excludeRecentExams?: number;
-}
-export interface DrawMatrixResult {
-  questions: ExamQuestionInput[];
-  shortfall: (ExamMatrixCell & { drawn: number })[];
+  categoryId: string; difficulty: Difficulty; tags?: string[];
 }
 
 // Dạng học viên — KHÔNG có isCorrect, chỉ gửi sau khi nộp bài

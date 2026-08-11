@@ -363,6 +363,10 @@ function TabVinhDanh() {
                     <div className="text-sm font-bold" style={{ color: "#7C3AED" }}>{s.completion}%</div>
                     <p className="text-xs" style={{ color: "#a4a097" }}>Tiến độ</p>
                   </div>
+                  <div className="text-center hidden lg:block">
+                    <div className="text-sm font-bold" style={{ color: "#16a34a" }}>{s.assignmentAvg != null ? s.assignmentAvg : "—"}</div>
+                    <p className="text-xs" style={{ color: "#a4a097" }}>Điểm bài tập</p>
+                  </div>
                 </div>
               </div>
             );

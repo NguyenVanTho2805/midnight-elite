@@ -41,11 +41,15 @@ export async function POST(
       return NextResponse.json({ error: "Câu này đã có trong ngân hàng" }, { status: 409 });
     }
 
-    const { subject, topic, difficulty, tags } = await req.json() as {
-      subject?: string; topic?: string; difficulty?: string; tags?: string[];
+    const { categoryId, difficulty, tags } = await req.json() as {
+      categoryId?: string; difficulty?: string; tags?: string[];
     };
-    if (!subject?.trim() || !topic?.trim()) {
-      return NextResponse.json({ error: "Thiếu môn học hoặc chủ đề" }, { status: 400 });
+    if (!categoryId?.trim()) {
+      return NextResponse.json({ error: "Thiếu đầu mục" }, { status: 400 });
+    }
+    const category = await prisma.questionCategory.findUnique({ where: { id: categoryId } });
+    if (!category) {
+      return NextResponse.json({ error: "Đầu mục không tồn tại" }, { status: 400 });
     }
     if (!difficulty || !DIFFICULTIES.includes(difficulty)) {
       return NextResponse.json({ error: "Độ khó không hợp lệ" }, { status: 400 });
@@ -59,8 +63,7 @@ export async function POST(
           imageUrl: question.imageUrl,
           points: question.points,
           explanation: question.explanation,
-          subject: subject.trim(),
-          topic: topic.trim(),
+          categoryId,
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,
           contentHash: computeContentHash(question.text),

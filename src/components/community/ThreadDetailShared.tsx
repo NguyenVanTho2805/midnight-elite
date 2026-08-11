@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadMany, cloudinaryConfigured } from "@/lib/cloudinary";
+import { DropZone } from "@/components/DropZone";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -267,7 +268,8 @@ export function ReplyForm({
   const imgRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="rounded-xl border p-4" style={{ background: wrapperBg, borderColor: "#e5e3df" }}>
+    <DropZone onFiles={files => setReplyImages(p => [...p, ...files.filter(f => f.type.startsWith("image/"))].slice(0, 2))}
+      className="rounded-xl border p-4" style={{ background: wrapperBg, borderColor: "#e5e3df" }}>
       <div className="flex gap-3">
         <Avatar name={user.name} size={32} />
         <div className="flex-1 min-w-0">
@@ -311,7 +313,7 @@ export function ReplyForm({
           </div>
         </div>
       </div>
-    </div>
+    </DropZone>
   );
 }
 
@@ -380,6 +382,9 @@ export function useThreadDetail(threadId: string | null, opts: {
   const [replying, setReplying]       = useState(false);
   const [replyUploading, setReplyUploading] = useState(false);
   const [replyError, setReplyError]   = useState("");
+  // Cache URL đã upload thành công theo từng File — tránh upload lại (thêm
+  // rác Cloudinary) nếu gửi trả lời thất bại rồi bấm gửi lại.
+  const replyUrlCache = useRef(new Map<File, string>());
 
   const [reporting, setReporting]         = useState(false);
   const [reportReason, setReportReason]   = useState("");
@@ -481,7 +486,16 @@ export function useThreadDetail(threadId: string | null, opts: {
     if (replyImages.length > 0) {
       if (!cloudinaryConfigured) { setReplyError("Chưa cấu hình Cloudinary để upload ảnh"); return false; }
       setReplyUploading(true);
-      try { imageUrls = await uploadMany(replyImages, "community/images"); }
+      try {
+        const cache = replyUrlCache.current;
+        imageUrls = await Promise.all(replyImages.map(async img => {
+          const cached = cache.get(img);
+          if (cached) return cached;
+          const [url] = await uploadMany([img], "community/images");
+          cache.set(img, url);
+          return url;
+        }));
+      }
       catch (e) { setReplyError((e as Error).message); setReplyUploading(false); return false; }
       setReplyUploading(false);
     }
@@ -501,6 +515,7 @@ export function useThreadDetail(threadId: string | null, opts: {
         window.dispatchEvent(new CustomEvent("coin:earned", { detail: { amount: data.coinsEarned } }));
       }
       setReplyText(""); setReplyImages([]);
+      replyUrlCache.current.clear();
       return true;
     } catch (e) {
       setReplyError(e instanceof TypeError ? "Lỗi kết nối" : (e as Error).message);

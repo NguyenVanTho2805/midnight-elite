@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense } from "react";
-import Link from "next/link";
 import AdminSidebar from "@/components/AdminSidebar";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth, getAdminRoleLabel } from "@/contexts/AuthContext";
@@ -19,7 +18,10 @@ function AdminTopbar() {
       <div className="flex items-center gap-3">
         {/* Quick preview links */}
         <div className="hidden md:flex items-center gap-1.5">
-          <Link href="/student" target="_blank"
+          {/* Trang khách/học viên nằm ở domain riêng (midnightelite-edu.com) —
+              dùng <a> thay vì <Link> vì đây là điều hướng cross-origin từ
+              admin.midnightelite-edu.com (xem AdminSidebar.tsx). */}
+          <a href="https://midnightelite-edu.com/student" target="_blank"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
             style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,12 +29,12 @@ function AdminTopbar() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
             </svg>
             Portal học viên
-          </Link>
-          <Link href="/khoa-hoc" target="_blank"
+          </a>
+          <a href="https://midnightelite-edu.com/khoa-hoc" target="_blank"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
             style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#6B7280" }}>
             🛒 Khóa học
-          </Link>
+          </a>
         </div>
         {/* Admin level badge */}
         <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"

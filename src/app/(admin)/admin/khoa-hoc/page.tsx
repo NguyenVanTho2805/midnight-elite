@@ -11,6 +11,7 @@ import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { toSlug } from "@/lib/slug";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { DropZone } from "@/components/DropZone";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
@@ -39,7 +40,9 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
   const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
   const [saving, setSaving] = useState(false);
-  const [bgUploading, setBgUploading] = useState(false);
+  // File gốc CHƯA upload — chỉ thật sự lên Cloudinary lúc bấm "Tạo khoá học"
+  // (xem handleSave), tránh file mồ côi nếu đóng drawer mà không lưu.
+  const [bgImageFile, setBgImageFile] = useState<File | null>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([...ADMIN_CATEGORIES]);
@@ -64,7 +67,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
 
   // Reset form khi đóng
   useEffect(() => {
-    if (!open) { setForm(CREATE_INIT); setErrors({}); setSaving(false); }
+    if (!open) { setForm(CREATE_INIT); setErrors({}); setSaving(false); setBgImageFile(null); }
   }, [open]);
 
   // Escape key
@@ -83,19 +86,17 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
     setErrors(p => ({ ...p, [k]: undefined }));
   }
 
-  async function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // Chỉ giữ File + preview tạm — KHÔNG upload ngay (xem ghi chú ở bgImageFile).
+  function setBgFile(file: File) {
+    if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
+    setBgImageFile(file);
+    setForm(p => ({ ...p, bgImage: URL.createObjectURL(file) }));
+  }
+  function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    setBgUploading(true);
-    try {
-      const result = await uploadToCloudinary(file, "courses/backgrounds");
-      setForm(p => ({ ...p, bgImage: result.url }));
-    } catch (err) {
-      showToast("Upload thất bại: " + (err instanceof Error ? err.message : "Lỗi"), false);
-    } finally {
-      setBgUploading(false);
-    }
+    setBgFile(file);
   }
 
   function validate(): typeof errors {
@@ -121,6 +122,15 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
     }
     setSaving(true);
     try {
+      // Chỉ thật sự upload lên Cloudinary ở đây — ngay trước khi tạo khoá học,
+      // không còn khoảng hở nào giữa lúc có file trên Cloudinary và lúc DB
+      // biết tới nó (tránh file mồ côi nếu đóng drawer giữa chừng).
+      let bgImage = form.bgImage;
+      if (bgImageFile) {
+        const result = await uploadToCloudinary(bgImageFile, "courses/backgrounds");
+        bgImage = result.url;
+      }
+
       const slug = form.slug.trim() || toSlug(form.name);
       await api.courses.create({
         id:            slug,
@@ -134,8 +144,8 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         types:         ["Video"],
         tag:           form.tag || null,
         tagColor:      form.tag ? form.tagColor : null,
-        bg:            form.bgImage
-                         ? `url(${form.bgImage}) center/cover no-repeat`
+        bg:            bgImage
+                         ? `url(${bgImage}) center/cover no-repeat`
                          : CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)",
         strip:         "#FDE047",
         price:         +form.price,
@@ -147,7 +157,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
       onCreated();
       onClose();
     } catch (e) {
-      showToast("Lỗi tạo khoá học: " + (e instanceof Error ? e.message : "Unknown"), false);
+      showToast(e instanceof Error && bgImageFile ? "Upload ảnh hoặc tạo khoá học thất bại: " + e.message : "Lỗi tạo khoá học: " + (e instanceof Error ? e.message : "Unknown"), false);
     } finally {
       setSaving(false);
     }
@@ -239,7 +249,11 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                   {form.bgImage ? "Ảnh nền" : "Gradient mặc định theo danh mục"}
                 </span>
                 {form.bgImage && (
-                  <button onClick={() => setForm(p => ({ ...p, bgImage: "" }))}
+                  <button onClick={() => {
+                      if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
+                      setBgImageFile(null);
+                      setForm(p => ({ ...p, bgImage: "" }));
+                    }}
                     className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70">
                     ✕
                   </button>
@@ -249,11 +263,13 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
 
               {cloudinaryConfigured ? (
-                <button onClick={() => bgFileRef.current?.click()} disabled={bgUploading}
-                  className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-                  style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
-                  {bgUploading ? "⏳ Đang upload..." : "🖼 Tải ảnh lên (JPG, PNG, WebP)"}
-                </button>
+                <DropZone onFiles={files => files[0] && setBgFile(files[0])} disabled={saving} className="rounded-lg">
+                  <button onClick={() => bgFileRef.current?.click()} disabled={saving}
+                    className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
+                    style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                    {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn hoặc kéo-thả ảnh (JPG, PNG, WebP)"}
+                  </button>
+                </DropZone>
               ) : (
                 <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
               )}
@@ -261,8 +277,8 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Hoặc paste URL ảnh</label>
                 <input className={inp} placeholder="https://..."
-                  value={form.bgImage}
-                  onChange={e => setForm(p => ({ ...p, bgImage: e.target.value.trim() }))} />
+                  value={bgImageFile ? "" : form.bgImage}
+                  onChange={e => { setBgImageFile(null); setForm(p => ({ ...p, bgImage: e.target.value.trim() })); }} />
               </div>
             </div>
           </section>
@@ -446,11 +462,12 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
             </Link>
           ))}
           <div className="border-t border-gray-100 my-1" />
-          <Link href="/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
+          {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
+          <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
             style={{ color: "#0068FF" }}>
             Xem portal học viên
-          </Link>
+          </a>
           <button
             disabled={duplicating}
             onClick={async () => {

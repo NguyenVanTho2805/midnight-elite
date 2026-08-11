@@ -8,17 +8,16 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus, computeExamStatus } from "@/lib/examData";
 import { CATEGORY_GRADIENT, ADMIN_CATEGORIES } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
-import { api, type ExamFull, type ExamQuestionInput, type CourseFull, type Difficulty, type QuestionBankItemFull } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionInput, type CourseFull, type Difficulty, type QuestionBankItemFull, type QuestionCategoryFull } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { parseBulkText, parseSpreadsheetRows, type ParseError } from "@/lib/examQuestionParser";
 import { distributePoints } from "@/lib/scoreDistribution";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
-import { AutoDrawModal } from "@/components/AutoDrawModal";
-import { ExamMatrixModal } from "@/components/ExamMatrixModal";
-import { SubjectField } from "@/components/SubjectField";
+import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
+import { DropZone } from "@/components/DropZone";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -62,8 +61,7 @@ const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
 // liệu chỉ dùng lúc soạn, không gửi lên bulkCreate).
 interface BankMeta {
   addToBank: boolean;
-  subject: string;
-  topic: string;
+  categoryId: string;
   difficulty: Difficulty;
   dupMatch: QuestionBankItemFull | null;
   // Giai đoạn 3.5 Cấp 2 — chỉ có giá trị khi dupMatch (Cấp 1, trùng y hệt)
@@ -78,7 +76,7 @@ interface BankMeta {
   checking: boolean;
 }
 const BANK_META_INIT: BankMeta = {
-  addToBank: true, subject: "", topic: "", difficulty: "NB",
+  addToBank: true, categoryId: "", difficulty: "NB",
   dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new", checking: false,
 };
 
@@ -234,12 +232,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [scorePreset, setScorePreset]     = useState<keyof typeof SCORE_PRESETS>("thpt_toan");
   const [fileErr, setFileErr]             = useState("");
   const [aiLoading, setAiLoading]         = useState(false);
-  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
-  const [autoDrawOpen, setAutoDrawOpen] = useState(false);
-  const [matrixOpen, setMatrixOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
   // ── Giai đoạn 3.5 Cấp 1: cổng opt-in "thêm vào ngân hàng" + phát hiện trùng ──
   const [bankGateOn, setBankGateOn] = useState(false);
@@ -249,22 +243,20 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   // không câu nào được lưu vào ngân hàng). Điền 1 lần rồi áp dụng cho mọi
   // câu đang tích "Thêm vào ngân hàng" — vẫn sửa lại riêng từng câu được sau
   // khi áp dụng nếu cần.
-  const [bulkSubject, setBulkSubject]       = useState("");
-  const [bulkTopic, setBulkTopic]           = useState("");
+  const [bulkCategoryId, setBulkCategoryId]   = useState("");
   const [bulkDifficulty, setBulkDifficulty] = useState<Difficulty>("NB");
-  const [allBankSubjects, setAllBankSubjects] = useState<string[]>([]);
+  const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
+  const refetchCategories = () => api.questionCategories.list().then(setCategories).catch(() => {});
 
   useEffect(() => {
     if (!open) return;
-    api.questionBank.list({ pageSize: 500 }).then(data => {
-      setAllBankSubjects([...new Set(data.items.map(i => i.subject))].sort());
-    }).catch(() => {});
+    refetchCategories();
   }, [open]);
 
   function applyBulkBankMeta() {
-    if (!bulkSubject.trim() || !bulkTopic.trim()) return;
+    if (!bulkCategoryId) return;
     setBankMeta(prev => prev.map(m => m.addToBank
-      ? { ...m, subject: bulkSubject.trim(), topic: bulkTopic.trim(), difficulty: bulkDifficulty, dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new" }
+      ? { ...m, categoryId: bulkCategoryId, difficulty: bulkDifficulty, dupMatch: null, similarMatches: [], semanticMatches: [], resolution: "new" }
       : m));
   }
 
@@ -309,27 +301,33 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       });
       setReviewQuestions(merged.length > 0 ? merged : null);
       setBankMeta(prev => prev.length === merged.length ? prev : merged.map(() => ({ ...BANK_META_INIT })));
+      // Số câu đổi thì chỉ số ảnh đang chờ không còn tin cậy được nữa — reset
+      // (giống cách bankMeta reset ở trên) thay vì gán nhầm ảnh sang câu khác.
+      setPendingImageFiles(prev => (reviewQuestions?.length === merged.length ? prev : {}));
       editingRightRef.current = false;
     }, 500);
   }
   function updateBankMeta(idx: number, patch: Partial<BankMeta>) {
     setBankMeta(prev => prev.map((m, i) => i === idx ? { ...m, ...patch } : m));
   }
-  async function checkDupForIndex(idx: number) {
+  async function checkDupForIndex(idx: number, categoryIdOverride?: string) {
     const meta = bankMeta[idx];
     const q = reviewQuestions?.[idx];
-    if (!meta?.addToBank || !q || !meta.subject.trim() || !meta.topic.trim()) return;
+    const categoryId = categoryIdOverride ?? meta?.categoryId;
+    if (!meta?.addToBank || !q || !categoryId) return;
     updateBankMeta(idx, { checking: true });
     try {
-      const { match, similar, semantic } = await api.questionBank.checkDuplicate({ text: q.text, subject: meta.subject, topic: meta.topic });
+      const { match, similar, semantic } = await api.questionBank.checkDuplicate({ text: q.text, categoryId });
       updateBankMeta(idx, { dupMatch: match, similarMatches: similar, semanticMatches: semantic, resolution: "new", checking: false });
     } catch {
       updateBankMeta(idx, { checking: false });
     }
   }
 
-  // ── Upload ảnh minh hoạ trực tiếp cho từng câu (Cloudinary) ───────────────
-  const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(null);
+  // ── Ảnh minh hoạ cho từng câu — chỉ giữ File + preview tạm lúc chọn, thật sự
+  // upload lên Cloudinary lúc bấm "Lưu đề thi" (xem handleSave), tránh mồ côi
+  // file nếu đóng drawer mà không lưu.
+  const [pendingImageFiles, setPendingImageFiles] = useState<Record<number, File>>({});
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const imageUploadTargetIdx = useRef<number | null>(null);
 
@@ -338,20 +336,18 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     imageFileInputRef.current?.click();
   }
 
-  async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function setQuestionImage(idx: number, file: File) {
+    const prevUrl = reviewQuestions?.[idx]?.imageUrl;
+    if (prevUrl?.startsWith("blob:")) URL.revokeObjectURL(prevUrl);
+    setPendingImageFiles(prev => ({ ...prev, [idx]: file }));
+    updateReviewImageUrl(idx, URL.createObjectURL(file));
+  }
+  function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     const idx = imageUploadTargetIdx.current;
     if (!file || idx === null) return;
-    setUploadingImageIdx(idx);
-    try {
-      const result = await uploadToCloudinary(file, "exams/questions");
-      updateReviewImageUrl(idx, result.url);
-    } catch (err) {
-      showToast("Upload ảnh thất bại: " + (err instanceof Error ? err.message : "Lỗi"), false);
-    } finally {
-      setUploadingImageIdx(null);
-    }
+    setQuestionImage(idx, file);
   }
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -360,9 +356,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!open) {
       setForm(CREATE_INIT); setErrors({}); setSaving(false);
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
-      setAnswerKeyFile(null); setAiLoading(false);
-      setBankGateOn(false); setBankMeta([]);
-      setBulkSubject(""); setBulkTopic(""); setBulkDifficulty("NB");
+      setAiLoading(false);
+      setBankGateOn(false); setBankMeta([]); setPendingImageFiles({});
+      setBulkCategoryId(""); setBulkDifficulty("NB");
       setSplitViewOn(false); setMarkupText(""); setMarkupErrs([]);
     }
   }, [open]);
@@ -388,9 +384,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     setBankMeta(prev => [...prev, ...items.map(() => ({ ...BANK_META_INIT, addToBank: false }))]);
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function processImportFile(file: File) {
     setFileErr("");
     const ext = file.name.split(".").pop()?.toLowerCase();
     try {
@@ -401,7 +395,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         }
         setAiLoading(true);
         try {
-          const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
+          const { questions, errors } = await api.exams.aiExtractQuestions(file);
           setReviewQuestionsWithMeta(questions);
           setParseErrs(errors);
         } finally {
@@ -442,6 +436,10 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processImportFile(file);
+  }
 
   function updateReviewQuestion(idx: number, text: string) {
     setReviewQuestions(prev => prev?.map((q, i) => i === idx ? { ...q, text } : q) ?? null);
@@ -473,6 +471,17 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       return next && next.length > 0 ? next : null;
     });
     setBankMeta(prev => prev.filter((_, i) => i !== idx));
+    // Đánh lại chỉ số ảnh đang chờ upload cho khớp mảng câu hỏi sau khi xoá
+    // (cùng cách bankMeta re-index ở trên) — không thì ảnh gán nhầm câu.
+    setPendingImageFiles(prev => {
+      const next: Record<number, File> = {};
+      Object.entries(prev).forEach(([k, file]) => {
+        const i = Number(k);
+        if (i < idx) next[i] = file;
+        else if (i > idx) next[i - 1] = file;
+      });
+      return next;
+    });
   }
   // SHORT_ANSWER chỉ có đúng 1 option (đáp án đúng) — sửa thẳng options[0].text
   function updateReviewShortAnswer(idx: number, text: string) {
@@ -552,7 +561,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
   // Giai đoạn 3.5 Cấp 1: với mỗi câu có addToBank, "Dùng câu cũ" → link thẳng
   // sourceBankItemId về bản ghi trùng đã tìm thấy; ngược lại tạo bản ghi ngân
-  // hàng mới rồi link. Câu thiếu subject/topic (bắt buộc) hoặc tạo lỗi bị bỏ
+  // hàng mới rồi link. Câu thiếu đầu mục (bắt buộc) hoặc tạo lỗi bị bỏ
   // qua, giữ nguyên không thêm vào ngân hàng — không chặn việc lưu đề, nhưng
   // ĐẾM lại để handleSave báo cho người soạn biết (trước đây bỏ qua âm thầm,
   // với đề import hàng loạt rất dễ không ai để ý).
@@ -568,7 +577,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
       if (meta.resolution === "reuse" && meta.dupMatch) {
         return { ...q, sourceBankItemId: meta.dupMatch.id };
       }
-      if (!meta.subject.trim() || !meta.topic.trim()) { skippedMissingInfo++; return q; }
+      if (!meta.categoryId) { skippedMissingInfo++; return q; }
       try {
         const created = await api.questionBank.create({
           type: q.type ?? "MC",
@@ -576,8 +585,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
           imageUrl: q.imageUrl,
           points: q.points ?? 1,
           explanation: q.explanation,
-          subject: meta.subject.trim(),
-          topic: meta.topic.trim(),
+          categoryId: meta.categoryId,
           difficulty: meta.difficulty,
           options: q.options,
         });
@@ -594,9 +602,23 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!validate()) return;
     setSaving(true);
     try {
-      const bankResult = reviewQuestions && reviewQuestions.length > 0
-        ? await resolveBankLinkedQuestions(reviewQuestions)
-        : { questions: reviewQuestions, skippedMissingInfo: 0, failedCreate: 0 };
+      // Chỉ thật sự upload ảnh minh hoạ lên Cloudinary ở đây — ngay trước khi
+      // tạo đề, không còn khoảng hở nào giữa lúc ảnh lên Cloudinary và lúc DB
+      // biết tới nó (tránh mồ côi nếu đóng drawer giữa chừng).
+      let questions = reviewQuestions;
+      if (questions && Object.keys(pendingImageFiles).length > 0) {
+        questions = await Promise.all(questions.map(async (q, idx) => {
+          const file = pendingImageFiles[idx];
+          if (!file) return q;
+          const result = await uploadToCloudinary(file, "exams/questions");
+          return { ...q, imageUrl: result.url };
+        }));
+        setPendingImageFiles({});
+      }
+
+      const bankResult = questions && questions.length > 0
+        ? await resolveBankLinkedQuestions(questions)
+        : { questions, skippedMissingInfo: 0, failedCreate: 0 };
       const questionsToSave = bankResult.questions;
       const examDate = form.date.split("-").reverse().join("/");
       const exam = await api.exams.create({
@@ -866,7 +888,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn, áp dụng cho cả 3 loại câu hỏi. Sau khi xem lại danh sách câu hỏi bên dưới, có thể bấm nút &quot;🖼 Tải ảnh&quot; ở từng câu để tải trực tiếp ảnh PNG/JPG/WebP thay vì dán URL.</p>
                   <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
                   <p className="mt-1.5">Phần thi: thêm 1 khối riêng chỉ chứa <code>=== Tên phần ===</code> (vd <code>=== Phần Trắc nghiệm ===</code>) — mọi câu hỏi phía sau được gán vào Phần đó cho tới mốc tiếp theo. Không bắt buộc, chỉ để nhóm hiển thị.</p>
-                  <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải bên dưới (tùy chọn) để AI xác định đáp án đúng chính xác hơn — nếu không có, AI sẽ tự giải để suy đáp án, độ chính xác thấp hơn. Luôn kiểm tra lại kết quả trước khi lưu.</p>
+                  <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi kèm đáp án có sẵn trong file. Luôn kiểm tra lại kết quả trước khi lưu.</p>
                 </div>
                 <textarea
                   className={inp + " font-mono"}
@@ -875,46 +897,22 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   value={rawText}
                   onChange={e => setRawText(e.target.value)}
                 />
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    File đáp án / hướng dẫn giải (tùy chọn — chỉ dùng khi tải file đề thi gốc bằng AI)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => answerKeyInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                      {answerKeyFile ? "Đổi file đáp án" : "Chọn file đáp án"}
-                    </button>
-                    {answerKeyFile && (
-                      <span className="text-xs text-gray-500">
-                        {answerKeyFile.name} <button type="button" onClick={() => setAnswerKeyFile(null)} className="text-red-500 ml-1">✕</button>
-                      </span>
-                    )}
-                    <input ref={answerKeyInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
-                      className="hidden" onChange={e => setAnswerKeyFile(e.target.files?.[0] ?? null)} />
-                  </div>
-                </div>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={runPreview} disabled={!rawText.trim()}
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                     Xem trước câu hỏi
                   </button>
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                    {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải file lên"}
-                  </button>
+                  <DropZone onFiles={files => files[0] && processImportFile(files[0])} disabled={aiLoading} className="inline-block rounded-lg">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
+                      className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                      {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải hoặc kéo-thả file lên"}
+                    </button>
+                  </DropZone>
                   <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx,.pdf,.docx,.jpg,.jpeg,.png,.webp"
                     className="hidden" onChange={handleFile} disabled={aiLoading} />
                   <button type="button" onClick={() => setBankPickerOpen(true)}
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
                     + Từ ngân hàng
-                  </button>
-                  <button type="button" onClick={() => setAutoDrawOpen(true)}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                    🎲 Rút đề tự động
-                  </button>
-                  <button type="button" onClick={() => setMatrixOpen(true)}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                    📐 Ma trận đề
                   </button>
                 </div>
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
@@ -930,20 +928,12 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       + Từ ngân hàng
                     </button>
-                    <button type="button" onClick={() => setAutoDrawOpen(true)}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                      🎲 Rút đề tự động
-                    </button>
-                    <button type="button" onClick={() => setMatrixOpen(true)}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                      📐 Ma trận đề
-                    </button>
                     <button type="button" onClick={() => setSplitViewOn(v => !v)}
                       className="text-xs font-semibold"
                       style={{ color: splitViewOn ? "#7e22ce" : "#0068FF" }}>
                       {splitViewOn ? "✓ " : ""}🪟 Chế độ 2 khung
                     </button>
-                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); }}
+                    <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); setPendingImageFiles({}); }}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                       ← Quay lại chỉnh sửa
                     </button>
@@ -966,14 +956,12 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
 
                 {bankGateOn && (
                   <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Môn/Chủ đề/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Đầu mục/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
                     <div className="flex flex-wrap items-end gap-2">
-                      <div className="flex-1 min-w-[140px]">
-                        <SubjectField className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                          value={bulkSubject} options={allBankSubjects} onChange={setBulkSubject} />
+                      <div className="flex-1 min-w-[200px]">
+                        <CategoryPicker className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                          value={bulkCategoryId} categories={categories} onCategoriesChange={refetchCategories} onChange={setBulkCategoryId} />
                       </div>
-                      <input className="flex-1 min-w-[140px] px-2 py-1.5 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                        placeholder="Chủ đề" value={bulkTopic} onChange={e => setBulkTopic(e.target.value)} />
                       <div className="flex items-center gap-1">
                         {DIFFICULTIES.map(d => (
                           <button key={d.value} type="button" onClick={() => setBulkDifficulty(d.value)}
@@ -985,7 +973,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           </button>
                         ))}
                       </div>
-                      <button type="button" onClick={applyBulkBankMeta} disabled={!bulkSubject.trim() || !bulkTopic.trim()}
+                      <button type="button" onClick={applyBulkBankMeta} disabled={!bulkCategoryId}
                         className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-50 flex-shrink-0"
                         style={{ background: "#0068FF" }}>
                         Áp dụng cho tất cả
@@ -1016,21 +1004,24 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
                       </div>
-                      <div className="flex items-center gap-1.5 mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
+                      <DropZone onFiles={files => files[0] && setQuestionImage(idx, files[0])}
+                        className="flex items-center gap-1.5 mb-2 ml-6 rounded" style={{ width: "calc(100% - 1.5rem)" }}>
                         <input
                           className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                          placeholder="Ảnh minh hoạ (URL, tùy chọn)"
+                          placeholder="Ảnh minh hoạ (URL, tùy chọn — hoặc kéo-thả ảnh vào đây)"
                           value={q.imageUrl ?? ""}
-                          onChange={e => updateReviewImageUrl(idx, e.target.value)}
+                          onChange={e => {
+                            setPendingImageFiles(prev => { const { [idx]: _drop, ...rest } = prev; return rest; });
+                            updateReviewImageUrl(idx, e.target.value);
+                          }}
                         />
                         {cloudinaryConfigured && (
                           <button type="button" onClick={() => triggerImageUpload(idx)}
-                            disabled={uploadingImageIdx === idx}
                             className="px-2 py-1 text-xs font-semibold rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 flex-shrink-0 whitespace-nowrap">
-                            {uploadingImageIdx === idx ? "⏳ Đang tải..." : "🖼 Tải ảnh"}
+                            {pendingImageFiles[idx] ? "🖼 Đã chọn (chờ lưu)" : "🖼 Tải ảnh"}
                           </button>
                         )}
-                      </div>
+                      </DropZone>
                       <div className="flex items-center gap-1.5 mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
                         <input
                           className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
@@ -1056,21 +1047,10 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                           </label>
                           {bankMeta[idx].addToBank && (
                             <>
-                              <div className="flex items-center gap-1.5 mb-1.5">
-                                <input
-                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                                  placeholder="Môn học *"
-                                  value={bankMeta[idx].subject}
-                                  onChange={e => updateBankMeta(idx, { subject: e.target.value })}
-                                  onBlur={() => checkDupForIndex(idx)}
-                                />
-                                <input
-                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                                  placeholder="Chủ đề *"
-                                  value={bankMeta[idx].topic}
-                                  onChange={e => updateBankMeta(idx, { topic: e.target.value })}
-                                  onBlur={() => checkDupForIndex(idx)}
-                                />
+                              <div className="mb-1.5">
+                                <CategoryPicker className="w-full px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
+                                  value={bankMeta[idx].categoryId} categories={categories} onCategoriesChange={refetchCategories}
+                                  onChange={v => { updateBankMeta(idx, { categoryId: v }); checkDupForIndex(idx, v); }} />
                               </div>
                               <div className="flex items-center gap-1 flex-wrap">
                                 {DIFFICULTIES.map(d => (
@@ -1090,7 +1070,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                 <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#fef3c7", color: "#92400e" }}>
                                   <p className="font-semibold">
                                     ⚠️ Trùng khớp với câu đã có trong ngân hàng
-                                    (tạo bởi {bankMeta[idx].dupMatch.owner?.name ?? "?"}, {bankMeta[idx].dupMatch.subject}/{bankMeta[idx].dupMatch.topic})
+                                    (tạo bởi {bankMeta[idx].dupMatch.owner?.name ?? "?"}, {categoryPath(bankMeta[idx].dupMatch.categoryId, categories)})
                                   </p>
                                   <div className="flex gap-2 mt-1.5">
                                     <button type="button" onClick={() => updateBankMeta(idx, { resolution: "reuse" })}
@@ -1225,8 +1205,6 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
         </div>
       </div>
       <QuestionBankPicker open={bankPickerOpen} onClose={() => setBankPickerOpen(false)} onAdd={handleAddFromBank} />
-      <AutoDrawModal open={autoDrawOpen} onClose={() => setAutoDrawOpen(false)} onAdd={handleAddFromBank} />
-      <ExamMatrixModal open={matrixOpen} onClose={() => setMatrixOpen(false)} onAdd={handleAddFromBank} />
     </>
   );
 }

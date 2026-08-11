@@ -138,8 +138,62 @@ model Lesson {
   chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress       LessonProgress[]
   notes          LessonNote[]
+  assignments    Assignment[]
 
   @@map("lessons")
+}
+
+// Bài tập tự nộp trên nền tảng — song song với Lesson.azotaUrl (link Azota
+// ngoài), KHÔNG thay thế. 1 Lesson có thể có nhiều Assignment (giống
+// azotaUrls cho phép nhiều link/lesson). Điểm bài tập là chỉ số RIÊNG, không
+// gộp vào công thức GPA (xem computeAssignmentAverage trong src/lib/gpa.ts).
+model Assignment {
+  id           String    @id @default(cuid())
+  lessonId     String
+  lesson       Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String?   @db.Text
+  fileUrl      String? // đề bài giáo viên cung cấp — học viên tải về làm, null = chỉ có hướng dẫn text
+  fileName     String?
+  maxPoints    Float     @default(10)
+  dueDate      DateTime?
+
+  // Xem ghi chú ở Course.ownerId — cùng quy tắc scope quyền (chỉ chủ sở
+  // hữu/admin_content/admin_super sửa/xoá/chấm).
+  ownerId String?
+  owner   User?   @relation("OwnedAssignments", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submissions AssignmentSubmission[]
+
+  @@index([lessonId])
+  @@map("assignments")
+}
+
+// Bài học viên nộp cho 1 Assignment — @@unique([assignmentId, userId]) nghĩa
+// là nộp lại sẽ GHI ĐÈ bản cũ (không tích luỹ nhiều lần nộp). Nộp lại một bài
+// đã chấm sẽ xoá score/gradedAt/comment cũ (bắt chấm lại), tránh điểm cũ gắn
+// nhầm với nội dung đã sửa — xem submit/route.ts.
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation("AssignmentSubmissions", fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl      String
+  fileName     String?
+  submittedAt  DateTime   @default(now())
+
+  // null = chưa chấm. Cả 2 field dưới null nếu chưa chấm.
+  score    Float?
+  comment  String?   @db.Text
+  gradedAt DateTime?
+  gradedBy String? // userId giáo viên đã chấm gần nhất
+
+  @@unique([assignmentId, userId])
+  @@map("assignment_submissions")
 }
 
 // ─── EXAMS ────────────────────────────────────────────────────────────────────
@@ -232,15 +286,17 @@ model QuestionBankItem {
   points      Float    @default(1)
   explanation String?  @db.Text
 
-  // Phân loại bắt buộc — dùng để thu hẹp phạm vi so trùng khi làm phát hiện
-  // trùng lặp (tính năng sau), và để lọc/tìm trong danh sách.
-  subject    String // môn học, bắt buộc (vd "Toán", "Ngữ Văn")
-  topic      String // chủ đề, bắt buộc (vd "Hàm số", "Đạo hàm")
+  // Đầu mục phân cấp (thay subject/topic phẳng cũ) — lá của cây
+  // QuestionCategory, dùng để thu hẹp phạm vi so trùng khi phát hiện trùng
+  // lặp, và để lọc/tìm trong danh sách. Bắt buộc chọn 1 đầu mục cụ thể (có
+  // thể ở bất kỳ tầng nào của cây).
+  categoryId String
+  category   QuestionCategory @relation(fields: [categoryId], references: [id])
   difficulty String // "NB" | "TH" | "VD" | "VDC" (nhận biết/thông hiểu/vận dụng/vận dụng cao)
   tags       Json? // string[] tự do, tùy chọn
 
   // Hash nội dung đã chuẩn hoá (xem computeContentHash trong
-  // src/lib/questionDedup.ts) — tra trùng Y HỆT trong phạm vi subject+topic
+  // src/lib/questionDedup.ts) — tra trùng Y HỆT trong phạm vi categoryId
   // (Giai đoạn 3.5 Cấp 1). null = chưa từng tính (bản ghi cũ trước tính năng
   // này, được tính lại khi sửa).
   contentHash String?
@@ -285,10 +341,32 @@ model QuestionBankItem {
   options       QuestionBankOption[]
   examQuestions ExamQuestion[]
 
-  @@index([subject, topic])
-  @@index([subject, topic, contentHash])
+  @@index([categoryId])
+  @@index([categoryId, contentHash])
   @@index([status])
   @@map("question_bank_items")
+}
+
+// Cây đầu mục phân cấp không giới hạn số tầng (vd Môn → Chương → Bài →
+// Dạng bài) — thay cho subject/topic phẳng cũ của QuestionBankItem. Dùng
+// chung giữa mọi giáo viên (ai cũng xem/chọn được, sửa/xoá qua trang quản lý
+// riêng — không có khái niệm chủ sở hữu, khác Course/Exam/QuestionBankItem).
+// KHÔNG đặt onDelete: Cascade ở quan hệ cha-con hay ở QuestionBankItem.category
+// — API xoá phải tự chặn khi còn con hoặc còn câu hỏi gắn vào, tránh xoá
+// nhầm cả nhánh cây (xem src/app/api/question-categories/[id]/route.ts).
+model QuestionCategory {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    QuestionCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  QuestionCategory[] @relation("CategoryTree")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  bankItems QuestionBankItem[]
+
+  @@index([parentId])
+  @@map("question_categories")
 }
 
 model QuestionBankOption {
@@ -303,30 +381,6 @@ model QuestionBankOption {
 
   @@index([itemId])
   @@map("question_bank_options")
-}
-
-// Ma trận đề thi chuẩn Bộ GDĐT — lưu lại để rút đề nhiều lần với cùng cấu
-// trúc Chủ đề × Độ khó × Loại câu (mỗi đề rút ra vẫn khác nhau vì câu được
-// chọn ngẫu nhiên từ Ngân hàng câu hỏi). Dùng chung giữa giáo viên như Ngân
-// hàng câu hỏi (ai cũng xem/tải được, chỉ chủ sở hữu/admin sửa/xoá) — xem
-// ownsResource()/requireOwnedResource() trong src/lib/auth-guard.ts.
-model ExamMatrixTemplate {
-  id      String @id @default(cuid())
-  name    String
-  subject String
-
-  // ExamMatrixCell[] — [{ topic, difficulty: "NB"|"TH"|"VD"|"VDC", type:
-  // QuestionType | null, count }]. type=null nghĩa là không lọc loại câu cho
-  // dòng đó (xem src/lib/api.ts).
-  cells Json
-
-  ownerId String?
-  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-
-  @@index([subject])
-  @@map("exam_matrix_templates")
 }
 
 // Câu hỏi thi trắc nghiệm trong platform — KHÔNG liên quan đến model
@@ -495,6 +549,49 @@ model ExamGuestAccess {
   @@map("exam_guest_access")
 }
 
+// Ngân hàng đề thi — chỉ lưu trữ file đề gốc (PDF/Word) để xem/tải lại sau,
+// KHÔNG tự động tách câu khi upload. Tách câu là hành động riêng, chủ động
+// (nút "Tách câu hỏi", xem src/app/api/exam-files/[id]/extract/route.ts) —
+// tái dùng đúng pipeline AI-extract sẵn có (src/lib/aiExamImport.ts) rồi đưa
+// người soạn qua màn hình gán Đầu mục (QuestionCategory) trước khi lưu vào
+// Ngân hàng câu hỏi, không tự động lưu thẳng.
+model ExamFile {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  fileType  String // mime type gốc, để biết cách hiển thị/tách
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  // null = "Chưa phân loại". Xoá thư mục KHÔNG xoá theo file (SetNull) — API
+  // xoá thư mục vẫn tự chặn nếu còn file để tránh mất tổ chức, xem
+  // exam-file-folders/[id]/route.ts.
+  folderId String?
+  folder   ExamFileFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([folderId])
+  @@map("exam_files")
+}
+
+// Thư mục Ngân hàng đề thi — 1 CẤP PHẲNG (không thư mục lồng thư mục, khác
+// QuestionCategory). Có chủ sở hữu (khác QuestionCategory dùng chung) — mỗi
+// giáo viên tự tổ chức file của mình, cùng quy tắc ownerScopeWhere/
+// requireOwnedResource như ExamFile.
+model ExamFileFolder {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  files ExamFile[]
+
+  @@index([ownerId])
+  @@map("exam_file_folders")
+}
+
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -521,8 +618,11 @@ model User {
   ownedCourses        Course[]
   ownedExams          Exam[]
   questionBankItems   QuestionBankItem[]
-  examMatrixTemplates ExamMatrixTemplate[]
   examGuestAccess     ExamGuestAccess[]
+  examFiles           ExamFile[]
+  examFileFolders     ExamFileFolder[]
+  ownedAssignments      Assignment[]           @relation("OwnedAssignments")
+  assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmissions")
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]

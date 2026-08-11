@@ -6,9 +6,11 @@ import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType, type SaveToBankInput, type Difficulty } from "@/lib/api";
+import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType, type SaveToBankInput, type Difficulty, type QuestionCategoryFull } from "@/lib/api";
 import { MathText } from "@/components/MathText";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
+import { CategoryPicker } from "@/components/CategoryPicker";
+import { DropZone } from "@/components/DropZone";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -356,23 +358,21 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
   const [aiLoading, setAiLoading]         = useState(false);
   const [aiSaving, setAiSaving]           = useState(false);
   const [aiFileErr, setAiFileErr]         = useState("");
-  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
   const [parseErrs, setParseErrs]         = useState<{ block: number; message: string }[]>([]);
   const [scorePreset, setScorePreset]     = useState<keyof typeof SCORE_PRESETS>("thpt_toan");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
-      setText(""); setAiFileErr(""); setAnswerKeyFile(null);
+      setText(""); setAiFileErr("");
       setReviewQuestions(null); setParseErrs([]); setAiLoading(false); setAiSaving(false);
     }
   }, [open]);
 
-  async function handleAiFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // File đề thi gốc luôn đã có sẵn đáp án in kèm (đề + đáp án chung 1 file)
+  // — AI đọc thẳng đáp án thật trong file chính, không cần file đáp án riêng.
+  async function processAiFile(file: File) {
     setAiFileErr("");
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!ext || !AI_FILE_EXTENSIONS.has(ext)) {
@@ -385,7 +385,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
     }
     setAiLoading(true);
     try {
-      const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
+      const { questions, errors } = await api.exams.aiExtractQuestions(file);
       setReviewQuestions(questions);
       setParseErrs(errors);
     } catch (err) {
@@ -394,6 +394,10 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
       setAiLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+  function handleAiFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processAiFile(file);
   }
 
   function updateReviewQuestion(idx: number, text: string) {
@@ -458,7 +462,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
     try {
       await api.examQuestions.bulkCreate(examId, reviewQuestions);
       showToast(`Đã thêm ${reviewQuestions.length} câu hỏi`, true);
-      setReviewQuestions(null); setParseErrs([]); setAnswerKeyFile(null);
+      setReviewQuestions(null); setParseErrs([]);
       onSaved();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Lưu câu hỏi thất bại", false);
@@ -532,30 +536,14 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
             {reviewQuestions === null ? (
               <div className="space-y-3">
                 <p className="text-xs" style={{ color: "#787671" }}>
-                  Tải file đề thi gốc (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải (tùy chọn) để AI xác định đáp án đúng chính xác hơn. Kết quả luôn qua bước xem lại trước khi lưu.
+                  Tải file đề thi gốc (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi kèm đáp án có sẵn trong file. Kết quả luôn qua bước xem lại trước khi lưu.
                 </p>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    File đáp án / hướng dẫn giải (tùy chọn)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => answerKeyInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                      {answerKeyFile ? "Đổi file đáp án" : "Chọn file đáp án"}
-                    </button>
-                    {answerKeyFile && (
-                      <span className="text-xs text-gray-500">
-                        {answerKeyFile.name} <button type="button" onClick={() => setAnswerKeyFile(null)} className="text-red-500 ml-1">✕</button>
-                      </span>
-                    )}
-                    <input ref={answerKeyInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
-                      className="hidden" onChange={e => setAnswerKeyFile(e.target.files?.[0] ?? null)} />
-                  </div>
-                </div>
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
-                  className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                  {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải file đề thi lên"}
-                </button>
+                <DropZone onFiles={files => files[0] && processAiFile(files[0])} disabled={aiLoading} className="inline-block rounded-lg">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải hoặc kéo-thả file đề thi lên"}
+                  </button>
+                </DropZone>
                 <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
                   className="hidden" onChange={handleAiFile} disabled={aiLoading} />
                 {aiFileErr && <p className="text-xs text-red-500">{aiFileErr}</p>}
@@ -719,21 +707,22 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
   onSave: (data: SaveToBankInput) => void;
   saving: boolean;
 }) {
-  const [subject, setSubject] = useState("");
-  const [topic, setTopic] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<QuestionCategoryFull[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty>("NB");
   const [tagsText, setTagsText] = useState("");
+  const refetchCategories = () => api.questionCategories.list().then(setCategories).catch(() => {});
 
   useEffect(() => {
-    if (target) { setSubject(""); setTopic(""); setDifficulty("NB"); setTagsText(""); }
+    if (target) { setCategoryId(""); setDifficulty("NB"); setTagsText(""); refetchCategories(); }
   }, [target]);
 
   if (!target) return null;
 
   function handleSave() {
-    if (!subject.trim() || !topic.trim()) return;
+    if (!categoryId) return;
     const tags = tagsText.split(",").map(t => t.trim()).filter(Boolean);
-    onSave({ subject: subject.trim(), topic: topic.trim(), difficulty, tags: tags.length > 0 ? tags : undefined });
+    onSave({ categoryId, difficulty, tags: tags.length > 0 ? tags : undefined });
   }
 
   const inp = "w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400";
@@ -747,12 +736,9 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
         <p className="text-sm text-gray-500 mb-4">"{target.label}"</p>
         <div className="space-y-3 mb-5">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Môn học *</label>
-            <input className={inp} style={inpStyle} value={subject} onChange={e => setSubject(e.target.value)} placeholder="VD: Toán" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Chủ đề *</label>
-            <input className={inp} style={inpStyle} value={topic} onChange={e => setTopic(e.target.value)} placeholder="VD: Hàm số" />
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đầu mục *</label>
+            <CategoryPicker className={inp} value={categoryId} categories={categories}
+              onCategoriesChange={refetchCategories} onChange={setCategoryId} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Độ khó *</label>
@@ -775,7 +761,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
-          <button onClick={handleSave} disabled={saving || !subject.trim() || !topic.trim()}
+          <button onClick={handleSave} disabled={saving || !categoryId}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{ background: "#16a34a" }}>
             {saving ? "Đang lưu..." : "Lưu"}
           </button>

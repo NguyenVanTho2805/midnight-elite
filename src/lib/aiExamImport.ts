@@ -60,6 +60,11 @@ const questionSchema = {
   properties: {
     text: { type: Type.STRING, description: "Nội dung câu hỏi, giữ nguyên công thức toán dạng LaTeX trong $...$ (inline) hoặc $$...$$ (khối riêng)" },
     type: { type: Type.STRING, enum: ["MC", "TRUE_FALSE_CLUSTER", "ESSAY"] },
+    difficulty: {
+      type: Type.STRING,
+      enum: ["NB", "TH", "VD", "VDC"],
+      description: "CHỈ điền khi đề gốc có ghi RÕ mức độ ngay cạnh câu hỏi này (vd 'Câu 1: Thông hiểu', 'Mức độ: Vận dụng cao'). NB=Nhận biết, TH=Thông hiểu, VD=Vận dụng, VDC=Vận dụng cao. TUYỆT ĐỐI không tự suy đoán mức độ nếu đề không ghi rõ — để trống.",
+    },
     pageIndex: {
       type: Type.INTEGER,
       description: "CHỈ điền khi câu hỏi này đi kèm 1 hình ảnh/biểu đồ/bảng số liệu/đồ thị nằm ngay trên trang đề (không phải công thức toán trong text). Số trang 0-based trong file đề thi. Bỏ trống nếu câu không có hình đi kèm.",
@@ -81,6 +86,14 @@ const questionSchema = {
         },
         required: ["text", "isCorrect"],
       },
+    },
+    suggestedChapter: {
+      type: Type.STRING,
+      description: "GỢI Ý tên Chương câu hỏi này có khả năng thuộc về — ĐƯỢC PHÉP suy luận từ bố cục/thứ tự/chủ đề nội dung dù đề không ghi tiêu đề chương rõ ràng (khác quy tắc của difficulty/chartBox ở trên). Đây chỉ là gợi ý, giáo viên sẽ xác nhận lại. Để trống nếu thực sự không có cơ sở nào để đoán.",
+    },
+    suggestedLesson: {
+      type: Type.STRING,
+      description: "GỢI Ý tên Bài cụ thể hơn bên trong Chương đã gợi ý ở trên, nếu suy luận được. Để trống nếu không có cơ sở, hoặc nếu không gợi ý được Chương thì cũng để trống trường này.",
     },
   },
   required: ["text", "type", "options"],
@@ -109,16 +122,32 @@ Quy tắc xác định đáp án đúng:
 
 Công thức toán: giữ nguyên dạng LaTeX, bọc trong $...$ (inline) hoặc $$...$$ (khối riêng dòng), không tự ý đơn giản hóa hay bỏ qua công thức.
 
+Mức độ (NB/TH/VD/VDC): CHỈ điền trường "difficulty" khi đề gốc có ghi RÕ mức độ ngay cạnh câu hỏi đó (vd "Câu 1: Thông hiểu", "[Vận dụng]"). Nếu đề không ghi rõ mức độ cho câu nào, để trống trường đó — TUYỆT ĐỐI không tự suy đoán/áng chừng mức độ.
+
 Hình ảnh/biểu đồ đi kèm câu hỏi: nếu câu hỏi có 1 hình ảnh/biểu đồ/đồ thị/bảng số liệu/hình vẽ minh hoạ nằm ngay trên trang đề (KHÔNG phải công thức toán viết bằng chữ), điền "pageIndex" (số trang 0-based) và "chartBox" (khung toạ độ [yMin,xMin,yMax,xMax], 0-1000) SÁT quanh đúng vùng hình đó — không lấy lẫn phần chữ đề bài xung quanh. Nếu không chắc chắn vị trí chính xác, hoặc câu không có hình đi kèm, để trống cả 2 trường — TUYỆT ĐỐI không đoán bừa toạ độ.
+
+Gợi ý Chương/Bài ("suggestedChapter"/"suggestedLesson"): KHÁC với các quy tắc "không đoán" ở trên — ở đây ĐƯỢC PHÉP suy luận dựa trên bố cục, thứ tự xuất hiện, chủ đề nội dung của câu hỏi, kể cả khi đề không ghi tiêu đề chương/bài rõ ràng thành chữ. Đây chỉ là gợi ý để giáo viên xác nhận lại trên màn hình duyệt, không phải dữ liệu cuối cùng lưu thẳng. Nếu câu hỏi quá ngắn/mơ hồ, thực sự không có cơ sở nào để đoán, để trống cả 2 trường thay vì bịa tên không liên quan.
 
 Chỉ trả về đúng JSON theo schema, không thêm giải thích ngoài JSON.`;
 
 interface RawQuestion {
   text?: unknown;
   type?: unknown;
+  difficulty?: unknown;
   options?: unknown;
   pageIndex?: unknown;
   chartBox?: unknown;
+  suggestedChapter?: unknown;
+  suggestedLesson?: unknown;
+}
+
+const VALID_DIFFICULTIES = new Set(["NB", "TH", "VD", "VDC"]);
+function coerceDifficulty(raw: unknown): ParsedQuestion["difficulty"] {
+  return typeof raw === "string" && VALID_DIFFICULTIES.has(raw) ? (raw as ParsedQuestion["difficulty"]) : undefined;
+}
+
+function coerceSuggestedName(raw: unknown): string | undefined {
+  return typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
 }
 
 interface ChartRef {
@@ -157,7 +186,18 @@ function coerceQuestion(raw: RawQuestion, idx: number): { question: ParsedQuesti
   const optionsErr = validateQuestionOptions(type, options);
   if (optionsErr) return { error: `Câu ${idx + 1}: ${optionsErr}` };
 
-  return { question: { text, type, options }, chartRef: coerceChartRef(raw) };
+  const difficulty = coerceDifficulty(raw.difficulty);
+  const suggestedChapter = coerceSuggestedName(raw.suggestedChapter);
+  const suggestedLesson = coerceSuggestedName(raw.suggestedLesson);
+  return {
+    question: {
+      text, type, options,
+      ...(difficulty ? { difficulty } : {}),
+      ...(suggestedChapter ? { suggestedChapter } : {}),
+      ...(suggestedLesson ? { suggestedLesson } : {}),
+    },
+    chartRef: coerceChartRef(raw),
+  };
 }
 
 // Cắt ảnh biểu đồ THẬT từ file đề gốc theo toạ độ Gemini xác định, upload

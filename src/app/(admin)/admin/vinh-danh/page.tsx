@@ -5,6 +5,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { BADGE_RULES, computeRankings, type HonorStudent, type SortKey } from "@/lib/honorData";
 import { GpaBar } from "@/components/GpaBar";
+import { DropZone } from "@/components/DropZone";
 
 // TABS ngoài component — tránh recreate mỗi render
 const TABS = [
@@ -257,6 +258,12 @@ export default function VinhDanhPage() {
                           <div className="text-sm font-bold" style={{ color: "#7C3AED" }}>{s.completion}%</div>
                           <div className="text-xs text-gray-400">Tiến độ</div>
                         </div>
+                        <div className="text-center">
+                          <div className="text-sm font-bold" style={{ color: "#16a34a" }}>
+                            {s.assignmentAvg != null ? s.assignmentAvg : "—"}
+                          </div>
+                          <div className="text-xs text-gray-400">Điểm bài tập</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -265,7 +272,7 @@ export default function VinhDanhPage() {
             </div>
 
             <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>
-              GPA = 40% tiến độ + 60% điểm thi · Tự động cập nhật từ DB
+              GPA = 40% tiến độ + 60% điểm thi (không tính điểm bài tập) · Tự động cập nhật từ DB
             </p>
           </div>
         )}
@@ -361,25 +368,27 @@ export default function VinhDanhPage() {
                     style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
                 </div>
               </div>
-              <div
-                className="border-2 border-dashed rounded-2xl p-8 text-center mb-4 cursor-pointer transition-all hover:border-blue-400"
-                style={{ borderColor: importFile ? "#0068FF" : "#C5D0EA" }}
-                onClick={() => fileRef.current?.click()}>
-                {importFile ? (
-                  <>
-                    <div className="text-sm font-semibold mb-1" style={{ color: "#0068FF" }}>{importFile}</div>
-                    <p className="text-xs" style={{ color: "#9CA3AF" }}>Click để chọn file khác</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-3xl mb-2 font-light" style={{ color: "#C5D0EA" }}>↑</div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: "#1E2938" }}>Kéo thả file CSV vào đây</p>
-                    <p className="text-xs mb-3" style={{ color: "#9CA3AF" }}>hoặc click để chọn từ máy tính</p>
-                  </>
-                )}
-                <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) setImportFile(f.name); }} />
-              </div>
+              <DropZone onFiles={files => files[0] && setImportFile(files[0].name)} className="rounded-2xl">
+                <div
+                  className="border-2 border-dashed rounded-2xl p-8 text-center mb-4 cursor-pointer transition-all hover:border-blue-400"
+                  style={{ borderColor: importFile ? "#0068FF" : "#C5D0EA" }}
+                  onClick={() => fileRef.current?.click()}>
+                  {importFile ? (
+                    <>
+                      <div className="text-sm font-semibold mb-1" style={{ color: "#0068FF" }}>{importFile}</div>
+                      <p className="text-xs" style={{ color: "#9CA3AF" }}>Click để chọn file khác</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-3xl mb-2 font-light" style={{ color: "#C5D0EA" }}>↑</div>
+                      <p className="text-sm font-semibold mb-1" style={{ color: "#1E2938" }}>Kéo thả file CSV vào đây</p>
+                      <p className="text-xs mb-3" style={{ color: "#9CA3AF" }}>hoặc click để chọn từ máy tính</p>
+                    </>
+                  )}
+                  <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) setImportFile(f.name); }} />
+                </div>
+              </DropZone>
               <button onClick={handleImport}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
                 style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>

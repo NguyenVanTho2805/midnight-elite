@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import { useProgress } from "@/hooks/useProgress";
 import { parseLessonType } from "@/lib/types";
+import { api, type AssignmentFull } from "@/lib/api";
+import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
+import { DropZone } from "@/components/DropZone";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
   FileDownload, Eye, Lock, CheckCircle,
@@ -381,22 +384,115 @@ function TabTaiLieu({ materials }: { materials: Material[] }) {
   );
 }
 
-function TabBaiTap({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: string }) {
-  if (!azotaUrl) return <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Bài học này không có bài kiểm tra.</p>;
+function fmtDue(d: string | null): string {
+  if (!d) return "";
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
+}
+
+function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFull; onSubmitted: (a: AssignmentFull) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const sub = assignment.mySubmission;
+
+  async function submitFile(file: File) {
+    if (sub && sub.gradedAt && !confirm("Bài này đã được chấm điểm — nộp lại sẽ xoá điểm cũ và chờ chấm lại. Tiếp tục?")) return;
+    setUploading(true);
+    try {
+      const result = await uploadToCloudinary(file, "assignments/submissions");
+      const updated = await api.assignments.submit(assignment.id, { fileUrl: result.url, fileName: file.name });
+      onSubmitted({ ...assignment, mySubmission: updated, submissionCount: assignment.submissionCount + (sub ? 0 : 1) });
+    } catch (err) {
+      alert("Nộp bài thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
+    } finally {
+      setUploading(false);
+    }
+  }
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) submitFile(file);
+  }
+
+  return (
+    <DropZone onFiles={files => files[0] && submitFile(files[0])} disabled={uploading || !cloudinaryConfigured}
+      className="rounded-xl p-4" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="font-semibold text-sm" style={{ color: "#1E2938" }}>{assignment.title}</p>
+          {assignment.instructions && <p className="text-xs mt-1" style={{ color: "#6B7280" }}>{assignment.instructions}</p>}
+        </div>
+        {assignment.dueDate && (
+          <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: "#dc2626" }}>
+            <Alarm size={11} /> Hạn {fmtDue(assignment.dueDate)}
+          </p>
+        )}
+      </div>
+
+      {assignment.fileUrl && (
+        <a href={assignment.fileUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-3" style={{ color: "#00A63D" }}>
+          <FileDownload size={14} /> {assignment.fileName || "Tải đề bài"}
+        </a>
+      )}
+
+      {sub?.gradedAt ? (
+        <div className="p-3 rounded-lg mb-2" style={{ background: "#dcfce7" }}>
+          <p className="text-sm font-bold" style={{ color: "#16a34a" }}>Điểm: {sub.score}/{assignment.maxPoints}</p>
+          {sub.comment && <p className="text-xs mt-1" style={{ color: "#166534" }}>Nhận xét: {sub.comment}</p>}
+        </div>
+      ) : sub ? (
+        <p className="text-xs mb-2" style={{ color: "#0068FF" }}>Đã nộp lúc {new Date(sub.submittedAt).toLocaleString("vi-VN")} — chờ chấm điểm.</p>
+      ) : null}
+
+      {cloudinaryConfigured && (
+        <>
+          <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="px-4 py-2 text-xs font-bold text-white rounded-lg disabled:opacity-50"
+            style={{ background: "#FE9900" }}>
+            {uploading ? "Đang nộp..." : sub ? "Nộp lại bài (hoặc kéo-thả file)" : "Nộp bài (hoặc kéo-thả file)"}
+          </button>
+        </>
+      )}
+    </DropZone>
+  );
+}
+
+function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUrl?: string; deadline?: string }) {
+  const [assignments, setAssignments] = useState<AssignmentFull[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.assignments.listByLesson(lessonId).then(setAssignments).catch(() => setAssignments([])).finally(() => setLoading(false));
+  }, [lessonId]);
+
+  if (!azotaUrl && !loading && assignments.length === 0) {
+    return <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Bài học này không có bài kiểm tra.</p>;
+  }
+
   return (
     <div className="space-y-3">
-      <div className="rounded-xl p-4 flex items-center justify-between gap-4"
-        style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-        <div>
-          <p className="font-semibold text-sm" style={{ color: "#1E2938" }}>Quiz — Xử lý số liệu</p>
-          {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "#dc2626" }}><Alarm size={11} /> Deadline: {deadline}</p>}
+      {azotaUrl && (
+        <div className="rounded-xl p-4 flex items-center justify-between gap-4"
+          style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+          <div>
+            <p className="font-semibold text-sm" style={{ color: "#1E2938" }}>Quiz — Xử lý số liệu</p>
+            {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "#dc2626" }}><Alarm size={11} /> Deadline: {deadline}</p>}
+          </div>
+          <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
+            className="flex-shrink-0 px-4 py-2 text-xs font-bold text-white"
+            style={{ background: "#FE9900", borderRadius: "8px" }}>
+            Làm bài →
+          </a>
         </div>
-        <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-          className="flex-shrink-0 px-4 py-2 text-xs font-bold text-white"
-          style={{ background: "#FE9900", borderRadius: "8px" }}>
-          Làm bài →
-        </a>
-      </div>
+      )}
+
+      {assignments.map(a => (
+        <AssignmentCard key={a.id} assignment={a}
+          onSubmitted={updated => setAssignments(prev => prev.map(x => x.id === updated.id ? updated : x))} />
+      ))}
     </div>
   );
 }
@@ -935,7 +1031,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             </div>
             <div className="p-4">
               {activeTab === "tailieu" && <TabTaiLieu materials={lesson.materials} />}
-              {activeTab === "baitap"  && <TabBaiTap azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
+              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
               {activeTab === "ghichu"  && <TabGhiChu lessonId={params.lessonId} adminNote={dbLesson.adminNote} />}
             </div>
           </div>

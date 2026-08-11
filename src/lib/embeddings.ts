@@ -46,6 +46,24 @@ export async function setBankItemEmbedding(itemId: string, text: string): Promis
   `);
 }
 
+// Copy thẳng vector embedding từ câu gốc sang câu vừa nhân bản (tính năng
+// "Copy ngân hàng") — nội dung (text) không đổi nên embedding cũ vẫn đúng,
+// KHÔNG cần gọi lại Gemini (đỡ tốn khi nhân bản cả trăm câu cùng lúc).
+// Best-effort như setBankItemEmbedding, nhưng tự bắt lỗi vì được gọi hàng
+// loạt qua Promise.all — 1 câu lỗi không được làm rớt các câu còn lại.
+export async function copyBankItemEmbedding(oldId: string, newId: string): Promise<void> {
+  try {
+    await prisma.$executeRaw(Prisma.sql`
+      UPDATE "question_bank_items" AS new_t
+      SET "embedding" = old_t."embedding"
+      FROM "question_bank_items" AS old_t
+      WHERE old_t."id" = ${oldId} AND new_t."id" = ${newId}
+    `);
+  } catch (e) {
+    console.error("[copyBankItemEmbedding]", oldId, newId, e);
+  }
+}
+
 // Ngưỡng cosine similarity (1 - khoảng cách cosine của pgvector `<=>`) — cao
 // hơn hẳn ngưỡng pg_trgm (0.35) vì embedding hoạt động trên thang khác: 2
 // câu chỉ tình cờ cùng chủ đề cũng có thể đạt 0.6-0.7, phải đủ cao mới chắc
@@ -60,7 +78,7 @@ const MAX_RESULTS = 5;
 // check-duplicate/route.ts) — đây là tầng tốn kém nhất (1 lệnh gọi Gemini +
 // 1 truy vấn vector), chỉ dùng khi 2 tầng rẻ hơn đã chắc chắn không đủ.
 export async function findSemanticBankItems(opts: {
-  text: string; subject: string; topic: string;
+  text: string; categoryId: string;
   userId: string; isReviewer: boolean;
 }) {
   const values = await computeEmbedding(opts.text);
@@ -74,7 +92,7 @@ export async function findSemanticBankItems(opts: {
   const rows = await prisma.$queryRaw<{ id: string; similarity: number }[]>(Prisma.sql`
     SELECT "id", 1 - ("embedding" <=> ${vectorLiteral}::vector) AS similarity
     FROM "question_bank_items"
-    WHERE "subject" = ${opts.subject} AND "topic" = ${opts.topic} AND "embedding" IS NOT NULL AND ${statusFilter}
+    WHERE "categoryId" = ${opts.categoryId} AND "embedding" IS NOT NULL AND ${statusFilter}
       AND 1 - ("embedding" <=> ${vectorLiteral}::vector) > ${SEMANTIC_SIMILARITY_THRESHOLD}
     ORDER BY "embedding" <=> ${vectorLiteral}::vector
     LIMIT ${MAX_RESULTS}

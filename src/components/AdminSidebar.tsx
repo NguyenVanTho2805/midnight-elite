@@ -39,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: "Danh sách đề thi",  href: "/admin/thi-thu" },
       { label: "Ngân hàng câu hỏi", href: "/admin/thi-thu/ngan-hang-cau-hoi" },
+      { label: "Ngân hàng đề thi",  href: "/admin/thi-thu/ngan-hang-de-thi" },
     ],
   },
   { label: "Đánh giá khóa học", href: "/admin/danh-gia",      Icon: Star,       permission: PERMISSIONS.MANAGE_COURSES   },

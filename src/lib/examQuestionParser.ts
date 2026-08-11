@@ -1,5 +1,6 @@
 // Parser thuần TS dùng chung cả client lẫn server — không import gì server-only,
 // để trang admin có thể parse ngay trên trình duyệt (review tức thì trước khi lưu DB).
+import type { Difficulty } from "@/lib/api";
 
 export type QuestionType = "MC" | "ESSAY" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER";
 
@@ -17,6 +18,20 @@ export interface ParsedQuestion {
   sectionLabel?: string | null; // tên Phần thi — xem SECTION_HEADER bên dưới
   sectionMinutes?: number | null; // số phút riêng cho Phần (giờ riêng HSA) — nhập tay ở admin, không parse từ bulk text
   sourceBankItemId?: string | null; // truy vết câu này copy từ Ngân hàng câu hỏi (null = soạn tay/AI trích xuất)
+  // Mức độ AI đọc được từ đề gốc khi TÁCH CÂU từ Ngân hàng đề thi (chỉ điền
+  // nếu đề gốc có ghi rõ ngay cạnh câu hỏi, vd "Câu 1: Thông hiểu" — không tự
+  // suy đoán, xem SYSTEM_INSTRUCTION trong src/lib/aiExamImport.ts). Không
+  // dùng ở luồng tạo/sửa đề thi thông thường (chỉ có ý nghĩa khi đẩy câu vào
+  // QuestionBankItem — xem admin/thi-thu/ngan-hang-de-thi).
+  difficulty?: Difficulty | null;
+  // Gợi ý Chương/Bài AI suy luận được khi TÁCH CÂU từ Ngân hàng đề thi — KHÁC
+  // với difficulty ở trên: được phép suy luận từ bố cục/thứ tự/ngữ cảnh dù đề
+  // không ghi tiêu đề rõ ràng (xem SYSTEM_INSTRUCTION trong aiExamImport.ts).
+  // Chỉ là gợi ý để màn hình duyệt tự khớp/tạo đầu mục rồi giáo viên xác nhận
+  // lại, không phải dữ liệu cuối cùng — không dùng ở luồng tạo/sửa đề thông
+  // thường, cùng phạm vi sử dụng với difficulty.
+  suggestedChapter?: string;
+  suggestedLesson?: string;
   // rỗng với ESSAY. Với SHORT_ANSWER: đúng 1 phần tử {text: <đáp án đúng>,
   // isCorrect:true} — tái dùng cấu trúc ExamOption có sẵn thay vì thêm field
   // riêng, chấm bằng cách so khớp text (chuẩn hoá) thay vì chọn optionId.
