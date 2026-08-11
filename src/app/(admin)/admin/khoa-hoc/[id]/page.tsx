@@ -1770,7 +1770,7 @@ export default function KhoaHocDetailPage() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ minHeight: "calc(100vh - 130px)" }}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}
@@ -1806,7 +1806,7 @@ export default function KhoaHocDetailPage() {
         </div>
       </div>
 
-      <div className="p-5 flex-1">
+      <div className="p-5 flex-1 min-h-0 overflow-y-auto">
         {activeTab === "cai-dat"    && <TabCaiDat courseSlug={courseSlug} course={course} />}
         {activeTab === "chuong-bai" && <TabChuongBai courseSlug={courseSlug} initialSections={course.sections} />}
         {activeTab === "hoc-vien"   && <TabHocVienKhoaHoc courseSlug={courseSlug} />}

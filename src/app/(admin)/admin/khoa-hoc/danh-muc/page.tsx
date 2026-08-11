@@ -305,7 +305,7 @@ export default function DanhMucPage() {
   const totalCourses = categories.reduce((a, c) => a + c.courseCount, 0);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ minHeight: "calc(100vh - 130px)" }}>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
       {/* Toast */}
       {toast && (
@@ -390,7 +390,7 @@ export default function DanhMucPage() {
       )}
 
       {/* Table */}
-      <div className="flex-1 overflow-x-auto">
+      <div className="flex-1 min-h-0 overflow-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
