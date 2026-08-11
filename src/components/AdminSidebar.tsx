@@ -166,19 +166,8 @@ export default function AdminSidebar() {
 
       {/* Bottom */}
       <div className="px-3 pb-5 pt-4 space-y-1" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        {/* Trang khách/học viên nằm ở domain riêng (midnightelite-edu.com), không
-            còn cùng domain với admin — dùng <a> điều hướng thật thay vì
-            <Link> (client-side route của Next chỉ hoạt động cùng-origin). */}
-        <a href="https://midnightelite-edu.com"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-white/5"
-          style={{ color: "rgba(255,255,255,0.4)" }}>
-          Xem trang web
-        </a>
-        <a href="https://midnightelite-edu.com/student"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-white/5"
-          style={{ color: "rgba(255,255,255,0.4)" }}>
-          Portal học viên
-        </a>
+        {/* "Xem trang web" và "Portal học viên" đã có ở góc phải trên
+            (AdminTopbar, (admin)/layout.tsx) — bỏ bản trùng ở đây. */}
         <button onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-left hover:bg-red-500/10"
           style={{ color: "#FF4D6D" }}>
