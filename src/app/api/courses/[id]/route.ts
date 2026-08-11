@@ -16,7 +16,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           include: {
             chapters: {
               orderBy: { order: "asc" },
-              include: { lessons: { orderBy: { order: "asc" } } },
+              include: {
+                lessons: {
+                  orderBy: { order: "asc" },
+                  include: { _count: { select: { assignments: true } } },
+                },
+              },
             },
           },
         },
