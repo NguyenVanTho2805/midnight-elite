@@ -106,7 +106,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav className="admin-sidebar-nav flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5">
         {visibleItems.map(item => {
           const active     = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           const hasChildren = item.children && item.children.length > 0;

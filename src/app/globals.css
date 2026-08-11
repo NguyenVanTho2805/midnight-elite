@@ -178,6 +178,16 @@ code, pre, .font-mono {
 ::-webkit-scrollbar-track { background: #f6f5f4; }
 ::-webkit-scrollbar-thumb { background: #c8c4be; border-radius: 3px; }
 
+/* Scrollbar tối cho sidebar admin (nền #1E2938) — thanh cuộn xám sáng mặc
+   định ở trên nổi bật lạc tông trên nền tối, đổi sang trắng mờ hoà nền. */
+.admin-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
 /* ── Skeleton shimmer ──────────────────────────────────────────── */
 @keyframes skeleton-shimmer {
   0%   { background-position: 200% 0; }
