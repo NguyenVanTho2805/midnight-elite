@@ -17,6 +17,7 @@ import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
+import { DropZone } from "@/components/DropZone";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -231,10 +232,8 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
   const [scorePreset, setScorePreset]     = useState<keyof typeof SCORE_PRESETS>("thpt_toan");
   const [fileErr, setFileErr]             = useState("");
   const [aiLoading, setAiLoading]         = useState(false);
-  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
   // ── Giai đoạn 3.5 Cấp 1: cổng opt-in "thêm vào ngân hàng" + phát hiện trùng ──
   const [bankGateOn, setBankGateOn] = useState(false);
@@ -337,15 +336,18 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     imageFileInputRef.current?.click();
   }
 
+  function setQuestionImage(idx: number, file: File) {
+    const prevUrl = reviewQuestions?.[idx]?.imageUrl;
+    if (prevUrl?.startsWith("blob:")) URL.revokeObjectURL(prevUrl);
+    setPendingImageFiles(prev => ({ ...prev, [idx]: file }));
+    updateReviewImageUrl(idx, URL.createObjectURL(file));
+  }
   function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     const idx = imageUploadTargetIdx.current;
     if (!file || idx === null) return;
-    const prevUrl = reviewQuestions?.[idx]?.imageUrl;
-    if (prevUrl?.startsWith("blob:")) URL.revokeObjectURL(prevUrl);
-    setPendingImageFiles(prev => ({ ...prev, [idx]: file }));
-    updateReviewImageUrl(idx, URL.createObjectURL(file));
+    setQuestionImage(idx, file);
   }
 
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -354,7 +356,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     if (!open) {
       setForm(CREATE_INIT); setErrors({}); setSaving(false);
       setRawText(""); setReviewQuestions(null); setParseErrs([]); setFileErr("");
-      setAnswerKeyFile(null); setAiLoading(false);
+      setAiLoading(false);
       setBankGateOn(false); setBankMeta([]); setPendingImageFiles({});
       setBulkCategoryId(""); setBulkDifficulty("NB");
       setSplitViewOn(false); setMarkupText(""); setMarkupErrs([]);
@@ -382,9 +384,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     setBankMeta(prev => [...prev, ...items.map(() => ({ ...BANK_META_INIT, addToBank: false }))]);
   }
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function processImportFile(file: File) {
     setFileErr("");
     const ext = file.name.split(".").pop()?.toLowerCase();
     try {
@@ -395,7 +395,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         }
         setAiLoading(true);
         try {
-          const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
+          const { questions, errors } = await api.exams.aiExtractQuestions(file);
           setReviewQuestionsWithMeta(questions);
           setParseErrs(errors);
         } finally {
@@ -435,6 +435,10 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processImportFile(file);
   }
 
   function updateReviewQuestion(idx: number, text: string) {
@@ -884,7 +888,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   <p className="mt-1.5">Ảnh minh hoạ: thêm dòng riêng <code>Ảnh: &lt;url&gt;</code> trong khối câu hỏi — dán URL ảnh đã tải lên sẵn, áp dụng cho cả 3 loại câu hỏi. Sau khi xem lại danh sách câu hỏi bên dưới, có thể bấm nút &quot;🖼 Tải ảnh&quot; ở từng câu để tải trực tiếp ảnh PNG/JPG/WebP thay vì dán URL.</p>
                   <p className="mt-1.5">Công thức toán: gõ mã LaTeX trong <code>$...$</code> (inline) hoặc <code>$$...$$</code> (xuống dòng riêng), vd <code>$x^2+1$</code>. Copy công thức từ Word không tự thành LaTeX được.</p>
                   <p className="mt-1.5">Phần thi: thêm 1 khối riêng chỉ chứa <code>=== Tên phần ===</code> (vd <code>=== Phần Trắc nghiệm ===</code>) — mọi câu hỏi phía sau được gán vào Phần đó cho tới mốc tiếp theo. Không bắt buộc, chỉ để nhóm hiển thị.</p>
-                  <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải bên dưới (tùy chọn) để AI xác định đáp án đúng chính xác hơn — nếu không có, AI sẽ tự giải để suy đáp án, độ chính xác thấp hơn. Luôn kiểm tra lại kết quả trước khi lưu.</p>
+                  <p className="mt-1.5"><strong>Hoặc tải file đề thi gốc</strong> (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi kèm đáp án có sẵn trong file. Luôn kiểm tra lại kết quả trước khi lưu.</p>
                 </div>
                 <textarea
                   className={inp + " font-mono"}
@@ -893,33 +897,17 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   value={rawText}
                   onChange={e => setRawText(e.target.value)}
                 />
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    File đáp án / hướng dẫn giải (tùy chọn — chỉ dùng khi tải file đề thi gốc bằng AI)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => answerKeyInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                      {answerKeyFile ? "Đổi file đáp án" : "Chọn file đáp án"}
-                    </button>
-                    {answerKeyFile && (
-                      <span className="text-xs text-gray-500">
-                        {answerKeyFile.name} <button type="button" onClick={() => setAnswerKeyFile(null)} className="text-red-500 ml-1">✕</button>
-                      </span>
-                    )}
-                    <input ref={answerKeyInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
-                      className="hidden" onChange={e => setAnswerKeyFile(e.target.files?.[0] ?? null)} />
-                  </div>
-                </div>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={runPreview} disabled={!rawText.trim()}
                     className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                     Xem trước câu hỏi
                   </button>
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                    {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải file lên"}
-                  </button>
+                  <DropZone onFiles={files => files[0] && processImportFile(files[0])} disabled={aiLoading} className="inline-block rounded-lg">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
+                      className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                      {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải hoặc kéo-thả file lên"}
+                    </button>
+                  </DropZone>
                   <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx,.pdf,.docx,.jpg,.jpeg,.png,.webp"
                     className="hidden" onChange={handleFile} disabled={aiLoading} />
                   <button type="button" onClick={() => setBankPickerOpen(true)}
@@ -1016,10 +1004,11 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                         <button type="button" onClick={() => removeReviewQuestion(idx)}
                           className="px-2 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-xs flex-shrink-0">✕</button>
                       </div>
-                      <div className="flex items-center gap-1.5 mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
+                      <DropZone onFiles={files => files[0] && setQuestionImage(idx, files[0])}
+                        className="flex items-center gap-1.5 mb-2 ml-6 rounded" style={{ width: "calc(100% - 1.5rem)" }}>
                         <input
                           className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"
-                          placeholder="Ảnh minh hoạ (URL, tùy chọn)"
+                          placeholder="Ảnh minh hoạ (URL, tùy chọn — hoặc kéo-thả ảnh vào đây)"
                           value={q.imageUrl ?? ""}
                           onChange={e => {
                             setPendingImageFiles(prev => { const { [idx]: _drop, ...rest } = prev; return rest; });
@@ -1032,7 +1021,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                             {pendingImageFiles[idx] ? "🖼 Đã chọn (chờ lưu)" : "🖼 Tải ảnh"}
                           </button>
                         )}
-                      </div>
+                      </DropZone>
                       <div className="flex items-center gap-1.5 mb-2 ml-6" style={{ width: "calc(100% - 1.5rem)" }}>
                         <input
                           className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded outline-none focus:border-blue-400"

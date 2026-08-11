@@ -10,6 +10,7 @@ import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type
 import { MathText } from "@/components/MathText";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { DropZone } from "@/components/DropZone";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -357,23 +358,21 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
   const [aiLoading, setAiLoading]         = useState(false);
   const [aiSaving, setAiSaving]           = useState(false);
   const [aiFileErr, setAiFileErr]         = useState("");
-  const [answerKeyFile, setAnswerKeyFile] = useState<File | null>(null);
   const [reviewQuestions, setReviewQuestions] = useState<ExamQuestionInput[] | null>(null);
   const [parseErrs, setParseErrs]         = useState<{ block: number; message: string }[]>([]);
   const [scorePreset, setScorePreset]     = useState<keyof typeof SCORE_PRESETS>("thpt_toan");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const answerKeyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
-      setText(""); setAiFileErr(""); setAnswerKeyFile(null);
+      setText(""); setAiFileErr("");
       setReviewQuestions(null); setParseErrs([]); setAiLoading(false); setAiSaving(false);
     }
   }, [open]);
 
-  async function handleAiFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // File đề thi gốc luôn đã có sẵn đáp án in kèm (đề + đáp án chung 1 file)
+  // — AI đọc thẳng đáp án thật trong file chính, không cần file đáp án riêng.
+  async function processAiFile(file: File) {
     setAiFileErr("");
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (!ext || !AI_FILE_EXTENSIONS.has(ext)) {
@@ -386,7 +385,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
     }
     setAiLoading(true);
     try {
-      const { questions, errors } = await api.exams.aiExtractQuestions(file, answerKeyFile ?? undefined);
+      const { questions, errors } = await api.exams.aiExtractQuestions(file);
       setReviewQuestions(questions);
       setParseErrs(errors);
     } catch (err) {
@@ -395,6 +394,10 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
       setAiLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+  function handleAiFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processAiFile(file);
   }
 
   function updateReviewQuestion(idx: number, text: string) {
@@ -459,7 +462,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
     try {
       await api.examQuestions.bulkCreate(examId, reviewQuestions);
       showToast(`Đã thêm ${reviewQuestions.length} câu hỏi`, true);
-      setReviewQuestions(null); setParseErrs([]); setAnswerKeyFile(null);
+      setReviewQuestions(null); setParseErrs([]);
       onSaved();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Lưu câu hỏi thất bại", false);
@@ -533,30 +536,14 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
             {reviewQuestions === null ? (
               <div className="space-y-3">
                 <p className="text-xs" style={{ color: "#787671" }}>
-                  Tải file đề thi gốc (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi. Đính kèm thêm file đáp án/hướng dẫn giải (tùy chọn) để AI xác định đáp án đúng chính xác hơn. Kết quả luôn qua bước xem lại trước khi lưu.
+                  Tải file đề thi gốc (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi kèm đáp án có sẵn trong file. Kết quả luôn qua bước xem lại trước khi lưu.
                 </p>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    File đáp án / hướng dẫn giải (tùy chọn)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => answerKeyInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
-                      {answerKeyFile ? "Đổi file đáp án" : "Chọn file đáp án"}
-                    </button>
-                    {answerKeyFile && (
-                      <span className="text-xs text-gray-500">
-                        {answerKeyFile.name} <button type="button" onClick={() => setAnswerKeyFile(null)} className="text-red-500 ml-1">✕</button>
-                      </span>
-                    )}
-                    <input ref={answerKeyInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
-                      className="hidden" onChange={e => setAnswerKeyFile(e.target.files?.[0] ?? null)} />
-                  </div>
-                </div>
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
-                  className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                  {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải file đề thi lên"}
-                </button>
+                <DropZone onFiles={files => files[0] && processAiFile(files[0])} disabled={aiLoading} className="inline-block rounded-lg">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={aiLoading}
+                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                    {aiLoading ? "Đang phân tích bằng AI... (có thể mất 20-40 giây)" : "Tải hoặc kéo-thả file đề thi lên"}
+                  </button>
+                </DropZone>
                 <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
                   className="hidden" onChange={handleAiFile} disabled={aiLoading} />
                 {aiFileErr && <p className="text-xs text-red-500">{aiFileErr}</p>}
