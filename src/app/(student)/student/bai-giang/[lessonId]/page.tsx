@@ -23,6 +23,13 @@ type SidebarTabKey = "tailieu" | "baitap" | "ghichu";
 
 interface Material { name: string; url: string; type?: string }
 
+// Học viên bấm vào tài liệu → mở tab xem trước (/xem-tai-lieu) thay vì tải
+// thẳng file — trang đó tự xử lý xem trước (PDF/Office) + nút tải riêng giữ
+// đúng tên gốc (Cloudinary lưu file với public_id tự sinh, không giữ tên).
+function viewerHref(name: string, url: string): string {
+  return `/xem-tai-lieu?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}`;
+}
+
 interface ChapterLesson {
   id: string;
   code: string;
@@ -372,7 +379,7 @@ function TabTaiLieu({ materials }: { materials: Material[] }) {
       <p className="text-xs font-semibold mb-2" style={{ color: "#6B7280" }}>Tài liệu:</p>
       <div className="space-y-1.5">
         {materials.map((m, i) => (
-          <a key={i} href={m.url} target="_blank" rel="noopener noreferrer"
+          <a key={i} href={viewerHref(m.name, m.url)} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 hover:underline"
             style={{ color: "#00A63D" }}>
             <FileDownload size={16} style={{ flexShrink: 0 }} />
@@ -430,7 +437,7 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
       </div>
 
       {assignment.fileUrl && (
-        <a href={assignment.fileUrl} target="_blank" rel="noopener noreferrer"
+        <a href={viewerHref(assignment.fileName || "de-bai", assignment.fileUrl)} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-xs font-semibold mb-3" style={{ color: "#00A63D" }}>
           <FileDownload size={14} /> {assignment.fileName || "Tải đề bài"}
         </a>
