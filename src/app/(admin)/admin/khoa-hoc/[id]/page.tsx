@@ -3,14 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { api, type AssignmentFull, type AssignmentInput, type AssignmentSubmissionFull } from "@/lib/api";
+import { api, type AssignmentFull, type AssignmentInput, type AssignmentSubmissionFull, type ClassScheduleFull } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
+import { DAY_LABELS_VI } from "@/lib/types";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
-type TabId = "cai-dat" | "chuong-bai" | "hoc-vien";
+type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
 
 interface LessonDB {
   id: string;
@@ -1720,10 +1721,152 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
   );
 }
 
+// ─── TAB: LỊCH HỌC ─────────────────────────────────────────────────────────────
+const DAY_LABELS = DAY_LABELS_VI;
+const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "" };
+
+function TabLichHoc({ courseSlug }: { courseSlug: string }) {
+  const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [adding, setAdding]       = useState(false);
+  const [form, setForm]           = useState(SCHEDULE_FORM_INIT);
+  const [saving, setSaving]       = useState(false);
+  const [err, setErr]             = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.classSchedules.listByCourse(courseSlug).then(setSchedules).catch(() => {}).finally(() => setLoading(false));
+  }, [courseSlug]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleAdd() {
+    setErr("");
+    setSaving(true);
+    try {
+      await api.classSchedules.create(courseSlug, form);
+      setForm(SCHEDULE_FORM_INIT);
+      setAdding(false);
+      load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Thêm khung giờ thất bại");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggle(s: ClassScheduleFull) {
+    setErr("");
+    try {
+      await api.classSchedules.update(s.id, { active: !s.active });
+      load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Cập nhật thất bại");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Xoá khung giờ học này?")) return;
+    setErr("");
+    try {
+      await api.classSchedules.remove(id);
+      load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Xoá thất bại");
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <p className="text-sm font-bold text-gray-800">Khung giờ học cố định hàng tuần</p>
+          <p className="text-xs text-gray-400 mt-0.5">Hệ thống tự tính buổi học sắp tới cho học viên đã đăng ký khoá này, dựa vào khung giờ dưới đây — không cần nhập tay từng buổi.</p>
+        </div>
+        {!adding && (
+          <button onClick={() => setAdding(true)} className="px-3 py-2 text-xs font-semibold rounded-lg text-white flex-shrink-0" style={{ background: "#16a34a" }}>
+            + Thêm khung giờ
+          </button>
+        )}
+      </div>
+
+      {err && !adding && <p className="text-xs text-red-500 mb-3">{err}</p>}
+
+      {adding && (
+        <div className="mb-4 p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Thứ</label>
+              <select value={form.dayOfWeek} onChange={e => setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white">
+                {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Giờ bắt đầu</label>
+              <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Giờ kết thúc</label>
+              <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Ghi chú (tuỳ chọn)</label>
+            <input type="text" placeholder="VD: Học live qua Zoom" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+          </div>
+          {err && <p className="text-xs text-red-500">{err}</p>}
+          <div className="flex gap-2">
+            <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
+            <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "#0068FF" }}>
+              {saving ? "Đang lưu..." : "Lưu khung giờ"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <div className="flex gap-1.5">
+            {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce bg-blue-400" style={{ animationDelay: `${i*0.15}s` }} />)}
+          </div>
+        </div>
+      ) : schedules.length === 0 ? (
+        <div className="py-12 text-center text-gray-400 text-sm">Chưa có khung giờ học nào — học viên sẽ không thấy buổi học nào trong lịch cho tới khi thêm.</div>
+      ) : (
+        <div className="space-y-2">
+          {schedules.map(s => (
+            <div key={s.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200">
+              <span className="px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0" style={{ background: "#EFF6FF", color: "#0055D4" }}>
+                {DAY_LABELS[s.dayOfWeek]}
+              </span>
+              <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
+              {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
+              {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
+              <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                <button onClick={() => handleToggle(s)} className="px-2 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
+                  {s.active ? "Tắt" : "Bật"}
+                </button>
+                <button onClick={() => handleDelete(s.id)} className="px-2 py-1 text-xs rounded-lg border border-red-200 text-red-500 hover:bg-red-50">
+                  Xoá
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 const TABS: { id: TabId; label: string }[] = [
   { id: "cai-dat",    label: "Cài đặt" },
   { id: "chuong-bai", label: "Danh sách chương bài" },
+  { id: "lich-hoc",   label: "Lịch học" },
   { id: "hoc-vien",   label: "Học viên đăng ký" },
 ];
 
@@ -1809,6 +1952,7 @@ export default function KhoaHocDetailPage() {
       <div className="p-5 flex-1 min-h-0 overflow-y-auto">
         {activeTab === "cai-dat"    && <TabCaiDat courseSlug={courseSlug} course={course} />}
         {activeTab === "chuong-bai" && <TabChuongBai courseSlug={courseSlug} initialSections={course.sections} />}
+        {activeTab === "lich-hoc"   && <TabLichHoc courseSlug={courseSlug} />}
         {activeTab === "hoc-vien"   && <TabHocVienKhoaHoc courseSlug={courseSlug} />}
       </div>
     </div>

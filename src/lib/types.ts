@@ -1,5 +1,19 @@
 // ─── Shared types — used by admin, guest, and student roles ───────────────────
 
+// Nhãn thứ trong tuần theo index ClassSchedule.dayOfWeek (0=CN…6=T7, khớp
+// Date.getDay()) — dùng chung giữa admin (tab Lịch học) và cron nhắc buổi
+// học (/api/cron/remind-class), tránh lệch nhãn nếu sửa 1 chỗ quên chỗ kia.
+export const DAY_LABELS_VI = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"] as const;
+
+// Vercel chạy máy chủ theo UTC, không phải giờ VN — Date.getDay() ở server
+// trả về "thứ" theo UTC, lệch với thứ thật ở VN (UTC+7) trong khung giờ
+// 00h-07h sáng VN. Dùng hàm này ở mọi nơi cần biết "hôm nay/ngày X là thứ mấy
+// theo giờ VN" (lịch học viên, cron nhắc nhở) để luôn đồng nhất.
+export function vnDayOfWeek(d: Date): number {
+  const vn = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return vn.getUTCDay();
+}
+
 export type LessonType = "record" | "live" | "quiz" | "document";
 
 const LESSON_TYPES: LessonType[] = ["record", "live", "quiz", "document"];

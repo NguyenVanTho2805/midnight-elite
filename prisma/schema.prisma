@@ -40,15 +40,37 @@ model Course {
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  sections    Section[]
-  enrollments Enrollment[]
-  favorites   CourseFavorite[]
-  cartItems   CartItem[]
-  reviews     CourseReview[]
-  exams       Exam[]
+  sections       Section[]
+  enrollments    Enrollment[]
+  favorites      CourseFavorite[]
+  cartItems      CartItem[]
+  reviews        CourseReview[]
+  exams          Exam[]
+  classSchedules ClassSchedule[]
 
   @@index([ownerId])
   @@map("courses")
+}
+
+// Khung giờ học cố định lặp lại hàng tuần của 1 khoá (kiểu TKB) — KHÔNG phải
+// 1 dòng cho từng buổi cụ thể, mà là 1 quy luật lặp (vd "Thứ 2 & Thứ 5,
+// 19h-21h"). /api/schedule tự tính ra buổi học sắp tới từ quy luật này cho
+// từng học viên theo khoá đã đăng ký, giống cách nó đang tự tính lịch thi từ
+// Exam.date — không cần tạo bản ghi riêng cho từng tuần.
+model ClassSchedule {
+  id        String  @id @default(cuid())
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dayOfWeek Int // 0=CN, 1=T2 ... 6=T7 (khớp Date.getDay() của JS)
+  startTime String // "19:00"
+  endTime   String // "21:00"
+  note      String? // vd "Học live qua Zoom" — hiện kèm trong lịch/email nhắc
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+  @@map("class_schedules")
 }
 
 model CartItem {

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/remind-exam",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/remind-class",
+      "schedule": "0 0 * * *"
     }
   ]
 }

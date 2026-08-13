@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Calendar, Alarm, Edit } from "griddy-icons";
+import { Calendar, Alarm, Edit, Play } from "griddy-icons";
 import type { ScheduleEvent } from "@/app/api/schedule/route";
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -47,6 +47,7 @@ const WEEK_DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const TYPE_CFG = {
   exam:     { label: "Thi thử",  color: "#FF2157", bg: "#fee2e2", Icon: Edit },
   deadline: { label: "Deadline", color: "#FE9900", bg: "#fef3c7", Icon: Alarm },
+  class:    { label: "Buổi học", color: "#0068FF", bg: "#EFF6FF", Icon: Play },
 } as const;
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ export default function LichHocPage() {
   const [events, setEvents]       = useState<ScheduleEvent[]>([]);
   const [loading, setLoading]     = useState(true);
   const [activeDay, setActiveDay] = useState<string>("all");
-  const [activeType, setActiveType] = useState<"all" | "exam" | "deadline">("all");
+  const [activeType, setActiveType] = useState<"all" | "exam" | "deadline" | "class">("all");
   const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
@@ -87,6 +88,7 @@ export default function LichHocPage() {
   const todayCount    = weekEvents.filter((e) => e.isoDate === todayISO).length;
   const examCount     = weekEvents.filter((e) => e.type === "exam").length;
   const deadlineCount = weekEvents.filter((e) => e.type === "deadline").length;
+  const classCount    = weekEvents.filter((e) => e.type === "class").length;
 
   const filtered = useMemo(() => {
     return weekEvents.filter((e) => {
@@ -120,9 +122,10 @@ export default function LichHocPage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Hôm nay",           value: todayCount,    color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
+          { label: "Buổi học tuần này", value: classCount,    color: "#0055D4", bg: "#EFF6FF", border: "#bfdbfe" },
           { label: "Thi thử tuần này",  value: examCount,     color: "#FF2157", bg: "#fee2e2", border: "#fca5a5" },
           { label: "Deadline tuần này", value: deadlineCount, color: "#b45309", bg: "#fef3c7", border: "#fde68a" },
         ].map((s) => (
@@ -176,7 +179,7 @@ export default function LichHocPage() {
 
       {/* Type filter */}
       <div className="flex flex-wrap gap-2">
-        {(["all", "exam", "deadline"] as const).map((t) => {
+        {(["all", "class", "exam", "deadline"] as const).map((t) => {
           const cfg = t !== "all" ? TYPE_CFG[t] : null;
           return (
             <button key={t} onClick={() => setActiveType(t)}
@@ -255,10 +258,11 @@ export default function LichHocPage() {
                           </div>
 
                           {event.link && (
-                            <a href={event.link} target="_blank" rel="noopener noreferrer"
+                            <a href={event.link} target={event.type === "class" ? undefined : "_blank"}
+                              rel={event.type === "class" ? undefined : "noopener noreferrer"}
                               className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-white"
                               style={{ background: cfg.color, borderRadius: "8px" }}>
-                              {event.type === "exam" ? "Vào thi" : "Nộp bài"}
+                              {event.type === "exam" ? "Vào thi" : event.type === "class" ? "Vào học" : "Nộp bài"}
                             </a>
                           )}
                         </div>
