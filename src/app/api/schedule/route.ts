@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { vnDayOfWeek } from "@/lib/types";
 
 export interface ScheduleEvent {
   id: string;
-  type: "exam" | "deadline";
+  type: "exam" | "deadline" | "class";
   subject: string;
   topic: string;
   time: string;
@@ -99,6 +100,41 @@ export async function GET() {
         isoDate: iso,
         link: lesson.azotaUrl || undefined,
       });
+    }
+
+    // ── Class events (khung giờ học cố định hàng tuần — ClassSchedule) ──────
+    // Không lưu 1 dòng/buổi trong DB — tự khai triển từ quy luật lặp dayOfWeek
+    // ra từng ngày cụ thể trong cửa sổ 90 ngày.
+    const classSchedules = await prisma.classSchedule.findMany({
+      where: { active: true, courseId: { in: courseIds } },
+      select: {
+        id: true, dayOfWeek: true, startTime: true, note: true,
+        course: { select: { id: true, name: true, category: true } },
+      },
+    });
+
+    if (classSchedules.length > 0) {
+      const windowDates: { iso: string; dow: number }[] = [];
+      for (let i = 0; i <= 90; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        windowDates.push({ iso: d.toISOString().slice(0, 10), dow: vnDayOfWeek(d) });
+      }
+
+      for (const sched of classSchedules) {
+        for (const { iso, dow } of windowDates) {
+          if (dow !== sched.dayOfWeek) continue;
+          events.push({
+            id: `class-${sched.id}-${iso}`,
+            type: "class",
+            subject: sched.course.category,
+            topic: sched.note ? `${sched.course.name} — ${sched.note}` : sched.course.name,
+            time: sched.startTime,
+            isoDate: iso,
+            link: `/student/hoc-tap?course=${sched.course.id}`,
+          });
+        }
+      }
     }
   }
 

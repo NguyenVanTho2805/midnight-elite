@@ -257,6 +257,17 @@ export const api = {
     grade: (id: string, submissionId: string, data: { score: number; comment?: string }) =>
       apiFetch<AssignmentSubmissionFull>(`/api/assignments/${id}/submissions/${submissionId}/grade`, { method: "PATCH", body: JSON.stringify(data) }),
   },
+  // ── Khung giờ học cố định hàng tuần (TKB) ─────────────────────────────────
+  classSchedules: {
+    listByCourse: (courseId: string) =>
+      apiFetch<ClassScheduleFull[]>(`/api/courses/${courseId}/class-schedules`),
+    create: (courseId: string, data: ClassScheduleInput) =>
+      apiFetch<ClassScheduleFull>(`/api/courses/${courseId}/class-schedules`, { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<ClassScheduleInput> & { active?: boolean }) =>
+      apiFetch<ClassScheduleFull>(`/api/class-schedules/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      apiFetch<{ success: boolean }>(`/api/class-schedules/${id}`, { method: "DELETE" }),
+  },
 };
 
 // ─── API types (mirrors Prisma models) ───────────────────────────────────────
@@ -460,6 +471,16 @@ export interface AssignmentInput {
   title: string; instructions?: string; fileUrl?: string; fileName?: string;
   maxPoints?: number; dueDate?: string | null;
 }
+// Khung giờ học cố định hàng tuần của 1 khoá (TKB) — xem prisma/schema.prisma ClassSchedule.
+export interface ClassScheduleFull {
+  id: string; courseId: string;
+  dayOfWeek: number; startTime: string; endTime: string;
+  note: string | null; active: boolean; createdAt: string;
+}
+export interface ClassScheduleInput {
+  dayOfWeek: number; startTime: string; endTime: string; note?: string;
+}
+
 export interface AssignmentSubmissionFull {
   id: string; assignmentId: string; userId: string;
   fileUrl: string; fileName: string | null; submittedAt: string;

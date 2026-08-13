@@ -218,6 +218,72 @@ export async function sendExamReminderEmail(
   });
 }
 
+// ─── CLASS REMINDER (buổi học ngày mai, xem /api/cron/remind-class) ──────────
+
+export async function sendClassReminderEmail(
+  to: string,
+  name: string,
+  courseName: string,
+  dayLabel: string,
+  startTime: string,
+  endTime: string,
+  note: string | null,
+  courseId: string,
+) {
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `Nhắc lịch học ngày mai — ${courseName}`,
+    html: `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:520px;margin:40px auto;padding:0 16px">
+    <div style="text-align:center;padding:32px 0 24px">
+      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">
+        Midnight Elite
+      </div>
+      <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
+    </div>
+    <div style="background:#ffffff;border-radius:16px;padding:36px 32px;border:1px solid #e5e3df">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="width:56px;height:56px;background:#dbeafe;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;border:1px solid #bfdbfe">🎥</div>
+      </div>
+      <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 6px;text-align:center;letter-spacing:-0.3px">
+        Nhắc lịch học ngày mai
+      </h1>
+      <p style="color:#787671;font-size:14px;text-align:center;margin:0 0 24px">
+        Xin chào <strong style="color:#1a1a1a">${name}</strong>, bạn có buổi học vào ngày mai!
+      </p>
+      <div style="background:#f6f5f4;border-radius:12px;padding:20px 24px;margin-bottom:24px;border:1px solid #e5e3df">
+        <p style="color:#a4a097;font-size:11px;font-weight:700;margin:0 0 12px;letter-spacing:0.5px">THÔNG TIN BUỔI HỌC</p>
+        <p style="color:#1a1a1a;font-size:16px;font-weight:800;margin:0 0 14px;letter-spacing:-0.2px">${courseName}</p>
+        <div style="display:flex;gap:24px">
+          <div>
+            <p style="color:#a4a097;font-size:11px;margin:0 0 2px">Ngày học</p>
+            <p style="color:#0068FF;font-size:14px;font-weight:700;margin:0">${dayLabel}</p>
+          </div>
+          <div>
+            <p style="color:#a4a097;font-size:11px;margin:0 0 2px">Giờ học</p>
+            <p style="color:#0068FF;font-size:14px;font-weight:700;margin:0">${startTime} – ${endTime}</p>
+          </div>
+        </div>
+        ${note ? `<p style="color:#787671;font-size:13px;margin:14px 0 0">${note}</p>` : ""}
+      </div>
+      <div style="text-align:center">
+        <a href="${APP_URL}/student/hoc-tap?course=${courseId}" style="display:inline-block;background:#0068FF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px">
+          Vào học ngay →
+        </a>
+      </div>
+    </div>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+  </div>
+</body>
+</html>`,
+  });
+}
+
 // ─── ENROLLMENT (kích hoạt khoá học) ──────────────────────────────────────────
 
 export async function sendEnrollmentEmail(

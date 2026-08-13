@@ -9,6 +9,7 @@ const TYPE_ICON: Record<string, string> = {
   enrollment:    "🎓",
   exam_new:      "📝",
   exam_reminder: "⏰",
+  class_reminder: "🎥",
   thread_reply:    "💬",
   thread_like:     "❤️",
   reply_like:      "❤️",

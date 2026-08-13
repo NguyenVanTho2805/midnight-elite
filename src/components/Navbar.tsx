@@ -126,6 +126,12 @@ export default function Navbar() {
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a4a097", flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
                       Khoá học của tôi
                     </Link>
+                    <Link href="/student/lich-hoc" onClick={() => setDropdown(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
+                      style={{ color: "#37352f" }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a4a097", flexShrink: 0 }}><path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+                      Lịch học
+                    </Link>
                     <Link href="/khoa-hoc-da-luu" onClick={() => setDropdown(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
                       style={{ color: "#37352f" }}>
@@ -205,6 +211,11 @@ export default function Navbar() {
                   className="block px-3 py-2.5 rounded-md text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
                   style={{ color: "#37352f" }}>
                   Khoá học của tôi
+                </Link>
+                <Link href="/student/lich-hoc" onClick={() => setMenuOpen(false)}
+                  className="block px-3 py-2.5 rounded-md text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
+                  style={{ color: "#37352f" }}>
+                  Lịch học
                 </Link>
                 <Link href="/khoa-hoc-da-luu" onClick={() => setMenuOpen(false)}
                   className="block px-3 py-2.5 rounded-md text-sm font-medium hover:bg-[#f6f5f4] transition-colors"
