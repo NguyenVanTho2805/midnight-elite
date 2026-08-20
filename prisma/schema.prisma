@@ -180,6 +180,15 @@ model Assignment {
   maxPoints    Float     @default(10)
   dueDate      DateTime?
 
+  // "file" (nộp file, mặc định — hành vi cũ giữ nguyên) | "interactive"
+  // (làm trực tiếp trên web, câu hỏi AI trích từ file — xem
+  // AssignmentQuestion). dueDate BẮT BUỘC khi mode="interactive" (ép ở tầng
+  // API, không ép được ở DB vì "file" vẫn cho phép để trống) — dueDate vừa
+  // là mốc khoá bài vừa là mốc tự hiện đáp án đúng/sai cho học viên, so
+  // sánh ĐỘNG mỗi lần gọi (không snapshot) nên sửa lại dueDate muộn hơn sẽ
+  // tự mở khoá lại, sớm hơn thì tự khoá lại ngay.
+  mode String @default("file")
+
   // Xem ghi chú ở Course.ownerId — cùng quy tắc scope quyền (chỉ chủ sở
   // hữu/admin_content/admin_super sửa/xoá/chấm).
   ownerId String?
@@ -189,6 +198,7 @@ model Assignment {
   updatedAt DateTime @updatedAt
 
   submissions AssignmentSubmission[]
+  questions   AssignmentQuestion[]
 
   @@index([lessonId])
   @@map("assignments")
@@ -216,6 +226,71 @@ model AssignmentSubmission {
 
   @@unique([assignmentId, userId])
   @@map("assignment_submissions")
+}
+
+// Câu hỏi của bài tập kiểu "interactive" — AI trích từ file giáo viên tải
+// lên (dùng chung extractQuestionsFromFiles với Thi thử), nhưng lưu RIÊNG,
+// không đụng vào Ngân hàng câu hỏi. Chỉ 2 loại cho bản đầu: MC/ESSAY.
+model AssignmentQuestion {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  order        Int
+  text         String     @db.Text
+  imageUrl     String?
+  points       Float      @default(1)
+  type         String     @default("MC") // "MC" | "ESSAY"
+  explanation  String?    @db.Text
+
+  options AssignmentOption[]
+  answers AssignmentAnswer[]
+
+  @@index([assignmentId])
+  @@map("assignment_questions")
+}
+
+model AssignmentOption {
+  id         String             @id @default(cuid())
+  questionId String
+  question   AssignmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int
+  text       String
+  isCorrect  Boolean            @default(false)
+
+  answers AssignmentAnswer[]
+
+  @@index([questionId])
+  @@map("assignment_options")
+}
+
+// 1 dòng / học viên / câu hỏi — upsert theo (userId, questionId) mỗi lần
+// trả lời (autosave, không có nút "Nộp bài"). isCorrect tính ngầm ngay lúc
+// lưu với câu MC (so optionId với AssignmentOption.isCorrect), nhưng API
+// đọc bài làm PHẢI ẩn field này với chính học viên đó cho tới khi qua
+// Assignment.dueDate — chỉ ẩn ở tầng API, không ẩn được ở DB.
+model AssignmentAnswer {
+  id         String             @id @default(cuid())
+  questionId String
+  question   AssignmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User               @relation("AssignmentAnswers", fields: [userId], references: [id], onDelete: Cascade)
+
+  optionId String?
+  option   AssignmentOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  textAnswer String? @db.Text // câu ESSAY
+
+  isCorrect Boolean? // MC: tự chấm ngay. ESSAY: luôn null, không dùng field này để chấm.
+
+  // ESSAY: giáo viên chấm tay — null nghĩa là chưa chấm.
+  pointsAwarded  Float?
+  teacherComment String? @db.Text
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, questionId])
+  @@index([questionId])
+  @@map("assignment_answers")
 }
 
 // ─── EXAMS ────────────────────────────────────────────────────────────────────
@@ -645,6 +720,7 @@ model User {
   examFileFolders     ExamFileFolder[]
   ownedAssignments      Assignment[]           @relation("OwnedAssignments")
   assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmissions")
+  assignmentAnswers     AssignmentAnswer[]     @relation("AssignmentAnswers")
   enrollments         Enrollment[]
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]

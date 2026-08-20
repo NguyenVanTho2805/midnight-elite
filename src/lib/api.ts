@@ -256,6 +256,13 @@ export const api = {
       apiFetch<AssignmentSubmissionFull[]>(`/api/assignments/${id}/submissions`),
     grade: (id: string, submissionId: string, data: { score: number; comment?: string }) =>
       apiFetch<AssignmentSubmissionFull>(`/api/assignments/${id}/submissions/${submissionId}/grade`, { method: "PATCH", body: JSON.stringify(data) }),
+    // ── Bài tập "làm trên web" (mode: interactive) ──────────────────────────
+    getAnswer: (id: string) => apiFetch<AssignmentAnswerData>(`/api/assignments/${id}/answer`),
+    saveAnswer: (id: string, data: { questionId: string; optionId?: string | null; textAnswer?: string | null }) =>
+      apiFetch<{ success: boolean }>(`/api/assignments/${id}/answer`, { method: "PATCH", body: JSON.stringify(data) }),
+    gradeQuestion: (id: string, questionId: string, data: { userId: string; pointsAwarded: number; teacherComment?: string }) =>
+      apiFetch<AssignmentAnswerRow>(`/api/assignments/${id}/questions/${questionId}/grade`, { method: "PATCH", body: JSON.stringify(data) }),
+    getResults: (id: string) => apiFetch<AssignmentResultsData>(`/api/assignments/${id}/results`),
   },
   // ── Khung giờ học cố định hàng tuần (TKB) ─────────────────────────────────
   classSchedules: {
@@ -464,12 +471,59 @@ export interface AssignmentFull {
   fileUrl: string | null; fileName: string | null; maxPoints: number;
   dueDate: string | null; ownerId: string | null; createdAt: string;
   submissionCount: number;
+  // "file" (mặc định, nộp file) | "interactive" (làm trực tiếp trên web, xem AssignmentQuestion).
+  mode: string; questionCount: number;
   // Chỉ có giá trị khi người gọi là học viên (xem GET /api/lessons/[lessonId]/assignments) — undefined với admin.
   mySubmission?: AssignmentSubmissionFull | null;
+}
+export interface AssignmentQuestionInput {
+  text: string; type?: "MC" | "ESSAY"; points?: number; imageUrl?: string;
+  options: { text: string; isCorrect?: boolean }[];
 }
 export interface AssignmentInput {
   title: string; instructions?: string; fileUrl?: string; fileName?: string;
   maxPoints?: number; dueDate?: string | null;
+  // Chỉ gửi lúc TẠO bài tập "interactive" — không sửa được câu hỏi sau khi tạo
+  // (xem ghi chú ở AssignmentForm), nên PUT không bao giờ cần 2 field này.
+  mode?: string; questions?: AssignmentQuestionInput[];
+}
+// Bài làm của học viên cho 1 bài tập "interactive" — xem GET
+// /api/assignments/[id]/answer. isCorrect/option.isCorrect/explanation đều
+// null khi chưa khoá (locked=false) — server chủ động ẩn, không phải thiếu dữ liệu.
+export interface AssignmentAnswerView {
+  id: string; order: number; text: string; imageUrl: string | null; points: number; type: "MC" | "ESSAY";
+  explanation: string | null;
+  options: { id: string; order: number; text: string; isCorrect: boolean | null }[];
+  myAnswer: {
+    optionId: string | null; textAnswer: string | null; isCorrect: boolean | null;
+    pointsAwarded: number | null; teacherComment: string | null;
+  } | null;
+}
+export interface AssignmentAnswerData {
+  locked: boolean; dueDate: string | null;
+  completion: { answered: number; total: number };
+  questions: AssignmentAnswerView[];
+}
+export interface AssignmentAnswerRow {
+  id: string; questionId: string; userId: string; optionId: string | null; textAnswer: string | null;
+  isCorrect: boolean | null; pointsAwarded: number | null; teacherComment: string | null; updatedAt: string;
+}
+// Bảng chấm/theo dõi tiến độ cho giáo viên — xem GET /api/assignments/[id]/results.
+export interface AssignmentResultAnswer {
+  optionId: string | null; textAnswer: string | null; isCorrect: boolean | null;
+  pointsAwarded: number | null; teacherComment: string | null;
+}
+export interface AssignmentResultsData {
+  dueDate: string | null; totalPoints: number;
+  questions: {
+    id: string; order: number; text: string; type: "MC" | "ESSAY"; points: number;
+    options: { id: string; text: string; isCorrect: boolean }[];
+  }[];
+  students: {
+    userId: string; name: string; studentId: string | null;
+    completion: { answered: number; total: number }; score: number;
+    answers: Record<string, AssignmentResultAnswer>;
+  }[];
 }
 // Khung giờ học cố định hàng tuần của 1 khoá (TKB) — xem prisma/schema.prisma ClassSchedule.
 export interface ClassScheduleFull {

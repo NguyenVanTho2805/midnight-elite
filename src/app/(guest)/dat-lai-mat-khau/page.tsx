@@ -30,6 +30,10 @@ function ResetContent() {
   const mismatch = confirm.length > 0 && password !== confirm;
 
   useEffect(() => {
+    document.title = "Đặt lại mật khẩu — Midnight Elite";
+  }, []);
+
+  useEffect(() => {
     if (!token) { setStatus("error"); setErrMsg("Link không hợp lệ"); }
   }, [token]);
 

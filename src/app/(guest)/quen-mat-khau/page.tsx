@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function QuenMatKhauPage() {
   const [email, setEmail]   = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [errMsg, setErrMsg] = useState("");
+
+  useEffect(() => {
+    document.title = "Quên mật khẩu — Midnight Elite";
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
