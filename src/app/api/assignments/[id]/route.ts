@@ -12,7 +12,7 @@ export async function PUT(
   const { id } = await params;
 
   try {
-    const existing = await prisma.assignment.findUnique({ where: { id }, select: { ownerId: true } });
+    const existing = await prisma.assignment.findUnique({ where: { id }, select: { ownerId: true, mode: true } });
     if (!existing) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
     const auth = await requireOwnedResource(PERMISSIONS.MANAGE_CURRICULUM, existing.ownerId);
@@ -25,6 +25,12 @@ export async function PUT(
     };
     if (!title?.trim()) {
       return NextResponse.json({ error: "Thiếu tiêu đề bài tập" }, { status: 400 });
+    }
+    // Bài tập "interactive" khoá/mở theo so sánh động với dueDate (xem GET/PATCH
+    // /api/assignments/[id]/answer) — không cho xoá trắng Hạn nộp, sẽ tự khoá
+    // ngay lập tức ngoài ý muốn.
+    if (existing.mode === "interactive" && !dueDate) {
+      return NextResponse.json({ error: "Bài tập làm trên web bắt buộc phải có Hạn nộp" }, { status: 400 });
     }
 
     const assignment = await prisma.assignment.update({

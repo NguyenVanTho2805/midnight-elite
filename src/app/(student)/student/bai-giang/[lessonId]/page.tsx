@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import PopupBuyRequired from "@/components/PopupBuyRequired";
 import { useProgress } from "@/hooks/useProgress";
 import { parseLessonType } from "@/lib/types";
-import { api, type AssignmentFull } from "@/lib/api";
+import { api, type AssignmentFull, type AssignmentAnswerData, type AssignmentAnswerView } from "@/lib/api";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
+import { MathText } from "@/components/MathText";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
   FileDownload, Eye, Lock, CheckCircle,
@@ -466,6 +467,182 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
   );
 }
 
+// ─── Bài tập "làm trên web" (mode: interactive) ───────────────────────────────
+function QuestionAnswerRow({ q, qi, locked, saving, onSelectOption, onEssayChange, onEssayBlur }: {
+  q: AssignmentAnswerView; qi: number; locked: boolean; saving: boolean;
+  onSelectOption: (optionId: string) => void;
+  onEssayChange: (text: string) => void;
+  onEssayBlur: (text: string) => void;
+}) {
+  const mine = q.myAnswer;
+
+  function optionStyle(o: AssignmentAnswerView["options"][number]) {
+    if (!locked) {
+      return mine?.optionId === o.id
+        ? { borderColor: "#0068FF", background: "#EFF6FF" }
+        : { borderColor: "#e5e3df", background: "#fff" };
+    }
+    // Đã khoá — tô xanh đáp án đúng, đỏ nếu học viên lỡ chọn sai.
+    if (o.isCorrect) return { borderColor: "#16a34a", background: "#dcfce7" };
+    if (mine?.optionId === o.id) return { borderColor: "#dc2626", background: "#fee2e2" };
+    return { borderColor: "#e5e3df", background: "#fff" };
+  }
+
+  return (
+    <div className="rounded-lg p-3" style={{ background: "#fff", border: "1px solid #e5e3df" }}>
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className="text-sm font-medium flex-1" style={{ color: "#1E2938" }}>
+          <span className="text-xs font-semibold mr-1" style={{ color: "#9CA3AF" }}>Câu {qi + 1}.</span>
+          <MathText text={q.text} />
+        </p>
+        <span className="text-xs flex-shrink-0" style={{ color: "#9CA3AF" }}>{q.points}đ</span>
+      </div>
+      {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-48 rounded-lg border mb-2" style={{ borderColor: "#e5e3df" }} />}
+
+      {q.type === "MC" ? (
+        <div className="space-y-1.5">
+          {q.options.map(o => (
+            <button key={o.id} type="button" disabled={locked} onClick={() => onSelectOption(o.id)}
+              className="w-full text-left px-3 py-2 text-sm rounded-lg border transition-colors disabled:cursor-default"
+              style={optionStyle(o)}>
+              <MathText text={o.text} />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <textarea
+          className="w-full px-3 py-2 text-sm border rounded-lg outline-none resize-none focus:border-blue-400"
+          style={{ borderColor: "#e5e3df", background: locked ? "#f6f5f4" : "#fff" }}
+          rows={3} disabled={locked}
+          placeholder="Nhập câu trả lời..."
+          value={mine?.textAnswer ?? ""}
+          onChange={e => onEssayChange(e.target.value)}
+          onBlur={e => onEssayBlur(e.target.value)} />
+      )}
+
+      {saving && <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>Đang lưu...</p>}
+
+      {locked && q.explanation && (
+        <p className="text-xs mt-2 p-2 rounded-lg" style={{ background: "#EFF6FF", color: "#0068FF" }}>
+          <span className="font-semibold">Giải thích: </span><MathText text={q.explanation} />
+        </p>
+      )}
+      {locked && q.type === "ESSAY" && (
+        mine?.pointsAwarded != null ? (
+          <p className="text-xs mt-2" style={{ color: "#16a34a" }}>
+            Điểm: {mine.pointsAwarded}/{q.points}{mine.teacherComment && ` — ${mine.teacherComment}`}
+          </p>
+        ) : (
+          <p className="text-xs mt-2" style={{ color: "#9CA3AF" }}>Chưa được giáo viên chấm.</p>
+        )
+      )}
+    </div>
+  );
+}
+
+function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull }) {
+  const [data, setData]         = useState<AssignmentAnswerData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setLoading(true);
+    api.assignments.getAnswer(assignment.id).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, [assignment.id]);
+
+  async function saveAnswer(questionId: string, patch: { optionId?: string | null; textAnswer?: string | null }) {
+    setSavingIds(prev => new Set(prev).add(questionId));
+    try {
+      await api.assignments.saveAnswer(assignment.id, { questionId, ...patch });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Lưu đáp án thất bại");
+      // Đồng bộ lại — có thể vừa hết hạn nộp ngay giữa lúc đang làm bài.
+      api.assignments.getAnswer(assignment.id).then(setData).catch(() => {});
+    } finally {
+      setSavingIds(prev => { const n = new Set(prev); n.delete(questionId); return n; });
+    }
+  }
+
+  function selectOption(questionId: string, optionId: string) {
+    setData(prev => prev && {
+      ...prev,
+      questions: prev.questions.map(q => q.id === questionId
+        ? { ...q, myAnswer: { optionId, textAnswer: null, isCorrect: null, pointsAwarded: q.myAnswer?.pointsAwarded ?? null, teacherComment: q.myAnswer?.teacherComment ?? null } }
+        : q),
+    });
+    saveAnswer(questionId, { optionId });
+  }
+  function updateEssayLocal(questionId: string, text: string) {
+    setData(prev => prev && {
+      ...prev,
+      questions: prev.questions.map(q => q.id === questionId
+        ? { ...q, myAnswer: { optionId: null, textAnswer: text, isCorrect: null, pointsAwarded: q.myAnswer?.pointsAwarded ?? null, teacherComment: q.myAnswer?.teacherComment ?? null } }
+        : q),
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="rounded-xl p-4" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+        <p className="text-xs" style={{ color: "#9CA3AF" }}>Đang tải...</p>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const { locked, completion, questions } = data;
+  const totalScore = questions.reduce((s, q) => s + (q.type === "ESSAY" ? (q.myAnswer?.pointsAwarded ?? 0) : (q.myAnswer?.isCorrect ? q.points : 0)), 0);
+  const maxScore = questions.reduce((s, q) => s + q.points, 0);
+  const hasUngradedEssay = locked && questions.some(q => q.type === "ESSAY" && q.myAnswer?.pointsAwarded == null);
+
+  return (
+    <div className="rounded-xl p-4" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "#1E2938" }}>
+            <span title="Làm trên web">🖥️</span> {assignment.title}
+          </p>
+          {assignment.instructions && <p className="text-xs mt-1" style={{ color: "#6B7280" }}>{assignment.instructions}</p>}
+        </div>
+        {assignment.dueDate && (
+          <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: locked ? "#6B7280" : "#dc2626" }}>
+            <Alarm size={11} /> {locked ? `Đã hết hạn ${fmtDue(assignment.dueDate)}` : `Hạn ${fmtDue(assignment.dueDate)}`}
+          </p>
+        )}
+      </div>
+
+      {locked ? (
+        <div className="p-3 rounded-lg mb-3" style={{ background: "#dcfce7" }}>
+          <p className="text-sm font-bold" style={{ color: "#16a34a" }}>Điểm: {totalScore}/{maxScore}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#166534" }}>
+            Đã hết hạn — xem lại đáp án bên dưới.{hasUngradedEssay && " Một số câu tự luận chưa được chấm, điểm có thể thay đổi."}
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs mb-3" style={{ color: "#0068FF" }}>Đã làm {completion.answered}/{completion.total} câu — tự lưu khi bạn trả lời.</p>
+      )}
+
+      {!expanded ? (
+        <button onClick={() => setExpanded(true)}
+          className="px-4 py-2 text-xs font-bold text-white rounded-lg" style={{ background: "#FE9900" }}>
+          {locked ? "Xem lại bài làm" : completion.answered > 0 ? "Tiếp tục làm bài" : "Bắt đầu làm bài"}
+        </button>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q, qi) => (
+            <QuestionAnswerRow key={q.id} q={q} qi={qi} locked={locked} saving={savingIds.has(q.id)}
+              onSelectOption={optionId => selectOption(q.id, optionId)}
+              onEssayChange={text => updateEssayLocal(q.id, text)}
+              onEssayBlur={text => saveAnswer(q.id, { textAnswer: text })} />
+          ))}
+          <button onClick={() => setExpanded(false)} className="text-xs font-semibold" style={{ color: "#6B7280" }}>Thu gọn</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUrl?: string; deadline?: string }) {
   const [assignments, setAssignments] = useState<AssignmentFull[]>([]);
   const [loading, setLoading] = useState(true);
@@ -496,7 +673,9 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
         </div>
       )}
 
-      {assignments.map(a => (
+      {assignments.map(a => a.mode === "interactive" ? (
+        <InteractiveAssignmentCard key={a.id} assignment={a} />
+      ) : (
         <AssignmentCard key={a.id} assignment={a}
           onSubmitted={updated => setAssignments(prev => prev.map(x => x.id === updated.id ? updated : x))} />
       ))}

@@ -13,8 +13,21 @@ import { useSearchParams } from "next/navigation";
 // (view.officeapps.live.com, vẫn được Microsoft duy trì tích cực — Google
 // Docs Viewer cũ hơn đã ngừng hỗ trợ nhúng công khai từ vài năm nay, hay trả
 // về lỗi với file ngoài Google Drive). Chỉ hoạt động với file thật sự công
-// khai (vd Cloudinary) — không phải link Google Drive dạng "chỉnh sửa" vì
-// Drive tự chặn nhúng iframe của chính nó.
+// khai (vd Cloudinary).
+//
+// Link Google Docs/Sheets/Slides/Drive dán tay (mục "paste link Google
+// Drive" ở DocumentsEditor) có dạng ".../edit?..." hoặc ".../view?..." —
+// Google tự chặn KHÔNG cho nhúng chính dạng link đó vào iframe (an ninh),
+// nhưng có sẵn 1 dạng URL riêng ".../preview" chuyên để nhúng — tự nhận
+// diện và đổi sang dạng đó thay vì báo "không xem trước được".
+
+function googlePreviewUrl(url: string): string | null {
+  const docs = url.match(/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([^/?#]+)/);
+  if (docs) return `https://docs.google.com/${docs[1]}/d/${docs[2]}/preview`;
+  const drive = url.match(/^https:\/\/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if (drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
+  return null;
+}
 
 function detectExt(url: string): string | null {
   const clean = url.split(/[?#]/)[0];
@@ -42,22 +55,31 @@ function ViewerContent() {
     );
   }
 
+  const googleSrc = googlePreviewUrl(url);
   const ext = detectExt(url);
   const isPdf    = ext === "pdf";
   const isOffice = ext !== null && OFFICE_EXTS.has(ext);
-  const canEmbed = isPdf || isOffice;
-  const embedSrc = isPdf ? url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  const canEmbed = !!googleSrc || isPdf || isOffice;
+  const embedSrc = googleSrc ?? (isPdf ? url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#f6f5f4" }}>
       <header className="flex items-center justify-between gap-3 px-4 py-3 flex-shrink-0"
         style={{ background: "#ffffff", borderBottom: "1px solid #e5e3df" }}>
         <p className="text-sm font-semibold truncate" style={{ color: "#1a1a1a" }}>{name}</p>
-        <a href={url} download={downloadFilename(name, url)}
-          className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold text-white"
-          style={{ background: "#0068FF" }}>
-          Tải xuống
-        </a>
+        {googleSrc ? (
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold text-white"
+            style={{ background: "#0068FF" }}>
+            Mở trong Google Docs
+          </a>
+        ) : (
+          <a href={url} download={downloadFilename(name, url)}
+            className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold text-white"
+            style={{ background: "#0068FF" }}>
+            Tải xuống
+          </a>
+        )}
       </header>
 
       <div className="flex-1 min-h-0 relative">
