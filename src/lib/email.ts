@@ -55,7 +55,7 @@ export async function sendVerificationEmail(to: string, name: string, token: str
       </div>
       <div style="background:#f6f5f4;border-radius:10px;padding:14px 16px;margin:0 0 20px;border:1px solid #e5e3df">
         <p style="color:#787671;font-size:12px;margin:0 0 6px">Nếu nút trên không hoạt động, copy link này:</p>
-        <p style="color:#0068FF;font-size:12px;margin:0;word-break:break-all">${link}</p>
+        <p style="margin:0;word-break:break-all"><a href="${link}" style="color:#0068FF;font-size:12px">${link}</a></p>
       </div>
       <p style="color:#a4a097;font-size:12px;margin:0">
         Link có hiệu lực trong <strong>24 giờ</strong>. Nếu bạn không đăng ký tài khoản này, hãy bỏ qua email này.
@@ -101,7 +101,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
       </div>
       <div style="background:#f6f5f4;border-radius:10px;padding:14px 16px;margin:0 0 20px;border:1px solid #e5e3df">
         <p style="color:#787671;font-size:12px;margin:0 0 6px">Nếu nút trên không hoạt động, copy link này:</p>
-        <p style="color:#0068FF;font-size:12px;margin:0;word-break:break-all">${link}</p>
+        <p style="margin:0;word-break:break-all"><a href="${link}" style="color:#0068FF;font-size:12px">${link}</a></p>
       </div>
       <p style="color:#a4a097;font-size:12px;margin:0">Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
     </div>
