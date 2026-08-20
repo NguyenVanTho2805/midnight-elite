@@ -9,9 +9,12 @@ import { useSearchParams } from "next/navigation";
 // đây là trang tiện ích độc lập, không cần Navbar/Footer/BottomNav.
 //
 // PDF trình duyệt tự render được qua <iframe>. Word/Excel/PowerPoint trình
-// duyệt không có khả năng xem trực tiếp — nhúng qua Google Docs Viewer (chỉ
-// hoạt động với file thật sự công khai, vd Cloudinary — không phải link
-// Google Drive dạng "chỉnh sửa" vì Drive tự chặn nhúng iframe của chính nó).
+// duyệt không có khả năng xem trực tiếp — nhúng qua Microsoft Office Viewer
+// (view.officeapps.live.com, vẫn được Microsoft duy trì tích cực — Google
+// Docs Viewer cũ hơn đã ngừng hỗ trợ nhúng công khai từ vài năm nay, hay trả
+// về lỗi với file ngoài Google Drive). Chỉ hoạt động với file thật sự công
+// khai (vd Cloudinary) — không phải link Google Drive dạng "chỉnh sửa" vì
+// Drive tự chặn nhúng iframe của chính nó.
 
 function detectExt(url: string): string | null {
   const clean = url.split(/[?#]/)[0];
@@ -43,7 +46,7 @@ function ViewerContent() {
   const isPdf    = ext === "pdf";
   const isOffice = ext !== null && OFFICE_EXTS.has(ext);
   const canEmbed = isPdf || isOffice;
-  const embedSrc = isPdf ? url : `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+  const embedSrc = isPdf ? url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#f6f5f4" }}>
@@ -57,11 +60,11 @@ function ViewerContent() {
         </a>
       </header>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         {canEmbed ? (
-          <iframe src={embedSrc} className="w-full h-full border-0" title={name} />
+          <iframe src={embedSrc} className="absolute inset-0 w-full h-full border-0" title={name} />
         ) : (
-          <div className="h-full flex items-center justify-center px-4">
+          <div className="absolute inset-0 flex items-center justify-center px-4">
             <div className="text-center max-w-sm">
               <p className="text-sm font-semibold mb-1.5" style={{ color: "#1a1a1a" }}>Không xem trước được loại file này</p>
               <p className="text-xs mb-4" style={{ color: "#787671" }}>Bấm nút bên dưới để mở hoặc tải file.</p>
