@@ -1,16 +1,23 @@
-import { Resend } from "resend";
+import nodemailer, { type Transporter } from "nodemailer";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const FROM    = "Midnight Elite <noreply@midnightelite-edu.com>";
+const FROM    = `Midnight Elite <${process.env.GMAIL_USER}>`;
 
-let resendClient: Resend | null = null;
-function getResend() {
-  if (!resendClient) {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error("RESEND_API_KEY chưa được cấu hình");
-    resendClient = new Resend(apiKey);
+// Gmail SMTP qua nodemailer — thay Resend (xem ghi chú trong .env). Gmail
+// bắt buộc "From" phải trùng địa chỉ đã xác thực (GMAIL_USER), không dùng
+// được domain tuỳ ý như noreply@midnightelite-edu.com nữa.
+let transporter: Transporter | null = null;
+function getTransport(): Transporter {
+  if (!transporter) {
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_APP_PASSWORD;
+    if (!user || !pass) throw new Error("GMAIL_USER / GMAIL_APP_PASSWORD chưa được cấu hình");
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+    });
   }
-  return resendClient;
+  return transporter;
 }
 
 // ─── VERIFICATION ─────────────────────────────────────────────────────────────
@@ -18,7 +25,7 @@ function getResend() {
 export async function sendVerificationEmail(to: string, name: string, token: string) {
   const link = `${APP_URL}/xac-thuc-email?token=${token}`;
 
-  await getResend().emails.send({
+  await getTransport().sendMail({
     from: FROM,
     to,
     subject: "Xác thực email — Midnight Elite",
@@ -66,7 +73,7 @@ export async function sendVerificationEmail(to: string, name: string, token: str
 export async function sendPasswordResetEmail(to: string, name: string, token: string) {
   const link = `${APP_URL}/dat-lai-mat-khau?token=${token}`;
 
-  await getResend().emails.send({
+  await getTransport().sendMail({
     from: FROM,
     to,
     subject: "Đặt lại mật khẩu — Midnight Elite",
@@ -109,7 +116,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 
 export async function sendReminderEmail(to: string, name: string, message: string) {
 
-  await getResend().emails.send({
+  await getTransport().sendMail({
     from: FROM,
     to,
     subject: "Nhắc nhở học tập — Midnight Elite",
@@ -155,7 +162,7 @@ export async function sendExamReminderEmail(
   const [y, m, d]   = examDate.split("-");
   const dateVi       = `${d}/${m}/${y}`;
 
-  await getResend().emails.send({
+  await getTransport().sendMail({
     from: FROM,
     to,
     subject: `Nhắc lịch thi ngày mai — ${examTitle}`,
@@ -230,7 +237,7 @@ export async function sendClassReminderEmail(
   note: string | null,
   courseId: string,
 ) {
-  await getResend().emails.send({
+  await getTransport().sendMail({
     from: FROM,
     to,
     subject: `Nhắc lịch học ngày mai — ${courseName}`,
@@ -298,7 +305,7 @@ export async function sendEnrollmentEmail(
 ) {
   const studentCode  = studentId ? `HS-${studentId}` : null;
 
-  await getResend().emails.send({
+  await getTransport().sendMail({
     from: FROM,
     to,
     subject: `Khóa học "${courseName}" đã được kích hoạt — Midnight Elite`,
