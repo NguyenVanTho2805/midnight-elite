@@ -3,8 +3,21 @@ import { Be_Vietnam_Pro, Space_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import { GlobalDropGuard } from "@/components/GlobalDropGuard";
+
+const THEME_INIT_SCRIPT = `
+(function () {
+  try {
+    var stored = window.localStorage.getItem("theme");
+    var theme = stored === "dark" || stored === "light"
+      ? stored
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (e) {}
+})();
+`;
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -40,10 +53,16 @@ export default function RootLayout({
     <html
       lang="vi"
       className={`${sans.variable} ${spaceMono.variable} h-full scroll-smooth`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col antialiased">
           <GlobalDropGuard />
-          <AuthProvider>{children}</AuthProvider>
+          <ThemeProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ThemeProvider>
           <AgentationWrapper />
         </body>
     </html>

@@ -82,6 +82,54 @@
   --amb: 0 10px 30px rgba(197,208,234,0.5);
 }
 
+/* ── Dark mode token overrides ──────────────────────────────────────
+   Bất kỳ component nào đọc các biến này qua var(--token) hoặc dùng
+   các class notion-x / tint-x sẽ tự đổi màu khi html có data-theme="dark".
+   Component còn dùng hex cứng (chưa migrate) không bị ảnh hưởng. */
+:root[data-theme="dark"] {
+  --canvas:        #17181c;
+  --surface:       #1f2126;
+  --surface-soft:  #23252b;
+
+  --hairline:        #2e3138;
+  --hairline-soft:   #26282e;
+  --hairline-strong: #3c3f47;
+
+  --ink-deep:  #ffffff;
+  --ink:       #f2f1ee;
+  --charcoal:  #d8d6d1;
+  --slate:     #b3b0a8;
+  --steel:     #8b887f;
+  --stone:     #6b685f;
+  --muted:     #55534b;
+
+  --brand-navy:     #0a1530;
+  --brand-navy-mid: #1a2a52;
+
+  --shadow-0: none;
+  --shadow-1: rgba(0,0,0,0.30) 0px 1px 2px 0px;
+  --shadow-2: rgba(0,0,0,0.40) 0px 4px 12px 0px;
+  --shadow-3: rgba(0,0,0,0.55) 0px 24px 48px -8px;
+  --shadow-4: rgba(0,0,0,0.50) 0px 16px 48px -8px;
+
+  --tint-peach:       #3a2a1f;
+  --tint-rose:        #3a2230;
+  --tint-mint:        #1f3328;
+  --tint-lavender:    #2a2438;
+  --tint-sky:         #1e2c3a;
+  --tint-yellow:      #362f1a;
+  --tint-yellow-bold: #46391a;
+  --tint-cream:       #2c2a22;
+  --tint-gray:        #26282e;
+
+  --semantic-success: #3ecf6a;
+  --semantic-warning: #ff9d3d;
+  --semantic-error:   #ff5c6c;
+
+  --background: #17181c;
+  --foreground: #f2f1ee;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
