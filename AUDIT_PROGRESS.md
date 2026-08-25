@@ -11,7 +11,7 @@ Sau mỗi route: đổi trạng thái, liệt kê bug tìm được kèm `file:l
 
 ## Guest — chưa audit
 - [x] `/chinh-sach`
-- [ ] `/diem-chuan`
+- [x] `/diem-chuan`
 - [ ] `/tra-cuu`
 - [ ] `/dang-nhap`
 - [ ] `/dang-ky`
@@ -54,6 +54,11 @@ Sau mỗi route: đổi trạng thái, liệt kê bug tìm được kèm `file:l
 ### Trang chủ (`/`) — 22/07/2026
 Không phát hiện bug. Đã kiểm tra: `useCourses` fetch + skeleton loading state, filter theo danh mục (sidebar desktop, đồng bộ đúng state với pill mobile), search (kể cả empty state "Không tìm thấy..."), toggle giỏ hàng (thêm/xoá qua `/api/cart/[courseId]`, state "Đã thêm" persist đúng), đếm ngược `useCountdown` (không hydration mismatch), link điều hướng sang `/khoa-hoc/[slug]`, không có console error / network request lỗi.
 Ghi chú không phải bug (do môi trường test dùng chung dev server đã đăng nhập sẵn tài khoản admin): không kiểm tra được nhánh guest chưa đăng nhập click "Thêm vào giỏ" → redirect `/dang-nhap` ([src/app/page.tsx:319-322](src/app/page.tsx#L319-L322)) bằng browser thật; đã review code, logic có vẻ đúng (`if (!user) router.push("/dang-nhap")`) nhưng nên xác minh lại bằng tài khoản thật chưa đăng nhập ở lượt audit khác.
+
+### `/diem-chuan` — 25/08/2026
+- **[Trung bình]** [src/app/(guest)/diem-chuan/page.tsx:112](<src/app/(guest)/diem-chuan/page.tsx#L112>) — Icon mũi tên xu hướng "↑" cạnh điểm 2025 luôn hiển thị cố định (hardcode, không so sánh `row.score2025` với `row.score2024`). Hiện tại đúng do dữ liệu mẫu trùng hợp toàn tăng, nhưng nếu cập nhật dữ liệu thật có ngành giảm điểm, UI vẫn hiện mũi tên tăng sai sự thật — cần tính `score2025 >= score2024 ? "↑" : "↓"` (và có thể thêm màu đỏ cho giảm).
+- **[Nhỏ]** [src/app/(guest)/diem-chuan/page.tsx:17,25](<src/app/(guest)/diem-chuan/page.tsx#L17>) — Dropdown "Phương thức xét" có tùy chọn `"TSA Bách Khoa"` nhưng không có bản ghi nào trong `allData` dùng method này → chọn tùy chọn đó luôn ra "Không tìm thấy kết quả" 100% các lần, không phải lỗi filter mà là filter option "chết" (dữ liệu demo chưa đủ). Cần bổ sung dữ liệu cho phương thức này hoặc bỏ khỏi danh sách lọc.
+Đã kiểm tra: search theo tên trường/ngành (khớp chữ hoa/thường), filter theo 4 phương thức, nút "Đặt lại" xóa đúng cả 2 state, empty state hiển thị đúng khi không có kết quả, đếm số kết quả tìm thấy đúng. Toàn bộ dữ liệu là mảng tĩnh hardcode trong file, không gọi API nên không có network/race condition. Load trang qua curl: 200 OK.
 
 ### `/chinh-sach` — 25/08/2026
 Không phát hiện bug. Trang tĩnh 100%, không gọi API/hook nghiệp vụ (`src/app/(guest)/chinh-sach/page.tsx`) — chỉ có state `activeTab` (useState) điều khiển 3 nội dung tĩnh (Chính sách bảo mật / Điều khoản sử dụng / Cookie). Đã kiểm tra: chuyển tab (click qua lại cả 3, render đúng nội dung tương ứng, không mất state lạ), không có form/filter/modal để test luồng nhập liệu, link `mailto:support@tsixeducation.vn` đúng cú pháp. Load trang qua `curl` (200 OK), không có lỗi server-side render, không phát sinh network request nào ngoài asset tĩnh.
