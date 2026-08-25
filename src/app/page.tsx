@@ -1,42 +1,20 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import { motion, type Variants } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
 import SalesBotWidget from "@/components/SalesBotWidget";
 import HeroBackgroundVideo from "@/components/HeroBackgroundVideo";
+import HeroVideoReveal from "@/components/HeroVideoReveal";
 import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import { COURSE_CATEGORIES, COURSE_HASHTAGS } from "@/lib/courseData";
-
-// ─── COUNTDOWN ────────────────────────────────────────────────────────────────
-const NEXT_EXAM = { label: "ĐGNL HSA vòng 2", date: new Date("2026-11-01T08:00:00") };
-
-function useCountdown(target: Date) {
-  // ms bắt đầu là null (thay vì tính Date.now() ngay khi render) để lần render
-  // đầu tiên trên client khớp với HTML server render — tránh hydration mismatch
-  // do server và client tính Date.now() ở 2 thời điểm khác nhau.
-  const [ms, setMs] = useState<number | null>(null);
-  useEffect(() => {
-    const calc = () => Math.max(0, target.getTime() - Date.now());
-    setMs(calc());
-    const id = setInterval(() => setMs(calc()), 1000);
-    return () => clearInterval(id);
-  }, [target]);
-  const safeMs = ms ?? 0;
-  return {
-    days:    Math.floor(safeMs / 86_400_000),
-    hours:   Math.floor((safeMs % 86_400_000) / 3_600_000),
-    minutes: Math.floor((safeMs % 3_600_000) / 60_000),
-    seconds: Math.floor((safeMs % 60_000) / 1_000),
-    expired: ms !== null && safeMs === 0,
-  };
-}
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -72,13 +50,18 @@ const timeline = [
   { year: "Hiện tại", event: "Học viên học live mỗi tối. Bảng xếp hạng cập nhật mỗi ngày. Đội ngũ gia sư và mentor liên tục mở rộng." },
 ];
 
-const HERO_CATEGORIES = [
-  { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội",           tint: "var(--tint-sky)",       text: "#1D4ED8" },
-  { label: "ĐGNL HCM",        desc: "ĐH Quốc gia TP.HCM",           tint: "var(--tint-lavender)",  text: "#6D28D9" },
-  { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",           tint: "var(--tint-mint)",      text: "#166534" },
-  { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",              tint: "var(--tint-peach)",     text: "#c2410c" },
-  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-cream)",   text: "var(--steel)" },
-];
+// ─── HERO ENTRANCE MOTION ─────────────────────────────────────────────────────
+// Cột trái (tiêu đề/CTA) xuất hiện theo hiệu ứng cascade, đồng bộ với video bên
+// phải "mở" dần từ phải sang trái (xem HeroVideoReveal) — cảm giác video mở ra
+// là thứ "hé lộ" phần nội dung bên trái.
+const heroContainerVariants: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.15 } },
+};
+const heroItemVariants: Variants = {
+  hidden: { opacity: 0, x: -24 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+};
 
 // ─── CATEGORY THEME ───────────────────────────────────────────────────────────
 const categoryTheme: Record<string, { bg: string; strip: string; stripText: string }> = {
@@ -87,52 +70,6 @@ const categoryTheme: Record<string, { bg: string; strip: string; stripText: stri
   "ĐGNL HCM":        { bg: "linear-gradient(135deg,#6D28D9 0%,#8B5CF6 60%,#C4B5FD 100%)", strip: "#FDE047", stripText: "#1E2938" },
   "TSA Bách Khoa":   { bg: "linear-gradient(135deg,#C2410C 0%,#EA580C 60%,#FB923C 100%)", strip: "#FDE047", stripText: "#1E2938" },
 };
-
-// ─── STATS STRIP ──────────────────────────────────────────────────────────────
-const STATS = [
-  { value: "1,200+", label: "Học viên đang học" },
-  { value: "10,000+", label: "Đề thi thử" },
-  { value: "6",      label: "Gia sư & trợ giảng" },
-];
-
-// Gộp thống kê + đếm ngược vào 1 panel trong hero (thay vì dải riêng bên dưới),
-// tránh hero tách rời khỏi phần dữ liệu tin cậy ngay bên dưới nó.
-function HeroStatsPanel() {
-  const cd = useCountdown(NEXT_EXAM.date);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {STATS.map(s => (
-          <div key={s.label}>
-            <p className="text-lg font-black leading-none text-white tabular-nums">{s.value}</p>
-            <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-      {!cd.expired && (
-        <>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} className="mb-4" />
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>Kỳ thi tiếp theo</p>
-              <p className="text-xs font-bold text-white">{NEXT_EXAM.label}</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {[{ v: cd.days, u: "ngày" }, { v: cd.hours, u: "giờ" }, { v: cd.minutes, u: "phút" }, { v: cd.seconds, u: "giây" }].map(({ v, u }) => (
-                <div key={u} className="flex flex-col items-center px-2 py-1 rounded-lg min-w-[36px]"
-                  style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <span className="text-sm font-black text-white leading-none tabular-nums">{pad(v)}</span>
-                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.45)" }}>{u}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 // ─── KHÓA HỌC MỚI ─────────────────────────────────────────────────────────────
 function parseDateVN(s: string): number {
@@ -359,26 +296,32 @@ export default function HomePage() {
         {/* ── HERO — video nền đổi theo theme (ngày/đêm) ────────────────────── */}
         <section className="relative" style={{ background: "var(--brand-navy)" }}>
           <HeroBackgroundVideo />
-          <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 py-16 lg:py-24">
+          <motion.div
+            className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 py-16 lg:py-24"
+            initial="hidden"
+            animate="show"
+            variants={heroContainerVariants}
+          >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
-              {/* Left */}
+              {/* Left — hiện dần ra khi video bên phải "mở" */}
               <div>
-                <div className="inline-block mb-5 text-xs font-semibold px-3 py-1 rounded-full"
+                <motion.div variants={heroItemVariants} className="inline-block mb-5 text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
                   Midnight Elite · Luyện thi ĐGNL, THPT &amp; BCA
-                </div>
-                <h1
+                </motion.div>
+                <motion.h1
+                  variants={heroItemVariants}
                   className="font-bold text-white mb-5 leading-tight"
                   style={{ fontSize: "clamp(2rem,5vw,3.25rem)", letterSpacing: "-0.03em" }}
                 >
                   Mua 1 lần,<br />
                   <span style={{ color: "#93C5FD" }}>học trọn đời</span>
-                </h1>
-                <p className="text-base mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "38ch" }}>
+                </motion.h1>
+                <motion.p variants={heroItemVariants} className="text-base mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "38ch" }}>
                   Thầy cô dạy live mỗi tối — không phải video cũ. Thi thử đề thật, theo dõi tiến độ từng ngày cùng lớp.
-                </p>
-                <div className="flex flex-wrap gap-3">
+                </motion.p>
+                <motion.div variants={heroItemVariants} className="flex flex-wrap gap-3">
                   <Link
                     href="/khoa-hoc"
                     className="notion-btn-on-dark text-sm font-semibold"
@@ -391,34 +334,14 @@ export default function HomePage() {
                   >
                     Thi thử miễn phí
                   </Link>
-                </div>
+                </motion.div>
               </div>
 
-              {/* Right — category tiles + gộp thống kê/đếm ngược */}
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    Đang mở luyện thi
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {HERO_CATEGORIES.map((c, i) => (
-                      <Link
-                        href="/khoa-hoc"
-                        key={c.label}
-                        className={`p-4 rounded-xl transition-all hover:brightness-95${i === HERO_CATEGORIES.length - 1 && HERO_CATEGORIES.length % 2 !== 0 ? " col-span-2" : ""}`}
-                        style={{ background: c.tint }}
-                      >
-                        <div className="text-sm font-bold mb-1" style={{ color: c.text }}>{c.label}</div>
-                        <div className="text-xs" style={{ color: c.text, opacity: 0.65 }}>{c.desc}</div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <HeroStatsPanel />
-              </div>
+              {/* Right — video mở dần từ phải sang trái, hé lộ nội dung bên trái */}
+              <HeroVideoReveal />
 
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* ── COURSES WITH SIDEBAR ──────────────────────────────────────────── */}
