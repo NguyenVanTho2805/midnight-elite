@@ -384,19 +384,19 @@ export default function HomePage() {
                     <button
                       key={cat.key}
                       onClick={() => setActiveCategory(cat.key)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#f6f5f4]"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface)]"
                       style={{
                         background: active ? "var(--surface)" : "transparent",
-                        borderLeft: active ? "2px solid #0068FF" : "2px solid transparent",
-                        borderBottom: "1px solid #ede9e4",
+                        borderLeft: active ? "2px solid var(--color-primary)" : "2px solid transparent",
+                        borderBottom: "1px solid var(--hairline-soft)",
                       }}
                     >
-                      <span className="flex-1 text-xs font-medium truncate" style={{ color: active ? "var(--color-primary)" : "#5d5b54" }}>
+                      <span className="flex-1 text-xs font-medium truncate" style={{ color: active ? "var(--color-primary)" : "var(--slate)" }}>
                         {cat.label}
                       </span>
                       <span
                         className="text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
-                        style={{ background: active ? "var(--color-primary)" : "#f0eeec", color: active ? "#fff" : "var(--stone)", fontSize: 10 }}
+                        style={{ background: active ? "var(--color-primary)" : "var(--hairline-soft)", color: active ? "#fff" : "var(--stone)", fontSize: 10 }}
                       >
                         {count}
                       </span>
@@ -433,7 +433,7 @@ export default function HomePage() {
                 {searchQuery && (
                   <button onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full"
-                    style={{ background: "#c8c4be", color: "#fff" }}>
+                    style={{ background: "var(--hairline-strong)", color: "#fff" }}>
                     <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
                   </button>
                 )}
@@ -443,11 +443,11 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ border: "1px solid var(--hairline)" }}>
-                      <div className="h-40 bg-[#f0eeec]" />
+                      <div className="h-40 bg-[var(--hairline-soft)]" />
                       <div className="p-4 space-y-3">
-                        <div className="h-4 bg-[#f0eeec] rounded w-3/4" />
-                        <div className="h-3 bg-[#f6f5f4] rounded w-1/2" />
-                        <div className="h-8 bg-[#f0eeec] rounded-lg" />
+                        <div className="h-4 bg-[var(--hairline-soft)] rounded w-3/4" />
+                        <div className="h-3 bg-[var(--surface)] rounded w-1/2" />
+                        <div className="h-8 bg-[var(--hairline-soft)] rounded-lg" />
                       </div>
                     </div>
                   ))}
@@ -482,8 +482,8 @@ export default function HomePage() {
                   <div className="mt-6 text-center">
                     <Link
                       href="/khoa-hoc"
-                      className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-[#f6f5f4]"
-                      style={{ color: "var(--ink)", borderColor: "#c8c4be" }}
+                      className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-[var(--surface)]"
+                      style={{ color: "var(--ink)", borderColor: "var(--hairline-strong)" }}
                     >
                       Xem toàn bộ {courses.length} khóa học →
                     </Link>
@@ -514,7 +514,7 @@ export default function HomePage() {
                   <Icon size={22} style={{ color: iconColor }} />
                 </div>
                 <h3 className="font-semibold text-sm mb-2" style={{ color: "var(--charcoal)" }}>{title}</h3>
-                <p className="text-xs leading-relaxed" style={{ color: "#5d5b54" }}>{desc}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--slate)" }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -530,7 +530,7 @@ export default function HomePage() {
               <div key={i} className="relative mb-6 last:mb-0">
                 <div
                   className="absolute -left-[25px] w-3 h-3 rounded-full border-2 border-white"
-                  style={{ background: i === timeline.length - 1 ? "var(--color-primary)" : "#c8c4be" }}
+                  style={{ background: i === timeline.length - 1 ? "var(--color-primary)" : "var(--hairline-strong)" }}
                 />
                 <div
                   className="rounded-xl p-4"
