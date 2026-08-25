@@ -10,7 +10,7 @@ Sau mỗi route: đổi trạng thái, liệt kê bug tìm được kèm `file:l
 - [x] `/thi-thu` — audit 06/07/2026
 
 ## Guest — chưa audit
-- [ ] `/chinh-sach`
+- [x] `/chinh-sach`
 - [ ] `/diem-chuan`
 - [ ] `/tra-cuu`
 - [ ] `/dang-nhap`
@@ -54,6 +54,11 @@ Sau mỗi route: đổi trạng thái, liệt kê bug tìm được kèm `file:l
 ### Trang chủ (`/`) — 22/07/2026
 Không phát hiện bug. Đã kiểm tra: `useCourses` fetch + skeleton loading state, filter theo danh mục (sidebar desktop, đồng bộ đúng state với pill mobile), search (kể cả empty state "Không tìm thấy..."), toggle giỏ hàng (thêm/xoá qua `/api/cart/[courseId]`, state "Đã thêm" persist đúng), đếm ngược `useCountdown` (không hydration mismatch), link điều hướng sang `/khoa-hoc/[slug]`, không có console error / network request lỗi.
 Ghi chú không phải bug (do môi trường test dùng chung dev server đã đăng nhập sẵn tài khoản admin): không kiểm tra được nhánh guest chưa đăng nhập click "Thêm vào giỏ" → redirect `/dang-nhap` ([src/app/page.tsx:319-322](src/app/page.tsx#L319-L322)) bằng browser thật; đã review code, logic có vẻ đúng (`if (!user) router.push("/dang-nhap")`) nhưng nên xác minh lại bằng tài khoản thật chưa đăng nhập ở lượt audit khác.
+
+### `/chinh-sach` — 25/08/2026
+Không phát hiện bug. Trang tĩnh 100%, không gọi API/hook nghiệp vụ (`src/app/(guest)/chinh-sach/page.tsx`) — chỉ có state `activeTab` (useState) điều khiển 3 nội dung tĩnh (Chính sách bảo mật / Điều khoản sử dụng / Cookie). Đã kiểm tra: chuyển tab (click qua lại cả 3, render đúng nội dung tương ứng, không mất state lạ), không có form/filter/modal để test luồng nhập liệu, link `mailto:support@tsixeducation.vn` đúng cú pháp. Load trang qua `curl` (200 OK), không có lỗi server-side render, không phát sinh network request nào ngoài asset tĩnh.
+Ghi chú không phải bug (môi trường): không có Browser pane/Playwright khả dụng trong phiên này nên không kiểm tra được console runtime thực tế trên trình duyệt thật — đã bù bằng cách đọc kỹ code (component đơn giản, không side-effect) + kiểm tra HTML response qua curl không có lỗi SSR. Nên xác minh lại bằng browser thật nếu nghi ngờ có vấn đề hydration.
+Ghi chú nhỏ (không tính bug): các nút tab (`src/app/(guest)/chinh-sach/page.tsx:30-38`) chưa có `aria-selected`/`role="tab"` cho accessibility — có thể cân nhắc khi làm redesign UI, không phải lỗi chức năng.
 
 ### `/giang-vien` — 22/07/2026
 - **[Trung bình]** [src/lib/teacherData.ts:20,30,40,50,60](src/lib/teacherData.ts#L20) — Toàn bộ 7 link "Khóa học phụ trách" trên thẻ gia sư (`hsa-tron-goi`, `hsa-toan`, `toan-12`, `combo-8-mon`, `hsa-van`, `hcm-tron-goi`, `tsa-bach-khoa`) trỏ tới slug tĩnh không khớp với dữ liệu khóa học thật trong DB (DB hiện chỉ có 1 khóa `midnight-bca---lich-su---anh-thanh`, xem `/api/courses`). Click vào bất kỳ link nào trong số này sẽ ra trang "Không tìm thấy khóa học" ([src/app/(guest)/khoa-hoc/[slug]/page.tsx](<src/app/(guest)/khoa-hoc/[slug]/page.tsx>), xác nhận qua network request `GET /api/courses/hsa-tron-goi → 404`). Không crash (có empty state tử tế) nhưng là dead-end cho 100% người dùng bấm vào — nên gán `courses` trong `teacherData.ts` bằng slug thật từ DB, hoặc ẩn khối "Khóa học phụ trách" khi course không tồn tại.
