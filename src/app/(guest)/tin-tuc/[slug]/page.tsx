@@ -23,7 +23,7 @@ interface Article {
 }
 
 const catColors: Record<Category, { bg: string; color: string }> = {
-  "hoc-thuat":   { bg: "#dbeafe", color: "#0068FF" },
+  "hoc-thuat":   { bg: "var(--tint-lavender)", color: "#5645d4" },
   "tuyen-sinh":  { bg: "#fee2e2", color: "#dc2626" },
   "tin-midnight":{ bg: "#dcfce7", color: "#16a34a" },
   "kinh-nghiem": { bg: "#fef3c7", color: "#b45309" },
@@ -44,7 +44,7 @@ function formatDate(iso: string | null | undefined): string {
 
 function renderContent(content: string) {
   return content.split(/\n{2,}/).map((para, i) => (
-    <p key={i} className="leading-relaxed mb-5" style={{ color: "#37352f" }}>
+    <p key={i} className="leading-relaxed mb-5" style={{ color: "var(--charcoal)" }}>
       {para.split("\n").map((line, j, arr) => (
         <span key={j}>
           {line}
@@ -79,7 +79,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-4">
         {[80, 60, 40, 100, 90, 70].map((w, i) => (
-          <div key={i} className="h-4 rounded animate-pulse" style={{ background: "#e5e3df", width: `${w}%` }} />
+          <div key={i} className="h-4 rounded animate-pulse" style={{ background: "var(--hairline)", width: `${w}%` }} />
         ))}
       </div>
     );
@@ -89,11 +89,11 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <p className="text-5xl mb-4">⚠️</p>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Không thể tải bài viết</h1>
-        <p className="text-sm mb-6" style={{ color: "#787671" }}>Kiểm tra kết nối và thử lại.</p>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--ink)" }}>Không thể tải bài viết</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--steel)" }}>Kiểm tra kết nối và thử lại.</p>
         <Link href="/tin-tuc"
           className="inline-flex px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
-          style={{ background: "#0068FF" }}>
+          style={{ background: "#5645d4" }}>
           ← Quay lại Tin tức
         </Link>
       </div>
@@ -104,29 +104,29 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <p className="text-5xl mb-4">📰</p>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Không tìm thấy bài viết</h1>
-        <p className="text-sm mb-6" style={{ color: "#787671" }}>Bài viết không tồn tại hoặc đã bị gỡ.</p>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--ink)" }}>Không tìm thấy bài viết</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--steel)" }}>Bài viết không tồn tại hoặc đã bị gỡ.</p>
         <Link href="/tin-tuc"
           className="inline-flex px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
-          style={{ background: "#0068FF" }}>
+          style={{ background: "#5645d4" }}>
           ← Quay lại Tin tức
         </Link>
       </div>
     );
   }
 
-  const cat = catColors[article.category] ?? { bg: "#f6f5f4", color: "#787671" };
+  const cat = catColors[article.category] ?? { bg: "var(--surface)", color: "var(--steel)" };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs mb-8" style={{ color: "#a4a097" }}>
+      <nav className="flex items-center gap-2 text-xs mb-8" style={{ color: "var(--stone)" }}>
         <Link href="/" className="hover:underline">Trang chủ</Link>
         <span>/</span>
         <Link href="/tin-tuc" className="hover:underline">Tin tức</Link>
         <span>/</span>
-        <span className="truncate max-w-[200px]" style={{ color: "#787671" }}>{article.title}</span>
+        <span className="truncate max-w-[200px]" style={{ color: "var(--steel)" }}>{article.title}</span>
       </nav>
 
       {/* Category + tags */}
@@ -137,7 +137,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         </span>
         {article.tag && (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-            style={{ background: "#0068FF" }}>{article.tag}</span>
+            style={{ background: "#5645d4" }}>{article.tag}</span>
         )}
         {article.isPinned && (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -147,17 +147,17 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
 
       {/* Title */}
       <h1 className="text-3xl font-bold leading-tight mb-4"
-        style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+        style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
         {article.title}
       </h1>
 
       {/* Excerpt */}
-      <p className="text-base leading-relaxed mb-6" style={{ color: "#787671" }}>{article.excerpt}</p>
+      <p className="text-base leading-relaxed mb-6" style={{ color: "var(--steel)" }}>{article.excerpt}</p>
 
       {/* Meta */}
       <div className="flex flex-wrap items-center gap-3 text-xs pb-6 mb-8"
-        style={{ color: "#a4a097", borderBottom: "1px solid #e5e3df" }}>
-        <span className="font-semibold" style={{ color: "#37352f" }}>{article.author}</span>
+        style={{ color: "var(--stone)", borderBottom: "1px solid var(--hairline)" }}>
+        <span className="font-semibold" style={{ color: "var(--charcoal)" }}>{article.author}</span>
         <span>·</span>
         <span>{formatDate(article.publishedAt ?? article.createdAt)}</span>
         <span>·</span>
@@ -172,10 +172,10 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
       </div>
 
       {/* Footer */}
-      <div className="mt-12 pt-8" style={{ borderTop: "1px solid #e5e3df" }}>
+      <div className="mt-12 pt-8" style={{ borderTop: "1px solid var(--hairline)" }}>
         <Link href="/tin-tuc"
           className="inline-flex items-center gap-2 text-sm font-semibold"
-          style={{ color: "#0068FF" }}>
+          style={{ color: "#5645d4" }}>
           ← Xem tất cả bài viết
         </Link>
       </div>

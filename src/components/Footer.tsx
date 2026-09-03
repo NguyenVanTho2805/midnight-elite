@@ -16,7 +16,7 @@ const socials = [
 
 export default function Footer() {
   return (
-    <footer style={{ backgroundColor: "#ffffff", borderTop: "1px solid #e5e3df" }}>
+    <footer style={{ backgroundColor: "var(--canvas)", borderTop: "1px solid var(--hairline)" }}>
       <div className="max-w-7xl mx-auto px-8 py-16">
         <div className="flex flex-col lg:flex-row justify-between gap-12">
 
@@ -25,16 +25,16 @@ export default function Footer() {
             <Link href="/" className="inline-flex items-center gap-2.5 mb-5 no-underline">
               <div
                 className="w-9 h-9 flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                style={{ backgroundColor: "#0068FF", borderRadius: "8px" }}
+                style={{ backgroundColor: "#5645d4", borderRadius: "8px" }}
               >
                 ME
               </div>
-              <span className="text-base font-semibold" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>
+              <span className="text-base font-semibold" style={{ color: "var(--ink)", letterSpacing: "-0.3px" }}>
                 Midnight Elite
               </span>
             </Link>
 
-            <p className="text-sm leading-relaxed mb-6" style={{ color: "#787671" }}>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: "var(--steel)" }}>
               Nền tảng luyện thi ĐGNL & Tốt nghiệp THPT hàng đầu Việt Nam.
             </p>
 
@@ -48,12 +48,12 @@ export default function Footer() {
                   title={s.label}
                   className="w-8 h-8 flex items-center justify-center text-[11px] font-semibold
                              no-underline transition-colors duration-150
-                             hover:border-[#0068FF] hover:text-[#0068FF]"
+                             hover:border-[#5645d4] hover:text-[#5645d4]"
                   style={{
                     borderRadius: "8px",
-                    border: "1px solid #e5e3df",
-                    backgroundColor: "#f6f5f4",
-                    color: "#787671",
+                    border: "1px solid var(--hairline)",
+                    backgroundColor: "var(--surface)",
+                    color: "var(--steel)",
                   }}
                 >
                   {s.initial}
@@ -71,7 +71,7 @@ export default function Footer() {
                 fontWeight: 600,
                 textTransform: "uppercase",
                 letterSpacing: "1px",
-                color: "#37352f",
+                color: "var(--charcoal)",
               }}
             >
               Công cụ học tập
@@ -81,8 +81,8 @@ export default function Footer() {
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]"
-                    style={{ color: "#787671" }}
+                    className="text-sm no-underline transition-colors duration-150 hover:text-[var(--ink)]"
+                    style={{ color: "var(--steel)" }}
                   >
                     {item.label}
                   </Link>
@@ -100,24 +100,24 @@ export default function Footer() {
                 fontWeight: 600,
                 textTransform: "uppercase",
                 letterSpacing: "1px",
-                color: "#37352f",
+                color: "var(--charcoal)",
               }}
             >
               Hỗ trợ học viên
             </p>
             <ul className="space-y-3 list-none p-0 m-0">
               <li>
-                <a href="tel:0384409051" className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]" style={{ color: "#787671" }}>
+                <a href="tel:0384409051" className="text-sm no-underline transition-colors duration-150 hover:text-[var(--ink)]" style={{ color: "var(--steel)" }}>
                   Hotline: 0384 409 051
                 </a>
               </li>
               <li>
                 <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
-                  className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]" style={{ color: "#787671" }}>
+                  className="text-sm no-underline transition-colors duration-150 hover:text-[var(--ink)]" style={{ color: "var(--steel)" }}>
                   Zalo tư vấn
                 </a>
               </li>
-              <li className="text-sm" style={{ color: "#787671" }}>
+              <li className="text-sm" style={{ color: "var(--steel)" }}>
                 Hỗ trợ: 09:00 – 21:30 hằng ngày
               </li>
             </ul>
@@ -127,15 +127,15 @@ export default function Footer() {
         {/* Bottom bar */}
         <div
           className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3"
-          style={{ borderTop: "1px solid #e5e3df" }}
+          style={{ borderTop: "1px solid var(--hairline)" }}
         >
-          <p className="text-xs" style={{ color: "#a4a097" }}>
+          <p className="text-xs" style={{ color: "var(--stone)" }}>
             © 2026 Midnight Elite. Bảo lưu mọi quyền.
           </p>
           <Link
             href="/chinh-sach"
-            className="text-xs no-underline transition-colors duration-150 hover:text-[#1a1a1a]"
-            style={{ color: "#787671" }}
+            className="text-xs no-underline transition-colors duration-150 hover:text-[var(--ink)]"
+            style={{ color: "var(--steel)" }}
           >
             Chính sách bảo mật
           </Link>

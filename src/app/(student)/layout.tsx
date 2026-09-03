@@ -18,14 +18,14 @@ function StudentChatWidget() {
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard requiredRole="student">
-      <div className="min-h-screen" style={{ background: "#ffffff" }}>
+      <div className="min-h-screen" style={{ background: "var(--canvas)" }}>
         <VerifyEmailBanner />
         <Navbar />
         <main className="pb-24 md:pb-8 px-4 md:px-8 py-6 max-w-screen-2xl mx-auto">
           <Suspense fallback={
             <div className="animate-pulse space-y-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-24 rounded-xl" style={{ background: "#e5e3df" }} />
+                <div key={i} className="h-24 rounded-xl" style={{ background: "var(--hairline)" }} />
               ))}
             </div>
           }>

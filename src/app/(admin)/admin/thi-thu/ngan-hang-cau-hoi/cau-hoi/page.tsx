@@ -23,7 +23,7 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "VDC", label: "Vận dụng cao" },
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
+  NB:  { bg: "var(--tint-lavender)", color: "#5645d4" },
   TH:  { bg: "#dcfce7", color: "#16a34a" },
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
@@ -247,7 +247,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={d.value} type="button" onClick={() => setForm({ ...form, difficulty: d.value })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.difficulty === d.value
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                    ? { background: "#5645d4", borderColor: "#5645d4", color: "#fff" }
                     : { borderColor: "#e5e3df", color: "#787671" }}>
                   {d.label}
                 </button>
@@ -267,7 +267,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={t.v} type="button" onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                    ? { background: "#5645d4", borderColor: "#5645d4", color: "#fff" }
                     : { borderColor: "#e5e3df", color: "#787671" }}>
                   {t.label}
                 </button>
@@ -331,7 +331,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#5645d4" }}>+ Thêm đáp án</button>
             </div>
           )}
 
@@ -585,10 +585,10 @@ function PageInner() {
         <div className="flex items-center gap-2">
           <button onClick={toggleSelectMode}
             className="px-4 py-2.5 text-sm font-semibold rounded-lg border"
-            style={selectMode ? { background: "#eff6ff", borderColor: "#0068FF", color: "#0068FF" } : { borderColor: "#e5e3df", color: "#787671" }}>
+            style={selectMode ? { background: "var(--tint-lavender)", borderColor: "#5645d4", color: "#5645d4" } : { borderColor: "#e5e3df", color: "#787671" }}>
             {selectMode ? "Thoát chế độ chọn" : "Chọn nhiều"}
           </button>
-          <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+          <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>
             + Thêm câu hỏi
           </button>
         </div>
@@ -684,7 +684,7 @@ function PageInner() {
                   <div className="flex flex-wrap gap-2">
                     {canEdit(item) && (
                       <>
-                        <button onClick={() => openEdit(item)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
+                        <button onClick={() => openEdit(item)} className="text-xs font-semibold" style={{ color: "#5645d4" }}>Sửa</button>
                         <button onClick={() => setDelId(item.id)} className="text-xs font-semibold text-red-500">Xoá</button>
                         {item.status === "draft" && (
                           <button onClick={() => handleSubmit(item.id)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Gửi duyệt</button>

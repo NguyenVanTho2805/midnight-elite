@@ -14,8 +14,8 @@ export default function TeacherTag({
 }: Props) {
   const avatarStyle = variant === "onDark"
     ? { background: "rgba(255,255,255,0.25)", border: "2px solid rgba(255,255,255,0.6)", backdropFilter: blur ? "blur(4px)" : undefined }
-    : { background: "linear-gradient(135deg, #0068FF, #2680FF)" };
-  const nameColor = variant === "onDark" ? "rgba(255,255,255,0.85)" : role ? "#1E2938" : "#6B7280";
+    : { background: "linear-gradient(135deg, #5645d4, #7b3ff2)" };
+  const nameColor = variant === "onDark" ? "rgba(255,255,255,0.85)" : role ? "var(--ink)" : "var(--steel)";
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -32,7 +32,7 @@ export default function TeacherTag({
         >
           {name}
         </p>
-        {role && <p className="text-xs truncate" style={{ color: "#9CA3AF" }}>{role}</p>}
+        {role && <p className="text-xs truncate" style={{ color: "var(--stone)" }}>{role}</p>}
       </div>
     </div>
   );

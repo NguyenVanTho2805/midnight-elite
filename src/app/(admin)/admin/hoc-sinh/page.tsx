@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
-import { Search } from "griddy-icons";
+import { MagnifyingGlass as Search } from "@phosphor-icons/react";
 import type { CourseFull } from "@/lib/api";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ interface Student {
 
 const ROLE_CONFIG = {
   "hoc-vien":       { label: "Học viên", labelFull: "Học viên",       bg: "#DBEAFE", color: "#1D4ED8" },
-  "chua-kich-hoat": { label: "Chưa KH",  labelFull: "Chưa kích hoạt", bg: "#F3F4F6", color: "#6B7280" },
+  "chua-kich-hoat": { label: "Chưa KH",  labelFull: "Chưa kích hoạt", bg: "#F3F4F6", color: "var(--steel)" },
 };
 
 interface ApiStudent {
@@ -203,7 +203,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #e5e3df" }}>
-          <h2 className="font-bold text-base" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h2>
+          <h2 className="font-bold text-base" style={{ color: "var(--ink)" }}>Hồ sơ học sinh</h2>
           <button onClick={onClose}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg">
             ×
@@ -214,14 +214,14 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           {/* Avatar + name */}
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "#5645d4" }}>
               {student.name[0]}
             </div>
             <div>
-              <p className="font-bold text-base" style={{ color: "#1E2938" }}>{student.name}</p>
+              <p className="font-bold text-base" style={{ color: "var(--ink)" }}>{student.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>{student.sbd}</span>
-                <span className="text-xs" style={{ color: "#9CA3AF" }}>· {student.lastSeen}</span>
+                <span className="text-xs font-semibold" style={{ color: "#5645d4" }}>{student.sbd}</span>
+                <span className="text-xs" style={{ color: "var(--stone)" }}>· {student.lastSeen}</span>
               </div>
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -244,18 +244,18 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
               { label: "Email",    value: student.email  },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center text-xs">
-                <span style={{ color: "#6B7280" }}>{r.label}</span>
-                <span className="font-semibold text-right ml-2 truncate max-w-[180px]" style={{ color: "#1E2938" }}>{r.value}</span>
+                <span style={{ color: "var(--steel)" }}>{r.label}</span>
+                <span className="font-semibold text-right ml-2 truncate max-w-[180px]" style={{ color: "var(--ink)" }}>{r.value}</span>
               </div>
             ))}
             <div className="flex justify-between items-center text-xs">
-              <span style={{ color: "#6B7280" }}>SĐT</span>
+              <span style={{ color: "var(--steel)" }}>SĐT</span>
               <div className="flex items-center gap-2">
-                <span className="font-semibold" style={{ color: "#1E2938" }}>{student.phone}</span>
+                <span className="font-semibold" style={{ color: "var(--ink)" }}>{student.phone}</span>
                 {student.phone !== "—" && (
                   <button onClick={() => copy(student.phone.replace(/\s/g, ""))}
                     className="px-2 py-0.5 rounded text-xs font-semibold border transition-colors"
-                    style={{ borderColor: "#e5e3df", background: copied ? "#d1fae5" : "#fff", color: copied ? "#166534" : "#0068FF" }}>
+                    style={{ borderColor: "#e5e3df", background: copied ? "#d1fae5" : "#fff", color: copied ? "#166534" : "#5645d4" }}>
                     {copied ? "✓" : "Sao chép"}
                   </button>
                 )}
@@ -266,13 +266,13 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "#9CA3AF" : student.gpa < 5 ? "#FF2157" : student.gpa < 7 ? "#FE9900" : "#0068FF" },
+              { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "var(--stone)" : student.gpa < 5 ? "#FF2157" : student.gpa < 7 ? "#FE9900" : "#5645d4" },
               { label: "Tiến độ", value: `${student.completion}%`, color: "#8B5CF6" },
               { label: "Điểm bài tập", value: student.assignmentAvg != null ? student.assignmentAvg.toFixed(1) : "—", color: "#16a34a" },
             ].map(s => (
               <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
                 <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{s.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--stone)" }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -280,7 +280,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           {/* Progress bar */}
           <div>
             <div className="flex justify-between text-xs mb-1.5">
-              <span style={{ color: "#6B7280" }}>Tiến độ khóa học</span>
+              <span style={{ color: "var(--steel)" }}>Tiến độ khóa học</span>
               <span className="font-bold" style={{ color: "#8B5CF6" }}>{student.completion}%</span>
             </div>
             <div className="h-2 rounded-full" style={{ background: "#e5e3df" }}>
@@ -312,7 +312,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                 <p className="text-xs font-bold text-center" style={{ color: "#dc2626" }}>Xác nhận xóa?</p>
                 <div className="flex gap-1.5">
                   <button onClick={() => setConfirmDel(false)}
-                    className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "#e5e3df", color: "#6B7280" }}>Huỷ</button>
+                    className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "#e5e3df", color: "var(--steel)" }}>Huỷ</button>
                   <button onClick={deleteStudent} disabled={deleting}
                     className="flex-1 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                     style={{ background: "#dc2626" }}>{deleting ? "…" : "Xóa"}</button>
@@ -330,9 +330,9 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
 
           {/* Kích hoạt khoá học */}
           <div>
-            <p className="text-xs font-bold mb-2.5" style={{ color: "#1E2938" }}>Kích hoạt / Thu hồi khoá học</p>
+            <p className="text-xs font-bold mb-2.5" style={{ color: "var(--ink)" }}>Kích hoạt / Thu hồi khoá học</p>
             {dbCourses.length === 0 ? (
-              <p className="text-xs text-center py-3" style={{ color: "#9CA3AF" }}>Chưa có khoá học nào trong hệ thống</p>
+              <p className="text-xs text-center py-3" style={{ color: "var(--stone)" }}>Chưa có khoá học nào trong hệ thống</p>
             ) : (
               <div className="space-y-2">
                 {dbCourses.map(course => {
@@ -347,7 +347,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                           {enrolled ? "✓" : "○"}
                         </span>
                         <span className="text-xs font-semibold truncate"
-                          style={{ color: enrolled ? "#065F46" : "#1E2938" }}>
+                          style={{ color: enrolled ? "#065F46" : "var(--ink)" }}>
                           {course.name}
                         </span>
                       </div>
@@ -357,7 +357,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                         className="flex-shrink-0 ml-2 px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer"
                         style={enrolled
                           ? { background: "#fee2e2", color: "#DC2626" }
-                          : { background: "#0068FF", color: "white" }}>
+                          : { background: "#5645d4", color: "white" }}>
                         {busy ? "..." : enrolled ? "Thu hồi" : "Kích hoạt"}
                       </button>
                     </div>
@@ -381,7 +381,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
               <textarea rows={3} value={remindMsg} onChange={e => setRemindMsg(e.target.value)}
                 placeholder={DEFAULT_REMIND}
                 className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }} />
+                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "var(--ink)" }} />
               <button onClick={sendRemind} disabled={reminding}
                 className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
                 style={{ background: "#FE9900" }}>
@@ -609,15 +609,15 @@ export default function HocSinhPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#9CA3AF" }}>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--ink)" }}>Hồ sơ học sinh</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--stone)" }}>
               {students.length} học sinh · {counts.hocVien} có khóa học · {counts.chuaKH} chưa kích hoạt
             </p>
           </div>
           <button
             onClick={() => setShowAdd(true)}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "#5645d4" }}>
             + Thêm học sinh
           </button>
         </div>
@@ -636,7 +636,7 @@ export default function HocSinhPage() {
                   border: `1px solid ${active ? cfg.color : "#e5e3df"}`,
                 }}>
                 <div className="text-2xl font-bold" style={{ color: cfg.color }}>{counts[s]}</div>
-                <div className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{cfg.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--steel)" }}>{cfg.label}</div>
               </button>
             );
           })}
@@ -653,8 +653,8 @@ export default function HocSinhPage() {
               <button key={f.key} onClick={() => setRoleFilter(f.key)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
                 style={roleFilter === f.key
-                  ? { background: "#ffffff", color: "#1E2938", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e3df" }
-                  : { background: "transparent", color: "#6B7280", border: "1px solid transparent" }}>
+                  ? { background: "#ffffff", color: "var(--ink)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e3df" }
+                  : { background: "transparent", color: "var(--steel)", border: "1px solid transparent" }}>
                 {f.label}
               </button>
             ))}
@@ -664,8 +664,8 @@ export default function HocSinhPage() {
             <input type="text" placeholder="Tìm theo tên, SĐT, email, SBD..."
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full px-4 py-2.5 pl-9 rounded-xl text-sm outline-none"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1E2938" }} />
-            <div className="absolute left-3 top-3" style={{ color: "#9CA3AF" }}>
+              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "var(--ink)" }} />
+            <div className="absolute left-3 top-3" style={{ color: "var(--stone)" }}>
               <Search size={15} />
             </div>
           </div>
@@ -683,7 +683,7 @@ export default function HocSinhPage() {
         <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white"
           style={{ border: "1px solid #e5e3df" }}>
           <div className="grid grid-cols-12 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#9CA3AF", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+            style={{ color: "var(--stone)", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
             <div className="col-span-1 hidden sm:block">SBD</div>
             <div className="col-span-4 sm:col-span-3">Học sinh</div>
             <div className="col-span-2 hidden sm:block">Liên hệ</div>
@@ -703,9 +703,9 @@ export default function HocSinhPage() {
             )}
             {!loading && filtered.length === 0 && (
               <div className="px-5 py-12 text-center">
-                <p className="font-semibold text-sm" style={{ color: "#6B7280" }}>Không tìm thấy học sinh</p>
+                <p className="font-semibold text-sm" style={{ color: "var(--steel)" }}>Không tìm thấy học sinh</p>
                 <button onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); }}
-                  className="text-xs mt-2 cursor-pointer" style={{ color: "#0068FF" }}>
+                  className="text-xs mt-2 cursor-pointer" style={{ color: "#5645d4" }}>
                   Xóa bộ lọc
                 </button>
               </div>
@@ -717,27 +717,27 @@ export default function HocSinhPage() {
                 <div key={s.userId} className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-gray-50 transition-colors"
                   style={{ borderTop: i > 0 ? "1px solid #f0eeeb" : "none" }}>
                   <div className="col-span-1 hidden sm:block">
-                    <span className="text-xs font-mono" style={{ color: "#0068FF" }}>{s.sbd}</span>
+                    <span className="text-xs font-mono" style={{ color: "#5645d4" }}>{s.sbd}</span>
                   </div>
                   <div className="col-span-4 sm:col-span-3">
-                    <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
-                    <div className="text-xs" style={{ color: "#9CA3AF" }}>{s.lastSeen}</div>
+                    <div className="font-semibold text-sm" style={{ color: "var(--ink)" }}>{s.name}</div>
+                    <div className="text-xs" style={{ color: "var(--stone)" }}>{s.lastSeen}</div>
                   </div>
                   <div className="col-span-2 hidden sm:block">
-                    <div className="text-xs" style={{ color: "#4B5563" }}>{s.phone}</div>
-                    <div className="text-xs truncate" style={{ color: "#9CA3AF" }}>{s.email}</div>
+                    <div className="text-xs" style={{ color: "var(--slate)" }}>{s.phone}</div>
+                    <div className="text-xs truncate" style={{ color: "var(--stone)" }}>{s.email}</div>
                   </div>
                   <div className="col-span-2">
                     {isHV ? (
-                      <span className="text-xs truncate block" style={{ color: "#1E2938" }}>{s.course}</span>
+                      <span className="text-xs truncate block" style={{ color: "var(--ink)" }}>{s.course}</span>
                     ) : (
                       <span className="px-1.5 py-0.5 rounded text-xs font-medium"
-                        style={{ background: "#F3F4F6", color: "#6B7280" }}>Chưa KH</span>
+                        style={{ background: "#F3F4F6", color: "var(--steel)" }}>Chưa KH</span>
                     )}
                   </div>
                   <div className="col-span-1 text-center">
                     <span className="text-sm font-bold"
-                      style={{ color: s.gpa === 0 ? "#d1d5db" : s.gpa < 5 ? "#FF2157" : s.gpa < 7 ? "#FE9900" : "#0068FF" }}>
+                      style={{ color: s.gpa === 0 ? "#d1d5db" : s.gpa < 5 ? "#FF2157" : s.gpa < 7 ? "#FE9900" : "#5645d4" }}>
                       {s.gpa > 0 ? s.gpa.toFixed(1) : "—"}
                     </span>
                   </div>
@@ -751,7 +751,7 @@ export default function HocSinhPage() {
                     <button
                       onClick={() => setDetailTarget(s)}
                       className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-blue-50 cursor-pointer"
-                      style={{ color: "#0068FF", border: "1px solid #e5e3df" }}>
+                      style={{ color: "#5645d4", border: "1px solid #e5e3df" }}>
                       Chi tiết
                     </button>
                   </div>
@@ -761,7 +761,7 @@ export default function HocSinhPage() {
           </div>
 
           <div className="px-5 py-3 text-xs text-right flex-shrink-0"
-            style={{ borderTop: "1px solid #e5e3df", color: "#9CA3AF" }}>
+            style={{ borderTop: "1px solid #e5e3df", color: "var(--stone)" }}>
             {filtered.length}/{students.length} học sinh · GPA = 40% tiến độ + 60% điểm thi
           </div>
         </div>

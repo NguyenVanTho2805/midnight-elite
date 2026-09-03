@@ -11,7 +11,7 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "VDC", label: "Vận dụng cao" },
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
+  NB:  { bg: "var(--tint-lavender)", color: "#5645d4" },
   TH:  { bg: "#dcfce7", color: "#16a34a" },
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
@@ -103,26 +103,26 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
       <div className="bg-white rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--hairline)" }}>
           <div>
-            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Thêm câu từ Ngân hàng câu hỏi</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--ink)" }}>Thêm câu từ Ngân hàng câu hỏi</h2>
             <p className="text-xs text-gray-500 mt-0.5">{total} câu — đã chọn {selected.size}</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
         </div>
 
-        <div className="flex flex-wrap gap-2 px-5 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="flex flex-wrap gap-2 px-5 py-3 border-b" style={{ borderColor: "var(--hairline)" }}>
           <input
             className="flex-1 min-w-[160px] px-3 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
-            style={{ borderColor: "#e5e3df" }}
+            style={{ borderColor: "var(--hairline)" }}
             placeholder="Tìm theo nội dung câu hỏi..."
             value={search} onChange={e => setSearch(e.target.value)} />
-          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none max-w-[220px]" style={{ borderColor: "#e5e3df" }}
+          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none max-w-[220px]" style={{ borderColor: "var(--hairline)" }}
             value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
             <option value="">Tất cả đầu mục</option>
             {categories.map(c => <option key={c.id} value={c.id}>{categoryPath(c.id, categories)}</option>)}
           </select>
-          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
+          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none" style={{ borderColor: "var(--hairline)" }}
             value={difficultyFilter} onChange={e => setDiff(e.target.value)}>
             <option value="">Tất cả độ khó</option>
             {DIFFICULTIES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -137,10 +137,10 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
           ) : items.map(item => (
             <label key={item.id}
               className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50"
-              style={{ borderColor: selected.has(item.id) ? "#0068FF" : "#e5e3df" }}>
+              style={{ borderColor: selected.has(item.id) ? "#5645d4" : "var(--hairline)" }}>
               <input type="checkbox" className="mt-1" checked={selected.has(item.id)} onChange={() => toggle(item)} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm truncate" style={{ color: "#1a1a1a" }}>{item.text}</p>
+                <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{item.text}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-xs text-gray-500">{categoryPath(item.categoryId, categories)}</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={DIFFICULTY_COLOR[item.difficulty]}>
@@ -153,8 +153,8 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
           ))}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "#e5e3df" }}>
-          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--hairline)" }}>
+          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--hairline)" }}>Huỷ</button>
           <button onClick={handleAdd} disabled={selected.size === 0}
             className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
             Thêm {selected.size > 0 ? `${selected.size} câu` : ""} đã chọn

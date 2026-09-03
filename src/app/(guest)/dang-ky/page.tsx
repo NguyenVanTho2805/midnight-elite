@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff, CheckCircle, CloseCircle } from "griddy-icons";
+import { Eye, EyeSlash as EyeOff, CheckCircle, XCircle as CloseCircle } from "@phosphor-icons/react";
 
 // Danh sách 34 tỉnh/thành sau sáp nhập (2025)
 const PROVINCES = [
@@ -64,7 +64,7 @@ function getPasswordStrength(p: string) {
   if (p.length < 12 && /[A-Z]/.test(p) && /[0-9]/.test(p))
                      return { level: 4, label: "Mạnh",        color: "#16a34a" };
   if (/[A-Z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p))
-                     return { level: 5, label: "Rất mạnh",    color: "#0068FF" };
+                     return { level: 5, label: "Rất mạnh",    color: "#5645d4" };
   return             { level: 3, label: "Trung bình",         color: "#f97316" };
 }
 
@@ -147,29 +147,29 @@ export default function DangKyPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-16" style={{ background: "#f6f5f4" }}>
+      <div className="min-h-screen flex items-center justify-center px-4 py-16" style={{ background: "var(--surface)" }}>
         <div className="w-full max-w-md text-center">
-          <div className="rounded-xl p-10" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+          <div className="rounded-xl p-10" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
             <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-5"
-              style={{ background: "#dbeafe", border: "1px solid #bfdbfe" }}>
-              <svg className="w-8 h-8" fill="none" stroke="#0068FF" strokeWidth={2} viewBox="0 0 24 24">
+              style={{ background: "var(--tint-lavender)", border: "1px solid var(--brand-purple-300)" }}>
+              <svg className="w-8 h-8" fill="none" stroke="#5645d4" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
             </div>
             {emailSent ? (
               <>
-                <h2 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Kiểm tra hộp thư</h2>
-                <p className="text-sm mb-1" style={{ color: "#787671" }}>Đã gửi email xác thực đến</p>
-                <p className="text-base font-semibold mb-5" style={{ color: "#0068FF" }}>{s2.email}</p>
-                <p className="text-xs leading-relaxed mb-6" style={{ color: "#a4a097" }}>
+                <h2 className="text-xl font-bold mb-2" style={{ color: "var(--ink)", letterSpacing: "-0.3px" }}>Kiểm tra hộp thư</h2>
+                <p className="text-sm mb-1" style={{ color: "var(--steel)" }}>Đã gửi email xác thực đến</p>
+                <p className="text-base font-semibold mb-5" style={{ color: "#5645d4" }}>{s2.email}</p>
+                <p className="text-xs leading-relaxed mb-6" style={{ color: "var(--stone)" }}>
                   Bấm vào link trong email để kích hoạt tài khoản.<br />
                   Link có hiệu lực trong <strong>24 giờ</strong>.
                 </p>
               </>
             ) : (
               <>
-                <h2 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Tài khoản đã tạo!</h2>
+                <h2 className="text-xl font-bold mb-2" style={{ color: "var(--ink)", letterSpacing: "-0.3px" }}>Tài khoản đã tạo!</h2>
                 <div className="rounded-lg px-4 py-3 mb-5 text-left" style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
                   <p className="text-xs font-semibold mb-1" style={{ color: "#c2410c" }}>Không gửi được email xác thực</p>
                   <p className="text-xs" style={{ color: "#9a3412" }}>
@@ -178,11 +178,11 @@ export default function DangKyPage() {
                 </div>
               </>
             )}
-            <div className="rounded-lg p-4 text-left mb-6" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+            <div className="rounded-lg p-4 text-left mb-6" style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
               {emailSent ? (
                 <>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "#37352f" }}>Không thấy email?</p>
-                  <ul className="text-xs space-y-1" style={{ color: "#787671" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--charcoal)" }}>Không thấy email?</p>
+                  <ul className="text-xs space-y-1" style={{ color: "var(--steel)" }}>
                     <li>• Kiểm tra thư mục Spam / Junk</li>
                     <li>• Đợi vài phút rồi refresh hộp thư</li>
                     <li>• Kiểm tra lại email đã nhập đúng chưa</li>
@@ -190,12 +190,12 @@ export default function DangKyPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "#37352f" }}>Tài khoản đã đăng ký với:</p>
-                  <p className="text-xs font-mono" style={{ color: "#0068FF" }}>{s2.email}</p>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--charcoal)" }}>Tài khoản đã đăng ký với:</p>
+                  <p className="text-xs font-mono" style={{ color: "#5645d4" }}>{s2.email}</p>
                 </>
               )}
             </div>
-            <Link href="/dang-nhap" className="text-sm font-semibold" style={{ color: "#0068FF" }}>
+            <Link href="/dang-nhap" className="text-sm font-semibold" style={{ color: "#5645d4" }}>
               ← Quay về đăng nhập
             </Link>
           </div>
@@ -205,17 +205,17 @@ export default function DangKyPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--surface)" }}>
       <div className="w-full max-w-lg">
 
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>Midnight Elite</span>
-            <span className="text-xs" style={{ color: "#a4a097" }}>Education Platform</span>
+            <span className="text-2xl font-bold" style={{ color: "#5645d4", letterSpacing: "-0.5px" }}>Midnight Elite</span>
+            <span className="text-xs" style={{ color: "var(--stone)" }}>Education Platform</span>
           </Link>
-          <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Tạo tài khoản miễn phí</h1>
-          <p className="text-sm" style={{ color: "#787671" }}>Thi thử ĐGNL ngay sau khi đăng ký</p>
+          <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "var(--ink)", letterSpacing: "-0.3px" }}>Tạo tài khoản miễn phí</h1>
+          <p className="text-sm" style={{ color: "var(--steel)" }}>Thi thử ĐGNL ngay sau khi đăng ký</p>
         </div>
 
         {/* Progress steps */}
@@ -225,38 +225,38 @@ export default function DangKyPage() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
                   style={{
-                    background: step >= n ? "#0068FF" : "#e5e3df",
-                    color: step >= n ? "#ffffff" : "#a4a097",
+                    background: step >= n ? "#5645d4" : "var(--hairline)",
+                    color: step >= n ? "var(--canvas)" : "var(--stone)",
                   }}>
                   {step > n ? "✓" : n}
                 </div>
-                <span className="text-xs font-semibold hidden sm:block" style={{ color: step >= n ? "#1a1a1a" : "#a4a097" }}>
+                <span className="text-xs font-semibold hidden sm:block" style={{ color: step >= n ? "var(--ink)" : "var(--stone)" }}>
                   {n === 1 ? "Thông tin cá nhân" : "Tài khoản"}
                 </span>
               </div>
               {i < 1 && (
-                <div className="flex-1 h-px mx-3 transition-all" style={{ background: step > 1 ? "#0068FF" : "#e5e3df" }} />
+                <div className="flex-1 h-px mx-3 transition-all" style={{ background: step > 1 ? "#5645d4" : "var(--hairline)" }} />
               )}
             </div>
           ))}
         </div>
 
         {/* Card */}
-        <div className="rounded-xl p-8" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+        <div className="rounded-xl p-8" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
 
           {/* ── BƯỚC 1 ── */}
           {step === 1 && (
             <form onSubmit={goNext} noValidate className="space-y-4">
-              <p className="text-sm font-semibold mb-1" style={{ color: "#37352f" }}>Thông tin học sinh</p>
+              <p className="text-sm font-semibold mb-1" style={{ color: "var(--charcoal)" }}>Thông tin học sinh</p>
 
               {/* Họ và tên */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Họ và tên *</label>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Họ và tên *</label>
                 <div className="relative">
                   <input type="text" placeholder="Nguyễn Văn A" value={s1.name}
                     onChange={e => setS1(p => ({ ...p, name: e.target.value }))}
                     onBlur={() => setT1(p => ({ ...p, name: true }))}
-                    className="notion-input w-full text-sm pr-10" style={{ color: "#1a1a1a",
+                    className="notion-input w-full text-sm pr-10" style={{ color: "var(--ink)",
                       borderColor: t1.name && e1.name ? "#fca5a5" : t1.name && !e1.name ? "#86efac" : undefined }} />
                   <span className="absolute right-3 top-3">
                     <FieldIcon touched={!!t1.name} hasError={!!e1.name} hasValue={!!s1.name.trim()} />
@@ -268,12 +268,12 @@ export default function DangKyPage() {
               {/* SĐT học sinh + SĐT phụ huynh */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>SĐT học sinh (Zalo) *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>SĐT học sinh (Zalo) *</label>
                   <div className="relative">
                     <input type="tel" placeholder="0901 234 567" value={s1.phone}
                       onChange={e => setS1(p => ({ ...p, phone: e.target.value }))}
                       onBlur={() => setT1(p => ({ ...p, phone: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "#1a1a1a",
+                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--ink)",
                         borderColor: t1.phone && e1.phone ? "#fca5a5" : t1.phone && !e1.phone ? "#86efac" : undefined }} />
                     <span className="absolute right-3 top-3">
                       <FieldIcon touched={!!t1.phone} hasError={!!e1.phone} hasValue={validatePhone(s1.phone)} />
@@ -282,15 +282,15 @@ export default function DangKyPage() {
                   <FieldError msg={t1.phone ? e1.phone : undefined} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>
                     SĐT phụ huynh
-                    <span className="ml-1 font-normal" style={{ color: "#a4a097" }}>(tuỳ chọn)</span>
+                    <span className="ml-1 font-normal" style={{ color: "var(--stone)" }}>(tuỳ chọn)</span>
                   </label>
                   <div className="relative">
                     <input type="tel" placeholder="0901 234 567" value={s1.parentPhone}
                       onChange={e => setS1(p => ({ ...p, parentPhone: e.target.value }))}
                       onBlur={() => setT1(p => ({ ...p, parentPhone: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "#1a1a1a",
+                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--ink)",
                         borderColor: t1.parentPhone && e1.parentPhone ? "#fca5a5"
                           : t1.parentPhone && s1.parentPhone && !e1.parentPhone ? "#86efac" : undefined }} />
                     <span className="absolute right-3 top-3">
@@ -304,12 +304,12 @@ export default function DangKyPage() {
               {/* Tỉnh + Trường */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Tỉnh / Thành phố *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Tỉnh / Thành phố *</label>
                   <select value={s1.city}
                     onChange={e => setS1(p => ({ ...p, city: e.target.value }))}
                     onBlur={() => setT1(p => ({ ...p, city: true }))}
                     className="notion-input w-full text-sm"
-                    style={{ color: s1.city ? "#1a1a1a" : "#a4a097",
+                    style={{ color: s1.city ? "var(--ink)" : "var(--stone)",
                       borderColor: t1.city && e1.city ? "#fca5a5" : t1.city && !e1.city ? "#86efac" : undefined }}>
                     <option value="">Chọn tỉnh / thành phố</option>
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
@@ -317,12 +317,12 @@ export default function DangKyPage() {
                   <FieldError msg={t1.city ? e1.city : undefined} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Tên trường *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Tên trường *</label>
                   <div className="relative">
                     <input type="text" placeholder="THPT Chu Văn An" value={s1.school}
                       onChange={e => setS1(p => ({ ...p, school: e.target.value }))}
                       onBlur={() => setT1(p => ({ ...p, school: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "#1a1a1a",
+                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--ink)",
                         borderColor: t1.school && e1.school ? "#fca5a5" : t1.school && !e1.school ? "#86efac" : undefined }} />
                     <span className="absolute right-3 top-3">
                       <FieldIcon touched={!!t1.school} hasError={!!e1.school} hasValue={!!s1.school.trim()} />
@@ -334,7 +334,7 @@ export default function DangKyPage() {
 
               <button type="submit"
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all mt-2"
-                style={{ background: "#0068FF", borderRadius: "8px" }}>
+                style={{ background: "#5645d4", borderRadius: "8px" }}>
                 Tiếp theo →
               </button>
             </form>
@@ -343,16 +343,16 @@ export default function DangKyPage() {
           {/* ── BƯỚC 2 ── */}
           {step === 2 && (
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              <p className="text-sm font-semibold mb-1" style={{ color: "#37352f" }}>Thông tin tài khoản</p>
+              <p className="text-sm font-semibold mb-1" style={{ color: "var(--charcoal)" }}>Thông tin tài khoản</p>
 
               {/* Email */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Email *</label>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Email *</label>
                 <div className="relative">
                   <input type="email" placeholder="ten@gmail.com" value={s2.email}
                     onChange={e => setS2(p => ({ ...p, email: e.target.value }))}
                     onBlur={() => setT2(p => ({ ...p, email: true }))}
-                    className="notion-input w-full text-sm pr-10" style={{ color: "#1a1a1a",
+                    className="notion-input w-full text-sm pr-10" style={{ color: "var(--ink)",
                       borderColor: t2.email && e2.email ? "#fca5a5" : t2.email && !e2.email ? "#86efac" : undefined }} />
                   <span className="absolute right-3 top-3">
                     <FieldIcon touched={!!t2.email} hasError={!!e2.email} hasValue={validateEmail(s2.email)} />
@@ -364,15 +364,15 @@ export default function DangKyPage() {
               {/* Mật khẩu + Xác nhận */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Mật khẩu *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Mật khẩu *</label>
                   <div className="relative">
                     <input type={showPass ? "text" : "password"} placeholder="Tối thiểu 8 ký tự"
                       value={s2.password}
                       onChange={e => setS2(p => ({ ...p, password: e.target.value }))}
                       onBlur={() => setT2(p => ({ ...p, password: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "#1a1a1a",
+                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--ink)",
                         borderColor: t2.password && e2.password ? "#fca5a5" : undefined }} />
-                    <button type="button" className="absolute right-3 top-3" style={{ color: "#a4a097" }}
+                    <button type="button" className="absolute right-3 top-3" style={{ color: "var(--stone)" }}
                       onClick={() => setShowPass(!showPass)}>
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
@@ -382,7 +382,7 @@ export default function DangKyPage() {
                       <div className="flex gap-0.5 mb-0.5">
                         {[1,2,3,4,5].map(i => (
                           <div key={i} className="flex-1 h-1 rounded-full transition-all"
-                            style={{ background: i <= strength.level ? strength.color : "#e5e3df" }} />
+                            style={{ background: i <= strength.level ? strength.color : "var(--hairline)" }} />
                         ))}
                       </div>
                       {strength.label && <p className="text-xs font-semibold" style={{ color: strength.color }}>{strength.label}</p>}
@@ -391,16 +391,16 @@ export default function DangKyPage() {
                   <FieldError msg={t2.password ? e2.password : undefined} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Xác nhận mật khẩu *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Xác nhận mật khẩu *</label>
                   <div className="relative">
                     <input type={showConfirm ? "text" : "password"} placeholder="Nhập lại mật khẩu"
                       value={s2.confirmPassword}
                       onChange={e => setS2(p => ({ ...p, confirmPassword: e.target.value }))}
                       onBlur={() => setT2(p => ({ ...p, confirmPassword: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "#1a1a1a",
+                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--ink)",
                         borderColor: t2.confirmPassword && e2.confirmPassword ? "#fca5a5"
                           : t2.confirmPassword && !e2.confirmPassword ? "#86efac" : undefined }} />
-                    <button type="button" className="absolute right-3 top-3" style={{ color: "#a4a097" }}
+                    <button type="button" className="absolute right-3 top-3" style={{ color: "var(--stone)" }}
                       onClick={() => setShowConfirm(!showConfirm)}>
                       {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
@@ -420,24 +420,24 @@ export default function DangKyPage() {
               <div className="flex items-start gap-3 pt-1">
                 <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)}
                   className="w-4 h-4 rounded flex-shrink-0 mt-0.5 cursor-pointer accent-blue-600" />
-                <p className="text-xs leading-relaxed" style={{ color: "#787671" }}>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--steel)" }}>
                   Tôi đồng ý với{" "}
-                  <Link href="/chinh-sach" className="font-semibold" style={{ color: "#0068FF" }}>Điều khoản dịch vụ</Link>
+                  <Link href="/chinh-sach" className="font-semibold" style={{ color: "#5645d4" }}>Điều khoản dịch vụ</Link>
                   {" "}và{" "}
-                  <Link href="/chinh-sach" className="font-semibold" style={{ color: "#0068FF" }}>Chính sách bảo mật</Link>
+                  <Link href="/chinh-sach" className="font-semibold" style={{ color: "#5645d4" }}>Chính sách bảo mật</Link>
                 </p>
               </div>
 
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(1)}
                   className="px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex-shrink-0"
-                  style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df", borderRadius: "8px" }}>
+                  style={{ background: "var(--surface)", color: "var(--steel)", border: "1px solid var(--hairline)", borderRadius: "8px" }}>
                   ← Quay lại
                 </button>
                 <button type="submit" disabled={!agreed || submitting}
                   className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
                   style={{
-                    background: agreed && !submitting ? "#0068FF" : "#c8c4be",
+                    background: agreed && !submitting ? "#5645d4" : "var(--hairline-strong)",
                     borderRadius: "8px",
                     cursor: agreed && !submitting ? "pointer" : "not-allowed",
                   }}>
@@ -447,9 +447,9 @@ export default function DangKyPage() {
             </form>
           )}
 
-          <p className="text-center text-sm mt-6" style={{ color: "#787671" }}>
+          <p className="text-center text-sm mt-6" style={{ color: "var(--steel)" }}>
             Đã có tài khoản?{" "}
-            <Link href="/dang-nhap" className="font-semibold" style={{ color: "#0068FF" }}>Đăng nhập</Link>
+            <Link href="/dang-nhap" className="font-semibold" style={{ color: "#5645d4" }}>Đăng nhập</Link>
           </p>
         </div>
       </div>

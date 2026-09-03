@@ -160,7 +160,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                    ? { background: "#5645d4", borderColor: "#5645d4", color: "#fff" }
                     : { borderColor: "#e5e3df", color: "#787671" }}>
                   {t.label}
                 </button>
@@ -250,7 +250,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#5645d4" }}>+ Thêm đáp án</button>
             </div>
           )}
 
@@ -591,7 +591,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                     return (
                     <Fragment key={idx}>
                       {showSectionHeader && (
-                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#5645d4" }}>{q.sectionLabel}</p>
                       )}
                     <div className="rounded-lg p-3 border border-gray-200 bg-gray-50">
                       <div className="flex items-start gap-2 mb-2">
@@ -747,7 +747,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
                 <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={difficulty === d.value
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                    ? { background: "#5645d4", borderColor: "#5645d4", color: "#fff" }
                     : { borderColor: "#e5e3df", color: "#787671" }}>
                   {d.label}
                 </button>
@@ -1074,7 +1074,7 @@ function AttemptsPanel({ examId }: { examId: string }) {
                         )}
                       </td>
                       <td className="py-2 pr-3">
-                        <button onClick={() => setGrading(a.id)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+                        <button onClick={() => setGrading(a.id)} className="text-xs font-semibold" style={{ color: "#5645d4" }}>
                           Xem bài làm
                         </button>
                       </td>
@@ -1230,7 +1230,7 @@ function ThiThuQuestionsPage() {
               Nhập hàng loạt
             </button>
             <button onClick={() => setEditing("new")}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>
               + Thêm câu hỏi
             </button>
           </div>
@@ -1252,7 +1252,7 @@ function ThiThuQuestionsPage() {
               return (
               <Fragment key={q.id}>
                 {showSectionHeader && (
-                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>
+                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#5645d4" }}>
                     {q.sectionLabel}{q.sectionMinutes != null && ` (${q.sectionMinutes} phút)`}
                   </p>
                 )}
@@ -1301,7 +1301,7 @@ function ThiThuQuestionsPage() {
                       <button onClick={() => setSaveToBank({ id: q.id, label: `Câu ${idx + 1}` })}
                         className="text-xs font-semibold" style={{ color: "#16a34a" }}>Lưu vào ngân hàng</button>
                     )}
-                    <button onClick={() => setEditing(q)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
+                    <button onClick={() => setEditing(q)} className="text-xs font-semibold" style={{ color: "#5645d4" }}>Sửa</button>
                     <button onClick={() => setDel({ id: q.id, label: `Câu ${idx + 1}` })} className="text-xs font-semibold text-red-500">Xoá</button>
                   </div>
                 </div>

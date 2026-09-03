@@ -154,8 +154,8 @@ function UrlListEditor({ label, placeholder, urls, onChange }: {
 // có link Azota ngoài (xem deriveTypes) — badge riêng cho bài tập tự nộp thật
 // xem ASSIGNMENT_BADGE bên dưới, tính từ lesson._count.assignments.
 const TYPE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  record:   { label: "Video",    color: "#0055D4", bg: "#EFF6FF" },
-  document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
+  record:   { label: "Video",    color: "#4534b3", bg: "var(--tint-lavender)" },
+  document: { label: "Tài liệu", color: "var(--steel)", bg: "#F9FAFB" },
   quiz:     { label: "Azota",    color: "#7C3AED", bg: "#F5F3FF" },
   live:     { label: "Live",     color: "#DC2626", bg: "#FEF2F2" },
 };
@@ -399,7 +399,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
             <DropZone onFiles={files => files[0] && setBgFile(files[0])} disabled={saving} className="rounded-lg">
               <button onClick={() => bgFileRef.current?.click()} disabled={saving}
                 className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-                style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                style={{ borderColor: "#d1d5db", color: "var(--steel)" }}>
                 {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn hoặc kéo-thả ảnh (JPG, PNG, WebP)"}
               </button>
             </DropZone>
@@ -448,10 +448,10 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-2">Màu nhãn</label>
             <div className="flex gap-2">
-              {["#FF2157","#FE9900","#0068FF","#00A63D"].map(c => (
+              {["#FF2157","#FE9900","#5645d4","#00A63D"].map(c => (
                 <button key={c} type="button" onClick={() => setForm(f => ({ ...f, tagColor: c }))}
                   className="w-7 h-7 rounded-full border-2 transition-all"
-                  style={{ background: c, borderColor: form.tagColor === c ? "#1E2938" : "transparent" }} />
+                  style={{ background: c, borderColor: form.tagColor === c ? "var(--ink)" : "transparent" }} />
               ))}
             </div>
           </div>
@@ -517,14 +517,14 @@ function detectType(url: string, name: string): string {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  pdf: "#FF2157", doc: "#0068FF", xls: "#00A63D", ppt: "#F97316", file: "#6B7280",
+  pdf: "#FF2157", doc: "#5645d4", xls: "#00A63D", ppt: "#F97316", file: "var(--steel)",
 };
 
 function DocBadge({ type }: { type: string }) {
   const t = type ?? "file";
   return (
     <span className="w-8 h-8 rounded flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 uppercase"
-      style={{ background: TYPE_COLOR[t] ?? "#6B7280" }}>
+      style={{ background: TYPE_COLOR[t] ?? "var(--steel)" }}>
       {t}
     </span>
   );
@@ -589,11 +589,11 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
             </div>
           ))}
           {pending.map((p, i) => (
-            <div key={`pending-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+            <div key={`pending-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed" style={{ borderColor: "var(--brand-purple-300)", background: "var(--tint-lavender)" }}>
               <DocBadge type={detectType(p.file.name, p.file.name)} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-gray-800 truncate">{p.name}</p>
-                <p className="text-xs" style={{ color: "#0068FF" }}>⏳ Sẽ tải lên khi bấm Lưu</p>
+                <p className="text-xs" style={{ color: "#5645d4" }}>⏳ Sẽ tải lên khi bấm Lưu</p>
               </div>
               <button onClick={() => removePending(i)}
                 className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
@@ -612,7 +612,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
             onKeyDown={e => e.key === "Enter" && add()} />
           <button onClick={add} disabled={!newName.trim() || !newUrl.trim()}
             className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 flex-shrink-0"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "#5645d4" }}>
             + Thêm link
           </button>
         </div>
@@ -631,7 +631,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
           <DropZone onFiles={files => files[0] && addPendingFile(files[0])} className="rounded-lg">
             <button onClick={() => fileRef.current?.click()}
               className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors"
-              style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+              style={{ borderColor: "#d1d5db", color: "var(--steel)" }}>
               📎 Chọn hoặc kéo-thả file từ máy tính (PDF, Word, Excel...)
             </button>
           </DropZone>
@@ -734,7 +734,7 @@ function QuestionRow({ q, qi, onChange, onRemove }: {
             </div>
           ))}
           <button type="button" onClick={() => onChange({ options: [...q.options, { text: "", isCorrect: false }] })}
-            className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+            className="text-xs font-semibold" style={{ color: "#5645d4" }}>+ Thêm đáp án</button>
         </div>
       )}
     </div>
@@ -872,12 +872,12 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
         <div className="flex gap-2">
           <button type="button" onClick={() => setMode("file")}
             className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
-            style={mode === "file" ? { borderColor: "#0068FF", background: "#EFF6FF", color: "#0068FF" } : { borderColor: "#e5e7eb", color: "#6B7280" }}>
+            style={mode === "file" ? { borderColor: "#5645d4", background: "var(--tint-lavender)", color: "#5645d4" } : { borderColor: "#e5e7eb", color: "var(--steel)" }}>
             📎 Nộp file
           </button>
           <button type="button" onClick={() => setMode("interactive")}
             className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
-            style={mode === "interactive" ? { borderColor: "#0068FF", background: "#EFF6FF", color: "#0068FF" } : { borderColor: "#e5e7eb", color: "#6B7280" }}>
+            style={mode === "interactive" ? { borderColor: "#5645d4", background: "var(--tint-lavender)", color: "#5645d4" } : { borderColor: "#e5e7eb", color: "var(--steel)" }}>
             🖥️ Làm trên web
           </button>
         </div>
@@ -915,7 +915,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
               <DropZone onFiles={files => files[0] && setAssignmentFile(files[0])} className="rounded-lg">
                 <button onClick={() => fileRef.current?.click()}
                   className="w-full py-2 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors"
-                  style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                  style={{ borderColor: "#d1d5db", color: "var(--steel)" }}>
                   📎 Đính kèm hoặc kéo-thả file đề bài (tuỳ chọn)
                 </button>
               </DropZone>
@@ -932,7 +932,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
           <DropZone onFiles={files => files[0] && handleExtractFile(files[0])} className="rounded-lg">
             <button type="button" onClick={() => qFileRef.current?.click()} disabled={aiLoading}
               className="w-full py-2 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-              style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+              style={{ borderColor: "#d1d5db", color: "var(--steel)" }}>
               {aiLoading ? "Đang trích xuất bằng AI..." : "🤖 Tải file đề bài để AI trích câu hỏi (PDF/ảnh/Word)"}
             </button>
           </DropZone>
@@ -950,7 +950,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
           ))}
 
           <div className="flex items-center justify-between">
-            <button type="button" onClick={addBlankQuestion} className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm câu hỏi thủ công</button>
+            <button type="button" onClick={addBlankQuestion} className="text-xs font-semibold" style={{ color: "#5645d4" }}>+ Thêm câu hỏi thủ công</button>
             <p className="text-xs text-gray-400">{questions.length} câu hỏi</p>
           </div>
         </div>
@@ -1029,7 +1029,7 @@ function GradeSubmissionsModal({ assignment, onClose, onGraded }: {
                 <p className="text-sm font-semibold text-gray-800">{s.user?.name ?? "?"}</p>
                 <p className="text-xs text-gray-400">{new Date(s.submittedAt).toLocaleString("vi-VN")}</p>
               </div>
-              <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+              <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#5645d4" }}>
                 📎 {s.fileName || "Xem bài làm"}
               </a>
               <div className="flex items-center gap-2 mt-2">
@@ -1139,7 +1139,7 @@ function InteractiveResultsModal({ assignment, onClose }: {
                             </p>
                           ) : (
                             <>
-                              <p className="text-xs mt-1.5 whitespace-pre-wrap" style={{ color: a?.textAnswer ? "#374151" : "#9CA3AF" }}>
+                              <p className="text-xs mt-1.5 whitespace-pre-wrap" style={{ color: a?.textAnswer ? "#374151" : "var(--stone)" }}>
                                 {a?.textAnswer || "Chưa trả lời"}
                               </p>
                               <div className="flex items-center gap-2 mt-1.5">
@@ -1228,7 +1228,7 @@ function AssignmentEditor({ lessonId }: { lessonId: string }) {
     <div>
       <div className="flex items-center justify-between mb-3 pb-1 border-b border-gray-100">
         <p className="text-sm font-semibold text-gray-700">Bài tập tự nộp</p>
-        {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm bài tập</button>}
+        {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "#5645d4" }}>+ Thêm bài tập</button>}
       </div>
       <p className="text-xs text-gray-400 -mt-2 mb-3">Song song với Azota ở trên — dùng khi muốn học viên nộp bài trực tiếp trên nền tảng để chấm điểm.</p>
 
@@ -1813,7 +1813,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                 {section.chapters.map((chapter, ci) => (
                   <div key={chapter.id || `${section.id}-c-${ci}`}
                     className="border-t border-gray-100 transition-colors"
-                    style={{ background: dragOverKey === `c-${chapter.id}` ? "#EFF6FF" : undefined }}
+                    style={{ background: dragOverKey === `c-${chapter.id}` ? "var(--tint-lavender)" : undefined }}
                     draggable
                     onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "chapter", sectionIdx: si, chapterIdx: ci }); }}
                     onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "chapter" || dragItem?.type === "lesson") setDragOverKey(`c-${chapter.id}`); }}
@@ -1881,14 +1881,14 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                                 <button onClick={() => toggleLessonLock(section.id, chapter.id, lesson.id, lesson.isLocked)}
                                   className="p-1.5 rounded hover:bg-blue-50 transition-colors"
                                   title={lesson.isLocked ? "Mở khoá" : "Khoá bài"}
-                                  style={{ color: lesson.isLocked ? "#9CA3AF" : "#0055D4" }}>
+                                  style={{ color: lesson.isLocked ? "var(--stone)" : "#4534b3" }}>
                                   <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                                     <rect x="3" y="7.5" width="10" height="6.5" rx="1.2"/>
                                     <path d={lesson.isLocked ? "M5.5 7.5V5.5a2.5 2.5 0 015 0v2" : "M5.5 7.5V5.5a2.5 2.5 0 015 0"}/>
                                   </svg>
                                 </button>
                                 <button onClick={() => openEditLesson(section.id, chapter.id, lesson.id)}
-                                  className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="Sửa" style={{ color: "#0055D4" }}>
+                                  className="p-1.5 rounded hover:bg-blue-50 transition-colors" title="Sửa" style={{ color: "#4534b3" }}>
                                   <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M11 2l3 3-8 8H3v-3z"/>
                                   </svg>
@@ -2022,7 +2022,7 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                        style={{ background: "linear-gradient(145deg,#0055D4,#0042AA)" }}>
+                        style={{ background: "linear-gradient(145deg,#4534b3,#3a2a99)" }}>
                         {s.name[0]?.toUpperCase()}
                       </div>
                       <span className="font-medium text-gray-800">{s.name}</span>
@@ -2034,7 +2034,7 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 rounded-full bg-gray-200 min-w-[60px]">
-                        <div className="h-1.5 rounded-full" style={{ width: `${s.progress}%`, background: s.progress >= 80 ? "#16a34a" : s.progress >= 40 ? "#f59e0b" : "#0068FF" }} />
+                        <div className="h-1.5 rounded-full" style={{ width: `${s.progress}%`, background: s.progress >= 80 ? "#16a34a" : s.progress >= 40 ? "#f59e0b" : "#5645d4" }} />
                       </div>
                       <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
                         {s.completed}/{s.totalLessons} ({s.progress}%)
@@ -2154,7 +2154,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
-            <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "#0068FF" }}>
+            <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "#5645d4" }}>
               {saving ? "Đang lưu..." : "Lưu khung giờ"}
             </button>
           </div>
@@ -2173,7 +2173,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
         <div className="space-y-2">
           {schedules.map(s => (
             <div key={s.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200">
-              <span className="px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0" style={{ background: "#EFF6FF", color: "#0055D4" }}>
+              <span className="px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0" style={{ background: "var(--tint-lavender)", color: "#4534b3" }}>
                 {DAY_LABELS[s.dayOfWeek]}
               </span>
               <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
@@ -2258,7 +2258,7 @@ export default function KhoaHocDetailPage() {
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-start gap-4">
           <div className="w-16 h-11 rounded-lg flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-            style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>ME</div>
+            style={{ background: course.bg ?? "linear-gradient(135deg,#4534b3,#3a2a99)" }}>ME</div>
           <div className="min-w-0">
             <h1 className="text-base font-bold text-gray-800 leading-tight">{course.name}</h1>
             <p className="text-xs text-gray-400 mt-0.5">

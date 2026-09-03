@@ -29,9 +29,9 @@ const CREATE_INIT: CreateForm = {
   bgImage: "", status: true,
 };
 
-const TAG_COLORS = ["#FF2157", "#FE9900", "#0068FF", "#00A63D"];
+const TAG_COLORS = ["#FF2157", "#FE9900", "#5645d4", "#00A63D"];
 const TAG_LABELS: Record<string, string> = {
-  "#FF2157": "HOT", "#FE9900": "SALE", "#0068FF": "MỚI", "#00A63D": "FREE",
+  "#FF2157": "HOT", "#FE9900": "SALE", "#5645d4": "MỚI", "#00A63D": "FREE",
 };
 
 function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
@@ -146,7 +146,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         tagColor:      form.tag ? form.tagColor : null,
         bg:            bgImage
                          ? `url(${bgImage}) center/cover no-repeat`
-                         : CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)",
+                         : CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,var(--ink))",
         strip:         "#FDE047",
         price:         +form.price,
         originalPrice: form.originalPrice ? +form.originalPrice : null,
@@ -266,7 +266,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                 <DropZone onFiles={files => files[0] && setBgFile(files[0])} disabled={saving} className="rounded-lg">
                   <button onClick={() => bgFileRef.current?.click()} disabled={saving}
                     className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-                    style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                    style={{ borderColor: "#d1d5db", color: "var(--steel)" }}>
                     {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn hoặc kéo-thả ảnh (JPG, PNG, WebP)"}
                   </button>
                 </DropZone>
@@ -364,7 +364,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                   {TAG_COLORS.map(c => (
                     <button key={c} type="button" onClick={() => set("tagColor", c)}
                       className="w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center text-white text-xs font-bold"
-                      style={{ background: c, borderColor: form.tagColor === c ? "#1E2938" : "transparent" }}
+                      style={{ background: c, borderColor: form.tagColor === c ? "var(--ink)" : "transparent" }}
                       title={TAG_LABELS[c]}>
                       {form.tagColor === c && "✓"}
                     </button>
@@ -465,7 +465,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
           {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
           <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "#5645d4" }}>
             Xem portal học viên
           </a>
           <button
@@ -551,8 +551,8 @@ function KhoaHocListInner() {
 
       {/* Header */}
       <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-        <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Danh sách khoá học</h1>
-        <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Quản lý toàn bộ khoá học trong hệ thống</p>
+        <h1 className="text-lg font-extrabold" style={{ color: "var(--ink)" }}>Danh sách khoá học</h1>
+        <p className="text-xs mt-0.5" style={{ color: "var(--stone)" }}>Quản lý toàn bộ khoá học trong hệ thống</p>
       </div>
 
       {/* Filters */}

@@ -52,7 +52,7 @@ export function DropZone({ onFiles, children, className, style, disabled }: {
       className={className}
       style={{
         ...style,
-        ...(dragging ? { outline: "2px dashed #0068FF", outlineOffset: 2, background: "#eff6ff" } : {}),
+        ...(dragging ? { outline: "2px dashed #5645d4", outlineOffset: 2, background: "var(--tint-lavender)" } : {}),
       }}
     >
       {children}

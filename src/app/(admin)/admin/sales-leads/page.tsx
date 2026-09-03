@@ -29,15 +29,15 @@ interface SalesLeadDetail extends SalesLeadListItem {
 }
 
 const STAGE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  awareness:     { label: "Tìm hiểu", bg: "#F3F4F6", color: "#6B7280" },
+  awareness:     { label: "Tìm hiểu", bg: "#F3F4F6", color: "var(--steel)" },
   consideration: { label: "Xem xét",  bg: "#fef3c7", color: "#92400e" },
   decision:      { label: "Sẵn sàng", bg: "#d1fae5", color: "#065f46" },
 };
 
 function leadScoreColor(score: number): string {
-  if (score >= 70) return "#0068FF";
+  if (score >= 70) return "#5645d4";
   if (score >= 30) return "#FE9900";
-  return "#9CA3AF";
+  return "var(--stone)";
 }
 
 function formatTime(iso: string): string {
@@ -66,8 +66,8 @@ function DetailModal({ leadId, onClose }: { leadId: string; onClose: () => void 
         <div className="px-5 py-4 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: "1px solid #e5e3df" }}>
           <div>
-            <p className="text-sm font-bold" style={{ color: "#1E2938" }}>Chi tiết hội thoại</p>
-            <p className="text-xs font-mono mt-0.5" style={{ color: "#9CA3AF" }}>
+            <p className="text-sm font-bold" style={{ color: "var(--ink)" }}>Chi tiết hội thoại</p>
+            <p className="text-xs font-mono mt-0.5" style={{ color: "var(--stone)" }}>
               {lead?.sessionId?.slice(0, 20) ?? leadId.slice(0, 20)}…
             </p>
           </div>
@@ -78,10 +78,10 @@ function DetailModal({ leadId, onClose }: { leadId: string; onClose: () => void 
         </div>
 
         {loading && (
-          <div className="px-5 py-10 text-center text-sm" style={{ color: "#9CA3AF" }}>Đang tải...</div>
+          <div className="px-5 py-10 text-center text-sm" style={{ color: "var(--stone)" }}>Đang tải...</div>
         )}
         {!loading && !lead && (
-          <div className="px-5 py-10 text-center text-sm" style={{ color: "#9CA3AF" }}>Không tìm thấy lead này.</div>
+          <div className="px-5 py-10 text-center text-sm" style={{ color: "var(--stone)" }}>Không tìm thấy lead này.</div>
         )}
         {!loading && lead && (
           <>
@@ -92,7 +92,7 @@ function DetailModal({ leadId, onClose }: { leadId: string; onClose: () => void 
                 Score: {lead.leadScore > 0 ? lead.leadScore : "—"}
               </span>
               <span className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                style={{ background: STAGE_CONFIG[lead.stage]?.bg ?? "#F3F4F6", color: STAGE_CONFIG[lead.stage]?.color ?? "#6B7280" }}>
+                style={{ background: STAGE_CONFIG[lead.stage]?.bg ?? "#F3F4F6", color: STAGE_CONFIG[lead.stage]?.color ?? "var(--steel)" }}>
                 {STAGE_CONFIG[lead.stage]?.label ?? lead.stage}
               </span>
               {lead.escalationFlag && (
@@ -101,21 +101,21 @@ function DetailModal({ leadId, onClose }: { leadId: string; onClose: () => void 
                   Cần hỗ trợ
                 </span>
               )}
-              <span className="ml-auto text-xs" style={{ color: "#9CA3AF" }}>
+              <span className="ml-auto text-xs" style={{ color: "var(--stone)" }}>
                 {lead._count.messages} tin nhắn
               </span>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {lead.messages.length === 0 && (
-                <p className="text-sm text-center" style={{ color: "#9CA3AF" }}>Chưa có tin nhắn nào.</p>
+                <p className="text-sm text-center" style={{ color: "var(--stone)" }}>Chưa có tin nhắn nào.</p>
               )}
               {lead.messages.map(m => (
                 <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className="max-w-[80%] px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-line"
                     style={m.role === "user"
-                      ? { background: "#0068FF", color: "white" }
-                      : { background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }}>
+                      ? { background: "#5645d4", color: "white" }
+                      : { background: "#f6f5f4", border: "1px solid #e5e3df", color: "var(--ink)" }}>
                     {m.text}
                   </div>
                 </div>
@@ -174,8 +174,8 @@ function SalesLeadsContent() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Lead tư vấn</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#9CA3AF" }}>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--ink)" }}>Lead tư vấn</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--stone)" }}>
               {leads.length} cuộc hội thoại từ Sales Bot
               {stageCounts.escalated > 0 && (
                 <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -194,12 +194,12 @@ function SalesLeadsContent() {
               <button key={f.key} onClick={() => setStageFilter(f.key)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5"
                 style={stageFilter === f.key
-                  ? { background: "#fff", color: "#1E2938", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e3df" }
-                  : { background: "transparent", color: "#6B7280", border: "1px solid transparent" }}>
+                  ? { background: "#fff", color: "var(--ink)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e3df" }
+                  : { background: "transparent", color: "var(--steel)", border: "1px solid transparent" }}>
                 {f.label}
                 {f.count > 0 && (
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                    style={{ background: stageFilter === f.key ? "#f6f5f4" : "#e5e3df", color: "#6B7280" }}>
+                    style={{ background: stageFilter === f.key ? "#f6f5f4" : "#e5e3df", color: "var(--steel)" }}>
                     {f.count}
                   </span>
                 )}
@@ -211,9 +211,9 @@ function SalesLeadsContent() {
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
             style={escalatedOnly
               ? { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }
-              : { background: "#fff", color: "#6B7280", border: "1px solid #e5e3df" }}>
+              : { background: "#fff", color: "var(--steel)", border: "1px solid #e5e3df" }}>
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: escalatedOnly ? "#ef4444" : "#9CA3AF" }} />
+              style={{ background: escalatedOnly ? "#ef4444" : "var(--stone)" }} />
             Cần hỗ trợ
             {stageCounts.escalated > 0 && (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold"
@@ -228,7 +228,7 @@ function SalesLeadsContent() {
         <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white min-w-0"
           style={{ border: "1px solid #e5e3df" }}>
           <div className="grid grid-cols-12 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#9CA3AF", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+            style={{ color: "var(--stone)", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
             <div className="col-span-1">#</div>
             <div className="col-span-1 hidden sm:block">Score</div>
             <div className="col-span-5 hidden md:block">Tóm tắt hội thoại</div>
@@ -252,8 +252,8 @@ function SalesLeadsContent() {
                   style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
                   <span className="text-2xl">💬</span>
                 </div>
-                <p className="font-semibold text-sm" style={{ color: "#6B7280" }}>Chưa có lead nào</p>
-                <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+                <p className="font-semibold text-sm" style={{ color: "var(--steel)" }}>Chưa có lead nào</p>
+                <p className="text-xs mt-1" style={{ color: "var(--stone)" }}>
                   Học sinh chat với widget trên web sẽ xuất hiện ở đây.
                 </p>
               </div>
@@ -271,10 +271,10 @@ function SalesLeadsContent() {
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#ef4444" }} />
                       )}
                       <div>
-                        <div className="text-xs font-semibold" style={{ color: "#1E2938" }}>
+                        <div className="text-xs font-semibold" style={{ color: "var(--ink)" }}>
                           #{leads.indexOf(lead) + 1}
                         </div>
-                        <div className="text-[10px]" style={{ color: "#9CA3AF" }}>{formatTime(lead.createdAt)}</div>
+                        <div className="text-[10px]" style={{ color: "var(--stone)" }}>{formatTime(lead.createdAt)}</div>
                       </div>
                     </div>
                   </div>
@@ -290,7 +290,7 @@ function SalesLeadsContent() {
                   {/* Tóm tắt */}
                   <div className="col-span-5 hidden md:block">
                     <p className="text-xs leading-relaxed line-clamp-2"
-                      style={{ color: lead.conversationSummary ? "#4B5563" : "#9CA3AF" }}>
+                      style={{ color: lead.conversationSummary ? "var(--slate)" : "var(--stone)" }}>
                       {lead.conversationSummary || "Chưa có tóm tắt hội thoại"}
                     </p>
                   </div>
@@ -298,26 +298,26 @@ function SalesLeadsContent() {
                   {/* Giai đoạn */}
                   <div className="col-span-6 md:col-span-2">
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
-                      style={{ background: stageCfg?.bg ?? "#F3F4F6", color: stageCfg?.color ?? "#6B7280" }}>
+                      style={{ background: stageCfg?.bg ?? "#F3F4F6", color: stageCfg?.color ?? "var(--steel)" }}>
                       {stageCfg?.label ?? lead.stage}
                     </span>
                   </div>
 
                   {/* Tin nhắn */}
                   <div className="col-span-2 text-center hidden sm:block">
-                    <span className="text-xs" style={{ color: "#6B7280" }}>{lead._count.messages}</span>
+                    <span className="text-xs" style={{ color: "var(--steel)" }}>{lead._count.messages}</span>
                   </div>
 
                   {/* Cập nhật */}
                   <div className="col-span-1 hidden md:block">
-                    <span className="text-xs" style={{ color: "#9CA3AF" }}>{formatTime(lead.updatedAt)}</span>
+                    <span className="text-xs" style={{ color: "var(--stone)" }}>{formatTime(lead.updatedAt)}</span>
                   </div>
 
                   {/* Action */}
                   <div className="col-span-1 text-right">
                     <button onClick={() => setDetailId(lead.id)}
                       className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-blue-50 cursor-pointer"
-                      style={{ color: "#0068FF", border: "1px solid #e5e3df" }}>
+                      style={{ color: "#5645d4", border: "1px solid #e5e3df" }}>
                       Xem
                     </button>
                   </div>
@@ -327,7 +327,7 @@ function SalesLeadsContent() {
           </div>
 
           <div className="px-5 py-3 text-xs text-right flex-shrink-0"
-            style={{ borderTop: "1px solid #e5e3df", color: "#9CA3AF" }}>
+            style={{ borderTop: "1px solid #e5e3df", color: "var(--stone)" }}>
             Hiển thị {filtered.length}/{leads.length} lead
           </div>
         </div>

@@ -150,7 +150,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
           <span className="w-28 text-right text-xs text-gray-500 truncate">{item.owner?.name ?? "—"}</span>
           <span className="w-24 text-right text-xs text-gray-400">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
           <div className="flex items-center justify-end gap-2 flex-wrap" style={{ width: "17.5rem" }}>
-            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>Xem</a>
+            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#5645d4" }}>Xem</a>
             <button onClick={() => onExtract(item)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Tách câu</button>
             <select className="px-1 py-1 text-xs border rounded outline-none bg-white max-w-[6rem]" style={{ borderColor: "#e5e3df" }}
               value={item.folderId ?? ""} onChange={e => onMove(item, e.target.value)}>
@@ -287,12 +287,12 @@ function PageInner() {
               <input autoFocus className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
                 placeholder="Tên thư mục..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") { setAddingFolder(false); setNewFolderName(""); } }} />
-              <button onClick={handleCreateFolder} className="px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>Thêm</button>
+              <button onClick={handleCreateFolder} className="px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>Thêm</button>
               <button onClick={() => { setAddingFolder(false); setNewFolderName(""); }} className="text-sm text-gray-400">Huỷ</button>
             </div>
           ) : (
             <button onClick={() => setAddingFolder(true)}
-              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0052DD" }}>
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#4534b3" }}>
               📁+ Tạo thư mục
             </button>
           )}

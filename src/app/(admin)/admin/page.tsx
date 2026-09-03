@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
-  UsersGroup, Wallet, CreditCard, BookOpen, Badge,
-  Edit, Upload, NotificationAlert, ChartBar,
-} from "griddy-icons";
+  UsersThree as UsersGroup, Wallet, CreditCard, BookOpen, Medal as Badge,
+  PencilSimple as Edit, UploadSimple as Upload, BellRinging as NotificationAlert, ChartBar,
+} from "@phosphor-icons/react";
 import { useAuth, hasPermission, PERMISSIONS } from "@/contexts/AuthContext";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -78,59 +78,59 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
-      <div className="rounded-3xl p-6 w-full max-w-sm mx-4"
-        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}>
+      <div className="rounded-xl p-6 w-full max-w-sm mx-4"
+        style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "var(--shadow-3)" }}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-extrabold text-base" style={{ color: "#1E2938" }}>Liên hệ học sinh</h2>
+          <h2 className="font-extrabold text-base" style={{ color: "var(--ink)" }}>Liên hệ học sinh</h2>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors text-xl cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff" }}>
+            style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
             ×
           </button>
         </div>
 
-        <div className="rounded-2xl p-4 mb-5"
-          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}>
+        <div className="rounded-md p-4 mb-5"
+          style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl flex-shrink-0"
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-extrabold text-xl flex-shrink-0"
               style={{ background: "linear-gradient(145deg, #FF2157, #cc0040)" }}>
               {student.name[0]}
             </div>
             <div>
-              <p className="font-bold text-sm" style={{ color: "#1E2938" }}>{student.name}</p>
-              <p className="text-xs font-mono" style={{ color: "#9CA3AF" }}>{student.sbd}</p>
+              <p className="font-bold text-sm" style={{ color: "var(--ink)" }}>{student.name}</p>
+              <p className="text-xs font-mono" style={{ color: "var(--stone)" }}>{student.sbd}</p>
             </div>
           </div>
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
-              <span style={{ color: "#6B7280" }}>GPA</span>
+              <span style={{ color: "var(--steel)" }}>GPA</span>
               <span className="font-bold" style={{ color: "#FF2157" }}>{student.gpa.toFixed(1)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: "#6B7280" }}>Tiến độ</span>
+              <span style={{ color: "var(--steel)" }}>Tiến độ</span>
               <span className="font-bold" style={{ color: "#FE9900" }}>{Math.round(student.completion)}%</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: "#6B7280" }}>Email</span>
-              <span style={{ color: "#0068FF" }}>{student.email}</span>
+              <span style={{ color: "var(--steel)" }}>Email</span>
+              <span style={{ color: "#5645d4" }}>{student.email}</span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl px-4 py-3 mb-4 flex items-center justify-between"
-          style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
+        <div className="rounded-md px-4 py-3 mb-4 flex items-center justify-between"
+          style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
           <div>
-            <p className="text-xs font-medium mb-0.5" style={{ color: "#6B7280" }}>Số điện thoại</p>
-            <p className="text-lg font-extrabold tracking-wide" style={{ color: "#1E2938" }}>
+            <p className="text-xs font-medium mb-0.5" style={{ color: "var(--steel)" }}>Số điện thoại</p>
+            <p className="text-lg font-extrabold tracking-wide" style={{ color: "var(--ink)" }}>
               {student.phone ?? "Chưa có"}
             </p>
           </div>
           {student.phone && (
             <button onClick={copyPhone}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer"
               style={copied
                 ? { background: "#dcfce7", color: "#166534" }
-                : { background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff", color: "#0068FF" }}>
+                : { background: "var(--canvas)", border: "1px solid var(--hairline)", color: "#5645d4" }}>
               {copied ? "✓ Đã sao chép" : "Sao chép"}
             </button>
           )}
@@ -138,21 +138,21 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
 
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setShowRemind(v => !v)}
-            className="flex items-center justify-center py-3 rounded-2xl text-sm font-bold cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
+            className="flex items-center justify-center py-3 rounded-md text-sm font-bold cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
             style={showRemind
               ? { background: "#FFF7ED", color: "#FE9900", border: "1px solid rgba(254,153,0,0.4)" }
               : { background: "linear-gradient(135deg, #FE9900, #E07800)", color: "white" }}>
             Nhắc nhở
           </button>
           <Link href="/admin/hoc-sinh" onClick={onClose}
-            className="flex items-center justify-center py-3 rounded-2xl text-sm font-bold transition-all duration-150 hover:bg-red-50 active:scale-[0.98]"
+            className="flex items-center justify-center py-3 rounded-md text-sm font-bold transition-all duration-150 hover:bg-red-50 active:scale-[0.98]"
             style={{ background: "transparent", border: "1.5px solid #FF2157", color: "#FF2157" }}>
             Xem hồ sơ
           </Link>
         </div>
 
         {remindSent ? (
-          <div className="mt-3 py-2.5 rounded-2xl text-xs font-semibold text-center"
+          <div className="mt-3 py-2.5 rounded-md text-xs font-semibold text-center"
             style={{ background: "#d1fae5", color: "#065f46" }}>
             ✓ Đã gửi nhắc nhở qua email
           </div>
@@ -160,15 +160,15 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
           <div className="mt-3 space-y-2">
             <textarea rows={3} value={remindMsg} onChange={e => { setRemindMsg(e.target.value); setRemindError(null); }}
               placeholder={DEFAULT_MSG}
-              className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
+              className="notion-input w-full text-xs resize-none"
+              style={{ height: "auto" }} />
             {remindError && (
               <p className="text-xs font-semibold text-center" style={{ color: "#dc2626" }}>
                 ✗ {remindError}
               </p>
             )}
             <button onClick={sendRemind} disabled={reminding}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
+              className="w-full py-2.5 rounded-md text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
               style={{ background: "linear-gradient(135deg, #FE9900, #E07800)" }}>
               {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
             </button>
@@ -260,7 +260,7 @@ export default function AdminDashboardPage() {
   const healthCards = useMemo(() => canViewRevenue
     // Super admin: 4 cards
     ? [
-        { label: "Tổng học sinh",        value: String(students.length),                                              sub: studentSub,  color: "#0068FF", Icon: UsersGroup      },
+        { label: "Tổng học sinh",        value: String(students.length),                                              sub: studentSub,  color: "#5645d4", Icon: UsersGroup      },
         { label: "Lượt kích hoạt khoá",  value: String(analytics?.totalEnrollments ?? "—"),                           sub: undefined,   color: "#0EA5E9", Icon: BookOpen        },
         { label: "Khoá học có học viên", value: String(analytics?.totalCourses ?? "—"),                               sub: undefined,   color: "#00A63D", Icon: Badge           },
         {
@@ -273,7 +273,7 @@ export default function AdminDashboardPage() {
       ]
     // Content admin: 2 cards từ students
     : [
-        { label: "Tổng học sinh",       value: String(students.length),                          sub: studentSub,  color: "#0068FF", Icon: UsersGroup      },
+        { label: "Tổng học sinh",       value: String(students.length),                          sub: studentSub,  color: "#5645d4", Icon: UsersGroup      },
         { label: "Cần chú ý (GPA < 7)", value: String(lowGpaCount),  sub: undefined,   color: "#FF2157", Icon: NotificationAlert },
       ],
   [canViewRevenue, students, analytics, studentSub]);
@@ -311,7 +311,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6 overflow-y-auto" style={{ height: "calc(100vh - 104px)" }}>
       {callTarget && <CallModal student={callTarget} onClose={() => setCallTarget(null)} />}
       {bulkToast && (
-        <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
+        <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-md text-sm font-semibold text-white shadow-xl"
           style={{ background: bulkToast.startsWith("✓") ? "#16a34a" : "#dc2626" }}>
           {bulkToast}
         </div>
@@ -320,8 +320,8 @@ export default function AdminDashboardPage() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Tổng quan quản trị</h1>
-          <p className="text-sm mt-1" style={{ color: "#6B7280" }}>Tổng quan sức khỏe hệ thống</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--ink)" }}>Tổng quan quản trị</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--steel)" }}>Tổng quan sức khỏe hệ thống</p>
         </div>
         <div className="px-3 py-1.5 rounded-full text-xs font-bold"
           style={isSuper
@@ -336,19 +336,19 @@ export default function AdminDashboardPage() {
       {/* ── Health cards ────────────────────────────────────────────────────── */}
       <div className={`grid gap-4 ${canViewRevenue ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2"}`}>
         {healthCards.map(card => (
-          <div key={card.label} className="rounded-2xl p-5"
-            style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+          <div key={card.label} className="rounded-lg p-5"
+            style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
             <div className="mb-3">
               <card.Icon size={22} style={{ color: card.color }} />
             </div>
             {loading ? (
-              <div className="h-7 w-16 rounded animate-pulse mb-1" style={{ background: "#E2E8F4" }} />
+              <div className="h-7 w-16 rounded animate-pulse mb-1" style={{ background: "var(--hairline)" }} />
             ) : (
               <div className="text-2xl font-extrabold mb-1" style={{ color: card.color }}>{card.value}</div>
             )}
-            <div className="text-xs" style={{ color: "#6B7280" }}>{card.label}</div>
+            <div className="text-xs" style={{ color: "var(--steel)" }}>{card.label}</div>
             {!loading && card.sub && (
-              <div className="text-xs mt-1.5" style={{ color: "#9CA3AF" }}>{card.sub}</div>
+              <div className="text-xs mt-1.5" style={{ color: "var(--stone)" }}>{card.sub}</div>
             )}
           </div>
         ))}
@@ -357,31 +357,31 @@ export default function AdminDashboardPage() {
       {/* ── Charts row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top khoá học theo enrollment */}
-        <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
-          <h2 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "#1E2938" }}>
+        <div className="rounded-lg p-6" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
+          <h2 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "var(--ink)" }}>
             <ChartBar size={18} /> Khoá học phổ biến
           </h2>
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-7 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
+                <div key={i} className="h-7 rounded-md animate-pulse" style={{ background: "var(--hairline)" }} />
               ))}
             </div>
           ) : (analytics?.byCourse ?? []).length === 0 ? (
-            <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>
+            <p className="text-sm text-center py-6" style={{ color: "var(--stone)" }}>
               {canViewRevenue ? "Chưa có dữ liệu" : "Không có quyền xem"}
             </p>
           ) : (
             <div className="space-y-3">
               {(analytics?.byCourse ?? []).slice(0, 5).map(c => (
                 <div key={c.name} className="flex items-center gap-3">
-                  <div className="w-32 flex-shrink-0 text-xs truncate" style={{ color: "#1E2938" }}>{c.name}</div>
+                  <div className="w-32 flex-shrink-0 text-xs truncate" style={{ color: "var(--ink)" }}>{c.name}</div>
                   <div className="flex-1 h-2 rounded-full"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
+                    style={{ background: "var(--surface)" }}>
                     <div className="h-2 rounded-full"
-                      style={{ width: `${(c.enrollments / chartMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#0068FF,#2680FF)" }} />
+                      style={{ width: `${(c.enrollments / chartMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#5645d4,#7b3ff2)" }} />
                   </div>
-                  <div className="w-14 text-right flex-shrink-0 text-xs font-bold" style={{ color: "#0068FF" }}>
+                  <div className="w-14 text-right flex-shrink-0 text-xs font-bold" style={{ color: "#5645d4" }}>
                     {c.enrollments} HV
                   </div>
                 </div>
@@ -392,34 +392,34 @@ export default function AdminDashboardPage() {
 
         {/* Kích hoạt gần đây (admin cấp 1) hoặc Thống kê học sinh (admin cấp 2) */}
         {canViewRevenue ? (
-          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+          <div className="rounded-lg p-6" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
+              <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--ink)" }}>
                 <CreditCard size={18} /> Kích hoạt gần đây
               </h2>
-              <Link href="/admin/doanh-thu" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+              <Link href="/admin/doanh-thu" className="text-xs font-semibold" style={{ color: "#5645d4" }}>
                 Xem tất cả →
               </Link>
             </div>
             {loading ? (
               <div className="space-y-2">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
+                  <div key={i} className="h-12 rounded-md animate-pulse" style={{ background: "var(--hairline)" }} />
                 ))}
               </div>
             ) : recentEnrollments.length === 0 ? (
-              <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Chưa có giao dịch</p>
+              <p className="text-sm text-center py-6" style={{ color: "var(--stone)" }}>Chưa có giao dịch</p>
             ) : (
               <div className="space-y-2">
                 {recentEnrollments.map(e => (
-                  <div key={e.id} className="grid grid-cols-12 items-center px-3 py-2.5 rounded-xl"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px #ffffff" }}>
+                  <div key={e.id} className="grid grid-cols-12 items-center px-3 py-2.5 rounded-md"
+                    style={{ background: "var(--surface)" }}>
                     <div className="col-span-5">
-                      <div className="text-xs font-medium truncate" style={{ color: "#1E2938" }}>{e.userName}</div>
-                      <div className="text-xs" style={{ color: "#9CA3AF" }}>{e.createdAt.slice(0, 10)}</div>
+                      <div className="text-xs font-medium truncate" style={{ color: "var(--ink)" }}>{e.userName}</div>
+                      <div className="text-xs" style={{ color: "var(--stone)" }}>{e.createdAt.slice(0, 10)}</div>
                     </div>
-                    <div className="col-span-4 text-xs truncate px-1" style={{ color: "#4B5563" }}>{e.courseName}</div>
-                    <div className="col-span-3 text-right text-xs font-bold" style={{ color: "#0068FF" }}>
+                    <div className="col-span-4 text-xs truncate px-1" style={{ color: "var(--slate)" }}>{e.courseName}</div>
+                    <div className="col-span-3 text-right text-xs font-bold" style={{ color: "#5645d4" }}>
                       {(e.amount / 1_000_000).toFixed(1)}Mđ
                     </div>
                   </div>
@@ -428,25 +428,25 @@ export default function AdminDashboardPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
-            <h2 className="text-base font-bold mb-5" style={{ color: "#1E2938" }}>Thống kê học sinh</h2>
+          <div className="rounded-lg p-6" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
+            <h2 className="text-base font-bold mb-5" style={{ color: "var(--ink)" }}>Thống kê học sinh</h2>
             {loading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
+                  <div key={i} className="h-12 rounded-md animate-pulse" style={{ background: "var(--hairline)" }} />
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {[
-                  { label: "Học viên đã kích hoạt",  value: String(activatedCount),                                    color: "#0068FF" },
-                  { label: "Chưa kích hoạt khoá",    value: String(inactiveCount),                                     color: "#6B7280" },
+                  { label: "Học viên đã kích hoạt",  value: String(activatedCount),                                    color: "#5645d4" },
+                  { label: "Chưa kích hoạt khoá",    value: String(inactiveCount),                                     color: "var(--steel)" },
                   { label: "GPA trung bình",          value: students.length ? avgGpa.toFixed(1) : "—",                color: "#0EA5E9" },
                   { label: "Cần chú ý (GPA < 7)",    value: String(lowGpaCount),                                       color: "#FF2157" },
                 ].map(row => (
-                  <div key={row.label} className="flex justify-between items-center py-3 px-4 rounded-xl"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px #ffffff" }}>
-                    <span className="text-sm" style={{ color: "#4B5563" }}>{row.label}</span>
+                  <div key={row.label} className="flex justify-between items-center py-3 px-4 rounded-md"
+                    style={{ background: "var(--surface)" }}>
+                    <span className="text-sm" style={{ color: "var(--slate)" }}>{row.label}</span>
                     <span className="font-bold text-sm" style={{ color: row.color }}>{row.value}</span>
                   </div>
                 ))}
@@ -458,22 +458,22 @@ export default function AdminDashboardPage() {
 
       {/* ── Danger Zone ─────────────────────────────────────────────────────── */}
       {canViewStudents && (
-      <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+      <div className="rounded-lg p-6" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--ink)" }}>
             <NotificationAlert size={18} style={{ color: "#FF2157" }} />
             Học sinh cần can thiệp: GPA thấp nhất
           </h2>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowBulkRemind(v => !v)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all"
+              className="px-3 py-1.5 rounded-md text-xs font-bold cursor-pointer transition-all"
               style={showBulkRemind
                 ? { background: "#FFF7ED", color: "#FE9900", border: "1px solid rgba(254,153,0,0.4)" }
                 : { background: "linear-gradient(135deg,#FE9900,#E07800)", color: "white" }}>
               Nhắc nhở tất cả
             </button>
-            <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+            <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "#5645d4" }}>
               Xem tất cả →
             </Link>
           </div>
@@ -481,22 +481,22 @@ export default function AdminDashboardPage() {
 
         {/* Bulk remind form */}
         {showBulkRemind && (
-          <div className="mb-5 p-4 rounded-2xl space-y-2" style={{ background: "#FFF7ED", border: "1px solid rgba(254,153,0,0.2)" }}>
+          <div className="mb-5 p-4 rounded-md space-y-2" style={{ background: "#FFF7ED", border: "1px solid rgba(254,153,0,0.2)" }}>
             <p className="text-xs font-semibold" style={{ color: "#92400e" }}>
               Gửi tới <strong>toàn bộ {students.length} học sinh</strong> trong hệ thống (không chỉ nhóm GPA thấp)
             </p>
             <textarea rows={3} value={bulkMsg} onChange={e => setBulkMsg(e.target.value)}
               placeholder={BULK_DEFAULT}
-              className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA,inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
+              className="notion-input w-full text-xs resize-none"
+              style={{ height: "auto" }} />
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowBulkRemind(false); setBulkMsg(""); }}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#6B7280" }}>
+                className="px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer"
+                style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", color: "var(--steel)" }}>
                 Hủy
               </button>
               <button onClick={sendBulkRemind} disabled={bulkSending}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
+                className="px-4 py-1.5 rounded-md text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
                 style={{ background: "linear-gradient(135deg,#FE9900,#E07800)" }}>
                 {bulkSending ? "Đang gửi..." : `Gửi tới tất cả (${students.length} học sinh)`}
               </button>
@@ -506,21 +506,21 @@ export default function AdminDashboardPage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: "#E2E8F4" }} />
+              <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: "var(--hairline)" }} />
             ))}
           </div>
         ) : dangerStudents.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>
+          <p className="text-sm text-center py-6" style={{ color: "var(--stone)" }}>
             Tất cả học sinh đều ổn, không ai có GPA dưới 7
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {dangerStudents.map(s => (
-              <div key={s.id} className="flex items-center justify-between p-4 rounded-2xl"
-                style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
+              <div key={s.id} className="flex items-center justify-between p-4 rounded-lg"
+                style={{ background: "var(--surface)" }}>
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
-                  <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#9CA3AF" }}>
+                  <div className="font-semibold text-sm" style={{ color: "var(--ink)" }}>{s.name}</div>
+                  <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "var(--stone)" }}>
                     <span className="font-mono">{s.sbd}</span>
                     <span>·</span>
                     <span>GPA: <strong style={{ color: s.gpa < 6 ? "#FF2157" : "#FE9900" }}>{s.gpa.toFixed(1)}</strong></span>
@@ -529,7 +529,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <button onClick={() => setCallTarget(s)}
-                  className="ml-3 flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:-translate-y-0.5 cursor-pointer"
+                  className="ml-3 flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold text-white transition-all hover:-translate-y-0.5 cursor-pointer"
                   style={{ background: "linear-gradient(135deg, #FF2157, #CC0033)" }}>
                   Liên hệ
                 </button>
@@ -544,9 +544,9 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {QUICK_ACTIONS.map(a => (
           <Link key={a.label} href={a.href}
-            className="flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all hover:-translate-y-0.5 cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff", color: "#1E2938" }}>
-            <a.Icon size={24} style={{ color: "#0068FF" }} />
+            className="flex flex-col items-center gap-2 p-4 rounded-lg text-center transition-all hover:-translate-y-0.5 cursor-pointer"
+            style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", color: "var(--ink)" }}>
+            <a.Icon size={24} style={{ color: "#5645d4" }} />
             <span className="text-xs font-semibold">{a.label}</span>
           </Link>
         ))}

@@ -26,16 +26,16 @@ interface ThreadsResponse {
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const CAT_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  "hoi-dap":     { label: "Hỏi đáp",    color: "#0068FF", bg: "#dbeafe" },
+  "hoi-dap":     { label: "Hỏi đáp",    color: "#5645d4", bg: "var(--tint-lavender)" },
   "kinh-nghiem": { label: "Kinh nghiệm", color: "#16a34a", bg: "#dcfce7" },
   "tai-lieu":    { label: "Tài liệu",    color: "#b45309", bg: "#fef3c7" },
   "goc-vui":     { label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
 };
 
 const NEU_CARD = {
-  background: "#F0F5FF",
-  boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff",
-  borderRadius: "16px",
+  background: "var(--canvas)",
+  border: "1px solid var(--hairline)",
+  borderRadius: "12px",
 };
 
 function CatBadge({ cat }: { cat: string }) {
@@ -197,8 +197,8 @@ function CommunityAdmin() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Kiểm duyệt cộng đồng</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--ink)" }}>Kiểm duyệt cộng đồng</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--steel)" }}>
             Ghim, xoá bài viết vi phạm — Tổng: {allThreads.length} bài
           </p>
         </div>
@@ -210,20 +210,20 @@ function CommunityAdmin() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Tìm nội dung, tên tác giả..."
-          className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #C5D0EA", color: "#1E2938" }}
+          className="notion-input flex-1 text-sm"
+          style={{ height: "auto", padding: "8px 12px" }}
         />
         <div className="flex gap-2 flex-wrap">
           {["all", "hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"].map(c => {
-            const info = c === "all" ? { label: "Tất cả", color: "#0068FF", bg: "#dbeafe" } : CAT_MAP[c];
+            const info = c === "all" ? { label: "Tất cả", color: "#5645d4", bg: "var(--tint-lavender)" } : CAT_MAP[c];
             const active = catFilter === c;
             return (
               <button key={c} onClick={() => setCatFilter(c)}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
-                  background: active ? info.bg : "rgba(255,255,255,0.6)",
-                  color:      active ? info.color : "#64748B",
-                  border:     active ? `1px solid ${info.color}40` : "1px solid #C5D0EA",
+                  background: active ? info.bg : "var(--canvas)",
+                  color:      active ? info.color : "var(--steel)",
+                  border:     active ? `1px solid ${info.color}40` : "1px solid var(--hairline)",
                 }}>
                 {info.label}
               </button>
@@ -269,7 +269,7 @@ function CommunityAdmin() {
       {/* Pinned section */}
       {!loading && pinned.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#0068FF" }}>
+          <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#5645d4" }}>
             Bài ghim ({pinned.length})
           </h2>
           {pinned.map(t => (
@@ -283,7 +283,7 @@ function CommunityAdmin() {
       {!loading && regular.length > 0 && (
         <section className="space-y-3">
           {pinned.length > 0 && (
-            <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#64748B" }}>
+            <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--steel)" }}>
               Bài viết ({regular.length})
             </h2>
           )}
@@ -296,7 +296,7 @@ function CommunityAdmin() {
 
       {/* Empty */}
       {!loading && !fetchError && filtered.length === 0 && (
-        <div className="text-center py-16" style={{ color: "#64748B" }}>
+        <div className="text-center py-16" style={{ color: "var(--steel)" }}>
           <p className="text-4xl mb-3">💬</p>
           <p className="font-semibold">Không có bài viết nào</p>
         </div>
@@ -307,7 +307,7 @@ function CommunityAdmin() {
         <div className="text-center">
           <button onClick={loadMore} disabled={loadingMore}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "#5645d4" }}>
             {loadingMore ? "Đang tải..." : "Tải thêm"}
           </button>
         </div>
@@ -332,8 +332,8 @@ function ThreadRowCard({
   return (
     <div className="rounded-xl p-4 flex items-start gap-4 transition-all"
       style={{
-        background: t.isPinned ? "rgba(0,104,255,0.04)" : "#ffffff",
-        border: `1px solid ${t.isPinned ? "#bfdbfe" : "#e5e3df"}`,
+        background: t.isPinned ? "rgba(86,69,212,0.04)" : "#ffffff",
+        border: `1px solid ${t.isPinned ? "var(--brand-purple-300)" : "#e5e3df"}`,
       }}>
 
       {/* Content */}
@@ -341,7 +341,7 @@ function ThreadRowCard({
         <div className="flex items-center gap-2 flex-wrap">
           <CatBadge cat={t.category} />
           {t.isPinned && (
-            <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>📌 Đang ghim</span>
+            <span className="text-xs font-semibold" style={{ color: "#5645d4" }}>📌 Đang ghim</span>
           )}
           <span className="text-xs" style={{ color: "#94a3b8" }}>{formatDate(t.createdAt)}</span>
         </div>
@@ -351,7 +351,7 @@ function ThreadRowCard({
         </p>
 
         <div className="flex items-center gap-3 text-xs" style={{ color: "#94a3b8" }}>
-          <span className="font-semibold" style={{ color: "#1E2938" }}>{t.author.name}</span>
+          <span className="font-semibold" style={{ color: "var(--ink)" }}>{t.author.name}</span>
           <span>♥ {t.likeCount}</span>
           <span>💬 {t.replyCount}</span>
         </div>
@@ -365,8 +365,8 @@ function ThreadRowCard({
           title={t.isPinned ? "Bỏ ghim" : "Ghim bài"}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
           style={{
-            background: t.isPinned ? "#bfdbfe" : "rgba(0,104,255,0.08)",
-            color:      "#0068FF",
+            background: t.isPinned ? "var(--brand-purple-300)" : "rgba(86,69,212,0.08)",
+            color:      "#5645d4",
           }}>
           {pinningId === t.id ? "..." : t.isPinned ? "Bỏ ghim" : "📌 Ghim"}
         </button>

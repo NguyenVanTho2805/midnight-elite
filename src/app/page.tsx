@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
-import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
+import { BookOpen, Trophy, Star, CheckCircle, Lightning as Flash, ChartBar, UsersThree as UsersGroup } from "@phosphor-icons/react";
 import SalesBotWidget from "@/components/SalesBotWidget";
 import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
@@ -58,7 +58,7 @@ const whyItems = [
   { Icon: BookOpen,    title: "Kho tài liệu 10,000+ đề",  desc: "Đề thi thử từ năm 2015 đến nay, kèm giải thích chi tiết từng câu.", tint: "var(--tint-mint)", iconColor: "#166534" },
   { Icon: Trophy,      title: "Điểm thưởng & bảng xếp hạng", desc: "Tích điểm, giữ chuỗi ngày học, leo hạng mỗi tuần. Học có mục tiêu, tiến bộ rõ ràng.", tint: "var(--tint-lavender)", iconColor: "#6D28D9" },
   { Icon: Star,        title: "Trợ giảng riêng 1-1",         desc: "Mỗi học viên được phân công trợ giảng người thật để hỏi bài và định hướng lộ trình.", tint: "var(--tint-peach)", iconColor: "#c2410c" },
-  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",       desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày. Ngoài giờ có AI hỗ trợ thêm.", tint: "var(--tint-cream)", iconColor: "#0068FF" },
+  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",       desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày. Ngoài giờ có AI hỗ trợ thêm.", tint: "var(--tint-cream)", iconColor: "#5645d4" },
 ];
 
 
@@ -76,15 +76,15 @@ const HERO_CATEGORIES = [
   { label: "ĐGNL HCM",        desc: "ĐH Quốc gia TP.HCM",           tint: "var(--tint-lavender)",  text: "#6D28D9" },
   { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",           tint: "var(--tint-mint)",      text: "#166534" },
   { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",              tint: "var(--tint-peach)",     text: "#c2410c" },
-  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-cream)",   text: "#787671" },
+  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-cream)",   text: "var(--steel)" },
 ];
 
 // ─── CATEGORY THEME ───────────────────────────────────────────────────────────
 const categoryTheme: Record<string, { bg: string; strip: string; stripText: string }> = {
-  "ĐGNL HSA":        { bg: "linear-gradient(135deg,#0042AA 0%,#0068FF 60%,#38BDF8 100%)", strip: "#FDE047", stripText: "#1E2938" },
-  "Tốt nghiệp THPT": { bg: "linear-gradient(135deg,#15803D 0%,#16a34a 60%,#4ADE80 100%)", strip: "#FDE047", stripText: "#1E2938" },
-  "ĐGNL HCM":        { bg: "linear-gradient(135deg,#6D28D9 0%,#8B5CF6 60%,#C4B5FD 100%)", strip: "#FDE047", stripText: "#1E2938" },
-  "TSA Bách Khoa":   { bg: "linear-gradient(135deg,#C2410C 0%,#EA580C 60%,#FB923C 100%)", strip: "#FDE047", stripText: "#1E2938" },
+  "ĐGNL HSA":        { bg: "linear-gradient(135deg,#3a2a99 0%,#5645d4 60%,#38BDF8 100%)", strip: "#FDE047", stripText: "var(--ink)" },
+  "Tốt nghiệp THPT": { bg: "linear-gradient(135deg,#15803D 0%,#16a34a 60%,#4ADE80 100%)", strip: "#FDE047", stripText: "var(--ink)" },
+  "ĐGNL HCM":        { bg: "linear-gradient(135deg,#6D28D9 0%,#8B5CF6 60%,#C4B5FD 100%)", strip: "#FDE047", stripText: "var(--ink)" },
+  "TSA Bách Khoa":   { bg: "linear-gradient(135deg,#C2410C 0%,#EA580C 60%,#FB923C 100%)", strip: "#FDE047", stripText: "var(--ink)" },
 };
 
 // ─── STATS STRIP ──────────────────────────────────────────────────────────────
@@ -149,12 +149,12 @@ function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
     <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-xl font-bold tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+          <h2 className="text-xl font-bold tracking-tight" style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
             Vừa mở đăng ký
           </h2>
-          <p className="text-sm mt-0.5" style={{ color: "#787671" }}>Khóa học mới nhất — đăng ký sớm để có giá tốt nhất</p>
+          <p className="text-sm mt-0.5" style={{ color: "var(--steel)" }}>Khóa học mới nhất — đăng ký sớm để có giá tốt nhất</p>
         </div>
-        <Link href="/khoa-hoc" className="text-sm font-semibold flex-shrink-0" style={{ color: "#0068FF" }}>
+        <Link href="/khoa-hoc" className="text-sm font-semibold flex-shrink-0" style={{ color: "#5645d4" }}>
           Xem tất cả →
         </Link>
       </div>
@@ -164,15 +164,15 @@ function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
           return (
             <Link key={c.slug} href={`/khoa-hoc/${c.slug}`}
               className="flex items-center gap-3 p-3 rounded-xl transition-all hover:shadow-sm hover:-translate-y-0.5"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+              style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
               <div className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-black"
                 style={{ background: theme.bg }}>
                 ME
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold leading-snug truncate" style={{ color: "#1a1a1a" }}>{c.title}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#787671" }}>Khai giảng {c.openDate}</p>
-                <p className="text-xs font-semibold mt-0.5" style={{ color: "#0068FF" }}>
+                <p className="text-xs font-bold leading-snug truncate" style={{ color: "var(--ink)" }}>{c.title}</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--steel)" }}>Khai giảng {c.openDate}</p>
+                <p className="text-xs font-semibold mt-0.5" style={{ color: "#5645d4" }}>
                   {c.price.toLocaleString("vi-VN")} đ
                 </p>
               </div>
@@ -199,7 +199,7 @@ function CourseCard({ course, inCart, onToggleCart }: {
   return (
     <div
       className="rounded-xl overflow-hidden flex flex-col cursor-pointer transition-shadow hover:shadow-md"
-      style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.04) 0px 1px 2px 0px" }}
+      style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "rgba(15,15,15,0.04) 0px 1px 2px 0px" }}
       onClick={() => router.push(`/khoa-hoc/${course.slug}`)}
     >
       {/* Thumbnail */}
@@ -243,7 +243,7 @@ function CourseCard({ course, inCart, onToggleCart }: {
 
       {/* Card body */}
       <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-        <h3 className="text-sm font-bold mb-2.5 leading-snug" style={{ color: "#1a1a1a" }}>{course.title}</h3>
+        <h3 className="text-sm font-bold mb-2.5 leading-snug" style={{ color: "var(--ink)" }}>{course.title}</h3>
 
         {/* Types + hashtags in one row */}
         <div className="flex flex-wrap items-center gap-1 mb-3">
@@ -257,7 +257,7 @@ function CourseCard({ course, inCart, onToggleCart }: {
             </span>
           ))}
           {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 2).map(tag => (
-            <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
+            <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "var(--surface)", color: "var(--steel)" }}>
               #{tag}
             </span>
           ))}
@@ -265,11 +265,11 @@ function CourseCard({ course, inCart, onToggleCart }: {
 
         {/* Price row */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-base font-bold" style={{ color: "#0068FF" }}>
+          <span className="text-base font-bold" style={{ color: "#5645d4" }}>
             {course.price.toLocaleString("vi-VN")} đ
           </span>
           {course.originalPrice > course.price && (
-            <span className="text-xs line-through" style={{ color: "#bbb8b1" }}>
+            <span className="text-xs line-through" style={{ color: "var(--muted)" }}>
               {course.originalPrice.toLocaleString("vi-VN")} đ
             </span>
           )}
@@ -287,8 +287,8 @@ function CourseCard({ course, inCart, onToggleCart }: {
             onClick={(e) => { e.stopPropagation(); onToggleCart(); }}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
             style={inCart
-              ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
-              : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
+              ? { background: "var(--tint-lavender)", color: "#5645d4", border: "1px solid var(--brand-purple-300)" }
+              : { background: "var(--surface)", color: "var(--steel)", border: "1px solid var(--hairline)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
               <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
@@ -298,7 +298,7 @@ function CourseCard({ course, inCart, onToggleCart }: {
           </button>
           <Link href={`/khoa-hoc/${course.slug}`}
             className="flex-1 flex items-center justify-center py-2.5 rounded-lg text-xs font-bold text-white text-center hover:brightness-105 transition-all"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "#5645d4" }}>
             Xem khoá học
           </Link>
         </div>
@@ -350,7 +350,7 @@ export default function HomePage() {
   }, [courses, activeCategory, searchQuery]);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--canvas)" }}>
       <Navbar />
 
       <main className="flex-1">
@@ -422,10 +422,10 @@ export default function HomePage() {
         {/* ── COURSES WITH SIDEBAR ──────────────────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+            <h2 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
               Khóa học nổi bật
             </h2>
-            <p className="text-sm" style={{ color: "#787671" }}>Chọn kỳ thi, bắt đầu học ngay — không cần chờ khai giảng.</p>
+            <p className="text-sm" style={{ color: "var(--steel)" }}>Chọn kỳ thi, bắt đầu học ngay — không cần chờ khai giảng.</p>
           </div>
 
           {/* Mobile pills */}
@@ -436,8 +436,8 @@ export default function HomePage() {
                 onClick={() => setActiveCategory(cat.key)}
                 className="flex-shrink-0 px-3 py-1.5 text-xs font-medium transition-colors"
                 style={activeCategory === cat.key
-                  ? { background: "#1a1a1a", color: "#ffffff", borderRadius: "9999px" }
-                  : { background: "transparent", color: "#787671", border: "1px solid #e5e3df", borderRadius: "9999px" }}
+                  ? { background: "var(--ink)", color: "#ffffff", borderRadius: "9999px" }
+                  : { background: "transparent", color: "var(--steel)", border: "1px solid var(--hairline)", borderRadius: "9999px" }}
               >
                 {cat.label}
               </button>
@@ -448,9 +448,9 @@ export default function HomePage() {
 
             {/* Sidebar — desktop only */}
             <aside className="hidden lg:block w-52 flex-shrink-0" style={{ position: "sticky", top: "80px" }}>
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
-                <div className="px-4 py-3" style={{ borderBottom: "1px solid #e5e3df" }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#a4a097" }}>Danh mục</p>
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--hairline)" }}>
+                <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--hairline)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--stone)" }}>Danh mục</p>
                 </div>
                 {courseCategories.map((cat) => {
                   const count = cat.key === "all" ? courses.length : courses.filter(c => c.category === cat.key).length;
@@ -459,19 +459,19 @@ export default function HomePage() {
                     <button
                       key={cat.key}
                       onClick={() => setActiveCategory(cat.key)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#f6f5f4]"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface)]"
                       style={{
-                        background: active ? "#f6f5f4" : "transparent",
-                        borderLeft: active ? "2px solid #0068FF" : "2px solid transparent",
-                        borderBottom: "1px solid #ede9e4",
+                        background: active ? "var(--surface)" : "transparent",
+                        borderLeft: active ? "2px solid #5645d4" : "2px solid transparent",
+                        borderBottom: "1px solid var(--hairline-soft)",
                       }}
                     >
-                      <span className="flex-1 text-xs font-medium truncate" style={{ color: active ? "#0068FF" : "#5d5b54" }}>
+                      <span className="flex-1 text-xs font-medium truncate" style={{ color: active ? "#5645d4" : "var(--slate)" }}>
                         {cat.label}
                       </span>
                       <span
                         className="text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
-                        style={{ background: active ? "#0068FF" : "#f0eeec", color: active ? "#fff" : "#a4a097", fontSize: 10 }}
+                        style={{ background: active ? "#5645d4" : "var(--tint-gray)", color: active ? "#fff" : "var(--stone)", fontSize: 10 }}
                       >
                         {count}
                       </span>
@@ -482,7 +482,7 @@ export default function HomePage() {
                   <Link
                     href="/khoa-hoc"
                     className="block w-full py-2 rounded-lg text-xs font-semibold text-center text-white"
-                    style={{ background: "#0068FF" }}
+                    style={{ background: "#5645d4" }}
                   >
                     Xem tất cả →
                   </Link>
@@ -494,7 +494,7 @@ export default function HomePage() {
             <div className="flex-1 min-w-0">
               {/* Search input */}
               <div className="relative mb-5">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#a4a097" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--stone)" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
                 <input
@@ -502,13 +502,13 @@ export default function HomePage() {
                   placeholder="Tìm khóa học, gia sư..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-shadow focus:shadow-[0_0_0_2px_#0068FF33]"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1a1a1a" }}
+                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-shadow focus:shadow-[0_0_0_2px_#5645d433]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--ink)" }}
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full"
-                    style={{ background: "#c8c4be", color: "#fff" }}>
+                    style={{ background: "var(--hairline-strong)", color: "#fff" }}>
                     <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
                   </button>
                 )}
@@ -517,12 +517,12 @@ export default function HomePage() {
               {coursesLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ border: "1px solid #e5e3df" }}>
-                      <div className="h-40 bg-[#f0eeec]" />
+                    <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ border: "1px solid var(--hairline)" }}>
+                      <div className="h-40 bg-[var(--tint-gray)]" />
                       <div className="p-4 space-y-3">
-                        <div className="h-4 bg-[#f0eeec] rounded w-3/4" />
-                        <div className="h-3 bg-[#f6f5f4] rounded w-1/2" />
-                        <div className="h-8 bg-[#f0eeec] rounded-lg" />
+                        <div className="h-4 bg-[var(--tint-gray)] rounded w-3/4" />
+                        <div className="h-3 bg-[var(--surface)] rounded w-1/2" />
+                        <div className="h-8 bg-[var(--tint-gray)] rounded-lg" />
                       </div>
                     </div>
                   ))}
@@ -542,14 +542,14 @@ export default function HomePage() {
                   {filtered.length === 0 && (
                     <div
                       className="text-center py-16 rounded-xl"
-                      style={{ border: "1px solid #e5e3df", background: "#f6f5f4" }}
+                      style={{ border: "1px solid var(--hairline)", background: "var(--surface)" }}
                     >
-                      <p className="text-sm font-medium mb-2" style={{ color: "#a4a097" }}>
+                      <p className="text-sm font-medium mb-2" style={{ color: "var(--stone)" }}>
                         {searchQuery ? `Không tìm thấy "${searchQuery}"` : "Không có khóa học"}
                       </p>
                       <button
                         onClick={() => { setActiveCategory("all"); setSearchQuery(""); }}
-                        className="text-sm font-semibold" style={{ color: "#0068FF" }}>
+                        className="text-sm font-semibold" style={{ color: "#5645d4" }}>
                         Xem tất cả
                       </button>
                     </div>
@@ -557,8 +557,8 @@ export default function HomePage() {
                   <div className="mt-6 text-center">
                     <Link
                       href="/khoa-hoc"
-                      className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-[#f6f5f4]"
-                      style={{ color: "#1a1a1a", borderColor: "#c8c4be" }}
+                      className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-[var(--surface)]"
+                      style={{ color: "var(--ink)", borderColor: "var(--hairline-strong)" }}
                     >
                       Xem toàn bộ {courses.length} khóa học →
                     </Link>
@@ -574,10 +574,10 @@ export default function HomePage() {
 
         {/* ── WHY — Notion pastel tint cards ──────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+          <h2 className="text-2xl font-bold text-center mb-2 tracking-tight" style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
             Học ở đây thì được gì?
           </h2>
-          <p className="text-sm text-center mb-10" style={{ color: "#787671" }}>Những thứ học viên thực tế dùng mỗi ngày</p>
+          <p className="text-sm text-center mb-10" style={{ color: "var(--steel)" }}>Những thứ học viên thực tế dùng mỗi ngày</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {whyItems.map(({ Icon, title, desc, tint, iconColor }) => (
               <div
@@ -588,8 +588,8 @@ export default function HomePage() {
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(255,255,255,0.55)" }}>
                   <Icon size={22} style={{ color: iconColor }} />
                 </div>
-                <h3 className="font-semibold text-sm mb-2" style={{ color: "#37352f" }}>{title}</h3>
-                <p className="text-xs leading-relaxed" style={{ color: "#5d5b54" }}>{desc}</p>
+                <h3 className="font-semibold text-sm mb-2" style={{ color: "var(--charcoal)" }}>{title}</h3>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--slate)" }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -597,30 +597,30 @@ export default function HomePage() {
 
         {/* ── TIMELINE ─────────────────────────────────────────────────────── */}
         <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-10 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+          <h2 className="text-2xl font-bold text-center mb-10 tracking-tight" style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
             Hành trình phát triển
           </h2>
-          <div className="relative pl-6 border-l-2" style={{ borderColor: "#e5e3df" }}>
+          <div className="relative pl-6 border-l-2" style={{ borderColor: "var(--hairline)" }}>
             {timeline.map((item, i) => (
               <div key={i} className="relative mb-6 last:mb-0">
                 <div
                   className="absolute -left-[25px] w-3 h-3 rounded-full border-2 border-white"
-                  style={{ background: i === timeline.length - 1 ? "#0068FF" : "#c8c4be" }}
+                  style={{ background: i === timeline.length - 1 ? "#5645d4" : "var(--hairline-strong)" }}
                 />
                 <div
                   className="rounded-xl p-4"
-                  style={{ border: "1px solid #e5e3df", background: "#ffffff" }}
+                  style={{ border: "1px solid var(--hairline)", background: "var(--canvas)" }}
                 >
                   <span
                     className="text-xs font-semibold px-2 py-0.5 rounded mb-2 inline-block"
                     style={{
                       background: i === timeline.length - 1 ? "var(--tint-sky)" : "var(--tint-gray)",
-                      color: i === timeline.length - 1 ? "#1D4ED8" : "#787671",
+                      color: i === timeline.length - 1 ? "#1D4ED8" : "var(--steel)",
                     }}
                   >
                     {item.year}
                   </span>
-                  <p className="text-sm" style={{ color: "#37352f" }}>{item.event}</p>
+                  <p className="text-sm" style={{ color: "var(--charcoal)" }}>{item.event}</p>
                 </div>
               </div>
             ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, CheckCircle, CloseCircle, BookOpen } from "griddy-icons";
+import { MagnifyingGlass as Search, CheckCircle, XCircle as CloseCircle, BookOpen } from "@phosphor-icons/react";
 
 interface CourseResult {
   id: string;
@@ -76,27 +76,27 @@ export default function TraCuuPage() {
       {/* Header */}
       <div className="text-center mb-10">
         <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4"
-          style={{ background: "#dbeafe", color: "#0068FF", border: "1px solid #bfdbfe" }}>
+          style={{ background: "var(--tint-lavender)", color: "#5645d4", border: "1px solid var(--brand-purple-300)" }}>
           Dành cho học viên &amp; phụ huynh
         </span>
         <h1 className="text-3xl sm:text-4xl font-bold mb-3"
-          style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-          Tra cứu <span style={{ color: "#0068FF" }}>học viên</span>
+          style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
+          Tra cứu <span style={{ color: "#5645d4" }}>học viên</span>
         </h1>
-        <p className="text-sm max-w-md mx-auto" style={{ color: "#787671" }}>
+        <p className="text-sm max-w-md mx-auto" style={{ color: "var(--steel)" }}>
           Nhập số điện thoại để kiểm tra mã học viên và danh sách khóa học đã đăng ký.
         </p>
       </div>
 
       {/* Search card */}
       <div className="rounded-xl p-6 mb-6"
-        style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.05) 0px 2px 8px 0px" }}>
+        style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "rgba(15,15,15,0.05) 0px 2px 8px 0px" }}>
 
         <form onSubmit={handleSearch} className="space-y-5">
 
           {/* Phone input */}
           <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>
               Số điện thoại học sinh hoặc phụ huynh
             </label>
             <div className="relative">
@@ -106,7 +106,7 @@ export default function TraCuuPage() {
                 onChange={e => { setPhone(e.target.value); setSearched(false); }}
                 placeholder="0901 234 567"
                 className="notion-input w-full text-sm pr-10"
-                style={{ color: "#1a1a1a" }}
+                style={{ color: "var(--ink)" }}
               />
               <span className="absolute right-3 top-3">
                 {phone && (isValidPhone
@@ -120,7 +120,7 @@ export default function TraCuuPage() {
                 <CloseCircle size={11} /> Số điện thoại không hợp lệ (VD: 0901 234 567)
               </p>
             ) : (
-              <p className="text-xs mt-1" style={{ color: "#a4a097" }}>
+              <p className="text-xs mt-1" style={{ color: "var(--stone)" }}>
                 Hệ thống tự động tìm theo SĐT học sinh và SĐT phụ huynh
               </p>
             )}
@@ -131,7 +131,7 @@ export default function TraCuuPage() {
             disabled={!isValidPhone || loading}
             className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all"
             style={{
-              background:    isValidPhone && !loading ? "#0068FF" : "#c8c4be",
+              background:    isValidPhone && !loading ? "#5645d4" : "var(--hairline-strong)",
               borderRadius:  "8px",
               cursor:        isValidPhone && !loading ? "pointer" : "not-allowed",
             }}>
@@ -161,16 +161,16 @@ export default function TraCuuPage() {
         <div className="space-y-4">
           {results.map((student, i) => (
             <div key={i} className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.05) 0px 2px 8px 0px" }}>
+              style={{ border: "1px solid var(--hairline)", boxShadow: "rgba(15,15,15,0.05) 0px 2px 8px 0px" }}>
 
               {/* Student header */}
-              <div className="px-5 py-4 flex items-center gap-4" style={{ background: "#ffffff", borderBottom: "1px solid #f1f0ef" }}>
+              <div className="px-5 py-4 flex items-center gap-4" style={{ background: "var(--canvas)", borderBottom: "1px solid #f1f0ef" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-lg font-bold text-white"
-                  style={{ background: "#0068FF" }}>
+                  style={{ background: "#5645d4" }}>
                   {getInitial(student.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-bold truncate" style={{ color: "#1a1a1a", letterSpacing: "-0.2px" }}>
+                  <p className="text-base font-bold truncate" style={{ color: "var(--ink)", letterSpacing: "-0.2px" }}>
                     {student.name}
                   </p>
                   {student.studentId ? (
@@ -179,21 +179,21 @@ export default function TraCuuPage() {
                       HS-{student.studentId}
                     </span>
                   ) : (
-                    <span className="text-xs" style={{ color: "#a4a097" }}>Chưa có mã học viên</span>
+                    <span className="text-xs" style={{ color: "var(--stone)" }}>Chưa có mã học viên</span>
                   )}
                 </div>
               </div>
 
               {/* Courses */}
-              <div className="px-5 py-4" style={{ background: "#fafaf9" }}>
+              <div className="px-5 py-4" style={{ background: "var(--surface-soft)" }}>
                 {student.courses.length === 0 ? (
                   <div className="flex items-center gap-2 py-2">
-                    <BookOpen size={16} style={{ color: "#c8c4be" }} />
-                    <p className="text-sm" style={{ color: "#a4a097" }}>Chưa đăng ký khóa học nào</p>
+                    <BookOpen size={16} style={{ color: "var(--hairline-strong)" }} />
+                    <p className="text-sm" style={{ color: "var(--stone)" }}>Chưa đăng ký khóa học nào</p>
                   </div>
                 ) : (
                   <>
-                    <p className="text-xs font-semibold mb-3" style={{ color: "#787671" }}>
+                    <p className="text-xs font-semibold mb-3" style={{ color: "var(--steel)" }}>
                       KHÓA HỌC ĐÃ ĐĂNG KÝ ({student.courses.length})
                     </p>
                     <div className="space-y-2">
@@ -201,16 +201,16 @@ export default function TraCuuPage() {
                         const catStyle = getCategoryStyle(course.category);
                         return (
                           <div key={course.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
-                            style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+                            style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                               style={{ background: catStyle.bg }}>
                               <BookOpen size={13} style={{ color: catStyle.text }} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold truncate" style={{ color: "#1a1a1a" }}>
+                              <p className="text-sm font-semibold truncate" style={{ color: "var(--ink)" }}>
                                 {course.name}
                               </p>
-                              <p className="text-xs" style={{ color: "#787671" }}>{course.shortTitle}</p>
+                              <p className="text-xs" style={{ color: "var(--steel)" }}>{course.shortTitle}</p>
                             </div>
                             <span className="px-2 py-0.5 rounded-md text-xs font-semibold flex-shrink-0"
                               style={{ background: catStyle.bg, color: catStyle.text }}>
@@ -227,7 +227,7 @@ export default function TraCuuPage() {
           ))}
 
           {/* Privacy note */}
-          <p className="text-xs text-center mt-2" style={{ color: "#c8c4be" }}>
+          <p className="text-xs text-center mt-2" style={{ color: "var(--hairline-strong)" }}>
             Thông tin chỉ hiển thị mã học viên và khóa học đã đăng ký.
           </p>
         </div>

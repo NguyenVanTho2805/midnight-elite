@@ -10,33 +10,33 @@ const topStudents = [
 
 export default function Leaderboard() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: "#F0F5FF" }}>
+    <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: "var(--surface)" }}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <div
             className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold mb-4"
-            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#FE9900" }}
+            style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", color: "#FE9900" }}
           >
             Bảng xếp hạng công khai
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: "#1E2938" }}>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: "var(--ink)" }}>
             Top thí sinh <span style={{ color: "#FE9900" }}>điểm cao nhất</span> tuần này
           </h2>
-          <p className="text-sm" style={{ color: "#6B7280" }}>
+          <p className="text-sm" style={{ color: "var(--steel)" }}>
             Cập nhật mỗi tuần · Thi thử ĐGNL HSA · Kỳ thi tháng 5/2026
           </p>
         </div>
 
         {/* Table */}
         <div
-          className="rounded-3xl overflow-hidden"
-          style={{ background: "#F0F5FF", boxShadow: "12px 12px 24px #C5D0EA, -12px -12px 24px #ffffff" }}
+          className="rounded-xl overflow-hidden"
+          style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}
         >
           {/* Table header */}
           <div
             className="grid grid-cols-12 px-6 py-4 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#6B7280", boxShadow: "0 2px 4px #C5D0EA", background: "#F0F5FF" }}
+            style={{ color: "var(--steel)", background: "var(--surface)", borderBottom: "1px solid var(--hairline)" }}
           >
             <div className="col-span-1">#</div>
             <div className="col-span-5">Học sinh</div>
@@ -51,8 +51,8 @@ export default function Leaderboard() {
               key={student.rank}
               className="grid grid-cols-12 items-center px-6 py-4 transition-all duration-200"
               style={{
-                borderTop: idx > 0 ? "1px solid #C5D0EA" : "none",
-                background: student.rank <= 3 ? "rgba(0,104,255,0.03)" : "transparent",
+                borderTop: idx > 0 ? "1px solid var(--hairline)" : "none",
+                background: student.rank <= 3 ? "rgba(86,69,212,0.03)" : "transparent",
               }}
             >
               {/* Rank */}
@@ -61,8 +61,8 @@ export default function Leaderboard() {
                   <span className="text-xl">{student.badge}</span>
                 ) : (
                   <span
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-                    style={{ background: "#F0F5FF", boxShadow: "2px 2px 4px #C5D0EA, -2px -2px 4px #ffffff", color: "#6B7280" }}
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold"
+                    style={{ background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--steel)" }}
                   >
                     {student.rank}
                   </span>
@@ -71,19 +71,19 @@ export default function Leaderboard() {
 
               {/* Name */}
               <div className="col-span-5">
-                <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{student.name}</div>
-                <div className="text-xs sm:hidden mt-0.5" style={{ color: "#9CA3AF" }}>{student.school}</div>
+                <div className="font-semibold text-sm" style={{ color: "var(--ink)" }}>{student.name}</div>
+                <div className="text-xs sm:hidden mt-0.5" style={{ color: "var(--stone)" }}>{student.school}</div>
               </div>
 
               {/* School (hidden on mobile) */}
-              <div className="col-span-3 hidden sm:block text-xs" style={{ color: "#9CA3AF" }}>
+              <div className="col-span-3 hidden sm:block text-xs" style={{ color: "var(--stone)" }}>
                 {student.school}
               </div>
 
               {/* Score */}
               <div className="col-span-2 text-right">
-                <span className="text-base font-extrabold" style={{ color: "#0068FF" }}>{student.score}</span>
-                <span className="text-xs ml-0.5" style={{ color: "#9CA3AF" }}>/150</span>
+                <span className="text-base font-extrabold" style={{ color: "var(--color-primary)" }}>{student.score}</span>
+                <span className="text-xs ml-0.5" style={{ color: "var(--stone)" }}>/150</span>
               </div>
 
               {/* Trend */}
@@ -96,15 +96,15 @@ export default function Leaderboard() {
           {/* Footer */}
           <div
             className="px-6 py-4 flex items-center justify-between"
-            style={{ borderTop: "1px solid #C5D0EA" }}
+            style={{ borderTop: "1px solid var(--hairline)" }}
           >
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>
+            <p className="text-xs" style={{ color: "var(--stone)" }}>
               Hiển thị 5 / 2,847 thí sinh
             </p>
             <Link
               href="/bang-xep-hang"
               className="text-xs font-semibold transition-all"
-              style={{ color: "#0068FF" }}
+              style={{ color: "var(--color-primary)" }}
             >
               Xem toàn bộ bảng xếp hạng →
             </Link>
@@ -113,16 +113,15 @@ export default function Leaderboard() {
 
         {/* Join CTA */}
         <div
-          className="mt-8 rounded-3xl p-6 text-center"
-          style={{ background: "#F0F5FF", boxShadow: "inset 6px 6px 12px #C5D0EA, inset -6px -6px 12px #ffffff" }}
+          className="mt-8 rounded-xl p-6 text-center"
+          style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}
         >
-          <p className="text-sm font-medium mb-4" style={{ color: "#1E2938" }}>
+          <p className="text-sm font-medium mb-4" style={{ color: "var(--ink)" }}>
              Bạn muốn tên mình xuất hiện trên bảng xếp hạng? Thi thử miễn phí ngay!
           </p>
           <Link
             href="/thi-thu"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-            style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff" }}
+            className="notion-btn-primary inline-flex items-center gap-2 text-sm"
           >
             Tham gia thi thử ĐGNL miễn phí
           </Link>

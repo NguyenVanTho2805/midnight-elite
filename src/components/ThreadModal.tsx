@@ -83,7 +83,7 @@ export default function ThreadModal({
 
   if (!threadId || !mounted) return null;
 
-  const cat = thread ? (CAT_MAP[thread.category] ?? { label: thread.category, color: "#787671", bg: "#f6f5f4" }) : null;
+  const cat = thread ? (CAT_MAP[thread.category] ?? { label: thread.category, color: "var(--steel)", bg: "var(--surface)" }) : null;
   const hasError = fetchError || notFound;
 
   return createPortal(
@@ -119,7 +119,7 @@ export default function ThreadModal({
         <div
           className="relative w-full sm:max-w-2xl sm:mx-4 flex flex-col overflow-hidden rounded-t-[20px] sm:rounded-[20px]"
           style={{
-            background: "#ffffff",
+            background: "var(--canvas)",
             maxHeight: "92dvh",
             animation: "modalSlideUp 0.22s cubic-bezier(0.16,1,0.3,1)",
           }}
@@ -127,14 +127,14 @@ export default function ThreadModal({
         >
           {/* Drag handle (mobile only) */}
           <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 sm:hidden">
-            <div className="w-10 h-1 rounded-full" style={{ background: "#e5e3df" }} />
+            <div className="w-10 h-1 rounded-full" style={{ background: "var(--hairline)" }} />
           </div>
 
           {/* Sticky header */}
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-3"
-            style={{ borderBottom: "1px solid #e5e3df" }}>
+            style={{ borderBottom: "1px solid var(--hairline)" }}>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold" style={{ color: "#37352f" }}>Bài viết</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--charcoal)" }}>Bài viết</span>
               {cat && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: cat.bg, color: cat.color }}>{cat.label}</span>
@@ -142,7 +142,7 @@ export default function ThreadModal({
             </div>
             <button onClick={onClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all hover:bg-gray-100"
-              style={{ color: "#787671" }}>✕</button>
+              style={{ color: "var(--steel)" }}>✕</button>
           </div>
 
           {/* Scrollable body */}
@@ -153,7 +153,7 @@ export default function ThreadModal({
               <div className="p-5 space-y-3">
                 {[85, 70, 90, 60, 75].map((w, i) => (
                   <div key={i} className="h-4 rounded-lg animate-pulse"
-                    style={{ background: "#e5e3df", width: `${w}%` }} />
+                    style={{ background: "var(--hairline)", width: `${w}%` }} />
                 ))}
               </div>
             )}
@@ -162,13 +162,13 @@ export default function ThreadModal({
             {!loading && hasError && (
               <div className="p-8 text-center">
                 <p className="text-2xl mb-3">⚠️</p>
-                <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>
+                <p className="font-semibold mb-1" style={{ color: "var(--ink)" }}>
                   {notFound ? "Không tìm thấy bài viết" : "Không thể tải bài viết"}
                 </p>
                 {!notFound && (
                   <button onClick={refetch}
                     className="mt-3 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-                    style={{ background: "#0068FF" }}>Thử lại</button>
+                    style={{ background: "#5645d4" }}>Thử lại</button>
                 )}
               </div>
             )}
@@ -178,7 +178,7 @@ export default function ThreadModal({
               <div className="p-5 space-y-4">
 
                 {thread.isPinned && (
-                  <p className="text-xs font-semibold" style={{ color: "#0068FF" }}>📌 Ghim bởi Admin</p>
+                  <p className="text-xs font-semibold" style={{ color: "#5645d4" }}>📌 Ghim bởi Admin</p>
                 )}
 
                 {/* Author */}
@@ -186,18 +186,18 @@ export default function ThreadModal({
                   <Avatar name={thread.author.name} size={38} />
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{thread.author.name}</span>
+                      <span className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{thread.author.name}</span>
                       {thread.author.isTeacher && (
                         <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
                           style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
                       )}
                     </div>
-                    <p className="text-xs" style={{ color: "#a4a097" }}>{timeAgo(thread.createdAt)}</p>
+                    <p className="text-xs" style={{ color: "var(--stone)" }}>{timeAgo(thread.createdAt)}</p>
                   </div>
                 </div>
 
                 {/* Content */}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#37352f" }}>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--charcoal)" }}>
                   {thread.content}
                 </p>
 
@@ -208,21 +208,21 @@ export default function ThreadModal({
                 {thread.fileUrl && (
                   <a href={thread.fileUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
-                    style={{ background: "#f6f5f4", color: "#37352f", border: "1px solid #e5e3df" }}>
+                    style={{ background: "var(--surface)", color: "var(--charcoal)", border: "1px solid var(--hairline)" }}>
                     📎 <span className="truncate max-w-[220px]">{thread.fileName ?? "Tệp đính kèm"}</span>
                   </a>
                 )}
 
                 {/* Actions */}
-                <div className="pt-3 flex items-center gap-0.5" style={{ borderTop: "1px solid #e5e3df" }}>
+                <div className="pt-3 flex items-center gap-0.5" style={{ borderTop: "1px solid var(--hairline)" }}>
                   <button onClick={handleLike} disabled={liking}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors"
-                    style={{ color: thread.likedByMe ? "#dc2626" : "#a4a097" }}>
+                    style={{ color: thread.likedByMe ? "#dc2626" : "var(--stone)" }}>
                     <span className="text-lg leading-none">{thread.likedByMe ? "♥" : "♡"}</span>
                     <span className="font-semibold">{thread.likeCount}</span>
                   </button>
 
-                  <span className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm" style={{ color: "#a4a097" }}>
+                  <span className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm" style={{ color: "var(--stone)" }}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -234,7 +234,7 @@ export default function ThreadModal({
 
                   <button onClick={handleBookmark} disabled={bookmarking} title={thread.bookmarkedByMe ? "Bỏ lưu" : "Lưu bài"}
                     className="px-2.5 py-1.5 rounded-lg transition-colors"
-                    style={{ color: thread.bookmarkedByMe ? "#0068FF" : "#a4a097" }}>
+                    style={{ color: thread.bookmarkedByMe ? "#5645d4" : "var(--stone)" }}>
                     {thread.bookmarkedByMe
                       ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v18l-7-3.5L5 22V4z"/></svg>
                       : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4a2 2 0 012-2h10a2 2 0 012 2v18l-7-3.5L5 22V4z"/></svg>
@@ -243,7 +243,7 @@ export default function ThreadModal({
 
                   <button onClick={copyLink}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{ color: copied ? "#16a34a" : "#a4a097" }}>
+                    style={{ color: copied ? "#16a34a" : "var(--stone)" }}>
                     {copied
                       ? <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>Đã sao chép</>
                       : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>Chia sẻ</>
@@ -254,7 +254,7 @@ export default function ThreadModal({
                     <button onClick={() => setReporting(p => !p)}
                       className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
                       title="Báo cáo bài viết"
-                      style={{ color: reporting ? "#dc2626" : "#a4a097" }}>🚩</button>
+                      style={{ color: reporting ? "#dc2626" : "var(--stone)" }}>🚩</button>
                   )}
                 </div>
 
@@ -267,11 +267,11 @@ export default function ThreadModal({
                 {/* Replies divider */}
                 {thread.replies.length > 0 && (
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px" style={{ background: "#e5e3df" }} />
-                    <span className="text-xs font-semibold" style={{ color: "#a4a097" }}>
+                    <div className="flex-1 h-px" style={{ background: "var(--hairline)" }} />
+                    <span className="text-xs font-semibold" style={{ color: "var(--stone)" }}>
                       {thread.replies.length} trả lời
                     </span>
-                    <div className="flex-1 h-px" style={{ background: "#e5e3df" }} />
+                    <div className="flex-1 h-px" style={{ background: "var(--hairline)" }} />
                   </div>
                 )}
 
@@ -289,7 +289,7 @@ export default function ThreadModal({
                     replyText={replyText} setReplyText={setReplyText}
                     replyImages={replyImages} setReplyImages={setReplyImages}
                     replyError={replyError} uploading={replyUploading} replying={replying}
-                    onSubmit={submitReply} wrapperBg="#f9f9f8" textareaBg="#ffffff" inputRef={replyRef}
+                    onSubmit={submitReply} wrapperBg="#f9f9f8" textareaBg="var(--canvas)" inputRef={replyRef}
                   />
                 )}
 

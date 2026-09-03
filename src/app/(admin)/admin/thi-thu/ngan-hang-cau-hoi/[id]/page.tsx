@@ -12,7 +12,7 @@ import { DuplicateScanModal } from "@/components/DuplicateScanModal";
 
 const DIFFICULTY_KEYS: Difficulty[] = ["NB", "TH", "VD", "VDC"];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
+  NB:  { bg: "var(--tint-lavender)", color: "#5645d4" },
   TH:  { bg: "#dcfce7", color: "#16a34a" },
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
@@ -332,7 +332,7 @@ function PageInner() {
                 Tự chọn câu hỏi
               </Link>
               <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}`}
-                className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+                className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>
                 + Thêm câu hỏi
               </Link>
             </>
@@ -352,7 +352,7 @@ function PageInner() {
             <button key={t.v} onClick={() => setView(t.v)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
               style={view === t.v
-                ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
+                ? { background: "#5645d4", borderColor: "#5645d4", color: "#fff" }
                 : { borderColor: "#e5e3df", color: "#787671" }}>
               {t.label}
             </button>
@@ -369,7 +369,7 @@ function PageInner() {
               value={copyName} onChange={e => setCopyName(e.target.value)} />
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
-              <button onClick={handleDuplicate} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+              <button onClick={handleDuplicate} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>
                 Copy
               </button>
             </div>
@@ -378,11 +378,11 @@ function PageInner() {
       )}
 
       {adding && (
-        <div className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+        <div className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-dashed" style={{ borderColor: "var(--brand-purple-300)", background: "var(--tint-lavender)" }}>
           <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
             placeholder="Tên chương (vd: Chương 1...)" value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleAddChild(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
-          <button onClick={handleAddChild} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#0068FF" }}>Thêm</button>
+          <button onClick={handleAddChild} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#5645d4" }}>Thêm</button>
           <button onClick={() => { setAdding(false); setNewName(""); }} className="px-2 text-xs text-gray-400">Huỷ</button>
         </div>
       )}

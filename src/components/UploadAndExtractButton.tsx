@@ -45,7 +45,7 @@ export function UploadAndExtractButton({ fixedBankId, onSaved, showToast, classN
       <DropZone onFiles={files => files[0] && processUpload(files[0])} disabled={uploading} className="inline-block rounded-lg">
         <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
           className={className ?? "px-4 py-2.5 text-sm font-semibold rounded-lg border disabled:opacity-50"}
-          style={style ?? { borderColor: "#e5e3df", color: "#787671" }}>
+          style={style ?? { borderColor: "var(--hairline)", color: "var(--steel)" }}>
           {uploading ? "Đang tải lên..." : (label ?? "+ Tải file lên & tách câu hỏi")}
         </button>
       </DropZone>

@@ -49,8 +49,8 @@ function ViewerContent() {
 
   if (!url) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#f6f5f4" }}>
-        <p className="text-sm" style={{ color: "#787671" }}>Thiếu đường dẫn tài liệu.</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surface)" }}>
+        <p className="text-sm" style={{ color: "var(--steel)" }}>Thiếu đường dẫn tài liệu.</p>
       </div>
     );
   }
@@ -63,20 +63,20 @@ function ViewerContent() {
   const embedSrc = googleSrc ?? (isPdf ? url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--surface)" }}>
       <header className="flex items-center justify-between gap-3 px-4 py-3 flex-shrink-0"
-        style={{ background: "#ffffff", borderBottom: "1px solid #e5e3df" }}>
-        <p className="text-sm font-semibold truncate" style={{ color: "#1a1a1a" }}>{name}</p>
+        style={{ background: "var(--canvas)", borderBottom: "1px solid var(--hairline)" }}>
+        <p className="text-sm font-semibold truncate" style={{ color: "var(--ink)" }}>{name}</p>
         {googleSrc ? (
           <a href={url} target="_blank" rel="noopener noreferrer"
             className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "#5645d4" }}>
             Mở trong Google Docs
           </a>
         ) : (
           <a href={url} download={downloadFilename(name, url)}
             className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "#5645d4" }}>
             Tải xuống
           </a>
         )}
@@ -88,11 +88,11 @@ function ViewerContent() {
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-4">
             <div className="text-center max-w-sm">
-              <p className="text-sm font-semibold mb-1.5" style={{ color: "#1a1a1a" }}>Không xem trước được loại file này</p>
-              <p className="text-xs mb-4" style={{ color: "#787671" }}>Bấm nút bên dưới để mở hoặc tải file.</p>
+              <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--ink)" }}>Không xem trước được loại file này</p>
+              <p className="text-xs mb-4" style={{ color: "var(--steel)" }}>Bấm nút bên dưới để mở hoặc tải file.</p>
               <a href={url} target="_blank" rel="noopener noreferrer"
                 className="inline-block px-4 py-2 rounded-lg text-xs font-bold text-white"
-                style={{ background: "#0068FF" }}>
+                style={{ background: "#5645d4" }}>
                 Mở tài liệu
               </a>
             </div>

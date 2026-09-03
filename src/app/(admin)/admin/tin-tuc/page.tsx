@@ -52,7 +52,7 @@ const CAT_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 const CAT_COLOR: Record<string, { bg: string; color: string }> = {
-  "hoc-thuat":   { bg: "#dbeafe", color: "#0068FF" },
+  "hoc-thuat":   { bg: "var(--tint-lavender)", color: "#5645d4" },
   "tuyen-sinh":  { bg: "#fee2e2", color: "#dc2626" },
   "tin-midnight":{ bg: "#dcfce7", color: "#16a34a" },
   "kinh-nghiem": { bg: "#fef3c7", color: "#b45309" },
@@ -235,7 +235,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "#5645d4" }}>
               {saving ? "Đang lưu..." : editId ? "Cập nhật" : "Tạo bài viết"}
             </button>
           </div>
@@ -465,8 +465,8 @@ function PageInner() {
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Tin tức & Blog</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Quản lý bài viết và tin tức</p>
+          <h1 className="text-lg font-extrabold" style={{ color: "var(--ink)" }}>Tin tức & Blog</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--stone)" }}>Quản lý bài viết và tin tức</p>
         </div>
 
         {/* Filters */}
@@ -538,7 +538,7 @@ function PageInner() {
                     {articles.length === 0 && (
                       <button onClick={openCreate}
                         className="mt-3 text-sm font-semibold cursor-pointer"
-                        style={{ color: "#0068FF" }}>
+                        style={{ color: "#5645d4" }}>
                         + Thêm bài viết đầu tiên
                       </button>
                     )}

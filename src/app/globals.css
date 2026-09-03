@@ -2,9 +2,10 @@
 
 :root {
   /* ── TSIX Brand colors (unchanged) ────────────────────────────── */
-  --color-primary: #0068FF;
-  --color-primary-light: #2680FF;
-  --color-primary-dark: #0042AA;
+  --color-primary: #5645d4;
+  --color-primary-light: #7b3ff2;
+  --color-primary-pressed: #4534b3;
+  --color-primary-dark: #3a2a99;
   --color-success: #00A63D;
   --color-warning: #FE9900;
   --color-danger: #FF2157;
@@ -22,13 +23,30 @@
   --hairline-strong: #c8c4be;
 
   /* Text scale */
-  --ink-deep:  #000000;
+  --ink-deep:  #242424;
   --ink:       #1a1a1a;
   --charcoal:  #37352f;
   --slate:     #5d5b54;
   --steel:     #787671;
   --stone:     #a4a097;
   --muted:     #bbb8b1;
+
+  /* Link (tách biệt với primary — theo nguyên tắc Notion) */
+  --link-blue:         #0075de;
+  --link-blue-pressed: #005bab;
+
+  /* Brand color spectrum (badge/tag/illustration accents) */
+  --brand-pink:        #ff64c8;
+  --brand-pink-deep:   #a02e6d;
+  --brand-orange:      #dd5b00;
+  --brand-orange-deep: #793400;
+  --brand-purple:      #7b3ff2;
+  --brand-purple-300:  #d6b6f6;
+  --brand-purple-800:  #391c57;
+  --brand-teal:        #2a9d99;
+  --brand-green:       #1aae39;
+  --brand-yellow:      #f5d75e;
+  --brand-brown:       #523410;
 
   /* Brand navy (hero bands) */
   --brand-navy:     #0a1530;
@@ -69,17 +87,68 @@
   /* App base */
   --background: #ffffff;
   --foreground: #1a1a1a;
+}
 
-  /* Legacy neumorphism vars (kept for backward compat) */
-  --color-surface: #F0F5FF;
-  --color-text: #1E2938;
-  --color-text-muted: #6B7280;
-  --shadow-neu-raised:  8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff;
-  --shadow-neu-flat:    4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff;
-  --shadow-neu-pressed: inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff;
-  --shadow-neu-card:    12px 12px 24px #C5D0EA, -12px -12px 24px #ffffff;
-  --key: 0 2px 4px rgba(0,0,0,0.04);
-  --amb: 0 10px 30px rgba(197,208,234,0.5);
+/* ── Dark mode — tự thiết kế theo tinh thần Notion (không có trong
+   DESIGN.md gốc, xem plan). Override CÙNG TÊN token của :root ở trên,
+   nên mọi chỗ đã dùng var(--canvas)/var(--ink)/... tự đổi màu, không
+   cần sửa lại component. ────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  /* Canvas & Surface — tint ấm nhất quán với "warm charcoal" của light mode
+     (light hairline #e5e3df: R229>G227>B223) — tránh gray trung tính tuyệt
+     đối (R=G=B) khiến dark mode trông lạnh/generic, lệch bản sắc site. */
+  --canvas:        #1a1917;
+  --surface:       #211f1c;
+  --surface-soft:  #262420;
+
+  /* Hairline / Borders */
+  --hairline:        #322e28;
+  --hairline-soft:   #292620;
+  --hairline-strong: #443e35;
+
+  /* Text scale (đảo độ sáng, không dùng trắng tinh cho ink-deep — cùng
+     nguyên tắc "tránh cực trị" ở light mode, chỉ đảo hướng; giữ cùng tint
+     ấm như surface/border ở trên). Contrast trên --canvas mới (WCAG):
+     ink-deep 15.4:1, ink 14.4:1, charcoal 11.8:1, slate 8.0:1, steel 6.4:1,
+     stone 4.4:1, muted 2.7:1 (cố ý thấp — cùng vai trò trang trí/disabled
+     như --muted bên light mode, vốn cũng chỉ 1.98:1). */
+  --ink-deep:  #f2f0eb;
+  --ink:       #ebe8e2;
+  --charcoal:  #d8d3c9;
+  --slate:     #b5afa1;
+  --steel:     #a29c8e;
+  --stone:     #857e70;
+  --muted:     #635c50;
+
+  /* Primary — sáng hơn bản light để đủ tương phản trên nền tối, cùng hue
+     247° với light mode (giữ bản sắc thương hiệu) nhưng ép bão hoà ≤70%
+     (ban đầu tính lightness-only ra 86-88% — quá chói, phạm quy tắc
+     "saturation < 80%" tránh hiệu ứng AI-purple-glow). */
+  --color-primary:         #8b7ee7;
+  --color-primary-light:   #a399ea;
+  --color-primary-pressed: #6a5ae2;
+  --color-primary-dark:    #5645d4;
+
+  /* Pastel tint cards — hạ độ sáng/bão hoà, không giữ pastel chói trên nền tối */
+  --tint-peach:       #3d2e22;
+  --tint-rose:        #3a2530;
+  --tint-mint:        #1f3327;
+  --tint-lavender:    #2b2540;
+  --tint-sky:         #1f2d3d;
+  --tint-yellow:      #3a331f;
+  --tint-yellow-bold: #4a3f1f;
+  --tint-cream:       #2e2c26;
+  --tint-gray:        #2a2a2a;
+
+  /* Shadow — tint theo hue nền (ấm) thay vì đen thuần, đúng nguyên tắc
+     "tinted shadows match background hue" thay vì generic box-shadow đen. */
+  --shadow-1: rgba(12,10,8,0.30) 0px 1px 2px 0px;
+  --shadow-2: rgba(12,10,8,0.40) 0px 4px 12px 0px;
+  --shadow-3: rgba(12,10,8,0.50) 0px 24px 48px -8px;
+  --shadow-4: rgba(12,10,8,0.45) 0px 16px 48px -8px;
+
+  --background: #1a1917;
+  --foreground: #ebe8e2;
 }
 
 @theme inline {
@@ -111,63 +180,6 @@ code, pre, .font-mono {
   font-family: var(--font-space-mono), "Space Mono", monospace;
 }
 
-/* Neumorphism utility classes */
-.neu-raised {
-  background: #F0F5FF;
-  box-shadow: var(--shadow-neu-raised);
-}
-
-.neu-flat {
-  background: #F0F5FF;
-  box-shadow: var(--shadow-neu-flat);
-}
-
-.neu-pressed {
-  background: #F0F5FF;
-  box-shadow: var(--shadow-neu-pressed);
-}
-
-.neu-card {
-  background: #F0F5FF;
-  box-shadow: var(--shadow-neu-card);
-}
-
-.neu-btn-primary {
-  background: linear-gradient(145deg, #0055D4, #0042AA);
-  box-shadow: 6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff;
-  color: white;
-  transition: all 0.2s ease;
-}
-
-.neu-btn-primary:hover {
-  box-shadow: 4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff;
-  transform: translateY(-1px);
-}
-
-.neu-btn-primary:active {
-  box-shadow: var(--shadow-neu-pressed);
-  transform: translateY(0);
-}
-
-.neu-btn-ghost {
-  background: #F0F5FF;
-  box-shadow: var(--shadow-neu-raised);
-  color: var(--color-primary);
-  transition: all 0.2s ease;
-}
-
-.neu-btn-ghost:hover {
-  box-shadow: var(--shadow-neu-flat);
-}
-
-.neu-input {
-  background: #F0F5FF;
-  box-shadow: var(--shadow-neu-pressed);
-  border: none;
-  outline: none;
-  color: var(--color-text);
-}
-
 /* Badge styles */
 .badge-safe { background: #d1fae5; color: #065f46; }
 .badge-warn { background: #fef3c7; color: #92400e; }
@@ -178,7 +190,7 @@ code, pre, .font-mono {
 ::-webkit-scrollbar-track { background: #f6f5f4; }
 ::-webkit-scrollbar-thumb { background: #c8c4be; border-radius: 3px; }
 
-/* Scrollbar tối cho sidebar admin (nền #1E2938) — thanh cuộn xám sáng mặc
+/* Scrollbar tối cho sidebar admin (nền var(--ink)) — thanh cuộn xám sáng mặc
    định ở trên nổi bật lạc tông trên nền tối, đổi sang trắng mờ hoà nền. */
 .admin-sidebar-nav {
   scrollbar-width: thin;
@@ -229,58 +241,10 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
 
 /* ── Focus ring ────────────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid #0068FF;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
-
-/* ── Claymorphism header ───────────────────────────────────────── */
-/* Solid opaque + chunky 3D bottom shadow = clay depth */
-.clay-header {
-  background: #F0F5FF !important;
-  box-shadow:
-    0 4px 0 0 #BBC8DF,
-    0 8px 24px 0 rgba(197, 208, 234, 0.55) !important;
-  border-bottom: none !important;
-}
-
-/* ── Claymorphism cards ────────────────────────────────────────── */
-.clay-card {
-  background: #F0F5FF;
-  box-shadow:
-    8px 8px 0 0 #C5D0EA,
-    12px 12px 24px rgba(197, 208, 234, 0.4);
-  border-radius: 20px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.clay-card:hover {
-  transform: translateY(-3px) translateX(-2px);
-  box-shadow:
-    10px 10px 0 0 #BBC8DF,
-    16px 16px 28px rgba(197, 208, 234, 0.5);
-}
-.clay-card:active {
-  transform: translateY(1px) translateX(1px);
-  box-shadow:
-    4px 4px 0 0 #C5D0EA,
-    6px 6px 12px rgba(197, 208, 234, 0.3);
-}
-
-/* ── Claymorphism button ───────────────────────────────────────── */
-.clay-btn {
-  box-shadow: 0 5px 0 0 #0042AA, 0 8px 16px rgba(0, 85, 212, 0.3) !important;
-  transform: translateY(0);
-  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
-}
-.clay-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 7px 0 0 #0042AA, 0 12px 20px rgba(0, 85, 212, 0.35) !important;
-}
-.clay-btn:active, .clay-btn:not(:disabled):active {
-  transform: translateY(4px) !important;
-  box-shadow: 0 1px 0 0 #0042AA, 0 4px 8px rgba(0, 85, 212, 0.2) !important;
-}
-
 
 /* ── Page fade-in ──────────────────────────────────────────────── */
 @keyframes page-in {
@@ -301,53 +265,6 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-count { animation: count-up 0.4s ease forwards; }
-
-/* ── Liquid Glass surfaces ──────────────────────────────────────── */
-.glass {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-}
-
-.glass-heavy {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
-}
-
-/* Floating glass pill — CSS scroll-driven border-radius collapse */
-.glass-nav-pill {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border-radius: 20px;
-  transition: box-shadow 0.3s ease;
-  will-change: border-radius;
-  animation: nav-pill-compact linear both;
-  animation-timeline: scroll(root block);
-  animation-range: 0px 80px;
-}
-
-@keyframes nav-pill-compact {
-  from { border-radius: 20px; }
-  to   { border-radius: 999px; }
-}
-
-@supports not (animation-timeline: scroll()) {
-  .glass-nav-pill { border-radius: 20px; animation: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .glass-nav-pill { animation: none; border-radius: 20px; }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .glass, .glass-heavy, .glass-nav-pill {
-    background: #ffffff;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-}
 
 /* Elastic dismiss (iOS 26 style) */
 @keyframes elastic-out {
@@ -499,3 +416,69 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
   color: #ffffff;
   border-color: var(--ink-deep);
 }
+
+/* Search pill */
+.notion-search-pill {
+  background: var(--surface);
+  color: var(--steel);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  height: 44px;
+  border: 1px solid var(--hairline);
+  font-size: 16px;
+}
+
+/* Pricing cards */
+.notion-pricing-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+.notion-pricing-card-featured {
+  background: var(--surface);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+
+/* Comparison table */
+.notion-comparison-table {
+  background: var(--canvas);
+  color: var(--ink);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+}
+.notion-comparison-row {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+
+/* Stat strip / testimonial / promo / CTA banner */
+.notion-stat-row {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 48px;
+}
+.notion-testimonial-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+.notion-promo-banner {
+  background: var(--surface);
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.notion-cta-banner-light {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 64px;
+}
+
+/* Badge-tag theo brand spectrum (bổ sung cạnh .notion-tag-* hiện có) */
+.notion-badge-tag-purple { background: var(--tint-lavender); color: var(--brand-purple-800);  border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.notion-badge-tag-orange { background: var(--tint-peach);    color: var(--brand-orange-deep);  border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.notion-badge-tag-green  { background: var(--tint-mint);     color: var(--brand-green);        border-radius: var(--radius-sm); padding: 2px 8px; font-size: 13px; font-weight: 600; }

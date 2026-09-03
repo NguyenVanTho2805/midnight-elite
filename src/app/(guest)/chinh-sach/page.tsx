@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, Lock, FileText, InfoCircle } from "griddy-icons";
+import { Shield, Lock, FileText, Info as InfoCircle } from "@phosphor-icons/react";
 
 const TABS = [
   { id: "privacy", label: "Chính sách bảo mật", Icon: Shield },
@@ -17,11 +17,11 @@ export default function ChinhSachPage() {
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto"
-          style={{ background: "#0068FF" }}>
+          style={{ background: "#5645d4" }}>
           <Shield size={28} style={{ color: "white" }} />
         </div>
-        <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>Chính sách & Điều khoản</h1>
-        <p className="text-sm" style={{ color: "#787671" }}>Cập nhật lần cuối: 01/05/2026 · Midnight Elite cam kết bảo vệ quyền lợi người dùng</p>
+        <h1 className="text-3xl font-bold" style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>Chính sách & Điều khoản</h1>
+        <p className="text-sm" style={{ color: "var(--steel)" }}>Cập nhật lần cuối: 01/05/2026 · Midnight Elite cam kết bảo vệ quyền lợi người dùng</p>
       </div>
 
       {/* Tab nav */}
@@ -30,8 +30,8 @@ export default function ChinhSachPage() {
           <button key={id} onClick={() => setActiveTab(id)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             style={activeTab === id
-              ? { background: "#0068FF", color: "white", borderRadius: "8px" }
-              : { background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+              ? { background: "#5645d4", color: "white", borderRadius: "8px" }
+              : { background: "var(--canvas)", border: "1px solid var(--hairline)", color: "var(--steel)", borderRadius: "8px" }}>
             <Icon size={14} />
             {label}
           </button>
@@ -39,7 +39,7 @@ export default function ChinhSachPage() {
       </div>
 
       {/* Content card */}
-      <div className="rounded-xl p-8 space-y-8" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-8 space-y-8" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
         {activeTab === "privacy" && <PrivacyContent />}
         {activeTab === "terms" && <TermsContent />}
         {activeTab === "cookie" && <CookieContent />}
@@ -47,13 +47,13 @@ export default function ChinhSachPage() {
 
       {/* Contact box */}
       <div className="rounded-xl p-5 flex items-start gap-3"
-        style={{ background: "#dbeafe", border: "1px solid #bfdbfe" }}>
-        <InfoCircle size={20} style={{ color: "#0068FF", flexShrink: 0, marginTop: 2 }} />
+        style={{ background: "var(--tint-lavender)", border: "1px solid var(--brand-purple-300)" }}>
+        <InfoCircle size={20} style={{ color: "#5645d4", flexShrink: 0, marginTop: 2 }} />
         <div>
-          <p className="font-semibold text-sm mb-1" style={{ color: "#1a1a1a" }}>Có thắc mắc về chính sách?</p>
-          <p className="text-sm" style={{ color: "#37352f" }}>
+          <p className="font-semibold text-sm mb-1" style={{ color: "var(--ink)" }}>Có thắc mắc về chính sách?</p>
+          <p className="text-sm" style={{ color: "var(--charcoal)" }}>
             Liên hệ qua email{" "}
-            <a href="mailto:support@tsixeducation.vn" className="font-semibold" style={{ color: "#0068FF" }}>
+            <a href="mailto:support@tsixeducation.vn" className="font-semibold" style={{ color: "#5645d4" }}>
               support@tsixeducation.vn
             </a>{" "}
             hoặc fanpage Facebook Midnight Elite. Thời gian phản hồi trong vòng 24 giờ làm việc.
@@ -67,8 +67,8 @@ export default function ChinhSachPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-base font-bold mb-3 pb-2" style={{ color: "#1a1a1a", borderBottom: "1px solid #e5e3df" }}>{title}</h2>
-      <div className="space-y-3 text-sm leading-relaxed" style={{ color: "#37352f" }}>{children}</div>
+      <h2 className="text-base font-bold mb-3 pb-2" style={{ color: "var(--ink)", borderBottom: "1px solid var(--hairline)" }}>{title}</h2>
+      <div className="space-y-3 text-sm leading-relaxed" style={{ color: "var(--charcoal)" }}>{children}</div>
     </section>
   );
 }

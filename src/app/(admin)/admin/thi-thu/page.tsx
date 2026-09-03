@@ -50,7 +50,7 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "VDC", label: "Vận dụng cao" },
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
+  NB:  { bg: "var(--tint-lavender)", color: "#5645d4" },
   TH:  { bg: "#dcfce7", color: "#16a34a" },
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
@@ -843,13 +843,13 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               <p className="text-xs font-bold text-blue-600 mb-2">Preview — trạng thái tự động:</p>
               <div className="flex items-center gap-3">
                 <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
-                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
+                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,var(--ink))" }}>
                   {previewCode}
                 </span>
                 <span className="text-sm font-medium text-gray-800 flex-1 truncate">{form.title}</span>
                 {(() => {
                   const st = computeExamStatus(form.date.split("-").reverse().join("/"), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#5645d4" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "var(--steel)" } }[st];
                   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
                 })()}
               </div>
@@ -930,7 +930,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     </button>
                     <button type="button" onClick={() => setSplitViewOn(v => !v)}
                       className="text-xs font-semibold"
-                      style={{ color: splitViewOn ? "#7e22ce" : "#0068FF" }}>
+                      style={{ color: splitViewOn ? "#7e22ce" : "#5645d4" }}>
                       {splitViewOn ? "✓ " : ""}🪟 Chế độ 2 khung
                     </button>
                     <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); setPendingImageFiles({}); }}
@@ -955,7 +955,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                 </div>
 
                 {bankGateOn && (
-                  <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+                  <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "var(--brand-purple-300)", background: "var(--tint-lavender)" }}>
                     <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Đầu mục/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="flex-1 min-w-[200px]">
@@ -968,14 +968,14 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                             className="px-2 py-1 rounded-full text-xs font-semibold border"
                             style={bulkDifficulty === d.value
                               ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
-                              : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                              : { borderColor: "#E5E7EB", color: "var(--stone)" }}>
                             {d.label}
                           </button>
                         ))}
                       </div>
                       <button type="button" onClick={applyBulkBankMeta} disabled={!bulkCategoryId}
                         className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-50 flex-shrink-0"
-                        style={{ background: "#0068FF" }}>
+                        style={{ background: "#5645d4" }}>
                         Áp dụng cho tất cả
                       </button>
                     </div>
@@ -990,7 +990,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     return (
                     <Fragment key={idx}>
                       {showSectionHeader && (
-                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#5645d4" }}>{q.sectionLabel}</p>
                       )}
                     <div className="rounded-lg p-3 border border-gray-200 bg-gray-50">
                       <div className="flex items-start gap-2 mb-2">
@@ -1039,7 +1039,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       </div>
                       {bankGateOn && !q.sourceBankItemId && bankMeta[idx] && (
                         <div className="ml-6 mb-2 p-2 rounded-lg border border-dashed"
-                          style={{ width: "calc(100% - 1.5rem)", borderColor: "#93c5fd", background: "#eff6ff" }}>
+                          style={{ width: "calc(100% - 1.5rem)", borderColor: "var(--brand-purple-300)", background: "var(--tint-lavender)" }}>
                           <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
                             <input type="checkbox" checked={bankMeta[idx].addToBank}
                               onChange={e => updateBankMeta(idx, { addToBank: e.target.checked })} />
@@ -1058,7 +1058,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                     className="px-2 py-0.5 rounded-full text-xs font-semibold border"
                                     style={bankMeta[idx].difficulty === d.value
                                       ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
-                                      : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                                      : { borderColor: "#E5E7EB", color: "var(--stone)" }}>
                                     {d.label}
                                   </button>
                                 ))}
@@ -1405,7 +1405,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
               <h2 className="text-base font-bold text-gray-800">Chỉnh sửa đề thi</h2>
               {exam && (
                 <span className="text-xs font-bold text-white px-2 py-0.5 rounded mt-0.5 inline-block"
-                  style={{ background: CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
+                  style={{ background: CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,var(--ink))" }}>
                   {exam.code}
                 </span>
               )}
@@ -1418,7 +1418,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "linear-gradient(145deg,#0055D4,#0042AA)" }}>
+              style={{ background: "linear-gradient(145deg,#4534b3,#3a2a99)" }}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
@@ -1612,7 +1612,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <span className="text-xs text-gray-400">Trạng thái:</span>
                 {(() => {
                   const st = computeExamStatus(fromInputDate(form.date), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#5645d4" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "var(--steel)" } }[st];
                   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
                 })()}
               </div>
@@ -1653,9 +1653,9 @@ function countByStatus(exams: ExamRow[]) {
 }
 
 const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
-  upcoming:  { label: "Sắp diễn ra", color: "#0068FF", bg: "#DBEAFE" },
+  upcoming:  { label: "Sắp diễn ra", color: "#5645d4", bg: "#DBEAFE" },
   available: { label: "Đang mở",     color: "#00A63D", bg: "#D1FAE5" },
-  completed: { label: "Đã kết thúc", color: "#6B7280", bg: "#F3F4F6" },
+  completed: { label: "Đã kết thúc", color: "var(--steel)", bg: "#F3F4F6" },
 };
 
 function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => void; onDelete: () => void }) {
@@ -1687,12 +1687,12 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
           )}
           <Link href={`/student/thi-thu/${exam.id}`} target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-gray-50"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "#5645d4" }}>
             <span className="w-5 text-center">👁</span> Xem portal học viên
           </Link>
           <Link href={`/admin/thi-thu/${exam.id}`} onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-gray-50"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "#5645d4" }}>
             <span className="w-5 text-center">📝</span> Quản lý câu hỏi
           </Link>
           <div className="border-t border-gray-100 my-1" />
@@ -1771,17 +1771,17 @@ export default function ThiThuAdminPage() {
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Quản lý Thi thử</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Tạo và quản lý đề thi thử ĐGNL, THPT</p>
+          <h1 className="text-lg font-extrabold" style={{ color: "var(--ink)" }}>Quản lý Thi thử</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--stone)" }}>Tạo và quản lý đề thi thử ĐGNL, THPT</p>
         </div>
 
         {/* Stats — compact inline */}
         <div className="px-5 py-2.5 flex items-center gap-5 border-b border-gray-100">
           {[
             { label: "Tổng đề",      val: stats.total,     color: "#374151" },
-            { label: "Sắp diễn ra",  val: stats.upcoming,  color: "#0068FF" },
+            { label: "Sắp diễn ra",  val: stats.upcoming,  color: "#5645d4" },
             { label: "Đang mở",      val: stats.available, color: "#00A63D" },
-            { label: "Đã kết thúc",  val: stats.completed, color: "#6B7280" },
+            { label: "Đã kết thúc",  val: stats.completed, color: "var(--steel)" },
           ].map((s, i) => (
             <div key={s.label} className="flex items-center gap-1.5">
               {i > 0 && <span className="text-gray-200 mr-2">|</span>}
@@ -1858,7 +1858,7 @@ export default function ThiThuAdminPage() {
               ))}
               {!loading && paged.map(exam => {
                 const s = STATUS_CFG[exam.status];
-                const grad = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+                const grad = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,var(--ink))";
                 return (
                   <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2.5">
@@ -1930,7 +1930,7 @@ export default function ThiThuAdminPage() {
                   className="w-7 h-7 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
                   style={p === page
                     ? { background: "#16a34a", color: "white", borderColor: "#16a34a" }
-                    : { borderColor: "#E5E7EB", color: "#6B7280" }}>
+                    : { borderColor: "#E5E7EB", color: "var(--steel)" }}>
                   {p}
                 </button>
               ))}

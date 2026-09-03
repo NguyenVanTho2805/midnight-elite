@@ -84,7 +84,7 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
               <button onClick={() => { onDuplicate(card.id, copyName); setCopying(false); }}
-                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>
                 Copy
               </button>
             </div>
@@ -200,7 +200,7 @@ function PageInner() {
         </div>
         <div className="flex items-center gap-2">
           <UploadAndExtractButton onSaved={load} showToast={showToast} />
-          <button onClick={() => setCreating(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+          <button onClick={() => setCreating(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#5645d4" }}>
             + Tạo ngân hàng mới
           </button>
         </div>
@@ -213,11 +213,11 @@ function PageInner() {
         value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
 
       {creating && (
-        <div className="flex items-center gap-2 mb-5 p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+        <div className="flex items-center gap-2 mb-5 p-3 rounded-lg border border-dashed" style={{ borderColor: "var(--brand-purple-300)", background: "var(--tint-lavender)" }}>
           <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
             placeholder="Tên ngân hàng (vd: Toán, Ngữ Văn...)" value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") { setCreating(false); setNewName(""); } }} />
-          <button onClick={handleCreate} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#0068FF" }}>Tạo</button>
+          <button onClick={handleCreate} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#5645d4" }}>Tạo</button>
           <button onClick={() => { setCreating(false); setNewName(""); }} className="px-2 text-xs text-gray-400">Huỷ</button>
         </div>
       )}

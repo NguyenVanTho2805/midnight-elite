@@ -12,7 +12,7 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "VDC", label: "Vận dụng cao" },
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
+  NB:  { bg: "var(--tint-lavender)", color: "#5645d4" },
   TH:  { bg: "#dcfce7", color: "#16a34a" },
   VD:  { bg: "#fef3c7", color: "#b45309" },
   VDC: { bg: "#fee2e2", color: "#dc2626" },
@@ -232,9 +232,9 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
       <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--hairline)" }}>
           <div>
-            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Tách câu hỏi — {examFile.fileName}</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--ink)" }}>Tách câu hỏi — {examFile.fileName}</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {loading ? "AI đang đọc file, có thể mất 20-40 giây..." : `${questions.length} câu — gán Đầu mục rồi lưu vào Ngân hàng câu hỏi`}
             </p>
@@ -243,19 +243,19 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
         </div>
 
         {!loading && questions.length > 0 && targetBankName && (
-          <div className="px-5 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
+          <div className="px-5 py-3 border-b" style={{ borderColor: "var(--hairline)" }}>
             <p className="text-xs text-gray-500">
-              Ngân hàng đích: <span className="font-semibold" style={{ color: "#1a1a1a" }}>{targetBankName}</span>
+              Ngân hàng đích: <span className="font-semibold" style={{ color: "var(--ink)" }}>{targetBankName}</span>
               <span className="text-gray-400">
                 {fixedBankId ? "" : " (theo tên file — có thể đổi tên ngân hàng sau ở trang Ngân hàng câu hỏi)"}
               </span>
             </p>
-            {placing && <p className="text-xs mt-1.5" style={{ color: "#0068FF" }}>AI đang xếp câu hỏi vào Chương/Bài...</p>}
+            {placing && <p className="text-xs mt-1.5" style={{ color: "#5645d4" }}>AI đang xếp câu hỏi vào Chương/Bài...</p>}
           </div>
         )}
 
         {!loading && questions.length > 0 && (
-          <div className="px-5 py-3 border-b" style={{ borderColor: "#e5e3df", background: "#eff6ff" }}>
+          <div className="px-5 py-3 border-b" style={{ borderColor: "var(--hairline)", background: "var(--tint-lavender)" }}>
             <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Đầu mục cho tất cả câu đang chọn</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-[200px]">
@@ -264,7 +264,7 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
               </div>
               <button type="button" onClick={applyBulkCategory} disabled={!bulkCategoryId}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-50 flex-shrink-0"
-                style={{ background: "#0068FF" }}>
+                style={{ background: "#5645d4" }}>
                 Áp dụng cho tất cả
               </button>
             </div>
@@ -280,14 +280,14 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
             const m = meta[idx];
             if (!m) return null;
             return (
-              <div key={idx} className="rounded-lg p-3 border" style={{ borderColor: "#e5e3df", background: m.include ? "#fff" : "#f6f5f4" }}>
+              <div key={idx} className="rounded-lg p-3 border" style={{ borderColor: "var(--hairline)", background: m.include ? "#fff" : "var(--surface)" }}>
                 <div className="flex items-start gap-2 mb-2">
                   <input type="checkbox" checked={m.include} onChange={e => updateMeta(idx, { include: e.target.checked })} className="mt-1" />
                   <div className="flex-1">
-                    <p className="text-sm" style={{ color: "#1a1a1a" }}><MathText text={q.text} /></p>
+                    <p className="text-sm" style={{ color: "var(--ink)" }}><MathText text={q.text} /></p>
                     {q.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={q.imageUrl} alt="Hình/biểu đồ AI đã cắt từ đề gốc" className="mt-2 max-w-xs rounded-lg border" style={{ borderColor: "#e5e3df" }} />
+                      <img src={q.imageUrl} alt="Hình/biểu đồ AI đã cắt từ đề gốc" className="mt-2 max-w-xs rounded-lg border" style={{ borderColor: "var(--hairline)" }} />
                     )}
                   </div>
                 </div>
@@ -307,7 +307,7 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
                           className="px-2 py-0.5 rounded-full text-xs font-semibold border"
                           style={m.difficulty === d.value
                             ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
-                            : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                            : { borderColor: "#E5E7EB", color: "var(--stone)" }}>
                           {d.label}
                         </button>
                       ))}
@@ -338,8 +338,8 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
           })}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "#e5e3df" }}>
-          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--hairline)" }}>
+          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--hairline)" }}>Huỷ</button>
           <button onClick={handleSaveAll} disabled={saving || loading || placing || questions.length === 0}
             className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
             {saving ? "Đang lưu..." : "Lưu vào ngân hàng"}

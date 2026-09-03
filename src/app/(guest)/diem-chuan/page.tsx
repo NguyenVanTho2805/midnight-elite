@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search } from "griddy-icons";
+import { MagnifyingGlass as Search } from "@phosphor-icons/react";
 
 const allData = [
   { school: "ĐH Bách Khoa Hà Nội", major: "Khoa học Máy tính", score2025: 28.5, score2024: 28.1, score2023: 27.8, method: "THPT Quốc gia" },
@@ -34,59 +34,59 @@ export default function DiemChuanPage() {
       {/* Header */}
       <div className="text-center mb-10">
         <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4"
-          style={{ background: "#dbeafe", color: "#0068FF", border: "1px solid #bfdbfe" }}>
+          style={{ background: "var(--tint-lavender)", color: "#5645d4", border: "1px solid var(--brand-purple-300)" }}>
           Dữ liệu tuyển sinh 2020 – 2025
         </span>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-          Tra cứu <span style={{ color: "#0068FF" }}>Điểm chuẩn</span> Đại học
+        <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: "var(--ink)", letterSpacing: "-0.5px" }}>
+          Tra cứu <span style={{ color: "#5645d4" }}>Điểm chuẩn</span> Đại học
         </h1>
-        <p className="text-sm max-w-xl mx-auto" style={{ color: "#787671" }}>
+        <p className="text-sm max-w-xl mx-auto" style={{ color: "var(--steel)" }}>
           Dữ liệu điểm chuẩn THPT, ĐGNL, HSA từ 2020–2025. Cập nhật sớm nhất sau khi Bộ GD&ĐT công bố.
         </p>
       </div>
 
       {/* Search & Filter */}
-      <div className="rounded-xl p-5 mb-8" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-5 mb-8" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Tìm kiếm trường / ngành</label>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Tìm kiếm trường / ngành</label>
             <input
               type="text" value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="VD: Bách Khoa, Y khoa, Kinh tế..."
               className="notion-input w-full text-sm"
-              style={{ color: "#1a1a1a" }}
+              style={{ color: "var(--ink)" }}
             />
           </div>
           <div className="sm:w-48">
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Phương thức xét</label>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Phương thức xét</label>
             <select value={method} onChange={(e) => setMethod(e.target.value)}
               className="notion-input w-full text-sm appearance-none"
-              style={{ color: "#1a1a1a" }}>
+              style={{ color: "var(--ink)" }}>
               {methods.map((m) => <option key={m}>{m}</option>)}
             </select>
           </div>
           <div className="sm:w-28 flex items-end">
             <button onClick={() => { setQuery(""); setMethod("Tất cả"); }}
               className="w-full py-2.5 rounded-lg text-sm font-semibold text-white"
-              style={{ background: "#0068FF", borderRadius: "8px" }}>
+              style={{ background: "#5645d4", borderRadius: "8px" }}>
               Đặt lại
             </button>
           </div>
         </div>
         {(query || method !== "Tất cả") && (
-          <p className="text-xs mt-3" style={{ color: "#a4a097" }}>
-            Tìm thấy <strong style={{ color: "#0068FF" }}>{filtered.length}</strong> kết quả
-            {query && <> cho &ldquo;<strong style={{ color: "#1a1a1a" }}>{query}</strong>&rdquo;</>}
-            {method !== "Tất cả" && <> · Phương thức: <strong style={{ color: "#1a1a1a" }}>{method}</strong></>}
+          <p className="text-xs mt-3" style={{ color: "var(--stone)" }}>
+            Tìm thấy <strong style={{ color: "#5645d4" }}>{filtered.length}</strong> kết quả
+            {query && <> cho &ldquo;<strong style={{ color: "var(--ink)" }}>{query}</strong>&rdquo;</>}
+            {method !== "Tất cả" && <> · Phương thức: <strong style={{ color: "var(--ink)" }}>{method}</strong></>}
           </p>
         )}
       </div>
 
       {/* Table */}
       {filtered.length > 0 ? (
-        <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
           <div className="grid grid-cols-12 px-6 py-3 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#787671", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+            style={{ color: "var(--steel)", background: "var(--surface)", borderBottom: "1px solid var(--hairline)" }}>
             <div className="col-span-4">Trường &amp; Ngành</div>
             <div className="col-span-2 text-center hidden sm:block">Phương thức</div>
             <div className="col-span-2 text-center">2025</div>
@@ -96,35 +96,35 @@ export default function DiemChuanPage() {
           {filtered.map((row, idx) => (
             <div key={`${row.school}-${row.major}`}
               className="grid grid-cols-12 items-center px-6 py-4"
-              style={{ borderBottom: idx < filtered.length - 1 ? "1px solid #e5e3df" : "none" }}>
+              style={{ borderBottom: idx < filtered.length - 1 ? "1px solid var(--hairline)" : "none" }}>
               <div className="col-span-4">
-                <div className="font-semibold text-sm" style={{ color: "#1a1a1a" }}>{row.major}</div>
-                <div className="text-xs mt-0.5" style={{ color: "#a4a097" }}>{row.school}</div>
+                <div className="font-semibold text-sm" style={{ color: "var(--ink)" }}>{row.major}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--stone)" }}>{row.school}</div>
               </div>
               <div className="col-span-2 text-center hidden sm:block">
                 <span className="px-2 py-1 rounded-md text-xs font-medium"
-                  style={{ background: "#f6f5f4", color: "#0068FF", border: "1px solid #e5e3df" }}>
+                  style={{ background: "var(--surface)", color: "#5645d4", border: "1px solid var(--hairline)" }}>
                   {row.method}
                 </span>
               </div>
               <div className="col-span-2 text-center">
-                <span className="text-base font-bold" style={{ color: "#0068FF" }}>{row.score2025}</span>
+                <span className="text-base font-bold" style={{ color: "#5645d4" }}>{row.score2025}</span>
                 <span className="ml-1 text-xs" style={{ color: "#16a34a" }}>↑</span>
               </div>
-              <div className="col-span-2 text-center hidden md:block text-sm font-medium" style={{ color: "#37352f" }}>{row.score2024}</div>
-              <div className="col-span-2 text-center hidden md:block text-sm" style={{ color: "#a4a097" }}>{row.score2023}</div>
+              <div className="col-span-2 text-center hidden md:block text-sm font-medium" style={{ color: "var(--charcoal)" }}>{row.score2024}</div>
+              <div className="col-span-2 text-center hidden md:block text-sm" style={{ color: "var(--stone)" }}>{row.score2023}</div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-xl p-12 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          <div className="flex justify-center mb-3" style={{ color: "#c8c4be" }}>
+        <div className="rounded-xl p-12 text-center" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
+          <div className="flex justify-center mb-3" style={{ color: "var(--hairline-strong)" }}>
             <Search size={40} />
           </div>
-          <p className="text-base font-semibold mb-1" style={{ color: "#1a1a1a" }}>Không tìm thấy kết quả</p>
-          <p className="text-sm mb-4" style={{ color: "#787671" }}>Thử tìm với từ khóa khác hoặc chọn phương thức khác.</p>
+          <p className="text-base font-semibold mb-1" style={{ color: "var(--ink)" }}>Không tìm thấy kết quả</p>
+          <p className="text-sm mb-4" style={{ color: "var(--steel)" }}>Thử tìm với từ khóa khác hoặc chọn phương thức khác.</p>
           <button onClick={() => { setQuery(""); setMethod("Tất cả"); }}
-            className="text-sm font-semibold" style={{ color: "#0068FF" }}>
+            className="text-sm font-semibold" style={{ color: "#5645d4" }}>
             Xem tất cả điểm chuẩn →
           </button>
         </div>

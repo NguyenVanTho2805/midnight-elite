@@ -32,7 +32,7 @@ const STATUS_TAB = [
   { key: "pending",  label: "Chờ duyệt",  color: "#FE9900", bg: "rgba(254,153,0,0.12)"  },
   { key: "approved", label: "Đã duyệt",   color: "#16a34a", bg: "rgba(22,163,74,0.12)"  },
   { key: "rejected", label: "Đã từ chối", color: "#DC2626", bg: "rgba(220,38,38,0.12)"  },
-  { key: "all",      label: "Tất cả",     color: "#6B7280", bg: "rgba(107,114,128,0.1)" },
+  { key: "all",      label: "Tất cả",     color: "var(--steel)", bg: "rgba(107,114,128,0.1)" },
 ];
 
 function DanhGiaContent() {
@@ -80,8 +80,8 @@ function DanhGiaContent() {
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Đánh giá khóa học</h1>
-        <p className="text-sm mt-1" style={{ color: "#9CA3AF" }}>Duyệt hoặc từ chối đánh giá của học viên</p>
+        <h1 className="text-2xl font-extrabold" style={{ color: "var(--ink)" }}>Đánh giá khóa học</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--stone)" }}>Duyệt hoặc từ chối đánh giá của học viên</p>
       </div>
 
       {/* Tabs */}
@@ -91,7 +91,7 @@ function DanhGiaContent() {
             className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
             style={tab === t.key
               ? { background: t.bg, color: t.color, border: `1px solid ${t.color}40` }
-              : { background: "#f6f5f4", color: "#6B7280", border: "1px solid #e5e3df" }}>
+              : { background: "#f6f5f4", color: "var(--steel)", border: "1px solid #e5e3df" }}>
             {t.label}
           </button>
         ))}
@@ -112,7 +112,7 @@ function DanhGiaContent() {
             ))}
           </div>
         ) : reviews.length === 0 ? (
-          <div className="py-16 text-center text-sm" style={{ color: "#9CA3AF" }}>
+          <div className="py-16 text-center text-sm" style={{ color: "var(--stone)" }}>
             Không có đánh giá nào
           </div>
         ) : (
@@ -120,7 +120,7 @@ function DanhGiaContent() {
             <thead style={{ background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
               <tr>
                 {["Học viên", "Khóa học", "Sao", "Nhận xét", "Ngày gửi", "Trạng thái", ""].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "#9CA3AF" }}>{h}</th>
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "var(--stone)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -130,20 +130,20 @@ function DanhGiaContent() {
                 return (
                   <tr key={r.id} style={{ borderBottom: i < reviews.length - 1 ? "1px solid #e5e3df" : "none" }}>
                     <td className="px-4 py-3">
-                      <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{r.user.name}</p>
-                      <p className="text-xs" style={{ color: "#9CA3AF" }}>{r.user.email}</p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{r.user.name}</p>
+                      <p className="text-xs" style={{ color: "var(--stone)" }}>{r.user.email}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm max-w-[160px] truncate" style={{ color: "#4B5563" }}>{r.course.name}</td>
+                    <td className="px-4 py-3 text-sm max-w-[160px] truncate" style={{ color: "var(--slate)" }}>{r.course.name}</td>
                     <td className="px-4 py-3"><StarDisplay value={r.rating} /></td>
-                    <td className="px-4 py-3 text-sm max-w-[220px]" style={{ color: "#4B5563" }}>
+                    <td className="px-4 py-3 text-sm max-w-[220px]" style={{ color: "var(--slate)" }}>
                       <p className="line-clamp-2">{r.comment}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "#9CA3AF" }}>
+                    <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--stone)" }}>
                       {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        style={{ background: st?.bg ?? "#f6f5f4", color: st?.color ?? "#6B7280" }}>
+                        style={{ background: st?.bg ?? "#f6f5f4", color: st?.color ?? "var(--steel)" }}>
                         {st?.label ?? r.status}
                       </span>
                     </td>
@@ -165,7 +165,7 @@ function DanhGiaContent() {
                         )}
                         <button disabled={acting === r.id} onClick={() => del(r.id)}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                          style={{ background: "#f6f5f4", color: "#9CA3AF" }}>
+                          style={{ background: "#f6f5f4", color: "var(--stone)" }}>
                           Xóa
                         </button>
                       </div>

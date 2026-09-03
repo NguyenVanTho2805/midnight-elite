@@ -10,7 +10,7 @@ export function Skeleton({ className = "", rounded = "xl" }: SkeletonProps) {
     <div
       className={`animate-pulse ${className}`}
       style={{
-        background: "linear-gradient(90deg, #E5ECF8 25%, #EEF3FC 50%, #E5ECF8 75%)",
+        background: "linear-gradient(90deg, var(--hairline) 25%, var(--surface-soft) 50%, var(--hairline) 75%)",
         backgroundSize: "200% 100%",
         animation: "skeleton-shimmer 1.5s infinite",
         borderRadius: rounded === "full" ? "9999px"
@@ -26,8 +26,8 @@ export function Skeleton({ className = "", rounded = "xl" }: SkeletonProps) {
 
 export function SkeletonCourseCard() {
   return (
-    <div className="rounded-3xl overflow-hidden"
-      style={{ background: "#F0F5FF", boxShadow: "10px 10px 24px #C5D0EA,-10px -10px 24px #ffffff" }}>
+    <div className="rounded-xl overflow-hidden"
+      style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
       <Skeleton className="w-full h-36" rounded="sm" />
       <div className="p-4 space-y-3">
         <Skeleton className="h-4 w-3/4" />
@@ -54,8 +54,8 @@ export function SkeletonLessonRow() {
 
 export function SkeletonDashboardCard() {
   return (
-    <div className="rounded-2xl p-5"
-      style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px #ffffff" }}>
+    <div className="rounded-lg p-5"
+      style={{ background: "var(--canvas)", border: "1px solid var(--hairline)" }}>
       <div className="space-y-3">
         <div className="flex items-start justify-between">
           <div className="space-y-2 flex-1">

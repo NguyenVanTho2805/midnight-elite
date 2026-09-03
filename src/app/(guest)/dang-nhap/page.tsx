@@ -42,45 +42,45 @@ export default function DangNhapPage() {
   if (isLoading) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--surface)" }}>
       <div className="w-full max-w-md">
 
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>Midnight Elite</span>
-            <span className="text-xs" style={{ color: "#a4a097" }}>Education Platform</span>
+            <span className="text-2xl font-bold" style={{ color: "#5645d4", letterSpacing: "-0.5px" }}>Midnight Elite</span>
+            <span className="text-xs" style={{ color: "var(--stone)" }}>Education Platform</span>
           </Link>
-          <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Chào mừng trở lại</h1>
-          <p className="text-sm" style={{ color: "#787671" }}>Đăng nhập để tiếp tục học</p>
+          <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "var(--ink)", letterSpacing: "-0.3px" }}>Chào mừng trở lại</h1>
+          <p className="text-sm" style={{ color: "var(--steel)" }}>Đăng nhập để tiếp tục học</p>
         </div>
 
         {/* Form card — Notion flat style */}
-        <div className="rounded-xl p-8" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+        <div className="rounded-xl p-8" style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
           <form onSubmit={handleSubmit} className="space-y-4">
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Email</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Email</label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="ten@gmail.com" autoComplete="email"
                 className="notion-input w-full text-sm"
-                style={{ color: "#1a1a1a" }}
+                style={{ color: "var(--ink)" }}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Mật khẩu</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--charcoal)" }}>Mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPass ? "text" : "password"} value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" autoComplete="current-password"
                   className="notion-input w-full text-sm pr-14"
-                  style={{ color: "#1a1a1a" }}
+                  style={{ color: "var(--ink)" }}
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-3 text-xs font-medium" style={{ color: "#a4a097" }}>
+                  className="absolute right-3 top-3 text-xs font-medium" style={{ color: "var(--stone)" }}>
                   {showPass ? "Ẩn" : "Hiện"}
                 </button>
               </div>
@@ -93,11 +93,11 @@ export default function DangNhapPage() {
             )}
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: "#787671" }}>
+              <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: "var(--steel)" }}>
                 <input type="checkbox" className="rounded" />
                 Ghi nhớ đăng nhập
               </label>
-              <Link href="/quen-mat-khau" className="text-xs font-medium" style={{ color: "#0068FF" }}>
+              <Link href="/quen-mat-khau" className="text-xs font-medium" style={{ color: "#5645d4" }}>
                 Quên mật khẩu?
               </Link>
             </div>
@@ -107,7 +107,7 @@ export default function DangNhapPage() {
               disabled={submitting}
               className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
               style={{
-                background: submitting ? "#bbb8b1" : "#0068FF",
+                background: submitting ? "var(--muted)" : "#5645d4",
                 borderRadius: "8px",
               }}
             >
@@ -115,9 +115,9 @@ export default function DangNhapPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm mt-6" style={{ color: "#787671" }}>
+          <p className="text-center text-sm mt-6" style={{ color: "var(--steel)" }}>
             Chưa có tài khoản?{" "}
-            <Link href="/dang-ky" className="font-semibold" style={{ color: "#0068FF" }}>Đăng ký ngay</Link>
+            <Link href="/dang-ky" className="font-semibold" style={{ color: "#5645d4" }}>Đăng ký ngay</Link>
           </p>
         </div>
       </div>

@@ -61,18 +61,18 @@ export function AddToExamModal({ open, items, onClose, onAdded }: {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
       <div className="bg-white rounded-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--hairline)" }}>
           <div>
-            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Thêm vào đề thi</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--ink)" }}>Thêm vào đề thi</h2>
             <p className="text-xs text-gray-500 mt-0.5">Chọn 1 đề để thêm {items.length} câu đã chọn</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
         </div>
 
-        <div className="px-5 py-3 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="px-5 py-3 border-b" style={{ borderColor: "var(--hairline)" }}>
           <input
             className="w-full px-3 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
-            style={{ borderColor: "#e5e3df" }}
+            style={{ borderColor: "var(--hairline)" }}
             placeholder="Tìm theo tên đề..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -85,11 +85,11 @@ export function AddToExamModal({ open, items, onClose, onAdded }: {
           ) : filtered.map(exam => (
             <label key={exam.id}
               className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer hover:bg-gray-50"
-              style={{ borderColor: selectedExamId === exam.id ? "#0068FF" : "#e5e3df" }}>
+              style={{ borderColor: selectedExamId === exam.id ? "#5645d4" : "var(--hairline)" }}>
               <input type="radio" name="targetExam" checked={selectedExamId === exam.id}
                 onChange={() => setSelectedExamId(exam.id)} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm truncate" style={{ color: "#1a1a1a" }}>{exam.title}</p>
+                <p className="text-sm truncate" style={{ color: "var(--ink)" }}>{exam.title}</p>
                 <p className="text-xs text-gray-400">{exam.category} — {exam.questions} câu</p>
               </div>
             </label>
@@ -98,8 +98,8 @@ export function AddToExamModal({ open, items, onClose, onAdded }: {
 
         {error && <p className="px-5 py-2 text-xs text-red-500">{error}</p>}
 
-        <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "#e5e3df" }}>
-          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--hairline)" }}>
+          <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--hairline)" }}>Huỷ</button>
           <button onClick={handleAdd} disabled={!selectedExamId || saving}
             className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
             {saving ? "Đang thêm..." : "Thêm vào đề"}

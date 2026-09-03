@@ -22,13 +22,13 @@ export default function PopupBuyRequired({
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.5)" }}
       onClick={onClose}>
-      <div className="w-full max-w-sm rounded-3xl overflow-hidden"
-        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}
+      <div className="w-full max-w-sm rounded-xl overflow-hidden"
+        style={{ background: "var(--canvas)", border: "1px solid var(--hairline)", boxShadow: "var(--shadow-3)" }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="p-6 text-center"
-          style={{ background: "linear-gradient(135deg, #0068FF 0%, #2680FF 100%)" }}>
+          style={{ background: "linear-gradient(135deg, #5645d4 0%, #7b3ff2 100%)" }}>
           <h2 className="text-lg font-extrabold text-white mb-1">{title ?? "Nội dung có giới hạn"}</h2>
           {subtitle ? (
             <p className="text-sm text-blue-100">{subtitle}</p>
@@ -41,12 +41,12 @@ export default function PopupBuyRequired({
 
         {/* Course info */}
         <div className="p-6">
-          <div className="rounded-2xl p-4 mb-5"
-            style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}>
-            <p className="text-xs mb-1" style={{ color: "#9CA3AF" }}>Khóa học</p>
-            <p className="text-base font-extrabold" style={{ color: "#1E2938" }}>{courseName}</p>
+          <div className="rounded-md p-4 mb-5"
+            style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
+            <p className="text-xs mb-1" style={{ color: "var(--stone)" }}>Khóa học</p>
+            <p className="text-base font-extrabold" style={{ color: "var(--ink)" }}>{courseName}</p>
             <div className="flex items-center gap-3 mt-3">
-              <div className="text-xl font-extrabold" style={{ color: "#0068FF" }}>
+              <div className="text-xl font-extrabold" style={{ color: "var(--color-primary)" }}>
                 {price.toLocaleString("vi-VN")}đ
               </div>
               {hasDiscount && (
@@ -69,28 +69,24 @@ export default function PopupBuyRequired({
             ].map(b => (
               <div key={b} className="flex items-center gap-2">
                 <span className="text-sm font-bold flex-shrink-0" style={{ color: "#00A63D" }}>✓</span>
-                <span className="text-sm" style={{ color: "#4B5563" }}>{b}</span>
+                <span className="text-sm" style={{ color: "var(--slate)" }}>{b}</span>
               </div>
             ))}
           </div>
 
           {/* Contact CTA */}
-          <div className="rounded-2xl p-4 mb-3 text-center"
-            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
-            <p className="text-sm font-semibold mb-1" style={{ color: "#1E2938" }}>Liên hệ để đăng ký</p>
-            <p className="text-xs mb-3" style={{ color: "#6B7280" }}>
+          <div className="rounded-md p-4 mb-3 text-center"
+            style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
+            <p className="text-sm font-semibold mb-1" style={{ color: "var(--ink)" }}>Liên hệ để đăng ký</p>
+            <p className="text-xs mb-3" style={{ color: "var(--steel)" }}>
               Chuyển khoản và nhắn admin để được kích hoạt khoá học
             </p>
-            <a href="tel:0384409051"
-              className="block w-full py-2 rounded-xl text-sm font-bold text-center text-white"
-              style={{ background: "#0068FF" }}>
+            <a href="tel:0384409051" className="notion-btn-primary block w-full text-center text-sm">
               Gọi: 0384 409 051
             </a>
           </div>
 
-          <button onClick={onClose}
-            className="w-full py-2.5 rounded-2xl text-sm font-semibold transition-all cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: "#6B7280" }}>
+          <button onClick={onClose} className="notion-btn-secondary w-full text-sm text-center">
             {closeLabel}
           </button>
         </div>

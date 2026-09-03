@@ -148,13 +148,14 @@ export default function AIChatWidget() {
             left:   panelLeft,
             width:  PANEL_W,
             height: PANEL_H,
-            background: "#F0F5FF",
-            boxShadow: "16px 16px 32px #C5D0EA,-8px -8px 24px #ffffff",
+            background: "var(--canvas)",
+            border: "1px solid var(--hairline)",
+            boxShadow: "var(--shadow-3)",
           }}>
 
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0 cursor-default"
-            style={{ background: "linear-gradient(135deg,#0055D4,#0042AA)" }}>
+            style={{ background: "linear-gradient(135deg,#4534b3,#3a2a99)" }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-white"
               style={{ background: "rgba(255,255,255,0.2)", border: "2px solid rgba(255,255,255,0.4)" }}>
               AI
@@ -173,13 +174,13 @@ export default function AIChatWidget() {
 
           {/* Subject pills */}
           <div className="flex gap-1.5 px-3 py-2 flex-shrink-0 flex-wrap"
-            style={{ borderBottom: "1px solid #E5ECF8" }}>
+            style={{ borderBottom: "1px solid var(--hairline)" }}>
             {SUBJECTS.map(s => (
               <button key={s} onClick={() => setSubject(s)}
                 className="px-2.5 py-0.5 rounded-full text-xs font-bold transition-all"
                 style={subject === s
-                  ? { background: "#0068FF", color: "white" }
-                  : { background: "#E5ECF8", color: "#6B7280" }}>
+                  ? { background: "var(--color-primary)", color: "white" }
+                  : { background: "var(--surface)", color: "var(--steel)" }}>
                 {s}
               </button>
             ))}
@@ -191,13 +192,13 @@ export default function AIChatWidget() {
               <div key={msg.id} className={`flex items-end gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "ai" && (
                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                    style={{ background: "#0068FF" }}>AI</div>
+                    style={{ background: "#5645d4" }}>AI</div>
                 )}
                 <div className={`max-w-[78%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line
                   ${msg.role === "user" ? "rounded-br-sm" : "rounded-bl-sm"}`}
                   style={msg.role === "user"
-                    ? { background: "linear-gradient(145deg,#0055D4,#0042AA)", color: "white" }
-                    : { background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff", color: "#1E2938" }}>
+                    ? { background: "linear-gradient(145deg,#4534b3,#3a2a99)", color: "white" }
+                    : { background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--ink)" }}>
                   {msg.text}
                 </div>
               </div>
@@ -205,12 +206,12 @@ export default function AIChatWidget() {
             {loading && (
               <div className="flex items-end gap-2 justify-start">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                  style={{ background: "#0068FF" }}>AI</div>
+                  style={{ background: "#5645d4" }}>AI</div>
                 <div className="px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1.5 items-center"
-                  style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
+                  style={{ background: "var(--surface)", border: "1px solid var(--hairline)" }}>
                   {[0,1,2].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full animate-bounce"
-                      style={{ background: "#0068FF", animationDelay: `${i * 0.15}s` }} />
+                      style={{ background: "#5645d4", animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </div>
               </div>
@@ -219,20 +220,20 @@ export default function AIChatWidget() {
           </div>
 
           {/* Input */}
-          <div className="flex gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: "1px solid #E5ECF8" }}>
+          <div className="flex gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--hairline)" }}>
             <input
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder="Hỏi bất cứ điều gì..."
-              className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff", color: "#1E2938" }}
+              className="notion-input flex-1 text-xs"
+              style={{ height: "auto", padding: "8px 12px" }}
             />
             <button onClick={send} disabled={!input.trim() || loading}
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
-              style={{ background: input.trim() && !loading ? "linear-gradient(145deg,#0055D4,#0042AA)" : "#E5ECF8" }}>
-              <svg className="w-4 h-4" fill="none" stroke={input.trim() && !loading ? "white" : "#9CA3AF"} viewBox="0 0 24 24">
+              className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 transition-all"
+              style={{ background: input.trim() && !loading ? "linear-gradient(145deg,#4534b3,#3a2a99)" : "var(--surface)" }}>
+              <svg className="w-4 h-4" fill="none" stroke={input.trim() && !loading ? "white" : "var(--stone)"} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
               </svg>
             </button>
@@ -255,7 +256,7 @@ export default function AIChatWidget() {
           cursor: "grab",
           background: open
             ? "linear-gradient(145deg,#FF2157,#cc0033)"
-            : "linear-gradient(145deg,#0055D4,#0042AA)",
+            : "linear-gradient(145deg,#4534b3,#3a2a99)",
           boxShadow: open
             ? "0 8px 24px rgba(255,33,87,0.4)"
             : "0 8px 24px rgba(0,85,212,0.4)",

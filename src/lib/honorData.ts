@@ -62,7 +62,7 @@ export const BADGE_RULES: BadgeRule[] = [
     id: "cai-thien",
     icon: "⚡",
     title: "Cải thiện nhanh nhất",
-    color: "#0068FF", bg: "#EFF6FF", borderColor: "#BFDBFE",
+    color: "#5645d4", bg: "var(--tint-lavender)", borderColor: "var(--brand-purple-300)",
     desc: "GPA tăng ≥ 1.0 so tháng trước",
     reward: "Badge xanh + Khóa học thưởng",
     check: (s) => s.monthDelta >= 1.0,

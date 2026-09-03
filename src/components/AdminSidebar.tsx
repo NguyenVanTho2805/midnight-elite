@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ChartBar, BookOpen, ClipboardList, Badge,
-  UsersGroup, Wallet, Edit, FileText, ChatCircle, Robot, Star,
-} from "griddy-icons";
+  ChartBar, BookOpen, ClipboardText as ClipboardList, Medal as Badge,
+  UsersThree as UsersGroup, Wallet, PencilSimple as Edit, FileText, ChatCircle, Robot, Star,
+} from "@phosphor-icons/react";
 import { useAuth, hasPermission, getAdminRoleLabel, PERMISSIONS, type Permission } from "@/contexts/AuthContext";
 import type { FC } from "react";
 
@@ -83,7 +83,7 @@ export default function AdminSidebar() {
       <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-base flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
+            style={{ background: "linear-gradient(135deg, #5645d4, #4534b3)" }}>
             ME
           </div>
           <div className="min-w-0">
@@ -123,12 +123,12 @@ export default function AdminSidebar() {
               <Link href={item.href}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
                 style={isExpanded
-                  ? { background: "rgba(0,104,255,0.2)", color: "#60A5FA" }
+                  ? { background: "rgba(86,69,212,0.2)", color: "#a78bfa" }
                   : { color: "rgba(255,255,255,0.55)" }
                 }>
                 <item.Icon
                   size={16}
-                  style={{ color: isExpanded ? "#60A5FA" : "rgba(255,255,255,0.45)", flexShrink: 0 }}
+                  style={{ color: isExpanded ? "#a78bfa" : "rgba(255,255,255,0.45)", flexShrink: 0 }}
                 />
                 <span className="truncate flex-1">{item.label}</span>
                 {hasChildren && (
@@ -148,11 +148,11 @@ export default function AdminSidebar() {
                       <Link key={ch.href} href={ch.href}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150"
                         style={chActive
-                          ? { color: "#60A5FA", background: "rgba(0,104,255,0.12)" }
+                          ? { color: "#a78bfa", background: "rgba(86,69,212,0.12)" }
                           : { color: "rgba(255,255,255,0.4)" }
                         }>
                         <span className="w-1 h-1 rounded-full flex-shrink-0"
-                          style={{ background: chActive ? "#60A5FA" : "rgba(255,255,255,0.25)" }} />
+                          style={{ background: chActive ? "#a78bfa" : "rgba(255,255,255,0.25)" }} />
                         {ch.label}
                       </Link>
                     );

@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro, Space_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import { GlobalDropGuard } from "@/components/GlobalDropGuard";
 
@@ -40,10 +41,25 @@ export default function RootLayout({
     <html
       lang="vi"
       className={`${sans.variable} ${spaceMono.variable} h-full scroll-smooth`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+    try {
+      var t = localStorage.getItem('midnight-theme');
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    } catch (e) {}
+  `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col antialiased">
           <GlobalDropGuard />
-          <AuthProvider>{children}</AuthProvider>
+          <ThemeProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ThemeProvider>
           <AgentationWrapper />
         </body>
     </html>

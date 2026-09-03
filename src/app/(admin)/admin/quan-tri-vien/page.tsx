@@ -16,10 +16,10 @@ interface UserRow {
 
 const ROLE_CFG: Record<string, { label: string; color: string; bg: string }> = {
   admin_super:    { label: "Super Admin (Cấp 1)",   color: "#FE9900", bg: "#FFF7ED" },
-  admin_content:  { label: "Content Admin (Cấp 2)", color: "#0068FF", bg: "#EFF6FF" },
+  admin_content:  { label: "Content Admin (Cấp 2)", color: "#5645d4", bg: "var(--tint-lavender)" },
   teacher:        { label: "Giáo viên",             color: "#16a34a", bg: "#F0FDF4" },
   hoc_vien:       { label: "Học viên",              color: "#1D4ED8", bg: "#DBEAFE" },
-  chua_kich_hoat: { label: "Chưa KH",               color: "#6B7280", bg: "#F3F4F6" },
+  chua_kich_hoat: { label: "Chưa KH",               color: "var(--steel)", bg: "#F3F4F6" },
 };
 
 function RoleBadge({ role, adminRole, enrollments }: {
@@ -127,8 +127,8 @@ export default function QuanTriVienPage() {
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Quản trị viên</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
+          <h1 className="text-lg font-extrabold" style={{ color: "var(--ink)" }}>Quản trị viên</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--stone)" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
         </div>
 
         {/* Stats compact inline */}
@@ -143,8 +143,8 @@ export default function QuanTriVienPage() {
             [
               { label: "Tổng",          val: users.length,   color: "#374151" },
               { label: "Quản trị viên", val: counts.admin,   color: "#FE9900" },
-              { label: "Học viên",      val: counts.hocVien, color: "#0068FF" },
-              { label: "Chưa KH",       val: counts.chuaKH,  color: "#9CA3AF" },
+              { label: "Học viên",      val: counts.hocVien, color: "#5645d4" },
+              { label: "Chưa KH",       val: counts.chuaKH,  color: "var(--stone)" },
             ].map((s, i) => (
               <div key={s.label} className="flex items-center gap-1.5">
                 {i > 0 && <span className="text-gray-200 mr-2">|</span>}
@@ -165,8 +165,8 @@ export default function QuanTriVienPage() {
               <button key={f} onClick={() => setFilter(f)}
                 className="px-4 py-2 rounded-lg text-sm font-semibold border transition-all cursor-pointer"
                 style={filter === f
-                  ? { background: "linear-gradient(135deg,#0068FF,#0052DD)", color: "white", borderColor: "transparent" }
-                  : { background: "white", borderColor: "#E5E7EB", color: "#6B7280" }}>
+                  ? { background: "linear-gradient(135deg,#5645d4,#4534b3)", color: "white", borderColor: "transparent" }
+                  : { background: "white", borderColor: "#E5E7EB", color: "var(--steel)" }}>
                 {f === "all"
                   ? `Tất cả (${users.length})`
                   : f === "admin"
@@ -240,7 +240,7 @@ export default function QuanTriVienPage() {
                     <td className="px-4 py-3 text-center">
                       {isAdmin
                         ? <span className="text-sm text-gray-300">—</span>
-                        : <span className="text-sm font-bold" style={{ color: "#0068FF" }}>{u._count.enrollments}</span>
+                        : <span className="text-sm font-bold" style={{ color: "#5645d4" }}>{u._count.enrollments}</span>
                       }
                     </td>
                     <td className="px-4 py-3">
@@ -254,7 +254,7 @@ export default function QuanTriVienPage() {
                           {!isAdmin && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg,#0068FF,#0052DD)" }}>
+                              style={{ background: "linear-gradient(135deg,#5645d4,#4534b3)" }}>
                               {busy ? "..." : "Thêm Admin Cấp 2"}
                             </button>
                           )}
@@ -268,7 +268,7 @@ export default function QuanTriVienPage() {
                           {isAdmin && isTeacher && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg,#0068FF,#0052DD)" }}>
+                              style={{ background: "linear-gradient(135deg,#5645d4,#4534b3)" }}>
                               {busy ? "..." : "Nâng lên Content Admin"}
                             </button>
                           )}
