@@ -52,3 +52,12 @@ reports/
 # có .env chứa secrets thật (Gemini API key, DB connection string)
 tsix-sales-bot/
 .playwright-mcp/
+
+
+# dev-server logs, ad-hoc screenshot scripts/output, cookie dumps từ curl
+# testing — không nên track (từng bị commit nhầm, xem session cleanup)
+__dev.log
+__screenshots/
+__screenshots.mjs
+cookies*.txt
+*.png
