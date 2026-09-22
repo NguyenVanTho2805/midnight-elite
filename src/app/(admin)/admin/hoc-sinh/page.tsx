@@ -96,6 +96,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
   const [banning,     setBanning]     = useState(false);
   const [confirmDel,  setConfirmDel]  = useState(false);
   const [deleting,    setDeleting]    = useState(false);
+  const [consentBusy, setConsentBusy] = useState<string | null>(null);
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -122,6 +123,25 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
       showToast(d.error ?? "Lỗi", false);
     }
     setActivating(null);
+  }
+
+  async function requestParentConsent(courseId: string) {
+    setConsentBusy(courseId);
+    try {
+      const res  = await fetch("/api/parent-consents", {
+        method:      "POST",
+        credentials: "same-origin",
+        headers:     { "Content-Type": "application/json" },
+        body:        JSON.stringify({ userId: student.userId, courseId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Gửi yêu cầu thất bại", false); return; }
+      showToast("Đã gửi email xác nhận cho phụ huynh");
+    } catch {
+      showToast("Lỗi kết nối", false);
+    } finally {
+      setConsentBusy(null);
+    }
   }
 
   function copy(text: string) {
@@ -351,15 +371,27 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                           {course.name}
                         </span>
                       </div>
-                      <button
-                        onClick={() => toggleCourse(course.id)}
-                        disabled={busy}
-                        className="flex-shrink-0 ml-2 px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer"
-                        style={enrolled
-                          ? { background: "#fee2e2", color: "#DC2626" }
-                          : { background: "#0068FF", color: "white" }}>
-                        {busy ? "..." : enrolled ? "Thu hồi" : "Kích hoạt"}
-                      </button>
+                      <div className="flex-shrink-0 ml-2 flex items-center gap-1.5">
+                        {enrolled && (
+                          <button
+                            onClick={() => requestParentConsent(course.id)}
+                            disabled={consentBusy === course.id}
+                            title="Gửi email cho phụ huynh xác nhận (cần học viên đã có ParentLink verified)"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                            style={{ background: "#dbeafe", color: "#1D4ED8" }}>
+                            {consentBusy === course.id ? "..." : "Xác nhận PH"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => toggleCourse(course.id)}
+                          disabled={busy}
+                          className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer"
+                          style={enrolled
+                            ? { background: "#fee2e2", color: "#DC2626" }
+                            : { background: "#0068FF", color: "white" }}>
+                          {busy ? "..." : enrolled ? "Thu hồi" : "Kích hoạt"}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

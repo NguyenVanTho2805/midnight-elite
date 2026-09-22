@@ -189,6 +189,15 @@ interface ProfileData {
   zaloPhone: string | null;
 }
 
+// ParentLink status: "pending" | "verified" | "revoked" — xem prisma/schema.prisma
+interface ParentLinkItem {
+  id: string;
+  status: string;
+  createdAt: string;
+  parent?: { id: string; name: string; email: string };
+  student?: { id: string; name: string; email: string };
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function HoSoPage() {
@@ -202,6 +211,13 @@ export default function HoSoPage() {
   const [userStats,         setUserStats]         = useState<UserStats | null>(null);
   const [activityCounts,    setActivityCounts]    = useState<Record<string, number>>({});
   const [enrolledCourses,   setEnrolledCourses]   = useState<EnrolledCourseItem[]>([]);
+
+  // ── Liên kết phụ huynh (ParentLink) ──
+  const [linksAsStudent, setLinksAsStudent] = useState<ParentLinkItem[]>([]);
+  const [linksAsParent,  setLinksAsParent]  = useState<ParentLinkItem[]>([]);
+  const [linkEmail,      setLinkEmail]      = useState("");
+  const [linkSubmitting, setLinkSubmitting] = useState(false);
+  const [linkActingId,   setLinkActingId]   = useState<string | null>(null);
 
   // ── Avatar ──
   const [avatarSrc,    setAvatarSrc]    = useState<string | null>(null);
@@ -288,7 +304,57 @@ export default function HoSoPage() {
           .catch(() => {});
       })
       .catch(() => {});
+
+    loadParentLinks();
   }, []);
+
+  function loadParentLinks() {
+    fetch("/api/parent-links")
+      .then(r => r.ok ? r.json() : { asParent: [], asStudent: [] })
+      .then((d: { asParent: ParentLinkItem[]; asStudent: ParentLinkItem[] }) => {
+        setLinksAsParent(d.asParent ?? []);
+        setLinksAsStudent(d.asStudent ?? []);
+      })
+      .catch(() => {});
+  }
+
+  async function handleRequestParentLink() {
+    if (!linkEmail.trim()) { showToast("Nhập email học viên cần liên kết", "error"); return; }
+    setLinkSubmitting(true);
+    try {
+      const res  = await fetch("/api/parent-links", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentEmail: linkEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Gửi yêu cầu thất bại", "error"); return; }
+      showToast("Đã gửi yêu cầu liên kết, chờ học viên xác nhận", "success");
+      setLinkEmail("");
+      loadParentLinks();
+    } catch {
+      showToast("Lỗi kết nối", "error");
+    } finally {
+      setLinkSubmitting(false);
+    }
+  }
+
+  async function handleRespondParentLink(id: string, action: "verify" | "revoke") {
+    setLinkActingId(id);
+    try {
+      const res = await fetch(`/api/parent-links/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Thao tác thất bại", "error"); return; }
+      showToast(action === "verify" ? "Đã xác nhận liên kết phụ huynh" : "Đã thu hồi liên kết", "success");
+      loadParentLinks();
+    } catch {
+      showToast("Lỗi kết nối", "error");
+    } finally {
+      setLinkActingId(null);
+    }
+  }
 
   // ── Avatar crop ──
   function loadAvatarFile(file: File) {
@@ -591,6 +657,92 @@ export default function HoSoPage() {
               </div>
             )}
           </Section>
+
+          {/* ── Liên kết phụ huynh (ParentLink có xác minh) ── */}
+          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+            <h2 className="text-sm font-bold mb-1" style={{ color: "#37352f" }}>Liên kết phụ huynh</h2>
+            <p className="text-xs mb-4" style={{ color: "#a4a097" }}>
+              Khác với thông tin phụ huynh ở trên (chỉ là dữ liệu tự khai), mục này xác minh 2 chiều giữa 2 tài khoản thật.
+            </p>
+
+            {linksAsStudent.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold mb-2" style={{ color: "#787671" }}>Yêu cầu gửi tới bạn (với vai trò học viên)</p>
+                <div className="space-y-2">
+                  {linksAsStudent.map(link => (
+                    <div key={link.id} className="flex items-center gap-3 p-3 rounded-xl"
+                      style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: "#37352f" }}>{link.parent?.name}</p>
+                        <p className="text-xs truncate" style={{ color: "#a4a097" }}>{link.parent?.email}</p>
+                      </div>
+                      {link.status === "pending" ? (
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button onClick={() => handleRespondParentLink(link.id, "verify")}
+                            disabled={linkActingId === link.id}
+                            className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white disabled:opacity-50"
+                            style={{ background: "#16a34a", borderRadius: "8px" }}>
+                            Xác nhận
+                          </button>
+                          <button onClick={() => handleRespondParentLink(link.id, "revoke")}
+                            disabled={linkActingId === link.id}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                            style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: "8px" }}>
+                            Từ chối
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{
+                            background: link.status === "verified" ? "#d1fae5" : "#f6f5f4",
+                            color:      link.status === "verified" ? "#065f46" : "#a4a097",
+                          }}>
+                          {link.status === "verified" ? "Đã xác nhận" : "Đã thu hồi"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <p className="text-xs font-semibold mb-2" style={{ color: "#787671" }}>Con của bạn (với vai trò phụ huynh)</p>
+              {linksAsParent.length === 0 ? (
+                <p className="text-sm" style={{ color: "#c8c4be" }}>Chưa gửi yêu cầu liên kết nào.</p>
+              ) : (
+                <div className="space-y-2">
+                  {linksAsParent.map(link => (
+                    <div key={link.id} className="flex items-center gap-3 p-3 rounded-xl"
+                      style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: "#37352f" }}>{link.student?.name}</p>
+                        <p className="text-xs truncate" style={{ color: "#a4a097" }}>{link.student?.email}</p>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{
+                          background: link.status === "verified" ? "#d1fae5" : link.status === "pending" ? "#fef3c7" : "#f6f5f4",
+                          color:      link.status === "verified" ? "#065f46" : link.status === "pending" ? "#92400e" : "#a4a097",
+                        }}>
+                        {link.status === "verified" ? "Đã xác nhận" : link.status === "pending" ? "Chờ xác nhận" : "Đã thu hồi"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input type="email" value={linkEmail} onChange={e => setLinkEmail(e.target.value)}
+                placeholder="Email tài khoản của con"
+                className="notion-input flex-1 text-sm" style={{ color: "#1a1a1a" }} />
+              <button onClick={handleRequestParentLink} disabled={linkSubmitting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60 flex-shrink-0"
+                style={{ background: "#0068FF", borderRadius: "8px" }}>
+                {linkSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+              </button>
+            </div>
+          </div>
 
           {/* ── Mạng xã hội ── */}
           <Section title="Mạng xã hội"

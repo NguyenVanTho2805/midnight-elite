@@ -142,6 +142,13 @@ Trên nền `ParentLink`/`ParentConsent` ở mục 5, đã viết đủ 1 lát c
 
 **Giới hạn xác thực trong phiên này:** không chạy được `prisma generate` (egress tới `binaries.prisma.sh` bị chặn) nên **không có type-check thật** cho các route này qua `tsc`. Đã: (1) đối chiếu thủ công từng field/quan hệ với `schema.prisma`, (2) xác nhận convention route động `{ params }: { params: Promise<...> }` bằng cách đọc `src/app/api/courses/[id]/route.ts` thật thay vì đoán, (3) chạy `npx eslint` trên toàn bộ file mới — sạch, không lỗi mới (trang xác nhận dùng đúng pattern `fetch` trong `useEffect` như 2 trang tham chiếu `xac-thuc-email`/`dat-lai-mat-khau`, vốn đã vi phạm rule `react-hooks/set-state-in-effect` từ trước — không phải lỗi mới do lượt này gây ra). **Vẫn cần chạy `npm run db:generate` rồi `npx tsc --noEmit` thật trên môi trường có mạng đầy đủ trước khi merge.**
 
+### 6.1. Đã nối vào UI thật (cùng lượt tiếp theo)
+
+- **`student/ho-so`**: thêm khối "Liên kết phụ huynh" — hiển thị yêu cầu gửi tới mình (xác nhận/từ chối nếu đang là học viên), danh sách con đã liên kết (nếu đang là phụ huynh), và ô gửi yêu cầu liên kết mới bằng email. Dùng lại đúng style `Section`/`InfoRow` sẵn có trong file.
+- **`admin/hoc-sinh` (DetailModal)**: thêm nút "Xác nhận PH" cạnh mỗi khoá học đã kích hoạt, gọi `POST /api/parent-consents`.
+- Mở rộng `POST /api/parent-consents` để nhận thêm `{ userId, courseId }` (ngoài `enrollmentId`) — tra `Enrollment` qua khoá unique `userId_courseId` — vì UI admin có sẵn `userId`/`courseId`, không có `enrollmentId` lộ ra ngoài.
+- `npx eslint` sạch cho cả 2 trang; các cảnh báo/lỗi lint hiện ra khi chạy lint toàn file đều ở dòng không liên quan tới thay đổi (đã đối chiếu số dòng để xác nhận là pre-existing).
+
 ---
 
 ## 7. Bước tiếp theo đề xuất

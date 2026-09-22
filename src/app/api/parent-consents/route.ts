@@ -8,7 +8,9 @@ import { sendParentConsentEmail } from "@/lib/email";
 import { PARENT_CONSENT_CONTENT_VERSION, PARENT_CONSENT_EXPIRY_MS } from "@/lib/parentConsent";
 
 // POST /api/parent-consents — tạo (hoặc gửi lại) yêu cầu xác nhận phụ huynh
-// cho 1 enrollment cụ thể. Body: { enrollmentId, parentLinkId? }
+// cho 1 enrollment cụ thể. Body: { enrollmentId, parentLinkId? } hoặc
+// { userId, courseId, parentLinkId? } (tiện cho UI admin/hoc-sinh đã có sẵn
+// userId + courseId, không cần tra enrollmentId trước).
 //
 // Được phép gọi bởi: admin có MANAGE_STUDENTS, HOẶC chính phụ huynh có
 // ParentLink đã "verified" với học viên của enrollment đó.
@@ -16,13 +18,13 @@ export async function POST(req: Request) {
   const session = await requireSession();
   if (isNextResponse(session)) return session;
 
-  const { enrollmentId, parentLinkId } = await req.json();
-  if (!enrollmentId) {
-    return NextResponse.json({ error: "Thiếu enrollmentId" }, { status: 400 });
+  const { enrollmentId, userId, courseId, parentLinkId } = await req.json();
+  if (!enrollmentId && !(userId && courseId)) {
+    return NextResponse.json({ error: "Thiếu enrollmentId, hoặc userId + courseId" }, { status: 400 });
   }
 
   const enrollment = await prisma.enrollment.findUnique({
-    where:   { id: enrollmentId },
+    where:   enrollmentId ? { id: enrollmentId } : { userId_courseId: { userId, courseId } },
     include: {
       user:   { select: { id: true, name: true } },
       course: { select: { id: true, name: true, ownerId: true } },
@@ -62,7 +64,7 @@ export async function POST(req: Request) {
   const token     = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + PARENT_CONSENT_EXPIRY_MS);
 
-  const existing = await prisma.parentConsent.findUnique({ where: { enrollmentId } });
+  const existing = await prisma.parentConsent.findUnique({ where: { enrollmentId: enrollment.id } });
   if (existing?.status === "approved") {
     return NextResponse.json({ error: "Enrollment này đã được phụ huynh đồng ý trước đó" }, { status: 409 });
   }
@@ -74,7 +76,7 @@ export async function POST(req: Request) {
   // reset lại token trên đúng dòng cũ vì enrollmentId là unique 1-1).
   const consent = existing
     ? await prisma.parentConsent.update({
-        where: { enrollmentId },
+        where: { enrollmentId: enrollment.id },
         data:  {
           parentLinkId:   parentLink.id,
           token,
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
     : await prisma.parentConsent.create({
         data: {
           parentLinkId: parentLink.id,
-          enrollmentId,
+          enrollmentId: enrollment.id,
           token,
           contentVersion: PARENT_CONSENT_CONTENT_VERSION,
           expiresAt,
