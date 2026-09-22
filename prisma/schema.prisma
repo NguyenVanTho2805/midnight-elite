@@ -839,7 +839,7 @@ model ParentConsent {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new"
+  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded"
   title     String
   message   String
   link      String?

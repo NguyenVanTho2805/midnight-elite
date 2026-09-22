@@ -106,7 +106,7 @@ Ký hiệu: **T** = Tạo, **X** = Xem, **S** = Sửa, **XA** = Xoá/Vô hiệu 
 
 ---
 
-## 6. Đã triển khai vào `prisma/schema.prisma` (phần được duyệt làm ngay)
+## 5. Đã triển khai vào `prisma/schema.prisma` (phần được duyệt làm ngay)
 
 Sau khi đối chiếu, chỉ phần **ParentLink/ParentConsent + `dateOfBirth`** là đủ rõ ràng và không phụ thuộc D01/D02 (không đụng tới `Course`/`adminRole`) nên đã thêm thẳng vào schema, thay vì chỉ dừng ở đề xuất:
 
@@ -122,8 +122,32 @@ Sau khi đối chiếu, chỉ phần **ParentLink/ParentConsent + `dateOfBirth`*
 
 ---
 
-## 5. Bước tiếp theo đề xuất
+## 6. Đã triển khai luồng API xác nhận phụ huynh (G1.04, G2.08–G2.11)
 
-1. Gửi mục 2 và mục 3 cho SP/Owner duyệt — đây chính là input cho **G0.03 (ghi nhận và duyệt D01–D10)**.
-2. Sau khi D01, D02, D03, D04 được chốt, cập nhật lại bảng 3.2/3.3 thành spec migration chi tiết cho **G1.04–G1.07**.
-3. Song song, có thể bắt đầu **G0.05** (kiểm kê `Course` chưa gán chủ, `User` có `adminRole = "teacher"` hiện tại) để chuẩn bị dữ liệu chuyển đổi trước khi viết migration thật.
+Trên nền `ParentLink`/`ParentConsent` ở mục 5, đã viết đủ 1 lát cắt dọc (vertical slice) dùng được thật, theo đúng convention hiện có của repo (`requireSession`/`requirePermission` trong `auth-guard.ts`, `notify()`, style email trong `email.ts`, token `randomBytes(32).hex` giống `forgot-password`):
+
+| Route | Việc |
+|---|---|
+| `POST /api/parent-links` | Phụ huynh (user đã đăng nhập) gửi yêu cầu liên kết tới học viên bằng email; tạo `ParentLink` status `pending`, báo học viên qua `notify()`. |
+| `GET /api/parent-links` | Liệt kê liên kết của user hiện tại ở cả 2 chiều (là phụ huynh / là học viên). |
+| `PATCH /api/parent-links/[id]` | `action: "verify"` — **chỉ học viên** trong liên kết được xác nhận (đúng G2.10, không cấp quyền chỉ từ dữ liệu tự khai). `action: "revoke"` — học viên, phụ huynh, hoặc admin (`MANAGE_STUDENTS`). |
+| `POST /api/parent-consents` | Tạo/gửi lại yêu cầu đồng ý cho 1 `Enrollment`, gọi được bởi admin hoặc chính phụ huynh có `ParentLink` verified; sinh token 7 ngày, gửi email (`sendParentConsentEmail`) + notify. Có xử lý resend khi yêu cầu cũ đã `rejected`/`expired`, chặn tạo trùng khi đang `pending` hoặc đã `approved`. |
+| `GET /api/parent-consents/[token]` | Public (không cần đăng nhập, vì phụ huynh bấm từ email) — trả thông tin tối thiểu để hiển thị trang xác nhận; tự chuyển `pending` quá hạn thành `expired`. |
+| `POST /api/parent-consents/[token]` | Public, có rate-limit theo IP — ghi nhận `approved`/`rejected`, báo cả học viên và gia sư sở hữu lớp (`Course.ownerId`) qua `notify()`. |
+| `src/app/(guest)/xac-nhan-phu-huynh/page.tsx` | Trang xác nhận mở từ link trong email, theo đúng style/pattern của `xac-thuc-email` và `dat-lai-mat-khau` đã có sẵn. |
+
+**Cố ý chưa làm trong lượt này:**
+- Chưa tự động tạo `ParentConsent` khi tạo `Enrollment` theo ngưỡng tuổi (`dateOfBirth`) — vì `/api/admin/enrollments` hiện là nơi duy nhất tạo `Enrollment` (chưa có luồng tự đăng ký/self-serve, đúng như sheet ghi G2.03–G2.05 là "Chưa làm"). Việc tự động hoá theo ngưỡng tuổi nên làm cùng lúc với G2.06/G2.07 khi ngưỡng tuổi (D04) được chốt chính thức, để tránh phải sửa lại logic 2 lần.
+- Route `/api/parent-consents` hiện phải được gọi tường minh (ai đó chủ động bấm "gửi yêu cầu xác nhận") — chưa có UI cho việc này trong `admin/hoc-sinh` hay `student/ho-so`.
+
+**Giới hạn xác thực trong phiên này:** không chạy được `prisma generate` (egress tới `binaries.prisma.sh` bị chặn) nên **không có type-check thật** cho các route này qua `tsc`. Đã: (1) đối chiếu thủ công từng field/quan hệ với `schema.prisma`, (2) xác nhận convention route động `{ params }: { params: Promise<...> }` bằng cách đọc `src/app/api/courses/[id]/route.ts` thật thay vì đoán, (3) chạy `npx eslint` trên toàn bộ file mới — sạch, không lỗi mới (trang xác nhận dùng đúng pattern `fetch` trong `useEffect` như 2 trang tham chiếu `xac-thuc-email`/`dat-lai-mat-khau`, vốn đã vi phạm rule `react-hooks/set-state-in-effect` từ trước — không phải lỗi mới do lượt này gây ra). **Vẫn cần chạy `npm run db:generate` rồi `npx tsc --noEmit` thật trên môi trường có mạng đầy đủ trước khi merge.**
+
+---
+
+## 7. Bước tiếp theo đề xuất
+
+1. Chạy `npm run db:generate` + `npx tsc --noEmit` trên môi trường không bị chặn mạng để xác nhận schema và các route mới biên dịch sạch, rồi `db:push` lên môi trường staging.
+2. Thêm nút "Gửi yêu cầu xác nhận phụ huynh" vào `admin/hoc-sinh` (khi tạo enrollment cho học viên có `ParentLink` verified) và mục "Liên kết phụ huynh" vào `student/ho-so`.
+3. Gửi mục 2 và mục 3 cho SP/Owner duyệt — đây chính là input cho **G0.03 (ghi nhận và duyệt D01–D10)**.
+4. Sau khi D01, D02, D03, D04 được chốt, cập nhật lại bảng 3.2/3.3 thành spec migration chi tiết cho `Subscription`/`ClassInvite`/`TutorProfile`, và tích hợp tự động hoá theo ngưỡng tuổi (G2.06/G2.07) vào luồng tạo Enrollment.
+5. Song song, có thể bắt đầu **G0.05** (kiểm kê `Course` chưa gán chủ, `User` có `adminRole = "teacher"` hiện tại) để chuẩn bị dữ liệu chuyển đổi trước khi viết migration thật.
