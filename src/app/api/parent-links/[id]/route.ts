@@ -26,14 +26,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (session.userId !== link.studentId) {
       return NextResponse.json({ error: "Chỉ học viên trong liên kết mới được xác nhận" }, { status: 403 });
     }
-    if (link.status !== "pending") {
-      return NextResponse.json({ error: `Liên kết đang ở trạng thái ${link.status}, không thể xác nhận` }, { status: 409 });
-    }
 
-    const updated = await prisma.parentLink.update({
-      where: { id },
+    // updateMany với điều kiện status="pending" là bước ghi atomic — tránh 2
+    // request cùng lúc (double-click, 2 tab) đều pass qua check rồi cùng ghi
+    // notify + audit log trùng nhau.
+    const result = await prisma.parentLink.updateMany({
+      where: { id, status: "pending" },
       data:  { status: "verified", verifiedAt: new Date() },
     });
+    if (result.count === 0) {
+      return NextResponse.json({ error: `Liên kết đang ở trạng thái ${link.status}, không thể xác nhận` }, { status: 409 });
+    }
 
     await notify(link.parentId, {
       type:    "parent_link_verified",
@@ -45,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       parentId: link.parentId, studentId: link.studentId,
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json(await prisma.parentLink.findUniqueOrThrow({ where: { id } }));
   }
 
   // revoke
@@ -55,13 +58,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Bạn không có quyền thu hồi liên kết này" }, { status: 403 });
   }
 
-  const updated = await prisma.parentLink.update({
-    where: { id },
+  // Idempotent: chỉ ghi audit log khi thực sự đổi trạng thái (count > 0) —
+  // tránh double-click/retry ghi nhiều dòng "revoke" trùng cho cùng 1 hành vi.
+  const result = await prisma.parentLink.updateMany({
+    where: { id, status: { not: "revoked" } },
     data:  { status: "revoked" },
   });
-  await logAction(session.userId, "parent_link.revoke", "ParentLink", id, {
-    parentId: link.parentId, studentId: link.studentId, previousStatus: link.status,
-  });
+  if (result.count > 0) {
+    await logAction(session.userId, "parent_link.revoke", "ParentLink", id, {
+      parentId: link.parentId, studentId: link.studentId, previousStatus: link.status,
+    });
+  }
 
-  return NextResponse.json(updated);
+  return NextResponse.json(await prisma.parentLink.findUniqueOrThrow({ where: { id } }));
 }

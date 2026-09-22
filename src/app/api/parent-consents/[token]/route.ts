@@ -21,8 +21,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
 
   const expired = consent.status === "pending" && consent.expiresAt < new Date();
   if (expired) {
-    await prisma.parentConsent.update({ where: { token }, data: { status: "expired" } });
-    await logAction(null, "parent_consent.expired", "ParentConsent", consent.id, { enrollmentId: consent.enrollmentId });
+    // updateMany có điều kiện status="pending" là atomic — chỉ request nào
+    // thực sự chuyển được trạng thái (count > 0) mới ghi log, tránh 2 request
+    // cùng lúc (GET trùng GET, hoặc GET đua với POST) ghi trùng audit log.
+    const result = await prisma.parentConsent.updateMany({
+      where: { token, status: "pending", expiresAt: { lt: new Date() } },
+      data:  { status: "expired" },
+    });
+    if (result.count > 0) {
+      await logAction(null, "parent_consent.expired", "ParentConsent", consent.id, { enrollmentId: consent.enrollmentId });
+    }
   }
 
   return NextResponse.json({
@@ -55,19 +63,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   });
   if (!consent) return NextResponse.json({ error: "Link không hợp lệ" }, { status: 404 });
 
-  if (consent.status !== "pending") {
-    return NextResponse.json({ error: `Yêu cầu này đã ở trạng thái ${consent.status}, không thể xử lý lại` }, { status: 409 });
-  }
-  if (consent.expiresAt < new Date()) {
-    await prisma.parentConsent.update({ where: { token }, data: { status: "expired" } });
-    await logAction(null, "parent_consent.expired", "ParentConsent", consent.id, { enrollmentId: consent.enrollmentId });
+  const now = new Date();
+  if (consent.status === "pending" && consent.expiresAt < now) {
+    const expireResult = await prisma.parentConsent.updateMany({
+      where: { token, status: "pending", expiresAt: { lt: now } },
+      data:  { status: "expired" },
+    });
+    if (expireResult.count > 0) {
+      await logAction(null, "parent_consent.expired", "ParentConsent", consent.id, { enrollmentId: consent.enrollmentId });
+    }
     return NextResponse.json({ error: "Link đã hết hạn, vui lòng yêu cầu gửi lại" }, { status: 410 });
   }
 
-  const updated = await prisma.parentConsent.update({
-    where: { token },
-    data:  { status: decision, respondedAt: new Date() },
+  // updateMany với điều kiện status="pending" là bước ghi atomic thật sự —
+  // count === 0 nghĩa là request khác đã xử lý (approve/reject/expire) trước,
+  // tránh 2 request cùng lúc đều pass qua và ghi trùng notify + audit log.
+  const result = await prisma.parentConsent.updateMany({
+    where: { token, status: "pending", expiresAt: { gte: now } },
+    data:  { status: decision, respondedAt: now },
   });
+  if (result.count === 0) {
+    return NextResponse.json({ error: "Yêu cầu này đã được xử lý hoặc đã hết hạn, không thể xử lý lại" }, { status: 409 });
+  }
   await logAction(consent.parentLink.parentId, `parent_consent.${decision}`, "ParentConsent", consent.id, {
     enrollmentId: consent.enrollmentId, studentId: consent.parentLink.studentId, ip: getClientIp(req),
   });
@@ -95,5 +112,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     });
   }
 
-  return NextResponse.json({ status: updated.status });
+  return NextResponse.json({ status: decision });
 }

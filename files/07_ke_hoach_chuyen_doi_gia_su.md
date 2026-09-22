@@ -159,6 +159,13 @@ Mục 2 (ma trận quyền) ghi rõ G1.13 cần "ghi nhật ký đổi quyền, 
 
 **Chưa làm:** nối `AuditLog` vào Coin/điểm số (còn nhiều điểm chạm: `wallet.ts`, chấm bài, chấm thi) — để lại cho lượt riêng vì phạm vi rộng hơn nhiều so với 2 route vừa xây.
 
+### 6.3. Code review sau khi thêm AuditLog
+
+Chạy `/code-review` (mức `medium`) trên đúng commit thêm `AuditLog`, phát hiện 3 vấn đề — đã sửa 2, ghi nhận 1:
+
+- **Đã sửa — race condition ghi trùng audit log khi hết hạn/đồng ý đồng thời**: `parent-consents/[token]/route.ts` (cả GET lẫn POST) và `parent-links/[id]/route.ts` (`verify`/`revoke`) trước đó dùng kiểu "check trạng thái rồi mới `update()`" — không atomic, nên 2 request đua nhau (2 tab, double-click, hoặc GET đua với POST) đều có thể pass qua check và cùng ghi 1 audit log trùng nhau. Đã đổi toàn bộ sang `updateMany()` với điều kiện trạng thái hiện tại nằm ngay trong `where` — chỉ request nào thực sự đổi được trạng thái (`count > 0`) mới ghi log/gửi notify; request thua cuộc nhận lỗi 409/410 rõ ràng thay vì âm thầm ghi log sai.
+- **Ghi nhận, không sửa — `logAction()` nuốt lỗi khi ghi DB thất bại**: giống hệt `notify()` — nếu `prisma.auditLog.create()` lỗi (mất kết nối DB, v.v.), hành động chính vẫn thành công nhưng audit log bị mất, chỉ có `console.error` không giám sát. Đây là đánh đổi có chủ đích để khớp convention nuốt lỗi hiện có của repo (log là tính năng phụ trợ, không được chặn hành động chính) — repo hiện **không có** hạ tầng alerting/retry nào để nối vào, nên xây thêm cơ chế đó vượt phạm vi của tính năng ParentLink/ParentConsent. Nếu audit log cần đảm bảo tuyệt đối (bắt buộc cho compliance), cần một quyết định riêng (D-mới) về cơ chế retry/alerting áp dụng chung cho cả `notify()` lẫn `logAction()`, không chỉ riêng audit log.
+
 ---
 
 ## 7. Bước tiếp theo đề xuất
