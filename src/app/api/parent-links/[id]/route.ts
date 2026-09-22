@@ -3,6 +3,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { checkPermission, PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
+import { logAction } from "@/lib/auditLog";
 
 // PATCH /api/parent-links/[id] — body { action: "verify" | "revoke" }
 // verify: CHỈ học viên trong liên kết mới được xác nhận (không phải phụ huynh
@@ -40,6 +41,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       message: "Học viên đã xác nhận liên kết. Bạn có thể xem thông tin học tập của con.",
       link:    `/student/ho-so`,
     });
+    await logAction(session.userId, "parent_link.verify", "ParentLink", id, {
+      parentId: link.parentId, studentId: link.studentId,
+    });
 
     return NextResponse.json(updated);
   }
@@ -54,6 +58,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const updated = await prisma.parentLink.update({
     where: { id },
     data:  { status: "revoked" },
+  });
+  await logAction(session.userId, "parent_link.revoke", "ParentLink", id, {
+    parentId: link.parentId, studentId: link.studentId, previousStatus: link.status,
   });
 
   return NextResponse.json(updated);

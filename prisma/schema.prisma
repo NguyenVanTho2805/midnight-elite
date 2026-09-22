@@ -747,6 +747,7 @@ model User {
   threadReports       ThreadReport[]
   parentLinksAsParent  ParentLink[] @relation("ParentLinks")
   parentLinksAsStudent ParentLink[] @relation("StudentLinks")
+  auditLogs            AuditLog[]
 
   @@map("users")
 }
@@ -832,6 +833,27 @@ model ParentConsent {
 
   @@index([parentLinkId])
   @@map("parent_consents")
+}
+
+// ─── AUDIT LOG ────────────────────────────────────────────────────────────────
+// Nhật ký các hành động đổi quyền/đồng ý có ảnh hưởng tới người khác (G1.13,
+// P0). Bắt đầu từ ParentLink/ParentConsent (verify/revoke/approve/reject) —
+// đổi quyền, điểm, Coin sẽ nối dần vào các luồng liên quan sau, dùng chung
+// action namespace dạng "resource.event" (vd "parent_link.verify").
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String? // null nếu hệ thống tự thực hiện (vd hết hạn tự động)
+  action       String
+  resourceType String
+  resourceId   String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId])
+  @@index([actorId])
+  @@map("audit_logs")
 }
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────

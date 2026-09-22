@@ -149,6 +149,16 @@ Trên nền `ParentLink`/`ParentConsent` ở mục 5, đã viết đủ 1 lát c
 - Mở rộng `POST /api/parent-consents` để nhận thêm `{ userId, courseId }` (ngoài `enrollmentId`) — tra `Enrollment` qua khoá unique `userId_courseId` — vì UI admin có sẵn `userId`/`courseId`, không có `enrollmentId` lộ ra ngoài.
 - `npx eslint` sạch cho cả 2 trang; các cảnh báo/lỗi lint hiện ra khi chạy lint toàn file đều ở dòng không liên quan tới thay đổi (đã đối chiếu số dòng để xác nhận là pre-existing).
 
+### 6.2. Đã thêm `AuditLog` — hoàn thành G1.13 (P0) cho phần ParentLink/ParentConsent
+
+Mục 2 (ma trận quyền) ghi rõ G1.13 cần "ghi nhật ký đổi quyền, điểm, consent và Coin" nhưng chưa được triển khai ở các lượt trước — đã bổ sung:
+
+- Model `AuditLog` (`actorId?`, `action`, `resourceType`, `resourceId`, `metadata Json?`, `createdAt`) — `actorId` để `null` khi hệ thống tự thực hiện (vd tự chuyển `expired`).
+- Helper `src/lib/auditLog.ts` — `logAction()`, cùng pattern nuốt lỗi như `notify()` (log là tính năng phụ trợ, không được làm hỏng hành động chính).
+- Đã nối vào đúng 2 route vừa xây: `PATCH /api/parent-links/[id]` ghi `parent_link.verify`/`parent_link.revoke`; `POST /api/parent-consents/[token]` ghi `parent_consent.approved`/`parent_consent.rejected` (gán `actorId` = `parentLink.parentId` dù request là public/không đăng nhập, vì token chính là bằng chứng uỷ quyền) và `parent_consent.expired` (actor `null`, hệ thống tự chuyển trạng thái).
+
+**Chưa làm:** nối `AuditLog` vào Coin/điểm số (còn nhiều điểm chạm: `wallet.ts`, chấm bài, chấm thi) — để lại cho lượt riêng vì phạm vi rộng hơn nhiều so với 2 route vừa xây.
+
 ---
 
 ## 7. Bước tiếp theo đề xuất

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
+import { logAction } from "@/lib/auditLog";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 
 // GET /api/parent-consents/[token] — public, dùng cho trang xác nhận mở từ
@@ -21,6 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const expired = consent.status === "pending" && consent.expiresAt < new Date();
   if (expired) {
     await prisma.parentConsent.update({ where: { token }, data: { status: "expired" } });
+    await logAction(null, "parent_consent.expired", "ParentConsent", consent.id, { enrollmentId: consent.enrollmentId });
   }
 
   return NextResponse.json({
@@ -58,12 +60,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   }
   if (consent.expiresAt < new Date()) {
     await prisma.parentConsent.update({ where: { token }, data: { status: "expired" } });
+    await logAction(null, "parent_consent.expired", "ParentConsent", consent.id, { enrollmentId: consent.enrollmentId });
     return NextResponse.json({ error: "Link đã hết hạn, vui lòng yêu cầu gửi lại" }, { status: 410 });
   }
 
   const updated = await prisma.parentConsent.update({
     where: { token },
     data:  { status: decision, respondedAt: new Date() },
+  });
+  await logAction(consent.parentLink.parentId, `parent_consent.${decision}`, "ParentConsent", consent.id, {
+    enrollmentId: consent.enrollmentId, studentId: consent.parentLink.studentId, ip: getClientIp(req),
   });
 
   const studentName = consent.parentLink.student.name;
