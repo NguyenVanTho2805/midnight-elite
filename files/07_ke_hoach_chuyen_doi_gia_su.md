@@ -4,6 +4,8 @@
 > **Phạm vi tài liệu này:** hoàn thành 2 đầu việc G0 không phụ thuộc gì và có mức ưu tiên cao nhất — **G0.06 (Lập ma trận quyền bốn vai trò — P0)** và **G0.02 (Phân loại giữ/sửa/thêm/ngừng dùng — P1)**. Đây là input bắt buộc để chốt các quyết định D01–D10 và mở khoá G1.
 > **Trạng thái:** Bản nháp kỹ thuật — cần SP/Owner duyệt trước khi dùng làm căn cứ thiết kế schema chính thức (G1.04, G1.06).
 
+> **Đính chính sau khi rà `src/lib/permissions.ts`:** nhận định ban đầu ở mục 3.2 ("`adminRole` đang lẫn vai trò gia sư vào nhóm vận hành nền tảng") **không chính xác** — hệ thống đã có sẵn cơ chế scope quyền cho `adminRole === "teacher"` theo `Course.ownerId`/`Exam.ownerId` (giáo viên chỉ thấy/sửa nội dung do chính mình tạo; `admin_super`/`admin_content` mới thấy toàn bộ). Đây thực chất đã là mô hình "gia sư sở hữu lớp riêng" ở mức quyền — không cần tách bảng. Rủi ro #2 ở mục 4 vì vậy được **gỡ bỏ**. Phần còn thiếu thật sự chỉ là: xác thực phụ huynh (`ParentLink`/`ParentConsent`) và `dateOfBirth`. **Đã triển khai** 2 phần này trực tiếp vào `prisma/schema.prisma` — xem mục 6.
+
 ---
 
 ## 1. Bối cảnh — mô hình đang thay đổi như thế nào
@@ -93,16 +95,30 @@ Ký hiệu: **T** = Tạo, **X** = Xem, **S** = Sửa, **XA** = Xoá/Vô hiệu 
 | Hạng mục | Tình trạng |
 |---|---|
 | `User.parentPhone` / `User.parentName` (dạng text tự do) | **Không xoá ngay** — giữ tạm để tương thích dữ liệu cũ (D06), nhưng ngừng dùng làm nguồn xác thực; thay bằng `ParentLink` đã xác minh. Có kế hoạch dọn ở G6.17 (chỉ dọn sau khi dữ liệu được xác nhận di chuyển). |
-| Gộp vai trò `"teacher"` trong `adminRole` | Không xoá field, nhưng ngừng cấp vai trò này cho tài khoản mới — thay bằng vai trò gia sư độc lập theo mục 2 |
 
 ---
 
 ## 4. Khoảng trống rủi ro cần chốt sớm (đưa vào G0.03)
 
-1. **Không có khái niệm "Lớp" tách khỏi "Khoá học"** — cần D01/D02 xác nhận: dùng `Course` hiện có làm đơn vị lớp học, hay tạo bảng `Class` mới tham chiếu tới `Course` (khoá học = nội dung dùng chung, lớp = phiên bản do 1 gia sư dạy). Quyết định này ảnh hưởng trực tiếp tới cách viết migration G1.07.
-2. **`adminRole` đang lẫn vai trò gia sư vào nhóm vận hành nền tảng** — nếu không tách sớm, không thể áp ma trận quyền ở mục 2 mà không phá vỡ logic admin hiện tại.
-3. **Phụ huynh hiện là dữ liệu tự khai, không xác thực** — mọi tính năng dựa trên `parentPhone` hiện tại (nếu có) phải coi là **không đáng tin cậy** cho tới khi có `ParentLink` xác minh (đúng nguyên tắc G2.10: "không cấp quyền chỉ từ số điện thoại nhập").
-4. **Chính sách hoàn tiền nạp (R04/D10)** vẫn là nút chặn cứng trước khi bật thanh toán thật — không liên quan trực tiếp đến ma trận quyền nhưng cần nêu lại vì đã phát hiện `Wallet`/`CoinTransaction` sẵn sàng về mặt kỹ thuật, chỉ thiếu chính sách nghiệp vụ.
+1. **Không có khái niệm "Lớp" tách khỏi "Khoá học"** — cần D01/D02 xác nhận: dùng `Course` hiện có làm đơn vị lớp học (đã có `ownerId` scoped theo giáo viên, xem đính chính đầu tài liệu), hay tạo bảng `Class` mới tham chiếu tới `Course` (khoá học = nội dung dùng chung, lớp = phiên bản do 1 gia sư dạy). Quyết định này ảnh hưởng trực tiếp tới cách viết migration cho `Subscription` (G4.01).
+2. **Phụ huynh hiện là dữ liệu tự khai, không xác thực** — mọi tính năng dựa trên `parentPhone` cũ phải coi là **không đáng tin cậy** cho tới khi có `ParentLink` xác minh (đúng nguyên tắc G2.10: "không cấp quyền chỉ từ số điện thoại nhập"). Đã có model, còn thiếu API/UI xác nhận (xem mục 6).
+3. **Chính sách hoàn tiền nạp (R04/D10)** vẫn là nút chặn cứng trước khi bật thanh toán thật — không liên quan trực tiếp đến ma trận quyền nhưng cần nêu lại vì đã phát hiện `Wallet`/`CoinTransaction` sẵn sàng về mặt kỹ thuật, chỉ thiếu chính sách nghiệp vụ.
+
+---
+
+## 6. Đã triển khai vào `prisma/schema.prisma` (phần được duyệt làm ngay)
+
+Sau khi đối chiếu, chỉ phần **ParentLink/ParentConsent + `dateOfBirth`** là đủ rõ ràng và không phụ thuộc D01/D02 (không đụng tới `Course`/`adminRole`) nên đã thêm thẳng vào schema, thay vì chỉ dừng ở đề xuất:
+
+- `User.dateOfBirth` (nullable) — phục vụ tính tuổi tại backend cho ngưỡng xác nhận phụ huynh (D04).
+- `User.parentPhone`/`parentName` được chú thích rõ là dữ liệu cũ, không dùng để cấp quyền.
+- Model `ParentLink` — quan hệ phụ huynh–học viên, trạng thái `pending/verified/revoked`.
+- Model `ParentConsent` — bản ghi đồng ý gắn 1-1 với `Enrollment` (nullable, vì không phải enrollment nào cũng cần), token dùng 1 lần, có hạn, lưu `contentVersion` để đối chiếu khi tranh chấp.
+- `Enrollment` được nối quan hệ ngược `parentConsent` (không đổi cấu trúc cũ, chỉ thêm quan hệ).
+
+**Chưa làm trong lượt này** (do phụ thuộc D01/D02 chưa chốt, làm trước có rủi ro phải sửa lại): `Subscription` (gói theo lớp), `ClassInvite`, `TutorProfile`, mở rộng `Thread.courseId`, mở rộng `Wallet/CoinTransaction.sourceType`.
+
+**Giới hạn kỹ thuật khi thực hiện:** môi trường thực thi phiên này bị chặn egress tới `binaries.prisma.sh` (chính sách mạng của tổ chức), nên **không chạy được** `prisma generate`/`prisma db push`/`prisma validate` ở đây để xác nhận schema biên dịch được. Đã rà thủ công cú pháp và các quan hệ 2 chiều (`@relation` tên khớp nhau ở cả `User`, `ParentLink`, `ParentConsent`, `Enrollment`). **Bắt buộc chạy `npm run db:generate` (và `db:push` trên môi trường có `DATABASE_URL` thật) trước khi merge**, quy trình build hiện có (`npm run build`) đã tự làm việc này.
 
 ---
 

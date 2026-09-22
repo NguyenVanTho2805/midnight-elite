@@ -697,8 +697,9 @@ model User {
   email         String   @unique
   password      String
   phone         String?
-  parentPhone   String?
-  parentName    String?
+  dateOfBirth   DateTime? // dùng để tính tuổi tại backend cho ngưỡng xác nhận phụ huynh (D04) — không suy đoán từ input khác
+  parentPhone   String? // dữ liệu cũ, tự khai — KHÔNG dùng để cấp quyền; nguồn tin cậy là ParentLink đã verified
+  parentName    String? // dữ liệu cũ, tự khai — xem ghi chú parentPhone
   school        String?
   highSchool    String?
   city          String?
@@ -744,6 +745,8 @@ model User {
   answers             Answer[]
   answerReports       AnswerReport[]
   threadReports       ThreadReport[]
+  parentLinksAsParent  ParentLink[] @relation("ParentLinks")
+  parentLinksAsStudent ParentLink[] @relation("StudentLinks")
 
   @@map("users")
 }
@@ -779,8 +782,56 @@ model Enrollment {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  parentConsent ParentConsent?
+
   @@unique([userId, courseId])
   @@map("enrollments")
+}
+
+// ─── PARENT LINKS & CONSENT ───────────────────────────────────────────────────
+// Xác thực quan hệ phụ huynh–học viên (G1.04) và ghi nhận đồng ý khi học viên
+// dưới ngưỡng tuổi tham gia lớp (G2.07–G2.11, D04). User.parentPhone/parentName
+// là dữ liệu cũ tự khai, KHÔNG được dùng làm nguồn cấp quyền — chỉ ParentLink
+// có status "verified" mới được coi là quan hệ phụ huynh hợp lệ.
+// Xem files/07_ke_hoach_chuyen_doi_gia_su.md mục 3.3 để biết bối cảnh.
+
+model ParentLink {
+  id         String    @id @default(cuid())
+  parentId   String
+  studentId  String
+  status     String    @default("pending") // "pending" | "verified" | "revoked"
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  parent  User @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+
+  consents ParentConsent[]
+
+  @@unique([parentId, studentId])
+  @@index([studentId])
+  @@map("parent_links")
+}
+
+// 1 bản ghi đồng ý cho 1 lần enrollment cụ thể cần xác nhận (học viên dưới
+// ngưỡng tuổi). Token dùng 1 lần, có hạn — không được tái sử dụng sau khi đã
+// approved/rejected/expired (G2.08, G2.11).
+model ParentConsent {
+  id             String    @id @default(cuid())
+  parentLinkId   String
+  enrollmentId   String?   @unique
+  token          String    @unique
+  status         String    @default("pending") // "pending" | "approved" | "rejected" | "expired"
+  contentVersion String // phiên bản nội dung xác nhận đã hiển thị cho phụ huynh, để đối chiếu khi có tranh chấp
+  expiresAt      DateTime
+  respondedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  parentLink ParentLink  @relation(fields: [parentLinkId], references: [id], onDelete: Cascade)
+  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  @@index([parentLinkId])
+  @@map("parent_consents")
 }
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
