@@ -490,3 +490,54 @@
 3. **3 trang phức tạp nhất nên làm sau cùng, sau khi đã có component chuẩn**: `/admin/khoa-hoc/[id]` (2293 dòng), `/admin/thi-thu` (1965 dòng), `/admin/thi-thu/[id]` (1347 dòng), `/student/bai-giang/[lessonId]` (1281 dòng) — đây là 4 trang lõi nghiệp vụ, rủi ro cao nếu vẽ vội.
 4. **Xác nhận lại với bạn 2 việc trước khi vẽ**: (a) các trang có dữ liệu hard-code (`/diem-chuan`, `/mentor/[id]`, số liệu trang chủ) có chuyển sang quản trị được qua CMS không; (b) 3 route chỉ redirect (`/gio-hang`, `/gioi-thieu`, `/vinh-danh`) có nên bỏ khỏi sitemap Figma luôn không.
 5. Khi có link Figma, gắn vào tài liệu này (hoặc `files/07_...` mục 7) làm nguồn tham chiếu chung.
+
+---
+
+## 8. Rà soát trang không còn phù hợp với mô hình chuyển đổi (gia sư–lớp–phụ huynh)
+
+> Đối chiếu 59 trang ở mục 3–5 với mô hình mục tiêu trong `files/07_ke_hoach_chuyen_doi_gia_su.md` (đa gia sư sở hữu lớp riêng, phụ huynh xác minh, gói theo lớp trả Coin) và roadmap gốc trong Google Sheet TSIX (D01–D10, G0–G7). Xếp theo mức độ cần thay đổi — từ "phải bỏ/thay hẳn luồng" đến "giữ nguyên, chỉ đổi hình thức".
+
+### A. Mâu thuẫn trực tiếp với mô hình mới — nên bỏ luồng cũ, không chỉ vẽ lại giao diện
+
+| Trang/khối | Vấn đề |
+|---|---|
+| `/khoa-hoc-da-luu`, `/gio-hang`, modal checkout ("Nhắn Zalo tư vấn" / "Gọi hotline") | Toàn bộ là luồng **"liên hệ ngoài để chốt đơn"**, không có thanh toán online thật. Mâu thuẫn trực tiếp với D01 (gói theo lớp trả bằng Coin) và G4 (webhook, ví, gia hạn tự động) — mô hình mới cần mua/đăng ký ngay trong app, không qua Zalo/hotline. |
+| Nút "Mua khóa học" → `PopupBuyRequired` (ở `/khoa-hoc`, `/khoa-hoc/[slug]`) | Cùng gốc vấn đề — popup chỉ đưa số Zalo/hotline, không phải luồng mua/đăng ký lớp thật. Cần thay bằng nút đăng ký lớp + trừ Coin trực tiếp (G2, G4). |
+| `/admin/hoc-sinh` — khối "Kích hoạt / Thu hồi khoá học" (toggle tay từng học viên) | Đây là cách duy nhất hiện có để 1 học viên vào được 1 khóa — hoàn toàn do **admin bấm tay**. Mâu thuẫn với luồng tự đăng ký qua lời mời (`ClassInvite`, G2.03) mà sheet đặt ra — trong mô hình mới, gia sư/hệ thống phải là nơi cấp quyền, không phải admin trung tâm làm thay cho mọi gia sư. |
+
+### B. Đúng mục đích nhưng sai chủ thể/kiến trúc thông tin — cần thiết kế lại luồng, không chỉ đổi màu
+
+| Trang/khối | Vấn đề |
+|---|---|
+| `/giang-vien`, `/mentor/[id]` | Đang là **trang marketing tĩnh, dữ liệu hard-code** (`TEACHERS`, `MENTORS` viết cứng trong file). Mô hình mới cần đây là hồ sơ gia sư **thật, động, do chính gia sư tự cập nhật** (`TutorProfile`, G1.02) — khác hẳn về IA: từ "trang giới thiệu do content admin viết" thành "hồ sơ do gia sư sở hữu và quản lý". |
+| `/admin/khoa-hoc`, `/admin/khoa-hoc/[id]` (toàn bộ CMS khóa học, 2293 dòng) | Thiết kế theo góc nhìn **"1 đội content quản lý mọi khóa học"**. Mô hình đa gia sư cần thêm hẳn 1 portal riêng — **"Gia sư Dashboard"** (tạo/sửa lớp của chính mình, không lồng trong menu Admin) — tách bạch theo đúng ma trận quyền ở `files/07` mục 2 (Gia sư ≠ Admin nền tảng). Hiện tại "giáo viên" chỉ là 1 `adminRole` bị lọc theo `ownerId`, dùng chung y hệt giao diện Admin — cần tách hẳn không gian làm việc. |
+| `/cong-dong`, `/cong-dong/[id]` | Diễn đàn hiện là **toàn hệ thống** — mọi học viên thấy mọi bài, không phân biệt theo lớp/gia sư nào. Theo G5.01 ("Phạm vi lớp cho diễn đàn"), cộng đồng phải giới hạn theo lớp. Cần thêm bộ chọn "đang xem cộng đồng của lớp nào" hoặc tách hẳn thành cộng đồng-trong-lớp. |
+| `/admin/doanh-thu` | Tính doanh thu theo **"lượt kích hoạt khóa học"** (sự kiện admin bấm tay), không phải giao dịch Coin thật. Mô hình mới cần đổi hẳn sang sổ giao dịch Coin/gói theo lớp (G4), và nhiều khả năng phải tách doanh thu theo từng gia sư — vì nền tảng giờ có nhiều gia sư cùng thu nhập, không phải 1 trung tâm duy nhất. |
+| `/admin/quan-tri-vien` — luồng "Thêm Giáo viên" | Hiện là **admin tự tay tạo tài khoản giáo viên** cho người khác. Mô hình đa gia sư cần luồng ngược lại: **gia sư tự đăng ký → admin duyệt xác minh** (đúng field "trạng thái xác minh" ở G1.02) — khác hẳn thao tác "cấp phát" như hiện tại. |
+
+### C. Có dữ liệu/2 nguồn xung đột — dọn khi redesign, đã cảnh báo trong `files/07`
+
+| Trang/khối | Vấn đề |
+|---|---|
+| `/student/ho-so` — section "Thông tin phụ huynh" (form tự khai `parentPhone`/`parentName`) | Đang tồn tại **song song** với khối "Liên kết phụ huynh" (ParentLink đã xác minh) mới build. `files/07` mục 3.4 đã ghi rõ: field tự khai này **không được dùng làm nguồn cấp quyền**. Khi redesign nên gộp 2 khối lại hoặc bỏ hẳn section cũ, chỉ giữ 1 nguồn duy nhất là ParentLink đã verified — tránh học viên/phụ huynh bối rối vì có 2 nơi "khai báo phụ huynh" khác nhau. |
+| `/tra-cuu` | Đã kiểm tra trực tiếp `src/app/api/tra-cuu/route.ts`: tra cứu **khớp thẳng vào field `parentPhone` tự khai**, không qua xác minh (`OR: [{ phone }, { parentPhone }]`). Đây chính là kiểu "cấp thông tin chỉ từ SĐT nhập tay" mà nguyên tắc G2.10 đang muốn loại bỏ cho luồng cấp quyền — tuy `/tra-cuu` chỉ đọc (không cấp quyền truy cập gì), nhưng vẫn nên cân nhắc khi redesign: giữ như tiện ích tra cứu công khai độc lập, hay hợp nhất vào luồng ParentLink thật để tránh 2 khái niệm "phụ huynh" khác nhau trong cùng hệ thống. |
+
+### D. Gap — trang chưa tồn tại, không phải "sai" mà là "thiếu hẳn" cho mô hình mới
+
+Không nằm trong 59 trang ở mục 3–5 vì thực sự chưa được xây:
+
+1. **Gia sư Dashboard** — lớp của tôi / học viên của tôi / doanh thu của tôi / hồ sơ của tôi. Hiện gia sư chỉ dùng chung giao diện Admin bị lọc theo quyền sở hữu.
+2. **Trang mua/quản lý gói theo lớp** (Subscription, G4.01) — chưa có route nào, khớp với ghi chú "chưa code, chờ Figma" ở `files/07` mục 3.3/6.
+3. **Trang tạo & quản lý lời mời lớp** (ClassInvite, G2.03) — chưa có.
+4. **Trang duyệt hồ sơ gia sư mới đăng ký** (khác với "Thêm Giáo viên" hiện tại ở `/admin/quan-tri-vien`) — chưa có.
+
+### E. Không mâu thuẫn với chuyển đổi — chỉ cần redesign hình thức, giữ nguyên chức năng
+
+Toàn bộ hệ **Thi thử** (`/thi-thu`, `/admin/thi-thu*`, ngân hàng câu hỏi), **Bảng xếp hạng/Vinh danh**, **Auth** (đăng ký/đăng nhập/quên mật khẩu), **Tin tức**, **Coin wallet + kinh tế Hỏi-đáp trong cộng đồng** — các khối này độc lập với việc "ai sở hữu lớp", không cần đổi luồng, chỉ cần redesign giao diện theo design system mới. Riêng **Đăng ký** (`/dang-ky`) nên cân nhắc thêm bước "chọn vai trò: học viên hay gia sư" ngay từ đầu, vì hiện tại mặc định mọi tài khoản mới đều là `role: "student"`.
+
+### Tóm tắt cho việc lập sitemap Figma
+
+- **Bỏ khỏi sitemap mới**: `/gio-hang`, `/gioi-thieu`, `/vinh-danh` (đã là alias redirect), luồng checkout Zalo/Hotline trong `/khoa-hoc-da-luu`.
+- **Thiết kế lại từ đầu (không tái dùng luồng cũ)**: `/giang-vien`, `/mentor/[id]` → hồ sơ gia sư động; CMS khóa học → Gia sư Dashboard riêng; `/cong-dong` → cộng đồng theo lớp; `/admin/doanh-thu` → sổ Coin.
+- **Thêm mới hoàn toàn**: Gia sư Dashboard, mua gói theo lớp, tạo lời mời lớp, duyệt hồ sơ gia sư.
+- **Giữ nguyên chức năng, chỉ đổi giao diện**: Thi thử, Bảng xếp hạng/Vinh danh, Auth, Tin tức, Coin/Hỏi-đáp.
