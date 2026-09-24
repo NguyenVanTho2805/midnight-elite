@@ -168,10 +168,30 @@ Chạy `/code-review` (mức `medium`) trên đúng commit thêm `AuditLog`, ph�
 
 ---
 
-## 7. Bước tiếp theo đề xuất
+## 7. Redesign UI/UX toàn bộ trên Figma — đầu việc mới (G-UX)
+
+Chủ dự án quyết định redesign lại toàn bộ UI/UX của hệ thống, thiết kế trên Figma trước khi code frontend. Đầu việc này không có mã trong sheet gốc (TSIX Roadmap chỉ có G0–G7 phần chuyển đổi nghiệp vụ) — ghi nhận riêng tại đây làm nguồn theo dõi cho tới khi được thêm vào sheet chính thức.
+
+### 7.1. Quan hệ với phần backend đã làm (mục 5–6)
+
+- **Không xung đột ở tầng API**: `POST/GET /api/parent-links`, `POST /api/parent-consents`, `GET/POST /api/parent-consents/[token]` chỉ trả JSON (trạng thái, tên, email...) — không quyết định giao diện. Redesign Figma đổi hoàn toàn màu sắc/bố cục/component vẫn dùng nguyên các route này, không cần sửa backend.
+- **UI đã tự chèn tạm sẽ bị thay thế**: trang `src/app/(guest)/xac-nhan-phu-huynh/page.tsx`, khối "Liên kết phụ huynh" trong `student/ho-so`, nút "Xác nhận PH" trong `admin/hoc-sinh` — code cho chạy được ngay bằng style cũ, chưa bao giờ là bản thiết kế cuối. Khi có Figma mới, rebuild lại phần trình bày, giữ nguyên lời gọi API.
+- **Đảo thứ tự cho phần chưa code**: `Subscription` (gói theo lớp), `ClassInvite` (mời lớp), `TutorProfile` (hồ sơ gia sư) — thay vì tôi tự đoán schema trước, nên **để Figma quyết định trước cần hiển thị field gì** (trang "gói học" cần hiện gì, thẻ "gia sư" cần thông tin gì), rồi chốt schema/API theo đúng cái thiết kế cần. Tránh việc đoán sai field rồi phải sửa lại backend.
+- **State machine đã có sẵn, nên thiết kế bám theo khi làm Figma cho đúng luồng thật**: `ParentLink.status`: `pending → verified / revoked`; `ParentConsent.status`: `pending → approved / rejected / expired`. Figma nên có đủ trạng thái này trong luồng màn hình, không chỉ vẽ trạng thái "happy path".
+
+### 7.2. Đề xuất phối hợp
+
+1. Redesign trước tiên các màn hình đã có route/API thật (login/register đã có, `student/ho-so`, `admin/hoc-sinh`, `xac-nhan-phu-huynh`) — rebuild giao diện, giữ nguyên API.
+2. Với 3 tính năng chưa code (Subscription/ClassInvite/TutorProfile), Figma nên đi trước — thiết kế xong gửi lại để đối chiếu schema mục 3.3, tránh code trước đoán sai.
+3. Khi có Figma, nên gắn vào tài liệu này (link Figma, ảnh chụp) làm nguồn tham chiếu chung, tương tự cách sheet TSIX đang là nguồn cho phần nghiệp vụ.
+
+---
+
+## 8. Bước tiếp theo đề xuất
 
 1. Chạy `npm run db:generate` + `npx tsc --noEmit` trên môi trường không bị chặn mạng để xác nhận schema và các route mới biên dịch sạch, rồi `db:push` lên môi trường staging.
 2. Thêm nút "Gửi yêu cầu xác nhận phụ huynh" vào `admin/hoc-sinh` (khi tạo enrollment cho học viên có `ParentLink` verified) và mục "Liên kết phụ huynh" vào `student/ho-so`.
 3. Gửi mục 2 và mục 3 cho SP/Owner duyệt — đây chính là input cho **G0.03 (ghi nhận và duyệt D01–D10)**.
 4. Sau khi D01, D02, D03, D04 được chốt, cập nhật lại bảng 3.2/3.3 thành spec migration chi tiết cho `Subscription`/`ClassInvite`/`TutorProfile`, và tích hợp tự động hoá theo ngưỡng tuổi (G2.06/G2.07) vào luồng tạo Enrollment.
 5. Song song, có thể bắt đầu **G0.05** (kiểm kê `Course` chưa gán chủ, `User` có `adminRole = "teacher"` hiện tại) để chuẩn bị dữ liệu chuyển đổi trước khi viết migration thật.
+6. **Mới:** phối hợp với redesign Figma (mục 7) — ưu tiên gửi Figma cho 3 tính năng chưa code trước khi tôi viết schema, để tránh sửa lại.
