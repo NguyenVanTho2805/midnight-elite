@@ -6,6 +6,17 @@
 
 ---
 
+## 0. Đọc `quyet-dinh-va-doi-chieu.md` trước file này
+
+Bản 26/09 đó viết sau khi đọc `prisma/schema.prisma` thật. Nó sửa **ba chỗ file
+này nói sai**: `Enrollment` không có cột `status`; không tồn tại model
+`ParentConsent`; Coin đang chạy là Knowledge Bounty cho Hỏi Đáp, không phải để
+mua gói lớp.
+
+Nó cũng ghi **4 quyết định anh Thanh đã chốt ngày 26/09**. Trong đó có bỏ Coin
+khỏi phạm vi — nên mục "Ai trả Coin" ở cuối file này **không còn là câu hỏi mở**,
+và 52 việc từng bị chặn nay đã thông hết.
+
 ## 1. Sản phẩm là gì
 
 KiN là **hạ tầng cho người dạy** — sinh viên gia sư, giáo viên tự do, trung tâm
