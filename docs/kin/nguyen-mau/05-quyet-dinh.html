@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mười hai quyết định đang chặn</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+
+<style>
+:root{
+  color-scheme: light;
+  --pg:#EDF0F4; --pg-2:#FFFFFF; --pg-3:#F6F8FA;
+  --line:#D6DCE4; --line-2:#E8ECF1;
+  --ink:#141C27; --ink-2:#3B4757; --mute:#65738A;
+  --navy:#1E3A8A; --blue:#2563EB; --tint:#EFF4FF;
+  --ok:#0B6B4F; --ok-bg:#ECFDF5; --ok-line:#059669;
+  --warn:#8A5A00; --warn-bg:#FEF7E7; --warn-line:#D97706;
+  --bad:#A8321F; --bad-bg:#FEF2F2; --bad-line:#DC2626;
+  --f-h:"Be Vietnam Pro",system-ui,sans-serif;
+  --f-b:"Inter",system-ui,sans-serif;
+  --f-m:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme: dark;
+  --pg:#080B10; --pg-2:#111721; --pg-3:#0C121A;
+  --line:#242D3A; --line-2:#1A222D;
+  --ink:#E9EEF5; --ink-2:#BFC9D6; --mute:#8B98AA;
+  --navy:#7FB0FF; --blue:#60A5FA; --tint:#101A2C;
+  --ok:#34D399; --ok-bg:#0C2A22; --ok-line:#34D399;
+  --warn:#FBBF24; --warn-bg:#2A1F0B; --warn-line:#FBBF24;
+  --bad:#F87171; --bad-bg:#2A1113; --bad-line:#F87171;
+}}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --pg:#080B10; --pg-2:#111721; --pg-3:#0C121A;
+  --line:#242D3A; --line-2:#1A222D;
+  --ink:#E9EEF5; --ink-2:#BFC9D6; --mute:#8B98AA;
+  --navy:#7FB0FF; --blue:#60A5FA; --tint:#101A2C;
+  --ok:#34D399; --ok-bg:#0C2A22; --ok-line:#34D399;
+  --warn:#FBBF24; --warn-bg:#2A1F0B; --warn-line:#FBBF24;
+  --bad:#F87171; --bad-bg:#2A1113; --bad-line:#F87171;
+}
+*{box-sizing:border-box}
+body{ margin:0; background:var(--pg); color:var(--ink); font:16px/1.65 var(--f-b); -webkit-font-smoothing:antialiased }
+.wrap{ max-width:880px; margin:0 auto; padding-inline:16px; padding-block:0 80px }
+.bar{ position:sticky; top:env(safe-area-inset-top,0px); z-index:30;
+  background:color-mix(in srgb, var(--pg) 90%, transparent); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line); margin-inline:-16px; padding:10px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+.bar .mk{ display:flex; align-items:center; gap:8px; font:600 15px var(--f-h) }
+.bar .sp{ flex:1 }
+.seg{ display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; background:var(--pg-2) }
+.seg button{ appearance:none; border:0; background:transparent; cursor:pointer; font:500 13px var(--f-b); color:var(--mute); padding:0 12px; min-height:36px; border-left:1px solid var(--line) }
+.seg button:first-child{ border-left:0 }
+.seg button[aria-pressed="true"]{ background:var(--navy); color:var(--pg-2) }
+:root[data-theme="dark"] .seg button[aria-pressed="true"]{ color:#0B0E14 }
+.seg button:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px }
+
+header.top{ padding-block:48px 8px }
+header.top .eyebrow{ font:600 12px var(--f-b); letter-spacing:.1em; text-transform:uppercase; color:var(--mute); margin-bottom:12px }
+header.top h1{ font:600 clamp(30px,5vw,44px)/1.12 var(--f-h); letter-spacing:-.028em; margin:0 0 16px; text-wrap:balance; max-width:20ch }
+header.top p{ margin:0 0 14px; color:var(--ink-2); max-width:62ch }
+header.top p.sm{ font-size:14px; color:var(--mute) }
+code.k{ font:400 .88em var(--f-m); background:var(--pg-2); border:1px solid var(--line); border-radius:5px; padding:1px 5px; white-space:nowrap }
+
+h2.sec{ font:600 12px var(--f-b); letter-spacing:.1em; text-transform:uppercase; color:var(--mute); margin:56px 0 8px; padding-bottom:8px; border-bottom:1px solid var(--line) }
+p.lede{ font:400 19px/1.55 var(--f-b); color:var(--ink); margin:0 0 26px; max-width:60ch }
+
+/* cảnh báo */
+.flag{ background:var(--pg-2); border:1px solid var(--line); border-left:4px solid var(--bad-line); border-radius:0 12px 12px 0; padding:18px 22px; margin:0 0 18px }
+.flag.w{ border-left-color:var(--warn-line) }
+.flag .h{ font:600 16px var(--f-h); margin:0 0 8px; color:var(--ink) }
+.flag p{ margin:0 0 10px; font-size:14.5px; color:var(--ink-2) }
+.flag p:last-child{ margin-bottom:0 }
+.flag .tagline{ display:inline-block; font:600 11px var(--f-b); letter-spacing:.07em; text-transform:uppercase; color:var(--bad); margin-bottom:8px }
+.flag.w .tagline{ color:var(--warn) }
+
+/* bảng tóm tắt */
+.tw{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--pg-2); margin-bottom:8px }
+table.sum{ width:100%; border-collapse:collapse; font-size:14px }
+table.sum th{ text-align:left; font:600 11.5px var(--f-b); letter-spacing:.06em; text-transform:uppercase; color:var(--mute); padding:12px 14px; border-bottom:1px solid var(--line); white-space:nowrap }
+table.sum td{ padding:11px 14px; border-bottom:1px solid var(--line-2); vertical-align:top; color:var(--ink-2) }
+table.sum tr:last-child td{ border-bottom:0 }
+table.sum td.id{ font:500 13px var(--f-m); color:var(--ink); white-space:nowrap }
+table.sum td.rec{ font-weight:500; color:var(--ink) }
+table.sum a{ color:var(--blue); text-decoration:none }
+table.sum a:hover{ text-decoration:underline }
+
+/* thẻ quyết định */
+.d{ background:var(--pg-2); border:1px solid var(--line); border-radius:14px; padding:22px 24px; margin-bottom:18px; scroll-margin-top:70px }
+.d > .hd{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:4px }
+.d .code{ font:600 13px var(--f-m); color:var(--navy); background:var(--tint); border-radius:6px; padding:2px 8px }
+.d h3{ font:600 20px/1.35 var(--f-h); margin:0; letter-spacing:-.015em; flex:1 1 auto; min-width:0 }
+.d .blocks{ font-size:12.5px; color:var(--mute); margin:0 0 16px }
+.d .blocks b{ color:var(--ink-2); font-weight:500 }
+.opts{ display:grid; gap:8px; margin-bottom:16px }
+.opt{ display:flex; gap:11px; align-items:flex-start; padding:10px 13px; border:1px solid var(--line); border-radius:10px; font-size:14px; color:var(--ink-2) }
+.opt .mk{ font:600 11px var(--f-b); letter-spacing:.06em; padding:2px 7px; border-radius:999px; border:1px solid var(--line); color:var(--mute); flex:none; margin-top:1px }
+.opt.pick{ background:var(--ok-bg); border-color:var(--ok-line) }
+.opt.pick .mk{ background:var(--ok-line); border-color:var(--ok-line); color:#fff }
+:root[data-theme="dark"] .opt.pick .mk{ color:#0B0E14 }
+.why{ font-size:14.5px; color:var(--ink-2); margin:0 0 14px }
+.why b{ color:var(--ink) }
+.why + .why{ margin-top:-6px }
+.risk{ display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)) }
+.risk > div{ background:var(--pg-3); border:1px solid var(--line-2); border-radius:10px; padding:11px 13px }
+.risk .lb{ font:600 10.5px var(--f-b); letter-spacing:.08em; text-transform:uppercase; color:var(--mute); margin-bottom:5px }
+.risk p{ margin:0; font-size:13.5px; color:var(--ink-2) }
+.done{ background:var(--ok-bg); border-color:var(--ok-line) }
+
+footer.end{ margin-top:56px; padding-top:24px; border-top:1px solid var(--line); color:var(--mute); font-size:14px; max-width:66ch }
+footer.end p{ margin:0 0 10px }
+@media (prefers-reduced-motion: reduce){ *{ transition:none!important; animation:none!important } }
+</style>
+
+<div class="wrap">
+
+<div class="bar">
+  <span class="mk">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="1.2" y="1" width="4.5" height="22" rx="1.5" fill="#1E3A8A"/><path d="M6.1 12.1 Q11.6 4.3 18.9 1.5 Q14.5 8.7 6.1 12.1 Z" fill="#2563EB"/><path d="M6.1 12.3 Q13.1 9.3 21.5 9.1 Q14.1 14.9 6.1 12.3 Z" fill="#38BDF8"/><path d="M6.1 12.5 Q11.5 16.6 15.4 23 Q8.1 19.9 6.1 12.5 Z" fill="#F59E0B"/></svg>
+    KiN
+  </span>
+  <span class="sp"></span>
+  <span class="seg" role="group" aria-label="Nền">
+    <button type="button" id="t-light" aria-pressed="true">Nền sáng</button>
+    <button type="button" id="t-dark" aria-pressed="false">Nền tối</button>
+  </span>
+</div>
+
+<header class="top">
+  <div class="eyebrow">Bản chuẩn bị quyết định · 24/09/2026</div>
+  <h1>Mười hai quyết định đang chặn hơn nửa backlog</h1>
+  <p>Backlog có 164 việc, đã xong 7. Mười hai dòng <code class="k">BE-020</code>→<code class="k">BE-032</code> đều ghi “Chờ quyết định”, và hơn 40 việc khác ghi thẳng <i>cần D01</i>, <i>cần D02</i>, <i>[CHỜ D01/D02]</i> trong mô tả. Cộng sự không bị chặn vì khó, mà vì đang đợi.</p>
+  <p>Mỗi quyết định dưới đây có: câu hỏi, các phương án, phương án tôi đề xuất kèm lý do, cái gì vỡ nếu chọn sai, và điều kiện để sau này đổi ý. Đọc và gật hoặc lắc.</p>
+  <p class="sm">Hai cảnh báo ở đầu không phải quyết định — là chỗ tài liệu đang tự mâu thuẫn. Nên đọc trước.</p>
+</header>
+
+<h2 class="sec">Đọc trước · Hai chỗ tài liệu tự mâu thuẫn</h2>
+
+<div class="flag">
+  <span class="tagline">Nghiêm trọng · chạm tới pháp lý</span>
+  <p class="h">Ai trả Coin? Sheet và định hướng đang nói ngược nhau</p>
+  <p>Tài liệu định hướng 23/9 chốt: <i>“Thu phí ở đầu gia sư qua Coin nạp trước (dưới 20k/tháng), <b>KiN không giữ học phí giữa gia sư và phụ huynh</b>.”</i></p>
+  <p>Nhưng backlog thì ngược: <code class="k">BE-059</code> <i>“POST /api/subscriptions/[id]/purchase — spendCoins trừ đúng priceCoin”</i>, <code class="k">BE-060</code> <i>“học viên xem gói đã mua”</i>. Tức là <b>học viên nạp tiền vào KiN, KiN giữ, rồi chuyển cho gia sư.</b></p>
+  <p>Đó chính xác là vị trí trung gian thanh toán mà định hướng nói phải tránh, và cũng là câu đang treo chờ luật sư: <i>“Coin nạp trước có bị coi là trung gian thanh toán không”</i>. Chênh lệch này không phải chi tiết kỹ thuật — nó đổi cả tư cách pháp lý của sản phẩm.</p>
+  <p><b>Phải chốt trước D01, D05, D10.</b> Ba quyết định đó đều giả định học viên trả Coin. Nếu mô hình đúng là gia sư trả phí nền tảng còn học phí đi thẳng qua VietQR, thì toàn bộ mục 1.4.5 Subscription (8 việc) phải viết lại chứ không phải điều chỉnh.</p>
+</div>
+
+<div class="flag w">
+  <span class="tagline">Cảnh báo · số liệu sẽ trông như sập</span>
+  <p class="h">Báo cáo doanh thu sẽ tụt về gần 0 vào ngày chuyển đổi</p>
+  <p><code class="k">BE-039</code> đặt <code class="k">sourceType = null</code> cho mọi giao dịch cũ, cố ý không suy đoán ngược. <code class="k">BE-074</code> lại cho báo cáo mới đọc <code class="k">where sourceType = "class_subscription"</code>. Ghép lại: <b>toàn bộ doanh thu lịch sử biến mất khỏi báo cáo.</b></p>
+  <p><code class="k">BE-077</code> có đỡ được — giữ song song cách tính cũ — nhưng nó là <b>P1</b> trong khi <code class="k">BE-039</code> là <b>P0</b>. Làm đúng thứ tự ưu tiên thì vỡ trước khi có cái đỡ. Đổi BE-077 thành P0 và làm cùng lượt với BE-039.</p>
+</div>
+
+<h2 class="sec">Tóm tắt · bấm vào mã để đọc đầy đủ</h2>
+<div class="tw"><table class="sum">
+  <thead><tr><th>Mã</th><th>Câu hỏi</th><th>Đề xuất</th></tr></thead>
+  <tbody>
+    <tr><td class="id"><a href="#d01">D01</a></td><td>Gói theo lớp: một giá hay nhiều gói?</td><td class="rec">Hai loại là đủ — nhưng chốt cảnh báo Coin ở trên trước</td></tr>
+    <tr><td class="id"><a href="#d02">D02</a></td><td>Một gia sư một lớp, hay đồng dạy?</td><td class="rec">Một. Hoãn đồng dạy</td></tr>
+    <tr><td class="id"><a href="#d03">D03</a></td><td>Một tài khoản nhiều vai trò?</td><td class="rec">Có, nhưng cấm cùng lúc là gia sư và học viên của <i>cùng một lớp</i></td></tr>
+    <tr><td class="id"><a href="#d04">D04</a></td><td>Ngưỡng tuổi cần phụ huynh xác nhận</td><td class="rec">16 — và còn một vế nữa chưa ai để ý</td></tr>
+    <tr><td class="id"><a href="#d05">D05</a></td><td>Trừ Coin thưởng hay Coin nạp trước?</td><td class="rec">Trừ Coin thưởng trước. Ví phải tách hai số dư</td></tr>
+    <tr><td class="id"><a href="#d06">D06</a></td><td>Dữ liệu phụ huynh cũ: xoá hay giữ?</td><td class="rec">Khoá ghi ngay, đọc 90 ngày, rồi xoá. Tuyệt đối không tự chuyển thành link đã xác minh</td></tr>
+    <tr><td class="id"><a href="#d07">D07</a></td><td>Assignment có cần courseId riêng?</td><td class="rec">Không. Đừng tạo nguồn sự thật thứ hai</td></tr>
+    <tr><td class="id"><a href="#d08">D08</a></td><td>Đánh giá theo lớp hay theo gia sư?</td><td class="rec">Thu theo lớp, hiện theo gia sư. Không phải chọn một</td></tr>
+    <tr><td class="id"><a href="#d09">D09</a></td><td>Hai luồng AI</td><td class="rec">Đã chốt — không cần làm gì</td></tr>
+    <tr><td class="id"><a href="#d10">D10</a></td><td>Gia hạn gói thủ công hay tự động?</td><td class="rec">Thủ công, kèm nhắc trước 3 ngày</td></tr>
+    <tr><td class="id"><a href="#d11">D11</a></td><td>ExamGuestAccess giữ hay bỏ?</td><td class="rec">Giữ, và nâng thành cổng thu hút</td></tr>
+    <tr><td class="id"><a href="#d12">D12</a></td><td>SalesLead / Sales Bot?</td><td class="rec">Câu hỏi sai. Việc gấp là cắt quyền ghi thẳng vào DB</td></tr>
+    <tr><td class="id"><a href="#d13">D13</a></td><td>admin/students POST tách courseId ngay?</td><td class="rec">Ngay, và nâng lên P0 — đây là lỗ bảo mật chứ không phải dọn dẹp</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="sec">Từng quyết định</h2>
+
+<!-- D01 -->
+<div class="d" id="d01">
+  <div class="hd"><span class="code">D01</span><h3>Một lớp có nhiều gói, hay một giá cố định?</h3></div>
+  <p class="blocks"><b>Chặn:</b> toàn bộ mục 1.4.5 Subscription — BE-055 → BE-062, 8 việc · <b>Liên đới:</b> BE-079 CartItem</p>
+  <div class="opts">
+    <div class="opt"><span class="mk">A</span><span>Một giá cố định cho cả lớp.</span></div>
+    <div class="opt pick"><span class="mk">CHỌN</span><span>Đúng <b>hai</b> loại gói: theo tháng và theo khoá. Không mở tự do.</span></div>
+    <div class="opt"><span class="mk">C</span><span>Gia sư tự tạo bao nhiêu gói tuỳ thích.</span></div>
+  </div>
+  <p class="why">Một giá thì không phục vụ được hai kiểu học có thật: học đều hàng tháng, và học dồn một khoá luyện thi. Nhưng cho tạo tự do thì học viên phải so sánh sáu gói của sáu gia sư, và đó là chỗ người ta bỏ đi. <b>Hai loại cố định giữ được cả tính linh hoạt lẫn khả năng so sánh.</b></p>
+  <p class="why">Mô hình dữ liệu ở <code class="k">BE-055</code> đã đủ cho cả ba phương án — chỉ cần thêm ràng buộc ở tầng API, không phải sửa schema. Chọn B không làm chậm gì.</p>
+  <div class="risk">
+    <div><div class="lb">Nếu chọn sai</div><p>Chọn C rồi rút về B sau là phải xử lý các gói đang bán dở — không xoá được vì có người đã mua.</p></div>
+    <div><div class="lb">Đổi ý khi nào</div><p>Khi có gia sư yêu cầu loại gói thứ ba với lý do cụ thể, không phải vì “cho linh hoạt”.</p></div>
+    <div><div class="lb">Phải chốt trước</div><p>Cảnh báo Coin ở đầu trang. Nếu học viên không trả Coin thì cả D01 thành vô nghĩa.</p></div>
+  </div>
+</div>
+
+<!-- D02 -->
+<div class="d" id="d02">
+  <div class="hd"><span class="code">D02</span><h3>Một gia sư sở hữu một lớp, hay nhiều gia sư đồng dạy?</h3></div>
+  <p class="blocks"><b>Chặn:</b> 1.4.2 Course/Lớp, 1.4.4 TutorProfile — BE-040 → BE-054, 15 việc</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span>Một gia sư một lớp. Hoãn đồng dạy sang sau.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Nhiều gia sư đồng dạy ngay từ đầu.</span></div>
+  </div>
+  <p class="why">Toàn bộ tầng phân quyền hiện tại xoay quanh một chủ sở hữu duy nhất: <code class="k">ownsResource(auth, course.ownerId)</code>. Cho đồng dạy nghĩa là mọi lệnh kiểm tra quyền trong codebase biến thành một phép join sang bảng thành viên — sửa ở hàng chục chỗ, và mỗi chỗ là một cơ hội để lọt quyền. Bốn lỗ bảo mật đang phải vá ở mục 1.1 chính là loại lỗi đó.</p>
+  <p class="why">Khảo sát của chính anh: <b>79% gia sư dạy 1–3 học sinh</b>, một mình. Đồng dạy chỉ cần khi có trung tâm — mà trung tâm chưa phải người dùng của đợt này.</p>
+  <div class="risk">
+    <div><div class="lb">Giá phải trả khi hoãn</div><p>Thêm sau là thêm một bảng <code class="k">CourseTeacher</code> và đổi kiểm tra chủ sở hữu thành kiểm tra thành viên. Gọn, làm được.</p></div>
+    <div><div class="lb">Giá phải trả khi làm ngay</div><p>Mọi truy vấn phân quyền phức tạp hơn ngay hôm nay, phục vụ một nhóm người dùng chưa tồn tại.</p></div>
+    <div><div class="lb">Đổi ý khi nào</div><p>Khi có trung tâm từ ba giáo viên trở lên dùng thật và đòi chia lớp.</p></div>
+  </div>
+</div>
+
+<!-- D03 -->
+<div class="d" id="d03">
+  <div class="hd"><span class="code">D03</span><h3>Một tài khoản có được mang nhiều vai trò không?</h3></div>
+  <p class="blocks"><b>Chặn:</b> SessionPayload, middleware phân quyền · <b>Liên đới:</b> toàn bộ khu vực 2.5 Gia sư Dashboard</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span>Có. Vai trò là <b>tập thuộc tính của tài khoản</b>, không phải một giá trị duy nhất. Kèm một luật cứng: không ai vừa là gia sư vừa là học viên của <b>cùng một lớp</b>.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Không. Một tài khoản một vai. Ai cần hai vai thì dùng hai email.</span></div>
+  </div>
+  <p class="why">Trường hợp có thật ngay trong nhà anh: <b>học sinh HSA thi đỗ rồi quay lại làm gia sư</b>. Bắt họ tạo tài khoản mới là mất sạch lịch sử học, và cái huy hiệu “từng là học viên HSA” — vốn là bằng chứng bán hàng mạnh nhất — biến mất.</p>
+  <p class="why">Trường hợp thứ hai: gia sư có con đang học ở lớp khác. Với phương án B, người đó phải giữ hai mật khẩu và liên kết phụ huynh sẽ trỏ nhầm tài khoản.</p>
+  <p class="why">Luật cứng đi kèm là phần quan trọng nhất: <code class="k">SessionPayload.roles</code> thành mảng, nhưng khi kiểm tra quyền trong một lớp thì <b>chỉ một vai có hiệu lực</b>. Không có luật này thì gia sư tự ghi danh vào lớp mình, tự chấm bài mình, tự đánh giá mình.</p>
+  <div class="risk">
+    <div><div class="lb">Nếu chọn sai</div><p>Chọn B rồi đổi sau là phải gộp tài khoản — việc khó nhất trong mọi hệ thống có dữ liệu người dùng.</p></div>
+    <div><div class="lb">Chi phí</div><p>Middleware phải đọc mảng thay vì một chuỗi. Một lần sửa, không lan rộng nếu làm sớm.</p></div>
+    <div><div class="lb">Đã có bản mẫu</div><p>Nút đổi vai trong bản dựng ba khung hôm qua chính là giao diện của quyết định này.</p></div>
+  </div>
+</div>
+
+<!-- D04 -->
+<div class="d" id="d04">
+  <div class="hd"><span class="code">D04</span><h3>Ngưỡng tuổi nào cần phụ huynh xác nhận?</h3></div>
+  <p class="blocks"><b>Chặn:</b> 1.4.3 Enrollment.status tự động, logic dateOfBirth — BE-044 → BE-047 · <b>Liên đới:</b> FE-127, toàn bộ luồng học thử</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span><b>16</b> — giữ đúng giả định đang có.</span></div>
+    <div class="opt"><span class="mk">B</span><span>18, cho chắc.</span></div>
+  </div>
+  <p class="why">Luật Trẻ em 2016 định nghĩa trẻ em là người <b>dưới 16 tuổi</b>, và Nghị định 13/2023 về bảo vệ dữ liệu cá nhân gắn nghĩa vụ xin phép người giám hộ vào đúng mốc đó. Lấy 18 thì thừa: học sinh lớp 11, lớp 12 phải xin phép bố mẹ mới vào học được, và đó là nhóm đông nhất của lớp luyện thi.</p>
+  <p class="why"><b>Nhưng có một vế nữa mà cả sheet lẫn lộ trình đều chưa xử lý.</b> Nghị định 13 yêu cầu — với trẻ từ <b>7 tuổi trở lên</b> — phải có sự đồng ý của <b>cả trẻ lẫn người giám hộ</b>, không phải chỉ người giám hộ. Luồng hiện tại mới có <code class="k">ParentConsent</code>, chưa có chỗ ghi nhận đứa trẻ tự đồng ý.</p>
+  <p class="why">Thực tế thì học viên bấm đăng ký đã là hành vi đồng ý, nhưng <b>phải ghi lại thành bằng chứng</b> chứ không suy diễn — một dòng <code class="k">selfConsentAt</code> trên Enrollment là đủ. Rẻ, và nó là thứ duy nhất cứu anh khi có thanh tra.</p>
+  <div class="risk">
+    <div><div class="lb">Cần luật sư xác nhận</div><p>Vế “đồng ý kép từ 7 tuổi”. Gộp chung với hai câu đang treo, hỏi một lần.</p></div>
+    <div><div class="lb">Nếu bỏ qua</div><p>Có đủ chữ ký phụ huynh nhưng vẫn thiếu một nửa hồ sơ pháp lý, mà không ai biết cho tới lúc bị hỏi.</p></div>
+    <div><div class="lb">Chi phí</div><p>Một cột timestamp, ghi lúc học viên bấm đồng ý điều khoản. Gần như bằng 0.</p></div>
+  </div>
+</div>
+
+<!-- D05 -->
+<div class="d" id="d05">
+  <div class="hd"><span class="code">D05</span><h3>Mua gói thì trừ Coin nào trước — Coin nạp hay Coin thưởng?</h3></div>
+  <p class="blocks"><b>Chặn:</b> 1.4.1 thứ tự trừ trong spendCoins — BE-036, BE-037</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span>Trừ <b>Coin thưởng trước</b>, Coin nạp sau. Coin thưởng có hạn 90 ngày, Coin nạp không hết hạn.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Trừ Coin nạp trước.</span></div>
+    <div class="opt"><span class="mk">C</span><span>Một số dư duy nhất, không phân biệt.</span></div>
+  </div>
+  <p class="why">Coin nạp là <b>tiền thật người dùng đã trả</b> — về kế toán đó là khoản phải trả, và nếu họ đòi hoàn thì anh nợ tiền mặt. Coin thưởng là chi phí marketing, không nợ ai. Trừ khoản chi phí trước, giữ khoản nợ lại sau: sổ sách sạch, và số dư hoàn lại luôn là con số đúng.</p>
+  <p class="why">Chọn B thì càng dùng càng tích tụ một đống Coin thưởng không bao giờ tiêu hết — vô dụng với người dùng, mà vẫn phải hiện trên màn hình.</p>
+  <p class="why"><b>Hệ quả lên schema mà sheet chưa ghi:</b> ví phải có <b>hai số dư</b> tách bạch, không phải một số nguyên <code class="k">balance</code>. Cho hạn dùng vào Coin thưởng thì lại cần theo từng lô. Việc này phải nằm trong 1.4.1, nếu không sau phải migrate ví — việc không ai muốn làm.</p>
+  <div class="risk">
+    <div><div class="lb">Đừng làm</div><p>Cho Coin đã nạp bằng tiền thật hết hạn. Đó là chỗ rắc rối pháp lý về bảo vệ người tiêu dùng.</p></div>
+    <div><div class="lb">Nếu chọn C</div><p>Không bao giờ tách lại được: lịch sử đã mất thông tin nguồn gốc từng đồng.</p></div>
+    <div><div class="lb">Phụ thuộc</div><p>Nếu cảnh báo Coin ở đầu trang kết luận “học viên không trả Coin”, quyết định này thu hẹp lại chỉ còn cho ví gia sư.</p></div>
+  </div>
+</div>
+
+<!-- D06 -->
+<div class="d" id="d06">
+  <div class="hd"><span class="code">D06</span><h3>Dữ liệu parentPhone / parentName cũ — xoá luôn hay giữ?</h3></div>
+  <p class="blocks"><b>Chặn:</b> dọn model User, trang /tra-cuu · <b>Liên đới:</b> FE-132</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span>Khoá ghi <b>ngay hôm nay</b>. Hiện chỉ đọc kèm lời mời liên kết. Sau <b>90 ngày</b> xoá cột.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Xoá ngay.</span></div>
+    <div class="opt"><span class="mk">C</span><span>Giữ vô thời hạn.</span></div>
+  </div>
+  <p class="why">Đây là dữ liệu cá nhân của phụ huynh, thu thập bằng cách để học sinh <b>tự khai</b>, chưa ai xác minh. Nghị định 13 nói dữ liệu cá nhân chỉ giữ chừng nào còn phục vụ đúng mục đích đã nêu. Khi <code class="k">ParentLink</code> đã xác minh thay thế, mục đích cũ hết hiệu lực — giữ tiếp là giữ không căn cứ. Phương án C loại.</p>
+  <p class="why">Xoá ngay thì trang tra cứu vỡ với những người chưa kịp liên kết. 90 ngày là đủ để nhắc vài lần.</p>
+  <p class="why"><b>Cái bẫy phải tránh bằng mọi giá:</b> đừng tự động chuyển <code class="k">parentPhone</code> cũ thành một <code class="k">ParentLink</code> đã xác minh. Số đó do đứa trẻ gõ vào, chưa ai xác nhận. Làm vậy là tạo ra hàng loạt liên kết mang nhãn “đã xác minh” mà chưa hề được xác minh — và toàn bộ luồng đồng ý của phụ huynh mất giá trị ngay từ ngày đầu.</p>
+  <div class="risk">
+    <div><div class="lb">Nếu làm sai</div><p>Một lần chạy script migrate nhầm là hỏng vĩnh viễn ý nghĩa của chữ “đã xác minh”, và không phân biệt lại được.</p></div>
+    <div><div class="lb">Cách đúng</div><p>Điền sẵn số cũ vào ô mời liên kết, nhưng phụ huynh <b>vẫn phải tự bấm xác nhận</b>.</p></div>
+    <div><div class="lb">Ghi nhớ</div><p>Đặt lịch xoá cột vào 90 ngày kể từ ngày khoá ghi, kẻo quên mất.</p></div>
+  </div>
+</div>
+
+<!-- D07 -->
+<div class="d" id="d07">
+  <div class="hd"><span class="code">D07</span><h3>Assignment có cần trường courseId riêng không?</h3></div>
+  <p class="blocks"><b>Chặn:</b> gần như không — sheet đã tự ghi “không chặn gì nhiều”</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span><b>Không thêm.</b> Đi qua quan hệ có sẵn Lesson → Chapter → Section → Course.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Thêm, cho truy vấn nhanh.</span></div>
+  </div>
+  <p class="why">Thêm <code class="k">courseId</code> lên Assignment là tạo <b>nguồn sự thật thứ hai</b>. Ngày nào đó nó lệch với <code class="k">lesson.chapter.section.course.id</code> — và lúc đó không ai biết bên nào đúng. Loại lỗi này rất khó tìm vì dữ liệu trông vẫn hợp lệ.</p>
+  <p class="why">Nếu sau này đo được một truy vấn thật sự chậm vì phải join bốn tầng, hẵng thêm — và khi đó phải coi nó là <b>bộ nhớ đệm</b>, chỉ được ghi bởi đúng đoạn code đã đặt <code class="k">lessonId</code>, không cho ai đặt độc lập. Tối ưu trước khi đo là tự tạo việc.</p>
+  <div class="risk">
+    <div><div class="lb">Tiết kiệm được</div><p>Không mất gì hôm nay, không phải viết migration, không phải viết kiểm tra nhất quán.</p></div>
+    <div><div class="lb">Đổi ý khi nào</div><p>Khi có một truy vấn cụ thể, đo được, chậm vì đúng phép join này.</p></div>
+  </div>
+</div>
+
+<!-- D08 -->
+<div class="d" id="d08">
+  <div class="hd"><span class="code">D08</span><h3>Đánh giá gắn vào lớp hay gắn vào gia sư?</h3></div>
+  <p class="blocks"><b>Chặn:</b> courses/[id]/reviews, trang /giang-vien, /mentor/[id] — FE-105 → FE-116, 12 việc</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span><b>Thu theo lớp, hiển thị theo gia sư.</b> Không phải chọn một trong hai.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Chỉ theo lớp, như hiện tại.</span></div>
+    <div class="opt"><span class="mk">C</span><span>Chỉ theo gia sư.</span></div>
+  </div>
+  <p class="why">Hai vế phục vụ hai mục đích khác nhau, và sheet đang ép chúng thành một lựa chọn.</p>
+  <p class="why"><b>Ghi theo lớp</b> vì đánh giá phải gắn với một trải nghiệm cụ thể và phải kẹp được vào một <code class="k">Enrollment</code> có thật — đó là thứ duy nhất chặn đánh giá giả. Bỏ vế này là mở cửa cho người chưa học bao giờ vào chấm sao.</p>
+  <p class="why"><b>Hiện theo gia sư</b> vì gia sư mở lớp mới mà mất sạch uy tín cũ thì hệ thống đánh giá vô dụng — ai cũng bắt đầu lại từ số không mỗi học kỳ. Và huy hiệu cạnh câu trả lời trên diễn đàn chỉ có nghĩa khi nó cộng dồn theo người: <i>“87% buổi được phụ huynh xác nhận”</i> phải là con số của con người, không phải của một lớp.</p>
+  <p class="why">Về kỹ thuật: giữ nguyên <code class="k">CourseReview</code> làm mô hình ghi, thêm một lớp đọc tổng hợp theo <code class="k">Course.ownerId</code>. Không cần bảng <code class="k">TutorRating</code> riêng cho tới khi số liệu lớn tới mức phải tính sẵn.</p>
+  <div class="risk">
+    <div><div class="lb">Nếu chọn C</div><p>Mất khả năng kẹp đánh giá vào Enrollment — đánh giá giả tràn vào, và không sửa ngược được.</p></div>
+    <div><div class="lb">Nếu chọn B</div><p>Trang /giang-vien và toàn bộ lập luận về diễn đàn mở mất chỗ dựa.</p></div>
+    <div><div class="lb">Lưu ý</div><p>Gia sư dạy nhiều môn thì nên hiện tách theo môn, đừng gộp một con số duy nhất.</p></div>
+  </div>
+</div>
+
+<!-- D09 -->
+<div class="d done" id="d09">
+  <div class="hd"><span class="code">D09</span><h3>Hai luồng AI</h3></div>
+  <p class="blocks"><b>Trạng thái:</b> sheet đã ghi “Đã chốt · không cần làm gì thêm”</p>
+  <p class="why">Đưa vào đây cho đủ mười ba dòng của sheet. Chỉ cần đổi trạng thái <code class="k">BE-028</code> từ “Chờ quyết định” sang “Đã chốt”, kẻo nó cứ nằm trong danh sách chặn và làm cộng sự tưởng vẫn phải đợi.</p>
+</div>
+
+<!-- D10 -->
+<div class="d" id="d10">
+  <div class="hd"><span class="code">D10</span><h3>Gia hạn và đổi gói: thủ công hay tự động?</h3></div>
+  <p class="blocks"><b>Chặn:</b> 1.4.5 logic gia hạn, cron — BE-061</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span><b>Thủ công</b> cho đợt đầu. Hết hạn thì nhắc trước 3 ngày, người dùng tự mua lại.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Tự động trừ Coin khi tới hạn.</span></div>
+  </div>
+  <p class="why">Tự động trừ tiền mà không có một hành động mới của người dùng là kiểu hành vi sinh ra khiếu nại nhiều nhất — và ở đây tiền bị trừ là tiền phụ huynh nạp trước cho con. Thêm nữa, tự động gia hạn kéo theo cả một dây: xử lý thất bại, nhắc nợ, hoàn tiền, huỷ giữa kỳ. Bốn thứ đó chưa có trong backlog.</p>
+  <p class="why">Nhắc trước 3 ngày bằng một tin Zalo có nút giữ được phần lớn tỉ lệ gia hạn mà không mang theo rủi ro nào. Cron hết hạn ở <code class="k">BE-061</code> đã có sẵn rồi — chỉ cần thêm một cron nhắc, không cần cron trừ tiền.</p>
+  <div class="risk">
+    <div><div class="lb">Đổi ý khi nào</div><p>Khi có trên 100 gói đang chạy và tỉ lệ gia hạn thủ công dưới 50% — lúc đó mới đáng đánh đổi.</p></div>
+    <div><div class="lb">Nếu làm tự động</div><p>Phải làm kèm luôn cả bốn thứ trong dây trên, không làm một nửa được.</p></div>
+  </div>
+</div>
+
+<!-- D11 -->
+<div class="d" id="d11">
+  <div class="hd"><span class="code">D11</span><h3>ExamGuestAccess: giữ hay bỏ?</h3></div>
+  <p class="blocks"><b>Chặn:</b> exams/[id]/guest-access/* · <b>Liên đới:</b> BE-080</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span><b>Giữ, và nâng thành cổng thu hút.</b></span></div>
+    <div class="opt"><span class="mk">B</span><span>Xoá model và ba route liên quan.</span></div>
+    <div class="opt"><span class="mk">C</span><span>Đổi thành “mua vé thi lẻ” bằng Coin.</span></div>
+  </div>
+  <p class="why">Sheet đang coi đây là tính năng ngách đáng ngờ. Tôi nghĩ ngược lại: <b>đây là cơ chế duy nhất đang có cho một người lạ chạm vào sản phẩm mà không phải đăng ký</b>. Một đề thi thử miễn phí là mồi câu mạnh nhất trong ngành luyện thi, và nó ghép thẳng vào luồng thu hút qua diễn đàn: người lạ thi thử → nhìn thấy phần mình yếu → nhận lời mời học thử đúng phần đó.</p>
+  <p class="why">Phương án C giết đúng cái làm nó có giá trị. Phương án B vứt đi một thứ đã chạy được.</p>
+  <p class="why">Điều kiện kèm theo: giới hạn <b>một lượt thi khách mỗi số điện thoại mỗi tháng</b>, và thu tối thiểu thông tin cá nhân — người chưa có tài khoản thì càng ít dữ liệu càng tốt.</p>
+  <div class="risk">
+    <div><div class="lb">Nếu bỏ</div><p>Mất kênh duy nhất để người lạ trải nghiệm sản phẩm, đúng lúc đang muốn mở diễn đàn để thu hút người lạ.</p></div>
+    <div><div class="lb">Việc thêm</div><p>Nối màn kết quả thi khách sang luồng mời học thử. Nhỏ, và nó là chỗ tính năng này sinh lời.</p></div>
+  </div>
+</div>
+
+<!-- D12 -->
+<div class="d" id="d12">
+  <div class="hd"><span class="code">D12</span><h3>SalesLead / SalesMessage / Sales Bot — giữ, bỏ, hay đổi mục đích?</h3></div>
+  <p class="blocks"><b>Chặn:</b> có service Python ngoài phụ thuộc · <b>Liên đới:</b> BE-081</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span>Câu hỏi đang đặt sai chỗ. <b>Việc gấp là cắt quyền ghi thẳng vào cơ sở dữ liệu</b>, còn giữ hay bỏ tính năng thì thong thả.</span></div>
+  </div>
+  <p class="why"><code class="k">BE-031</code> ghi: <i>“service Python ngoài đang ghi trực tiếp qua psycopg2”</i>. Đó mới là vấn đề, và nó cùng loại với bốn lỗ bảo mật đang phải vá ở mục 1.1 — chỉ có điều tệ hơn.</p>
+  <p class="why">Một tiến trình ngoài ghi thẳng vào bảng thì <b>đi vòng qua toàn bộ kiểm tra quyền, toàn bộ validate, toàn bộ ghi nhật ký</b> mà anh đang dựng. Vá xong bốn route mà vẫn để cửa sau này mở thì việc vá gần như vô nghĩa. Nó cũng làm mọi migration thành mìn: đổi schema là service kia gãy im lặng, không ai biết cho tới khi mất dữ liệu.</p>
+  <p class="why">Thứ tự nên làm: <b>(1)</b> cấp cho service đó một endpoint API kèm token riêng và thu hồi quyền ghi DB — nâng lên P0, làm cùng mục 1.1. <b>(2)</b> Sau đó mới bàn tính năng còn dùng không. Không ràng buộc với nhau.</p>
+  <div class="risk">
+    <div><div class="lb">Nếu để nguyên</div><p>Mọi công vá bảo mật ở 1.1 vẫn còn một cửa sau bỏ ngỏ, và nó nằm ngoài tầm nhìn của cả codebase.</p></div>
+    <div><div class="lb">Phải báo trước</div><p>Cắt quyền ghi là service kia gãy ngay. Báo cho người vận hành nó trước, thống nhất ngày.</p></div>
+  </div>
+</div>
+
+<!-- D13 -->
+<div class="d" id="d13">
+  <div class="hd"><span class="code">D13</span><h3>admin/students POST — tách courseId khỏi việc tạo tài khoản ngay, hay chờ ClassInvite?</h3></div>
+  <p class="blocks"><b>Chặn:</b> mục 1.5, mục 2.4.3 · <b>Liên đới:</b> BE-078</p>
+  <div class="opts">
+    <div class="opt pick"><span class="mk">CHỌN</span><span><b>Tách ngay, và nâng từ P1 lên P0.</b> Làm cùng lượt với các bản vá bảo mật ở 1.1.</span></div>
+    <div class="opt"><span class="mk">B</span><span>Chờ ClassInvite ở 1.4.6 xong rồi thay một thể.</span></div>
+  </div>
+  <p class="why">Sheet đang xếp việc này vào nhóm “dọn dẹp”. Nó không phải dọn dẹp — <b>nó là một lỗ bảo mật đang chờ được mở</b>.</p>
+  <p class="why">Lý do: ngay khi D04 được cài đặt, mọi con đường tạo <code class="k">Enrollment</code> đều phải đi qua cổng <code class="k">pending_consent</code> nếu học viên dưới 16. Nhưng route này tạo tài khoản <b>và</b> ghi danh trong cùng một lệnh gọi, bỏ qua cổng đó. Kết quả: một đứa trẻ 14 tuổi được ghi danh vào lớp mà phụ huynh chưa hề đồng ý — đúng thứ mà cả mục 1.4.3 sinh ra để ngăn.</p>
+  <p class="why">Giữ nguyên tới khi 1.4.6 xong nghĩa là để cái lỗ đó mở trong suốt thời gian làm 1.4.3, 1.4.4, 1.4.5. Mà ca đặc biệt — học bổng, tài khoản tặng — thì như <code class="k">BE-078</code> đã viết: gọi <code class="k">ClassInvite.redeem</code> nội bộ, không gọi thẳng <code class="k">prisma.enrollment.create</code>.</p>
+  <div class="risk">
+    <div><div class="lb">Chi phí tách ngay</div><p>Bỏ một tham số khỏi payload, thêm một bước ở màn admin. Nhỏ.</p></div>
+    <div><div class="lb">Chi phí để đó</div><p>Một cổng đồng ý có lỗ, trong đúng giai đoạn đang xây cổng đó.</p></div>
+  </div>
+</div>
+
+<h2 class="sec">Sau khi chốt</h2>
+<p class="lede">Ghi câu trả lời thẳng vào cột <b>Trạng thái</b> của sheet, ở đúng dòng BE-020 → BE-032. Cộng sự đọc sheet chứ không đọc trang này.</p>
+<div class="flag w">
+  <span class="tagline">Đề nghị đổi mức ưu tiên</span>
+  <p class="h">Bốn việc đang xếp sai</p>
+  <p><code class="k">BE-077</code> giữ song song cách tính doanh thu cũ — <b>P1 → P0</b>, làm cùng BE-039, nếu không báo cáo sẽ tụt về 0.</p>
+  <p><code class="k">BE-078</code> tách courseId khỏi admin/students POST — <b>P1 → P0</b>, lý do ở D13.</p>
+  <p><code class="k">BE-081</code> cắt quyền ghi DB của service Python — <b>P1 → P0</b>, lý do ở D12.</p>
+  <p><code class="k">BE-020</code> → <code class="k">BE-032</code> đang là P0 nhưng chúng không phải việc, chúng là quyết định. Tách ra khỏi cột ưu tiên kẻo nhìn vào tưởng còn 30 việc P0 chưa làm.</p>
+</div>
+
+<footer class="end">
+  <p>Soạn ngày 24/09/2026, dựa trên sheet 164 việc, tài liệu định hướng 23/09, và khảo sát 23 gia sư tháng 9.</p>
+  <p>Các viện dẫn Luật Trẻ em 2016 và Nghị định 13/2023 là căn cứ để hỏi, không phải ý kiến pháp lý. Vế “đồng ý kép từ 7 tuổi” ở D04 cần luật sư xác nhận — nên gộp chung với hai câu đang treo trong tài liệu định hướng, hỏi một lần cho đỡ tốn.</p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function store(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  function read(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  var tL = document.getElementById("t-light"), tD = document.getElementById("t-dark");
+  function setTheme(m){
+    document.documentElement.setAttribute("data-theme", m);
+    tL.setAttribute("aria-pressed", String(m === "light"));
+    tD.setAttribute("aria-pressed", String(m === "dark"));
+    store("kin6-theme", m);
+  }
+  tL.addEventListener("click", function(){ setTheme("light"); });
+  tD.addEventListener("click", function(){ setTheme("dark"); });
+  setTheme(read("kin6-theme") === "dark" ? "dark" : "light");
+})();
+</script>
+
+</html>

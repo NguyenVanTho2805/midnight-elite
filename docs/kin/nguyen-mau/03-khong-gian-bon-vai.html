@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Không gian làm việc KiN</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+
+<style>
+:root{
+  color-scheme: light;
+  --pg:#E9EDF2; --pg-2:#FFFFFF; --pg-line:#D3DAE3;
+  --pg-ink:#151D28; --pg-ink-2:#3C4757; --pg-mute:#66748A; --pg-acc:#1E3A8A; --pg-warn:#8A5A00;
+
+  /* Bảng màu KiN — đã vá theo kết quả đo tương phản ở cuối trang */
+  --bg:#FFFFFF; --panel:#F7F8FA; --hover:#F1F3F6; --sel:#E8EDF7;
+  --line:#E6E9EF; --line-2:#EEF0F4; --line-in:#8B95A5;
+  --ink:#111827; --ink-2:#374151; --muted:#6B7280; --muted-sel:#5B6675; --faint:#767F8E;
+  --navy:#1E3A8A; --navy-h:#172554; --on-navy:#FFFFFF; --blue:#2563EB; --tint:#EFF4FF;
+  --green:#047857; --amber:#B45309; --red:#DC2626;
+  --dot-green:#059669; --dot-amber:#D97706;
+  --ev-buoi:#EFF4FF; --ev-han:#FEF7E7; --ev-thi:#FEF2F2;
+  --grid:#EEF0F4; --grid-2:#F6F7FA; --now:#DC2626;
+
+  --f-h:"Be Vietnam Pro",system-ui,sans-serif;
+  --f-b:"Inter",system-ui,sans-serif;
+  --f-m:"JetBrains Mono",ui-monospace,monospace;
+  --h:740px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme: dark;
+  --pg:#080B10; --pg-2:#121821; --pg-line:#232C39;
+  --pg-ink:#E9EEF5; --pg-ink-2:#BFC9D6; --pg-mute:#8C99AB; --pg-acc:#7FB0FF; --pg-warn:#FBBF24;
+  --bg:#0B0E14; --panel:#10141C; --hover:#171C26; --sel:#1B2534;
+  --line:#232A36; --line-2:#1B212C; --line-in:#565F70;
+  --ink:#F3F4F6; --ink-2:#D1D5DB; --muted:#9CA3AF; --muted-sel:#9CA3AF; --faint:#8A93A3;
+  --navy:#3B82F6; --navy-h:#60A5FA; --on-navy:#0B0E14; --blue:#60A5FA; --tint:#101A2C;
+  --green:#34D399; --amber:#FBBF24; --red:#F87171;
+  --dot-green:#34D399; --dot-amber:#FBBF24;
+  --ev-buoi:#12203A; --ev-han:#2A1F0B; --ev-thi:#2A1113;
+  --grid:#1B212C; --grid-2:#12171F; --now:#F87171;
+}}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --pg:#080B10; --pg-2:#121821; --pg-line:#232C39;
+  --pg-ink:#E9EEF5; --pg-ink-2:#BFC9D6; --pg-mute:#8C99AB; --pg-acc:#7FB0FF; --pg-warn:#FBBF24;
+  --bg:#0B0E14; --panel:#10141C; --hover:#171C26; --sel:#1B2534;
+  --line:#232A36; --line-2:#1B212C; --line-in:#565F70;
+  --ink:#F3F4F6; --ink-2:#D1D5DB; --muted:#9CA3AF; --muted-sel:#9CA3AF; --faint:#8A93A3;
+  --navy:#3B82F6; --navy-h:#60A5FA; --on-navy:#0B0E14; --blue:#60A5FA; --tint:#101A2C;
+  --green:#34D399; --amber:#FBBF24; --red:#F87171;
+  --dot-green:#34D399; --dot-amber:#FBBF24;
+  --ev-buoi:#12203A; --ev-han:#2A1F0B; --ev-thi:#2A1113;
+  --grid:#1B212C; --grid-2:#12171F; --now:#F87171;
+}
+*{box-sizing:border-box}
+body{ margin:0; background:var(--pg); color:var(--pg-ink); font:15px/1.6 var(--f-b); -webkit-font-smoothing:antialiased }
+.wrap{ max-width:1320px; margin:0 auto; padding-inline:16px; padding-block:0 72px }
+
+.bar{
+  position:sticky; top:env(safe-area-inset-top, 0px); z-index:40;
+  background:color-mix(in srgb, var(--pg) 90%, transparent); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--pg-line); margin-inline:-16px; padding:10px 16px;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.bar .mark{ display:flex; align-items:center; gap:8px; font:600 15px var(--f-h) }
+.bar .sp{ flex:1 1 auto }
+.bar .lbl{ font-size:12px; color:var(--pg-mute) }
+.seg{ display:inline-flex; border:1px solid var(--pg-line); border-radius:9px; overflow:hidden; background:var(--pg-2) }
+.seg button{ appearance:none; border:0; background:transparent; cursor:pointer; font:500 13px var(--f-b); color:var(--pg-mute); padding:0 12px; min-height:34px; border-left:1px solid var(--pg-line) }
+.seg button:first-child{ border-left:0 }
+.seg button[aria-pressed="true"]{ background:var(--pg-acc); color:var(--pg-2) }
+.seg button:focus-visible{ outline:2px solid var(--pg-acc); outline-offset:-2px }
+.seg.role button[aria-pressed="true"]{ background:var(--pg-ink); }
+
+header.top{ padding-block:40px 10px; max-width:70ch }
+header.top h1{ font:600 clamp(28px,4.4vw,40px)/1.15 var(--f-h); letter-spacing:-.025em; margin:0 0 12px; text-wrap:balance }
+header.top p{ margin:0 0 12px; color:var(--pg-ink-2) }
+header.top p.small{ color:var(--pg-mute); font-size:13.5px }
+code.k{ font:400 .9em var(--f-m); background:var(--pg-2); border:1px solid var(--pg-line); border-radius:5px; padding:1px 5px }
+
+/* ===== khung ứng dụng ===== */
+.app{
+  display:grid; grid-template-columns:78px 330px minmax(0,1fr);
+  height:var(--h); margin-top:18px;
+  border:1px solid var(--pg-line); border-radius:14px; overflow:hidden;
+  background:var(--bg); color:var(--ink); font-family:var(--f-b);
+  box-shadow:0 14px 40px -28px rgba(9,18,32,.65);
+}
+.app svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:none }
+
+.rail{ background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; align-items:center; padding:10px 6px; gap:2px }
+.rail .logo{ padding:6px 0 4px }
+.rail .logo svg{ width:24px; height:24px }
+.rail .whoami{ font:600 9.5px/1.2 var(--f-b); color:var(--muted); text-align:center; padding:0 2px 10px; letter-spacing:.02em }
+.rail button{ appearance:none; border:0; background:transparent; cursor:pointer; width:66px; padding:8px 2px 6px; border-radius:10px;
+  display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--muted); font:500 10.5px/1.25 var(--f-b); text-align:center; position:relative }
+.rail button svg{ width:21px; height:21px }
+.rail button:hover{ background:var(--hover); color:var(--ink-2) }
+.rail button[aria-current="true"]{ background:var(--tint); color:var(--navy); font-weight:600 }
+.rail button:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px }
+.rail .badge{ position:absolute; top:5px; right:12px; min-width:16px; height:16px; border-radius:99px; background:var(--red); color:#fff;
+  font:600 10px/16px var(--f-b); text-align:center; padding:0 4px }
+:root[data-theme="dark"] .rail .badge{ color:#0B0E14 }
+.rail .gap{ flex:1 }
+
+.list{ display:flex; flex-direction:column; border-right:1px solid var(--line); background:var(--bg); min-width:0 }
+.list-head{ padding:12px 14px 10px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:9px }
+.list-head h2{ font:600 17px var(--f-h); margin:0; letter-spacing:-.01em }
+.list-head .sub{ font-size:12.5px; color:var(--muted); margin:-6px 0 0 }
+.search{ width:100%; font:400 13.5px var(--f-b); color:var(--ink); background:var(--bg); border:1px solid var(--line-in); border-radius:8px; padding:7px 10px }
+.search:focus{ outline:none; border-color:var(--blue); box-shadow:0 0 0 3px var(--tint) }
+.chips{ display:flex; gap:5px; flex-wrap:wrap }
+.chip{ appearance:none; cursor:pointer; font:500 12px var(--f-b); color:var(--muted); background:transparent; border:1px solid var(--line-in); border-radius:999px; padding:4px 10px; min-height:28px }
+.chip[aria-pressed="true"]{ background:var(--tint); border-color:var(--navy); color:var(--navy); font-weight:600 }
+.chip:focus-visible{ outline:2px solid var(--blue); outline-offset:1px }
+.list-body{ overflow-y:auto; flex:1; scrollbar-width:thin }
+.row{ display:block; width:100%; text-align:left; appearance:none; border:0; cursor:pointer; background:transparent;
+  border-bottom:1px solid var(--line-2); padding:11px 14px 11px 11px; border-left:3px solid transparent; min-height:58px }
+.row:hover{ background:var(--hover) }
+.row[aria-selected="true"]{ background:var(--sel); border-left-color:var(--navy) }
+.row[aria-selected="true"] .l2, .row[aria-selected="true"] .d{ color:var(--muted-sel) }
+.row:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px }
+.row .l1{ display:flex; align-items:baseline; gap:8px }
+.row .t{ font:500 14px var(--f-b); color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.row.unread .t{ font-weight:600 }
+.row .d{ font:400 12px var(--f-m); color:var(--muted); white-space:nowrap }
+.row .l2{ font-size:12.5px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.row .l3{ display:flex; gap:9px; align-items:center; margin-top:6px; flex-wrap:wrap }
+.tag{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted); white-space:nowrap }
+.tag svg{ width:13px; height:13px }
+.tag.g{ color:var(--green) } .tag.a{ color:var(--amber) } .tag.r{ color:var(--red) } .tag.b{ color:var(--blue) }
+
+.read{ display:flex; flex-direction:column; min-width:0; background:var(--bg) }
+.read-head{ padding:16px 20px 0; border-bottom:1px solid var(--line) }
+.back{ display:none; appearance:none; border:0; background:transparent; cursor:pointer; color:var(--blue); font:500 13.5px var(--f-b); padding:0 0 8px; align-items:center; gap:5px; min-height:32px }
+.read-head h1{ font:600 20px/1.3 var(--f-h); margin:0 0 3px; letter-spacing:-.015em; text-wrap:balance }
+.read-head .meta{ font-size:13px; color:var(--muted); margin:0 0 12px }
+.cmd{ display:flex; gap:6px; flex-wrap:wrap; padding-bottom:12px }
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; white-space:nowrap;
+  border:1px solid var(--line-in); background:var(--bg); color:var(--ink); border-radius:9px; padding:7px 12px; font:500 13.5px/1.4 var(--f-b); min-height:36px }
+.btn:hover{ background:var(--hover) }
+.btn.pri{ background:var(--navy); border-color:var(--navy); color:var(--on-navy) }
+.btn.pri:hover{ background:var(--navy-h) }
+.btn.ghost{ border-color:transparent; color:var(--muted) }
+.btn.ghost:hover{ color:var(--ink); background:var(--hover) }
+.btn:focus-visible{ outline:2px solid var(--blue); outline-offset:2px }
+.btn svg{ width:15px; height:15px }
+.tabs{ display:flex; gap:2px; overflow-x:auto; scrollbar-width:none }
+.tabs::-webkit-scrollbar{ display:none }
+.tabs button{ appearance:none; border:0; background:transparent; cursor:pointer; white-space:nowrap; font:500 13.5px var(--f-b);
+  color:var(--muted); padding:9px 11px; border-bottom:2px solid transparent; margin-bottom:-1px; min-height:38px }
+.tabs button:hover{ color:var(--ink-2) }
+.tabs button[aria-selected="true"]{ color:var(--navy); border-bottom-color:var(--navy); font-weight:600 }
+.tabs button:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px }
+.read-body{ overflow-y:auto; flex:1; padding:20px; scrollbar-width:thin }
+
+.stats{ display:flex; flex-wrap:wrap; border:1px solid var(--line); border-radius:10px; margin-bottom:20px }
+.stats>div{ flex:1 1 150px; padding:12px 16px; border-left:1px solid var(--line) }
+.stats>div:first-child{ border-left:0 }
+.stats .l{ color:var(--muted); font-size:12.5px }
+.stats .v{ font:600 21px/1.3 var(--f-h); font-variant-numeric:tabular-nums; margin-top:1px }
+.stats .d{ color:var(--muted); font-size:12px; margin-top:1px }
+h3.sh{ font:600 14px var(--f-h); margin:0 0 9px; padding-bottom:7px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px }
+h3.sh .n{ margin-left:auto; font:400 12.5px var(--f-b); color:var(--muted) }
+.blk{ margin-bottom:24px } .blk:last-child{ margin-bottom:0 }
+.card{ border:1px solid var(--line); border-radius:12px; padding:14px 16px }
+.hint{ padding:11px 13px; border-radius:10px; background:var(--tint); color:var(--ink-2); font-size:13.5px; margin:0 0 16px }
+.note{ font-size:12.5px; color:var(--muted); margin:8px 0 0 } .note b{ color:var(--ink-2) }
+.rows2{ display:grid }
+.r2{ display:flex; align-items:center; gap:12px; padding:10px 2px; border-bottom:1px solid var(--line-2); min-height:48px; flex-wrap:wrap }
+.r2:last-child{ border-bottom:0 }
+.r2 .m{ flex:1 1 180px; min-width:0 }
+.r2 .m b{ font-weight:500; display:block; font-size:14px }
+.r2 .m span{ color:var(--muted); font-size:12.5px }
+.r2 .end{ margin-left:auto; display:flex; gap:6px; align-items:center; flex-wrap:wrap }
+.st{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-2); white-space:nowrap }
+.st::before{ content:""; width:8px; height:8px; border-radius:50%; background:var(--faint); flex:none }
+.st.g::before{ background:var(--dot-green) } .st.a::before{ background:var(--dot-amber) }
+.st.r{ color:var(--red) } .st.r::before{ background:var(--red) } .st.b::before{ background:var(--blue) }
+.src{ display:inline-block; font-size:11.5px; font-weight:500; padding:2px 8px; border-radius:999px; border:1px solid var(--line-in); color:var(--muted) }
+.src.hsa{ background:var(--tint); border-color:var(--navy); color:var(--navy) }
+.tw{ overflow-x:auto }
+table.t{ width:100%; border-collapse:collapse; font-size:13.5px }
+table.t th{ text-align:left; font:500 12.5px var(--f-b); color:var(--muted); padding:7px 9px; border-bottom:1px solid var(--line); white-space:nowrap }
+table.t td{ padding:9px; border-bottom:1px solid var(--line-2) }
+table.t tr:last-child td{ border-bottom:0 }
+table.t td.n, table.t th.n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap }
+.empty{ color:var(--muted); font-size:13.5px; padding:26px 4px; text-align:center }
+.prog{ height:6px; background:var(--line-2); border-radius:99px; overflow:hidden; margin-top:8px }
+.prog i{ display:block; height:100%; background:var(--navy); border-radius:99px }
+
+/* ===== lịch ===== */
+.cal{ display:flex; flex-direction:column; height:100%; min-height:0 }
+.cal-head{ display:grid; grid-template-columns:54px repeat(7,minmax(0,1fr)); border-bottom:1px solid var(--line); flex:none }
+.cal-head .tz{ font:400 11px var(--f-m); color:var(--muted); padding:10px 6px; text-align:center }
+.cal-head .dh{ padding:8px 6px 9px; text-align:center; border-left:1px solid var(--grid) }
+.cal-head .dh .w{ font-size:11.5px; color:var(--muted) }
+.cal-head .dh .n{ font:600 18px/1.2 var(--f-h); font-variant-numeric:tabular-nums; margin-top:1px }
+.cal-head .dh.today .w, .cal-head .dh.today .n{ color:var(--navy) }
+.cal-scroll{ overflow-y:auto; flex:1; min-height:0; scrollbar-width:thin }
+.cal-grid{ display:grid; grid-template-columns:54px repeat(7,minmax(0,1fr)); position:relative }
+.cal-grid .hr{ font:400 11px var(--f-m); color:var(--muted); text-align:right; padding:0 7px 0 0; transform:translateY(-6px) }
+.cal-grid .cell{ height:44px; border-left:1px solid var(--grid); border-top:1px solid var(--grid-2) }
+.cal-col{ position:relative; grid-row:1 / -1; border-left:1px solid var(--grid) }
+.ev{ position:absolute; left:3px; right:3px; border-radius:7px; padding:4px 7px; overflow:hidden;
+  border-left:3px solid var(--navy); background:var(--ev-buoi); color:var(--ink); cursor:pointer; text-align:left; border-top:0; border-right:0; border-bottom:0; display:block; width:calc(100% - 6px) }
+.ev b{ font:600 11.5px/1.3 var(--f-b); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ev span{ font:400 11px var(--f-m); color:var(--muted); display:block; margin-top:1px }
+.ev:hover{ filter:brightness(.97) }
+.ev:focus-visible{ outline:2px solid var(--blue); outline-offset:1px }
+.ev.han{ background:var(--ev-han); border-left-color:var(--dot-amber) }
+.ev.thi{ background:var(--ev-thi); border-left-color:var(--red) }
+.nowline{ position:absolute; left:0; right:0; height:0; border-top:2px solid var(--now); z-index:3; pointer-events:none }
+.nowline::before{ content:""; position:absolute; left:-4px; top:-5px; width:8px; height:8px; border-radius:50%; background:var(--now) }
+.cal-legend{ display:flex; gap:14px; flex-wrap:wrap; padding:9px 14px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); flex:none }
+.cal-legend span{ display:inline-flex; align-items:center; gap:6px }
+.cal-legend i{ width:11px; height:11px; border-radius:3px; display:inline-block; border-left:3px solid var(--navy); background:var(--ev-buoi) }
+.cal-legend i.han{ border-left-color:var(--dot-amber); background:var(--ev-han) }
+.cal-legend i.thi{ border-left-color:var(--red); background:var(--ev-thi) }
+
+/* ===== điện thoại ===== */
+body[data-w="phone"] .app{ max-width:390px; --h:700px; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) 60px }
+body[data-w="phone"] .rail{ grid-row:2; flex-direction:row; border-right:0; border-top:1px solid var(--line); padding:4px 2px; justify-content:space-around; align-items:stretch }
+body[data-w="phone"] .rail .logo, body[data-w="phone"] .rail .gap, body[data-w="phone"] .rail .whoami{ display:none }
+body[data-w="phone"] .rail button{ width:auto; flex:1; padding:6px 2px; gap:3px; font-size:9.5px }
+body[data-w="phone"] .rail .badge{ right:6px; top:2px }
+body[data-w="phone"] .list{ grid-row:1; border-right:0 }
+body[data-w="phone"] .read{ grid-row:1; display:none }
+body[data-w="phone"][data-open="1"] .list{ display:none }
+body[data-w="phone"][data-open="1"] .read{ display:flex }
+body[data-w="phone"] .back{ display:inline-flex }
+/* Brand book KiN buộc vùng chạm tối thiểu 44px trên điện thoại. Chip lọc
+   trên máy tính cao 28px là đủ, nhưng ngón tay thì không. */
+body[data-w="phone"] .chip{ min-height:44px; padding:0 14px; font-size:13px }
+body[data-w="phone"] .search{ min-height:44px }
+body[data-w="phone"] .tabs button{ min-height:44px }
+body[data-w="phone"] .stats>div{ flex:1 1 100%; border-left:0; border-top:1px solid var(--line) }
+body[data-w="phone"] .stats>div:first-child{ border-top:0 }
+body[data-w="phone"] .cal-head, body[data-w="phone"] .cal-grid{ grid-template-columns:44px repeat(7,minmax(46px,1fr)); min-width:366px }
+body[data-w="phone"] .cal-scroll{ overflow-x:auto }
+
+section.part{ margin-top:52px }
+section.part > h2{ font:600 13px var(--f-b); letter-spacing:.09em; text-transform:uppercase; color:var(--pg-mute); margin:0 0 6px }
+section.part > .lede{ font:400 18px/1.55 var(--f-b); color:var(--pg-ink); margin:0 0 24px; max-width:62ch }
+.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(272px,1fr)); gap:16px }
+.cardx{ background:var(--pg-2); border:1px solid var(--pg-line); border-radius:12px; padding:16px 18px }
+.cardx h3{ font:600 14px var(--f-b); margin:0 0 6px }
+.cardx p{ margin:0; font-size:13.5px; color:var(--pg-ink-2) }
+.cardx p + p{ margin-top:8px }
+.callout{ background:var(--pg-2); border:1px solid var(--pg-line); border-left:3px solid var(--pg-warn); border-radius:0 10px 10px 0; padding:14px 18px; margin:0 0 24px; max-width:76ch }
+.callout p{ margin:0; color:var(--pg-ink-2); font-size:14px } .callout p + p{ margin-top:8px }
+.tbl-wrap{ overflow-x:auto; border:1px solid var(--pg-line); border-radius:12px; background:var(--pg-2) }
+table.big{ width:100%; border-collapse:collapse; font-size:13.5px }
+table.big th{ text-align:left; font:600 11.5px var(--f-b); letter-spacing:.06em; text-transform:uppercase; color:var(--pg-mute); padding:11px 14px; border-bottom:1px solid var(--pg-line); white-space:nowrap }
+table.big td{ padding:10px 14px; border-bottom:1px solid var(--pg-line); vertical-align:top; color:var(--pg-ink-2) }
+table.big tr:last-child td{ border-bottom:0 }
+table.big td b{ color:var(--pg-ink) }
+table.big td.m{ font:400 12.5px var(--f-m); white-space:nowrap }
+.v-keep{ color:#0B6B4F; font-weight:600 } .v-cut{ color:#A8321F; font-weight:600 } .v-new{ color:#1E3A8A; font-weight:600 }
+:root[data-theme="dark"] .v-keep, :root:not([data-theme="light"]) .v-keep{ color:#34D399 }
+:root[data-theme="dark"] .v-cut, :root:not([data-theme="light"]) .v-cut{ color:#F87171 }
+:root[data-theme="dark"] .v-new, :root:not([data-theme="light"]) .v-new{ color:#7FB0FF }
+footer.end{ margin-top:56px; padding-top:22px; border-top:1px solid var(--pg-line); color:var(--pg-mute); font-size:13px; max-width:76ch }
+@media (prefers-reduced-motion: reduce){ *{ transition:none!important; animation:none!important } }
+</style>
+
+<div class="wrap">
+
+<div class="bar">
+  <span class="mark">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="1.2" y="1" width="4.5" height="22" rx="1.5" fill="#1E3A8A"/><path d="M6.1 12.1 Q11.6 4.3 18.9 1.5 Q14.5 8.7 6.1 12.1 Z" fill="#2563EB"/><path d="M6.1 12.3 Q13.1 9.3 21.5 9.1 Q14.1 14.9 6.1 12.3 Z" fill="#38BDF8"/><path d="M6.1 12.5 Q11.5 16.6 15.4 23 Q8.1 19.9 6.1 12.5 Z" fill="#F59E0B"/></svg>
+    KiN
+  </span>
+  <span class="lbl">Đang xem với vai</span>
+  <span class="seg role" role="group" aria-label="Vai trò">
+    <button type="button" id="r-gs" aria-pressed="true">Gia sư</button>
+    <button type="button" id="r-hs" aria-pressed="false">Học sinh</button>
+    <button type="button" id="r-ph" aria-pressed="false">Phụ huynh</button>
+    <button type="button" id="r-qt" aria-pressed="false">Quản trị</button>
+  </span>
+  <span class="sp"></span>
+  <span class="seg" role="group" aria-label="Nền">
+    <button type="button" id="t-light" aria-pressed="true">Sáng</button>
+    <button type="button" id="t-dark" aria-pressed="false">Tối</button>
+  </span>
+  <span class="seg" role="group" aria-label="Bề rộng">
+    <button type="button" id="w-desk" aria-pressed="true">Máy tính</button>
+    <button type="button" id="w-phone" aria-pressed="false">Điện thoại</button>
+  </span>
+</div>
+
+<header class="top">
+  <h1>Một vỏ, bốn người dùng khác nhau</h1>
+  <p>Ý của Outlook không nằm ở chỗ nó có email. Nó nằm ở chỗ: <b>một cái vỏ duy nhất</b> chứa lịch, việc cần làm, người, tệp — và bạn không bao giờ rời khỏi cái vỏ đó. KiN lấy cơ chế ấy, nhưng thay ruột bằng danh từ của mình: buổi học, bài tập, học phí, xác nhận của phụ huynh.</p>
+  <p class="small">Đổi vai ở thanh trên cùng để thấy cùng một vỏ phục vụ bốn người khác nhau: thanh module đổi, danh sách đổi, và <b>cách gọi tên sự việc cũng đổi</b>. Bấm thật được. Số liệu là dữ liệu mẫu của lớp HSA 2K9.</p>
+</header>
+
+<div class="app" id="app">
+  <nav class="rail" id="rail" aria-label="Khu vực làm việc">
+    <span class="logo"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="1.2" y="1" width="4.5" height="22" rx="1.5" fill="#1E3A8A"/><path d="M6.1 12.1 Q11.6 4.3 18.9 1.5 Q14.5 8.7 6.1 12.1 Z" fill="#2563EB"/><path d="M6.1 12.3 Q13.1 9.3 21.5 9.1 Q14.1 14.9 6.1 12.3 Z" fill="#38BDF8"/><path d="M6.1 12.5 Q11.5 16.6 15.4 23 Q8.1 19.9 6.1 12.5 Z" fill="#F59E0B"/></svg></span>
+    <span class="whoami" id="whoami">GIA SƯ</span>
+  </nav>
+
+  <div class="list">
+    <div class="list-head">
+      <h2 id="list-title">—</h2>
+      <p class="sub" id="list-sub"></p>
+      <input class="search" id="search" type="search" placeholder="Tìm…" aria-label="Tìm trong danh sách">
+      <div class="chips" id="chips" role="group" aria-label="Lọc danh sách"></div>
+    </div>
+    <div class="list-body" id="list-body" role="listbox" aria-label="Danh sách" tabindex="0"></div>
+  </div>
+
+  <div class="read">
+    <div class="read-head">
+      <button class="back" id="back" type="button">‹ Danh sách</button>
+      <h1 id="read-title">—</h1>
+      <p class="meta" id="read-meta"></p>
+      <div class="cmd" id="cmd"></div>
+      <div class="tabs" id="tabs" role="tablist"></div>
+    </div>
+    <div class="read-body" id="read-body" role="tabpanel"></div>
+  </div>
+</div>
+
+<section class="part">
+  <h2>Phần 1 · Ánh xạ</h2>
+  <p class="lede">Outlook có sáu module. Không phải cái nào cũng nên bê sang. Ba cái bê nguyên, hai cái bê cơ chế nhưng đổi ruột, một cái nên bỏ hẳn.</p>
+  <div class="tbl-wrap"><table class="big">
+    <thead><tr><th>Module Outlook</th><th>Cơ chế cốt lõi</th><th>Thành gì trong KiN</th><th>Phán quyết</th></tr></thead>
+    <tbody>
+      <tr><td><b>Calendar</b></td><td>Lưới tuần, khối sự kiện, đường giờ hiện tại</td><td><b>Lịch</b> — buổi dạy, hạn nộp bài, lịch thi thử</td><td class="v-keep">Bê nguyên</td></tr>
+      <tr><td><b>To Do</b></td><td>Danh sách việc, My Day, Planned</td><td><b>Việc</b> — gia sư: buổi chờ xác nhận. Học sinh: bài phải nộp</td><td class="v-keep">Bê nguyên</td></tr>
+      <tr><td><b>Files</b></td><td>Kho tệp gắn với ngữ cảnh</td><td><b>Thư viện</b> — tài liệu và bản ghi, luôn thuộc một buổi</td><td class="v-keep">Bê nguyên</td></tr>
+      <tr><td><b>Mail</b></td><td>Hộp thư, đọc/chưa đọc, ba khung</td><td><b>Hộp việc</b> — mỗi dòng là một đối tượng KiN cần trả lời</td><td class="v-new">Bê cơ chế, bỏ email</td></tr>
+      <tr><td><b>Contacts</b></td><td>Danh bạ + chat</td><td><b>Lớp của tôi</b> — thấy ai học cùng. Bình luận gắn vào bài, không chat riêng</td><td class="v-new">Bê danh bạ, bỏ chat</td></tr>
+      <tr><td><b>Groups / Teams</b></td><td>Không gian nhóm, kênh chat</td><td>—</td><td class="v-cut">Bỏ</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="part">
+  <h2>Phần 2 · Ba thứ tôi khuyên cắt</h2>
+  <p class="lede">Đây là phần tôi không gật. Mỗi cái đều có lý do cụ thể, không phải vì ngại làm.</p>
+  <div class="grid">
+    <div class="cardx">
+      <h3>Đừng làm hộp thư email thật</h3>
+      <p>Email của Outlook nhận thư <b>từ bên ngoài</b>. Muốn thế phải làm SMTP, chống spam, gộp luồng, đính kèm, và lo thư có vào được Gmail không. Vài tháng công, đổi lại không hơn Gmail ở điểm nào.</p>
+      <p>Cái KiN cần là <b>hộp việc</b>: nhìn y như hộp thư, ba khung y như Outlook, nhưng mỗi dòng là một đối tượng của KiN — một buổi chờ xác nhận, một bài đã chấm, một khoản đã nhận. Giữ được 90% cảm giác Outlook với 5% công sức.</p>
+    </div>
+    <div class="cardx">
+      <h3>Đừng cho học sinh chat riêng với nhau</h3>
+      <p>Người dùng là trẻ dưới 18. Nhắn tin riêng giữa các em đẻ ra nghĩa vụ kiểm duyệt không có đáy: bắt nạt, người lạ trà trộn, truyền đáp án. KiN không có đội trực để gánh việc đó.</p>
+      <p>Và Zalo đã ở sẵn trong máy mọi học sinh Việt Nam rồi. Thay vào đó: <b>bình luận gắn vào một đối tượng</b> — dưới bài nộp, dưới buổi học. Gia sư thấy hết, mọi thứ có ngữ cảnh, và kiểm duyệt được vì nó thuộc về lớp do gia sư sở hữu.</p>
+    </div>
+    <div class="cardx">
+      <h3>Đừng bắt phụ huynh đặt mật khẩu</h3>
+      <p>Quyết định cũ — phụ huynh không cần tài khoản — là đúng, và nó va với thiết kế theo vai. Cách hoà giải: <b>cái link 24 ký tự chính là tài khoản của phụ huynh</b>, một phiên đăng nhập không mật khẩu.</p>
+      <p>Cùng một vỏ ba khung, cùng cơ chế, chỉ khác là vào bằng link thay vì mật khẩu. Ai muốn thì nâng cấp thành tài khoản thật sau. Học sinh thì ngược lại — các em sẽ tự tạo tài khoản, vì phải nộp bài và làm kiểm tra.</p>
+    </div>
+  </div>
+</section>
+
+<section class="part">
+  <h2>Phần 3 · Cùng một sự việc, bốn giọng</h2>
+  <p class="lede">Đây là phần khó nhất và cũng là phần đáng giá nhất. Một buổi học chờ xác nhận không phải là một dòng chữ được dịch ra bốn thứ tiếng — nó là bốn người khác nhau đang nói về cùng một việc, với mối quan tâm khác nhau.</p>
+  <div class="tbl-wrap"><table class="big">
+    <thead><tr><th>Sự việc</th><th>Gia sư đọc thấy</th><th>Học sinh đọc thấy</th><th>Phụ huynh đọc thấy</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Buổi 24/09 chờ xác nhận</b></td>
+        <td>“6 lượt chờ phụ huynh xác nhận”<br><span style="color:var(--pg-mute);font-size:12.5px">Con số. Việc cần làm: nhắc.</span></td>
+        <td>— không hiện<br><span style="color:var(--pg-mute);font-size:12.5px">Không phải việc của em.</span></td>
+        <td>“Anh/chị xác nhận giúp 2 buổi học của con”<br><span style="color:var(--pg-mute);font-size:12.5px">Lời nhờ, ngôi thứ hai.</span></td>
+      </tr>
+      <tr>
+        <td><b>Bài kiểm tra Vi-ét</b></td>
+        <td>“18/24 đã nộp · trung bình 7,2”<br><span style="color:var(--pg-mute);font-size:12.5px">Lớp đang ở đâu.</span></td>
+        <td>“Còn 2 ngày để nộp”<br><span style="color:var(--pg-mute);font-size:12.5px">Hạn, và nút Làm bài.</span></td>
+        <td>“Con đã nộp, 9/10 điểm”<br><span style="color:var(--pg-mute);font-size:12.5px">Kết quả, không phải deadline.</span></td>
+      </tr>
+      <tr>
+        <td><b>Học phí tháng 9</b></td>
+        <td>“Còn phải thu 1.800.000đ”<br><span style="color:var(--pg-mute);font-size:12.5px">Tiền chưa về.</span></td>
+        <td>— không hiện<br><span style="color:var(--pg-mute);font-size:12.5px">Học sinh không bàn tiền.</span></td>
+        <td>“Cần thanh toán 1.800.000đ”<br><span style="color:var(--pg-mute);font-size:12.5px">Kèm mã VietQR.</span></td>
+      </tr>
+    </tbody>
+  </table></div>
+  <p class="note" style="margin-top:14px;color:var(--pg-mute)">Xưng hô theo brand book KiN: học sinh gọi là “bạn”, gia sư là “Thầy/Cô”, phụ huynh nói về “con”. Cột nào ghi “không hiện” là một quyết định, không phải chỗ còn trống — giấu bớt là một phần của thiết kế theo vai.</p>
+</section>
+
+<section class="part">
+  <h2>Phần 4 · Soát tương phản, đo bằng máy</h2>
+  <p class="lede">Tôi chạy công thức tương phản WCAG trên toàn bộ bảng màu đang dùng trong app thật. Bảy chỗ trượt chuẩn. Đây là lỗi có thật trong sản phẩm, không phải lỗi của bản mẫu.</p>
+  <div class="callout">
+    <p><b>Chỗ nguy hiểm nhất: nút chính ở nền tối.</b> Chữ trắng trên nền <code class="k">#3B82F6</code> chỉ đạt <b>3,68:1</b>, dưới ngưỡng 4,5:1. Đây là nút “Lưu điểm danh”, nút bấm nhiều nhất trong app, và nó khó đọc với người mắt kém khi bật nền tối.</p>
+    <p>Nguyên nhân chung của cả bảy lỗi: <b>app dùng cùng một mã màu cho chấm trạng thái và cho chữ trạng thái</b>, trong khi hai thứ đó có ngưỡng khác nhau — đồ hoạ cần 3:1, chữ cần 4,5:1. Xanh lá <code class="k">#059669</code> làm chấm thì đạt (3,77:1), làm chữ thì trượt.</p>
+  </div>
+  <div class="tbl-wrap"><table class="big">
+    <thead><tr><th>Chỗ</th><th class="m">Cũ</th><th class="m">Đo được</th><th class="m">Sửa thành</th><th class="m">Sau khi sửa</th></tr></thead>
+    <tbody>
+      <tr><td><b>Chữ trên nút chính, nền tối</b></td><td class="m">#FFFFFF</td><td class="m">3,68:1 ✗</td><td class="m">#0B0E14</td><td class="m">5,25:1 ✓</td></tr>
+      <tr><td>Chữ trạng thái xanh lá, nền sáng</td><td class="m">#059669</td><td class="m">3,77:1 ✗</td><td class="m">#047857</td><td class="m">5,48:1 ✓</td></tr>
+      <tr><td>Chữ trạng thái vàng, nền sáng</td><td class="m">#D97706</td><td class="m">3,19:1 ✗</td><td class="m">#B45309</td><td class="m">5,02:1 ✓</td></tr>
+      <tr><td>Chấm trạng thái trung tính</td><td class="m">#9CA3AF</td><td class="m">2,54:1 ✗</td><td class="m">#767F8E</td><td class="m">4,04:1 ✓</td></tr>
+      <tr><td>Chữ mờ trên dòng đang chọn</td><td class="m">#6B7280</td><td class="m">4,12:1 ✗</td><td class="m">#5B6675</td><td class="m">4,97:1 ✓</td></tr>
+      <tr><td>Viền ô nhập, nền sáng</td><td class="m">#E6E9EF</td><td class="m">1,22:1 ✗</td><td class="m">#8B95A5</td><td class="m">3,03:1 ✓</td></tr>
+      <tr><td>Viền ô nhập, nền tối</td><td class="m">#232A36</td><td class="m">1,34:1 ✗</td><td class="m">#565F70</td><td class="m">3,00:1 ✓</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note" style="margin-top:14px;color:var(--pg-mute)">Bản mẫu trên trang này <b>đã dùng bộ màu sau khi sửa</b>. Gạt sang nền tối và nhìn nút “Gửi phụ huynh xác nhận” — chữ đen trên xanh, không phải chữ trắng. <code class="k">#B45309</code> vốn đã nằm sẵn trong brand book KiN dưới tên <code class="k">sun-ink</code>, kèm ghi chú “chữ trên nền vàng dùng sun-ink” — tức là người viết brand book đã lường trước, chỉ là code chưa áp.</p>
+</section>
+
+<section class="part">
+  <h2>Phần 5 · Tự phê bình bản ba khung hôm qua</h2>
+  <div class="grid">
+    <div class="cardx">
+      <h3>Sai ngày trong tuần</h3>
+      <p>Tôi ghi “24/09 Thứ 3” và “22/09 Chủ nhật”. Ảnh Outlook của anh cho thấy <b>24/09/2026 là Thứ 5</b>. Tôi bịa thứ cho khớp lịch học thay vì tính từ ngày thật. Bản này đã sửa: lớp HSA học Thứ 3 và Thứ 5, tức 22 và 24 tháng 9.</p>
+    </div>
+    <div class="cardx">
+      <h3>Thanh module không nói ai đang dùng</h3>
+      <p>Bản cũ chỉ có logo rồi tới các module. Không có chỗ nào cho biết đang xem với tư cách gì. Với sản phẩm bốn vai thì đó là thiếu sót nặng — bản này thêm nhãn vai ngay dưới logo, bằng chữ chứ không bằng màu.</p>
+    </div>
+    <div class="cardx">
+      <h3>Chip lọc thiếu viền đủ rõ</h3>
+      <p>Chip chưa chọn dùng viền <code class="k">#E6E9EF</code> — 1,22:1 so với nền, gần như vô hình. Người dùng không biết nó bấm được. Bản này đổi sang viền <code class="k">#8B95A5</code> và nâng chiều cao chip lên 28px.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="end">
+  <p>Bản đề xuất, dựng mới, chưa nối vào <code class="k">aodtsix-cmd/kin-app</code>. Số tương phản đo bằng công thức WCAG 2.1 trên đúng mã màu trong <code class="k">app/globals.css</code>. Tên học viên, số điện thoại và số tiền là dữ liệu mẫu.</p>
+  <p>Skill thiết kế đã dùng: design-system (mở rộng token cho Lịch), ux-copy (giọng theo vai), accessibility-review (bảng ở Phần 4), design-critique (Phần 5), giao-dien-kin (brand book). Không dùng user-research và research-synthesis vì chưa có dữ liệu nghiên cứu mới — khảo sát tháng 9 vẫn là nguồn duy nhất. Không dùng design-handoff vì thiết kế chưa chốt, viết spec bàn giao lúc này là viết sớm.</p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var I = {
+  inbox:'<path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M3 13 5.5 5.5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/>',
+  book:'<path d="M4 4.5h6a2.5 2.5 0 0 1 2.5 2.5v13A2 2 0 0 0 10.5 18H4z"/><path d="M20 4.5h-6A2.5 2.5 0 0 0 11.5 7v13A2 2 0 0 1 13.5 18H20z"/>',
+  quiz:'<path d="M5 4.5h14v15H5z"/><path d="M8.5 9.5h7M8.5 13.5h4.5"/>',
+  folder:'<path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  money:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/>',
+  check:'<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
+  users:'<circle cx="9" cy="9" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.4a3 3 0 0 1 0 5.2M17.5 19a5.6 5.6 0 0 0-2-4.3"/>',
+  shield:'<path d="M12 3.5 19.5 6v6c0 4-3.2 7.2-7.5 8.5C7.7 19.2 4.5 16 4.5 12V6z"/><path d="M9 12l2 2 4-4"/>',
+  chart:'<path d="M4 19.5V4.5M4 19.5h16"/><path d="M8 16V11M12.5 16V7M17 16v-6"/>',
+  play:'<path d="M9 7.5 17 12l-8 4.5z"/>',
+  file:'<path d="M6 3.5h7L18.5 9v11.5H6z"/><path d="M13 3.5V9h5.5"/>',
+  send:'<path d="M4 12 20 4l-4.5 16-3.5-6.5z"/><path d="M12 13.5 20 4"/>',
+  link:'<path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7l-1.2 1.2"/><path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.3 2.3a4 4 0 1 0 5.7 5.7l1.2-1.2"/>',
+  plus:'<path d="M12 5.5v13M5.5 12h13"/>',
+  more:'<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>',
+  pen:'<path d="M4 20l1-4.5L16 4.5a2.1 2.1 0 0 1 3 3L8 18.5z"/>'
+};
+function ico(n){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(I[n]||I.more)+'</svg>'; }
+function tg(n, c, t){ return '<span class="tag'+(c?' '+c:'')+'">'+ico(n)+t+'</span>'; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function rows(list){ return '<div class="rows2">'+list.map(function(a){
+  return '<div class="r2"><div class="m"><b>'+esc(a[0])+'</b><span>'+esc(a[1])+'</span></div><div class="end"><span class="st '+(a[3]||'')+'">'+esc(a[2])+'</span></div></div>';
+}).join("")+'</div>'; }
+function stat(list){ return '<div class="stats">'+list.map(function(s){
+  return '<div><div class="l">'+esc(s[0])+'</div><div class="v">'+esc(s[1])+'</div><div class="d">'+esc(s[2])+'</div></div>';
+}).join("")+'</div>'; }
+
+/* ---------------- LỊCH ---------------- */
+var H0 = 13, H1 = 24, ROW = 44;
+var DAYS = [["CN",20],["T2",21],["T3",22],["T4",23],["T5",24],["T6",25],["T7",26]];
+var NOW = { d:4, h:18 + 56/60 };   /* Thứ 5, 24/09, 18:56 — khớp ảnh Outlook */
+function hhmm(x){ var h = Math.floor(x), m = Math.round((x-h)*60); return (h<10?"0":"")+h+":"+(m<10?"0":"")+m; }
+function calendar(events){
+  var head = '<div class="cal-head"><div class="tz">GMT+7</div>' + DAYS.map(function(d,i){
+    return '<div class="dh'+(i===NOW.d?' today':'')+'"><div class="w">'+d[0]+'</div><div class="n">'+d[1]+'</div></div>';
+  }).join("") + '</div>';
+  var nH = H1 - H0;
+  /* Phải khai báo hàng tường minh. Không có nó thì "grid-row:1/-1" của cột ngày
+     chỉ trỏ tới vạch cuối của lưới tường minh — tức là hàng 1 — nên cả cột dồn
+     vào một hàng và thang giờ sập xuống đáy. */
+  var g = '<div class="cal-grid" style="grid-template-rows:repeat('+nH+','+ROW+'px)">';
+  for (var r = 0; r < nH; r++) g += '<div class="hr" style="grid-column:1;grid-row:'+(r+1)+'">'+(H0+r)+':00</div>';
+  for (var c = 0; c < 7; c++){
+    g += '<div class="cal-col" style="grid-column:'+(c+2)+'">';
+    for (var r2 = 0; r2 < nH; r2++) g += '<div class="cell"></div>';
+    events.filter(function(e){ return e.d === c; }).forEach(function(e){
+      var top = (e.s - H0) * ROW, hgt = Math.max(22, (e.e - e.s) * ROW - 2);
+      g += '<button class="ev '+(e.k||'')+'" type="button" style="top:'+top+'px;height:'+hgt+'px" '+
+           'aria-label="'+esc(e.t+', '+hhmm(e.s)+' đến '+hhmm(e.e))+'">'+
+           '<b>'+esc(e.t)+'</b><span>'+hhmm(e.s)+' – '+hhmm(e.e)+'</span></button>';
+    });
+    if (c === NOW.d) g += '<div class="nowline" style="top:'+((NOW.h - H0) * ROW)+'px"></div>';
+    g += '</div>';
+  }
+  g += '</div>';
+  var leg = '<div class="cal-legend"><span><i></i>Buổi học</span><span><i class="han"></i>Hạn nộp bài</span><span><i class="thi"></i>Thi thử</span>'+
+            '<span style="margin-left:auto">Đường đỏ là giờ hiện tại, 18:56 Thứ 5 24/09</span></div>';
+  return '<div class="cal">'+head+'<div class="cal-scroll" id="cal-scroll">'+g+'</div>'+leg+'</div>';
+}
+var EV_GS = [
+  {d:0, s:14,   e:15.5, t:"Toán 9 — Minh Anh"},
+  {d:1, s:19.5, e:21,   t:"Toán 9 — Minh Anh"},
+  {d:2, s:20,   e:21.5, t:"HSA 2K9 — Ngôn ngữ"},
+  {d:4, s:20,   e:21.5, t:"HSA 2K9 — Toán Vi-ét"},
+  {d:5, s:23,   e:23.9, t:"Hạn nộp bài Vi-ét", k:"han"},
+  {d:6, s:18,   e:21,   t:"Thi thử HSA lần 2", k:"thi"}
+];
+var EV_HS = [
+  {d:2, s:20, e:21.5, t:"HSA 2K9 — Ngôn ngữ"},
+  {d:4, s:20, e:21.5, t:"HSA 2K9 — Toán Vi-ét"},
+  {d:5, s:23, e:23.9, t:"Hạn nộp bài Vi-ét", k:"han"},
+  {d:6, s:18, e:21,   t:"Thi thử HSA lần 2", k:"thi"}
+];
+var EV_PH = [
+  {d:2, s:20, e:21.5, t:"Buổi học của con"},
+  {d:4, s:20, e:21.5, t:"Buổi học của con"},
+  {d:6, s:18, e:21,   t:"Con thi thử HSA", k:"thi"}
+];
+
+/* ---------------- DỮ LIỆU THEO VAI ---------------- */
+function T(head, meta, cmd, tabs, extra){ return Object.assign({ head:head, meta:meta, cmd:cmd, tabs:tabs }, extra||{}); }
+
+var GS = {
+  name:"GIA SƯ", who:"Nguyễn Phúc Thanh · gia sư",
+  mods:[
+    { id:"viec", name:"Hộp việc", icon:"inbox", title:"Hộp việc", sub:"Việc KiN sinh ra, không phải email", badge:3,
+      chips:[["all","Tất cả"],["can","Cần trả lời"],["xong","Đã xử lý"]],
+      items:[
+        { id:"g1", unread:true, date:"18:40", title:"6 phụ huynh chưa xác nhận buổi 24/09", sub:"Toán: Hệ thức Vi-ét · tự chốt sau 72 giờ", filters:["can"],
+          tags: tg("users","a","Cần nhắc"),
+          head:"6 phụ huynh chưa xác nhận buổi 24/09", meta:"Toán: Hệ thức Vi-ét · Thứ 5, 24/09/2026 · HSA 2K9 Ca tối",
+          cmd:[["pri","send","Nhắc cả 6 phụ huynh"],["","book","Mở buổi học"],["ghost","more",""]],
+          tabs:[["Ai chưa bấm", function(){ return rows([
+            ["Lê Khánh Vy","Chị Hoa · 0903 111 222","Chờ 1 ngày","a"],
+            ["Phạm Quốc Huy","Chị Mai · 0938 444 555","Chờ 1 ngày","a"],
+            ["Vũ Minh Quân","Anh Hải · đã nhắc 1 lần","Chờ 1 ngày","a"],
+            ["Ngô Bảo Châu","Chị Vân · 0977 333 444","Chờ 1 ngày","a"],
+            ["Trịnh Thu Trang","Anh Bình · đã nhắc 1 lần","Chờ 1 ngày","a"],
+            ["Lý Gia Hân","Chị Nga · 0932 888 111","Chờ 1 ngày","a"]
+          ]) + '<p class="note">Buổi tự được xác nhận khi đủ <b>cả hai</b>: quá 72 giờ <b>và</b> đã nhắc ít nhất hai lần. Thiếu một vế thì không tự chốt.</p>'; }]] },
+        { id:"g2", unread:true, date:"21:14", title:"Anh Sơn báo buổi 17/09 không đúng", sub:"“Hôm đó cháu đi khám, có xin phép ạ” · treo 150.000đ", filters:["can"],
+          tags: tg("users","r","Cần xử lý"),
+          head:"Anh Sơn báo buổi 17/09 không đúng", meta:"Bùi Ngọc Ánh · Khoa học: Di truyền học · Thứ 5, 17/09/2026",
+          cmd:[["pri","play","Mở bản ghi buổi đó"],["","check","Sửa thành vắng"],["","send","Gửi lại cho phụ huynh"]],
+          tabs:[["Chi tiết", function(){ return '<p class="hint">Khoản 150.000đ đang treo, chưa tính vào phiếu tháng 9. Treo im lặng là cách nhanh nhất làm mất tiền của gia sư — nên nó nằm đầu hộp việc.</p>'+
+            '<div class="card" style="margin-bottom:20px;color:var(--ink-2);font-size:14px">“Hôm đó cháu đi khám, có xin phép ạ.”<div style="color:var(--muted);font-size:12.5px;margin-top:6px">Anh Sơn · phụ huynh Bùi Ngọc Ánh · 23/09 lúc 21:14</div></div>'+
+            '<p class="note"><b>Đây là chỗ bản ghi buổi học kiếm được chỗ đứng.</b> Mở đúng phút điểm danh là xong chuyện, không cần hai bên nhớ lại.</p>'; }]] },
+        { id:"g3", unread:true, date:"20:41", title:"Chị Lan báo đã chuyển 1.800.000đ", sub:"Nguyễn Minh Anh · học phí tháng 9", filters:["can"],
+          tags: tg("money","b","Chờ đối chiếu"),
+          head:"Chị Lan báo đã chuyển 1.800.000đ", meta:"Nguyễn Minh Anh · học phí tháng 9/2026 · 23/09 lúc 20:41",
+          cmd:[["pri","money","Đã nhận đủ"],["","money","Chưa thấy tiền"],["ghost","more",""]],
+          tabs:[["Chi tiết", function(){ return stat([["Phải thu","1.800.000đ","12 buổi × 150.000đ"],["Phụ huynh báo","1.800.000đ","23/09 20:41"],["Đã ghi nhận","0đ","chờ bạn đối chiếu"]])+
+            '<p class="hint">KiN không giữ tiền. Tiền chuyển thẳng vào tài khoản của bạn — mở app ngân hàng kiểm tra rồi bấm “Đã nhận đủ”.</p>'+
+            '<p class="note"><b>Nút này gửi tổng phải đạt, không gửi phần còn thiếu.</b> Thu làm hai đợt trong cùng một tháng thì đợt sau không được ghi đè đợt trước — đây là chỗ từng làm mất 540.000đ của một gia sư lúc chạy thử.</p>'; }]] },
+        { id:"g4", unread:false, date:"22/09", title:"Đã chấm xong Ngôn ngữ — Đọc hiểu nghị luận", sub:"20/24 nộp · trung bình 18,4/25", filters:["xong"],
+          tags: tg("quiz","g","Đã chấm"),
+          head:"Đã chấm xong Ngôn ngữ — Đọc hiểu nghị luận", meta:"Kho đề HSA · rút 25 câu · giao 22/09, hạn 24/09",
+          cmd:[["","send","Gửi kết quả cho phụ huynh"],["","quiz","Xem đề gốc"],["ghost","more",""]],
+          tabs:[["Kết quả", function(){ return stat([["Đã nộp","20/24","4 em chưa làm"],["Trung bình","18,4","trên 25 câu"],["Dạng sai nhiều","Suy luận","câu hỏi chùm"]]); }]] }
+      ] },
+    { id:"lich", name:"Lịch", icon:"cal", kind:"cal", title:"Lịch dạy", sub:"20 – 26 tháng 9, 2026", events:EV_GS },
+    { id:"lop", name:"Lớp", icon:"book", title:"Buổi học", sub:"HSA 2K9 · Ca tối T3–T5 · 24 học viên",
+      chips:[["all","Tất cả"],["cho","Chờ xác nhận"],["video","Có bản ghi"]],
+      items:[
+        { id:"l1", unread:true, date:"24/09", title:"Toán: Hệ thức Vi-ét và ứng dụng", sub:"Thứ 5 · 20:00 – 21:30 · 22/24 có mặt", filters:["cho","video"],
+          tags: tg("play",null,"Bản ghi") + tg("file",null,"3 tài liệu") + tg("users","a","6 chờ xác nhận"),
+          head:"Toán: Hệ thức Vi-ét và ứng dụng", meta:"Thứ 5, 24/09/2026 · 20:00 – 21:30 · HSA 2K9 Ca tối · 150.000đ/buổi",
+          cmd:[["pri","send","Gửi phụ huynh xác nhận"],["","plus","Thêm tài liệu"],["","link","Dán link bản ghi"],["ghost","more",""]],
+          tabs:[
+            ["Tổng quan", function(){ return stat([["Có mặt","22/24","1 muộn, 2 vắng"],["Chờ xác nhận","6","tự chốt sau 72 giờ và 2 lần nhắc"],["Ghi nhận buổi này","3.300.000đ","22 em × 150.000đ"]])+
+              '<div class="blk"><h3 class="sh">'+ico("play")+'Bản ghi</h3><div class="card"><b style="font:500 14px var(--f-b)">HSA 2K9 — Vi-ét (24/09)</b>'+
+              '<div style="font:400 12px var(--f-m);color:var(--muted);word-break:break-all;margin-top:2px">https://drive.google.com/file/d/1a2B3c4D5e6F7g8H9i/view</div>'+
+              '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn" type="button">'+ico("play")+'Mở bản ghi</button><button class="btn ghost" type="button">'+ico("link")+'Đổi link</button></div>'+
+              '<p class="note"><b>KiN lưu đường dẫn, không lưu file.</b> Bản ghi nằm trên Drive của bạn; KiN chỉ nhớ link và nhớ nó thuộc buổi này.</p></div></div>'+
+              '<div class="blk"><h3 class="sh">'+ico("file")+'Tài liệu<span class="n">3 tệp</span></h3>'+rows([
+                ["De-Viet-20-cau.pdf","PDF · 420 KB · giao trước buổi","24/24 đã mở","g"],
+                ["Bang-cong-thuc-Viet.png","Ảnh · 180 KB","21/24 đã mở","a"],
+                ["Loi-giai-chi-tiet.pdf","PDF · 1,1 MB · mở sau khi nộp","Chưa mở khoá",""]
+              ])+'</div>'; }],
+            ["Điểm danh (24)", function(){ return rows([
+              ["Nguyễn Minh Anh","Chị Lan · 0912 345 678","Đã xác nhận","g"],
+              ["Trần Gia Bảo","Anh Dũng · 0987 654 321","Đã xác nhận","g"],
+              ["Lê Khánh Vy","Chị Hoa · 0903 111 222","Chờ xác nhận","a"],
+              ["Phạm Quốc Huy","Chị Mai · 0938 444 555","Chờ xác nhận","a"],
+              ["Đỗ Thu Hà","Anh Nam · 0976 777 888","Đã xác nhận","g"],
+              ["Vũ Đức Tùng","Chị Yến · 0968 222 333","Vắng · không tính phí",""],
+              ["Hoàng Gia Khang","Chị Thu · 0945 888 999","Muộn · vẫn tính đủ","g"]
+            ]) + '<p class="note">Còn 17 em nữa.</p>'; }],
+            ["Bài kiểm tra (1)", function(){ return '<div class="card"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b style="font:500 15px var(--f-b)">Kiểm tra 15 phút — Hệ thức Vi-ét</b><span class="src">Tự soạn</span></div>'+
+              '<div style="color:var(--muted);font-size:13px;margin-top:3px">10 câu · 18/24 đã nộp · trung bình 7,2</div><div class="prog"><i style="width:75%"></i></div></div>'; }]
+          ] },
+        { id:"l2", unread:false, date:"22/09", title:"Ngôn ngữ: Đọc hiểu văn bản nghị luận", sub:"Thứ 3 · 20:00 – 21:30 · 24/24 có mặt", filters:["video"],
+          tags: tg("play",null,"Bản ghi") + tg("users","g","Đã xác nhận đủ"),
+          head:"Ngôn ngữ: Đọc hiểu văn bản nghị luận", meta:"Thứ 3, 22/09/2026 · 20:00 – 21:30 · HSA 2K9 Ca tối · 150.000đ/buổi",
+          cmd:[["","send","Gửi lại link"],["","plus","Thêm tài liệu"],["ghost","more",""]],
+          tabs:[["Tổng quan", function(){ return stat([["Có mặt","24/24","đủ lớp"],["Chờ xác nhận","0","đã xác nhận hết"],["Ghi nhận buổi này","3.600.000đ","24 em × 150.000đ"]]); }]] },
+        { id:"l3", unread:false, date:"17/09", title:"Khoa học: Di truyền học", sub:"Thứ 5 · 20:00 – 21:30 · 21/24 có mặt", filters:["video"],
+          tags: tg("play",null,"Bản ghi") + tg("users","r","1 báo sai"),
+          head:"Khoa học: Di truyền học", meta:"Thứ 5, 17/09/2026 · 20:00 – 21:30 · HSA 2K9 Ca tối · 150.000đ/buổi",
+          cmd:[["pri","send","Xử lý buổi bị báo sai"],["ghost","more",""]],
+          tabs:[["Tổng quan", function(){ return '<p class="hint">Một phụ huynh báo buổi này không đúng. Khoản 150.000đ đang treo, chưa tính vào phiếu tháng 9.</p>'+
+            stat([["Có mặt","21/24","3 vắng"],["Đang treo","150.000đ","1 buổi báo sai"],["Ghi nhận buổi này","3.000.000đ","chưa gồm khoản treo"]]); }]] }
+      ] },
+    { id:"bai", name:"Bài KT", icon:"quiz", title:"Bài kiểm tra", sub:"Ba nguồn đề, chung một bảng dữ liệu",
+      chips:[["all","Tất cả"],["hsa","Kho đề HSA"],["tusoan","Tự soạn"],["pdf","PDF tải lên"]],
+      items:[
+        { id:"b1", unread:true, date:"24/09", title:"Kiểm tra 15 phút — Hệ thức Vi-ét", sub:"Tự soạn · 10 câu · hạn 26/09", filters:["tusoan"],
+          tags: tg("users","a","18/24 đã nộp") + tg("quiz",null,"TB 7,2"),
+          head:"Kiểm tra 15 phút — Hệ thức Vi-ét", meta:"Giao 24/09/2026 · hạn 26/09 · HSA 2K9 Ca tối",
+          cmd:[["pri","send","Nhắc 6 em chưa nộp"],["","pen","Sửa đề"],["ghost","more",""]],
+          tabs:[["Kết quả", function(){ return '<div class="card" style="margin-bottom:20px"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b style="font:500 15px var(--f-b)">Nguồn đề</b><span class="src">Tự soạn</span></div><div style="color:var(--muted);font-size:13px;margin-top:4px">10 câu, gia sư tự gõ trong KiN. Chung bảng với đề rút từ kho HSA — chỉ khác trường <code style="font-family:var(--f-m);font-size:12px">nguon</code>.</div></div>'+
+            stat([["Đã nộp","18/24","6 em chưa làm"],["Trung bình","7,2","trên thang 10"],["Sai nhiều nhất","Câu 7","13/18 em sai"]])+
+            '<div class="tw"><table class="t"><thead><tr><th>Học viên</th><th class="n">Điểm</th><th class="n">Thời gian</th><th>Nộp lúc</th></tr></thead><tbody>'+
+            '<tr><td>Nguyễn Minh Anh</td><td class="n">9,0</td><td class="n">11 phút</td><td>24/09 22:04</td></tr>'+
+            '<tr><td>Đỗ Thu Hà</td><td class="n">8,0</td><td class="n">14 phút</td><td>25/09 07:12</td></tr>'+
+            '<tr><td>Trần Gia Bảo</td><td class="n">7,0</td><td class="n">9 phút</td><td>24/09 21:58</td></tr>'+
+            '<tr><td>Lê Khánh Vy</td><td class="n">—</td><td class="n">—</td><td>chưa nộp</td></tr>'+
+            '</tbody></table></div>'; }]] },
+        { id:"b2", unread:false, date:"22/09", title:"Ngôn ngữ — Đọc hiểu nghị luận", sub:"Kho đề HSA · rút 25 câu", filters:["hsa"],
+          tags: tg("users","g","20/24 đã nộp") + tg("quiz",null,"TB 18,4/25"),
+          head:"Ngôn ngữ — Đọc hiểu nghị luận", meta:"Giao 22/09/2026 · hạn 24/09 · HSA 2K9 Ca tối",
+          cmd:[["","send","Gửi kết quả cho phụ huynh"],["","quiz","Xem đề gốc trong kho"],["ghost","more",""]],
+          tabs:[["Kết quả", function(){ return '<div class="card" style="margin-bottom:20px"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b style="font:500 15px var(--f-b)">Nguồn đề</b><span class="src hsa">Kho đề HSA</span></div><div style="color:var(--muted);font-size:13px;margin-top:4px">Rút 25 câu từ chuyên đề “Đọc hiểu văn bản nghị luận”. Đề được chụp lại lúc giao — sửa đề gốc trong kho thì bài đã giao không đổi.</div></div>'+
+            stat([["Đã nộp","20/24","4 em chưa làm"],["Trung bình","18,4","trên 25 câu"],["Dạng sai nhiều","Suy luận","câu hỏi chùm"]]); }]] },
+        { id:"b3", unread:false, date:"17/09", title:"Khoa học — Di truyền (PDF chấm tay)", sub:"PDF tải lên · 12 câu · chấm tay", filters:["pdf"],
+          tags: tg("users","g","24/24 đã nộp"),
+          head:"Khoa học — Di truyền (PDF chấm tay)", meta:"Giao 17/09/2026 · HSA 2K9 Ca tối",
+          cmd:[["pri","pen","Nhập điểm"],["ghost","more",""]],
+          tabs:[["Kết quả", function(){ return '<div class="card" style="margin-bottom:20px"><div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b style="font:500 15px var(--f-b)">Nguồn đề</b><span class="src">PDF tải lên</span></div><div style="color:var(--muted);font-size:13px;margin-top:4px">Đề scan, KiN không chấm tự động được. Gia sư nhập điểm tay.</div></div>'+
+            '<p class="hint">Đây là lý do dùng <b>một bảng dữ liệu cho cả ba nguồn đề</b>: nguồn khác nhau, nhưng kết quả, phổ điểm và báo cáo gửi phụ huynh thì giống hệt.</p>'+
+            stat([["Đã nộp","24/24","đủ lớp"],["Đã chấm","24/24","nhập tay"],["Trung bình","6,8","trên thang 10"]]); }]] }
+      ] },
+    { id:"kho", name:"Thư viện", icon:"folder", title:"Bản ghi và tài liệu", sub:"Mọi tệp đều thuộc về một buổi",
+      chips:[["all","Tất cả"],["video","Bản ghi"],["doc","Tài liệu"]],
+      items:[
+        { id:"k1", unread:false, date:"24/09", title:"HSA 2K9 — Vi-ét (24/09)", sub:"Bản ghi · 1 giờ 27 phút · Google Drive", filters:["video"],
+          tags: tg("play","b","Bản ghi") + tg("book",null,"buổi 24/09"),
+          head:"HSA 2K9 — Vi-ét (24/09)", meta:"Bản ghi · thuộc buổi Toán: Hệ thức Vi-ét, Thứ 5 24/09/2026",
+          cmd:[["pri","play","Mở bản ghi"],["","link","Đổi link"],["ghost","more",""]],
+          tabs:[["Chi tiết", function(){ return '<p class="hint">Thư viện chỉ là một cách nhìn khác của cùng dữ liệu. Mọi bản ghi và tài liệu đều thuộc về một buổi cụ thể — nhờ vậy quyền xem suy ra được, không phải đặt tay cho từng tệp.</p>'+
+            '<div class="card"><b style="font:500 14px var(--f-b)">HSA 2K9 — Vi-ét (24/09)</b><div style="font:400 12px var(--f-m);color:var(--muted);word-break:break-all;margin-top:2px">https://drive.google.com/file/d/1a2B3c4D5e6F7g8H9i/view</div><p class="note"><b>KiN lưu đường dẫn, không lưu file.</b></p></div>'; }]] },
+        { id:"k2", unread:false, date:"24/09", title:"De-Viet-20-cau.pdf", sub:"Tài liệu · PDF · 420 KB", filters:["doc"],
+          tags: tg("file",null,"Tài liệu") + tg("book",null,"buổi 24/09"),
+          head:"De-Viet-20-cau.pdf", meta:"Tài liệu · thuộc buổi Toán: Hệ thức Vi-ét · giao trước buổi",
+          cmd:[["pri","file","Tải về"],["","send","Gửi lớp"],["ghost","more",""]],
+          tabs:[["Chi tiết", function(){ return rows([["De-Viet-20-cau.pdf","PDF · 420 KB","24/24 em đã mở","g"]])+'<p class="note">Tệp PDF và ảnh thì KiN lưu thật, vì nhỏ và rẻ. Chỉ riêng video là lưu đường dẫn.</p>'; }]] }
+      ] },
+    { id:"phi", name:"Học phí", icon:"money", title:"Học phí tháng 9/2026", sub:"Đã nhận 3.600.000đ trên 5.400.000đ",
+      chips:[["all","Tất cả"],["chua","Chưa thu đủ"],["du","Đã đủ"]],
+      items:[
+        { id:"p1", unread:true, date:"T9", title:"Nguyễn Minh Anh", sub:"12 buổi · còn 1.800.000đ", filters:["chua"],
+          tags: tg("money","b","Báo đã chuyển"),
+          head:"Nguyễn Minh Anh", meta:"HSA 2K9 Ca tối · học phí tháng 9/2026 · phụ huynh: chị Lan, 0912 345 678",
+          cmd:[["pri","money","Đã nhận đủ"],["","send","Gửi phiếu"],["","link","Mã VietQR"],["ghost","more",""]],
+          tabs:[["Phiếu tháng 9", function(){ return stat([["Buổi đã xác nhận","12","2 buổi chờ, chưa tính"],["Phải thu","1.800.000đ","12 × 150.000đ"],["Còn lại","1.800.000đ","phụ huynh đã báo chuyển"]])+
+            '<p class="hint">Chị Lan bấm “tôi đã chuyển khoản” lúc 23/09 20:41. Kiểm tra tài khoản rồi bấm “Đã nhận đủ”. Tiền về thẳng tài khoản của bạn, KiN không giữ tiền.</p>'; }]] },
+        { id:"p2", unread:false, date:"T9", title:"Đỗ Thu Hà", sub:"12 buổi · đã thu đủ", filters:["du"],
+          tags: tg("money","g","Đã đủ"),
+          head:"Đỗ Thu Hà", meta:"HSA 2K9 Ca tối · học phí tháng 9/2026 · phụ huynh: anh Nam, 0976 777 888",
+          cmd:[["","send","Gửi biên nhận"],["ghost","more",""]],
+          tabs:[["Phiếu tháng 9", function(){ return stat([["Buổi đã xác nhận","12","không buổi nào treo"],["Phải thu","1.800.000đ","12 × 150.000đ"],["Còn lại","0đ","nhận đủ 21/09"]])+'<p class="hint">Đã thanh toán đủ tháng này.</p>'; }]] }
+      ] }
+  ]
+};
+
+var HS = {
+  name:"HỌC SINH", who:"Nguyễn Minh Anh · học sinh",
+  mods:[
+    { id:"viec", name:"Việc của tôi", icon:"check", title:"Việc của tôi", sub:"Bài phải nộp và buổi sắp tới", badge:2,
+      chips:[["all","Tất cả"],["han","Sắp hết hạn"],["xong","Đã xong"]],
+      items:[
+        { id:"h1", unread:true, date:"Còn 2 ngày", title:"Kiểm tra 15 phút — Hệ thức Vi-ét", sub:"10 câu · hạn 23:59 Thứ 6 25/09 · bạn chưa làm", filters:["han"],
+          tags: tg("quiz","a","Chưa làm"),
+          head:"Kiểm tra 15 phút — Hệ thức Vi-ét", meta:"Thầy Thanh giao · 10 câu · hạn 23:59 Thứ 6, 25/09/2026",
+          cmd:[["pri","pen","Làm bài ngay"],["","file","Xem lại tài liệu buổi"],["ghost","more",""]],
+          tabs:[["Bài này là gì", function(){ return '<p class="hint">Bạn có 15 phút kể từ lúc bấm bắt đầu. Làm xong bấm nộp; hết giờ hệ thống tự nộp phần bạn đã làm.</p>'+
+            stat([["Số câu","10","trắc nghiệm"],["Thời gian","15 phút","tính từ lúc bắt đầu"],["Còn lại","2 ngày","hạn 23:59 Thứ 6"]])+
+            '<div class="blk"><h3 class="sh">'+ico("file")+'Nên xem trước khi làm</h3>'+rows([
+              ["De-Viet-20-cau.pdf","Đề luyện tập buổi 24/09","Đã mở","g"],
+              ["Bang-cong-thuc-Viet.png","Bảng công thức","Chưa mở","a"]
+            ])+'</div>'; }]] },
+        { id:"h2", unread:true, date:"Thứ 7", title:"Thi thử HSA lần 2", sub:"18:00 – 21:00 Thứ 7 26/09 · 150 câu, đủ 3 phần", filters:["han"],
+          tags: tg("cal","b","Sắp tới"),
+          head:"Thi thử HSA lần 2", meta:"Thứ 7, 26/09/2026 · 18:00 – 21:00 · đủ 3 phần, 150 câu",
+          cmd:[["pri","cal","Thêm vào lịch máy"],["","chart","Xem điểm lần 1"],["ghost","more",""]],
+          tabs:[["Chuẩn bị", function(){ return '<p class="hint">Lần 1 bạn được 81/150. Phần Khoa học là chỗ mất điểm nhiều nhất — 19/50.</p>'+
+            '<div class="tw"><table class="t"><thead><tr><th>Phần</th><th class="n">Lần 1</th><th class="n">TB lớp</th><th>Cần chú ý</th></tr></thead><tbody>'+
+            '<tr><td>Toán và Xử lý số liệu</td><td class="n">31/50</td><td class="n">27,1</td><td>trên trung bình lớp</td></tr>'+
+            '<tr><td>Văn học — Ngôn ngữ</td><td class="n">31/50</td><td class="n">29,8</td><td>ổn</td></tr>'+
+            '<tr><td>Khoa học</td><td class="n">19/50</td><td class="n">21,5</td><td>dưới trung bình lớp</td></tr>'+
+            '</tbody></table></div>'; }]] },
+        { id:"h3", unread:false, date:"22/09", title:"Ngôn ngữ — Đọc hiểu nghị luận", sub:"Đã nộp · 22/25 câu đúng", filters:["xong"],
+          tags: tg("quiz","g","22/25"),
+          head:"Ngôn ngữ — Đọc hiểu nghị luận", meta:"Đã nộp 22/09 lúc 15:47 · 31 phút · 22/25 câu đúng",
+          cmd:[["pri","check","Xem bài đã chấm"],["ghost","more",""]],
+          tabs:[["Kết quả của bạn", function(){ return stat([["Câu đúng","22/25","trên trung bình lớp 18,4"],["Thời gian","31 phút","trung bình lớp 27 phút"],["Xếp hạng","2/20","trong số em đã nộp"]])+
+            '<p class="note">Ba câu sai đều thuộc dạng suy luận từ câu hỏi chùm. Mở bài đã chấm để xem lời giải từng câu.</p>'; }]] }
+      ] },
+    { id:"lich", name:"Lịch", icon:"cal", kind:"cal", title:"Lịch học của bạn", sub:"20 – 26 tháng 9, 2026", events:EV_HS },
+    { id:"lop", name:"Lớp", icon:"book", title:"Lớp của bạn", sub:"HSA 2K9 · Ca tối T3–T5 · Thầy Thanh",
+      chips:[["all","Tất cả"],["video","Có bản ghi"]],
+      items:[
+        { id:"hl1", unread:false, date:"24/09", title:"Toán: Hệ thức Vi-ét và ứng dụng", sub:"Thứ 5 · 20:00 – 21:30 · bạn có mặt", filters:["video"],
+          tags: tg("play",null,"Bản ghi") + tg("file",null,"3 tài liệu"),
+          head:"Toán: Hệ thức Vi-ét và ứng dụng", meta:"Thứ 5, 24/09/2026 · 20:00 – 21:30 · Thầy Thanh",
+          cmd:[["pri","play","Xem lại bản ghi"],["","file","Tải tài liệu"],["ghost","more",""]],
+          tabs:[["Buổi này", function(){ return '<div class="card" style="margin-bottom:20px;color:var(--ink-2);font-size:14px">“Lớp nắm được dạng cơ bản. Ba em còn nhầm dấu khi áp hệ thức vào phương trình chứa tham số — đã giao thêm bài về nhà.”<div style="color:var(--muted);font-size:12.5px;margin-top:6px">Nhận xét của Thầy Thanh</div></div>'+
+            '<div class="blk"><h3 class="sh">'+ico("file")+'Tài liệu buổi này</h3>'+rows([
+              ["De-Viet-20-cau.pdf","PDF · 420 KB","Bạn đã mở","g"],
+              ["Bang-cong-thuc-Viet.png","Ảnh · 180 KB","Bạn chưa mở","a"],
+              ["Loi-giai-chi-tiet.pdf","Mở sau khi nộp bài","Chưa mở khoá",""]
+            ])+'</div>'+
+            '<p class="note"><b>Lời giải chi tiết chưa mở khoá.</b> Nộp bài kiểm tra Vi-ét xong là xem được.</p>'; }]] },
+        { id:"hl2", unread:false, date:"22/09", title:"Ngôn ngữ: Đọc hiểu văn bản nghị luận", sub:"Thứ 3 · 20:00 – 21:30 · bạn có mặt", filters:["video"],
+          tags: tg("play",null,"Bản ghi") + tg("quiz","g","Đã làm bài"),
+          head:"Ngôn ngữ: Đọc hiểu văn bản nghị luận", meta:"Thứ 3, 22/09/2026 · 20:00 – 21:30 · Thầy Thanh",
+          cmd:[["pri","play","Xem lại bản ghi"],["ghost","more",""]],
+          tabs:[["Buổi này", function(){ return rows([
+            ["Ngu-lieu-nghi-luan-2026.pdf","PDF · 680 KB","Bạn đã mở","g"],
+            ["Bang-tu-vung-hoc-thuat.pdf","PDF · 240 KB","Bạn đã mở","g"]
+          ]); }]] }
+      ] },
+    { id:"kho", name:"Thư viện", icon:"folder", title:"Tài liệu của bạn", sub:"Gom từ các buổi bạn đã học",
+      chips:[["all","Tất cả"],["video","Bản ghi"],["doc","Tài liệu"]],
+      items:[
+        { id:"hk1", unread:false, date:"24/09", title:"De-Viet-20-cau.pdf", sub:"Tài liệu · buổi 24/09 · bạn đã mở", filters:["doc"],
+          tags: tg("file",null,"PDF · 420 KB"),
+          head:"De-Viet-20-cau.pdf", meta:"Tài liệu · buổi Toán: Hệ thức Vi-ét, Thứ 5 24/09/2026",
+          cmd:[["pri","file","Tải về"],["ghost","more",""]],
+          tabs:[["Chi tiết", function(){ return '<p class="hint">Bạn mở được tệp này vì bạn có mặt ở buổi 24/09. Buổi nào bạn không học thì không thấy tài liệu của buổi đó.</p>'; }]] },
+        { id:"hk2", unread:false, date:"24/09", title:"HSA 2K9 — Vi-ét (24/09)", sub:"Bản ghi · 1 giờ 27 phút", filters:["video"],
+          tags: tg("play","b","Bản ghi"),
+          head:"HSA 2K9 — Vi-ét (24/09)", meta:"Bản ghi buổi học · Thứ 5, 24/09/2026",
+          cmd:[["pri","play","Xem lại"],["ghost","more",""]],
+          tabs:[["Chi tiết", function(){ return '<p class="hint">Bản ghi nằm trên Drive của Thầy Thanh. KiN chỉ giữ đường dẫn và kiểm tra xem bạn có quyền mở không.</p>'; }]] }
+      ] }
+  ]
+};
+
+var PH = {
+  name:"PHỤ HUYNH", who:"Chị Lan · phụ huynh Nguyễn Minh Anh",
+  mods:[
+    { id:"viec", name:"Cần xác nhận", icon:"check", title:"Cần anh/chị xác nhận", sub:"Vào bằng link, không cần mật khẩu", badge:2,
+      chips:[["all","Tất cả"],["can","Chưa xác nhận"],["xong","Đã xác nhận"]],
+      items:[
+        { id:"f1", unread:true, date:"24/09", title:"Buổi 24/09 · con có mặt", sub:"Hệ thức Vi-ét · Con hiểu bài, cần làm thêm bài tập", filters:["can"],
+          tags: tg("check","a","Chờ anh/chị bấm"),
+          head:"Buổi 24/09 · con có mặt", meta:"Thứ 5, 24/09/2026 · 20:00 – 21:30 · gia sư Nguyễn Phúc Thanh",
+          cmd:[["pri","check","Đúng rồi"],["","pen","Không đúng"],["","play","Xem bản ghi buổi này"]],
+          tabs:[["Buổi này", function(){ return '<p class="hint">Anh/chị bấm “Đúng rồi” thì buổi này được tính vào học phí. Nếu không đúng, bấm “Không đúng” và ghi lý do — gia sư sẽ kiểm tra lại.</p>'+
+            '<div class="card" style="margin-bottom:20px;color:var(--ink-2);font-size:14px">“Lớp nắm được dạng cơ bản. Ba em còn nhầm dấu khi áp hệ thức vào phương trình chứa tham số — đã giao thêm bài về nhà.”<div style="color:var(--muted);font-size:12.5px;margin-top:6px">Nhận xét của gia sư</div></div>'+
+            '<p class="note">Nếu để quá 72 giờ và đã được nhắc hai lần mà không bấm, buổi sẽ tự được xác nhận.</p>'; }]] },
+        { id:"f2", unread:true, date:"22/09", title:"Buổi 22/09 · con có mặt", sub:"Đọc hiểu văn bản nghị luận", filters:["can"],
+          tags: tg("check","a","Chờ anh/chị bấm"),
+          head:"Buổi 22/09 · con có mặt", meta:"Thứ 3, 22/09/2026 · 20:00 – 21:30 · gia sư Nguyễn Phúc Thanh",
+          cmd:[["pri","check","Đúng rồi"],["","pen","Không đúng"],["","play","Xem bản ghi buổi này"]],
+          tabs:[["Buổi này", function(){ return '<p class="hint">Xác nhận cả hai buổi một lần cũng được — bấm “Đúng rồi” ở từng buổi hoặc dùng nút xác nhận tất cả ở cuối danh sách.</p>'; }]] },
+        { id:"f3", unread:false, date:"17/09", title:"Buổi 17/09 · con có mặt", sub:"Di truyền học", filters:["xong"],
+          tags: tg("check","g","Đã xác nhận"),
+          head:"Buổi 17/09 · con có mặt", meta:"Thứ 5, 17/09/2026 · anh/chị đã xác nhận 18/09",
+          cmd:[["","play","Xem bản ghi buổi này"],["ghost","more",""]],
+          tabs:[["Buổi này", function(){ return '<p class="hint">Buổi này đã được tính vào học phí tháng 9.</p>'; }]] }
+      ] },
+    { id:"lich", name:"Lịch của con", icon:"cal", kind:"cal", title:"Lịch học của con", sub:"20 – 26 tháng 9, 2026", events:EV_PH },
+    { id:"so", name:"Sổ học", icon:"book", title:"Sổ học của con", sub:"Nguyễn Minh Anh · HSA 2K9 Ca tối",
+      chips:[["all","Tất cả"],["kq","Kết quả học"]],
+      items:[
+        { id:"s1", unread:false, date:"T9", title:"Chuyên cần tháng 9", sub:"12/14 buổi có mặt · 2 buổi vắng", filters:["kq"],
+          tags: tg("check","g","12/14 có mặt"),
+          head:"Chuyên cần tháng 9", meta:"Nguyễn Minh Anh · HSA 2K9 Ca tối · tháng 9/2026",
+          cmd:[["","send","Nhắn cho gia sư"],["ghost","more",""]],
+          tabs:[["Các buổi", function(){ return rows([
+            ["24/09 · con có mặt","Hệ thức Vi-ét","Chờ anh/chị xác nhận","a"],
+            ["22/09 · con có mặt","Đọc hiểu nghị luận","Chờ anh/chị xác nhận","a"],
+            ["17/09 · con có mặt","Di truyền học","Đã xác nhận","g"],
+            ["15/09 · con vắng","—","Không tính phí",""],
+            ["12/09 · con có mặt","Thi thử HSA lần 1","Tự xác nhận sau 72 giờ","g"]
+          ]); }]] },
+        { id:"s2", unread:true, date:"22/09", title:"Con đã nộp bài Ngôn ngữ, 22/25 câu đúng", sub:"Xếp thứ 2 trong số 20 em đã nộp", filters:["kq"],
+          tags: tg("quiz","g","22/25 câu"),
+          head:"Con đã nộp bài Ngôn ngữ, 22/25 câu đúng", meta:"Ngôn ngữ — Đọc hiểu nghị luận · nộp 22/09 lúc 15:47",
+          cmd:[["","chart","Xem chi tiết"],["ghost","more",""]],
+          tabs:[["Kết quả", function(){ return stat([["Câu đúng","22/25","trung bình lớp 18,4"],["Xếp hạng","2/20","trong số em đã nộp"],["Thời gian làm","31 phút","trung bình lớp 27 phút"]])+
+            '<p class="note">Anh/chị thấy kết quả, không thấy hạn nộp — hạn là việc của con và gia sư.</p>'; }]] }
+      ] },
+    { id:"phi", name:"Học phí", icon:"money", title:"Học phí tháng 9/2026", sub:"Cần thanh toán 1.800.000đ",
+      chips:[["all","Tất cả"]],
+      items:[
+        { id:"q1", unread:true, date:"T9", title:"Phiếu học phí tháng 9", sub:"12 buổi đã xác nhận · 1.800.000đ", filters:[],
+          tags: tg("money","a","Chưa thanh toán"),
+          head:"Phiếu học phí tháng 9/2026", meta:"Nguyễn Minh Anh · gia sư Nguyễn Phúc Thanh · 0912 000 111",
+          cmd:[["pri","money","Tôi đã chuyển khoản"],["","link","Mở mã VietQR"],["ghost","more",""]],
+          tabs:[["Phiếu", function(){ return '<div class="card" style="margin-bottom:20px">'+
+            '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-variant-numeric:tabular-nums"><span>12 buổi đã xác nhận × 150.000đ</span><span>1.800.000đ</span></div>'+
+            '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;color:var(--muted);font-variant-numeric:tabular-nums"><span>Đã thanh toán</span><span>− 0đ</span></div>'+
+            '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;color:var(--muted);font-variant-numeric:tabular-nums"><span>2 buổi chờ xác nhận (chưa tính)</span><span>300.000đ</span></div>'+
+            '<div style="display:flex;justify-content:space-between;gap:12px;border-top:1px dashed var(--line);margin-top:6px;padding-top:12px;font-weight:600;font-size:17px;font-variant-numeric:tabular-nums"><span>Cần thanh toán bây giờ</span><span>1.800.000đ</span></div></div>'+
+            '<p class="hint">Sau khi anh/chị xác nhận 2 buổi ở mục “Cần xác nhận”, tổng học phí tháng này sẽ là <b>2.100.000đ</b>.</p>'+
+            '<p class="note"><b>Tiền chuyển thẳng cho gia sư.</b> KiN không giữ tiền, chỉ ghi sổ. Vietcombank · 1234567890 · NGUYEN PHUC THANH · nội dung KIN NGUYENMINHANH DEM T9.</p>'; }]] }
+      ] }
+  ]
+};
+
+var QT = {
+  name:"QUẢN TRỊ", who:"Quản trị KiN",
+  mods:[
+    { id:"duyet", name:"Kiểm duyệt", icon:"shield", title:"Chờ kiểm duyệt", sub:"Hàng chờ nội dung và hồ sơ", badge:2,
+      chips:[["all","Tất cả"],["hoso","Hồ sơ gia sư"],["noidung","Nội dung"]],
+      items:[
+        { id:"d1", unread:true, date:"Hôm nay", title:"3 hồ sơ gia sư chờ xác minh", sub:"Đã nộp thẻ sinh viên, chờ đối chiếu", filters:["hoso"],
+          tags: tg("users","a","Chờ duyệt"),
+          head:"3 hồ sơ gia sư chờ xác minh", meta:"Nộp trong 24 giờ qua",
+          cmd:[["pri","check","Duyệt từng hồ sơ"],["ghost","more",""]],
+          tabs:[["Danh sách", function(){ return rows([
+            ["Nguyễn Phúc Thanh","NEU · K65 · thẻ sinh viên còn hạn","Chờ đối chiếu","a"],
+            ["Trần Hải Yến","ĐHQGHN · K66 · giấy xác nhận","Chờ đối chiếu","a"],
+            ["Lê Anh Đức","HUST · K64 · ảnh mờ","Cần nộp lại","r"]
+          ]); }]] },
+        { id:"d2", unread:true, date:"Hôm nay", title:"1 tài liệu bị báo cáo", sub:"Nghi ngờ vi phạm bản quyền sách giáo khoa", filters:["noidung"],
+          tags: tg("file","r","Cần xem"),
+          head:"1 tài liệu bị báo cáo", meta:"De-on-tap-chuong-3.pdf · lớp Toán 9 · báo cáo lúc 14:02",
+          cmd:[["pri","shield","Gỡ tài liệu"],["","send","Hỏi gia sư"],["ghost","more",""]],
+          tabs:[["Chi tiết", function(){ return '<p class="hint">Người báo cáo cho rằng tệp là ảnh chụp nguyên chương sách giáo khoa. Cần xem trước khi quyết định.</p>'+
+            '<p class="note">Gỡ tài liệu là việc không hoàn tác được ở phía học sinh — các em đã tải về thì KiN không thu hồi được.</p>'; }]] }
+      ] },
+    { id:"nguoi", name:"Người dùng", icon:"users", title:"Người dùng", sub:"142 gia sư · 1.284 học sinh",
+      chips:[["all","Tất cả"],["gs","Gia sư"],["hs","Học sinh"]],
+      items:[
+        { id:"n1", unread:false, date:"—", title:"Nguyễn Phúc Thanh", sub:"Gia sư · 2 lớp · 27 học viên · đã xác minh", filters:["gs"],
+          tags: tg("check","g","Đã xác minh"),
+          head:"Nguyễn Phúc Thanh", meta:"thanh.giasu@vidu.edu.vn · tham gia 12/08/2026 · đã xác minh 15/08",
+          cmd:[["","send","Nhắn"],["","shield","Tạm khoá"],["ghost","more",""]],
+          tabs:[["Hồ sơ", function(){ return stat([["Lớp đang dạy","2","HSA 2K9, Toán 9"],["Học viên","27","24 + 3"],["Học phí ghi sổ T9","5.400.000đ","KiN không giữ tiền"]]); }]] }
+      ] },
+    { id:"bcao", name:"Báo cáo", icon:"chart", title:"Báo cáo", sub:"Tháng 9/2026",
+      chips:[["all","Tất cả"]],
+      items:[
+        { id:"r1", unread:false, date:"T9", title:"Buổi học và xác nhận", sub:"3.418 buổi · 87% được phụ huynh xác nhận", filters:[],
+          tags: tg("chart","b","Tháng 9"),
+          head:"Buổi học và xác nhận, tháng 9/2026", meta:"Toàn hệ thống · cập nhật 18:56 hôm nay",
+          cmd:[["","file","Tải CSV"],["ghost","more",""]],
+          tabs:[["Số liệu", function(){ return stat([["Buổi đã dạy","3.418","+12% so với tháng 8"],["Phụ huynh tự bấm","87%","còn lại tự chốt sau 72 giờ"],["Buổi bị báo sai","1,4%","48 buổi"]])+
+            '<p class="note">Tỉ lệ tự chốt cao là dấu hiệu xấu, không phải tốt — nghĩa là phụ huynh không bấm, và quy tắc im lặng đang gánh thay. Nếu con số này vượt 20% thì phải xem lại cách gửi nhắc.</p>'; }]] }
+      ] }
+  ]
+};
+
+var ROLES = { gs:GS, hs:HS, ph:PH, qt:QT };
+
+/* ---------------- trạng thái ---------------- */
+var state = { role:"gs", mod:"viec", item:null, tab:0, filter:"all", q:"" };
+var $ = function(id){ return document.getElementById(id); };
+function role(){ return ROLES[state.role]; }
+function mod(){ var m = role().mods.filter(function(x){ return x.id === state.mod; }); return m[0] || role().mods[0]; }
+function visible(){
+  var m = mod(); if (!m.items) return [];
+  var q = state.q.trim().toLowerCase();
+  return m.items.filter(function(it){
+    if (state.filter !== "all" && (it.filters||[]).indexOf(state.filter) < 0) return false;
+    if (q && (it.title + " " + it.sub).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+function item(){ var m = mod(); if (!m.items) return null; var f = m.items.filter(function(i){ return i.id === state.item; }); return f[0] || null; }
+
+function renderRail(){
+  var r = $("rail");
+  Array.prototype.slice.call(r.querySelectorAll("button, .gap")).forEach(function(b){ b.remove(); });
+  $("whoami").textContent = role().name;
+  role().mods.forEach(function(m){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-current", String(m.id === state.mod));
+    b.innerHTML = ico(m.icon) + "<span>" + esc(m.name) + "</span>" + (m.badge ? '<span class="badge" aria-label="'+m.badge+' việc mới">'+m.badge+'</span>' : "");
+    b.addEventListener("click", function(){
+      state.mod = m.id; state.filter = "all"; state.q = ""; state.tab = 0;
+      var v = m.items || []; state.item = v.length ? v[0].id : null;
+      document.body.setAttribute("data-open","0");
+      render();
+    });
+    r.appendChild(b);
+  });
+  var g = document.createElement("span"); g.className = "gap"; r.insertBefore(g, r.children[r.children.length]);
+}
+function renderList(){
+  var m = mod();
+  $("list-title").textContent = m.title;
+  $("list-sub").textContent = m.sub || "";
+  $("search").placeholder = "Tìm trong " + m.title.toLowerCase() + "…";
+  $("search").value = state.q;
+  var c = $("chips"); c.innerHTML = "";
+  (m.chips || []).forEach(function(ch){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = ch[1];
+    b.setAttribute("aria-pressed", String(state.filter === ch[0]));
+    b.addEventListener("click", function(){ state.filter = ch[0]; render(); });
+    c.appendChild(b);
+  });
+  var body = $("list-body"); body.innerHTML = "";
+  if (m.kind === "cal"){
+    $("search").value = ""; $("search").placeholder = "Tìm sự kiện…";
+    body.innerHTML = '<div style="padding:14px"><div style="font:600 13px var(--f-h);margin-bottom:10px">Thứ 5, 24 tháng 9</div>' +
+      m.events.filter(function(e){ return e.d === 4; }).map(function(e){
+        return '<div class="card" style="margin-bottom:8px"><b style="font:500 14px var(--f-b)">'+esc(e.t)+'</b><div style="font:400 12px var(--f-m);color:var(--muted);margin-top:2px">'+hhmm(e.s)+' – '+hhmm(e.e)+'</div></div>';
+      }).join("") +
+      '<div style="font:600 13px var(--f-h);margin:16px 0 10px">Sắp tới</div>' +
+      m.events.filter(function(e){ return e.d > 4; }).map(function(e){
+        return '<div class="card" style="margin-bottom:8px"><b style="font:500 14px var(--f-b)">'+esc(e.t)+'</b><div style="font:400 12px var(--f-m);color:var(--muted);margin-top:2px">'+DAYS[e.d][0]+' '+DAYS[e.d][1]+'/09 · '+hhmm(e.s)+' – '+hhmm(e.e)+'</div></div>';
+      }).join("") + '</div>';
+    return;
+  }
+  var vis = visible();
+  if (!vis.length){ body.innerHTML = '<div class="empty">Không có mục nào khớp bộ lọc.</div>'; return; }
+  vis.forEach(function(it){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "row" + (it.unread ? " unread" : "");
+    b.setAttribute("role","option");
+    b.setAttribute("aria-selected", String(it.id === state.item));
+    b.innerHTML = '<div class="l1"><span class="t">'+esc(it.title)+'</span><span class="d">'+esc(it.date)+'</span></div>'+
+      '<div class="l2">'+esc(it.sub)+'</div>'+(it.tags ? '<div class="l3">'+it.tags+'</div>' : '');
+    b.addEventListener("click", function(){
+      state.item = it.id; state.tab = 0;
+      document.body.setAttribute("data-open","1"); render();
+    });
+    body.appendChild(b);
+  });
+}
+function renderRead(){
+  var m = mod();
+  if (m.kind === "cal"){
+    $("read-title").textContent = m.title;
+    $("read-meta").textContent = m.sub;
+    $("cmd").innerHTML = '<button class="btn pri" type="button">'+ico("plus")+'Buổi mới</button>'+
+      '<button class="btn" type="button">‹ Tuần trước</button><button class="btn" type="button">Tuần sau ›</button>'+
+      '<button class="btn ghost" type="button">'+ico("more")+'</button>';
+    $("tabs").innerHTML = "";
+    $("read-body").style.padding = "0";
+    $("read-body").innerHTML = calendar(m.events);
+    var sc = $("cal-scroll"); if (sc) sc.scrollTop = Math.max(0, (17 - H0) * ROW);
+    return;
+  }
+  $("read-body").style.padding = "20px";
+  var it = item();
+  if (!it){
+    $("read-title").textContent = "Chưa chọn mục nào";
+    $("read-meta").textContent = ""; $("cmd").innerHTML = ""; $("tabs").innerHTML = "";
+    $("read-body").innerHTML = '<div class="empty">Chọn một mục ở danh sách bên trái.</div>';
+    return;
+  }
+  $("read-title").textContent = it.head;
+  $("read-meta").textContent = it.meta;
+  $("cmd").innerHTML = (it.cmd || []).map(function(c){
+    return '<button class="btn'+(c[0]?' '+c[0]:'')+'" type="button"'+(c[2]?'':' aria-label="Thêm lựa chọn"')+'>'+ico(c[1])+(c[2]?esc(c[2]):'')+'</button>';
+  }).join("");
+  var t = $("tabs"); t.innerHTML = "";
+  (it.tabs || []).forEach(function(tb, i){
+    var b = document.createElement("button");
+    b.type = "button"; b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", String(i === state.tab));
+    b.textContent = tb[0];
+    b.addEventListener("click", function(){ state.tab = i; renderRead(); $("read-body").scrollTop = 0; });
+    t.appendChild(b);
+  });
+  var fn = (it.tabs && it.tabs[state.tab]) ? it.tabs[state.tab][1] : null;
+  $("read-body").innerHTML = fn ? fn() : '<div class="empty">—</div>';
+}
+function render(){ renderRail(); renderList(); renderRead(); }
+
+function setRole(r){
+  state.role = r; state.mod = ROLES[r].mods[0].id; state.filter = "all"; state.q = ""; state.tab = 0;
+  var first = ROLES[r].mods[0].items;
+  state.item = (first && first.length) ? first[0].id : null;
+  document.body.setAttribute("data-open","0");
+  ["gs","hs","ph","qt"].forEach(function(k){ $("r-"+k).setAttribute("aria-pressed", String(k === r)); });
+  try { localStorage.setItem("kin4-role", r); } catch(e){}
+  render();
+}
+
+$("search").addEventListener("input", function(e){
+  state.q = e.target.value;
+  var vis = visible();
+  if (vis.length && !vis.some(function(i){ return i.id === state.item; })) { state.item = vis[0].id; state.tab = 0; }
+  renderList(); renderRead();
+});
+$("list-body").addEventListener("keydown", function(e){
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  var vis = visible(), idx = -1;
+  vis.forEach(function(i,k){ if (i.id === state.item) idx = k; });
+  idx = Math.max(0, Math.min(vis.length - 1, idx + (e.key === "ArrowDown" ? 1 : -1)));
+  if (vis[idx]){ state.item = vis[idx].id; state.tab = 0; render(); }
+});
+$("back").addEventListener("click", function(){ document.body.setAttribute("data-open","0"); });
+
+function store(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function read(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+var tL=$("t-light"), tD=$("t-dark"), wD=$("w-desk"), wP=$("w-phone");
+function setTheme(m){ document.documentElement.setAttribute("data-theme", m);
+  tL.setAttribute("aria-pressed", String(m==="light")); tD.setAttribute("aria-pressed", String(m==="dark")); store("kin4-theme", m); }
+function setW(m){ document.body.setAttribute("data-w", m);
+  if (m === "desk") document.body.setAttribute("data-open","0");
+  wD.setAttribute("aria-pressed", String(m==="desk")); wP.setAttribute("aria-pressed", String(m==="phone")); store("kin4-w", m); }
+tL.addEventListener("click", function(){ setTheme("light"); });
+tD.addEventListener("click", function(){ setTheme("dark"); });
+wD.addEventListener("click", function(){ setW("desk"); });
+wP.addEventListener("click", function(){ setW("phone"); });
+["gs","hs","ph","qt"].forEach(function(k){ $("r-"+k).addEventListener("click", function(){ setRole(k); }); });
+
+setTheme(read("kin4-theme")==="dark" ? "dark" : "light");
+setW(read("kin4-w")==="phone" ? "phone" : "desk");
+setRole(["gs","hs","ph","qt"].indexOf(read("kin4-role")) >= 0 ? read("kin4-role") : "gs");
+})();
+</script>
+
+</html>
