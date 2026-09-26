@@ -127,22 +127,39 @@ trên nền tảng). Ghi chú trong schema nói là song song, không thay thế
 
 ---
 
-## 4. Chỗ lệch lớn nhất, cần anh Thanh và anh Thọ nói chuyện
+## 4. Chữ trên web đang chạy không phải là mô hình kinh doanh
 
-Web đang chạy bán theo mô hình **"Mua 1 lần, học trọn đời"** — 1.200+ học viên,
-10.000+ đề thi thử, 6 gia sư và trợ giảng. Đây là **bán khoá học**.
+**Đính chính bản 25/09.** Bản trước của mục này viết rằng KiN và web đang chạy đi
+theo hai mô hình kinh doanh mâu thuẫn nhau. Điều đó **sai**, và sai vì tôi đọc chữ
+quảng cáo trên trang chủ rồi coi đó là mô hình thật.
 
-Tài liệu định hướng KiN ngày 23/09 lại chốt: **hạ tầng cho người dạy**, gia sư trả
-phí nền tảng, KiN không giữ học phí, ngách 1–20 học viên.
+Anh Thanh đã nói rõ:
 
-Hai mô hình kinh doanh khác nhau, không phải hai cách diễn đạt của một thứ.
+- **"Mua 1 lần, học trọn đời"** là chữ đặt tạm trên trang, không phải cách bán thật.
+- **"1.200+ học viên"** cũng không phải số thật. Hiện tại có **25 học sinh**, và là
+  học sinh anh Thanh kèm gia sư.
+- Hướng đi là **mô hình KiN**. Midnight Elite là thứ đang chạy tạm, không phải đích
+  đến lâu dài.
 
-Chưa cần chọn ngay. Nhưng người viết code cần biết mình đang xây cho mô hình nào,
-vì nó quyết định `Course` thuộc về trung tâm hay thuộc về gia sư — đó là câu hỏi
-hình dạng bảng dữ liệu, không phải câu hỏi giao diện.
+Nên **không có hai mô hình để phải chọn giữa**. Chỉ có một: hạ tầng cho người dạy,
+gia sư sở hữu lớp của mình, KiN không giữ học phí, quy mô ngách 1–20 học sinh một lớp.
 
-Ghi chú: `Course.ownerId` đã có sẵn, kèm comment *"null = nội dung cũ/của quản lý
-trung tâm"*. Tức là kho này **đã bắt đầu đi về hướng gia sư sở hữu lớp** rồi.
+### Cái vẫn còn giá trị sau khi đính chính
+
+Câu hỏi kỹ thuật bên dưới vẫn đứng, chỉ là nó không còn là câu hỏi mở nữa mà đã có
+câu trả lời: **`Course` thuộc về gia sư, không thuộc về trung tâm.** Kho này đã đi
+đúng hướng đó rồi — `Course.ownerId` có sẵn, kèm comment *"null = nội dung cũ/của
+quản lý trung tâm"*. Tức là phần nội dung `ownerId = null` là di sản, không phải
+hình mẫu để nhân bản.
+
+Việc cần làm, ngắn gọn: mọi thứ tạo mới từ nay đều có `ownerId` trỏ về một gia sư
+thật, và đừng viết thêm code nào giả định `ownerId = null` là trạng thái bình thường.
+
+### Bài học tôi rút ra, để anh Thọ khỏi vấp lại
+
+Con số trên trang tiếp thị không phải dữ liệu. Ở giai đoạn này gần như mọi con số
+hiển thị ra ngoài đều là chữ đặt tạm. Cần số thật thì đếm trong cơ sở dữ liệu, hoặc
+hỏi anh Thanh — đừng đọc trang chủ.
 
 ---
 
