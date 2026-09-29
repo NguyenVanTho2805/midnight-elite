@@ -7,7 +7,6 @@ import { COURSE_CATEGORIES, CATEGORY_GRADIENT, COURSE_HASHTAGS } from "@/lib/cou
 import { useCourses } from "@/hooks/useCourses";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
-import PopupBuyRequired from "@/components/PopupBuyRequired";
 import TeacherTag from "@/components/TeacherTag";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import type { CourseFull } from "@/lib/api";
@@ -51,24 +50,11 @@ function CourseCard({ course, inCart, onToggleCart, isEnrolled }: {
   isEnrolled: boolean;
 }) {
   const router = useRouter();
-  const [showBuyPopup, setShowBuyPopup] = useState(false);
   const discount = course.originalPrice > course.price
     ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
   const theme = categoryTheme[course.category] ?? categoryTheme["ĐGNL HSA"];
 
   return (
-    <>
-      {showBuyPopup && (
-        <PopupBuyRequired
-          courseName={course.title}
-          price={course.price}
-          originalPrice={course.originalPrice}
-          title="Mua khóa học"
-          subtitle="Liên hệ admin để được hướng dẫn thanh toán"
-          closeLabel="Đóng"
-          onClose={() => setShowBuyPopup(false)}
-        />
-      )}
     <div className="card-hover rounded-xl overflow-hidden flex flex-col cursor-pointer"
       style={{ background: "#ffffff", border: "1px solid #e5e3df" }}
       onClick={() => router.push(`/khoa-hoc/${course.slug}`)}>
@@ -179,16 +165,17 @@ function CourseCard({ course, inCart, onToggleCart, isEnrolled }: {
               Tiếp tục học →
             </Link>
           ) : (
-            <button onClick={() => setShowBuyPopup(true)}
-              className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center cursor-pointer transition-all hover:brightness-105 active:scale-95"
+            <Link
+              href={`/khoa-hoc/${course.slug}`}
+              onClick={e => e.stopPropagation()}
+              className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center transition-all hover:brightness-105 active:scale-95"
               style={{ background: "#0068FF" }}>
-              Mua khóa học
-            </button>
+              Xem chi tiết
+            </Link>
           )}
         </div>
       </div>
     </div>
-    </>
   );
 }
 
