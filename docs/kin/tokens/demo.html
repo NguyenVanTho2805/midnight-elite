@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi" data-chu-de="navy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiN — thử chủ đề</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--kin-nen-bang);color:var(--kin-chu-chinh);
+       font-family:Inter,system-ui,"Segoe UI",sans-serif;font-size:14px;line-height:1.55}
+  .boc{max-width:980px;margin:0 auto;padding:var(--kin-kc-9) var(--kin-kc-8)}
+  .thanh{display:flex;gap:var(--kin-kc-3);align-items:center;flex-wrap:wrap;margin-bottom:var(--kin-kc-8)}
+  .thanh b{margin-right:var(--kin-kc-3)}
+  .omau{width:var(--kin-cham-toi-thieu);height:var(--kin-cham-toi-thieu);
+        border-radius:var(--kin-bo-tron);border:2px solid transparent;background:none;cursor:pointer;padding:3px}
+  .omau span{display:block;width:100%;height:100%;border-radius:var(--kin-bo-tron)}
+  .omau[aria-pressed="true"]{border-color:var(--kin-nhan-nen)}
+  .the{background:var(--kin-nen-trang);border:1px solid var(--kin-vien-thuong);
+       border-radius:var(--kin-bo-the);overflow:hidden}
+  .dau{background:var(--kin-nhan-nen);color:var(--kin-nhan-chu-tren-nen);
+       padding:var(--kin-kc-6) var(--kin-kc-8);display:flex;justify-content:space-between;
+       align-items:center;font-weight:600}
+  .nhac{background:var(--kin-nhan-nen-nhat);color:var(--kin-chu-mo-tren-nen-nhan);
+        padding:var(--kin-kc-5) var(--kin-kc-8);font-size:13px}
+  .dong{display:flex;align-items:center;gap:var(--kin-kc-4);
+        padding:var(--kin-kc-5) var(--kin-kc-8);min-height:var(--kin-cham-dong);
+        border-top:1px solid var(--kin-vien-nhat)}
+  .vach{width:3px;align-self:stretch;border-radius:2px;background:var(--kin-nhan-nen);flex:none}
+  .tat{width:34px;height:34px;border-radius:var(--kin-bo-tron);flex:none;
+       display:grid;place-items:center;font-weight:600;font-size:12px;
+       background:var(--kin-nhan-nen-nhat);color:var(--kin-nhan-chu-tren-nhat)}
+  .ten{flex:1;min-width:0}
+  .ten small{display:block;color:var(--kin-chu-mo);font-size:12px}
+  .tt{display:flex;align-items:center;gap:var(--kin-kc-2);font-size:12.5px;font-weight:500;white-space:nowrap}
+  .cham{width:7px;height:7px;border-radius:var(--kin-bo-tron);flex:none}
+  .xong{color:var(--kin-tt-chu-xong)} .cham.xong{background:var(--kin-tt-cham-xong)}
+  .cho{color:var(--kin-tt-chu-cho)}   .cham.cho{background:var(--kin-tt-cham-cho)}
+  .loi{color:var(--kin-tt-chu-loi)}   .cham.loi{background:var(--kin-tt-chu-loi)}
+  .chan{display:flex;gap:var(--kin-kc-3);padding:var(--kin-kc-6) var(--kin-kc-8);
+        background:var(--kin-nen-bang);border-top:1px solid var(--kin-vien-nhat)}
+  .nut{min-height:var(--kin-cham-toi-thieu);padding:0 var(--kin-kc-6);border-radius:var(--kin-bo-sm);
+       font:inherit;font-weight:600;cursor:pointer;border:1px solid transparent}
+  .nut.chinh{background:var(--kin-nhan-nen);color:var(--kin-nhan-chu-tren-nen)}
+  .nut.chinh:hover{background:var(--kin-nhan-nen-re)}
+  .nut.phu{background:var(--kin-nen-trang);color:var(--kin-chu-chinh);border-color:var(--kin-vien-thuong)}
+  a{color:var(--kin-nhan-link)}
+  .ghi{margin-top:var(--kin-kc-7);color:var(--kin-chu-mo);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="boc">
+  <div class="thanh">
+    <b>Chủ đề</b>
+    <button class="omau" data-t="navy"   aria-pressed="true"  title="Navy"><span style="background:#1e3a8a"></span></button>
+    <button class="omau" data-t="co-vit" aria-pressed="false" title="Cổ vịt"><span style="background:#0e7490"></span></button>
+    <button class="omau" data-t="man"    aria-pressed="false" title="Mận"><span style="background:#6b21a8"></span></button>
+    <button class="omau" data-t="ca-phe" aria-pressed="false" title="Cà phê"><span style="background:#78350f"></span></button>
+    <button class="omau" data-t="muc"    aria-pressed="false" title="Mực"><span style="background:#0f172a"></span></button>
+    <button class="nut phu" id="chedo" style="margin-left:auto">Chế độ tối</button>
+  </div>
+
+  <div class="the">
+    <div class="dau"><span>HSA 2K9 — Ca tối</span><span style="font-weight:500;font-size:12.5px">5 học sinh</span></div>
+    <div class="nhac">Mức học phí được chốt vào từng buổi lúc điểm danh. Đổi mức hôm nay chỉ ảnh hưởng buổi từ nay về sau.</div>
+    <div class="dong"><i class="vach"></i><div class="tat">MA</div>
+      <div class="ten">Nguyễn Minh Anh<small>7 / 9 buổi · 150.000đ mỗi buổi</small></div>
+      <div class="tt cho"><i class="cham cho"></i>970.000đ · chờ trả</div></div>
+    <div class="dong"><i class="vach"></i><div class="tat">GB</div>
+      <div class="ten">Trần Gia Bảo<small>8 / 8 buổi · 130.000đ mỗi buổi</small></div>
+      <div class="tt xong"><i class="cham xong"></i>Đã trả 12/09</div></div>
+    <div class="dong"><i class="vach"></i><div class="tat">HĐ</div>
+      <div class="ten">Lê Hải Đăng<small>5 / 8 buổi · 150.000đ mỗi buổi</small></div>
+      <div class="tt loi"><i class="cham loi"></i>750.000đ · quá hạn 9 ngày</div></div>
+    <div class="chan">
+      <button class="nut chinh">Điểm danh buổi hôm nay</button>
+      <button class="nut phu">Mời học sinh</button>
+      <a href="#" style="margin-left:auto;align-self:center">Xem lại buổi trước</a>
+    </div>
+  </div>
+
+  <p class="ghi">Ba màu trạng thái — <span class="xong">xanh lá</span>, <span class="cho">vàng</span>,
+  <span class="loi">đỏ</span> — giữ nguyên ở cả năm chủ đề. Đổi chủ đề mà chúng cũng đổi thì chúng hết là nghĩa.</p>
+</div>
+
+<script>
+  var goc = document.documentElement;
+  document.querySelectorAll('.omau').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.omau').forEach(function(x){ x.setAttribute('aria-pressed', x === b); });
+      goc.dataset.chuDe = b.dataset.t;
+    });
+  });
+  var nut = document.getElementById('chedo');
+  nut.addEventListener('click', function(){
+    var toi = goc.dataset.cheDo === 'toi';
+    goc.dataset.cheDo = toi ? 'sang' : 'toi';
+    nut.textContent = toi ? 'Chế độ tối' : 'Chế độ sáng';
+  });
+</script>
+</body>
+</html>
