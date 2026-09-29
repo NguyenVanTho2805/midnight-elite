@@ -1,3 +1,4 @@
+@AGENTS.md
 
 ## Bối cảnh sản phẩm KiN
 
