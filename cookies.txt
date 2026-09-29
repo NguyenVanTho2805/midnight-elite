@@ -1,4 +1,0 @@
-# [ĐÃ REDACT] File này từng chứa JWT session token thật, bị lỡ commit — xem lịch sử git.
-# Token có thể vẫn còn khôi phục được từ git history, cần rotate secret trên server, không chỉ xoá file này.
-# Repo này là PUBLIC — token đã bị lộ công khai, cần rotate ngay.
-# Nội dung gốc đã được xoá khỏi working tree ngày 2026-09-09.
