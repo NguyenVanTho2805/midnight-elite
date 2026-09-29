@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import PopupBuyRequired from "@/components/PopupBuyRequired";
 import { useProgress } from "@/hooks/useProgress";
 import { parseLessonType } from "@/lib/types";
 import { api, type AssignmentFull, type AssignmentAnswerData, type AssignmentAnswerView } from "@/lib/api";
@@ -963,7 +962,6 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
 export default function LessonPage({ params: paramsPromise }: { params: Promise<{ lessonId: string }> }) {
   const params = React.use(paramsPromise);
   const router = useRouter();
-  const [showBuyPopup, setShowBuyPopup] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTabKey>("tailieu");
@@ -1099,7 +1097,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const videoUrl = dbLesson.videoUrl ?? null;
 
   function handleSelectLesson(l: ChapterLesson) {
-    if (l.isLocked) { setShowBuyPopup(true); return; }
+    if (l.isLocked) return;
     router.push(`/student/bai-giang/${l.id}`);
   }
 
@@ -1114,16 +1112,6 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
   return (
     <div className="-mx-4 md:-mx-8 -my-6">
-      {showBuyPopup && (
-        <PopupBuyRequired
-          courseName={dbCourse.name}
-          price={dbCourse.price}
-          originalPrice={dbCourse.originalPrice ?? 0}
-          trialLessonsLeft={0}
-          onClose={() => setShowBuyPopup(false)}
-        />
-      )}
-
       {/* Full-width flex layout: sidebar + content */}
       <div className="flex min-h-screen">
 
