@@ -5,8 +5,8 @@ thứ cơ sở nhỏ thật sự trả tiền, báo nghỉ sát giờ là một 
 quay về bảng tính, và chưa phần mềm nào cho tắt bớt module. Tài liệu này chốt cách chạy
 để ai dựng cũng làm giống nhau.
 
-**Số nào ghi "đề xuất" là số tạm.** Anh Thanh chốt lại trước khi dựng. Mọi số nằm ở mục
-Tham số cuối file.
+**Số nào ghi "đề xuất" là số tạm**, anh Thọ cứ dựng theo nhưng để dạng cấu hình. Ngưỡng sát
+giờ, hạn buổi bù và giờ yên lặng đã chốt ngày 30/09. Mọi số nằm ở mục Tham số cuối file.
 
 Thiết kế Figma, file *KiN Design System*:
 
@@ -108,11 +108,11 @@ Không dùng bot trên tài khoản Zalo cá nhân, vì dễ bị khoá.
 
 | Tên | Giá trị | Trạng thái |
 |---|---|---|
-| NGƯỠNG_SÁT_GIỜ | 2 giờ trước giờ học | đề xuất |
-| HẠN_BUỔI_BÙ | 30 ngày | đề xuất |
+| NGƯỠNG_SÁT_GIỜ | 2 giờ trước giờ học | **đã chốt 30/09** |
+| HẠN_BUỔI_BÙ | 30 ngày | **đã chốt 30/09** |
 | BÁO_TRƯỚC_HẾT_HẠN_BÙ | 3 ngày | đề xuất |
 | NHẮC_LẦN_1 | 24 giờ trước | theo backlog TT-201 |
 | NHẮC_LẦN_2 | 1 giờ trước | theo backlog TT-201 |
-| GIỜ_YÊN_LẶNG | 22:00–07:00 | đề xuất |
+| GIỜ_YÊN_LẶNG | 22:00–07:00 | **đã chốt 30/09** |
 | DỜI_TIN_24_GIỜ_VỀ | 21:30 | đề xuất |
 | BỎ_TIN_1_GIỜ_NẾU_BUỔI_TRƯỚC | 08:00 | đề xuất |
