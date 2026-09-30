@@ -112,6 +112,14 @@ biến bộ Chữ, đổi biến là style đổi theo. Mô tả của mỗi sty
 Hai nhãn 9,5px và 10px trước đây nằm dưới cỡ nhỏ nhất của thang; giờ đều lên 11,1px.
 Khoảng cách chữ (letter-spacing) của cả 12 style đưa về 0 cho khớp với code.
 
+**Các màn đã gắn cỡ chữ vào biến (TK-206, 30/09).** Trên 22 trang màn hình, mọi đoạn chữ
+đặt cỡ tay (khoảng 1.760 đoạn) được gắn vào biến `cỡ/<bậc>` gần nhất: ≤12 → `caption`,
+≤14,6 → `small`, ≤17,5 → `body`, ≤21 → `h4`, ≤25 → `h3`, ≤30,5 → `h2`, ≤36 → `h1`,
+≤40 → `display`. Chiều cao dòng đổi từ px sang %, để khi đổi cỡ thì dòng giãn theo. Chữ
+bên trong instance không đụng tới, vì nó lấy theo component gốc. Các bảng thương hiệu
+(Logo, Màu, Chữ & giọng điệu, Năm chủ đề…) giữ nguyên vì đó là bảng trình bày, không phải
+màn hình. Bản trước khi gắn nằm ở trang **🗄 Lưu trữ — trước TK-206 (30/09)** để so lại.
+
 ---
 
 ## Sáu luật — `kiem-tra-token.py` canh cho
