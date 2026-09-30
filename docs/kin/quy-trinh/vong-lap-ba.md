@@ -63,8 +63,9 @@ Figma, một quy tắc cũ bị quy tắc mới làm sai. Mỗi chỗ ghi: hai b
 - GitHub: đẩy lên nhánh `kin-tai-lieu-ban-giao`; đọc lại file theo mã commit và so hash với bản
   của em. Tiêu đề commit phải đúng chữ em viết, có dòng ghi tác giả.
 - Sheet: ghi chú `[ngày] Xong phần Thanh: … Spec: … Figma: … Chờ dựng.` rồi tick cột J.
-  **Không tick** khi còn việc của anh (xoá dữ liệu thật, chốt pháp lý). Hàng ẩn 188–199 phải ẩn
-  lại sau khi sửa.
+  **Không tick** khi còn việc của anh (xoá dữ liệu thật, chốt pháp lý). Trước khi sửa, kiểm hàng
+  ẩn (hiện có 171–184 và 188–199): nhảy tới ô mà bị đẩy sang hàng khác là hàng đó đang ẩn. Sửa
+  xong phải ẩn lại đúng khoảng cũ.
 - Project: lưu bản mới của đặc tả.
 - Báo cáo cho anh: làm gì, phát hiện gì, giả định mới, anh cần chốt gì, việc kế tiếp.
 
@@ -88,3 +89,5 @@ Figma, một quy tắc cũ bị quy tắc mới làm sai. Mỗi chỗ ghi: hai b
 | 01/10 | Bản 30/09 đoán sai luật bảng tính ("buổi miễn" là buổi lễ; thực ra là môn miễn của từng em) | Bước 2: có mã đang chạy thì đọc mã trước khi viết đặc tả |
 | 01/10 | Lớp học 22:15 nằm trong giờ yên lặng 22:00–07:00 | Bước 3: đối chiếu mọi mốc giờ với giờ yên lặng |
 | 01/10 | Ví dụ "Toán 8 buổi tháng 10" sai lịch thật (tháng 10/2026 có 9 buổi thứ Hai và thứ Năm) | Bước 6: đếm ví dụ theo lịch thật, ghi rõ buổi nghỉ |
+| 01/10 | Đổi luật học phí nhưng các màn cũ (điểm danh, phiếu, trang phụ huynh) và quyết định 27/09 vẫn ghi "tính theo tháng" | Bước 6: đổi một luật thì tìm câu cũ trong cả Figma, không chỉ trong đặc tả |
+| 01/10 | Hàng TK-170 đến TK-183 đang ẩn, lệnh nhảy ô rơi sang hàng khác | Bước 7: kiểm hàng ẩn trước khi ghi sheet |
