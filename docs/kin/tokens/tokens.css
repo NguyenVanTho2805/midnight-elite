@@ -64,6 +64,337 @@
   --kin-cham-dong: 50px;
   --kin-cham-dap-an: 52px;
 
+  /* --- Chữ: thang Minor Third 1.200, tám bậc (Figma: bộ biến Chữ) ---
+     Không chế thêm cỡ ở giữa; cần to hơn thì lên bậc.
+     Nội dung đề thi BẮT BUỘC dùng body: 16px, dòng 1,6.
+     Dùng gọn nhất:  font: var(--kin-kieu-body);  */
+  --kin-co-display: 39.8px;
+  --kin-co-h1: 33.2px;
+  --kin-co-h2: 27.6px;
+  --kin-co-h3: 23px;
+  --kin-co-h4: 19.2px;
+  --kin-co-body: 16px;
+  --kin-co-small: 13.3px;
+  --kin-co-caption: 11.1px;
+  --kin-dong-display: 1.2;
+  --kin-dong-h1: 1.25;
+  --kin-dong-h2: 1.25;
+  --kin-dong-h3: 1.3;
+  --kin-dong-h4: 1.3;
+  --kin-dong-body: 1.6;
+  --kin-dong-small: 1.5;
+  --kin-dong-caption: 1.4;
+  --kin-dam-display: 600;
+  --kin-dam-h1: 600;
+  --kin-dam-h2: 600;
+  --kin-dam-h3: 600;
+  --kin-dam-h4: 600;
+  --kin-dam-body: 400;
+  --kin-dam-small: 400;
+  --kin-dam-caption: 500;
+  --kin-ho-display: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h1: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h2: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h3: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h4: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-body: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-small: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-caption: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-ma: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  /* kiểu gộp cho thuộc tính font: đậm cỡ/dòng họ */
+  --kin-kieu-display: 600 39.8px/1.2 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h1: 600 33.2px/1.25 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h2: 600 27.6px/1.25 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h3: 600 23px/1.3 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h4: 600 19.2px/1.3 "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-kieu-body: 400 16px/1.6 "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-kieu-small: 400 13.3px/1.5 "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-kieu-caption: 500 11.1px/1.4 "Inter", system-ui, "Segoe UI", sans-serif;
+
+  /* --- Chủ đề mặc định: Navy, chế độ sáng --- */
+  --kin-nhan-nen: #1e3a8a;
+  --kin-nhan-nen-re: #172554;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #2563eb;
+  --kin-nhan-nen-nhat: #eff4ff;
+  --kin-nhan-chu-tren-nhat: #1e3a8a;
+}
+
+/* ---------- Chế độ tối ---------- */
+:root[data-che-do="toi"] {
+  --kin-nen-trang: #0b0e14;
+  --kin-nen-bang: #10141c;
+  --kin-nen-re-chuot: #171c26;
+  --kin-nen-dang-chon: #1b2534;
+  --kin-nen-nhan: #101a2c;
+  --kin-vien-thuong: #232a36;
+  --kin-vien-nhat: #1b212c;
+  --kin-vien-o-nhap: #565f70;
+  --kin-chu-chinh: #f3f4f6;
+  --kin-chu-phu: #d1d5db;
+  --kin-chu-mo: #9ca3af;
+  --kin-chu-mo-tren-nen-nhan: #9ca3af;
+  --kin-chu-tren-nut-chinh: #0b0e14;
+  --kin-th-navy: #3b82f6;
+  --kin-th-navy-re: #60a5fa;
+  --kin-th-xanh-link: #60a5fa;
+  --kin-tt-chu-xong: #34d399;
+  --kin-tt-chu-cho: #fbbf24;
+  --kin-tt-chu-loi: #f87171;
+  --kin-tt-cham-xong: #34d399;
+  --kin-tt-cham-cho: #fbbf24;
+  --kin-tt-cham-trung-tinh: #8a93a3;
+  --kin-th-xanh-troi: #38bdf8;
+  --kin-th-vang-nang: #fbbf24;
+  --kin-th-bac-ha: #34d399;
+  --kin-th-vang-doanh-nghiep: #d97706;
+  --kin-th-xam-da: #0f172a;
+  --kin-ph-lms: #38bdf8;
+  --kin-ph-exam: #60a5fa;
+  --kin-ph-class: #34d399;
+  --kin-ph-hub: #fbbf24;
+  --kin-ph-enterprise: #d97706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-che-do="sang"]) {
+    --kin-nen-trang: #0b0e14;
+    --kin-nen-bang: #10141c;
+    --kin-nen-re-chuot: #171c26;
+    --kin-nen-dang-chon: #1b2534;
+    --kin-nen-nhan: #101a2c;
+    --kin-vien-thuong: #232a36;
+    --kin-vien-nhat: #1b212c;
+    --kin-vien-o-nhap: #565f70;
+    --kin-chu-chinh: #f3f4f6;
+    --kin-chu-phu: #d1d5db;
+    --kin-chu-mo: #9ca3af;
+    --kin-chu-mo-tren-nen-nhan: #9ca3af;
+    --kin-chu-tren-nut-chinh: #0b0e14;
+    --kin-th-navy: #3b82f6;
+    --kin-th-navy-re: #60a5fa;
+    --kin-th-xanh-link: #60a5fa;
+    --kin-tt-chu-xong: #34d399;
+    --kin-tt-chu-cho: #fbbf24;
+    --kin-tt-chu-loi: #f87171;
+    --kin-tt-cham-xong: #34d399;
+    --kin-tt-cham-cho: #fbbf24;
+    --kin-tt-cham-trung-tinh: #8a93a3;
+    --kin-th-xanh-troi: #38bdf8;
+    --kin-th-vang-nang: #fbbf24;
+    --kin-th-bac-ha: #34d399;
+    --kin-th-vang-doanh-nghiep: #d97706;
+    --kin-th-xam-da: #0f172a;
+    --kin-ph-lms: #38bdf8;
+    --kin-ph-exam: #60a5fa;
+    --kin-ph-class: #34d399;
+    --kin-ph-hub: #fbbf24;
+    --kin-ph-enterprise: #d97706;
+  }
+}
+
+/* ---------- Năm chủ đề ---------- */
+/* Chủ đề CHỈ đổi màu nhấn. Xanh lá, vàng, đỏ trạng thái không bao giờ đổi. */
+
+/* Navy */
+:root[data-chu-de="navy"] {
+  --kin-nhan-nen: #1e3a8a;
+  --kin-nhan-nen-re: #172554;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #2563eb;
+  --kin-nhan-nen-nhat: #eff4ff;
+  --kin-nhan-chu-tren-nhat: #1e3a8a;
+}
+:root[data-chu-de="navy"][data-che-do="toi"] {
+  --kin-nhan-link: #60a5fa;
+  --kin-nhan-nen-nhat: #101a2c;
+  --kin-nhan-chu-tren-nhat: #60a5fa;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chu-de="navy"]:not([data-che-do="sang"]) {
+    --kin-nhan-link: #60a5fa;
+    --kin-nhan-nen-nhat: #101a2c;
+    --kin-nhan-chu-tren-nhat: #60a5fa;
+  }
+}
+
+/* Cổ vịt */
+:root[data-chu-de="co-vit"] {
+  --kin-nhan-nen: #0e7490;
+  --kin-nhan-nen-re: #155e75;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #0e7490;
+  --kin-nhan-nen-nhat: #eaf6fa;
+  --kin-nhan-chu-tren-nhat: #0e7490;
+}
+:root[data-chu-de="co-vit"][data-che-do="toi"] {
+  --kin-nhan-link: #38bdf8;
+  --kin-nhan-nen-nhat: #08202b;
+  --kin-nhan-chu-tren-nhat: #38bdf8;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chu-de="co-vit"]:not([data-che-do="sang"]) {
+    --kin-nhan-link: #38bdf8;
+    --kin-nhan-nen-nhat: #08202b;
+    --kin-nhan-chu-tren-nhat: #38bdf8;
+  }
+}
+
+/* Mận */
+:root[data-chu-de="man"] {
+  --kin-nhan-nen: #6b21a8;
+  --kin-nhan-nen-re: #581c87;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #7e22ce;
+  --kin-nhan-nen-nhat: #f7effd;
+  --kin-nhan-chu-tren-nhat: #6b21a8;
+}
+:root[data-chu-de="man"][data-che-do="toi"] {
+  --kin-nhan-link: #c084fc;
+  --kin-nhan-nen-nhat: #1b0f2b;
+  --kin-nhan-chu-tren-nhat: #c084fc;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chu-de="man"]:not([data-che-do="sang"]) {
+    --kin-nhan-link: #c084fc;
+    --kin-nhan-nen-nhat: #1b0f2b;
+    --kin-nhan-chu-tren-nhat: #c084fc;
+  }
+}
+
+/* Cà phê */
+:root[data-chu-de="ca-phe"] {
+  --kin-nhan-nen: #78350f;
+  --kin-nhan-nen-re: #5c2a0c;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #7c2d12;
+  --kin-nhan-nen-nhat: #fbf1e9;
+  --kin-nhan-chu-tren-nhat: #78350f;
+}
+:root[data-chu-de="ca-phe"][data-che-do="toi"] {
+  --kin-nhan-link: #fdba74;
+  --kin-nhan-nen-nhat: #241408;
+  --kin-nhan-chu-tren-nhat: #fdba74;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chu-de="ca-phe"]:not([data-che-do="sang"]) {
+    --kin-nhan-link: #fdba74;
+    --kin-nhan-nen-nhat: #241408;
+    --kin-nhan-chu-tren-nhat: #fdba74;
+  }
+}
+
+/* Mực */
+:root[data-chu-de="muc"] {
+  --kin-nhan-nen: #0f172a;
+  --kin-nhan-nen-re: #020617;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #334155;
+  --kin-nhan-nen-nhat: #f1f5f9;
+  --kin-nhan-chu-tren-nhat: #0f172a;
+}
+:root[data-chu-de="muc"][data-che-do="toi"] {
+  --kin-nhan-link: #cbd5e1;
+  --kin-nhan-nen-nhat: #131a26;
+  --kin-nhan-chu-tren-nhat: #cbd5e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chu-de="muc"]:not([data-che-do="sang"]) {
+    --kin-nhan-link: #cbd5e1;
+    --kin-nhan-nen-nhat: #131a26;
+    --kin-nhan-chu-tren-nhat: #cbd5e1;
+  }
+}
+
+/* ---------- Phòng thi: KHOÁ CỨNG, không theo chủ đề ----------
+   Hai lý do:
+   1. Ô đáp án đang chọn mà tô xanh cổ vịt thì học sinh đọc nhầm là "đáp án đúng".
+   2. Học sinh đi thi không nên thấy màu ưa thích của thầy cô. Phòng thi phải
+      giống hệt nhau với mọi người — đó là một phần của việc thi công bằng.
+   Bọc mọi màn hình phòng thi trong [data-vung="phong-thi"]. */
+[data-vung="phong-thi"] {
+  --kin-nhan-nen: #1e3a8a;
+  --kin-nhan-nen-re: #172554;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #2563eb;
+  --kin-nhan-nen-nhat: #eff4ff;
+  --kin-nhan-chu-tren-nhat: #1e3a8a;
+}
+[data-vung="phong-thi"][data-che-do="toi"],
+[data-che-do="toi"] [data-vung="phong-thi"] {
+  --kin-nhan-nen: #1e3a8a;
+  --kin-nhan-nen-re: #172554;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #60a5fa;
+  --kin-nhan-nen-nhat: #101a2c;
+  --kin-nhan-chu-tren-nhat: #60a5fa;
+}
+/* ============================================================
+   KiN — token giao diện
+   Sinh tự động từ file Figma KiN Design System (2orXvoHL2upkiGoMjlq8aX).
+   ĐỪNG SỬA TAY. Sửa biến trong Figma rồi sinh lại file này.
+
+   Cách dùng:
+     <html data-chu-de="navy">                  chủ đề mặc định
+     <html data-chu-de="co-vit" data-che-do="toi">
+   Không đặt data-che-do thì tự theo cài đặt của máy.
+   ============================================================ */
+
+:root {
+  /* --- Màu nền, viền, chữ (chế độ sáng) --- */
+  --kin-nen-trang: #ffffff;
+  --kin-nen-bang: #f7f8fa;
+  --kin-nen-re-chuot: #f1f3f6;
+  --kin-nen-dang-chon: #e8edf7;
+  --kin-nen-nhan: #eff4ff;
+  --kin-vien-thuong: #e6e9ef;
+  --kin-vien-nhat: #eef0f4;
+  --kin-vien-o-nhap: #8b95a5;
+  --kin-chu-chinh: #111827;
+  --kin-chu-phu: #374151;
+  --kin-chu-mo: #6b7280;
+  --kin-chu-mo-tren-nen-nhan: #5b6675;
+  --kin-chu-tren-nut-chinh: #ffffff;
+  --kin-th-navy: #1e3a8a;
+  --kin-th-navy-re: #172554;
+  --kin-th-xanh-link: #2563eb;
+  --kin-tt-chu-xong: #047857;
+  --kin-tt-chu-cho: #b45309;
+  --kin-tt-chu-loi: #dc2626;
+  --kin-tt-cham-xong: #059669;
+  --kin-tt-cham-cho: #d97706;
+  --kin-tt-cham-trung-tinh: #767f8e;
+  --kin-th-xanh-troi: #38bdf8;
+  --kin-th-vang-nang: #f59e0b;
+  --kin-th-bac-ha: #10b981;
+  --kin-th-vang-doanh-nghiep: #d97706;
+  --kin-th-xam-da: #0f172a;
+  --kin-ph-lms: #1e3a8a;
+  --kin-ph-exam: #2563eb;
+  --kin-ph-class: #10b981;
+  --kin-ph-hub: #f59e0b;
+  --kin-ph-enterprise: #0f172a;
+
+  /* --- Số đo --- */
+  --kin-kc-1: 4px;
+  --kin-kc-2: 6px;
+  --kin-kc-3: 8px;
+  --kin-kc-4: 10px;
+  --kin-kc-5: 12px;
+  --kin-kc-6: 14px;
+  --kin-kc-7: 18px;
+  --kin-kc-8: 24px;
+  --kin-kc-9: 32px;
+  --kin-bo-sm: 8px;
+  --kin-bo-md: 9px;
+  --kin-bo-lg: 10px;
+  --kin-bo-xl: 12px;
+  --kin-bo-the: 14px;
+  --kin-bo-tron: 999px;
+  --kin-cham-toi-thieu: 44px;
+  --kin-cham-dong: 50px;
+  --kin-cham-dap-an: 52px;
+
   /* --- Chủ đề mặc định: Navy, chế độ sáng --- */
   --kin-nhan-nen: #1e3a8a;
   --kin-nhan-nen-re: #172554;
