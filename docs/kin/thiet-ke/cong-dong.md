@@ -5,6 +5,7 @@ Bản giao cho người code. Cập nhật 24/09/2026.
 > **Đã thay bằng đặc tả 30/09/2026** ở `../nghiep-vu/pheu-gia-su.md`, mục 4 (cộng đồng kiểu
 > Threads/Instagram, khung C1–C6). Tài liệu này chỉ còn để chắt lọc. Phần còn dùng và phần bỏ
 > được liệt kê ở mục 4 đó. Khi hai tài liệu khác nhau, làm theo bản 30/09.
+
 Bản dựng đối chiếu: `../nguyen-mau/04-hoc-thu.html`.
 
 ---
