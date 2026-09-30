@@ -40,7 +40,9 @@ Phải đóng   = max(0, Học phí gốc − Tổng giảm)          ← không
   trong lịch đã học nên tự không tính.
 - **Học sinh vắng vẫn tính tiền** (như bảng tính đang làm). Em báo nghỉ trước 2 giờ thì được
   giữ 1 buổi bù, hạn 30 ngày (TT-202). Gia sư tắt được quy tắc này ở cài đặt lớp nếu thoả thuận
-  với phụ huynh là vắng không tính tiền.
+  với phụ huynh là vắng không tính tiền. Khi tắt: buổi Vắng và Nghỉ có phép không tính tiền;
+  Muộn tính đủ; buổi Chưa điểm danh vẫn tính, và KiN nhắc gia sư điểm danh trước khi gửi phiếu.
+  `GD-25`
 - **Gia sư sửa được số buổi của từng em, từng môn**, ví dụ em vào lớp ngày 15. Ô sửa bắt buộc
   ghi lý do; phiếu phụ huynh hiện dòng "Đã điều chỉnh: …".
 - Trong bảng tính, số buổi đang **nhập tay một lần cho cả lớp** ở Dashboard (`bcaThietLapHocPhi`,
