@@ -135,19 +135,19 @@ node `175:87`, ba khung cho ba trạng thái.
 
 ---
 
-## Việc còn chờ anh chốt
+## Học bổng: để gia sư tự quyết
 
-**NV-184 · Học bổng theo ngưỡng.** Đây là quyết định về tiền, anh Thanh chốt. Khung
-đề xuất trong báo cáo Khan, mục 10.1:
+**NV-184 · Học bổng theo ngưỡng.** Anh Thanh chốt ngày 30/09: học bổng và giá là việc
+của từng gia sư, KiN **chưa làm** tính năng này. Khung dưới đây chỉ giữ lại để tham khảo
+nếu sau này làm, lấy từ báo cáo Khan, mục 10.1:
 
 ```
 Thành thạo môn = Năng lực môn ≥ 8,0  VÀ  Chuyên cần ≥ 90%  VÀ  Bài về nhà ≥ 90%
 → giảm X% học phí môn đó, không giới hạn số em đạt
 ```
 
-Cần anh chốt: ngưỡng, mức giảm X%, và tính theo tháng hay theo kỳ. TOP 1/2/3 giữ làm
-vinh danh, không kèm tiền. Nếu dùng NV-185 làm "Năng lực môn" thì học bổng cũng có
-thể mất khi tụt. Cần báo trước cho phụ huynh điều này.
+Nếu làm, gia sư tự đặt ngưỡng, mức giảm và kỳ tính; KiN chỉ tính ai đạt. Lưu ý: dùng
+NV-185 làm "Năng lực môn" thì học bổng có thể mất khi tụt, cần báo trước cho phụ huynh.
 
 ---
 
