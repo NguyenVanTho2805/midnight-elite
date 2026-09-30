@@ -28,6 +28,13 @@ Cập nhật 01/10/2026.
 | GD-16 | Ngưỡng đạt năng lực môn = 8,0 | theo báo cáo Khan 10.1 | nhãn "Đạt ngưỡng" quá khó hoặc quá dễ | xem phân bố điểm 1 tháng | Đang dùng | `nghiep-vu/hoc-tu-khan.md` |
 | GD-17 | Bài về nhà nộp dưới 70% thì vào mục "Điều chưa đạt" | khớp mức cảnh báo 4 của v7 | báo phụ huynh quá nhiều hoặc quá ít | xem 1 tháng | Đang dùng | `hoc-tu-khan.md` |
 | GD-18 | Mức thành thạo 5 bậc chỉ gia sư thấy, chưa in lên phiếu phụ huynh | chưa chốt ngưỡng từng bậc | — | anh chốt ngưỡng | Đang dùng | `pheu-gia-su.md` |
+| GD-19 | Mã phiếu = KIN + 5 ký tự (bỏ O I L 0 1), không đổi khi sửa số tiền | ngắn, gõ tay được, 28,6 triệu mã | phụ huynh gõ nhầm mã, giao dịch vào hàng chờ | đếm giao dịch "không có mã" tháng đầu | Đang dùng | `nghiep-vu/doi-soat-vietqr.md` |
+| GD-20 | Không bao giờ tự ghép tiền vào phiếu theo số tiền, chỉ gợi ý | hai em cùng học phí là chuyện thường | gia sư phải bấm tay nhiều hơn | đếm lượt ghép tay | Đang dùng | `doi-soat-vietqr.md` |
+| GD-21 | Đóng dư: gia sư chọn trừ vào tháng sau hoặc ghi đã trả lại; KiN không tự trừ | tiền dư là thoả thuận giữa gia sư và phụ huynh | thêm một bước cho gia sư | hỏi 3 gia sư | Đang dùng | `doi-soat-vietqr.md` |
+| GD-22 | Không lưu số dư tài khoản (`accumulated`) của gia sư từ webhook | không cần cho đối soát, là dữ liệu riêng | — | — | Đang dùng | `doi-soat-vietqr.md` |
+| GD-23 | Phụ huynh bấm "Tôi đã chuyển" mà 24 giờ chưa thấy tiền thì nhắc gia sư kiểm sao kê | chuyển khoản liên ngân hàng thường vào trong ngày | nhắc sớm hoặc muộn | theo dõi tháng đầu | Đang dùng | `doi-soat-vietqr.md` |
+| GD-24 | Cộng đồng là không gian riêng (`kin.vn/cong-dong`, mở từ "Cộng đồng ↗"), không nằm trong khung lớp, nhưng **phải đăng nhập mới xem**; bài học sinh không cho Google lập chỉ mục | giữ TK-181 và đặc tả 30/09 (an toàn tuổi teen, bỏ hỏi đáp không cần tài khoản) | mất cửa vào từ Google qua câu hỏi; thay bằng hồ sơ gia sư và trang lớp đang mở | anh xác nhận | Đang dùng | `pheu-gia-su.md`, `quyet-dinh-giao-dien-va-hoc-phi.md` |
+| GD-25 | Lớp tắt "vắng vẫn tính tiền": Vắng và Nghỉ có phép không tính, Muộn tính đủ, Chưa điểm danh vẫn tính | gia sư quên tick không làm mất tiền | phụ huynh thấy tính cả buổi chưa điểm danh | nhắc điểm danh trước khi gửi phiếu | Đang dùng | `dua-bang-tinh-len-web.md` |
 
 ## Đã chốt
 
