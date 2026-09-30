@@ -1,7 +1,10 @@
 # Đặc tả khu cộng đồng và học thử
 
-Bản giao cho người code. Cập nhật 24/09/2026. Bổ sung 30/09/2026: mục 6 cập nhật luật mới; lớp
-"Nhóm học kín" (khung C1–C5) đặc tả ở `../nghiep-vu/pheu-gia-su.md`, mục 4.
+Bản giao cho người code. Cập nhật 24/09/2026.
+
+> **Đã thay bằng đặc tả 30/09/2026** ở `../nghiep-vu/pheu-gia-su.md`, mục 4 (cộng đồng kiểu
+> Threads/Instagram, khung C1–C6). Tài liệu này chỉ còn để chắt lọc. Phần còn dùng và phần bỏ
+> được liệt kê ở mục 4 đó. Khi hai tài liệu khác nhau, làm theo bản 30/09.
 Bản dựng đối chiếu: `../nguyen-mau/04-hoc-thu.html`.
 
 ---
@@ -21,7 +24,7 @@ Ba điều làm nó chạy được, thiếu một là hỏng:
 3. **Có đường đi từ câu trả lời sang lớp học.** Không có nó thì gia sư trả lời vài
    lần rồi thôi.
 
-**Điều không được làm:** tin nhắn riêng giữa học sinh với học sinh. Diễn đàn công khai
+**(Bỏ từ 30/09, xem đặc tả mới)** ~~Điều không được làm: tin nhắn riêng giữa học sinh với học sinh.~~ Diễn đàn công khai
 thì kiểm duyệt được và có uy tín đi kèm; hộp thư riêng giữa trẻ vị thành niên thì không
 kiểm được, và KiN chịu trách nhiệm.
 
