@@ -121,31 +121,56 @@ Không đếm được bài đăng trong nhóm, chỉ đếm lượt bấm link.
 
 ---
 
-## 4. Cộng đồng: hai lớp, không trộn
+## 4. Cộng đồng học tập: dùng như Threads và Instagram
 
-Đặc tả 24/09 (`../thiet-ke/cong-dong.md`) đã có **Hỏi đáp công khai**: người lạ hỏi không
-cần tài khoản, gia sư đã xác minh trả lời, rồi mời học thử. Đó là kênh lấy học sinh, và
-vẫn giữ nguyên.
+**Đặc tả này (30/09) thay đặc tả 24/09** (`../thiet-ke/cong-dong.md`). Bản 24/09 chỉ còn để
+chắt lọc; phần nào còn dùng được ghi ở cuối mục này.
 
-Bản 30/09 thêm **Nhóm học kín** cho học sinh đã vào lớp, giao diện quen như Threads và
-Instagram để học sinh không phải học cách dùng:
+Học sinh đã quen Threads và Instagram, nên cộng đồng KiN dùng đúng những thói quen đó để
+không phải học cách dùng. An toàn dựa trên cài đặt cho tuổi teen (học từ Instagram Teen),
+không dựa vào cấm tính năng.
 
 | Khung | Nội dung |
 |---|---|
-| C1 | Vòng tin theo nhóm, bảng tin, ba thẻ Nhóm của bạn / Hỏi bài / Tiến bộ. Có "Cổ vũ" nhưng **không đếm lượt thích công khai** |
+| C1 | Bảng tin: vòng tin theo nhóm, ba thẻ Nhóm của bạn / Hỏi bài / Tiến bộ. Có "Cổ vũ" nhưng **không đếm lượt thích công khai** |
 | C2 | Chi tiết câu hỏi: gợi ý bị che tới khi chạm, lời giải khoá tới khi thử lại (giống NV-188). Người hỏi đánh dấu "đã hiểu" thì câu đó vào kho câu hỏi của lớp |
-| C3 | Soạn bài có chọn người xem: nhóm này, chỉ gia sư, mọi nhóm đang học, hoặc Hỏi đáp công khai (vào hàng chờ duyệt, dưới 13 tuổi không đăng được) |
-| C4 | An toàn: riêng tư mặc định, giờ nghỉ 22:00–07:00, ẩn từ xúc phạm, hạn chế một người, báo cáo, bản ghi phụ huynh đồng ý |
-| C5 | Gia sư duyệt bài theo kiểu hộp thư Outlook; quyền đăng theo lớp ba mức |
+| C3 | Soạn bài có chọn người xem: nhóm này, chỉ gia sư, **Bạn thân** (như Close Friends), **Mọi người trên KiN** (như Threads; dưới 16 tuổi cần phụ huynh bật, dưới 13 không đăng) |
+| C4 | An toàn: riêng tư mặc định, giờ nghỉ 22:00–07:00, ai được nhắn cho bạn, ẩn từ xúc phạm, hạn chế một người, báo cáo, bản ghi phụ huynh đồng ý |
+| C5 | Gia sư duyệt bài trong nhóm mình theo kiểu hộp thư Outlook; quyền đăng theo lớp ba mức |
+| C6 | **Tin nhắn** như Instagram Direct: thẻ Bạn bè / Nhóm học / Gia sư / Yêu cầu |
 
-Ba quy tắc giữ nguyên từ đặc tả 24/09:
+### Tin nhắn riêng giữa học sinh: có, kèm năm lớp an toàn
 
-1. **Không có tin nhắn riêng giữa học sinh với học sinh.** Nhắn riêng chỉ với gia sư.
-2. Gia sư luôn thấy mọi bài trong nhóm mình phụ trách.
-3. Phụ huynh chỉ thấy bài của chính con mình và câu trả lời gửi con (học từ Seesaw).
+1. Nhắn thẳng được với: bạn cùng nhóm học, bạn theo dõi nhau, gia sư.
+2. Người khác vào **Yêu cầu nhắn tin**: tin bị ẩn, ảnh và link không hiện tới khi chấp nhận.
+   Học sinh dưới 16 tuổi không nhận ảnh từ người lạ.
+3. Giờ nghỉ 22:00–07:00: tin vẫn đến nhưng không báo.
+4. Phụ huynh thấy con nhắn với ai và thời gian dùng, **không đọc nội dung** (như chế độ giám
+   sát của Instagram). Gia sư không đọc tin nhắn riêng giữa học sinh.
+5. Báo cáo tin nhắn đi thẳng tới quản trị KiN. Nội dung nguy hiểm (tự hại, xâm hại) bị khoá
+   ngay, không chờ ai duyệt.
 
-Quyền đăng mặc định của lớp mới: **"Chỉ trả lời bài của gia sư"**. Gia sư mở rộng khi lớp
-đã quen. Nội dung nguy hiểm (tự hại, xâm hại) không chờ gia sư: KiN ẩn ngay và báo quản trị.
+Quyền đăng mặc định trong nhóm lớp mới: **"Chỉ trả lời bài của gia sư"**. Gia sư mở rộng khi
+lớp đã quen.
+
+### Chắt lọc từ đặc tả 24/09
+
+**Còn dùng:**
+
+- Gia sư trả lời bằng tên thật và hồ sơ thật, có nhãn "Gia sư" (C2).
+- Chỉ gia sư đã trả lời một câu hỏi mới được mời người hỏi học thử. Hạn mức: 5 lời mời đang
+  chờ mỗi gia sư, 2 buổi thử miễn phí mỗi tháng mỗi học sinh (số của bản dựng cũ, vẫn là đề xuất).
+- Thẻ thoả thuận học thử sáu dòng, khoá sau khi chốt, không sửa một phía.
+- Phụ huynh chỉ được gọi vào từ bước chốt buổi thử; tên thật, số điện thoại, địa chỉ chỉ
+  lộ cho gia sư sau khi phụ huynh đồng ý.
+- Bài có số điện thoại hoặc link ngoài giữ lại chờ duyệt.
+
+**Không dùng nữa:**
+
+- "Cấm tin nhắn riêng giữa học sinh với học sinh". Thay bằng năm lớp an toàn ở trên.
+- Hỏi đáp công khai là một diễn đàn riêng, hỏi không cần tài khoản. Nay "Mọi người trên KiN"
+  là một lựa chọn người xem trong bảng tin (C3).
+- Căn cứ Nghị định 13/2023 (hết hiệu lực từ 01/01/2026, xem mục 7).
 
 ---
 
@@ -213,7 +238,7 @@ Tôi đã cho một lượt kiểm chứng độc lập mở lại nguồn gốc
 Đây là căn cứ để hỏi, không phải ý kiến pháp lý. Tôi không phải luật sư.
 
 1. **Nghị định 13/2023 đã hết hiệu lực từ 01/01/2026**, thay bằng Luật Bảo vệ dữ liệu cá nhân
-   91/2025/QH15 và Nghị định 356/2025/NĐ-CP. Đặc tả cộng đồng 24/09 còn trích NĐ 13, cần sửa.
+   91/2025/QH15 và Nghị định 356/2025/NĐ-CP. Đã ghi chú trong đặc tả cộng đồng 24/09.
 2. Đồng ý: không được đặt sẵn là đồng ý, phải lưu được bằng chứng (NĐ 356, Điều 6 theo bản tóm
    tắt thứ cấp). A2 và C4 đã thiết kế theo hướng này.
 3. Yêu cầu xoá dữ liệu: phản hồi trong 2 ngày làm việc, thực hiện trong 20 ngày (NĐ 356,
@@ -221,7 +246,7 @@ Tôi đã cho một lượt kiểm chứng độc lập mở lại nguồn gốc
 4. Trẻ em: Luật 91 có mốc từ đủ 7 tuổi cần đồng ý của cả trẻ và người đại diện trong một số
    trường hợp. Mốc "dưới 16 tuổi" đến từ Nghị định 147/2024 về mạng xã hội, không phải luật
    dữ liệu.
-5. **Nhóm học kín và Hỏi đáp công khai có bị coi là "mạng xã hội" theo NĐ 147/2024 không?**
+5. **Cộng đồng có bảng tin công khai và tin nhắn riêng thì có bị coi là "mạng xã hội" theo NĐ 147/2024 không?**
    Nếu có thì kéo theo xác thực tài khoản và quy định cho người dưới 16. Nghĩa vụ nặng chỉ áp
    cho nền tảng trên 1 triệu lượt truy cập/tháng, nhưng phải hỏi để chắc.
 6. Chưa đọc được bản PDF gốc của NĐ 356. Nhờ luật sư đối chiếu Điều 5, Điều 6 NĐ 356 và
@@ -234,7 +259,7 @@ Tôi đã cho một lượt kiểm chứng độc lập mở lại nguồn gốc
 | Giai đoạn | Làm gì | Chỉ số chính | Ngưỡng chuyển sang giai đoạn sau |
 |---|---|---|---|
 | 1 · Sổ lớp để lại dấu vết | B1, B2, A1, A2, A3, đuôi `?n=` và bảng D | Gia sư gửi ít nhất 1 báo cáo/tuần; lượt mở link từ báo cáo; đăng ký học thử | anh Thanh đặt khi có 4 tuần số liệu |
-| 2 · Nhóm học và lời mời | C1–C5, B3, khung Lớp mới, nhóm Zalo lớp | Học sinh hoạt động hằng tuần trong nhóm; lời mời được phụ huynh đồng ý; tỉ lệ câu hỏi có trả lời trong 24 giờ | như trên |
+| 2 · Nhóm học và lời mời | C1–C6, B3, khung Lớp mới, nhóm Zalo lớp | Học sinh hoạt động hằng tuần trong nhóm; lời mời được phụ huynh đồng ý; tỉ lệ câu hỏi có trả lời trong 24 giờ | như trên |
 | 3 · Phụ huynh tìm gia sư | A5, xem xét hợp tác quản trị nhóm | Thời gian từ lúc đăng yêu cầu đến khi có gia sư nhắn lại; tỉ lệ nhận lớp | chỉ mở khi mỗi khu vực đủ gia sư |
 
 Bốn chỉ số theo dõi từ ngày đầu:
@@ -278,6 +303,7 @@ Trang *🌱 Phễu, Zalo & Cộng đồng — v2 (30/09)*, node trang `182:74`:
 | C3 · Soạn bài, chọn người xem | `189:74` |
 | C4 · An toàn và quyền riêng tư | `189:124` |
 | C5 · Gia sư duyệt cộng đồng | `190:74` |
+| C6 · Tin nhắn | `197:74` |
 | D · Bảng phễu quản trị | `191:77` |
 
 Trang *📚 Lớp & Thư viện*:
