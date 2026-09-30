@@ -144,7 +144,8 @@ không dựa vào cấm tính năng.
 1. Nhắn thẳng được với: bạn cùng nhóm học, bạn theo dõi nhau, gia sư.
 2. Người khác vào **Yêu cầu nhắn tin**: tin bị ẩn, ảnh và link không hiện tới khi chấp nhận.
    Học sinh dưới 16 tuổi không nhận ảnh từ người lạ.
-3. Giờ nghỉ 22:00–07:00: tin vẫn đến nhưng không báo.
+3. Giờ nghỉ 22:00–07:00: tin vẫn đến nhưng không báo. Riêng tin của buổi học bắt đầu trong
+   30 phút tới thì vẫn báo, vì có lớp học lúc 22:15 (xem `dua-bang-tinh-len-web.md`, AS-194).
 4. Phụ huynh thấy con nhắn với ai và thời gian dùng, **không đọc nội dung** (như chế độ giám
    sát của Instagram). Gia sư không đọc tin nhắn riêng giữa học sinh.
 5. Báo cáo tin nhắn đi thẳng tới quản trị KiN. Nội dung nguy hiểm (tự hại, xâm hại) bị khoá
