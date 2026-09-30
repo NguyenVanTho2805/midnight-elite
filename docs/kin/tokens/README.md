@@ -88,27 +88,29 @@ Cần tách riêng thì dùng `--kin-co-<bậc>`, `--kin-dong-<bậc>`, `--kin-d
 Web font chưa được nạp trong `tokens.css`. Sản phẩm cần tự nạp Be Vietnam Pro 600,
 Inter 400/500/600 và JetBrains Mono (xem thẻ `<link>` ở đầu `demo.html`).
 
-### Figma đang lệch thang — đọc trước khi dựng màn hình
+### Text style trong Figma
 
-12 text style đang dùng trên các màn trong Figma **chưa nằm trên thang tám bậc**.
-Cho tới khi sửa xong (việc TK-205 trong backlog), khi Dev Mode hiện một cỡ lẻ thì
-dùng bậc gần nhất theo bảng này:
+Figma có 8 text style `Thang/<bậc>` khớp đúng 8 bậc ở bảng trên. 12 text style đang
+dùng trên các màn đã được quy về thang (TK-205, 30/09): cỡ chữ và họ chữ gắn thẳng vào
+biến bộ Chữ, đổi biến là style đổi theo. Mô tả của mỗi style ghi sẵn dòng CSS tương ứng.
 
-| Text style trong Figma | Cỡ | Dùng token |
-|---|---:|---|
-| Tiêu đề/H1 | 30 | `h2` (27,6) |
-| Tiêu đề/H2 | 24 | `h3` (23) |
-| Tiêu đề/H3 — khung đọc | 20 | `h4` (19,2) |
-| Tiêu đề/Khung danh sách | 17 | `body` (16), đậm 600 |
-| Nội dung/Thường | 15 | `body` (16) |
-| Nội dung/Dòng — thường, chưa đọc | 14 | `small` (13,3), đậm 500 / 600 |
-| Nội dung/Nhỏ | 13 | `small` (13,3) |
-| Nội dung/Chú thích | 12,5 | `small` (13,3) |
-| Nhãn/Badge | 10 | `caption` (11,1) |
-| Nhãn/Module | 9,5 | `caption` (11,1) |
-| Mã/Giờ ngày | 12 | `caption` (11,1) + `--kin-ho-ma` |
+| Text style trong Figma | Trước | Giờ | CSS |
+|---|---:|---|---|
+| Tiêu đề/H1 | 30 | `h2` 27,6 | `var(--kin-kieu-h2)` |
+| Tiêu đề/H2 | 24 | `h3` 23 | `var(--kin-kieu-h3)` |
+| Tiêu đề/H3 — khung đọc | 20 | `h4` 19,2 | `var(--kin-kieu-h4)` |
+| Tiêu đề/Khung danh sách | 17 | `body` 16, đậm 600 | `var(--kin-kieu-body)` + `font-weight: 600` |
+| Nội dung/Thường | 15 | `body` 16 | `var(--kin-kieu-body)` |
+| Nội dung/Dòng — thường | 14 | `small` 13,3, đậm 500 | `var(--kin-kieu-small)` + `font-weight: 500` |
+| Nội dung/Dòng — chưa đọc | 14 | `small` 13,3, đậm 600 | `var(--kin-kieu-small)` + `font-weight: 600` |
+| Nội dung/Nhỏ | 13 | `small` 13,3 | `var(--kin-kieu-small)` |
+| Nội dung/Chú thích | 12,5 | `small` 13,3 | `var(--kin-kieu-small)` |
+| Nhãn/Badge | 10 | `caption` 11,1, đậm 600 | `var(--kin-kieu-caption)` + `font-weight: 600` |
+| Nhãn/Module | 9,5 | `caption` 11,1, đậm 600 | `var(--kin-kieu-caption)` + `font-weight: 600` |
+| Mã/Giờ ngày | 12 | `caption` 11,1 | `var(--kin-kieu-caption)` + `font-family: var(--kin-ho-ma)` |
 
-Hai nhãn 9,5px và 10px nằm **dưới cỡ nhỏ nhất** của thang — đừng giữ nguyên khi dựng.
+Hai nhãn 9,5px và 10px trước đây nằm dưới cỡ nhỏ nhất của thang; giờ đều lên 11,1px.
+Khoảng cách chữ (letter-spacing) của cả 12 style đưa về 0 cho khớp với code.
 
 ---
 
