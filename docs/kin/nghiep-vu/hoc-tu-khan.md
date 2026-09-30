@@ -31,7 +31,8 @@ kịp — đây là chỗ cần hỗ trợ."*
 ```
 Nỗ lực = 10 × ( 0,5 × Chuyên cần + 0,5 × Bài về nhà )
 
-Chuyên cần  = (số buổi có mặt × 1 + số buổi muộn × 0,5) / số buổi của môn trong tháng   [đề xuất]
+Chuyên cần  = Σ hệ số điểm danh / số buổi đã điểm danh của môn trong tháng
+              (có mặt 1 · muộn 0,9 · có phép 0,8 · vắng 0,5; xem dua-bang-tinh-len-web.md, mục 2)
 Bài về nhà  = số bài nộp đúng hạn / số bài đã giao trong tháng
 ```
 
@@ -157,7 +158,7 @@ NV-185 làm "Năng lực môn" thì học bổng có thể mất khi tụt, cầ
 |---|---|---|
 | NGƯỠNG_ĐẠT | 8,0 | đề xuất |
 | SỐ_BÀI_GẦN_NHẤT | 3 | theo backlog NV-185 |
-| HỆ_SỐ_MUỘN (Nỗ lực) | 0,5 | đề xuất |
+| HỆ_SỐ_ĐIỂM_DANH | 1 / 0,9 / 0,8 / 0,5 | theo mã v7; muộn 0,9 là GD-05 (01/10) |
 | NGƯỠNG_PHÚT_ĐỎ | 5 phút/tuần | theo NBER w32388 |
 | NGƯỠNG_PHÚT_ĐỦ | 30 phút/tuần | theo khuyến nghị Khan |
 | NGƯỠNG_BTVN_CHƯA_ĐẠT | 70% | đề xuất |
