@@ -3,6 +3,12 @@
 Cập nhật 27/09/2026. Chốt sau khi đọc sheet vận hành thật và `Mã.gs` (1.609 dòng)
 của lớp BCA Midnight Class.
 
+> **Sửa ngày 01/10/2026.** Mục 3 (học phí) đã được thay bằng
+> `nghiep-vu/dua-bang-tinh-len-web.md`: tính theo số buổi, gia sư sửa được số buổi, không làm
+> tròn, ba loại giảm. Mục 1 (cộng đồng): giao diện theo `nghiep-vu/pheu-gia-su.md` mục 4
+> (30/09); vẫn là không gian riêng, nhưng phải đăng nhập mới xem (`GD-24` trong
+> `quy-trinh/so-gia-dinh.md`).
+
 Bản thiết kế: [KiN Design System trên Figma](https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-System)
 
 ---
@@ -55,45 +61,38 @@ Nhóm theo `NGAY BÂY GIỜ / TRONG HÔM NAY / ĐỂ SAU ĐƯỢC`, mỗi việc
 
 ---
 
-## 3. Học phí tính THEO THÁNG
+## 3. Học phí tính theo số buổi (sửa 01/10)
 
-> Đây là thay đổi lớn nhất so với bản thiết kế trước. Bản cũ tính theo
-> từng buổi có mặt. Sai với cách lớp đang vận hành thật.
-
-### Công thức
+Bản 27/09 ghi "tính theo tháng, số buổi nhập một lần cho cả lớp, trừ buổi miễn phí". Sau khi đọc
+lại mã v7 và theo quyết định của anh Thanh ngày 01/10, quy tắc đúng là:
 
 ```
-Đơn giá/buổi  = theo TỔNG SỐ MÔN học sinh đăng ký
-                1 môn 70.000đ · 2 môn 60.000đ · 3 môn 55.000đ · 4 môn 50.000đ
-                (có thể ghi đè bằng đơn giá riêng cho từng em)
-
-Học phí gốc   = Σ theo môn: (số buổi của MÔN trong tháng − buổi miễn phí)
-                            × đơn giá/buổi
-
-Phải đóng     = Học phí gốc − Học bổng − Giảm trừ      (không bao giờ âm)
+Tiền môn     = Σ đơn giá của từng buổi lớp môn đó đã học   (môn được miễn: 0đ)
+Học phí gốc  = Σ Tiền môn
+Phải đóng    = max(0, Học phí gốc − Học bổng % theo môn − Hỗ trợ ngoài − Nguồn khác)
+               không làm tròn
 ```
 
-**Số buổi là của MÔN, không phải của từng học sinh.** Nhập một lần cho cả lớp.
+- Đơn giá theo tổng số môn em đăng ký (70.000 / 60.000 / 55.000 / 50.000đ), chốt vào từng buổi.
+- Em vắng **vẫn tính tiền** vì buổi nào cũng có bản ghi. Gia sư tắt được quy tắc này ở cài đặt
+  lớp nếu đã thoả thuận khác với phụ huynh.
+- Gia sư sửa được số buổi của từng em (vào lớp giữa tháng, thoả thuận riêng), bắt buộc ghi lý do.
 
-### Vắng KHÔNG trừ tiền
+Chi tiết và bảng tham số: `nghiep-vu/dua-bang-tinh-len-web.md`.
 
-Vì buổi nào cũng có bản ghi để xem lại — em nghỉ vẫn học lại được phần đó.
+### Ví dụ (khớp Figma `24:2`)
 
-Điểm danh **chỉ** dùng cho chuyên cần và xếp hạng, **không** dùng để tính tiền.
+Ninh Hoài Thu, 3 môn → 55.000đ/buổi, tháng 9/2026, lớp nghỉ lễ 2/9:
 
-### Ví dụ thật
+| Môn | Lịch | Buổi đã học | Thành tiền |
+|---|---|---:|---:|
+| Toán | Thứ 2, Thứ 5 · 22:15 | 8 | 440.000đ |
+| Sử | Thứ 3 · 22:15 | 5 | 275.000đ |
+| Anh | Thứ 4, Thứ 7 · 22:15 (nghỉ 2/9) | 8 | 440.000đ |
+| | | **21 buổi** | **1.155.000đ** |
 
-Ninh Hoài Thu, 3 môn → 55.000đ/buổi:
-
-| Môn | Lịch | Buổi tháng 9 | Thành tiền |
-|---|---|---|---|
-| Toán | Thứ 3, Thứ 7 · 22:15 | 8 | 440.000đ |
-| Sử | Thứ 4, CN · 22:15 | 6 | 330.000đ |
-| Anh | Thứ 2, Thứ 5 · 22:15 | 8 | 440.000đ |
-| | | **22 buổi** | **1.210.000đ** |
-
-Giảm trừ 100.000đ → **cần đóng 1.110.000đ**.
-Em vắng 1 buổi Toán và 1 buổi Sử — số tiền không đổi.
+Nguồn khác 100.000đ → **cần đóng 1.055.000đ**. Em vắng 1 buổi Toán và 1 buổi Sử: số tiền không
+đổi, chỉ trừ vào chuyên cần.
 
 ---
 
@@ -112,6 +111,9 @@ Thay bằng **Sổ học của con** — phụ huynh mở link riêng, không c�
 
 Nếu phụ huynh thấy ghi nhầm → màn **Báo ghi nhầm điểm danh**, nói rõ ngay đầu màn:
 *"Việc này chỉ sửa sổ điểm danh. Học phí tháng KHÔNG đổi."*
+Câu này chỉ đúng khi lớp để "vắng vẫn tính tiền" (mặc định). Lớp đã tắt quy tắc đó thì sửa
+điểm danh có thể đổi học phí, nên màn phải nói: *"Nếu gia sư sửa thành có mặt, phiếu học phí
+sẽ được tính lại."*
 
 ---
 
