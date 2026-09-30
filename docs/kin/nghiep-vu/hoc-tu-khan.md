@@ -1,6 +1,6 @@
 # Học từ Khan: quy tắc cho phiếu phụ huynh và bảng giáo viên
 
-Tài liệu này chốt cách tính cho bốn việc NV-185, NV-186, NV-187, NV-189 trong backlog,
+Tài liệu này chốt cách tính cho năm việc NV-185, NV-186, NV-187, NV-188, NV-189 trong backlog,
 để ai dựng (Apps Script hay app KiN) cũng ra cùng một con số. Lý do đằng sau từng quy
 tắc nằm trong báo cáo *Học gì từ Khan Academy* (27/09/2026), mục 10.
 
@@ -11,8 +11,9 @@ Thiết kế Figma, file *KiN Design System*:
 
 - Phiếu tháng gửi phụ huynh: trang *👪 Trang phụ huynh*, khung *Phụ huynh — báo cáo tháng (nỗ lực tách năng lực)*, node `171:2`.
 - Bảng phút luyện tập của giáo viên: trang *📚 Lớp & Thư viện*, khung *Lớp — phút luyện tập thật mỗi tuần*, node `172:2`.
+- Chữa bài gợi ý trước, đáp án sau: trang *🧪 Phòng thi*, section `175:87`.
 
-Tên và điểm trong hai khung là **dữ liệu mẫu**, không phải học sinh thật.
+Tên và điểm trong các khung là **dữ liệu mẫu**, không phải học sinh thật.
 
 ---
 
@@ -111,9 +112,30 @@ Hệ thống gợi ý sẵn các dòng sau, **gia sư đọc và sửa trước 
 Lý do: Khan tự công bố chỉ 9% học sinh dùng đủ liều, và vì thế số liệu của họ được
 tin. Phụ huynh tin một báo cáo có phần dở hơn một báo cáo toàn màu xanh.
 
+## NV-188 · Gợi ý trước, đáp án sau, nhưng có điểm dừng
+
+Thiết kế: trang *🧪 Phòng thi*, section *NV-188 · Chữa bài — gợi ý trước, đáp án sau*,
+node `175:87`, ba khung cho ba trạng thái.
+
+| Trạng thái | Học sinh thấy gì | Nút |
+|---|---|---|
+| Chưa nộp | Đề và 4 lựa chọn. Chưa có gợi ý, chưa có đáp án. | Nộp câu này |
+| Nộp lần 1, sai | Ô đã chọn viền đỏ, chữ "Chưa đúng". Hiện **một gợi ý**, không hiện đáp án. | Thử lại · Xem đáp án |
+| Nộp lần 2 vẫn sai, hoặc bấm "Xem đáp án" | Ô đúng viền xanh, ô sai viền đỏ, kèm lời giải. | Sang câu tiếp |
+
+- Đúng ngay lần 1: hiện luôn lời giải, không hiện gợi ý.
+- Điểm dừng là **hai lần nộp**. Khanmigo không bao giờ đưa đáp án nên học sinh bỏ dùng;
+  KiN không lặp lại lỗi đó.
+- Sau lời giải có ô không bắt buộc: *"Bạn thử viết lại một câu: gợi ý ở trên giúp bạn ở
+  chỗ nào?"* Đây là khuyến nghị tự giải thích của Khan.
+- Điểm bài kiểm tra (dùng cho NV-185) tính theo **lần nộp đầu**. Thử lại chỉ để học,
+  không để gỡ điểm.
+- Gợi ý do gia sư viết khi soạn câu hỏi. Câu nào chưa có gợi ý thì bỏ bước 2, hiện đáp án
+  sau lần nộp đầu.
+
 ---
 
-## Hai việc liên quan, chưa chốt
+## Việc còn chờ anh chốt
 
 **NV-184 · Học bổng theo ngưỡng.** Đây là quyết định về tiền, anh Thanh chốt. Khung
 đề xuất trong báo cáo Khan, mục 10.1:
@@ -126,10 +148,6 @@ Thành thạo môn = Năng lực môn ≥ 8,0  VÀ  Chuyên cần ≥ 90%  VÀ  
 Cần anh chốt: ngưỡng, mức giảm X%, và tính theo tháng hay theo kỳ. TOP 1/2/3 giữ làm
 vinh danh, không kèm tiền. Nếu dùng NV-185 làm "Năng lực môn" thì học bổng cũng có
 thể mất khi tụt. Cần báo trước cho phụ huynh điều này.
-
-**NV-188 · Gợi ý trước, đáp án sau.** Màn chữa bài không hiện đáp án cho tới khi học
-sinh đã nộp một lần. Có điểm dừng: sau lần nộp thứ hai, hoặc khi bấm "Xem đáp án"
-sau lần nộp đầu, thì hiện đáp án kèm lời giải. Chưa có thiết kế.
 
 ---
 
