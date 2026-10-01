@@ -134,10 +134,22 @@ không dựa vào cấm tính năng.
 |---|---|
 | C1 | Bảng tin: vòng tin theo nhóm, ba thẻ Nhóm của bạn / Hỏi bài / Tiến bộ. Có "Cổ vũ" nhưng **không đếm lượt thích công khai** |
 | C2 | Chi tiết câu hỏi: gợi ý bị che tới khi chạm, lời giải khoá tới khi thử lại (giống NV-188). Người hỏi đánh dấu "đã hiểu" thì câu đó vào kho câu hỏi của lớp |
-| C3 | Soạn bài có chọn người xem: nhóm này, chỉ gia sư, **Bạn thân** (như Close Friends), **Mọi người trên KiN** (như Threads; dưới 16 tuổi cần phụ huynh bật, dưới 13 không đăng) |
+| C3 | Soạn bài có chọn người xem: nhóm này, chỉ gia sư, **Bạn thân** (như Close Friends), **Công khai** (như Threads: ai cũng xem được, không cần đăng nhập; dưới 16 tuổi cần phụ huynh bật, dưới 13 không đăng) |
 | C4 | An toàn: riêng tư mặc định, giờ nghỉ 22:00–07:00, ai được nhắn cho bạn, ẩn từ xúc phạm, hạn chế một người, báo cáo, bản ghi phụ huynh đồng ý |
 | C5 | Gia sư duyệt bài trong nhóm mình theo kiểu hộp thư Outlook; quyền đăng theo lớp ba mức |
 | C6 | **Tin nhắn** như Instagram Direct: thẻ Bạn bè / Nhóm học / Gia sư / Yêu cầu |
+| C7 | **Người chưa đăng nhập** xem bảng tin Công khai; bấm Cổ vũ hoặc Bình luận thì hiện ô đăng nhập |
+
+### Xem tự do, tương tác phải đăng nhập (anh Thanh chốt 02/10)
+
+- **Ai cũng xem được** bài Công khai và câu trả lời trong đó, không cần tài khoản. Cộng đồng vẫn là không gian
+  riêng (`kin.vn/cong-dong`, mở từ dòng "Cộng đồng ↗"), không nằm trong khung lớp (TK-181).
+- **Phải đăng nhập** mới: cổ vũ, bình luận, đặt câu hỏi, đăng bài, theo dõi, nhắn tin, báo cáo.
+- Bài trong nhóm, Bạn thân, Chỉ gia sư: chỉ người trong đó xem, phải đăng nhập.
+- Người chưa đăng nhập thấy **tên hiển thị và ảnh đại diện** của học sinh, không thấy trường, lớp, hồ sơ chi
+  tiết hay danh sách bạn. Hồ sơ gia sư thì công khai đầy đủ. `GD-26`
+- Google được lập chỉ mục bài Công khai và câu trả lời của gia sư, **trừ bài do học sinh dưới 16 tuổi đăng**.
+  Mỗi câu trả lời của gia sư là một cửa vào từ Google, đúng lý do của quyết định 27/09. `GD-26`
 
 ### Tin nhắn riêng giữa học sinh: có, kèm năm lớp an toàn
 
@@ -169,8 +181,8 @@ lớp đã quen.
 **Không dùng nữa:**
 
 - "Cấm tin nhắn riêng giữa học sinh với học sinh". Thay bằng năm lớp an toàn ở trên.
-- Hỏi đáp công khai là một diễn đàn riêng, hỏi không cần tài khoản. Nay "Mọi người trên KiN"
-  là một lựa chọn người xem trong bảng tin (C3).
+- Hỏi đáp là một diễn đàn riêng, **hỏi** không cần tài khoản. Nay xem không cần tài khoản (C7), còn hỏi,
+  trả lời, cổ vũ phải đăng nhập; "Công khai" là một lựa chọn người xem trong bảng tin (C3).
 - Căn cứ Nghị định 13/2023 (hết hiệu lực từ 01/01/2026, xem mục 7).
 
 ---
