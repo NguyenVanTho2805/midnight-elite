@@ -264,6 +264,15 @@ Tôi đã cho một lượt kiểm chứng độc lập mở lại nguồn gốc
    cho nền tảng trên 1 triệu lượt truy cập/tháng, nhưng phải hỏi để chắc.
 6. Chưa đọc được bản PDF gốc của NĐ 356. Nhờ luật sư đối chiếu Điều 5, Điều 6 NĐ 356 và
    Điều 8, 28 Luật 91.
+7. **Thêm 02/10, sau quyết định cộng đồng xem tự do:** người chưa đăng nhập xem được bài Công khai
+   của học sinh 13–18 tuổi (tên hiển thị và ảnh), Google lập chỉ mục bài của học sinh từ 16 tuổi
+   (`GD-26`). Hiển thị công khai như vậy có cần đồng ý riêng của phụ huynh không, và cần lưu bằng
+   chứng đồng ý thế nào?
+8. **Đối soát chuyển khoản (TT-200):** KiN đọc giao dịch tiền vào tài khoản của gia sư qua SePay.
+   Dữ liệu giao dịch của gia sư và tên phụ huynh trong nội dung chuyển khoản cần đồng ý gì theo
+   Luật 91? Khi KiN bắt đầu thu phí, cách này có thành trung gian thanh toán theo NĐ 52/2024 không?
+9. **Zalo OA (TT-199 giai đoạn 2):** một OA của KiN gửi tin thay cho nhiều gia sư có được không, hay
+   mỗi gia sư phải có OA riêng? KiN cần đăng ký hộ kinh doanh hay doanh nghiệp?
 
 ---
 
