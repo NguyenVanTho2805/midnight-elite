@@ -47,7 +47,7 @@ Cập nhật 02/10/2026.
 | — | Giai đoạn đầu KiN chưa thu phí; khi thu phí sẽ bổ sung điều khoản. Đối soát VietQR (TT-200) dựng được | 02/10 | anh Thanh |
 | — | Cộng đồng: ai cũng xem không cần đăng nhập; cổ vũ, bình luận phải đăng nhập | 02/10 | anh Thanh |
 | GD-26 | Khách chưa đăng nhập chỉ thấy tên hiển thị và ảnh học sinh, không thấy trường, lớp, hồ sơ; Google không lập chỉ mục bài của học sinh dưới 16 tuổi | 02/10 | anh Thanh |
-| GD-27 | Giữ tiêu đề cột "Mật khẩu" ở 5 tab AZOTA nhưng luôn để trống, mỗi lần đồng bộ tự xoá | 02/10 | anh Thanh |
+| GD-27 | Giữ tiêu đề cột "Mật khẩu" ở 5 tab AZOTA nhưng luôn để trống, mỗi lần đồng bộ tự xoá. **Không còn áp dụng:** cùng ngày anh chốt bỏ bảng tính, chuyển hẳn sang web | 02/10 | anh Thanh |
 | GD-28 | Link phiếu và điểm danh gửi phụ huynh hết hạn sau 60 ngày, mở không cần tài khoản | 02/10 | anh Thanh |
 
 ## Đã bác
