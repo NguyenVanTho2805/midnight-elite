@@ -42,7 +42,7 @@ Phải đóng   = max(0, Học phí gốc − Tổng giảm)          ← không
   giữ 1 buổi bù, hạn 30 ngày (TT-202). Gia sư tắt được quy tắc này ở cài đặt lớp nếu thoả thuận
   với phụ huynh là vắng không tính tiền. Khi tắt: buổi Vắng và Nghỉ có phép không tính tiền;
   Muộn tính đủ; buổi Chưa điểm danh vẫn tính, và KiN nhắc gia sư điểm danh trước khi gửi phiếu.
-  `GD-25`
+  `GD-25`, anh chốt 02/10.
 - **Gia sư sửa được số buổi của từng em, từng môn**, ví dụ em vào lớp ngày 15. Ô sửa bắt buộc
   ghi lý do; phiếu phụ huynh hiện dòng "Đã điều chỉnh: …".
 - Trong bảng tính, số buổi đang **nhập tay một lần cho cả lớp** ở Dashboard (`bcaThietLapHocPhi`,
@@ -216,6 +216,17 @@ Web giữ các mẫu này, cộng nhắc lịch TT-201 và báo nghỉ TT-202. G
 
 ## 7. Mười cải tiến cho bảng tính (việc của anh, nếu còn dùng song song)
 
+**02/10:** em đã vá cả mười chỗ thành bản **v7.1** (AS-227 đến AS-236), kiểm cú pháp và chạy thử với bảng giả.
+Anh dán vào Apps Script rồi chạy "Cập nhật TẤT CẢ"; số "Phải thu" phải giữ nguyên. File mã và hướng dẫn em gửi
+riêng cho anh, không đưa lên kho này vì mã có số điện thoại và tên thật.
+
+Khác với bảng ở dưới ở hai chỗ:
+- **#3 số buổi:** bảng tính hạn đóng trước ngày 20 nên cần số buổi **theo lịch cả tháng**, không phải số buổi đã
+  học tới hôm nay. Cột C ở Dashboard đếm các ô ngày ở tab Điểm Danh (xoá ô ngày = lớp nghỉ). Ô cột B để trống thì
+  lấy cột C; gõ số thì dùng số gõ tay.
+- **#8 mật khẩu:** giữ tiêu đề cột "Mật khẩu" cho đúng mẫu nhập AZOTA nhưng luôn để trống, mỗi lần đồng bộ tự
+  xoá. `GD-27`. Ngày 02/10 em đã kiểm 5 tab AZOTA: cột này đang trống ở cả 52 dòng.
+
 | # | Chỗ | Vấn đề | Sửa |
 |---|---|---|---|
 | 1 | `noHP` (E13) | xét nợ của tháng đang tính, chưa tới hạn đã bị coi là nợ | xét "Còn lại" tháng trước, hoặc chỉ xét sau ngày 20 |
@@ -227,7 +238,7 @@ Web giữ các mẫu này, cộng nhắc lịch TT-201 và báo nghỉ TT-202. G
 | 7 | Tin chào và tin nhắc | hạn đóng "15–20" và "trước 20" | một hạn: trước ngày 20 |
 | 8 | `bcaDongBoAzota` | cột "Mật khẩu" vẫn còn trong mẫu | bỏ cột |
 | 9 | Học bổng, Giảm trừ | một số tiền cho cả phiếu | học bổng theo % từng môn + 2 loại giảm |
-| 10 | Điểm danh | chưa có Muộn | thêm "M" hoặc "Mu", hệ số 0,9 |
+| 10 | Điểm danh | chưa có Muộn | thêm "Mu", hệ số 0,9 |
 
 ---
 
@@ -253,6 +264,7 @@ Web giữ các mẫu này, cộng nhắc lịch TT-201 và báo nghỉ TT-202. G
 | VẮNG_VẪN_TÍNH_TIỀN | Bật | theo bảng tính, gia sư tắt được |
 | ĐƠN_GIÁ_1..4_MÔN | 70.000 / 60.000 / 55.000 / 50.000đ | theo mã v7 |
 | ĐƠN_GIÁ_CHỐT_THEO | từng buổi | anh chốt 01/10 |
+| KÝ_HIỆU_MUỘN (bảng tính) | Mu | v7.1 |
 | LÀM_TRÒN | không | anh chốt 01/10 |
 | HỆ_SỐ có mặt / muộn / phép / vắng | 1 / 0,9 / 0,8 / 0,5 | theo mã v7; muộn là GD-05 |
 | HỌC_BỔNG_TOP1 / TOP2 | 100% / 90% tiền môn | theo mã v7, KiN chỉ gợi ý |
