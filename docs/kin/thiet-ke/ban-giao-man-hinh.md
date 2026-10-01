@@ -43,7 +43,7 @@ vào CSS.
 |---|---|---|---|
 | TK-172 · điểm danh | `22:2`; điện thoại `107:3` | `nghiep-vu/dua-bang-tinh-len-web.md` mục 2 | **5 trạng thái**: Có mặt, Muộn, Có phép, Vắng, và Chưa điểm danh (không chọn nút nào). Chưa điểm danh không tính vào chuyên cần. Cột chuyên cần là điểm /10 theo hệ số 1 / 0,9 / 0,8 / 0,5 |
 | TK-173 · phiếu học phí + VietQR | phiếu phụ huynh `24:2`, điện thoại `108:114`; quy tắc lớp `199:74`; sửa phiếu từng em `200:74` | `dua-bang-tinh-len-web.md` mục 1, `nghiep-vu/doi-soat-vietqr.md` | tiền = tổng đơn giá từng buổi; **không làm tròn**; ba loại giảm; QR mang đúng phần còn lại; nội dung bắt đầu bằng mã `KIN` + 5 ký tự |
-| TT-200 · đối soát chuyển khoản | hàng chờ của gia sư `205:76` | `doi-soat-vietqr.md` | **chưa dựng** tới khi có ý kiến luật sư (mục 5 của đặc tả) |
+| TT-200 · đối soát chuyển khoản | hàng chờ của gia sư `205:76` | `doi-soat-vietqr.md` | dựng được (anh chốt 02/10: giai đoạn đầu chưa thu phí). KiN không giữ tiền, chỉ đọc tiền vào |
 
 ## Phụ huynh
 
@@ -63,7 +63,7 @@ vào CSS.
 
 | Việc | Khung Figma | Đặc tả | Lưu ý khi dựng |
 |---|---|---|---|
-| TK-175, TK-181 · cộng đồng là không gian riêng | *🌱 Phễu, Zalo & Cộng đồng — v2*: C1 `188:77`, C2 `188:172`, C3 `189:74`, C4 `189:124`, C5 `190:74`, C6 `197:74` | `pheu-gia-su.md` mục 4 (30/09) | không nằm trong khung lớp, mở từ "Cộng đồng ↗". **Phải đăng nhập mới xem** và không cho Google lập chỉ mục bài học sinh (`GD-24`). Khung cũ `29:2` (hỏi đáp mở) và `120:5` chỉ để tham khảo |
+| TK-175, TK-181 · cộng đồng là không gian riêng | *🌱 Phễu, Zalo & Cộng đồng — v2*: C1 `188:77`, C2 `188:172`, C3 `189:74`, C4 `189:124`, C5 `190:74`, C6 `197:74`, C7 người chưa đăng nhập `210:74` | `pheu-gia-su.md` mục 4 | không nằm trong khung lớp, mở từ "Cộng đồng ↗". **Ai cũng xem bài Công khai, không cần đăng nhập**; cổ vũ, bình luận, hỏi, đăng, nhắn phải đăng nhập (anh chốt 02/10). Người chưa đăng nhập chỉ thấy tên hiển thị của học sinh; Google không lập chỉ mục bài của học sinh dưới 16 tuổi (`GD-26`). Khung cũ `29:2` và `120:5` chỉ để tham khảo |
 | Phễu gia sư, Zalo | A1 `182:78`, A2 `182:131`, A3 `184:74`, A5 `185:74`; B1–B4 `186:77`, `186:112`, `187:74`, `187:124`; bảng D `191:77` | `pheu-gia-su.md` mục 1–3 | hồ sơ gia sư và trang lớp đang mở là trang công khai; link có đuôi `?n=` để đo nguồn |
 
 ## Điện thoại và trạng thái
@@ -81,7 +81,7 @@ vào CSS.
 |---|---|
 | *🖼 Toàn cảnh 12 màn hình* (`91:*`) | bản chụp 27/09 để xem chủ đề màu; số liệu và luật đã cũ |
 | *🗄 Lưu trữ — trước TK-206* | bản trước khi gắn cỡ chữ vào biến |
-| `29:2`, `120:5` | hỏi đáp mở không cần tài khoản, đã thay bằng đặc tả 30/09 |
+| `29:2`, `120:5` | hỏi đáp mở, bản 24/09; thay bằng C1 đến C7 |
 
 ## Đã sửa trên Figma ngày 01/10
 
