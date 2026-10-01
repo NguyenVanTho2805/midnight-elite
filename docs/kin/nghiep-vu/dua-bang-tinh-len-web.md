@@ -214,9 +214,14 @@ Web giữ các mẫu này, cộng nhắc lịch TT-201 và báo nghỉ TT-202. G
 
 ---
 
-## 7. Mười cải tiến cho bảng tính (việc của anh, nếu còn dùng song song)
+## 7. Mười cải tiến cho bảng tính (không làm nữa)
 
-**02/10:** em đã vá cả mười chỗ thành bản **v7.1** (AS-227 đến AS-236), kiểm cú pháp và chạy thử với bảng giả.
+**02/10, anh Thanh chốt: không cập nhật bảng tính nữa, chuyển hẳn sang web.** Bảng tính chỉ còn để **xem lớp
+đã vận hành thế nào**, làm nền cho việc thiết kế web (đúng cách tài liệu này đã dùng nó). Bản vá v7.1 không dán.
+Cả mười điểm dưới đây đã nằm trong quy tắc của web ở mục 1 đến mục 6, nên không mất gì. Nếu sau này có nhập dữ
+liệu cũ lên web thì theo `GD-03` (số học bổng cũ vào Nguồn khác) và bỏ cột mật khẩu.
+
+Ghi lại để tra cứu: em đã vá cả mười chỗ thành bản **v7.1** (AS-227 đến AS-236), kiểm cú pháp và chạy thử với bảng giả.
 Anh dán vào Apps Script rồi chạy "Cập nhật TẤT CẢ"; số "Phải thu" phải giữ nguyên. File mã và hướng dẫn em gửi
 riêng cho anh, không đưa lên kho này vì mã có số điện thoại và tên thật.
 
