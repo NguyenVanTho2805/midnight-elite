@@ -136,13 +136,14 @@ Gia sư bấm "Ghi nhận một phần" ở dòng thứ ba: phiếu Trần Gia B
 
 ---
 
-## 5. Cần anh chốt
+## 5. Đã chốt và còn chờ
 
-1. **Pháp lý (hỏi luật sư):** KiN chỉ đọc biến động qua tài khoản SePay do gia sư tự mở, không
-   giữ tiền. Cách này có bị coi là trung gian thanh toán theo NĐ 52/2024 không? Em thiết kế để
-   KiN đứng ngoài dòng tiền, nhưng kết luận phải là của luật sư. **Chưa dựng trước khi có câu trả
-   lời.**
-2. Có cho phụ huynh thấy trạng thái "Đóng một phần" không, hay chỉ thấy "Còn lại X đồng"? Em đang
+1. **Đã chốt 02/10 (anh Thanh):** giai đoạn đầu KiN chưa thu phí của gia sư; khi thu phí anh sẽ bổ
+   sung điều khoản. Phần đối soát **dựng được**. Thiết kế vẫn giữ KiN đứng ngoài dòng tiền: không giữ
+   tiền, không thu hộ, chỉ đọc tiền vào qua tài khoản SePay do gia sư tự mở. Theo em hiểu, việc có phải
+   xin phép trung gian thanh toán (NĐ 52/2024) xét theo việc có chạm vào dòng tiền hay không, chứ không
+   chỉ theo việc có thu phí. Nên nếu sau này KiN giữ tiền hộ hoặc thu hộ thì cần hỏi luật sư lại.
+2. **Còn chờ anh:** có cho phụ huynh thấy trạng thái "Đóng một phần" không, hay chỉ thấy "Còn lại X đồng"? Em đang
    để hiện "Còn lại".
 
 ## 6. Không dùng nữa
