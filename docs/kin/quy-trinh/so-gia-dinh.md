@@ -33,9 +33,6 @@ Cập nhật 02/10/2026.
 | GD-21 | Đóng dư: gia sư chọn trừ vào tháng sau hoặc ghi đã trả lại; KiN không tự trừ | tiền dư là thoả thuận giữa gia sư và phụ huynh | thêm một bước cho gia sư | hỏi 3 gia sư | Đang dùng | `doi-soat-vietqr.md` |
 | GD-22 | Không lưu số dư tài khoản (`accumulated`) của gia sư từ webhook | không cần cho đối soát, là dữ liệu riêng | — | — | Đang dùng | `doi-soat-vietqr.md` |
 | GD-23 | Phụ huynh bấm "Tôi đã chuyển" mà 24 giờ chưa thấy tiền thì nhắc gia sư kiểm sao kê | chuyển khoản liên ngân hàng thường vào trong ngày | nhắc sớm hoặc muộn | theo dõi tháng đầu | Đang dùng | `doi-soat-vietqr.md` |
-| GD-26 | Người chưa đăng nhập thấy tên hiển thị và ảnh học sinh, không thấy trường, lớp, hồ sơ, danh sách bạn; Google lập chỉ mục bài Công khai trừ bài của học sinh dưới 16 tuổi | xem tự do theo ý anh nhưng vẫn giữ an toàn tuổi teen | lộ ít thông tin hơn mức anh muốn, hoặc mất vài cửa vào từ Google | anh xác nhận | Đang dùng | `pheu-gia-su.md` mục 4 |
-| GD-27 | Giữ tiêu đề cột "Mật khẩu" ở 5 tab AZOTA nhưng luôn để trống, mỗi lần đồng bộ tự xoá | chưa kiểm được mẫu nhập của AZOTA có cần đủ cột không; bỏ cột có thể làm lệch khi nhập | thừa một cột trống | nhập thử 1 tab vào AZOTA | Đang dùng | `dua-bang-tinh-len-web.md` mục 7 |
-| GD-28 | Link phiếu và điểm danh gửi phụ huynh hết hạn sau 60 ngày, mở không cần tài khoản | đủ cho một kỳ học phí và kỳ sau, giảm rủi ro link bị chuyển tiếp | phụ huynh mở link cũ thấy hết hạn, phải xin link mới | đếm lượt mở link hết hạn | Đang dùng | `nghiep-vu/gui-qua-zalo.md` |
 
 ## Đã chốt
 
@@ -49,6 +46,9 @@ Cập nhật 02/10/2026.
 | GD-25 | Lớp tắt "vắng vẫn tính tiền": Vắng và Có phép không tính, Muộn tính đủ, Chưa điểm danh vẫn tính | 02/10 | anh Thanh |
 | — | Giai đoạn đầu KiN chưa thu phí; khi thu phí sẽ bổ sung điều khoản. Đối soát VietQR (TT-200) dựng được | 02/10 | anh Thanh |
 | — | Cộng đồng: ai cũng xem không cần đăng nhập; cổ vũ, bình luận phải đăng nhập | 02/10 | anh Thanh |
+| GD-26 | Khách chưa đăng nhập chỉ thấy tên hiển thị và ảnh học sinh, không thấy trường, lớp, hồ sơ; Google không lập chỉ mục bài của học sinh dưới 16 tuổi | 02/10 | anh Thanh |
+| GD-27 | Giữ tiêu đề cột "Mật khẩu" ở 5 tab AZOTA nhưng luôn để trống, mỗi lần đồng bộ tự xoá | 02/10 | anh Thanh |
+| GD-28 | Link phiếu và điểm danh gửi phụ huynh hết hạn sau 60 ngày, mở không cần tài khoản | 02/10 | anh Thanh |
 
 ## Đã bác
 
