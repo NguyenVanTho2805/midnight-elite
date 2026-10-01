@@ -6,8 +6,8 @@ của lớp BCA Midnight Class.
 > **Sửa ngày 01/10/2026.** Mục 3 (học phí) đã được thay bằng
 > `nghiep-vu/dua-bang-tinh-len-web.md`: tính theo số buổi, gia sư sửa được số buổi, không làm
 > tròn, ba loại giảm. Mục 1 (cộng đồng): giao diện theo `nghiep-vu/pheu-gia-su.md` mục 4
-> (30/09); vẫn là không gian riêng, nhưng phải đăng nhập mới xem (`GD-24` trong
-> `quy-trinh/so-gia-dinh.md`).
+> (30/09); vẫn là không gian riêng và **ai cũng xem được không cần đăng nhập** như mục 1 dưới đây,
+> còn cổ vũ, bình luận, hỏi, đăng bài phải đăng nhập (anh Thanh chốt 02/10).
 
 Bản thiết kế: [KiN Design System trên Figma](https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-System)
 
