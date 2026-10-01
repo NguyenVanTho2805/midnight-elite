@@ -6,7 +6,7 @@ nào; đổi giá trị thì sửa ở tài liệu đặc tả được nêu, kh
 
 Trạng thái: **Đang dùng** (chưa ai chốt) · **Đã chốt** (anh đồng ý) · **Bác** (anh đổi, đã sửa đặc tả).
 
-Cập nhật 01/10/2026.
+Cập nhật 02/10/2026.
 
 | Mã | Giả định | Vì sao chọn | Nếu sai thì | Cách kiểm | Trạng thái | Đặc tả |
 |---|---|---|---|---|---|---|
@@ -33,8 +33,8 @@ Cập nhật 01/10/2026.
 | GD-21 | Đóng dư: gia sư chọn trừ vào tháng sau hoặc ghi đã trả lại; KiN không tự trừ | tiền dư là thoả thuận giữa gia sư và phụ huynh | thêm một bước cho gia sư | hỏi 3 gia sư | Đang dùng | `doi-soat-vietqr.md` |
 | GD-22 | Không lưu số dư tài khoản (`accumulated`) của gia sư từ webhook | không cần cho đối soát, là dữ liệu riêng | — | — | Đang dùng | `doi-soat-vietqr.md` |
 | GD-23 | Phụ huynh bấm "Tôi đã chuyển" mà 24 giờ chưa thấy tiền thì nhắc gia sư kiểm sao kê | chuyển khoản liên ngân hàng thường vào trong ngày | nhắc sớm hoặc muộn | theo dõi tháng đầu | Đang dùng | `doi-soat-vietqr.md` |
-| GD-24 | Cộng đồng là không gian riêng (`kin.vn/cong-dong`, mở từ "Cộng đồng ↗"), không nằm trong khung lớp, nhưng **phải đăng nhập mới xem**; bài học sinh không cho Google lập chỉ mục | giữ TK-181 và đặc tả 30/09 (an toàn tuổi teen, bỏ hỏi đáp không cần tài khoản) | mất cửa vào từ Google qua câu hỏi; thay bằng hồ sơ gia sư và trang lớp đang mở | anh xác nhận | Đang dùng | `pheu-gia-su.md`, `quyet-dinh-giao-dien-va-hoc-phi.md` |
-| GD-25 | Lớp tắt "vắng vẫn tính tiền": Vắng và Nghỉ có phép không tính, Muộn tính đủ, Chưa điểm danh vẫn tính | gia sư quên tick không làm mất tiền | phụ huynh thấy tính cả buổi chưa điểm danh | nhắc điểm danh trước khi gửi phiếu | Đang dùng | `dua-bang-tinh-len-web.md` |
+| GD-26 | Người chưa đăng nhập thấy tên hiển thị và ảnh học sinh, không thấy trường, lớp, hồ sơ, danh sách bạn; Google lập chỉ mục bài Công khai trừ bài của học sinh dưới 16 tuổi | xem tự do theo ý anh nhưng vẫn giữ an toàn tuổi teen | lộ ít thông tin hơn mức anh muốn, hoặc mất vài cửa vào từ Google | anh xác nhận | Đang dùng | `pheu-gia-su.md` mục 4 |
+| GD-27 | Giữ tiêu đề cột "Mật khẩu" ở 5 tab AZOTA nhưng luôn để trống, mỗi lần đồng bộ tự xoá | chưa kiểm được mẫu nhập của AZOTA có cần đủ cột không; bỏ cột có thể làm lệch khi nhập | thừa một cột trống | nhập thử 1 tab vào AZOTA | Đang dùng | `dua-bang-tinh-len-web.md` mục 7 |
 
 ## Đã chốt
 
@@ -45,6 +45,9 @@ Cập nhật 01/10/2026.
 | — | Cộng đồng theo đặc tả 30/09 (Threads/Instagram, có tin nhắn riêng); đặc tả 24/09 chỉ để chắt lọc | 30/09 | anh Thanh |
 | — | Vào giữa tháng: gia sư sửa số buổi; tính theo số buổi, gia sư chỉnh linh động | 01/10 | anh Thanh |
 | — | Không làm tròn học phí; thêm trạng thái Muộn; giảm giá 3 loại | 01/10 | anh Thanh |
+| GD-25 | Lớp tắt "vắng vẫn tính tiền": Vắng và Có phép không tính, Muộn tính đủ, Chưa điểm danh vẫn tính | 02/10 | anh Thanh |
+| — | Giai đoạn đầu KiN chưa thu phí; khi thu phí sẽ bổ sung điều khoản. Đối soát VietQR (TT-200) dựng được | 02/10 | anh Thanh |
+| — | Cộng đồng: ai cũng xem không cần đăng nhập; cổ vũ, bình luận phải đăng nhập | 02/10 | anh Thanh |
 
 ## Đã bác
 
@@ -53,3 +56,4 @@ Cập nhật 01/10/2026.
 | — | Cấm tin nhắn riêng giữa học sinh (đặc tả 24/09) | Cho nhắn, kèm 5 lớp an toàn | 30/09 |
 | — | Hai chế độ học phí "theo buổi" và "theo lịch tháng" (bản 30/09) | Một công thức theo số buổi, gia sư sửa số buổi, công tắc vắng có tính tiền không | 01/10 |
 | — | Hệ số Muộn 0,5 (NV-186) | 0,9 (GD-05), vì vắng đã là 0,5 | 01/10 |
+| GD-24 | Cộng đồng phải đăng nhập mới xem | Ai cũng xem; tương tác phải đăng nhập (GD-26) | 02/10 |
