@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
+import { isEnrollmentActive } from "@/lib/enrollment";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -18,12 +19,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // Admin: full access
   if (session.role === "admin") return NextResponse.json(lesson);
 
-  // Student: chỉ access nếu đang enroll khoá của bài học này
+  // Student: chỉ access nếu đang enroll active khoá của bài học này.
+  // "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua
+  // route /context (R01) — route này trả raw lesson nên dùng active làm chuẩn,
+  // nhất quán với progress/[lessonId], assignments/[id]/submit sau PR #6.
   const courseId = lesson.chapter.section.courseId;
   const enrolled = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.userId, courseId } },
   });
-  if (!enrolled) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+  if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
 
   return NextResponse.json(lesson);
 }
