@@ -54,7 +54,6 @@ model Course {
 
   sections         Section[]
   enrollments      Enrollment[]
-  favorites        CourseFavorite[]
   cartItems        CartItem[]
   reviews          CourseReview[]
   exams            Exam[]
@@ -96,18 +95,6 @@ model CartItem {
 
   @@id([userId, courseId])
   @@map("cart_items")
-}
-
-model CourseFavorite {
-  userId    String
-  courseId  String
-  createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@id([userId, courseId])
-  @@map("course_favorites")
 }
 
 model CourseReview {
@@ -739,7 +726,6 @@ model User {
   passwordResetTokens PasswordResetToken[]
   lessonProgress      LessonProgress[]
   lessonNotes         LessonNote[]
-  courseFavorites     CourseFavorite[]
   cartItems           CartItem[]
   courseReviews       CourseReview[]
   notifications       Notification[]
