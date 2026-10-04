@@ -3,6 +3,7 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { addCoins } from "@/lib/wallet";
+import { COIN_REASONS } from "@/lib/wallet-constants";
 import { notify } from "@/lib/notify";
 
 // POST /api/admin/answer-reports/[id]/resolve — admin duyệt report: { decision: "approved" | "rejected" }
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Chỉ trừ xu nếu câu trả lời đã từng được chấp nhận và nhận thưởng
     if (report.answer.rewardPaid) {
-      await addCoins(report.answer.authorId, -report.answer.rewardPaid, "report_penalty", report.answer.id);
+      await addCoins(report.answer.authorId, -report.answer.rewardPaid, COIN_REASONS.REPORT_PENALTY, report.answer.id);
     }
 
     await notify(report.answer.authorId, {
