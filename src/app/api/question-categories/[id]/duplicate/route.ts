@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
-import { initialStatusFor } from "@/lib/questionBankWorkflow";
+import { initialStatusFor, isReviewer } from "@/lib/questionBankWorkflow";
 import { copyBankItemEmbedding } from "@/lib/embeddings";
 
 export const maxDuration = 60;
@@ -56,8 +56,16 @@ export async function POST(
       }
       await cloneSubtree(source.id, null, newRootName);
 
+      // Chỉ copy câu hỏi mà người bấm được phép thấy — admin_super/admin_content
+      // (reviewer) thấy mọi status, teacher chỉ copy câu "approved" của người
+      // khác + mọi câu của chính mình. Tránh teacher B rút được bản nháp/chờ
+      // duyệt của teacher A qua cổng "Copy ngân hàng" (list/picker đã có
+      // statusScope này, duplicate trước đây sót).
+      const statusScope = isReviewer(auth.adminRole)
+        ? {}
+        : { OR: [{ status: "approved" }, { ownerId: auth.userId }] };
       const items = await tx.questionBankItem.findMany({
-        where: { categoryId: { in: [...idMap.keys()] } },
+        where: { categoryId: { in: [...idMap.keys()] }, ...statusScope },
         include: { options: { orderBy: { order: "asc" } } },
       });
 

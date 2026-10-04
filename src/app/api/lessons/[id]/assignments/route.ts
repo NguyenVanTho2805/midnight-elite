@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, requireSession, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, requireSession, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
 
@@ -56,8 +56,14 @@ export async function POST(
   const { id: lessonId } = await params;
 
   try {
-    const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { id: true } });
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { chapter: { select: { section: { select: { course: { select: { ownerId: true } } } } } } },
+    });
     if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài giảng" }, { status: 404 });
+    if (!ownsResource(auth, lesson.chapter.section.course.ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
 
     const body = await req.json();
     const { title, instructions, fileUrl, fileName, maxPoints, dueDate, mode, questions } = body as {

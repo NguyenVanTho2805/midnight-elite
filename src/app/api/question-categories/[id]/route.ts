@@ -19,14 +19,19 @@ async function isDescendantOrSelf(id: string, candidateId: string): Promise<bool
 }
 
 // PATCH /api/question-categories/[id] — đổi tên/di chuyển sang cha khác/sắp
-// thứ tự. Không có khái niệm chủ sở hữu — ai có quyền MANAGE_CURRICULUM đều
-// sửa được (dùng chung giữa mọi giáo viên).
+// thứ tự. QuestionCategory dùng CHUNG giữa mọi giáo viên — không có cột
+// ownerId — nên đổi tên hoặc re-parent sẽ ảnh hưởng câu hỏi của mọi teacher.
+// Chặn thẳng khi `adminRole === "teacher"` (cùng pattern với PUT /api/categories).
+// admin_super/admin_content giữ nguyên.
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
+  if (auth.adminRole === "teacher") {
+    return NextResponse.json({ error: "Chỉ quản trị viên được sửa đầu mục dùng chung" }, { status: 403 });
+  }
 
   const { id } = await params;
 
@@ -61,12 +66,17 @@ export async function PATCH(
 
 // DELETE /api/question-categories/[id] — chặn xoá nếu còn đầu mục con hoặc
 // còn câu hỏi gắn vào (tránh xoá nhầm cả nhánh cây hoặc làm câu hỏi mồ côi).
+// Tree dùng chung → teacher không được xoá, kể cả node trống (tránh xoá
+// nhầm node của teacher khác).
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
+  if (auth.adminRole === "teacher") {
+    return NextResponse.json({ error: "Chỉ quản trị viên được xoá đầu mục dùng chung" }, { status: 403 });
+  }
 
   const { id } = await params;
 

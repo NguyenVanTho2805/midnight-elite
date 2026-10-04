@@ -59,7 +59,7 @@ export async function GET() {
 
   // ── Deadline events (enrolled courses only) ───────────────────────────────
   const enrollments = await prisma.enrollment.findMany({
-    where: { userId: session.userId },
+    where: { userId: session.userId, status: "active" },
     select: { courseId: true },
   });
 

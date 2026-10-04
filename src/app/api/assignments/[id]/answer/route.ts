@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
+import { isEnrollmentActive } from "@/lib/enrollment";
 
 // GET /api/assignments/[id]/answer — học viên lấy toàn bộ câu hỏi + đáp án
 // đã tự lưu của chính mình, kèm % hoàn thiện và trạng thái khoá. Trước khi
@@ -45,7 +46,7 @@ export async function GET(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
-    if (!enrolled) {
+    if (!isEnrollmentActive(enrolled)) {
       return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
     }
 
@@ -113,7 +114,7 @@ export async function PATCH(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
-    if (!enrolled) {
+    if (!isEnrollmentActive(enrolled)) {
       return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
     }
 

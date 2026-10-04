@@ -34,18 +34,31 @@ model Course {
   status        Boolean  @default(true)
   createdAt     String
 
+  // Sức chứa tối đa của lớp — null = không giới hạn. Áp dụng khi tạo
+  // Enrollment mới (ClassInvite.redeem + mua Subscription), không ảnh hưởng
+  // Enrollment đã có.
+  capacity Int?
+
+  // Trạng thái vận hành của lớp (không trùng `status` ở trên — `status` là cờ
+  // ẩn/hiện công khai dạng Boolean, giữ nguyên vì có nhiều route đang đọc).
+  //   - "open"   : đang nhận thêm học viên (mặc định)
+  //   - "closed" : đã đóng, không nhận thêm — Enrollment cũ vẫn hoạt động
+  //   - "paused" : tạm ngừng cả hoạt động mới lẫn hiện có
+  classStatus String @default("open")
+
   // Giáo viên sở hữu (null = nội dung cũ/của quản lý trung tâm). Chỉ dùng để
   // scope quyền khi User.adminRole === "teacher" — admin_super/admin_content
   // luôn thấy & sửa được mọi Course bất kể ownerId.
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  sections       Section[]
-  enrollments    Enrollment[]
-  cartItems      CartItem[]
-  reviews        CourseReview[]
-  exams          Exam[]
-  classSchedules ClassSchedule[]
+  sections         Section[]
+  enrollments      Enrollment[]
+  cartItems        CartItem[]
+  reviews          CourseReview[]
+  exams            Exam[]
+  classSchedules   ClassSchedule[]
+  coinTransactions CoinTransaction[]
 
   @@index([ownerId])
   @@map("courses")
@@ -762,10 +775,21 @@ model Enrollment {
   courseId  String
   createdAt DateTime @default(now())
 
+  // Trạng thái của việc ghi danh. Mọi query coi "đã ghi danh" dùng để mở
+  // quyền xem/làm bài phải lọc status = "active".
+  //   - "pending_consent" : đang chờ phụ huynh xác nhận (học viên dưới ngưỡng
+  //                          tuổi D04). Không có quyền học, nhưng hồ sơ giữ
+  //                          nguyên để khi phụ huynh duyệt là bật ngay.
+  //   - "active"          : đang học bình thường (mặc định)
+  //   - "suspended"       : đã hết hạn gói hoặc bị tạm dừng — vẫn xem lại được
+  //                          nội dung cũ nhưng không có hoạt động mới (R01).
+  status String @default("active")
+
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
+  @@index([status])
   @@map("enrollments")
 }
 
@@ -961,13 +985,25 @@ model CoinTransaction {
   id        String   @id @default(cuid())
   userId    String
   amount    Int // dương = cộng, âm = trừ
-  reason    String // "signup_bonus" | "question_cost" | "answer_reward" | "report_penalty"
+  reason    String // mã nghiệp vụ cụ thể — xem COIN_REASONS trong src/lib/wallet-constants.ts
   refId     String? // id câu hỏi/trả lời liên quan (để truy vết)
-  createdAt DateTime @default(now())
+  // Phân loại nguồn dòng tiền ở cấp cao hơn `reason` — dùng cho báo cáo doanh
+  // thu và lọc lịch sử theo lớp. Giá trị: "topup" | "reward" |
+  // "class_subscription" | "refund" | "penalty". Nullable vì bản ghi cũ chưa
+  // có — tuyệt đối không suy đoán ngược từ reason (xem BE-039).
+  sourceType String?
+  // Lớp liên quan — gắn khi sourceType = "class_subscription" (phí mua gói),
+  // hoặc các giao dịch được quy về lớp (hoàn/phạt theo lớp). Nullable cho các
+  // giao dịch không gắn lớp như signup_bonus/thread_reward.
+  classId    String?
+  createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class Course? @relation(fields: [classId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([classId])
+  @@index([sourceType])
   @@map("coin_transactions")
 }
 
