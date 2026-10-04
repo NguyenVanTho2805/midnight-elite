@@ -64,6 +64,11 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) {
       return NextResponse.json({ error: "Thiếu tên đầu mục" }, { status: 400 });
     }
+    // Chỉ admin được tạo "ngân hàng" mới (đầu mục gốc) vì gốc dùng chung giữa
+    // mọi giáo viên; teacher chỉ được thêm nhánh con bên dưới ngân hàng đã có.
+    if (!parentId && auth.adminRole === "teacher") {
+      return NextResponse.json({ error: "Chỉ quản trị viên được tạo ngân hàng mới" }, { status: 403 });
+    }
     if (parentId) {
       const parent = await prisma.questionCategory.findUnique({ where: { id: parentId } });
       if (!parent) return NextResponse.json({ error: "Đầu mục cha không tồn tại" }, { status: 400 });
