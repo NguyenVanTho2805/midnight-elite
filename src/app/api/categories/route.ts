@@ -23,6 +23,13 @@ export async function PUT(req: NextRequest) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
   if (isNextResponse(auth)) return auth;
 
+  // Category là string dùng chung trên Course (không có model riêng) — đổi tên
+  // sẽ ghi đè lên khoá học của MỌI giáo viên, nên chỉ admin_super/admin_content
+  // được làm. Teacher có MANAGE_COURSES nhưng chỉ được sửa khoá học của mình.
+  if (auth.adminRole === "teacher") {
+    return NextResponse.json({ error: "Chỉ quản trị viên được đổi tên danh mục" }, { status: 403 });
+  }
+
   const { oldName, newName } = await req.json();
   if (!oldName || !newName || oldName === newName) {
     return NextResponse.json({ error: "Tên không hợp lệ" }, { status: 400 });

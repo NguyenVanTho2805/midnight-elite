@@ -3,6 +3,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { spendCoins, InsufficientBalanceError, QUESTION_COST } from "@/lib/wallet";
+import { COIN_REASONS } from "@/lib/wallet-constants";
 
 // GET /api/questions — danh sách câu hỏi (mới nhất trước), đọc được cả khi
 // chưa đăng nhập (giống GET /api/community/threads) vì tab "Hỏi đáp" hiển
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await spendCoins(auth.userId, QUESTION_COST, "question_cost");
+    await spendCoins(auth.userId, QUESTION_COST, COIN_REASONS.QUESTION_COST);
   } catch (e) {
     if (e instanceof InsufficientBalanceError) {
       return NextResponse.json({ error: `Bạn cần ít nhất ${QUESTION_COST} xu để đặt câu hỏi` }, { status: 402 });

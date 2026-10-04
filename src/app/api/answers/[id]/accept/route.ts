@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { addCoins, ANSWER_REWARD } from "@/lib/wallet";
+import { COIN_REASONS } from "@/lib/wallet-constants";
 import { notify } from "@/lib/notify";
 
 // POST /api/answers/[id]/accept — chủ câu hỏi chấp nhận 1 câu trả lời, thưởng xu cho người trả lời
@@ -35,7 +36,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }),
   ]);
 
-  await addCoins(answer.authorId, ANSWER_REWARD, "answer_reward", answer.id);
+  await addCoins(answer.authorId, ANSWER_REWARD, COIN_REASONS.ANSWER_REWARD, answer.id);
 
   if (answer.authorId !== auth.userId) {
     await notify(answer.authorId, {

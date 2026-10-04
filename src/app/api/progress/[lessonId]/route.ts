@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { LESSON_REWARD } from "@/lib/wallet-constants";
+import { LESSON_REWARD, COIN_REASONS, DEFAULT_SOURCE_TYPE_FOR_REASON } from "@/lib/wallet-constants";
+import { isEnrollmentActive } from "@/lib/enrollment";
 
-const LESSON_REWARD_REASON = "lesson_reward";
+const LESSON_REWARD_REASON = COIN_REASONS.LESSON_REWARD;
 
 // POST /api/progress/[lessonId] — đánh dấu bài học đã hoàn thành (kèm watchedSeconds tùy chọn)
 export async function POST(
@@ -29,7 +30,7 @@ export async function POST(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
   }
 
   // Thưởng coin chỉ 1 lần/bài học — dựa vào đã từng có giao dịch thưởng cho
@@ -55,8 +56,17 @@ export async function POST(
         create: { userId: session.userId, balance: LESSON_REWARD },
         update: { balance: { increment: LESSON_REWARD } },
       });
+      // Gắn sourceType "reward" (xem DEFAULT_SOURCE_TYPE_FOR_REASON) + classId
+      // của khoá chứa bài học — cho báo cáo doanh thu/lịch sử ví theo lớp.
       await tx.coinTransaction.create({
-        data: { userId: session.userId, amount: LESSON_REWARD, reason: LESSON_REWARD_REASON, refId: lessonId },
+        data: {
+          userId:     session.userId,
+          amount:     LESSON_REWARD,
+          reason:     LESSON_REWARD_REASON,
+          refId:      lessonId,
+          sourceType: DEFAULT_SOURCE_TYPE_FOR_REASON[LESSON_REWARD_REASON],
+          classId:    courseId,
+        },
       });
       coinsEarned = LESSON_REWARD;
     }
@@ -92,7 +102,7 @@ export async function PATCH(
   const enrolled = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.userId, courseId } },
   });
-  if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
 
   // Chỉ update watchedSeconds — KHÔNG đổi completedAt
   const row = await prisma.lessonProgress.upsert({
@@ -126,7 +136,7 @@ export async function DELETE(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (!enrolled) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
   }
 
   await prisma.lessonProgress.deleteMany({
