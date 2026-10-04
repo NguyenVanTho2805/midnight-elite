@@ -79,3 +79,36 @@ export async function getBalance(userId: string): Promise<number> {
   const wallet = await prisma.wallet.findUnique({ where: { userId } });
   return wallet?.balance ?? 0;
 }
+
+// Cộng xu có cap theo ngày — dùng cho thưởng bài/trả lời cộng đồng. Trả
+// true nếu thưởng được ghi, false nếu đã vượt cap. Serializable qua Postgres
+// advisory_xact_lock keyed on (userId, reason) để 2 request đồng thời không
+// cùng qua guard "count < cap" rồi cùng cộng xu (TOCTOU) — lock tự nhả khi
+// transaction kết thúc. KHÔNG đổi schema. "Hôm nay" tính theo giờ local
+// server (cùng cách 2 call-site cũ setHours(0,0,0,0)), giữ hành vi cũ nên
+// không rework timezone.
+export async function addDailyCappedCoins(
+  userId: string, amount: number, reason: string, refId: string, cap: number, opts?: CoinOpts,
+): Promise<boolean> {
+  const sourceType = resolveSourceType(reason, opts);
+  const classId    = opts?.classId ?? null;
+  const lockKey    = `${userId}:${reason}`;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+    const todayCount = await tx.coinTransaction.count({
+      where: { userId, reason, createdAt: { gte: todayStart } },
+    });
+    if (todayCount >= cap) return false;
+    await tx.wallet.upsert({
+      where:  { userId },
+      create: { userId, balance: amount },
+      update: { balance: { increment: amount } },
+    });
+    await tx.coinTransaction.create({
+      data: { userId, amount, reason, refId, sourceType, classId },
+    });
+    return true;
+  });
+}

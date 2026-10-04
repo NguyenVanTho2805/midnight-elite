@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
-import { addCoins } from "@/lib/wallet";
+import { addDailyCappedCoins } from "@/lib/wallet";
 import { REPLY_REWARD, MAX_REPLY_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
 
 const RATE_LIMIT_REPLIES = 20;
@@ -62,17 +62,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
 
-  // Thưởng xu cho reply, tối đa MAX_REPLY_REWARDS_PER_DAY lần/ngày
-  let coinsEarned = 0;
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayCount = await prisma.coinTransaction.count({
-    where: { userId: auth.userId, reason: COIN_REASONS.REPLY_REWARD, createdAt: { gte: todayStart } },
-  });
-  if (todayCount < MAX_REPLY_REWARDS_PER_DAY) {
-    await addCoins(auth.userId, REPLY_REWARD, COIN_REASONS.REPLY_REWARD, reply.id);
-    coinsEarned = REPLY_REWARD;
-  }
+  // Thưởng xu cho reply, tối đa MAX_REPLY_REWARDS_PER_DAY lần/ngày.
+  // addDailyCappedCoins serializable qua advisory_xact_lock → 2 request POST
+  // đồng thời không cùng vượt cap.
+  const awarded = await addDailyCappedCoins(
+    auth.userId, REPLY_REWARD, COIN_REASONS.REPLY_REWARD, reply.id, MAX_REPLY_REWARDS_PER_DAY,
+  );
+  const coinsEarned = awarded ? REPLY_REWARD : 0;
 
   return NextResponse.json({
     id:        reply.id,
