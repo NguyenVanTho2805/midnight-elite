@@ -25,16 +25,20 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Câu hỏi này đã có câu trả lời được chấp nhận" }, { status: 409 });
   }
 
-  await prisma.$transaction([
-    prisma.question.update({
-      where: { id: answer.question.id },
-      data:  { status: "answered", acceptedAnswerId: answer.id },
-    }),
-    prisma.answer.update({
-      where: { id: answer.id },
-      data:  { rewardPaid: ANSWER_REWARD },
-    }),
-  ]);
+  // Flip status atomically: updateMany với guard `status != "answered"` để 2
+  // request accept đồng thời chỉ có 1 cái win (count=1). Cái thua count=0,
+  // bail trước khi tiêu thụ addCoins → tránh thưởng kép ANSWER_REWARD.
+  const flipped = await prisma.question.updateMany({
+    where: { id: answer.question.id, status: { not: "answered" } },
+    data:  { status: "answered", acceptedAnswerId: answer.id },
+  });
+  if (flipped.count === 0) {
+    return NextResponse.json({ error: "Câu hỏi này đã có câu trả lời được chấp nhận" }, { status: 409 });
+  }
+  await prisma.answer.update({
+    where: { id: answer.id },
+    data:  { rewardPaid: ANSWER_REWARD },
+  });
 
   await addCoins(answer.authorId, ANSWER_REWARD, COIN_REASONS.ANSWER_REWARD, answer.id);
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { addCoins } from "@/lib/wallet";
+import { addDailyCappedCoins } from "@/lib/wallet";
 import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
@@ -104,17 +104,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Thưởng xu cho bài viết, tối đa MAX_THREAD_REWARDS_PER_DAY lần/ngày
-    let coinsEarned = 0;
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayCount = await prisma.coinTransaction.count({
-      where: { userId: auth.userId, reason: COIN_REASONS.THREAD_REWARD, createdAt: { gte: todayStart } },
-    });
-    if (todayCount < MAX_THREAD_REWARDS_PER_DAY) {
-      await addCoins(auth.userId, THREAD_REWARD, COIN_REASONS.THREAD_REWARD, thread.id);
-      coinsEarned = THREAD_REWARD;
-    }
+    // Thưởng xu cho bài viết, tối đa MAX_THREAD_REWARDS_PER_DAY lần/ngày.
+    // addDailyCappedCoins serializable qua advisory_xact_lock → 2 request POST
+    // đồng thời không cùng vượt cap.
+    const awarded = await addDailyCappedCoins(
+      auth.userId, THREAD_REWARD, COIN_REASONS.THREAD_REWARD, thread.id, MAX_THREAD_REWARDS_PER_DAY,
+    );
+    const coinsEarned = awarded ? THREAD_REWARD : 0;
 
     return NextResponse.json({ ...toDTO(auth.userId, thread), coinsEarned }, { status: 201 });
   } catch (e) {
