@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { ownerScopeWhere } from "@/lib/auth-guard";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json([], { status: 200 });
 
   try {
-    // Admin thấy tất cả khoá học; student chỉ thấy khoá đã enroll
+    // admin_super/admin_content thấy tất cả khoá học; teacher chỉ thấy khoá do
+    // mình tạo (ownerScopeWhere); student chỉ thấy khoá đã enroll
     let courseIds: string[];
     if (session.role === "admin") {
-      const allCourses = await prisma.course.findMany({ select: { id: true } });
-      courseIds = allCourses.map(c => c.id);
+      const visibleCourses = await prisma.course.findMany({ where: ownerScopeWhere(session), select: { id: true } });
+      courseIds = visibleCourses.map(c => c.id);
     } else {
       const enrollments = await prisma.enrollment.findMany({
         where: { userId: session.userId, status: "active" },

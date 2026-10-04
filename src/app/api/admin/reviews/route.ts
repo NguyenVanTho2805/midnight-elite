@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse } from "@/lib/auth-guard";
+import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 
 export async function GET(req: NextRequest) {
@@ -11,7 +11,10 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status") ?? "pending";
 
   const reviews = await prisma.courseReview.findMany({
-    where: status === "all" ? {} : { status },
+    where: {
+      ...(status === "all" ? {} : { status }),
+      course: ownerScopeWhere(guard),
+    },
     include: {
       user: { select: { name: true, email: true } },
       course: { select: { name: true } },
