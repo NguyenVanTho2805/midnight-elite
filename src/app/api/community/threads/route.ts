@@ -3,7 +3,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { addCoins } from "@/lib/wallet";
-import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY } from "@/lib/wallet-constants";
+import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
 const DEFAULT_PAGE_SIZE  = 20;
@@ -109,10 +109,10 @@ export async function POST(req: NextRequest) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayCount = await prisma.coinTransaction.count({
-      where: { userId: auth.userId, reason: "thread_reward", createdAt: { gte: todayStart } },
+      where: { userId: auth.userId, reason: COIN_REASONS.THREAD_REWARD, createdAt: { gte: todayStart } },
     });
     if (todayCount < MAX_THREAD_REWARDS_PER_DAY) {
-      await addCoins(auth.userId, THREAD_REWARD, "thread_reward", thread.id);
+      await addCoins(auth.userId, THREAD_REWARD, COIN_REASONS.THREAD_REWARD, thread.id);
       coinsEarned = THREAD_REWARD;
     }
 

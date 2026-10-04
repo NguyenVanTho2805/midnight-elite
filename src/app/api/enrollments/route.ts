@@ -8,7 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ courseIds: [] });
 
   const rows = await prisma.enrollment.findMany({
-    where:  { userId: session.userId },
+    where:  { userId: session.userId, status: "active" },
     select: { courseId: true },
   });
 

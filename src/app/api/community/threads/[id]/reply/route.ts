@@ -3,7 +3,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
 import { addCoins } from "@/lib/wallet";
-import { REPLY_REWARD, MAX_REPLY_REWARDS_PER_DAY } from "@/lib/wallet-constants";
+import { REPLY_REWARD, MAX_REPLY_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
 
 const RATE_LIMIT_REPLIES = 20;
 const RATE_LIMIT_WINDOW  = 60 * 60 * 1000;
@@ -67,10 +67,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayCount = await prisma.coinTransaction.count({
-    where: { userId: auth.userId, reason: "reply_reward", createdAt: { gte: todayStart } },
+    where: { userId: auth.userId, reason: COIN_REASONS.REPLY_REWARD, createdAt: { gte: todayStart } },
   });
   if (todayCount < MAX_REPLY_REWARDS_PER_DAY) {
-    await addCoins(auth.userId, REPLY_REWARD, "reply_reward", reply.id);
+    await addCoins(auth.userId, REPLY_REWARD, COIN_REASONS.REPLY_REWARD, reply.id);
     coinsEarned = REPLY_REWARD;
   }
 

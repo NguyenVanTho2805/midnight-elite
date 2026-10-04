@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
+import { isEnrollmentActive } from "@/lib/enrollment";
 
 // POST /api/assignments/[id]/submit — học viên nộp/nộp lại bài. Nộp lại GHI
 // ĐÈ bản cũ (unique [assignmentId, userId]) — nếu bài cũ đã được chấm, xoá
@@ -29,7 +30,7 @@ export async function POST(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
-    if (!enrolled) {
+    if (!isEnrollmentActive(enrolled)) {
       return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
     }
 

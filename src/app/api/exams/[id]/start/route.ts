@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
+import { isEnrollmentActive } from "@/lib/enrollment";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -42,9 +43,11 @@ export async function POST(
     // reports/2026-07-13.md Giai đoạn 3); đề miễn phí gắn khoá thì chặn thẳng,
     // không có đường thoát trả phí.
     if (exam.courseId) {
-      const isEnrolledInExamCourse = !!(await prisma.enrollment.findUnique({
-        where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
-      }));
+      const isEnrolledInExamCourse = isEnrollmentActive(
+        await prisma.enrollment.findUnique({
+          where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
+        }),
+      );
 
       if (!isEnrolledInExamCourse) {
         if (exam.price && exam.price > 0) {
