@@ -2,7 +2,7 @@
 
 Phạm vi: `src/app/api/**` (Next.js backend). Người làm: Claude Code (3 phiên nối tiếp). Người quyết định & merge: Thọ (`NguyenVanTho2805`).
 
-Đợt này đóng toàn bộ nhóm 1.1 (vá cross-teacher) + 1.4.1–1.4.3 (data model mới cho Wallet/Course/Enrollment) + nhóm P0 còn sót cho `question-categories` + 3 lỗi TOCTOU trên luồng xu phát hiện qua `/code-review`.
+Đợt này đóng toàn bộ nhóm 1.1 (vá cross-teacher) + 1.4.1–1.4.3 (data model mới cho Wallet/Course/Enrollment) + nhóm P0 còn sót cho `question-categories` + 3 lỗi TOCTOU trên luồng xu phát hiện qua `/code-review` + dọn `CourseFavorite` dead code (1.2).
 
 Mục `BE-xxx`/`FE-xxx` tham chiếu `docs/kin/backlog/viec.csv`.
 
@@ -144,27 +144,44 @@ Sau: thêm helper `addDailyCappedCoins(userId, amount, reason, refId, cap)` tron
 
 ---
 
+## Giai đoạn 5 — Dọn `CourseFavorite` dead code
+
+**PR #4** — commit `b6ef3e7` (squash). Mở từ phiên trước, merge trong phiên hiện tại sau khi resolve conflict `prisma/schema.prisma` do PR #6 thêm `coinTransactions` vào Course cùng chỗ PR #4 xoá `favorites`.
+
+### Files thay đổi
+
+- `prisma/schema.prisma`: xoá `model CourseFavorite` + relations `favorites` trên `Course` và `courseFavorites` trên `User`.
+- Xoá `src/hooks/useFavorites.ts`.
+- Xoá `src/app/api/favorites/route.ts` và `src/app/api/favorites/[courseId]/route.ts`.
+
+### Ghi chú
+
+- Rủi ro `prisma db push --accept-data-loss` cần cho bảng `course_favorites` — Vercel preview trên head mới sau rebase xác nhận drop bảng OK (rỗng), không cần cờ thủ công.
+- BE-017 (`npm run db:generate`), BE-018 (`tsc --noEmit`): không chạy được trong sandbox (Prisma binaries proxy chặn). Vercel preview đã test gián tiếp.
+- Grep xác nhận không còn tham chiếu `CourseFavorite`/`useFavorites`/`api/favorites` ở source code (chỉ còn trong doc `docs/kin/backlog/viec.csv`).
+
+---
+
 ## Phần KHÔNG đụng tới trong đợt này
 
-- **PR #4** — xoá `CourseFavorite` dead code (BE-013 → BE-019). Mở từ phiên trước, vẫn chưa merge. Rủi ro `prisma db push` fail trên main vì bảng `course_favorites` còn dữ liệu — cần chạy thủ công `npx prisma db push --accept-data-loss` trên staging trước khi merge.
 - Nhóm 2.1 (Design System — FE-087 → FE-097) — frontend, chưa đụng vào.
 - Backlog BE-011 nhánh "manual test chéo 2 teacher" — không có DB thật trong session để test.
 
 ---
 
-## Hiện trạng CI/CD sau merge #7 + #8
+## Hiện trạng CI/CD sau toàn bộ merge
 
-- `main`: 4 commit mới (#5, #6, #7, #8). Vercel đang build/deploy sau merge #8.
-- `prisma schema` ở main: có đủ `Course.capacity`, `Course.classStatus`, `Enrollment.status`, `CoinTransaction.sourceType`, `CoinTransaction.classId` — khớp với dữ liệu đã có trên Neon staging (do PR #6 từng test).
-- Không còn conflict giữa 4 PR vừa merge.
-- `eslint` sạch trên mọi file sửa. `tsc --noEmit` chưa chạy trực tiếp được trong sandbox (binaries.prisma.sh bị proxy chặn — xem PR #4). Build Vercel là phép thử gián tiếp.
+- `main`: 5 commit mới (#5, #6, #7, #8, #4 theo thứ tự merge). Vercel main sau mỗi merge đều xanh.
+- `prisma schema` ở main: có `Course.capacity`, `Course.classStatus`, `Enrollment.status`, `CoinTransaction.sourceType`, `CoinTransaction.classId`; đã xoá `CourseFavorite`.
+- Không còn conflict giữa 5 PR vừa merge.
+- `eslint` sạch trên mọi file sửa. `tsc --noEmit` chưa chạy trực tiếp được trong sandbox (binaries.prisma.sh bị proxy chặn). Build Vercel là phép thử gián tiếp — đã xanh.
 
 ## Follow-up đề xuất
 
 Thứ tự ưu tiên:
 
-1. Quyết định PR #4 (merge sau khi chạy `prisma db push --accept-data-loss` thủ công, hoặc close nếu không cần).
-2. BE-012 — manual test chéo 2 teacher trên staging thật.
-3. Chuyển "chặn thẳng theo `adminRole === 'teacher'`" (ở `categories` + `question-categories`) sang quyền riêng (`MANAGE_SHARED_TAXONOMY` chẳng hạn) khi có thêm role.
-4. Vá `PATCH /api/assignments/[id]/questions/[questionId]/grade` — kiểm user có thực sự enroll trước khi upsert `AssignmentAnswer`.
-5. Rework timezone cho "hôm nay" ở `addDailyCappedCoins` nếu đổi server region.
+1. BE-012 — manual test chéo 2 teacher trên staging thật.
+2. Chuyển "chặn thẳng theo `adminRole === 'teacher'`" (ở `categories` + `question-categories`) sang quyền riêng (`MANAGE_SHARED_TAXONOMY` chẳng hạn) khi có thêm role.
+3. Vá `PATCH /api/assignments/[id]/questions/[questionId]/grade` — kiểm user có thực sự enroll trước khi upsert `AssignmentAnswer`.
+4. Rework timezone cho "hôm nay" ở `addDailyCappedCoins` nếu đổi server region.
+5. Xoá cột `course_favorites` khỏi Neon staging nếu còn (Vercel đã drop bảng tự động, nhưng kiểm tra tay cho chắc).
