@@ -47,7 +47,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (enrolled) {
+    // "suspended" được xem lại nội dung đã mở (R01) nhưng không mark done/nộp
+    // bài mới — route này chỉ trả metadata để render trang, nên cho đọc.
+    // "pending_consent" chưa được học — rơi xuống nhánh isFree.
+    if (enrolled && (enrolled.status === "active" || enrolled.status === "suspended")) {
       fullAccess = true;
     } else if (!lesson.isFree) {
       // Chưa enroll và bài này không phải học thử miễn phí
