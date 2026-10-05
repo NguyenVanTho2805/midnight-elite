@@ -608,11 +608,28 @@ export default function HocSinhPage() {
       method:  "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(data),
+      body:    JSON.stringify({ name: data.name, phone: data.phone, email: data.email, school: data.school }),
     });
     const result = await res.json();
     if (!res.ok) { showToast(result.error ?? "Lỗi thêm học sinh", false); return; }
     setShowAdd(false);
+
+    // Tạo tài khoản và gán lớp là 2 bước riêng (BE-078). Tài khoản đã tạo
+    // xong; nếu gán lớp lỗi vẫn báo rõ để admin gán lại trong chi tiết học sinh.
+    if (data.courseId) {
+      const enr = await fetch("/api/admin/enrollments", {
+        method:      "POST",
+        credentials: "same-origin",
+        headers:     { "Content-Type": "application/json" },
+        body:        JSON.stringify({ userId: result.id, courseId: data.courseId }),
+      });
+      if (!enr.ok) {
+        const d = await enr.json().catch(() => ({}));
+        showToast(`Đã thêm ${data.name} nhưng chưa kích hoạt được khoá học: ${d.error ?? "lỗi"}`, false);
+        loadStudents();
+        return;
+      }
+    }
     showToast(`Đã thêm học sinh ${data.name}`);
     loadStudents();
   }

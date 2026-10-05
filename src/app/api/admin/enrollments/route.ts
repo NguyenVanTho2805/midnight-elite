@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
 import { sendEnrollmentEmail } from "@/lib/email";
+import { deriveStatusForNewEnrollment } from "@/lib/enrollment";
 
 // POST — kích hoạt khoá học cho học sinh
 export async function POST(req: Request) {
@@ -11,13 +12,22 @@ export async function POST(req: Request) {
   if (isNextResponse(auth)) return auth;
 
   const { userId, courseId } = await req.json();
-  if (!userId || !courseId) {
+  if (typeof userId !== "string" || typeof courseId !== "string" || !userId || !courseId) {
     return NextResponse.json({ error: "Thiếu userId hoặc courseId" }, { status: 400 });
   }
+  const [user, course] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    prisma.course.findUnique({ where: { id: courseId }, select: { id: true } }),
+  ]);
+  if (!user)   return NextResponse.json({ error: "Không tìm thấy học viên" }, { status: 404 });
+  if (!course) return NextResponse.json({ error: "Không tìm thấy khoá học" }, { status: 404 });
 
+  // Status cho enrollment MỚI đi qua helper chung (BE-046). D04 chốt không có
+  // ngưỡng tuổi nên hiện luôn "active"; enrollment đã có giữ nguyên status.
+  const status = await deriveStatusForNewEnrollment(userId);
   const enrollment = await prisma.enrollment.upsert({
     where:  { userId_courseId: { userId, courseId } },
-    create: { userId, courseId },
+    create: { userId, courseId, status },
     update: {},
     include: {
       user:   { select: { name: true, email: true, studentId: true } },

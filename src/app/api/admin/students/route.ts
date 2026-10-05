@@ -110,7 +110,10 @@ export async function POST(req: Request) {
   if (isNextResponse(auth)) return auth;
 
   try {
-    const { name, email, phone, school, courseId } = await req.json();
+    // BE-078 (chốt 06/10/2026): route này CHỈ tạo tài khoản. Gán lớp đi riêng
+    // qua POST /api/admin/enrollments — 1 chỗ duy nhất tạo Enrollment từ phía
+    // admin, để status/kiểm tra lớp không bị viết lặp ở 2 nơi.
+    const { name, email, phone, school } = await req.json();
     if (!name?.trim() || !email?.trim()) {
       return NextResponse.json({ error: "Thiếu họ tên hoặc email" }, { status: 400 });
     }
@@ -135,14 +138,6 @@ export async function POST(req: Request) {
     });
 
     await grantSignupBonus(user.id);
-
-    if (courseId) {
-      const course = await prisma.course.findUnique({ where: { id: courseId } });
-      if (!course) {
-        return NextResponse.json({ error: "Không tìm thấy khoá học để ghi danh" }, { status: 400 });
-      }
-      await prisma.enrollment.create({ data: { userId: user.id, courseId } });
-    }
 
     // Gửi email cho học sinh để tự đặt mật khẩu (tái dùng luồng reset-password)
     const token = randomBytes(32).toString("hex");

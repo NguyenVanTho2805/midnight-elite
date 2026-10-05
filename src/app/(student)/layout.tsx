@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import StudentBottomNav from "@/components/StudentBottomNav";
 import AIChatWidget from "@/components/AIChatWidget";
-import SalesBotWidget from "@/components/SalesBotWidget";
 import AuthGuard from "@/components/AuthGuard";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -12,7 +11,8 @@ import { useEnrollments } from "@/hooks/useEnrollments";
 function StudentChatWidget() {
   const { enrolledIds, loading } = useEnrollments();
   if (loading) return null;
-  return enrolledIds.size > 0 ? <AIChatWidget /> : <SalesBotWidget />;
+  // Sales Bot đã bỏ (BE-081) — học viên chưa ghi danh lớp nào không có widget chat.
+  return enrolledIds.size > 0 ? <AIChatWidget /> : null;
 }
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
