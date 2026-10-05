@@ -2,7 +2,9 @@
 //
 // Flow:
 //   1. Học viên gõ code (8 ký tự alphabet an toàn, ép uppercase).
-//   2. Sau 400ms debounce, gọi GET /api/invites/<code> → preview lớp.
+//   2. Sau 400ms debounce, gọi GET /api/invites/by-code/<code> → preview
+//      (tách khỏi /api/invites/[id] vì Next.js app router không cho hai
+//      dynamic segment anh em cùng level cùng khớp root của folder).
 //   3. Nếu "ok", hiện thẻ xác nhận (tên lớp + gia sư + nút "Tham gia").
 //   4. Bấm → POST /api/invites/<code>/redeem → chuyển sang
 //      /student/hoc-tap?course=<id> + toast.
@@ -55,7 +57,7 @@ export default function NhapMaLopPage() {
     Promise.resolve().then(() => setChecking(true));
     debounceRef.current = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/invites/${encodeURIComponent(input)}`, { credentials: "same-origin" });
+        const r = await fetch(`/api/invites/by-code/${encodeURIComponent(input)}`, { credentials: "same-origin" });
         if (r.status === 401) {
           setPreview({ status: "invalid", error: "Bạn cần đăng nhập để nhập mã mời." });
           return;
