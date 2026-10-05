@@ -712,6 +712,19 @@ model User {
   banned        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
+  // ─── Hồ sơ gia sư (1.4.4) — field phẳng, nhất quán avatarBase64/facebookUrl.
+  // Người đăng ký gia sư giữ role "student" cho tới khi admin duyệt (KHÔNG
+  // cấp role "admin" ngay — nhiều route coi role "admin" là toàn quyền xem
+  // nội dung). Duyệt xong mới thành role "admin" + adminRole "teacher".
+  bio               String?   @db.Text
+  subjects          String[]  @default([])
+  tutorAppliedAt    DateTime? // != null = đã nộp đơn làm gia sư
+  tutorVerified     Boolean   @default(false)
+  tutorVerifiedAt   DateTime?
+  tutorVerifiedBy   String?   // userId admin đã duyệt
+  tutorRejectedAt   DateTime?
+  tutorRejectReason String?
+
   ownedCourses        Course[]
   ownedExams          Exam[]
   questionBankItems   QuestionBankItem[]
