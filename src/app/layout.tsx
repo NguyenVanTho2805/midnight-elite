@@ -5,6 +5,7 @@ import "katex/dist/katex.min.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import { GlobalDropGuard } from "@/components/GlobalDropGuard";
+import { ToastProvider } from "@/components/ui";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -43,7 +44,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col antialiased">
           <GlobalDropGuard />
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
           <AgentationWrapper />
         </body>
     </html>
