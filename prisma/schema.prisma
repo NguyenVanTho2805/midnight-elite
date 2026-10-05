@@ -744,8 +744,38 @@ model User {
   answers             Answer[]
   answerReports       AnswerReport[]
   threadReports       ThreadReport[]
+  tutorSubscriptions  TutorSubscription[]
 
   @@map("users")
+}
+
+// ─── TUTOR VIP SUBSCRIPTION ──────────────────────────────────────────────────
+// Mô hình SaaS (D01 chốt 05/10/2026): gia sư trả phí VIP để mở full tính
+// năng. 3 gói cố định (tháng / 6 tháng / 1 năm). Không phải "gói học viên
+// mua lớp" như backlog BE-055 gốc. Học viên vẫn free trong giai đoạn này.
+//
+// Lưu lịch sử: mỗi lần mua tạo 1 bản ghi mới (không update bản cũ) — cho
+// phép đối soát doanh thu và xem lịch sử nâng cấp của gia sư. Mua khi đang
+// VIP: bản ghi mới nối tiếp (startDate = endDate gói trước).
+
+model TutorSubscription {
+  id              String   @id @default(cuid())
+  userId          String   // gia sư mua gói
+  planCode        String   // "monthly" | "half_year" | "yearly" (xem TUTOR_VIP_PLANS trong src/lib/tutorSubscription.ts)
+  priceCoinPaid   Int      // snapshot giá tại thời điểm mua (có thể khác giá hiện tại nếu admin đổi sau)
+  durationDays    Int      // snapshot thời hạn (30/180/365)
+  startDate       DateTime @default(now()) // có thể ở tương lai nếu mua nối tiếp
+  endDate         DateTime // startDate + durationDays — tính sẵn để query "còn hạn" chỉ cần 1 cột
+  status          String   @default("active") // "active" | "expired" | "cancelled"
+  // Note: Không có renewalFrom vì D10 (gia hạn tự động) đang HOÃN — mỗi lần
+  // gia hạn hiện tại = mua gói mới hoàn toàn. Khi mở auto-renew sau, thêm
+  // renewalFromId: String? trỏ về bản ghi gốc.
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, endDate])
+  @@map("tutor_subscriptions")
 }
 
 model VerifyToken {
