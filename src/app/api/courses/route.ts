@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
-import { triggerSalesBotSync } from "@/lib/salesBotSync";
 
 export async function GET(req: NextRequest) {
   try {
@@ -91,7 +90,6 @@ export async function POST(req: NextRequest) {
       data.adminId = (maxRow?.adminId ?? 0) + 1;
       return tx.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
     });
-    await triggerSalesBotSync();
     return NextResponse.json(course, { status: 201 });
   } catch (e) {
     console.error("[POST /api/courses]", e);

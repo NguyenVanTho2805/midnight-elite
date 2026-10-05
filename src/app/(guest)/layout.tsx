@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import SalesBotWidget from "@/components/SalesBotWidget";
 import StudentBottomNav from "@/components/StudentBottomNav";
 
 function PageSkeleton() {
@@ -28,7 +27,6 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
         </Suspense>
       </main>
       <Footer />
-      <SalesBotWidget />
       <StudentBottomNav />
     </div>
   );

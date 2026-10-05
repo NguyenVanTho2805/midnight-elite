@@ -6,7 +6,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/navigation";
 import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
-import SalesBotWidget from "@/components/SalesBotWidget";
 import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
 import { useCart } from "@/hooks/useCart";
@@ -659,7 +658,6 @@ export default function HomePage() {
 
       </main>
       <Footer />
-      <SalesBotWidget />
     </div>
   );
 }

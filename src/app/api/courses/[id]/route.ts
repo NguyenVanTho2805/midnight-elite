@@ -4,7 +4,6 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
-import { triggerSalesBotSync } from "@/lib/salesBotSync";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -119,7 +118,6 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
   }
 
   const course = await prisma.course.update({ where: { id }, data });
-  await triggerSalesBotSync();
   return NextResponse.json(course);
 }
 
@@ -162,7 +160,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     }
 
     await prisma.course.delete({ where: { id } });
-    await triggerSalesBotSync();
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("[DELETE /api/courses/[id]]", e);
