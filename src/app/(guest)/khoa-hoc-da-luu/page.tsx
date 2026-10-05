@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCart } from "@/hooks/useCart";
+import { useFollowedCourses } from "@/hooks/useFollowedCourses";
 import { useAuth } from "@/contexts/AuthContext";
 
 const categoryTheme: Record<string, string> = {
@@ -12,13 +12,15 @@ const categoryTheme: Record<string, string> = {
   "BCA":             "linear-gradient(135deg,#1E2938,#374151,#6B7280)",
 };
 
-function formatPrice(n: number) {
-  return n.toLocaleString("vi-VN") + " đ";
-}
+const CLASS_STATUS_LABEL: Record<string, { text: string; color: string; bg: string }> = {
+  open:   { text: "Đang nhận học viên", color: "#15803D", bg: "#DCFCE7" },
+  closed: { text: "Đã đóng",             color: "#787671", bg: "#f6f5f4" },
+  paused: { text: "Tạm dừng",           color: "#C2410C", bg: "#FFEDD5" },
+};
 
-export default function GioHangPage() {
+export default function LopTheoDoiPage() {
   const { user } = useAuth();
-  const { items, loading, removeFromCart } = useCart();
+  const { items, loading, unfollow } = useFollowedCourses();
 
   // ── Guest ──────────────────────────────────────────────────────────────────
   if (!user && !loading) {
@@ -32,8 +34,8 @@ export default function GioHangPage() {
                 <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
               </svg>
             </div>
-            <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Đăng nhập để xem khóa học đã lưu</h1>
-            <p className="text-sm mb-6" style={{ color: "#787671" }}>Khóa học được lưu theo tài khoản của bạn</p>
+            <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Đăng nhập để xem lớp đang theo dõi</h1>
+            <p className="text-sm mb-6" style={{ color: "#787671" }}>Danh sách lớp theo dõi gắn với tài khoản của bạn</p>
             <Link href="/dang-nhap?redirect=/khoa-hoc-da-luu"
               className="inline-flex px-6 py-2.5 rounded-lg text-sm font-semibold text-white"
               style={{ background: "#0068FF" }}>
@@ -52,7 +54,7 @@ export default function GioHangPage() {
         {/* Header */}
         <div className="mb-7">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Khóa học đã lưu
+            Lớp đang theo dõi
             {!loading && items.length > 0 && (
               <span className="ml-2 text-sm font-semibold px-2 py-0.5 rounded-full align-middle"
                 style={{ background: "#0068FF", color: "#fff" }}>
@@ -60,7 +62,7 @@ export default function GioHangPage() {
               </span>
             )}
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#787671" }}>Các khóa học bạn đã lưu lại</p>
+          <p className="text-sm mt-1" style={{ color: "#787671" }}>Các lớp bạn quan tâm, để quay lại xem khi muốn tham gia</p>
         </div>
 
         {/* Loading */}
@@ -91,8 +93,8 @@ export default function GioHangPage() {
                 <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
               </svg>
             </div>
-            <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>Chưa có khóa học nào được lưu</p>
-            <p className="text-sm mb-6" style={{ color: "#a4a097" }}>Khám phá các khóa học và lưu lại để học sau</p>
+            <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>Bạn chưa theo dõi lớp nào</p>
+            <p className="text-sm mb-6" style={{ color: "#a4a097" }}>Bấm “Theo dõi lớp” ở các lớp bạn quan tâm để xem lại ở đây</p>
             <Link href="/khoa-hoc"
               className="inline-flex px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
               style={{ background: "#0068FF" }}>
@@ -106,9 +108,7 @@ export default function GioHangPage() {
           <div className="space-y-3">
             {items.map(({ courseId, course }) => {
               const bg = categoryTheme[course.category] ?? categoryTheme["ĐGNL HSA"];
-              const discount = course.originalPrice && course.originalPrice > course.price
-                ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
-
+              const st = CLASS_STATUS_LABEL[course.classStatus] ?? CLASS_STATUS_LABEL.open;
               return (
                 <div key={courseId}
                   className="rounded-xl p-4 flex items-center gap-4"
@@ -128,22 +128,10 @@ export default function GioHangPage() {
                     <p className="text-xs mt-0.5" style={{ color: "#a4a097" }}>
                       {course.instructor} · {course.lessons} bài · {course.hours}h
                     </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-sm font-bold" style={{ color: "#0068FF" }}>
-                        {formatPrice(course.price)}
-                      </span>
-                      {course.originalPrice && course.originalPrice > course.price && (
-                        <span className="text-xs line-through" style={{ color: "#c8c4be" }}>
-                          {formatPrice(course.originalPrice)}
-                        </span>
-                      )}
-                      {discount > 0 && (
-                        <span className="text-xs font-bold px-1.5 py-0.5 rounded"
-                          style={{ background: "#FEE2E2", color: "#dc2626" }}>
-                          -{discount}%
-                        </span>
-                      )}
-                    </div>
+                    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded mt-1.5"
+                      style={{ color: st.color, background: st.bg }}>
+                      {st.text}
+                    </span>
                   </div>
 
                   {/* Actions */}
@@ -154,10 +142,10 @@ export default function GioHangPage() {
                       Chi tiết
                     </Link>
                     <button
-                      onClick={() => removeFromCart(courseId)}
+                      onClick={() => unfollow(courseId)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[#FEF2F2]"
                       style={{ border: "1px solid #e5e3df" }}
-                      title="Xóa khỏi danh sách">
+                      title="Bỏ theo dõi" aria-label="Bỏ theo dõi">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                       </svg>

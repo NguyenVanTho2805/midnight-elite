@@ -86,6 +86,10 @@ model ClassSchedule {
   @@map("class_schedules")
 }
 
+// "Theo dõi lớp" (BE-079, chốt 06/10/2026). Trước đây là giỏ hàng; theo D01
+// học viên học miễn phí nên bỏ khái niệm giỏ hàng, chỉ còn danh sách lớp học
+// viên quan tâm. Giữ tên model/bảng cart_items để `db push` khi build không
+// xoá dữ liệu các lớp người dùng đã lưu.
 model CartItem {
   userId    String
   courseId  String

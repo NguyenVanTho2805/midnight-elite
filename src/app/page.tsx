@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
 import TeacherTag from "@/components/TeacherTag";
 import { useCourses } from "@/hooks/useCourses";
-import { useCart } from "@/hooks/useCart";
+import { useFollowedCourses } from "@/hooks/useFollowedCourses";
 import { useAuth } from "@/contexts/AuthContext";
 import { COURSE_CATEGORIES, COURSE_HASHTAGS } from "@/lib/courseData";
 
@@ -185,10 +185,10 @@ function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
 
 
 // ─── COURSE CARD (Notion flat style) ─────────────────────────────────────────
-function CourseCard({ course, inCart, onToggleCart }: {
+function CourseCard({ course, following, onToggleFollow }: {
   course: HomeCourse;
-  inCart: boolean;
-  onToggleCart: () => void;
+  following: boolean;
+  onToggleFollow: () => void;
 }) {
   const router = useRouter();
   const discount = course.originalPrice > 0 && course.originalPrice > course.price
@@ -283,17 +283,18 @@ function CourseCard({ course, inCart, onToggleCart }: {
         {/* Action buttons */}
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleCart(); }}
+            onClick={(e) => { e.stopPropagation(); onToggleFollow(); }}
+            aria-pressed={following}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
-            style={inCart
+            style={following
               ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
               : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-              <path d="M1 1h4l2.68 13.39a2 2 0 001.98 1.61H19a2 2 0 001.97-1.67L23 6H6"/>
-              {inCart && <path d="M9 11l2 2 4-4" strokeWidth="2.5"/>}
+            <svg width="12" height="12" viewBox="0 0 24 24"
+              fill={following ? "currentColor" : "none"}
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
             </svg>
-            {inCart ? "Đã thêm" : "Thêm vào giỏ"}
+            {following ? "Đang theo dõi" : "Theo dõi lớp"}
           </button>
           <Link href={`/khoa-hoc/${course.slug}`}
             className="flex-1 flex items-center justify-center py-2.5 rounded-lg text-xs font-bold text-white text-center hover:brightness-105 transition-all"
@@ -313,11 +314,11 @@ export default function HomePage() {
   const router = useRouter();
   const { data: apiCourses, loading: coursesLoading } = useCourses();
   const { user } = useAuth();
-  const { inCart, addToCart, removeFromCart } = useCart();
+  const { isFollowing, follow, unfollow } = useFollowedCourses();
 
-  function handleToggleCart(slug: string) {
+  function handleToggleFollow(slug: string) {
     if (!user) { router.push("/dang-nhap"); return; }
-    inCart(slug) ? removeFromCart(slug) : addToCart(slug);
+    if (isFollowing(slug)) unfollow(slug); else follow(slug);
   }
 
   const courses: HomeCourse[] = useMemo(() => apiCourses.map(c => ({
@@ -533,8 +534,8 @@ export default function HomePage() {
                       <CourseCard
                         key={course.slug}
                         course={course}
-                        inCart={inCart(course.slug)}
-                        onToggleCart={() => handleToggleCart(course.slug)}
+                        following={isFollowing(course.slug)}
+                        onToggleFollow={() => handleToggleFollow(course.slug)}
                       />
                     ))}
                   </div>

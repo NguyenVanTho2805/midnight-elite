@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT, COURSE_HASHTAGS } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
-import { useCart } from "@/hooks/useCart";
+import { useFollowedCourses } from "@/hooks/useFollowedCourses";
 import { useAuth } from "@/contexts/AuthContext";
 import TeacherTag from "@/components/TeacherTag";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -43,10 +43,10 @@ const categoryTheme = Object.fromEntries(
   Object.entries(CATEGORY_GRADIENT).map(([k, bg]) => [k, { bg, strip: "#FDE047", stripText: "#1E2938" }])
 ) as Record<string, { bg: string; strip: string; stripText: string }>;
 
-function CourseCard({ course, inCart, onToggleCart, isEnrolled }: {
+function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
   course: Course;
-  inCart: boolean;
-  onToggleCart: () => void;
+  following: boolean;
+  onToggleFollow: () => void;
   isEnrolled: boolean;
 }) {
   const router = useRouter();
@@ -144,17 +144,18 @@ function CourseCard({ course, inCart, onToggleCart, isEnrolled }: {
         {/* Action buttons */}
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
           <button
-            onClick={() => onToggleCart()}
+            onClick={() => onToggleFollow()}
+            aria-pressed={following}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
-            style={inCart
+            style={following
               ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
               : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
             <svg width="12" height="12" viewBox="0 0 24 24"
-              fill={inCart ? "currentColor" : "none"}
+              fill={following ? "currentColor" : "none"}
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
             </svg>
-            {inCart ? "Đã lưu" : "Lưu Khóa Học"}
+            {following ? "Đang theo dõi" : "Theo dõi lớp"}
           </button>
           {isEnrolled ? (
             <Link
@@ -184,12 +185,12 @@ function KhoaHocContent() {
   const courses = useMemo(() => apiCourses.map(toCourse), [apiCourses]);
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { inCart, addToCart, removeFromCart } = useCart();
+  const { isFollowing, follow, unfollow } = useFollowedCourses();
   const { enrolledIds } = useEnrollments();
 
   function handleToggle(slug: string) {
     if (!user) { window.location.href = `/dang-nhap?redirect=/khoa-hoc`; return; }
-    inCart(slug) ? removeFromCart(slug) : addToCart(slug);
+    if (isFollowing(slug)) unfollow(slug); else follow(slug);
   }
 
   const [activeCategory, setActiveCategory] = useState(searchParams.get("category") ?? "Tất cả");
@@ -345,8 +346,8 @@ function KhoaHocContent() {
               <CourseCard
                 key={course.slug}
                 course={course}
-                inCart={inCart(course.slug)}
-                onToggleCart={() => handleToggle(course.slug)}
+                following={isFollowing(course.slug)}
+                onToggleFollow={() => handleToggle(course.slug)}
                 isEnrolled={enrolledIds.has(course.slug)}
               />
             ))}

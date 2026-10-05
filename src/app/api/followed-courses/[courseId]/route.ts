@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
+// POST/DELETE /api/followed-courses/[courseId] — theo dõi / bỏ theo dõi 1 lớp.
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ courseId: string }> },
@@ -17,7 +18,7 @@ export async function POST(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (enrolled) return NextResponse.json({ error: "Bạn đã đăng ký khóa học này rồi" }, { status: 409 });
+    if (enrolled) return NextResponse.json({ error: "Bạn đã là học viên của lớp này" }, { status: 409 });
 
     await prisma.cartItem.upsert({
       where:  { userId_courseId: { userId: session.userId, courseId } },
@@ -26,7 +27,7 @@ export async function POST(
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error("[POST /api/cart/:courseId]", e);
+    console.error("[POST /api/followed-courses/:courseId]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
@@ -40,11 +41,12 @@ export async function DELETE(
 
   const { courseId } = await params;
   try {
-    await prisma.cartItem.delete({
-      where: { userId_courseId: { userId: session.userId, courseId } },
-    });
+    // deleteMany: bỏ theo dõi lớp chưa từng theo dõi vẫn trả ok (idempotent),
+    // thay vì nuốt mọi lỗi DB thành 404.
+    await prisma.cartItem.deleteMany({ where: { userId: session.userId, courseId } });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 });
+  } catch (e) {
+    console.error("[DELETE /api/followed-courses/:courseId]", e);
+    return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }
 }
