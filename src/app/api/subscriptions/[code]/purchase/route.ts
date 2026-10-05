@@ -3,22 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { InsufficientBalanceError } from "@/lib/wallet";
 import { COIN_REASONS, COIN_SOURCE_TYPES } from "@/lib/wallet-constants";
-import {
-  getTutorVIPPlan,
-  getActiveTutorSubscription,
-  computeNewEndDate,
-} from "@/lib/tutorSubscription";
+import { getTutorVIPPlan, nextPeriod } from "@/lib/tutorSubscription";
 
 // POST /api/subscriptions/[code]/purchase — gia sư mua VIP. Chỉ adminRole
 // = "teacher" mua được (admin_super/admin_content vận hành platform, không
 // cần VIP; student không áp dụng).
 //
-// Toàn bộ chạy trong 1 prisma.$transaction để nguyên tử:
-// (1) Trừ Coin trong wallet (atomic bằng decrement + guard balance),
-// (2) Ghi CoinTransaction với reason/sourceType/refId trỏ về TutorSubscription,
-// (3) Hoặc tạo mới TutorSubscription (gia sư chưa VIP),
-//     Hoặc cộng dồn endDate vào bản ghi active hiện có (mua chồng).
-// Nếu bước (1) không đủ xu → ném InsufficientBalanceError, không chạm (2)(3).
+// Toàn bộ trong 1 prisma.$transaction, khoá theo userId bằng
+// pg_advisory_xact_lock (cùng pattern addDailyCappedCoins) để 2 lần mua
+// đồng thời xếp hàng — lần sau đọc được gói lần trước vừa tạo và nối tiếp
+// đúng, không chồng lên cùng khoảng thời gian:
+// (1) Trừ Coin (updateMany với guard balance >= price; không đủ → throw,
+//     rollback, chưa tạo gì),
+// (2) Tạo bản ghi TutorSubscription MỚI — mỗi lần mua 1 bản ghi để giữ
+//     lịch sử đúng gói/giá; mua chồng thì startDate = endDate gói xa nhất,
+// (3) Ghi CoinTransaction với refId = TutorSubscription.id.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const auth = await requireSession();
   if (isNextResponse(auth)) return auth;
@@ -32,43 +31,35 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ co
     return NextResponse.json({ error: "Gói không tồn tại" }, { status: 404 });
   }
 
-  const currentActive = await getActiveTutorSubscription(auth.userId);
-
   try {
     const subscription = await prisma.$transaction(async (tx) => {
-      // Trừ Coin — guard balance >= price qua updateMany với where balance
-      // GTE price. count=0 nghĩa là không đủ xu → throw để rollback.
+      const lockKey = `tutor_vip:${auth.userId}`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
       const spent = await tx.wallet.updateMany({
         where: { userId: auth.userId, balance: { gte: plan.priceCoin } },
         data:  { balance: { decrement: plan.priceCoin } },
       });
       if (spent.count === 0) throw new InsufficientBalanceError();
 
-      let sub;
-      if (currentActive) {
-        // Mua chồng: cộng dồn thời hạn vào bản ghi active hiện có.
-        sub = await tx.tutorSubscription.update({
-          where: { id: currentActive.id },
-          data:  {
-            endDate:       computeNewEndDate(currentActive.endDate, plan.durationDays),
-            priceCoinPaid: currentActive.priceCoinPaid + plan.priceCoin,
-          },
-        });
-      } else {
-        // Tạo bản ghi mới.
-        const now = new Date();
-        sub = await tx.tutorSubscription.create({
-          data: {
-            userId:        auth.userId,
-            planCode:      plan.code,
-            priceCoinPaid: plan.priceCoin,
-            durationDays:  plan.durationDays,
-            startDate:     now,
-            endDate:       computeNewEndDate(null, plan.durationDays),
-            status:        "active",
-          },
-        });
-      }
+      const latest = await tx.tutorSubscription.findFirst({
+        where:   { userId: auth.userId, status: "active", endDate: { gt: new Date() } },
+        orderBy: { endDate: "desc" },
+        select:  { endDate: true },
+      });
+      const { startDate, endDate } = nextPeriod(latest?.endDate ?? null, plan.durationDays);
+
+      const sub = await tx.tutorSubscription.create({
+        data: {
+          userId:        auth.userId,
+          planCode:      plan.code,
+          priceCoinPaid: plan.priceCoin,
+          durationDays:  plan.durationDays,
+          startDate,
+          endDate,
+          status:        "active",
+        },
+      });
 
       await tx.coinTransaction.create({
         data: {

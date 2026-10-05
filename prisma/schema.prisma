@@ -754,7 +754,8 @@ model User {
 // mua lớp" như backlog BE-055 gốc. Học viên vẫn free trong giai đoạn này.
 //
 // Lưu lịch sử: mỗi lần mua tạo 1 bản ghi mới (không update bản cũ) — cho
-// phép đối soát doanh thu và xem lịch sử nâng cấp của gia sư.
+// phép đối soát doanh thu và xem lịch sử nâng cấp của gia sư. Mua khi đang
+// VIP: bản ghi mới nối tiếp (startDate = endDate gói trước).
 
 model TutorSubscription {
   id              String   @id @default(cuid())
@@ -762,7 +763,7 @@ model TutorSubscription {
   planCode        String   // "monthly" | "half_year" | "yearly" (xem TUTOR_VIP_PLANS trong src/lib/tutorSubscription.ts)
   priceCoinPaid   Int      // snapshot giá tại thời điểm mua (có thể khác giá hiện tại nếu admin đổi sau)
   durationDays    Int      // snapshot thời hạn (30/180/365)
-  startDate       DateTime @default(now())
+  startDate       DateTime @default(now()) // có thể ở tương lai nếu mua nối tiếp
   endDate         DateTime // startDate + durationDays — tính sẵn để query "còn hạn" chỉ cần 1 cột
   status          String   @default("active") // "active" | "expired" | "cancelled"
   // Note: Không có renewalFrom vì D10 (gia hạn tự động) đang HOÃN — mỗi lần

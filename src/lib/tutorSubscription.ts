@@ -17,34 +17,36 @@ export const TUTOR_VIP_PLANS = {
 export type TutorVIPPlanCode = keyof typeof TUTOR_VIP_PLANS;
 
 export function getTutorVIPPlan(code: string): (typeof TUTOR_VIP_PLANS)[TutorVIPPlanCode] | null {
-  return (code in TUTOR_VIP_PLANS) ? TUTOR_VIP_PLANS[code as TutorVIPPlanCode] : null;
+  return Object.prototype.hasOwnProperty.call(TUTOR_VIP_PLANS, code)
+    ? TUTOR_VIP_PLANS[code as TutorVIPPlanCode]
+    : null;
 }
 
-// Gia sư đang có VIP còn hạn và status "active". Trả bản ghi mới nhất
-// (gia sư có thể mua chồng nhiều lần → lấy cái endDate xa nhất đang active).
-// Null = chưa VIP / đã hết hạn.
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Gói VIP còn hạn có endDate xa nhất — dùng để hiển thị "VIP tới ngày X".
+// Mua chồng tạo bản ghi nối tiếp (startDate = endDate gói trước), nên bản
+// ghi trả về có thể có startDate ở tương lai; endDate của nó là mốc hết VIP
+// thật. Null = chưa VIP / đã hết hạn.
 export async function getActiveTutorSubscription(userId: string) {
   return prisma.tutorSubscription.findFirst({
-    where: {
-      userId,
-      status:  "active",
-      endDate: { gt: new Date() },
-    },
+    where:   { userId, status: "active", endDate: { gt: new Date() } },
     orderBy: { endDate: "desc" },
   });
 }
 
 export async function isActiveTutorVIP(userId: string): Promise<boolean> {
-  return !!(await getActiveTutorSubscription(userId));
+  const now = new Date();
+  const hit = await prisma.tutorSubscription.findFirst({
+    where:  { userId, status: "active", startDate: { lte: now }, endDate: { gt: now } },
+    select: { id: true },
+  });
+  return !!hit;
 }
 
-// Khi gia sư mua VIP lúc đã có VIP đang active: cộng dồn thời hạn vào bản
-// ghi hiện tại (ngày hết hạn mới = oldEnd + durationDays). Giữ nguyên bản
-// ghi active cũ thay vì tạo mới, để query getActiveTutorSubscription trả 1
-// bản ghi liền mạch, dễ hiển thị "đã VIP tới…".
-// Khi gia sư chưa VIP (hoặc đã hết hạn): tạo bản ghi mới startDate=now,
-// endDate=now+durationDays.
-export function computeNewEndDate(oldEndDate: Date | null, durationDays: number): Date {
-  const base = oldEndDate && oldEndDate > new Date() ? oldEndDate : new Date();
-  return new Date(base.getTime() + durationDays * 24 * 60 * 60 * 1000);
+// Gói mới bắt đầu ngay nếu chưa VIP; nếu đang VIP thì nối tiếp ngay sau
+// ngày hết hạn gói hiện tại — không mất ngày đã trả.
+export function nextPeriod(latestEndDate: Date | null, durationDays: number, now = new Date()) {
+  const startDate = latestEndDate && latestEndDate > now ? latestEndDate : now;
+  return { startDate, endDate: new Date(startDate.getTime() + durationDays * DAY_MS) };
 }
