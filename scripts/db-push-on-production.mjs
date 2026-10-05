@@ -18,5 +18,16 @@ if (env && env !== "production") {
   process.exit(0);
 }
 
-const r = spawnSync("npx", ["prisma", "db", "push"], { stdio: "inherit" });
+// `prisma db push` mặc định từ chối khi có cột/bảng bị drop để không mất
+// dữ liệu bất ngờ. Khi chủ ý xoá (như đã chốt với Sales Bot — xoá hẳn 2
+// bảng sales_leads/sales_messages), set env `PRISMA_ACCEPT_DATA_LOSS=1`
+// trên Vercel production. Flag này nguy hiểm — sau khi lần drop đã xong,
+// nên gỡ env để các lần sau an toàn (lỡ xoá cột là mất dữ liệu luôn).
+const args = ["prisma", "db", "push"];
+if (process.env.PRISMA_ACCEPT_DATA_LOSS === "1") {
+  console.log("[build] ⚠ PRISMA_ACCEPT_DATA_LOSS=1 → cho phép drop cột/bảng.");
+  args.push("--accept-data-loss");
+}
+
+const r = spawnSync("npx", args, { stdio: "inherit" });
 process.exit(r.status ?? 0);
