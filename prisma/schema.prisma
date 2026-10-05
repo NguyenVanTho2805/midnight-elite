@@ -59,6 +59,7 @@ model Course {
   exams            Exam[]
   classSchedules   ClassSchedule[]
   coinTransactions CoinTransaction[]
+  threads          Thread[]
 
   @@index([ownerId])
   @@map("courses")
@@ -893,12 +894,22 @@ model Thread {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Phạm vi bài viết: null = "cộng đồng chung" cho mọi học viên (giữ hành vi
+  // cũ cho bài trước thời điểm triển khai 1.4.7); có courseId = thread riêng
+  // của lớp đó, chỉ members của lớp (học viên Enrollment.active + GVCN
+  // Course.ownerId) được post và xem (sẽ enforce ở route — xem BE-071).
+  // onDelete SetNull: khi xoá lớp, bài viết chuyển về "cộng đồng chung" chứ
+  // không mất dấu vết.
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
   author    User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replies   ThreadReply[]
   likes     ThreadLike[]
   bookmarks ThreadBookmark[]
   reports   ThreadReport[]
 
+  @@index([courseId])
   @@map("threads")
 }
 

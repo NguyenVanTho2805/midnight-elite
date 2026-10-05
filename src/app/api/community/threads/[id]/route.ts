@@ -3,6 +3,7 @@ import { requireSession, requirePermission, isNextResponse } from "@/lib/auth-gu
 import { getSession } from "@/lib/session";
 import { PERMISSIONS, checkPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { canAccessThread } from "@/lib/classThreadAccess";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -31,7 +32,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     },
   });
 
-  if (!thread || thread.deletedAt) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
+  // Thread lớp: người ngoài lớp nhận 404 như không tồn tại (không lộ bài).
+  if (!thread || thread.deletedAt || !(await canAccessThread(session, thread))) {
+    return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
+  }
 
   return NextResponse.json({
     id:           thread.id,
@@ -41,6 +45,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     imageUrls:    thread.imageUrls,
     fileUrl:      thread.fileUrl,
     fileName:     thread.fileName,
+    courseId:     thread.courseId,
     createdAt:    thread.createdAt.toISOString(),
     author: {
       id:        thread.author.id,
