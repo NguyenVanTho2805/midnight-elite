@@ -1187,40 +1187,6 @@ model AnswerReport {
   @@map("answer_reports")
 }
 
-// ─── TSIX SALES BOT (lead/hội thoại tư vấn, ghi từ service Python riêng) ──────
-// NGỪNG DÙNG (BE-081, chốt 06/10/2026): đã gỡ toàn bộ code app (widget, trang
-// /admin/sales-leads, API, đồng bộ khoá học). GIỮ 2 model này để `prisma db
-// push` khi build KHÔNG xoá 2 bảng đang có dữ liệu lead trên production và
-// service Python bên ngoài (ghi trực tiếp bằng psycopg2) không bị lỗi. Xoá hẳn
-// model ở PR riêng SAU KHI đã tắt service Python và xuất dữ liệu lead.
-
-model SalesLead {
-  id                  String   @id @default(cuid())
-  sessionId           String   @unique // session_id sinh ở widget chat (localStorage)
-  leadScore           Int      @default(0)
-  stage               String   @default("awareness") // awareness | consideration | decision
-  conversationSummary String   @default("") @db.Text
-  escalationFlag      Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  messages SalesMessage[]
-
-  @@map("sales_leads")
-}
-
-model SalesMessage {
-  id        String   @id @default(cuid())
-  leadId    String
-  role      String // "user" | "bot"
-  text      String   @db.Text
-  createdAt DateTime @default(now())
-
-  lead SalesLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
-
-  @@map("sales_messages")
-}
-
 // ─── NEWS / ARTICLES ──────────────────────────────────────────────────────────
 
 model Article {
