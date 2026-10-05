@@ -45,6 +45,7 @@ export const COIN_REASONS = {
   CLASS_SUBSCRIPTION:  "class_subscription",    // (chưa dùng) trừ khi học viên mua gói lớp — backlog gốc
   TUTOR_VIP_PURCHASE:  "tutor_vip_purchase",    // trừ khi gia sư mua VIP
   SUBSCRIPTION_REFUND: "subscription_refund",   // hoàn khi huỷ/sai gói
+  TOPUP:               "topup",                 // cộng khi admin duyệt yêu cầu nạp tiền (FE-128)
 } as const;
 export type CoinReason = (typeof COIN_REASONS)[keyof typeof COIN_REASONS];
 
@@ -62,4 +63,5 @@ export const DEFAULT_SOURCE_TYPE_FOR_REASON: Partial<Record<CoinReason, CoinSour
   [COIN_REASONS.CLASS_SUBSCRIPTION]:  COIN_SOURCE_TYPES.CLASS_SUBSCRIPTION,
   [COIN_REASONS.TUTOR_VIP_PURCHASE]:  COIN_SOURCE_TYPES.TUTOR_SUBSCRIPTION,
   [COIN_REASONS.SUBSCRIPTION_REFUND]: COIN_SOURCE_TYPES.REFUND,
+  [COIN_REASONS.TOPUP]:               COIN_SOURCE_TYPES.TOPUP,
 };

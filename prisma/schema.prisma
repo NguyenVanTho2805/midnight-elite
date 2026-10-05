@@ -768,6 +768,8 @@ model User {
   parentLinksAsStudent ParentLink[] @relation("StudentLinks")
   auditLogs            AuditLog[]
   createdClassInvites  ClassInvite[] @relation("ClassInviteCreator")
+  topupRequests        CoinTopupRequest[] @relation("TopupRequests")
+  topupReviews         CoinTopupRequest[] @relation("TopupRequestReviews")
 
   @@map("users")
 }
@@ -847,6 +849,36 @@ model Enrollment {
   @@unique([userId, courseId])
   @@index([status])
   @@map("enrollments")
+}
+
+// ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────
+// User yêu cầu nạp Coin (chủ yếu gia sư nạp để mua VIP, D01 chốt). Chuyển
+// khoản ngân hàng thủ công — admin đối chiếu rồi approve, hệ thống cộng
+// Coin vào Wallet + ghi CoinTransaction.
+//
+// Không gộp vào CoinTransaction vì:
+//  - CoinTransaction là ghi sổ sau khi đã cộng/trừ xong (ăn khớp balance).
+//  - Topup có 3 trạng thái: pending (chưa cộng), approved (đã cộng + có
+//    CoinTransaction), rejected (không cộng, giữ bản ghi để tra cứu).
+model CoinTopupRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  amountVnd   Int // số VND user báo đã chuyển
+  coinAmount  Int // số Coin cộng khi approve (1 Coin = 1 VND trong giai đoạn này)
+  status      String    @default("pending") // "pending" | "approved" | "rejected"
+  bankRef     String? // mã giao dịch người dùng khai báo (nếu có)
+  note        String?   @db.Text // ghi chú user khai
+  rejectReason String?  @db.Text
+  reviewedBy  String? // admin userId
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user     User  @relation("TopupRequests",      fields: [userId],     references: [id], onDelete: Cascade)
+  reviewer User? @relation("TopupRequestReviews", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("coin_topup_requests")
 }
 
 // ─── CLASS INVITE (BE-063 — 1.4.6) ────────────────────────────────────────────
