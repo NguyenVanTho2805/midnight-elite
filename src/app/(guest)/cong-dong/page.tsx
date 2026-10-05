@@ -24,6 +24,8 @@ interface ThreadDTO {
   fileName:       string | null;
   createdAt:      string;
   author:         { id: string; name: string; isTeacher: boolean };
+  // FE-119: null = bài "cộng đồng chung"; có giá trị = bài trong lớp cụ thể.
+  course:         { id: string; name: string } | null;
   likeCount:      number;
   replyCount:     number;
   likedByMe:      boolean;
@@ -507,8 +509,9 @@ function PostForm({ user, balance, onThread, onQuestion }: {
 
 // ─── THREAD CARD ──────────────────────────────────────────────────────────────
 
-function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUser, onRequireLogin }: {
+function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, currentUser, onRequireLogin }: {
   thread:         ThreadDTO;
+  scope:          string;
   onLike:         (id: string) => void;
   onBookmark:     (id: string) => void;
   onDelete:       (id: string) => void;
@@ -582,6 +585,19 @@ function ThreadCard({ thread: t, onLike, onBookmark, onDelete, onOpen, currentUs
                   style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
               )}
               <CatBadge cat={t.category} />
+              {/* FE-119: badge phân biệt bài "chung" vs "trong lớp X". Chỉ hiển
+                  thị khi xem view tổng (scope = "all"); khi đã chọn 1 lớp cụ
+                  thể hoặc "common" thì mọi bài trong view đều cùng phạm vi,
+                  badge chỉ gây rối. */}
+              {scope === "all" && t.course && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 truncate max-w-[160px]"
+                  style={{ background: "#dbeafe", color: "#0068FF" }}
+                  title={`Lớp ${t.course.name}`}>Lớp {t.course.name}</span>
+              )}
+              {scope === "all" && !t.course && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                  style={{ background: "#f0eeec", color: "#787671" }}>Chung</span>
+              )}
             </div>
             <p className="text-xs mt-0.5" style={{ color: "#a4a097" }}>{timeAgo(t.createdAt)}</p>
           </div>
@@ -738,6 +754,15 @@ function CongDongInner() {
   const initialTab = (searchParams.get("tab") ?? "all") as TabKey;
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
+  // FE-117: phạm vi xem cộng đồng.
+  //   "all"    = chung + các lớp của người đó (hành vi mặc định)
+  //   "common" = chỉ "cộng đồng chung" (threads với courseId null)
+  //   <courseId> = chỉ 1 lớp cụ thể (phải là member)
+  type ScopeOption = { id: string; name: string; role: "student" | "teacher" };
+  const initialScope = searchParams.get("scope") ?? "all";
+  const [scope, setScope]           = useState<string>(initialScope);
+  const [scopeOptions, setScopeOptions] = useState<ScopeOption[]>([]);
+
   const [threads, setThreads]         = useState<ThreadDTO[]>([]);
   const [questions, setQuestions]     = useState<QuestionDTO[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -747,15 +772,46 @@ function CongDongInner() {
   const [openThreadId, setOpenThreadId]     = useState<string | null>(null);
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
 
+  function syncUrl(nextTab: TabKey = activeTab, nextScope: string = scope) {
+    const parts: string[] = [];
+    if (nextTab !== "all") parts.push(`tab=${encodeURIComponent(nextTab)}`);
+    if (nextScope !== "all") parts.push(`scope=${encodeURIComponent(nextScope)}`);
+    router.replace(parts.length === 0 ? "/cong-dong" : `/cong-dong?${parts.join("&")}`);
+  }
+
   function switchTab(tab: TabKey) {
     setActiveTab(tab);
-    if (tab === "all") router.replace("/cong-dong");
-    else router.replace(`/cong-dong?tab=${tab}`);
+    syncUrl(tab, scope);
   }
+
+  function switchScope(s: string) {
+    setScope(s);
+    syncUrl(activeTab, s);
+  }
+
+  // FE-117: lấy danh sách lớp làm option scope — chỉ chạy khi login. Khách
+  // không có lớp để chọn, dropdown ẩn (eslint-rule chặn setState đồng bộ
+  // trong effect, nên nhánh "không user" đi qua Promise.resolve để nhất quán).
+  useEffect(() => {
+    let cancelled = false;
+    const p = user
+      ? fetch("/api/community/scope-options", { credentials: "same-origin" }).then(r => r.ok ? r.json() : { scopes: [] })
+      : Promise.resolve({ scopes: [] });
+    p.then(d => { if (!cancelled) setScopeOptions(d.scopes ?? []); })
+     .catch(() => { /* silent — dropdown chỉ ẩn */ });
+    return () => { cancelled = true; };
+  }, [user]);
 
   function requireLogin() {
     router.push("/dang-nhap?redirect=/cong-dong");
   }
+
+  // FE-117: dựng query string cho courseId theo scope. "all" bỏ qua param
+  // (API trả chung + của tôi); "common" → courseId=null; id lớp → courseId=id.
+  const scopeParam =
+    scope === "all"    ? "" :
+    scope === "common" ? "&courseId=null" :
+    `&courseId=${encodeURIComponent(scope)}`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -765,7 +821,7 @@ function CongDongInner() {
       const [threadsRes, questionsRes] = await Promise.all([
         activeTab === "hoi-dap-qa"
           ? Promise.resolve(null)
-          : fetch(`/api/community/threads?limit=30${catParam}`, { credentials: "same-origin" }),
+          : fetch(`/api/community/threads?limit=30${catParam}${scopeParam}`, { credentials: "same-origin" }),
         activeTab === "hoi-dap-qa" || activeTab === "all"
           ? fetch("/api/questions", { credentials: "same-origin" })
           : Promise.resolve(null),
@@ -793,13 +849,13 @@ function CongDongInner() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, scopeParam]);
 
   const refreshSilent = useCallback(async () => {
     try {
       const catParam = activeTab === "all" || activeTab === "hoi-dap-qa" ? "" : `&category=${activeTab}`;
       if (activeTab !== "hoi-dap-qa") {
-        const res = await fetch(`/api/community/threads?limit=30${catParam}`, { credentials: "same-origin" });
+        const res = await fetch(`/api/community/threads?limit=30${catParam}${scopeParam}`, { credentials: "same-origin" });
         if (res.ok) {
           const d = await res.json();
           const freshIds = new Set((d.threads as ThreadDTO[]).map(t => t.id));
@@ -814,7 +870,7 @@ function CongDongInner() {
         }
       }
     } catch { /* silent */ }
-  }, [activeTab]);
+  }, [activeTab, scopeParam]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -836,7 +892,7 @@ function CongDongInner() {
     try {
       const catParam = activeTab === "all" || activeTab === "hoi-dap-qa" ? "" : `&category=${activeTab}`;
       const res  = await fetch(
-        `/api/community/threads?limit=20&cursor=${encodeURIComponent(nextCursor)}${catParam}`,
+        `/api/community/threads?limit=20&cursor=${encodeURIComponent(nextCursor)}${catParam}${scopeParam}`,
         { credentials: "same-origin" },
       );
       const data = await res.json();
@@ -887,6 +943,30 @@ function CongDongInner() {
         <h1 className="text-xl font-bold" style={{ color: "#1a1a1a" }}>Cộng đồng</h1>
         <p className="text-sm" style={{ color: "#787671" }}>Trao đổi, hỏi đáp và chia sẻ kinh nghiệm</p>
       </div>
+
+      {/* FE-117: dropdown phạm vi — chỉ hiện khi user đã đăng nhập và có
+          ít nhất 1 lớp. Khách và học viên chưa vào lớp → ẩn, tránh thêm
+          nhiễu ở trạng thái không có lựa chọn. */}
+      {user && scopeOptions.length > 0 && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="community-scope" className="text-xs font-semibold" style={{ color: "#787671" }}>Phạm vi</label>
+          <select
+            id="community-scope"
+            value={scope}
+            onChange={e => switchScope(e.target.value)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full"
+            style={{ background: "#f6f5f4", color: "#1a1a1a", border: "1px solid #e5e3df" }}
+          >
+            <option value="all">Tất cả (chung + của tôi)</option>
+            <option value="common">Chỉ cộng đồng chung</option>
+            {scopeOptions.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.role === "teacher" ? "👨‍🏫 " : "📘 "}{s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
@@ -941,7 +1021,7 @@ function CongDongInner() {
       {!loading && feedItems.map(item =>
         item._type === "question"
           ? <QuestionCard key={`q-${item.id}`} q={item} onOpen={id => user ? setOpenQuestionId(id) : requireLogin()} />
-          : <ThreadCard key={`t-${item.id}`} thread={item}
+          : <ThreadCard key={`t-${item.id}`} thread={item} scope={scope}
               onLike={handleLike} onBookmark={handleBookmark}
               onDelete={id => setThreads(prev => prev.filter(x => x.id !== id))}
               onOpen={setOpenThreadId}
