@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { canAccessThread } from "@/lib/classThreadAccess";
 
 // POST /api/community/threads/[id]/report — báo cáo bài viết vi phạm (admin sẽ duyệt)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,8 +12,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { reason } = await req.json();
   if (!reason?.trim()) return NextResponse.json({ error: "Vui lòng nêu lý do báo cáo" }, { status: 400 });
 
-  const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true, deletedAt: true } });
-  if (!thread || thread.deletedAt) return NextResponse.json({ error: "Không tìm thấy bài viết" }, { status: 404 });
+  const thread = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true, deletedAt: true, courseId: true } });
+  if (!thread || thread.deletedAt || !(await canAccessThread(auth, thread))) return NextResponse.json({ error: "Không tìm thấy bài viết" }, { status: 404 });
   if (thread.authorId === auth.userId) {
     return NextResponse.json({ error: "Không thể tự báo cáo bài viết của mình" }, { status: 400 });
   }

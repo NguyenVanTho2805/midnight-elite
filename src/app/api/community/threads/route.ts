@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { addDailyCappedCoins } from "@/lib/wallet";
 import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
-import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { canAccessClass, visibleThreadScope } from "@/lib/classThreadAccess";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
 const DEFAULT_PAGE_SIZE  = 20;
@@ -23,22 +23,23 @@ export async function GET(req: NextRequest) {
   const pageSize   = isNaN(limitParam) ? DEFAULT_PAGE_SIZE : Math.min(limitParam, MAX_PAGE_SIZE);
 
   // Lọc phạm vi (BE-070):
-  //   - không truyền `courseId`     → giữ hành vi cũ, trả tất cả (toàn hệ thống)
-  //   - `courseId=null` (literal)    → chỉ "cộng đồng chung" (threads không gắn lớp)
-  //   - `courseId=<id>`              → chỉ thread của lớp đó
-  // Khi lọc theo 1 courseId cụ thể, chỉ members (học viên active hoặc GVCN
-  // Course.ownerId) được xem — đồng bộ với quyền post ở BE-071. Khách không
-  // được đọc thread riêng của lớp.
+  //   - không truyền `courseId`     → cộng đồng chung + thread các lớp người
+  //                                    gọi là member (khách: chỉ chung). Không
+  //                                    trả thread lớp khác — bài cũ toàn là
+  //                                    courseId=null nên hành vi cũ giữ nguyên.
+  //   - `courseId=null` (literal)    → chỉ "cộng đồng chung"
+  //   - `courseId=<id>`              → chỉ thread của lớp đó, phải là member
   const courseIdParam = searchParams.get("courseId");
-  const scope: { courseId?: string | null } = {};
+  let scope: object;
   if (courseIdParam === "null") {
-    scope.courseId = null;
+    scope = { courseId: null };
   } else if (courseIdParam) {
-    const canSee = await canAccessClassThreads(userId, courseIdParam);
-    if (!canSee) {
+    if (!(await canAccessClass(session, courseIdParam))) {
       return NextResponse.json({ error: "Không có quyền xem bài viết của lớp này" }, { status: 403 });
     }
-    scope.courseId = courseIdParam;
+    scope = { courseId: courseIdParam };
+  } else {
+    scope = await visibleThreadScope(session);
   }
 
   const include = {
@@ -107,9 +108,11 @@ export async function POST(req: NextRequest) {
     // của lớp đó (học viên Enrollment.active hoặc GVCN Course.ownerId) được
     // post. Admin cấp trên (admin_super/admin_content) được post vào bất kỳ
     // lớp nào — đồng bộ ownsResource mặc định "non-teacher adminRole bypass".
+    if (courseId !== undefined && courseId !== null && typeof courseId !== "string") {
+      return NextResponse.json({ error: "courseId không hợp lệ" }, { status: 400 });
+    }
     if (courseId) {
-      const canPost = await canPostInClass(auth.userId, courseId);
-      if (!canPost) {
+      if (!(await canAccessClass(auth, courseId))) {
         return NextResponse.json(
           { error: "Bạn phải là học viên của lớp hoặc giáo viên chủ chốt mới được đăng bài" },
           { status: 403 },
@@ -192,28 +195,4 @@ function toDTO(userId: string, t: {
     likedByMe:      t.likes.some(l => l.userId === userId),
     bookmarkedByMe: t.bookmarks.some(b => b.userId === userId),
   };
-}
-
-// Có quyền ĐỌC threads của lớp — members (học viên active + GVCN) + admin
-// cấp trên. Khách (userId = "") luôn false. Admin_super/admin_content bỏ qua
-// kiểm tra Enrollment, nhất quán với ownsResource.
-async function canAccessClassThreads(userId: string, courseId: string): Promise<boolean> {
-  if (!userId) return false;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true } });
-  if (!user) return false;
-  if (user.adminRole === "admin_super" || user.adminRole === "admin_content") return true;
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
-  if (!course) return false;
-  if (course.ownerId === userId) return true; // GVCN
-  const enrolled = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId, courseId } }, select: { status: true },
-  });
-  return enrolled?.status === ENROLLMENT_STATUS.ACTIVE;
-}
-
-// Có quyền ĐĂNG BÀI vào lớp — hiện tại giống canAccessClassThreads (học viên
-// active + GVCN + admin cấp trên). Tách hàm riêng để sau này nếu cần cho
-// post khó hơn read (vd học viên chỉ đọc, không đăng được) chỉ sửa 1 chỗ.
-async function canPostInClass(userId: string, courseId: string): Promise<boolean> {
-  return canAccessClassThreads(userId, courseId);
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { canAccessThread } from "@/lib/classThreadAccess";
 import { notify } from "@/lib/notify";
 import { addDailyCappedCoins } from "@/lib/wallet";
 import { REPLY_REWARD, MAX_REPLY_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
@@ -36,8 +37,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
 
-  const exists = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true } });
-  if (!exists) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
+  const exists = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true, courseId: true } });
+  // Thread lớp: người ngoài lớp nhận 404 như không tồn tại (không lộ bài).
+  if (!exists || !(await canAccessThread(auth, exists))) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
 
   const reply = await prisma.threadReply.create({
     data: {
