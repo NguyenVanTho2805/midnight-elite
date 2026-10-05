@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { regradeAttempt } from "@/lib/examGrading";
+import { logAction } from "@/lib/auditLog";
 
 // PATCH /api/exams/attempts/[attemptId]/answers/[questionId]/grade — giáo
 // viên: chấm điểm + nhận xét 1 câu tự luận, chấm lại điểm tổng attempt ngay
@@ -41,6 +42,12 @@ export async function PATCH(
     });
 
     const updated = await regradeAttempt(attemptId);
+
+    // BE-084: ghi audit đổi điểm tự luận (ExamAnswer).
+    await logAction(auth.userId, "exam_answer.grade", "ExamAnswer", `${attemptId}:${questionId}`, {
+      attemptId, questionId, examId: attempt.examId, userId: attempt.userId,
+      pointsAwarded: points, totalScore: updated?.score ?? null,
+    });
 
     return NextResponse.json({ success: true, score: updated?.score ?? null });
   } catch (e) {

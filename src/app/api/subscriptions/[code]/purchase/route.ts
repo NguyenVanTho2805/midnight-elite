@@ -4,6 +4,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { InsufficientBalanceError } from "@/lib/wallet";
 import { COIN_REASONS, COIN_SOURCE_TYPES } from "@/lib/wallet-constants";
 import { getTutorVIPPlan, nextPeriod } from "@/lib/tutorSubscription";
+import { logAction } from "@/lib/auditLog";
 
 // POST /api/subscriptions/[code]/purchase — gia sư mua VIP. Chỉ adminRole
 // = "teacher" mua được (admin_super/admin_content vận hành platform, không
@@ -75,6 +76,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ co
       return sub;
     });
 
+    // BE-083: ghi audit sau khi transaction thành công (ngoài prisma.$transaction
+    // để không rollback audit khi phần nghiệp vụ đã commit; logAction nuốt lỗi
+    // như notify).
+    await logAction(auth.userId, "coin_transaction.tutor_vip_purchase", "TutorSubscription", subscription.id, {
+      planCode: subscription.planCode, priceCoinPaid: subscription.priceCoinPaid,
+      startDate: subscription.startDate, endDate: subscription.endDate,
+    });
     return NextResponse.json({ subscription }, { status: 201 });
   } catch (e) {
     if (e instanceof InsufficientBalanceError) {

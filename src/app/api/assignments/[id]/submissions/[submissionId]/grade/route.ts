@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { logAction } from "@/lib/auditLog";
 
 // PATCH /api/assignments/[id]/submissions/[submissionId]/grade — chấm điểm 1
 // bài đã nộp. Điểm không được vượt quá maxPoints của bài tập.
@@ -34,6 +35,11 @@ export async function PATCH(
     const updated = await prisma.assignmentSubmission.update({
       where: { id: submissionId },
       data: { score, comment: comment?.trim() || null, gradedAt: new Date(), gradedBy: auth.userId },
+    });
+
+    // BE-084
+    await logAction(auth.userId, "assignment_submission.grade", "AssignmentSubmission", submissionId, {
+      assignmentId, userId: updated.userId, score, maxPoints: assignment.maxPoints,
     });
 
     return NextResponse.json(updated);

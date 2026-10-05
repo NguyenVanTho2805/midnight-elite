@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { notify } from "@/lib/notify";
+import { logAction } from "@/lib/auditLog";
 import { requireCenterAdmin, PENDING_TUTOR_WHERE } from "@/lib/tutorApplicationGuard";
 
 // POST /api/admin/tutor-applications/[userId]/approve (BE-052)
@@ -11,7 +12,7 @@ import { requireCenterAdmin, PENDING_TUTOR_WHERE } from "@/lib/tutorApplicationG
 // Bắt buộc email đã xác thực — tránh người nộp đơn bằng email không phải
 // của mình rồi được cấp quyền gia sư dưới danh tính người khác.
 // Gia sư cần đăng nhập lại để JWT mang adminRole mới.
-// logAction("tutor.approve") chưa gắn — AuditLog chưa có trên main (BE-082/085).
+// BE-085: ghi audit tutor.approve (AuditLog đã có trên main sau PR #14).
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   const auth = await requireCenterAdmin();
   if (isNextResponse(auth)) return auth;
@@ -39,6 +40,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ us
     if (!exists) return NextResponse.json({ error: "Không tìm thấy người dùng" }, { status: 404 });
     return NextResponse.json({ error: "Không có đơn gia sư đang chờ duyệt" }, { status: 409 });
   }
+
+  await logAction(auth.userId, "tutor.approve", "User", userId, {});
 
   await notify(userId, {
     type:    "tutor_approved",

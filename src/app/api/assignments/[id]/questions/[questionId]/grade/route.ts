@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { logAction } from "@/lib/auditLog";
 
 // PATCH /api/assignments/[id]/questions/[questionId]/grade — giáo viên chấm
 // tay 1 câu ESSAY của 1 học viên cụ thể. Không phụ thuộc Assignment.dueDate
@@ -47,6 +48,11 @@ export async function PATCH(
       where: { userId_questionId: { userId, questionId } },
       create: { userId, questionId, pointsAwarded, teacherComment: teacherComment?.trim() || null },
       update: { pointsAwarded, teacherComment: teacherComment?.trim() || null },
+    });
+
+    // BE-084
+    await logAction(auth.userId, "assignment_answer.grade", "AssignmentAnswer", `${userId}:${questionId}`, {
+      assignmentId, userId, questionId, pointsAwarded, maxPoints: question.points,
     });
 
     return NextResponse.json(updated);
