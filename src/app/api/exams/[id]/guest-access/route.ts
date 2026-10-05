@@ -27,8 +27,19 @@ export async function GET(
   return NextResponse.json(grants);
 }
 
-// POST /api/exams/[id]/guest-access — admin: duyệt phí thủ công cho 1 guest
-// (tái dùng quy trình sales hiện có — không có cổng thanh toán tự động)
+// POST /api/exams/[id]/guest-access — admin: duyệt quyền thi cho 1 user
+// (BE-080 chốt 06/10/2026: giữ nguyên model + 3 route; khách BẮT BUỘC
+// đăng ký tài khoản trước mới cấp được guest-access vì ExamGuestAccess
+// gắn vào userId của tài khoản thật — không có "khách ẩn danh làm bài").
+//
+// Luồng gửi đề cho khách hàng dùng thử:
+//   1. Gia sư gửi link `/dang-ky?then=/thi-thu/<examId>` cho khách.
+//   2. Khách đăng ký tài khoản.
+//   3. Khách báo email đã đăng ký cho gia sư.
+//   4. Gia sư gọi route này với email đó → cấp guest-access.
+//   5. Khách vào `/thi-thu/<examId>` làm bài.
+// Admin cấp quyền trước khi khách đăng ký không được — email chưa tồn tại
+// trả 404 kèm hướng dẫn.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -52,7 +63,15 @@ export async function POST(
 
     const targetUser = await prisma.user.findUnique({ where: { email: email.trim() } });
     if (!targetUser) {
-      return NextResponse.json({ error: "Không tìm thấy tài khoản với email này" }, { status: 404 });
+      // BE-080: không auto-tạo tài khoản — khách phải tự đăng ký để kiểm
+      // soát danh tính + bảo mật mật khẩu. Thông điệp hướng dẫn gia sư.
+      return NextResponse.json(
+        { error: `Email ${email.trim()} chưa đăng ký tài khoản — bảo khách đăng ký tại /dang-ky trước, sau đó mới duyệt được.` },
+        { status: 404 },
+      );
+    }
+    if (targetUser.banned) {
+      return NextResponse.json({ error: "Tài khoản này đã bị khóa" }, { status: 409 });
     }
 
     const grant = await prisma.examGuestAccess.upsert({
