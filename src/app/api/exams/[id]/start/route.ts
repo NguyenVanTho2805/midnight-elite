@@ -8,6 +8,12 @@ import { isEnrollmentActive } from "@/lib/enrollment";
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
 // kèm các câu trả lời đã lưu, cho tới khi attempt đó submit hoặc hết giờ.
+//
+// BE-080 (chốt 06/10/2026): ExamGuestAccess giữ nguyên là công cụ cho gia
+// sư gửi đề cho khách hàng dùng thử, NHƯNG khách BẮT BUỘC đăng ký tài
+// khoản trước mới thi được — dòng `if (!session) return 401` dưới là chốt
+// kiểm soát điểm vào duy nhất; mọi mã guest-access đều gắn vào userId của
+// tài khoản thật, không có "khách ẩn danh làm bài".
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
