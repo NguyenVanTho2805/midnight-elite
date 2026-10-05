@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { addDailyCappedCoins } from "@/lib/wallet";
 import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
+import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
 const DEFAULT_PAGE_SIZE  = 20;
@@ -21,8 +22,28 @@ export async function GET(req: NextRequest) {
   const limitParam = parseInt(searchParams.get("limit") ?? "", 10);
   const pageSize   = isNaN(limitParam) ? DEFAULT_PAGE_SIZE : Math.min(limitParam, MAX_PAGE_SIZE);
 
+  // Lọc phạm vi (BE-070):
+  //   - không truyền `courseId`     → giữ hành vi cũ, trả tất cả (toàn hệ thống)
+  //   - `courseId=null` (literal)    → chỉ "cộng đồng chung" (threads không gắn lớp)
+  //   - `courseId=<id>`              → chỉ thread của lớp đó
+  // Khi lọc theo 1 courseId cụ thể, chỉ members (học viên active hoặc GVCN
+  // Course.ownerId) được xem — đồng bộ với quyền post ở BE-071. Khách không
+  // được đọc thread riêng của lớp.
+  const courseIdParam = searchParams.get("courseId");
+  const scope: { courseId?: string | null } = {};
+  if (courseIdParam === "null") {
+    scope.courseId = null;
+  } else if (courseIdParam) {
+    const canSee = await canAccessClassThreads(userId, courseIdParam);
+    if (!canSee) {
+      return NextResponse.json({ error: "Không có quyền xem bài viết của lớp này" }, { status: 403 });
+    }
+    scope.courseId = courseIdParam;
+  }
+
   const include = {
     author:    { select: { id: true, name: true, role: true, adminRole: true } },
+    course:    { select: { id: true, name: true } },
     _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
     likes:     { where: { userId }, select: { userId: true } },
     bookmarks: { where: { userId }, select: { userId: true } },
@@ -30,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   const [pinned, regular] = await Promise.all([
     prisma.thread.findMany({
-      where:   { isPinned: true, deletedAt: null, ...(category ? { category } : {}) },
+      where:   { isPinned: true, deletedAt: null, ...(category ? { category } : {}), ...scope },
       orderBy: { createdAt: "desc" },
       include,
     }),
@@ -39,6 +60,7 @@ export async function GET(req: NextRequest) {
         isPinned: false,
         deletedAt: null,
         ...(category ? { category } : {}),
+        ...scope,
         ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
       },
       orderBy: { createdAt: "desc" },
@@ -61,7 +83,11 @@ export async function POST(req: NextRequest) {
   if (isNextResponse(auth)) return auth;
 
   try {
-    const { content, category, imageUrls, fileUrl, fileName } = await req.json();
+    const { content, category, imageUrls, fileUrl, fileName, courseId } = await req.json() as {
+      content?: string; category?: string;
+      imageUrls?: unknown; fileUrl?: string | null; fileName?: string | null;
+      courseId?: string | null;
+    };
 
     if (!content?.trim()) {
       return NextResponse.json({ error: "Nội dung không được để trống" }, { status: 400 });
@@ -69,11 +95,26 @@ export async function POST(req: NextRequest) {
     if (content.trim().length > 2000) {
       return NextResponse.json({ error: "Nội dung không được vượt quá 2000 ký tự" }, { status: 400 });
     }
-    if (!ALLOWED_CATEGORIES.includes(category)) {
+    if (!ALLOWED_CATEGORIES.includes(category as (typeof ALLOWED_CATEGORIES)[number])) {
       return NextResponse.json({ error: "Danh mục không hợp lệ" }, { status: 400 });
     }
     if (imageUrls && (!Array.isArray(imageUrls) || imageUrls.length > 4)) {
       return NextResponse.json({ error: "Tối đa 4 ảnh mỗi bài" }, { status: 400 });
+    }
+
+    // BE-071: validate courseId. Null hoặc không truyền = cộng đồng chung
+    // (giữ hành vi cũ, ai login đều post được). Có courseId = chỉ members
+    // của lớp đó (học viên Enrollment.active hoặc GVCN Course.ownerId) được
+    // post. Admin cấp trên (admin_super/admin_content) được post vào bất kỳ
+    // lớp nào — đồng bộ ownsResource mặc định "non-teacher adminRole bypass".
+    if (courseId) {
+      const canPost = await canPostInClass(auth.userId, courseId);
+      if (!canPost) {
+        return NextResponse.json(
+          { error: "Bạn phải là học viên của lớp hoặc giáo viên chủ chốt mới được đăng bài" },
+          { status: 403 },
+        );
+      }
     }
 
     const windowStart  = new Date(Date.now() - RATE_LIMIT_WINDOW);
@@ -91,13 +132,15 @@ export async function POST(req: NextRequest) {
       data: {
         content:   content.trim(),
         authorId:  auth.userId,
-        category,
-        imageUrls: imageUrls ?? [],
+        category:  category as string,
+        imageUrls: (imageUrls as string[] | undefined) ?? [],
         fileUrl:   fileUrl ?? null,
         fileName:  fileName ?? null,
+        courseId:  courseId ?? null,
       },
       include: {
         author:    { select: { id: true, name: true, role: true, adminRole: true } },
+        course:    { select: { id: true, name: true } },
         _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
         likes:     { where: { userId: auth.userId }, select: { userId: true } },
         bookmarks: { where: { userId: auth.userId }, select: { userId: true } },
@@ -124,6 +167,7 @@ function toDTO(userId: string, t: {
   imageUrls: string[]; fileUrl: string | null; fileName: string | null;
   createdAt: Date; updatedAt: Date;
   author:    { id: string; name: string; role: string; adminRole: string | null };
+  course:    { id: string; name: string } | null;
   _count:    { replies: number; likes: number };
   likes:     { userId: string }[];
   bookmarks: { userId: string }[];
@@ -142,9 +186,34 @@ function toDTO(userId: string, t: {
       name:      t.author.name,
       isTeacher: t.author.role === "admin",
     },
+    course:         t.course,
     likeCount:      t._count.likes,
     replyCount:     t._count.replies,
     likedByMe:      t.likes.some(l => l.userId === userId),
     bookmarkedByMe: t.bookmarks.some(b => b.userId === userId),
   };
+}
+
+// Có quyền ĐỌC threads của lớp — members (học viên active + GVCN) + admin
+// cấp trên. Khách (userId = "") luôn false. Admin_super/admin_content bỏ qua
+// kiểm tra Enrollment, nhất quán với ownsResource.
+async function canAccessClassThreads(userId: string, courseId: string): Promise<boolean> {
+  if (!userId) return false;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true } });
+  if (!user) return false;
+  if (user.adminRole === "admin_super" || user.adminRole === "admin_content") return true;
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
+  if (!course) return false;
+  if (course.ownerId === userId) return true; // GVCN
+  const enrolled = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } }, select: { status: true },
+  });
+  return enrolled?.status === ENROLLMENT_STATUS.ACTIVE;
+}
+
+// Có quyền ĐĂNG BÀI vào lớp — hiện tại giống canAccessClassThreads (học viên
+// active + GVCN + admin cấp trên). Tách hàm riêng để sau này nếu cần cho
+// post khó hơn read (vd học viên chỉ đọc, không đăng được) chỉ sửa 1 chỗ.
+async function canPostInClass(userId: string, courseId: string): Promise<boolean> {
+  return canAccessClassThreads(userId, courseId);
 }
