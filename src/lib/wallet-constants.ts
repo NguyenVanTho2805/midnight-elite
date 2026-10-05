@@ -22,7 +22,8 @@ export const MAX_REPLY_REWARDS_PER_DAY  = 5; // tối đa 5 reply được thư�
 export const COIN_SOURCE_TYPES = {
   TOPUP:              "topup",              // người dùng nạp tiền quy đổi ra xu
   REWARD:             "reward",              // thưởng từ hệ thống (signup, học bài, cộng đồng, chấp nhận trả lời)
-  CLASS_SUBSCRIPTION: "class_subscription", // trừ xu để mua gói lớp
+  CLASS_SUBSCRIPTION: "class_subscription", // (giữ cho tương thích) trừ xu để mua gói lớp — mô hình backlog gốc, hiện chưa dùng
+  TUTOR_SUBSCRIPTION: "tutor_subscription", // trừ xu để gia sư mua VIP (D01 chốt 05/10/2026)
   REFUND:             "refund",              // hoàn xu (huỷ gói, chấm điểm sai, v.v.)
   PENALTY:            "penalty",             // phạt (báo cáo trả lời vi phạm)
 } as const;
@@ -41,8 +42,9 @@ export const COIN_REASONS = {
   LESSON_REWARD:       "lesson_reward",         // thưởng khi hoàn thành bài học lần đầu
   THREAD_REWARD:       "thread_reward",         // thưởng khi đăng bài viết cộng đồng
   REPLY_REWARD:        "reply_reward",          // thưởng khi trả lời bài viết cộng đồng
-  CLASS_SUBSCRIPTION:  "class_subscription",    // trừ khi mua gói lớp
-  SUBSCRIPTION_REFUND: "subscription_refund",   // hoàn khi huỷ/sai gói lớp
+  CLASS_SUBSCRIPTION:  "class_subscription",    // (chưa dùng) trừ khi học viên mua gói lớp — backlog gốc
+  TUTOR_VIP_PURCHASE:  "tutor_vip_purchase",    // trừ khi gia sư mua VIP
+  SUBSCRIPTION_REFUND: "subscription_refund",   // hoàn khi huỷ/sai gói
 } as const;
 export type CoinReason = (typeof COIN_REASONS)[keyof typeof COIN_REASONS];
 
@@ -58,5 +60,6 @@ export const DEFAULT_SOURCE_TYPE_FOR_REASON: Partial<Record<CoinReason, CoinSour
   [COIN_REASONS.QUESTION_COST]:       COIN_SOURCE_TYPES.PENALTY,
   [COIN_REASONS.REPORT_PENALTY]:      COIN_SOURCE_TYPES.PENALTY,
   [COIN_REASONS.CLASS_SUBSCRIPTION]:  COIN_SOURCE_TYPES.CLASS_SUBSCRIPTION,
+  [COIN_REASONS.TUTOR_VIP_PURCHASE]:  COIN_SOURCE_TYPES.TUTOR_SUBSCRIPTION,
   [COIN_REASONS.SUBSCRIPTION_REFUND]: COIN_SOURCE_TYPES.REFUND,
 };
