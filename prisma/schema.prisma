@@ -60,6 +60,7 @@ model Course {
   classSchedules   ClassSchedule[]
   coinTransactions CoinTransaction[]
   threads          Thread[]
+  classInvites     ClassInvite[]
 
   @@index([ownerId])
   @@map("courses")
@@ -766,6 +767,7 @@ model User {
   parentLinksAsParent  ParentLink[] @relation("ParentLinks")
   parentLinksAsStudent ParentLink[] @relation("StudentLinks")
   auditLogs            AuditLog[]
+  createdClassInvites  ClassInvite[] @relation("ClassInviteCreator")
 
   @@map("users")
 }
@@ -845,6 +847,32 @@ model Enrollment {
   @@unique([userId, courseId])
   @@index([status])
   @@map("enrollments")
+}
+
+// ─── CLASS INVITE (BE-063 — 1.4.6) ────────────────────────────────────────────
+// Mã mời vào lớp do gia sư tạo. Dùng để học viên tự redeem (nhập tay hoặc theo
+// link) thay vì admin phải gán từng người. Khác ParentConsent.token (32 byte
+// hex, 1 lần dùng): ClassInvite.code là mã rút gọn 8 ký tự base32 (loại trừ
+// 0/1/I/O cho dễ đọc/gõ), có thể dùng nhiều lần tới `maxUses` và/hoặc tới
+// `expiresAt`.
+//
+// `revoked = true` giữ bản ghi để lịch sử — không xoá hẳn (BE-066).
+model ClassInvite {
+  id         String    @id @default(cuid())
+  courseId   String
+  code       String    @unique
+  maxUses    Int? // null = không giới hạn
+  usedCount  Int       @default(0)
+  expiresAt  DateTime? // null = không hết hạn
+  revoked    Boolean   @default(false)
+  createdBy  String
+  createdAt  DateTime  @default(now())
+
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator User   @relation("ClassInviteCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@map("class_invites")
 }
 
 // ─── PARENT LINKS & CONSENT ───────────────────────────────────────────────────
