@@ -34,7 +34,16 @@
   --brand-navy:     #0a1530;
   --brand-navy-mid: #1a2a52;
 
-  /* Border-radius scale */
+  /* ── Border-radius scale (FE-088) ───────────────────────────────────────
+     Dùng var(--radius-*) thay cho rounded-xl/2xl/3xl ngẫu nhiên trong các
+     trang (hiện lẫn lộn, không theo quy tắc). Quy ước:
+       xs (4) : chip, badge nhỏ
+       sm (6) : input chữ, nút cỡ nhỏ
+       md (8) : nút chuẩn, border card nhẹ
+       lg (12): card nhỏ, modal nội dung
+       xl (16): card chuẩn, section
+       xxl(20): card lớn, hero
+       full   : avatar, pill */
   --radius-xs:   4px;
   --radius-sm:   6px;
   --radius-md:   8px;
@@ -42,6 +51,59 @@
   --radius-xl:   16px;
   --radius-xxl:  20px;
   --radius-full: 9999px;
+
+  /* ── Spacing scale (FE-088) ─────────────────────────────────────────────
+     8-point grid cộng 4 cho micro gap. Dùng var(--space-*) khi style inline
+     (styled-jsx, CSS modules); với Tailwind util vẫn dùng m/p-{0..24} vì
+     Tailwind đã dùng cùng scale. Mục tiêu là CHỐT CON SỐ, không tự chế px. */
+  --space-0:   0;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+
+  /* ── Typography scale (FE-089) ──────────────────────────────────────────
+     Khớp Tailwind text-* mặc định nhưng CHỐT lại ở token để tránh tự chế
+     fontSize/lineHeight inline. Role suggest:
+       caption   = xs  (12/16)   — chip, badge, hint
+       body-sm   = sm  (14/20)   — nội dung phụ, bảng
+       body      = base(16/24)   — nội dung chính
+       body-lg   = lg  (18/28)   — nhấn mạnh
+       h5        = xl  (20/28)
+       h4        = 2xl (24/32)
+       h3        = 3xl (30/36)
+       h2        = 4xl (36/40)
+       h1        = 5xl (48/48)
+     Weight:
+       regular 400, medium 500, semibold 600, bold 700. Không dùng 800+ cho
+       body/UI (chỉ hero logo). */
+  --text-xs-size:    12px; --text-xs-lh:    16px;
+  --text-sm-size:    14px; --text-sm-lh:    20px;
+  --text-base-size:  16px; --text-base-lh:  24px;
+  --text-lg-size:    18px; --text-lg-lh:    28px;
+  --text-xl-size:    20px; --text-xl-lh:    28px;
+  --text-2xl-size:   24px; --text-2xl-lh:   32px;
+  --text-3xl-size:   30px; --text-3xl-lh:   36px;
+  --text-4xl-size:   36px; --text-4xl-lh:   40px;
+  --text-5xl-size:   48px; --text-5xl-lh:   48px;
+
+  --font-regular:  400;
+  --font-medium:   500;
+  --font-semibold: 600;
+  --font-bold:     700;
+
+  /* Letter-spacing: body hơi âm cho cảm giác tight, heading âm nhiều hơn. */
+  --tracking-tight:   -0.02em;
+  --tracking-normal:  -0.011em;
+  --tracking-wide:    0.01em;
 
   /* Notion elevation shadows */
   --shadow-0: none;
@@ -85,7 +147,44 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* FE-088/089: khai báo trong @theme để Tailwind v4 sinh utility tương ứng
+     (text-xs, rounded-xs, …). Phần `--text-*-size`/`--text-*-lh` ở :root
+     giữ nguyên cho CSS inline/CSS module dùng trực tiếp qua var(). Pair
+     `--text-xl: 20px; --text-xl--line-height: 28px` của Tailwind v4 là
+     ĐÚNG cú pháp sinh utility `text-xl` kèm line-height. */
+  --text-xs: 12px;   --text-xs--line-height: 16px;
+  --text-sm: 14px;   --text-sm--line-height: 20px;
+  --text-base: 16px; --text-base--line-height: 24px;
+  --text-lg: 18px;   --text-lg--line-height: 28px;
+  --text-xl: 20px;   --text-xl--line-height: 28px;
+  --text-2xl: 24px;  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;  --text-3xl--line-height: 36px;
+  --text-4xl: 36px;  --text-4xl--line-height: 40px;
+  --text-5xl: 48px;  --text-5xl--line-height: 48px;
+
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-xxl:  20px;
+  --radius-full: 9999px;
 }
+
+/* ── Role-based text class (FE-089) ───────────────────────────────────────
+   Dùng .text-h1..h5, .text-body, .text-body-sm, .text-body-lg, .text-caption
+   thay vì ghép Tailwind tự chế mỗi nơi 1 kiểu. Mục đích: khi đổi scale, chỉ
+   sửa 1 chỗ. Không ép dev dùng — mix với Tailwind util vẫn ok. */
+.text-caption { font-size: var(--text-xs-size); line-height: var(--text-xs-lh); font-weight: var(--font-medium); color: var(--steel); }
+.text-body-sm { font-size: var(--text-sm-size); line-height: var(--text-sm-lh); font-weight: var(--font-regular); }
+.text-body    { font-size: var(--text-base-size); line-height: var(--text-base-lh); font-weight: var(--font-regular); }
+.text-body-lg { font-size: var(--text-lg-size); line-height: var(--text-lg-lh); font-weight: var(--font-regular); }
+.text-h5 { font-size: var(--text-xl-size); line-height: var(--text-xl-lh); font-weight: var(--font-semibold); letter-spacing: var(--tracking-normal); }
+.text-h4 { font-size: var(--text-2xl-size); line-height: var(--text-2xl-lh); font-weight: var(--font-semibold); letter-spacing: var(--tracking-normal); }
+.text-h3 { font-size: var(--text-3xl-size); line-height: var(--text-3xl-lh); font-weight: var(--font-bold); letter-spacing: var(--tracking-tight); }
+.text-h2 { font-size: var(--text-4xl-size); line-height: var(--text-4xl-lh); font-weight: var(--font-bold); letter-spacing: var(--tracking-tight); }
+.text-h1 { font-size: var(--text-5xl-size); line-height: var(--text-5xl-lh); font-weight: var(--font-bold); letter-spacing: var(--tracking-tight); }
 
 html {
   /* Chỉ đặt overflow-x ở html (root scroller thật) — nếu đặt luôn ở body,
