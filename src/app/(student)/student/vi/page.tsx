@@ -9,7 +9,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui";
-import { MIN_TOPUP_VND, MAX_TOPUP_VND } from "@/lib/coinTopup";
+import { MIN_TOPUP_VND, MAX_TOPUP_VND } from "@/lib/coinTopup-constants";
 
 interface CoinTx { id: string; amount: number; reason: string; sourceType: string | null; createdAt: string; }
 interface TopupReq {
