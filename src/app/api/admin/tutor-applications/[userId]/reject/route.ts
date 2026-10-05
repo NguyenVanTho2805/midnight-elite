@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { notify } from "@/lib/notify";
+import { logAction } from "@/lib/auditLog";
 import { requireCenterAdmin, PENDING_TUTOR_WHERE } from "@/lib/tutorApplicationGuard";
 
 const REASON_MAX = 500;
@@ -9,7 +10,7 @@ const REASON_MAX = 500;
 // POST /api/admin/tutor-applications/[userId]/reject  { reason } (BE-053)
 // Từ chối đơn đang chờ, bắt buộc lý do. Tài khoản vẫn là học viên bình
 // thường, không bị khoá. Nộp lại đơn: chưa làm (chờ chốt C1.3).
-// logAction("tutor.reject") chưa gắn — AuditLog chưa có trên main (BE-082/085).
+// BE-085: ghi audit tutor.reject (AuditLog đã có trên main sau PR #14).
 export async function POST(req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
   const auth = await requireCenterAdmin();
   if (isNextResponse(auth)) return auth;
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ use
     if (!exists) return NextResponse.json({ error: "Không tìm thấy người dùng" }, { status: 404 });
     return NextResponse.json({ error: "Không có đơn gia sư đang chờ duyệt" }, { status: 409 });
   }
+
+  await logAction(auth.userId, "tutor.reject", "User", userId, { reason });
 
   await notify(userId, {
     type:    "tutor_rejected",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { logAction } from "@/lib/auditLog";
 
 const ALLOWED_ROLES       = ["admin", "student"] as const;
 const ALLOWED_ADMIN_ROLES = ["admin_super", "admin_content", "teacher"] as const;
@@ -29,7 +30,7 @@ export async function PUT(
   try {
     const target = await prisma.user.findUnique({
       where: { id },
-      select: { adminRole: true },
+      select: { adminRole: true, role: true },
     });
     if (!target) {
       return NextResponse.json({ error: "Không tìm thấy user" }, { status: 404 });
@@ -50,6 +51,7 @@ export async function PUT(
       }
     }
 
+    const previousRole = { role: (target as unknown as { role?: string }).role ?? null, adminRole: target.adminRole };
     const updated = await prisma.user.update({
       where: { id },
       data: {
@@ -58,6 +60,12 @@ export async function PUT(
       },
       select: { id: true, role: true, adminRole: true },
     });
+
+    // BE-085
+    await logAction(auth.userId, "user.role_change", "User", id, {
+      previousRole, newRole: { role: updated.role, adminRole: updated.adminRole },
+    });
+
     return NextResponse.json(updated);
   } catch (e: unknown) {
     if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025") {
