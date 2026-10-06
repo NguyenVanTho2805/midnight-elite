@@ -41,6 +41,12 @@ export default function RootLayout({
     <html
       lang="vi"
       className={`${sans.variable} ${spaceMono.variable} h-full scroll-smooth`}
+      // TK-165 (06/10/2026): mặc định chủ đề Navy. 5 chủ đề: navy / co-vit
+      // / man / ca-phe / muc. Khi hệ chủ đề theo tài khoản (TK-167) có,
+      // JSX này được thay bằng giá trị user đã chọn (set client-side,
+      // suppressHydrationWarning). Không đặt data-che-do → tự theo máy.
+      data-chu-de="navy"
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
           <GlobalDropGuard />
