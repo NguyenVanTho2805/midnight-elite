@@ -18,14 +18,27 @@ const PROVINCES = [
   "Tỉnh Tuyên Quang","Tỉnh Vĩnh Long",
 ];
 
+// FE-100 (06/10/2026): thêm chọn vai trò Học viên / Gia sư.
+type Role = "student" | "tutor";
+
+// Các môn gia sư có thể chọn khi đăng ký. Giữ danh sách ngắn — khi được
+// duyệt, gia sư có thể bổ sung từ /tutor-ho-so (BE-049).
+const TUTOR_SUBJECTS = [
+  "Toán", "Vật lý", "Hóa học", "Sinh học", "Ngữ văn", "Lịch sử",
+  "Địa lý", "Tiếng Anh", "Tin học", "GDCD", "Kỹ năng mềm", "Khác",
+];
+
 interface Step1Fields {
   name: string; phone: string; parentPhone: string; city: string; school: string;
+  // FE-100: field riêng của Gia sư — chỉ validate khi role === "tutor"
+  bio: string; subjects: string[];
 }
 interface Step2Fields {
   email: string; password: string; confirmPassword: string;
 }
 interface Step1Errors {
   name?: string; phone?: string; parentPhone?: string; city?: string; school?: string;
+  bio?: string; subjects?: string;
 }
 interface Step2Errors {
   email?: string; password?: string; confirmPassword?: string;
@@ -34,7 +47,7 @@ interface Step2Errors {
 function validatePhone(p: string) { return /^(0[3|5|7|8|9])[0-9]{8}$/.test(p.replace(/\s/g, "")); }
 function validateEmail(e: string)  { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()); }
 
-function validateStep1(f: Step1Fields): Step1Errors {
+function validateStep1(f: Step1Fields, role: Role): Step1Errors {
   const e: Step1Errors = {};
   if (!f.name.trim())        e.name = "Vui lòng nhập họ và tên";
   if (!f.phone.trim())       e.phone = "Vui lòng nhập số điện thoại có Zalo";
@@ -42,7 +55,14 @@ function validateStep1(f: Step1Fields): Step1Errors {
   if (f.parentPhone.trim() && !validatePhone(f.parentPhone))
                              e.parentPhone = "Số điện thoại không hợp lệ";
   if (!f.city)               e.city = "Vui lòng chọn tỉnh / thành phố";
-  if (!f.school.trim())      e.school = "Vui lòng nhập tên trường";
+  // Trường chỉ bắt buộc với học viên — gia sư không nhất thiết đang đi học.
+  if (role === "student" && !f.school.trim()) e.school = "Vui lòng nhập tên trường";
+  // Field riêng gia sư
+  if (role === "tutor") {
+    if (!f.bio.trim())                e.bio = "Vui lòng viết vài dòng giới thiệu";
+    else if (f.bio.trim().length < 30) e.bio = "Giới thiệu cần ít nhất 30 ký tự";
+    if (!f.subjects.length)           e.subjects = "Chọn ít nhất 1 môn dạy";
+  }
   return e;
 }
 
@@ -88,6 +108,7 @@ export default function DangKyPage() {
   useAuth();
 
   const [step, setStep]       = useState<1 | 2>(1);
+  const [role, setRole]       = useState<Role>("student"); // FE-100
   const [agreed, setAgreed]   = useState(false);
   const [showPass, setShowPass]       = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -96,17 +117,26 @@ export default function DangKyPage() {
   const [serverError, setServerError] = useState("");
   const [emailSent, setEmailSent]     = useState(true);
 
-  const [s1, setS1] = useState<Step1Fields>({ name: "", phone: "", parentPhone: "", city: "", school: "" });
+  const [s1, setS1] = useState<Step1Fields>({ name: "", phone: "", parentPhone: "", city: "", school: "", bio: "", subjects: [] });
   const [s2, setS2] = useState<Step2Fields>({ email: "", password: "", confirmPassword: "" });
   const [t1, setT1] = useState<Partial<Record<keyof Step1Fields, boolean>>>({});
   const [t2, setT2] = useState<Partial<Record<keyof Step2Fields, boolean>>>({});
 
-  const e1 = validateStep1(s1);
+  const e1 = validateStep1(s1, role);
   const e2 = validateStep2(s2);
   const strength = getPasswordStrength(s2.password);
 
-  function blurAll1() { setT1({ name: true, phone: true, city: true, school: true }); }
+  function blurAll1() {
+    setT1({ name: true, phone: true, city: true, school: true, bio: true, subjects: true });
+  }
   function blurAll2() { setT2({ email: true, password: true, confirmPassword: true }); }
+
+  function toggleSubject(s: string) {
+    setS1(p => ({
+      ...p,
+      subjects: p.subjects.includes(s) ? p.subjects.filter(x => x !== s) : [...p.subjects, s],
+    }));
+  }
 
   function goNext(ev: React.FormEvent) {
     ev.preventDefault();
@@ -121,18 +151,26 @@ export default function DangKyPage() {
     setSubmitting(true);
     setServerError("");
     try {
-      const res = await fetch("/api/auth/register", {
+      // FE-100: role tutor → /api/auth/register-tutor (BE-050) kèm bio +
+      // subjects; role student → /api/auth/register như cũ.
+      const endpoint = role === "tutor" ? "/api/auth/register-tutor" : "/api/auth/register";
+      const body: Record<string, unknown> = {
+        name:        s1.name.trim(),
+        phone:       s1.phone.replace(/\s/g, ""),
+        parentPhone: s1.parentPhone.replace(/\s/g, ""),
+        city:        s1.city,
+        school:      s1.school.trim(),
+        email:       s2.email.trim(),
+        password:    s2.password,
+      };
+      if (role === "tutor") {
+        body.bio = s1.bio.trim();
+        body.subjects = s1.subjects;
+      }
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name:        s1.name.trim(),
-          phone:       s1.phone.replace(/\s/g, ""),
-          parentPhone: s1.parentPhone.replace(/\s/g, ""),
-          city:        s1.city,
-          school:      s1.school.trim(),
-          email:       s2.email.trim(),
-          password:    s2.password,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) { setServerError(data.error ?? "Đăng ký thất bại"); return; }
@@ -247,7 +285,37 @@ export default function DangKyPage() {
           {/* ── BƯỚC 1 ── */}
           {step === 1 && (
             <form onSubmit={goNext} noValidate className="space-y-4">
-              <p className="text-sm font-semibold mb-1" style={{ color: "#37352f" }}>Thông tin học sinh</p>
+              {/* FE-100: chọn vai trò — 2 card bấm trước khi nhập thông tin.
+                  Mặc định là Học viên vì luồng chính; Gia sư là nhánh phụ dẫn
+                  sang /api/auth/register-tutor để tạo đơn pending. */}
+              <div>
+                <p className="text-sm font-semibold mb-2" style={{ color: "#37352f" }}>Bạn đăng ký với vai trò nào? *</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { v: "student", label: "Học viên",  desc: "Học thử & tham gia lớp" },
+                    { v: "tutor",   label: "Gia sư",    desc: "Mở lớp, dạy & hướng dẫn" },
+                  ] as const).map(opt => (
+                    <button key={opt.v} type="button" onClick={() => setRole(opt.v)}
+                      className="rounded-xl p-3 text-left transition-all"
+                      style={{
+                        background: role === opt.v ? "#dbeafe" : "#ffffff",
+                        border: `1px solid ${role === opt.v ? "#0068FF" : "#e5e3df"}`,
+                      }}>
+                      <p className="text-sm font-bold" style={{ color: role === opt.v ? "#0068FF" : "#1a1a1a" }}>{opt.label}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#787671" }}>{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+                {role === "tutor" && (
+                  <p className="text-xs mt-2" style={{ color: "#b45309" }}>
+                    Hồ sơ gia sư sẽ chờ admin duyệt (xác minh thông tin) trước khi mở lớp được.
+                  </p>
+                )}
+              </div>
+
+              <p className="text-sm font-semibold mb-1" style={{ color: "#37352f" }}>
+                {role === "tutor" ? "Thông tin gia sư" : "Thông tin học sinh"}
+              </p>
 
               {/* Họ và tên */}
               <div>
@@ -317,7 +385,10 @@ export default function DangKyPage() {
                   <FieldError msg={t1.city ? e1.city : undefined} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Tên trường *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>
+                    {role === "tutor" ? "Trường / nơi học/làm" : "Tên trường *"}
+                    {role === "tutor" && <span className="ml-1 font-normal" style={{ color: "#a4a097" }}>(tuỳ chọn)</span>}
+                  </label>
                   <div className="relative">
                     <input type="text" placeholder="THPT Chu Văn An" value={s1.school}
                       onChange={e => setS1(p => ({ ...p, school: e.target.value }))}
@@ -331,6 +402,44 @@ export default function DangKyPage() {
                   <FieldError msg={t1.school ? e1.school : undefined} />
                 </div>
               </div>
+
+              {/* FE-100: Field riêng Gia sư — bio + subjects. Render inline
+                  thay vì tạo step riêng để giữ 2-bước gọn và cùng UX. */}
+              {role === "tutor" && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>
+                      Giới thiệu bản thân *
+                      <span className="ml-1 font-normal" style={{ color: "#a4a097" }}>(ít nhất 30 ký tự)</span>
+                    </label>
+                    <textarea rows={3} value={s1.bio}
+                      onChange={e => setS1(p => ({ ...p, bio: e.target.value }))}
+                      onBlur={() => setT1(p => ({ ...p, bio: true }))}
+                      placeholder="VD: Mình là sinh viên năm 3 ĐHSP, kinh nghiệm 2 năm dạy Toán 12 ôn ĐGNL..."
+                      className="notion-input w-full text-sm" style={{ color: "#1a1a1a",
+                        borderColor: t1.bio && e1.bio ? "#fca5a5" : t1.bio && !e1.bio ? "#86efac" : undefined }} />
+                    <FieldError msg={t1.bio ? e1.bio : undefined} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Môn dạy *</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TUTOR_SUBJECTS.map(s => {
+                        const picked = s1.subjects.includes(s);
+                        return (
+                          <button key={s} type="button" onClick={() => toggleSubject(s)}
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                            style={picked
+                              ? { background: "#0068FF", color: "#ffffff" }
+                              : { background: "#ffffff", color: "#37352f", border: "1px solid #e5e3df" }}>
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <FieldError msg={t1.subjects ? e1.subjects : undefined} />
+                  </div>
+                </>
+              )}
 
               <button type="submit"
                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all mt-2"
