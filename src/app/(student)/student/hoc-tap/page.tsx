@@ -1,3 +1,9 @@
+// FE-129 (06/10/2026): redesign /student/hoc-tap theo design system 2.1
+// (PR #22/#23 merged). Giữ nguyên chức năng — chỉ thay:
+//   - Loading inline → SkeletonBlock variants card
+//   - Error inline → ErrorState component
+//   - rounded-xl/2xl ad-hoc → token rounded-lg/xl/xxl thống nhất
+//   - text-sm/base/lg → text-body/body-sm từ typography scale
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useMemo, Suspense } from "react";
@@ -6,6 +12,7 @@ import { ChevronDown, Play, Eye, Lock, ArrowRight, BookOpen } from "griddy-icons
 import { useProgress } from "@/hooks/useProgress";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { parseLessonType } from "@/lib/types";
+import { SkeletonBlock, ErrorState } from "@/components/ui";
 
 interface Lesson {
   id: string; code: string; title: string; type: string;
@@ -109,14 +116,13 @@ function HocTapContent() {
   if (loading || progressLoading || enrollmentsLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-7 w-48 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
-        <div className="h-24 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
-        {[1,2,3].map(i => (
-          <div key={i} className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
-            <div className="h-10 animate-pulse" style={{ background: "#f6f5f4" }} />
-            {[1,2,3].map(j => (
-              <div key={j} className="h-12 mx-4 my-2 rounded-lg animate-pulse" style={{ background: "#f0ede9" }} />
-            ))}
+        <SkeletonBlock variant="text" lines={1} className="w-48" />
+        <SkeletonBlock variant="card" />
+        {[1, 2, 3].map(i => (
+          <div key={i} className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--hairline)" }}>
+            <SkeletonBlock variant="table-row" />
+            <SkeletonBlock variant="table-row" />
+            <SkeletonBlock variant="table-row" />
           </div>
         ))}
       </div>
@@ -125,9 +131,16 @@ function HocTapContent() {
 
   if (error || !course) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <p className="text-sm" style={{ color: "#DC2626" }}>{error || "Không tìm thấy khóa học"}</p>
-        <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Khóa học</Link>
+      <div className="py-16">
+        <ErrorState
+          message={error || "Không tìm thấy khóa học — có thể bạn đã rời lớp hoặc lớp đã đóng."}
+          onRetry={() => router.refresh()}
+        />
+        <div className="text-center mt-4">
+          <Link href="/khoa-hoc" className="text-body-sm font-semibold" style={{ color: "#0068FF" }}>
+            ← Về danh sách khóa học
+          </Link>
+        </div>
       </div>
     );
   }
