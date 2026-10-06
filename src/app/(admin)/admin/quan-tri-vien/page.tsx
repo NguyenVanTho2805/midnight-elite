@@ -258,13 +258,14 @@ export default function QuanTriVienPage() {
                               {busy ? "..." : "Thêm Admin Cấp 2"}
                             </button>
                           )}
-                          {!isAdmin && (
-                            <button onClick={() => changeRole(u.id, "admin", "teacher")} disabled={busy}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
-                              {busy ? "..." : "Thêm Giáo viên"}
-                            </button>
-                          )}
+                          {/* BE-054 (chốt 06/10/2026): bỏ nút "Thêm Giáo viên" ở
+                              /admin/quan-tri-vien. 1.4.4 TutorProfile đã hoàn chỉnh —
+                              gia sư tự nộp đơn qua POST /api/users/me/tutor-apply
+                              (BE-050) và admin duyệt ở /admin/tutor-applications
+                              (approve BE-052 / reject BE-053). Không còn đường "nâng
+                              user bất kỳ thành gia sư" vì bỏ bước thẩm định hồ sơ.
+                              Giữ nút "Thêm Admin Cấp 2" ở trên cho việc nâng Content
+                              Admin — khác hẳn luồng gia sư. */}
                           {isAdmin && isTeacher && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
