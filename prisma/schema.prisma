@@ -61,6 +61,7 @@ model Course {
   coinTransactions CoinTransaction[]
   threads          Thread[]
   classInvites     ClassInvite[]
+  attendanceSessions AttendanceSession[]
 
   @@index([ownerId])
   @@map("courses")
@@ -770,6 +771,8 @@ model User {
   createdClassInvites  ClassInvite[] @relation("ClassInviteCreator")
   topupRequests        CoinTopupRequest[] @relation("TopupRequests")
   topupReviews         CoinTopupRequest[] @relation("TopupRequestReviews")
+  attendanceSessions   AttendanceSession[] @relation("AttendanceSessionCreator")
+  attendanceRecords    AttendanceRecord[]  @relation("AttendanceRecordStudent")
 
   @@map("users")
 }
@@ -849,6 +852,53 @@ model Enrollment {
   @@unique([userId, courseId])
   @@index([status])
   @@map("enrollments")
+}
+
+// ─── ATTENDANCE (AS-191, chốt 06/10/2026) ─────────────────────────────────────
+// Điểm danh theo buổi. 5 trạng thái:
+//   "present"  → hệ số 1    (có mặt)
+//   "late"     → hệ số 0.9  (muộn, GD-05)
+//   "excused"  → hệ số 0.8  (nghỉ có phép)
+//   "absent"   → hệ số 0.5  (vắng không phép)
+//   (không có record)       → không tính (GD-06 "chưa điểm danh")
+//
+// Hệ số áp dụng cho CHUYÊN CẦN (NV-186), KHÔNG trừ học phí (D01 chốt
+// "vắng không trừ tiền" — mục 3 trong quyet-dinh-giao-dien-va-hoc-phi.md:
+// buổi nào cũng có bản ghi để xem lại).
+
+model AttendanceSession {
+  id         String   @id @default(cuid())
+  courseId   String
+  date       DateTime // ngày buổi học — unique với courseId để tránh trùng
+  note       String?  @db.Text
+  createdBy  String   // gia sư tạo (userId)
+  createdAt  DateTime @default(now())
+
+  course   Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator  User                @relation("AttendanceSessionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  records  AttendanceRecord[]
+
+  @@unique([courseId, date])
+  @@index([courseId, date])
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  id         String   @id @default(cuid())
+  sessionId  String
+  userId     String   // học viên
+  status     String   // "present" | "late" | "excused" | "absent"
+  note       String?  @db.Text
+  updatedBy  String?  // userId gia sư cập nhật lần cuối
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   User              @relation("AttendanceRecordStudent", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("attendance_records")
 }
 
 // ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────
