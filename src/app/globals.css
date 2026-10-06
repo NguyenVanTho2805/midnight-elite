@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* TK-165 (06/10/2026): token KiN của Thanh — 284 dòng gồm:
+   - 50+ biến --kin-* (màu nền/viền/chữ, trạng thái, khoảng cách, bo).
+   - 5 chủ đề navy / co-vit / man / ca-phe / muc × sáng/tối.
+   - [data-vung="phong-thi"] khoá cứng Navy (TK-168 — luật 4: cổ vịt gần
+     màu "đúng" 53 đơn vị RGB, học sinh đọc nhầm; phòng thi phải nhất
+     quán giữa mọi người).
+
+   Mọi code KiN mới dùng var(--kin-*) thay cho mã màu hardcode.
+   Các style cũ (Midnight Elite) giữ var(--canvas), --ink, --radius-*
+   của tokens cũ dưới đây — migrate dần. */
+@import "./kin-tokens.css";
+
 :root {
   /* ── TSIX Brand colors (unchanged) ────────────────────────────── */
   --color-primary: #0068FF;
