@@ -1,8 +1,11 @@
+// FE-129 (06/10/2026): redesign /student/lich-hoc theo design system 2.1.
+// Giữ nguyên logic; thay skeleton inline bằng component SkeletonBlock.
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { Calendar, Alarm, Edit, Play } from "griddy-icons";
 import type { ScheduleEvent } from "@/app/api/schedule/route";
+import { SkeletonBlock } from "@/components/ui";
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -197,10 +200,9 @@ export default function LichHocPage() {
       {/* Events list */}
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl p-4 animate-pulse"
-              style={{ background: "#f6f5f4", border: "1px solid #e5e3df", height: 88 }} />
-          ))}
+          <SkeletonBlock variant="card" />
+          <SkeletonBlock variant="card" />
+          <SkeletonBlock variant="card" />
         </div>
       ) : Object.keys(grouped).length === 0 ? (
         <div className="rounded-xl p-10 text-center"
