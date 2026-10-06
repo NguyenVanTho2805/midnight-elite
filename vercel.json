@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/expire-tutor-subscriptions",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/remind-class-sessions",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

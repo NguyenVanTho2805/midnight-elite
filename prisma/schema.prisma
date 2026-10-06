@@ -854,6 +854,29 @@ model Enrollment {
   @@map("enrollments")
 }
 
+// ─── CLASS REMINDER (AS-194, chốt 06/10/2026) ─────────────────────────────────
+// Nhắc lịch học qua Google Meet. Spec:
+// docs/kin/quyet-dinh-giao-dien-va-hoc-phi.md + AS-194 note của Thanh:
+//   - Giờ học 22:15, 90 phút.
+//   - Nhắc 24h trước (gửi 21:30 ngày trước), 1h trước (21:15 cùng ngày),
+//     30 phút trước (báo cả trong giờ yên lặng — GD-12).
+//
+// Model ClassReminderLog để dedupe — cron chạy 15 phút/lần, mỗi mốc rơi
+// trong khoảng ±10 phút quanh thời điểm, ClassReminderLog ngăn gửi lại
+// khi cron trùng khung.
+model ClassReminderLog {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  sessionAt DateTime // mốc buổi học thực (UTC)
+  kind      String // "24h" | "1h" | "30m"
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, courseId, sessionAt, kind])
+  @@index([sessionAt])
+  @@map("class_reminder_logs")
+}
+
 // ─── ATTENDANCE (AS-191, chốt 06/10/2026) ─────────────────────────────────────
 // Điểm danh theo buổi. 5 trạng thái:
 //   "present"  → hệ số 1    (có mặt)
