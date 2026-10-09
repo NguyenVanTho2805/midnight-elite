@@ -1030,7 +1030,12 @@ model ParentLink {
   // (gia sư copy link gửi Zalo), có thể revoke bằng cách set NULL. Chỉ bật
   // khi status = "verified". KHÔNG có hạn tự động — gia sư chủ động revoke
   // khi em nghỉ lớp, tránh phụ huynh phàn nàn "sao hết link rồi".
-  portalToken String? @unique
+  //
+  // KHÔNG @unique: Prisma coi việc thêm UNIQUE lên cột cũ là "data loss"
+  // nên db push yêu cầu --accept-data-loss, kẹt production build. Entropy
+  // 128 bit từ generatePortalToken (16 bytes random) đã đủ chống trùng
+  // trong thực tế. @@index để query token nhanh.
+  portalToken String?
 
   parent  User @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
   student User @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
@@ -1039,6 +1044,7 @@ model ParentLink {
 
   @@unique([parentId, studentId])
   @@index([studentId])
+  @@index([portalToken])
   @@map("parent_links")
 }
 
