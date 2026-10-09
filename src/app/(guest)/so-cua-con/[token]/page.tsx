@@ -21,8 +21,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
 
   const link = await (prisma as unknown as {
     parentLink: {
-      findUnique(args: {
-        where: { portalToken: string };
+      findFirst(args: {
+        where: { portalToken: string; status: string };
         include: { student: { select: { id: true; name: true; school: true } }; parent: { select: { name: true } } };
       }): Promise<null | {
         id: string;
@@ -31,14 +31,14 @@ export default async function SoCuaConPage({ params }: PageProps) {
         parent: { name: string };
       }>;
     };
-  }).parentLink.findUnique({
-    where: { portalToken: token },
+  }).parentLink.findFirst({
+    where: { portalToken: token, status: "verified" },
     include: {
       student: { select: { id: true, name: true, school: true } },
       parent:  { select: { name: true } },
     },
   });
-  if (!link || link.status !== "verified") notFound();
+  if (!link) notFound();
 
   const studentId = link.student.id;
   const ym = currentYearMonth();

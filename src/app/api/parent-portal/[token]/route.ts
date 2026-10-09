@@ -35,10 +35,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   }
 
   // Query ParentLink theo token. Chỉ chấp nhận status = "verified".
+  // findFirst (không @unique vì tránh prisma db push data-loss trên
+  // production) — entropy 128 bit đã chống trùng; nếu trùng, trả bản
+  // ghi đầu tiên khớp status verified là an toàn (không có bản ghi khác
+  // được tạo ra qua đường chính thức).
   const link = await (prisma as unknown as {
     parentLink: {
-      findUnique(args: {
-        where: { portalToken: string };
+      findFirst(args: {
+        where: { portalToken: string; status: string };
         include: { student: { select: { id: true; name: true; school: true } }; parent: { select: { name: true } } };
       }): Promise<null | {
         id: string;
@@ -49,15 +53,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
         parent: { name: string };
       }>;
     };
-  }).parentLink.findUnique({
-    where: { portalToken: token },
+  }).parentLink.findFirst({
+    where: { portalToken: token, status: "verified" },
     include: {
       student: { select: { id: true, name: true, school: true } },
       parent:  { select: { name: true } },
     },
   });
 
-  if (!link || link.status !== "verified") {
+  if (!link) {
     return NextResponse.json({ error: "Mã không hợp lệ hoặc đã bị thu hồi" }, { status: 404 });
   }
 
