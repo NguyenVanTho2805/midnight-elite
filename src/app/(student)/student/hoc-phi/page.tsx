@@ -159,8 +159,10 @@ export default function HocPhiPage() {
               style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
               <p className="text-body-sm font-semibold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Chuyển khoản qua VietQR</p>
               <div className="flex flex-col sm:flex-row items-center gap-4">
+                {/* TK-182 (09/10/2026): mobile co nhỏ QR xuống còn 44 (w-44 h-44 = 176px)
+                    để không chiếm toàn bộ chiều cao điện thoại; desktop giữ 224px. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="VietQR" className="w-56 h-56 flex-shrink-0 rounded-lg"
+                <img src={qrUrl} alt="VietQR" className="w-44 h-44 sm:w-56 sm:h-56 flex-shrink-0 rounded-lg"
                   style={{ border: "1px solid var(--kin-vien-nhat)" }} />
                 <div className="text-body-sm space-y-1" style={{ color: "var(--kin-chu-phu)" }}>
                   <p>Ngân hàng: <b>{KIN_BANK.accountName}</b></p>
