@@ -13,6 +13,10 @@
 # testing
 /coverage
 
+# scratchpad — session-local test harness (chạy ./npx tsx scratchpad/*.ts)
+# không commit vào repo, mỗi session Claude tự dựng.
+/scratchpad
+
 # next.js
 /.next/
 /out/
