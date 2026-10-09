@@ -242,12 +242,18 @@ function RosterRowView({ r, index, onPick }: {
           const picked = r.status === s;
           const c = CHIP_COLORS[s];
           return (
+            // TK-182 (09/10/2026): mobile <sm giấu hệ số (×1.0) để 4 nút
+            // vào vừa 1 hàng. Vẫn giữ aria-label cho screen reader +
+            // tooltip title cho desktop hover.
             <button key={s} type="button" onClick={() => onPick(r.userId, s)}
-              className="px-2.5 py-1.5 rounded-lg text-caption font-semibold whitespace-nowrap"
+              title={`${ATTENDANCE_LABEL[s]} (hệ số ×${ATTENDANCE_COEFFICIENT[s]})`}
+              aria-label={`${ATTENDANCE_LABEL[s]} hệ số ${ATTENDANCE_COEFFICIENT[s]}`}
+              className="px-2.5 py-1.5 rounded-lg text-caption font-semibold whitespace-nowrap min-h-[44px] sm:min-h-0"
               style={picked
                 ? { background: c.bg, color: c.fg }
                 : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
-              {ATTENDANCE_LABEL[s]} · ×{ATTENDANCE_COEFFICIENT[s]}
+              {ATTENDANCE_LABEL[s]}
+              <span className="hidden sm:inline"> · ×{ATTENDANCE_COEFFICIENT[s]}</span>
             </button>
           );
         })}
