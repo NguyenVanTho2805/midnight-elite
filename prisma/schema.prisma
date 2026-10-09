@@ -60,7 +60,8 @@ model Course {
   classSchedules   ClassSchedule[]
   coinTransactions CoinTransaction[]
   threads          Thread[]
-  classInvites     ClassInvite[]
+  classInvites       ClassInvite[]
+  monthlyFees        MonthlyCourseFee[]
   attendanceSessions AttendanceSession[]
 
   @@index([ownerId])
@@ -771,6 +772,9 @@ model User {
   createdClassInvites  ClassInvite[] @relation("ClassInviteCreator")
   topupRequests        CoinTopupRequest[] @relation("TopupRequests")
   topupReviews         CoinTopupRequest[] @relation("TopupRequestReviews")
+  monthlyCourseFeesUpdated MonthlyCourseFee[] @relation("MonthlyCourseFeeUpdater")
+  tuitionOverride      TuitionOverride?   @relation("TuitionOverrideUser")
+  tuitionOverridesUpdated TuitionOverride[] @relation("TuitionOverrideUpdater")
   attendanceSessions   AttendanceSession[] @relation("AttendanceSessionCreator")
   attendanceRecords    AttendanceRecord[]  @relation("AttendanceRecordStudent")
 
@@ -860,21 +864,51 @@ model Enrollment {
 //   - Giờ học 22:15, 90 phút.
 //   - Nhắc 24h trước (gửi 21:30 ngày trước), 1h trước (21:15 cùng ngày),
 //     30 phút trước (báo cả trong giờ yên lặng — GD-12).
-//
-// Model ClassReminderLog để dedupe — cron chạy 15 phút/lần, mỗi mốc rơi
-// trong khoảng ±10 phút quanh thời điểm, ClassReminderLog ngăn gửi lại
-// khi cron trùng khung.
 model ClassReminderLog {
   id        String   @id @default(cuid())
   userId    String
   courseId  String
-  sessionAt DateTime // mốc buổi học thực (UTC)
-  kind      String // "24h" | "1h" | "30m"
+  sessionAt DateTime
+  kind      String
   sentAt    DateTime @default(now())
 
   @@unique([userId, courseId, sessionAt, kind])
   @@index([sessionAt])
   @@map("class_reminder_logs")
+}
+
+// ─── TUITION (AS-192 + AS-193, chốt 06/10/2026) ───────────────────────────────
+model MonthlyCourseFee {
+  id           String   @id @default(cuid())
+  courseId     String
+  yearMonth    String
+  sessionCount Int
+  freeCount    Int      @default(0)
+  updatedBy    String
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  updater User   @relation("MonthlyCourseFeeUpdater", fields: [updatedBy], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, yearMonth])
+  @@index([yearMonth])
+  @@map("monthly_course_fees")
+}
+
+model TuitionOverride {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  pricePerSession Int
+  note            String?  @db.Text
+  updatedBy       String
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  user    User @relation("TuitionOverrideUser", fields: [userId], references: [id], onDelete: Cascade)
+  updater User @relation("TuitionOverrideUpdater", fields: [updatedBy], references: [id], onDelete: Cascade)
+
+  @@map("tuition_overrides")
 }
 
 // ─── ATTENDANCE (AS-191, chốt 06/10/2026) ─────────────────────────────────────
