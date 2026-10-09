@@ -1029,6 +1029,13 @@ model ParentLink {
   verifiedAt DateTime?
   createdAt  DateTime  @default(now())
 
+  // TK-178 (09/10/2026): token xem "Sổ của con" không cần đăng nhập, cho
+  // phụ huynh chưa đăng ký tài khoản xem báo cáo của con. Token sinh 1 lần
+  // (gia sư copy link gửi Zalo), có thể revoke bằng cách set NULL. Chỉ bật
+  // khi status = "verified". KHÔNG có hạn tự động — gia sư chủ động revoke
+  // khi em nghỉ lớp, tránh phụ huynh phàn nàn "sao hết link rồi".
+  portalToken String? @unique
+
   parent  User @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
   student User @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
 

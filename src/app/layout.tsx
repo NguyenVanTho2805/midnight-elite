@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import { GlobalDropGuard } from "@/components/GlobalDropGuard";
 import { ToastProvider } from "@/components/ui";
+import { ThemeApplier } from "@/components/ThemeApplier";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -49,6 +50,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
+          <ThemeApplier />
           <GlobalDropGuard />
           <AuthProvider>
             <ToastProvider>{children}</ToastProvider>
