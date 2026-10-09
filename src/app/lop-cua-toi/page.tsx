@@ -40,7 +40,8 @@ export default async function LopCuaToiPage() {
   ]);
 
   const items = session.role === "admin"
-    ? owned.map(c => ({ id: c.id, name: c.name, category: c.category, hrefOpen: `/admin/khoa-hoc/${c.id}`,
+    ? owned.map(c => ({ id: c.id, name: c.name, category: c.category,
+         hrefOpen: `/lop-cua-toi/${c.id}`,
          actions: [
            { label: "Điểm danh",  href: `/admin/khoa-hoc/${c.id}/diem-danh` },
            { label: "Danh sách HS", href: `/admin/khoa-hoc/${c.id}/hoc-vien` },
@@ -48,7 +49,7 @@ export default async function LopCuaToiPage() {
          subtitle: c.status ? "Đang mở" : "Đã đóng",
       }))
     : enrolled.map(e => ({ id: e.course.id, name: e.course.name, category: e.course.category,
-         hrefOpen: `/student/hoc-tap`,
+         hrefOpen: `/lop-cua-toi/${e.course.id}`,
          actions: [
            { label: "Lịch học",   href: "/student/lich-hoc" },
            { label: "Học phí",    href: "/student/hoc-phi" },
