@@ -858,26 +858,33 @@ model Enrollment {
   @@map("enrollments")
 }
 
-// ─── TUITION (AS-192 + AS-193, chốt 06/10/2026) ───────────────────────────────
-// Học phí tính THEO THÁNG, không theo buổi có mặt. Spec:
-// docs/kin/quyet-dinh-giao-dien-va-hoc-phi.md mục 3.
-//
-// Công thức:
-//   Đơn giá/buổi = tier theo tổng số môn em đăng ký (1 môn 70k, 2 môn 60k,
-//                   3 môn 55k, 4 môn 50k) — có thể override per-user.
-//   Học phí gốc  = Σ theo môn: (sessionCount − freeCount) × đơn giá
-//   Phải đóng    = gốc − học bổng − giảm trừ (sàn 0)
-//
-// Vắng KHÔNG trừ tiền (D01). Attendance (AS-191) dùng cho chuyên cần, không
-// cho học phí.
+// ─── CLASS REMINDER (AS-194, chốt 06/10/2026) ─────────────────────────────────
+// Nhắc lịch học qua Google Meet. Spec:
+// docs/kin/quyet-dinh-giao-dien-va-hoc-phi.md + AS-194 note của Thanh:
+//   - Giờ học 22:15, 90 phút.
+//   - Nhắc 24h trước (gửi 21:30 ngày trước), 1h trước (21:15 cùng ngày),
+//     30 phút trước (báo cả trong giờ yên lặng — GD-12).
+model ClassReminderLog {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  sessionAt DateTime
+  kind      String
+  sentAt    DateTime @default(now())
 
+  @@unique([userId, courseId, sessionAt, kind])
+  @@index([sessionAt])
+  @@map("class_reminder_logs")
+}
+
+// ─── TUITION (AS-192 + AS-193, chốt 06/10/2026) ───────────────────────────────
 model MonthlyCourseFee {
   id           String   @id @default(cuid())
   courseId     String
-  yearMonth    String // "YYYY-MM" — tránh timezone + dễ query
-  sessionCount Int // số buổi của môn/lớp này trong tháng
-  freeCount    Int      @default(0) // số buổi miễn phí (trial, bù)
-  updatedBy    String // userId gia sư cập nhật
+  yearMonth    String
+  sessionCount Int
+  freeCount    Int      @default(0)
+  updatedBy    String
   updatedAt    DateTime @updatedAt
   createdAt    DateTime @default(now())
 
@@ -889,9 +896,6 @@ model MonthlyCourseFee {
   @@map("monthly_course_fees")
 }
 
-// Override đơn giá/buổi cho 1 học viên — bỏ qua tier bậc thang. VD HS khó
-// khăn được giảm xuống 40k/buổi dù đăng ký 2 môn (vẫn 60k theo tier). Set
-// null hoặc xoá bản ghi để quay về tier.
 model TuitionOverride {
   id              String   @id @default(cuid())
   userId          String   @unique
