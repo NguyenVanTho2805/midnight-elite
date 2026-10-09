@@ -1,3 +1,5 @@
+// TK-170 — màn đăng nhập theo thiết kế KiN (Figma 32:2).
+// Dùng var(--kin-*) + text-h4/body-sm/caption nhất quán tokens.
 "use client";
 
 import Link from "next/link";
@@ -42,84 +44,89 @@ export default function DangNhapPage() {
   if (isLoading) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12"
+      style={{ background: "var(--kin-nen-bang)" }}>
       <div className="w-full max-w-md">
-
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>Midnight Elite</span>
-            <span className="text-xs" style={{ color: "#a4a097" }}>Education Platform</span>
+            <span className="text-h3" style={{ color: "var(--kin-th-navy)", letterSpacing: "-0.5px" }}>KiN</span>
+            <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Sổ lớp cho gia sư</span>
           </Link>
-          <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Chào mừng trở lại</h1>
-          <p className="text-sm" style={{ color: "#787671" }}>Đăng nhập để tiếp tục học</p>
+          <h1 className="text-h4 mt-6 mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Chào mừng trở lại</h1>
+          <p className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Đăng nhập để tiếp tục</p>
         </div>
 
-        {/* Form card — Notion flat style */}
-        <div className="rounded-xl p-8" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+        {/* Form card */}
+        <div className="rounded-xl p-8"
+          style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "0 4px 12px rgba(15,15,15,0.08)" }}>
           <form onSubmit={handleSubmit} className="space-y-4">
-
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Email</label>
+              <label className="block text-caption font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Email</label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="ten@gmail.com" autoComplete="email"
-                className="notion-input w-full text-sm"
-                style={{ color: "#1a1a1a" }}
+                className="w-full px-3 py-2.5 text-body-sm rounded-lg focus:outline-none"
+                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-o-nhap)" }}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>Mật khẩu</label>
+              <label className="block text-caption font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPass ? "text" : "password"} value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" autoComplete="current-password"
-                  className="notion-input w-full text-sm pr-14"
-                  style={{ color: "#1a1a1a" }}
+                  className="w-full px-3 py-2.5 text-body-sm rounded-lg focus:outline-none pr-14"
+                  style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-o-nhap)" }}
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-3 text-xs font-medium" style={{ color: "#a4a097" }}>
+                  className="absolute right-3 top-3 text-caption font-medium"
+                  style={{ color: "var(--kin-chu-mo)" }}>
                   {showPass ? "Ẩn" : "Hiện"}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="px-4 py-3 rounded-lg text-sm font-medium" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}>
+              <div className="px-4 py-3 rounded-lg text-body-sm font-medium"
+                style={{ background: "#fee2e2", color: "var(--kin-tt-chu-loi)", border: "1px solid #fecaca" }}>
                 {error}
               </div>
             )}
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: "#787671" }}>
+              <label className="flex items-center gap-2 text-caption cursor-pointer" style={{ color: "var(--kin-chu-mo)" }}>
                 <input type="checkbox" className="rounded" />
                 Ghi nhớ đăng nhập
               </label>
-              <Link href="/quen-mat-khau" className="text-xs font-medium" style={{ color: "#0068FF" }}>
+              <Link href="/quen-mat-khau" className="text-caption font-medium" style={{ color: "var(--kin-th-xanh-link)" }}>
                 Quên mật khẩu?
               </Link>
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all"
-              style={{
-                background: submitting ? "#bbb8b1" : "#0068FF",
-                borderRadius: "8px",
-              }}
-            >
+            <button type="submit" disabled={submitting}
+              className="w-full py-2.5 rounded-lg text-body-sm font-semibold transition-all disabled:opacity-60"
+              style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }}>
               {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
 
-          <p className="text-center text-sm mt-6" style={{ color: "#787671" }}>
+          <p className="text-center text-body-sm mt-6" style={{ color: "var(--kin-chu-mo)" }}>
             Chưa có tài khoản?{" "}
-            <Link href="/dang-ky" className="font-semibold" style={{ color: "#0068FF" }}>Đăng ký ngay</Link>
+            <Link href="/dang-ky" className="font-semibold" style={{ color: "var(--kin-th-xanh-link)" }}>Đăng ký ngay</Link>
           </p>
         </div>
+
+        {/* Vào lớp qua mã mời (link ngắn ngay dưới card — TK-170 "nhập mã mời") */}
+        <p className="text-center text-body-sm mt-6" style={{ color: "var(--kin-chu-mo)" }}>
+          Đã có tài khoản và có mã mời lớp?{" "}
+          <Link href="/dang-nhap?redirect=/student/nhap-ma-lop"
+            className="font-semibold" style={{ color: "var(--kin-th-xanh-link)" }}>
+            Vào bằng mã mời
+          </Link>
+        </p>
       </div>
     </div>
   );
