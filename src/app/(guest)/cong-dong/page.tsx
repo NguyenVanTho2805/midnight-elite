@@ -235,17 +235,23 @@ function MediaPicker({ images, file, onImages, onFile, disabled }: {
 
 // ─── GUEST CTA ────────────────────────────────────────────────────────────────
 
+// TK-175 (09/10/2026): áp tokens KiN cho CTA đăng nhập. GD-26: ai
+// cũng xem bài Công khai không cần đăng nhập; nhưng cổ vũ, bình luận,
+// hỏi, đăng, nhắn phải đăng nhập — nên vẫn giữ CTA nổi bật trên cùng
+// cho người chưa đăng nhập.
 function GuestPostCTA() {
   return (
-    <div className="rounded-xl border px-4 py-4 flex items-center justify-between gap-3"
-      style={{ background: "#ffffff", borderColor: "#e5e3df" }}>
+    <div className="rounded-xl px-4 py-4 flex items-center justify-between gap-3"
+      style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div>
-        <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Tham gia cộng đồng</p>
-        <p className="text-xs mt-0.5" style={{ color: "#787671" }}>Đăng nhập để chia sẻ bài viết, hỏi đáp và nhận xu thưởng</p>
+        <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Tham gia cộng đồng</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>
+          Xem thoải mái. Đăng bài, hỏi, bình luận cần đăng nhập.
+        </p>
       </div>
       <Link href="/dang-nhap?redirect=/cong-dong"
-        className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-        style={{ background: "#0068FF" }}>
+        className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold"
+        style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
         Đăng nhập
       </Link>
     </div>
