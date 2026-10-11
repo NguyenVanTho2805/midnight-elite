@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   MANAGE_ADMINS:        "MANAGE_ADMINS",
   MANAGE_NEWS:          "MANAGE_NEWS",
   MANAGE_COMMUNITY:     "MANAGE_COMMUNITY",
+  MANAGE_TUTORS:        "MANAGE_TUTORS", // duyệt/từ chối hồ sơ gia sư (FE-138)
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -29,6 +30,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     PERMISSIONS.MANAGE_HONOR,
     PERMISSIONS.MANAGE_NEWS,
     PERMISSIONS.MANAGE_COMMUNITY,
+    PERMISSIONS.MANAGE_TUTORS,
   ],
   teacher: [
     PERMISSIONS.MANAGE_COURSES,

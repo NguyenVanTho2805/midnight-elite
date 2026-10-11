@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
+import TutorApplicationsPanel from "@/components/admin/TutorApplicationsPanel";
 import { useAuth, PERMISSIONS } from "@/contexts/AuthContext";
 
 interface UserRow {
@@ -47,6 +48,9 @@ export default function QuanTriVienPage() {
   const [confirmRevoke, setConfirm] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const [toast, setToast]           = useState<{ msg: string; ok: boolean } | null>(null);
+  // FE-138: tab "Hồ sơ gia sư chờ duyệt" thay cho nút "Thêm Giáo viên" (BE-054).
+  const [tab, setTab]                   = useState<"tai-khoan" | "gia-su">("tai-khoan");
+  const [pendingTutors, setPendingTutors] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/users", { credentials: "same-origin" })
@@ -54,6 +58,14 @@ export default function QuanTriVienPage() {
       .then(d => setUsers(Array.isArray(d) ? d : []))
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
+  }, []);
+
+  // Số hồ sơ gia sư đang chờ — hiện trên nhãn tab ngay cả khi chưa mở tab.
+  useEffect(() => {
+    fetch("/api/admin/tutor-applications?status=pending", { credentials: "same-origin" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && Array.isArray(d.applications)) setPendingTutors(d.applications.length); })
+      .catch(() => { /* chỉ là số phụ trên nhãn tab */ });
   }, []);
 
   function showToast(msg: string, ok = true) {
@@ -131,6 +143,27 @@ export default function QuanTriVienPage() {
           <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
         </div>
 
+        {/* Tab */}
+        <div className="px-5 pt-2 flex gap-1 border-b border-gray-100 flex-shrink-0" role="tablist" aria-label="Nhóm quản trị">
+          {([
+            ["tai-khoan", "Tài khoản"],
+            ["gia-su", `Hồ sơ gia sư chờ duyệt${pendingTutors != null ? ` (${pendingTutors})` : ""}`],
+          ] as const).map(([k, label]) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+              className="px-4 py-2 text-sm font-semibold border-b-2 -mb-px cursor-pointer"
+              style={tab === k
+                ? { borderColor: "#0068FF", color: "#0068FF" }
+                : { borderColor: "transparent", color: "#6B7280" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "gia-su" ? (
+          <div className="flex-1 overflow-auto p-5">
+            <TutorApplicationsPanel onPendingCount={setPendingTutors} />
+          </div>
+        ) : (<>
         {/* Stats compact inline */}
         <div className="px-5 py-2.5 flex items-center gap-5 border-b border-gray-100 flex-shrink-0">
           {loading ? (
@@ -331,6 +364,7 @@ export default function QuanTriVienPage() {
         <div className="px-5 py-3 border-t border-gray-100 flex-shrink-0">
           <p className="text-xs text-gray-500">Hiển thị {filtered.length}/{users.length} người dùng</p>
         </div>
+        </>)}
       </div>
     </PermissionGuard>
   );
