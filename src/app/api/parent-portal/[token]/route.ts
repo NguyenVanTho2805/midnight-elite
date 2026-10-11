@@ -127,11 +127,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const feeByCourse = new Map(fees.map(f => [f.courseId, f] as const));
 
   // Override cho em này (nếu có) — chung cho mọi môn, theo spec AS-192.
-  const override = await (prisma as unknown as {
-    tuitionOverride: {
-      findUnique(args: { where: { userId_yearMonth: { userId: string; yearMonth: string } } }): Promise<{ pricePerSession: number } | null>;
-    };
-  }).tuitionOverride.findUnique({ where: { userId_yearMonth: { userId: studentId, yearMonth: ym } } });
+  // TuitionOverride chỉ có khoá @unique theo userId (không theo tháng); trước
+  // đây gọi bằng khoá ghép userId_yearMonth không tồn tại → Prisma ném
+  // "Unknown argument" và cả trang trả 500 với mọi em đang có lớp.
+  const override = await prisma.tuitionOverride.findUnique({ where: { userId: studentId } });
 
   // Tổng hợp theo môn. Dùng computeMonthlyFee từ src/lib/tuition.ts cho
   // nhất quán với phiếu học phí AS-193.
