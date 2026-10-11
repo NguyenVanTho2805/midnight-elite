@@ -287,6 +287,9 @@ export interface CourseFull {
   tag?: string | null; tagColor?: string | null;
   introVideo?: string | null;
   zaloGroupLink?: string | null;
+  // FE-147: sức chứa (null = không giới hạn) và trạng thái nhận học viên.
+  capacity?: number | null;
+  classStatus?: "open" | "closed" | "paused" | string;
   bg: string; strip: string;
   price: number; originalPrice?: number | null;
   lessons: number; hours: number;
