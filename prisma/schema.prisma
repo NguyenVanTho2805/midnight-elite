@@ -394,6 +394,7 @@ model QuestionBankItem {
   imageUrl    String?
   points      Float    @default(1)
   explanation String?  @db.Text
+  hint        String?  @db.Text // NV-188 — gợi ý cho màn Chữa bài, copy sang ExamQuestion.hint khi rút vào đề
 
   // Đầu mục phân cấp (thay subject/topic phẳng cũ) — lá của cây
   // QuestionCategory, dùng để thu hẹp phạm vi so trùng khi phát hiện trùng
@@ -502,6 +503,9 @@ model ExamQuestion {
   imageUrl    String?
   points      Float    @default(1)
   explanation String?  @db.Text
+  // NV-188: gợi ý do gia sư viết khi soạn câu hỏi. Chỉ hiện ở màn Chữa bài sau lần nộp đầu SAI, và không
+  // bao giờ gửi cho học viên lúc đang làm bài. Trống = bỏ bước gợi ý (hiện đáp án sau lần nộp đầu).
+  hint        String?  @db.Text
   createdAt   DateTime @default(now())
 
   // "MC" (trắc nghiệm 1 đáp án, mặc định) | "ESSAY" (tự luận, chấm tay) |
@@ -534,6 +538,7 @@ model ExamQuestion {
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]
   answers ExamAnswer[]
+  corrections ExamCorrection[]
 
   @@index([examId, order])
   @@map("exam_questions")
@@ -594,6 +599,7 @@ model ExamAttempt {
   exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
   answers        ExamAnswer[]
   booleanAnswers ExamAnswerBoolean[]
+  corrections    ExamCorrection[]
 
   @@index([userId, examId])
   @@index([examId, status])
@@ -639,6 +645,31 @@ model ExamAnswerBoolean {
 
   @@unique([attemptId, optionId])
   @@map("exam_answer_booleans")
+}
+
+// NV-188 — Chữa bài: gợi ý trước, đáp án sau, nhưng có điểm dừng. Một dòng cho mỗi (lượt thi × câu sai).
+// Chỉ để HỌC: không bao giờ đụng ExamAttempt.score / ExamAnswer (điểm tính theo lần nộp đầu, lúc nộp bài).
+//   tries    — số lần nộp ở màn chữa bài (tối đa 2 có ý nghĩa; lần 2 sai thì hiện đáp án)
+//   solved   — đã chọn/điền đúng
+//   revealed — đã được xem đáp án (nộp sai lần 2, bấm "Xem đáp án", hoặc câu không có gợi ý sai lần 1)
+model ExamCorrection {
+  id         String   @id @default(cuid())
+  attemptId  String
+  questionId String
+  tries      Int      @default(0)
+  solved     Boolean  @default(false)
+  revealed   Boolean  @default(false)
+  lastOptionId String? // MC: lựa chọn của lần nộp gần nhất
+  lastText     String? @db.Text // SHORT_ANSWER: câu trả lời của lần nộp gần nhất
+  reflection   String? @db.Text // ô không bắt buộc: "gợi ý ở trên giúp bạn ở chỗ nào?"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  attempt  ExamAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("exam_corrections")
 }
 
 // Admin (trung tâm/giáo viên sở hữu đề) gắn cờ này thủ công sau khi xác nhận

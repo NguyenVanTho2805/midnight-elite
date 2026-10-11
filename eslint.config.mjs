@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Bộ test cục bộ (chạy bằng tsx, không thuộc app) — không tính vào lint.
+    "tools/local-e2e/**",
   ]),
 ]);
 
