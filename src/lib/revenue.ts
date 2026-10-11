@@ -87,6 +87,26 @@ export function presetRange(kind: "month" | "30d" | "all", now: Date): { from: s
   return { from: vnDateKey(new Date(now.getTime() - 29 * DAY_MS)), to: today };
 }
 
+// Chia `total` (đồng, số nguyên) theo tỉ lệ `weights` sao cho TỔNG các phần đúng
+// bằng `total` (phương pháp phần dư lớn nhất). Dùng để quy tiền đã thu của 1
+// phiếu nhiều môn về từng lớp mà không lệch đồng nào. Trọng số 0 hoặc tổng 0 →
+// chia đều cho các phần tử (không bao giờ trả NaN).
+export function allocateByWeights(total: number, weights: number[]): number[] {
+  const n = weights.length;
+  if (n === 0) return [];
+  const t = Math.max(0, Math.floor(total));
+  const w = weights.map(x => (Number.isFinite(x) && x > 0 ? x : 0));
+  const sum = w.reduce((a, b) => a + b, 0);
+  const base = sum > 0 ? w : w.map(() => 1);
+  const baseSum = sum > 0 ? sum : n;
+  const raw = base.map(x => (t * x) / baseSum);
+  const out = raw.map(Math.floor);
+  let rest = t - out.reduce((a, b) => a + b, 0);
+  const order = raw.map((r, i) => ({ i, frac: r - Math.floor(r) })).sort((a, b) => b.frac - a.frac || a.i - b.i);
+  for (let k = 0; rest > 0; k = (k + 1) % n, rest--) out[order[k].i]++;
+  return out;
+}
+
 export function formatVnd(n: number): string {
   return `${Math.round(n).toLocaleString("vi-VN")}đ`;
 }

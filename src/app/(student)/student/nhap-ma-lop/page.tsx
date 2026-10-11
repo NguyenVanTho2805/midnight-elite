@@ -45,6 +45,13 @@ export default function NhapMaLopPage() {
   const [redeeming, setRedeeming] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Link mời của gia sư có dạng /student/nhap-ma-lop?code=ABCD2345 → điền sẵn mã.
+  // Đọc ở effect (không ở useState) để HTML server và lần render đầu của client khớp nhau.
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get("code");
+    if (c) Promise.resolve().then(() => setInput(normalizeCode(c)));
+  }, []);
+
   // Debounce validate — code quá ngắn thì không gọi.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

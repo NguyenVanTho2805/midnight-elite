@@ -9,6 +9,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 
 type Role = "tutor" | "student";
 
@@ -62,6 +63,17 @@ function tutorItems(): Item[] {
     { key: "quan-khoa", label: "Quản khoá", icon: "⚙️",
       render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={`/admin/khoa-hoc/${courseId}`}
         note="Chương - bài - học phí - lịch học - học viên." /> },
+    { key: "ma-moi", label: "Mã mời", icon: "🔗",
+      render: ({ courseId }) => (
+        <div>
+          <p className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Mã mời vào lớp</p>
+          <p className="text-caption mb-3" style={{ color: "var(--kin-chu-phu)" }}>Gửi mã hoặc link cho học viên; các em tự vào lớp, không cần bạn thêm từng người.</p>
+          <ClassInvitesPanel courseId={courseId} />
+        </div>
+      ) },
+    { key: "kiem-duyet", label: "Cộng đồng lớp", icon: "🛡️",
+      render: () => <OpenPageBlock title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet"
+        note="Xem báo cáo bài viết trong các lớp của bạn, xoá bài vi phạm hoặc bỏ qua." /> },
     { key: "hoc-phi", label: "Học phí", icon: "💰",
       render: () => <OpenPageBlock title="Học phí và đối soát" href="/lop-cua-toi/hoc-phi"
         note="Lập phiếu có mã, theo dõi tiền vào, nhận tiền thẳng vào tài khoản của bạn (TT-200)." /> },
