@@ -7,6 +7,12 @@
 //        { records: [{ userId, status, note? }, ...] }
 //        Dùng upsert cho mỗi record trong 1 transaction.
 // DELETE — xoá buổi + mọi record (dùng khi gia sư nhập nhầm ngày).
+//
+// TT-202 buổi bù: mỗi record có thể kèm `makeupCreditId` — "dùng buổi bù cho buổi này". Buổi bù phải
+// của đúng học sinh + đúng lớp, còn hạn, chưa dùng, và học sinh phải có mặt (present/late). Buổi
+// được điểm danh bằng buổi bù không phải đóng thêm (tiền học phí vẫn do gia sư lập ở trang Học
+// phí; KiN chỉ ghi nhận buổi bù đã dùng để hai bên cùng thấy). Đổi record sang vắng/có phép, hoặc
+// xoá buổi, thì buổi bù được trả lại.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
@@ -60,7 +66,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     asRecords().findMany({ where: { sessionId: id } }),
   ]);
   const byUserId = new Map(records.map(r => [r.userId, r]));
+  // Buổi bù: loại còn dùng được (để chọn) và loại đã dùng cho CHÍNH buổi này (để hiện đang chọn).
+  const now = new Date();
+  const credits = await prisma.makeupCredit.findMany({
+    where: {
+      courseId: session.courseId,
+      studentId: { in: enrollments.map(e => e.user.id) },
+      OR: [{ status: "active", expiresAt: { gt: now } }, { usedSessionId: id }],
+    },
+    select: { id: true, studentId: true, status: true, expiresAt: true, usedSessionId: true },
+    orderBy: { expiresAt: "asc" }, // dùng cái sắp hết hạn trước
+  });
+  const creditsOf = new Map<string, typeof credits>();
+  for (const c of credits) { const l = creditsOf.get(c.studentId) ?? []; l.push(c); creditsOf.set(c.studentId, l); }
   const roster = enrollments.map(e => ({
+    makeupAvailable: (creditsOf.get(e.user.id) ?? []).filter(c => c.status === "active").map(c => ({ id: c.id, expiresAt: c.expiresAt })),
+    makeupUsedId:    (creditsOf.get(e.user.id) ?? []).find(c => c.usedSessionId === id)?.id ?? null,
     userId:    e.user.id,
     name:      e.user.name,
     studentId: e.user.studentId,
@@ -88,7 +109,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Mỗi lần tối đa 500 records" }, { status: 400 });
   }
 
-  const items: { userId: string; status: string; note: string | null }[] = [];
+  const items: { userId: string; status: string; note: string | null; makeupCreditId: string | null }[] = [];
   for (const row of body.records) {
     if (!row || typeof row !== "object") continue;
     const r2 = row as Record<string, unknown>;
@@ -97,7 +118,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: `Status không hợp lệ cho userId ${r2.userId}` }, { status: 400 });
     }
     const note = typeof r2.note === "string" ? r2.note.trim().slice(0, 500) : null;
-    items.push({ userId: r2.userId, status: r2.status, note: note || null });
+    const mk = typeof r2.makeupCreditId === "string" && r2.makeupCreditId ? r2.makeupCreditId : null;
+    if (mk && r2.status !== "present" && r2.status !== "late") {
+      return NextResponse.json({ error: "Chỉ dùng buổi bù cho học viên có mặt hoặc đi muộn" }, { status: 400 });
+    }
+    items.push({ userId: r2.userId, status: r2.status, note: note || null, makeupCreditId: mk });
   }
 
   // Kiểm mọi userId có trong Enrollment active của lớp — chống gia sư gửi
@@ -118,16 +143,41 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Upsert trong 1 transaction — không có xung đột race vì key unique
   // (sessionId, userId). 2 gia sư đồng thời set record cùng 1 em thì
   // người sau đè được, có updatedBy để biết ai làm cuối.
-  await prisma.$transaction(async (tx) => {
-    const txRecords = asRecords(tx);
-    for (const i of items) {
-      await txRecords.upsert({
-        where:  { sessionId_userId: { sessionId: id, userId: i.userId } },
-        create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId },
-        update: { status: i.status, note: i.note, updatedBy: auth.userId },
-      });
-    }
-  });
+  const now = new Date();
+  class MakeupError extends Error {}
+  try {
+    await prisma.$transaction(async (tx) => {
+      const txRecords = asRecords(tx);
+      for (const i of items) {
+        await txRecords.upsert({
+          where:  { sessionId_userId: { sessionId: id, userId: i.userId } },
+          create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId },
+          update: { status: i.status, note: i.note, updatedBy: auth.userId },
+        });
+        if (i.makeupCreditId) {
+          // Điều kiện nằm trong WHERE của updateMany nên hai gia sư/hai lần bấm cùng lúc không dùng chung 1 buổi bù.
+          const used = await tx.makeupCredit.updateMany({
+            where: {
+              id: i.makeupCreditId, studentId: i.userId, courseId: session.courseId, expiresAt: { gt: now },
+              OR: [{ status: "active" }, { usedSessionId: id }], // đang rảnh, hoặc đã gắn đúng buổi này (lưu lại lần nữa)
+            },
+            data: { status: "used", usedAt: now, usedSessionId: id },
+          });
+          // Ném lỗi để cả transaction (kể cả các record đã upsert ở trên) được hoàn tác — không lưu dở.
+          if (used.count !== 1) throw new MakeupError("Buổi bù không dùng được (đã dùng, đã hết hạn, hoặc không thuộc học viên này)");
+        } else if (i.status !== "present" && i.status !== "late") {
+          // Không còn có mặt → trả lại buổi bù đã gắn cho buổi này (nếu có).
+          await tx.makeupCredit.updateMany({
+            where: { studentId: i.userId, usedSessionId: id },
+            data: { status: "active", usedAt: null, usedSessionId: null },
+          });
+        }
+      }
+    });
+  } catch (e) {
+    if (e instanceof MakeupError) return NextResponse.json({ error: e.message }, { status: 400 });
+    throw e;
+  }
 
   await logAction(auth.userId, "attendance_session.update", "AttendanceSession", id, {
     courseId: session.courseId, count: items.length,
@@ -143,6 +193,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const auth = r.auth!;
   const session = r.session!;
 
+  // Xoá buổi thì trả lại các buổi bù đã gắn vào buổi này.
+  await prisma.makeupCredit.updateMany({ where: { usedSessionId: id }, data: { status: "active", usedAt: null, usedSessionId: null } });
   await asSessions().delete({ where: { id } });
   await logAction(auth.userId, "attendance_session.delete", "AttendanceSession", id, {
     courseId: session.courseId, date: session.date.toISOString(),

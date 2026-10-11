@@ -7,6 +7,7 @@ import AgentationWrapper from "@/components/AgentationWrapper";
 import { GlobalDropGuard } from "@/components/GlobalDropGuard";
 import { ToastProvider } from "@/components/ui";
 import { ThemeApplier } from "@/components/ThemeApplier";
+import AccountThemeSync from "@/components/AccountThemeSync";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -53,6 +54,7 @@ export default function RootLayout({
           <ThemeApplier />
           <GlobalDropGuard />
           <AuthProvider>
+            <AccountThemeSync />
             <ToastProvider>{children}</ToastProvider>
           </AuthProvider>
           <AgentationWrapper />

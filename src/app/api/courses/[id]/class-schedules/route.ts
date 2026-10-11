@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
 
 // GET /api/courses/[id]/class-schedules — danh sách khung giờ học cố định
 // hàng tuần của 1 khoá (dùng cho tab "Lịch học" trong trang sửa khoá học).
@@ -45,8 +46,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const body = await req.json();
-    const { dayOfWeek, startTime, endTime, note } = body as {
-      dayOfWeek?: number; startTime?: string; endTime?: string; note?: string;
+    const { dayOfWeek, startTime, endTime, note, joinUrl } = body as {
+      dayOfWeek?: number; startTime?: string; endTime?: string; note?: string; joinUrl?: string | null;
     };
     if (
       typeof dayOfWeek !== "number" || dayOfWeek < 0 || dayOfWeek > 6 ||
@@ -54,15 +55,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ) {
       return NextResponse.json({ error: "Thiếu thứ trong tuần hoặc giờ bắt đầu/kết thúc" }, { status: 400 });
     }
-    if (endTime.trim() <= startTime.trim()) {
+    // Giờ phải đúng dạng HH:MM (tin nhắc lịch và báo nghỉ tính từ đây); lưu dạng 2 chữ số để so sánh chuỗi đúng.
+    const start = normalizeHm(startTime), end = normalizeHm(endTime);
+    if (!start || !end) return NextResponse.json({ error: "Giờ phải có dạng HH:MM, ví dụ 19:00" }, { status: 400 });
+    if (end <= start) {
       return NextResponse.json({ error: "Giờ kết thúc phải sau giờ bắt đầu" }, { status: 400 });
     }
+    const join = normalizeJoinUrl(joinUrl);
+    if (!join.ok) return NextResponse.json({ error: "Link vào lớp phải là địa chỉ http(s) hợp lệ" }, { status: 400 });
 
     const schedule = await prisma.classSchedule.create({
       data: {
         courseId, dayOfWeek,
-        startTime: startTime.trim(), endTime: endTime.trim(),
+        startTime: start, endTime: end,
         note: note?.trim() || null,
+        joinUrl: join.value,
       },
     });
 

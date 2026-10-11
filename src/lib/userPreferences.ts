@@ -1,0 +1,121 @@
+// TT-203 + TK-167 — lựa chọn giao diện LƯU THEO TÀI KHOẢN (User.preferences, JSON).
+// Thuần (không Prisma) để test. Đọc thì khoan dung (bỏ khoá lạ/giá trị hỏng, không
+// bao giờ ném lỗi làm hỏng trang), ghi thì nghiêm (khoá lạ hay sai kiểu → từ chối).
+import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
+
+/** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
+export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
+export type OptionalTutorModule = (typeof OPTIONAL_TUTOR_MODULES)[number];
+
+export interface TutorModuleDef {
+  key: OptionalTutorModule | "lich" | "hoc-phi";
+  label: string;
+  href: string;
+  /** Luôn bật, không tắt được (TT-203). */
+  always: boolean;
+  /** Mô tả ngắn ở trang Cài đặt → Module hiển thị. */
+  hint: string;
+}
+
+/** Thứ tự thanh module của gia sư theo bo-cuc-outlook.md mục 3. */
+export const TUTOR_MODULES: readonly TutorModuleDef[] = [
+  { key: "hop-viec", label: "Hộp việc",  href: "/lop-cua-toi",                          always: false, hint: "Việc cần xử lý: đối soát, báo cáo, bài chưa chấm…" },
+  { key: "lich",     label: "Lịch",      href: "/lop-cua-toi/lich",                     always: true,  hint: "Lịch tuần, nhắc lịch, báo nghỉ sát giờ" },
+  { key: "lop",      label: "Lớp",       href: "/lop-cua-toi/lop",                      always: false, hint: "Danh sách lớp, học viên, mã mời" },
+  { key: "bai-kt",   label: "Bài KT",    href: "/admin/thi-thu",                        always: false, hint: "Đề thi và bài kiểm tra" },
+  { key: "thu-vien", label: "Thư viện",  href: "/admin/thi-thu/ngan-hang-de-thi",       always: false, hint: "Ngân hàng đề và tài liệu" },
+  { key: "hoc-phi",  label: "Học phí",   href: "/lop-cua-toi/hoc-phi",                  always: true,  hint: "Phiếu học phí và đối soát chuyển khoản" },
+];
+
+export interface UserPreferences {
+  /** Module gia sư bật thêm. Vắng mặt = chưa chọn = chế độ gọn (chỉ Lịch + Học phí). */
+  modules?: OptionalTutorModule[];
+  theme?: KinTheme;
+  mode?: KinMode;
+  /** Gia sư tắt/bật tin nhắc lịch từng bên. Vắng mặt = bật cả hai. */
+  reminders?: { parent: boolean; student: boolean };
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const inList = <T extends string>(list: readonly T[], v: unknown): v is T => typeof v === "string" && (list as readonly string[]).includes(v);
+
+function canonicalModules(arr: unknown[]): OptionalTutorModule[] {
+  const set = new Set(arr.filter((x): x is OptionalTutorModule => inList(OPTIONAL_TUTOR_MODULES, x)));
+  return OPTIONAL_TUTOR_MODULES.filter(m => set.has(m)); // thứ tự cố định, không trùng
+}
+
+/** Đọc giá trị trong DB. Hỏng/khoá lạ thì bỏ qua từng phần. */
+export function readPreferences(raw: unknown): UserPreferences {
+  if (!isObj(raw)) return {};
+  const out: UserPreferences = {};
+  if (Array.isArray(raw.modules)) out.modules = canonicalModules(raw.modules);
+  if (inList(KIN_THEMES, raw.theme)) out.theme = raw.theme;
+  if (inList(KIN_MODES, raw.mode)) out.mode = raw.mode;
+  if (isObj(raw.reminders)) {
+    out.reminders = {
+      parent: typeof raw.reminders.parent === "boolean" ? raw.reminders.parent : true,
+      student: typeof raw.reminders.student === "boolean" ? raw.reminders.student : true,
+    };
+  }
+  return out;
+}
+
+export type PatchResult = { ok: true; value: UserPreferences } | { ok: false; error: string };
+
+/**
+ * Gộp một bản vá từ client vào giá trị hiện có. Mỗi khoá trong bản vá thay thế khoá cũ;
+ * `null` xoá khoá về mặc định. Khoá lạ hoặc sai kiểu → từ chối cả bản vá (không ghi dở).
+ * "lich"/"hoc-phi" trong `modules` được bỏ qua (luôn bật), module lạ thì từ chối.
+ */
+export function applyPreferencesPatch(current: UserPreferences, patch: unknown): PatchResult {
+  if (!isObj(patch)) return { ok: false, error: "Dữ liệu không hợp lệ" };
+  const next: UserPreferences = { ...current };
+  for (const [k, v] of Object.entries(patch)) {
+    switch (k) {
+      case "modules": {
+        if (v === null) { delete next.modules; break; }
+        if (!Array.isArray(v) || v.length > 20) return { ok: false, error: "modules phải là danh sách" };
+        const bad = v.find(x => typeof x !== "string" || (!inList(OPTIONAL_TUTOR_MODULES, x) && x !== "lich" && x !== "hoc-phi"));
+        if (bad !== undefined) return { ok: false, error: `Module không tồn tại: ${String(bad).slice(0, 40)}` };
+        next.modules = canonicalModules(v);
+        break;
+      }
+      case "theme":
+        if (v === null) { delete next.theme; break; }
+        if (!inList(KIN_THEMES, v)) return { ok: false, error: "Chủ đề không hợp lệ" };
+        next.theme = v; break;
+      case "mode":
+        if (v === null) { delete next.mode; break; }
+        if (!inList(KIN_MODES, v)) return { ok: false, error: "Chế độ sáng/tối không hợp lệ" };
+        next.mode = v; break;
+      case "reminders": {
+        if (v === null) { delete next.reminders; break; }
+        if (!isObj(v)) return { ok: false, error: "reminders không hợp lệ" };
+        const base = next.reminders ?? { parent: true, student: true };
+        const r = { ...base };
+        for (const [rk, rv] of Object.entries(v)) {
+          if ((rk !== "parent" && rk !== "student") || typeof rv !== "boolean") return { ok: false, error: "reminders chỉ nhận parent/student kiểu đúng-sai" };
+          r[rk] = rv;
+        }
+        next.reminders = r; break;
+      }
+      default:
+        return { ok: false, error: `Không có tuỳ chọn "${k.slice(0, 40)}"` };
+    }
+  }
+  return { ok: true, value: next };
+}
+
+/** Module hiển thị ở thanh bên của gia sư: luôn có Lịch + Học phí, thêm phần đã bật. */
+export function visibleTutorModules(prefs: UserPreferences): TutorModuleDef[] {
+  const on = new Set<string>(prefs.modules ?? []);
+  return TUTOR_MODULES.filter(m => m.always || on.has(m.key));
+}
+
+export function isTutorModuleVisible(prefs: UserPreferences, key: TutorModuleDef["key"]): boolean {
+  return visibleTutorModules(prefs).some(m => m.key === key);
+}
+
+export function reminderChannels(prefs: UserPreferences): { parent: boolean; student: boolean } {
+  return { parent: prefs.reminders?.parent ?? true, student: prefs.reminders?.student ?? true };
+}

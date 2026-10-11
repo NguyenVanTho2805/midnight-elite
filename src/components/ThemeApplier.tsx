@@ -1,18 +1,18 @@
 // TK-167 (09/10/2026) — áp dụng chủ đề KiN theo lựa chọn người dùng.
 //
 // Lưu trong localStorage để không chờ server khi chuyển trang (tránh
-// nháy sang Navy mặc định rồi chuyển sang chủ đề của user). Khi có
-// bảng User.preferences sau sẽ sync chéo client-server.
+// nháy sang Navy mặc định rồi chuyển sang chủ đề của user). Lựa chọn của người
+// đã đăng nhập còn được lưu theo TÀI KHOẢN (User.preferences) và đồng bộ về máy
+// mới qua AccountThemeSync — localStorage chỉ là bản nháp để khỏi nháy màu.
 //
 // 5 chủ đề: navy, co-vit, man, ca-phe, muc.
 // 3 chế độ: sang, toi, auto (auto = theo máy, bỏ data-che-do).
 "use client";
 import { useEffect } from "react";
+import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
 
-export const KIN_THEMES = ["navy", "co-vit", "man", "ca-phe", "muc"] as const;
-export const KIN_MODES  = ["auto", "sang", "toi"] as const;
-export type KinTheme = (typeof KIN_THEMES)[number];
-export type KinMode  = (typeof KIN_MODES)[number];
+export { KIN_THEMES, KIN_MODES };
+export type { KinTheme, KinMode };
 
 const KEY_THEME = "kin.chu-de";
 const KEY_MODE  = "kin.che-do";

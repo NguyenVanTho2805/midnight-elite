@@ -3,15 +3,15 @@
 // Figma Thanh: trang "Năm chủ đề" (bàn giao docs/kin/thiet-ke/ban-giao-
 // man-hinh.md). 5 chủ đề × 3 chế độ (sáng / tối / theo máy).
 //
-// Lưu trong localStorage — áp dụng ngay không đợi server. Khi có bảng
-// User.preferences sẽ sync chéo. Không gắn vào tài khoản ẩn (anon) =
-// cài theo máy, không cần đăng nhập.
+// Áp dụng ngay (localStorage) rồi lưu lên TÀI KHOẢN (User.preferences) để máy khác
+// cũng thấy đúng chủ đề — xem AccountThemeSync. Khách chưa đăng nhập = chỉ theo máy.
 "use client";
 import { useEffect, useState } from "react";
 import {
   KIN_THEMES, KIN_MODES, type KinTheme, type KinMode,
   readSavedTheme, applyTheme, saveTheme,
 } from "@/components/ThemeApplier";
+import { saveThemeToAccount } from "@/components/AccountThemeSync";
 
 const THEME_LABEL: Record<KinTheme, string> = {
   "navy":   "Navy",
@@ -53,11 +53,13 @@ export default function ChonChuDePage() {
     setTheme(t);
     applyTheme(t, mode);
     saveTheme(t, mode);
+    saveThemeToAccount(t, mode);
   }
   function pickMode(m: KinMode) {
     setMode(m);
     applyTheme(theme, m);
     saveTheme(theme, m);
+    saveThemeToAccount(theme, m);
   }
 
   return (

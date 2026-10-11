@@ -58,6 +58,9 @@ model Course {
   reviews          CourseReview[]
   exams            Exam[]
   classSchedules   ClassSchedule[]
+  classAbsences    ClassAbsence[]
+  makeupCredits    MakeupCredit[]
+  reminderLogs     ClassReminderLog[]
   coinTransactions CoinTransaction[]
   threads          Thread[]
   classInvites       ClassInvite[]
@@ -81,6 +84,7 @@ model ClassSchedule {
   startTime String // "19:00"
   endTime   String // "21:00"
   note      String? // vd "Học live qua Zoom" — hiện kèm trong lịch/email nhắc
+  joinUrl   String? // link vào lớp (Meet/Zoom) — in vào tin nhắc lịch (TT-201); trống thì tin bỏ dòng này
   active    Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -728,6 +732,10 @@ model User {
   bio               String?   @db.Text
   subjects          String[]  @default([])
   tutorAppliedAt    DateTime? // != null = đã nộp đơn làm gia sư
+  // TT-203 + TK-167: lựa chọn giao diện LƯU THEO TÀI KHOẢN (không theo máy). JSON có
+  // schema chặt, chỉ đọc/ghi qua src/lib/userPreferences.ts: modules (module gia sư bật
+  // thêm ngoài Lịch + Học phí), theme/mode (TK-167), reminders (tắt/bật nhắc từng bên).
+  preferences       Json?
   tutorVerified     Boolean   @default(false)
   tutorVerifiedAt   DateTime?
   tutorVerifiedBy   String?   // userId admin đã duyệt
@@ -766,6 +774,10 @@ model User {
   answerReports       AnswerReport[]
   threadReports       ThreadReport[]
   tutorSubscriptions  TutorSubscription[]
+  absencesAsStudent    ClassAbsence[]      @relation("AbsenceStudent")
+  makeupCredits        MakeupCredit[]      @relation("MakeupStudent")
+  reminderLogsStudent  ClassReminderLog[]  @relation("ReminderStudent")
+  reminderLogsTutor    ClassReminderLog[]  @relation("ReminderTutor")
   parentLinksAsParent  ParentLink[] @relation("ParentLinks")
   parentLinksAsStudent ParentLink[] @relation("StudentLinks")
   auditLogs            AuditLog[]
@@ -958,6 +970,89 @@ model AttendanceRecord {
   @@unique([sessionId, userId])
   @@index([userId])
   @@map("attendance_records")
+}
+
+// ─── BÁO NGHỈ SÁT GIỜ, BUỔI BÙ, NHẮC LỊCH (TT-201/202/203) ───────────────────
+// Quy tắc: docs/kin/nghiep-vu/lich-nhac-va-che-do-gon.md. Buổi học KHÔNG có bản ghi
+// riêng (ClassSchedule là quy luật lặp hàng tuần), nên một buổi được định danh bằng
+// (scheduleId, dateKey) với dateKey = "YYYY-MM-DD" theo giờ Việt Nam.
+
+// Một lần phụ huynh báo con nghỉ một buổi cụ thể.
+//   excused_auto — báo trước ≥ 2 giờ: tự ghi "Nghỉ có báo", tự giữ 1 buổi bù
+//   pending      — báo dưới 2 giờ: chờ gia sư bấm 1 nút (hiện ở Hộp việc / chấm trên Lịch)
+//   excused_free — gia sư chọn "Không tính phí, giữ 1 buổi bù"
+//   charged      — gia sư chọn "Tính phí buổi này" (không có buổi bù)
+model ClassAbsence {
+  id          String    @id @default(cuid())
+  courseId    String
+  scheduleId  String // ClassSchedule.id — không FK: xoá khung giờ không được xoá lịch sử báo nghỉ
+  dateKey     String // "YYYY-MM-DD" giờ VN
+  startAt     DateTime // thời điểm bắt đầu buổi, chốt lúc báo (đổi lịch sau không làm lệch lịch sử)
+  studentId   String
+  reportedBy  String // "parent" | "student"
+  reportedAt  DateTime  @default(now())
+  leadMinutes Int // số phút báo trước giờ học
+  reason      String?   @db.Text
+  status      String
+  resolvedAt  DateTime?
+  resolvedBy  String? // userId gia sư xử lý (null với excused_auto)
+  createdAt   DateTime  @default(now())
+
+  course  Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student User          @relation("AbsenceStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  makeup  MakeupCredit?
+
+  @@unique([scheduleId, dateKey, studentId])
+  @@index([courseId, status])
+  @@index([studentId])
+  @@map("class_absences")
+}
+
+// Buổi bù: sinh ra cùng lúc với một ClassAbsence miễn phí (đúng 1 buổi bù cho 1 lần nghỉ,
+// ép bằng absenceId @unique). Hết hạn sau 30 ngày; "hết hạn" suy ra từ expiresAt chứ không
+// có cron đổi trạng thái. Dùng khi gia sư điểm danh một buổi mới (usedSessionId).
+model MakeupCredit {
+  id            String    @id @default(cuid())
+  studentId     String
+  courseId      String
+  absenceId     String    @unique
+  grantedAt     DateTime  @default(now())
+  expiresAt     DateTime
+  status        String    @default("active") // "active" | "used"
+  usedAt        DateTime?
+  usedSessionId String?
+
+  student User         @relation("MakeupStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  absence ClassAbsence @relation(fields: [absenceId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, status])
+  @@index([courseId, status, expiresAt])
+  @@map("makeup_credits")
+}
+
+// Nhật ký "Đã mở Zalo lúc …" (TT-199 giai đoạn 1): KiN chỉ biết gia sư đã MỞ Zalo với tin
+// soạn sẵn, không biết tin đã đi thật hay chưa nên không bao giờ ghi "đã gửi". Mỗi
+// (buổi × học sinh × bên nhận × loại tin) tối đa một dòng ⇒ tối đa 2 tin nhắc cho mỗi bên,
+// mỗi buổi.
+model ClassReminderLog {
+  id         String   @id @default(cuid())
+  courseId   String
+  scheduleId String
+  dateKey    String
+  studentId  String
+  recipient  String // "parent" | "student"
+  kind       String // "h24" | "h1"
+  tutorId    String
+  openedAt   DateTime @default(now())
+
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student User   @relation("ReminderStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor   User   @relation("ReminderTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, dateKey, studentId, recipient, kind])
+  @@index([courseId, dateKey])
+  @@map("class_reminder_logs")
 }
 
 // ─── PHIẾU HỌC PHÍ + ĐỐI SOÁT VIETQR (TT-200) ────────────────────────────────
