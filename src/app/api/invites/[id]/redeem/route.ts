@@ -1,4 +1,7 @@
-// BE-067 (1.4.6) — POST /api/invites/[code]/redeem.
+// BE-067 (1.4.6) — POST /api/invites/<code>/redeem.
+// Thư mục tên [id] (không phải [code]) vì Next.js không cho hai segment động
+// khác tên cùng cấp: /api/invites/[id] (thu hồi, BE-066) dùng chung cấp này.
+// Giá trị trong URL ở route này là MÃ MỜI (code), không phải id.
 //
 // Học viên nhập mã mời để vào lớp. Yêu cầu đăng nhập (không public như backlog
 // gợi ý — public dễ bị dùng để dò mã bằng brute force 31^8). Luồng:
@@ -17,14 +20,14 @@ import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { deriveStatusForNewEnrollment, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
   if (session.role !== "student") {
     return NextResponse.json({ error: "Chỉ học viên mới redeem mã mời" }, { status: 403 });
   }
 
-  const { code } = await params;
+  const { id: code } = await params;
   if (typeof code !== "string" || code.length < 4 || code.length > 20) {
     return NextResponse.json({ error: "Mã mời không hợp lệ" }, { status: 400 });
   }
@@ -97,7 +100,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ co
   } catch (e: unknown) {
     const err = e as { status?: number; body?: string; message?: string };
     if (err.status && err.body) return NextResponse.json({ error: err.body }, { status: err.status });
-    console.error("[POST /api/invites/[code]/redeem]", e);
+    console.error("[POST /api/invites/<code>/redeem]", e);
     return NextResponse.json({ error: "Redeem mã mời thất bại" }, { status: 500 });
   }
 }
