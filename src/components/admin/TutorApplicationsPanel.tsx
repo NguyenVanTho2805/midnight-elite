@@ -47,21 +47,24 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
   const [rejecting, setRejecting] = useState<Application | null>(null);
   const [reason, setReason]     = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const reqSeq = useRef(0); // bỏ kết quả của request cũ khi người dùng đổi tab nhanh
 
   const load = useCallback(async (s: Status) => {
     await Promise.resolve();
+    const seq = ++reqSeq.current;
     setLoading(true); setFailed(false);
     try {
       const r = await fetch(`/api/admin/tutor-applications?status=${s}`, { credentials: "same-origin" });
       if (!r.ok) throw new Error(String(r.status));
       const d = await r.json();
       const list: Application[] = d.applications ?? [];
+      if (s === "pending") onPendingCount?.(list.length); // số chờ luôn đúng dù đang ở tab khác
+      if (seq !== reqSeq.current) return;
       setItems(list);
-      if (s === "pending") onPendingCount?.(list.length);
     } catch {
-      setFailed(true);
+      if (seq === reqSeq.current) setFailed(true);
     } finally {
-      setLoading(false);
+      if (seq === reqSeq.current) setLoading(false);
     }
   }, [onPendingCount]);
 
