@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
+import { loadPartyInvoices } from "@/lib/invoiceServer";
 import { currentYearMonth, parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 
 type MonthlyFeeRow = {
@@ -71,6 +72,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   const studentId = link.student.id;
 
+  // TT-200: phiếu học phí gia sư đã GỬI (nháp/huỷ ẩn) — tháng đang xem + các phiếu
+  // tháng trước chưa đóng. QR trỏ vào tài khoản của gia sư, không phải của KiN.
+  const invoices = (await loadPartyInvoices(studentId)).filter(i => i.yearMonth === ym || i.status !== "paid");
+
   // Các lớp em đang học (status = active).
   const enrollments = await prisma.enrollment.findMany({
     where: { userId: studentId, status: "active" },
@@ -84,6 +89,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       parent:    { name: link.parent.name },
       yearMonth: ym,
       courses:   [],
+      invoices,
     });
   }
 
@@ -181,6 +187,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     parent:    { name: link.parent.name },
     yearMonth: ym,
     courses,
+    invoices,
     total: feeBreakdown
       ? { gross: feeBreakdown.gross, finalAmount: feeBreakdown.finalAmount, pricePerSession: feeBreakdown.pricePerSession, subjectCount: feeBreakdown.subjectCount }
       : null,

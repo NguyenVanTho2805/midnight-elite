@@ -777,6 +777,12 @@ model User {
   tuitionOverridesUpdated TuitionOverride[] @relation("TuitionOverrideUpdater")
   attendanceSessions   AttendanceSession[] @relation("AttendanceSessionCreator")
   attendanceRecords    AttendanceRecord[]  @relation("AttendanceRecordStudent")
+  payoutAccount        TutorPayoutAccount? @relation("PayoutAccountUser")
+  invoicesIssued       TuitionInvoice[]    @relation("InvoiceTutor")
+  invoicesReceived     TuitionInvoice[]    @relation("InvoiceStudent")
+  bankTransactions     BankTransaction[]   @relation("BankTxTutor")
+  tuitionCredits       TuitionCredit[]     @relation("CreditTutor")
+  tuitionCreditsOwned  TuitionCredit[]     @relation("CreditStudent")
 
   @@map("users")
 }
@@ -952,6 +958,115 @@ model AttendanceRecord {
   @@unique([sessionId, userId])
   @@index([userId])
   @@map("attendance_records")
+}
+
+// ─── PHIẾU HỌC PHÍ + ĐỐI SOÁT VIETQR (TT-200) ────────────────────────────────
+// Nguyên tắc (docs/kin/nghiep-vu/doi-soat-vietqr.md): tiền đi THẲNG vào tài
+// khoản của gia sư — KiN không giữ, không thu hộ, không cắt phần trăm. KiN chỉ
+// ĐỌC tiền vào qua dịch vụ trung gian (SePay) do gia sư tự mở, và chỉ tự gạch
+// phiếu khi chắc chắn (đúng mã + đúng số tiền còn lại). Không bao giờ tự ghép
+// theo số tiền (GD-20). Không lưu số dư tài khoản của gia sư (GD-22).
+
+// Tài khoản nhận học phí của gia sư + khoá webhook. Khoá lưu BĂM (sha256), chỉ
+// hiện bản rõ đúng 1 lần lúc tạo/đổi — lộ DB cũng không làm giả được webhook.
+model TutorPayoutAccount {
+  userId         String    @id
+  bankBin        String // BIN VietQR 6 số, vd "970436"
+  accountNo      String
+  accountName    String // IN HOA không dấu, đúng tên chủ tài khoản
+  webhookKeyHash String? // sha256 hex của khoá SePay gửi kèm (Authorization: Apikey …)
+  webhookKeyHint String? // 4 ký tự cuối để gia sư nhận ra khoá nào
+  webhookSeenAt  DateTime? // lúc nhận giao dịch đầu tiên → "Đang nối SePay"
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation("PayoutAccountUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tutor_payout_accounts")
+}
+
+// Phiếu học phí của 1 em trong 1 tháng. `code` KHÔNG ĐỔI kể cả khi sửa số tiền
+// (GD-19). `amountDue` là số tiền CHỐT lúc lập (quy tắc tiền chốt vào sự kiện):
+// gia sư tăng giá sau đó thì phiếu cũ giữ nguyên.
+//   draft → sent → parent_reported → partial → paid ;  bất kỳ lúc nào → cancelled
+model TuitionInvoice {
+  id               String    @id @default(cuid())
+  code             String    @unique // "KIN" + 5 ký tự A–Z/2–9 bỏ O I L
+  tutorId          String
+  studentId        String
+  yearMonth        String // "YYYY-MM"
+  amountDue        Int // VND, không làm tròn
+  paidAmount       Int       @default(0)
+  status           String    @default("draft") // draft | sent | parent_reported | partial | paid | cancelled
+  breakdown        Json? // ảnh chụp computeMonthlyFee + tín dụng đã trừ, để in lại đúng
+  cancelReason     String?   @db.Text
+  sentAt           DateTime?
+  parentReportedAt DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tutor   User @relation("InvoiceTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  student User @relation("InvoiceStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  transactions BankTransaction[]
+
+  @@unique([tutorId, studentId, yearMonth])
+  @@index([tutorId, yearMonth])
+  @@index([studentId])
+  @@map("tuition_invoices")
+}
+
+// Mỗi khoản tiền vào (SePay hoặc gia sư tự ghi tiền mặt) là 1 dòng — có dấu vết
+// ai bấm, lúc nào. Chống trùng: (tutorId, provider, providerTxId) là duy nhất.
+//   kind   : exact | short | over | already_paid | cancelled | unknown_code | no_code
+//   status : matched (tự gạch) | pending (chờ gia sư) | resolved (gia sư đã xử lý) | ignored
+model BankTransaction {
+  id                  String    @id @default(cuid())
+  tutorId             String
+  provider            String    @default("sepay") // "sepay" | "manual"
+  providerTxId        String
+  occurredAt          DateTime
+  amount              Int
+  content             String    @db.Text
+  providerCode        String? // trường `code` SePay đã tách sẵn
+  referenceCode       String?
+  gateway             String?
+  matchedCode         String? // mã KIN tìm được trong code/content
+  invoiceId           String?
+  appliedAmount       Int       @default(0) // phần đã cộng vào phiếu
+  kind                String
+  status              String
+  resolution          String? // auto_matched | applied_partial | credit_next_month | refunded | matched_manual | manual_cash | not_tuition
+  resolvedBy          String?
+  resolvedAt          DateTime?
+  suggestedInvoiceIds String[]  @default([]) // gợi ý cùng số tiền — KHÔNG tự ghép
+  createdAt           DateTime  @default(now())
+
+  tutor   User            @relation("BankTxTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  invoice TuitionInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@unique([tutorId, provider, providerTxId])
+  @@index([tutorId, status])
+  @@index([invoiceId])
+  @@map("bank_transactions")
+}
+
+// Tiền đóng dư gia sư chọn "Trừ vào tháng sau". Lập phiếu tháng kế tiếp tự trừ
+// theo thứ tự cũ → mới và ghi vào breakdown của phiếu.
+model TuitionCredit {
+  id         String    @id @default(cuid())
+  tutorId    String
+  studentId  String
+  amount     Int // số tiền dư ban đầu
+  usedAmount Int       @default(0)
+  sourceTxId String?
+  createdAt  DateTime  @default(now())
+
+  tutor   User @relation("CreditTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  student User @relation("CreditStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([tutorId, studentId])
+  @@map("tuition_credits")
 }
 
 // ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────
