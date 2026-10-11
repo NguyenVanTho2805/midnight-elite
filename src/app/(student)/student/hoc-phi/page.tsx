@@ -3,13 +3,16 @@
 //   - Chọn tháng (dropdown 12 tháng gần nhất).
 //   - Breakdown theo môn: số buổi · buổi miễn · thành tiền.
 //   - Tổng gốc / Học bổng / Giảm trừ / Phải đóng.
-//   - VietQR code để chuyển khoản.
+//   - TT-200: phiếu CÓ MÃ do gia sư gửi + VietQR trỏ vào tài khoản của GIA SƯ
+//     (KiN không giữ tiền). Trước đây trang này dựng QR vào một tài khoản
+//     placeholder dùng chung của KiN — đã bỏ.
 "use client";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui";
+import { useNotify } from "@/components/tutor/shared";
 import { currentYearMonth } from "@/lib/tuition";
-import { buildVietQRUrl, tuitionBankMemo, KIN_BANK } from "@/lib/vietqr";
+import InvoiceCard from "@/components/parent/InvoiceCard";
+import type { PartyInvoiceView } from "@/lib/invoiceServer";
 
 type Breakdown = {
   subjectCount: number;
@@ -43,33 +46,36 @@ function lastTwelveMonths(now = new Date()): string[] {
 
 export default function HocPhiPage() {
   const { user } = useAuth();
-  const toast = useToast();
+  const notify = useNotify(); // danh tính ổn định: không làm `load` chạy lại mỗi khi toast hiện
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth());
   const [data, setData]           = useState<Breakdown | null>(null);
+  const [invoices, setInvoices]   = useState<PartyInvoiceView[]>([]);
   const [loading, setLoading]     = useState(true);
+  const seq = useRef(0);
   const months = useMemo(() => lastTwelveMonths(), []);
 
   const load = useCallback(async () => {
     if (!user) return;
     await Promise.resolve();
+    const my = ++seq.current;
     setLoading(true);
     try {
-      const r = await fetch(`/api/users/${user.id}/tuition?yearMonth=${yearMonth}`, { credentials: "same-origin" });
-      if (!r.ok) { toast.err("Không tải được học phí"); setLoading(false); return; }
+      const [r, ri] = await Promise.all([
+        fetch(`/api/users/${user.id}/tuition?yearMonth=${yearMonth}`, { credentials: "same-origin" }),
+        fetch(`/api/users/me/invoices?yearMonth=${yearMonth}`, { credentials: "same-origin" }),
+      ]);
+      if (my !== seq.current) return; // bỏ kết quả của tháng đã đổi
+      if (!r.ok) { notify.err("Không tải được học phí"); return; }
       const d = await r.json();
       setData(d.breakdown);
-    } finally { setLoading(false); }
-  }, [user, yearMonth, toast]);
+      setInvoices(ri.ok ? (await ri.json()).invoices ?? [] : []);
+    } finally { if (my === seq.current) setLoading(false); }
+  }, [user, yearMonth, notify]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
-
-  const memo = user ? tuitionBankMemo(user.id, yearMonth) : "";
-  const qrUrl = data && data.finalAmount > 0 && user
-    ? buildVietQRUrl({ amount: data.finalAmount, addInfo: memo })
-    : null;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
@@ -153,29 +159,15 @@ export default function HocPhiPage() {
             </div>
           </div>
 
-          {/* VietQR */}
-          {qrUrl && (
-            <div className="rounded-xl p-5"
-              style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-              <p className="text-body-sm font-semibold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Chuyển khoản qua VietQR</p>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                {/* TK-182 (09/10/2026): mobile co nhỏ QR xuống còn 44 (w-44 h-44 = 176px)
-                    để không chiếm toàn bộ chiều cao điện thoại; desktop giữ 224px. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="VietQR" className="w-44 h-44 sm:w-56 sm:h-56 flex-shrink-0 rounded-lg"
-                  style={{ border: "1px solid var(--kin-vien-nhat)" }} />
-                <div className="text-body-sm space-y-1" style={{ color: "var(--kin-chu-phu)" }}>
-                  <p>Ngân hàng: <b>{KIN_BANK.accountName}</b></p>
-                  <p>Số TK: <b className="font-mono">{KIN_BANK.accountNo}</b></p>
-                  <p>Số tiền: <b>{formatVnd(data.finalAmount)}</b></p>
-                  <p>Nội dung: <b className="font-mono">{memo}</b></p>
-                  <p className="text-caption pt-1" style={{ color: "var(--kin-chu-mo)" }}>
-                    Sao chép đúng nội dung giúp đối chiếu nhanh.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* TT-200: phiếu có mã do gia sư gửi; QR trỏ vào tài khoản của gia sư */}
+          <section aria-labelledby="h-phieu" className="space-y-3">
+            <h2 id="h-phieu" className="text-body font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Phiếu học phí đã gửi</h2>
+            {invoices.length === 0 ? (
+              <p className="rounded-xl p-4 text-body-sm" style={{ background: "var(--kin-nen-bang)", border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>
+                Gia sư chưa gửi phiếu tháng này. Khi có phiếu, mã QR chuyển khoản và nội dung chuyển khoản sẽ hiện ở đây.
+              </p>
+            ) : invoices.map(inv => <InvoiceCard key={inv.id} invoice={inv} reportUrl={`/api/users/me/invoices/${inv.code}/reported`} />)}
+          </section>
         </>
       )}
     </div>

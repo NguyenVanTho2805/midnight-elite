@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
 import { currentYearMonth, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { loadPartyInvoices } from "@/lib/invoiceServer";
+import InvoiceCard from "@/components/parent/InvoiceCard";
 
 export const dynamic = "force-dynamic"; // link cá nhân, không cache
 
@@ -19,19 +21,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
   const { token } = await params;
   if (!isValidPortalToken(token)) notFound();
 
-  const link = await (prisma as unknown as {
-    parentLink: {
-      findFirst(args: {
-        where: { portalToken: string; status: string };
-        include: { student: { select: { id: true; name: true; school: true } }; parent: { select: { name: true } } };
-      }): Promise<null | {
-        id: string;
-        status: string;
-        student: { id: string; name: string; school: string | null };
-        parent: { name: string };
-      }>;
-    };
-  }).parentLink.findFirst({
+  const link = await prisma.parentLink.findFirst({
     where: { portalToken: token, status: "verified" },
     include: {
       student: { select: { id: true, name: true, school: true } },
@@ -53,32 +43,21 @@ export default async function SoCuaConPage({ params }: PageProps) {
   });
   const courseIds = enrollments.map(e => e.course.id);
 
-  const [attendance, fees, override] = await Promise.all([
+  const [attendance, fees, override, invoices] = await Promise.all([
     courseIds.length === 0
       ? Promise.resolve([] as Array<{ status: string; session: { courseId: string } }>)
-      : (prisma as unknown as {
-          attendanceRecord: {
-            findMany(args: {
-              where: { userId: string; session: { courseId: { in: string[] }; date: { gte: Date; lt: Date } } };
-              select: { status: true; session: { select: { courseId: true } } };
-            }): Promise<Array<{ status: string; session: { courseId: string } }>>;
-          };
-        }).attendanceRecord.findMany({
+      : prisma.attendanceRecord.findMany({
           where: { userId: studentId, session: { courseId: { in: courseIds }, date: { gte: firstDay, lt: nextMonth } } },
           select: { status: true, session: { select: { courseId: true } } },
         }),
     courseIds.length === 0
       ? Promise.resolve([] as Array<{ courseId: string; sessionCount: number; freeCount: number }>)
-      : (prisma as unknown as {
-          monthlyCourseFee: {
-            findMany(args: { where: { courseId: { in: string[] }; yearMonth: string } }): Promise<Array<{ courseId: string; sessionCount: number; freeCount: number }>>;
-          };
-        }).monthlyCourseFee.findMany({ where: { courseId: { in: courseIds }, yearMonth: ym } }),
-    (prisma as unknown as {
-      tuitionOverride: {
-        findUnique(args: { where: { userId_yearMonth: { userId: string; yearMonth: string } } }): Promise<{ pricePerSession: number } | null>;
-      };
-    }).tuitionOverride.findUnique({ where: { userId_yearMonth: { userId: studentId, yearMonth: ym } } }),
+      : prisma.monthlyCourseFee.findMany({ where: { courseId: { in: courseIds }, yearMonth: ym } }),
+    // TuitionOverride chỉ có khoá @unique theo userId. Trước đây gọi bằng khoá ghép
+    // userId_yearMonth (không tồn tại) → Prisma ném lỗi và cả trang trả 500.
+    prisma.tuitionOverride.findUnique({ where: { userId: studentId } }),
+    // TT-200: phiếu gia sư đã GỬI — tháng này + các phiếu tháng trước chưa đóng.
+    loadPartyInvoices(studentId).then(list => list.filter(i => i.yearMonth === ym || i.status !== "paid")),
   ]);
 
   const attByCourse = new Map<string, { status: string }[]>();
@@ -150,6 +129,15 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 })}
               </div>
             </section>
+
+            {invoices.length > 0 && (
+              <section className="mb-5" aria-labelledby="h-phieu">
+                <h2 id="h-phieu" className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Phiếu học phí</h2>
+                <div className="space-y-3">
+                  {invoices.map(inv => <InvoiceCard key={inv.id} invoice={inv} reportUrl={`/api/parent-portal/${token}/invoices/${inv.code}/reported`} />)}
+                </div>
+              </section>
+            )}
 
             {feeBreakdown && (
               <section>

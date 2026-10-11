@@ -63,8 +63,8 @@ function tutorItems(): Item[] {
       render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={`/admin/khoa-hoc/${courseId}`}
         note="Chương - bài - học phí - lịch học - học viên." /> },
     { key: "hoc-phi", label: "Học phí", icon: "💰",
-      render: ({ courseId }) => <OpenPageBlock title="Phiếu học phí tháng" href={`/student/hoc-phi`}
-        note="Xem/sửa số buổi tháng + miễn (AS-192)." /> },
+      render: () => <OpenPageBlock title="Học phí và đối soát" href="/lop-cua-toi/hoc-phi"
+        note="Lập phiếu có mã, theo dõi tiền vào, nhận tiền thẳng vào tài khoản của bạn (TT-200)." /> },
   ];
 }
 

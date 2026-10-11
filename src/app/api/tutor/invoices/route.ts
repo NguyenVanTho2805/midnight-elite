@@ -9,7 +9,7 @@ import { isNextResponse } from "@/lib/auth-guard";
 import { logAction } from "@/lib/auditLog";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { parseYearMonth } from "@/lib/tuition";
-import { INVOICE_STATUS_LABEL, remainingOf, type InvoiceStatus } from "@/lib/tuitionInvoice";
+import { INVOICE_STATUS_LABEL, UNPAID_STATUSES, buildInvoiceQrUrl, buildTransferContent, remainingOf, type InvoiceStatus } from "@/lib/tuitionInvoice";
 import { issueInvoice, requireTutor } from "@/lib/invoiceServer";
 
 const REPORT_CHECK_MS = 24 * 60 * 60 * 1000; // GD-23: quá 24h chưa thấy tiền → nhắc kiểm sao kê
@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
   const status = sp.get("status");
   if (status && !(status in INVOICE_STATUS_LABEL)) return NextResponse.json({ error: "status không hợp lệ" }, { status: 400 });
 
+  const account = await prisma.tutorPayoutAccount.findUnique({ where: { userId: auth.userId }, select: { bankBin: true, accountNo: true, accountName: true } });
   const rows = await prisma.tuitionInvoice.findMany({
     where: { tutorId: auth.userId, ...(ym ? { yearMonth: ym.yearMonth } : {}), ...(status ? { status } : {}) },
     orderBy: [{ yearMonth: "desc" }, { student: { name: "asc" } }],
@@ -40,10 +41,15 @@ export async function GET(req: NextRequest) {
     parentReportedAt: r.parentReportedAt?.toISOString() ?? null, cancelReason: r.cancelReason,
     needsBankCheck: r.status === "parent_reported" && !!r.parentReportedAt && now - r.parentReportedAt.getTime() > REPORT_CHECK_MS,
     creditApplied: (r.breakdown as { creditApplied?: number } | null)?.creditApplied ?? 0,
+    // Để gia sư sao chép tin nhắn/QR gửi phụ huynh (Zalo) — dựng từ tài khoản CỦA GIA SƯ.
+    transferContent: buildTransferContent(r.code, r.student.name),
+    qrUrl: account && remainingOf(r) > 0 && (UNPAID_STATUSES as string[]).includes(r.status)
+      ? buildInvoiceQrUrl(account, { amount: remainingOf(r), addInfo: buildTransferContent(r.code, r.student.name) }) : null,
   }));
   const live = items.filter(i => i.status !== "cancelled");
   return NextResponse.json({
     items,
+    hasPayoutAccount: !!account,
     summary: {
       count: live.length,
       totalDue: live.reduce((s, i) => s + i.amountDue, 0),
