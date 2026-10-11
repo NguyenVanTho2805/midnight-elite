@@ -532,10 +532,10 @@ export interface AssignmentResultsData {
 export interface ClassScheduleFull {
   id: string; courseId: string;
   dayOfWeek: number; startTime: string; endTime: string;
-  note: string | null; active: boolean; createdAt: string;
+  note: string | null; joinUrl: string | null; active: boolean; createdAt: string;
 }
 export interface ClassScheduleInput {
-  dayOfWeek: number; startTime: string; endTime: string; note?: string;
+  dayOfWeek: number; startTime: string; endTime: string; note?: string; joinUrl?: string | null;
 }
 
 export interface AssignmentSubmissionFull {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendClassReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
+import { vnDateKeyOf } from "@/lib/classSessions";
 
 const BATCH_SIZE  = 20;
 const BATCH_DELAY = 1200;
@@ -45,11 +46,20 @@ export async function GET(req: NextRequest) {
   const log: string[] = [];
 
   for (const sched of schedules) {
-    const enrollments = await prisma.enrollment.findMany({
-      where: { courseId: sched.course.id },
-      select: { user: { select: { id: true, name: true, email: true } } },
-    });
-    const students = enrollments.map(e => e.user);
+    // Chỉ em đang học (trước đây lấy cả em đang chờ phụ huynh xác nhận / tạm dừng) và bỏ em đã báo
+    // nghỉ buổi này — đặc tả TT-201: "đã báo nghỉ thì không gửi".
+    const [enrollments, absent] = await Promise.all([
+      prisma.enrollment.findMany({
+        where: { courseId: sched.course.id, status: "active" },
+        select: { user: { select: { id: true, name: true, email: true } } },
+      }),
+      prisma.classAbsence.findMany({
+        where: { scheduleId: sched.id, dateKey: vnDateKeyOf(tomorrow) },
+        select: { studentId: true },
+      }),
+    ]);
+    const absentIds = new Set(absent.map(a => a.studentId));
+    const students = enrollments.map(e => e.user).filter(u => !absentIds.has(u.id));
 
     for (let i = 0; i < students.length; i += BATCH_SIZE) {
       const batch   = students.slice(i, i + BATCH_SIZE);

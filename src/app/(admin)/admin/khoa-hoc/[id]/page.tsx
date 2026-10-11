@@ -2110,7 +2110,7 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
 
 // ─── TAB: LỊCH HỌC ─────────────────────────────────────────────────────────────
 const DAY_LABELS = DAY_LABELS_VI;
-const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "" };
+const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "" };
 
 function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
@@ -2205,6 +2205,12 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
             <input type="text" placeholder="VD: Học live qua Zoom" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
           </div>
+          <div>
+            <label htmlFor="lich-join-url" className="block text-xs font-medium text-gray-500 mb-1">Link vào lớp (Meet/Zoom, tuỳ chọn)</label>
+            <input id="lich-join-url" type="url" placeholder="https://meet.google.com/..." value={form.joinUrl} onChange={e => setForm(f => ({ ...f, joinUrl: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+            <p className="text-xs text-gray-400 mt-1">In vào tin nhắc lịch gửi phụ huynh và học sinh. Để trống thì tin bỏ dòng link.</p>
+          </div>
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
@@ -2232,6 +2238,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
               </span>
               <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
               {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
+              {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "#0068FF" }}>Link vào lớp</a>}
               {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
               <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
                 <button onClick={() => handleToggle(s)} className="px-2 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">

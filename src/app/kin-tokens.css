@@ -282,3 +282,15 @@
   --kin-nhan-nen-nhat: #101a2c;
   --kin-nhan-chu-tren-nhat: #60a5fa;
 }
+
+/* ---------- Số đếm đỏ (badge) trên thanh module — bo-cuc-outlook.md mục 3 ---------- */
+/* Nền sáng: chữ trắng. Nền tối: chữ #0B0E14 (chữ trắng trên đỏ nền tối chỉ đạt 3,68:1, trượt 4,5:1). */
+.kin-badge-dem {
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+  background: var(--kin-tt-chu-loi); color: #ffffff;
+}
+:root[data-che-do="toi"] .kin-badge-dem { color: #0b0e14; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-che-do="sang"]) .kin-badge-dem { color: #0b0e14; }
+}

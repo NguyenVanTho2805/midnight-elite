@@ -8,6 +8,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { applyTheme, saveTheme } from "@/components/ThemeApplier";
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
 
+/** Sự kiện phát ra khi chủ đề được kéo về từ tài khoản. */
+export const THEME_SYNC_EVENT = "kin-theme-sync";
+
 export default function AccountThemeSync() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -28,6 +31,8 @@ export default function AccountThemeSync() {
         const m = mode ?? (html.getAttribute("data-che-do") as KinMode | null) ?? "auto";
         applyTheme(t, m);
         saveTheme(t, m);
+        // Trang đang mở (vd. trang chọn chủ đề) đã đọc lựa chọn cũ của máy lúc vào — báo để nó cập nhật theo tài khoản.
+        window.dispatchEvent(new CustomEvent(THEME_SYNC_EVENT, { detail: { theme: t, mode: m } }));
       } catch { /* không có mạng: giữ chủ đề của máy */ }
     })();
     return () => { cancelled = true; };

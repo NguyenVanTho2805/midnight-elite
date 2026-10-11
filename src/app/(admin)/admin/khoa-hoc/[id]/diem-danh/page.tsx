@@ -7,11 +7,13 @@
 //   2. Trang hiện bảng điểm danh: cột tên + 4 nút (Có mặt/Muộn/Có phép/Vắng).
 //      Em chưa chọn trạng thái = "Chưa điểm danh" (GD-06, không tính).
 //   3. Bấm "Lưu" → batch PUT /api/attendance-sessions/[id].
+//   4. (TT-202) Em có mặt/muộn mà đang giữ buổi bù thì tick "Dùng 1 buổi bù" — buổi bù sắp hết hạn
+//      được dùng trước; đổi sang vắng/có phép thì buổi bù tự được trả lại.
 //
 // Dùng token --kin-* để màu nhất quán với 5 chủ đề của KiN.
 "use client";
 import { useEffect, useState, useCallback, use as usePromise } from "react";
-import { useToast } from "@/components/ui";
+import { useNotify } from "@/components/tutor/shared";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
 
 type RosterRow = {
@@ -21,6 +23,9 @@ type RosterRow = {
   avatar:    string | null;
   status:    AttendanceStatus | null;
   note:      string | null;
+  makeupAvailable: { id: string; expiresAt: string }[]; // buổi bù còn dùng được (sắp hết hạn trước)
+  makeupUsedId:    string | null;                       // buổi bù đã gắn cho CHÍNH buổi này
+  useMakeup?:      boolean;                             // trạng thái tick trên màn hình
 };
 type Session = { id: string; courseId: string; date: string; note: string | null };
 
@@ -41,7 +46,9 @@ const CHIP_COLORS: Record<AttendanceStatus, { bg: string; fg: string }> = {
 
 export default function DiemDanhPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = usePromise(params);
-  const toast = useToast();
+  // useNotify (danh tính ổn định) chứ không phải useToast(): useToast() trả object mới mỗi lần render, đưa vào
+  // deps của load() làm trang tự tải lại mỗi khi thông báo hiện/tắt — và xoá các ô điểm danh chưa lưu.
+  const toast = useNotify();
   const [date, setDate]           = useState<string>(todayISO());
   const [session, setSession]     = useState<Session | null>(null);
   const [roster, setRoster]       = useState<RosterRow[]>([]);
@@ -69,7 +76,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
         const r2 = await fetch(`/api/attendance-sessions/${existing.id}`, { credentials: "same-origin" });
         if (r2.ok) {
           const d2 = await r2.json();
-          setRoster(d2.roster);
+          setRoster((d2.roster as RosterRow[]).map(r => ({ ...r, useMakeup: r.makeupUsedId !== null })));
         }
       }
     } finally { setLoading(false); }
@@ -102,11 +109,20 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
     setDirty(prev => new Set(prev).add(userId));
   }
 
+  function setUseMakeup(userId: string, on: boolean) {
+    setRoster(prev => prev.map(r => r.userId === userId ? { ...r, useMakeup: on } : r));
+    setDirty(prev => new Set(prev).add(userId));
+  }
+
   async function saveAll() {
     if (!session) return;
     const records = roster
       .filter(r => r.status !== null && dirty.has(r.userId))
-      .map(r => ({ userId: r.userId, status: r.status, note: r.note }));
+      .map(r => {
+        const present = r.status === "present" || r.status === "late";
+        const makeupCreditId = present && r.useMakeup ? (r.makeupUsedId ?? r.makeupAvailable[0]?.id ?? null) : null;
+        return { userId: r.userId, status: r.status, note: r.note, ...(makeupCreditId ? { makeupCreditId } : {}) };
+      });
     if (records.length === 0) { toast.info("Chưa có thay đổi để lưu"); return; }
     setSaving(true);
     try {
@@ -118,7 +134,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
       const d = await r.json();
       if (!r.ok) { toast.err(d.error ?? "Lưu thất bại"); return; }
       toast.ok(`Đã lưu ${d.count} học viên`);
-      setDirty(new Set());
+      await load(); // làm mới danh sách buổi bù (đã dùng / được trả lại)
     } finally { setSaving(false); }
   }
 
@@ -189,7 +205,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
           {/* Roster rows */}
           <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {roster.map((r, i) => (
-              <RosterRowView key={r.userId} r={r} index={i} onPick={setStatus} />
+              <RosterRowView key={r.userId} r={r} index={i} onPick={setStatus} onToggleMakeup={setUseMakeup} />
             ))}
           </div>
 
@@ -211,10 +227,14 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
   );
 }
 
-function RosterRowView({ r, index, onPick }: {
+function RosterRowView({ r, index, onPick, onToggleMakeup }: {
   r: RosterRow; index: number;
   onPick: (userId: string, status: AttendanceStatus) => void;
+  onToggleMakeup: (userId: string, on: boolean) => void;
 }) {
+  const present = r.status === "present" || r.status === "late";
+  const hasMakeup = r.makeupAvailable.length > 0 || r.makeupUsedId !== null;
+  const nextExpire = r.makeupAvailable[0]?.expiresAt;
   const initials = r.name.trim().split(/\s+/).map(p => p[0]).slice(-2).join("").toUpperCase();
   return (
     <div className="flex items-center gap-3 px-4 py-3"
@@ -230,6 +250,17 @@ function RosterRowView({ r, index, onPick }: {
         <p className="text-body-sm font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }}>{r.name}</p>
         {r.studentId !== null && (
           <p className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Mã HS {r.studentId}</p>
+        )}
+        {hasMakeup && (
+          <label className="flex items-center gap-2 text-caption mt-1 min-h-[44px] sm:min-h-0" style={{ color: present ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
+            <input type="checkbox" checked={!!r.useMakeup && present} disabled={!present}
+              onChange={e => onToggleMakeup(r.userId, e.target.checked)} />
+            <span>
+              Dùng 1 buổi bù cho buổi này
+              {nextExpire && !r.makeupUsedId ? ` (đang giữ ${r.makeupAvailable.length}, gần nhất hết hạn ${new Date(nextExpire).toLocaleDateString("vi-VN")})` : r.makeupUsedId ? " (đã dùng ở buổi này)" : ""}
+              {!present && " — chỉ dùng khi học viên có mặt/muộn"}
+            </span>
+          </label>
         )}
       </div>
       <div className="flex items-center gap-1 flex-wrap justify-end">

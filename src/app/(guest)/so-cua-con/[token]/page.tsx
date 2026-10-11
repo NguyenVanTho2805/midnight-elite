@@ -12,6 +12,8 @@ import { computeAttendanceStats } from "@/lib/attendance";
 import { currentYearMonth, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 import { loadPartyInvoices } from "@/lib/invoiceServer";
 import InvoiceCard from "@/components/parent/InvoiceCard";
+import UpcomingSessions from "@/components/parent/UpcomingSessions";
+import { loadStudentUpcoming } from "@/lib/absenceServer";
 
 export const dynamic = "force-dynamic"; // link cá nhân, không cache
 
@@ -43,7 +45,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
   });
   const courseIds = enrollments.map(e => e.course.id);
 
-  const [attendance, fees, override, invoices] = await Promise.all([
+  const now = new Date();
+  const [attendance, fees, override, invoices, sessions] = await Promise.all([
     courseIds.length === 0
       ? Promise.resolve([] as Array<{ status: string; session: { courseId: string } }>)
       : prisma.attendanceRecord.findMany({
@@ -58,6 +61,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
     prisma.tuitionOverride.findUnique({ where: { userId: studentId } }),
     // TT-200: phiếu gia sư đã GỬI — tháng này + các phiếu tháng trước chưa đóng.
     loadPartyInvoices(studentId).then(list => list.filter(i => i.yearMonth === ym || i.status !== "paid")),
+    // TT-202: buổi 14 ngày tới + nút báo nghỉ + số buổi bù đang giữ.
+    loadStudentUpcoming(studentId, now),
   ]);
 
   const attByCourse = new Map<string, { status: string }[]>();
@@ -129,6 +134,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 })}
               </div>
             </section>
+
+            <UpcomingSessions token={token} upcoming={sessions.upcoming} makeup={sessions.makeup} nowIso={now.toISOString()} />
 
             {invoices.length > 0 && (
               <section className="mb-5" aria-labelledby="h-phieu">
