@@ -11,6 +11,7 @@ import { PERMISSIONS, checkPermission, type AdminRole } from "@/lib/permissions"
 import ThreadModal from "@/components/ThreadModal";
 import QuestionModal from "@/components/QuestionModal";
 import { DropZone } from "@/components/DropZone";
+import CommunityScopeSwitcher, { scopeToQuery } from "@/components/community/CommunityScopeSwitcher";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -764,10 +765,8 @@ function CongDongInner() {
   //   "all"    = chung + các lớp của người đó (hành vi mặc định)
   //   "common" = chỉ "cộng đồng chung" (threads với courseId null)
   //   <courseId> = chỉ 1 lớp cụ thể (phải là member)
-  type ScopeOption = { id: string; name: string; role: "student" | "teacher" };
   const initialScope = searchParams.get("scope") ?? "all";
   const [scope, setScope]           = useState<string>(initialScope);
-  const [scopeOptions, setScopeOptions] = useState<ScopeOption[]>([]);
 
   const [threads, setThreads]         = useState<ThreadDTO[]>([]);
   const [questions, setQuestions]     = useState<QuestionDTO[]>([]);
@@ -795,29 +794,14 @@ function CongDongInner() {
     syncUrl(activeTab, s);
   }
 
-  // FE-117: lấy danh sách lớp làm option scope — chỉ chạy khi login. Khách
-  // không có lớp để chọn, dropdown ẩn (eslint-rule chặn setState đồng bộ
-  // trong effect, nên nhánh "không user" đi qua Promise.resolve để nhất quán).
-  useEffect(() => {
-    let cancelled = false;
-    const p = user
-      ? fetch("/api/community/scope-options", { credentials: "same-origin" }).then(r => r.ok ? r.json() : { scopes: [] })
-      : Promise.resolve({ scopes: [] });
-    p.then(d => { if (!cancelled) setScopeOptions(d.scopes ?? []); })
-     .catch(() => { /* silent — dropdown chỉ ẩn */ });
-    return () => { cancelled = true; };
-  }, [user]);
-
   function requireLogin() {
     router.push("/dang-nhap?redirect=/cong-dong");
   }
 
   // FE-117: dựng query string cho courseId theo scope. "all" bỏ qua param
   // (API trả chung + của tôi); "common" → courseId=null; id lớp → courseId=id.
-  const scopeParam =
-    scope === "all"    ? "" :
-    scope === "common" ? "&courseId=null" :
-    `&courseId=${encodeURIComponent(scope)}`;
+  const scopeQuery = scopeToQuery(scope);
+  const scopeParam = scopeQuery ? `&${scopeQuery}` : "";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -950,29 +934,8 @@ function CongDongInner() {
         <p className="text-sm" style={{ color: "#787671" }}>Trao đổi, hỏi đáp và chia sẻ kinh nghiệm</p>
       </div>
 
-      {/* FE-117: dropdown phạm vi — chỉ hiện khi user đã đăng nhập và có
-          ít nhất 1 lớp. Khách và học viên chưa vào lớp → ẩn, tránh thêm
-          nhiễu ở trạng thái không có lựa chọn. */}
-      {user && scopeOptions.length > 0 && (
-        <div className="flex items-center gap-2">
-          <label htmlFor="community-scope" className="text-xs font-semibold" style={{ color: "#787671" }}>Phạm vi</label>
-          <select
-            id="community-scope"
-            value={scope}
-            onChange={e => switchScope(e.target.value)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-full"
-            style={{ background: "#f6f5f4", color: "#1a1a1a", border: "1px solid #e5e3df" }}
-          >
-            <option value="all">Tất cả (chung + của tôi)</option>
-            <option value="common">Chỉ cộng đồng chung</option>
-            {scopeOptions.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.role === "teacher" ? "👨‍🏫 " : "📘 "}{s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {/* FE-117/163: phạm vi — tự ẩn khi khách hoặc chưa có lớp nào. */}
+      <CommunityScopeSwitcher scope={scope} onChange={switchScope} signedIn={!!user} />
 
       {/* Tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
