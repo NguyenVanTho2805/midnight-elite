@@ -97,7 +97,7 @@ let seq = 700;
   section("Hồ sơ gia sư");
   await page.goto(`${BASE}/lop-cua-toi/ho-so`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Hồ sơ gia sư" }).waitFor({ timeout: 60000 });
-  check("gia sư đã duyệt: 'Đã xác minh' + link hồ sơ công khai", await page.getByText("Đã xác minh").isVisible() && await page.getByRole("link", { name: "Xem hồ sơ công khai" }).isVisible());
+  check("gia sư đã duyệt: 'Đã xác minh' + link hồ sơ công khai", await page.getByText("Đã xác minh").first().isVisible() && await page.getByRole("link", { name: "Xem hồ sơ công khai" }).isVisible());
   await page.locator("#bio").fill("Dạy Toán 10 năm. Đỗ chuyên Toán.");
   await page.getByLabel("Thêm môn dạy").fill("Toán");
   await page.getByLabel("Thêm môn dạy").press("Enter");
