@@ -93,3 +93,55 @@ export function funnelRows(input: FunnelRowInput[]): FunnelRow[] {
     .map(([channel, v]) => ({ channel, group: channelGroup(channel), opens: v.opens, fulls: v.fulls, fullRate: v.opens > 0 ? Math.min(1, v.fulls / v.opens) : null }))
     .sort((a, b) => b.opens - a.opens || a.channel.localeCompare(b.channel));
 }
+
+// ─── PH-209: soạn bài đăng tìm học sinh (KiN không tự đăng — Groups API đã đóng từ 22/04/2024) ─────────────────────
+export type Pronoun = "Thầy" | "Cô" | "Mình";
+export const PRONOUNS: readonly Pronoun[] = ["Thầy", "Cô", "Mình"];
+/** Gợi ý cách xưng từ tên: bắt đầu bằng "Thầy"/"Cô" thì dùng đúng như vậy, còn lại "Mình". */
+export function guessPronoun(name: string): Pronoun {
+  const first = name.trim().split(/\s+/)[0]?.toLocaleLowerCase("vi") ?? "";
+  return first === "thầy" ? "Thầy" : first === "cô" ? "Cô" : "Mình";
+}
+/** Dòng cuối BẮT BUỘC của mọi bài đăng và của form đăng ký. */
+export const noPrepaySafetyLine = (p: Pronoun) => `${p} không nhận chuyển khoản trước buổi học thử.`;
+
+export const RECRUIT_FIELD_MAX = 200;
+export interface RecruitPostInput {
+  pronoun: Pronoun;
+  name: string;
+  subjects: string[];
+  classes: { name: string; seatsLeft: number | null }[];
+  /** Giờ còn trống / học phí do gia sư tự gõ; trống thì bỏ dòng. */
+  slots?: string;
+  fee?: string;
+  /** Lấy từ sổ lớp, gia sư không sửa được; 0 thì bỏ dòng (không khoe số 0). */
+  sessionsTaught: number;
+  link: string;
+}
+/** Bài đăng soạn sẵn từ hồ sơ. Luôn kết bằng dòng "không nhận chuyển khoản trước buổi học thử" và link có ?n=. */
+export function composeRecruitPost(i: RecruitPostInput): string {
+  const clean = (v?: string) => (v ?? "").replace(/\s+/g, " ").trim().slice(0, RECRUIT_FIELD_MAX);
+  const slots = clean(i.slots), fee = clean(i.fee);
+  const subj = i.subjects.map(x => x.trim()).filter(Boolean).slice(0, 5).join(", ");
+  const lines: string[] = [];
+  lines.push(subj ? `TÌM HỌC SINH — ${subj}` : "TÌM HỌC SINH");
+  lines.push(`${i.pronoun === "Mình" ? `Mình là ${i.name}` : `${i.pronoun} ${i.name.replace(/^\s*(thầy|cô)\s+/i, "")}`} đang nhận thêm học sinh.`);
+  const cls = i.classes.slice(0, 6).map(c => (c.seatsLeft !== null && c.seatsLeft > 0 ? `${c.name} (còn ${c.seatsLeft} chỗ)` : c.name));
+  if (cls.length) lines.push(`• Lớp: ${cls.join("; ")}`);
+  if (slots) lines.push(`• Giờ còn trống: ${slots}`);
+  if (fee) lines.push(`• Học phí: ${fee}`);
+  if (i.sessionsTaught > 0) lines.push(`• Đã dạy ${i.sessionsTaught.toLocaleString("vi-VN")} buổi (theo sổ lớp trên KiN, không tự sửa được)`);
+  lines.push("");
+  lines.push(`Xem hồ sơ và đăng ký học thử: ${i.link}`);
+  lines.push(noPrepaySafetyLine(i.pronoun));
+  return lines.join("\n");
+}
+
+/** Bảo đảm bài đăng luôn kết bằng dòng "không nhận chuyển khoản trước buổi học thử" — gia sư lỡ xoá thì tự thêm lại khi sao chép/chia sẻ. */
+export function ensureSafetyLine(text: string, pronoun: Pronoun): string {
+  const line = noPrepaySafetyLine(pronoun);
+  if (PRONOUNS.some(p => text.includes(noPrepaySafetyLine(p)))) return text;
+  return `${text.replace(/\s+$/, "")}\n${line}`;
+}
+
+export const facebookShareUrl = (link: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;

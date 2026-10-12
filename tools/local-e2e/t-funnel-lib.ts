@@ -1,5 +1,5 @@
-import { normalizeChannel, channelGroup, slugifyVi, facebookChannel, profileLink, clipText, profileOg, funnelRows, isReportReason, REPORT_REASONS, OG_TITLE_MAX, OG_DESC_MAX, CHANNEL_MAX } from "@/lib/funnel";
-import { readPreferences, applyPreferencesPatch, normalizeMessengerHandle } from "@/lib/userPreferences";
+import { guessPronoun, noPrepaySafetyLine, composeRecruitPost, ensureSafetyLine, facebookShareUrl, normalizeChannel, channelGroup, slugifyVi, facebookChannel, profileLink, clipText, profileOg, funnelRows, isReportReason, REPORT_REASONS, OG_TITLE_MAX, OG_DESC_MAX, CHANNEL_MAX } from "@/lib/funnel";
+import { readPreferences, applyPreferencesPatch, normalizeMessengerHandle, normalizeGroupNames } from "@/lib/userPreferences";
 import { check, section, done } from "./h";
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -63,4 +63,43 @@ check("connections: null hợp lệ", r.ok && r.value.connections === undefined)
 check("sai kiểu / khoá lạ bị từ chối cả bản vá", !applyPreferencesPatch({}, { connections: { showZalo: "yes" } }).ok && !applyPreferencesPatch({}, { connections: { oa: true } }).ok && !applyPreferencesPatch({}, { connections: { messenger: "a b" } }).ok && !applyPreferencesPatch({}, { connections: [] }).ok);
 check("đọc khoan dung: showZalo hỏng bị bỏ, messenger hỏng bị bỏ", eq(readPreferences({ connections: { showZalo: "x", messenger: "a b" } }).connections, undefined) && eq(readPreferences({ connections: { showZalo: false } }).connections, { showZalo: false }));
 check("mặc định: không có connections = showZalo tắt", readPreferences({}).connections?.showZalo !== true);
+section("Xưng hô gợi ý");
+check("Thầy / Cô theo tên; còn lại 'Mình'", guessPronoun("Thầy Khang") === "Thầy" && guessPronoun("cô Lan") === "Cô" && guessPronoun("  Cô   Mai") === "Cô" && guessPronoun("Nguyễn Văn A") === "Mình" && guessPronoun("Cô") === "Cô" && guessPronoun("") === "Mình" && guessPronoun("Côngthành") === "Mình");
+
+section("Soạn bài đăng tìm học sinh (PH-209)");
+const post = composeRecruitPost({ pronoun: "Cô", name: "Cô Lan", subjects: ["Toán 9", "Toán 10"], classes: [{ name: "Toán 9", seatsLeft: 3 }, { name: "Toán 10", seatsLeft: 0 }, { name: "Lý 9", seatsLeft: null }], slots: "T3, T5 19h–20h30", fee: "200.000đ/buổi", sessionsTaught: 1234, link: "https://kin.vn/mentor/u1?n=fb-hn9" });
+check("đủ các dòng theo thứ tự, link có ?n=, dòng an toàn cuối cùng", eq(post.split("\n"), [
+  "TÌM HỌC SINH — Toán 9, Toán 10",
+  "Cô Lan đang nhận thêm học sinh.",
+  "• Lớp: Toán 9 (còn 3 chỗ); Toán 10; Lý 9",
+  "• Giờ còn trống: T3, T5 19h–20h30",
+  "• Học phí: 200.000đ/buổi",
+  "• Đã dạy 1.234 buổi (theo sổ lớp trên KiN, không tự sửa được)",
+  "",
+  "Xem hồ sơ và đăng ký học thử: https://kin.vn/mentor/u1?n=fb-hn9",
+  "Cô không nhận chuyển khoản trước buổi học thử.",
+]), post);
+check("lớp đã đủ chỗ không ghi 'còn 0 chỗ'", !post.includes("còn 0"));
+const minimal = composeRecruitPost({ pronoun: "Mình", name: "Nguyễn Văn A", subjects: [], classes: [], sessionsTaught: 0, link: "https://kin.vn/mentor/u2" });
+check("gia sư mới: bỏ dòng Lớp/Giờ/Học phí/Số buổi (không khoe số 0), vẫn có link + dòng an toàn", eq(minimal.split("\n"), ["TÌM HỌC SINH", "Mình là Nguyễn Văn A đang nhận thêm học sinh.", "", "Xem hồ sơ và đăng ký học thử: https://kin.vn/mentor/u2", "Mình không nhận chuyển khoản trước buổi học thử."]), minimal);
+const thay = composeRecruitPost({ pronoun: "Thầy", name: "Thầy Khang", subjects: ["Lý"], classes: [], sessionsTaught: 5, link: "L" });
+check("Thầy + tên có sẵn 'Thầy' → không lặp 'Thầy Thầy'", thay.split("\n")[1] === "Thầy Khang đang nhận thêm học sinh." && composeRecruitPost({ pronoun: "Thầy", name: "Nguyễn Khang", subjects: [], classes: [], sessionsTaught: 0, link: "L" }).split("\n")[1] === "Thầy Nguyễn Khang đang nhận thêm học sinh.");
+check("ô gõ tay bị gọn khoảng trắng, cắt 200 ký tự; xuống dòng không phá bố cục", composeRecruitPost({ pronoun: "Cô", name: "Lan", subjects: [], classes: [], sessionsTaught: 0, slots: "a\n\n  b", fee: "x".repeat(300), link: "L" }).split("\n").filter(l => l.startsWith("• ")).every(l => l.length <= 215) && composeRecruitPost({ pronoun: "Cô", name: "Lan", subjects: [], classes: [], sessionsTaught: 0, slots: "a\n\n  b", link: "L" }).includes("• Giờ còn trống: a b"));
+check("tối đa 5 môn, 6 lớp", composeRecruitPost({ pronoun: "Cô", name: "L", subjects: ["a", "b", "c", "d", "e", "f", "g"], classes: [], sessionsTaught: 0, link: "L" }).split("\n")[0] === "TÌM HỌC SINH — a, b, c, d, e" && composeRecruitPost({ pronoun: "Cô", name: "L", subjects: [], classes: Array.from({ length: 9 }, (_, i) => ({ name: "C" + i, seatsLeft: null })), sessionsTaught: 0, link: "L" }).split("\n").find(l => l.startsWith("• Lớp"))!.split(";").length === 6);
+
+section("Dòng an toàn luôn được giữ");
+check("có sẵn thì giữ nguyên (mọi xưng hô)", ensureSafetyLine(post, "Cô") === post && ensureSafetyLine(post, "Thầy") === post);
+check("gia sư lỡ xoá → tự thêm lại ở cuối đúng xưng hô", ensureSafetyLine("Tìm học sinh Toán\nLink: x\n\n", "Thầy") === "Tìm học sinh Toán\nLink: x\nThầy không nhận chuyển khoản trước buổi học thử." && noPrepaySafetyLine("Mình") === "Mình không nhận chuyển khoản trước buổi học thử.");
+check("bài rỗng cũng có dòng an toàn", ensureSafetyLine("", "Cô") === "\nCô không nhận chuyển khoản trước buổi học thử.");
+check("link chia sẻ Facebook được mã hoá, giữ ?n=", facebookShareUrl("https://kin.vn/mentor/u1?n=fb-hn9") === "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fkin.vn%2Fmentor%2Fu1%3Fn%3Dfb-hn9");
+
+section("Danh sách nhóm đã lưu");
+check("bỏ rỗng/trùng (không phân biệt hoa thường), gọn khoảng trắng, giữ thứ tự", eq(normalizeGroupNames(["Gia sư HN", " gia  sư hn ", "", "Toán 9"]), ["Gia sư HN", "Toán 9"]));
+check("sai kiểu / tên > 60 / > 20 nhóm → từ chối", normalizeGroupNames("x") === null && normalizeGroupNames([1]) === null && normalizeGroupNames(["x".repeat(61)]) === null && normalizeGroupNames(Array.from({ length: 21 }, (_, i) => "g" + i)) === null && normalizeGroupNames(Array.from({ length: 20 }, (_, i) => "g" + i))!.length === 20);
+r = applyPreferencesPatch({ connections: { showZalo: true } }, { connections: { groups: ["A", "B", "a"] } });
+check("lưu nhóm: gộp với khoá cũ, bỏ trùng", r.ok && eq(r.value.connections, { showZalo: true, groups: ["A", "B"] }));
+r = applyPreferencesPatch({ connections: { groups: ["A"] } }, { connections: { groups: [] } });
+check("danh sách rỗng → bỏ khoá", r.ok && r.value.connections === undefined);
+check("danh sách hỏng bị từ chối cả bản vá", !applyPreferencesPatch({}, { connections: { groups: "A" } }).ok && !applyPreferencesPatch({}, { connections: { groups: ["x".repeat(61)] } }).ok);
+check("đọc khoan dung: groups hỏng bị bỏ", readPreferences({ connections: { groups: "bad" } }).connections === undefined && eq(readPreferences({ connections: { groups: ["A", "a", ""] } }).connections, { groups: ["A"] }));
 done();

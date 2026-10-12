@@ -35,7 +35,24 @@ export interface UserPreferences {
   /** Gia sư tắt/bật tin nhắc lịch từng bên. Vắng mặt = bật cả hai. */
   reminders?: { parent: boolean; student: boolean };
   /** PH-215 Kết nối: `showZalo` hiện số Zalo trên hồ sơ công khai (TẮT sẵn vì zalo.me/<số> để lộ số); `messenger` là tên trang m.me. */
-  connections?: { showZalo?: boolean; messenger?: string };
+  connections?: { showZalo?: boolean; messenger?: string; groups?: string[] };
+}
+
+export const MAX_GROUPS = 20;
+export const GROUP_NAME_MAX = 60;
+/** Tên nhóm Facebook gia sư hay đăng: bỏ trùng không phân biệt hoa thường, bỏ rỗng, tối đa 20 nhóm × 60 ký tự. */
+export function normalizeGroupNames(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.some(x => typeof x !== "string")) return null;
+  const seen = new Set<string>(), out: string[] = [];
+  for (const x of raw as string[]) {
+    const n = x.replace(/\s+/g, " ").trim();
+    if (!n) continue;
+    if (n.length > GROUP_NAME_MAX) return null;
+    const k = n.toLocaleLowerCase("vi");
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(n);
+  }
+  return out.length <= MAX_GROUPS ? out : null;
 }
 
 /** Tên trang Messenger (m.me/<tên>): chữ, số, chấm, gạch dưới, gạch ngang; 1–64 ký tự. Nhận cả dán nguyên link m.me. */
@@ -74,6 +91,8 @@ export function readPreferences(raw: unknown): UserPreferences {
     if (typeof raw.connections.showZalo === "boolean") c.showZalo = raw.connections.showZalo;
     const m = normalizeMessengerHandle(raw.connections.messenger);
     if (m) c.messenger = m;
+    const gs = normalizeGroupNames(raw.connections.groups);
+    if (gs && gs.length) c.groups = gs;
     if (Object.keys(c).length) out.connections = c;
   }
   return out;
@@ -132,6 +151,11 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
             const h = normalizeMessengerHandle(cv);
             if (!h) return { ok: false, error: "Tên trang Messenger chỉ gồm chữ, số, dấu chấm, gạch dưới, gạch ngang (tối đa 64 ký tự)" };
             c.messenger = h;
+          } else if (ck === "groups") {
+            if (cv === null) { delete c.groups; continue; }
+            const gs = normalizeGroupNames(cv);
+            if (!gs) return { ok: false, error: `Danh sách nhóm: tối đa ${MAX_GROUPS} nhóm, mỗi tên tối đa ${GROUP_NAME_MAX} ký tự` };
+            if (gs.length) c.groups = gs; else delete c.groups;
           } else return { ok: false, error: `connections không có "${ck.slice(0, 40)}"` };
         }
         if (Object.keys(c).length) next.connections = c; else delete next.connections;
