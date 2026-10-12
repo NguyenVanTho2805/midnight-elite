@@ -243,6 +243,11 @@ function OccurrenceCard(p: {
               : <>Chưa có link vào lớp. Thêm ở tab <Link href={`/admin/khoa-hoc/${occ.courseId}?tab=lich-hoc`} className="underline" style={{ color: "var(--kin-nhan-link)" }}>Lịch học</Link> để tin nhắc có link.</>}
           </p>
 
+          <p className="text-sm">
+            <Link href={`/lop-cua-toi/ke-hoach-buoi?courseId=${encodeURIComponent(occ.courseId)}&date=${occ.dateKey}`} className="underline font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Soạn kế hoạch buổi này</Link>
+            <span className="text-xs ml-2" style={{ color: "var(--kin-chu-phu)" }}>4 hoạt động, ra bản gia sư và phiếu học sinh.</span>
+          </p>
+
           {occ.students.some(s => s.absence) && (
             <div>
               <h3 className="text-sm font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Báo nghỉ</h3>

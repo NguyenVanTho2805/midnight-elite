@@ -35,8 +35,23 @@ Test: lib 12/12, API 57/57, trình duyệt phiếu 33/33 và điểm danh 28/28.
 Chưa làm: câu mời xem "bản ghi buổi học" cho buổi Vắng (chưa có trang bản ghi buổi cho phụ huynh nên tin chưa kèm link); giai đoạn 2 (Zalo OA) chờ
 Thọ có pháp nhân; link "Sổ của con" (TK-178) vẫn KHÔNG có hạn tự động theo quyết định cũ — khác GD-28 (60 ngày) của link phiếu, cần Thọ chốt.
 
+## Phễu gia sư (PH-207..216, PH-223) — XONG phần dựng được, ngày 12/10
+- **A · Hồ sơ công khai + đo + chống lừa đảo** (PH-207/210/212/214): `/mentor/[id]` có số buổi đã dạy (từ sổ lớp), nhãn "Không thu phí nhận lớp",
+  khung "không chuyển khoản trước buổi học thử" + nút Báo cáo, chân trang "Tạo hồ sơ của bạn" (mở sẵn vai Gia sư). Đo lượt mở / xem hết theo `?n=`
+  (ghi từ trình duyệt, không đếm bot xem trước, không đếm trùng trong phiên). Thẻ xem trước og:title ≤ 60, og:description ≤ 110, ảnh `public/og-kin.png` 1200×630.
+  Báo cáo hồ sơ (không cần tài khoản, giới hạn tốc độ); `/admin/pheu`: bảng phễu theo kênh + hàng chờ báo cáo, bỏ qua hoặc khoá hồ sơ (404 với người ngoài), mở khoá.
+- **B · Soạn bài đăng** (PH-209): `/lop-cua-toi/bai-dang`, link riêng từng nhóm Facebook, sao chép / chia sẻ Facebook / gửi Zalo, dòng "không nhận chuyển khoản trước buổi học thử" luôn giữ.
+- **C · Kết nối + nhóm Zalo lớp** (PH-213/215/216): Cài đặt → Kết nối (link nhóm Zalo từng lớp, Messenger, hiện số Zalo tắt sẵn; đăng nhập Zalo và OA ghi rõ chưa mở);
+  tin điểm danh / nhắc lịch / báo cáo tháng vào nhóm là tin CHUNG (không tên em, không điểm, không tiền); phiếu học phí luôn gửi riêng.
+- **D · Kế hoạch buổi** (PH-223): `/lop-cua-toi/ke-hoach-buoi`, 4 hoạt động có Sản phẩm, một lần soạn ra bản gia sư và phiếu học sinh KHÔNG đáp án / KHÔNG ghi chú gia sư; in bằng hộp thoại in.
+Test: A lib 32 + API 52 + trình duyệt 35; B lib 49 + API 20 + trình duyệt 27; C lib 60 + API 23 + trình duyệt 34; D lib 46 + API 26 + trình duyệt 37.
+**KHÔNG làm, và vì sao** (theo `CLAUDE-cho-kho-trien-khai.md` mục 9: có trẻ dưới 16 tuổi hoặc tiền thì dừng và hỏi):
+PH-208 (form đăng ký học thử: tên con + lớp + số Zalo phụ huynh + bằng chứng đồng ý — dữ liệu trẻ em, chờ PH-225); PH-211, PH-217..222, PH-226 (cộng đồng / tin nhắn học sinh);
+PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, mục 9.1 của pheu-gia-su.md); đánh giá hồ sơ chỉ sau 4 buổi phụ huynh xác nhận (PH-207: chưa có dữ liệu "buổi được phụ huynh xác nhận" trong sổ lớp này);
+"Đã xác minh số điện thoại" (chưa có OTP số điện thoại); Đăng nhập Zalo (cần ứng dụng Zalo đã đăng ký); AI soạn nháp kế hoạch buổi (Đợt 2, Coin).
+**Chỗ tài liệu mâu thuẫn:** link phiếu/báo cáo hết hạn 60 ngày (`gui-qua-zalo.md`, GD-28) và 30 ngày (PH-214 trong sheet) — đang dùng 60; link "Sổ của con" (TK-178) không có hạn tự động. Cần anh chốt một con số.
+
 ## Chưa làm
-- Phễu gia sư PH-207..210, 212..216, 223/224 — đọc `docs/kin/nghiep-vu/pheu-gia-su.md`.
 - FE-098/099/130/134/136/139/140 (tái cấu trúc/redesign).
 - Ghi sheet cho: TT-199 (row 200), các việc còn lại; báo cáo cuối.
 - KHÔNG làm (chờ Thọ/luật sư): PH-217..222, 226, 211 (cộng đồng/tin nhắn cho học sinh dưới 16 tuổi, chờ PH-225); TK-170 đăng nhập bằng mã 6 số;
@@ -44,7 +59,7 @@ Thọ có pháp nhân; link "Sổ của con" (TK-178) vẫn KHÔNG có hạn t�
 
 ## Việc Thọ cần làm khi triển khai
 - Vercel build chạy `prisma db push`: thêm cột `users.preferences`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`
-  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, cột `tuition_invoices.viewToken/viewTokenExpiresAt/zaloOpenedAt/parentViewedAt` và `attendance_records.zaloOpenedAt` (chỉ THÊM, không xoá dữ liệu cũ).
+  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `profile_visits`, `tutor_profile_reports`, `session_plans`, cột `users.profileLockedAt/profileLockReason`, `courses.zaloGroupUrl`, cột `tuition_invoices.viewToken/viewTokenExpiresAt/zaloOpenedAt/parentViewedAt` và `attendance_records.zaloOpenedAt` (chỉ THÊM, không xoá dữ liệu cũ).
 - Chưa chạy được `next build` trong môi trường này (Google Fonts bị chặn); đã kiểm `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.

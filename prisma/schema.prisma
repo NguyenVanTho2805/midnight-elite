@@ -806,6 +806,7 @@ model User {
   profileLockedAt   DateTime?
   profileLockReason String?   @db.Text
 
+  sessionPlans   SessionPlan[]        @relation("SessionPlanTutor")
   profileVisits  ProfileVisit[]       @relation("ProfileVisitTutor")
   profileReports TutorProfileReport[] @relation("ProfileReportTutor")
 
@@ -1715,4 +1716,26 @@ model TutorProfileReport {
   @@index([tutorId, status])
   @@index([status, createdAt])
   @@map("tutor_profile_reports")
+}
+
+// ─── KẾ HOẠCH BUỔI 4 HOẠT ĐỘNG (PH-223) ───────────────────────────────────────────────────────────────────────
+// Một lần soạn ra HAI bản: bản gia sư (đủ) và phiếu học sinh (chỉ câu hỏi dẫn đường + sản phẩm, KHÔNG đáp án, KHÔNG ghi chú gia sư).
+// activities: mảng đúng 4 phần tử theo thứ tự mo-dau / hinh-thanh / luyen-tap / van-dung (xem src/lib/sessionPlan.ts).
+// dateKey: ngày dạy theo giờ VN (YYYY-MM-DD), có thể trống khi mới soạn nháp.
+model SessionPlan {
+  id         String   @id @default(cuid())
+  courseId   String
+  tutorId    String
+  dateKey    String?
+  title      String
+  goal       String?  @db.Text
+  activities Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tutor User @relation("SessionPlanTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@index([tutorId, courseId])
+  @@index([tutorId, dateKey])
+  @@map("session_plans")
 }
