@@ -89,7 +89,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
     : null;
 
   return (
-    <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--kin-nen-trang)" }}>
       <div className="max-w-xl mx-auto px-4 py-6">
         <header className="mb-5">
           <p className="text-caption" style={{ color: "var(--kin-chu-phu)" }}>

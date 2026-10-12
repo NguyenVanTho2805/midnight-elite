@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 function Notice({ title, body }: { title: string; body: string }) {
   return (
-    <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--kin-nen-trang)" }}>
       <div className="max-w-xl mx-auto px-4 py-10">
         <div role="status" className="rounded-xl p-6 text-center" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
           <h1 className="text-h3 font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{title}</h1>
@@ -49,7 +49,7 @@ export default async function PhieuPage({ params }: { params: Promise<{ token: s
 
   const view = presentInvoiceForParty(inv, { tutorName: inv.tutor.name, studentName: inv.student.name, account: inv.tutor.payoutAccount });
   return (
-    <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--kin-nen-trang)" }}>
       <div className="max-w-xl mx-auto px-4 py-6">
         <header className="mb-5">
           <p className="text-caption" style={{ color: "var(--kin-chu-phu)" }}>Kính gửi anh/chị,</p>

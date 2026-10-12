@@ -6,7 +6,8 @@ const DAY = 24 * 3600_000;
 async function inv(tutorId: string, studentId: string, ym: string, status: string, o: { amountDue?: number; paidAmount?: number } = {}) {
   return prisma.tuitionInvoice.create({ data: { code: generateInvoiceCode(), tutorId, studentId, yearMonth: ym, amountDue: o.amountDue ?? 1_200_000, paidAmount: o.paidAmount ?? 0, status, sentAt: status === "draft" ? null : new Date() } });
 }
-// (guest)/loading.tsx làm Next bắt đầu stream trước khi notFound() chạy → mã HTTP vẫn 200, thân là trang 404 (giống /so-cua-con).
+// Trước đây khung (guest)/loading.tsx làm notFound() trả HTTP 200 (thân là trang 404). Nay /phieu nằm trong khung (parent) (không có loading.tsx) nên trả 404 thật;
+// vẫn dò cả thân trang để không phụ thuộc vào chi tiết đó.
 const page = async (token: string) => { const r = await fetch(`${BASE}/phieu/${token}`, { redirect: "manual" }); const html = await r.text(); const nf = html.includes("NEXT_HTTP_ERROR_FALLBACK;404"); return { status: nf ? 404 : r.status, html, nf }; };
 const hex32 = /^\/phieu\/[0-9a-f]{32}$/;
 

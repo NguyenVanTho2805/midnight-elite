@@ -61,7 +61,7 @@ PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, m�
 - **Đổi tên hiển thị → KiN: XONG** (Thọ chốt 12/10). Giữ nguyên các khoá kỹ thuật để không đăng xuất mọi người và không phải di chuyển dữ liệu: cookie `midnight_session`,
   chuyên mục tin `tin-midnight` (hiển thị "Tin KiN"), tên miền `admin.midnightelite-edu.com`. Test `t-brand` (5 kiểm tra) giữ cho không còn chữ "Midnight Elite" / logo "ME" trong `src`.
   Chưa đổi: ngày "Cập nhật lần cuối: 01/05/2026" ở `/chinh-sach` (chữ pháp lý đã nói KiN nhưng ngày chưa đổi — cần người chịu trách nhiệm pháp lý duyệt).
-  Trang phụ huynh (`/phieu/[token]`, `/so-cua-con/[token]`) vẫn dùng chung khung guest nên còn thanh menu và nút "Bắt đầu miễn phí" — chưa tách khung riêng.
+  Trang phụ huynh (`/phieu/[token]`, `/so-cua-con/[token]`) đã chuyển sang khung riêng `src/app/(parent)/layout.tsx` (URL không đổi): thanh trên chỉ có logo KiN + "Trang riêng cho phụ huynh", chân trang nhắc "đừng chuyển tiếp"; không còn menu bán khoá học, nút "Bắt đầu miễn phí", chân trang quảng bá, thanh điều hướng dưới của học viên; link sai trả HTTP 404 thật. Test `ui-parent-shell` 20/20.
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,
