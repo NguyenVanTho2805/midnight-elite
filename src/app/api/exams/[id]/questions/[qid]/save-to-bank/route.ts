@@ -63,6 +63,7 @@ export async function POST(
           imageUrl: question.imageUrl,
           points: question.points,
           explanation: question.explanation,
+          hint: question.hint,
           categoryId,
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,

@@ -56,6 +56,7 @@ interface ItemForm {
   imageUrl: string;
   points: string;
   explanation: string;
+  hint: string; // NV-188: gợi ý cho màn Chữa bài (MC / điền ngắn)
   categoryId: string;
   difficulty: Difficulty;
   tagsText: string; // tách theo dấu phẩy khi lưu
@@ -65,7 +66,7 @@ interface ItemForm {
 }
 
 const INIT_FORM: ItemForm = {
-  type: "MC", text: "", imageUrl: "", points: "1", explanation: "",
+  type: "MC", text: "", imageUrl: "", points: "1", explanation: "", hint: "",
   categoryId: "", difficulty: "NB", tagsText: "",
   options: ["", "", "", ""], correctIndex: 0, clusterCorrect: [false, false, false, false],
 };
@@ -73,7 +74,7 @@ const INIT_FORM: ItemForm = {
 function toForm(item: QuestionBankItemFull): ItemForm {
   const base = {
     type: item.type, text: item.text, imageUrl: item.imageUrl ?? "",
-    points: String(item.points), explanation: item.explanation ?? "",
+    points: String(item.points), explanation: item.explanation ?? "", hint: item.hint ?? "",
     categoryId: item.categoryId, difficulty: item.difficulty,
     tagsText: (item.tags ?? []).join(", "),
   };
@@ -109,6 +110,7 @@ function toInput(form: ItemForm): QuestionBankItemInput | null {
     imageUrl: form.imageUrl.trim() || undefined,
     points: Number(form.points) > 0 ? Number(form.points) : 1,
     explanation: form.explanation.trim() || undefined,
+    hint: form.hint.trim() || undefined,
     categoryId: form.categoryId,
     difficulty: form.difficulty,
     tags: tags.length > 0 ? tags : undefined,
@@ -384,6 +386,15 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
             <textarea className={inp} style={inpStyle} rows={2}
               value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} />
           </div>
+
+          {(form.type === "MC" || form.type === "SHORT_ANSWER") && (
+            <div>
+              <label htmlFor="bank-hint" className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Gợi ý cho màn Chữa bài (tùy chọn)</label>
+              <textarea id="bank-hint" className={inp} style={inpStyle} rows={2} maxLength={1000}
+                value={form.hint} onChange={e => setForm({ ...form, hint: e.target.value })} />
+              <p className="text-xs text-gray-400 mt-1">Hiện sau khi học viên nộp sai lần đầu, chưa lộ đáp án. Để trống thì bỏ bước gợi ý.</p>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Tags (tùy chọn, cách nhau bởi dấu phẩy)</label>

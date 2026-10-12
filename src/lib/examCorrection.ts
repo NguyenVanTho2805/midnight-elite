@@ -65,3 +65,14 @@ export function shortAnswerCorrect(studentText: string | null | undefined, corre
 
 export const REFLECTION_MAX = 500;
 export const SHORT_ANSWER_MAX = 200;
+
+export const HINT_MAX = 1000;
+
+/** Gợi ý do gia sư soạn: trống → null (bỏ bước gợi ý); quá dài → từ chối. */
+export function normalizeHint(raw: unknown): { ok: true; value: string | null } | { ok: false } {
+  if (raw === undefined || raw === null) return { ok: true, value: null };
+  if (typeof raw !== "string") return { ok: false };
+  const v = raw.trim();
+  if (v.length > HINT_MAX) return { ok: false };
+  return { ok: true, value: v || null };
+}

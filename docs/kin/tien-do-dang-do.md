@@ -10,19 +10,11 @@ Thọ yêu cầu tạm dừng để làm tiếp lúc khác. File này ghi đúng
 - TT-200 (phiếu học phí + đối soát VietQR/SePay), TT-201 (nhắc lịch), TT-202 (báo nghỉ sát giờ + buổi bù), TT-203 (chế độ gọn), TK-167 (chủ đề theo tài khoản)
 - Đã ghi vào sheet cho các việc trên (TK-170 và TK-173 ghi "làm một phần", chưa tick).
 
-## Đang dở: NV-188 (Chữa bài: gợi ý trước, đáp án sau)
-Đã có (commit cuối): schema `ExamQuestion.hint`, `QuestionBankItem.hint`, bảng `ExamCorrection`; thư viện thuần
-`src/lib/examCorrection.ts` (máy trạng thái: nộp lần 1 sai → gợi ý; lần 2 sai hoặc bấm "Xem đáp án" → đáp án; câu không
-có gợi ý bỏ bước 2) — test thuần 15/15.
-Còn lại:
-1. API `GET/POST /api/exams/attempts/[attemptId]/correction[/questionId]` (chỉ lượt thi đã nộp của chính mình; chỉ MC + câu điền ngắn
-   và chỉ câu đã làm sai/bỏ trống; chỉ bật khi đề cho xem đáp án và không bật `hideAnswerForWrong`; khoá theo (lượt × câu); đáp án
-   và lời giải CHỈ trả khi state = solved/revealed; không bao giờ đổi `ExamAttempt.score`).
-2. Thêm `correctionAvailable` vào `/review`; UI `CorrectionPanel` ở `/student/thi-thu/[examId]` (3 trạng thái, màu luôn kèm chữ,
-   ô "gợi ý giúp bạn ở chỗ nào?" không bắt buộc).
-3. Ô "Gợi ý" trong form soạn câu hỏi (admin thi-thu/[id] và ngân hàng câu hỏi) + các route tạo/sửa/copy/lưu-vào-ngân-hàng
-   nhận và copy `hint`; `QuestionBankPicker` copy hint khi rút vào đề.
-4. Test API + trình duyệt; ghi sheet NV-188 (row 189).
+## NV-188 (Chữa bài) — XONG ngày 12/10
+API `/api/exams/attempts/[attemptId]/correction[/questionId]`, `CorrectionPanel` ở `/student/thi-thu/[examId]` (nút "Chữa lại các câu sai"
+ở màn xem lại), ô "Gợi ý" trong form soạn câu hỏi (đề thi + ngân hàng), copy gợi ý khi lưu/copy/nhân bản. Test API 58/58 + trình duyệt 25/25.
+Ràng buộc đã chốt: chỉ MC + câu điền ngắn, chỉ câu làm sai/bỏ trống; chỉ bật khi đề cho xem đáp án và không bật "ẩn đáp án câu sai";
+đáp án/lời giải chỉ về khi câu đã xong; không bao giờ đổi điểm bài thi. Câu tự luận và đúng-sai chưa có chữa bài.
 
 ## Chưa làm
 - NV-189 (mục "Điều chưa đạt", row 190): 4 loại dòng gợi ý, gia sư sửa trước khi gửi; đọc `docs/kin/nghiep-vu/hoc-tu-khan.md`.

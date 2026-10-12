@@ -379,6 +379,7 @@ export type ExamReviewQuestion =
 export interface ExamAttemptReview {
   attemptId: string; score: number | null; totalPoints: number;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];
+  correctableCount?: number; // NV-188: số câu làm sai có thể chữa bài (0 = đề không cho xem đáp án)
 }
 
 // Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)
@@ -389,13 +390,14 @@ export interface ExamOptionFull {
 export interface ExamQuestionFull {
   id: string; examId: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number; explanation?: string | null;
+  hint?: string | null; // NV-188: gợi ý cho màn Chữa bài
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
   sourceBankItemId?: string | null;
   options: ExamOptionFull[];
 }
 export interface ExamQuestionInput {
-  text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
+  text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string; hint?: string;
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
   sourceBankItemId?: string | null;
@@ -547,7 +549,7 @@ export interface AssignmentSubmissionFull {
 }
 export interface QuestionBankItemFull {
   id: string; type: QuestionType; text: string;
-  imageUrl?: string | null; points: number; explanation?: string | null;
+  imageUrl?: string | null; points: number; explanation?: string | null; hint?: string | null;
   categoryId: string; difficulty: Difficulty; tags: string[] | null;
   ownerId: string | null; owner: { name: string } | null;
   createdAt: string; updatedAt: string;
@@ -562,7 +564,7 @@ export interface QuestionBankItemFull {
   correctRatio?: number | null;
 }
 export interface QuestionBankItemInput {
-  type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string;
+  type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string; hint?: string;
   categoryId: string; difficulty: Difficulty; tags?: string[];
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }

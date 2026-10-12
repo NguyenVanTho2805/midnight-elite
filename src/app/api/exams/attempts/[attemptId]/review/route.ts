@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
+import { countCorrectable } from "@/lib/examCorrectionServer";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -108,6 +109,8 @@ export async function GET(
       score: attempt.score,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
+      // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).
+      correctableCount: await countCorrectable(session.userId, attemptId),
       questions,
     });
   } catch (e) {
