@@ -27,7 +27,7 @@ type SessionDelegate = {
   delete(args: unknown): Promise<unknown>;
 };
 type RecordDelegate = {
-  findMany(args: unknown): Promise<{ userId: string; status: string; note: string | null }[]>;
+  findMany(args: unknown): Promise<{ userId: string; status: string; note: string | null; zaloOpenedAt: Date | null }[]>;
   upsert(args: unknown): Promise<unknown>;
 };
 
@@ -60,11 +60,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [enrollments, records] = await Promise.all([
     prisma.enrollment.findMany({
       where:   { courseId: session.courseId, status: ENROLLMENT_STATUS.ACTIVE },
-      include: { user: { select: { id: true, name: true, studentId: true, avatarBase64: true } } },
+      include: { user: { select: { id: true, name: true, studentId: true, avatarBase64: true, parentName: true, parentPhone: true } } },
       orderBy: { user: { name: "asc" } },
     }),
     asRecords().findMany({ where: { sessionId: id } }),
   ]);
+  const course = await prisma.course.findUnique({ where: { id: session.courseId }, select: { name: true } });
   const byUserId = new Map(records.map(r => [r.userId, r]));
   // Buổi bù: loại còn dùng được (để chọn) và loại đã dùng cho CHÍNH buổi này (để hiện đang chọn).
   const now = new Date();
@@ -88,9 +89,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     avatar:    e.user.avatarBase64,
     status:    byUserId.get(e.user.id)?.status ?? null, // null = chưa điểm danh
     note:      byUserId.get(e.user.id)?.note ?? null,
+    // TT-199: để gia sư nhắn phụ huynh qua Zalo ngay từ màn điểm danh.
+    parentName:   e.user.parentName,
+    parentPhone:  e.user.parentPhone,
+    zaloOpenedAt: byUserId.get(e.user.id)?.zaloOpenedAt?.toISOString() ?? null,
   }));
 
-  return NextResponse.json({ session, roster });
+  return NextResponse.json({ session, roster, course: { name: course?.name ?? "" } });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -144,15 +149,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // (sessionId, userId). 2 gia sư đồng thời set record cùng 1 em thì
   // người sau đè được, có updatedBy để biết ai làm cuối.
   const now = new Date();
+  // Trạng thái đổi → xoá mốc "đã mở Zalo" (tin trước nói về trạng thái cũ).
+  const prevStatus = new Map((await asRecords().findMany({ where: { sessionId: id, userId: { in: items.map(i => i.userId) } } })).map(r => [r.userId, r.status]));
   class MakeupError extends Error {}
   try {
     await prisma.$transaction(async (tx) => {
       const txRecords = asRecords(tx);
       for (const i of items) {
+        const changed = prevStatus.has(i.userId) && prevStatus.get(i.userId) !== i.status;
         await txRecords.upsert({
           where:  { sessionId_userId: { sessionId: id, userId: i.userId } },
           create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId },
-          update: { status: i.status, note: i.note, updatedBy: auth.userId },
+          update: { status: i.status, note: i.note, updatedBy: auth.userId, ...(changed ? { zaloOpenedAt: null } : {}) },
         });
         if (i.makeupCreditId) {
           // Điều kiện nằm trong WHERE của updateMany nên hai gia sư/hai lần bấm cùng lúc không dùng chung 1 buổi bù.

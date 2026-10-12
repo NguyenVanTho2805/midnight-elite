@@ -9,12 +9,20 @@
 //   3. Bấm "Lưu" → batch PUT /api/attendance-sessions/[id].
 //   4. (TT-202) Em có mặt/muộn mà đang giữ buổi bù thì tick "Dùng 1 buổi bù" — buổi bù sắp hết hạn
 //      được dùng trước; đổi sang vắng/có phép thì buổi bù tự được trả lại.
+//   5. (TT-199) Em đã lưu điểm danh có nút "Nhắn phụ huynh": soạn sẵn tin, gia sư sửa được, KiN mở Zalo và ghi
+//      "Đã mở Zalo lúc …" (không bao giờ "đã gửi" — KiN không biết tin có đi thật hay không).
 //
 // Dùng token --kin-* để màu nhất quán với 5 chủ đề của KiN.
 "use client";
 import { useEffect, useState, useCallback, use as usePromise } from "react";
-import { useNotify } from "@/components/tutor/shared";
+import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
+import { KinButton } from "@/components/kin";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
+import { attendanceMessage } from "@/lib/invoiceZalo";
+import { openZalo } from "@/lib/zaloShare";
+import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+
+const vnWhen = (iso: string) => `${hmOf(vnMinutesOfDay(new Date(iso)))} ngày ${vnDateKeyOf(new Date(iso)).slice(8, 10)}/${vnDateKeyOf(new Date(iso)).slice(5, 7)}`;
 
 type RosterRow = {
   userId:    string;
@@ -26,6 +34,9 @@ type RosterRow = {
   makeupAvailable: { id: string; expiresAt: string }[]; // buổi bù còn dùng được (sắp hết hạn trước)
   makeupUsedId:    string | null;                       // buổi bù đã gắn cho CHÍNH buổi này
   useMakeup?:      boolean;                             // trạng thái tick trên màn hình
+  parentName:      string | null;
+  parentPhone:     string | null;
+  zaloOpenedAt:    string | null;                       // TT-199: gia sư đã mở Zalo nhắn phụ huynh (trạng thái hiện tại)
 };
 type Session = { id: string; courseId: string; date: string; note: string | null };
 
@@ -55,6 +66,8 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [dirty, setDirty]         = useState<Set<string>>(new Set()); // userIds đã sửa
+  const [courseName, setCourseName] = useState("");
+  const [compose, setCompose]     = useState<{ row: RosterRow; text: string } | null>(null);
 
   const load = useCallback(async () => {
     await Promise.resolve();
@@ -76,6 +89,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
         const r2 = await fetch(`/api/attendance-sessions/${existing.id}`, { credentials: "same-origin" });
         if (r2.ok) {
           const d2 = await r2.json();
+          setCourseName(d2.course?.name ?? "");
           setRoster((d2.roster as RosterRow[]).map(r => ({ ...r, useMakeup: r.makeupUsedId !== null })));
         }
       }
@@ -136,6 +150,25 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
       toast.ok(`Đã lưu ${d.count} học viên`);
       await load(); // làm mới danh sách buổi bù (đã dùng / được trả lại)
     } finally { setSaving(false); }
+  }
+
+  function startCompose(row: RosterRow) {
+    if (!session || !row.status) return;
+    const dd = session.date.slice(8, 10), mm = session.date.slice(5, 7);
+    setCompose({ row, text: attendanceMessage({ subject: courseName || "học", dateLabel: `${dd}/${mm}`, studentName: row.name, status: row.status }) });
+  }
+
+  async function openComposed() {
+    if (!compose || !session) return;
+    const { row, text } = compose;
+    const res = await openZalo({ text, phone: row.parentPhone });
+    if (!res.opened) { if (res.reason === "failed") toast.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    const log = await callApi<{ openedAt: string }>(`/api/attendance-sessions/${session.id}/zalo`, { method: "POST", body: JSON.stringify({ userId: row.userId }) });
+    if (!log.ok) toast.err(log.data.error ?? "Đã mở Zalo nhưng chưa ghi lại được.");
+    // Cập nhật tại chỗ — KHÔNG tải lại cả trang, vì tải lại sẽ xoá các ô điểm danh của em khác chưa lưu.
+    else setRoster(prev => prev.map(r => (r.userId === row.userId ? { ...r, zaloOpenedAt: log.data.openedAt } : r)));
+    toast.info(res.method === "share" ? "Chọn Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào cuộc trò chuyện rồi bấm gửi.");
+    setCompose(null);
   }
 
   // Thống kê nhanh
@@ -205,7 +238,8 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
           {/* Roster rows */}
           <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {roster.map((r, i) => (
-              <RosterRowView key={r.userId} r={r} index={i} onPick={setStatus} onToggleMakeup={setUseMakeup} />
+              <RosterRowView key={r.userId} r={r} index={i} onPick={setStatus} onToggleMakeup={setUseMakeup}
+                unsaved={dirty.has(r.userId)} onZalo={startCompose} />
             ))}
           </div>
 
@@ -223,14 +257,32 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
           </div>
         </>
       )}
+
+      {compose && (
+        <Modal title={`Nhắn phụ huynh — ${compose.row.name}`} onClose={() => setCompose(null)}>
+          <label className="block text-sm" htmlFor="tin-diem-danh">Tin nhắn (sửa được trước khi gửi)</label>
+          <textarea id="tin-diem-danh" rows={4} value={compose.text} onChange={e => setCompose(c => (c ? { ...c, text: e.target.value } : c))}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+            {compose.row.parentPhone ? `Sẽ mở Zalo của ${compose.row.parentPhone}${compose.row.parentName ? ` (${compose.row.parentName})` : ""}.` : "Chưa có số điện thoại phụ huynh — KiN sẽ chép tin và mở Zalo, bạn chọn đúng người nhận."}
+            {" "}KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+          </p>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" onClick={async () => { if (await copyText(compose.text)) toast.ok("Đã sao chép tin."); else toast.err("Không sao chép được."); }}>Sao chép</KinButton>
+            <KinButton onClick={() => void openComposed()} disabled={!compose.text.trim()}>Mở Zalo</KinButton>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-function RosterRowView({ r, index, onPick, onToggleMakeup }: {
+function RosterRowView({ r, index, onPick, onToggleMakeup, unsaved, onZalo }: {
   r: RosterRow; index: number;
   onPick: (userId: string, status: AttendanceStatus) => void;
   onToggleMakeup: (userId: string, on: boolean) => void;
+  unsaved: boolean; onZalo: (r: RosterRow) => void;
 }) {
   const present = r.status === "present" || r.status === "late";
   const hasMakeup = r.makeupAvailable.length > 0 || r.makeupUsedId !== null;
@@ -261,6 +313,15 @@ function RosterRowView({ r, index, onPick, onToggleMakeup }: {
               {!present && " — chỉ dùng khi học viên có mặt/muộn"}
             </span>
           </label>
+        )}
+        {r.status && !unsaved && (
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => onZalo(r)} aria-label={`Nhắn phụ huynh của ${r.name} qua Zalo`}
+              className="text-caption font-semibold underline min-h-[44px] sm:min-h-0" style={{ color: "var(--kin-th-navy)" }}>
+              Nhắn phụ huynh
+            </button>
+            {r.zaloOpenedAt && <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Đã mở Zalo lúc {vnWhen(r.zaloOpenedAt)}</span>}
+          </div>
         )}
       </div>
       <div className="flex items-center gap-1 flex-wrap justify-end">

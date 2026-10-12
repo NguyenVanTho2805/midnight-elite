@@ -24,17 +24,27 @@ Gửi phụ huynh qua Zalo là bán tự động ("Đã mở Zalo lúc…", khô
 Test: lib 37/37, API 48/48, trình duyệt 29/29. Giới hạn: loại dòng thứ 4 (buổi gia sư dời/huỷ) CHƯA có nguồn dữ liệu nên chưa sinh dòng nào;
 "bài về nhà đúng hạn" = bài giao có hạn nộp trong tháng và đã nộp trước hạn.
 
+## TT-199 giai đoạn 1 (gửi qua Zalo bằng tay) — XONG ngày 12/10
+Phiếu học phí: tab Phiếu có nút "Gửi phiếu qua Zalo" (chỉ phiếu đã gửi / phụ huynh đã báo chuyển / đóng một phần). Hộp thoại chọn
+"Chat riêng" hoặc "Nhóm Zalo lớp", tin soạn sẵn theo `gui-qua-zalo.md`, gia sư sửa được; KiN mở Zalo (bảng chia sẻ trên điện thoại, chép + mở
+`zalo.me/<SĐT>` trên máy tính) và ghi "Đã mở Zalo lúc …" (không bao giờ "đã gửi"). Chat riêng có link riêng `/phieu/<mã 32 ký tự>` hết hạn sau
+60 ngày (GD-28), dùng lại link còn hạn, hết hạn thì cấp link mới; nhóm lớp chỉ có tin chung, không số tiền, không link, không tên con.
+Trang `/phieu/[token]` không cần tài khoản, có QR + STK của gia sư + nút "Tôi đã chuyển"; thẻ xem trước chỉ chữ chung; ghi "Phụ huynh đã xem lúc …"
+từ trình duyệt (không phải lúc bot Zalo xem trước link). Điểm danh: nút "Nhắn phụ huynh" cho em đã LƯU điểm danh, tin "Buổi [môn] [ngày] của con [tên]: [trạng thái]."
+Test: lib 12/12, API 57/57, trình duyệt phiếu 33/33 và điểm danh 28/28.
+Chưa làm: câu mời xem "bản ghi buổi học" cho buổi Vắng (chưa có trang bản ghi buổi cho phụ huynh nên tin chưa kèm link); giai đoạn 2 (Zalo OA) chờ
+Thọ có pháp nhân; link "Sổ của con" (TK-178) vẫn KHÔNG có hạn tự động theo quyết định cũ — khác GD-28 (60 ngày) của link phiếu, cần Thọ chốt.
+
 ## Chưa làm
-- TT-199 giai đoạn 1 (gửi phiếu học phí / điểm danh qua Zalo bằng tay): helper `src/lib/zaloShare.ts` đã có, thiếu nút ở phiếu học phí và báo cáo buổi.
 - Phễu gia sư PH-207..210, 212..216, 223/224 — đọc `docs/kin/nghiep-vu/pheu-gia-su.md`.
 - FE-098/099/130/134/136/139/140 (tái cấu trúc/redesign).
-- Ghi sheet cho: NV-189 (row 190), TT-199, các việc còn lại; báo cáo cuối.
+- Ghi sheet cho: TT-199 (row 200), các việc còn lại; báo cáo cuối.
 - KHÔNG làm (chờ Thọ/luật sư): PH-217..222, 226, 211 (cộng đồng/tin nhắn cho học sinh dưới 16 tuổi, chờ PH-225); TK-170 đăng nhập bằng mã 6 số;
   nối "không tính phí" của báo nghỉ vào phiếu học phí (liên quan GD-25, đụng tiền).
 
 ## Việc Thọ cần làm khi triển khai
 - Vercel build chạy `prisma db push`: thêm cột `users.preferences`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`
-  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports` (chỉ THÊM, không xoá dữ liệu cũ).
+  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, cột `tuition_invoices.viewToken/viewTokenExpiresAt/zaloOpenedAt/parentViewedAt` và `attendance_records.zaloOpenedAt` (chỉ THÊM, không xoá dữ liệu cũ).
 - Chưa chạy được `next build` trong môi trường này (Google Fonts bị chặn); đã kiểm `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.

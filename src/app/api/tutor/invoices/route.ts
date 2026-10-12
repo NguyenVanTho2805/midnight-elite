@@ -39,6 +39,8 @@ export async function GET(req: NextRequest) {
     status: r.status as InvoiceStatus, statusLabel: INVOICE_STATUS_LABEL[r.status as InvoiceStatus] ?? r.status,
     sentAt: r.sentAt?.toISOString() ?? null, paidAt: r.paidAt?.toISOString() ?? null,
     parentReportedAt: r.parentReportedAt?.toISOString() ?? null, cancelReason: r.cancelReason,
+    // TT-199: "Đã mở Zalo lúc …" (không phải "đã gửi") và "Phụ huynh đã xem".
+    zaloOpenedAt: r.zaloOpenedAt?.toISOString() ?? null, parentViewedAt: r.parentViewedAt?.toISOString() ?? null,
     needsBankCheck: r.status === "parent_reported" && !!r.parentReportedAt && now - r.parentReportedAt.getTime() > REPORT_CHECK_MS,
     creditApplied: (r.breakdown as { creditApplied?: number } | null)?.creditApplied ?? 0,
     // Để gia sư sao chép tin nhắn/QR gửi phụ huynh (Zalo) — dựng từ tài khoản CỦA GIA SƯ.

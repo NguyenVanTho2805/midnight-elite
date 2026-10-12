@@ -2,20 +2,29 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
+import { openZalo } from "@/lib/zaloShare";
+import { groupInvoiceMessage, invoiceLinkDaysLeft, privateInvoiceMessage } from "@/lib/invoiceZalo";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 import { vnMonthKey } from "@/lib/revenue";
+import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+
+const vnHm = (iso: string) => hmOf(vnMinutesOfDay(new Date(iso)));
+const vnDm = (iso: string) => { const k = vnDateKeyOf(new Date(iso)); return `${k.slice(8, 10)}/${k.slice(5, 7)}`; };
+const vnWhen = (iso: string) => `${vnHm(iso)} ngày ${vnDm(iso)}`;
 
 export interface InvoiceRow {
   id: string; code: string; yearMonth: string; studentName: string;
   amountDue: number; paidAmount: number; remaining: number;
   status: string; statusLabel: string; cancelReason: string | null; needsBankCheck: boolean; creditApplied: number;
   transferContent: string; qrUrl: string | null;
+  zaloOpenedAt: string | null; parentViewedAt: string | null;
 }
 interface Summary { count: number; totalDue: number; totalPaid: number; totalRemaining: number }
 type Dialog =
   | { kind: "amount"; inv: InvoiceRow }
   | { kind: "cancel"; inv: InvoiceRow }
-  | { kind: "pay"; inv: InvoiceRow };
+  | { kind: "pay"; inv: InvoiceRow }
+  | { kind: "zalo"; inv: InvoiceRow };
 
 function lastMonths(now = new Date()): string[] {
   const base = new Date(now.getTime() + 7 * 3600_000); // giờ VN
@@ -177,12 +186,19 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Đã nhận</dt><dd className="font-bold tabular-nums">{vnd(i.paidAmount)}</dd></div>
                 <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại</dt><dd className="font-bold tabular-nums">{vnd(i.remaining)}</dd></div>
               </dl>
+              {(i.zaloOpenedAt || i.parentViewedAt) && (
+                <p className="text-xs mt-2 flex gap-x-4 gap-y-1 flex-wrap" style={{ color: "var(--kin-chu-phu)" }}>
+                  {i.zaloOpenedAt && <span>Đã mở Zalo lúc {vnWhen(i.zaloOpenedAt)}</span>}
+                  {i.parentViewedAt && <span style={{ color: "var(--kin-tt-chu-xong)" }}>Phụ huynh đã xem lúc {vnWhen(i.parentViewedAt)}</span>}
+                </p>
+              )}
               {i.creditApplied > 0 && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Đã trừ {vnd(i.creditApplied)} tiền đóng dư từ tháng trước.</p>}
               {i.status === "cancelled" && i.cancelReason && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Lý do huỷ: {i.cancelReason}</p>}
               <div className="mt-3 flex gap-2 flex-wrap">
                 {i.status === "draft" && <KinButton size="md" loading={busy === i.id} onClick={() => act(i, { action: "send" }, "Đã gửi phiếu.")}>Gửi phiếu</KinButton>}
                 {(i.status === "sent" || i.status === "parent_reported" || i.status === "partial") && (<>
                   <KinButton variant="secondary" onClick={() => setDialog({ kind: "pay", inv: i })}>Đã nhận tiền</KinButton>
+                  <KinButton onClick={() => setDialog({ kind: "zalo", inv: i })}>{i.zaloOpenedAt ? "Gửi lại qua Zalo" : "Gửi phiếu qua Zalo"}</KinButton>
                   <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>
                 </>)}
                 {i.status === "draft" && <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>}
@@ -199,6 +215,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
         onSubmit={async (amountDue, reason) => { if (await act(dialog.inv, { action: "set_amount", amountDue, reason }, "Đã cập nhật số tiền. Mã phiếu giữ nguyên.")) setDialog(null); }} />}
       {dialog?.kind === "cancel" && <ReasonDialog title={`Huỷ phiếu ${dialog.inv.code}`} label="Lý do huỷ (bắt buộc)" cta="Huỷ phiếu" danger onClose={() => setDialog(null)}
         onSubmit={async reason => { if (await act(dialog.inv, { action: "cancel", reason }, "Đã huỷ phiếu.")) setDialog(null); }} />}
+      {dialog?.kind === "zalo" && <ZaloDialog inv={dialog.inv} onClose={() => setDialog(null)} onOpened={() => load(yearMonth)} />}
       {dialog?.kind === "pay" && <PayDialog inv={dialog.inv} onClose={() => setDialog(null)}
         onSubmit={async (amount, excess) => { if (await act(dialog.inv, { action: "record_payment", amount, ...(excess ? { excess } : {}) }, "Đã ghi nhận tiền.")) setDialog(null); }} />}
     </div>
@@ -237,6 +254,86 @@ export function ReasonDialog({ title, label, cta, danger, onClose, onSubmit }: {
         <KinButton variant="ghost" onClick={onClose}>Đóng</KinButton>
         <KinButton disabled={!reason.trim()} loading={busy} onClick={async () => { setBusy(true); await onSubmit(reason.trim()); setBusy(false); }}
           style={danger ? { background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "#fff" } : undefined}>{cta}</KinButton>
+      </div>
+    </Modal>
+  );
+}
+
+interface ZaloPrepared { target: "private" | "group"; yearMonth: string; studentName: string; parentName: string | null; amount: number; path: string | null; expiresAt: string | null; phone: string | null }
+
+// TT-199 giai đoạn 1: soạn tin sẵn, gia sư sửa được, rồi tự bấm gửi trong Zalo. KiN không gửi giúp.
+function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () => void; onOpened: () => Promise<void> | void }) {
+  const notify = useNotify();
+  const [target, setTarget] = useState<"private" | "group">("private");
+  const [prep, setPrep] = useState<ZaloPrepared | null>(null);
+  const [text, setText] = useState("");
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const seq = useRef(0);
+
+  const prepare = useCallback(async (t: "private" | "group") => {
+    await Promise.resolve();
+    const my = ++seq.current;
+    setState("loading"); setErr("");
+    const r = await callApi<ZaloPrepared>(`/api/tutor/invoices/${inv.id}/zalo`, { method: "POST", body: JSON.stringify({ action: "prepare", target: t }) });
+    if (my !== seq.current) return; // bỏ kết quả cũ khi đổi lựa chọn nhanh
+    if (!r.ok) { setErr(r.data.error ?? "Không chuẩn bị được tin nhắn"); setState("error"); return; }
+    setPrep(r.data);
+    setText(t === "group"
+      ? groupInvoiceMessage({ yearMonth: r.data.yearMonth })
+      : privateInvoiceMessage({ studentName: r.data.studentName, yearMonth: r.data.yearMonth, amount: r.data.amount, url: `${window.location.origin}${r.data.path}` }));
+    setState("ready");
+  }, [inv.id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void prepare(target);
+  }, [prepare, target]);
+
+  async function open() {
+    if (!prep || !text.trim()) return;
+    setBusy(true);
+    const res = await openZalo({ text, phone: target === "private" ? prep.phone : null });
+    if (!res.opened) { setBusy(false); if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    if (target === "private") {
+      const log = await callApi(`/api/tutor/invoices/${inv.id}/zalo`, { method: "POST", body: JSON.stringify({ action: "opened" }) });
+      if (!log.ok) notify.err(log.data.error ?? "Đã mở Zalo nhưng chưa ghi lại được.");
+    }
+    notify.info(res.method === "share" ? "Chọn Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào cuộc trò chuyện rồi bấm gửi.");
+    setBusy(false);
+    await onOpened();
+    onClose();
+  }
+
+  const daysLeft = prep?.expiresAt ? invoiceLinkDaysLeft(new Date(prep.expiresAt), new Date()) : null;
+  return (
+    <Modal title={`Gửi phiếu qua Zalo — ${inv.studentName}`} onClose={onClose}>
+      <fieldset className="mb-3 text-sm">
+        <legend className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Gửi vào đâu?</legend>
+        {([["private", "Chat riêng với phụ huynh"], ["group", "Nhóm Zalo lớp"]] as const).map(([v, l]) => (
+          <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="zalo-target" checked={target === v} onChange={() => setTarget(v)} /> {l}</label>
+        ))}
+      </fieldset>
+      {state === "loading" && <p role="status" className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Đang chuẩn bị tin nhắn…</p>}
+      {state === "error" && <p role="alert" className="text-sm" style={{ color: "var(--kin-tt-chu-loi)" }}>{err}</p>}
+      {state === "ready" && prep && (<>
+        <label className="block text-sm" htmlFor="tin-phieu">Tin nhắn (sửa được trước khi gửi)</label>
+        <textarea id="tin-phieu" rows={6} value={text} onChange={e => setText(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
+        <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+          {target === "group"
+            ? "Tin chung cho nhóm: không có số tiền, link hay tên con, vì ai trong nhóm cũng xem được. Phiếu từng em gửi riêng ở chat riêng."
+            : <>
+                {prep.phone ? `Sẽ mở Zalo của ${prep.phone}.` : "Chưa có số điện thoại phụ huynh — KiN sẽ chép tin và mở Zalo, bạn chọn đúng người nhận."}
+                {daysLeft !== null && <> Link phiếu dùng được {daysLeft} ngày nữa, phụ huynh không cần tài khoản.</>}
+              </>}
+          {" "}KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+        </p>
+      </>)}
+      <div className="flex gap-2 flex-wrap mt-4 justify-end">
+        <KinButton variant="ghost" onClick={onClose}>Đóng</KinButton>
+        <KinButton variant="secondary" disabled={state !== "ready" || !text.trim()} onClick={async () => { if (await copyText(text)) notify.ok("Đã sao chép tin."); else notify.err("Không sao chép được."); }}>Sao chép</KinButton>
+        <KinButton loading={busy} disabled={state !== "ready" || !text.trim()} onClick={() => void open()}>Mở Zalo</KinButton>
       </div>
     </Modal>
   );

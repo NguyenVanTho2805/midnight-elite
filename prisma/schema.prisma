@@ -1022,6 +1022,9 @@ model AttendanceRecord {
   status     String   // "present" | "late" | "excused" | "absent"
   note       String?  @db.Text
   updatedBy  String?  // userId gia sư cập nhật lần cuối
+  // TT-199: gia sư ĐÃ MỞ Zalo để nhắn phụ huynh về buổi này. Đổi trạng thái điểm danh thì xoá mốc
+  // (tin cũ nói về trạng thái cũ). KiN không biết tin có đi thật hay không.
+  zaloOpenedAt DateTime?
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 
@@ -1159,6 +1162,12 @@ model TuitionInvoice {
   sentAt           DateTime?
   parentReportedAt DateTime?
   paidAt           DateTime?
+  // TT-199 giai đoạn 1: link riêng xem phiếu không cần tài khoản (hết hạn 60 ngày, GD-28).
+  // KHÔNG @unique (xem ghi chú ở ParentLink.portalToken: db push trên cột cũ).
+  viewToken          String?
+  viewTokenExpiresAt DateTime?
+  zaloOpenedAt       DateTime? // gia sư ĐÃ MỞ Zalo — KiN không biết tin có đi thật hay không
+  parentViewedAt     DateTime? // phụ huynh mở link (ghi từ trình duyệt, không phải khi bot xem trước link)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -1169,6 +1178,7 @@ model TuitionInvoice {
   @@unique([tutorId, studentId, yearMonth])
   @@index([tutorId, yearMonth])
   @@index([studentId])
+  @@index([viewToken])
   @@map("tuition_invoices")
 }
 
