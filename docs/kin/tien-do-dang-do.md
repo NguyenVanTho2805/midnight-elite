@@ -88,7 +88,7 @@ Nguồn: file Figma *KiN Design System* (`2orXvoHL2upkiGoMjlq8aX`). Đã đọc 
 - **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
 - **CHƯA làm (đều cần quyết định hoặc chưa có khung Figma tương ứng):**
   - Đăng nhập "một ô, một mã": **đã làm ngày 13/10 qua email** — xem mục "Đăng nhập bằng mã 6 số qua email" ngay dưới đây. Chưa làm: đăng nhập bằng số điện thoại (cần SMS), cookie `kin_s`, phiên quản trị 12 giờ không gia hạn.
-  - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); học sinh, quản trị chưa — admin trên tên miền riêng, cần làm cả bộ điều hướng.
+  - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); **học sinh đã làm ngày 13/10** (mục "Vỏ học sinh" bên dưới); quản trị làm tiếp.
   - Các trang không có khung Figma: **đã áp ngôn ngữ KiN ngày 13/10** (mục "Áp ngôn ngữ KiN cho trang cũ" bên dưới). `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần" (chữ bán hàng, chờ Thọ chốt).
   - Chưa kiểm được phông thật trong môi trường làm việc (Google Fonts bị chặn nên chạy bằng phông thay thế); Vercel sẽ tải đúng Inter / Be Vietnam Pro / Plus Jakarta Sans.
 
@@ -111,6 +111,18 @@ Mục tiêu: trang nào chưa có khung Figma thì vẫn mang màu, chữ, bo g�
 - **Cố ý giữ nguyên màu cứng (là DỮ LIỆU, không phải giao diện):** màu thẻ/nhãn do quản trị chọn và lưu vào cơ sở dữ liệu (`TAG_COLORS` ở trang khoá học admin, khoá `"#0068FF": "MỚI"`), đánh dấu bằng `data-mau-du-lieu`; ô mẫu của bộ chọn chủ đề màu; ~26 chỗ chữ trắng trên nền màu. Test `ui-kin-site` bỏ các chỗ có `data-mau-du-lieu` khi quét.
 - **Test:** `ui-kin-site` (101 kiểm tra) quét mọi trang guest/student/admin tìm màu cũ trong style thật của trình duyệt, kiểm tra vùng sáng không đổi tối theo máy, tương phản chữ thật.
 - **Chưa làm / cần người:** dòng "Mua 1 lần" ở `/khoa-hoc`; logo K vẽ lại bằng SVG (cần SVG gốc từ Figma); phông Inter/Be Vietnam Pro/Plus Jakarta Sans chưa kiểm được thật ở đây (Google Fonts bị chặn).
+
+## Vỏ học sinh kiểu Outlook + "Việc của tôi" — XONG ngày 13/10 (Thọ: "làm vỏ học sinh rồi đến vỏ quản trị")
+Dựng theo Figma "Vỏ — Học sinh" (11:98) và đặc tả `docs/kin/thiet-ke/bo-cuc-outlook.md`. Thay thanh trên cũ + thanh dưới cũ của khu `/student/*`.
+- **Thanh module** (`src/components/kin/shell/ModuleRail.tsx`, dùng chung cho quản trị): máy tính cột trái 79px; điện thoại thanh dưới 60px. Bốn module đúng Figma: Việc của tôi · Lịch · Lớp · Thư viện, thêm **"Khác"** (bảng nổi) để các trang không có trong Figma (Thi thử, Bảng xếp hạng, Hỏi đáp, Cộng đồng, Khoá học, Gia sư, Tin tức, Điểm chuẩn, Hồ sơ, Học phí, Ví, Chủ đề màu, Đăng xuất) không mất lối vào khi bỏ thanh trên. Module đang ở dùng `aria-current` (không phải `aria-selected`); nút cao ≥ 44px.
+- **Badge đỏ chỉ đếm việc học sinh phải ra tay** (bài chưa nộp hạn trong 3 ngày hoặc đã quá hạn, hạn nộp ngoài trong 3 ngày) — KHÔNG đếm "chưa đọc". Có nhãn chữ "N việc cần xử lý".
+- **Việc của tôi** (`/student/viec-cua-toi`, thành trang đầu sau đăng nhập; `/student` chuyển về đây): danh sách 330px bên trái, khung đọc bên phải, mỗi khung cuộn riêng; điện thoại chọn một dòng thì hiện khung đọc, có nút ← quay lại; phím ↑ ↓ Home End; khung xương khi tải lần đầu (không vòng xoay); lỗi tải lại thì giữ danh sách cũ + dải báo lỗi + "Thử lại"; tải lại khi quay về tab.
+  Nội dung = dữ liệu thật: bài tập có hạn của các lớp đang học (chưa nộp / đã nộp / đã chấm kèm điểm và nhận xét), hạn nộp ngoài (Azota), buổi học trong 3 ngày tới (kể cả buổi dời/huỷ). Bài không có hạn, bài lớp khác, quá hạn > 14 ngày đều không hiện. Logic thuần ở `src/lib/studentTodo.ts`, đọc DB ở `studentTodoServer.ts`, API `GET /api/student/viec-cua-toi` (`?badge=1` chỉ trả số).
+- **Lịch dùng chung nguồn:** logic lịch tách khỏi `/api/schedule` sang `src/lib/studentSchedule.ts` để "Việc của tôi" và trang Lịch không thể lệch nhau; `/api/schedule` vẫn trả `{ events }` như cũ (test chặn hồi quy).
+- **Phòng thi (`/student/thi-thu/<mã đề>`) không có vỏ** — toàn màn hình, đúng đặc tả.
+- **Test:** `t-student-todo-lib` (43: từng quy tắc), `t-student-todo` (36: API + Postgres thật, đúng người, không rò dữ liệu giữa học sinh, rời lớp thì hết việc, `/api/schedule` không đổi dạng), `ui-student-shell` (62: bố cục 79/330, cuộn riêng, phím, bảng Khác, phòng thi không vỏ, khung xương/lỗi/trống, điện thoại 390px, chưa đăng nhập).
+- **Khác Figma có chủ ý:** (1) nhãn nhóm "Cần làm / Sắp tới / Đã xong" trong danh sách (Figma chỉ vẽ ba dòng mẫu). (2) Danh sách rộng 330px theo đặc tả (khung Figma vẽ ~200px vì khung mẫu nhỏ). (3) Icon vẽ lại bằng nét SVG (file icon gốc không tải được vì tường lửa chặn figma.com).
+- **Chưa làm:** các trang khách (`/thu-vien`, `/khoa-hoc`, `/giang-vien`, `/diem-chuan`…) vẫn nằm trong khung khách có thanh trên cũ — bấm "Thư viện" trong vỏ học sinh đi sang khung đó, chưa có vỏ học sinh bao quanh. Trang con của `/student/*` (Lớp, Hồ sơ, Học phí…) vẫn là giao diện trang cũ (đã đổi màu KiN) đặt trong vỏ mới, chưa dựng lại theo Figma (không có khung Figma tương ứng).
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,

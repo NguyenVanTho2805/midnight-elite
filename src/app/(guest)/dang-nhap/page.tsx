@@ -43,7 +43,7 @@ function DangNhapForm() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace(redirectTo ?? (user.role === "admin" ? "/admin" : "/student/hoc-tap"));
+      router.replace(redirectTo ?? (user.role === "admin" ? "/admin" : "/student/viec-cua-toi"));
     }
   }, [user, isLoading, router, redirectTo]);
 

@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại" };
     setUser(toAuthUser(data));
-    router.push(data.role === "admin" ? "/admin" : "/student/hoc-tap");
+    router.push(data.role === "admin" ? "/admin" : "/student/viec-cua-toi");
     return { success: true };
   }
 
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, attemptsLeft: data.attemptsLeft, retryAfterSec: data.retryAfterSec };
     }
     setUser(toAuthUser(data));
-    router.push(data.role === "admin" ? "/admin" : "/student/hoc-tap");
+    router.push(data.role === "admin" ? "/admin" : "/student/viec-cua-toi");
     return { success: true };
   }
 
