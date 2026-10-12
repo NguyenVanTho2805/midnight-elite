@@ -49,10 +49,10 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
   const [copyName, setCopyName] = useState(`${card.name} (bản sao)`);
 
   return (
-    <div className="group relative rounded-xl border p-4 hover:shadow-sm transition-shadow bg-white" style={{ borderColor: "#e5e3df" }}>
+    <div className="group relative rounded-xl border p-4 hover:shadow-sm transition-shadow bg-white" style={{ borderColor: "var(--kin-vien-thuong)" }}>
       {editing ? (
         <div className="flex items-center gap-2 mb-2">
-          <input autoFocus className="flex-1 px-2 py-1 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+          <input autoFocus className="flex-1 px-2 py-1 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
             value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => {
               if (e.key === "Enter") { onRename(card.id, name); setEditing(false); }
@@ -62,7 +62,7 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
         </div>
       ) : (
         <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/${card.id}`} className="block mb-2">
-          <h3 className="text-base font-bold truncate" style={{ color: "#1a1a1a" }} title={card.name}>{card.name}</h3>
+          <h3 className="text-base font-bold truncate" style={{ color: "var(--kin-chu-chinh)" }} title={card.name}>{card.name}</h3>
         </Link>
       )}
 
@@ -79,12 +79,12 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
           <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Copy ngân hàng &quot;{card.name}&quot;</p>
             <p className="text-xs text-gray-500 mb-3">Nhân bản toàn bộ cây đầu mục + câu hỏi bên trong sang 1 ngân hàng mới.</p>
-            <input autoFocus className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+            <input autoFocus className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
               value={copyName} onChange={e => setCopyName(e.target.value)} />
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+              <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
               <button onClick={() => { onDuplicate(card.id, copyName); setCopying(false); }}
-                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
                 Copy
               </button>
             </div>
@@ -98,7 +98,7 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
             <p className="text-sm font-semibold mb-1">Xoá ngân hàng &quot;{card.name}&quot;?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá được nếu không còn đầu mục con hoặc câu hỏi nào bên trong.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+              <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
               <button onClick={() => { onDelete(card.id); setConfirmDel(false); }} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
             </div>
           </div>
@@ -195,12 +195,12 @@ function PageInner() {
 
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng câu hỏi</h1>
+          <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Ngân hàng câu hỏi</h1>
           <p className="text-sm text-gray-500 mt-0.5">Mỗi ngân hàng là 1 đầu mục gốc, bên trong tổ chức theo cây không giới hạn cấp</p>
         </div>
         <div className="flex items-center gap-2">
           <UploadAndExtractButton onSaved={load} showToast={showToast} />
-          <button onClick={() => setCreating(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+          <button onClick={() => setCreating(true)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
             + Tạo ngân hàng mới
           </button>
         </div>
@@ -208,16 +208,16 @@ function PageInner() {
 
       <input
         className="w-full max-w-sm px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 mb-5"
-        style={{ borderColor: "#e5e3df" }}
+        style={{ borderColor: "var(--kin-vien-thuong)" }}
         placeholder="Tìm ngân hàng theo tên..."
         value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
 
       {creating && (
-        <div className="flex items-center gap-2 mb-5 p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
-          <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+        <div className="flex items-center gap-2 mb-5 p-3 rounded-lg border border-dashed" style={{ borderColor: "var(--kin-nhan-vien)", background: "var(--kin-nhan-nen-nhat)" }}>
+          <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
             placeholder="Tên ngân hàng (vd: Toán, Ngữ Văn...)" value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") { setCreating(false); setNewName(""); } }} />
-          <button onClick={handleCreate} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#0068FF" }}>Tạo</button>
+          <button onClick={handleCreate} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "var(--kin-nhan-nen)" }}>Tạo</button>
           <button onClick={() => { setCreating(false); setNewName(""); }} className="px-2 text-xs text-gray-400">Huỷ</button>
         </div>
       )}
@@ -239,10 +239,10 @@ function PageInner() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-6 text-sm">
               <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "#e5e3df" }}>‹</button>
+                className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "var(--kin-vien-thuong)" }}>‹</button>
               <span className="text-gray-500">Trang {page}/{totalPages}</span>
               <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "#e5e3df" }}>›</button>
+                className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "var(--kin-vien-thuong)" }}>›</button>
             </div>
           )}
         </>

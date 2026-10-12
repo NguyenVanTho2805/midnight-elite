@@ -81,7 +81,7 @@ function ReviewsSection({ courseId }: { courseId: string }) {
   }
 
   return (
-    <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+    <div className="rounded-xl p-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Đánh giá khóa học</h2>
         {avg !== null && (
@@ -97,7 +97,7 @@ function ReviewsSection({ courseId }: { courseId: string }) {
 
       {/* Submit form */}
       {!submitted ? (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 rounded-xl" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+        <form onSubmit={handleSubmit} className="mb-6 p-4 rounded-xl" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
           <p className="text-sm font-semibold mb-3" style={{ color: "#1E2938" }}>Chia sẻ trải nghiệm của bạn</p>
           <div className="flex items-center gap-3 mb-3">
             <StarRating value={rating} onChange={setRating} />
@@ -108,12 +108,12 @@ function ReviewsSection({ courseId }: { courseId: string }) {
             placeholder="Nhận xét về nội dung, gia sư, tài liệu..."
             rows={3}
             className="w-full text-sm rounded-lg px-3 py-2 resize-none outline-none"
-            style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1E2938" }}
+            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "#1E2938" }}
           />
           {error && <p className="text-xs mt-1" style={{ color: "#FF2157" }}>{error}</p>}
           <button type="submit" disabled={submitting || !comment.trim()}
             className="mt-3 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-50"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             {submitting ? "Đang gửi..." : "Gửi đánh giá"}
           </button>
         </form>
@@ -129,10 +129,10 @@ function ReviewsSection({ courseId }: { courseId: string }) {
       ) : (
         <div className="space-y-4">
           {reviews.map(r => (
-            <div key={r.id} className="pb-4" style={{ borderBottom: "1px solid #e5e3df" }}>
+            <div key={r.id} className="pb-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
               <div className="flex items-center gap-2 mb-1.5">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg,#0068FF,#2680FF)" }}>
+                  style={{ background: "var(--kin-nhan-nen)" }}>
                   {r.user.name[0]}
                 </div>
                 <div>
@@ -195,7 +195,7 @@ export default function KhoaHocDetailPage() {
       <div className="flex items-center justify-center py-32">
         <div className="flex gap-1.5">
           {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "#0068FF", animationDelay: `${i*0.15}s` }} />
+            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i*0.15}s` }} />
           ))}
         </div>
       </div>
@@ -210,7 +210,7 @@ export default function KhoaHocDetailPage() {
         <p className="text-sm mb-6" style={{ color: "#9CA3AF" }}>Khóa học này không tồn tại hoặc đã bị gỡ xuống.</p>
         <Link href="/khoa-hoc"
           className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "#0068FF" }}>
+          style={{ background: "var(--kin-nhan-nen)" }}>
           Xem tất cả khóa học
         </Link>
       </div>
@@ -228,15 +228,15 @@ export default function KhoaHocDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs" style={{ color: "#9CA3AF" }}>
-            <Link href="/khoa-hoc" style={{ color: "#0068FF" }}>Khóa học</Link>
+            <Link href="/khoa-hoc" style={{ color: "var(--kin-nhan-link)" }}>Khóa học</Link>
             <span>›</span>
-            <Link href={`/khoa-hoc?category=${encodeURIComponent(course.category)}`} style={{ color: "#0068FF" }}>{course.category}</Link>
+            <Link href={`/khoa-hoc?category=${encodeURIComponent(course.category)}`} style={{ color: "var(--kin-nhan-link)" }}>{course.category}</Link>
             <span>›</span>
             <span>{course.name}</span>
           </div>
 
           {/* Hero card */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+          <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {/* Thumbnail / Video preview */}
             {course.introVideo && extractYouTubeId(course.introVideo) ? (
               <div className="relative" style={{ paddingBottom: "56.25%" }}>
@@ -265,11 +265,11 @@ export default function KhoaHocDetailPage() {
             <div className="p-6">
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                  style={{ background: "#dbeafe", color: "#0068FF" }}>
+                  style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>
                   {course.category}
                 </span>
                 {(COURSE_HASHTAGS[course.id] ?? []).map(tag => (
-                  <span key={tag} className="text-xs px-2 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
+                  <span key={tag} className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                     #{tag}
                   </span>
                 ))}
@@ -289,8 +289,8 @@ export default function KhoaHocDetailPage() {
                   { label: "Thời lượng", value: `${course.hours}h` },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-3 text-center"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-                    <div className="text-base font-extrabold" style={{ color: "#0068FF" }}>{s.value}</div>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+                    <div className="text-base font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{s.value}</div>
                     <div className="text-xs" style={{ color: "#9CA3AF" }}>{s.label}</div>
                   </div>
                 ))}
@@ -299,7 +299,7 @@ export default function KhoaHocDetailPage() {
           </div>
 
           {/* Curriculum */}
-          <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+          <div className="rounded-xl p-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             <h2 className="text-lg font-extrabold mb-5" style={{ color: "#1E2938" }}>Nội dung khóa học</h2>
             <div className="space-y-5">
               {course.sections.length === 0 && (
@@ -348,7 +348,7 @@ export default function KhoaHocDetailPage() {
                             <button onClick={toggleComplete}
                               title={isCompleted ? "Đã học — bấm để bỏ đánh dấu" : "Đánh dấu đã học"}
                               className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors"
-                              style={{ borderColor: isCompleted ? "#16a34a" : "#c8c4be", background: isCompleted ? "#16a34a" : "transparent" }}>
+                              style={{ borderColor: isCompleted ? "#16a34a" : "var(--kin-vien-o-nhap)", background: isCompleted ? "#16a34a" : "transparent" }}>
                               {isCompleted && (
                                 <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
                                   <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -357,14 +357,14 @@ export default function KhoaHocDetailPage() {
                             </button>
                           ) : (
                             <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                              style={{ borderColor: "#e5e3df", background: "transparent" }}>
+                              style={{ borderColor: "var(--kin-vien-thuong)", background: "transparent" }}>
                               <svg viewBox="0 0 8 8" width="8" height="8" fill="none">
-                                <path d="M1 4h6M4 1v6" stroke="#c8c4be" strokeWidth="1.2" strokeLinecap="round"/>
+                                <path d="M1 4h6M4 1v6" stroke="var(--kin-vien-o-nhap)" strokeWidth="1.2" strokeLinecap="round"/>
                               </svg>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm" style={{ color: isAccessible ? "#0068FF" : "#6B7280", fontWeight: isAccessible ? 600 : 400 }}>
+                            <span className="text-sm" style={{ color: isAccessible ? "var(--kin-nhan-link)" : "#6B7280", fontWeight: isAccessible ? 600 : 400 }}>
                               {lesson.title}
                             </span>
                             {lesson.isFree && (
@@ -373,8 +373,8 @@ export default function KhoaHocDetailPage() {
                           </div>
                           <span className="text-xs flex-shrink-0" style={{ color: "#9CA3AF" }}>{lesson.duration ?? ""}</span>
                           {isAccessible && (
-                            <span className="text-xs flex-shrink-0 flex items-center gap-0.5" style={{ color: "#0068FF" }}>
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.5"><polygon points="5,3 13,8 5,13" fill="#0068FF" stroke="none"/></svg>
+                            <span className="text-xs flex-shrink-0 flex items-center gap-0.5" style={{ color: "var(--kin-nhan-link)" }}>
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.5"><polygon points="5,3 13,8 5,13" fill="var(--kin-nhan-nen)" stroke="none"/></svg>
                               Xem
                             </span>
                           )}
@@ -382,7 +382,7 @@ export default function KhoaHocDetailPage() {
                       );
 
                       const sharedClass = "flex items-center gap-3 px-4 py-3 rounded-xl transition-all";
-                      const sharedStyle = { background: isAccessible ? "#ffffff" : "#f6f5f4", border: "1px solid #e5e3df" };
+                      const sharedStyle = { background: isAccessible ? "var(--kin-nen-trang)" : "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" };
 
                       return isAccessible ? (
                         <Link key={lesson.id}
@@ -416,11 +416,11 @@ export default function KhoaHocDetailPage() {
         {/* Right — Sticky purchase card */}
         <div className="lg:col-span-1">
           <div className="rounded-xl p-6 sticky top-20"
-            style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.06) 0px 4px 16px 0px" }}>
+            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.06) 0px 4px 16px 0px" }}>
             {/* Price */}
             <div className="mb-5">
               <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-3xl font-extrabold" style={{ color: "#0068FF" }}>{course.price.toLocaleString("vi-VN")}đ</span>
+                <span className="text-3xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{course.price.toLocaleString("vi-VN")}đ</span>
                 {discount > 0 && (
                   <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white" style={{ background: "#FF2157" }}>-{discount}%</span>
                 )}
@@ -440,12 +440,12 @@ export default function KhoaHocDetailPage() {
                 <>
                   <a href="tel:0384409051"
                     className="block w-full py-3 rounded-xl text-sm font-bold text-center text-white"
-                    style={{ background: "#0068FF", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                     Gọi tư vấn: 0384 409 051
                   </a>
                   <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
                     className="block w-full py-2.5 rounded-xl text-sm font-medium text-center"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)", borderRadius: "8px" }}>
                     Nhắn Zalo để đăng ký
                   </a>
                 </>
@@ -453,7 +453,7 @@ export default function KhoaHocDetailPage() {
             </div>
 
             {/* Guarantees */}
-            <div className="space-y-2.5 pt-4" style={{ borderTop: "1px solid #e5e3df" }}>
+            <div className="space-y-2.5 pt-4" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
               {[
                 "Kích hoạt sau khi xác nhận thanh toán",
                 "Học trọn đời, không hết hạn",

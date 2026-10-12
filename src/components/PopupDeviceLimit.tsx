@@ -15,7 +15,7 @@ const activeDevices = [
 export default function PopupDeviceLimit({ onClose, onKickOther }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-      <div className="w-full max-w-sm rounded-3xl p-6" style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}>
+      <div className="w-full max-w-sm rounded-3xl p-6" style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px var(--kin-nen-trang)" }}>
         {/* Icon */}
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "#fee2e2", color: "#991b1b" }}>
           <Lock size={32} />
@@ -29,7 +29,7 @@ export default function PopupDeviceLimit({ onClose, onKickOther }: Props) {
         {/* Device list */}
         <div className="space-y-2 mb-5">
           {activeDevices.map((device, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 5px #C5D0EA, inset -2px -2px 5px #ffffff" }}>
+            <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 5px #C5D0EA, inset -2px -2px 5px var(--kin-nen-trang)" }}>
               <div className="w-8 h-8 flex items-center justify-center flex-shrink-0" style={{ color: "#4B5563" }}>
                 {device.name.includes("iPhone") ? <Mobile size={20} /> : <Laptop size={20} />}
               </div>
@@ -55,7 +55,7 @@ export default function PopupDeviceLimit({ onClose, onKickOther }: Props) {
         </p>
 
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-semibold" style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: "#6B7280" }}>
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-semibold" style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px var(--kin-nen-trang)", color: "#6B7280" }}>
             Hủy
           </button>
           <button onClick={onKickOther} className="flex-1 py-3 rounded-xl text-sm font-bold text-white" style={{ background: "linear-gradient(145deg, #FF2157, #cc0033)" }}>

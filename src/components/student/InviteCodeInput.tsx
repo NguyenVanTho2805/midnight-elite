@@ -85,7 +85,7 @@ export default function InviteCodeInput({
         autoComplete="off"
         spellCheck={false}
         className="w-full text-center text-2xl font-mono tracking-widest font-bold py-3 rounded-xl focus:outline-none"
-        style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938", letterSpacing: "0.4em" }}
+        style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#1E2938", letterSpacing: "0.4em" }}
       />
 
       {value.length > 0 && value.length < MIN_LEN && (
@@ -96,7 +96,7 @@ export default function InviteCodeInput({
         <div className="flex justify-center py-2 gap-1.5" role="status" aria-label="Đang kiểm tra mã">
           {[0, 1, 2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full animate-bounce"
-              style={{ background: "#0068FF", animationDelay: `${i * 0.15}s` }} />
+              style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i * 0.15}s` }} />
           ))}
         </div>
       )}

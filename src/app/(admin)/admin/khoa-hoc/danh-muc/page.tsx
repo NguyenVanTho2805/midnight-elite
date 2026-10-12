@@ -442,7 +442,7 @@ export default function DanhMucPage() {
                     <Link
                       href={`/admin/khoa-hoc?category=${encodeURIComponent(cat.name)}`}
                       className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity cursor-pointer"
-                      style={{ background: "#F0FDF4", color: "#16a34a" }}
+                      style={{ background: "#F0FDF4", color: "var(--kin-tt-chu-xong)" }}
                       title="Xem khoá học trong danh mục">
                       {cat.courseCount}
                     </Link>

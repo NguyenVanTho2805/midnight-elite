@@ -65,7 +65,7 @@ export default function PopupStrikeWarning({ strikeLevel, reason, onClose, onApp
                 style={{
                   background: s <= strikeLevel ? cfg.accentBg : "#F0F5FF",
                   color: s <= strikeLevel ? "#fff" : "#9CA3AF",
-                  boxShadow: s <= strikeLevel ? "none" : "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff",
+                  boxShadow: s <= strikeLevel ? "none" : "3px 3px 6px #C5D0EA, -3px -3px 6px var(--kin-nen-trang)",
                 }}>
                 {s}
               </div>
@@ -73,7 +73,7 @@ export default function PopupStrikeWarning({ strikeLevel, reason, onClose, onApp
           </div>
 
           {/* Reason */}
-          <div className="rounded-xl p-4 mb-4" style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
+          <div className="rounded-xl p-4 mb-4" style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)" }}>
             <p className="text-xs font-semibold mb-1" style={{ color: "#6B7280" }}>Lý do vi phạm</p>
             <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{reason}</p>
           </div>
@@ -92,7 +92,7 @@ export default function PopupStrikeWarning({ strikeLevel, reason, onClose, onApp
               </button>
             )}
             <button onClick={onClose} className="w-full py-3 rounded-xl text-sm font-semibold"
-              style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: "#6B7280" }}>
+              style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px var(--kin-nen-trang)", color: "#6B7280" }}>
               {strikeLevel === 3 ? "Liên hệ admin" : "Đã hiểu"}
             </button>
           </div>

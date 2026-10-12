@@ -37,7 +37,7 @@ export default function RevenueByTutorTable({ rows, loading }: { rows: TutorReve
       <label className="sr-only" htmlFor="rev-tutor-q">Tìm gia sư</label>
       <input id="rev-tutor-q" type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm gia sư theo tên hoặc email…"
         className="mb-3 w-full sm:w-72 px-3 py-2 text-sm rounded-xl outline-none"
-        style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#1E2938" }} />
+        style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", color: "#1E2938" }} />
       {rows.length === 0 ? (
         <p className="text-center py-8 text-sm" style={{ color: "#6B7280" }}>Chưa có gia sư nào được duyệt.</p>
       ) : shown.length === 0 ? (
@@ -65,7 +65,7 @@ export default function RevenueByTutorTable({ rows, loading }: { rows: TutorReve
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{r.classes}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{r.students}</td>
-                  <td className="py-2.5 px-3 text-right font-bold tabular-nums" style={{ color: r.vipRevenue > 0 ? "#0068FF" : "#6B7280" }}>{formatVnd(r.vipRevenue)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold tabular-nums" style={{ color: r.vipRevenue > 0 ? "var(--kin-nhan-link)" : "#6B7280" }}>{formatVnd(r.vipRevenue)}</td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{r.vipPurchases}</td>
                   <td className="py-2.5 pl-3 text-right whitespace-nowrap">
                     {r.vipUntil
@@ -80,7 +80,7 @@ export default function RevenueByTutorTable({ rows, loading }: { rows: TutorReve
                 <th scope="row" className="text-left py-2.5 pr-3 font-semibold" style={{ color: "#1E2938" }}>Tổng ({shown.length} gia sư)</th>
                 <td className="text-right px-3 tabular-nums">{shown.reduce((n, r) => n + r.classes, 0)}</td>
                 <td className="text-right px-3 tabular-nums">—</td>
-                <td className="text-right px-3 font-bold tabular-nums" style={{ color: "#0068FF" }}>{formatVnd(total)}</td>
+                <td className="text-right px-3 font-bold tabular-nums" style={{ color: "var(--kin-nhan-link)" }}>{formatVnd(total)}</td>
                 <td className="text-right px-3 tabular-nums">{shown.reduce((n, r) => n + r.vipPurchases, 0)}</td>
                 <td />
               </tr>

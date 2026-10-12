@@ -3,11 +3,11 @@
 
    1. Cỡ chữ: Figma có 6 biến --kin-co-* nhưng kin-tokens.css (sinh từ bản
       xuất cũ) chưa có. Giá trị lấy từ get_variable_defs trang chủ 145:8.
-   2. [data-vung="khach-sang"]: khoá chế độ SÁNG cho thanh trên, chân trang
-      và trang chủ. Lý do: hầu hết trang guest/student bên dưới vẫn là giao
-      diện cũ, màu viết cứng cho nền sáng. Nếu thanh trên đổi sang tối theo
-      máy mà nội dung vẫn trắng thì trang bị vỡ. Khi toàn bộ trang đã
-      chuyển sang token KiN thì xoá khối này và bỏ thuộc tính data-vung.
+   2. [data-vung="sang"]: khoá chế độ SÁNG cho thanh trên, chân trang, trang chủ
+      và khung guest / học viên / quản trị. Lý do: các trang này đã đổi màu viết
+      cứng sang token KiN nhưng chưa có bản tối (nền, ảnh, biểu đồ vẫn viết cho
+      nền sáng). Nếu để tối theo máy thì chỗ này tối chỗ kia trắng. Khi từng khu
+      có bản tối thì bỏ thuộc tính data-vung ở khu đó.
       Màu nhấn (chủ đề) vẫn theo lựa chọn của người dùng — chỉ khoá sáng/tối.
    ============================================================ */
 
@@ -18,6 +18,8 @@
   --kin-co-h4: 19.2px;
   --kin-co-h2: 27.6px;
   --kin-co-display: 39.8px;
+  /* Viền/nền nhạt theo màu nhấn của chủ đề (thay các mã #bfdbfe / #93c5fd viết cứng của giao diện cũ). */
+  --kin-nhan-vien: color-mix(in srgb, var(--kin-nhan-nen) 28%, var(--kin-nen-trang));
 }
 
 /* Chữ thân Inter, tiêu đề Be Vietnam Pro (--font-sans), chữ KiN cạnh logo Jakarta. */
@@ -33,7 +35,7 @@
   font-weight: 800;
 }
 
-[data-vung="khach-sang"] {
+[data-vung="sang"] {
   --kin-nen-trang: #ffffff;
   --kin-nen-bang: #f7f8fa;
   --kin-nen-re-chuot: #f1f3f6;
@@ -55,37 +57,38 @@
   --kin-tt-chu-xong: #047857;
   --kin-tt-chu-cho: #b45309;
   --kin-tt-chu-loi: #dc2626;
+  --kin-nhan-vien: color-mix(in srgb, var(--kin-nhan-nen) 28%, var(--kin-nen-trang));
   color-scheme: light;
 }
-:root[data-chu-de="navy"] [data-vung="khach-sang"] {
+:root[data-chu-de="navy"] [data-vung="sang"] {
   --kin-nhan-link: #2563eb; --kin-nhan-nen-nhat: #eff4ff; --kin-nhan-chu-tren-nhat: #1e3a8a;
 }
-:root[data-chu-de="co-vit"] [data-vung="khach-sang"] {
+:root[data-chu-de="co-vit"] [data-vung="sang"] {
   --kin-nhan-link: #0e7490; --kin-nhan-nen-nhat: #eaf6fa; --kin-nhan-chu-tren-nhat: #0e7490;
 }
-:root[data-chu-de="man"] [data-vung="khach-sang"] {
+:root[data-chu-de="man"] [data-vung="sang"] {
   --kin-nhan-link: #7e22ce; --kin-nhan-nen-nhat: #f7effd; --kin-nhan-chu-tren-nhat: #6b21a8;
 }
-:root[data-chu-de="ca-phe"] [data-vung="khach-sang"] {
+:root[data-chu-de="ca-phe"] [data-vung="sang"] {
   --kin-nhan-link: #7c2d12; --kin-nhan-nen-nhat: #fbf1e9; --kin-nhan-chu-tren-nhat: #78350f;
 }
-:root[data-chu-de="muc"] [data-vung="khach-sang"] {
+:root[data-chu-de="muc"] [data-vung="sang"] {
   --kin-nhan-link: #334155; --kin-nhan-nen-nhat: #f1f5f9; --kin-nhan-chu-tren-nhat: #0f172a;
 }
 
 /* Ô nhập cũ (.notion-input) trong vùng web công khai: viền đủ 3:1 và vòng focus theo màu nhấn KiN. */
-[data-vung="khach-sang"] .notion-input {
+[data-vung="sang"] .notion-input {
   background: var(--kin-nen-trang);
   border-color: var(--kin-vien-o-nhap);
   border-radius: var(--kin-bo-md);
   color: var(--kin-chu-chinh);
 }
-[data-vung="khach-sang"] .notion-input:focus {
+[data-vung="sang"] .notion-input:focus {
   border: 2px solid var(--kin-nhan-link);
   padding: 11px 15px;
 }
 
 /* Vòng focus bàn phím: quy tắc chung ở globals.css viết cứng xanh cũ #0068FF; trong vùng web công khai đổi sang màu nhấn của chủ đề. */
-[data-vung="khach-sang"] :focus-visible {
+[data-vung="sang"] :focus-visible {
   outline-color: var(--kin-nhan-link);
 }

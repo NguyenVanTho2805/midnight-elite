@@ -30,8 +30,8 @@ function StarDisplay({ value }: { value: number }) {
 
 const STATUS_TAB = [
   { key: "pending",  label: "Chờ duyệt",  color: "#FE9900", bg: "rgba(254,153,0,0.12)"  },
-  { key: "approved", label: "Đã duyệt",   color: "#16a34a", bg: "rgba(22,163,74,0.12)"  },
-  { key: "rejected", label: "Đã từ chối", color: "#DC2626", bg: "rgba(220,38,38,0.12)"  },
+  { key: "approved", label: "Đã duyệt",   color: "var(--kin-tt-chu-xong)", bg: "rgba(22,163,74,0.12)"  },
+  { key: "rejected", label: "Đã từ chối", color: "var(--kin-tt-chu-loi)", bg: "rgba(220,38,38,0.12)"  },
   { key: "all",      label: "Tất cả",     color: "#6B7280", bg: "rgba(107,114,128,0.1)" },
 ];
 
@@ -90,19 +90,19 @@ function DanhGiaContent() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
             style={tab === t.key
-              ? { background: t.bg, color: t.color, border: `1px solid ${t.color}40` }
-              : { background: "#f6f5f4", color: "#6B7280", border: "1px solid #e5e3df" }}>
+              ? { background: t.bg, color: t.color, border: `1px solid color-mix(in srgb, ${t.color} 25%, transparent)` }
+              : { background: "var(--kin-nen-bang)", color: "#6B7280", border: "1px solid var(--kin-vien-thuong)" }}>
             {t.label}
           </button>
         ))}
       </div>
 
       {/* Table */}
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
         {loading ? (
           <div className="space-y-3">
             {[1,2,3].map(i => (
-              <div key={i} className="p-4 rounded-xl animate-pulse" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+              <div key={i} className="p-4 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div className="flex gap-3">
                   <div className="h-4 w-24 rounded bg-gray-200" />
                   <div className="h-4 w-32 rounded bg-gray-200" />
@@ -117,7 +117,7 @@ function DanhGiaContent() {
           </div>
         ) : (
           <table className="w-full">
-            <thead style={{ background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+            <thead style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
               <tr>
                 {["Học viên", "Khóa học", "Sao", "Nhận xét", "Ngày gửi", "Trạng thái", ""].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "#9CA3AF" }}>{h}</th>
@@ -128,7 +128,7 @@ function DanhGiaContent() {
               {reviews.map((r, i) => {
                 const st = STATUS_TAB.find(t => t.key === r.status)!;
                 return (
-                  <tr key={r.id} style={{ borderBottom: i < reviews.length - 1 ? "1px solid #e5e3df" : "none" }}>
+                  <tr key={r.id} style={{ borderBottom: i < reviews.length - 1 ? "1px solid var(--kin-vien-thuong)" : "none" }}>
                     <td className="px-4 py-3">
                       <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{r.user.name}</p>
                       <p className="text-xs" style={{ color: "#9CA3AF" }}>{r.user.email}</p>
@@ -143,7 +143,7 @@ function DanhGiaContent() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        style={{ background: st?.bg ?? "#f6f5f4", color: st?.color ?? "#6B7280" }}>
+                        style={{ background: st?.bg ?? "var(--kin-nen-bang)", color: st?.color ?? "#6B7280" }}>
                         {st?.label ?? r.status}
                       </span>
                     </td>
@@ -159,13 +159,13 @@ function DanhGiaContent() {
                         {r.status !== "rejected" && (
                           <button disabled={acting === r.id} onClick={() => act(r.id, "rejected")}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                            style={{ background: "#fee2e2", color: "#DC2626" }}>
+                            style={{ background: "#fee2e2", color: "var(--kin-tt-chu-loi)" }}>
                             Từ chối
                           </button>
                         )}
                         <button disabled={acting === r.id} onClick={() => del(r.id)}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                          style={{ background: "#f6f5f4", color: "#9CA3AF" }}>
+                          style={{ background: "var(--kin-nen-bang)", color: "#9CA3AF" }}>
                           Xóa
                         </button>
                       </div>

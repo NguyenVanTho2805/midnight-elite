@@ -271,7 +271,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                   </button>
                 </DropZone>
               ) : (
-                <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+                <p className="text-xs text-center py-2" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Chưa cấu hình Cloudinary</p>
               )}
 
               <div>
@@ -362,7 +362,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Màu nhãn</label>
                 <div className="flex gap-2 mt-1">
                   {TAG_COLORS.map(c => (
-                    <button key={c} type="button" onClick={() => set("tagColor", c)}
+                    <button key={c} type="button" data-mau-du-lieu onClick={() => set("tagColor", c)}
                       className="w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center text-white text-xs font-bold"
                       style={{ background: c, borderColor: form.tagColor === c ? "#1E2938" : "transparent" }}
                       title={TAG_LABELS[c]}>
@@ -465,7 +465,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
           {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
           <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "var(--kin-nhan-link)" }}>
             Xem portal học viên
           </a>
           <button
@@ -475,7 +475,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
               try { await onDuplicate(); } finally { setDuplicating(false); setOpen(false); }
             }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
-            style={{ color: "#16a34a" }}>
+            style={{ color: "var(--kin-tt-chu-xong)" }}>
             {duplicating ? "Đang sao chép…" : "Sao chép khóa học"}
           </button>
           <div className="border-t border-gray-100 my-1" />

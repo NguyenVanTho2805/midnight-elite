@@ -43,13 +43,13 @@ export default function CommunityScopeSwitcher({
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="community-scope" className="text-xs font-semibold" style={{ color: "#787671" }}>Phạm vi</label>
+      <label htmlFor="community-scope" className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Phạm vi</label>
       <select
         id="community-scope"
         value={scope}
         onChange={e => onChange(e.target.value)}
         className="text-xs font-semibold px-3 py-1.5 rounded-full"
-        style={{ background: "#f6f5f4", color: "#1a1a1a", border: "1px solid #e5e3df" }}
+        style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}
       >
         <option value="all">Tất cả (chung + của tôi)</option>
         <option value="common">Chỉ cộng đồng chung</option>

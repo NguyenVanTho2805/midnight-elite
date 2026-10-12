@@ -62,7 +62,7 @@ export default function NhapMaLopPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl p-6 space-y-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-2xl p-6 space-y-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <InviteCodeInput
           autoFocus
           value={input}
@@ -87,7 +87,7 @@ export default function NhapMaLopPage() {
               )}
             </p>
             {preview.alreadyEnrolled && (
-              <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>Bạn đã trong lớp này rồi.</p>
+              <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Bạn đã trong lớp này rồi.</p>
             )}
           </div>
         )}
@@ -97,7 +97,7 @@ export default function NhapMaLopPage() {
           onClick={redeem}
           disabled={!ok || redeeming || (ok && preview.alreadyEnrolled)}
           className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
-          style={{ background: "#0068FF" }}
+          style={{ background: "var(--kin-nhan-nen)" }}
         >
           {redeeming ? "Đang xử lý..."
             : ok && preview.alreadyEnrolled ? "Bạn đã trong lớp"
@@ -106,7 +106,7 @@ export default function NhapMaLopPage() {
 
         {ok && preview.alreadyEnrolled && (
           <Link href={`/student/hoc-tap?course=${encodeURIComponent(preview.course.id)}`}
-            className="block text-center text-sm font-semibold" style={{ color: "#0068FF" }}>
+            className="block text-center text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
             Vào lớp ngay →
           </Link>
         )}

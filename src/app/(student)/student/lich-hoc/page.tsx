@@ -50,7 +50,7 @@ const WEEK_DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const TYPE_CFG = {
   exam:     { label: "Thi thử",  color: "#FF2157", bg: "#fee2e2", Icon: Edit },
   deadline: { label: "Deadline", color: "#FE9900", bg: "#fef3c7", Icon: Alarm },
-  class:    { label: "Buổi học", color: "#0068FF", bg: "#EFF6FF", Icon: Play },
+  class:    { label: "Buổi học", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", Icon: Play },
 } as const;
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -116,10 +116,10 @@ export default function LichHocPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: "#1a1a1a" }}>
-          <Calendar size={26} style={{ color: "#0068FF" }} /> Lịch học cá nhân
+        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
+          <Calendar size={26} style={{ color: "var(--kin-nhan-link)" }} /> Lịch học cá nhân
         </h1>
-        <p className="text-sm mt-1" style={{ color: "#787671" }}>
+        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
           Tuần {weekNumber} · {fmt(monday)} – {fmt(sunday)}/{sunday.getFullYear()}
         </p>
       </div>
@@ -127,10 +127,10 @@ export default function LichHocPage() {
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Hôm nay",           value: todayCount,    color: "#dc2626", bg: "#fee2e2", border: "#fca5a5" },
-          { label: "Buổi học tuần này", value: classCount,    color: "#0055D4", bg: "#EFF6FF", border: "#bfdbfe" },
+          { label: "Hôm nay",           value: todayCount,    color: "var(--kin-tt-chu-loi)", bg: "#fee2e2", border: "#fca5a5" },
+          { label: "Buổi học tuần này", value: classCount,    color: "#0055D4", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
           { label: "Thi thử tuần này",  value: examCount,     color: "#FF2157", bg: "#fee2e2", border: "#fca5a5" },
-          { label: "Deadline tuần này", value: deadlineCount, color: "#b45309", bg: "#fef3c7", border: "#fde68a" },
+          { label: "Deadline tuần này", value: deadlineCount, color: "var(--kin-tt-chu-cho)", bg: "#fef3c7", border: "#fde68a" },
         ].map((s) => (
           <div key={s.label} className="rounded-xl p-4 text-center"
             style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -143,13 +143,13 @@ export default function LichHocPage() {
       </div>
 
       {/* Day filter */}
-      <div className="rounded-xl p-3" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="grid grid-cols-8 gap-1">
           <button onClick={() => setActiveDay("all")}
             className="py-2 rounded-md text-xs font-medium"
             style={activeDay === "all"
-              ? { background: "#0068FF", color: "white", borderRadius: "8px" }
-              : { background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+              ? { background: "var(--kin-nhan-nen)", color: "white", borderRadius: "8px" }
+              : { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
             Tất cả
           </button>
           {WEEK_DAYS.map((day, i) => {
@@ -161,12 +161,12 @@ export default function LichHocPage() {
               <button key={day} onClick={() => setActiveDay(day)}
                 className="py-2 rounded-md text-xs font-medium relative"
                 style={activeDay === day
-                  ? { background: "#0068FF", color: "white", borderRadius: "8px" }
-                  : { background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                  ? { background: "var(--kin-nhan-nen)", color: "white", borderRadius: "8px" }
+                  : { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
                 <div>{day}</div>
                 {hasEvent && activeDay !== day && (
                   <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                    style={{ background: "#0068FF" }} />
+                    style={{ background: "var(--kin-nhan-nen)" }} />
                 )}
               </button>
             );
@@ -175,7 +175,7 @@ export default function LichHocPage() {
         <div className="grid grid-cols-8 gap-1 mt-1 px-0.5">
           <div />
           {weekDates.map((d, i) => (
-            <div key={i} className="text-center text-xs" style={{ color: "#a4a097" }}>{d}</div>
+            <div key={i} className="text-center text-xs" style={{ color: "var(--kin-chu-mo)" }}>{d}</div>
           ))}
         </div>
       </div>
@@ -188,8 +188,8 @@ export default function LichHocPage() {
             <button key={t} onClick={() => setActiveType(t)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium"
               style={activeType === t
-                ? { background: cfg?.color ?? "#37352f", color: "white", borderRadius: "8px" }
-                : { background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                ? { background: cfg?.color ?? "var(--kin-chu-phu)", color: "white", borderRadius: "8px" }
+                : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {cfg && <cfg.Icon size={12} />}
               {t === "all" ? "Tất cả" : TYPE_CFG[t].label}
             </button>
@@ -206,10 +206,10 @@ export default function LichHocPage() {
         </div>
       ) : Object.keys(grouped).length === 0 ? (
         <div className="rounded-xl p-10 text-center"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-          <Calendar size={40} style={{ color: "#c8c4be", margin: "0 auto 12px" }} />
-          <p className="font-semibold" style={{ color: "#1a1a1a" }}>Không có lịch nào trong tuần này</p>
-          <p className="text-sm mt-1" style={{ color: "#787671" }}>Thử chuyển sang tuần khác</p>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <Calendar size={40} style={{ color: "var(--kin-vien-o-nhap)", margin: "0 auto 12px" }} />
+          <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Không có lịch nào trong tuần này</p>
+          <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Thử chuyển sang tuần khác</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -219,24 +219,24 @@ export default function LichHocPage() {
               <div key={iso}>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
-                    style={{ background: isToday ? "#dc2626" : "#0068FF" }}>
+                    style={{ background: isToday ? "#dc2626" : "var(--kin-nhan-nen)" }}>
                     {iso.slice(8)}
                   </div>
                   <div>
-                    <p className="font-bold text-sm" style={{ color: "#1a1a1a" }}>
+                    <p className="font-bold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>
                       {isToday ? "Hôm nay" : isoToWeekday(iso)} {isoToDisplay(iso)}
                     </p>
-                    <p className="text-xs" style={{ color: "#a4a097" }}>{dayEvents.length} hoạt động</p>
+                    <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{dayEvents.length} hoạt động</p>
                   </div>
                 </div>
 
                 <div className="space-y-2 pl-3 border-l-2"
-                  style={{ borderColor: isToday ? "#dc2626" : "#e5e3df" }}>
+                  style={{ borderColor: isToday ? "#dc2626" : "var(--kin-vien-thuong)" }}>
                   {dayEvents.map((event) => {
                     const cfg = TYPE_CFG[event.type];
                     return (
                       <div key={event.id} className="rounded-xl p-4"
-                        style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+                        style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
                         <div className="flex items-start gap-3">
                           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                             style={{ background: cfg.bg }}>
@@ -249,14 +249,14 @@ export default function LichHocPage() {
                                 style={{ background: cfg.bg, color: cfg.color }}>
                                 {cfg.label}
                               </span>
-                              <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+                              <span className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
                                 {event.time}
                               </span>
                             </div>
-                            <p className="font-semibold text-sm" style={{ color: "#1a1a1a" }}>
+                            <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>
                               {event.topic}
                             </p>
-                            <p className="text-xs mt-0.5" style={{ color: "#787671" }}>{event.subject}</p>
+                            <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{event.subject}</p>
                           </div>
 
                           {event.link && (
@@ -283,17 +283,17 @@ export default function LichHocPage() {
         <button
           onClick={() => { setWeekOffset((w) => w - 1); setActiveDay("all"); }}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
           Tuần trước
         </button>
         <div className="text-center">
-          <span className="text-xs font-bold block" style={{ color: "#1a1a1a" }}>Tuần {weekNumber}</span>
-          <span className="text-xs" style={{ color: "#787671" }}>{fmt(monday)} – {fmt(sunday)}</span>
+          <span className="text-xs font-bold block" style={{ color: "var(--kin-chu-chinh)" }}>Tuần {weekNumber}</span>
+          <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{fmt(monday)} – {fmt(sunday)}</span>
         </div>
         <button
           onClick={() => { setWeekOffset((w) => w + 1); setActiveDay("all"); }}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
           Tuần sau
         </button>
       </div>

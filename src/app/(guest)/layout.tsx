@@ -6,11 +6,11 @@ import StudentBottomNav from "@/components/StudentBottomNav";
 function PageSkeleton() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-6 animate-pulse">
-      <div className="h-8 w-64 rounded-lg" style={{ background: "#e5e3df" }} />
+      <div className="h-8 w-64 rounded-lg" style={{ background: "var(--kin-vien-thuong)" }} />
       <div className="h-4 w-96 rounded-lg" style={{ background: "#ebe9e6" }} />
       <div className="grid grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-40 rounded-xl" style={{ background: "#e5e3df" }} />
+          <div key={i} className="h-40 rounded-xl" style={{ background: "var(--kin-vien-thuong)" }} />
         ))}
       </div>
     </div>
@@ -19,7 +19,7 @@ function PageSkeleton() {
 
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-vung="khach-sang" className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
+    <div data-vung="sang" className="min-h-screen flex flex-col" style={{ background: "var(--kin-nen-trang)" }}>
       <Navbar />
       <main className="flex-1 pb-24 md:pb-0">
         <Suspense fallback={<PageSkeleton />}>

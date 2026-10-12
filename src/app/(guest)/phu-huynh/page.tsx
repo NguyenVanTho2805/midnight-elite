@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PhuHuynhPage() {
   return (
-    <div data-vung="khach-sang" className="kin-chu-than mx-auto max-w-[560px] px-4 py-14 sm:py-20 text-[var(--kin-chu-chinh)]">
+    <div data-vung="sang" className="kin-chu-than mx-auto max-w-[560px] px-4 py-14 sm:py-20 text-[var(--kin-chu-chinh)]">
       <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h2)] leading-tight">
         Phụ huynh thì không cần đăng nhập
       </h1>

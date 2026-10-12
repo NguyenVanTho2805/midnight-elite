@@ -9,22 +9,22 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="text-center max-w-md">
         <div className="w-24 h-24 rounded-xl flex items-center justify-center mx-auto mb-6"
           style={{ background: "#fee2e2", border: "1px solid #fca5a5" }}>
-          <AlertTriangle size={44} style={{ color: "#dc2626" }} />
+          <AlertTriangle size={44} style={{ color: "var(--kin-tt-chu-loi)" }} />
         </div>
 
-        <h1 className="text-2xl font-bold mb-3" style={{ color: "#37352f" }}>
+        <h1 className="text-2xl font-bold mb-3" style={{ color: "var(--kin-chu-phu)" }}>
           Có lỗi xảy ra
         </h1>
-        <p className="text-sm mb-2" style={{ color: "#787671" }}>
+        <p className="text-sm mb-2" style={{ color: "var(--kin-chu-mo)" }}>
           Trang gặp sự cố không mong muốn. Thử tải lại hoặc quay về trang chủ.
         </p>
         {error.digest && (
           <p className="text-xs mb-6 font-mono px-3 py-1.5 rounded-lg inline-block"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#a4a097" }}>
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
             #{error.digest}
           </p>
         )}
@@ -32,12 +32,12 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
           <button onClick={reset}
             className="px-8 py-3.5 rounded-lg text-sm font-bold text-white"
-            style={{ background: "#0068FF", borderRadius: "8px" }}>
+            style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
             Thử lại
           </button>
           <a href="/"
             className="px-8 py-3.5 rounded-lg text-sm font-bold"
-            style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
             Về trang chủ
           </a>
         </div>

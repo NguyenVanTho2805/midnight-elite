@@ -52,9 +52,9 @@ type FeedItem =
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const THREAD_CATS = [
-  { key: "kinh-nghiem", label: "Chia sẻ",    color: "#16a34a", bg: "#dcfce7" },
-  { key: "hoi-dap",     label: "Hỏi nhanh",  color: "#0068FF", bg: "#dbeafe" },
-  { key: "tai-lieu",    label: "Tài liệu",    color: "#b45309", bg: "#fef3c7" },
+  { key: "kinh-nghiem", label: "Chia sẻ",    color: "var(--kin-tt-chu-xong)", bg: "#dcfce7" },
+  { key: "hoi-dap",     label: "Hỏi nhanh",  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+  { key: "tai-lieu",    label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "#fef3c7" },
   { key: "goc-vui",     label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
 ] as const;
 
@@ -116,7 +116,7 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 }
 
 function CatBadge({ cat }: { cat: string }) {
-  const c = CAT_MAP[cat] ?? { label: cat, color: "#787671", bg: "#f6f5f4" };
+  const c = CAT_MAP[cat] ?? { label: cat, color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)" };
   return (
     <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
       style={{ background: c.bg, color: c.color }}>{c.label}</span>
@@ -165,7 +165,7 @@ function FileChip({ url, name }: { url: string; name: string | null }) {
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
       className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mt-2"
-      style={{ background: "#f6f5f4", color: "#37352f", border: "1px solid #e5e3df" }}>
+      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
       📎 <span className="truncate max-w-[200px]">{name ?? "Tệp đính kèm"}</span>
     </a>
   );
@@ -202,10 +202,10 @@ function MediaPicker({ images, file, onImages, onFile, disabled }: {
     onImages([...images, ...Array.from(list).filter(f => f.type.startsWith("image/"))].slice(0, 4));
   }
   return (
-    <div className="flex items-center gap-3 mt-3 pt-2.5" style={{ borderTop: "1px solid #f6f5f4" }}>
+    <div className="flex items-center gap-3 mt-3 pt-2.5" style={{ borderTop: "1px solid var(--kin-nen-bang)" }}>
       <button type="button" onClick={() => imgRef.current?.click()} disabled={images.length >= 4 || disabled}
         className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-40"
-        style={{ background: "#f6f5f4", color: "#37352f" }}>
+        style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)" }}>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -217,7 +217,7 @@ function MediaPicker({ images, file, onImages, onFile, disabled }: {
 
       <button type="button" onClick={() => fileRef.current?.click()} disabled={!!file || disabled}
         className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg disabled:opacity-40"
-        style={{ background: "#f6f5f4", color: "#37352f" }}>
+        style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)" }}>
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -228,7 +228,7 @@ function MediaPicker({ images, file, onImages, onFile, disabled }: {
         onChange={e => { if (e.target.files?.[0]) onFile(e.target.files[0]); e.target.value = ""; }} />
 
       {!cloudinaryConfigured && (
-        <span className="text-xs" style={{ color: "#b45309" }}>⚠ Cần cấu hình Cloudinary</span>
+        <span className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Cần cấu hình Cloudinary</span>
       )}
     </div>
   );
@@ -376,33 +376,33 @@ function PostForm({ user, balance, onThread, onQuestion }: {
 
   if (!expanded) return (
     <div className="rounded-xl border px-4 py-3 flex items-center gap-3 cursor-text"
-      style={{ background: "#ffffff", borderColor: "#e5e3df" }}
+      style={{ background: "var(--kin-nen-trang)", borderColor: "var(--kin-vien-thuong)" }}
       onClick={() => setExpanded(true)}>
       <Avatar name={user.name} size={34} />
-      <span className="text-sm flex-1" style={{ color: "#a4a097" }}>Chia sẻ hoặc đặt câu hỏi...</span>
+      <span className="text-sm flex-1" style={{ color: "var(--kin-chu-mo)" }}>Chia sẻ hoặc đặt câu hỏi...</span>
       <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
-        style={{ background: "#dbeafe", color: "#0068FF" }}>Đăng bài</span>
+        style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Đăng bài</span>
     </div>
   );
 
   return (
     <div className="rounded-xl border p-4"
-      style={{ background: "#ffffff", borderColor: postType === "question" ? "#f59e0b40" : "#0068FF40" }}>
+      style={{ background: "var(--kin-nen-trang)", borderColor: postType === "question" ? "#f59e0b40" : "#0068FF40" }}>
 
       {/* Type selector */}
-      <div className="flex gap-1.5 mb-3 p-1 rounded-lg" style={{ background: "#f6f5f4" }}>
+      <div className="flex gap-1.5 mb-3 p-1 rounded-lg" style={{ background: "var(--kin-nen-bang)" }}>
         <button type="button" onClick={() => setPostType("thread")}
           className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
           style={postType === "thread"
-            ? { background: "#ffffff", color: "#0068FF", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }
-            : { background: "transparent", color: "#787671" }}>
+            ? { background: "var(--kin-nen-trang)", color: "var(--kin-nhan-link)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }
+            : { background: "transparent", color: "var(--kin-chu-mo)" }}>
           Đăng bài
         </button>
         <button type="button" onClick={() => setPostType("question")}
           className="flex-1 py-1.5 rounded-md text-xs font-semibold transition-all"
           style={postType === "question"
-            ? { background: "#ffffff", color: "#b45309", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }
-            : { background: "transparent", color: "#787671" }}>
+            ? { background: "var(--kin-nen-trang)", color: "var(--kin-tt-chu-cho)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }
+            : { background: "transparent", color: "var(--kin-chu-mo)" }}>
           🏅 Hỏi đáp (−{QUESTION_COST} xu)
         </button>
       </div>
@@ -426,7 +426,7 @@ function PostForm({ user, balance, onThread, onQuestion }: {
               onChange={e => { setTitle(e.target.value); setError(""); }}
               placeholder="Tiêu đề câu hỏi (ngắn gọn, rõ ý)..."
               className="w-full text-sm font-semibold rounded-lg px-3 py-2.5 outline-none mb-2"
-              style={{ background: "#f6f5f4", color: "#1a1a1a", border: "none" }}
+              style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "none" }}
             />
           )}
 
@@ -440,7 +440,7 @@ function PostForm({ user, balance, onThread, onQuestion }: {
               ? "Mô tả chi tiết câu hỏi, ngữ cảnh, những gì bạn đã thử..."
               : "Chia sẻ kiến thức, kinh nghiệm, hay kể chuyện vui..."}
             className="w-full text-sm rounded-lg px-3 py-2.5 outline-none resize-none"
-            style={{ background: "#f6f5f4", color: "#1a1a1a", border: "none" }}
+            style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "none" }}
           />
 
           {/* Thread-only: media + category */}
@@ -449,11 +449,11 @@ function PostForm({ user, balance, onThread, onQuestion }: {
               <ImagePreviews images={images} onRemove={i => setImages(p => p.filter((_, idx) => idx !== i))} />
               {file && (
                 <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg w-fit"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-                  <span className="text-xs font-medium truncate max-w-[160px]" style={{ color: "#37352f" }}>
+                  style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+                  <span className="text-xs font-medium truncate max-w-[160px]" style={{ color: "var(--kin-chu-phu)" }}>
                     📎 {file.name}
                   </span>
-                  <button onClick={() => setFile(null)} className="text-xs font-bold" style={{ color: "#a4a097" }}>✕</button>
+                  <button onClick={() => setFile(null)} className="text-xs font-bold" style={{ color: "var(--kin-chu-mo)" }}>✕</button>
                 </div>
               )}
               <div className="flex gap-2 flex-wrap mt-3">
@@ -461,9 +461,9 @@ function PostForm({ user, balance, onThread, onQuestion }: {
                   <button key={c.key} type="button" onClick={() => setCategory(c.key)}
                     className="px-3 py-1 rounded-full text-xs font-semibold transition-all"
                     style={{
-                      background: category === c.key ? c.bg : "#f6f5f4",
-                      color:      category === c.key ? c.color : "#787671",
-                      border:     category === c.key ? `1px solid ${c.color}40` : "1px solid transparent",
+                      background: category === c.key ? c.bg : "var(--kin-nen-bang)",
+                      color:      category === c.key ? c.color : "var(--kin-chu-mo)",
+                      border:     category === c.key ? `1px solid color-mix(in srgb, ${c.color} 25%, transparent)` : "1px solid transparent",
                     }}>
                     {c.label}
                   </button>
@@ -483,25 +483,25 @@ function PostForm({ user, balance, onThread, onQuestion }: {
                 <p className="text-xs font-semibold" style={{ color: "#92400e" }}>
                   Trừ {QUESTION_COST} xu · Số dư hiện tại: {balance} xu
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: "#b45309" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
                   Người trả lời được chấp nhận sẽ nhận 20 xu thưởng. Câu hỏi được đặt ẩn danh với gia sư.
                 </p>
               </div>
             </div>
           )}
 
-          {error && <p className="text-xs mt-2" style={{ color: "#dc2626" }}>{error}</p>}
+          {error && <p className="text-xs mt-2" style={{ color: "var(--kin-tt-chu-loi)" }}>{error}</p>}
 
           <div className="flex items-center justify-between mt-3">
-            <span className="text-xs" style={{ color: "#a4a097" }}>{content.length}/2000</span>
+            <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{content.length}/2000</span>
             <div className="flex gap-2">
               <button onClick={reset}
                 className="px-4 py-1.5 rounded-lg text-sm font-semibold"
-                style={{ background: "#f6f5f4", color: "#787671" }}>Huỷ</button>
+                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
               <button onClick={handlePost}
                 disabled={posting || uploading || !content.trim() || (postType === "question" && !title.trim())}
                 className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: postType === "question" ? "#b45309" : "#0068FF" }}>
+                style={{ background: postType === "question" ? "#b45309" : "var(--kin-nhan-nen)" }}>
                 {uploading ? "Đang upload..." : posting
                   ? "Đang đăng..."
                   : postType === "question" ? "Đặt câu hỏi" : "Đăng bài"}
@@ -575,10 +575,10 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
 
   return (
     <article className="rounded-xl border p-4"
-      style={{ background: "#ffffff", borderColor: t.isPinned ? "#bfdbfe" : "#e5e3df" }}>
+      style={{ background: "var(--kin-nen-trang)", borderColor: t.isPinned ? "var(--kin-nhan-vien)" : "var(--kin-vien-thuong)" }}>
 
       {t.isPinned && (
-        <p className="text-xs font-semibold mb-2" style={{ color: "#0068FF" }}>📌 Bài ghim</p>
+        <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-nhan-link)" }}>📌 Bài ghim</p>
       )}
 
       <div className="flex items-start justify-between gap-3">
@@ -586,10 +586,10 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
           <Avatar name={t.author.name} size={36} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{t.author.name}</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{t.author.name}</span>
               {t.author.isTeacher && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
+                  style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
               )}
               <CatBadge cat={t.category} />
               {/* FE-119: badge phân biệt bài "chung" vs "trong lớp X". Chỉ hiển
@@ -598,20 +598,20 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
                   badge chỉ gây rối. */}
               {scope === "all" && t.course && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 truncate max-w-[160px]"
-                  style={{ background: "#dbeafe", color: "#0068FF" }}
+                  style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}
                   title={`Lớp ${t.course.name}`}>Lớp {t.course.name}</span>
               )}
               {scope === "all" && !t.course && (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: "#f0eeec", color: "#787671" }}>Chung</span>
+                  style={{ background: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" }}>Chung</span>
               )}
             </div>
-            <p className="text-xs mt-0.5" style={{ color: "#a4a097" }}>{timeAgo(t.createdAt)}</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(t.createdAt)}</p>
           </div>
         </div>
         {(isOwn || canModerate) && !confirmDelete && (
           <button onClick={() => setConfirmDelete(true)} className="text-xs px-2 py-1 rounded flex-shrink-0"
-            style={{ color: "#a4a097" }}>✕</button>
+            style={{ color: "var(--kin-chu-mo)" }}>✕</button>
         )}
         {confirmDelete && (
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -620,30 +620,30 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
               style={{ background: "#dc2626" }}>{deleting ? "..." : "Xoá"}</button>
             <button onClick={() => setConfirmDelete(false)}
               className="text-xs px-2 py-1 rounded-lg"
-              style={{ background: "#f6f5f4", color: "#787671" }}>Huỷ</button>
+              style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
           </div>
         )}
       </div>
 
       <button className="block mt-3 w-full text-left cursor-pointer" onClick={() => onOpen(t.id)}>
-        <p className="text-sm leading-relaxed line-clamp-4 whitespace-pre-wrap" style={{ color: "#37352f" }}>
+        <p className="text-sm leading-relaxed line-clamp-4 whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>
           {t.content}
         </p>
         <MediaGrid urls={t.imageUrls} />
         {t.fileUrl && <FileChip url={t.fileUrl} name={t.fileName} />}
       </button>
 
-      <div className="flex items-center gap-0.5 mt-3 pt-2" style={{ borderTop: "1px solid #f6f5f4" }}>
+      <div className="flex items-center gap-0.5 mt-3 pt-2" style={{ borderTop: "1px solid var(--kin-nen-bang)" }}>
         <button onClick={() => currentUser ? onLike(t.id) : onRequireLogin()}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors"
-          style={{ color: t.likedByMe ? "#dc2626" : "#a4a097" }}>
+          style={{ color: t.likedByMe ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)" }}>
           <span className="text-base leading-none">{t.likedByMe ? "♥" : "♡"}</span>
           <span className="text-xs font-semibold">{t.likeCount}</span>
         </button>
 
         <button onClick={() => onOpen(t.id)}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-          style={{ color: "#a4a097" }}>
+          style={{ color: "var(--kin-chu-mo)" }}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -656,7 +656,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
         <button onClick={() => currentUser ? onBookmark(t.id) : onRequireLogin()}
           className="px-2.5 py-1.5 rounded-lg transition-colors"
           title={t.bookmarkedByMe ? "Bỏ lưu" : "Lưu bài"}
-          style={{ color: t.bookmarkedByMe ? "#0068FF" : "#a4a097" }}>
+          style={{ color: t.bookmarkedByMe ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)" }}>
           {t.bookmarkedByMe
             ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v18l-7-3.5L5 22V4z"/></svg>
             : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4a2 2 0 012-2h10a2 2 0 012 2v18l-7-3.5L5 22V4z"/></svg>
@@ -665,7 +665,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
 
         <button onClick={copyLink}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
-          style={{ color: copied ? "#16a34a" : "#a4a097" }}>
+          style={{ color: copied ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)" }}>
           {copied
             ? <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>Đã sao chép</>
             : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>Chia sẻ</>
@@ -676,29 +676,29 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
           <button onClick={() => setReporting(p => !p)}
             className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
             title="Báo cáo bài viết"
-            style={{ color: reporting ? "#dc2626" : "#a4a097" }}>🚩</button>
+            style={{ color: reporting ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)" }}>🚩</button>
         )}
       </div>
 
       {reporting && (
         <div className="mt-2 p-3 rounded-lg" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
           {reportDone ? (
-            <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
+            <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
           ) : (
             <>
               <textarea rows={2} maxLength={300} value={reportReason}
                 onChange={e => { setReportReason(e.target.value); setReportError(""); }}
                 placeholder="Lý do báo cáo bài viết này..."
                 className="w-full text-xs rounded-lg px-2.5 py-2 outline-none resize-none"
-                style={{ background: "#ffffff", color: "#1a1a1a", border: "1px solid #fecaca" }} />
-              {reportError && <p className="text-xs mt-1" style={{ color: "#dc2626" }}>{reportError}</p>}
+                style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid #fecaca" }} />
+              {reportError && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{reportError}</p>}
               <div className="flex gap-1.5 mt-2">
                 <button onClick={handleReport} disabled={reportSending}
                   className="px-3 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
                   style={{ background: "#dc2626" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
                 <button onClick={() => { setReporting(false); setReportReason(""); setReportError(""); }}
                   className="px-3 py-1 rounded-lg text-xs font-semibold"
-                  style={{ background: "#f6f5f4", color: "#787671" }}>Huỷ</button>
+                  style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
               </div>
             </>
           )}
@@ -715,33 +715,33 @@ function QuestionCard({ q, onOpen }: { q: QuestionDTO; onOpen: (id: string) => v
   return (
     <button className="block w-full text-left" onClick={() => onOpen(q.id)}>
       <article className="rounded-xl border p-4 transition-all hover:border-amber-300"
-        style={{ background: "#ffffff", borderColor: answered ? "#bbf7d0" : "#fde68a" }}>
+        style={{ background: "var(--kin-nen-trang)", borderColor: answered ? "#bbf7d0" : "#fde68a" }}>
 
         <div className="flex items-start gap-2.5">
           <Avatar name={q.author.name} size={36} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{q.author.name}</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{q.author.name}</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                 style={{ background: answered ? "#dcfce7" : "#fffbeb", color: answered ? "#15803d" : "#92400e" }}>
                 {answered ? "✓ Đã giải" : "Đang mở"}
               </span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "#fffbeb", color: "#b45309" }}>
+                style={{ background: "#fffbeb", color: "var(--kin-tt-chu-cho)" }}>
                 🪙 {q.bountyPaid} xu
               </span>
             </div>
-            <p className="text-sm font-semibold leading-snug" style={{ color: "#1a1a1a" }}>{q.title}</p>
-            <p className="text-xs mt-1 line-clamp-2 leading-relaxed" style={{ color: "#787671" }}>{q.content}</p>
+            <p className="text-sm font-semibold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{q.title}</p>
+            <p className="text-xs mt-1 line-clamp-2 leading-relaxed" style={{ color: "var(--kin-chu-mo)" }}>{q.content}</p>
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-xs flex items-center gap-1" style={{ color: "#a4a097" }}>
+              <span className="text-xs flex items-center gap-1" style={{ color: "var(--kin-chu-mo)" }}>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 {q.answerCount} câu trả lời
               </span>
-              <span className="text-xs" style={{ color: "#a4a097" }}>{timeAgo(q.createdAt)}</span>
+              <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(q.createdAt)}</span>
             </div>
           </div>
         </div>
@@ -930,8 +930,8 @@ function CongDongInner() {
     <div className="max-w-2xl mx-auto space-y-4">
 
       <div>
-        <h1 className="text-xl font-bold" style={{ color: "#1a1a1a" }}>Cộng đồng</h1>
-        <p className="text-sm" style={{ color: "#787671" }}>Trao đổi, hỏi đáp và chia sẻ kinh nghiệm</p>
+        <h1 className="text-xl font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Cộng đồng</h1>
+        <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Trao đổi, hỏi đáp và chia sẻ kinh nghiệm</p>
       </div>
 
       {/* FE-117/163: phạm vi — tự ẩn khi khách hoặc chưa có lớp nào. */}
@@ -943,8 +943,8 @@ function CongDongInner() {
           <button key={tab.key} onClick={() => switchTab(tab.key)}
             className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap"
             style={activeTab === tab.key
-              ? { background: "#0068FF", color: "#ffffff" }
-              : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
+              ? { background: "var(--kin-nhan-nen)", color: "#ffffff" }
+              : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
             {tab.label}
           </button>
         ))}
@@ -971,7 +971,7 @@ function CongDongInner() {
       {fetchError && (
         <div className="flex items-center justify-between p-4 rounded-xl"
           style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
-          <span className="text-sm font-semibold" style={{ color: "#dc2626" }}>Lỗi tải dữ liệu</span>
+          <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Lỗi tải dữ liệu</span>
           <button onClick={load} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
             style={{ background: "#dc2626" }}>Thử lại</button>
         </div>
@@ -981,7 +981,7 @@ function CongDongInner() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
+            <div key={i} className="h-32 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
           ))}
         </div>
       )}
@@ -1002,10 +1002,10 @@ function CongDongInner() {
       {!loading && !fetchError && feedItems.length === 0 && (
         <div className="text-center py-16">
           <p className="text-4xl mb-3">{activeTab === "hoi-dap-qa" ? "🏅" : "💬"}</p>
-          <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>
+          <p className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>
             {activeTab === "hoi-dap-qa" ? "Chưa có câu hỏi nào" : "Chưa có bài viết nào"}
           </p>
-          <p className="text-sm" style={{ color: "#787671" }}>
+          <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>
             {activeTab === "hoi-dap-qa"
               ? `Đặt câu hỏi chỉ mất ${QUESTION_COST} xu, người trả lời hay nhất nhận 20 xu!`
               : "Hãy là người đầu tiên chia sẻ!"}
@@ -1018,7 +1018,7 @@ function CongDongInner() {
         <div className="text-center pb-4">
           <button onClick={loadMore} disabled={loadingMore}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             {loadingMore ? "Đang tải..." : "Tải thêm"}
           </button>
         </div>

@@ -20,7 +20,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
     >
       {icon ? (
         <div className="mb-4 w-16 h-16 flex items-center justify-center rounded-2xl text-3xl"
-          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}>
+          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px var(--kin-nen-trang)" }}>
           {icon}
         </div>
       ) : null}

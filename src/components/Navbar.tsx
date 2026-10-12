@@ -53,7 +53,7 @@ export default function Navbar() {
 
   return (
     <header
-      data-vung="khach-sang"
+      data-vung="sang"
       className="kin-chu-than sticky top-0 z-50 h-[60px] bg-[var(--kin-nen-trang)] border-b border-[var(--kin-vien-thuong)]"
     >
       <div className="mx-auto h-full flex items-center justify-between gap-4 px-4 sm:px-8 max-w-[1440px]">

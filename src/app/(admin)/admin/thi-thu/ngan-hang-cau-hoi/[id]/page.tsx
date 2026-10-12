@@ -12,10 +12,10 @@ import { DuplicateScanModal } from "@/components/DuplicateScanModal";
 
 const DIFFICULTY_KEYS: Difficulty[] = ["NB", "TH", "VD", "VDC"];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
-  TH:  { bg: "#dcfce7", color: "#16a34a" },
-  VD:  { bg: "#fef3c7", color: "#b45309" },
-  VDC: { bg: "#fee2e2", color: "#dc2626" },
+  NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
+  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
 };
 
 const TYPE_KEYS: QuestionType[] = ["MC", "ESSAY", "TRUE_FALSE_CLUSTER", "SHORT_ANSWER"];
@@ -169,7 +169,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
 
         {editing ? (
           <>
-            <input autoFocus className="px-2 py-1 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+            <input autoFocus className="px-2 py-1 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
               value={editName} onChange={e => setEditName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setEditing(false); }} />
             <button onClick={handleRename} disabled={busy} className="text-xs font-semibold text-blue-600">Lưu</button>
@@ -201,7 +201,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
 
       {adding && (
         <div className="flex items-center gap-2 py-1" style={{ paddingLeft: (depth + 1) * 20 + 20 }}>
-          <input autoFocus className="px-2 py-1 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+          <input autoFocus className="px-2 py-1 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
             placeholder={`Tên ${childLabel.toLowerCase()}...`} value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleAddChild(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
           <button onClick={handleAddChild} disabled={busy} className="text-xs font-semibold text-blue-600">Thêm</button>
@@ -215,7 +215,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
             <p className="text-sm font-semibold mb-1">Xoá {selfLabel.toLowerCase()} &quot;{node.name}&quot;?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá được nếu không còn {childLabel.toLowerCase()} nào bên trong hoặc câu hỏi nào gắn vào.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+              <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
               <button onClick={handleDelete} disabled={busy} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
             </div>
           </div>
@@ -312,7 +312,7 @@ function PageInner() {
       </p>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>{root?.name ?? "Đang tải..."}</h1>
+          <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{root?.name ?? "Đang tải..."}</h1>
           <p className="text-sm text-gray-500 mt-0.5">{root ? `${root.total} câu hỏi` : ""}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -320,24 +320,24 @@ function PageInner() {
             <>
               <UploadAndExtractButton fixedBankId={root.id} onSaved={load} showToast={showToast} label="+ Tải file lên & tách câu hỏi" />
               <button onClick={() => { setCopyName(`${root.name} (bản sao)`); setCopying(true); }}
-                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 Copy ngân hàng
               </button>
               <button onClick={() => setScanOpen(true)}
-                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 Quét trùng lặp
               </button>
               <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}&select=1`}
-                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+                className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 Tự chọn câu hỏi
               </Link>
               <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}`}
-                className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+                className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
                 + Thêm câu hỏi
               </Link>
             </>
           )}
-          <button onClick={() => setAdding(true)} className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+          <button onClick={() => setAdding(true)} className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
             + Thêm chương
           </button>
         </div>
@@ -352,8 +352,8 @@ function PageInner() {
             <button key={t.v} onClick={() => setView(t.v)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
               style={view === t.v
-                ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
-                : { borderColor: "#e5e3df", color: "#787671" }}>
+                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
               {t.label}
             </button>
           ))}
@@ -365,11 +365,11 @@ function PageInner() {
           <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Copy ngân hàng &quot;{root.name}&quot;</p>
             <p className="text-xs text-gray-500 mb-3">Nhân bản toàn bộ cây đầu mục + câu hỏi bên trong sang 1 ngân hàng mới.</p>
-            <input autoFocus className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+            <input autoFocus className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
               value={copyName} onChange={e => setCopyName(e.target.value)} />
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
-              <button onClick={handleDuplicate} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+              <button onClick={() => setCopying(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
+              <button onClick={handleDuplicate} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
                 Copy
               </button>
             </div>
@@ -378,11 +378,11 @@ function PageInner() {
       )}
 
       {adding && (
-        <div className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
-          <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+        <div className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-dashed" style={{ borderColor: "var(--kin-nhan-vien)", background: "var(--kin-nhan-nen-nhat)" }}>
+          <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
             placeholder="Tên chương (vd: Chương 1...)" value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleAddChild(); if (e.key === "Escape") { setAdding(false); setNewName(""); } }} />
-          <button onClick={handleAddChild} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "#0068FF" }}>Thêm</button>
+          <button onClick={handleAddChild} className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white" style={{ background: "var(--kin-nhan-nen)" }}>Thêm</button>
           <button onClick={() => { setAdding(false); setNewName(""); }} className="px-2 text-xs text-gray-400">Huỷ</button>
         </div>
       )}
@@ -392,12 +392,12 @@ function PageInner() {
           {root && root.children.length > 0 && (
             <input
               className="w-full max-w-sm px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 mb-3"
-              style={{ borderColor: "#e5e3df" }}
+              style={{ borderColor: "var(--kin-vien-thuong)" }}
               placeholder="Tìm theo tên mục..."
               value={search} onChange={e => setSearch(e.target.value)} />
           )}
 
-          <div className="rounded-xl border p-3" style={{ borderColor: "#e5e3df" }}>
+          <div className="rounded-xl border p-3" style={{ borderColor: "var(--kin-vien-thuong)" }}>
             {loading ? (
               <p className="text-center text-gray-400 text-sm py-8">Đang tải...</p>
             ) : !root || root.children.length === 0 ? (
@@ -414,10 +414,10 @@ function PageInner() {
       ) : (
         root && root.children.length > 0 && (
           <>
-            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--kin-vien-thuong)" }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "var(--kin-nen-bang)" }}>
                     <th className="px-4 py-3">Chương</th>
                     {DIFFICULTY_KEYS.map(k => <th key={k} className="px-4 py-3 text-right">{k}</th>)}
                     <th className="px-4 py-3 text-right">Tổng</th>
@@ -425,7 +425,7 @@ function PageInner() {
                 </thead>
                 <tbody>
                   {root.children.map(chapter => (
-                    <tr key={chapter.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
+                    <tr key={chapter.id} className="border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
                       <td className="px-4 py-3">{chapter.name}</td>
                       {DIFFICULTY_KEYS.map(k => (
                         <td key={k} className="px-4 py-3 text-right" style={chapter.difficultyTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
@@ -435,7 +435,7 @@ function PageInner() {
                       <td className="px-4 py-3 text-right font-semibold">{chapter.total}</td>
                     </tr>
                   ))}
-                  <tr className="border-t font-semibold" style={{ borderColor: "#e5e3df", background: "#f6f5f4" }}>
+                  <tr className="border-t font-semibold" style={{ borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-bang)" }}>
                     <td className="px-4 py-3">Tổng cộng</td>
                     {DIFFICULTY_KEYS.map(k => (
                       <td key={k} className="px-4 py-3 text-right">{root.difficultyTotals[k]}</td>
@@ -446,11 +446,11 @@ function PageInner() {
               </table>
             </div>
 
-            <p className="text-sm font-semibold mt-6 mb-2" style={{ color: "#1a1a1a" }}>Dạng câu hỏi theo Chương</p>
-            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
+            <p className="text-sm font-semibold mt-6 mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Dạng câu hỏi theo Chương</p>
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--kin-vien-thuong)" }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "var(--kin-nen-bang)" }}>
                     <th className="px-4 py-3">Chương</th>
                     {TYPE_KEYS.map(k => <th key={k} className="px-4 py-3 text-right">{TYPE_LABEL[k]}</th>)}
                     <th className="px-4 py-3 text-right">Tổng</th>
@@ -458,7 +458,7 @@ function PageInner() {
                 </thead>
                 <tbody>
                   {root.children.map(chapter => (
-                    <tr key={chapter.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
+                    <tr key={chapter.id} className="border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
                       <td className="px-4 py-3">{chapter.name}</td>
                       {TYPE_KEYS.map(k => (
                         <td key={k} className="px-4 py-3 text-right" style={chapter.typeTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
@@ -468,7 +468,7 @@ function PageInner() {
                       <td className="px-4 py-3 text-right font-semibold">{chapter.total}</td>
                     </tr>
                   ))}
-                  <tr className="border-t font-semibold" style={{ borderColor: "#e5e3df", background: "#f6f5f4" }}>
+                  <tr className="border-t font-semibold" style={{ borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-bang)" }}>
                     <td className="px-4 py-3">Tổng cộng</td>
                     {TYPE_KEYS.map(k => (
                       <td key={k} className="px-4 py-3 text-right">{root.typeTotals[k]}</td>

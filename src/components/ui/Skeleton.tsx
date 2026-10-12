@@ -34,7 +34,7 @@ export function SkeletonBlock({ variant, lines = 1, size = 40, className = "" }:
   if (variant === "card") {
     return (
       <div className={`rounded-2xl p-5 ${className}`}
-        style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px #ffffff" }}>
+        style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px var(--kin-nen-trang)" }}>
         <div className="space-y-3">
           <SkeletonPrimitive className="h-4 w-1/2" />
           <SkeletonPrimitive className="h-3 w-full" />
@@ -68,7 +68,7 @@ export function SkeletonBlock({ variant, lines = 1, size = 40, className = "" }:
   // stat-tile
   return (
     <div className={`rounded-2xl p-4 flex items-center gap-3 ${className}`}
-      style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px #ffffff" }}>
+      style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px var(--kin-nen-trang)" }}>
       <SkeletonPrimitive className="w-12 h-12" rounded="xl" />
       <div className="flex-1 space-y-2">
         <SkeletonPrimitive className="h-3 w-1/2" />

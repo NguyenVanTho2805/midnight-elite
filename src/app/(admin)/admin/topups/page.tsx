@@ -84,14 +84,14 @@ export default function AdminTopupsPage() {
           <button key={s} onClick={() => setStatus(s)}
             className="px-3 py-1.5 rounded-full text-xs font-semibold"
             style={status === s
-              ? { background: "#0068FF", color: "#fff" }
-              : { background: "#f6f5f4", color: "#374151", border: "1px solid #e5e3df" }}>
+              ? { background: "var(--kin-nhan-nen)", color: "#fff" }
+              : { background: "var(--kin-nen-bang)", color: "#374151", border: "1px solid var(--kin-vien-thuong)" }}>
             {s === "pending" ? "Đang chờ" : s === "approved" ? "Đã duyệt" : s === "rejected" ? "Đã từ chối" : "Tất cả"}
           </button>
         ))}
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         {loading ? (
           <p className="p-8 text-center text-sm" style={{ color: "#9CA3AF" }}>Đang tải...</p>
         ) : rows.length === 0 ? (
@@ -114,7 +114,7 @@ export default function AdminTopupsPage() {
                     <p className="font-semibold" style={{ color: "#1E2938" }}>{r.user.name}</p>
                     <p className="text-xs" style={{ color: "#9CA3AF" }}>
                       {r.user.email}
-                      {r.user.adminRole === "teacher" && <> · <span style={{ color: "#b45309" }}>Gia sư</span></>}
+                      {r.user.adminRole === "teacher" && <> · <span style={{ color: "var(--kin-tt-chu-cho)" }}>Gia sư</span></>}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -140,7 +140,7 @@ export default function AdminTopupsPage() {
                       </div>
                     ) : (
                       <span className="text-xs font-semibold"
-                        style={{ color: r.status === "approved" ? "#16a34a" : "#dc2626" }}>
+                        style={{ color: r.status === "approved" ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                         {r.status === "approved" ? "Đã duyệt" : "Đã từ chối"}
                       </span>
                     )}
@@ -162,7 +162,7 @@ export default function AdminTopupsPage() {
             <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3}
               placeholder="VD: Không tìm thấy giao dịch trong sao kê"
               className="w-full px-4 py-2.5 rounded-xl text-sm"
-              style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }} />
+              style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
             <div className="flex items-center justify-end gap-2 mt-3">
               <button onClick={() => setRejectId(null)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100">

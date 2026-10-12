@@ -61,7 +61,7 @@ export default function StudentBottomNav() {
       {/* Regular nav items */}
       {navItems.map((item) => {
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
-        const color = active ? "#0068FF" : "#9CA3AF";
+        const color = active ? "var(--kin-nhan-nen)" : "#9CA3AF";
         return (
           <Link
             key={item.href}
@@ -74,7 +74,7 @@ export default function StudentBottomNav() {
             <span className="text-[10px] font-semibold" style={{ color }}>
               {item.label}
             </span>
-            {active && <span className="w-1 h-1 rounded-full" style={{ background: "#0068FF" }} />}
+            {active && <span className="w-1 h-1 rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
           </Link>
         );
       })}
@@ -88,17 +88,17 @@ export default function StudentBottomNav() {
           className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
           style={{
             background: profileActive
-              ? "linear-gradient(135deg, #0068FF, #2680FF)"
+              ? "var(--kin-nhan-nen)"
               : "linear-gradient(135deg, #9CA3AF, #6B7280)",
             boxShadow: profileActive ? "0 0 0 2px rgba(0,104,255,0.25)" : "none",
           }}
         >
           {user?.avatar ?? "?"}
         </div>
-        <span className="text-[10px] font-semibold" style={{ color: profileActive ? "#0068FF" : "#9CA3AF" }}>
+        <span className="text-[10px] font-semibold" style={{ color: profileActive ? "var(--kin-nhan-link)" : "#9CA3AF" }}>
           Tài khoản
         </span>
-        {profileActive && <span className="w-1 h-1 rounded-full" style={{ background: "#0068FF" }} />}
+        {profileActive && <span className="w-1 h-1 rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
       </Link>
     </nav>
   );

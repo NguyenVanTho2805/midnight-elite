@@ -85,11 +85,11 @@ Nguồn: file Figma *KiN Design System* (`2orXvoHL2upkiGoMjlq8aX`). Đã đọc 
 - **Bỏ khỏi trang chủ so với bản cũ:** danh sách khoá học + tìm kiếm + theo dõi (vẫn đủ ở `/khoa-hoc`), dòng "Mua 1 lần, học trọn đời" (sai cách bán — KiN thu theo tháng), đếm ngược kỳ thi (ngày viết cứng), dòng thời gian "Hành trình phát triển", ô BCA (Figma chỉ có 4 ô).
   Thanh trên không còn "Gia sư" (`/giang-vien`) và "Bảng xếp hạng" vì Figma chỉ có 4 mục; cả hai chuyển xuống chân trang (cột Công cụ học tập, thêm dòng "Danh sách gia sư" ngoài 4 dòng của Figma để `/giang-vien` không mất lối vào). Muốn đưa lại lên thanh trên thì thêm vào `navLinks` trong `Navbar.tsx`.
 - **Số liệu "1.200+ học sinh / 10.000+ đề / 6 gia sư" giữ nguyên như Figma và bản cũ — chưa có nguồn đếm tự động, cần người chịu trách nhiệm xác nhận trước khi đưa ra công khai.**
-- **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="khach-sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
+- **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
 - **CHƯA làm (đều cần quyết định hoặc chưa có khung Figma tương ứng):**
   - Đăng nhập "một ô, một mã": **đã làm ngày 13/10 qua email** — xem mục "Đăng nhập bằng mã 6 số qua email" ngay dưới đây. Chưa làm: đăng nhập bằng số điện thoại (cần SMS), cookie `kin_s`, phiên quản trị 12 giờ không gia hạn.
   - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); học sinh, quản trị chưa — admin trên tên miền riêng, cần làm cả bộ điều hướng.
-  - Các trang không có khung Figma: `/khoa-hoc`, `/khoa-hoc/[id]`, `/thi-thu`, `/tin-tuc`, `/bang-xep-hang`, `/student/*`, `/admin/*` — vẫn giao diện cũ (xanh #0068FF), đã nằm trong thanh trên/chân trang mới nên lệch tông. `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần".
+  - Các trang không có khung Figma: **đã áp ngôn ngữ KiN ngày 13/10** (mục "Áp ngôn ngữ KiN cho trang cũ" bên dưới). `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần" (chữ bán hàng, chờ Thọ chốt).
   - Chưa kiểm được phông thật trong môi trường làm việc (Google Fonts bị chặn nên chạy bằng phông thay thế); Vercel sẽ tải đúng Inter / Be Vietnam Pro / Plus Jakarta Sans.
 
 ## Đăng nhập bằng mã 6 số qua email (TK-170) — XONG ngày 13/10 (Thọ chốt: dùng, và dùng email)
@@ -103,6 +103,14 @@ Màn `/dang-nhap` dựng theo Figma 32:2 (nhập email) và 32:27 (nhập mã 6 
 - **Đi kèm:** `/dang-nhap?redirect=` chỉ nhận đường dẫn nội bộ (trước đó nhận cả địa chỉ ngoài → có thể bị dùng để đẩy người dùng sang trang giả mạo sau khi đăng nhập); `AuthGuard` đưa người chưa đăng nhập về `/dang-nhap?redirect=<trang đang định vào>` để đăng nhập xong quay lại đúng trang (Figma 33:2).
 - **Test:** `t-login-code-lib` (43), `t-login-code` (61: API + Postgres thật, đua song song, đoán mã hàng loạt, email lạ, bị khoá, vai trò), `ui-login-code` (62: màn hình thật, gõ phím/dán mã, đồng hồ gửi lại, khoá, điện thoại 390px, chặn redirect ngoài).
 - **Chưa làm:** đăng nhập bằng số điện thoại (cần dịch vụ SMS — Figma có "Số điện thoại hoặc email"; hiện chỉ email); tắt hẳn mật khẩu; phiên 30 ngày gia hạn mỗi lần dùng và phiên quản trị 12 giờ (phiên hiện vẫn 7 ngày cho mọi vai).
+
+## Áp ngôn ngữ KiN cho các trang cũ không có khung Figma — XONG ngày 13/10 (Thọ: "áp dụng luôn, không chờ")
+Mục tiêu: trang nào chưa có khung Figma thì vẫn mang màu, chữ, bo góc, viền của KiN để không lệch tông với thanh trên/chân trang/trang chủ mới.
+- **Cách làm:** công cụ chuyển có kiểm soát (không thay mù): ánh xạ màu cũ → token `--kin-*` THEO NGỮ CẢNH thuộc tính CSS (chữ / nền / viền / tô SVG), chạy trên ~88 file `.tsx` của `(guest)`, `(student)`, `(admin)`, `AdminSidebar` và các component dùng chung; sau đó rà tay các chỗ công cụ không an toàn (viền có độ trong suốt dùng `color-mix`, màu ghép chuỗi `${màu}40`, khoá React trùng sau khi hai màu cũ gộp thành một token). `globals.css`: `--color-primary*` trỏ về token KiN nên mọi class `bg-primary`… tự đổi.
+- **Vùng sáng cố định đổi tên `data-vung="khach-sang"` → `"sang"`** và đặt thêm cho `(student)` và `(admin)`. Trong vùng này `kin-site.css` khai báo lại token trung tính theo bản sáng + giá trị nhấn theo 5 chủ đề màu, kể cả viền focus và ô nhập (`.notion-input`) — trước đó viền focus toàn cục `#0068FF` làm rò màu cũ ra mọi ô nhập.
+- **Cố ý giữ nguyên màu cứng (là DỮ LIỆU, không phải giao diện):** màu thẻ/nhãn do quản trị chọn và lưu vào cơ sở dữ liệu (`TAG_COLORS` ở trang khoá học admin, khoá `"#0068FF": "MỚI"`), đánh dấu bằng `data-mau-du-lieu`; ô mẫu của bộ chọn chủ đề màu; ~26 chỗ chữ trắng trên nền màu. Test `ui-kin-site` bỏ các chỗ có `data-mau-du-lieu` khi quét.
+- **Test:** `ui-kin-site` (101 kiểm tra) quét mọi trang guest/student/admin tìm màu cũ trong style thật của trình duyệt, kiểm tra vùng sáng không đổi tối theo máy, tương phản chữ thật.
+- **Chưa làm / cần người:** dòng "Mua 1 lần" ở `/khoa-hoc`; logo K vẽ lại bằng SVG (cần SVG gốc từ Figma); phông Inter/Be Vietnam Pro/Plus Jakarta Sans chưa kiểm được thật ở đây (Google Fonts bị chặn).
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,

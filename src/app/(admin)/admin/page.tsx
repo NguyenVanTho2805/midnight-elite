@@ -78,18 +78,18 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
       <div className="rounded-3xl p-6 w-full max-w-sm mx-4"
-        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px #ffffff" }}>
+        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px var(--kin-nen-trang)" }}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-extrabold text-base" style={{ color: "#1E2938" }}>Liên hệ học sinh</h2>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors text-xl cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff" }}>
+            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px var(--kin-nen-trang)" }}>
             ×
           </button>
         </div>
 
         <div className="rounded-2xl p-4 mb-5"
-          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}>
+          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px var(--kin-nen-trang)" }}>
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl flex-shrink-0"
               style={{ background: "linear-gradient(145deg, #FF2157, #cc0040)" }}>
@@ -111,13 +111,13 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
             </div>
             <div className="flex items-center justify-between">
               <span style={{ color: "#6B7280" }}>Email</span>
-              <span style={{ color: "#0068FF" }}>{student.email}</span>
+              <span style={{ color: "var(--kin-nhan-link)" }}>{student.email}</span>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl px-4 py-3 mb-4 flex items-center justify-between"
-          style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
+          style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)" }}>
           <div>
             <p className="text-xs font-medium mb-0.5" style={{ color: "#6B7280" }}>Số điện thoại</p>
             <p className="text-lg font-extrabold tracking-wide" style={{ color: "#1E2938" }}>
@@ -129,7 +129,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
               className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
               style={copied
                 ? { background: "#dcfce7", color: "#166534" }
-                : { background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff", color: "#0068FF" }}>
+                : { background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>
               {copied ? "✓ Đã sao chép" : "Sao chép"}
             </button>
           )}
@@ -160,9 +160,9 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
             <textarea rows={3} value={remindMsg} onChange={e => { setRemindMsg(e.target.value); setRemindError(null); }}
               placeholder={DEFAULT_MSG}
               className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
+              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", border: "none", color: "#1E2938" }} />
             {remindError && (
-              <p className="text-xs font-semibold text-center" style={{ color: "#dc2626" }}>
+              <p className="text-xs font-semibold text-center" style={{ color: "var(--kin-tt-chu-loi)" }}>
                 ✗ {remindError}
               </p>
             )}
@@ -261,7 +261,7 @@ export default function AdminDashboardPage() {
   const healthCards = useMemo(() => canViewRevenue
     // Super admin: 4 cards
     ? [
-        { label: "Tổng học sinh",        value: String(students.length),                                              sub: studentSub,  color: "#0068FF", Icon: UsersGroup      },
+        { label: "Tổng học sinh",        value: String(students.length),                                              sub: studentSub,  color: "var(--kin-nhan-link)", Icon: UsersGroup      },
         { label: "Gia sư đang VIP",      value: analytics ? `${analytics.totals.activeVipTutors}/${analytics.totals.tutorCount}` : "—", sub: undefined, color: "#0EA5E9", Icon: BookOpen },
         { label: "Lớp đang mở",          value: String(analytics?.totals.classCount ?? "—"),                          sub: undefined,   color: "#00A63D", Icon: Badge           },
         {
@@ -274,7 +274,7 @@ export default function AdminDashboardPage() {
       ]
     // Content admin: 2 cards từ students
     : [
-        { label: "Tổng học sinh",       value: String(students.length),                          sub: studentSub,  color: "#0068FF", Icon: UsersGroup      },
+        { label: "Tổng học sinh",       value: String(students.length),                          sub: studentSub,  color: "var(--kin-nhan-link)", Icon: UsersGroup      },
         { label: "Cần chú ý (GPA < 7)", value: String(lowGpaCount),  sub: undefined,   color: "#FF2157", Icon: NotificationAlert },
       ],
   [canViewRevenue, students, analytics, studentSub]);
@@ -328,7 +328,7 @@ export default function AdminDashboardPage() {
           style={isSuper
             ? { background: "rgba(254,153,0,0.12)", color: "#FE9900", border: "1px solid rgba(254,153,0,0.3)" }
             : isTeacher
-            ? { background: "rgba(22,163,74,0.12)", color: "#16a34a", border: "1px solid rgba(22,163,74,0.3)" }
+            ? { background: "rgba(22,163,74,0.12)", color: "var(--kin-tt-chu-xong)", border: "1px solid rgba(22,163,74,0.3)" }
             : { background: "rgba(96,165,250,0.12)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.3)" }}>
           {isSuper ? "Cấp 1 - Super Admin" : isTeacher ? "Giáo viên" : "Cấp 2 - Content Admin"}
         </div>
@@ -338,7 +338,7 @@ export default function AdminDashboardPage() {
       <div className={`grid gap-4 ${canViewRevenue ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2"}`}>
         {healthCards.map(card => (
           <div key={card.label} className="rounded-2xl p-5"
-            style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+            style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
             <div className="mb-3">
               <card.Icon size={22} style={{ color: card.color }} />
             </div>
@@ -358,7 +358,7 @@ export default function AdminDashboardPage() {
       {/* ── Charts row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top khoá học theo enrollment */}
-        <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+        <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
           <h2 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "#1E2938" }}>
             <ChartBar size={18} /> Lớp đông học viên nhất
           </h2>
@@ -378,11 +378,11 @@ export default function AdminDashboardPage() {
                 <div key={c.id} className="flex items-center gap-3">
                   <div className="w-32 flex-shrink-0 text-xs truncate" style={{ color: "#1E2938" }}>{c.name}</div>
                   <div className="flex-1 h-2 rounded-full"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
+                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)" }}>
                     <div className="h-2 rounded-full"
-                      style={{ width: `${(c.students / chartMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#0068FF,#2680FF)" }} />
+                      style={{ width: `${(c.students / chartMax * 100).toFixed(1)}%`, background: "var(--kin-nhan-nen)" }} />
                   </div>
-                  <div className="w-14 text-right flex-shrink-0 text-xs font-bold" style={{ color: "#0068FF" }}>
+                  <div className="w-14 text-right flex-shrink-0 text-xs font-bold" style={{ color: "var(--kin-nhan-link)" }}>
                     {c.students} HV
                   </div>
                 </div>
@@ -393,12 +393,12 @@ export default function AdminDashboardPage() {
 
         {/* Kích hoạt gần đây (admin cấp 1) hoặc Thống kê học sinh (admin cấp 2) */}
         {canViewRevenue ? (
-          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
                 <CreditCard size={18} /> Mua VIP gần đây
               </h2>
-              <Link href="/admin/doanh-thu" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+              <Link href="/admin/doanh-thu" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
                 Xem tất cả →
               </Link>
             </div>
@@ -414,13 +414,13 @@ export default function AdminDashboardPage() {
               <div className="space-y-2">
                 {recentVip.map(e => (
                   <div key={e.id} className="grid grid-cols-12 items-center px-3 py-2.5 rounded-xl"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px #ffffff" }}>
+                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px var(--kin-nen-trang)" }}>
                     <div className="col-span-5">
                       <div className="text-xs font-medium truncate" style={{ color: "#1E2938" }}>{e.tutorName}</div>
                       <div className="text-xs" style={{ color: "#9CA3AF" }}>{e.createdAt.slice(0, 10)}</div>
                     </div>
                     <div className="col-span-4 text-xs truncate px-1" style={{ color: "#4B5563" }}>{e.planName}</div>
-                    <div className="col-span-3 text-right text-xs font-bold" style={{ color: "#0068FF" }}>
+                    <div className="col-span-3 text-right text-xs font-bold" style={{ color: "var(--kin-nhan-link)" }}>
                       {e.amount.toLocaleString("vi-VN")}đ
                     </div>
                   </div>
@@ -429,7 +429,7 @@ export default function AdminDashboardPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
             <h2 className="text-base font-bold mb-5" style={{ color: "#1E2938" }}>Thống kê học sinh</h2>
             {loading ? (
               <div className="space-y-3">
@@ -440,13 +440,13 @@ export default function AdminDashboardPage() {
             ) : (
               <div className="space-y-3">
                 {[
-                  { label: "Học viên đã kích hoạt",  value: String(activatedCount),                                    color: "#0068FF" },
+                  { label: "Học viên đã kích hoạt",  value: String(activatedCount),                                    color: "var(--kin-nhan-link)" },
                   { label: "Chưa kích hoạt khoá",    value: String(inactiveCount),                                     color: "#6B7280" },
                   { label: "GPA trung bình",          value: students.length ? avgGpa.toFixed(1) : "—",                color: "#0EA5E9" },
                   { label: "Cần chú ý (GPA < 7)",    value: String(lowGpaCount),                                       color: "#FF2157" },
                 ].map(row => (
                   <div key={row.label} className="flex justify-between items-center py-3 px-4 rounded-xl"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px #ffffff" }}>
+                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px var(--kin-nen-trang)" }}>
                     <span className="text-sm" style={{ color: "#4B5563" }}>{row.label}</span>
                     <span className="font-bold text-sm" style={{ color: row.color }}>{row.value}</span>
                   </div>
@@ -459,7 +459,7 @@ export default function AdminDashboardPage() {
 
       {/* ── Danger Zone ─────────────────────────────────────────────────────── */}
       {canViewStudents && (
-      <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+      <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
             <NotificationAlert size={18} style={{ color: "#FF2157" }} />
@@ -474,7 +474,7 @@ export default function AdminDashboardPage() {
                 : { background: "linear-gradient(135deg,#FE9900,#E07800)", color: "white" }}>
               Nhắc nhở tất cả
             </button>
-            <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+            <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
               Xem tất cả →
             </Link>
           </div>
@@ -489,11 +489,11 @@ export default function AdminDashboardPage() {
             <textarea rows={3} value={bulkMsg} onChange={e => setBulkMsg(e.target.value)}
               placeholder={BULK_DEFAULT}
               className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA,inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
+              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA,inset -3px -3px 6px var(--kin-nen-trang)", border: "none", color: "#1E2938" }} />
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowBulkRemind(false); setBulkMsg(""); }}
                 className="px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#6B7280" }}>
+                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "#6B7280" }}>
                 Hủy
               </button>
               <button onClick={sendBulkRemind} disabled={bulkSending}
@@ -518,7 +518,7 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {dangerStudents.map(s => (
               <div key={s.id} className="flex items-center justify-between p-4 rounded-2xl"
-                style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
+                style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)" }}>
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
                   <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#9CA3AF" }}>
@@ -546,8 +546,8 @@ export default function AdminDashboardPage() {
         {QUICK_ACTIONS.map(a => (
           <Link key={a.label} href={a.href}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all hover:-translate-y-0.5 cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff", color: "#1E2938" }}>
-            <a.Icon size={24} style={{ color: "#0068FF" }} />
+            style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px var(--kin-nen-trang)", color: "#1E2938" }}>
+            <a.Icon size={24} style={{ color: "var(--kin-nhan-link)" }} />
             <span className="text-xs font-semibold">{a.label}</span>
           </Link>
         ))}

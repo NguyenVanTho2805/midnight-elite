@@ -1,7 +1,7 @@
 // Khung web công khai theo Figma KiN: thanh trên, trang chủ, chân trang, /phu-huynh.
 // Kiểm cả cấu trúc lẫn số đo thật (màu nền hero, chiều cao nút, tương phản chữ nhỏ trên nền navy, không tràn ngang).
-import { BASE, mkUser, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { BASE, mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done } from "./h";
+import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 
 // Tương phản WCAG giữa màu chữ (có thể có alpha) và nền đã phối.
 type RGBA = [number, number, number, number];
@@ -184,6 +184,43 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
     await mp2.locator("main svg").first().waitFor({ timeout: 90000 });
     check(`${path}: điện thoại 390px không tràn ngang`, await mp2.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
     await mp2.close();
+  }
+
+  section("Các trang cũ (khách / học viên / quản trị) đã đổi màu viết cứng sang token KiN");
+  const T0 = await mkTutor("Cô Lan"); const S0 = await mkUser({ name: "Học viên mẫu" }); const A0 = await mkSuper("Quản trị mẫu");
+  void T0;
+  const legacyScan = (pg: any) => pg.evaluate(() => {
+    const bad: string[] = [];
+    document.querySelectorAll("body *").forEach(el => {
+      if (el.closest("[data-mau-du-lieu]")) return; // ô chọn màu nhãn: mã màu là DỮ LIỆU lưu vào cơ sở dữ liệu, không phải kiểu dáng
+      const cs = getComputedStyle(el);
+      for (const k of ["color", "backgroundColor", "borderTopColor", "borderBottomColor", "borderLeftColor", "borderRightColor"] as const)
+        if (cs[k] === "rgb(0, 104, 255)") bad.push(`${el.tagName}.${(el.className && String(el.className).slice(0, 30)) || ""}.${k}`);
+    });
+    return bad;
+  });
+  const groups: [string, any, string[]][] = [
+    ["khách", null, ["/khoa-hoc", "/thi-thu", "/tin-tuc", "/bang-xep-hang", "/cong-dong", "/giang-vien", "/diem-chuan", "/chinh-sach"]],
+    ["học viên", S0, ["/student/hoc-tap", "/student/lich-hoc", "/student/ho-so"]],
+    ["quản trị", A0, ["/admin", "/admin/hoc-sinh", "/admin/khoa-hoc", "/admin/thi-thu"]],
+  ];
+  for (const [label, who, paths] of groups) {
+    const gc = await ctxFor(who, { width: 1280, height: 900 });
+    await gc.setExtraHTTPHeaders({ "x-forwarded-for": `10.66.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
+    for (const path of paths) {
+      const gp2 = await gc.newPage(); watch(gp2);
+      await gp2.emulateMedia({ colorScheme: "dark" });
+      const base = label === "quản trị" ? ADMIN : BASE;
+      await gp2.goto(`${base}${path}`, { waitUntil: "networkidle", timeout: 240000 });
+      await gp2.waitForTimeout(1200);
+      const bad = await legacyScan(gp2);
+      check(`[${label}] ${path}: không còn xanh cũ #0068FF trong chữ/nền/viền`, bad.length === 0, bad.slice(0, 5));
+      // Đo bằng một phần tử thử trong khu sáng: tránh so chuỗi "#fff" / "#ffffff" (CSS đã rút gọn mã màu).
+      const bg = await gp2.evaluate(`(() => { const host = document.querySelector('[data-vung="sang"]'); const d = document.createElement('div'); d.style.background = 'var(--kin-nen-trang)'; host.appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
+      check(`[${label}] ${path}: máy ở chế độ tối nhưng khu này vẫn sáng (nền trắng)`, bg === "rgb(255, 255, 255)", bg);
+      await gp2.close();
+    }
+    await gc.close();
   }
 
   check("không có lỗi trang / console", errors.length === 0, errors.slice(0, 4));

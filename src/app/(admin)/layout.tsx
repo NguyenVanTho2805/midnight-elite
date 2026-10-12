@@ -26,7 +26,7 @@ function AdminTopbar({ navOpen, onMenu }: { navOpen: boolean; onMenu: () => void
               admin.midnightelite-edu.com (xem AdminSidebar.tsx). */}
           <a href="https://midnightelite-edu.com/student" target="_blank"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>
+            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -35,7 +35,7 @@ function AdminTopbar({ navOpen, onMenu }: { navOpen: boolean; onMenu: () => void
           </a>
           <a href="https://midnightelite-edu.com/khoa-hoc" target="_blank"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#6B7280" }}>
+            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "#6B7280" }}>
             🛒 Khóa học
           </a>
         </div>
@@ -50,7 +50,7 @@ function AdminTopbar({ navOpen, onMenu }: { navOpen: boolean; onMenu: () => void
           {getAdminRoleLabel(user?.adminRole)}
         </span>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
-          style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff" }}>
+          style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px var(--kin-nen-trang)" }}>
           <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs font-bold"
             style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)" }}>
             {user?.avatar ?? "A"}
@@ -74,7 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <AuthGuard requiredRole="admin">
-      <div className="flex h-screen overflow-hidden" style={{ background: "#F0F5FF" }}>
+      <div data-vung="sang" className="flex h-screen overflow-hidden" style={{ background: "#F0F5FF" }}>
         <AdminSidebar open={navOpen} onClose={() => setNavOpen(false)} />
         <div className="flex-1 flex flex-col min-w-0">
           <AdminTopbar navOpen={navOpen} onMenu={() => setNavOpen(true)} />

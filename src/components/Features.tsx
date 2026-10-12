@@ -47,12 +47,12 @@ export default function Features() {
         <div className="text-center mb-14">
           <div
             className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold mb-4"
-            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#0068FF" }}
+            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}
           >
             Tại sao chọn KiN
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: "#1E2938" }}>
-            Hệ sinh thái học tập <span style={{ color: "#0068FF" }}>khép kín</span>
+            Hệ sinh thái học tập <span style={{ color: "var(--kin-nhan-link)" }}>khép kín</span>
           </h2>
           <p className="text-base max-w-xl mx-auto" style={{ color: "#6B7280" }}>
             Từ video bài giảng, thi thử, hỏi AI đến thanh toán tự động — mọi thứ trong một nền tảng duy nhất.
@@ -65,12 +65,12 @@ export default function Features() {
             <div
               key={feature.title}
               className="rounded-3xl p-6 group cursor-default"
-              style={{ background: "#F0F5FF", boxShadow: "10px 10px 20px #C5D0EA, -10px -10px 20px #ffffff" }}
+              style={{ background: "#F0F5FF", boxShadow: "10px 10px 20px #C5D0EA, -10px -10px 20px var(--kin-nen-trang)" }}
             >
               {/* Icon */}
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
-                style={{ background: "#F0F5FF", boxShadow: "5px 5px 10px #C5D0EA, -5px -5px 10px #ffffff", color: "#0068FF" }}
+                style={{ background: "#F0F5FF", boxShadow: "5px 5px 10px #C5D0EA, -5px -5px 10px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}
               >
                 <feature.Icon size={28} />
               </div>
@@ -82,7 +82,7 @@ export default function Features() {
               {/* Tech badge */}
               <div
                 className="px-3 py-2 rounded-xl text-xs"
-                style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#0068FF", fontFamily: "monospace" }}
+                style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)", fontFamily: "monospace" }}
               >
                 {feature.detail}
               </div>

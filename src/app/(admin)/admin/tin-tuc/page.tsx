@@ -52,10 +52,10 @@ const CAT_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 const CAT_COLOR: Record<string, { bg: string; color: string }> = {
-  "hoc-thuat":   { bg: "#dbeafe", color: "#0068FF" },
-  "tuyen-sinh":  { bg: "#fee2e2", color: "#dc2626" },
-  "tin-midnight":{ bg: "#dcfce7", color: "#16a34a" },
-  "kinh-nghiem": { bg: "#fef3c7", color: "#b45309" },
+  "hoc-thuat":   { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
+  "tuyen-sinh":  { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
+  "tin-midnight":{ bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
+  "kinh-nghiem": { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
 };
 
 const DRAWER_INIT: DrawerForm = {
@@ -235,7 +235,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               {saving ? "Đang lưu..." : editId ? "Cập nhật" : "Tạo bài viết"}
             </button>
           </div>
@@ -538,7 +538,7 @@ function PageInner() {
                     {articles.length === 0 && (
                       <button onClick={openCreate}
                         className="mt-3 text-sm font-semibold cursor-pointer"
-                        style={{ color: "#0068FF" }}>
+                        style={{ color: "var(--kin-nhan-link)" }}>
                         + Thêm bài viết đầu tiên
                       </button>
                     )}
@@ -546,7 +546,7 @@ function PageInner() {
                 </tr>
               )}
               {!loading && filtered.map(a => {
-                const cat = CAT_COLOR[a.category] ?? { bg: "#f6f5f4", color: "#787671" };
+                const cat = CAT_COLOR[a.category] ?? { bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" };
                 return (
                   <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 max-w-[300px]">

@@ -71,7 +71,7 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
         <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1E2938" }}>Không tìm thấy gia sư</h1>
         <p className="text-sm mb-6" style={{ color: "#6B7280" }}>Gia sư này không tồn tại hoặc chưa được duyệt công khai.</p>
         <Link href="/giang-vien" className="px-6 py-3 rounded-lg font-semibold text-white text-sm"
-          style={{ background: "#0068FF", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
           Xem danh sách gia sư
         </Link>
       </div>
@@ -91,7 +91,7 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
       <TutorProfileHeader tutor={tutor} stats={stats} />
 
       {/* FE-113: lớp đang dạy */}
-      <div className="rounded-2xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <h2 className="font-extrabold text-sm mb-4" style={{ color: "#1E2938" }}>Lớp đang dạy</h2>
         {classes.length === 0 ? (
           <p className="text-sm py-4" style={{ color: "#9CA3AF" }}>Gia sư chưa có lớp công khai.</p>
@@ -100,12 +100,12 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             {classes.map(c => (
               <Link key={c.id} href={`/khoa-hoc/${c.id}`}>
                 <div className="rounded-xl p-4 cursor-pointer hover:-translate-y-0.5 transition-transform"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                  style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <p className="font-semibold text-sm leading-snug" style={{ color: "#1E2938" }}>{c.name}</p>
                     {c.classStatus !== "open" && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: "#fef3c7", color: "#b45309" }}>
+                        style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>
                         {c.classStatus === "closed" ? "Đã đóng" : "Tạm ngừng"}
                       </span>
                     )}
@@ -133,22 +133,22 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             có trong 1 chỗ UI chung sẽ chuyển sang trang đó. */}
         <Link href={classes[0] ? `/khoa-hoc/${classes[0].id}` : "/khoa-hoc"}
           className="mt-4 w-full block text-center py-3 rounded-xl font-bold text-sm text-white"
-          style={{ background: "#0068FF", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
           Đăng ký học với {tutor.name.split(" ").pop()}
         </Link>
       </div>
 
       {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
       {(tutor.zalo || tutor.messenger) && (
-        <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+        <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
           <p className="text-sm" style={{ color: "#4B5563" }}>
             {tutor.zalo ? <>Liên hệ qua Zalo: <b style={{ color: "#1E2938" }}>{tutor.zalo}</b></> : "Liên hệ gia sư"}
           </p>
           <div className="flex gap-2 flex-wrap">
-            {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className="px-4 py-2 rounded-lg text-sm font-semibold text-white min-h-[44px] inline-flex items-center" style={{ background: "#0068FF" }}>Nhắn Zalo</a>}
+            {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className="px-4 py-2 rounded-lg text-sm font-semibold text-white min-h-[44px] inline-flex items-center" style={{ background: "var(--kin-nhan-nen)" }}>Nhắn Zalo</a>}
             {tutor.messenger && (
               <a href={`https://m.me/${tutor.messenger}?text=${encodeURIComponent(`Chào ${tutor.name}, mình xem hồ sơ trên KiN và muốn hỏi về lớp học.`)}`} rel="noopener noreferrer" target="_blank"
-                className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] inline-flex items-center" style={{ background: "#dbeafe", color: "#0068FF" }}>Nhắn Messenger</a>
+                className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] inline-flex items-center" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Nhắn Messenger</a>
             )}
           </div>
         </div>
@@ -164,7 +164,7 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
       {/* PH-207: vòng kéo gia sư mới — huy hiệu "tạo bằng KiN" bật sẵn */}
       <div id="kin-profile-end" className="text-center text-sm py-2" style={{ color: "#6B7280" }}>
         Hồ sơ tạo bằng KiN · sổ lớp miễn phí cho gia sư →{" "}
-        <Link href="/dang-ky?vai=gia-su&n=ho-so" className="underline font-semibold" style={{ color: "#0068FF" }}>Tạo hồ sơ của bạn</Link>
+        <Link href="/dang-ky?vai=gia-su&n=ho-so" className="underline font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Tạo hồ sơ của bạn</Link>
       </div>
 
       <ProfileTracker tutorId={tutor.id} />

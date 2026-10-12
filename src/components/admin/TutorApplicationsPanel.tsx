@@ -126,8 +126,8 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
           <button key={s} role="tab" aria-selected={status === s} onClick={() => setStatus(s)}
             className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer"
             style={status === s
-              ? { background: "#0068FF", color: "#fff" }
-              : { background: "#f6f5f4", color: "#374151", border: "1px solid #e5e3df" }}>
+              ? { background: "var(--kin-nhan-nen)", color: "#fff" }
+              : { background: "var(--kin-nen-bang)", color: "#374151", border: "1px solid var(--kin-vien-thuong)" }}>
             {STATUS_LABEL[s]}{s === "pending" && status === "pending" && !loading && !failed ? ` (${items.length})` : ""}
           </button>
         ))}
@@ -144,7 +144,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
         </div>
       ) : items.length === 0 ? (
         <div role="status" className="rounded-xl p-10 text-center text-sm"
-          style={{ background: "#fff", border: "1px dashed #e5e3df", color: "#6B7280" }}>
+          style={{ background: "#fff", border: "1px dashed var(--kin-vien-thuong)", color: "#6B7280" }}>
           {status === "pending" ? "Không có hồ sơ nào đang chờ duyệt." : `Chưa có hồ sơ ${STATUS_LABEL[status].toLowerCase()}.`}
         </div>
       ) : (
@@ -155,7 +155,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
             const open = openBio.has(a.id);
             const busy = busyId === a.id;
             return (
-              <li key={a.id} className="rounded-xl p-4" style={{ background: "#fff", border: "1px solid #e5e3df" }}>
+              <li key={a.id} className="rounded-xl p-4" style={{ background: "#fff", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
                     <p className="font-bold" style={{ color: "#1E2938" }}>{a.name}</p>
@@ -189,7 +189,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
                   <div className="flex flex-wrap gap-1.5 mt-3" aria-label="Môn dạy">
                     {a.subjects.map(s => (
                       <span key={s} className="px-2 py-0.5 rounded-full text-xs font-medium"
-                        style={{ background: "#EFF6FF", color: "#1D4ED8" }}>{s}</span>
+                        style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>{s}</span>
                     ))}
                   </div>
                 )}
@@ -199,7 +199,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
                 </p>
                 {long && (
                   <button onClick={() => toggleBio(a.id)} className="mt-1 text-xs font-semibold underline cursor-pointer"
-                    style={{ color: "#0068FF" }} aria-expanded={open}>
+                    style={{ color: "var(--kin-nhan-link)" }} aria-expanded={open}>
                     {open ? "Thu gọn" : "Xem đầy đủ"}
                   </button>
                 )}
@@ -220,7 +220,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
                     </button>
                     <button onClick={() => { setRejecting(a); setReason(""); }} disabled={busy}
                       className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 cursor-pointer"
-                      style={{ background: "#FEF2F2", color: "#dc2626", border: "1px solid #FECACA" }}>
+                      style={{ background: "#FEF2F2", color: "var(--kin-tt-chu-loi)", border: "1px solid #FECACA" }}>
                       Từ chối
                     </button>
                     {!a.emailVerified && (

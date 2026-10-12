@@ -134,13 +134,13 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
-            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>{initial ? "Sửa câu hỏi" : "Thêm câu hỏi"}</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{initial ? "Sửa câu hỏi" : "Thêm câu hỏi"}</h2>
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+            <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
             <button onClick={() => { const input = toInput(form); if (input) onSave(form); }} disabled={saving}
               className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
               {saving ? "Đang lưu..." : "Lưu"}
@@ -162,8 +162,8 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
-                    : { borderColor: "#e5e3df", color: "#787671" }}>
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                    : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {t.label}
                 </button>
               ))}
@@ -176,7 +176,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
             </label>
             <textarea
               className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-              style={{ borderColor: "#e5e3df" }}
+              style={{ borderColor: "var(--kin-vien-thuong)" }}
               rows={3}
               value={form.text}
               onChange={e => setForm({ ...form, text: e.target.value })}
@@ -189,7 +189,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Điểm</label>
               <input type="number" min={0.25} step={0.25}
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                style={{ borderColor: "#e5e3df" }}
+                style={{ borderColor: "var(--kin-vien-thuong)" }}
                 value={form.points}
                 onChange={e => setForm({ ...form, points: e.target.value })}
               />
@@ -198,7 +198,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Ảnh minh hoạ (URL, tùy chọn)</label>
               <input
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                style={{ borderColor: "#e5e3df" }}
+                style={{ borderColor: "var(--kin-vien-thuong)" }}
                 value={form.imageUrl}
                 onChange={e => setForm({ ...form, imageUrl: e.target.value })}
               />
@@ -210,7 +210,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Phần thi (tùy chọn)</label>
               <input
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                style={{ borderColor: "#e5e3df" }}
+                style={{ borderColor: "var(--kin-vien-thuong)" }}
                 value={form.sectionLabel}
                 onChange={e => setForm({ ...form, sectionLabel: e.target.value })}
                 placeholder="VD: Phần Trắc nghiệm — để trống nếu đề không chia phần"
@@ -221,7 +221,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               <input
                 type="number" min={1}
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                style={{ borderColor: "#e5e3df" }}
+                style={{ borderColor: "var(--kin-vien-thuong)" }}
                 value={form.sectionMinutes}
                 onChange={e => setForm({ ...form, sectionMinutes: e.target.value })}
                 placeholder="VD: 60"
@@ -240,7 +240,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                     <span className="text-xs font-semibold text-gray-400 w-4">{String.fromCharCode(65 + idx)}.</span>
                     <input
                       className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                      style={{ borderColor: "#e5e3df" }}
+                      style={{ borderColor: "var(--kin-vien-thuong)" }}
                       value={opt}
                       onChange={e => updateOption(idx, e.target.value)}
                       placeholder={`Đáp án ${String.fromCharCode(65 + idx)}`}
@@ -252,7 +252,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm đáp án</button>
             </div>
           )}
 
@@ -271,7 +271,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                     <span className="text-xs font-semibold text-gray-400 w-4">{label})</span>
                     <input
                       className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                      style={{ borderColor: "#e5e3df" }}
+                      style={{ borderColor: "var(--kin-vien-thuong)" }}
                       value={form.options[idx] ?? ""}
                       onChange={e => {
                         const next = [...form.options];
@@ -283,7 +283,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   </div>
                 ))}
               </div>
-              <p className="mt-2 text-xs" style={{ color: "#a4a097" }}>Mỗi ý đúng/sai độc lập — học viên trả lời riêng từng ý, không phải chọn 1 trong 4.</p>
+              <p className="mt-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>Mỗi ý đúng/sai độc lập — học viên trả lời riêng từng ý, không phải chọn 1 trong 4.</p>
             </div>
           )}
 
@@ -292,17 +292,17 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Đáp án đúng</label>
               <input
                 className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                style={{ borderColor: "#e5e3df" }}
+                style={{ borderColor: "var(--kin-vien-thuong)" }}
                 value={form.options[0] ?? ""}
                 onChange={e => setForm({ ...form, options: [e.target.value] })}
                 placeholder="VD: 42"
               />
-              <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>Chấm tự động bằng so khớp chính xác (không phân biệt hoa/thường, tự đổi dấu phẩy thập phân).</p>
+              <p className="mt-1.5 text-xs" style={{ color: "var(--kin-chu-mo)" }}>Chấm tự động bằng so khớp chính xác (không phân biệt hoa/thường, tự đổi dấu phẩy thập phân).</p>
             </div>
           )}
 
           {form.type === "ESSAY" && (
-            <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+            <div className="text-xs p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
               Câu tự luận không có đáp án cố định — học viên gõ câu trả lời, giáo viên chấm điểm thủ công sau khi nộp bài.
             </div>
           )}
@@ -311,7 +311,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Giải thích (hiện sau khi nộp bài, tùy chọn)</label>
             <textarea
               className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-              style={{ borderColor: "#e5e3df" }}
+              style={{ borderColor: "var(--kin-vien-thuong)" }}
               rows={2}
               value={form.explanation}
               onChange={e => setForm({ ...form, explanation: e.target.value })}
@@ -324,7 +324,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               <textarea
                 id="q-hint"
                 className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                style={{ borderColor: "#e5e3df" }}
+                style={{ borderColor: "var(--kin-vien-thuong)" }}
                 rows={2}
                 maxLength={1000}
                 value={form.hint}
@@ -500,10 +500,10 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
-            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Nhập hàng loạt câu hỏi</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Nhập hàng loạt câu hỏi</h2>
           </div>
           <button onClick={() => onImport(text)} disabled={saving || !text.trim()}
             className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
@@ -511,9 +511,9 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
           </button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+          <div className="text-xs p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
             Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
-            <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Trắc nghiệm...
+            <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "var(--kin-chu-chinh)" }}>{`Câu 1: Trắc nghiệm...
 Ảnh: https://... (tùy chọn, ảnh đã tải lên sẵn)
 *A. Đáp án đúng
 B. Đáp án sai
@@ -528,7 +528,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
           </div>
           <textarea
             className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"
-            style={{ borderColor: "#e5e3df" }}
+            style={{ borderColor: "var(--kin-vien-thuong)" }}
             rows={16}
             value={text}
             onChange={e => setText(e.target.value)}
@@ -536,7 +536,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
           />
           {result && (
             <div className="text-sm space-y-1.5">
-              <p className="font-semibold" style={{ color: result.imported > 0 ? "#16a34a" : "#dc2626" }}>
+              <p className="font-semibold" style={{ color: result.imported > 0 ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                 Đã nhập {result.imported} câu hỏi.
               </p>
               {result.errors.length > 0 && (
@@ -549,11 +549,11 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
             </div>
           )}
 
-          <div className="border-t pt-4" style={{ borderColor: "#e5e3df" }}>
+          <div className="border-t pt-4" style={{ borderColor: "var(--kin-vien-thuong)" }}>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Hoặc tải file đề thi gốc (AI)</h3>
             {reviewQuestions === null ? (
               <div className="space-y-3">
-                <p className="text-xs" style={{ color: "#787671" }}>
+                <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
                   Tải file đề thi gốc (.pdf, .docx, .jpg, .png, .webp) — AI (Gemini) sẽ tự đọc và trích xuất câu hỏi kèm đáp án có sẵn trong file. Kết quả luôn qua bước xem lại trước khi lưu.
                 </p>
                 <DropZone onFiles={files => files[0] && processAiFile(files[0])} disabled={aiLoading} className="inline-block rounded-lg">
@@ -569,7 +569,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>
+                  <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>
                     {reviewQuestions.length} câu hỏi hợp lệ — xem lại trước khi lưu
                   </p>
                   <div className="flex items-center gap-3">
@@ -609,7 +609,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                     return (
                     <Fragment key={idx}>
                       {showSectionHeader && (
-                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "var(--kin-nhan-link)" }}>{q.sectionLabel}</p>
                       )}
                     <div className="rounded-lg p-3 border border-gray-200 bg-gray-50">
                       <div className="flex items-start gap-2 mb-2">
@@ -699,7 +699,7 @@ function DelModal({ target, onClose, onConfirm }: { target: { id: string; label:
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
         <div className="text-center mb-5">
-          <h2 className="text-base font-bold mb-1" style={{ color: "#1a1a1a" }}>Xoá câu hỏi?</h2>
+          <h2 className="text-base font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Xoá câu hỏi?</h2>
           <p className="text-sm text-gray-500">Xoá "{target.label}". Không thể hoàn tác.</p>
         </div>
         <div className="flex gap-3">
@@ -744,13 +744,13 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
   }
 
   const inp = "w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400";
-  const inpStyle = { borderColor: "#e5e3df" };
+  const inpStyle = { borderColor: "var(--kin-vien-thuong)" };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
-        <h2 className="text-base font-bold mb-1" style={{ color: "#1a1a1a" }}>Lưu vào ngân hàng câu hỏi</h2>
+        <h2 className="text-base font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Lưu vào ngân hàng câu hỏi</h2>
         <p className="text-sm text-gray-500 mb-4">"{target.label}"</p>
         <div className="space-y-3 mb-5">
           <div>
@@ -765,8 +765,8 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
                 <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={difficulty === d.value
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
-                    : { borderColor: "#e5e3df", color: "#787671" }}>
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                    : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {d.label}
                 </button>
               ))}
@@ -829,16 +829,16 @@ function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (m
   }
 
   return (
-    <div className="mb-6 rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
-      <h3 className="text-sm font-bold mb-1" style={{ color: "#1a1a1a" }}>Duyệt phí guest</h3>
-      <p className="text-xs mb-3" style={{ color: "#787671" }}>
+    <div className="mb-6 rounded-xl border p-4" style={{ borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" }}>
+      <h3 className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Duyệt phí guest</h3>
+      <p className="text-xs mb-3" style={{ color: "var(--kin-chu-mo)" }}>
         Đề thi này thu phí — học viên đã đăng ký khoá học liên quan vẫn thi miễn phí.
         Guest khác cần duyệt tay ở đây sau khi xác nhận đã thanh toán qua tư vấn/sales.
       </p>
       <div className="flex gap-2 mb-3">
         <input type="email" placeholder="Email học viên/guest đã trả phí..."
           className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400"
-          style={{ borderColor: "#e5e3df" }}
+          style={{ borderColor: "var(--kin-vien-thuong)" }}
           value={email} onChange={e => setEmail(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") grant(); }} />
         <button onClick={grant} disabled={submitting || !email.trim()}
@@ -847,16 +847,16 @@ function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (m
         </button>
       </div>
       {loading ? (
-        <p className="text-xs" style={{ color: "#787671" }}>Đang tải...</p>
+        <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Đang tải...</p>
       ) : grants.length === 0 ? (
-        <p className="text-xs" style={{ color: "#787671" }}>Chưa có guest nào được duyệt.</p>
+        <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Chưa có guest nào được duyệt.</p>
       ) : (
         <ul className="space-y-1.5">
           {grants.map(g => (
-            <li key={g.id} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg" style={{ background: "#f6f5f4" }}>
+            <li key={g.id} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg" style={{ background: "var(--kin-nen-bang)" }}>
               <span>
-                <span className="font-medium" style={{ color: "#1a1a1a" }}>{g.user.name}</span>
-                <span style={{ color: "#787671" }}> — {g.user.email}</span>
+                <span className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{g.user.name}</span>
+                <span style={{ color: "var(--kin-chu-mo)" }}> — {g.user.email}</span>
               </span>
               <button onClick={() => revoke(g.userId, g.user.email)}
                 className="text-red-500 hover:underline">Thu hồi</button>
@@ -923,29 +923,29 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
             <div>
-              <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>Bài làm của {detail?.user.name ?? "..."}</h2>
-              {detail && <p className="text-xs" style={{ color: "#787671" }}>{detail.user.email} — Điểm: {detail.score ?? "—"}/{detail.totalPoints}</p>}
+              <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Bài làm của {detail?.user.name ?? "..."}</h2>
+              {detail && <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{detail.user.email} — Điểm: {detail.score ?? "—"}/{detail.totalPoints}</p>}
             </div>
           </div>
         </div>
 
         <div className="p-5 space-y-4">
           {loading || !detail ? (
-            <p className="text-sm" style={{ color: "#787671" }}>Đang tải...</p>
+            <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Đang tải...</p>
           ) : (
             detail.questions.map((q, idx) => (
-              <div key={q.id} className="rounded-xl border p-4" style={{ borderColor: "#e5e3df" }}>
-                <p className="text-sm font-medium mb-2" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
+              <div key={q.id} className="rounded-xl border p-4" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+                <p className="text-sm font-medium mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
 
                 {q.type === "MC" && (
                   <div className="space-y-1">
                     {q.options.map(o => (
                       <div key={o.id} className="text-xs flex items-center gap-1.5"
-                        style={{ color: o.id === q.studentOptionId ? (o.isCorrect ? "#16a34a" : "#dc2626") : "#a4a097" }}>
+                        style={{ color: o.id === q.studentOptionId ? (o.isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)") : "var(--kin-chu-mo)" }}>
                         {o.id === q.studentOptionId && "→ "}<MathText text={o.text} /> {o.isCorrect && "✓"}
                       </div>
                     ))}
@@ -956,7 +956,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                   <div className="space-y-1">
                     {q.options.map(o => (
                       <div key={o.id} className="text-xs flex items-center gap-1.5"
-                        style={{ color: o.studentAnswerTrue === o.isCorrect ? "#16a34a" : "#dc2626" }}>
+                        style={{ color: o.studentAnswerTrue === o.isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                         <strong>{o.subLabel})</strong> <MathText text={o.text} /> — học viên chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}
                       </div>
                     ))}
@@ -970,12 +970,12 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                   return (
                     <div className="text-xs space-y-1">
                       <p>
-                        Học viên trả lời: <strong style={{ color: q.textAnswer?.trim() ? undefined : "#a4a097" }}>
+                        Học viên trả lời: <strong style={{ color: q.textAnswer?.trim() ? undefined : "var(--kin-chu-mo)" }}>
                           {q.textAnswer?.trim() || "chưa trả lời"}
                         </strong>
                       </p>
-                      <p style={{ color: "#787671" }}>Đáp án đúng: {correct || "—"}</p>
-                      <p style={{ color: isCorrect ? "#16a34a" : "#dc2626" }}>
+                      <p style={{ color: "var(--kin-chu-mo)" }}>Đáp án đúng: {correct || "—"}</p>
+                      <p style={{ color: isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                         Chấm tự động — {isCorrect ? `Đúng (${q.points} điểm)` : "Sai (0 điểm)"}
                       </p>
                     </div>
@@ -984,15 +984,15 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
 
                 {q.type === "ESSAY" && (
                   <div>
-                    <div className="text-sm p-3 rounded-lg mb-3" style={{ background: "#f6f5f4", color: "#37352f" }}>
-                      {q.textAnswer?.trim() ? q.textAnswer : <em style={{ color: "#a4a097" }}>Học viên chưa trả lời</em>}
+                    <div className="text-sm p-3 rounded-lg mb-3" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)" }}>
+                      {q.textAnswer?.trim() ? q.textAnswer : <em style={{ color: "var(--kin-chu-mo)" }}>Học viên chưa trả lời</em>}
                     </div>
                     <div className="flex gap-2 items-start">
                       <div className="w-28">
                         <label className="block text-[11px] text-gray-500 mb-1">Điểm (tối đa {q.points})</label>
                         <input type="number" min={0} max={q.points} step={0.25}
                           className="w-full px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
-                          style={{ borderColor: "#e5e3df" }}
+                          style={{ borderColor: "var(--kin-vien-thuong)" }}
                           value={drafts[q.id]?.points ?? ""}
                           onChange={e => setDrafts(prev => ({ ...prev, [q.id]: { points: e.target.value, comment: prev[q.id]?.comment ?? "" } }))}
                         />
@@ -1001,7 +1001,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                         <label className="block text-[11px] text-gray-500 mb-1">Nhận xét (tùy chọn)</label>
                         <input
                           className="w-full px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
-                          style={{ borderColor: "#e5e3df" }}
+                          style={{ borderColor: "var(--kin-vien-thuong)" }}
                           value={drafts[q.id]?.comment ?? ""}
                           onChange={e => setDrafts(prev => ({ ...prev, [q.id]: { points: prev[q.id]?.points ?? "", comment: e.target.value } }))}
                         />
@@ -1013,7 +1013,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                       </button>
                     </div>
                     {q.pointsAwarded != null && (
-                      <p className="text-[11px] mt-1.5" style={{ color: "#16a34a" }}>Đã chấm: {q.pointsAwarded}/{q.points} điểm</p>
+                      <p className="text-[11px] mt-1.5" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã chấm: {q.pointsAwarded}/{q.points} điểm</p>
                     )}
                   </div>
                 )}
@@ -1041,23 +1041,23 @@ function AttemptsPanel({ examId }: { examId: string }) {
   useEffect(() => { if (open) load(); }, [open, load]);
 
   return (
-    <div className="mb-6 rounded-xl border" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+    <div className="mb-6 rounded-xl border" style={{ borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" }}>
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3 text-left">
-        <h3 className="text-sm font-bold" style={{ color: "#1a1a1a" }}>Danh sách đã thi</h3>
-        <span className="text-xs" style={{ color: "#787671" }}>{open ? "Thu gọn ▲" : "Xem ▼"}</span>
+        <h3 className="text-sm font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Danh sách đã thi</h3>
+        <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{open ? "Thu gọn ▲" : "Xem ▼"}</span>
       </button>
       {open && (
         <div className="px-4 pb-4">
           {loading ? (
-            <p className="text-xs" style={{ color: "#787671" }}>Đang tải...</p>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Đang tải...</p>
           ) : attempts.length === 0 ? (
-            <p className="text-xs" style={{ color: "#787671" }}>Chưa có ai nộp bài.</p>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Chưa có ai nộp bài.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left" style={{ color: "#a4a097" }}>
+                  <tr className="text-left" style={{ color: "var(--kin-chu-mo)" }}>
                     <th className="py-2 pr-3 font-medium">Học viên</th>
                     <th className="py-2 pr-3 font-medium">Điểm</th>
                     <th className="py-2 pr-3 font-medium">Nộp lúc</th>
@@ -1068,31 +1068,31 @@ function AttemptsPanel({ examId }: { examId: string }) {
                 </thead>
                 <tbody>
                   {attempts.map(a => (
-                    <tr key={a.id} className="border-t" style={{ borderColor: "#f6f5f4" }}>
+                    <tr key={a.id} className="border-t" style={{ borderColor: "var(--kin-nen-bang)" }}>
                       <td className="py-2 pr-3">
-                        <span className="font-medium" style={{ color: "#1a1a1a" }}>{a.user.name}</span>
-                        <span style={{ color: "#787671" }}> — {a.user.email}</span>
+                        <span className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{a.user.name}</span>
+                        <span style={{ color: "var(--kin-chu-mo)" }}> — {a.user.email}</span>
                       </td>
                       <td className="py-2 pr-3">{a.score ?? "—"}/{a.totalPoints ?? "—"}</td>
                       <td className="py-2 pr-3">{a.submittedAt ? new Date(a.submittedAt).toLocaleString("vi-VN") : "—"}</td>
                       <td className="py-2 pr-3">
                         {a.tabSwitchCount > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#b45309" }}>
+                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>
                             {a.tabSwitchCount} lần
                           </span>
                         ) : (
-                          <span style={{ color: "#787671" }}>0</span>
+                          <span style={{ color: "var(--kin-chu-mo)" }}>0</span>
                         )}
                       </td>
                       <td className="py-2 pr-3">
                         {a.ungradedEssayCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#b45309" }}>
+                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>
                             Chưa chấm tự luận
                           </span>
                         )}
                       </td>
                       <td className="py-2 pr-3">
-                        <button onClick={() => setGrading(a.id)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+                        <button onClick={() => setGrading(a.id)} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
                           Xem bài làm
                         </button>
                       </td>
@@ -1230,25 +1230,25 @@ function ThiThuQuestionsPage() {
   if (!exam) return <div className="p-8 text-sm text-gray-500">Không tìm thấy đề thi.</div>;
 
   return (
-    <div className="min-h-screen" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <Link href="/admin/thi-thu" className="text-sm mb-3 inline-block" style={{ color: "#787671" }}>← Quay lại danh sách đề thi</Link>
+        <Link href="/admin/thi-thu" className="text-sm mb-3 inline-block" style={{ color: "var(--kin-chu-mo)" }}>← Quay lại danh sách đề thi</Link>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold" style={{ color: "#1a1a1a" }}>{exam.title}</h1>
-            <p className="text-sm" style={{ color: "#787671" }}>{questions.length} câu hỏi đã soạn</p>
+            <h1 className="text-xl font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</h1>
+            <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>{questions.length} câu hỏi đã soạn</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setBankPickerOpen(true)}
-              className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#1a1a1a" }}>
+              className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
               + Từ ngân hàng
             </button>
             <button onClick={() => { setBulkResult(null); setBulkOpen(true); }}
-              className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#1a1a1a" }}>
+              className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
               Nhập hàng loạt
             </button>
             <button onClick={() => setEditing("new")}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
               + Thêm câu hỏi
             </button>
           </div>
@@ -1259,8 +1259,8 @@ function ThiThuQuestionsPage() {
         {!!exam.price && <GuestAccessPanel examId={id} showToast={showToast} />}
 
         {questions.length === 0 ? (
-          <div className="text-center py-16 rounded-xl border" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
-            <p className="text-sm" style={{ color: "#787671" }}>Đề thi này chưa có câu hỏi nào — học viên sẽ dùng luồng thi Azota cũ cho tới khi có câu hỏi đầu tiên.</p>
+          <div className="text-center py-16 rounded-xl border" style={{ borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" }}>
+            <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Đề thi này chưa có câu hỏi nào — học viên sẽ dùng luồng thi Azota cũ cho tới khi có câu hỏi đầu tiên.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -1270,11 +1270,11 @@ function ThiThuQuestionsPage() {
               return (
               <Fragment key={q.id}>
                 {showSectionHeader && (
-                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>
+                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "var(--kin-nhan-link)" }}>
                     {q.sectionLabel}{q.sectionMinutes != null && ` (${q.sectionMinutes} phút)`}
                   </p>
                 )}
-              <div className="rounded-xl border p-4" style={{ borderColor: "#e5e3df", background: "#ffffff" }}>
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" }}>
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col gap-0.5 pt-0.5">
                     <button onClick={() => move(idx, -1)} disabled={idx === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30 text-xs">▲</button>
@@ -1282,22 +1282,22 @@ function ThiThuQuestionsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium" style={{ color: "#1a1a1a" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
+                      <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
                       {q.type !== "MC" && (
                         <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase"
-                          style={{ background: "#f6f5f4", color: "#787671" }}>
+                          style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                           {q.type === "ESSAY" ? "Tự luận" : q.type === "SHORT_ANSWER" ? "Trả lời ngắn" : "Đúng-Sai"}
                         </span>
                       )}
                     </div>
                     {q.type === "ESSAY" ? (
-                      <p className="mt-1.5 text-xs italic" style={{ color: "#a4a097" }}>Câu tự luận — chấm điểm thủ công sau khi nộp bài.</p>
+                      <p className="mt-1.5 text-xs italic" style={{ color: "var(--kin-chu-mo)" }}>Câu tự luận — chấm điểm thủ công sau khi nộp bài.</p>
                     ) : q.type === "SHORT_ANSWER" ? (
-                      <p className="mt-1.5 text-xs" style={{ color: "#16a34a" }}>Đáp án: <strong>{q.options[0]?.text ?? "—"}</strong></p>
+                      <p className="mt-1.5 text-xs" style={{ color: "var(--kin-tt-chu-xong)" }}>Đáp án: <strong>{q.options[0]?.text ?? "—"}</strong></p>
                     ) : q.type === "TRUE_FALSE_CLUSTER" ? (
                       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
                         {q.options.map(o => (
-                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#dc2626" }}>
+                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                             <span className="font-semibold">{o.subLabel})</span> <MathText text={o.text} />
                             <span className="font-semibold">{o.isCorrect ? "Đúng" : "Sai"}</span>
                           </div>
@@ -1306,20 +1306,20 @@ function ThiThuQuestionsPage() {
                     ) : (
                       <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
                         {q.options.map((o, oi) => (
-                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "#16a34a" : "#787671" }}>
+                          <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)" }}>
                             <span className="font-semibold">{String.fromCharCode(65 + oi)}.</span> <MathText text={o.text} /> {o.isCorrect && "✓"}
                           </div>
                         ))}
                       </div>
                     )}
-                    <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>{q.points} điểm</p>
+                    <p className="mt-1.5 text-xs" style={{ color: "var(--kin-chu-mo)" }}>{q.points} điểm</p>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     {!q.sourceBankItemId && (
                       <button onClick={() => setSaveToBank({ id: q.id, label: `Câu ${idx + 1}` })}
-                        className="text-xs font-semibold" style={{ color: "#16a34a" }}>Lưu vào ngân hàng</button>
+                        className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Lưu vào ngân hàng</button>
                     )}
-                    <button onClick={() => setEditing(q)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
+                    <button onClick={() => setEditing(q)} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Sửa</button>
                     <button onClick={() => setDel({ id: q.id, label: `Câu ${idx + 1}` })} className="text-xs font-semibold text-red-500">Xoá</button>
                   </div>
                 </div>

@@ -155,12 +155,12 @@ function UrlListEditor({ label, placeholder, urls, onChange }: {
 // có link Azota ngoài (xem deriveTypes) — badge riêng cho bài tập tự nộp thật
 // xem ASSIGNMENT_BADGE bên dưới, tính từ lesson._count.assignments.
 const TYPE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  record:   { label: "Video",    color: "#0055D4", bg: "#EFF6FF" },
+  record:   { label: "Video",    color: "#0055D4", bg: "var(--kin-nhan-nen-nhat)" },
   document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
   quiz:     { label: "Azota",    color: "#7C3AED", bg: "#F5F3FF" },
-  live:     { label: "Live",     color: "#DC2626", bg: "#FEF2F2" },
+  live:     { label: "Live",     color: "var(--kin-tt-chu-loi)", bg: "#FEF2F2" },
 };
-const ASSIGNMENT_BADGE = { color: "#B45309", bg: "#FFFBEB" };
+const ASSIGNMENT_BADGE = { color: "var(--kin-tt-chu-cho)", bg: "#FFFBEB" };
 
 function hasRealDocuments(raw: string | null | undefined): boolean {
   if (!raw) return false;
@@ -416,7 +416,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
               </button>
             </DropZone>
           ) : (
-            <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+            <p className="text-xs text-center py-2" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Chưa cấu hình Cloudinary</p>
           )}
 
           <div>
@@ -461,7 +461,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
             <label className="block text-xs font-medium text-gray-600 mb-2">Màu nhãn</label>
             <div className="flex gap-2">
               {["#FF2157","#FE9900","#0068FF","#00A63D"].map(c => (
-                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, tagColor: c }))}
+                <button key={c} type="button" data-mau-du-lieu onClick={() => setForm(f => ({ ...f, tagColor: c }))}
                   className="w-7 h-7 rounded-full border-2 transition-all"
                   style={{ background: c, borderColor: form.tagColor === c ? "#1E2938" : "transparent" }} />
               ))}
@@ -553,7 +553,7 @@ function detectType(url: string, name: string): string {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  pdf: "#FF2157", doc: "#0068FF", xls: "#00A63D", ppt: "#F97316", file: "#6B7280",
+  pdf: "#FF2157", doc: "var(--kin-nhan-nen)", xls: "#00A63D", ppt: "#F97316", file: "#6B7280",
 };
 
 function DocBadge({ type }: { type: string }) {
@@ -625,11 +625,11 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
             </div>
           ))}
           {pending.map((p, i) => (
-            <div key={`pending-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+            <div key={`pending-${i}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-dashed" style={{ borderColor: "var(--kin-nhan-vien)", background: "var(--kin-nhan-nen-nhat)" }}>
               <DocBadge type={detectType(p.file.name, p.file.name)} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-gray-800 truncate">{p.name}</p>
-                <p className="text-xs" style={{ color: "#0068FF" }}>⏳ Sẽ tải lên khi bấm Lưu</p>
+                <p className="text-xs" style={{ color: "var(--kin-nhan-link)" }}>⏳ Sẽ tải lên khi bấm Lưu</p>
               </div>
               <button onClick={() => removePending(i)}
                 className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
@@ -648,7 +648,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
             onKeyDown={e => e.key === "Enter" && add()} />
           <button onClick={add} disabled={!newName.trim() || !newUrl.trim()}
             className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 flex-shrink-0"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             + Thêm link
           </button>
         </div>
@@ -672,7 +672,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
             </button>
           </DropZone>
         ) : (
-          <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>
+          <p className="text-xs text-center py-2" style={{ color: "var(--kin-tt-chu-cho)" }}>
             ⚠ Chưa cấu hình Cloudinary — chỉ dùng được link Drive
           </p>
         )}
@@ -770,7 +770,7 @@ function QuestionRow({ q, qi, onChange, onRemove }: {
             </div>
           ))}
           <button type="button" onClick={() => onChange({ options: [...q.options, { text: "", isCorrect: false }] })}
-            className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+            className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm đáp án</button>
         </div>
       )}
     </div>
@@ -908,12 +908,12 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
         <div className="flex gap-2">
           <button type="button" onClick={() => setMode("file")}
             className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
-            style={mode === "file" ? { borderColor: "#0068FF", background: "#EFF6FF", color: "#0068FF" } : { borderColor: "#e5e7eb", color: "#6B7280" }}>
+            style={mode === "file" ? { borderColor: "var(--kin-nhan-nen)", background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" } : { borderColor: "#e5e7eb", color: "#6B7280" }}>
             📎 Nộp file
           </button>
           <button type="button" onClick={() => setMode("interactive")}
             className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
-            style={mode === "interactive" ? { borderColor: "#0068FF", background: "#EFF6FF", color: "#0068FF" } : { borderColor: "#e5e7eb", color: "#6B7280" }}>
+            style={mode === "interactive" ? { borderColor: "var(--kin-nhan-nen)", background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" } : { borderColor: "#e5e7eb", color: "#6B7280" }}>
             🖥️ Làm trên web
           </button>
         </div>
@@ -956,7 +956,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
                 </button>
               </DropZone>
             ) : (
-              <p className="text-xs text-center py-1" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+              <p className="text-xs text-center py-1" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Chưa cấu hình Cloudinary</p>
             )}
           </>
         )
@@ -972,9 +972,9 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
               {aiLoading ? "Đang trích xuất bằng AI..." : "🤖 Tải file đề bài để AI trích câu hỏi (PDF/ảnh/Word)"}
             </button>
           </DropZone>
-          {aiErr && <p className="text-xs" style={{ color: "#dc2626" }}>{aiErr}</p>}
+          {aiErr && <p className="text-xs" style={{ color: "var(--kin-tt-chu-loi)" }}>{aiErr}</p>}
           {skippedCount > 0 && (
-            <p className="text-xs" style={{ color: "#b45309" }}>
+            <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>
               ⚠ Đã bỏ qua {skippedCount} câu Đúng-Sai/Trả lời ngắn — bài tập làm trên web chỉ hỗ trợ Trắc nghiệm và Tự luận
             </p>
           )}
@@ -986,7 +986,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
           ))}
 
           <div className="flex items-center justify-between">
-            <button type="button" onClick={addBlankQuestion} className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm câu hỏi thủ công</button>
+            <button type="button" onClick={addBlankQuestion} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm câu hỏi thủ công</button>
             <p className="text-xs text-gray-400">{questions.length} câu hỏi</p>
           </div>
         </div>
@@ -1065,7 +1065,7 @@ function GradeSubmissionsModal({ assignment, onClose, onGraded }: {
                 <p className="text-sm font-semibold text-gray-800">{s.user?.name ?? "?"}</p>
                 <p className="text-xs text-gray-400">{new Date(s.submittedAt).toLocaleString("vi-VN")}</p>
               </div>
-              <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+              <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
                 📎 {s.fileName || "Xem bài làm"}
               </a>
               <div className="flex items-center gap-2 mt-2">
@@ -1165,7 +1165,7 @@ function InteractiveResultsModal({ assignment, onClose }: {
                           {q.type === "MC" ? (
                             <p className="text-xs mt-1.5">
                               {a?.optionId ? (
-                                <span style={{ color: a.isCorrect ? "#16a34a" : "#dc2626" }}>
+                                <span style={{ color: a.isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                                   Chọn: {q.options.find(o => o.id === a.optionId)?.text ?? "?"} ({a.isCorrect ? "Đúng" : "Sai"})
                                 </span>
                               ) : (
@@ -1264,7 +1264,7 @@ function AssignmentEditor({ lessonId }: { lessonId: string }) {
     <div>
       <div className="flex items-center justify-between mb-3 pb-1 border-b border-gray-100">
         <p className="text-sm font-semibold text-gray-700">Bài tập tự nộp</p>
-        {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm bài tập</button>}
+        {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm bài tập</button>}
       </div>
       <p className="text-xs text-gray-400 -mt-2 mb-3">Song song với Azota ở trên — dùng khi muốn học viên nộp bài trực tiếp trên nền tảng để chấm điểm.</p>
 
@@ -1849,7 +1849,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                 {section.chapters.map((chapter, ci) => (
                   <div key={chapter.id || `${section.id}-c-${ci}`}
                     className="border-t border-gray-100 transition-colors"
-                    style={{ background: dragOverKey === `c-${chapter.id}` ? "#EFF6FF" : undefined }}
+                    style={{ background: dragOverKey === `c-${chapter.id}` ? "var(--kin-nhan-nen-nhat)" : undefined }}
                     draggable
                     onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "chapter", sectionIdx: si, chapterIdx: ci }); }}
                     onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "chapter" || dragItem?.type === "lesson") setDragOverKey(`c-${chapter.id}`); }}
@@ -1902,7 +1902,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                               <DragHandle />
                               <span className="flex-1 text-sm font-medium text-gray-800 min-w-0 truncate">{lesson.title}</span>
                               {lesson.isFree && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DCFCE7", color: "#166534" }}>FREE</span>}
-                              {lesson.videoUrl && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "#DBEAFE", color: "#1D4ED8" }}>YT</span>}
+                              {lesson.videoUrl && <span className="px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>YT</span>}
                               {lesson.duration && <span className="text-xs text-gray-400 flex-shrink-0">{lesson.duration}</span>}
                               {lessonTypes.map(t => { const tb = TYPE_BADGE[t] ?? TYPE_BADGE.record; return <span key={t} className="px-2 py-0.5 text-xs rounded-full font-medium flex-shrink-0" style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>; })}
                               {!lessonTypes.includes("document") && hasRealDocuments(lesson.documents) && (
@@ -1930,7 +1930,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                                   </svg>
                                 </button>
                                 <button onClick={() => duplicateLesson(section.id, chapter.id, lesson.id)} disabled={saving}
-                                  className="p-1.5 rounded hover:bg-green-50 transition-colors disabled:opacity-40" title="Sao chép bài" style={{ color: "#16a34a" }}>
+                                  className="p-1.5 rounded hover:bg-green-50 transition-colors disabled:opacity-40" title="Sao chép bài" style={{ color: "var(--kin-tt-chu-xong)" }}>
                                   <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="5" y="5" width="8" height="9" rx="1.2"/><path d="M3 11V3a1 1 0 011-1h8"/>
                                   </svg>
@@ -1955,7 +1955,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                             disabled={saving || chapter.lessons.length === 0}
                             title={chapter.lessons.length === 0 ? "Chưa có bài học để sao chép" : "Sao chép bài học cuối"}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#16a34a" }}>
+                            style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "var(--kin-tt-chu-xong)" }}>
                             <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="5" y="5" width="8" height="9" rx="1.2"/><path d="M3 11V3a1 1 0 011-1h8"/>
                             </svg>
@@ -1967,7 +1967,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                           </button>
                           <button onClick={() => duplicateChapter(section.id, chapter.id)} disabled={saving}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-                            style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#16a34a" }}>
+                            style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "var(--kin-tt-chu-xong)" }}>
                             <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="5" y="5" width="8" height="9" rx="1.2"/><path d="M3 11V3a1 1 0 011-1h8"/>
                             </svg>
@@ -2088,7 +2088,7 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 rounded-full bg-gray-200 min-w-[60px]">
-                        <div className="h-1.5 rounded-full" style={{ width: `${s.progress}%`, background: s.progress >= 80 ? "#16a34a" : s.progress >= 40 ? "#f59e0b" : "#0068FF" }} />
+                        <div className="h-1.5 rounded-full" style={{ width: `${s.progress}%`, background: s.progress >= 80 ? "#16a34a" : s.progress >= 40 ? "#f59e0b" : "var(--kin-nhan-nen)" }} />
                       </div>
                       <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
                         {s.completed}/{s.totalLessons} ({s.progress}%)
@@ -2214,7 +2214,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
-            <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "#0068FF" }}>
+            <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
               {saving ? "Đang lưu..." : "Lưu khung giờ"}
             </button>
           </div>
@@ -2233,12 +2233,12 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
         <div className="space-y-2">
           {schedules.map(s => (
             <div key={s.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200">
-              <span className="px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0" style={{ background: "#EFF6FF", color: "#0055D4" }}>
+              <span className="px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0" style={{ background: "var(--kin-nhan-nen-nhat)", color: "#0055D4" }}>
                 {DAY_LABELS[s.dayOfWeek]}
               </span>
               <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
               {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
-              {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "#0068FF" }}>Link vào lớp</a>}
+              {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "var(--kin-nhan-link)" }}>Link vào lớp</a>}
               {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
               <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
                 <button onClick={() => handleToggle(s)} className="px-2 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
@@ -2335,7 +2335,7 @@ export default function KhoaHocDetailPage() {
             <button key={tab.id} onClick={() => setTab(tab.id)}
               className="px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2"
               style={activeTab === tab.id
-                ? { color: "#16a34a", borderColor: "#16a34a" }
+                ? { color: "var(--kin-tt-chu-xong)", borderColor: "#16a34a" }
                 : { color: "#6b7280", borderColor: "transparent" }}>
               {tab.label}
             </button>

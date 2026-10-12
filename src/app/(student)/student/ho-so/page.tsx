@@ -30,7 +30,7 @@ interface Area { x: number; y: number; width: number; height: number; }
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function ToastBar({ toast }: { toast: ToastType }) {
-  const bg = toast.type === "success" ? "#00A63D" : toast.type === "error" ? "#dc2626" : "#0068FF";
+  const bg = toast.type === "success" ? "#00A63D" : toast.type === "error" ? "#dc2626" : "var(--kin-nhan-nen)";
   const Icon = toast.type === "success" ? CheckCircle : toast.type === "error" ? CloseCircle : AlertCircle;
   return (
     <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-lg flex items-center gap-2"
@@ -57,13 +57,13 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
 
 function Section({ title, onEdit, children }: { title: string; onEdit?: () => void; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+    <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold" style={{ color: "#37352f" }}>{title}</h2>
+        <h2 className="text-sm font-bold" style={{ color: "var(--kin-chu-phu)" }}>{title}</h2>
         {onEdit && (
           <button onClick={onEdit}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)", borderRadius: "8px" }}>
             <Edit size={13} /> Sửa
           </button>
         )}
@@ -76,8 +76,8 @@ function Section({ title, onEdit, children }: { title: string; onEdit?: () => vo
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex gap-3">
-      <span className="text-xs w-32 flex-shrink-0 pt-0.5" style={{ color: "#a4a097" }}>{label}</span>
-      <span className="text-sm font-medium" style={{ color: value ? "#37352f" : "#c8c4be" }}>
+      <span className="text-xs w-32 flex-shrink-0 pt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{label}</span>
+      <span className="text-sm font-medium" style={{ color: value ? "var(--kin-chu-phu)" : "var(--kin-vien-o-nhap)" }}>
         {value || "Chưa cập nhật"}
       </span>
     </div>
@@ -88,10 +88,10 @@ function InputField({ label, value, onChange, type = "text", placeholder }:
   { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <div>
-      <label className="block text-xs font-semibold mb-1.5" style={{ color: "#37352f" }}>{label}</label>
+      <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>{label}</label>
       <input type={type} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="notion-input w-full text-sm" style={{ color: "#1a1a1a" }} />
+        className="notion-input w-full text-sm" style={{ color: "var(--kin-chu-chinh)" }} />
     </div>
   );
 }
@@ -119,15 +119,15 @@ function ScoreSparkline({ results }: { results: ExamResultItem[] }) {
   });
   const last = pts[pts.length - 1].split(",");
   return (
-    <div className="mt-3 rounded-xl p-3" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+    <div className="mt-3 rounded-xl p-3" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <p className="text-xs font-semibold mb-2" style={{ color: "#9CA3AF" }}>Xu hướng điểm số</p>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ height: H }}>
-        <polyline points={pts.join(" ")} fill="none" stroke="#0068FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={last[0]} cy={last[1]} r="3.5" fill="#0068FF" />
+        <polyline points={pts.join(" ")} fill="none" stroke="var(--kin-nhan-nen)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={last[0]} cy={last[1]} r="3.5" fill="var(--kin-nhan-nen)" />
       </svg>
       <div className="flex justify-between mt-1">
         <span className="text-[10px]" style={{ color: "#9CA3AF" }}>{results[0].exam?.title?.slice(0, 18) ?? "Đề 1"}</span>
-        <span className="text-[10px] font-bold" style={{ color: "#0068FF" }}>
+        <span className="text-[10px] font-bold" style={{ color: "var(--kin-nhan-link)" }}>
           Mới nhất: {scores[scores.length - 1].toFixed(1)}
         </span>
       </div>
@@ -150,15 +150,15 @@ function StreakCalendar({ counts }: { counts: Record<string, number> }) {
   }, [counts]);
 
   function cellColor(count: number) {
-    if (count === 0) return "#e5e3df";
-    if (count === 1) return "#bfdbfe";
-    if (count <= 3) return "#60a5fa";
-    return "#0068FF";
+    if (count === 0) return "var(--kin-vien-thuong)";
+    if (count === 1) return "var(--kin-nhan-vien)";
+    if (count <= 3) return "color-mix(in srgb, var(--kin-nhan-nen) 60%, var(--kin-nen-trang))";
+    return "var(--kin-nhan-nen)";
   }
 
   return (
-    <div className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-      <p className="text-sm font-bold mb-3" style={{ color: "#37352f" }}>Lịch học 60 ngày</p>
+    <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+      <p className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-phu)" }}>Lịch học 60 ngày</p>
       <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(12, 1fr)" }}>
         {days.map(d => (
           <div key={d.date} title={`${d.date}: ${d.count} bài`}
@@ -168,8 +168,8 @@ function StreakCalendar({ counts }: { counts: Record<string, number> }) {
       </div>
       <div className="flex items-center gap-2 mt-2 justify-end">
         <span className="text-[10px]" style={{ color: "#9CA3AF" }}>Ít</span>
-        {["#e5e3df","#bfdbfe","#60a5fa","#0068FF"].map(c => (
-          <div key={c} className="w-3 h-3 rounded-sm" style={{ background: c }} />
+        {[0, 1, 2, 4].map(n => (
+          <div key={n} className="w-3 h-3 rounded-sm" style={{ background: cellColor(n) }} />
         ))}
         <span className="text-[10px]" style={{ color: "#9CA3AF" }}>Nhiều</span>
       </div>
@@ -410,7 +410,7 @@ export default function HoSoPage() {
             </button>
             <button onClick={handleSaveAvatar} disabled={avatarSaving}
               className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-              style={{ background: "#0068FF", borderRadius: "8px" }}>
+              style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
               {avatarSaving ? "Đang lưu..." : "Lưu ảnh"}
             </button>
           </div>
@@ -420,8 +420,8 @@ export default function HoSoPage() {
       {/* ── Password modal ── */}
       {showPassModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.1) 0px 4px 20px 0px" }}>
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: "#1a1a1a" }}>
+          <div className="w-full max-w-sm rounded-xl p-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.1) 0px 4px 20px 0px" }}>
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
               <Key size={20} /> Đổi mật khẩu
             </h2>
             <div className="space-y-3">
@@ -431,24 +431,24 @@ export default function HoSoPage() {
                 { label: "Xác nhận mật khẩu mới", key: "confirm" },
               ].map(({ label, key }) => (
                 <div key={key}>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: "#37352f" }}>{label}</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>{label}</label>
                   <input type="password"
                     value={passForm[key as keyof typeof passForm]}
                     onChange={e => setPassForm(p => ({ ...p, [key]: e.target.value }))}
-                    className="notion-input w-full text-sm" style={{ color: "#1a1a1a" }} />
+                    className="notion-input w-full text-sm" style={{ color: "var(--kin-chu-chinh)" }} />
                 </div>
               ))}
-              {passError && <p className="text-xs" style={{ color: "#dc2626" }}>{passError}</p>}
+              {passError && <p className="text-xs" style={{ color: "var(--kin-tt-chu-loi)" }}>{passError}</p>}
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowPassModal(false); setPassError(""); }}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
                 Hủy
               </button>
               <button onClick={handleChangePass} disabled={passSaving}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                style={{ background: "#0068FF", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                 {passSaving ? "Đang lưu..." : "Xác nhận"}
               </button>
             </div>
@@ -459,13 +459,13 @@ export default function HoSoPage() {
       {/* ── Logout confirm ── */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="w-full max-w-xs rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.1) 0px 4px 20px 0px" }}>
-            <h2 className="text-base font-bold mb-2" style={{ color: "#1a1a1a" }}>Đăng xuất tất cả?</h2>
-            <p className="text-sm mb-5" style={{ color: "#787671" }}>Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, kể cả thiết bị hiện tại.</p>
+          <div className="w-full max-w-xs rounded-xl p-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.1) 0px 4px 20px 0px" }}>
+            <h2 className="text-base font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Đăng xuất tất cả?</h2>
+            <p className="text-sm mb-5" style={{ color: "var(--kin-chu-mo)" }}>Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, kể cả thiết bị hiện tại.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowLogoutConfirm(false)}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
                 Hủy
               </button>
               <button onClick={() => { setShowLogoutConfirm(false); showToast("Đang đăng xuất...", "info"); setTimeout(() => logout(), 1500); }}
@@ -486,40 +486,40 @@ export default function HoSoPage() {
       )}
 
       {/* ── Profile header ── */}
-      <div className="rounded-xl p-6" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex items-start gap-5 flex-wrap">
           <DropZone onFiles={files => files[0] && loadAvatarFile(files[0])} className="relative flex-shrink-0 rounded-xl">
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
             {avatarSrc ? (
               <img src={avatarSrc} alt="avatar"
                 className="w-20 h-20 rounded-xl object-cover"
-                style={{ border: "1px solid #e5e3df" }} />
+                style={{ border: "1px solid var(--kin-vien-thuong)" }} />
             ) : (
               <div className="w-20 h-20 rounded-xl flex items-center justify-center text-4xl font-black text-white"
-                style={{ background: "linear-gradient(135deg, #0068FF, #2680FF)" }}>
+                style={{ background: "var(--kin-nhan-nen)" }}>
                 {avatarLetter}
               </div>
             )}
             <button onClick={() => fileInputRef.current?.click()}
               className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "#0068FF", border: "2px solid #ffffff" }}
+              style={{ background: "var(--kin-nhan-nen)", border: "2px solid var(--kin-nen-trang)" }}
               title="Đổi ảnh đại diện (hoặc kéo-thả ảnh vào đây)">
               <PhotoCamera size={13} style={{ color: "#ffffff" }} />
             </button>
           </DropZone>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>{displayName}</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#a4a097" }}>
+            <h1 className="text-xl font-bold" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>{displayName}</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>
               {profile?.email ?? user?.email}{profile?.phone ? ` · ${profile.phone}` : ""}
             </p>
             {(profile?.highSchool || profile?.city) && (
-              <p className="text-sm mt-0.5" style={{ color: "#a4a097" }}>
+              <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>
                 {[profile.highSchool, profile.city].filter(Boolean).join(" · ")}
               </p>
             )}
             <div className="flex items-center gap-2 mt-3">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ background: "#0068FF" }}>Học viên</span>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ background: "var(--kin-nhan-nen)" }}>Học viên</span>
             </div>
           </div>
         </div>
@@ -542,12 +542,12 @@ export default function HoSoPage() {
                 <div className="flex gap-3">
                   <button onClick={() => setEditSection(null)}
                     className="px-4 py-2 rounded-lg text-sm font-medium"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
                     Hủy
                   </button>
                   <button onClick={handleSaveProfile} disabled={saving}
                     className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                    style={{ background: "#0068FF", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                     {saving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
                 </div>
@@ -576,12 +576,12 @@ export default function HoSoPage() {
                 <div className="flex gap-3">
                   <button onClick={() => setEditSection(null)}
                     className="px-4 py-2 rounded-lg text-sm font-medium"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
                     Hủy
                   </button>
                   <button onClick={handleSaveProfile} disabled={saving}
                     className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                    style={{ background: "#0068FF", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                     {saving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
                 </div>
@@ -609,12 +609,12 @@ export default function HoSoPage() {
                 <div className="flex gap-3">
                   <button onClick={() => setEditSection(null)}
                     className="px-4 py-2 rounded-lg text-sm font-medium"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
                     Hủy
                   </button>
                   <button onClick={handleSaveProfile} disabled={saving}
                     className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                    style={{ background: "#0068FF", borderRadius: "8px" }}>
+                    style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                     {saving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
                 </div>
@@ -622,12 +622,12 @@ export default function HoSoPage() {
             ) : (
               <div className="space-y-2.5">
                 <div className="flex gap-3 items-center">
-                  <span className="text-xs w-32 flex-shrink-0" style={{ color: "#a4a097" }}>Facebook</span>
+                  <span className="text-xs w-32 flex-shrink-0" style={{ color: "var(--kin-chu-mo)" }}>Facebook</span>
                   {profile?.facebookUrl
                     ? <a href={profile.facebookUrl} target="_blank" rel="noopener noreferrer"
                         className="text-sm font-medium truncate max-w-[220px]"
-                        style={{ color: "#0068FF" }}>{profile.facebookUrl}</a>
-                    : <span className="text-sm" style={{ color: "#c8c4be" }}>Chưa cập nhật</span>}
+                        style={{ color: "var(--kin-nhan-link)" }}>{profile.facebookUrl}</a>
+                    : <span className="text-sm" style={{ color: "var(--kin-vien-o-nhap)" }}>Chưa cập nhật</span>}
                 </div>
                 <InfoRow label="Zalo" value={profile?.zaloPhone} />
               </div>
@@ -635,28 +635,28 @@ export default function HoSoPage() {
           </Section>
 
           {/* ── Lịch sử thi ── */}
-          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <h2 className="text-sm font-bold mb-4" style={{ color: "#37352f" }}>Lịch sử thi &amp; điểm số</h2>
+          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <h2 className="text-sm font-bold mb-4" style={{ color: "var(--kin-chu-phu)" }}>Lịch sử thi &amp; điểm số</h2>
             {examResults.length === 0 ? (
-              <p className="text-sm text-center py-6" style={{ color: "#a4a097" }}>Chưa có kết quả thi nào</p>
+              <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Chưa có kết quả thi nào</p>
             ) : (
               <div className="space-y-2">
                 {examResults.map((entry, i) => (
                   <div key={entry.id} className="flex items-center gap-4 p-4 rounded-xl"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: i === 0 ? "#fef3c7" : "#f6f5f4", border: `1px solid ${i === 0 ? "#fde68a" : "#e5e3df"}` }}>
+                      style={{ background: i === 0 ? "#fef3c7" : "var(--kin-nen-bang)", border: `1px solid ${i === 0 ? "#fde68a" : "var(--kin-vien-thuong)"}` }}>
                       {i === 0
-                        ? <Trophy size={20} style={{ color: "#b45309" }} />
-                        : <span className="text-xs font-bold" style={{ color: "#787671" }}>#{i + 1}</span>}
+                        ? <Trophy size={20} style={{ color: "var(--kin-tt-chu-cho)" }} />
+                        : <span className="text-xs font-bold" style={{ color: "var(--kin-chu-mo)" }}>#{i + 1}</span>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: "#37352f" }}>{entry.exam?.title ?? entry.id}</p>
-                      <p className="text-xs" style={{ color: "#a4a097" }}>{new Date(entry.completedAt).toLocaleDateString("vi-VN")}</p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-phu)" }}>{entry.exam?.title ?? entry.id}</p>
+                      <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{new Date(entry.completedAt).toLocaleDateString("vi-VN")}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-xl font-bold" style={{ color: "#0068FF" }}>{entry.score}</div>
-                      <div className="text-xs" style={{ color: "#a4a097" }}>/ {entry.totalPoints}</div>
+                      <div className="text-xl font-bold" style={{ color: "var(--kin-nhan-link)" }}>{entry.score}</div>
+                      <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>/ {entry.totalPoints}</div>
                     </div>
                   </div>
                 ))}
@@ -666,28 +666,28 @@ export default function HoSoPage() {
           </div>
 
           {/* ── Khóa học ── */}
-          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <h2 className="text-sm font-bold mb-4" style={{ color: "#37352f" }}>Khóa học đã đăng ký</h2>
+          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <h2 className="text-sm font-bold mb-4" style={{ color: "var(--kin-chu-phu)" }}>Khóa học đã đăng ký</h2>
             {enrolledCourses.length === 0 ? (
-              <p className="text-sm text-center py-4" style={{ color: "#a4a097" }}>Chưa đăng ký khóa học nào.</p>
+              <p className="text-sm text-center py-4" style={{ color: "var(--kin-chu-mo)" }}>Chưa đăng ký khóa học nào.</p>
             ) : (
               <div className="space-y-2">
                 {enrolledCourses.map(c => (
                   <a key={c.id} href={`/student/hoc-tap?course=${c.id}`}
                     className="flex items-center justify-between gap-3 p-3 rounded-xl hover:opacity-80"
-                    style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                    style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#37352f" }}>{c.name}</p>
-                      <p className="text-xs" style={{ color: "#a4a097" }}>{c.category} · {c.lessons} bài</p>
+                      <p className="text-sm font-semibold truncate" style={{ color: "var(--kin-chu-phu)" }}>{c.name}</p>
+                      <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{c.category} · {c.lessons} bài</p>
                     </div>
-                    <span className="text-xs font-semibold flex-shrink-0" style={{ color: "#0068FF" }}>Vào học →</span>
+                    <span className="text-xs font-semibold flex-shrink-0" style={{ color: "var(--kin-nhan-link)" }}>Vào học →</span>
                   </a>
                 ))}
               </div>
             )}
-            <p className="text-xs text-center pt-3" style={{ color: "#a4a097" }}>
+            <p className="text-xs text-center pt-3" style={{ color: "var(--kin-chu-mo)" }}>
               Xem tiến độ chi tiết tại{" "}
-              <a href="/student/hoc-tap" className="font-semibold" style={{ color: "#0068FF" }}>Trang khóa học</a>
+              <a href="/student/hoc-tap" className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Trang khóa học</a>
             </p>
           </div>
         </div>
@@ -701,19 +701,19 @@ export default function HoSoPage() {
               {
                 label: "GPA trung bình",
                 value: userStats?.gpa != null ? userStats.gpa.toFixed(1) : "—",
-                color: "#b45309", bg: "#fef3c7", border: "#fde68a",
+                color: "var(--kin-tt-chu-cho)", bg: "#fef3c7", border: "#fde68a",
                 sub: "/ 10 điểm",
               },
               {
                 label: "Xếp hạng",
                 value: userStats?.rank != null ? `#${userStats.rank}` : "—",
-                color: "#0068FF", bg: "#dbeafe", border: "#93c5fd",
+                color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)",
                 sub: userStats?.totalStudents ? `/ ${userStats.totalStudents} HV` : "toàn trường",
               },
               {
                 label: "Streak",
                 value: userStats != null ? `${userStats.streak} ngày` : "—",
-                color: "#dc2626", bg: "#fee2e2", border: "#fca5a5",
+                color: "var(--kin-tt-chu-loi)", bg: "#fee2e2", border: "#fca5a5",
                 sub: "liên tiếp",
               },
               {
@@ -725,25 +725,25 @@ export default function HoSoPage() {
             ].map((s) => (
               <div key={s.label} className="rounded-xl p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
                 <div className="text-lg font-bold mb-0.5" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-xs font-semibold" style={{ color: "#37352f" }}>{s.label}</div>
-                <div className="text-xs mt-0.5" style={{ color: "#787671" }}>{s.sub}</div>
+                <div className="text-xs font-semibold" style={{ color: "var(--kin-chu-phu)" }}>{s.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{s.sub}</div>
               </div>
             ))}
           </div>
 
           {/* ── Huy hiệu (từ DB) ── */}
-          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <h2 className="text-sm font-bold mb-4" style={{ color: "#37352f" }}>Huy hiệu</h2>
+          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <h2 className="text-sm font-bold mb-4" style={{ color: "var(--kin-chu-phu)" }}>Huy hiệu</h2>
             <div className="grid grid-cols-3 gap-3">
               {BADGE_RULES.map(badge => {
                 const earned = earnedBadgeIds.has(badge.id);
                 return (
                   <div key={badge.id} className="text-center" style={{ opacity: earned ? 1 : 0.4 }}>
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-1 text-2xl"
-                      style={{ background: earned ? badge.bg : "#f6f5f4", border: "1px solid #e5e3df" }}>
+                      style={{ background: earned ? badge.bg : "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                       {badge.icon}
                     </div>
-                    <p className="text-xs leading-tight" style={{ color: earned ? "#37352f" : "#a4a097" }}>{badge.title}</p>
+                    <p className="text-xs leading-tight" style={{ color: earned ? "var(--kin-chu-phu)" : "var(--kin-chu-mo)" }}>{badge.title}</p>
                   </div>
                 );
               })}
@@ -754,29 +754,29 @@ export default function HoSoPage() {
           <StreakCalendar counts={activityCounts} />
 
           {/* ── Thiết bị (mock) ── */}
-          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold" style={{ color: "#37352f" }}>Thiết bị (2/2)</h2>
+              <h2 className="text-sm font-bold" style={{ color: "var(--kin-chu-phu)" }}>Thiết bị (2/2)</h2>
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#fef3c7", color: "#92400e" }}>Tối đa 2</span>
             </div>
             <div className="space-y-2">
               {devices.map((device, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                  style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#787671" }}>
+                    style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                     {device.name.includes("iPhone") ? <Mobile size={18} /> : <Laptop size={18} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: kickedDevices.has(i) ? "#a4a097" : "#37352f" }}>
+                    <p className="text-xs font-semibold truncate" style={{ color: kickedDevices.has(i) ? "var(--kin-chu-mo)" : "var(--kin-chu-phu)" }}>
                       {device.name}{kickedDevices.has(i) ? " (đã kick)" : ""}
                     </p>
-                    <p className="text-xs" style={{ color: "#a4a097" }}>{device.lastActive}</p>
+                    <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{device.lastActive}</p>
                   </div>
                   {device.current ? (
                     <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "#d1fae5", color: "#065f46" }}>Hiện tại</span>
                   ) : kickedDevices.has(i) ? (
-                    <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "#f6f5f4", color: "#a4a097", border: "1px solid #e5e3df" }}>Đã kick</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>Đã kick</span>
                   ) : (
                     <button onClick={() => setKickedDevices(prev => new Set([...prev, i]))}
                       className="text-xs px-2 py-0.5 rounded-lg flex-shrink-0"
@@ -787,23 +787,23 @@ export default function HoSoPage() {
             </div>
             <button onClick={() => setShowDevicePopup(true)}
               className="w-full mt-3 py-2 rounded-xl text-xs font-semibold border-2 border-dashed"
-              style={{ borderColor: "#e5e3df", color: "#a4a097" }}>
+              style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
               + Mô phỏng đăng nhập thiết bị thứ 3
             </button>
           </div>
 
           {/* ── Bảo mật ── */}
-          <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-            <h2 className="text-sm font-bold mb-3" style={{ color: "#37352f" }}>Bảo mật</h2>
+          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <h2 className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-phu)" }}>Bảo mật</h2>
             <div className="space-y-2">
               <button onClick={() => setShowPassModal(true)}
                 className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#37352f", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)", borderRadius: "8px" }}>
                 Đổi mật khẩu →
               </button>
               <button onClick={() => showToast("Tính năng kết nối Google đang phát triển", "info")}
                 className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#37352f", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)", borderRadius: "8px" }}>
                 Kết nối Google →
               </button>
               <button onClick={() => setShowLogoutConfirm(true)}

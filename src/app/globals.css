@@ -15,9 +15,10 @@
 
 :root {
   /* ── TSIX Brand colors (unchanged) ────────────────────────────── */
-  --color-primary: #0068FF;
-  --color-primary-light: #2680FF;
-  --color-primary-dark: #0042AA;
+  /* Màu nhấn cũ trỏ sang màu nhấn KiN (đổi theo chủ đề người dùng chọn); giá trị cũ giữ làm dự phòng. */
+  --color-primary: var(--kin-nhan-nen, #0068FF);
+  --color-primary-light: var(--kin-nhan-link, #2680FF);
+  --color-primary-dark: var(--kin-nhan-nen-re, #0042AA);
   --color-success: #00A63D;
   --color-warning: #FE9900;
   --color-danger: #FF2157;

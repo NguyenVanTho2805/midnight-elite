@@ -24,7 +24,7 @@ interface Analytics {
   transactions: { id: string; tutorId: string; tutorName: string; planCode: string; amount: number; createdAt: string }[];
 }
 
-const CARD = { background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px #ffffff" } as const;
+const CARD = { background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px var(--kin-nen-trang)" } as const;
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
@@ -110,7 +110,7 @@ export default function DoanhThuPage() {
 
   const T = data?.totals;
   const cards = [
-    { label: "Doanh thu VIP (ròng)", value: T ? formatVnd(T.netVipRevenue) : "—", sub: T ? `${T.vipPurchases} lượt mua${T.refunds ? ` · hoàn ${formatVnd(T.refunds)}` : ""}` : "", color: "#0068FF" },
+    { label: "Doanh thu VIP (ròng)", value: T ? formatVnd(T.netVipRevenue) : "—", sub: T ? `${T.vipPurchases} lượt mua${T.refunds ? ` · hoàn ${formatVnd(T.refunds)}` : ""}` : "", color: "var(--kin-nhan-link)" },
     { label: "Gia sư đang VIP", value: T ? `${T.activeVipTutors}/${T.tutorCount}` : "—", sub: "trên tổng số gia sư đã duyệt", color: "#00A63D" },
     { label: "Coin đã nạp", value: T ? formatVnd(T.topupTotal) : "—", sub: "trong khoảng đã chọn", color: "#0EA5E9" },
     { label: "Coin đang trong ví", value: T ? formatVnd(T.coinOutstanding) : "—", sub: "toàn bộ người dùng, tại thời điểm xem", color: "#FE9900" },
@@ -130,7 +130,7 @@ export default function DoanhThuPage() {
           </div>
           <button onClick={() => load(from, to)}
             className="px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-150 active:scale-[0.97]"
-            style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA,-4px -4px 8px #ffffff", color: "#0068FF" }}>
+            style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA,-4px -4px 8px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>
             ↺ Tải lại
           </button>
         </div>
@@ -147,7 +147,7 @@ export default function DoanhThuPage() {
           </label>
           {([["month", "Tháng này"], ["30d", "30 ngày"], ["all", "Tất cả"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => preset(k)} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-              style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>{l}</button>
+              style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>{l}</button>
           ))}
           <span className="text-xs pb-2" style={{ color: "#6B7280" }}>Đang xem: {rangeLabel} (giờ Việt Nam)</span>
         </div>
@@ -183,7 +183,7 @@ export default function DoanhThuPage() {
                     {data!.byMonth.map(m => (
                       <div key={m.month} className="flex items-center gap-3">
                         <div className="w-16 flex-shrink-0 text-xs font-mono" style={{ color: "#4B5563" }}>{m.month.slice(5)}/{m.month.slice(0, 4)}</div>
-                        <div className="flex-1 h-2 rounded-full" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
+                        <div className="flex-1 h-2 rounded-full" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)" }}>
                           <div className="h-2 rounded-full" style={{ width: `${(m.vipRevenue / monthMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#00A63D,#16a34a)" }} />
                         </div>
                         <div className="text-right flex-shrink-0 w-32">
@@ -203,11 +203,11 @@ export default function DoanhThuPage() {
                     {data!.byPlan.map(p => (
                       <div key={p.planCode} className="flex items-center gap-3">
                         <div className="w-28 flex-shrink-0 text-sm truncate" style={{ color: "#1E2938" }}>{p.name}</div>
-                        <div className="flex-1 h-2 rounded-full" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${(p.revenue / planMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#0068FF,#2680FF)" }} />
+                        <div className="flex-1 h-2 rounded-full" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)" }}>
+                          <div className="h-2 rounded-full" style={{ width: `${(p.revenue / planMax * 100).toFixed(1)}%`, background: "var(--kin-nhan-nen)" }} />
                         </div>
                         <div className="text-right flex-shrink-0 w-32">
-                          <div className="text-sm font-bold" style={{ color: "#0068FF" }}>{formatVnd(p.revenue)}</div>
+                          <div className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>{formatVnd(p.revenue)}</div>
                           <div className="text-xs" style={{ color: "#6B7280" }}>{p.count} lượt mua</div>
                         </div>
                       </div>
@@ -220,7 +220,7 @@ export default function DoanhThuPage() {
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h2 id="h-tutor" className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}><ClipboardList size={18} /> Theo từng gia sư</h2>
               <button onClick={exportTutors} disabled={!data || loading} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>↓ Xuất CSV</button>
+                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>↓ Xuất CSV</button>
             </div>
             <RevenueByTutorTable rows={data?.byTutor ?? []} loading={loading} />
           </section>
@@ -229,17 +229,17 @@ export default function DoanhThuPage() {
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h2 id="h-tx" className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}><ClipboardList size={18} /> Lịch sử mua VIP</h2>
               <button onClick={exportTransactions} disabled={!data || loading || data.transactions.length === 0} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>↓ Xuất CSV</button>
+                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>↓ Xuất CSV</button>
             </div>
             {loading ? <div className="space-y-2">{[0, 1, 2].map(i => <div key={i} className="h-11 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />)}</div>
               : (data?.transactions ?? []).length === 0 ? <p className="text-center py-8 text-sm" style={{ color: "#6B7280" }}>Chưa có giao dịch nào.</p>
               : <ul className="space-y-2">
                   {data!.transactions.map(t => (
                     <li key={t.id} className="grid grid-cols-12 items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                      style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 5px #C5D0EA,inset -2px -2px 5px #ffffff" }}>
+                      style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 5px #C5D0EA,inset -2px -2px 5px var(--kin-nen-trang)" }}>
                       <span className="col-span-5 font-medium truncate" style={{ color: "#1E2938" }}>{t.tutorName}</span>
                       <span className="col-span-3 text-xs" style={{ color: "#4B5563" }}>{data!.byPlan.find(p => p.planCode === t.planCode)?.name ?? t.planCode}</span>
-                      <span className="col-span-2 text-right font-bold tabular-nums" style={{ color: "#0068FF" }}>{formatVnd(t.amount)}</span>
+                      <span className="col-span-2 text-right font-bold tabular-nums" style={{ color: "var(--kin-nhan-link)" }}>{formatVnd(t.amount)}</span>
                       <span className="col-span-2 text-right text-xs" style={{ color: "#6B7280" }}>{vnDateKey(new Date(t.createdAt))}</span>
                     </li>
                   ))}

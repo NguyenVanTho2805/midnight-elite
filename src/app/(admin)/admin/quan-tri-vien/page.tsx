@@ -17,9 +17,9 @@ interface UserRow {
 
 const ROLE_CFG: Record<string, { label: string; color: string; bg: string }> = {
   admin_super:    { label: "Super Admin (Cấp 1)",   color: "#FE9900", bg: "#FFF7ED" },
-  admin_content:  { label: "Content Admin (Cấp 2)", color: "#0068FF", bg: "#EFF6FF" },
-  teacher:        { label: "Giáo viên",             color: "#16a34a", bg: "#F0FDF4" },
-  hoc_vien:       { label: "Học viên",              color: "#1D4ED8", bg: "#DBEAFE" },
+  admin_content:  { label: "Content Admin (Cấp 2)", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+  teacher:        { label: "Giáo viên",             color: "var(--kin-tt-chu-xong)", bg: "#F0FDF4" },
+  hoc_vien:       { label: "Học viên",              color: "var(--kin-nhan-chu-tren-nhat)", bg: "var(--kin-nhan-nen-nhat)" },
   chua_kich_hoat: { label: "Chưa KH",               color: "#6B7280", bg: "#F3F4F6" },
 };
 
@@ -152,7 +152,7 @@ export default function QuanTriVienPage() {
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
               className="px-4 py-2 text-sm font-semibold border-b-2 -mb-px cursor-pointer"
               style={tab === k
-                ? { borderColor: "#0068FF", color: "#0068FF" }
+                ? { borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-link)" }
                 : { borderColor: "transparent", color: "#6B7280" }}>
               {label}
             </button>
@@ -176,7 +176,7 @@ export default function QuanTriVienPage() {
             [
               { label: "Tổng",          val: users.length,   color: "#374151" },
               { label: "Quản trị viên", val: counts.admin,   color: "#FE9900" },
-              { label: "Học viên",      val: counts.hocVien, color: "#0068FF" },
+              { label: "Học viên",      val: counts.hocVien, color: "var(--kin-nhan-link)" },
               { label: "Chưa KH",       val: counts.chuaKH,  color: "#9CA3AF" },
             ].map((s, i) => (
               <div key={s.label} className="flex items-center gap-1.5">
@@ -273,7 +273,7 @@ export default function QuanTriVienPage() {
                     <td className="px-4 py-3 text-center">
                       {isAdmin
                         ? <span className="text-sm text-gray-300">—</span>
-                        : <span className="text-sm font-bold" style={{ color: "#0068FF" }}>{u._count.enrollments}</span>
+                        : <span className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>{u._count.enrollments}</span>
                       }
                     </td>
                     <td className="px-4 py-3">
@@ -323,14 +323,14 @@ export default function QuanTriVienPage() {
                           {isAdmin && !confirming && (
                             <button onClick={() => setConfirm(u.id)} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ color: "#dc2626", background: "#FEF2F2" }}>
+                              style={{ color: "var(--kin-tt-chu-loi)", background: "#FEF2F2" }}>
                               Thu hồi quyền
                             </button>
                           )}
                           {isAdmin && confirming && (
                             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300"
                               style={{ background: "#FEF2F2" }}>
-                              <span className="text-xs font-semibold" style={{ color: "#dc2626" }}>Chắc chắn?</span>
+                              <span className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Chắc chắn?</span>
                               <button onClick={() => { changeRole(u.id, "student"); setConfirm(null); }}
                                 disabled={busy}
                                 className="px-2 py-0.5 rounded text-xs font-bold text-white disabled:opacity-50 cursor-pointer"

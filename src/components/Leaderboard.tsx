@@ -16,7 +16,7 @@ export default function Leaderboard() {
         <div className="text-center mb-12">
           <div
             className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold mb-4"
-            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#FE9900" }}
+            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", color: "#FE9900" }}
           >
             Bảng xếp hạng công khai
           </div>
@@ -31,7 +31,7 @@ export default function Leaderboard() {
         {/* Table */}
         <div
           className="rounded-3xl overflow-hidden"
-          style={{ background: "#F0F5FF", boxShadow: "12px 12px 24px #C5D0EA, -12px -12px 24px #ffffff" }}
+          style={{ background: "#F0F5FF", boxShadow: "12px 12px 24px #C5D0EA, -12px -12px 24px var(--kin-nen-trang)" }}
         >
           {/* Table header */}
           <div
@@ -62,7 +62,7 @@ export default function Leaderboard() {
                 ) : (
                   <span
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-                    style={{ background: "#F0F5FF", boxShadow: "2px 2px 4px #C5D0EA, -2px -2px 4px #ffffff", color: "#6B7280" }}
+                    style={{ background: "#F0F5FF", boxShadow: "2px 2px 4px #C5D0EA, -2px -2px 4px var(--kin-nen-trang)", color: "#6B7280" }}
                   >
                     {student.rank}
                   </span>
@@ -82,7 +82,7 @@ export default function Leaderboard() {
 
               {/* Score */}
               <div className="col-span-2 text-right">
-                <span className="text-base font-extrabold" style={{ color: "#0068FF" }}>{student.score}</span>
+                <span className="text-base font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{student.score}</span>
                 <span className="text-xs ml-0.5" style={{ color: "#9CA3AF" }}>/150</span>
               </div>
 
@@ -104,7 +104,7 @@ export default function Leaderboard() {
             <Link
               href="/bang-xep-hang"
               className="text-xs font-semibold transition-all"
-              style={{ color: "#0068FF" }}
+              style={{ color: "var(--kin-nhan-link)" }}
             >
               Xem toàn bộ bảng xếp hạng →
             </Link>
@@ -114,7 +114,7 @@ export default function Leaderboard() {
         {/* Join CTA */}
         <div
           className="mt-8 rounded-3xl p-6 text-center"
-          style={{ background: "#F0F5FF", boxShadow: "inset 6px 6px 12px #C5D0EA, inset -6px -6px 12px #ffffff" }}
+          style={{ background: "#F0F5FF", boxShadow: "inset 6px 6px 12px #C5D0EA, inset -6px -6px 12px var(--kin-nen-trang)" }}
         >
           <p className="text-sm font-medium mb-4" style={{ color: "#1E2938" }}>
              Bạn muốn tên mình xuất hiện trên bảng xếp hạng? Thi thử miễn phí ngay!
@@ -122,7 +122,7 @@ export default function Leaderboard() {
           <Link
             href="/thi-thu"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-            style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff" }}
+            style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px var(--kin-nen-trang)" }}
           >
             Tham gia thi thử ĐGNL miễn phí
           </Link>

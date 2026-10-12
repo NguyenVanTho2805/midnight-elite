@@ -27,7 +27,7 @@ export function Skeleton({ className = "", rounded = "xl" }: SkeletonProps) {
 export function SkeletonCourseCard() {
   return (
     <div className="rounded-3xl overflow-hidden"
-      style={{ background: "#F0F5FF", boxShadow: "10px 10px 24px #C5D0EA,-10px -10px 24px #ffffff" }}>
+      style={{ background: "#F0F5FF", boxShadow: "10px 10px 24px #C5D0EA,-10px -10px 24px var(--kin-nen-trang)" }}>
       <Skeleton className="w-full h-36" rounded="sm" />
       <div className="p-4 space-y-3">
         <Skeleton className="h-4 w-3/4" />
@@ -55,7 +55,7 @@ export function SkeletonLessonRow() {
 export function SkeletonDashboardCard() {
   return (
     <div className="rounded-2xl p-5"
-      style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px #ffffff" }}>
+      style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px var(--kin-nen-trang)" }}>
       <div className="space-y-3">
         <div className="flex items-start justify-between">
           <div className="space-y-2 flex-1">

@@ -53,8 +53,8 @@ export default function NotificationBell() {
     <div ref={ref} className="relative flex-shrink-0">
       <button
         onClick={() => setOpen(p => !p)}
-        className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-[#f6f5f4]"
-        style={{ border: "1px solid #e5e3df", background: open ? "#f6f5f4" : "#ffffff" }}
+        className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-[var(--kin-nen-bang)]"
+        style={{ border: "1px solid var(--kin-vien-thuong)", background: open ? "var(--kin-nen-bang)" : "var(--kin-nen-trang)" }}
         aria-label="Thông báo">
         <BellIcon size={18} style={{ color: "#6B7280" }} />
         {unreadCount > 0 && (
@@ -67,12 +67,12 @@ export default function NotificationBell() {
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] rounded-xl z-50 overflow-hidden"
-          style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.1) 0px 4px 16px 0px" }}>
+          style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.1) 0px 4px 16px 0px" }}>
 
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid #e5e3df" }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
             <p className="text-sm font-extrabold" style={{ color: "#1E2938" }}>Thông báo</p>
             {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className="text-xs font-semibold" style={{ color: "#0068FF" }}>
+              <button onClick={markAllAsRead} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
                 Đánh dấu đã đọc
               </button>
             )}
@@ -87,14 +87,14 @@ export default function NotificationBell() {
               notifications.map(n => (
                 <button key={n.id} onClick={() => handleClick(n)}
                   className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fafafa]"
-                  style={{ borderBottom: "1px solid #e5e3df", background: n.isRead ? "transparent" : "#F0F7FF" }}>
+                  style={{ borderBottom: "1px solid var(--kin-vien-thuong)", background: n.isRead ? "transparent" : "#F0F7FF" }}>
                   <span className="text-lg flex-shrink-0 leading-none mt-0.5">{TYPE_ICON[n.type] ?? "🔔"}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold leading-snug" style={{ color: "#1E2938" }}>{n.title}</p>
                     <p className="text-xs mt-0.5 leading-snug" style={{ color: "#6B7280" }}>{n.message}</p>
                     <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>{timeAgo(n.createdAt)}</p>
                   </div>
-                  {!n.isRead && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: "#0068FF" }} />}
+                  {!n.isRead && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: "var(--kin-nhan-nen)" }} />}
                 </button>
               ))
             )}

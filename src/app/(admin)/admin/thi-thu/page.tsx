@@ -50,10 +50,10 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "VDC", label: "Vận dụng cao" },
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
-  TH:  { bg: "#dcfce7", color: "#16a34a" },
-  VD:  { bg: "#fef3c7", color: "#b45309" },
-  VDC: { bg: "#fee2e2", color: "#dc2626" },
+  NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
+  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
 };
 
 // Giai đoạn 3.5 Cấp 1 — metadata song song với reviewQuestions[idx] cho cổng
@@ -849,7 +849,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
                 <span className="text-sm font-medium text-gray-800 flex-1 truncate">{form.title}</span>
                 {(() => {
                   const st = computeExamStatus(form.date.split("-").reverse().join("/"), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
                   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
                 })()}
               </div>
@@ -869,9 +869,9 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
             {reviewQuestions === null ? (
               <div className="space-y-3">
-                <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+                <div className="text-xs p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                   Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
-                  <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "#1a1a1a" }}>{`Câu 1: Trắc nghiệm...
+                  <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "var(--kin-chu-chinh)" }}>{`Câu 1: Trắc nghiệm...
 Ảnh: https://... (tùy chọn, ảnh đã tải lên sẵn)
 *A. Đáp án đúng
 B. Đáp án sai
@@ -920,7 +920,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>
+                  <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>
                     {reviewQuestions.length} câu hỏi hợp lệ — xem lại trước khi lưu
                   </p>
                   <div className="flex items-center gap-3">
@@ -930,7 +930,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     </button>
                     <button type="button" onClick={() => setSplitViewOn(v => !v)}
                       className="text-xs font-semibold"
-                      style={{ color: splitViewOn ? "#7e22ce" : "#0068FF" }}>
+                      style={{ color: splitViewOn ? "#7e22ce" : "var(--kin-nhan-link)" }}>
                       {splitViewOn ? "✓ " : ""}🪟 Chế độ 2 khung
                     </button>
                     <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); setPendingImageFiles({}); }}
@@ -955,7 +955,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                 </div>
 
                 {bankGateOn && (
-                  <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "#93c5fd", background: "#eff6ff" }}>
+                  <div className="p-3 rounded-lg border border-dashed" style={{ borderColor: "var(--kin-nhan-vien)", background: "var(--kin-nhan-nen-nhat)" }}>
                     <p className="text-xs font-semibold text-gray-600 mb-2">Áp dụng Đầu mục/Độ khó cho tất cả câu đang tích &quot;Thêm vào ngân hàng&quot;</p>
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="flex-1 min-w-[200px]">
@@ -975,7 +975,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       </div>
                       <button type="button" onClick={applyBulkBankMeta} disabled={!bulkCategoryId}
                         className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-50 flex-shrink-0"
-                        style={{ background: "#0068FF" }}>
+                        style={{ background: "var(--kin-nhan-nen)" }}>
                         Áp dụng cho tất cả
                       </button>
                     </div>
@@ -990,7 +990,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     return (
                     <Fragment key={idx}>
                       {showSectionHeader && (
-                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "#0068FF" }}>{q.sectionLabel}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "var(--kin-nhan-link)" }}>{q.sectionLabel}</p>
                       )}
                     <div className="rounded-lg p-3 border border-gray-200 bg-gray-50">
                       <div className="flex items-start gap-2 mb-2">
@@ -1039,7 +1039,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       </div>
                       {bankGateOn && !q.sourceBankItemId && bankMeta[idx] && (
                         <div className="ml-6 mb-2 p-2 rounded-lg border border-dashed"
-                          style={{ width: "calc(100% - 1.5rem)", borderColor: "#93c5fd", background: "#eff6ff" }}>
+                          style={{ width: "calc(100% - 1.5rem)", borderColor: "var(--kin-nhan-vien)", background: "var(--kin-nhan-nen-nhat)" }}>
                           <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
                             <input type="checkbox" checked={bankMeta[idx].addToBank}
                               onChange={e => updateBankMeta(idx, { addToBank: e.target.checked })} />
@@ -1087,7 +1087,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                 </div>
                               )}
                               {!bankMeta[idx].dupMatch && bankMeta[idx].similarMatches.length > 0 && (
-                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#eff6ff", color: "#1d4ed8" }}>
+                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
                                   <p className="font-semibold mb-1.5">🔎 Có {bankMeta[idx].similarMatches.length} câu gần giống trong ngân hàng</p>
                                   <div className="space-y-1.5">
                                     {bankMeta[idx].similarMatches.map(s => (
@@ -1096,7 +1096,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                           {Math.round(s.similarity * 100)}% · {s.item.text} <span className="text-blue-400">({s.item.owner?.name ?? "?"})</span>
                                         </span>
                                         <button type="button" onClick={() => updateBankMeta(idx, { dupMatch: s.item, resolution: "reuse" })}
-                                          className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid #1d4ed8" }}>
+                                          className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid var(--kin-nhan-chu-tren-nhat)" }}>
                                           Dùng câu này
                                         </button>
                                       </div>
@@ -1179,7 +1179,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                   <div className="flex flex-col">
                     <textarea
                       className="flex-1 min-h-[24rem] max-h-[36rem] px-3 py-2 text-xs font-mono border rounded-lg outline-none focus:border-purple-400 resize-none"
-                      style={{ borderColor: "#e5e3df" }}
+                      style={{ borderColor: "var(--kin-vien-thuong)" }}
                       value={markupText}
                       onChange={e => handleMarkupChange(e.target.value)}
                       spellCheck={false}
@@ -1612,7 +1612,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <span className="text-xs text-gray-400">Trạng thái:</span>
                 {(() => {
                   const st = computeExamStatus(fromInputDate(form.date), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "#DBEAFE", color: "#0068FF" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
                   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
                 })()}
               </div>
@@ -1653,7 +1653,7 @@ function countByStatus(exams: ExamRow[]) {
 }
 
 const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
-  upcoming:  { label: "Sắp diễn ra", color: "#0068FF", bg: "#DBEAFE" },
+  upcoming:  { label: "Sắp diễn ra", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
   available: { label: "Đang mở",     color: "#00A63D", bg: "#D1FAE5" },
   completed: { label: "Đã kết thúc", color: "#6B7280", bg: "#F3F4F6" },
 };
@@ -1687,12 +1687,12 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
           )}
           <Link href={`/student/thi-thu/${exam.id}`} target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-gray-50"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "var(--kin-nhan-link)" }}>
             <span className="w-5 text-center">👁</span> Xem portal học viên
           </Link>
           <Link href={`/admin/thi-thu/${exam.id}`} onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-gray-50"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "var(--kin-nhan-link)" }}>
             <span className="w-5 text-center">📝</span> Quản lý câu hỏi
           </Link>
           <div className="border-t border-gray-100 my-1" />
@@ -1779,7 +1779,7 @@ export default function ThiThuAdminPage() {
         <div className="px-5 py-2.5 flex items-center gap-5 border-b border-gray-100">
           {[
             { label: "Tổng đề",      val: stats.total,     color: "#374151" },
-            { label: "Sắp diễn ra",  val: stats.upcoming,  color: "#0068FF" },
+            { label: "Sắp diễn ra",  val: stats.upcoming,  color: "var(--kin-nhan-link)" },
             { label: "Đang mở",      val: stats.available, color: "#00A63D" },
             { label: "Đã kết thúc",  val: stats.completed, color: "#6B7280" },
           ].map((s, i) => (

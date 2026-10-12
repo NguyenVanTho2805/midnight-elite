@@ -10,7 +10,7 @@ export interface ProfileHeaderStats { classCount: number; studentCount: number; 
 export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }: { tutor: ProfileHeaderTutor; stats: ProfileHeaderStats; as?: "h1" | "h2" }) {
   const avgText = stats.rating.avg !== null ? stats.rating.avg.toFixed(1) : "—";
   return (
-    <div className="rounded-xl p-8" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+    <div className="rounded-xl p-8" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex flex-col sm:flex-row items-start gap-6">
         <div className="w-24 h-24 rounded-xl flex items-center justify-center text-white text-3xl font-black flex-shrink-0 overflow-hidden"
           style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
@@ -33,7 +33,7 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
             <div className="flex flex-wrap gap-1.5 mt-1">
               {tutor.subjects.map(s => (
                 <span key={s} className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: "#dbeafe", color: "#0068FF" }}>{s}</span>
+                  style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>{s}</span>
               ))}
             </div>
           )}
@@ -47,12 +47,12 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
             {[
               { Icon: Star, value: avgText, label: stats.rating.total > 0 ? `${stats.rating.total} đánh giá` : "chưa có", color: "#FE9900" },
-              { Icon: Users, value: stats.studentCount.toLocaleString(), label: "Học viên", color: "#0068FF" },
+              { Icon: Users, value: stats.studentCount.toLocaleString(), label: "Học viên", color: "var(--kin-nhan-link)" },
               { Icon: BookOpen, value: stats.classCount, label: "Lớp đang dạy", color: "#00A63D" },
               { Icon: CalendarCheck, value: stats.sessionsTaught.toLocaleString(), label: "Buổi đã dạy (theo sổ lớp)", color: "#7C3AED" },
             ].map(({ Icon, value, label, color }) => (
               <div key={label} className="rounded-xl p-3 text-center"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <Icon size={18} style={{ color, margin: "0 auto 4px" }} />
                 <div className="font-extrabold text-base" style={{ color: "#1E2938" }}>{value}</div>
                 <div className="text-xs" style={{ color: "#9CA3AF" }}>{label}</div>

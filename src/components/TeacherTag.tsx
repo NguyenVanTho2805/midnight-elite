@@ -14,7 +14,7 @@ export default function TeacherTag({
 }: Props) {
   const avatarStyle = variant === "onDark"
     ? { background: "rgba(255,255,255,0.25)", border: "2px solid rgba(255,255,255,0.6)", backdropFilter: blur ? "blur(4px)" : undefined }
-    : { background: "linear-gradient(135deg, #0068FF, #2680FF)" };
+    : { background: "var(--kin-nhan-nen)" };
   const nameColor = variant === "onDark" ? "rgba(255,255,255,0.85)" : role ? "#1E2938" : "#6B7280";
 
   return (

@@ -66,7 +66,7 @@ const NAV_ITEMS: NavItem[] = [
 const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   admin_super:   { label: "Cấp 1 - Super Admin",   color: "#FE9900", bg: "rgba(254,153,0,0.15)"  },
   admin_content: { label: "Cấp 2 - Content Admin", color: "#60A5FA", bg: "rgba(96,165,250,0.12)" },
-  teacher:       { label: "Giáo viên",             color: "#16a34a", bg: "rgba(22,163,74,0.12)"  },
+  teacher:       { label: "Giáo viên",             color: "var(--kin-tt-chu-xong)", bg: "rgba(22,163,74,0.12)"  },
 };
 
 // open/onClose: dưới breakpoint lg sidebar là ngăn kéo (off-canvas) mở bằng nút
@@ -109,7 +109,7 @@ export default function AdminSidebar({ open = false, onClose }: { open?: boolean
         {/* Role badge */}
         {badge && (
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-            style={{ background: badge.bg, border: `1px solid ${badge.color}30` }}>
+            style={{ background: badge.bg, border: `1px solid color-mix(in srgb, ${badge.color} 19%, transparent)` }}>
             <span className="text-xs font-bold truncate" style={{ color: badge.color }}>
               {badge.label}
             </span>

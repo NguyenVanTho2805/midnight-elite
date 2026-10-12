@@ -35,7 +35,7 @@ const REASON_LABEL: Record<string, string> = {
 function statusChip(s: string) {
   if (s === "approved") return { label: "Đã duyệt",   bg: "#dcfce7", color: "#166534" };
   if (s === "rejected") return { label: "Bị từ chối", bg: "#fee2e2", color: "#b91c1c" };
-  return                     { label: "Đang chờ",   bg: "#fef3c7", color: "#b45309" };
+  return                     { label: "Đang chờ",   bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" };
 }
 
 export default function CoinWalletPage() {
@@ -119,7 +119,7 @@ export default function CoinWalletPage() {
       </div>
 
       {/* Form nạp */}
-      <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <h2 className="font-bold text-base" style={{ color: "#1E2938" }}>Yêu cầu nạp Coin</h2>
 
         {bank && (
@@ -140,7 +140,7 @@ export default function CoinWalletPage() {
             onChange={e => setAmountVnd(e.target.value.replace(/[^0-9]/g, ""))}
             placeholder="VD: 300000"
             className="w-full px-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}
             inputMode="numeric"
           />
           <p className="text-xs mt-1" style={{ color: "#6B7280" }}>
@@ -152,7 +152,7 @@ export default function CoinWalletPage() {
           <label className="block text-xs font-semibold mb-1" style={{ color: "#374151" }}>Mã giao dịch ngân hàng (nếu có)</label>
           <input value={bankRef} onChange={e => setBankRef(e.target.value)} placeholder="FT25100500001234"
             className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }} />
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
         </div>
 
         <div>
@@ -160,26 +160,26 @@ export default function CoinWalletPage() {
           <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
             placeholder="VD: Nạp 300k mua gói VIP tháng"
             className="w-full px-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }} />
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
         </div>
 
         <button type="submit" disabled={submitting}
           className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
-          style={{ background: "#0068FF" }}>
+          style={{ background: "var(--kin-nhan-nen)" }}>
           {submitting ? "Đang gửi..." : "Gửi yêu cầu nạp"}
         </button>
       </form>
 
       {/* Lịch sử yêu cầu nạp */}
       {reqs.length > 0 && (
-        <div className="rounded-2xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+        <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
           <h2 className="font-bold text-base mb-3" style={{ color: "#1E2938" }}>Lịch sử yêu cầu nạp</h2>
           <div className="space-y-2">
             {reqs.map(r => {
               const chip = statusChip(r.status);
               return (
                 <div key={r.id} className="rounded-xl p-3 flex items-start justify-between gap-3"
-                  style={{ background: "#f6f5f4" }}>
+                  style={{ background: "var(--kin-nen-bang)" }}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>
                       {r.amountVnd.toLocaleString("vi-VN")} VND → {r.coinAmount.toLocaleString("vi-VN")} Coin
@@ -202,7 +202,7 @@ export default function CoinWalletPage() {
       )}
 
       {/* Lịch sử Coin */}
-      <div className="rounded-2xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <h2 className="font-bold text-base mb-3" style={{ color: "#1E2938" }}>Giao dịch Coin gần đây</h2>
         {txs.length === 0 ? (
           <p className="text-sm italic" style={{ color: "#9CA3AF" }}>Chưa có giao dịch nào.</p>
@@ -214,7 +214,7 @@ export default function CoinWalletPage() {
                   <p className="text-sm" style={{ color: "#1E2938" }}>{REASON_LABEL[t.reason] ?? t.reason}</p>
                   <p className="text-xs" style={{ color: "#9CA3AF" }}>{new Date(t.createdAt).toLocaleString("vi-VN")}</p>
                 </div>
-                <span className="text-sm font-bold" style={{ color: t.amount >= 0 ? "#16a34a" : "#dc2626" }}>
+                <span className="text-sm font-bold" style={{ color: t.amount >= 0 ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                   {t.amount >= 0 ? "+" : ""}{t.amount.toLocaleString("vi-VN")}
                 </span>
               </div>

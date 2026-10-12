@@ -44,14 +44,14 @@ function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (re
   const [reason, setReason] = useState("");
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "#ffffff" }} onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)" }} onClick={e => e.stopPropagation()}>
         <p className="text-sm font-bold mb-3" style={{ color: "#1E2938" }}>Báo cáo câu trả lời</p>
         <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Lý do báo cáo (sai, spam, gian lận...)"
           rows={3} className="w-full p-3 rounded-lg text-sm resize-none outline-none"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }} />
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#1E2938" }} />
         <div className="flex gap-2 mt-3">
           <button onClick={onClose} className="flex-1 py-2 rounded-lg text-xs font-bold"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#6B7280" }}>Hủy</button>
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#6B7280" }}>Hủy</button>
           <button onClick={() => reason.trim() && onSubmit(reason.trim())} className="flex-1 py-2 rounded-lg text-xs font-bold text-white"
             style={{ background: "#FF2157" }}>Gửi báo cáo</button>
         </div>
@@ -123,7 +123,7 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
     if (res.ok) load();
   }
 
-  if (loading) return <div className="h-64 rounded-xl animate-pulse" style={{ background: "#f6f5f4" }} />;
+  if (loading) return <div className="h-64 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />;
   if (!question) return <p className="text-sm" style={{ color: "#9CA3AF" }}>Không tìm thấy câu hỏi</p>;
 
   return (
@@ -137,15 +137,15 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
 
       <button onClick={() => router.push("/cong-dong?tab=hoi-dap-qa")}
         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold"
-        style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF", borderRadius: "8px" }}>
+        style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)", borderRadius: "8px" }}>
         ← Hỏi đáp
       </button>
 
       {/* Question */}
-      <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: question.status === "answered" ? "#d1fae5" : "#DBEAFE", color: question.status === "answered" ? "#00A63D" : "#0068FF" }}>
+            style={{ background: question.status === "answered" ? "#d1fae5" : "var(--kin-nhan-nen-nhat)", color: question.status === "answered" ? "#00A63D" : "var(--kin-nhan-link)" }}>
             {question.status === "answered" ? "✓ Đã giải" : "Chưa giải"}
           </span>
           <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#FFFBEB", color: "#92400E" }}>
@@ -164,8 +164,8 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
           {question.answers.map(a => (
             <div key={a.id} className="rounded-xl p-4"
               style={{
-                background: a.isAccepted ? "#F0FDF4" : "#ffffff",
-                border: a.isAccepted ? "1px solid #BBF7D0" : "1px solid #e5e3df",
+                background: a.isAccepted ? "#F0FDF4" : "var(--kin-nen-trang)",
+                border: a.isAccepted ? "1px solid #BBF7D0" : "1px solid var(--kin-vien-thuong)",
                 opacity: a.isPenalized ? 0.6 : 1,
               }}>
               <div className="flex items-center gap-2 mb-1.5">
@@ -177,7 +177,7 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
                   </span>
                 )}
                 {a.isPenalized && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#FEE2E2", color: "#DC2626" }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "#FEE2E2", color: "var(--kin-tt-chu-loi)" }}>
                     ⚠ Vi phạm
                   </span>
                 )}
@@ -193,7 +193,7 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
                 )}
                 {!a.isOwn && !a.reportedByMe && !a.isPenalized && (
                   <button onClick={() => setReportTarget(a.id)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "#f6f5f4", color: "#9CA3AF" }}>
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "#9CA3AF" }}>
                     🚩 Báo cáo
                   </button>
                 )}
@@ -205,15 +205,15 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* Answer form */}
-      <div className="rounded-xl p-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <textarea value={answerText} onChange={e => setAnswerText(e.target.value)} placeholder="Viết câu trả lời của bạn..."
           rows={3} className="w-full p-3 rounded-lg text-sm resize-none outline-none"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }} />
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#1E2938" }} />
         {error && <p className="text-xs font-semibold mt-1" style={{ color: "#FF2157" }}>{error}</p>}
         <div className="flex justify-end mt-2">
           <button onClick={submitAnswer} disabled={posting || !answerText.trim()}
             className="px-4 py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#0068FF", opacity: posting || !answerText.trim() ? 0.5 : 1 }}>
+            style={{ background: "var(--kin-nhan-nen)", opacity: posting || !answerText.trim() ? 0.5 : 1 }}>
             {posting ? "Đang đăng..." : "Đăng trả lời"}
           </button>
         </div>

@@ -24,7 +24,7 @@ const link = "inline-flex items-center min-h-6 text-[length:var(--kin-co-small)]
 export default function Footer() {
   return (
     <footer
-      data-vung="khach-sang"
+      data-vung="sang"
       className="kin-chu-than bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]"
     >
       <div className="mx-auto max-w-[1440px] px-4 sm:px-8 py-14">

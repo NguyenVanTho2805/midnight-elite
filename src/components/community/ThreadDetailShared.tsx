@@ -43,9 +43,9 @@ export interface ThreadDetail {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 export const CAT_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  "hoi-dap":     { label: "Hỏi đáp",    color: "#0068FF", bg: "#dbeafe" },
-  "kinh-nghiem": { label: "Kinh nghiệm", color: "#16a34a", bg: "#dcfce7" },
-  "tai-lieu":    { label: "Tài liệu",    color: "#b45309", bg: "#fef3c7" },
+  "hoi-dap":     { label: "Hỏi đáp",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+  "kinh-nghiem": { label: "Kinh nghiệm", color: "var(--kin-tt-chu-xong)", bg: "#dcfce7" },
+  "tai-lieu":    { label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "#fef3c7" },
   "goc-vui":     { label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
 };
 
@@ -203,12 +203,12 @@ export function ReplyCard({ r, onLike, onDelete }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>{r.author.name}</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{r.author.name}</span>
               {r.author.isTeacher && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                  style={{ background: "#fef3c7", color: "#b45309" }}>Gia sư</span>
+                  style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
               )}
-              <span className="text-xs" style={{ color: "#a4a097" }}>· {timeAgo(r.createdAt)}</span>
+              <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>· {timeAgo(r.createdAt)}</span>
             </div>
             {r.isOwn && (
               confirmDelete
@@ -218,14 +218,14 @@ export function ReplyCard({ r, onLike, onDelete }: {
                       style={{ background: "#dc2626" }}>{deleting ? "..." : "Xoá"}</button>
                     <button onClick={() => setConfirmDelete(false)}
                       className="text-xs px-2 py-0.5 rounded"
-                      style={{ background: "#f6f5f4", color: "#787671" }}>Huỷ</button>
+                      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
                   </div>
                 : <button onClick={() => setConfirmDelete(true)}
-                    className="text-xs flex-shrink-0" style={{ color: "#a4a097" }}>✕</button>
+                    className="text-xs flex-shrink-0" style={{ color: "var(--kin-chu-mo)" }}>✕</button>
             )}
           </div>
 
-          <p className="text-sm leading-relaxed whitespace-pre-wrap mt-0.5" style={{ color: "#37352f" }}>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>
             {r.content}
           </p>
 
@@ -235,7 +235,7 @@ export function ReplyCard({ r, onLike, onDelete }: {
 
           <button onClick={() => onLike(r.id)}
             className="flex items-center gap-1 mt-2 text-xs transition-colors"
-            style={{ color: r.likedByMe ? "#dc2626" : "#a4a097" }}>
+            style={{ color: r.likedByMe ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)" }}>
             <span className="text-sm leading-none">{r.likedByMe ? "♥" : "♡"}</span>
             <span className="font-semibold">{r.likeCount > 0 ? r.likeCount : ""}</span>
           </button>
@@ -269,7 +269,7 @@ export function ReplyForm({
 
   return (
     <DropZone onFiles={files => setReplyImages(p => [...p, ...files.filter(f => f.type.startsWith("image/"))].slice(0, 2))}
-      className="rounded-xl border p-4" style={{ background: wrapperBg, borderColor: "#e5e3df" }}>
+      className="rounded-xl border p-4" style={{ background: wrapperBg, borderColor: "var(--kin-vien-thuong)" }}>
       <div className="flex gap-3">
         <Avatar name={user.name} size={32} />
         <div className="flex-1 min-w-0">
@@ -277,12 +277,12 @@ export function ReplyForm({
             onChange={e => setReplyText(e.target.value)}
             placeholder={`Trả lời ${threadAuthorName}...`}
             className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
-            style={{ background: textareaBg, color: "#1a1a1a", border: textareaBg === "#ffffff" ? "1px solid #e5e3df" : "none" }} />
+            style={{ background: textareaBg, color: "var(--kin-chu-chinh)", border: textareaBg === "var(--kin-nen-trang)" ? "1px solid var(--kin-vien-thuong)" : "none" }} />
 
           <ImagePreviews images={replyImages}
             onRemove={i => setReplyImages(p => p.filter((_, idx) => idx !== i))} />
 
-          {replyError && <p className="text-xs mt-1" style={{ color: "#dc2626" }}>{replyError}</p>}
+          {replyError && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{replyError}</p>}
 
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export function ReplyForm({
                 disabled={replyImages.length >= 2}
                 className="p-1.5 rounded-lg disabled:opacity-40 transition-all"
                 title="Thêm ảnh (tối đa 2)"
-                style={{ color: "#a4a097" }}>
+                style={{ color: "var(--kin-chu-mo)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -303,11 +303,11 @@ export function ReplyForm({
                   setReplyImages(p => [...p, ...valid].slice(0, 2));
                   e.target.value = "";
                 }} />
-              <span className="text-xs" style={{ color: "#a4a097" }}>{replyText.length}/1000</span>
+              <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{replyText.length}/1000</span>
             </div>
             <button onClick={onSubmit} disabled={replying || uploading || !replyText.trim()}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               {uploading ? "Upload..." : replying ? "Đang gửi..." : "Gửi trả lời"}
             </button>
           </div>
@@ -335,22 +335,22 @@ export function ReportPanel({
   return (
     <div className="p-3 rounded-lg" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
       {reportDone ? (
-        <p className="text-xs font-semibold" style={{ color: "#16a34a" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
+        <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
       ) : (
         <>
           <textarea rows={2} maxLength={300} value={reportReason}
             onChange={e => setReportReason(e.target.value)}
             placeholder="Lý do báo cáo bài viết này..."
             className="w-full text-xs rounded-lg px-2.5 py-2 outline-none resize-none"
-            style={{ background: "#ffffff", color: "#1a1a1a", border: "1px solid #fecaca" }} />
-          {reportError && <p className="text-xs mt-1" style={{ color: "#dc2626" }}>{reportError}</p>}
+            style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid #fecaca" }} />
+          {reportError && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{reportError}</p>}
           <div className="flex gap-1.5 mt-2">
             <button onClick={onSubmit} disabled={reportSending}
               className="px-3 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
               style={{ background: "#dc2626" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
             <button onClick={onCancel}
               className="px-3 py-1 rounded-lg text-xs font-semibold"
-              style={{ background: "#f6f5f4", color: "#787671" }}>Huỷ</button>
+              style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
           </div>
         </>
       )}

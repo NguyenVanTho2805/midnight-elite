@@ -29,8 +29,8 @@ interface Course {
 
 function TypeBadge({ type }: { type: string }) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    record:   { label: "Video",    color: "#0068FF", bg: "#EFF6FF" },
-    live:     { label: "Live",     color: "#DC2626", bg: "#FEF2F2" },
+    record:   { label: "Video",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+    live:     { label: "Live",     color: "var(--kin-tt-chu-loi)", bg: "#FEF2F2" },
     quiz:     { label: "Bài tập", color: "#FE9900", bg: "#FFF7ED" },
     document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
   };
@@ -97,8 +97,8 @@ function HocTapContent() {
     if (enrollmentsLoading || enrolledIds.size > 0) {
       return (
         <div className="space-y-4">
-          <div className="h-7 w-48 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
-          <div className="h-24 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
+          <div className="h-7 w-48 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
+          <div className="h-24 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
         </div>
       );
     }
@@ -106,7 +106,7 @@ function HocTapContent() {
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <BookOpen size={40} style={{ color: "#9CA3AF" }} />
         <p className="text-sm" style={{ color: "#9CA3AF" }}>Bạn chưa có khóa học nào.</p>
-        <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "#0068FF" }}>← Khóa học</Link>
+        <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>← Khóa học</Link>
       </div>
     );
   }
@@ -137,7 +137,7 @@ function HocTapContent() {
           onRetry={() => router.refresh()}
         />
         <div className="text-center mt-4">
-          <Link href="/khoa-hoc" className="text-body-sm font-semibold" style={{ color: "#0068FF" }}>
+          <Link href="/khoa-hoc" className="text-body-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
             ← Về danh sách khóa học
           </Link>
         </div>
@@ -152,20 +152,20 @@ function HocTapContent() {
       <div className="flex items-center gap-3">
         <Link href="/khoa-hoc"
           className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors hover:bg-[#eceae6]"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)" }}>
           ← Khóa học
         </Link>
         <span className="text-sm font-medium truncate" style={{ color: "#9CA3AF" }}>{course.name}</span>
       </div>
 
       {/* Course header card */}
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
-        <div className="h-2" style={{ background: course.strip || "#0068FF" }} />
-        <div className="p-5 flex items-start gap-4" style={{ background: "#ffffff" }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
+        <div className="h-2" style={{ background: course.strip || "var(--kin-nhan-nen)" }} />
+        <div className="p-5 flex items-start gap-4" style={{ background: "var(--kin-nen-trang)" }}>
           <div className="flex-1 min-w-0">
             <p className="text-xs mb-1" style={{ color: "#9CA3AF" }}>{course.category}</p>
             <h1 className="text-xl font-extrabold leading-snug mb-1" style={{ color: "#1E2938" }}>{course.name}</h1>
-            <p className="text-sm" style={{ color: "#787671" }}>Gia sư: {course.instructor}</p>
+            <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Gia sư: {course.instructor}</p>
             <div className="flex items-center gap-4 mt-3 text-xs" style={{ color: "#9CA3AF" }}>
               <span className="flex items-center gap-1"><Play size={11} />{course.hours}h video</span>
               <span className="flex items-center gap-1"><BookOpen size={11} />{course.lessons} bài học</span>
@@ -173,15 +173,15 @@ function HocTapContent() {
           </div>
           {/* Progress ring-ish summary */}
           <div className="flex-shrink-0 text-center">
-            <p className="text-2xl font-extrabold" style={{ color: "#0068FF" }}>{pct}%</p>
+            <p className="text-2xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{pct}%</p>
             <p className="text-xs" style={{ color: "#9CA3AF" }}>hoàn thành</p>
-            <p className="text-xs mt-1 font-semibold" style={{ color: "#787671" }}>{completedCount}/{allLessons.length} bài</p>
+            <p className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>{completedCount}/{allLessons.length} bài</p>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 mx-5 mb-5 rounded-full overflow-hidden" style={{ background: "#e5e3df" }}>
-          <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: "#0068FF" }} />
+        <div className="h-1.5 mx-5 mb-5 rounded-full overflow-hidden" style={{ background: "var(--kin-vien-thuong)" }}>
+          <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--kin-nhan-nen)" }} />
         </div>
 
         {/* CTA */}
@@ -198,7 +198,7 @@ function HocTapContent() {
           ) : nextLesson ? (
             <Link href={`/student/bai-giang/${nextLesson.id}`}
               className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               <Play size={15} />
               {completedCount === 0 ? "Bắt đầu học" : "Tiếp tục học"}
               <ArrowRight size={14} />
@@ -220,10 +220,10 @@ function HocTapContent() {
           const done    = lessons.filter(l => completedIds.has(l.id)).length;
           const isOpen  = openSections.has(section.id);
           return (
-            <div key={section.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
+            <div key={section.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
               <button onClick={() => toggleSection(section.id)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                style={{ background: "#f6f5f4" }}>
+                style={{ background: "var(--kin-nen-bang)" }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-extrabold uppercase tracking-wide" style={{ color: "#1E2938" }}>
                     {section.title}
@@ -239,7 +239,7 @@ function HocTapContent() {
               </button>
 
               {isOpen && (
-                <div style={{ background: "#ffffff" }}>
+                <div style={{ background: "var(--kin-nen-trang)" }}>
                   {section.chapters.map((chapter, ci) => (
                     <div key={chapter.id}>
                       {section.chapters.length > 1 && (
@@ -259,8 +259,8 @@ function HocTapContent() {
                             className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fafaf9]"
                             style={{
                               borderBottom: "1px solid #f0ede9",
-                              borderLeft: isNext ? "3px solid #0068FF" : "3px solid transparent",
-                              background: isNext ? "#EFF6FF" : "transparent",
+                              borderLeft: isNext ? "3px solid var(--kin-nhan-nen)" : "3px solid transparent",
+                              background: isNext ? "var(--kin-nhan-nen-nhat)" : "transparent",
                               opacity: lesson.isLocked ? 0.5 : 1,
                               cursor: lesson.isLocked ? "not-allowed" : "pointer",
                             }}>
@@ -268,8 +268,8 @@ function HocTapContent() {
                             {/* Circle indicator */}
                             <div className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center"
                               style={{
-                                borderColor: isDone ? "#00A63D" : isNext ? "#0068FF" : "#d1d5db",
-                                background: isDone ? "#00A63D" : isNext ? "#EFF6FF" : "transparent",
+                                borderColor: isDone ? "#00A63D" : isNext ? "var(--kin-nhan-nen)" : "#d1d5db",
+                                background: isDone ? "#00A63D" : isNext ? "var(--kin-nhan-nen-nhat)" : "transparent",
                               }}>
                               {isDone && (
                                 <svg viewBox="0 0 10 8" width="9" height="9" fill="none">
@@ -282,13 +282,13 @@ function HocTapContent() {
                             {/* Lesson info */}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm leading-snug truncate"
-                                style={{ color: isNext ? "#0068FF" : "#37352f", fontWeight: isDone || isNext ? 600 : 400 }}>
+                                style={{ color: isNext ? "var(--kin-nhan-link)" : "var(--kin-chu-phu)", fontWeight: isDone || isNext ? 600 : 400 }}>
                                 {lesson.title}
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 <TypeBadge type={lesson.type} />
                                 {lesson.duration && (
-                                  <span className="text-xs flex items-center gap-1" style={{ color: "#c8c4be" }}>
+                                  <span className="text-xs flex items-center gap-1" style={{ color: "var(--kin-vien-o-nhap)" }}>
                                     <Play size={9} />{lesson.duration}
                                   </span>
                                 )}

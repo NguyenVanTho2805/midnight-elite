@@ -140,7 +140,7 @@ export default function VinhDanhPage() {
             <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Bảng Vinh Danh</h1>
             <p className="text-sm mt-1" style={{ color: "#6B7280" }}>
               Xếp hạng tự động từ DB · Trao badge · Hiển thị tại{" "}
-              <a href="/bang-xep-hang" target="_blank" className="font-semibold underline" style={{ color: "#0068FF" }}>/bang-xep-hang</a>
+              <a href="/bang-xep-hang" target="_blank" className="font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>/bang-xep-hang</a>
             </p>
           </div>
           <div className="px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -152,8 +152,8 @@ export default function VinhDanhPage() {
         {/* Stats compact inline */}
         <div className="flex items-center gap-5 flex-wrap">
           {[
-            { label: "Tổng học sinh",      value: students.length,            color: "#0068FF" },
-            { label: "Đủ điều kiện",       value: eligible,                   color: "#16a34a" },
+            { label: "Tổng học sinh",      value: students.length,            color: "var(--kin-nhan-link)" },
+            { label: "Đủ điều kiện",       value: eligible,                   color: "var(--kin-tt-chu-xong)" },
             { label: "Vinh danh (Top 3)",  value: Math.min(3, students.length), color: "#FE9900" },
             { label: "Badge đã trao",      value: badgesGranted,              color: "#7C3AED" },
           ].map((s, i) => (
@@ -166,7 +166,7 @@ export default function VinhDanhPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
+        <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)" }}>
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-[0.97] cursor-pointer"
@@ -213,7 +213,7 @@ export default function VinhDanhPage() {
             )}
 
             {!loading && ranked.length === 0 && (
-              <div className="text-center py-16 rounded-2xl" style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA,-6px -6px 12px #ffffff" }}>
+              <div className="text-center py-16 rounded-2xl" style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA,-6px -6px 12px var(--kin-nen-trang)" }}>
                 <p className="text-sm" style={{ color: "#9CA3AF" }}>Chưa có học sinh nào có hoạt động trong hệ thống.</p>
                 <p className="text-xs mt-1" style={{ color: "#C5D0EA" }}>GPA được tính từ tiến độ học + điểm thi thử.</p>
               </div>
@@ -224,7 +224,7 @@ export default function VinhDanhPage() {
                 const badges = badgesWithStudents.filter(b => b.check(s));
                 return (
                   <div key={s.id} className="rounded-2xl p-4"
-                    style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff" }}>
+                    style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px var(--kin-nen-trang)" }}>
                     <div className="flex items-center gap-3">
                       <div className="w-8 flex-shrink-0 flex justify-center">
                         <RankMedal rank={s.rank} />
@@ -249,7 +249,7 @@ export default function VinhDanhPage() {
                           <div className="text-xs text-gray-400 mt-0.5">GPA</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-sm font-bold" style={{ color: "#0068FF" }}>
+                          <div className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>
                             {s.lastExamScore > 0 ? s.lastExamScore : "—"}
                           </div>
                           <div className="text-xs text-gray-400">Điểm thi</div>
@@ -259,7 +259,7 @@ export default function VinhDanhPage() {
                           <div className="text-xs text-gray-400">Tiến độ</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-sm font-bold" style={{ color: "#16a34a" }}>
+                          <div className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>
                             {s.assignmentAvg != null ? s.assignmentAvg : "—"}
                           </div>
                           <div className="text-xs text-gray-400">Điểm bài tập</div>
@@ -296,7 +296,7 @@ export default function VinhDanhPage() {
                 const granted = b.students.length > 0 && b.students.every(s => grantedBadges.has(`${s.id}:${b.id}`));
                 return (
                   <div key={b.id} className="rounded-2xl p-5 space-y-4"
-                    style={{ background: "#F0F5FF", boxShadow: granted ? "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" : "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff", outline: granted ? `2px solid ${b.color}` : "none" }}>
+                    style={{ background: "#F0F5FF", boxShadow: granted ? "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px var(--kin-nen-trang)" : "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)", outline: granted ? `2px solid ${b.color}` : "none" }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -345,7 +345,7 @@ export default function VinhDanhPage() {
         {/* ─── TAB: IMPORT ─────────────────────────────────────────────────── */}
         {activeTab === "import" && (
           <div className="space-y-4">
-            <div className="rounded-2xl p-5" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
+            <div className="rounded-2xl p-5" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
               <h3 className="font-bold text-sm mb-1" style={{ color: "#1E2938" }}>Import điểm từ kỳ thi bên ngoài (Azota)</h3>
               <p className="text-xs mb-1" style={{ color: "#6B7280" }}>
                 Import kết quả thi từ Azota vào hệ thống. Điểm sẽ cập nhật bảng xếp hạng.
@@ -359,23 +359,23 @@ export default function VinhDanhPage() {
                   <input type="text" value={importedExam} onChange={e => setImportedExam(e.target.value)}
                     placeholder="VD: ĐGNL HSA Mock #5"
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
+                    style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", border: "none", color: "#1E2938" }} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: "#4B5563" }}>Ngày thi</label>
                   <input type="date" value={importedDate} onChange={e => setImportedDate(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", border: "none", color: "#1E2938" }} />
+                    style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", border: "none", color: "#1E2938" }} />
                 </div>
               </div>
               <DropZone onFiles={files => files[0] && setImportFile(files[0].name)} className="rounded-2xl">
                 <div
                   className="border-2 border-dashed rounded-2xl p-8 text-center mb-4 cursor-pointer transition-all hover:border-blue-400"
-                  style={{ borderColor: importFile ? "#0068FF" : "#C5D0EA" }}
+                  style={{ borderColor: importFile ? "var(--kin-nhan-nen)" : "#C5D0EA" }}
                   onClick={() => fileRef.current?.click()}>
                   {importFile ? (
                     <>
-                      <div className="text-sm font-semibold mb-1" style={{ color: "#0068FF" }}>{importFile}</div>
+                      <div className="text-sm font-semibold mb-1" style={{ color: "var(--kin-nhan-link)" }}>{importFile}</div>
                       <p className="text-xs" style={{ color: "#9CA3AF" }}>Click để chọn file khác</p>
                     </>
                   ) : (

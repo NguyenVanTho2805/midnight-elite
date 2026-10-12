@@ -29,7 +29,7 @@ export default function CoinBalance() {
         <span
           className="absolute -top-5 left-1/2 text-xs font-bold whitespace-nowrap pointer-events-none"
           style={{
-            color: "#16a34a",
+            color: "var(--kin-tt-chu-xong)",
             transform: "translateX(-50%)",
             animation: "coinFloat 2.5s ease-out forwards",
           }}>

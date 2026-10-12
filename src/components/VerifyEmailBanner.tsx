@@ -31,7 +31,7 @@ export default function VerifyEmailBanner() {
           <p className="text-sm font-semibold leading-none" style={{ color: "#92400E" }}>
             Email chưa được xác thực
           </p>
-          <p className="text-xs mt-0.5" style={{ color: "#B45309" }}>
+          <p className="text-xs mt-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
             Kiểm tra hộp thư <strong>{user.email}</strong> và bấm link xác thực
           </p>
         </div>

@@ -149,7 +149,7 @@ export default function AIChatWidget() {
             width:  PANEL_W,
             height: PANEL_H,
             background: "#F0F5FF",
-            boxShadow: "16px 16px 32px #C5D0EA,-8px -8px 24px #ffffff",
+            boxShadow: "16px 16px 32px #C5D0EA,-8px -8px 24px var(--kin-nen-trang)",
           }}>
 
           {/* Header */}
@@ -178,7 +178,7 @@ export default function AIChatWidget() {
               <button key={s} onClick={() => setSubject(s)}
                 className="px-2.5 py-0.5 rounded-full text-xs font-bold transition-all"
                 style={subject === s
-                  ? { background: "#0068FF", color: "white" }
+                  ? { background: "var(--kin-nhan-nen)", color: "white" }
                   : { background: "#E5ECF8", color: "#6B7280" }}>
                 {s}
               </button>
@@ -191,13 +191,13 @@ export default function AIChatWidget() {
               <div key={msg.id} className={`flex items-end gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "ai" && (
                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                    style={{ background: "#0068FF" }}>AI</div>
+                    style={{ background: "var(--kin-nhan-nen)" }}>AI</div>
                 )}
                 <div className={`max-w-[78%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line
                   ${msg.role === "user" ? "rounded-br-sm" : "rounded-bl-sm"}`}
                   style={msg.role === "user"
                     ? { background: "linear-gradient(145deg,#0055D4,#0042AA)", color: "white" }
-                    : { background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff", color: "#1E2938" }}>
+                    : { background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)", color: "#1E2938" }}>
                   {msg.text}
                 </div>
               </div>
@@ -205,12 +205,12 @@ export default function AIChatWidget() {
             {loading && (
               <div className="flex items-end gap-2 justify-start">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                  style={{ background: "#0068FF" }}>AI</div>
+                  style={{ background: "var(--kin-nhan-nen)" }}>AI</div>
                 <div className="px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1.5 items-center"
-                  style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
+                  style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)" }}>
                   {[0,1,2].map(i => (
                     <div key={i} className="w-2 h-2 rounded-full animate-bounce"
-                      style={{ background: "#0068FF", animationDelay: `${i * 0.15}s` }} />
+                      style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </div>
               </div>
@@ -227,7 +227,7 @@ export default function AIChatWidget() {
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder="Hỏi bất cứ điều gì..."
               className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff", color: "#1E2938" }}
+              style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)", color: "#1E2938" }}
             />
             <button onClick={send} disabled={!input.trim() || loading}
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
