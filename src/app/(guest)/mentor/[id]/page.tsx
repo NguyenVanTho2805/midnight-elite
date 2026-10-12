@@ -20,7 +20,7 @@ type ClassRow = {
 };
 type ApiShape = {
   tutor: { id: string; name: string; avatarBase64: string | null; bio: string | null;
-    subjects: string[]; tutorVerified: boolean; tutorVerifiedAt: string | null; zalo: string | null };
+    subjects: string[]; tutorVerified: boolean; tutorVerifiedAt: string | null; zalo: string | null; messenger: string | null };
   stats: { classCount: number; studentCount: number; sessionsTaught: number; rating: Rating };
   classes: ClassRow[];
 };
@@ -190,11 +190,19 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
         </Link>
       </div>
 
-      {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn). */}
-      {tutor.zalo && (
+      {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
+      {(tutor.zalo || tutor.messenger) && (
         <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          <p className="text-sm" style={{ color: "#4B5563" }}>Liên hệ qua Zalo: <b style={{ color: "#1E2938" }}>{tutor.zalo}</b></p>
-          <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className="px-4 py-2 rounded-lg text-sm font-semibold text-white min-h-[44px] inline-flex items-center" style={{ background: "#0068FF" }}>Nhắn Zalo</a>
+          <p className="text-sm" style={{ color: "#4B5563" }}>
+            {tutor.zalo ? <>Liên hệ qua Zalo: <b style={{ color: "#1E2938" }}>{tutor.zalo}</b></> : "Liên hệ gia sư"}
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className="px-4 py-2 rounded-lg text-sm font-semibold text-white min-h-[44px] inline-flex items-center" style={{ background: "#0068FF" }}>Nhắn Zalo</a>}
+            {tutor.messenger && (
+              <a href={`https://m.me/${tutor.messenger}?text=${encodeURIComponent(`Chào ${tutor.name}, mình xem hồ sơ trên KiN và muốn hỏi về lớp học.`)}`} rel="noopener noreferrer" target="_blank"
+                className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] inline-flex items-center" style={{ background: "#dbeafe", color: "#0068FF" }}>Nhắn Messenger</a>
+            )}
+          </div>
         </div>
       )}
 

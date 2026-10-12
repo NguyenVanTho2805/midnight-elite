@@ -8,6 +8,7 @@ import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, useNotify } from "@/com
 import { EMPTY_UNMET_TEXT, MAX_UNMET_ITEMS, UNMET_TEXT_MAX, fmtScore, renderReportText, type SubjectMonthMetrics, type UnmetItem } from "@/lib/monthlyReport";
 import { addDaysKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
+import { monthlyReportGroupMessage } from "@/lib/invoiceZalo";
 
 interface Row { studentId: string; name: string; courses: string[]; status: "none" | "draft" | "approved"; approvedAt: string | null; zaloOpenedAt: string | null; changedSinceApproval: boolean }
 interface List { yearMonth: string; items: Row[]; summary: { total: number; approved: number; draft: number; none: number } }
@@ -37,6 +38,9 @@ export default function BaoCaoClient() {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [zalo, setZalo] = useState<string | null>(null);
+  // PH-213/216: gửi vào chat riêng (có điểm, có điều chưa đạt) hoặc nhóm Zalo lớp (chỉ báo "đã gửi riêng", không điểm, không tên em).
+  const [zaloTarget, setZaloTarget] = useState<"private" | "group">("private");
+  const [privateText, setPrivateText] = useState("");
   const listSeq = useRef(0), detSeq = useRef(0);
   const currentYm = vnDateKeyOf(new Date()).slice(0, 7);
 
@@ -101,8 +105,14 @@ export default function BaoCaoClient() {
   }
   async function openZaloNow() {
     if (!detail || zalo === null) return;
-    const res = await openZalo({ text: zalo, phone: detail.student.parentPhone });
+    const res = await openZalo({ text: zalo, phone: zaloTarget === "private" ? detail.student.parentPhone : null });
     if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    if (zaloTarget === "group") {
+      // Tin nhóm không phải là gửi báo cáo cho phụ huynh nên KHÔNG ghi "đã mở Zalo" của báo cáo.
+      notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
+      setZalo(null);
+      return;
+    }
     const log = await callApi(`/api/tutor/monthly-reports/${detail.student.id}/zalo?yearMonth=${ym}`, { method: "POST" });
     if (!log.ok) notify.err(log.data.error ?? "Đã mở Zalo nhưng chưa ghi lại được.");
     else notify.info(res.method === "share" ? "Chọn Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào cuộc trò chuyện rồi bấm gửi.");
@@ -228,7 +238,7 @@ export default function BaoCaoClient() {
                           <KinButton variant="secondary" loading={busy === "save"} disabled={!dirty} onClick={() => void saveDraft()}>Lưu bản nháp</KinButton>
                           <KinButton loading={busy === "approve"} onClick={() => void approve()}>{approved ? "Duyệt lại" : "Duyệt — hiện cho phụ huynh"}</KinButton>
                           {approved && (
-                            <KinButton variant="secondary" disabled={stale} onClick={() => setZalo(renderReportText({ studentName: detail.student.name, parentName: detail.student.parentName, yearMonth: ym, subjects: detail.subjects, unmet: detail.report.approvedItems ?? items }))}>
+                            <KinButton variant="secondary" disabled={stale} onClick={() => { const t = renderReportText({ studentName: detail.student.name, parentName: detail.student.parentName, yearMonth: ym, subjects: detail.subjects, unmet: detail.report.approvedItems ?? items }); setPrivateText(t); setZaloTarget("private"); setZalo(t); }}>
                               Gửi phụ huynh qua Zalo
                             </KinButton>
                           )}
@@ -252,10 +262,21 @@ export default function BaoCaoClient() {
 
       {zalo !== null && detail && (
         <Modal title={`Báo cáo tháng — ${detail.student.name}`} onClose={() => setZalo(null)}>
+          <fieldset className="mb-2 text-sm">
+            <legend className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Gửi vào đâu?</legend>
+            {([["private", "Chat riêng với phụ huynh"], ["group", "Nhóm Zalo lớp (chỉ báo đã gửi riêng)"]] as const).map(([v, l]) => (
+              <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]">
+                <input type="radio" name="bc-target" checked={zaloTarget === v}
+                  onChange={() => { if (zaloTarget === "private") setPrivateText(zalo); setZaloTarget(v); setZalo(v === "group" ? monthlyReportGroupMessage({ yearMonth: ym }) : privateText || zalo); }} /> {l}
+              </label>
+            ))}
+          </fieldset>
           <label className="block text-sm" htmlFor="tin-bao-cao">Tin nhắn (sửa được trước khi gửi)</label>
           <textarea id="tin-bao-cao" rows={12} value={zalo} onChange={e => setZalo(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
           <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
-            {detail.student.parentPhone ? `Sẽ mở Zalo của ${detail.student.parentPhone}.` : "Chưa có số điện thoại phụ huynh — KiN sẽ chép tin và mở Zalo, bạn chọn đúng người nhận."} KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+            {zaloTarget === "group"
+              ? "Tin nhóm không có điểm, điều chưa đạt hay tên con, vì ai trong nhóm cũng đọc được. Báo cáo của từng em luôn gửi riêng."
+              : detail.student.parentPhone ? `Sẽ mở Zalo của ${detail.student.parentPhone}.` : "Chưa có số điện thoại phụ huynh — KiN sẽ chép tin và mở Zalo, bạn chọn đúng người nhận."} KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
           </p>
           <div className="flex gap-2 flex-wrap mt-4 justify-end">
             <KinButton variant="secondary" onClick={() => setZalo(null)}>Đóng</KinButton>

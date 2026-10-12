@@ -18,7 +18,7 @@ import { useEffect, useState, useCallback, use as usePromise } from "react";
 import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { KinButton } from "@/components/kin";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
-import { attendanceMessage } from "@/lib/invoiceZalo";
+import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 
@@ -67,6 +67,8 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
   const [saving, setSaving]       = useState(false);
   const [dirty, setDirty]         = useState<Set<string>>(new Set()); // userIds đã sửa
   const [courseName, setCourseName] = useState("");
+  const [zaloGroupUrl, setZaloGroupUrl] = useState<string | null>(null);
+  const [groupText, setGroupText] = useState<string | null>(null); // PH-216: tin chung vào nhóm Zalo lớp
   const [compose, setCompose]     = useState<{ row: RosterRow; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -90,6 +92,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
         if (r2.ok) {
           const d2 = await r2.json();
           setCourseName(d2.course?.name ?? "");
+          setZaloGroupUrl(d2.course?.zaloGroupUrl ?? null);
           setRoster((d2.roster as RosterRow[]).map(r => ({ ...r, useMakeup: r.makeupUsedId !== null })));
         }
       }
@@ -171,6 +174,20 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
     setCompose(null);
   }
 
+  const allMarked = roster.length > 0 && roster.every(r => r.status !== null) && dirty.size === 0;
+  function startGroupCompose() {
+    if (!session || !allMarked) return;
+    const present = roster.filter(r => r.status === "present" || r.status === "late").length;
+    setGroupText(attendanceGroupMessage({ subject: courseName || "học", dateLabel: `${session.date.slice(8, 10)}/${session.date.slice(5, 7)}`, present, total: roster.length }));
+  }
+  async function openGroup() {
+    if (groupText === null) return;
+    const res = await openZalo({ text: groupText, groupUrl: zaloGroupUrl });
+    if (!res.opened) { if (res.reason === "failed") toast.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    toast.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
+    setGroupText(null);
+  }
+
   // Thống kê nhanh
   const counts = roster.reduce((acc, r) => {
     if (r.status) acc[r.status] = (acc[r.status] ?? 0) + 1;
@@ -235,6 +252,17 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
             ))}
           </div>
 
+          {/* PH-216: tin điểm danh CHUNG vào nhóm Zalo lớp — không nêu em nào vắng */}
+          <div className="flex items-center justify-between gap-3 flex-wrap rounded-lg px-3 py-2" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <p className="text-caption" style={{ color: "var(--kin-chu-phu)" }}>
+              {allMarked ? "Tin chung cho nhóm Zalo lớp (không nêu tên em nào)." : "Điểm danh và lưu đủ các em rồi mới nhắn nhóm."}
+              {" "}{zaloGroupUrl ? "Đã gắn nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo (Cài đặt → Kết nối)."}
+            </p>
+            <button type="button" onClick={startGroupCompose} disabled={!allMarked}
+              className="px-3 py-2 rounded-lg text-body-sm font-semibold min-h-[44px] disabled:opacity-50"
+              style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>Nhắn nhóm Zalo lớp</button>
+          </div>
+
           {/* Roster rows */}
           <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {roster.map((r, i) => (
@@ -256,6 +284,21 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
             </button>
           </div>
         </>
+      )}
+
+      {groupText !== null && (
+        <Modal title="Nhắn nhóm Zalo lớp" onClose={() => setGroupText(null)}>
+          <label className="block text-sm" htmlFor="tin-nhom-dd">Tin nhắn (sửa được trước khi gửi)</label>
+          <textarea id="tin-nhom-dd" rows={3} value={groupText} onChange={e => setGroupText(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+            Tin chung: chỉ có số bạn có mặt, không nêu em nào vắng hay muộn. {zaloGroupUrl ? "Sẽ mở nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo — KiN sẽ chép tin và mở Zalo, bạn chọn đúng nhóm."} KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+          </p>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" onClick={async () => { if (await copyText(groupText)) toast.ok("Đã sao chép tin."); else toast.err("Không sao chép được."); }}>Sao chép</KinButton>
+            <KinButton onClick={() => void openGroup()} disabled={!groupText.trim()}>Mở Zalo</KinButton>
+          </div>
+        </Modal>
       )}
 
       {compose && (

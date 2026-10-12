@@ -40,6 +40,8 @@ export interface ScheduleOccurrence {
   started: boolean;
   joinUrl: string | null;
   note: string | null;
+  /** PH-216: link nhóm Zalo của lớp (nếu gia sư đã gắn ở Cài đặt → Kết nối). */
+  zaloGroupUrl: string | null;
   plan: { h24DueAt: string; h24Shifted: boolean; h1DueAt: string | null; h1SkipReason: string | null; absenceDeadlineAt: string };
   students: ScheduleStudent[];
   pendingAbsences: number;
@@ -51,13 +53,14 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
     prisma.user.findUnique({ where: { id: tutorId }, select: { name: true, preferences: true } }),
     prisma.course.findMany({
       where: { ownerId: tutorId },
-      select: { id: true, name: true, classSchedules: { where: { active: true }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, note: true, joinUrl: true } } },
+      select: { id: true, name: true, zaloGroupUrl: true, classSchedules: { where: { active: true }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, note: true, joinUrl: true } } },
     }),
   ]);
   const channels = reminderChannels(readPreferences(me?.preferences));
   const rules = courses.flatMap(c => c.classSchedules);
   const occs = expandOccurrences(rules, fromKey, toKey);
   const courseName = new Map(courses.map(c => [c.id, c.name]));
+  const groupUrlOf = new Map(courses.map(c => [c.id, c.zaloGroupUrl]));
   const ruleById = new Map(rules.map(r => [r.id, r]));
   const courseIds = courses.map(c => c.id);
 
@@ -116,7 +119,7 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
     return {
       key: `${o.scheduleId}:${o.dateKey}`, scheduleId: o.scheduleId, courseId: o.courseId, courseName: cName, dateKey: o.dateKey,
       startAt: o.startAt.toISOString(), endAt: o.endAt.toISOString(), started: o.startAt.getTime() <= now.getTime(),
-      joinUrl: rule.joinUrl, note: rule.note,
+      joinUrl: rule.joinUrl, note: rule.note, zaloGroupUrl: groupUrlOf.get(o.courseId) ?? null,
       plan: {
         h24DueAt: plan.h24.dueAt.toISOString(), h24Shifted: plan.h24.shifted,
         h1DueAt: plan.h1 ? plan.h1.dueAt.toISOString() : null, h1SkipReason: plan.h1SkipReason,

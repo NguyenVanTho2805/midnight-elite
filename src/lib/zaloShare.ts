@@ -38,7 +38,8 @@ async function copyText(text: string): Promise<boolean> {
 
 const isTouchPhone = () => typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches && !!navigator.share;
 
-export async function openZalo(o: { text: string; phone?: string | null }): Promise<ZaloOpenResult> {
+/** `groupUrl` (https://zalo.me/g/…) mở thẳng nhóm Zalo của lớp; sai dạng thì bỏ qua và dùng cách mặc định. */
+export async function openZalo(o: { text: string; phone?: string | null; groupUrl?: string | null }): Promise<ZaloOpenResult> {
   if (isTouchPhone()) {
     try { await navigator.share({ text: o.text }); return { opened: true, method: "share", copied: false }; }
     catch (e) {
@@ -47,7 +48,8 @@ export async function openZalo(o: { text: string; phone?: string | null }): Prom
     }
   }
   const copied = await copyText(o.text);
-  const w = window.open(zaloChatUrl(o.phone), "_blank", "noopener");
+  const target = o.groupUrl && /^https:\/\/zalo\.me\/g\/[A-Za-z0-9_-]{4,40}$/.test(o.groupUrl) ? o.groupUrl : zaloChatUrl(o.phone);
+  const w = window.open(target, "_blank", "noopener");
   if (!w && !copied) return { opened: false, reason: "failed" };
   return { opened: true, method: "copy", copied };
 }

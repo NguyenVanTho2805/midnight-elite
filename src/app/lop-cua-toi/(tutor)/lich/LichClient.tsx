@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KinButton } from "@/components/kin";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
-import { addDaysKey, dayOfWeekOfKey, describeLead, hmOf, vnDateKeyOf, vnMinutesOfDay, weekRangeOf } from "@/lib/classSessions";
+import { addDaysKey, buildGroupReminderMessage, dayOfWeekOfKey, describeLead, hmOf, vnDateKeyOf, vnMinutesOfDay, weekRangeOf } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
 import type { ReminderItem, ScheduleOccurrence, ScheduleStudent } from "@/lib/reminderServer";
 
@@ -42,6 +42,7 @@ export default function LichClient() {
   const [busy, setBusy] = useState<string | null>(null);
   const [resolved, setResolved] = useState<Record<string, Resolved>>({});
   const [compose, setCompose] = useState<{ occ: ScheduleOccurrence; student: ScheduleStudent; item: ReminderItem; text: string } | null>(null);
+  const [groupCompose, setGroupCompose] = useState<{ occ: ScheduleOccurrence; text: string } | null>(null); // PH-216: nhắc cả lớp vào nhóm Zalo
   const seq = useRef(0);
 
   const load = useCallback(async (f: string, quiet = false) => {
@@ -100,6 +101,14 @@ export default function LichClient() {
     void load(from, true);
   }
 
+  async function openGroupReminder() {
+    if (!groupCompose) return;
+    const res = await openZalo({ text: groupCompose.text, groupUrl: groupCompose.occ.zaloGroupUrl });
+    if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
+    setGroupCompose(null);
+  }
+
   const occByDay = (k: string) => (data?.occurrences ?? []).filter(o => o.dateKey === k);
 
   return (
@@ -152,7 +161,8 @@ export default function LichClient() {
                     <li key={o.key}>
                       <OccurrenceCard occ={o} nowMs={Date.parse(data?.now ?? "") || 0} expanded={open === o.key} onToggle={() => setOpen(open === o.key ? null : o.key)}
                         busy={busy} resolved={resolved} onResolve={resolve} onSendResolved={sendResolved}
-                        onCompose={(student, item) => setCompose({ occ: o, student, item, text: item.message })} />
+                        onCompose={(student, item) => setCompose({ occ: o, student, item, text: item.message })}
+                        onGroup={() => setGroupCompose({ occ: o, text: buildGroupReminderMessage({ subject: o.courseName, startAt: new Date(o.startAt), joinUrl: o.joinUrl, now: new Date(data?.now ?? Date.now()) }) })} />
                     </li>
                   ))}
                 </ul>
@@ -160,6 +170,21 @@ export default function LichClient() {
             );
           })}
         </div>
+      )}
+
+      {groupCompose && (
+        <Modal title={`Nhắc cả lớp — ${groupCompose.occ.courseName}`} onClose={() => setGroupCompose(null)}>
+          <label className="block text-sm" htmlFor="tin-nhac-nhom">Tin nhắn (sửa được trước khi gửi)</label>
+          <textarea id="tin-nhac-nhom" rows={5} value={groupCompose.text} onChange={e => setGroupCompose(c => (c ? { ...c, text: e.target.value } : c))}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+            Tin chung cho cả nhóm: không tên em, không điểm. {groupCompose.occ.zaloGroupUrl ? "Sẽ mở nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo — KiN sẽ chép tin và mở Zalo, bạn chọn đúng nhóm."} KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+          </p>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" onClick={async () => { if (await copyText(groupCompose.text)) notify.ok("Đã sao chép tin."); else notify.err("Không sao chép được."); }}>Sao chép</KinButton>
+            <KinButton onClick={() => void openGroupReminder()} disabled={!groupCompose.text.trim()}>Mở Zalo</KinButton>
+          </div>
+        </Modal>
       )}
 
       {compose && (
@@ -187,6 +212,7 @@ function OccurrenceCard(p: {
   onResolve: (absenceId: string, action: "free_makeup" | "charge") => void;
   onSendResolved: (absenceId: string) => void;
   onCompose: (s: ScheduleStudent, item: ReminderItem) => void;
+  onGroup: () => void;
 }) {
   const { occ } = p;
   const done = p.nowMs > 0 && new Date(occ.endAt).getTime() < p.nowMs; // giờ máy chủ lúc tải, không đọc đồng hồ khi render
@@ -260,6 +286,14 @@ function OccurrenceCard(p: {
               {occ.plan.h1DueAt ? `Nhắc 1 giờ: ${vnDayHm(occ.plan.h1DueAt)}` : `Nhắc 1 giờ: bỏ (${occ.plan.h1SkipReason === "sang-som" ? "buổi trước 08:00" : "rơi vào giờ yên lặng"})`} ·{" "}
               Hạn báo nghỉ giữ buổi bù: {vnDayHm(occ.plan.absenceDeadlineAt)}
             </p>
+            {!occ.started && (
+              <div className="mb-2 flex items-center gap-2 flex-wrap">
+                <KinButton variant="secondary" onClick={p.onGroup}>Nhắc cả lớp trong nhóm Zalo</KinButton>
+                <span className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>
+                  {occ.zaloGroupUrl ? "Đã gắn nhóm Zalo của lớp." : <>Chưa gắn nhóm Zalo — thêm ở <Link href="/lop-cua-toi/cai-dat#ket-noi" className="underline" style={{ color: "var(--kin-nhan-link)" }}>Cài đặt → Kết nối</Link>.</>} Tin chung, không tên em.
+                </span>
+              </div>
+            )}
             {occ.students.every(s => s.reminders.length === 0) ? (
               <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>{occ.started ? "Buổi đã bắt đầu — không nhắc nữa." : "Chưa có tin nào tới hạn gửi."}</p>
             ) : (

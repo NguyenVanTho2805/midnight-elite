@@ -65,7 +65,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }),
     asRecords().findMany({ where: { sessionId: id } }),
   ]);
-  const course = await prisma.course.findUnique({ where: { id: session.courseId }, select: { name: true } });
+  const course = await prisma.course.findUnique({ where: { id: session.courseId }, select: { name: true, zaloGroupUrl: true } });
   const byUserId = new Map(records.map(r => [r.userId, r]));
   // Buổi bù: loại còn dùng được (để chọn) và loại đã dùng cho CHÍNH buổi này (để hiện đang chọn).
   const now = new Date();
@@ -95,7 +95,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     zaloOpenedAt: byUserId.get(e.user.id)?.zaloOpenedAt?.toISOString() ?? null,
   }));
 
-  return NextResponse.json({ session, roster, course: { name: course?.name ?? "" } });
+  return NextResponse.json({ session, roster, course: { name: course?.name ?? "", zaloGroupUrl: course?.zaloGroupUrl ?? null } });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

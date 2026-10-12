@@ -1,4 +1,4 @@
-import { guessPronoun, noPrepaySafetyLine, composeRecruitPost, ensureSafetyLine, facebookShareUrl, normalizeChannel, channelGroup, slugifyVi, facebookChannel, profileLink, clipText, profileOg, funnelRows, isReportReason, REPORT_REASONS, OG_TITLE_MAX, OG_DESC_MAX, CHANNEL_MAX } from "@/lib/funnel";
+import { normalizeZaloGroupUrl, isZaloGroupUrl, guessPronoun, noPrepaySafetyLine, composeRecruitPost, ensureSafetyLine, facebookShareUrl, normalizeChannel, channelGroup, slugifyVi, facebookChannel, profileLink, clipText, profileOg, funnelRows, isReportReason, REPORT_REASONS, OG_TITLE_MAX, OG_DESC_MAX, CHANNEL_MAX } from "@/lib/funnel";
 import { readPreferences, applyPreferencesPatch, normalizeMessengerHandle, normalizeGroupNames } from "@/lib/userPreferences";
 import { check, section, done } from "./h";
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -102,4 +102,26 @@ r = applyPreferencesPatch({ connections: { groups: ["A"] } }, { connections: { g
 check("danh sách rỗng → bỏ khoá", r.ok && r.value.connections === undefined);
 check("danh sách hỏng bị từ chối cả bản vá", !applyPreferencesPatch({}, { connections: { groups: "A" } }).ok && !applyPreferencesPatch({}, { connections: { groups: ["x".repeat(61)] } }).ok);
 check("đọc khoan dung: groups hỏng bị bỏ", readPreferences({ connections: { groups: "bad" } }).connections === undefined && eq(readPreferences({ connections: { groups: ["A", "a", ""] } }).connections, { groups: ["A"] }));
+import { attendanceGroupMessage, monthlyReportGroupMessage } from "@/lib/invoiceZalo";
+import { buildGroupReminderMessage } from "@/lib/classSessions";
+section("Link nhóm Zalo của lớp (PH-215)");
+const okU = (r: ReturnType<typeof normalizeZaloGroupUrl>) => (r.ok ? r.value : "LOI");
+check("link hợp lệ giữ nguyên; bỏ / cuối, tham số, www", okU(normalizeZaloGroupUrl("https://zalo.me/g/abcxyz")) === "https://zalo.me/g/abcxyz" && okU(normalizeZaloGroupUrl(" https://zalo.me/g/abcxyz/?ref=1#x ")) === "https://zalo.me/g/abcxyz" && okU(normalizeZaloGroupUrl("https://www.zalo.me/g/Ab_c-9")) === "https://zalo.me/g/Ab_c-9");
+check("rỗng / null / undefined → xoá (null)", okU(normalizeZaloGroupUrl("")) === null && okU(normalizeZaloGroupUrl("   ")) === null && okU(normalizeZaloGroupUrl(null)) === null && okU(normalizeZaloGroupUrl(undefined)) === null);
+check("sai dạng bị từ chối: http, host lạ, không có /g/, mã quá ngắn/dài, chèn ký tự", ["http://zalo.me/g/abcxyz", "https://zalo.me.evil.com/g/abcxyz", "https://evil.com/zalo.me/g/abcxyz", "https://zalo.me/abcxyz", "https://zalo.me/g/ab", "https://zalo.me/g/" + "a".repeat(41), "https://zalo.me/g/abc xyz", "javascript:alert(1)", "https://zalo.me/g/abcxyz@evil.com", 123].every(x => !normalizeZaloGroupUrl(x).ok));
+check("isZaloGroupUrl chỉ nhận dạng đã chuẩn hoá", isZaloGroupUrl("https://zalo.me/g/abcxyz") && !isZaloGroupUrl("https://zalo.me/g/abcxyz/") && !isZaloGroupUrl("https://zalo.me/g/ab") && !isZaloGroupUrl(null) && !isZaloGroupUrl(5));
+
+section("Tin điểm danh vào nhóm: không nêu em nào (PH-216)");
+check("cả lớp có mặt → 'đủ 5/5 bạn'", attendanceGroupMessage({ subject: "Toán 9", dateLabel: "17/9", present: 5, total: 5 }) === "Buổi Toán 9 17/9: đủ 5/5 bạn.");
+check("thiếu → 'có mặt 4/5 bạn' (không nói ai vắng, không từ 'vắng')", attendanceGroupMessage({ subject: "Toán 9", dateLabel: "17/9", present: 4, total: 5 }) === "Buổi Toán 9 17/9: có mặt 4/5 bạn." && !/vắng|muộn|có phép/i.test(attendanceGroupMessage({ subject: "Toán 9", dateLabel: "17/9", present: 4, total: 5 })));
+check("số lệch được kẹp (present > total → đủ; âm → 0)", attendanceGroupMessage({ subject: "A", dateLabel: "1/1", present: 9, total: 5 }) === "Buổi A 1/1: đủ 5/5 bạn." && attendanceGroupMessage({ subject: "A", dateLabel: "1/1", present: -2, total: 3 }) === "Buổi A 1/1: có mặt 0/3 bạn.");
+check("tin báo cáo tháng vào nhóm: chỉ nói 'đã gửi riêng', không điểm/tên", monthlyReportGroupMessage({ yearMonth: "2026-09" }) === "Báo cáo tháng 9 đã gửi riêng cho từng anh/chị. Anh/chị xem tin nhắn riêng giúp em nhé." && !/\d+\/10|điểm/i.test(monthlyReportGroupMessage({ yearMonth: "2026-09" })));
+
+section("Nhắc lịch chung vào nhóm");
+const start = new Date("2026-10-15T12:00:00Z"); // 19:00 giờ VN, thứ Năm 15/10
+const now = new Date("2026-10-14T05:00:00Z");   // 12:00 ngày 14/10
+const gm = buildGroupReminderMessage({ subject: "Toán 9", startAt: start, joinUrl: "https://meet.example/abc", now });
+check("đúng mẫu: cả lớp, giờ, 'tối mai', thứ + ngày, link vào lớp, nhắc báo nghỉ riêng", gm === "KiN nhắc lịch: cả lớp có buổi Toán 9 lúc 19:00 tối mai, thứ Năm 15/10.\nLink vào lớp: https://meet.example/abc\nCần nghỉ thì báo riêng với thầy/cô trước giờ học nhé.", gm);
+check("không link → bỏ dòng link; không có tên em", !buildGroupReminderMessage({ subject: "Toán 9", startAt: start, now }).includes("Link vào lớp") && !/con |của /i.test(gm));
+check("cùng ngày → 'hôm nay'", buildGroupReminderMessage({ subject: "Lý", startAt: start, now: new Date("2026-10-15T01:00:00Z") }).includes("19:00 tối hôm nay"));
 done();

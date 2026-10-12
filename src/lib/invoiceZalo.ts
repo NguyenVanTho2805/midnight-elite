@@ -50,3 +50,16 @@ export function attendanceMessage(o: { subject: string; dateLabel: string; stude
   const head = `Buổi ${o.subject} ${o.dateLabel} của con ${o.studentName}: ${ATTENDANCE_MSG_LABEL[o.status]}.`;
   return o.status === "absent" && o.url ? `${head} Nếu con vắng, anh/chị xem lại bản ghi buổi học ở đây: ${o.url}` : head;
 }
+
+// ─── Tin CHUNG vào nhóm Zalo lớp (PH-216): không tên em, không điểm, không số tiền, không link riêng ─────────────────
+/** "đủ 5/5 bạn" khi cả lớp có mặt; nếu không thì "có mặt 4/5 bạn" — không bao giờ nêu em nào vắng. Có mặt = có mặt hoặc muộn. */
+export function attendanceGroupMessage(o: { subject: string; dateLabel: string; present: number; total: number }): string {
+  const total = Math.max(0, Math.round(o.total)), present = Math.min(total, Math.max(0, Math.round(o.present)));
+  return present === total
+    ? `Buổi ${o.subject} ${o.dateLabel}: đủ ${total}/${total} bạn.`
+    : `Buổi ${o.subject} ${o.dateLabel}: có mặt ${present}/${total} bạn.`;
+}
+/** Báo cáo tháng luôn gửi riêng; vào nhóm chỉ nhắn là đã gửi riêng. */
+export function monthlyReportGroupMessage(o: { yearMonth: string }): string {
+  return `Báo cáo tháng ${monthNumber(o.yearMonth)} đã gửi riêng cho từng anh/chị. Anh/chị xem tin nhắn riêng giúp em nhé.`;
+}

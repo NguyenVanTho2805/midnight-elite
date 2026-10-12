@@ -97,6 +97,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       tutorVerifiedAt: t.tutorVerifiedAt,
       // PH-215: số Zalo chỉ lộ khi gia sư BẬT "Hiện số Zalo trên hồ sơ" (tắt sẵn vì zalo.me/<số> để lộ số).
       zalo: readPreferences(t.preferences).connections?.showZalo ? normalizeZaloPhone(t.phone) : null,
+      // PH-215: trang Messenger do gia sư chủ động nhập → hiện nút "Nhắn Messenger" (tin điền sẵn qua m.me/<tên>?text=).
+      messenger: readPreferences(t.preferences).connections?.messenger ?? null,
     },
     stats: {
       classCount:   classes.length,

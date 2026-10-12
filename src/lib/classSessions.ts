@@ -259,6 +259,18 @@ export function buildReminderMessage(i: ReminderMessageInput): string {
   return `${head}${link}\n${tail}`;
 }
 
+/** Tin nhắc lịch CHUNG cho nhóm Zalo lớp (PH-216): không tên em, không hạn báo nghỉ riêng từng em. */
+export function buildGroupReminderMessage(i: { subject: string; startAt: Date; joinUrl?: string | null; now: Date }): string {
+  const startKey = vnDateKeyOf(i.startAt);
+  const startMin = vnMinutesOfDay(i.startAt);
+  const gap = Math.round((Date.parse(`${startKey}T00:00:00Z`) - Date.parse(`${vnDateKeyOf(i.now)}T00:00:00Z`)) / DAY_MS);
+  const dayWord = gap === 1 ? " mai" : gap === 0 ? " hôm nay" : "";
+  const wd = WEEKDAY_VI[dayOfWeekOfKey(startKey)];
+  const weekday = wd.charAt(0).toLowerCase() + wd.slice(1);
+  const link = i.joinUrl ? `\nLink vào lớp: ${i.joinUrl}` : "";
+  return `KiN nhắc lịch: cả lớp có buổi ${i.subject} lúc ${hmOf(startMin)} ${partOfDay(startMin)}${dayWord}, ${weekday} ${ddmm(startKey)}.${link}\nCần nghỉ thì báo riêng với thầy/cô trước giờ học nhé.`;
+}
+
 /** "Thanh" → "Thầy/Cô Thanh"; tên đã có "Thầy"/"Cô" ở đầu thì giữ nguyên. Trống → null. */
 export function tutorTitle(name: string | null | undefined): string | null {
   const n = name?.trim();

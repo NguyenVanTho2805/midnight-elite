@@ -145,3 +145,19 @@ export function ensureSafetyLine(text: string, pronoun: Pronoun): string {
 }
 
 export const facebookShareUrl = (link: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;
+
+// ─── PH-215/216: nhóm Zalo của lớp ───────────────────────────────────────────────────────────────────────────
+/** Link mời vào nhóm Zalo: https://zalo.me/g/<mã>. Bỏ tham số/đường dẫn thừa; rỗng → null (xoá); sai dạng → từ chối. */
+export function normalizeZaloGroupUrl(raw: unknown): { ok: true; value: string | null } | { ok: false } {
+  if (raw === null || raw === undefined) return { ok: true, value: null };
+  if (typeof raw !== "string") return { ok: false };
+  const s = raw.trim();
+  if (!s) return { ok: true, value: null };
+  const m = s.match(/^https:\/\/(?:www\.)?zalo\.me\/g\/([A-Za-z0-9_-]{4,40})\/?(?:[?#].*)?$/);
+  return m ? { ok: true, value: `https://zalo.me/g/${m[1]}` } : { ok: false };
+}
+export function isZaloGroupUrl(u: unknown): u is string {
+  if (typeof u !== "string") return false;
+  const r = normalizeZaloGroupUrl(u);
+  return r.ok && r.value === u;
+}
