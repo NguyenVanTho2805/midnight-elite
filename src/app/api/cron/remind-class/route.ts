@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { sendClassReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
-import { vnDateKeyOf } from "@/lib/classSessions";
+import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { effectiveSlot } from "@/lib/sessionChange";
 
 const BATCH_SIZE  = 20;
 const BATCH_DELAY = 1200;
@@ -29,23 +30,41 @@ export async function GET(req: NextRequest) {
   const dow      = vnDayOfWeek(tomorrow);
   const dayLabel = DAY_LABELS_VI[dow];
 
-  // Tìm khung giờ học cố định rơi vào thứ của ngày mai
-  const schedules = await prisma.classSchedule.findMany({
-    where: { active: true, dayOfWeek: dow },
-    select: {
-      id: true, startTime: true, endTime: true, note: true,
-      course: { select: { id: true, name: true } },
-    },
-  });
+  // Tìm khung giờ học cố định rơi vào thứ của ngày mai. Gia sư có thể đã HUỶ hoặc DỜI buổi đó, hoặc dời một buổi khác TỚI ngày mai:
+  // buổi huỷ / dời đi thì không nhắc; buổi dời tới thì nhắc theo giờ mới. Báo nghỉ khoá theo ngày GỐC (định danh buổi).
+  const tomorrowKey = vnDateKeyOf(tomorrow);
+  const sel = {
+    id: true, dayOfWeek: true, startTime: true, endTime: true, note: true,
+    course: { select: { id: true, name: true } },
+  } as const;
+  const changes = await prisma.classSessionChange.findMany({ where: { OR: [{ dateKey: tomorrowKey }, { newDateKey: tomorrowKey }] } });
+  const movedInIds = [...new Set(changes.filter(c => c.kind === "move" && c.newDateKey === tomorrowKey).map(c => c.scheduleId))];
+  const rules = await prisma.classSchedule.findMany({ where: { active: true, OR: [{ dayOfWeek: dow }, { id: { in: movedInIds } }] }, select: sel });
+  const changeOf = new Map(changes.map(c => [`${c.scheduleId}|${c.dateKey}`, c]));
+  const todays: { sched: (typeof rules)[number]; identityKey: string; startTime: string; endTime: string }[] = [];
+  const pushIfTomorrow = (sched: (typeof rules)[number], identityKey: string) => {
+    const ch = changeOf.get(`${sched.id}|${identityKey}`) ?? null;
+    const slot = effectiveSlot(sched, identityKey, ch ? { ...ch, kind: ch.kind === "cancel" ? "cancel" : "move" } : null);
+    if (!slot || slot.status === "cancelled" || slot.dateKey !== tomorrowKey) return;
+    todays.push({ sched, identityKey, startTime: hmOf(vnMinutesOfDay(slot.startAt)), endTime: hmOf(vnMinutesOfDay(slot.endAt)) });
+  };
+  for (const sched of rules) {
+    if (sched.dayOfWeek === dow) pushIfTomorrow(sched, tomorrowKey);
+  }
+  for (const c of changes) {
+    if (c.kind !== "move" || c.newDateKey !== tomorrowKey || c.dateKey === tomorrowKey) continue; // dời trong ngày đã xử lý ở trên
+    const sched = rules.find(r => r.id === c.scheduleId);
+    if (sched) pushIfTomorrow(sched, c.dateKey);
+  }
 
-  if (schedules.length === 0) {
+  if (todays.length === 0) {
     return NextResponse.json({ sent: 0, message: `Không có buổi học nào vào ${dayLabel}` });
   }
 
   let totalSent = 0;
   const log: string[] = [];
 
-  for (const sched of schedules) {
+  for (const { sched, identityKey, startTime, endTime } of todays) {
     // Chỉ em đang học (trước đây lấy cả em đang chờ phụ huynh xác nhận / tạm dừng) và bỏ em đã báo
     // nghỉ buổi này — đặc tả TT-201: "đã báo nghỉ thì không gửi".
     const [enrollments, absent] = await Promise.all([
@@ -54,7 +73,7 @@ export async function GET(req: NextRequest) {
         select: { user: { select: { id: true, name: true, email: true } } },
       }),
       prisma.classAbsence.findMany({
-        where: { scheduleId: sched.id, dateKey: vnDateKeyOf(tomorrow) },
+        where: { scheduleId: sched.id, dateKey: identityKey },
         select: { studentId: true },
       }),
     ]);
@@ -65,7 +84,7 @@ export async function GET(req: NextRequest) {
       const batch   = students.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(s =>
-          sendClassReminderEmail(s.email, s.name, sched.course.name, dayLabel, sched.startTime, sched.endTime, sched.note, sched.course.id)
+          sendClassReminderEmail(s.email, s.name, sched.course.name, dayLabel, startTime, endTime, sched.note, sched.course.id)
         )
       );
       totalSent += results.filter(r => r.status === "fulfilled").length;
@@ -75,7 +94,7 @@ export async function GET(req: NextRequest) {
     await notifyMany(students.map(s => s.id), {
       type:    "class_reminder",
       title:   "Nhắc nhở buổi học",
-      message: `Khoá "${sched.course.name}" có buổi học vào ${dayLabel} lúc ${sched.startTime}`,
+      message: `Khoá "${sched.course.name}" có buổi học vào ${dayLabel} lúc ${startTime}`,
       link:    `/student/hoc-tap?course=${sched.course.id}`,
     });
 

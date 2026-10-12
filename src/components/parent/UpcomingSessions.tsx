@@ -1,4 +1,5 @@
 // TT-202 — "Sổ của con": buổi học 14 ngày tới + nút Báo nghỉ + số buổi bù đang giữ.
+// Gia sư có thể HUỶ hoặc DỜI một buổi: buổi huỷ ghi rõ "đã huỷ" (không còn nút Báo nghỉ), buổi dời hiện ở giờ mới kèm "dời từ …".
 // Phụ huynh không cần tài khoản (link riêng). Báo trước ≥ 2 giờ thì con được giữ buổi bù ngay;
 // dưới 2 giờ thì gia sư xem và quyết định. Trạng thái luôn kèm chữ, không chỉ màu.
 "use client";
@@ -17,6 +18,7 @@ const STATUS_TEXT: Record<string, { text: string; tone: string }> = {
   pending:      { text: "Đã báo nghỉ — chờ gia sư xác nhận", tone: "var(--kin-tt-chu-cho)" },
   excused_free: { text: "Đã báo nghỉ — không tính phí, con được giữ 1 buổi bù", tone: "var(--kin-tt-chu-xong)" },
   charged:      { text: "Đã báo nghỉ — buổi này tính phí theo quy định của gia sư", tone: "var(--kin-chu-phu)" },
+  voided:       { text: "Buổi này đã huỷ nên không cần báo nghỉ", tone: "var(--kin-chu-phu)" },
 };
 
 export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { token: string; upcoming: UpcomingSession[]; makeup: MakeupSummary; nowIso: string }) {
@@ -28,14 +30,15 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const nowMs = Date.parse(nowIso);
 
-  const keyOf = (s: UpcomingSession) => `${s.scheduleId}:${s.dateKey}`;
+  // Định danh buổi = ngày GỐC theo lịch tuần (không đổi khi gia sư dời buổi); Báo nghỉ gửi đúng ngày này.
+  const keyOf = (s: UpcomingSession) => `${s.scheduleId}:${s.originalDateKey}`;
 
   async function submit(s: UpcomingSession) {
     setBusy(true); setMsg(null);
     try {
       const r = await fetch(`/api/parent-portal/${token}/absences`, {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scheduleId: s.scheduleId, dateKey: s.dateKey, reason: reason.trim() || undefined }),
+        body: JSON.stringify({ scheduleId: s.scheduleId, dateKey: s.originalDateKey, reason: reason.trim() || undefined }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setMsg({ text: d.error ?? "Chưa báo được, anh/chị thử lại sau.", ok: false }); return; }
@@ -80,16 +83,27 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
             const k = keyOf(s);
             const st = s.absence ? STATUS_TEXT[s.absence.status] : null;
             const free = Date.parse(s.deadlineAt) > nowMs;
+            const cancelled = s.status === "cancelled";
             return (
               <li key={k} className="rounded-xl p-4" style={card}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium truncate" style={{ color: "var(--kin-chu-chinh)" }}>{s.courseName}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>
+                    <p className="font-medium truncate" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{s.courseName}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)", textDecoration: cancelled ? "line-through" : undefined }}>
                       {WEEKDAY[dayOfWeekOfKey(s.dateKey)]} {ddmm(s.dateKey)} · {vnHm(s.startAt)}–{vnHm(s.endAt)}
                     </p>
+                    {cancelled && (
+                      <p className="text-xs font-semibold mt-1" style={{ color: "var(--kin-tt-chu-cho)" }}>
+                        Gia sư đã huỷ buổi này{s.changeReason ? ` — lý do: ${s.changeReason}` : ""}. Không cần báo nghỉ.
+                      </p>
+                    )}
+                    {s.status === "moved" && s.movedFrom && (
+                      <p className="text-xs font-semibold mt-1" style={{ color: "var(--kin-tt-chu-cho)" }}>
+                        Gia sư đã dời buổi này (lịch cũ: {WEEKDAY[dayOfWeekOfKey(s.movedFrom.dateKey)]} {ddmm(s.movedFrom.dateKey)} lúc {vnHm(s.movedFrom.startAt)}){s.changeReason ? ` — lý do: ${s.changeReason}` : ""}.
+                      </p>
+                    )}
                   </div>
-                  {!s.absence && confirming !== k && (
+                  {!cancelled && !s.absence && confirming !== k && (
                     <button type="button" onClick={() => { setConfirming(k); setMsg(null); }}
                       className="px-3 py-2 rounded-lg text-sm min-h-[44px] flex-shrink-0"
                       style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>
@@ -98,7 +112,7 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
                   )}
                 </div>
                 {st && <p className="text-xs font-semibold mt-2" style={{ color: st.tone }}>{st.text}</p>}
-                {confirming === k && !s.absence && (
+                {confirming === k && !s.absence && !cancelled && (
                   <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--kin-vien-nhat)" }}>
                     <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>
                       {free

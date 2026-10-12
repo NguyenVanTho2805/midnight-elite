@@ -7,7 +7,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
-import { dayOfWeekOfKey, dueReminderKinds, instantOf, isValidDateKey, parseHm } from "@/lib/classSessions";
+import { dayOfWeekOfKey, dueReminderKinds, isValidDateKey, parseHm } from "@/lib/classSessions";
+import { effectiveSlot } from "@/lib/sessionChange";
+import { findChange } from "@/lib/sessionChangeServer";
 
 export async function POST(req: NextRequest) {
   const auth = await requireTutor();
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   const sched = await prisma.classSchedule.findUnique({
-    where: { id: scheduleId }, select: { courseId: true, dayOfWeek: true, startTime: true, active: true, course: { select: { ownerId: true } } },
+    where: { id: scheduleId }, select: { courseId: true, dayOfWeek: true, startTime: true, endTime: true, active: true, course: { select: { ownerId: true } } },
   });
   if (!sched || !sched.active || sched.course.ownerId !== auth.userId) return NextResponse.json({ error: "Không tìm thấy buổi học của bạn" }, { status: 404 });
   const startMin = parseHm(sched.startTime);
@@ -30,7 +32,11 @@ export async function POST(req: NextRequest) {
   const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: studentId, courseId: sched.courseId } }, select: { status: true } });
   if (!enrolled || enrolled.status !== "active") return NextResponse.json({ error: "Học viên không học lớp này" }, { status: 404 });
 
-  const startAt = instantOf(dateKey, startMin);
+  // `dateKey` là ngày GỐC (định danh buổi). Buổi đã huỷ thì không nhắc; buổi đã dời thì nhắc theo giờ MỚI.
+  const change = await findChange(prisma, scheduleId, dateKey);
+  if (change?.kind === "cancel") return NextResponse.json({ error: "Buổi này đã huỷ, không cần nhắc" }, { status: 409 });
+  const startAt = effectiveSlot(sched, dateKey, change)?.startAt;
+  if (!startAt) return NextResponse.json({ error: "Giờ học của khung này chưa đặt đúng" }, { status: 400 });
   if (!dueReminderKinds(startAt, new Date()).includes(kind)) return NextResponse.json({ error: "Tin nhắc này chưa tới hạn hoặc buổi học đã bắt đầu" }, { status: 409 });
   const absent = await prisma.classAbsence.findUnique({ where: { scheduleId_dateKey_studentId: { scheduleId, dateKey, studentId } }, select: { id: true } });
   if (absent) return NextResponse.json({ error: "Học viên đã báo nghỉ buổi này, không cần nhắc" }, { status: 409 });

@@ -21,8 +21,19 @@ Bảng `monthly_reports` (mới, chỉ thêm). Gia sư vào `/lop-cua-toi/bao-ca
 KiN gợi ý các dòng chưa đạt (môn đang tụt / học chăm mà chưa đạt / bài về nhà trễ / chuyên cần thấp), gia sư sửa-xoá-thêm rồi bấm Duyệt.
 Phụ huynh chỉ thấy **bản đã duyệt** (đóng băng lúc duyệt) ở "Sổ của con"; mục "Điều chưa đạt tháng này" luôn có (rỗng thì hiện câu cố định).
 Gửi phụ huynh qua Zalo là bán tự động ("Đã mở Zalo lúc…", không bao giờ ghi "đã gửi"). Năng lực không bao giờ tô đỏ, không có điểm gộp, không xếp hạng.
-Test: lib 37/37, API 48/48, trình duyệt 29/29. Giới hạn: loại dòng thứ 4 (buổi gia sư dời/huỷ) CHƯA có nguồn dữ liệu nên chưa sinh dòng nào;
-"bài về nhà đúng hạn" = bài giao có hạn nộp trong tháng và đã nộp trước hạn.
+Test: lib 37/37, API 48/48, trình duyệt 29/29. Dòng gợi ý loại 4 (buổi gia sư dời/huỷ) ĐÃ có nguồn dữ liệu từ 12/10 — xem mục "Gia sư dời/huỷ buổi" bên dưới.
+Còn giới hạn: "bài về nhà đúng hạn" = bài giao có hạn nộp trong tháng và đã nộp trước hạn.
+
+## Gia sư dời/huỷ buổi (hoàn thiện NV-189 loại 4) — XONG ngày 12/10
+Trang **Lịch** của gia sư: mở một buổi CHƯA bắt đầu → mục "Đổi lịch buổi này" có **Dời buổi** (ngày mới + giờ bắt đầu/kết thúc mới, tối đa 60 ngày tới, phải ở tương lai) và **Huỷ buổi**; ghi lý do (không bắt buộc); sau đó **Sửa / Đổi thành dời / Khôi phục lịch cũ** (khôi phục chỉ khi giờ gốc còn ở tương lai).
+Bảng mới `class_session_changes` (chỉ thêm), định danh một buổi = (khung giờ, **ngày GỐC** theo lịch tuần); dời vẫn giữ định danh gốc nên báo nghỉ / nhắc lịch của buổi đó không bị mồ côi.
+Mọi nơi tự dựng buổi từ lịch tuần đều đã tôn trọng thay đổi: Lịch gia sư, nhắc lịch (buổi huỷ không nhắc; buổi dời nhắc theo giờ mới; tin "Đã mở Zalo" của giờ cũ bị xoá để tin mới hiện lại), ghi "đã mở Zalo" nhắc lịch, báo nghỉ của phụ huynh (buổi huỷ → 409; buổi dời tính theo giờ MỚI, điểm danh "Có phép" ghi vào ngày buổi THẬT SỰ diễn ra),
+"Sổ của con" (buổi huỷ gạch ngang + không còn nút Báo nghỉ; buổi dời ghi "lịch cũ"), lịch học viên `/api/schedule` ("[ĐÃ HUỶ]" / "[DỜI từ dd/mm]"), email + thông báo nhắc ngày mai (`/api/cron/remind-class`), và **báo cáo tháng** (mỗi buổi dời/huỷ của tháng thành một dòng gợi ý loại 4, nói rõ đó là lỗi sắp xếp của gia sư, không phải của em).
+Báo lớp: học viên được thông báo trong ứng dụng; gia sư tự mở Zalo với tin chung soạn sẵn (không tên em, không điểm, không tiền, không link) — KiN chỉ ghi "Đã mở Zalo lúc …", không bao giờ "đã gửi".
+Báo nghỉ liên quan: **huỷ buổi** thì báo nghỉ còn "pending" → trạng thái mới `voided` (không tính phí, không buổi bù); báo nghỉ ĐÃ xử lý (đã giữ buổi bù / tính phí) giữ nguyên — KiN không tự thu hồi, chỉ đếm để báo gia sư xem lại. Huỷ rồi khôi phục / đổi thành dời thì `voided` trở lại `pending`.
+**KHÔNG đụng tiền:** không sửa phiếu học phí, không tạo / thu hồi buổi bù (nối "buổi gia sư huỷ thì không tính phí" vào phiếu là GD-25, chưa làm — học phí vẫn tính theo số buổi gia sư nhập).
+Chưa có: báo từng phụ huynh riêng (tin chung dùng được cho nhóm Zalo lẫn gửi riêng); email báo đổi lịch (chỉ thông báo trong ứng dụng); giao diện riêng cho quản trị.
+Test: lib 47/47, API 67/67, trình duyệt 36/36 (kể cả điện thoại 390px); các bài lịch / báo nghỉ / nhắc lịch / báo cáo tháng cũ chạy lại đều qua.
 
 ## TT-199 giai đoạn 1 (gửi qua Zalo bằng tay) — XONG ngày 12/10
 Phiếu học phí: tab Phiếu có nút "Gửi phiếu qua Zalo" (chỉ phiếu đã gửi / phụ huynh đã báo chuyển / đóng một phần). Hộp thoại chọn
@@ -83,12 +94,13 @@ nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, ti�
 
 ## Việc Thọ cần làm khi triển khai
 - Build **production** trên Vercel chạy `prisma db push` (`scripts/db-push-on-production.mjs`; bản xem trước bỏ qua bước này; `PRISMA_ACCEPT_DATA_LOSS` đang 0 nên không xoá được gì). So với `main` ngày 09/10, lược đồ chỉ THÊM (đã kiểm bằng `git diff`: không có dòng nào bị xoá/sửa):
-  - **13 bảng mới:** `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `tutor_payout_accounts`, `tuition_invoices`, `bank_transactions`, `tuition_credits`, `profile_visits`, `tutor_profile_reports`, `session_plans`, `admission_scores`.
+  - **14 bảng mới:** `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `tutor_payout_accounts`, `tuition_invoices`, `bank_transactions`, `tuition_credits`, `profile_visits`, `tutor_profile_reports`, `session_plans`, `admission_scores`, `class_session_changes`.
   - **Cột mới (cho phép trống) trên bảng đã có:** `users.preferences`, `users.profileLockedAt`, `users.profileLockReason`, `courses.zaloGroupUrl`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`, `attendance_records.zaloOpenedAt`.
   - Bản xem trước dùng chung cơ sở dữ liệu với production và không có `SESSION_SECRET` nên KHÔNG đăng nhập / thử tính năng được; lần thử thật đầu tiên là sau khi lên production — nên tạo nhánh hoặc sao lưu Neon trước khi merge.
 - Không chạy được `next build` trong môi trường làm việc này (Google Fonts bị chặn), nhưng Vercel đã dựng thành công bản xem trước của nhánh (biên dịch, kiểm kiểu, 135 trang); `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.
 - Lưu ý hành vi mới (NV-188): màn xem lại bài thi không hiện đáp án câu sai cho tới khi học sinh chữa xong câu đó (khi đề cho phép chữa bài).
+- Lưu ý hành vi mới (dời/huỷ buổi): huỷ một buổi tự đóng các báo nghỉ sát giờ đang chờ của buổi đó (trạng thái `voided`); báo nghỉ đã xử lý giữ nguyên.
 - Lưu ý hành vi mới (FE-140): `/api/categories` trả con số `courseCount` theo người xem (gia sư chỉ thấy số khoá của mình).
 - Còn mở: có cho link "Sổ của con" hết hạn không (hiện không).

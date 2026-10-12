@@ -13,8 +13,10 @@ import type { Prisma } from "@/generated/prisma/client";
 import { notify } from "@/lib/notify";
 import {
   absenceDeadline, addDaysKey, buildAbsenceChargedMessage, buildAbsenceFreeMessage, classifyAbsenceReport,
-  expandOccurrences, dayOfWeekOfKey, describeLead, hmOf, instantOf, isValidDateKey, makeupExpiry, parseHm, tutorTitle, vnDateKeyOf, vnMinutesOfDay,
+  dayOfWeekOfKey, describeLead, hmOf, isValidDateKey, makeupExpiry, parseHm, tutorTitle, vnDateKeyOf, vnMinutesOfDay,
 } from "@/lib/classSessions";
+import { applyChanges, effectiveSlot } from "@/lib/sessionChange";
+import { findChange, loadChanges } from "@/lib/sessionChangeServer";
 
 type Tx = Prisma.TransactionClient;
 
@@ -66,13 +68,18 @@ export async function reportAbsence(i: ReportAbsenceInput): Promise<ReportAbsenc
 
   const sched = await prisma.classSchedule.findUnique({
     where: { id: i.scheduleId },
-    select: { id: true, courseId: true, dayOfWeek: true, startTime: true, active: true, course: { select: { id: true, name: true, ownerId: true } } },
+    select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, active: true, course: { select: { id: true, name: true, ownerId: true } } },
   });
   if (!sched || !sched.active) return fail(404, "Không tìm thấy buổi học này");
   if (dayOfWeekOfKey(i.dateKey) !== sched.dayOfWeek) return fail(400, "Ngày này không có buổi học theo lịch của lớp");
   const startMin = parseHm(sched.startTime);
   if (startMin === null) return fail(400, "Giờ học của lớp chưa đặt đúng, vui lòng báo trực tiếp với gia sư");
-  const startAt = instantOf(i.dateKey, startMin);
+  // `dateKey` là ngày GỐC (định danh buổi). Buổi gia sư đã huỷ thì không báo nghỉ; buổi đã dời thì tính theo giờ MỚI.
+  const change = await findChange(prisma, sched.id, i.dateKey);
+  if (change?.kind === "cancel") return fail(409, "Buổi này gia sư đã huỷ nên không cần báo nghỉ");
+  const slot = effectiveSlot(sched, i.dateKey, change);
+  if (!slot) return fail(400, "Giờ học của lớp chưa đặt đúng, vui lòng báo trực tiếp với gia sư");
+  const startAt = slot.startAt;
 
   const cls = classifyAbsenceReport(startAt, now);
   if (cls.kind === "started") return fail(400, "Buổi học đã bắt đầu, không báo nghỉ qua sổ học được nữa — vui lòng nhắn trực tiếp cho gia sư");
@@ -105,7 +112,7 @@ export async function reportAbsence(i: ReportAbsenceInput): Promise<ReportAbsenc
       await tx.makeupCredit.create({
         data: { studentId: i.studentId, courseId: sched.courseId, absenceId: abs.id, grantedAt: now, expiresAt: makeupExpiry(now) },
       });
-      await markExcused(tx, { courseId: sched.courseId, ownerId: sched.course.ownerId, dateKey: i.dateKey, studentId: i.studentId, by: null, note: "Nghỉ có báo (báo trước giờ học)" });
+      await markExcused(tx, { courseId: sched.courseId, ownerId: sched.course.ownerId, dateKey: slot.dateKey, studentId: i.studentId, by: null, note: "Nghỉ có báo (báo trước giờ học)" });
     }
     return { ok: true, kind: auto ? "auto" : "late", absenceId: abs.id, status: abs.status, leadMinutes: cls.leadMinutes, deadlineAt: absenceDeadline(startAt).toISOString(), makeupGranted: auto };
   });
@@ -115,7 +122,7 @@ export async function reportAbsence(i: ReportAbsenceInput): Promise<ReportAbsenc
     void notify(sched.course.ownerId, {
       type: "absence_late",
       title: "Báo nghỉ sát giờ",
-      message: `${student?.name ?? "Học viên"} xin nghỉ buổi ${sched.course.name} lúc ${hmOf(vnMinutesOfDay(startAt))} ngày ${i.dateKey.slice(8, 10)}/${i.dateKey.slice(5, 7)} (${describeLead(cls.leadMinutes)}). Bấm một nút để xử lý.`,
+      message: `${student?.name ?? "Học viên"} xin nghỉ buổi ${sched.course.name} lúc ${hmOf(vnMinutesOfDay(startAt))} ngày ${slot.dateKey.slice(8, 10)}/${slot.dateKey.slice(5, 7)} (${describeLead(cls.leadMinutes)}). Bấm một nút để xử lý.`,
       link: "/lop-cua-toi/lich",
     }).catch(() => {});
   }
@@ -132,9 +139,13 @@ export async function resolveAbsence(o: { absenceId: string; tutorId: string; ac
   const now = o.now ?? new Date();
   const abs = await prisma.classAbsence.findUnique({
     where: { id: o.absenceId },
-    select: { id: true, courseId: true, studentId: true, dateKey: true, course: { select: { ownerId: true } }, student: { select: { parentPhone: true, parentName: true } } },
+    select: { id: true, courseId: true, scheduleId: true, studentId: true, dateKey: true, course: { select: { ownerId: true } }, student: { select: { parentPhone: true, parentName: true } } },
   });
   if (!abs) return fail(404, "Không tìm thấy báo nghỉ");
+  // Điểm danh ghi vào ngày buổi THẬT SỰ diễn ra (buổi đã dời thì khác ngày gốc dùng làm định danh).
+  const sched = await prisma.classSchedule.findUnique({ where: { id: abs.scheduleId }, select: { dayOfWeek: true, startTime: true, endTime: true } });
+  const eff = sched ? effectiveSlot(sched, abs.dateKey, await findChange(prisma, abs.scheduleId, abs.dateKey)) : null;
+  const attendanceDateKey = eff?.dateKey ?? abs.dateKey;
   if (abs.course.ownerId !== o.tutorId) return fail(403, "Bạn không có quyền với lớp này");
   const tutor = await prisma.user.findUnique({ where: { id: o.tutorId }, select: { name: true } });
 
@@ -150,7 +161,7 @@ export async function resolveAbsence(o: { absenceId: string; tutorId: string; ac
       await tx.makeupCredit.create({
         data: { studentId: abs.studentId, courseId: abs.courseId, absenceId: abs.id, grantedAt: now, expiresAt: makeupExpiry(now) },
       });
-      await markExcused(tx, { courseId: abs.courseId, ownerId: abs.course.ownerId, dateKey: abs.dateKey, studentId: abs.studentId, by: o.tutorId, note: "Nghỉ có báo — gia sư không tính phí, giữ 1 buổi bù" });
+      await markExcused(tx, { courseId: abs.courseId, ownerId: abs.course.ownerId, dateKey: attendanceDateKey, studentId: abs.studentId, by: o.tutorId, note: "Nghỉ có báo — gia sư không tính phí, giữ 1 buổi bù" });
     }
     const makeupCount = await activeMakeupCount(tx, abs.studentId, abs.courseId, now);
     const message = free
@@ -165,7 +176,14 @@ export interface UpcomingSession {
   scheduleId: string;
   courseId: string;
   courseName: string;
+  /** Ngày HIỆU LỰC (nơi buổi thật sự diễn ra). */
   dateKey: string;
+  /** Ngày GỐC theo lịch tuần = định danh buổi; Báo nghỉ phải gửi ngày này. */
+  originalDateKey: string;
+  status: "scheduled" | "cancelled" | "moved";
+  movedFrom: { dateKey: string; startAt: string } | null;
+  /** Lý do gia sư ghi khi dời/huỷ (nếu có). */
+  changeReason: string | null;
   startAt: string;
   endAt: string;
   joinUrl: string | null;
@@ -192,11 +210,14 @@ export async function loadStudentUpcoming(studentId: string, now: Date): Promise
   const joinOf = new Map(rules.map(r => [r.id, r.joinUrl]));
   const today = vnDateKeyOf(now);
   const toKey = addDaysKey(today, UPCOMING_DAYS - 1);
-  const occs = expandOccurrences(rules, today, toKey).filter(o => o.startAt.getTime() > now.getTime());
+  const changes = await loadChanges(prisma, rules.map(r => r.id), today, toKey);
+  // Buổi đã huỷ vẫn hiện (kèm chữ "đã huỷ") để phụ huynh không đi nhầm; chỉ ẩn buổi đã bắt đầu.
+  const occs = applyChanges(rules, changes, today, toKey).filter(o => o.startAt.getTime() > now.getTime());
+  const originalKeys = [...new Set(occs.map(o => o.originalDateKey))];
 
   const [absences, credits] = await Promise.all([
     prisma.classAbsence.findMany({
-      where: { studentId, scheduleId: { in: rules.map(r => r.id) }, dateKey: { gte: today, lte: toKey } },
+      where: { studentId, scheduleId: { in: rules.map(r => r.id) }, dateKey: { in: originalKeys } },
       select: { scheduleId: true, dateKey: true, status: true, leadMinutes: true },
     }),
     prisma.makeupCredit.findMany({
@@ -207,11 +228,14 @@ export async function loadStudentUpcoming(studentId: string, now: Date): Promise
   ]);
   const absOf = new Map(absences.map(a => [`${a.scheduleId}|${a.dateKey}`, a]));
   const upcoming: UpcomingSession[] = occs.map(o => {
-    const a = absOf.get(`${o.scheduleId}|${o.dateKey}`) ?? null;
+    const a = absOf.get(`${o.scheduleId}|${o.originalDateKey}`) ?? null;
     const deadline = absenceDeadline(o.startAt);
     return {
       scheduleId: o.scheduleId, courseId: o.courseId, courseName: nameOf.get(o.courseId) ?? "",
-      dateKey: o.dateKey, startAt: o.startAt.toISOString(), endAt: o.endAt.toISOString(),
+      dateKey: o.dateKey, originalDateKey: o.originalDateKey, status: o.status,
+      movedFrom: o.movedFrom ? { dateKey: o.movedFrom.dateKey, startAt: o.movedFrom.startAt.toISOString() } : null,
+      changeReason: o.change?.reason ?? null,
+      startAt: o.startAt.toISOString(), endAt: o.endAt.toISOString(),
       joinUrl: joinOf.get(o.scheduleId) ?? null,
       deadlineAt: deadline.toISOString(), freeWindowOpen: now.getTime() < deadline.getTime(),
       absence: a ? { status: a.status, leadMinutes: a.leadMinutes } : null,

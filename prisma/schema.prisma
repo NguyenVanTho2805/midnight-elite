@@ -62,6 +62,7 @@ model Course {
   classSchedules   ClassSchedule[]
   classAbsences    ClassAbsence[]
   makeupCredits    MakeupCredit[]
+  sessionChanges   ClassSessionChange[]
   reminderLogs     ClassReminderLog[]
   coinTransactions CoinTransaction[]
   threads          Thread[]
@@ -1055,6 +1056,7 @@ model AttendanceRecord {
 //   pending      — báo dưới 2 giờ: chờ gia sư bấm 1 nút (hiện ở Hộp việc / chấm trên Lịch)
 //   excused_free — gia sư chọn "Không tính phí, giữ 1 buổi bù"
 //   charged      — gia sư chọn "Tính phí buổi này" (không có buổi bù)
+//   voided       — gia sư HUỶ buổi khi báo nghỉ còn "pending": buổi không diễn ra nên không tính phí, không buổi bù
 model ClassAbsence {
   id          String    @id @default(cuid())
   courseId    String
@@ -1765,4 +1767,33 @@ model AdmissionScore {
   @@unique([school, major, variant, year, method], name: "admission_score_key")
   @@index([published, year])
   @@map("admission_scores")
+}
+
+// ─── GIA SƯ DỜI / HUỶ MỘT BUỔI (hoàn thiện NV-189: dòng gợi ý loại 4) ──────────────────────────────────────────
+// Định danh một buổi = (scheduleId, dateKey GỐC theo lịch tuần). Dời vẫn giữ định danh gốc để báo nghỉ và nhắc lịch của buổi đó
+// không bị mồ côi; thời điểm hiệu lực lấy từ newDateKey / newStartTime / newEndTime (xem src/lib/sessionChange.ts).
+//   cancel — buổi bị huỷ: không nhắc lịch, phụ huynh không báo nghỉ được nữa
+//   move   — buổi dời sang newDateKey lúc newStartTime–newEndTime
+// KHÔNG đụng tiền: học phí vẫn tính theo số buổi gia sư nhập (nối "không tính phí" vào phiếu là GD-25, chưa làm).
+model ClassSessionChange {
+  id           String    @id @default(cuid())
+  courseId     String
+  scheduleId   String // ClassSchedule.id — không FK: xoá khung giờ không được xoá lịch sử dời/huỷ
+  dateKey      String // ngày GỐC theo lịch tuần, "YYYY-MM-DD" giờ VN
+  kind         String // "cancel" | "move"
+  newDateKey   String?
+  newStartTime String? // "HH:mm"
+  newEndTime   String? // "HH:mm"
+  reason       String?   @db.Text
+  changedBy    String // userId gia sư
+  zaloOpenedAt DateTime? // gia sư ĐÃ MỞ Zalo để báo lớp — KiN không biết tin có đi thật hay không
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, dateKey])
+  @@index([courseId, dateKey])
+  @@index([newDateKey])
+  @@map("class_session_changes")
 }

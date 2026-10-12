@@ -1,6 +1,7 @@
 // Lịch tuần của gia sư — danh sách theo ngày; mở một buổi để:
 //  • xử lý "Báo nghỉ sát giờ" bằng MỘT nút (TT-202);
-//  • mở Zalo với tin nhắc lịch soạn sẵn, sửa được trước khi gửi (TT-201/TT-199 giai đoạn 1).
+//  • mở Zalo với tin nhắc lịch soạn sẵn, sửa được trước khi gửi (TT-201/TT-199 giai đoạn 1);
+//  • DỜI hoặc HUỶ một buổi chưa bắt đầu (hoàn thiện NV-189): học viên được báo trong ứng dụng, gia sư tự mở Zalo báo lớp.
 // Khi Hộp việc đang tắt, việc cần xử lý hiện thành chấm kèm chữ ngay trên đúng buổi (TT-203).
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import { KinButton } from "@/components/kin";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { addDaysKey, buildGroupReminderMessage, dayOfWeekOfKey, describeLead, hmOf, vnDateKeyOf, vnMinutesOfDay, weekRangeOf } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
+import { sessionChangeMessage, CHANGE_REASON_MAX } from "@/lib/sessionChange";
 import type { ReminderItem, ScheduleOccurrence, ScheduleStudent } from "@/lib/reminderServer";
 
 interface Payload {
@@ -29,7 +31,11 @@ const ABSENCE_LABEL: Record<string, { tone: "ok" | "wait" | "neutral"; text: str
   excused_auto: { tone: "ok",      text: "Nghỉ có báo — đã giữ 1 buổi bù" },
   excused_free: { tone: "ok",      text: "Không tính phí — đã giữ 1 buổi bù" },
   charged:      { tone: "neutral", text: "Tính phí buổi này" },
+  voided:       { tone: "neutral", text: "Buổi đã huỷ — không tính phí, không buổi bù" },
 };
+
+interface ChangeDraft { occ: ScheduleOccurrence; kind: "cancel" | "move"; newDate: string; start: string; end: string; reason: string; error: string; busy: boolean }
+interface ChangeNotice { title: string; changeId: string | null; text: string; groupUrl: string | null; lines: string[] }
 
 export default function LichClient() {
   const notify = useNotify();
@@ -43,6 +49,8 @@ export default function LichClient() {
   const [resolved, setResolved] = useState<Record<string, Resolved>>({});
   const [compose, setCompose] = useState<{ occ: ScheduleOccurrence; student: ScheduleStudent; item: ReminderItem; text: string } | null>(null);
   const [groupCompose, setGroupCompose] = useState<{ occ: ScheduleOccurrence; text: string } | null>(null); // PH-216: nhắc cả lớp vào nhóm Zalo
+  const [changing, setChanging] = useState<ChangeDraft | null>(null); // hộp thoại Dời / Huỷ
+  const [notice, setNotice] = useState<ChangeNotice | null>(null);    // hộp "Báo lớp qua Zalo" sau khi đổi lịch
   const seq = useRef(0);
 
   const load = useCallback(async (f: string, quiet = false) => {
@@ -93,7 +101,7 @@ export default function LichClient() {
     // KiN chỉ ghi "đã mở Zalo", không biết tin có đi thật hay không.
     const log = await callApi("/api/tutor/reminders", {
       method: "POST",
-      body: JSON.stringify({ scheduleId: occ.scheduleId, dateKey: occ.dateKey, studentId: student.id, recipient: item.recipient, kind: item.kind }),
+      body: JSON.stringify({ scheduleId: occ.scheduleId, dateKey: occ.originalDateKey, studentId: student.id, recipient: item.recipient, kind: item.kind }),
     });
     if (!log.ok) notify.err(log.data.error ?? "Đã mở Zalo nhưng chưa ghi lại được.");
     else notify.info(res.method === "share" ? "Chọn Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào cuộc trò chuyện rồi bấm gửi.");
@@ -107,6 +115,82 @@ export default function LichClient() {
     if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
     notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
     setGroupCompose(null);
+  }
+
+  function startChange(occ: ScheduleOccurrence, kind: "cancel" | "move") {
+    setChanging({
+      occ, kind, newDate: occ.dateKey, start: vnHm(occ.startAt), end: vnHm(occ.endAt),
+      reason: occ.change?.reason ?? "", error: "", busy: false,
+    });
+  }
+
+  async function submitChange() {
+    if (!changing || changing.busy) return;
+    const c = changing;
+    setChanging({ ...c, busy: true, error: "" });
+    const r = await callApi<{
+      change: { id: string; kind: "cancel" | "move" }; message: string; zaloGroupUrl: string | null;
+      absencesVoided: number; absencesKept: number; notified: number;
+    }>("/api/tutor/session-changes", {
+      method: "POST",
+      body: JSON.stringify({
+        scheduleId: c.occ.scheduleId, dateKey: c.occ.originalDateKey, kind: c.kind, reason: c.reason.trim() || undefined,
+        ...(c.kind === "move" ? { newDateKey: c.newDate, newStartTime: c.start, newEndTime: c.end || undefined } : {}),
+      }),
+    });
+    if (!r.ok) { setChanging({ ...c, busy: false, error: r.data.error ?? "Không lưu được, thử lại sau" }); return; }
+    setChanging(null);
+    const d = r.data;
+    const lines = [
+      d.notified > 0 ? `Đã báo ${d.notified} học viên trong ứng dụng.` : "Lớp chưa có học viên nào đang học để báo trong ứng dụng.",
+      ...(d.absencesVoided > 0 ? [`${d.absencesVoided} báo nghỉ sát giờ đang chờ đã tự đóng vì buổi huỷ (không tính phí, không buổi bù).`] : []),
+      ...(d.absencesKept > 0 ? [`${d.absencesKept} em đã báo nghỉ buổi này trước đó${c.kind === "cancel" ? " và đã được xử lý (giữ buổi bù hoặc tính phí) — KiN không tự thu hồi, bạn xem lại nếu cần" : " — báo nghỉ giữ nguyên"}.`] : []),
+      "KiN không gửi giúp: bạn tự mở Zalo và bấm gửi để báo phụ huynh.",
+    ];
+    setNotice({ title: c.kind === "cancel" ? "Đã huỷ buổi" : "Đã dời buổi", changeId: d.change.id, text: d.message, groupUrl: d.zaloGroupUrl, lines });
+    void load(from, true);
+  }
+
+  async function restore(occ: ScheduleOccurrence) {
+    if (busy) return;
+    setBusy(occ.key);
+    const r = await callApi<{ message: string; zaloGroupUrl: string | null; reopened: number; notified: number }>(
+      `/api/tutor/session-changes?scheduleId=${encodeURIComponent(occ.scheduleId)}&dateKey=${occ.originalDateKey}`, { method: "DELETE" });
+    setBusy(null);
+    if (!r.ok) { notify.err(r.data.error ?? "Không khôi phục được"); void load(from, true); return; }
+    setNotice({
+      title: "Đã khôi phục buổi về lịch tuần", changeId: null, text: r.data.message, groupUrl: r.data.zaloGroupUrl,
+      lines: [
+        r.data.notified > 0 ? `Đã báo ${r.data.notified} học viên trong ứng dụng.` : "Lớp chưa có học viên nào đang học để báo trong ứng dụng.",
+        ...(r.data.reopened > 0 ? [`${r.data.reopened} báo nghỉ sát giờ đã mở lại để bạn xử lý.`] : []),
+        "Nếu bạn đã báo lớp là buổi này đổi lịch, hãy báo lại bằng tin bên dưới.",
+      ],
+    });
+    void load(from, true);
+  }
+
+  // Mở lại hộp báo lớp cho một buổi ĐÃ đổi (sau khi tải lại trang). Tin dựng lại ở máy (không có chữ ký gia sư).
+  function reopenNotice(occ: ScheduleOccurrence) {
+    if (!occ.change) return;
+    const original = new Date(occ.movedFrom ? occ.movedFrom.startAt : occ.startAt);
+    const text = sessionChangeMessage({
+      kind: occ.change.kind, subject: occ.courseName, originalStartAt: original,
+      newStartAt: occ.status === "moved" ? new Date(occ.startAt) : null, reason: occ.change.reason,
+    });
+    setNotice({ title: occ.status === "cancelled" ? "Báo lớp: buổi đã huỷ" : "Báo lớp: buổi đã dời", changeId: occ.change.id, text, groupUrl: occ.zaloGroupUrl, lines: ["KiN không gửi giúp: bạn tự mở Zalo và bấm gửi để báo phụ huynh."] });
+  }
+
+  async function openChangeZalo() {
+    if (!notice) return;
+    const res = await openZalo({ text: notice.text, groupUrl: notice.groupUrl });
+    if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    if (notice.changeId) {
+      const log = await callApi(`/api/tutor/session-changes/${notice.changeId}/zalo`, { method: "POST" });
+      if (!log.ok) notify.err(log.data.error ?? "Đã mở Zalo nhưng chưa ghi lại được.");
+    }
+    notify.info(res.method === "share" ? "Chọn Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào cuộc trò chuyện rồi bấm gửi.");
+    setNotice(null);
+    void load(from, true);
   }
 
   const occByDay = (k: string) => (data?.occurrences ?? []).filter(o => o.dateKey === k);
@@ -162,6 +246,7 @@ export default function LichClient() {
                       <OccurrenceCard occ={o} nowMs={Date.parse(data?.now ?? "") || 0} expanded={open === o.key} onToggle={() => setOpen(open === o.key ? null : o.key)}
                         busy={busy} resolved={resolved} onResolve={resolve} onSendResolved={sendResolved}
                         onCompose={(student, item) => setCompose({ occ: o, student, item, text: item.message })}
+                        onChange={kind => startChange(o, kind)} onRestore={() => void restore(o)} onNotice={() => reopenNotice(o)}
                         onGroup={() => setGroupCompose({ occ: o, text: buildGroupReminderMessage({ subject: o.courseName, startAt: new Date(o.startAt), joinUrl: o.joinUrl, now: new Date(data?.now ?? Date.now()) }) })} />
                     </li>
                   ))}
@@ -183,6 +268,74 @@ export default function LichClient() {
           <div className="flex gap-2 flex-wrap mt-4 justify-end">
             <KinButton variant="secondary" onClick={async () => { if (await copyText(groupCompose.text)) notify.ok("Đã sao chép tin."); else notify.err("Không sao chép được."); }}>Sao chép</KinButton>
             <KinButton onClick={() => void openGroupReminder()} disabled={!groupCompose.text.trim()}>Mở Zalo</KinButton>
+          </div>
+        </Modal>
+      )}
+
+      {changing && (
+        <Modal title={`${changing.kind === "cancel" ? "Huỷ buổi" : "Dời buổi"} — ${changing.occ.courseName}`} onClose={() => { if (!changing.busy) setChanging(null); }}>
+          <p className="text-sm mb-3" style={{ color: "var(--kin-chu-phu)" }}>
+            Buổi gốc: {WEEKDAY[dayOfWeekOfKey(changing.occ.originalDateKey)]} {ddmm(changing.occ.originalDateKey)}
+            {changing.occ.movedFrom ? ` lúc ${vnHm(changing.occ.movedFrom.startAt)}` : ` lúc ${vnHm(changing.occ.startAt)}`}.
+          </p>
+          <div role="radiogroup" aria-label="Cách đổi lịch" className="flex gap-2 mb-3">
+            {(["move", "cancel"] as const).map(k => (
+              <button key={k} type="button" role="radio" aria-checked={changing.kind === k} onClick={() => setChanging(c => (c ? { ...c, kind: k, error: "" } : c))}
+                className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px]"
+                style={changing.kind === k
+                  ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
+                  : { background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+                {k === "move" ? "Dời sang lúc khác" : "Huỷ buổi"}
+              </button>
+            ))}
+          </div>
+          {changing.kind === "move" && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+              <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Ngày mới
+                <input type="date" value={changing.newDate} min={todayKey} onChange={e => setChanging(c => (c ? { ...c, newDate: e.target.value } : c))}
+                  className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
+              </label>
+              <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Giờ bắt đầu mới
+                <input type="time" value={changing.start} onChange={e => setChanging(c => (c ? { ...c, start: e.target.value } : c))}
+                  className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
+              </label>
+              <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Giờ kết thúc mới
+                <input type="time" value={changing.end} onChange={e => setChanging(c => (c ? { ...c, end: e.target.value } : c))}
+                  className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
+              </label>
+            </div>
+          )}
+          <label className="block text-xs" htmlFor="ly-do-doi-lich" style={{ color: "var(--kin-chu-phu)" }}>Lý do (không bắt buộc, sẽ có trong tin báo lớp)</label>
+          <textarea id="ly-do-doi-lich" rows={2} maxLength={CHANGE_REASON_MAX} value={changing.reason} onChange={e => setChanging(c => (c ? { ...c, reason: e.target.value } : c))}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
+          {changing.kind === "cancel" && (
+            <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+              Báo nghỉ sát giờ đang chờ của buổi này sẽ tự đóng (không tính phí, không buổi bù). Báo nghỉ đã xử lý giữ nguyên.
+            </p>
+          )}
+          {changing.error && <p role="alert" className="text-sm font-semibold mt-3" style={{ color: "var(--kin-tt-chu-loi)" }}>{changing.error}</p>}
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" disabled={changing.busy} onClick={() => setChanging(null)}>Không đổi nữa</KinButton>
+            <KinButton loading={changing.busy} onClick={() => void submitChange()}>{changing.kind === "cancel" ? "Huỷ buổi này" : "Dời buổi"}</KinButton>
+          </div>
+        </Modal>
+      )}
+
+      {notice && (
+        <Modal title={notice.title} onClose={() => setNotice(null)}>
+          <ul className="text-sm space-y-1 mb-3 list-disc pl-5" style={{ color: "var(--kin-chu-phu)" }}>
+            {notice.lines.map((l, i) => <li key={i}>{l}</li>)}
+          </ul>
+          <label className="block text-sm" htmlFor="tin-doi-lich">Tin báo lớp (sửa được trước khi gửi)</label>
+          <textarea id="tin-doi-lich" rows={5} value={notice.text} onChange={e => setNotice(n => (n ? { ...n, text: e.target.value } : n))}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+            Tin chung cho cả lớp: không tên em, không điểm, không tiền. {notice.groupUrl ? "Sẽ mở nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo — KiN sẽ chép tin và mở Zalo, bạn chọn đúng người nhận."}
+          </p>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" onClick={() => setNotice(null)}>Để sau</KinButton>
+            <KinButton variant="secondary" onClick={async () => { if (await copyText(notice.text)) notify.ok("Đã sao chép tin."); else notify.err("Không sao chép được."); }}>Sao chép</KinButton>
+            <KinButton onClick={() => void openChangeZalo()} disabled={!notice.text.trim()}>Mở Zalo</KinButton>
           </div>
         </Modal>
       )}
@@ -213,22 +366,29 @@ function OccurrenceCard(p: {
   onSendResolved: (absenceId: string) => void;
   onCompose: (s: ScheduleStudent, item: ReminderItem) => void;
   onGroup: () => void;
+  onChange: (kind: "cancel" | "move") => void;
+  onRestore: () => void;
+  onNotice: () => void;
 }) {
   const { occ } = p;
   const done = p.nowMs > 0 && new Date(occ.endAt).getTime() < p.nowMs; // giờ máy chủ lúc tải, không đọc đồng hồ khi render
+  const cancelled = occ.status === "cancelled";
   const detailId = `chi-tiet-${occ.key}`;
   return (
     <div className="rounded-xl" style={CARD_STYLE}>
       <button type="button" onClick={p.onToggle} aria-expanded={p.expanded} aria-controls={detailId}
         className="w-full text-left px-4 py-3 flex items-center gap-3 min-h-[44px]">
-        <span className="font-bold tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
+        <span className="font-bold tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
         <span className="flex-1 min-w-0">
-          <span className="block font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }}>{occ.courseName}</span>
+          <span className="block font-semibold truncate" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{occ.courseName}</span>
           <span className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>
-            {occ.students.length} học viên · {done ? "đã kết thúc" : occ.started ? "đang diễn ra" : "sắp tới"}
+            {occ.students.length} học viên · {cancelled ? "buổi đã huỷ" : done ? "đã kết thúc" : occ.started ? "đang diễn ra" : "sắp tới"}
+            {occ.status === "moved" && occ.movedFrom && <> · dời từ {WEEKDAY[dayOfWeekOfKey(occ.movedFrom.dateKey)]} {ddmm(occ.movedFrom.dateKey)} {vnHm(occ.movedFrom.startAt)}</>}
           </span>
         </span>
         <span className="flex flex-col items-end gap-1 flex-shrink-0">
+          {cancelled && <Badge tone="neutral">Đã huỷ</Badge>}
+          {occ.status === "moved" && <Badge tone="neutral">Đã dời</Badge>}
           {occ.pendingAbsences > 0 && <Badge tone="bad">{occ.pendingAbsences} báo nghỉ sát giờ</Badge>}
           {occ.remindersDue > 0 && <Badge tone="wait">{occ.remindersDue} tin nhắc chờ gửi</Badge>}
         </span>
@@ -284,6 +444,40 @@ function OccurrenceCard(p: {
             </div>
           )}
 
+          {!occ.started && (
+            <div aria-label="Đổi lịch buổi này">
+              <h3 className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Đổi lịch buổi này</h3>
+              {occ.status === "scheduled" ? (
+                <>
+                  <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>
+                    Dời sang ngày/giờ khác hoặc huỷ hẳn. Học viên được báo trong ứng dụng; bạn tự mở Zalo báo phụ huynh. Không đụng tới học phí.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <KinButton variant="secondary" onClick={() => p.onChange("move")}>Dời buổi</KinButton>
+                    <KinButton variant="secondary" onClick={() => p.onChange("cancel")}>Huỷ buổi</KinButton>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>
+                    {cancelled ? "Buổi này đã huỷ" : "Buổi này đã dời"}{occ.change?.reason ? ` — lý do: ${occ.change.reason}` : ""}.
+                    {occ.change?.zaloOpenedAt
+                      ? <span className="ml-2 text-xs" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã mở Zalo báo lớp lúc {vnHm(occ.change.zaloOpenedAt)}</span>
+                      : <span className="ml-2 text-xs" style={{ color: "var(--kin-chu-phu)" }}>Chưa mở Zalo để báo lớp.</span>}
+                  </p>
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    <KinButton onClick={p.onNotice}>{occ.change?.zaloOpenedAt ? "Mở lại tin báo lớp" : "Báo lớp qua Zalo"}</KinButton>
+                    <KinButton variant="secondary" onClick={() => p.onChange(cancelled ? "cancel" : "move")}>{cancelled ? "Sửa lý do huỷ" : "Đổi lịch dời"}</KinButton>
+                    {cancelled && <KinButton variant="secondary" onClick={() => p.onChange("move")}>Đổi thành dời buổi</KinButton>}
+                    {!cancelled && <KinButton variant="secondary" onClick={() => p.onChange("cancel")}>Huỷ buổi</KinButton>}
+                    <KinButton variant="secondary" loading={p.busy === occ.key} onClick={p.onRestore}>Khôi phục lịch cũ</KinButton>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {!cancelled && (
           <div>
             <h3 className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Nhắc lịch</h3>
             <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>
@@ -324,6 +518,7 @@ function OccurrenceCard(p: {
               </ul>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

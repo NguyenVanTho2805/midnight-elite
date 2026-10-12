@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { vnDayOfWeek } from "@/lib/types";
+import { hmOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { effectiveSlot } from "@/lib/sessionChange";
+import { loadChanges } from "@/lib/sessionChangeServer";
 
 export interface ScheduleEvent {
   id: string;
@@ -108,7 +111,7 @@ export async function GET() {
     const classSchedules = await prisma.classSchedule.findMany({
       where: { active: true, courseId: { in: courseIds } },
       select: {
-        id: true, dayOfWeek: true, startTime: true, note: true,
+        id: true, dayOfWeek: true, startTime: true, endTime: true, note: true,
         course: { select: { id: true, name: true, category: true } },
       },
     });
@@ -121,19 +124,38 @@ export async function GET() {
         windowDates.push({ iso: d.toISOString().slice(0, 10), dow: vnDayOfWeek(d) });
       }
 
+      // Gia sư có thể HUỶ hoặc DỜI một buổi: buổi huỷ vẫn hiện (kèm "ĐÃ HUỶ") để học viên không đi nhầm, buổi dời hiện ở ngày/giờ mới.
+      const firstIso = windowDates[0].iso, lastIso = windowDates[windowDates.length - 1].iso;
+      const changes = await loadChanges(prisma, classSchedules.map(s => s.id), firstIso, lastIso);
+      const changeOf = new Map(changes.map(c => [`${c.scheduleId}|${c.dateKey}`, c]));
+      const push = (sched: (typeof classSchedules)[number], originalIso: string) => {
+        const slot = effectiveSlot(sched, originalIso, changeOf.get(`${sched.id}|${originalIso}`) ?? null);
+        const base = sched.note ? `${sched.course.name} — ${sched.note}` : sched.course.name;
+        const dm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
+        const prefix = slot?.status === "cancelled" ? "[ĐÃ HUỶ] " : slot?.status === "moved" ? `[DỜI từ ${dm(originalIso)}] ` : "";
+        const isoDate = slot?.dateKey ?? originalIso;
+        if (isoDate < firstIso || isoDate > lastIso) return; // dời ra khỏi cửa sổ hiển thị
+        events.push({
+          id: `class-${sched.id}-${originalIso}`,
+          type: "class",
+          subject: sched.course.category,
+          topic: `${prefix}${base}`,
+          time: slot ? hmOf(vnMinutesOfDay(slot.startAt)) : sched.startTime,
+          isoDate,
+          link: `/student/hoc-tap?course=${sched.course.id}`,
+        });
+      };
+
       for (const sched of classSchedules) {
         for (const { iso, dow } of windowDates) {
-          if (dow !== sched.dayOfWeek) continue;
-          events.push({
-            id: `class-${sched.id}-${iso}`,
-            type: "class",
-            subject: sched.course.category,
-            topic: sched.note ? `${sched.course.name} — ${sched.note}` : sched.course.name,
-            time: sched.startTime,
-            isoDate: iso,
-            link: `/student/hoc-tap?course=${sched.course.id}`,
-          });
+          if (dow === sched.dayOfWeek) push(sched, iso);
         }
+      }
+      // Buổi có ngày GỐC đã qua / ngoài cửa sổ nhưng được dời VÀO cửa sổ.
+      for (const c of changes) {
+        if (c.kind !== "move" || !c.newDateKey || (c.dateKey >= firstIso && c.dateKey <= lastIso)) continue;
+        const sched = classSchedules.find(s => s.id === c.scheduleId);
+        if (sched) push(sched, c.dateKey);
       }
     }
   }

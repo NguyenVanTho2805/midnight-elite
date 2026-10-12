@@ -5,11 +5,12 @@
 //   Bài về nhà — Assignment của lớp có hạn nộp (dueDate) trong tháng giờ VN; "đúng hạn" = có bài nộp lúc ≤ hạn.
 //                Bài không đặt hạn không tính (không có mốc để xét đúng hạn)
 //   Năng lực   — ExamResult của em ở các đề gắn với lớp (Exam.courseId), điểm quy về thang 10
-//   Buổi gia sư dời/huỷ — CHƯA có dữ liệu (hệ thống chưa ghi nhận việc dời/huỷ buổi): luôn rỗng cho tới khi có nguồn.
+//   Buổi gia sư dời/huỷ — ClassSessionChange của các lớp em đang học, buổi có NGÀY GỐC (theo lịch tuần) trong tháng; gia sư bấm Dời/Huỷ ở trang Lịch.
 import { prisma } from "@/lib/prisma";
 import { computeAttendanceStats } from "@/lib/attendance";
 import { vnMonthKey } from "@/lib/revenue";
 import { buildSubjectMetrics, type SubjectMonthMetrics, type TutorChangedSession } from "@/lib/monthlyReport";
+import { changesToTutorChanged } from "@/lib/sessionChange";
 
 export const isYearMonth = (s: unknown): s is string => typeof s === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
@@ -62,7 +63,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
   const courseIds = courses.map(c => c.id);
   const { start, end, attStart, attEnd } = monthBounds(yearMonth);
 
-  const [records, assignments, results] = await Promise.all([
+  const [records, assignments, results, changes] = await Promise.all([
     prisma.attendanceRecord.findMany({
       where: { userId: studentId, session: { courseId: { in: courseIds }, date: { gte: attStart, lt: attEnd } } },
       select: { status: true, session: { select: { courseId: true } } },
@@ -74,6 +75,10 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
     prisma.examResult.findMany({
       where: { userId: studentId, exam: { courseId: { in: courseIds } } },
       select: { score: true, totalPoints: true, completedAt: true, exam: { select: { courseId: true } } },
+    }),
+    prisma.classSessionChange.findMany({
+      where: { courseId: { in: courseIds }, dateKey: { gte: `${yearMonth}-01`, lt: `${nextYearMonth(yearMonth)}-01` } },
+      select: { dateKey: true, kind: true, courseId: true },
     }),
   ]);
   const subs = assignments.length
@@ -90,7 +95,9 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
       .map(r => ({ score: Math.max(0, Math.min(10, (r.score / r.totalPoints) * 10)), takenAt: r.completedAt }));
     return buildSubjectMetrics({ courseId: c.id, courseName: c.name, attendance: att, homework: { assigned: mine.length, onTime }, scores }, yearMonth, start, end);
   });
-  return { student: enrollments[0].user, subjects, changedSessions: [] };
+  const nameOf = new Map(courses.map(c => [c.id, c.name]));
+  const changedSessions: TutorChangedSession[] = changesToTutorChanged(changes.map(c => ({ dateKey: c.dateKey, kind: c.kind, courseName: nameOf.get(c.courseId) ?? "" })));
+  return { student: enrollments[0].user, subjects, changedSessions };
 }
 
 export interface PartyReport {
