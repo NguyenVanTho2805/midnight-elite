@@ -2319,7 +2319,7 @@ export default function KhoaHocDetailPage() {
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-start gap-4">
           <div className="w-16 h-11 rounded-lg flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-            style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>ME</div>
+            style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>KiN</div>
           <div className="min-w-0">
             <h1 className="text-base font-bold text-gray-800 leading-tight">{course.name}</h1>
             <p className="text-xs text-gray-400 mt-0.5">

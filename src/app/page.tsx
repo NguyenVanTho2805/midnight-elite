@@ -62,7 +62,7 @@ const whyItems = [
 
 
 const timeline = [
-  { year: "09/2024", event: "Midnight Elite ra đời từ một nhóm gia sư trẻ muốn thay đổi cách luyện thi ĐGNL." },
+  { year: "09/2024", event: "KiN ra đời từ một nhóm gia sư trẻ muốn thay đổi cách luyện thi ĐGNL." },
   { year: "01/2025", event: "Ra mắt hệ thống thi thử ĐGNL HSA trực tuyến, đầu tiên tại Việt Nam tích hợp Azota." },
   { year: "05/2025", event: "Đạt mốc 1,000 học viên. Ra mắt ĐGNL HCM và TSA Bách Khoa." },
   { year: "09/2025", event: "Mở rộng sang luyện thi Tốt nghiệp THPT 8 môn. Bổ sung đội ngũ 6 mentor chuyên biệt." },
@@ -166,7 +166,7 @@ function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
               style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
               <div className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-black"
                 style={{ background: theme.bg }}>
-                ME
+                KiN
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold leading-snug truncate" style={{ color: "#1a1a1a" }}>{c.title}</p>
@@ -210,7 +210,7 @@ function CourseCard({ course, following, onToggleFollow }: {
         <div className="relative z-10 flex items-start justify-between px-4 pt-3">
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md"
             style={{ background: "rgba(255,255,255,0.22)" }}>
-            <span className="text-white font-black text-xs leading-none">ME</span>
+            <span className="text-white font-black text-xs leading-none">KiN</span>
           </div>
           {discount > 0 && (
             <div className="px-2 py-0.5 rounded-md text-xs font-bold"
@@ -364,7 +364,7 @@ export default function HomePage() {
               <div>
                 <div className="inline-block mb-5 text-xs font-semibold px-3 py-1 rounded-full"
                   style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                  Midnight Elite · Luyện thi ĐGNL, THPT &amp; BCA
+                  KiN · Luyện thi ĐGNL, THPT &amp; BCA
                 </div>
                 <h1
                   className="font-bold text-white mb-5 leading-tight"
@@ -635,7 +635,7 @@ export default function HomePage() {
           >
             <UsersGroup size={44} style={{ color: "rgba(255,255,255,0.7)", margin: "0 auto 16px" }} />
             <h2 className="text-2xl font-bold text-white mb-3" style={{ letterSpacing: "-0.5px" }}>
-              Gia nhập cộng đồng Midnight Elite ngay hôm nay
+              Gia nhập cộng đồng KiN ngay hôm nay
             </h2>
             <p className="text-sm mb-8" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "42ch", margin: "0 auto 32px" }}>
               Thi thử miễn phí. Kết quả thật sau 30 ngày học nghiêm túc cùng gia sư thực.

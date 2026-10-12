@@ -24,7 +24,7 @@ const CATEGORIES: Array<{ id: Category; label: string }> = [
   { id: "all",           label: "Tất cả"            },
   { id: "hoc-thuat",    label: "Học thuật"          },
   { id: "tuyen-sinh",   label: "Tuyển sinh"         },
-  { id: "tin-midnight", label: "Tin Midnight Elite" },
+  { id: "tin-midnight", label: "Tin KiN" },
   { id: "kinh-nghiem",  label: "Kinh nghiệm thi"   },
 ];
 
@@ -38,7 +38,7 @@ const catColors: Record<Exclude<Category, "all">, { bg: string; color: string }>
 const catLabels: Record<Exclude<Category, "all">, string> = {
   "hoc-thuat":   "Học thuật",
   "tuyen-sinh":  "Tuyển sinh",
-  "tin-midnight":"Tin Midnight Elite",
+  "tin-midnight":"Tin KiN",
   "kinh-nghiem": "Kinh nghiệm",
 };
 
@@ -82,7 +82,7 @@ export default function TinTucPage() {
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-8">
       <div>
         <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>Tin tức & Blog</h1>
-        <p className="mt-1 text-sm" style={{ color: "#787671" }}>Kiến thức tuyển sinh, kinh nghiệm học tập và tin tức mới nhất từ Midnight Elite</p>
+        <p className="mt-1 text-sm" style={{ color: "#787671" }}>Kiến thức tuyển sinh, kinh nghiệm học tập và tin tức mới nhất từ KiN</p>
       </div>
 
       {/* Search + filter */}

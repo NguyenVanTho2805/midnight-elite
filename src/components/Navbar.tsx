@@ -56,10 +56,10 @@ export default function Navbar() {
             className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs"
             style={{ background: "#0068FF" }}
           >
-            ME
+            KiN
           </div>
           <span className="font-bold text-base hidden sm:block" style={{ color: "#1a1a1a" }}>
-            Midnight <span style={{ color: "#0068FF" }}>Elite</span>
+            Ki<span style={{ color: "#0068FF" }}>N</span>
           </span>
         </Link>
 

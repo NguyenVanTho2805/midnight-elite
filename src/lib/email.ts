@@ -1,7 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const FROM    = `Midnight Elite <${process.env.GMAIL_USER}>`;
+const FROM    = `KiN <${process.env.GMAIL_USER}>`;
 
 // Gmail SMTP qua nodemailer — thay Resend (xem ghi chú trong .env). Gmail
 // bắt buộc "From" phải trùng địa chỉ đã xác thực (GMAIL_USER), không dùng
@@ -28,7 +28,7 @@ export async function sendVerificationEmail(to: string, name: string, token: str
   await getTransport().sendMail({
     from: FROM,
     to,
-    subject: "Xác thực email — Midnight Elite",
+    subject: "Xác thực email — KiN",
     html: `
 <!DOCTYPE html>
 <html lang="vi">
@@ -37,14 +37,14 @@ export async function sendVerificationEmail(to: string, name: string, token: str
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
       <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">
-        Midnight Elite
+        KiN
       </div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
     <div style="background:#ffffff;border-radius:16px;padding:36px 32px;border:1px solid #e5e3df">
       <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 8px;letter-spacing:-0.3px">Xin chào, ${name}!</h1>
       <p style="color:#787671;font-size:14px;line-height:1.6;margin:0 0 28px">
-        Cảm ơn bạn đã đăng ký tài khoản tại <strong style="color:#0068FF">Midnight Elite</strong>.
+        Cảm ơn bạn đã đăng ký tài khoản tại <strong style="color:#0068FF">KiN</strong>.
         Bấm nút bên dưới để xác thực email và kích hoạt tài khoản.
       </p>
       <div style="text-align:center;margin:0 0 28px">
@@ -61,7 +61,7 @@ export async function sendVerificationEmail(to: string, name: string, token: str
         Link có hiệu lực trong <strong>24 giờ</strong>. Nếu bạn không đăng ký tài khoản này, hãy bỏ qua email này.
       </p>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,
@@ -76,7 +76,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
   await getTransport().sendMail({
     from: FROM,
     to,
-    subject: "Đặt lại mật khẩu — Midnight Elite",
+    subject: "Đặt lại mật khẩu — KiN",
     html: `
 <!DOCTYPE html>
 <html lang="vi">
@@ -84,7 +84,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
 <body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
-      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">Midnight Elite</div>
+      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">KiN</div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
     <div style="background:#ffffff;border-radius:16px;padding:36px 32px;border:1px solid #e5e3df">
@@ -105,7 +105,7 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
       </div>
       <p style="color:#a4a097;font-size:12px;margin:0">Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,
@@ -119,7 +119,7 @@ export async function sendReminderEmail(to: string, name: string, message: strin
   await getTransport().sendMail({
     from: FROM,
     to,
-    subject: "Nhắc nhở học tập — Midnight Elite",
+    subject: "Nhắc nhở học tập — KiN",
     html: `
 <!DOCTYPE html>
 <html lang="vi">
@@ -127,7 +127,7 @@ export async function sendReminderEmail(to: string, name: string, message: strin
 <body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
-      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">Midnight Elite</div>
+      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">KiN</div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
     <div style="background:#ffffff;border-radius:16px;padding:36px 32px;border:1px solid #e5e3df">
@@ -142,7 +142,7 @@ export async function sendReminderEmail(to: string, name: string, message: strin
         </a>
       </div>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,
@@ -174,7 +174,7 @@ export async function sendExamReminderEmail(
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
       <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">
-        Midnight Elite
+        KiN
       </div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
@@ -218,7 +218,7 @@ export async function sendExamReminderEmail(
         }
       </div>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,
@@ -249,7 +249,7 @@ export async function sendClassReminderEmail(
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
       <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">
-        Midnight Elite
+        KiN
       </div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
@@ -284,7 +284,7 @@ export async function sendClassReminderEmail(
         </a>
       </div>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,
@@ -308,7 +308,7 @@ export async function sendEnrollmentEmail(
   await getTransport().sendMail({
     from: FROM,
     to,
-    subject: `Khóa học "${courseName}" đã được kích hoạt — Midnight Elite`,
+    subject: `Khóa học "${courseName}" đã được kích hoạt — KiN`,
     html: `
 <!DOCTYPE html>
 <html lang="vi">
@@ -317,7 +317,7 @@ export async function sendEnrollmentEmail(
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
       <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">
-        Midnight Elite
+        KiN
       </div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
@@ -368,7 +368,7 @@ export async function sendEnrollmentEmail(
         </a>
       </div>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,
@@ -392,7 +392,7 @@ export async function sendParentConsentEmail(
   token: string,
 ) {
   const link = `${APP_URL}/xac-nhan-phu-huynh?token=${encodeURIComponent(token)}`;
-  const subject = `Yêu cầu xác nhận cho con bạn tham gia lớp "${courseName}" — Midnight Elite`;
+  const subject = `Yêu cầu xác nhận cho con bạn tham gia lớp "${courseName}" — KiN`;
   parentName  = escapeHtml(parentName);
   studentName = escapeHtml(studentName);
   courseName  = escapeHtml(courseName);
@@ -408,14 +408,14 @@ export async function sendParentConsentEmail(
 <body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="text-align:center;padding:32px 0 24px">
-      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">Midnight Elite</div>
+      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">KiN</div>
       <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
     </div>
     <div style="background:#ffffff;border-radius:16px;padding:36px 32px;border:1px solid #e5e3df">
       <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 8px;letter-spacing:-0.3px">Yêu cầu xác nhận từ phụ huynh</h1>
       <p style="color:#787671;font-size:14px;line-height:1.6;margin:0 0 8px">Xin chào <strong>${parentName}</strong>,</p>
       <p style="color:#787671;font-size:14px;line-height:1.6;margin:0 0 28px">
-        Con của bạn — <strong>${studentName}</strong> — đang đăng ký tham gia lớp <strong>"${courseName}"</strong> trên Midnight Elite.
+        Con của bạn — <strong>${studentName}</strong> — đang đăng ký tham gia lớp <strong>"${courseName}"</strong> trên KiN.
         Vì hệ thống đang ghi nhận học viên dưới ngưỡng tuổi cần phụ huynh đồng ý, vui lòng xác nhận bên dưới.
         Link chỉ có hiệu lực trong <strong>7 ngày</strong> và chỉ dùng được 1 lần.
       </p>
@@ -430,7 +430,7 @@ export async function sendParentConsentEmail(
       </div>
       <p style="color:#a4a097;font-size:12px;margin:0">Nếu bạn không nhận ra yêu cầu này, hãy bỏ qua email hoặc từ chối trong trang xác nhận.</p>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 Midnight Elite</p>
+    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,

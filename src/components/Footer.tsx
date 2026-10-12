@@ -27,10 +27,10 @@ export default function Footer() {
                 className="w-9 h-9 flex items-center justify-center text-white text-xs font-black flex-shrink-0"
                 style={{ backgroundColor: "#0068FF", borderRadius: "8px" }}
               >
-                ME
+                KiN
               </div>
               <span className="text-base font-semibold" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>
-                Midnight Elite
+                KiN
               </span>
             </Link>
 
@@ -130,7 +130,7 @@ export default function Footer() {
           style={{ borderTop: "1px solid #e5e3df" }}
         >
           <p className="text-xs" style={{ color: "#a4a097" }}>
-            © 2026 Midnight Elite. Bảo lưu mọi quyền.
+            © 2026 KiN. Bảo lưu mọi quyền.
           </p>
           <Link
             href="/chinh-sach"

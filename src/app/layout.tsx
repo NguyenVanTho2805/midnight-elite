@@ -24,12 +24,12 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Midnight Elite — Luyện thi ĐGNL & Tốt nghiệp THPT",
+  title: "KiN — Luyện thi ĐGNL & Tốt nghiệp THPT",
   description: "Nền tảng luyện thi ĐGNL (HSA, HCM, Bách Khoa) và Tốt nghiệp THPT hàng đầu Việt Nam. Học video bài giảng, thi thử, hỏi AI 24/7.",
-  keywords: ["ĐGNL", "luyện thi", "HSA", "tốt nghiệp THPT", "học online", "Midnight Elite"],
+  keywords: ["ĐGNL", "luyện thi", "HSA", "tốt nghiệp THPT", "học online", "KiN"],
   openGraph: {
-    title: "Midnight Elite",
-    description: "Chinh phục ĐGNL & Tốt nghiệp THPT cùng Midnight Elite",
+    title: "KiN",
+    description: "Chinh phục ĐGNL & Tốt nghiệp THPT cùng KiN",
     type: "website",
   },
 };

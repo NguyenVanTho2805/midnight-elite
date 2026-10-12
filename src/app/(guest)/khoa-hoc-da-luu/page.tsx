@@ -117,7 +117,7 @@ export default function LopTheoDoiPage() {
                   {/* Thumbnail */}
                   <div className="w-16 h-16 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black text-xs"
                     style={{ background: bg }}>
-                    ME
+                    KiN
                   </div>
 
                   {/* Info */}

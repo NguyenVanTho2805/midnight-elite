@@ -23,7 +23,7 @@ interface CreateForm {
 
 const CREATE_INIT: CreateForm = {
   name: "", slug: "", category: "ĐGNL HSA",
-  instructor: "Midnight Elite", openDate: "",
+  instructor: "KiN", openDate: "",
   price: "", originalPrice: "",
   lessons: "", hours: "", tag: "", tagColor: "#FF2157",
   bgImage: "", status: true,
@@ -389,7 +389,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <p className="text-xs font-bold text-green-700 mb-2">Preview — học viên sẽ thấy:</p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-8 rounded flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "#374151" }}>ME</div>
+                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "#374151" }}>KiN</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{form.name}</p>
                   <p className="text-xs text-gray-500">{form.category} · {form.instructor}</p>

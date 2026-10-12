@@ -21,7 +21,7 @@ export default function ChinhSachPage() {
           <Shield size={28} style={{ color: "white" }} />
         </div>
         <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>Chính sách & Điều khoản</h1>
-        <p className="text-sm" style={{ color: "#787671" }}>Cập nhật lần cuối: 01/05/2026 · Midnight Elite cam kết bảo vệ quyền lợi người dùng</p>
+        <p className="text-sm" style={{ color: "#787671" }}>Cập nhật lần cuối: 01/05/2026 · KiN cam kết bảo vệ quyền lợi người dùng</p>
       </div>
 
       {/* Tab nav */}
@@ -56,7 +56,7 @@ export default function ChinhSachPage() {
             <a href="mailto:support@tsixeducation.vn" className="font-semibold" style={{ color: "#0068FF" }}>
               support@tsixeducation.vn
             </a>{" "}
-            hoặc fanpage Facebook Midnight Elite. Thời gian phản hồi trong vòng 24 giờ làm việc.
+            hoặc fanpage Facebook KiN. Thời gian phản hồi trong vòng 24 giờ làm việc.
           </p>
         </div>
       </div>
@@ -77,7 +77,7 @@ function PrivacyContent() {
   return (
     <div className="space-y-7">
       <Section title="1. Thông tin chúng tôi thu thập">
-        <p>Midnight Elite thu thập các thông tin sau khi bạn đăng ký và sử dụng dịch vụ:</p>
+        <p>KiN thu thập các thông tin sau khi bạn đăng ký và sử dụng dịch vụ:</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li><strong>Thông tin cá nhân:</strong> Họ tên, email, số điện thoại, trường THPT, năm thi, tỉnh/thành.</li>
           <li><strong>Thông tin học tập:</strong> Tiến độ bài học, điểm thi thử, streak học tập, EXP tích lũy.</li>
@@ -95,7 +95,7 @@ function PrivacyContent() {
         </ul>
       </Section>
       <Section title="3. Chia sẻ thông tin">
-        <p>Midnight Elite <strong>không bán</strong> thông tin cá nhân của bạn cho bên thứ ba. Chúng tôi chỉ chia sẻ khi:</p>
+        <p>KiN <strong>không bán</strong> thông tin cá nhân của bạn cho bên thứ ba. Chúng tôi chỉ chia sẻ khi:</p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Có sự đồng ý của bạn.</li>
           <li>Yêu cầu của cơ quan pháp luật có thẩm quyền.</li>
@@ -131,14 +131,14 @@ function TermsContent() {
   return (
     <div className="space-y-7">
       <Section title="1. Chấp nhận điều khoản">
-        <p>Khi tạo tài khoản và sử dụng Midnight Elite, bạn đồng ý tuân thủ các điều khoản này. Nếu không đồng ý, vui lòng không sử dụng dịch vụ.</p>
+        <p>Khi tạo tài khoản và sử dụng KiN, bạn đồng ý tuân thủ các điều khoản này. Nếu không đồng ý, vui lòng không sử dụng dịch vụ.</p>
       </Section>
       <Section title="2. Tài khoản người dùng">
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Mỗi người dùng chỉ được tạo <strong>một tài khoản duy nhất</strong>.</li>
           <li>Bạn chịu trách nhiệm bảo mật thông tin đăng nhập của mình.</li>
           <li>Không được chia sẻ tài khoản cho người khác — vi phạm sẽ bị khóa tài khoản vĩnh viễn.</li>
-          <li>Midnight Elite có quyền tạm khóa hoặc xóa tài khoản vi phạm mà không cần báo trước.</li>
+          <li>KiN có quyền tạm khóa hoặc xóa tài khoản vi phạm mà không cần báo trước.</li>
         </ul>
       </Section>
       <Section title="3. Quy tắc cộng đồng">
@@ -159,10 +159,10 @@ function TermsContent() {
         </ul>
       </Section>
       <Section title="5. Quyền sở hữu trí tuệ">
-        <p>Toàn bộ nội dung bao gồm video bài giảng, tài liệu PDF, đề thi thử thuộc quyền sở hữu của Midnight Elite. Nghiêm cấm sao chép, phân phối dưới mọi hình thức khi chưa được cho phép bằng văn bản.</p>
+        <p>Toàn bộ nội dung bao gồm video bài giảng, tài liệu PDF, đề thi thử thuộc quyền sở hữu của KiN. Nghiêm cấm sao chép, phân phối dưới mọi hình thức khi chưa được cho phép bằng văn bản.</p>
       </Section>
       <Section title="6. Giới hạn trách nhiệm">
-        <p>Midnight Elite không chịu trách nhiệm với kết quả thi thật của học viên. Chúng tôi cung cấp môi trường học tập và tài liệu tốt nhất có thể, nhưng kết quả phụ thuộc vào nỗ lực của từng cá nhân.</p>
+        <p>KiN không chịu trách nhiệm với kết quả thi thật của học viên. Chúng tôi cung cấp môi trường học tập và tài liệu tốt nhất có thể, nhưng kết quả phụ thuộc vào nỗ lực của từng cá nhân.</p>
       </Section>
     </div>
   );
@@ -172,7 +172,7 @@ function CookieContent() {
   return (
     <div className="space-y-7">
       <Section title="1. Cookie là gì?">
-        <p>Cookie là các tệp văn bản nhỏ được lưu trên thiết bị của bạn khi truy cập Midnight Elite. Chúng giúp chúng tôi cải thiện trải nghiệm người dùng.</p>
+        <p>Cookie là các tệp văn bản nhỏ được lưu trên thiết bị của bạn khi truy cập KiN. Chúng giúp chúng tôi cải thiện trải nghiệm người dùng.</p>
       </Section>
       <Section title="2. Các loại cookie chúng tôi sử dụng">
         <ul className="list-disc list-inside space-y-2 ml-2">

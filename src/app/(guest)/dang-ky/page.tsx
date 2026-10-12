@@ -256,7 +256,7 @@ export default function DangKyPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>Midnight Elite</span>
+            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>KiN</span>
             <span className="text-xs" style={{ color: "#a4a097" }}>Education Platform</span>
           </Link>
           <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Tạo tài khoản miễn phí</h1>

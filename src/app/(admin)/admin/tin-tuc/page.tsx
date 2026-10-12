@@ -43,7 +43,7 @@ interface DrawerForm {
 const CATEGORIES = [
   { value: "hoc-thuat",    label: "Học thuật"          },
   { value: "tuyen-sinh",   label: "Tuyển sinh"         },
-  { value: "tin-midnight", label: "Tin Midnight Elite" },
+  { value: "tin-midnight", label: "Tin KiN" },
   { value: "kinh-nghiem",  label: "Kinh nghiệm thi"   },
 ];
 

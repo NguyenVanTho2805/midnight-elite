@@ -30,7 +30,7 @@ function ResetContent() {
   const mismatch = confirm.length > 0 && password !== confirm;
 
   useEffect(() => {
-    document.title = "Đặt lại mật khẩu — Midnight Elite";
+    document.title = "Đặt lại mật khẩu — KiN";
   }, []);
 
   useEffect(() => {
@@ -63,7 +63,7 @@ function ResetContent() {
 
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>Midnight Elite</span>
+            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>KiN</span>
             <span className="text-xs" style={{ color: "#a4a097" }}>Education Platform</span>
           </Link>
         </div>

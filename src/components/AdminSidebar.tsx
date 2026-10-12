@@ -92,10 +92,10 @@ export default function AdminSidebar({ open = false, onClose }: { open?: boolean
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-base flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
-            ME
+            KiN
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-white font-bold text-sm leading-none truncate">Midnight Elite Admin</div>
+            <div className="text-white font-bold text-sm leading-none truncate">KiN Admin</div>
             <div className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
               {user?.name ?? "Admin"}
             </div>

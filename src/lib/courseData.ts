@@ -156,7 +156,7 @@ export const COURSES: MasterCourse[] = [
     name:         "BCA 2K8 — Đánh giá tuyển sinh Bộ Công An",
     shortTitle:   "TRỌN GÓI\nBCA 2K8",
     category:     "BCA",
-    instructor:   "Midnight Elite",
+    instructor:   "KiN",
     teacherAvatar:"B",
     openDate:     "01/08/2026",
     types:        ["Video"],

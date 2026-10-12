@@ -8,7 +8,7 @@
      quán giữa mọi người).
 
    Mọi code KiN mới dùng var(--kin-*) thay cho mã màu hardcode.
-   Các style cũ (Midnight Elite) giữ var(--canvas), --ink, --radius-*
+   Các style cũ (trước khi đổi sang KiN) giữ var(--canvas), --ink, --radius-*
    của tokens cũ dưới đây — migrate dần. */
 @import "./kin-tokens.css";
 

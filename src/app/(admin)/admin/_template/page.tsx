@@ -2,7 +2,7 @@
 
 /**
  * ╔═══════════════════════════════════════════════════════════╗
- * ║         ADMIN PAGE TEMPLATE — Midnight Elite             ║
+ * ║         ADMIN PAGE TEMPLATE — KiN             ║
  * ║  Chuẩn từ /admin/khoa-hoc (gold standard)                ║
  * ║  Copy file này khi tạo trang admin mới.                   ║
  * ╚═══════════════════════════════════════════════════════════╝

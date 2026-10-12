@@ -9,7 +9,7 @@ export default function QuenMatKhauPage() {
   const [errMsg, setErrMsg] = useState("");
 
   useEffect(() => {
-    document.title = "Quên mật khẩu — Midnight Elite";
+    document.title = "Quên mật khẩu — KiN";
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,7 +37,7 @@ export default function QuenMatKhauPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>Midnight Elite</span>
+            <span className="text-2xl font-bold" style={{ color: "#0068FF", letterSpacing: "-0.5px" }}>KiN</span>
             <span className="text-xs" style={{ color: "#a4a097" }}>Education Platform</span>
           </Link>
         </div>

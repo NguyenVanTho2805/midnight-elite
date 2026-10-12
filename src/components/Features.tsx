@@ -10,7 +10,7 @@ const features = [
   {
     Icon: Robot,
     title: "AI giải bài 24/7",
-    description: "Trợ lý AI (RAG) đọc giáo trình Midnight Elite, trả lời chính xác và dẫn thẳng đến phút trong video cần xem lại.",
+    description: "Trợ lý AI (RAG) đọc giáo trình KiN, trả lời chính xác và dẫn thẳng đến phút trong video cần xem lại.",
     detail: "Powered by: Claude AI · Vector Database · RAG",
   },
   {
@@ -49,7 +49,7 @@ export default function Features() {
             className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold mb-4"
             style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#0068FF" }}
           >
-            Tại sao chọn Midnight Elite
+            Tại sao chọn KiN
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: "#1E2938" }}>
             Hệ sinh thái học tập <span style={{ color: "#0068FF" }}>khép kín</span>

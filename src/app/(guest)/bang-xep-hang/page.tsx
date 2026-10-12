@@ -232,7 +232,7 @@ function TabVinhDanh() {
   return (
     <>
       <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
-        <p className="text-sm" style={{ color: "#787671" }}>{students.length} học sinh Midnight Elite</p>
+        <p className="text-sm" style={{ color: "#787671" }}>{students.length} học sinh KiN</p>
         <div className="flex gap-1.5">
           {([
             { key: "gpa" as SortKey, label: "GPA" },
@@ -422,7 +422,7 @@ function TabVinhDanh() {
         <div className="flex justify-center mb-3" style={{ color: "#FDE047" }}><Trophy size={40} /></div>
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Tên bạn sẽ xuất hiện ở đây!</h2>
         <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.7)" }}>
-          Học chăm chỉ, nộp bài đầy đủ và chinh phục bảng vinh danh Midnight Elite.
+          Học chăm chỉ, nộp bài đầy đủ và chinh phục bảng vinh danh KiN.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/khoa-hoc" className="px-6 py-2.5 rounded-lg text-sm font-semibold"
@@ -451,7 +451,7 @@ export default function BangXepHangPage() {
           Bảng xếp hạng <span style={{ color: "#b45309" }}>&amp; Vinh danh</span>
         </h1>
         <p className="text-sm" style={{ color: "#787671" }}>
-          Xếp hạng thi thử toàn server và vinh danh học sinh xuất sắc Midnight Elite
+          Xếp hạng thi thử toàn server và vinh danh học sinh xuất sắc KiN
         </p>
       </div>
 
@@ -470,7 +470,7 @@ export default function BangXepHangPage() {
           style={tab === "vinh-danh"
             ? { background: "#ffffff", color: "#1a1a1a", border: "1px solid #e5e3df" }
             : { color: "#787671" }}>
-          Vinh danh Midnight Elite
+          Vinh danh KiN
         </button>
       </div>
 
