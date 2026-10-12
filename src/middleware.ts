@@ -26,7 +26,7 @@ export function middleware(req: NextRequest) {
       url.pathname = "/admin";
       return NextResponse.rewrite(url);
     }
-    // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem AdminSidebar.tsx)
+    // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem src/lib/adminNav.ts)
     // — cho qua nguyên trạng.
     if (pathname.startsWith("/admin")) return NextResponse.next();
     // Đường lạ trên domain admin (vd gõ nhầm /khoa-hoc) — không phục vụ trang

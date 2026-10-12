@@ -93,7 +93,7 @@ export function ErrorStrip({ message, onRetry }: { message: string; onRetry: () 
   );
 }
 
-export interface Command { label: string; href?: string; onClick?: () => void; kind: "primary" | "secondary"; external?: boolean }
+export interface Command { label: string; href?: string; onClick?: () => void; kind: "primary" | "secondary"; external?: boolean; disabled?: boolean }
 
 const BTN = "inline-flex items-center justify-center min-h-11 px-[14px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-small)] font-medium transition-colors whitespace-nowrap";
 const BTN_KIND = {
@@ -115,7 +115,7 @@ export function ReadHead({ title, meta, commands, onBack }: { title: string; met
         <div className="flex flex-wrap gap-2 pt-3">
           {commands.slice(0, 3).map(c => {
             const cls = `${BTN} ${BTN_KIND[c.kind]}`;
-            if (c.onClick) return <button key={c.label} type="button" onClick={c.onClick} className={cls}>{c.label}</button>;
+            if (c.onClick) return <button key={c.label} type="button" onClick={c.onClick} disabled={c.disabled} className={`${cls} disabled:opacity-50 disabled:cursor-not-allowed`}>{c.label}</button>;
             return c.external || !c.href?.startsWith("/")
               ? <a key={c.label} href={c.href} target="_blank" rel="noopener noreferrer" className={cls}>{c.label}</a>
               : <Link key={c.label} href={c.href} className={cls}>{c.label}</Link>;
