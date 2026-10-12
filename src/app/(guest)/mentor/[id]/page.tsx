@@ -6,8 +6,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Star, BookOpen, Users, ArrowLeft, CheckCircle, CalendarCheck } from "griddy-icons";
+import { ArrowLeft, CheckCircle } from "griddy-icons";
 import ProfileTracker from "@/components/tutor/ProfileTracker";
+import TutorProfileHeader from "@/components/tutor/TutorProfileHeader";
 import ReportProfileButton from "@/components/tutor/ReportProfileButton";
 import { profileOg } from "@/lib/funnel";
 
@@ -53,12 +54,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
 export default async function MentorProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const data = await fetchTutor(id);
@@ -79,7 +74,6 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
   }
 
   const { tutor, stats, classes } = data;
-  const avgText = stats.rating.avg !== null ? stats.rating.avg.toFixed(1) : "—";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
@@ -88,59 +82,8 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
         <ArrowLeft size={16} /> Quay lại danh sách
       </Link>
 
-      {/* FE-110: Hero (avatar, tên, môn, badge xác minh) */}
-      <div className="rounded-xl p-8" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-        <div className="flex flex-col sm:flex-row items-start gap-6">
-          <div className="w-24 h-24 rounded-xl flex items-center justify-center text-white text-3xl font-black flex-shrink-0 overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
-            {tutor.avatarBase64
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={tutor.avatarBase64} alt={tutor.name} className="w-full h-full object-cover" />
-              : initials(tutor.name)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>{tutor.name}</h1>
-              {tutor.tutorVerified && (
-                <span className="text-xs font-bold px-3 py-1 rounded-full text-white"
-                  style={{ background: "#00A63D" }}>Đã xác minh</span>
-              )}
-              {/* PH-207/212: lời hứa của KiN với gia sư, nhìn thấy được trên hồ sơ chứ không chỉ nằm trong điều khoản */}
-              <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#dcfce7", color: "#166534" }}>Không thu phí nhận lớp</span>
-            </div>
-            {tutor.subjects.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {tutor.subjects.map(s => (
-                  <span key={s} className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                    style={{ background: "#dbeafe", color: "#0068FF" }}>{s}</span>
-                ))}
-              </div>
-            )}
-
-            {/* FE-111: Bio đầy đủ (không line-clamp ở trang chi tiết). */}
-            {tutor.bio && (
-              <p className="text-sm leading-relaxed mt-3 whitespace-pre-wrap" style={{ color: "#4B5563" }}>{tutor.bio}</p>
-            )}
-
-            {/* FE-112: Stat thật (không hard-code) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-              {[
-                { Icon: Star, value: avgText, label: stats.rating.total > 0 ? `${stats.rating.total} đánh giá` : "chưa có", color: "#FE9900" },
-                { Icon: Users, value: stats.studentCount.toLocaleString(), label: "Học viên", color: "#0068FF" },
-                { Icon: BookOpen, value: stats.classCount, label: "Lớp đang dạy", color: "#00A63D" },
-                { Icon: CalendarCheck, value: stats.sessionsTaught.toLocaleString(), label: "Buổi đã dạy (theo sổ lớp)", color: "#7C3AED" },
-              ].map(({ Icon, value, label, color }) => (
-                <div key={label} className="rounded-xl p-3 text-center"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
-                  <Icon size={18} style={{ color, margin: "0 auto 4px" }} />
-                  <div className="font-extrabold text-base" style={{ color: "#1E2938" }}>{value}</div>
-                  <div className="text-xs" style={{ color: "#9CA3AF" }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* FE-110: đầu hồ sơ — dùng chung (FE-158) */}
+      <TutorProfileHeader tutor={tutor} stats={stats} />
 
       {/* FE-113: lớp đang dạy */}
       <div className="rounded-2xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
