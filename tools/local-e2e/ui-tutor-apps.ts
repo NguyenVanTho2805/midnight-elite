@@ -1,4 +1,4 @@
-import { mkUser, mkTutor, mkSuper, wipe, check, section, done, BASE } from "./h";
+import { mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done, BASE } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -33,7 +33,7 @@ async function applicant(name: string, emailVerified: boolean) {
 
   await approveBtns.nth(0).click();
   await page.getByText(/Đã duyệt Ứng viên Hợp lệ/).waitFor({ timeout: 15000 });
-  check("duyệt xong: hồ sơ biến khỏi tab chờ", (await page.locator("li").count()) === 1);
+  await eventually("duyệt xong: hồ sơ biến khỏi tab chờ", async () => (await page.locator("li").count()) === 1);
   const dbU = await prisma.user.findUnique({ where: { id: ok.id } });
   check("DB: đã thành gia sư", dbU?.tutorVerified === true && dbU?.adminRole === "teacher");
 
