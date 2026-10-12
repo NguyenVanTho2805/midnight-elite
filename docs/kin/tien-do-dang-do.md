@@ -82,9 +82,11 @@ PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); P
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).
 
 ## Việc Thọ cần làm khi triển khai
-- Vercel build chạy `prisma db push`: thêm cột `users.preferences`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`
-  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `profile_visits`, `tutor_profile_reports`, `session_plans`, `admission_scores`, cột `users.profileLockedAt/profileLockReason`, `courses.zaloGroupUrl`, cột `tuition_invoices.viewToken/viewTokenExpiresAt/zaloOpenedAt/parentViewedAt` và `attendance_records.zaloOpenedAt` (chỉ THÊM, không xoá dữ liệu cũ).
-- Chưa chạy được `next build` trong môi trường này (Google Fonts bị chặn); đã kiểm `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
+- Build **production** trên Vercel chạy `prisma db push` (`scripts/db-push-on-production.mjs`; bản xem trước bỏ qua bước này; `PRISMA_ACCEPT_DATA_LOSS` đang 0 nên không xoá được gì). So với `main` ngày 09/10, lược đồ chỉ THÊM (đã kiểm bằng `git diff`: không có dòng nào bị xoá/sửa):
+  - **13 bảng mới:** `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `tutor_payout_accounts`, `tuition_invoices`, `bank_transactions`, `tuition_credits`, `profile_visits`, `tutor_profile_reports`, `session_plans`, `admission_scores`.
+  - **Cột mới (cho phép trống) trên bảng đã có:** `users.preferences`, `users.profileLockedAt`, `users.profileLockReason`, `courses.zaloGroupUrl`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`, `attendance_records.zaloOpenedAt`.
+  - Bản xem trước dùng chung cơ sở dữ liệu với production và không có `SESSION_SECRET` nên KHÔNG đăng nhập / thử tính năng được; lần thử thật đầu tiên là sau khi lên production — nên tạo nhánh hoặc sao lưu Neon trước khi merge.
+- Không chạy được `next build` trong môi trường làm việc này (Google Fonts bị chặn), nhưng Vercel đã dựng thành công bản xem trước của nhánh (biên dịch, kiểm kiểu, 135 trang); `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.
 - Lưu ý hành vi mới (NV-188): màn xem lại bài thi không hiện đáp án câu sai cho tới khi học sinh chữa xong câu đó (khi đề cho phép chữa bài).
