@@ -1739,3 +1739,30 @@ model SessionPlan {
   @@index([tutorId, dateKey])
   @@map("session_plans")
 }
+
+// ─── ĐIỂM CHUẨN TUYỂN SINH (FE-099) ───────────────────────────────────────────────────────────────────────────
+// Mỗi dòng = điểm chuẩn MỘT ngành/chương trình, MỘT năm, MỘT phương thức, kèm đường dẫn nguồn.
+// Thang điểm khác nhau giữa các phương thức/năm (30, 90, 100, 150, 1200…) nên lưu kèm `scale` — không so sánh chéo thang.
+// verified = quản trị đã đối chiếu với thông báo chính thức của trường (mặc định chưa).
+// variant = chương trình/tổ hợp để phân biệt (VD "Chương trình tiên tiến"); chuỗi rỗng khi không có (để khoá duy nhất hoạt động).
+model AdmissionScore {
+  id         String   @id @default(cuid())
+  school     String
+  major      String
+  variant    String   @default("")
+  year       Int
+  method     String
+  score      Float
+  scale      Int
+  note       String?  @db.Text
+  sourceUrl  String
+  sourceName String
+  verified   Boolean  @default(false)
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([school, major, variant, year, method], name: "admission_score_key")
+  @@index([published, year])
+  @@map("admission_scores")
+}

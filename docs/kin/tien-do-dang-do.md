@@ -53,13 +53,29 @@ PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, m�
 
 ## Redesign / tái cấu trúc (FE-098/099/130/134/136/139/140) và component dùng chung
 - **XONG:** FE-139 (nhãn + lọc theo lớp ở kiểm duyệt cộng đồng), FE-140 (quyền danh mục: gia sư chỉ xem, quản trị mới đổi tên, con số theo người xem),
-  FE-157/158 (TutorCard, TutorProfileHeader tách thành component dùng chung, so ảnh trước/sau giống từng điểm ảnh; Hồ sơ gia sư có bản xem trước hồ sơ công khai).
+  FE-157/158 (TutorCard, TutorProfileHeader tách thành component dùng chung, so ảnh trước/sau giống từng điểm ảnh; Hồ sơ gia sư có bản xem trước hồ sơ công khai),
+  FE-099 (`/diem-chuan` dùng dữ liệu thật có nguồn + CMS — xem mục "Điểm chuẩn" bên dưới), đổi tên hiển thị Midnight Elite → KiN (Thọ chốt 12/10).
 - **CHƯA LÀM, cần anh quyết hoặc cần khung thiết kế:** FE-098 / FE-134 / FE-130 (redesign hàng loạt trang guest, admin, bài giảng — repo chưa có khung thiết kế cho các trang đó);
-  FE-099 (`/diem-chuan` là 8 dòng gõ cứng nhưng ghi "Dữ liệu tuyển sinh 2020–2025" — cần quyết định: gắn nhãn minh hoạ, gỡ khỏi menu, hay làm CMS);
   FE-136 (tách quản lý lớp ra khỏi `/admin/khoa-hoc` — đụng điểm danh, bài giảng, lịch học mà gia sư đang dùng hằng ngày; đề xuất 3 bước trong sheet);
   FE-159 (SubscriptionPicker — "chọn mua" là tiền, giá/gói chưa chốt).
-- Đổi tên hiển thị "Midnight Elite" → "KiN": còn ~79 chỗ trong 21 file (Footer, layout/metadata, trang guest, AdminSidebar, email, AIChatWidget). Chưa đổi vì đụng email/SEO/tên miền, cần anh duyệt chuỗi mới.
-  Trang phụ huynh mới (`/phieu/[token]`, `/so-cua-con/[token]`) dùng chung khung guest nên vẫn hiện thanh menu "Midnight Elite" và nút "Bắt đầu miễn phí".
+- **Đổi tên hiển thị → KiN: XONG** (Thọ chốt 12/10). Giữ nguyên các khoá kỹ thuật để không đăng xuất mọi người và không phải di chuyển dữ liệu: cookie `midnight_session`,
+  chuyên mục tin `tin-midnight` (hiển thị "Tin KiN"), tên miền `admin.midnightelite-edu.com`. Test `t-brand` (5 kiểm tra) giữ cho không còn chữ "Midnight Elite" / logo "ME" trong `src`.
+  Chưa đổi: ngày "Cập nhật lần cuối: 01/05/2026" ở `/chinh-sach` (chữ pháp lý đã nói KiN nhưng ngày chưa đổi — cần người chịu trách nhiệm pháp lý duyệt).
+  Trang phụ huynh (`/phieu/[token]`, `/so-cua-con/[token]`) vẫn dùng chung khung guest nên còn thanh menu và nút "Bắt đầu miễn phí" — chưa tách khung riêng.
+
+## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
+`/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,
+lưu kèm thang điểm (30 / 90 / 100…). Trang công khai gom các năm của cùng ngành; chỉ hiện ▲/▼ khi hai năm liền kề **cùng thang** (Bách khoa TP.HCM 2024 thang 90 vs 2025 thang 100: không so);
+mỗi điểm là một liên kết tới nguồn; dòng chưa đối chiếu ghi rõ "Chưa đối chiếu với thông báo của trường"; khung "Đọc trước khi dùng" nói thang/phương thức khác nhau.
+`/admin/diem-chuan` (admin_super, admin_content): thêm/sửa/xoá, công tắc "Đã đối chiếu" và "Công khai", nhập CSV/JSON (kiểm tra trước, lỗi theo số dòng, **một dòng lỗi thì không nhập dòng nào**),
+nút "Nạp dữ liệu khởi đầu" (chỉ thêm dòng còn thiếu, không đè chỉnh sửa). Trùng khoá (trường, ngành, chương trình, năm, phương thức) tính không phân biệt hoa/thường và dạng dấu NFC/NFD.
+Bảng trống thì trang công khai tạm dùng dữ liệu khởi đầu có sẵn (`src/lib/admissionScoreSeed.ts`); có dữ liệu trong bảng thì dùng bảng.
+**Dữ liệu hiện có: 8 dòng / 6 ngành** (Bách khoa HN IT1 2024–2025 + IT-E10 2025, Y Hà Nội Y khoa 2025, Ngoại thương Kinh tế đối ngoại tiên tiến 2025, Bách khoa TP.HCM KHMT 2024–2025, KTQD Thương mại điện tử 2025),
+mỗi dòng có một đường dẫn báo/trang tuyển sinh. **Chưa dòng nào được đối chiếu với thông báo chính thức của trường** — môi trường làm việc này không mở được website các trường (mạng bị chặn),
+nên số liệu lấy từ kết quả tìm kiếm tin báo; tất cả `verified = false`. Cần người có mạng mở nguồn, so với thông báo của trường rồi bật "Đã đối chiếu" trong `/admin/diem-chuan`;
+muốn thêm trường khác: dán CSV/JSON vào "Nhập CSV / JSON" (cột: school, major, variant, year, method, score, scale, sourceUrl, sourceName, note, verified, published).
+Chưa có: điểm HSA / ĐGNL ĐHQG-HCM / TSA theo từng trường (chưa tìm được số có nguồn), điểm chuẩn Ngoại thương/KTQD các năm trước.
+Test: lib 49/49, API 54/54, trình duyệt 57/57.
 
 ## Không làm (chờ Thọ / luật sư / Thanh)
 PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh); TK-170 (đăng nhập bằng mã 6 số);
@@ -67,7 +83,7 @@ nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, ti�
 
 ## Việc Thọ cần làm khi triển khai
 - Vercel build chạy `prisma db push`: thêm cột `users.preferences`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`
-  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `profile_visits`, `tutor_profile_reports`, `session_plans`, cột `users.profileLockedAt/profileLockReason`, `courses.zaloGroupUrl`, cột `tuition_invoices.viewToken/viewTokenExpiresAt/zaloOpenedAt/parentViewedAt` và `attendance_records.zaloOpenedAt` (chỉ THÊM, không xoá dữ liệu cũ).
+  và bảng `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `profile_visits`, `tutor_profile_reports`, `session_plans`, `admission_scores`, cột `users.profileLockedAt/profileLockReason`, `courses.zaloGroupUrl`, cột `tuition_invoices.viewToken/viewTokenExpiresAt/zaloOpenedAt/parentViewedAt` và `attendance_records.zaloOpenedAt` (chỉ THÊM, không xoá dữ liệu cũ).
 - Chưa chạy được `next build` trong môi trường này (Google Fonts bị chặn); đã kiểm `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.
