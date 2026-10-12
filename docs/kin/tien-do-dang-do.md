@@ -66,13 +66,31 @@ PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, m�
 - **XONG:** FE-139 (nhãn + lọc theo lớp ở kiểm duyệt cộng đồng), FE-140 (quyền danh mục: gia sư chỉ xem, quản trị mới đổi tên, con số theo người xem),
   FE-157/158 (TutorCard, TutorProfileHeader tách thành component dùng chung, so ảnh trước/sau giống từng điểm ảnh; Hồ sơ gia sư có bản xem trước hồ sơ công khai),
   FE-099 (`/diem-chuan` dùng dữ liệu thật có nguồn + CMS — xem mục "Điểm chuẩn" bên dưới), đổi tên hiển thị Midnight Elite → KiN (Thọ chốt 12/10).
-- **CHƯA LÀM, cần anh quyết hoặc cần khung thiết kế:** FE-098 / FE-134 / FE-130 (redesign hàng loạt trang guest, admin, bài giảng — repo chưa có khung thiết kế cho các trang đó);
+- **CHƯA LÀM hết, cần anh quyết:** FE-098 (làm MỘT PHẦN — xem mục "Giao diện theo Figma, đợt 1" bên dưới), FE-134 / FE-130 (admin, bài giảng — file Figma KHÔNG có khung riêng cho các trang đó; lời "repo chưa có khung thiết kế" trước đây tôi nói mà chưa mở Figma, nay đã mở và sửa lại);
   FE-136 (tách quản lý lớp ra khỏi `/admin/khoa-hoc` — đụng điểm danh, bài giảng, lịch học mà gia sư đang dùng hằng ngày; đề xuất 3 bước trong sheet);
   FE-159 (SubscriptionPicker — "chọn mua" là tiền, giá/gói chưa chốt).
 - **Đổi tên hiển thị → KiN: XONG** (Thọ chốt 12/10). Giữ nguyên các khoá kỹ thuật để không đăng xuất mọi người và không phải di chuyển dữ liệu: cookie `midnight_session`,
   chuyên mục tin `tin-midnight` (hiển thị "Tin KiN"), tên miền `admin.midnightelite-edu.com`. Test `t-brand` (5 kiểm tra) giữ cho không còn chữ "Midnight Elite" / logo "ME" trong `src`.
   Chưa đổi: ngày "Cập nhật lần cuối: 01/05/2026" ở `/chinh-sach` (chữ pháp lý đã nói KiN nhưng ngày chưa đổi — cần người chịu trách nhiệm pháp lý duyệt).
   Trang phụ huynh (`/phieu/[token]`, `/so-cua-con/[token]`) đã chuyển sang khung riêng `src/app/(parent)/layout.tsx` (URL không đổi): thanh trên chỉ có logo KiN + "Trang riêng cho phụ huynh", chân trang nhắc "đừng chuyển tiếp"; không còn menu bán khoá học, nút "Bắt đầu miễn phí", chân trang quảng bá, thanh điều hướng dưới của học viên; link sai trả HTTP 404 thật. Test `ui-parent-shell` 20/20.
+
+## Giao diện theo Figma, đợt 1 — thanh trên, trang chủ, chân trang, đăng nhập/đăng ký (FE-098 một phần) — ngày 12/10
+Nguồn: file Figma *KiN Design System* (`2orXvoHL2upkiGoMjlq8aX`). Đã đọc qua Figma MCP các trang `🏠 Trang chủ (KiN) — bản dựng` (145:8), `🔐 Đăng nhập` (21:9), `🖥 Vỏ ứng dụng — 4 vai` (5:39), `🖼 Toàn cảnh 12 màn hình` (91:2).
+- **Đã dựng theo Figma:** thanh trên (146:2: logo K + 4 mục Lớp học / Thi thử / Cộng đồng / Tin tức + Đăng nhập / Đăng ký), trang chủ `/` (Hero, "Học ở đây thì được gì?", khung CTA), chân trang (152:36, thêm cột Hỗ trợ giữ hotline thật),
+  logo K (`src/components/kin/KinLogo.tsx`), cỡ chữ `--kin-co-*` (`src/app/kin-site.css`), phông Inter + Plus Jakarta Sans (`layout.tsx`). Trang `/phu-huynh` mới (đích của link "Dành cho phụ huynh", chữ lấy từ Figma 32:21).
+  Các trang đăng nhập / đăng ký / quên & đặt lại mật khẩu đổi sang token KiN, logo K và câu "Lớp học của bạn, gọn trong một chỗ" (Figma 32:5); trang phụ huynh dùng logo K. Test `ui-kin-site` (70 kiểm tra).
+- **Khác Figma có chủ ý:** (1) chữ nhỏ trên nền navy dùng độ đục 0,65–0,78 thay vì 0,45–0,68 của Figma — bản Figma đo được 3,4–4,3:1, trượt ngưỡng 4,5:1 trong `docs/kin/thiet-ke/tuong-phan.md`; test đo lại thật (5,0–7,0:1).
+  (2) Thanh trên cao 60px (Figma 45px) vì nút cao 44px không nằm vừa trong 45px. (3) Thẻ "Học ở đây…" dùng biểu tượng thật thay chấm xanh giữ chỗ của Figma. (4) Tiêu đề khung CTA dùng `text-balance` để khỏi mồ côi chữ "nay".
+  (5) Logo K vẽ lại bằng SVG theo ảnh xuất từ Figma vì tường lửa chặn tải file SVG gốc từ figma.com — khi mở được host đó thì thay phần `<svg>` trong `KinLogo.tsx`.
+- **Bỏ khỏi trang chủ so với bản cũ:** danh sách khoá học + tìm kiếm + theo dõi (vẫn đủ ở `/khoa-hoc`), dòng "Mua 1 lần, học trọn đời" (sai cách bán — KiN thu theo tháng), đếm ngược kỳ thi (ngày viết cứng), dòng thời gian "Hành trình phát triển", ô BCA (Figma chỉ có 4 ô).
+  Thanh trên không còn "Gia sư" (`/giang-vien`) và "Bảng xếp hạng" vì Figma chỉ có 4 mục; cả hai chuyển xuống chân trang (cột Công cụ học tập, thêm dòng "Danh sách gia sư" ngoài 4 dòng của Figma để `/giang-vien` không mất lối vào). Muốn đưa lại lên thanh trên thì thêm vào `navLinks` trong `Navbar.tsx`.
+- **Số liệu "1.200+ học sinh / 10.000+ đề / 6 gia sư" giữ nguyên như Figma và bản cũ — chưa có nguồn đếm tự động, cần người chịu trách nhiệm xác nhận trước khi đưa ra công khai.**
+- **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="khach-sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
+- **CHƯA làm (đều cần quyết định hoặc chưa có khung Figma tương ứng):**
+  - Đăng nhập "một ô, một mã" (Figma 21:9 / TK-170): đó là đổi cơ chế xác thực (mã 6 số dùng một lần, không mật khẩu, cần SMS/email, khoá 15 phút, cookie `kin_s`, phiên quản trị 12 giờ). Giao diện hiện vẫn email + mật khẩu.
+  - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); học sinh, quản trị chưa — admin trên tên miền riêng, cần làm cả bộ điều hướng.
+  - Các trang không có khung Figma: `/khoa-hoc`, `/khoa-hoc/[id]`, `/thi-thu`, `/tin-tuc`, `/bang-xep-hang`, `/student/*`, `/admin/*` — vẫn giao diện cũ (xanh #0068FF), đã nằm trong thanh trên/chân trang mới nên lệch tông. `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần".
+  - Chưa kiểm được phông thật trong môi trường làm việc (Google Fonts bị chặn nên chạy bằng phông thay thế); Vercel sẽ tải đúng Inter / Be Vietnam Pro / Plus Jakarta Sans.
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,

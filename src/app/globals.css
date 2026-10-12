@@ -11,6 +11,7 @@
    Các style cũ (trước khi đổi sang KiN) giữ var(--canvas), --ink, --radius-*
    của tokens cũ dưới đây — migrate dần. */
 @import "./kin-tokens.css";
+@import "./kin-site.css";
 
 :root {
   /* ── TSIX Brand colors (unchanged) ────────────────────────────── */

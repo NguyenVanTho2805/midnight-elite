@@ -25,9 +25,9 @@ const tok = (b: number) => b.toString(16).padStart(2, "0").repeat(16);
 
   const chrome = async (p: any) => ({
     nav: await p.getByRole("navigation").count(),
-    freeBtn: await p.getByText("Bắt đầu miễn phí").count(),
+    freeBtn: await p.getByRole("link", { name: /^(Đăng ký|Bắt đầu miễn phí)$/ }).count(),
     login: await p.getByRole("link", { name: /Đăng nhập/ }).count(),
-    menu: await p.getByRole("link", { name: /^(Khóa học|Khoá học|Gia sư|Thi thử ĐGNL|Bảng xếp hạng|Tin tức)$/ }).count(),
+    menu: await p.getByRole("link", { name: /^(Lớp học|Khóa học|Khoá học|Gia sư|Thi thử|Thi thử ĐGNL|Cộng đồng|Bảng xếp hạng|Tin tức)$/ }).count(),
     footerPromo: await p.getByText(/Công cụ học tập|Hỗ trợ học viên|Hotline/).count(),
   });
   const clean = (c: Record<string, number>) => Object.values(c).every(n => n === 0);
@@ -86,7 +86,7 @@ const tok = (b: number) => b.toString(16).padStart(2, "0").repeat(16);
   const gp = await gctx.newPage(); watch(gp);
   await gp.goto(`${BASE}/diem-chuan`, { waitUntil: "networkidle", timeout: 120000 });
   await gp.getByRole("heading", { level: 1 }).waitFor({ timeout: 90000 });
-  check("/diem-chuan vẫn có thanh menu + nút 'Bắt đầu miễn phí' + chân trang", await gp.getByText("Bắt đầu miễn phí").first().isVisible() && await gp.getByText(/Công cụ học tập/).isVisible());
+  check("/diem-chuan vẫn có thanh menu + nút Đăng ký + chân trang", await gp.getByRole("link", { name: "Đăng ký", exact: true }).first().isVisible() && await gp.getByText(/Công cụ học tập/).isVisible());
 
   const cg = await chrome(gp);
   check("bộ dò hoạt động thật: trang guest có navigation, nút miễn phí, link Đăng nhập, menu, chân trang quảng bá (không phải dò hụt)", cg.nav >= 1 && cg.freeBtn >= 1 && cg.login >= 1 && cg.menu >= 1 && cg.footerPromo >= 1, cg);

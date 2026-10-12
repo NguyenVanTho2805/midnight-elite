@@ -65,7 +65,8 @@ import { SEED_SCORES } from "@/lib/admissionScoreSeed";
   await ap.getByRole("button", { name: `Nạp dữ liệu khởi đầu (${N} dòng)` }).click();
   await ap.getByText(`Đã thêm ${N} dòng.`).waitFor({ timeout: 20000 });
   const tbl = ap.getByRole("table", { name: "Danh sách điểm chuẩn" });
-  check(`bảng có ${N} dòng; hết banner 'dữ liệu khởi đầu'; thống kê đúng`, (await tbl.locator("tbody tr").count()) === N && (await ap.getByText(/tạm hiện/).count()) === 0 && await ap.getByText(`Tổng ${N} dòng · công khai ${N} · đã đối chiếu 0`).isVisible());
+  // Thông báo "Đã thêm" hiện trước khi danh sách tải lại, nên đợi tới khi bảng ổn định.
+  await eventually(`bảng có ${N} dòng; hết banner 'dữ liệu khởi đầu'; thống kê đúng`, async () => (await tbl.locator("tbody tr").count()) === N && (await ap.getByText(/tạm hiện/).count()) === 0 && await ap.getByText(`Tổng ${N} dòng · công khai ${N} · đã đối chiếu 0`).isVisible());
   await eventually("DB có đủ dòng", async () => (await prisma.admissionScore.count()) === N);
 
   section("Quản trị: bật 'đã đối chiếu' / ẩn khỏi công khai");

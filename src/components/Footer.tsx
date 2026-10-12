@@ -1,144 +1,83 @@
 import Link from "next/link";
+import { KinMark } from "@/components/kin/KinLogo";
 
+// Figma KiN 152:36 "Footer": thương hiệu + hai cột "Công cụ học tập" và "Vai trò".
+// Thêm cột "Hỗ trợ" (hotline, Zalo) vì đó là thông tin liên hệ thật đang dùng.
 const tools = [
   { label: "Thi thử ĐGNL miễn phí", href: "/thi-thu"       },
   { label: "Bảng xếp hạng",         href: "/bang-xep-hang" },
   { label: "Tra cứu điểm chuẩn",    href: "/diem-chuan"    },
-  { label: "Tin tức tuyển sinh",     href: "/tin-tuc"       },
+  { label: "Tin tức tuyển sinh",    href: "/tin-tuc"       },
+  // Figma chỉ có 4 mục ở cột này; thêm "Gia sư" vì thanh trên không còn mục này và /giang-vien không có lối vào nào khác.
+  { label: "Danh sách gia sư",      href: "/giang-vien"    },
 ];
 
-const socials = [
-  { label: "Facebook", initial: "F", href: "https://facebook.com" },
-  { label: "TikTok",   initial: "T", href: "https://tiktok.com"   },
-  { label: "YouTube",  initial: "Y", href: "https://youtube.com"  },
-  { label: "Zalo",     initial: "Z", href: "https://zalo.me"      },
+const roles = [
+  { label: "Dành cho học sinh",  href: "/dang-ky"    },
+  { label: "Dành cho gia sư",    href: "/lop-cua-toi" },
+  { label: "Dành cho phụ huynh", href: "/phu-huynh"  },
 ];
+
+const colTitle = "mb-[14px] text-[length:var(--kin-co-caption)] font-semibold uppercase tracking-[0.09em] text-[var(--kin-chu-chinh)]";
+const link = "inline-flex items-center min-h-6 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] transition-colors hover:text-[var(--kin-chu-chinh)]";
 
 export default function Footer() {
   return (
-    <footer style={{ backgroundColor: "#ffffff", borderTop: "1px solid #e5e3df" }}>
-      <div className="max-w-7xl mx-auto px-8 py-16">
-        <div className="flex flex-col lg:flex-row justify-between gap-12">
+    <footer
+      data-vung="khach-sang"
+      className="kin-chu-than bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]"
+    >
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-8 py-14">
+        <div className="flex flex-col md:flex-row md:flex-wrap gap-10 lg:gap-[60px]">
 
-          {/* Brand */}
-          <div className="max-w-xs">
-            <Link href="/" className="inline-flex items-center gap-2.5 mb-5 no-underline">
-              <div
-                className="w-9 h-9 flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                style={{ backgroundColor: "#0068FF", borderRadius: "8px" }}
-              >
-                KiN
-              </div>
-              <span className="text-base font-semibold" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>
-                KiN
-              </span>
+          {/* Thương hiệu */}
+          <div className="md:flex-1 md:min-w-[260px] md:max-w-[320px]">
+            <Link href="/" aria-label="KiN — trang chủ" className="inline-flex items-center gap-[9px] mb-[14px]">
+              <KinMark size={26} />
+              <span className="kin-chu-logo leading-none text-[length:var(--kin-co-body)] text-[var(--kin-chu-chinh)]">KiN</span>
             </Link>
-
-            <p className="text-sm leading-relaxed mb-6" style={{ color: "#787671" }}>
-              Nền tảng luyện thi ĐGNL & Tốt nghiệp THPT hàng đầu Việt Nam.
+            <p className="text-[length:var(--kin-co-small)] leading-[1.55] text-[var(--kin-chu-mo)]">
+              Nền tảng học cùng gia sư thật cho luyện thi ĐGNL &amp; Tốt nghiệp THPT.
             </p>
-
-            <div className="flex items-center gap-2">
-              {socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={s.label}
-                  className="w-8 h-8 flex items-center justify-center text-[11px] font-semibold
-                             no-underline transition-colors duration-150
-                             hover:border-[#0068FF] hover:text-[#0068FF]"
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #e5e3df",
-                    backgroundColor: "#f6f5f4",
-                    color: "#787671",
-                  }}
-                >
-                  {s.initial}
-                </a>
-              ))}
-            </div>
           </div>
 
-          {/* Công cụ */}
-          <div>
-            <p
-              className="mb-4"
-              style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-                color: "#37352f",
-              }}
-            >
-              Công cụ học tập
-            </p>
-            <ul className="space-y-3 list-none p-0 m-0">
+          <nav aria-label="Công cụ học tập">
+            <p className={colTitle}>Công cụ học tập</p>
+            <ul className="list-none p-0 m-0 flex flex-col gap-[5px]">
               {tools.map((item) => (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]"
-                    style={{ color: "#787671" }}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
+                <li key={item.href}><Link href={item.href} className={link}>{item.label}</Link></li>
               ))}
             </ul>
-          </div>
+          </nav>
 
-          {/* Hỗ trợ học viên */}
+          <nav aria-label="Vai trò">
+            <p className={colTitle}>Vai trò</p>
+            <ul className="list-none p-0 m-0 flex flex-col gap-[5px]">
+              {roles.map((item) => (
+                <li key={item.href}><Link href={item.href} className={link}>{item.label}</Link></li>
+              ))}
+            </ul>
+          </nav>
+
           <div>
-            <p
-              className="mb-4"
-              style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-                color: "#37352f",
-              }}
-            >
-              Hỗ trợ học viên
-            </p>
-            <ul className="space-y-3 list-none p-0 m-0">
+            <p className={colTitle}>Hỗ trợ</p>
+            <ul className="list-none p-0 m-0 flex flex-col gap-[5px]">
+              <li><a href="tel:0384409051" className={link}>Hotline: 0384 409 051</a></li>
               <li>
-                <a href="tel:0384409051" className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]" style={{ color: "#787671" }}>
-                  Hotline: 0384 409 051
-                </a>
-              </li>
-              <li>
-                <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer"
-                  className="text-sm no-underline transition-colors duration-150 hover:text-[#1a1a1a]" style={{ color: "#787671" }}>
+                <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer" className={link}>
                   Zalo tư vấn
                 </a>
               </li>
-              <li className="text-sm" style={{ color: "#787671" }}>
+              <li className="inline-flex items-center min-h-6 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">
                 Hỗ trợ: 09:00 – 21:30 hằng ngày
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div
-          className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3"
-          style={{ borderTop: "1px solid #e5e3df" }}
-        >
-          <p className="text-xs" style={{ color: "#a4a097" }}>
-            © 2026 KiN. Bảo lưu mọi quyền.
-          </p>
-          <Link
-            href="/chinh-sach"
-            className="text-xs no-underline transition-colors duration-150 hover:text-[#1a1a1a]"
-            style={{ color: "#787671" }}
-          >
-            Chính sách bảo mật
-          </Link>
+        <div className="mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--kin-vien-thuong)]">
+          <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">© 2026 KiN. Bảo lưu mọi quyền.</p>
+          <Link href="/chinh-sach" className={link}>Chính sách bảo mật</Link>
         </div>
       </div>
     </footer>
