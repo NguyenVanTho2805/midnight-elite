@@ -194,6 +194,13 @@ export default function ExamEntryPage() {
   // có (vd vào thẳng trang đã có kết quả từ trước) thì dùng lượt gần nhất trong lịch sử.
   const reviewableAttemptId = attempt?.attemptId ?? history[0]?.id ?? null;
 
+  // Đóng màn Chữa bài: tải lại bài làm để các câu vừa chữa xong hiện đáp án + lời giải ở màn xem lại.
+  async function closeCorrection() {
+    setShowCorrection(false);
+    if (!reviewableAttemptId) return;
+    try { setReviewData(await api.examAttempts.review(reviewableAttemptId)); } catch { /* giữ dữ liệu cũ */ }
+  }
+
   async function openReview() {
     if (!reviewableAttemptId) return;
     setReviewErr("");
@@ -358,7 +365,7 @@ export default function ExamEntryPage() {
         ) : reviewErr ? (
           <p className="text-sm text-center py-10" style={{ color: "#dc2626" }}>{reviewErr}</p>
         ) : reviewData && showCorrection ? (
-          <CorrectionPanel attemptId={reviewData.attemptId} onClose={() => setShowCorrection(false)} />
+          <CorrectionPanel attemptId={reviewData.attemptId} onClose={closeCorrection} />
         ) : reviewData ? (
           <>
             {(reviewData.correctableCount ?? 0) > 0 && (
@@ -403,6 +410,11 @@ export default function ExamEntryPage() {
                       {q.explanation && (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
                           <strong>Giải thích:</strong> <MathText text={q.explanation} />
+                        </p>
+                      )}
+                      {q.correctionPending && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#fef3c7", color: "#92400e" }}>
+                          Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — gợi ý sẽ hiện nếu chưa đúng, đáp án hiện sau khi bạn thử.
                         </p>
                       )}
                     </div>
@@ -450,6 +462,11 @@ export default function ExamEntryPage() {
                       </p>
                       {q.correctAnswer !== null && (
                         <p style={{ color: "#787671" }}>Đáp án đúng: {q.correctAnswer}</p>
+                      )}
+                      {q.correctionPending && (
+                        <p className="p-2 rounded-lg" style={{ background: "#fef3c7", color: "#92400e" }}>
+                          Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — đáp án hiện sau khi bạn thử.
+                        </p>
                       )}
                     </div>
                   )}

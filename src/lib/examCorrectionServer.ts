@@ -146,10 +146,16 @@ export async function getCorrection(userId: string, attemptId: string): Promise<
   return r.ok ? { ok: true, data: overview(r.ctx) } : r;
 }
 
-/** Số câu chữa được — dùng cho nút "Chữa lại các câu sai" ở màn xem lại. */
-export async function countCorrectable(userId: string, attemptId: string): Promise<number> {
+/**
+ * Cho màn "Xem lại bài làm": số câu chữa được và các câu CHƯA chữa xong. Đặc tả NV-188: màn chữa bài không hiện đáp án
+ * cho tới khi học sinh đã thử một lần — nên với các câu này /review phải giấu đáp án và lời giải (nếu không, học sinh
+ * chỉ cần mở màn xem lại là thấy đáp án, bỏ qua bước gợi ý). Câu đã xong (đúng / đã xem đáp án) thì hiện bình thường.
+ */
+export async function correctionSummary(userId: string, attemptId: string): Promise<{ correctableCount: number; pendingIds: Set<string> }> {
   const r = await loadContext(userId, attemptId);
-  return r.ok && r.ctx.available ? r.ctx.questions.length : 0;
+  if (!r.ok || !r.ctx.available) return { correctableCount: 0, pendingIds: new Set() };
+  const pending = r.ctx.questions.filter(e => !isFinished(r.ctx.rows.get(e.q.id) ?? EMPTY_CORRECTION)).map(e => e.q.id);
+  return { correctableCount: r.ctx.questions.length, pendingIds: new Set(pending) };
 }
 
 export type CorrectionAction =

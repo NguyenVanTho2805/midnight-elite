@@ -76,6 +76,15 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   check("MC có lựa chọn (chỉ id + chữ); điền ngắn không có lựa chọn", items[0].options.length === 4 && items[0].options.every((o: any) => Object.keys(o).sort().join() === "id,text") && items[2].options.length === 0);
   check("tổng kết: 6 câu, còn 6", eq(g.json.summary, { total: 6, solved: 0, revealed: 0, remaining: 6 }), g.json.summary);
 
+  section("Màn 'Xem lại bài làm' không được lộ đáp án của câu CHƯA chữa");
+  const review = async () => (await api("GET", `/api/exams/attempts/${attempt.id}/review`, { as: stu })).json.questions as any[];
+  let rq = await review();
+  const rOf = (qs: any[], qid: string) => qs.find(x => x.id === qid);
+  check("câu MC làm sai chưa chữa: không cờ đúng/sai, không lời giải, đánh dấu correctionPending", rOf(rq, q1.q.id).options.every((o: any) => o.isCorrect === null) && rOf(rq, q1.q.id).explanation === null && rOf(rq, q1.q.id).correctionPending === true && !JSON.stringify(rOf(rq, q1.q.id)).includes("LỜI-GIẢI-1"), rOf(rq, q1.q.id));
+  check("câu bỏ trống cũng giấu", rOf(rq, q6.q.id).options.every((o: any) => o.isCorrect === null) && rOf(rq, q6.q.id).correctionPending === true);
+  check("câu điền ngắn làm sai: giấu đáp án đúng", rOf(rq, q4.id).correctAnswer === null && rOf(rq, q4.id).isCorrect === null && rOf(rq, q4.id).correctionPending === true && !JSON.stringify(rOf(rq, q4.id)).includes("ĐÁP-ÁN-3.5"));
+  check("câu làm ĐÚNG trong bài thi: hiện như cũ (đáp án + không chờ chữa)", rOf(rq, q2.q.id).options.some((o: any) => o.isCorrect === true) && rOf(rq, q2.q.id).correctionPending === false);
+
   section("Điểm dừng 2 lần nộp (câu có gợi ý)");
   let r = await post(q1.q.id, { action: "submit", optionId: q1.wrongIds[1] });
   check("nộp lần 1 sai → state 'hint', hiện ĐÚNG 1 gợi ý, chưa có đáp án", r.status === 200 && r.json.item.state === "hint" && r.json.item.hint === "GỢI-Ý-1" && r.json.item.answer === null && r.json.item.canReveal === true && r.json.item.lastTryCorrect === false, r.json);
@@ -86,6 +95,10 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   r = await post(q1.q.id, { action: "submit", optionId: q1.correctId });
   check("thử lại đúng (lần 2) → solved, hiện đáp án + lời giải, hết gợi ý", r.status === 200 && r.json.item.state === "solved" && r.json.item.tries === 2 && r.json.item.answer?.correctOptionId === q1.correctId && r.json.item.answer?.explanation === "LỜI-GIẢI-1" && r.json.item.hint === null, r.json);
   check("câu đã xong: nộp thêm → 409; tries không tăng", (await post(q1.q.id, { action: "submit", optionId: q1.wrongIds[0] })).status === 409 && (await prisma.examCorrection.findFirst({ where: { attemptId: attempt.id, questionId: q1.q.id } }))?.tries === 2);
+
+  rq = await review();
+  check("sau khi chữa xong q1: màn xem lại hiện đáp án + lời giải của q1", rOf(rq, q1.q.id).options.some((o: any) => o.isCorrect === true) && rOf(rq, q1.q.id).explanation === "LỜI-GIẢI-1" && rOf(rq, q1.q.id).correctionPending === false);
+  check("các câu khác chưa chữa vẫn giấu", rOf(rq, q6.q.id).correctionPending === true && rOf(rq, q6.q.id).options.every((o: any) => o.isCorrect === null));
 
   section("Ô tự giải thích (chỉ khi đã được xem gợi ý)");
   check("q1 đã xem gợi ý → canReflect", r.json.item.canReflect === true);
@@ -103,6 +116,9 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   check("sai lần 1 → hiện đáp án luôn (revealed)", r.status === 200 && r.json.item.state === "revealed" && r.json.item.tries === 1 && r.json.item.answer?.correctOptionId === q3.correctId && r.json.item.hint === null, r.json);
   check("nộp tiếp → 409", (await post(q3.q.id, { action: "submit", optionId: q3.correctId })).status === 409);
   check("không có gợi ý thì không có ô tự giải thích", r.json.item.canReflect === false);
+
+  rq = await review();
+  check("câu đã 'Xem đáp án' (q3, không gợi ý) cũng hiện trên màn xem lại", rOf(rq, q3.q.id).correctionPending === false && rOf(rq, q3.q.id).explanation === "LỜI-GIẢI-3");
 
   section("'Xem đáp án' chỉ sau khi đã thử");
   check("chưa nộp lần nào mà bấm Xem đáp án → 409, không lộ gì", (await post(q6.q.id, { action: "reveal" })).status === 409 && !(await prisma.examCorrection.findFirst({ where: { attemptId: attempt.id, questionId: q6.q.id } })));
@@ -158,7 +174,8 @@ async function mkShort(examId: string, order: number, text: string, correct: str
     const gg = await get(stu, at.id);
     check(`${label}: available=false, không liệt kê câu nào`, gg.status === 200 && gg.json.available === false && gg.json.items.length === 0 && !!gg.json.reason, gg.json);
     check(`${label}: thao tác → 403`, (await post(m.q.id, { action: "submit", optionId: m.correctId }, stu, at.id)).status === 403);
-    check(`${label}: /review báo correctableCount = 0`, (await api("GET", `/api/exams/attempts/${at.id}/review`, { as: stu })).json?.correctableCount === 0);
+    const rvx = (await api("GET", `/api/exams/attempts/${at.id}/review`, { as: stu })).json;
+    check(`${label}: /review báo correctableCount = 0 và không đánh dấu câu nào 'chờ chữa'`, rvx?.correctableCount === 0 && rvx.questions.every((x: any) => !x.correctionPending), rvx?.correctableCount);
   }
   const rv = await api("GET", `/api/exams/attempts/${attempt.id}/review`, { as: stu });
   check("đề cho xem đáp án: /review báo correctableCount = 9 (6 câu ban đầu + 3 câu điền ngắn thêm sau)", rv.status === 200 && rv.json.correctableCount === 9, rv.json?.correctableCount);

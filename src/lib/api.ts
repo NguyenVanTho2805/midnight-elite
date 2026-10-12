@@ -372,10 +372,10 @@ export interface ExamReviewOptionCluster {
   studentAnswerTrue: boolean | null; isCorrect: boolean | null;
 }
 export type ExamReviewQuestion =
-  | { id: string; type: "MC"; text: string; points: number; sectionLabel: string | null; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null }
+  | { id: string; type: "MC"; text: string; points: number; sectionLabel: string | null; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null; correctionPending?: boolean }
   | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; sectionLabel: string | null; options: ExamReviewOptionCluster[] }
   | { id: string; type: "ESSAY"; text: string; points: number; sectionLabel: string | null; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null }
-  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null };
+  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null; correctionPending?: boolean };
 export interface ExamAttemptReview {
   attemptId: string; score: number | null; totalPoints: number;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];

@@ -44,6 +44,7 @@ const id = (p: string) => `${p}-${Date.now().toString(36)}-${++seq}`;
   await page.getByRole("button", { name: "Xem lại bài làm" }).click({ timeout: 90000 });
   await page.getByText(/Bạn có 4 câu làm chưa đúng/).waitFor({ timeout: 30000 });
   check("báo đúng số câu sai chữa được (4: 3 trắc nghiệm + 1 điền ngắn; câu đúng không tính)", true);
+  check("màn Xem lại CHƯA lộ lời giải của các câu sai, có nhắc bấm Chữa lại", (await page.getByText(/2 cộng 3 bằng 5/).count()) === 0 && (await page.getByText(/Câu này chưa chữa/).count()) === 4 && (await page.getByText("Giải thích:").count()) === 1);
   await page.getByRole("button", { name: "Chữa lại các câu sai" }).click();
   await page.getByRole("heading", { name: "Chữa bài" }).waitFor();
   check("tiêu đề 0/4 câu xong + nhắc chữa bài không đổi điểm", await page.getByText("0/4 câu đã xong").isVisible() && await page.getByText(/không đổi điểm bài thi/).isVisible());
@@ -109,6 +110,7 @@ const id = (p: string) => `${p}-${Date.now().toString(36)}-${++seq}`;
   await page.getByRole("button", { name: "Hoàn thành" }).click();
   await page.getByText(/Bạn có 4 câu làm chưa đúng/).waitFor();
   check("Hoàn thành → về màn xem lại bài làm", true);
+  await eventually("chữa xong: màn xem lại hiện lời giải của cả 4 câu sai, hết nhắc 'chưa chữa'", async () => (await page.getByText(/Câu này chưa chữa/).count()) === 0 && (await page.getByText(/2 cộng 3 bằng 5/).count()) === 1 && (await page.getByText(/3 nhân 3 bằng 9/).count()) === 1);
 
   section("Không đổi điểm; tải lại giữ tiến độ");
   const att2 = await prisma.examAttempt.findUnique({ where: { id: att.id } });
