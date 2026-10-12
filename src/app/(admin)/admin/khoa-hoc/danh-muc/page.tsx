@@ -231,6 +231,9 @@ export default function DanhMucPage() {
   const [delTarget, setDelTarget]   = useState<Category | null>(null);
   const [toast, setToast]           = useState<{ msg: string; error?: boolean } | null>(null);
   const [saving, setSaving]         = useState(false);
+  // FE-140: danh mục dùng chung cho mọi gia sư — chỉ quản trị viên được đổi tên; gia sư xem được, không sửa được.
+  const [canEdit, setCanEdit]       = useState(false);
+  const [scope, setScope]           = useState<"all" | "mine" | "public">("public");
 
   function showToast(msg: string, error = false) {
     setToast({ msg, error });
@@ -245,6 +248,8 @@ export default function DanhMucPage() {
       const { ok, data } = await safeFetch("/api/categories");
       if (ok) {
         cats = (data.categories as Category[] | undefined) ?? [];
+        setCanEdit(data.canEdit === true);
+        setScope((data.scope as "all" | "mine" | "public" | undefined) ?? "public");
       } else {
         setApiError("Không thể tải danh mục. Vui lòng thử lại.");
       }
@@ -268,10 +273,11 @@ export default function DanhMucPage() {
     setSaving(true);
     if (drawer.type === "add") {
       // Category không có model riêng trong DB — chỉ tồn tại khi có khoá học dùng nó
-      showToast(`Tên "${newName}" đã ghi nhớ. Gán vào khoá học để kích hoạt chính thức.`);
+      // Danh mục không có bảng riêng: chỉ tồn tại khi có khoá học dùng tên đó, nên ở đây KHÔNG lưu gì cả.
+      showToast(`Chưa lưu gì: danh mục "${newName}" chỉ có khi một khoá học dùng tên này. Nhập tên đó ở form khoá học.`);
     } else if (drawer.type === "edit") {
       const oldName = drawer.cat.name;
-      const { ok } = await safeFetch("/api/categories", {
+      const { ok, data } = await safeFetch("/api/categories", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ oldName, newName }),
@@ -282,7 +288,7 @@ export default function DanhMucPage() {
         );
         showToast("Đã cập nhật danh mục và đổi tên trên tất cả khoá học");
       } else {
-        showToast("Lỗi khi cập nhật danh mục", true);
+        showToast((data.error as string | undefined) ?? "Lỗi khi cập nhật danh mục", true);
       }
     }
     setSaving(false);
@@ -359,12 +365,14 @@ export default function DanhMucPage() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
             ↺ Làm mới
           </button>
-          <button
-            onClick={() => setDrawer({ type: "add" })}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-            style={{ background: "#16a34a" }}>
-            + Thêm danh mục
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setDrawer({ type: "add" })}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
+              style={{ background: "#16a34a" }}>
+              + Thêm danh mục
+            </button>
+          )}
         </div>
       </div>
 
@@ -380,13 +388,22 @@ export default function DanhMucPage() {
       )}
 
       {/* Info banner */}
-      {!apiError && (
-        <div className="px-5 py-2.5 border-b border-blue-100 bg-blue-50 flex-shrink-0">
-          <p className="text-xs text-blue-600">
-            Danh mục được đồng bộ từ trường <strong>category</strong> của khoá học trong cơ sở dữ liệu.
-            Đổi tên danh mục sẽ cập nhật tất cả khoá học thuộc danh mục đó.
-          </p>
-        </div>
+      {!apiError && !loading && (
+        canEdit ? (
+          <div className="px-5 py-2.5 border-b border-blue-100 bg-blue-50 flex-shrink-0">
+            <p className="text-xs text-blue-600">
+              Danh mục <strong>dùng chung cho mọi gia sư</strong>, đồng bộ từ trường <strong>category</strong> của khoá học.
+              Đổi tên sẽ cập nhật khoá học của <strong>tất cả</strong> gia sư thuộc danh mục đó — chỉ quản trị viên được làm.
+            </p>
+          </div>
+        ) : (
+          <div role="note" className="px-5 py-2.5 border-b border-amber-200 bg-amber-50 flex-shrink-0">
+            <p className="text-xs text-amber-800">
+              Danh mục <strong>dùng chung cho mọi gia sư</strong> nên chỉ quản trị viên được đổi tên hoặc thêm mới. Bạn chỉ xem được danh sách và chọn danh mục
+              khi tạo hoặc sửa khoá học của mình. Cột “Khoá của bạn” chỉ đếm khoá do bạn tạo.
+            </p>
+          </div>
+        )
       )}
 
       {/* Table */}
@@ -394,7 +411,7 @@ export default function DanhMucPage() {
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {["#", "Tên danh mục", "Slug", "Số khoá học", "Hành động"].map(h => (
+              {["#", "Tên danh mục", "Slug", scope === "mine" ? "Khoá của bạn" : "Số khoá học", canEdit ? "Hành động" : "Quyền"].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
@@ -431,10 +448,14 @@ export default function DanhMucPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <ActionMenu
-                      onEdit={() => setDrawer({ type: "edit", cat })}
-                      onDelete={() => setDelTarget(cat)}
-                    />
+                    {canEdit ? (
+                      <ActionMenu
+                        onEdit={() => setDrawer({ type: "edit", cat })}
+                        onDelete={() => setDelTarget(cat)}
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400">Chỉ quản trị viên sửa</span>
+                    )}
                   </td>
                 </tr>
             ))}
@@ -453,7 +474,7 @@ export default function DanhMucPage() {
       {/* Footer */}
       <div className="px-5 py-3 border-t border-gray-100 flex-shrink-0">
         <p className="text-xs text-gray-500">
-          {categories.length} danh mục · {totalCourses} khoá học
+          {categories.length} danh mục · {totalCourses} {scope === "mine" ? "khoá của bạn" : "khoá học"}
         </p>
       </div>
     </div>

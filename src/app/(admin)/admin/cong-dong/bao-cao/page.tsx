@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ClassScopeBadge, { ClassScopeSelect, type ClassScope } from "@/components/admin/ClassScopeBadge";
 
 interface AnswerReportDTO {
   id: string;
@@ -25,6 +26,7 @@ interface ThreadReportDTO {
     id: string;
     content: string;
     author: { id: string; name: string };
+    course: { id: string; name: string; ownerId: string | null } | null; // FE-139: null = cộng đồng chung
   };
 }
 
@@ -43,6 +45,7 @@ export default function BaoCaoTraLoiPage() {
   const [threadReports, setThreadReports] = useState<ThreadReportDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId]   = useState<string | null>(null);
+  const [scope, setScope]     = useState<ClassScope>("all"); // FE-139
 
   function load() {
     Promise.all([
@@ -98,6 +101,11 @@ export default function BaoCaoTraLoiPage() {
     }
   }
 
+  // FE-139: bộ lọc theo lớp áp cho báo cáo BÀI VIẾT (có lớp). Báo cáo trả lời Hỏi đáp là khu chung của nền tảng, không thuộc lớp nào.
+  const classOptions = [...new Map(threadReports.filter(r => r.thread.course).map(r => [r.thread.course!.id, r.thread.course!.name])).entries()]
+    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  const shownThreadReports = threadReports.filter(r => scope === "all" || (scope === "null" ? !r.thread.course : r.thread.course?.id === scope));
+
   return (
     <div className="space-y-8">
       <div>
@@ -107,7 +115,10 @@ export default function BaoCaoTraLoiPage() {
 
       {/* ─── Thread reports ─── */}
       <section className="space-y-3">
-        <h2 className="text-sm font-bold text-gray-700">Báo cáo bài viết cộng đồng</h2>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-sm font-bold text-gray-700">Báo cáo bài viết cộng đồng ({shownThreadReports.length}{scope !== "all" ? ` / ${threadReports.length}` : ""})</h2>
+          {!loading && threadReports.length > 0 && <ClassScopeSelect value={scope} onChange={setScope} classes={classOptions} />}
+        </div>
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map(i => <div key={i} className="h-28 rounded-xl bg-gray-100 animate-pulse" />)}
@@ -116,13 +127,20 @@ export default function BaoCaoTraLoiPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
             <p className="text-sm text-gray-400">Không có report nào đang chờ duyệt</p>
           </div>
+        ) : shownThreadReports.length === 0 ? (
+          <div role="status" className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+            <p className="text-sm text-gray-400">Không có report nào trong phạm vi đã chọn</p>
+          </div>
         ) : (
           <div className="space-y-4">
-            {threadReports.map(r => (
+            {shownThreadReports.map(r => (
               <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-5">
-                <p className="text-xs text-gray-400 mb-2">
-                  Báo cáo bởi <span className="font-semibold text-gray-600">{r.reporter.name}</span> · {timeAgo(r.createdAt)}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <ClassScopeBadge course={r.thread.course} />
+                  <p className="text-xs text-gray-400">
+                    Báo cáo bởi <span className="font-semibold text-gray-600">{r.reporter.name}</span> · {timeAgo(r.createdAt)}
+                  </p>
+                </div>
 
                 <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 my-2">
                   <p className="text-xs font-semibold text-gray-600 mb-1">{r.thread.author.name} đăng:</p>
