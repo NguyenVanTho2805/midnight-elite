@@ -19,6 +19,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
+import { loadPartyInvoices } from "@/lib/invoiceServer";
+import { loadStudentUpcoming } from "@/lib/absenceServer";
+import { loadPartyReports } from "@/lib/monthlyReportServer";
+import { prevYearMonth } from "@/lib/monthlyReport";
 import { currentYearMonth, parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 
 type MonthlyFeeRow = {
@@ -71,6 +75,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   const studentId = link.student.id;
 
+  // TT-200: phiếu học phí gia sư đã GỬI (nháp/huỷ ẩn) — tháng đang xem + các phiếu
+  // tháng trước chưa đóng. QR trỏ vào tài khoản của gia sư, không phải của KiN.
+  const invoices = (await loadPartyInvoices(studentId)).filter(i => i.yearMonth === ym || i.status !== "paid");
+
+  // TT-202: buổi sắp tới (14 ngày) kèm nút báo nghỉ + số buổi bù đang giữ — hai bên cùng thấy một con số.
+  const { upcoming, makeup } = await loadStudentUpcoming(studentId, new Date());
+  // NV-189: báo cáo tháng ĐÃ DUYỆT (tháng đang xem + tháng trước) — mục "Điều chưa đạt" luôn có trong mỗi báo cáo.
+  const reports = await loadPartyReports(studentId, [ym, prevYearMonth(ym)]);
+
   // Các lớp em đang học (status = active).
   const enrollments = await prisma.enrollment.findMany({
     where: { userId: studentId, status: "active" },
@@ -84,6 +97,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       parent:    { name: link.parent.name },
       yearMonth: ym,
       courses:   [],
+      invoices,
+      upcoming,
+      makeup,
+      reports,
     });
   }
 
@@ -127,11 +144,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const feeByCourse = new Map(fees.map(f => [f.courseId, f] as const));
 
   // Override cho em này (nếu có) — chung cho mọi môn, theo spec AS-192.
-  const override = await (prisma as unknown as {
-    tuitionOverride: {
-      findUnique(args: { where: { userId_yearMonth: { userId: string; yearMonth: string } } }): Promise<{ pricePerSession: number } | null>;
-    };
-  }).tuitionOverride.findUnique({ where: { userId_yearMonth: { userId: studentId, yearMonth: ym } } });
+  // TuitionOverride chỉ có khoá @unique theo userId (không theo tháng); trước
+  // đây gọi bằng khoá ghép userId_yearMonth không tồn tại → Prisma ném
+  // "Unknown argument" và cả trang trả 500 với mọi em đang có lớp.
+  const override = await prisma.tuitionOverride.findUnique({ where: { userId: studentId } });
 
   // Tổng hợp theo môn. Dùng computeMonthlyFee từ src/lib/tuition.ts cho
   // nhất quán với phiếu học phí AS-193.
@@ -182,6 +198,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     parent:    { name: link.parent.name },
     yearMonth: ym,
     courses,
+    invoices,
+    upcoming,
+    makeup,
+    reports,
     total: feeBreakdown
       ? { gross: feeBreakdown.gross, finalAmount: feeBreakdown.finalAmount, pricePerSession: feeBreakdown.pricePerSession, subjectCount: feeBreakdown.subjectCount }
       : null,

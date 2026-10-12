@@ -1,3 +1,4 @@
+import { normalizeHint } from "@/lib/examCorrection";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
@@ -45,8 +46,9 @@ export async function POST(
 
   try {
     const body = await req.json();
-    const { text, type, imageUrl, points, explanation, sectionLabel, sectionMinutes, options } = body as {
+    const { text, type, imageUrl, points, explanation, hint, sectionLabel, sectionMinutes, options } = body as {
       text?: string;
+      hint?: string | null;
       type?: QuestionType;
       imageUrl?: string;
       points?: number;
@@ -62,6 +64,8 @@ export async function POST(
     const questionType = type ?? "MC";
     const optionsErr = validateQuestionOptions(questionType, options ?? []);
     if (optionsErr) return NextResponse.json({ error: optionsErr }, { status: 400 });
+    const hintN = normalizeHint(hint);
+    if (!hintN.ok) return NextResponse.json({ error: "Gợi ý tối đa 1000 ký tự" }, { status: 400 });
 
     const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
@@ -84,6 +88,7 @@ export async function POST(
         imageUrl: imageUrl?.trim() || null,
         points: typeof points === "number" && points > 0 ? points : 1,
         explanation: explanation?.trim() || null,
+        hint: hintN.value,
         sectionLabel: sectionLabel?.trim() || null,
         sectionMinutes: sectionMinutes ?? null,
         options: {

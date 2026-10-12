@@ -53,6 +53,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const completed = progressMap.get(e.userId) ?? 0;
     return {
       userId:      e.userId,
+      status:      e.status,
       name:        e.user.name,
       email:       e.user.email,
       phone:       e.user.phone,

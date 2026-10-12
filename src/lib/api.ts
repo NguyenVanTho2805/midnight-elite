@@ -287,6 +287,9 @@ export interface CourseFull {
   tag?: string | null; tagColor?: string | null;
   introVideo?: string | null;
   zaloGroupLink?: string | null;
+  // FE-147: sức chứa (null = không giới hạn) và trạng thái nhận học viên.
+  capacity?: number | null;
+  classStatus?: "open" | "closed" | "paused" | string;
   bg: string; strip: string;
   price: number; originalPrice?: number | null;
   lessons: number; hours: number;
@@ -369,13 +372,14 @@ export interface ExamReviewOptionCluster {
   studentAnswerTrue: boolean | null; isCorrect: boolean | null;
 }
 export type ExamReviewQuestion =
-  | { id: string; type: "MC"; text: string; points: number; sectionLabel: string | null; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null }
+  | { id: string; type: "MC"; text: string; points: number; sectionLabel: string | null; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null; correctionPending?: boolean }
   | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; sectionLabel: string | null; options: ExamReviewOptionCluster[] }
   | { id: string; type: "ESSAY"; text: string; points: number; sectionLabel: string | null; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null }
-  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null };
+  | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null; correctionPending?: boolean };
 export interface ExamAttemptReview {
   attemptId: string; score: number | null; totalPoints: number;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];
+  correctableCount?: number; // NV-188: số câu làm sai có thể chữa bài (0 = đề không cho xem đáp án)
 }
 
 // Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)
@@ -386,13 +390,14 @@ export interface ExamOptionFull {
 export interface ExamQuestionFull {
   id: string; examId: string; order: number; type: QuestionType; text: string;
   imageUrl?: string | null; points: number; explanation?: string | null;
+  hint?: string | null; // NV-188: gợi ý cho màn Chữa bài
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
   sourceBankItemId?: string | null;
   options: ExamOptionFull[];
 }
 export interface ExamQuestionInput {
-  text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string;
+  text: string; type?: QuestionType; imageUrl?: string; points?: number; explanation?: string; hint?: string;
   sectionLabel?: string | null;
   sectionMinutes?: number | null;
   sourceBankItemId?: string | null;
@@ -529,10 +534,10 @@ export interface AssignmentResultsData {
 export interface ClassScheduleFull {
   id: string; courseId: string;
   dayOfWeek: number; startTime: string; endTime: string;
-  note: string | null; active: boolean; createdAt: string;
+  note: string | null; joinUrl: string | null; active: boolean; createdAt: string;
 }
 export interface ClassScheduleInput {
-  dayOfWeek: number; startTime: string; endTime: string; note?: string;
+  dayOfWeek: number; startTime: string; endTime: string; note?: string; joinUrl?: string | null;
 }
 
 export interface AssignmentSubmissionFull {
@@ -544,7 +549,7 @@ export interface AssignmentSubmissionFull {
 }
 export interface QuestionBankItemFull {
   id: string; type: QuestionType; text: string;
-  imageUrl?: string | null; points: number; explanation?: string | null;
+  imageUrl?: string | null; points: number; explanation?: string | null; hint?: string | null;
   categoryId: string; difficulty: Difficulty; tags: string[] | null;
   ownerId: string | null; owner: { name: string } | null;
   createdAt: string; updatedAt: string;
@@ -559,7 +564,7 @@ export interface QuestionBankItemFull {
   correctRatio?: number | null;
 }
 export interface QuestionBankItemInput {
-  type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string;
+  type: QuestionType; text: string; imageUrl?: string; points?: number; explanation?: string; hint?: string;
   categoryId: string; difficulty: Difficulty; tags?: string[];
   options: { text: string; isCorrect: boolean; subLabel?: string }[];
 }

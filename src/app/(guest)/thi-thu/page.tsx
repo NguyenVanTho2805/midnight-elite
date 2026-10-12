@@ -200,7 +200,7 @@ export default function ThiThuPage() {
         <div className="text-center space-y-3">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
             style={{ background: "#dbeafe", color: "#0068FF", border: "1px solid #bfdbfe" }}>
-            Thi thử Midnight Elite
+            Thi thử KiN
           </span>
           <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
             Đề thi thử miễn phí
@@ -343,7 +343,7 @@ export default function ThiThuPage() {
 
         <div className="text-center space-y-3 py-4">
           <p className="text-sm" style={{ color: "#787671" }}>
-            Tham gia cùng hàng nghìn học viên đang luyện thi tại Midnight Elite
+            Tham gia cùng hàng nghìn học viên đang luyện thi tại KiN
           </p>
           <div className="flex gap-3 justify-center">
             <Link href="/dang-ky"

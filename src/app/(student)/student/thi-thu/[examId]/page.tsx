@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
 import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic, type ExamAttemptReview } from "@/lib/api";
 import { MathText } from "@/components/MathText";
+import CorrectionPanel from "@/components/exam/CorrectionPanel";
 
 type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done" | "review";
 
@@ -47,6 +48,7 @@ export default function ExamEntryPage() {
   const [reviewData, setReviewData] = useState<ExamAttemptReview | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewErr, setReviewErr] = useState("");
+  const [showCorrection, setShowCorrection] = useState(false); // NV-188: màn Chữa bài
 
   // Load exam + student's existing result
   useEffect(() => {
@@ -191,6 +193,13 @@ export default function ExamEntryPage() {
   // Lượt thi để xem lại: ưu tiên attempt vừa làm trong phiên này, nếu không
   // có (vd vào thẳng trang đã có kết quả từ trước) thì dùng lượt gần nhất trong lịch sử.
   const reviewableAttemptId = attempt?.attemptId ?? history[0]?.id ?? null;
+
+  // Đóng màn Chữa bài: tải lại bài làm để các câu vừa chữa xong hiện đáp án + lời giải ở màn xem lại.
+  async function closeCorrection() {
+    setShowCorrection(false);
+    if (!reviewableAttemptId) return;
+    try { setReviewData(await api.examAttempts.review(reviewableAttemptId)); } catch { /* giữ dữ liệu cũ */ }
+  }
 
   async function openReview() {
     if (!reviewableAttemptId) return;
@@ -345,7 +354,7 @@ export default function ExamEntryPage() {
             <h1 className="text-xl font-extrabold" style={{ color: "#1E2938" }}>Xem lại bài làm</h1>
             <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>{exam.title}</p>
           </div>
-          <button onClick={() => setPhase("done")}
+          <button onClick={() => { setShowCorrection(false); setPhase("done"); }}
             className="text-sm font-semibold" style={{ color: "#0068FF" }}>
             ← Quay lại kết quả
           </button>
@@ -355,8 +364,20 @@ export default function ExamEntryPage() {
           <p className="text-sm text-center py-10" style={{ color: "#787671" }}>Đang tải...</p>
         ) : reviewErr ? (
           <p className="text-sm text-center py-10" style={{ color: "#dc2626" }}>{reviewErr}</p>
+        ) : reviewData && showCorrection ? (
+          <CorrectionPanel attemptId={reviewData.attemptId} onClose={closeCorrection} />
         ) : reviewData ? (
           <>
+            {(reviewData.correctableCount ?? 0) > 0 && (
+              <div className="rounded-xl p-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}>
+                <p className="text-sm" style={{ color: "#0c4a6e" }}>
+                  Bạn có <strong>{reviewData.correctableCount} câu</strong> làm chưa đúng. Chữa lại từng câu: gợi ý trước, đáp án sau.
+                </p>
+                <button type="button" onClick={() => setShowCorrection(true)} className="px-4 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "#0068FF" }}>
+                  Chữa lại các câu sai
+                </button>
+              </div>
+            )}
             {!reviewData.canSeeAnswers && (
               <div className="rounded-xl p-3 text-xs" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
                 Đề thi này chưa cho phép xem đáp án lúc này — chỉ hiện câu trả lời của bạn.
@@ -389,6 +410,11 @@ export default function ExamEntryPage() {
                       {q.explanation && (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
                           <strong>Giải thích:</strong> <MathText text={q.explanation} />
+                        </p>
+                      )}
+                      {q.correctionPending && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#fef3c7", color: "#92400e" }}>
+                          Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — gợi ý sẽ hiện nếu chưa đúng, đáp án hiện sau khi bạn thử.
                         </p>
                       )}
                     </div>
@@ -436,6 +462,11 @@ export default function ExamEntryPage() {
                       </p>
                       {q.correctAnswer !== null && (
                         <p style={{ color: "#787671" }}>Đáp án đúng: {q.correctAnswer}</p>
+                      )}
+                      {q.correctionPending && (
+                        <p className="p-2 rounded-lg" style={{ background: "#fef3c7", color: "#92400e" }}>
+                          Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — đáp án hiện sau khi bạn thử.
+                        </p>
                       )}
                     </div>
                   )}

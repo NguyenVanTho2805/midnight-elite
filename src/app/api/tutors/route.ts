@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
       adminRole: "teacher",
       tutorVerified: true,
       banned: false,
+      profileLockedAt: null, // PH-212
       ...(subject ? { subjects: { has: subject } } : {}),
     },
     select: {

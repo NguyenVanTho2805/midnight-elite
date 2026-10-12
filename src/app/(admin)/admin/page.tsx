@@ -9,15 +9,14 @@ import {
 import { useAuth, hasPermission, PERMISSIONS } from "@/contexts/AuthContext";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
+// Dạng rút gọn của GET /api/admin/analytics (BE-074): doanh thu = VIP gia sư.
 interface Analytics {
-  totalRevenue:     number;
-  totalEnrollments: number;
-  totalCourses:     number;
-  byCourse:         { name: string; revenue: number; enrollments: number }[];
-  allEnrollments:   {
-    id: string; userName: string; userPhone: string;
-    courseName: string; amount: number; createdAt: string;
-  }[];
+  totals: {
+    netVipRevenue: number; activeVipTutors: number; tutorCount: number; classCount: number;
+  };
+  byPlan:       { planCode: string; name: string }[];
+  transactions: { id: string; tutorName: string; planCode: string; amount: number; createdAt: string }[];
+  topClasses:   { id: string; name: string; tutorName: string | null; students: number }[];
 }
 
 interface ApiStudent {
@@ -240,11 +239,13 @@ export default function AdminDashboardPage() {
   [students]);
 
   const chartMax = useMemo(() =>
-    Math.max(...(analytics?.byCourse ?? []).map(c => c.enrollments), 1),
+    Math.max(...(analytics?.topClasses ?? []).map(c => c.students), 1),
   [analytics]);
 
-  const recentEnrollments = useMemo(() =>
-    (analytics?.allEnrollments ?? []).slice(0, 4),
+  const recentVip = useMemo(() =>
+    (analytics?.transactions ?? []).slice(0, 4).map(t => ({
+      ...t, planName: analytics?.byPlan.find(p => p.planCode === t.planCode)?.name ?? t.planCode,
+    })),
   [analytics]);
 
   const avgGpa = useMemo(() =>
@@ -261,11 +262,11 @@ export default function AdminDashboardPage() {
     // Super admin: 4 cards
     ? [
         { label: "Tổng học sinh",        value: String(students.length),                                              sub: studentSub,  color: "#0068FF", Icon: UsersGroup      },
-        { label: "Lượt kích hoạt khoá",  value: String(analytics?.totalEnrollments ?? "—"),                           sub: undefined,   color: "#0EA5E9", Icon: BookOpen        },
-        { label: "Khoá học có học viên", value: String(analytics?.totalCourses ?? "—"),                               sub: undefined,   color: "#00A63D", Icon: Badge           },
+        { label: "Gia sư đang VIP",      value: analytics ? `${analytics.totals.activeVipTutors}/${analytics.totals.tutorCount}` : "—", sub: undefined, color: "#0EA5E9", Icon: BookOpen },
+        { label: "Lớp đang mở",          value: String(analytics?.totals.classCount ?? "—"),                          sub: undefined,   color: "#00A63D", Icon: Badge           },
         {
-          label: "Tổng doanh thu",
-          value: analytics ? `${(analytics.totalRevenue / 1_000_000).toFixed(1)}Mđ` : "—",
+          label: "Doanh thu VIP (ròng)",
+          value: analytics ? `${(analytics.totals.netVipRevenue / 1_000_000).toFixed(1)}Mđ` : "—",
           sub:   undefined,
           color: "#FE9900",
           Icon:  Wallet,
@@ -359,7 +360,7 @@ export default function AdminDashboardPage() {
         {/* Top khoá học theo enrollment */}
         <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
           <h2 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "#1E2938" }}>
-            <ChartBar size={18} /> Khoá học phổ biến
+            <ChartBar size={18} /> Lớp đông học viên nhất
           </h2>
           {loading ? (
             <div className="space-y-3">
@@ -367,22 +368,22 @@ export default function AdminDashboardPage() {
                 <div key={i} className="h-7 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
               ))}
             </div>
-          ) : (analytics?.byCourse ?? []).length === 0 ? (
+          ) : (analytics?.topClasses ?? []).length === 0 ? (
             <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>
               {canViewRevenue ? "Chưa có dữ liệu" : "Không có quyền xem"}
             </p>
           ) : (
             <div className="space-y-3">
-              {(analytics?.byCourse ?? []).slice(0, 5).map(c => (
-                <div key={c.name} className="flex items-center gap-3">
+              {(analytics?.topClasses ?? []).map(c => (
+                <div key={c.id} className="flex items-center gap-3">
                   <div className="w-32 flex-shrink-0 text-xs truncate" style={{ color: "#1E2938" }}>{c.name}</div>
                   <div className="flex-1 h-2 rounded-full"
                     style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
                     <div className="h-2 rounded-full"
-                      style={{ width: `${(c.enrollments / chartMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#0068FF,#2680FF)" }} />
+                      style={{ width: `${(c.students / chartMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#0068FF,#2680FF)" }} />
                   </div>
                   <div className="w-14 text-right flex-shrink-0 text-xs font-bold" style={{ color: "#0068FF" }}>
-                    {c.enrollments} HV
+                    {c.students} HV
                   </div>
                 </div>
               ))}
@@ -395,7 +396,7 @@ export default function AdminDashboardPage() {
           <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff" }}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
-                <CreditCard size={18} /> Kích hoạt gần đây
+                <CreditCard size={18} /> Mua VIP gần đây
               </h2>
               <Link href="/admin/doanh-thu" className="text-xs font-semibold" style={{ color: "#0068FF" }}>
                 Xem tất cả →
@@ -407,20 +408,20 @@ export default function AdminDashboardPage() {
                   <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
                 ))}
               </div>
-            ) : recentEnrollments.length === 0 ? (
+            ) : recentVip.length === 0 ? (
               <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Chưa có giao dịch</p>
             ) : (
               <div className="space-y-2">
-                {recentEnrollments.map(e => (
+                {recentVip.map(e => (
                   <div key={e.id} className="grid grid-cols-12 items-center px-3 py-2.5 rounded-xl"
                     style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px #ffffff" }}>
                     <div className="col-span-5">
-                      <div className="text-xs font-medium truncate" style={{ color: "#1E2938" }}>{e.userName}</div>
+                      <div className="text-xs font-medium truncate" style={{ color: "#1E2938" }}>{e.tutorName}</div>
                       <div className="text-xs" style={{ color: "#9CA3AF" }}>{e.createdAt.slice(0, 10)}</div>
                     </div>
-                    <div className="col-span-4 text-xs truncate px-1" style={{ color: "#4B5563" }}>{e.courseName}</div>
+                    <div className="col-span-4 text-xs truncate px-1" style={{ color: "#4B5563" }}>{e.planName}</div>
                     <div className="col-span-3 text-right text-xs font-bold" style={{ color: "#0068FF" }}>
-                      {(e.amount / 1_000_000).toFixed(1)}Mđ
+                      {e.amount.toLocaleString("vi-VN")}đ
                     </div>
                   </div>
                 ))}

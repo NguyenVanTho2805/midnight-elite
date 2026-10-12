@@ -55,7 +55,7 @@ function VerifyContent() {
               </div>
               <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Xác thực thành công!</h1>
               <p className="text-sm mb-1" style={{ color: "#787671" }}>
-                Chào mừng <strong style={{ color: "#0068FF" }}>{name}</strong> đến với Midnight Elite
+                Chào mừng <strong style={{ color: "#0068FF" }}>{name}</strong> đến với KiN
               </p>
               <p className="text-xs mb-5" style={{ color: "#a4a097" }}>Đang chuyển đến Dashboard...</p>
               <div className="h-1 rounded-full overflow-hidden" style={{ background: "#e5e3df" }}>

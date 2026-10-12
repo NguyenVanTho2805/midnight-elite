@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { readPreferences } from "@/lib/userPreferences";
+import { normalizeZaloPhone } from "@/lib/zaloShare";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,10 +18,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       adminRole: "teacher",
       tutorVerified: true,
       banned: false,
+      profileLockedAt: null, // PH-212: hồ sơ bị khoá thì như không tồn tại với người ngoài
     },
     select: {
       id: true, name: true, avatarBase64: true, bio: true, subjects: true,
-      tutorVerified: true, tutorVerifiedAt: true,
+      tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true,
     },
   });
   if (!t) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
@@ -35,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const courseIds = courses.map(c => c.id);
 
-  const [enrollCounts, reviewAggs] = await Promise.all([
+  const [enrollCounts, reviewAggs, sessionsTaught] = await Promise.all([
     courseIds.length === 0 ? [] : prisma.enrollment.groupBy({
       by:     ["courseId"],
       where:  { courseId: { in: courseIds }, status: ENROLLMENT_STATUS.ACTIVE },
@@ -47,6 +50,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       _avg:   { rating: true },
       _count: { _all: true },
     }),
+    // PH-207: số buổi đã dạy lấy từ sổ lớp (buổi điểm danh), gia sư không tự sửa được.
+    courseIds.length === 0 ? 0 : prisma.attendanceSession.count({ where: { courseId: { in: courseIds } } }),
   ]);
 
   const activeByCourse = new Map(enrollCounts.map(r => [r.courseId, r._count._all]));
@@ -90,10 +95,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       subjects:        t.subjects,
       tutorVerified:   t.tutorVerified,
       tutorVerifiedAt: t.tutorVerifiedAt,
+      // PH-215: số Zalo chỉ lộ khi gia sư BẬT "Hiện số Zalo trên hồ sơ" (tắt sẵn vì zalo.me/<số> để lộ số).
+      zalo: readPreferences(t.preferences).connections?.showZalo ? normalizeZaloPhone(t.phone) : null,
+      // PH-215: trang Messenger do gia sư chủ động nhập → hiện nút "Nhắn Messenger" (tin điền sẵn qua m.me/<tên>?text=).
+      messenger: readPreferences(t.preferences).connections?.messenger ?? null,
     },
     stats: {
       classCount:   classes.length,
       studentCount,
+      sessionsTaught,
       rating:       { avg: ratingAvg, total: ratingCount },
     },
     classes,

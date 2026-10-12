@@ -1,3 +1,4 @@
+import { normalizeHint } from "@/lib/examCorrection";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
@@ -90,8 +91,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { text, type, imageUrl, points, explanation, categoryId, difficulty, tags, options } = body as {
+    const { text, type, imageUrl, points, explanation, hint, categoryId, difficulty, tags, options } = body as {
       text?: string;
+      hint?: string | null;
       type?: QuestionType;
       imageUrl?: string;
       points?: number;
@@ -118,6 +120,8 @@ export async function POST(req: NextRequest) {
     const questionType = type ?? "MC";
     const optionsErr = validateQuestionOptions(questionType, options ?? []);
     if (optionsErr) return NextResponse.json({ error: optionsErr }, { status: 400 });
+    const hintN = normalizeHint(hint);
+    if (!hintN.ok) return NextResponse.json({ error: "Gợi ý tối đa 1000 ký tự" }, { status: 400 });
 
     const item = await prisma.questionBankItem.create({
       data: {
@@ -126,6 +130,7 @@ export async function POST(req: NextRequest) {
         imageUrl: imageUrl?.trim() || null,
         points: typeof points === "number" && points > 0 ? points : 1,
         explanation: explanation?.trim() || null,
+        hint: hintN.value,
         categoryId,
         difficulty,
         tags: tags && tags.length > 0 ? tags : undefined,

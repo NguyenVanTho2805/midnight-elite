@@ -32,6 +32,7 @@ export function bankItemToExamQuestionInput(item: QuestionBankItemFull): ExamQue
     imageUrl: item.imageUrl ?? undefined,
     points: item.points,
     explanation: item.explanation ?? undefined,
+    hint: item.hint ?? undefined,
     options: item.options.map(o => ({ text: o.text, isCorrect: o.isCorrect, subLabel: o.subLabel ?? undefined })),
     sourceBankItemId: item.id,
   };

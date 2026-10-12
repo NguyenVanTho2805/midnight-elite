@@ -1,19 +1,22 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import AdminSidebar from "@/components/AdminSidebar";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth, getAdminRoleLabel } from "@/contexts/AuthContext";
 
-function AdminTopbar() {
+function AdminTopbar({ navOpen, onMenu }: { navOpen: boolean; onMenu: () => void }) {
   const { user } = useAuth();
   const isSuper = user?.adminRole === "admin_super";
   return (
-    <header className="clay-header h-14 flex items-center justify-between px-6 flex-shrink-0"
+    <header className="clay-header h-14 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 gap-2"
       style={{ boxShadow: "0 2px 8px rgba(197,208,234,0.5)" }}>
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#00A63D" }} />
-        <span className="text-xs font-medium" style={{ color: "#6B7280" }}>Hệ thống hoạt động bình thường</span>
+      <div className="flex items-center gap-2 min-w-0">
+        <button type="button" onClick={onMenu} aria-label="Mở menu" aria-expanded={navOpen} aria-controls="admin-sidebar"
+          className="lg:hidden w-11 h-11 -ml-1 flex items-center justify-center rounded-xl text-xl cursor-pointer"
+          style={{ background: "#F0F5FF", color: "#1E2938" }}>☰</button>
+        <span className="hidden sm:block w-2 h-2 rounded-full animate-pulse" style={{ background: "#00A63D" }} />
+        <span className="hidden sm:inline text-xs font-medium" style={{ color: "#6B7280" }}>Hệ thống hoạt động bình thường</span>
       </div>
       <div className="flex items-center gap-3">
         {/* Quick preview links */}
@@ -52,7 +55,7 @@ function AdminTopbar() {
             style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)" }}>
             {user?.avatar ?? "A"}
           </div>
-          <span className="text-xs font-semibold" style={{ color: "#1E2938" }}>{user?.name ?? "Admin"}</span>
+          <span className="hidden sm:inline text-xs font-semibold" style={{ color: "#1E2938" }}>{user?.name ?? "Admin"}</span>
         </div>
       </div>
     </header>
@@ -60,13 +63,22 @@ function AdminTopbar() {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Ngăn kéo menu cho điện thoại/máy tính bảng (< lg). Escape để đóng.
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setNavOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navOpen]);
+
   return (
     <AuthGuard requiredRole="admin">
       <div className="flex h-screen overflow-hidden" style={{ background: "#F0F5FF" }}>
-        <AdminSidebar />
+        <AdminSidebar open={navOpen} onClose={() => setNavOpen(false)} />
         <div className="flex-1 flex flex-col min-w-0">
-          <AdminTopbar />
-          <main className="flex-1 p-6 overflow-auto">
+          <AdminTopbar navOpen={navOpen} onMenu={() => setNavOpen(true)} />
+          <main className="flex-1 p-4 sm:p-6 overflow-auto">
             <Suspense fallback={<div className="animate-pulse space-y-4">{[1,2,3].map(i=><div key={i} className="h-20 rounded-2xl" style={{background:"#C5D0EA"}}/>)}</div>}>
               <div className="page-enter">{children}</div>
             </Suspense>

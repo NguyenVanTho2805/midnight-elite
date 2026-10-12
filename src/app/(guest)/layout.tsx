@@ -19,7 +19,7 @@ function PageSkeleton() {
 
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
+    <div data-vung="khach-sang" className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
       <Navbar />
       <main className="flex-1 pb-24 md:pb-0">
         <Suspense fallback={<PageSkeleton />}>

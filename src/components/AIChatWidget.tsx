@@ -8,11 +8,11 @@ type Message = { id: string; role: "user" | "ai"; text: string };
 const SUBJECTS = ["Toán", "Vật lý", "Hóa", "Tiếng Anh", "ĐGNL HSA"];
 
 const AI_REPLIES: Record<string, string> = {
-  "Toán":       "Midnight Elite AI (Toán): Tôi đã phân tích câu hỏi của bạn dựa trên ngữ liệu chương trình lớp 12 và đề ĐGNL HSA. Hãy cung cấp thêm ngữ cảnh (chương, dạng bài) để tôi trả lời chính xác hơn nhé!",
-  "Vật lý":     "Midnight Elite AI (Vật lý): Câu hỏi liên quan đến kiến thức Vật lý 12. Tôi đề xuất ôn lại lý thuyết nền tảng trước khi làm dạng bài nâng cao. Bạn đang học chương nào?",
-  "Hóa":        "Midnight Elite AI (Hóa học): Đây là dạng bài thường gặp trong đề thi THPT. Tôi gợi ý các bước giải tiêu chuẩn và công thức cần nhớ. Bạn cần mình giải thích chi tiết bước nào không?",
-  "Tiếng Anh":  "Midnight Elite AI (Tiếng Anh): Câu hỏi được phân loại vào kỹ năng Reading/Grammar. Tôi đề xuất luyện thêm dạng bài này tại mục Tài liệu → Tiếng Anh. Bạn cần giải thích cụ thể điểm ngữ pháp nào không?",
-  "ĐGNL HSA":   "Midnight Elite AI (ĐGNL HSA): Đây là kiến thức thuộc phần Tư duy Định lượng / Định tính trong đề HSA. Tôi đã đối chiếu với 47 đề thi thử gần nhất. Bạn muốn mình giải thích thêm phần nào?",
+  "Toán":       "KiN AI (Toán): Tôi đã phân tích câu hỏi của bạn dựa trên ngữ liệu chương trình lớp 12 và đề ĐGNL HSA. Hãy cung cấp thêm ngữ cảnh (chương, dạng bài) để tôi trả lời chính xác hơn nhé!",
+  "Vật lý":     "KiN AI (Vật lý): Câu hỏi liên quan đến kiến thức Vật lý 12. Tôi đề xuất ôn lại lý thuyết nền tảng trước khi làm dạng bài nâng cao. Bạn đang học chương nào?",
+  "Hóa":        "KiN AI (Hóa học): Đây là dạng bài thường gặp trong đề thi THPT. Tôi gợi ý các bước giải tiêu chuẩn và công thức cần nhớ. Bạn cần mình giải thích chi tiết bước nào không?",
+  "Tiếng Anh":  "KiN AI (Tiếng Anh): Câu hỏi được phân loại vào kỹ năng Reading/Grammar. Tôi đề xuất luyện thêm dạng bài này tại mục Tài liệu → Tiếng Anh. Bạn cần giải thích cụ thể điểm ngữ pháp nào không?",
+  "ĐGNL HSA":   "KiN AI (ĐGNL HSA): Đây là kiến thức thuộc phần Tư duy Định lượng / Định tính trong đề HSA. Tôi đã đối chiếu với 47 đề thi thử gần nhất. Bạn muốn mình giải thích thêm phần nào?",
 };
 
 function getReply(subject: string): string {
@@ -30,7 +30,7 @@ export default function AIChatWidget() {
   const [subject, setSubject] = useState("Toán");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: "0", role: "ai", text: "Xin chào! Tôi là Midnight Elite AI 👋\nBạn đang học môn gì? Hãy chọn môn bên dưới và đặt câu hỏi nhé!" },
+    { id: "0", role: "ai", text: "Xin chào! Tôi là KiN AI 👋\nBạn đang học môn gì? Hãy chọn môn bên dưới và đặt câu hỏi nhé!" },
   ]);
 
   // Drag state
@@ -160,7 +160,7 @@ export default function AIChatWidget() {
               AI
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-white leading-tight">Midnight Elite AI</p>
+              <p className="text-sm font-bold text-white leading-tight">KiN AI</p>
               <p className="text-xs text-blue-200">RAG · Ngữ liệu ĐGNL + THPT</p>
             </div>
             <button onClick={() => setOpen(false)}

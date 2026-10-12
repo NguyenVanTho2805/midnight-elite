@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
 
 // PUT /api/class-schedules/[id] — sửa 1 khung giờ học cố định.
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,8 +22,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const body = await req.json();
-    const { dayOfWeek, startTime, endTime, note, active } = body as {
-      dayOfWeek?: number; startTime?: string; endTime?: string; note?: string | null; active?: boolean;
+    const { dayOfWeek, startTime, endTime, note, active, joinUrl } = body as {
+      dayOfWeek?: number; startTime?: string; endTime?: string; note?: string | null; active?: boolean; joinUrl?: string | null;
     };
 
     const data: Record<string, unknown> = {};
@@ -32,8 +33,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
       data.dayOfWeek = dayOfWeek;
     }
-    if (startTime !== undefined) data.startTime = startTime.trim();
-    if (endTime !== undefined) data.endTime = endTime.trim();
+    if (startTime !== undefined) {
+      const v = normalizeHm(startTime);
+      if (!v) return NextResponse.json({ error: "Giờ bắt đầu phải có dạng HH:MM" }, { status: 400 });
+      data.startTime = v;
+    }
+    if (endTime !== undefined) {
+      const v = normalizeHm(endTime);
+      if (!v) return NextResponse.json({ error: "Giờ kết thúc phải có dạng HH:MM" }, { status: 400 });
+      data.endTime = v;
+    }
     // So sánh với giá trị HIỆU LỰC sau khi cập nhật (field không đổi thì lấy
     // giá trị cũ) — chỉ so 2 field trong body chưa đủ, vì sửa 1 mình
     // startTime/endTime riêng lẻ vẫn có thể tạo khoảng giờ ngược nếu không đối
@@ -44,6 +53,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Giờ kết thúc phải sau giờ bắt đầu" }, { status: 400 });
     }
     if (note !== undefined) data.note = note?.trim() || null;
+    if (joinUrl !== undefined) {
+      const j = normalizeJoinUrl(joinUrl);
+      if (!j.ok) return NextResponse.json({ error: "Link vào lớp phải là địa chỉ http(s) hợp lệ" }, { status: 400 });
+      data.joinUrl = j.value;
+    }
     if (typeof active === "boolean") data.active = active;
 
     const schedule = await prisma.classSchedule.update({ where: { id }, data });

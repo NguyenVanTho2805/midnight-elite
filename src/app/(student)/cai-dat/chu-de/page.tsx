@@ -3,15 +3,15 @@
 // Figma Thanh: trang "Năm chủ đề" (bàn giao docs/kin/thiet-ke/ban-giao-
 // man-hinh.md). 5 chủ đề × 3 chế độ (sáng / tối / theo máy).
 //
-// Lưu trong localStorage — áp dụng ngay không đợi server. Khi có bảng
-// User.preferences sẽ sync chéo. Không gắn vào tài khoản ẩn (anon) =
-// cài theo máy, không cần đăng nhập.
+// Áp dụng ngay (localStorage) rồi lưu lên TÀI KHOẢN (User.preferences) để máy khác
+// cũng thấy đúng chủ đề — xem AccountThemeSync. Khách chưa đăng nhập = chỉ theo máy.
 "use client";
 import { useEffect, useState } from "react";
 import {
   KIN_THEMES, KIN_MODES, type KinTheme, type KinMode,
   readSavedTheme, applyTheme, saveTheme,
 } from "@/components/ThemeApplier";
+import { saveThemeToAccount, THEME_SYNC_EVENT } from "@/components/AccountThemeSync";
 
 const THEME_LABEL: Record<KinTheme, string> = {
   "navy":   "Navy",
@@ -44,20 +44,28 @@ export default function ChonChuDePage() {
 
   useEffect(() => {
     const s = readSavedTheme();
-    setTheme(s.theme);
-    setMode(s.mode);
-    setReady(true);
+    // localStorage chỉ đọc được ở trình duyệt; đặt state qua microtask để không setState đồng bộ trong thân effect.
+    void Promise.resolve().then(() => { setTheme(s.theme); setMode(s.mode); setReady(true); });
+    // Chủ đề của TÀI KHOẢN về sau khi trang đã mở (máy mới/trình duyệt sạch): cập nhật lựa chọn hiển thị.
+    const onSync = (e: Event) => {
+      const d = (e as CustomEvent<{ theme: KinTheme; mode: KinMode }>).detail;
+      setTheme(d.theme); setMode(d.mode);
+    };
+    window.addEventListener(THEME_SYNC_EVENT, onSync);
+    return () => window.removeEventListener(THEME_SYNC_EVENT, onSync);
   }, []);
 
   function pickTheme(t: KinTheme) {
     setTheme(t);
     applyTheme(t, mode);
     saveTheme(t, mode);
+    saveThemeToAccount(t, mode);
   }
   function pickMode(m: KinMode) {
     setMode(m);
     applyTheme(theme, m);
     saveTheme(theme, m);
+    saveThemeToAccount(theme, m);
   }
 
   return (
@@ -68,7 +76,7 @@ export default function ChonChuDePage() {
             Chủ đề giao diện
           </h1>
           <p className="text-caption mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-            Chọn màu chủ đề và chế độ sáng/tối. Áp dụng ngay, lưu trong máy.
+            Chọn màu chủ đề và chế độ sáng/tối. Áp dụng ngay và lưu theo tài khoản — đăng nhập ở máy nào cũng giống nhau.
           </p>
         </header>
 
@@ -131,7 +139,7 @@ export default function ChonChuDePage() {
             })}
           </div>
           <p className="text-caption mt-2" style={{ color: "var(--kin-chu-mo)" }}>
-            Chế độ "Theo máy" tự đổi sáng/tối theo cài đặt điện thoại / máy tính.
+            Chế độ &quot;Theo máy&quot; tự đổi sáng/tối theo cài đặt điện thoại / máy tính.
           </p>
         </section>
 

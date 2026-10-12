@@ -42,6 +42,7 @@ interface CourseDB {
   openDate: string; price: number; originalPrice?: number | null;
   lessons: number; hours: number; tag?: string | null; tagColor?: string | null;
   introVideo?: string | null; zaloGroupLink?: string | null; bg: string; createdAt: string;
+  capacity?: number | null; classStatus?: string;
   types: string[];
   sections: SectionDB[];
 }
@@ -262,6 +263,8 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
     tagColor:      course.tagColor ?? "#FF2157",
     introVideo:    course.introVideo ?? "",
     zaloGroupLink: course.zaloGroupLink ?? "",
+    capacity:      course.capacity == null ? "" : String(course.capacity),
+    classStatus:   course.classStatus ?? "open",
     bgImage:       extractBgImage(course.bg),
   });
   const [saving, setSaving]           = useState(false);
@@ -295,6 +298,13 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
   }
 
   async function handleSave() {
+    // FE-147: để trống = không giới hạn; có giá trị thì phải là số nguyên ≥ 0
+    // (server cũng kiểm tra và chặn hạ dưới số học viên đang học).
+    const capText = form.capacity.trim();
+    if (capText !== "" && !/^\d+$/.test(capText)) {
+      alert("Sức chứa phải là số nguyên không âm, hoặc để trống nếu không giới hạn.");
+      return;
+    }
     setSaving(true);
     try {
       // Chỉ thật sự upload lên Cloudinary ở đây — ngay trước khi lưu khoá
@@ -319,6 +329,8 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         tagColor:      form.tag ? form.tagColor : null,
         introVideo:    form.introVideo || null,
         zaloGroupLink: form.zaloGroupLink || null,
+        capacity:      capText === "" ? null : Number(capText),
+        classStatus:   form.classStatus,
         bg:            bgImage
                          ? `url(${bgImage}) center/cover no-repeat`
                          : CATEGORY_GRADIENT[form.category] ?? course.bg,
@@ -478,6 +490,28 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
         </div>
       </div>
 
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">Vận hành lớp</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="class-capacity" className="block text-xs font-medium text-gray-600 mb-1">Sức chứa (số học viên tối đa)</label>
+            <input id="class-capacity" className={inp} inputMode="numeric" placeholder="Để trống = không giới hạn"
+              value={form.capacity} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} />
+            <p className="text-xs text-gray-400 mt-1">Không thể đặt thấp hơn số học viên đang theo học.</p>
+          </div>
+          <div>
+            <label htmlFor="class-status" className="block text-xs font-medium text-gray-600 mb-1">Trạng thái nhận học viên</label>
+            <select id="class-status" className={inp}
+              value={form.classStatus} onChange={e => setForm(f => ({ ...f, classStatus: e.target.value }))}>
+              <option value="open">Đang nhận học viên</option>
+              <option value="paused">Tạm dừng nhận (có thể mở lại)</option>
+              <option value="closed">Đã đóng lớp</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Học viên đã vào lớp vẫn học bình thường; chỉ chặn người mới vào.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">
         <button onClick={() => setForm({
           publicName: course.name, slug: course.id,
@@ -487,6 +521,8 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           tag: course.tag ?? "", tagColor: course.tagColor ?? "#FF2157",
           introVideo: course.introVideo ?? "",
           zaloGroupLink: course.zaloGroupLink ?? "",
+          capacity: course.capacity == null ? "" : String(course.capacity),
+          classStatus: course.classStatus ?? "open",
           bgImage: extractBgImage(course.bg),
         })} className="px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">
           Huỷ thay đổi
@@ -1960,9 +1996,24 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
 
 // ─── TAB HỌC VIÊN KHOÁ HỌC ───────────────────────────────────────────────────
 interface CourseStudent {
-  userId: string; name: string; email: string;
+  userId: string; name: string; email: string; status?: string;
   phone?: string | null; school?: string | null;
   enrolledAt: string; completed: number; totalLessons: number; progress: number;
+}
+
+// FE-149: trạng thái luôn kèm chữ, không chỉ dựa vào màu.
+const ENROLLMENT_STATUS_LABEL: Record<string, { text: string; color: string; bg: string }> = {
+  active:          { text: "Đang học",                  color: "#166534", bg: "#dcfce7" },
+  pending_consent: { text: "Chờ phụ huynh xác nhận",    color: "#92400e", bg: "#fef3c7" },
+  suspended:       { text: "Tạm dừng",                  color: "#991b1b", bg: "#fee2e2" },
+};
+function EnrollmentStatusBadge({ status }: { status?: string }) {
+  const m = (status && ENROLLMENT_STATUS_LABEL[status]) || { text: status || "—", color: "#374151", bg: "#f3f4f6" };
+  return (
+    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={{ color: m.color, background: m.bg }}>
+      {m.text}
+    </span>
+  );
 }
 
 function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
@@ -2008,10 +2059,10 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {["Học viên","Email","SĐT","Trường","Tiến độ","Ngày đăng ký"].map(h => (
+                {["Học viên","Trạng thái","Email","SĐT","Trường","Tiến độ","Ngày đăng ký"].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -2027,6 +2078,9 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
                       </div>
                       <span className="font-medium text-gray-800">{s.name}</span>
                     </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <EnrollmentStatusBadge status={s.status} />
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{s.email}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{s.phone || "—"}</td>
@@ -2056,7 +2110,7 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
 
 // ─── TAB: LỊCH HỌC ─────────────────────────────────────────────────────────────
 const DAY_LABELS = DAY_LABELS_VI;
-const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "" };
+const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "" };
 
 function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
@@ -2151,6 +2205,12 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
             <input type="text" placeholder="VD: Học live qua Zoom" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
           </div>
+          <div>
+            <label htmlFor="lich-join-url" className="block text-xs font-medium text-gray-500 mb-1">Link vào lớp (Meet/Zoom, tuỳ chọn)</label>
+            <input id="lich-join-url" type="url" placeholder="https://meet.google.com/..." value={form.joinUrl} onChange={e => setForm(f => ({ ...f, joinUrl: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+            <p className="text-xs text-gray-400 mt-1">In vào tin nhắc lịch gửi phụ huynh và học sinh. Để trống thì tin bỏ dòng link.</p>
+          </div>
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
@@ -2178,6 +2238,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
               </span>
               <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
               {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
+              {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "#0068FF" }}>Link vào lớp</a>}
               {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
               <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
                 <button onClick={() => handleToggle(s)} className="px-2 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
@@ -2258,7 +2319,7 @@ export default function KhoaHocDetailPage() {
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-start gap-4">
           <div className="w-16 h-11 rounded-lg flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-            style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>ME</div>
+            style={{ background: course.bg ?? "linear-gradient(135deg,#0055D4,#0042AA)" }}>KiN</div>
           <div className="min-w-0">
             <h1 className="text-base font-bold text-gray-800 leading-tight">{course.name}</h1>
             <p className="text-xs text-gray-400 mt-0.5">

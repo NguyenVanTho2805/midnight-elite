@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChartBar, BookOpen, ClipboardList, Badge,
-  UsersGroup, Wallet, Edit, FileText, ChatCircle, Star,
+  UsersGroup, Wallet, Edit, FileText, ChatCircle, Star, UserCheck,
 } from "griddy-icons";
 import { useAuth, hasPermission, getAdminRoleLabel, PERMISSIONS, type Permission } from "@/contexts/AuthContext";
 import type { FC } from "react";
@@ -56,6 +56,9 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: "Hồ sơ học sinh",  href: "/admin/hoc-sinh",        Icon: UsersGroup,  permission: PERMISSIONS.MANAGE_STUDENTS  },
+  { label: "Duyệt gia sư",    href: "/admin/ho-so-gia-su",    Icon: UserCheck,   permission: PERMISSIONS.MANAGE_TUTORS    },
+  { label: "Phễu gia sư",     href: "/admin/pheu",            Icon: ChartBar,    permission: PERMISSIONS.MANAGE_TUTORS    },
+  { label: "Điểm chuẩn",      href: "/admin/diem-chuan",      Icon: ClipboardList, permission: PERMISSIONS.MANAGE_NEWS    },
   { label: "Doanh thu",       href: "/admin/doanh-thu",        Icon: Wallet,     permission: PERMISSIONS.VIEW_REVENUE    },
   { label: "Quản trị viên",   href: "/admin/quan-tri-vien",    Icon: Edit,       permission: PERMISSIONS.MANAGE_ADMINS   },
 ];
@@ -66,7 +69,10 @@ const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> =
   teacher:       { label: "Giáo viên",             color: "#16a34a", bg: "rgba(22,163,74,0.12)"  },
 };
 
-export default function AdminSidebar() {
+// open/onClose: dưới breakpoint lg sidebar là ngăn kéo (off-canvas) mở bằng nút
+// menu ở AdminTopbar; từ lg trở lên luôn hiện cố định như cũ. Trước đây sidebar
+// luôn rộng 256px nên trên điện thoại cột nội dung chỉ còn ~130px.
+export default function AdminSidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
@@ -77,20 +83,27 @@ export default function AdminSidebar() {
   );
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col h-screen" style={{ background: "#1E2938" }}>
+    <>
+    {open && <div className="lg:hidden fixed inset-0 z-40" style={{ background: "rgba(15,23,42,0.55)" }} onClick={onClose} aria-hidden="true" />}
+    <aside id="admin-sidebar" aria-label="Menu quản trị"
+      className={`w-64 flex-shrink-0 flex flex-col h-screen fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+      style={{ background: "#1E2938" }}>
       {/* Logo + user info */}
       <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-base flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
-            ME
+            KiN
           </div>
-          <div className="min-w-0">
-            <div className="text-white font-bold text-sm leading-none truncate">Midnight Elite Admin</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-white font-bold text-sm leading-none truncate">KiN Admin</div>
             <div className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
               {user?.name ?? "Admin"}
             </div>
           </div>
+          <button type="button" onClick={onClose} aria-label="Đóng menu"
+            className="lg:hidden w-11 h-11 -mr-2 flex items-center justify-center rounded-lg text-xl cursor-pointer"
+            style={{ color: "rgba(255,255,255,0.7)" }}>✕</button>
         </div>
 
         {/* Role badge */}
@@ -119,7 +132,7 @@ export default function AdminSidebar() {
 
           return (
             <div key={item.href}>
-              <Link href={item.href}
+              <Link href={item.href} onClick={onClose}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
                 style={isExpanded
                   ? { background: "rgba(0,104,255,0.2)", color: "#60A5FA" }
@@ -144,7 +157,7 @@ export default function AdminSidebar() {
                       !item.children!.some(s => s.href !== ch.href && pathname.startsWith(s.href))
                     );
                     return (
-                      <Link key={ch.href} href={ch.href}
+                      <Link key={ch.href} href={ch.href} onClick={onClose}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150"
                         style={chActive
                           ? { color: "#60A5FA", background: "rgba(0,104,255,0.12)" }
@@ -174,5 +187,6 @@ export default function AdminSidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

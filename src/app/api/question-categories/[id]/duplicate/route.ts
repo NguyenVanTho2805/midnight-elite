@@ -74,7 +74,7 @@ export async function POST(
         const created = await tx.questionBankItem.create({
           data: {
             type: item.type, text: item.text, imageUrl: item.imageUrl,
-            points: item.points, explanation: item.explanation,
+            points: item.points, explanation: item.explanation, hint: item.hint,
             categoryId: idMap.get(item.categoryId)!,
             difficulty: item.difficulty, tags: item.tags ?? undefined,
             contentHash: item.contentHash, // text không đổi, copy thẳng

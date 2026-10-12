@@ -1,663 +1,134 @@
-"use client";
-
-import { useState, useMemo, useEffect } from "react";
+// Trang chủ KiN — dựng theo Figma "Trang chủ KiN" (node 145:8, file KiN Design System).
+// Khung: Header (Navbar) → Hero → "Học ở đây thì được gì?" → CTA → Footer.
+//
+// So với bản cũ (đã bỏ, đều có chỗ khác hoặc không còn đúng):
+//  - Danh sách khoá học + tìm kiếm + theo dõi lớp: nằm ở /khoa-hoc (đã có đủ).
+//  - Dòng "Mua 1 lần, học trọn đời": sai cách bán thật (KiN thu học phí theo tháng).
+//  - Đếm ngược kỳ thi (ngày viết cứng) và dòng thời gian "Hành trình phát triển".
+//
+// Chữ nhỏ trên nền navy dùng độ đục cao hơn bản Figma (0,65–0,78 thay vì 0,45–0,68):
+// bản Figma đo được 3,4–4,3:1, trượt ngưỡng 4,5:1 mà docs/kin/thiet-ke/tuong-phan.md đặt ra.
 import Link from "next/link";
+import { BookOpen, ChartBar, CheckCircle, Flash } from "griddy-icons";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useRouter } from "next/navigation";
-import { BookOpen, Trophy, Star, CheckCircle, Flash, ChartBar, UsersGroup } from "griddy-icons";
-import TeacherTag from "@/components/TeacherTag";
-import { useCourses } from "@/hooks/useCourses";
-import { useFollowedCourses } from "@/hooks/useFollowedCourses";
-import { useAuth } from "@/contexts/AuthContext";
-import { COURSE_CATEGORIES, COURSE_HASHTAGS } from "@/lib/courseData";
-
-// ─── COUNTDOWN ────────────────────────────────────────────────────────────────
-const NEXT_EXAM = { label: "ĐGNL HSA vòng 2", date: new Date("2026-11-01T08:00:00") };
-
-function useCountdown(target: Date) {
-  // ms bắt đầu là null (thay vì tính Date.now() ngay khi render) để lần render
-  // đầu tiên trên client khớp với HTML server render — tránh hydration mismatch
-  // do server và client tính Date.now() ở 2 thời điểm khác nhau.
-  const [ms, setMs] = useState<number | null>(null);
-  useEffect(() => {
-    const calc = () => Math.max(0, target.getTime() - Date.now());
-    setMs(calc());
-    const id = setInterval(() => setMs(calc()), 1000);
-    return () => clearInterval(id);
-  }, [target]);
-  const safeMs = ms ?? 0;
-  return {
-    days:    Math.floor(safeMs / 86_400_000),
-    hours:   Math.floor((safeMs % 86_400_000) / 3_600_000),
-    minutes: Math.floor((safeMs % 3_600_000) / 60_000),
-    seconds: Math.floor((safeMs % 60_000) / 1_000),
-    expired: ms !== null && safeMs === 0,
-  };
-}
-
-// ─── DATA ─────────────────────────────────────────────────────────────────────
-
-const courseCategories = [
-  { key: "all", label: "Tất cả" },
-  ...COURSE_CATEGORIES.filter(c => c !== "Tất cả").map(c => ({ key: c, label: c })),
-];
-
-interface HomeCourse {
-  slug: string; category: string; title: string; shortTitle: string;
-  teacher: string; teacherAvatar: string; lessons: number; hours: number;
-  price: number; originalPrice: number; openDate: string;
-  types: string[]; tag?: string | null; tagColor: string;
-}
-
-// tint per why-item
-const whyItems = [
-  { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với gia sư thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức.", tint: "var(--tint-yellow-bold)", iconColor: "#b45309" },
-  { Icon: ChartBar,    title: "Theo dõi tiến độ realtime", desc: "Dashboard cá nhân hiển thị tiến độ từng môn, GPA, streak và thứ hạng toàn server.", tint: "var(--tint-sky)", iconColor: "#1D4ED8" },
-  { Icon: BookOpen,    title: "Kho tài liệu 10,000+ đề",  desc: "Đề thi thử từ năm 2015 đến nay, kèm giải thích chi tiết từng câu.", tint: "var(--tint-mint)", iconColor: "#166534" },
-  { Icon: Trophy,      title: "Điểm thưởng & bảng xếp hạng", desc: "Tích điểm, giữ chuỗi ngày học, leo hạng mỗi tuần. Học có mục tiêu, tiến bộ rõ ràng.", tint: "var(--tint-lavender)", iconColor: "#6D28D9" },
-  { Icon: Star,        title: "Trợ giảng riêng 1-1",         desc: "Mỗi học viên được phân công trợ giảng người thật để hỏi bài và định hướng lộ trình.", tint: "var(--tint-peach)", iconColor: "#c2410c" },
-  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",       desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày. Ngoài giờ có AI hỗ trợ thêm.", tint: "var(--tint-cream)", iconColor: "#0068FF" },
-];
-
-
-const timeline = [
-  { year: "09/2024", event: "Midnight Elite ra đời từ một nhóm gia sư trẻ muốn thay đổi cách luyện thi ĐGNL." },
-  { year: "01/2025", event: "Ra mắt hệ thống thi thử ĐGNL HSA trực tuyến, đầu tiên tại Việt Nam tích hợp Azota." },
-  { year: "05/2025", event: "Đạt mốc 1,000 học viên. Ra mắt ĐGNL HCM và TSA Bách Khoa." },
-  { year: "09/2025", event: "Mở rộng sang luyện thi Tốt nghiệp THPT 8 môn. Bổ sung đội ngũ 6 mentor chuyên biệt." },
-  { year: "01/2026", event: "Triển khai AI Hỏi đáp 24/7 và hệ thống quản lý kỷ luật (Strike) học viên." },
-  { year: "Hiện tại", event: "Học viên học live mỗi tối. Bảng xếp hạng cập nhật mỗi ngày. Đội ngũ gia sư và mentor liên tục mở rộng." },
-];
 
 const HERO_CATEGORIES = [
-  { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội",           tint: "var(--tint-sky)",       text: "#1D4ED8" },
-  { label: "ĐGNL HCM",        desc: "ĐH Quốc gia TP.HCM",           tint: "var(--tint-lavender)",  text: "#6D28D9" },
-  { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia",           tint: "var(--tint-mint)",      text: "#166534" },
-  { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN",              tint: "var(--tint-peach)",     text: "#c2410c" },
-  { label: "BCA",             desc: "Đánh giá tuyển sinh Bộ Công An", tint: "var(--tint-cream)",   text: "#787671" },
+  { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội" },
+  { label: "ĐGNL HCM",        desc: "ĐH Quốc gia TP.HCM" },
+  { label: "Tốt nghiệp THPT", desc: "8 môn thi quốc gia" },
+  { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN" },
 ];
 
-// ─── CATEGORY THEME ───────────────────────────────────────────────────────────
-const categoryTheme: Record<string, { bg: string; strip: string; stripText: string }> = {
-  "ĐGNL HSA":        { bg: "linear-gradient(135deg,#0042AA 0%,#0068FF 60%,#38BDF8 100%)", strip: "#FDE047", stripText: "#1E2938" },
-  "Tốt nghiệp THPT": { bg: "linear-gradient(135deg,#15803D 0%,#16a34a 60%,#4ADE80 100%)", strip: "#FDE047", stripText: "#1E2938" },
-  "ĐGNL HCM":        { bg: "linear-gradient(135deg,#6D28D9 0%,#8B5CF6 60%,#C4B5FD 100%)", strip: "#FDE047", stripText: "#1E2938" },
-  "TSA Bách Khoa":   { bg: "linear-gradient(135deg,#C2410C 0%,#EA580C 60%,#FB923C 100%)", strip: "#FDE047", stripText: "#1E2938" },
-};
-
-// ─── STATS STRIP ──────────────────────────────────────────────────────────────
+// Số liệu giữ nguyên như Figma và bản cũ; chưa có nguồn đếm tự động.
 const STATS = [
-  { value: "1,200+", label: "Học viên đang học" },
-  { value: "10,000+", label: "Đề thi thử" },
-  { value: "6",      label: "Gia sư & trợ giảng" },
+  { value: "1.200+",  label: "Học sinh đang học" },
+  { value: "10.000+", label: "Đề thi thử" },
+  { value: "6",       label: "Gia sư & trợ giảng" },
 ];
 
-// Gộp thống kê + đếm ngược vào 1 panel trong hero (thay vì dải riêng bên dưới),
-// tránh hero tách rời khỏi phần dữ liệu tin cậy ngay bên dưới nó.
-function HeroStatsPanel() {
-  const cd = useCountdown(NEXT_EXAM.date);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {STATS.map(s => (
-          <div key={s.label}>
-            <p className="text-lg font-black leading-none text-white tabular-nums">{s.value}</p>
-            <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-      {!cd.expired && (
-        <>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} className="mb-4" />
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>Kỳ thi tiếp theo</p>
-              <p className="text-xs font-bold text-white">{NEXT_EXAM.label}</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {[{ v: cd.days, u: "ngày" }, { v: cd.hours, u: "giờ" }, { v: cd.minutes, u: "phút" }, { v: cd.seconds, u: "giây" }].map(({ v, u }) => (
-                <div key={u} className="flex flex-col items-center px-2 py-1 rounded-lg min-w-[36px]"
-                  style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <span className="text-sm font-black text-white leading-none tabular-nums">{pad(v)}</span>
-                  <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.45)" }}>{u}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+const WHY_ITEMS = [
+  { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với gia sư thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức." },
+  { Icon: ChartBar,    title: "Theo dõi tiến độ realtime", desc: "Dashboard cá nhân hiển thị tiến độ từng môn, GPA, streak và thứ hạng toàn hệ thống." },
+  { Icon: BookOpen,    title: "Trợ giảng riêng 1-1",       desc: "Mỗi học sinh được phân công trợ giảng người thật để hỏi bài và định hướng lộ trình." },
+  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",    desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày. Ngoài giờ có AI hỗ trợ thêm." },
+];
 
-// ─── KHÓA HỌC MỚI ─────────────────────────────────────────────────────────────
-function parseDateVN(s: string): number {
-  const [d, m, y] = s.split("/");
-  return new Date(`${y}-${m}-${d}`).getTime();
-}
+const btnOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] bg-white text-[var(--kin-nhan-nen)] font-semibold transition-opacity hover:opacity-90";
+const btnGhostOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] border border-white/30 text-white font-semibold transition-colors hover:bg-white/10";
 
-function NewCoursesSection({ courses }: { courses: HomeCourse[] }) {
-  const newest = useMemo(() =>
-    [...courses].sort((a, b) => parseDateVN(b.openDate) - parseDateVN(a.openDate)).slice(0, 4),
-    [courses]
-  );
-  if (newest.length === 0) return null;
-  return (
-    <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Vừa mở đăng ký
-          </h2>
-          <p className="text-sm mt-0.5" style={{ color: "#787671" }}>Khóa học mới nhất — đăng ký sớm để có giá tốt nhất</p>
-        </div>
-        <Link href="/khoa-hoc" className="text-sm font-semibold flex-shrink-0" style={{ color: "#0068FF" }}>
-          Xem tất cả →
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {newest.map(c => {
-          const theme = categoryTheme[c.category] ?? categoryTheme["ĐGNL HSA"];
-          return (
-            <Link key={c.slug} href={`/khoa-hoc/${c.slug}`}
-              className="flex items-center gap-3 p-3 rounded-xl transition-all hover:shadow-sm hover:-translate-y-0.5"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-              <div className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-black"
-                style={{ background: theme.bg }}>
-                ME
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold leading-snug truncate" style={{ color: "#1a1a1a" }}>{c.title}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#787671" }}>Khai giảng {c.openDate}</p>
-                <p className="text-xs font-semibold mt-0.5" style={{ color: "#0068FF" }}>
-                  {c.price.toLocaleString("vi-VN")} đ
-                </p>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-
-// ─── COURSE CARD (Notion flat style) ─────────────────────────────────────────
-function CourseCard({ course, following, onToggleFollow }: {
-  course: HomeCourse;
-  following: boolean;
-  onToggleFollow: () => void;
-}) {
-  const router = useRouter();
-  const discount = course.originalPrice > 0 && course.originalPrice > course.price
-    ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
-  const theme = categoryTheme[course.category] ?? categoryTheme["ĐGNL HSA"];
-
-  return (
-    <div
-      className="rounded-xl overflow-hidden flex flex-col cursor-pointer transition-shadow hover:shadow-md"
-      style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.04) 0px 1px 2px 0px" }}
-      onClick={() => router.push(`/khoa-hoc/${course.slug}`)}
-    >
-      {/* Thumbnail */}
-      <div className="relative overflow-hidden" style={{ background: theme.bg, minHeight: 160 }}>
-        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 400 40" preserveAspectRatio="none" style={{ height: 36 }}>
-          <path d="M0,20 C100,40 300,0 400,20 L400,40 L0,40 Z" fill="rgba(255,255,255,0.12)" />
-        </svg>
-
-        <div className="relative z-10 flex items-start justify-between px-4 pt-3">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md"
-            style={{ background: "rgba(255,255,255,0.22)" }}>
-            <span className="text-white font-black text-xs leading-none">ME</span>
-          </div>
-          {discount > 0 && (
-            <div className="px-2 py-0.5 rounded-md text-xs font-bold"
-              style={{ background: course.tagColor ?? "#FF2157", color: "#fff" }}>
-              -{discount}%
-            </div>
-          )}
-        </div>
-
-
-        <div className="relative z-10 mx-3 mt-2 px-3 py-1.5 rounded-md flex items-center justify-between"
-          style={{ background: theme.strip }}>
-          <span className="text-xs font-extrabold uppercase tracking-wide" style={{ color: theme.stripText }}>
-            {course.category}
-          </span>
-          <span className="text-xs font-bold" style={{ color: theme.stripText, opacity: 0.7 }}>
-            {course.lessons} bài · {course.hours}h
-          </span>
-        </div>
-
-        <div className="relative z-10 flex items-center justify-between px-4 py-2.5">
-          <div>
-            <p className="text-white text-xs opacity-70 leading-none mb-0.5">Khai giảng</p>
-            <p className="text-white text-xs font-bold">{course.openDate}</p>
-          </div>
-          <TeacherTag name={course.teacher} avatar={course.teacherAvatar} size={28} variant="onDark" maxNameWidth={80} />
-        </div>
-      </div>
-
-      {/* Card body */}
-      <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-        <h3 className="text-sm font-bold mb-2.5 leading-snug" style={{ color: "#1a1a1a" }}>{course.title}</h3>
-
-        {/* Types + hashtags in one row */}
-        <div className="flex flex-wrap items-center gap-1 mb-3">
-          {course.types.map((t) => (
-            <span key={t}
-              className="px-2 py-0.5 rounded text-[11px] font-semibold"
-              style={t === "Live"
-                ? { background: "#FEE2E2", color: "#DC2626" }
-                : { background: "#DBEAFE", color: "#1D4ED8" }}>
-              {t}
-            </span>
-          ))}
-          {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 2).map(tag => (
-            <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "#f6f5f4", color: "#787671" }}>
-              #{tag}
-            </span>
-          ))}
-        </div>
-
-        {/* Price row */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-base font-bold" style={{ color: "#0068FF" }}>
-            {course.price.toLocaleString("vi-VN")} đ
-          </span>
-          {course.originalPrice > course.price && (
-            <span className="text-xs line-through" style={{ color: "#bbb8b1" }}>
-              {course.originalPrice.toLocaleString("vi-VN")} đ
-            </span>
-          )}
-          {course.tag && (
-            <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
-              style={{ background: (course.tagColor ?? "#FF2157") + "22", color: course.tagColor ?? "#FF2157" }}>
-              {course.tag}
-            </span>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleFollow(); }}
-            aria-pressed={following}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
-            style={following
-              ? { background: "#EFF6FF", color: "#0068FF", border: "1px solid #BFDBFE" }
-              : { background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24"
-              fill={following ? "currentColor" : "none"}
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
-            </svg>
-            {following ? "Đang theo dõi" : "Theo dõi lớp"}
-          </button>
-          <Link href={`/khoa-hoc/${course.slug}`}
-            className="flex-1 flex items-center justify-center py-2.5 rounded-lg text-xs font-bold text-white text-center hover:brightness-105 transition-all"
-            style={{ background: "#0068FF" }}>
-            Xem khoá học
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const router = useRouter();
-  const { data: apiCourses, loading: coursesLoading } = useCourses();
-  const { user } = useAuth();
-  const { isFollowing, follow, unfollow } = useFollowedCourses();
-
-  function handleToggleFollow(slug: string) {
-    if (!user) { router.push("/dang-nhap"); return; }
-    if (isFollowing(slug)) unfollow(slug); else follow(slug);
-  }
-
-  const courses: HomeCourse[] = useMemo(() => apiCourses.map(c => ({
-    slug:          c.id,
-    category:      c.category,
-    title:         c.name,
-    shortTitle:    c.shortTitle,
-    teacher:       c.instructor,
-    teacherAvatar: c.teacherAvatar,
-    lessons:       c.lessons,
-    hours:         c.hours,
-    price:         c.price,
-    originalPrice: c.originalPrice ?? c.price,
-    openDate:      c.openDate,
-    types:         c.types,
-    tag:           c.tag,
-    tagColor:      c.tagColor ?? "#FF2157",
-  })), [apiCourses]);
-
-  const filtered = useMemo(() => {
-    let result = activeCategory === "all" ? courses : courses.filter(c => c.category === activeCategory);
-    const q = searchQuery.trim().toLowerCase();
-    if (q) result = result.filter(c =>
-      c.title.toLowerCase().includes(q) ||
-      c.teacher.toLowerCase().includes(q) ||
-      c.category.toLowerCase().includes(q)
-    );
-    return result;
-  }, [courses, activeCategory, searchQuery]);
-
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#ffffff" }}>
+    <div data-vung="khach-sang" className="kin-chu-than min-h-screen flex flex-col bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)]">
       <Navbar />
 
       <main className="flex-1">
+        {/* ── Hero ───────────────────────────────────────────────────────── */}
+        <section className="bg-[var(--kin-nhan-nen)] pt-12 pb-14 sm:pt-[72px] sm:pb-[88px]">
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-8 lg:px-20 flex flex-col lg:flex-row lg:items-center gap-10 lg:gap-14">
 
-        {/* ── HERO — Notion navy band ────────────────────────────────────── */}
-        <section style={{ background: "var(--brand-navy)" }}>
-          <div className="max-w-7xl mx-auto px-6 sm:px-10 py-16 lg:py-24">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="flex-1 min-w-0 flex flex-col items-start gap-5">
+              <p className="rounded-full border border-white/[0.18] bg-white/[0.12] px-[14px] py-[6px] text-[length:var(--kin-co-small)] font-semibold text-white/85">
+                KiN · Luyện thi ĐGNL, THPT &amp; BCA cùng gia sư thật
+              </p>
+              <h1 className="kin-chu-tieu-de max-w-[620px] font-semibold leading-[1.14] tracking-[-0.02em] text-white text-[length:clamp(28px,7.5vw,var(--kin-co-display))]">
+                Học live mỗi tối,<br />cùng gia sư thật
+              </h1>
+              <p className="max-w-[480px] text-[length:var(--kin-co-body)] leading-[1.6] text-white/[0.78]">
+                Không phải video quay sẵn — mỗi buổi học đều live, hỏi đáp trực tiếp, và tiến độ của con được cập nhật theo từng ngày.
+              </p>
+              <div className="flex flex-wrap gap-3 pt-3">
+                <Link href="/khoa-hoc" className={`${btnOnNavy} text-[length:var(--kin-co-body)]`}>Xem lớp học</Link>
+                <Link href="/thi-thu" className={`${btnGhostOnNavy} text-[length:var(--kin-co-body)]`}>Thi thử miễn phí</Link>
+              </div>
+            </div>
 
-              {/* Left */}
-              <div>
-                <div className="inline-block mb-5 text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                  Midnight Elite · Luyện thi ĐGNL, THPT &amp; BCA
-                </div>
-                <h1
-                  className="font-bold text-white mb-5 leading-tight"
-                  style={{ fontSize: "clamp(2rem,5vw,3.25rem)", letterSpacing: "-0.03em" }}
-                >
-                  Mua 1 lần,<br />
-                  <span style={{ color: "#93C5FD" }}>học trọn đời</span>
-                </h1>
-                <p className="text-base mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "38ch" }}>
-                  Thầy cô dạy live mỗi tối — không phải video cũ. Thi thử đề thật, theo dõi tiến độ từng ngày cùng lớp.
-                </p>
-                <div className="flex flex-wrap gap-3">
+            <div className="w-full lg:w-[480px] lg:flex-shrink-0 flex flex-col gap-4">
+              <p className="text-[length:var(--kin-co-caption)] font-semibold tracking-[0.09em] text-white/65">ĐANG MỞ LUYỆN THI</p>
+              <div className="grid grid-cols-2 gap-[10px]">
+                {HERO_CATEGORIES.map((c) => (
                   <Link
+                    key={c.label}
                     href="/khoa-hoc"
-                    className="notion-btn-on-dark text-sm font-semibold"
+                    className="flex flex-col gap-[3px] rounded-[var(--kin-bo-xl)] border border-white/10 bg-white/[0.08] p-[14px] transition-colors hover:bg-white/[0.14]"
                   >
-                    Xem khóa học
+                    <span className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-small)] text-white">{c.label}</span>
+                    <span className="text-[length:var(--kin-co-caption)] text-white/70">{c.desc}</span>
                   </Link>
-                  <Link
-                    href="/thi-thu"
-                    className="notion-btn-secondary-on-dark text-sm font-medium"
-                  >
-                    Thi thử miễn phí
-                  </Link>
-                </div>
+                ))}
               </div>
-
-              {/* Right — category tiles + gộp thống kê/đếm ngược */}
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    Đang mở luyện thi
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {HERO_CATEGORIES.map((c, i) => (
-                      <Link
-                        href="/khoa-hoc"
-                        key={c.label}
-                        className={`p-4 rounded-xl transition-all hover:brightness-95${i === HERO_CATEGORIES.length - 1 && HERO_CATEGORIES.length % 2 !== 0 ? " col-span-2" : ""}`}
-                        style={{ background: c.tint }}
-                      >
-                        <div className="text-sm font-bold mb-1" style={{ color: c.text }}>{c.label}</div>
-                        <div className="text-xs" style={{ color: c.text, opacity: 0.65 }}>{c.desc}</div>
-                      </Link>
-                    ))}
+              <dl className="grid grid-cols-3 gap-3 rounded-2xl border border-white/[0.12] bg-white/[0.06] p-5 m-0">
+                {STATS.map((s) => (
+                  <div key={s.label} className="flex flex-col-reverse gap-1">
+                    <dt className="text-[length:var(--kin-co-caption)] text-white/70">{s.label}</dt>
+                    <dd className="kin-chu-tieu-de m-0 font-semibold text-[length:var(--kin-co-h4)] leading-tight text-white">{s.value}</dd>
                   </div>
-                </div>
-                <HeroStatsPanel />
-              </div>
-
+                ))}
+              </dl>
             </div>
           </div>
         </section>
 
-        {/* ── COURSES WITH SIDEBAR ──────────────────────────────────────────── */}
-        <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-              Khóa học nổi bật
-            </h2>
-            <p className="text-sm" style={{ color: "#787671" }}>Chọn kỳ thi, bắt đầu học ngay — không cần chờ khai giảng.</p>
-          </div>
-
-          {/* Mobile pills */}
-          <div className="lg:hidden mb-5 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            {courseCategories.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
-                className="flex-shrink-0 px-3 py-1.5 text-xs font-medium transition-colors"
-                style={activeCategory === cat.key
-                  ? { background: "#1a1a1a", color: "#ffffff", borderRadius: "9999px" }
-                  : { background: "transparent", color: "#787671", border: "1px solid #e5e3df", borderRadius: "9999px" }}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-7 items-start">
-
-            {/* Sidebar — desktop only */}
-            <aside className="hidden lg:block w-52 flex-shrink-0" style={{ position: "sticky", top: "80px" }}>
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #e5e3df" }}>
-                <div className="px-4 py-3" style={{ borderBottom: "1px solid #e5e3df" }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#a4a097" }}>Danh mục</p>
-                </div>
-                {courseCategories.map((cat) => {
-                  const count = cat.key === "all" ? courses.length : courses.filter(c => c.category === cat.key).length;
-                  const active = activeCategory === cat.key;
-                  return (
-                    <button
-                      key={cat.key}
-                      onClick={() => setActiveCategory(cat.key)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#f6f5f4]"
-                      style={{
-                        background: active ? "#f6f5f4" : "transparent",
-                        borderLeft: active ? "2px solid #0068FF" : "2px solid transparent",
-                        borderBottom: "1px solid #ede9e4",
-                      }}
-                    >
-                      <span className="flex-1 text-xs font-medium truncate" style={{ color: active ? "#0068FF" : "#5d5b54" }}>
-                        {cat.label}
-                      </span>
-                      <span
-                        className="text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
-                        style={{ background: active ? "#0068FF" : "#f0eeec", color: active ? "#fff" : "#a4a097", fontSize: 10 }}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-                <div className="p-3">
-                  <Link
-                    href="/khoa-hoc"
-                    className="block w-full py-2 rounded-lg text-xs font-semibold text-center text-white"
-                    style={{ background: "#0068FF" }}
-                  >
-                    Xem tất cả →
-                  </Link>
-                </div>
-              </div>
-            </aside>
-
-            {/* Course grid */}
-            <div className="flex-1 min-w-0">
-              {/* Search input */}
-              <div className="relative mb-5">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#a4a097" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Tìm khóa học, gia sư..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-shadow focus:shadow-[0_0_0_2px_#0068FF33]"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1a1a1a" }}
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full"
-                    style={{ background: "#c8c4be", color: "#fff" }}>
-                    <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
-                  </button>
-                )}
-              </div>
-
-              {coursesLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ border: "1px solid #e5e3df" }}>
-                      <div className="h-40 bg-[#f0eeec]" />
-                      <div className="p-4 space-y-3">
-                        <div className="h-4 bg-[#f0eeec] rounded w-3/4" />
-                        <div className="h-3 bg-[#f6f5f4] rounded w-1/2" />
-                        <div className="h-8 bg-[#f0eeec] rounded-lg" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filtered.map((course) => (
-                      <CourseCard
-                        key={course.slug}
-                        course={course}
-                        following={isFollowing(course.slug)}
-                        onToggleFollow={() => handleToggleFollow(course.slug)}
-                      />
-                    ))}
-                  </div>
-                  {filtered.length === 0 && (
-                    <div
-                      className="text-center py-16 rounded-xl"
-                      style={{ border: "1px solid #e5e3df", background: "#f6f5f4" }}
-                    >
-                      <p className="text-sm font-medium mb-2" style={{ color: "#a4a097" }}>
-                        {searchQuery ? `Không tìm thấy "${searchQuery}"` : "Không có khóa học"}
-                      </p>
-                      <button
-                        onClick={() => { setActiveCategory("all"); setSearchQuery(""); }}
-                        className="text-sm font-semibold" style={{ color: "#0068FF" }}>
-                        Xem tất cả
-                      </button>
-                    </div>
-                  )}
-                  <div className="mt-6 text-center">
-                    <Link
-                      href="/khoa-hoc"
-                      className="inline-block px-6 py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-[#f6f5f4]"
-                      style={{ color: "#1a1a1a", borderColor: "#c8c4be" }}
-                    >
-                      Xem toàn bộ {courses.length} khóa học →
-                    </Link>
-                  </div>
-                </>
-              )}
+        {/* ── Học ở đây thì được gì? ─────────────────────────────────────── */}
+        <section className="bg-[var(--kin-nen-bang)] py-14 sm:py-[72px]">
+          <div className="mx-auto max-w-[984px] px-4 sm:px-8">
+            <div className="text-center mb-10 flex flex-col gap-2">
+              <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h2)] leading-tight text-[var(--kin-chu-chinh)]">
+                Học ở đây thì được gì?
+              </h2>
+              <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Những thứ học sinh thực tế dùng mỗi ngày</p>
             </div>
-          </div>
-        </section>
-
-        {/* ── KHÓA HỌC MỚI ─────────────────────────────────────────────────── */}
-        <NewCoursesSection courses={courses} />
-
-        {/* ── WHY — Notion pastel tint cards ──────────────────────────────── */}
-        <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-2 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Học ở đây thì được gì?
-          </h2>
-          <p className="text-sm text-center mb-10" style={{ color: "#787671" }}>Những thứ học viên thực tế dùng mỗi ngày</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {whyItems.map(({ Icon, title, desc, tint, iconColor }) => (
-              <div
-                key={title}
-                className="rounded-xl p-6"
-                style={{ background: tint }}
-              >
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(255,255,255,0.55)" }}>
-                  <Icon size={22} style={{ color: iconColor }} />
-                </div>
-                <h3 className="font-semibold text-sm mb-2" style={{ color: "#37352f" }}>{title}</h3>
-                <p className="text-xs leading-relaxed" style={{ color: "#5d5b54" }}>{desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── TIMELINE ─────────────────────────────────────────────────────── */}
-        <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-10 tracking-tight" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Hành trình phát triển
-          </h2>
-          <div className="relative pl-6 border-l-2" style={{ borderColor: "#e5e3df" }}>
-            {timeline.map((item, i) => (
-              <div key={i} className="relative mb-6 last:mb-0">
-                <div
-                  className="absolute -left-[25px] w-3 h-3 rounded-full border-2 border-white"
-                  style={{ background: i === timeline.length - 1 ? "#0068FF" : "#c8c4be" }}
-                />
-                <div
-                  className="rounded-xl p-4"
-                  style={{ border: "1px solid #e5e3df", background: "#ffffff" }}
-                >
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded mb-2 inline-block"
-                    style={{
-                      background: i === timeline.length - 1 ? "var(--tint-sky)" : "var(--tint-gray)",
-                      color: i === timeline.length - 1 ? "#1D4ED8" : "#787671",
-                    }}
-                  >
-                    {item.year}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[14px]">
+              {WHY_ITEMS.map(({ Icon, title, desc }) => (
+                <article key={title} className="flex flex-col gap-[14px] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] p-[22px]">
+                  <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[var(--kin-bo-lg)] bg-[var(--kin-nen-nhan)] text-[var(--kin-nhan-link)]" aria-hidden="true">
+                    <Icon size={20} />
                   </span>
-                  <p className="text-sm" style={{ color: "#37352f" }}>{item.event}</p>
-                </div>
-              </div>
-            ))}
+                  <h3 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]">{title}</h3>
+                  <p className="text-[length:var(--kin-co-small)] leading-[1.55] text-[var(--kin-chu-phu)]">{desc}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* ── CTA — Notion navy band ─────────────────────────────────────── */}
-        <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-3xl mx-auto">
-          <div
-            className="rounded-xl p-10 text-center"
-            style={{ background: "var(--brand-navy)" }}
-          >
-            <UsersGroup size={44} style={{ color: "rgba(255,255,255,0.7)", margin: "0 auto 16px" }} />
-            <h2 className="text-2xl font-bold text-white mb-3" style={{ letterSpacing: "-0.5px" }}>
-              Gia nhập cộng đồng Midnight Elite ngay hôm nay
+        {/* ── CTA ────────────────────────────────────────────────────────── */}
+        <section className="py-14 sm:py-[72px] px-4 sm:px-8">
+          <div className="mx-auto max-w-[760px] rounded-[20px] bg-[var(--kin-nhan-nen)] px-6 py-12 sm:px-10 sm:py-14 flex flex-col items-center text-center gap-3">
+            <h2 className="kin-chu-tieu-de max-w-[480px] text-balance font-semibold text-[length:var(--kin-co-h2)] leading-tight text-white">
+              Gia nhập cộng đồng KiN ngay hôm nay
             </h2>
-            <p className="text-sm mb-8" style={{ color: "rgba(255,255,255,0.6)", maxWidth: "42ch", margin: "0 auto 32px" }}>
+            <p className="max-w-[420px] text-[length:var(--kin-co-small)] leading-[1.6] text-white/[0.78]">
               Thi thử miễn phí. Kết quả thật sau 30 ngày học nghiêm túc cùng gia sư thực.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/dang-ky"
-                className="notion-btn-on-dark text-sm font-semibold"
-              >
-                Tạo tài khoản miễn phí →
-              </Link>
-              <Link
-                href="/thi-thu"
-                className="notion-btn-secondary-on-dark text-sm font-medium"
-              >
-                Thi thử ĐGNL ngay
-              </Link>
+            <div className="flex flex-wrap justify-center gap-3 pt-3">
+              <Link href="/dang-ky" className={`${btnOnNavy} text-[length:var(--kin-co-small)]`}>Tạo tài khoản miễn phí →</Link>
+              <Link href="/thi-thu" className={`${btnGhostOnNavy} text-[length:var(--kin-co-small)]`}>Thi thử ĐGNL ngay</Link>
             </div>
           </div>
         </section>
-
       </main>
+
       <Footer />
     </div>
   );

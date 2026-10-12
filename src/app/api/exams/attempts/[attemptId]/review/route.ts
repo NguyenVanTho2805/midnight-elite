@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
+import { correctionSummary } from "@/lib/examCorrectionServer";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -48,6 +49,9 @@ export async function GET(
     });
     const essayByQuestion = new Map(essayAnswers.map(a => [a.questionId, a]));
 
+    // NV-188: câu làm sai chưa chữa xong → giấu đáp án/lời giải ở màn này (xem examCorrectionServer.correctionSummary).
+    const { correctableCount, pendingIds } = await correctionSummary(session.userId, attemptId);
+
     const questions = orderedQuestions.map(q => {
       if (q.type === "ESSAY") {
         const graded = essayByQuestion.get(q.id);
@@ -78,12 +82,14 @@ export async function GET(
         const correctOption = q.options.find(o => o.isCorrect);
         const normalize = (s: string) => s.trim().toLowerCase().replace(/,/g, ".");
         const wasCorrect = !!studentAnswer?.trim() && !!correctOption && normalize(studentAnswer) === normalize(correctOption.text);
-        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+        const pendingFix = pendingIds.has(q.id);
+        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           studentAnswer,
           correctAnswer: reveal ? (correctOption?.text ?? null) : null,
           isCorrect: reveal ? wasCorrect : null,
+          correctionPending: pendingFix,
         };
       }
 
@@ -91,9 +97,11 @@ export async function GET(
       const studentOptionId = answers[q.id] ?? null;
       const chosenOption = q.options.find(o => o.id === studentOptionId);
       const wasCorrect = !!chosenOption?.isCorrect;
-      const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+      const pendingFix = pendingIds.has(q.id);
+      const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
       return {
         id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
+        correctionPending: pendingFix,
         studentOptionId,
         options: q.options.map(o => ({
           id: o.id, text: o.text,
@@ -108,6 +116,8 @@ export async function GET(
       score: attempt.score,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
+      // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).
+      correctableCount,
       questions,
     });
   } catch (e) {

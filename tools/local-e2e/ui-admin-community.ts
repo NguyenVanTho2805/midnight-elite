@@ -1,0 +1,100 @@
+import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, eventually, section, done } from "./h";
+import { launch, ctxFor, shot, ADMIN } from "./ui";
+import { prisma } from "@/lib/prisma";
+
+(async () => {
+  await wipe();
+  const SA = await mkSuper("Quản trị");
+  const T = await mkTutor("Cô Lan");
+  const A = await mkUser({ name: "Em An" }), B = await mkUser({ name: "Em Bình" });
+  const toan = await mkCourse(T.id, { name: "Toán 9" }), ly = await mkCourse(T.id, { name: "Lý 9" });
+  const mk = (content: string, courseId: string | null, authorId = A.id, extra: Record<string, unknown> = {}) => prisma.thread.create({ data: { content, authorId, courseId, category: "hoi-dap", ...extra } });
+  const tChung = await mk("BAI_CHUNG: cách học nhanh", null);
+  const tToan = await mk("BAI_TOAN: giải phương trình bậc hai", toan.id);
+  const tToan2 = await mk("BAI_TOAN_2: hệ phương trình", toan.id, B.id, { isPinned: true });
+  const tLy = await mk("BAI_LY: định luật Ôm", ly.id);
+  const rep = (threadId: string, reporterId: string, reason: string) => prisma.threadReport.create({ data: { threadId, reporterId, reason } });
+  await rep(tChung.id, B.id, "Quảng cáo trong bài chung");
+  await rep(tToan.id, B.id, "Nội dung lạc đề lớp Toán");
+  await rep(tLy.id, A.id, "Spam lớp Lý");
+
+  await launch();
+  const ctx = await ctxFor(SA);
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  page.on("console", m => { if (m.type() === "error" && !/Failed to load resource/i.test(m.text())) errors.push(m.text()); });
+
+  section("Kiểm duyệt cộng đồng: nhãn lớp");
+  await page.goto(`${ADMIN}/admin/cong-dong`, { waitUntil: "networkidle", timeout: 120000 });
+  await page.getByRole("heading", { name: "Kiểm duyệt cộng đồng" }).waitFor({ timeout: 90000 });
+  await page.getByText("BAI_CHUNG: cách học nhanh").waitFor({ timeout: 30000 });
+  const card = (t: string) => page.locator("div.rounded-xl", { hasText: t }).filter({ has: page.getByRole("button", { name: /Xoá/ }) }).last();
+  check("mặc định: thấy cả 4 bài (chung + hai lớp)", (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 4);
+  check("mỗi bài có nhãn: bài chung 'Cộng đồng chung', bài lớp 'Lớp: <tên>'", /Cộng đồng chung/.test(await card("BAI_CHUNG").innerText()) && /Lớp: Toán 9/.test(await card("BAI_TOAN:").innerText()) && /Lớp: Lý 9/.test(await card("BAI_LY").innerText()));
+  const sel = page.getByLabel("Lọc theo lớp");
+  const optTexts = await sel.locator("option").allInnerTexts();
+  check("bộ lọc có: Tất cả / Chỉ cộng đồng chung / từng lớp (kể cả lớp chưa có bài)", optTexts.includes("Tất cả (chung + mọi lớp)") && optTexts.includes("Chỉ cộng đồng chung") && optTexts.includes("Toán 9") && optTexts.includes("Lý 9"), optTexts);
+
+  section("Lọc theo lớp (ở máy chủ)");
+  await sel.selectOption({ label: "Toán 9" });
+  await eventually("chỉ còn 2 bài của lớp Toán 9", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 2 && (await page.getByText("BAI_TOAN:").count()) === 1 && (await page.getByText("BAI_TOAN_2:").count()) === 1);
+  check("không lẫn bài chung và bài lớp Lý", (await page.getByText("BAI_CHUNG").count()) === 0 && (await page.getByText("BAI_LY").count()) === 0);
+  check("bài ghim của lớp vẫn nằm mục 'Bài ghim'", await page.getByRole("heading", { name: /Bài ghim \(1\)/ }).isVisible());
+  await sel.selectOption("null");
+  await eventually("'Chỉ cộng đồng chung' → đúng 1 bài chung", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 1 && (await page.getByText("BAI_CHUNG").count()) === 1);
+  await sel.selectOption({ label: "Lý 9" });
+  await eventually("lớp Lý 9 → 1 bài", async () => (await page.getByText("BAI_LY").count()) === 1 && (await page.getByText(/BAI_(CHUNG|TOAN)/).count()) === 0);
+  await sel.selectOption("all");
+  await eventually("quay về Tất cả → đủ 4 bài", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 4);
+  await sel.selectOption({ label: "Toán 9" });
+  await page.getByPlaceholder(/Tìm nội dung/).fill("bậc hai");
+  await eventually("lọc lớp kết hợp tìm chữ + chuyên mục", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 1 && (await page.getByText("BAI_TOAN:").count()) === 1);
+  await page.getByPlaceholder(/Tìm nội dung/).fill("");
+  await sel.selectOption("all");
+  await shot(page, "admin-community-scope");
+
+  section("Báo cáo cộng đồng: nhãn lớp + lọc");
+  const rp = await ctx.newPage();
+  rp.on("pageerror", e => errors.push(String(e)));
+  await rp.goto(`${ADMIN}/admin/cong-dong/bao-cao`, { waitUntil: "networkidle", timeout: 120000 });
+  await rp.getByRole("heading", { name: "Báo cáo cộng đồng" }).waitFor({ timeout: 90000 });
+  await rp.getByText("Quảng cáo trong bài chung").waitFor({ timeout: 30000 });
+  const rcard = (t: string) => rp.locator("div.rounded-xl.border", { hasText: t }).last();
+  check("3 báo cáo; mỗi báo cáo có nhãn lớp / cộng đồng chung", /Cộng đồng chung/.test(await rcard("Quảng cáo trong bài chung").innerText()) && /Lớp: Toán 9/.test(await rcard("Nội dung lạc đề lớp Toán").innerText()) && /Lớp: Lý 9/.test(await rcard("Spam lớp Lý").innerText()));
+  check("tiêu đề đếm: (3)", await rp.getByRole("heading", { name: /Báo cáo bài viết cộng đồng \(3\)/ }).isVisible());
+  const rsel = rp.getByLabel("Lọc theo lớp");
+  const ropts = await rsel.locator("option").allInnerTexts();
+  check("lọc chỉ liệt kê lớp CÓ báo cáo (Toán 9, Lý 9)", ropts.includes("Toán 9") && ropts.includes("Lý 9") && ropts.length === 4, ropts);
+  await rsel.selectOption({ label: "Lý 9" });
+  check("lọc Lý 9 → 1 báo cáo; tiêu đề '1 / 3'", (await rp.getByText(/Spam lớp Lý|Nội dung lạc đề|Quảng cáo trong bài chung/).count()) === 1 && await rp.getByRole("heading", { name: /\(1 \/ 3\)/ }).isVisible());
+  await rsel.selectOption("null");
+  check("chỉ cộng đồng chung → 1 báo cáo đúng", await rp.getByText("Quảng cáo trong bài chung").isVisible() && (await rp.getByText("Spam lớp Lý").count()) === 0);
+  await rsel.selectOption({ label: "Toán 9" });
+  await rp.getByRole("button", { name: "Bỏ qua report" }).first().click();
+  await eventually("xử lý báo cáo trong phạm vi lọc → phạm vi rỗng hiện thông báo", async () => await rp.getByText("Không có report nào trong phạm vi đã chọn").isVisible());
+  check("DB: báo cáo Toán 9 đã xử lý, hai báo cáo kia còn", (await prisma.threadReport.count({ where: { status: "pending" } })) === 2);
+  await rsel.selectOption("all");
+  check("về Tất cả → còn 2 báo cáo", await rp.getByRole("heading", { name: /Báo cáo bài viết cộng đồng \(2\)/ }).isVisible());
+
+  section("Gia sư vẫn chỉ thấy báo cáo của lớp mình (không đổi quyền)");
+  const T2 = await mkTutor("Thầy Khác");
+  const other = await mkCourse(T2.id, { name: "Hoá 9" });
+  const tHoa = await mk("BAI_HOA: axit", other.id);
+  await rep(tHoa.id, B.id, "Báo cáo lớp Hoá");
+  const r1 = await api("GET", "/api/admin/thread-reports", { as: T });
+  check("Cô Lan thấy báo cáo lớp Lý của mình, không thấy lớp Hoá của thầy khác", r1.json.some((r: any) => r.thread.course?.name === "Lý 9") && !r1.json.some((r: any) => r.thread.course?.name === "Hoá 9"), r1.json?.map((r: any) => r.thread.course?.name));
+
+  section("Điện thoại 390px");
+  const mp = await (await ctxFor(SA, { width: 390, height: 800 })).newPage();
+  await mp.goto(`${ADMIN}/admin/cong-dong/bao-cao`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp.getByRole("heading", { name: "Báo cáo cộng đồng" }).waitFor({ timeout: 60000 });
+  check("báo cáo: không tràn ngang", await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  const mp2 = await (await ctxFor(SA, { width: 390, height: 800 })).newPage();
+  await mp2.goto(`${ADMIN}/admin/cong-dong`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp2.getByRole("heading", { name: "Kiểm duyệt cộng đồng" }).waitFor({ timeout: 60000 });
+  check("kiểm duyệt: không tràn ngang", await mp2.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+
+  check("không lỗi trang", errors.length === 0, errors.slice(0, 4));
+  done();
+})().catch(e => { console.error("TEST CRASH", e); process.exit(1); });

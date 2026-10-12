@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import PermissionGuard from "@/components/PermissionGuard";
+import ClassScopeBadge, { ClassScopeSelect, type ClassScope } from "@/components/admin/ClassScopeBadge";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ interface ThreadRow {
   author:     { id: string; name: string };
   likeCount:  number;
   replyCount: number;
+  course:     { id: string; name: string } | null; // FE-139: bài thuộc lớp nào (null = cộng đồng chung)
 }
 
 // Matches actual API shape: { threads, nextCursor }
@@ -66,35 +68,51 @@ function CommunityAdmin() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch]           = useState("");
   const [catFilter, setCatFilter]     = useState("all");
+  // FE-139: lọc theo lớp — lọc ở máy chủ (courseId) để "Tải thêm" vẫn đúng phạm vi.
+  const [scope, setScope]             = useState<ClassScope>("all");
+  const [classes, setClasses]         = useState<{ id: string; name: string }[]>([]);
+  const scopeQuery = scope === "all" ? "" : `&courseId=${encodeURIComponent(scope)}`;
+  const loadSeq = useRef(0); // bỏ kết quả của lần tải cũ khi đổi lớp nhanh
+
+  useEffect(() => {
+    let off = false;
+    fetch("/api/courses?all=1", { credentials: "same-origin" })
+      .then(r => (r.ok ? r.json() : []))
+      .then((list: { id: string; name: string }[]) => { if (!off) setClasses(list.map(c => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name, "vi"))); })
+      .catch(() => { /* bộ lọc vẫn dùng được với 'Tất cả' và 'Chỉ cộng đồng chung' */ });
+    return () => { off = true; };
+  }, []);
 
   const load = useCallback(async () => {
+    const my = ++loadSeq.current;
     setLoading(true);
     setFetchError(false);
     setActionError(null);
     try {
-      const res = await fetch("/api/community/threads?limit=100", { credentials: "same-origin" });
+      const res = await fetch(`/api/community/threads?limit=100${scopeQuery}`, { credentials: "same-origin" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: ThreadsResponse = await res.json();
+      if (my !== loadSeq.current) return;
       // API already returns pinned first, then non-pinned — no extra transform needed
       setAllThreads(data.threads);
       setNextCursor(data.nextCursor);
     } catch {
-      setFetchError(true);
+      if (my === loadSeq.current) setFetchError(true);
     } finally {
-      setLoading(false);
+      if (my === loadSeq.current) setLoading(false);
     }
-  }, []);
+  }, [scopeQuery]);
 
   // Refetch âm thầm trang đầu — gộp bài mới vào đầu, giữ lại các bài đã "Tải thêm" phía dưới
   const refreshSilent = useCallback(async () => {
     try {
-      const res = await fetch("/api/community/threads?limit=100", { credentials: "same-origin" });
+      const res = await fetch(`/api/community/threads?limit=100${scopeQuery}`, { credentials: "same-origin" });
       if (!res.ok) return;
       const data: ThreadsResponse = await res.json();
       const freshIds = new Set(data.threads.map(t => t.id));
       setAllThreads(prev => [...data.threads, ...prev.filter(t => !freshIds.has(t.id))]);
     } catch { /* silent */ }
-  }, []);
+  }, [scopeQuery]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -119,7 +137,7 @@ function CommunityAdmin() {
     setActionError(null);
     try {
       const res = await fetch(
-        `/api/community/threads?limit=100&cursor=${encodeURIComponent(nextCursor)}`,
+        `/api/community/threads?limit=100&cursor=${encodeURIComponent(nextCursor)}${scopeQuery}`,
         { credentials: "same-origin" },
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -213,6 +231,7 @@ function CommunityAdmin() {
           className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
           style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #C5D0EA", color: "#1E2938" }}
         />
+        <ClassScopeSelect value={scope} onChange={v => { setScope(v); setAllThreads([]); setNextCursor(null); }} classes={classes} />
         <div className="flex gap-2 flex-wrap">
           {["all", "hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"].map(c => {
             const info = c === "all" ? { label: "Tất cả", color: "#0068FF", bg: "#dbeafe" } : CAT_MAP[c];
@@ -340,6 +359,7 @@ function ThreadRowCard({
       <div className="flex-1 min-w-0 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <CatBadge cat={t.category} />
+          <ClassScopeBadge course={t.course} />
           {t.isPinned && (
             <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>📌 Đang ghim</span>
           )}

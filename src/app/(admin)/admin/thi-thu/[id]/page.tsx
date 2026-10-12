@@ -21,6 +21,7 @@ interface QuestionForm {
   imageUrl: string;
   points: string;
   explanation: string;
+  hint: string; // NV-188: gợi ý cho màn Chữa bài (MC / điền ngắn)
   sectionLabel: string; // tên Phần thi, tùy chọn — rỗng = không thuộc phần nào
   sectionMinutes: string; // số phút riêng cho Phần (giờ riêng HSA), tùy chọn — rỗng = không dùng
   options: string[]; // MC: N đáp án; TRUE_FALSE_CLUSTER: đúng 4 ý a-d; ESSAY: không dùng
@@ -29,14 +30,14 @@ interface QuestionForm {
 }
 
 const INIT_FORM: QuestionForm = {
-  type: "MC", text: "", imageUrl: "", points: "1", explanation: "", sectionLabel: "", sectionMinutes: "",
+  type: "MC", text: "", imageUrl: "", points: "1", explanation: "", hint: "", sectionLabel: "", sectionMinutes: "",
   options: [...EMPTY_OPTIONS], correctIndex: 0, clusterCorrect: [false, false, false, false],
 };
 
 function toForm(q: ExamQuestionFull): QuestionForm {
   const base = {
     type: q.type, text: q.text, imageUrl: q.imageUrl ?? "",
-    points: String(q.points), explanation: q.explanation ?? "",
+    points: String(q.points), explanation: q.explanation ?? "", hint: q.hint ?? "",
     sectionLabel: q.sectionLabel ?? "",
     sectionMinutes: q.sectionMinutes != null ? String(q.sectionMinutes) : "",
   };
@@ -71,6 +72,7 @@ function toInput(form: QuestionForm): ExamQuestionInput | null {
     imageUrl: form.imageUrl.trim() || undefined,
     points: Number(form.points) > 0 ? Number(form.points) : 1,
     explanation: form.explanation.trim() || undefined,
+    hint: form.hint.trim() || undefined,
     sectionLabel: form.sectionLabel.trim() || null,
     sectionMinutes: Number(form.sectionMinutes) > 0 ? Number(form.sectionMinutes) : null,
   };
@@ -315,6 +317,22 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
               onChange={e => setForm({ ...form, explanation: e.target.value })}
             />
           </div>
+
+          {(form.type === "MC" || form.type === "SHORT_ANSWER") && (
+            <div>
+              <label htmlFor="q-hint" className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Gợi ý cho màn Chữa bài (tùy chọn)</label>
+              <textarea
+                id="q-hint"
+                className="w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                style={{ borderColor: "#e5e3df" }}
+                rows={2}
+                maxLength={1000}
+                value={form.hint}
+                onChange={e => setForm({ ...form, hint: e.target.value })}
+              />
+              <p className="text-xs text-gray-400 mt-1">Hiện cho học viên sau khi nộp sai lần đầu ở màn Chữa bài, chưa lộ đáp án. Để trống thì bỏ bước gợi ý: sai lần đầu là hiện đáp án luôn.</p>
+            </div>
+          )}
         </div>
       </div>
     </>

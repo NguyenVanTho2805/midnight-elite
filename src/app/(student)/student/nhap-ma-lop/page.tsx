@@ -9,69 +9,26 @@
 //   4. Bấm → POST /api/invites/<code>/redeem → chuyển sang
 //      /student/hoc-tap?course=<id> + toast.
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui";
-
-type OwnerLite = { id: string; name: string };
-type PreviewOk = {
-  status: "ok";
-  code: string;
-  maxUses: number | null;
-  usedCount: number;
-  expiresAt: string | null;
-  course: {
-    id: string; name: string; shortTitle: string; category: string;
-    classStatus: string; capacity: number | null;
-    owner: OwnerLite | null;
-  };
-  alreadyEnrolled: boolean;
-};
-type PreviewInvalid = { status: "invalid"; error?: string; reason?: number };
-type PreviewResp = PreviewOk | PreviewInvalid;
-
-function normalizeCode(raw: string) {
-  // Chỉ giữ chữ/số, in hoa (code 8 ký tự alphabet 2-9/A-Z của BE-064).
-  return raw.replace(/[^0-9a-zA-Z]/g, "").toUpperCase().slice(0, 20);
-}
+import InviteCodeInput, { normalizeInviteCode, type InvitePreview } from "@/components/student/InviteCodeInput";
 
 export default function NhapMaLopPage() {
   const router = useRouter();
   const toast  = useToast();
   const [input, setInput]         = useState("");
-  const [preview, setPreview]     = useState<PreviewResp | null>(null);
+  const [preview, setPreview]     = useState<InvitePreview | null>(null);
   const [checking, setChecking]   = useState(false);
   const [redeeming, setRedeeming] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounce validate — code quá ngắn thì không gọi.
+  // Link mời của gia sư có dạng /student/nhap-ma-lop?code=ABCD2345 → điền sẵn mã.
+  // Đọc ở effect (không ở useState) để HTML server và lần render đầu của client khớp nhau.
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    // Wrap setState trong Promise.resolve để tránh eslint-rule
-    // "set-state-in-effect" (chạy đồng bộ gây cascading render).
-    if (input.length < 4) {
-      Promise.resolve().then(() => { setPreview(null); setChecking(false); });
-      return;
-    }
-    Promise.resolve().then(() => setChecking(true));
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const r = await fetch(`/api/invites/by-code/${encodeURIComponent(input)}`, { credentials: "same-origin" });
-        if (r.status === 401) {
-          setPreview({ status: "invalid", error: "Bạn cần đăng nhập để nhập mã mời." });
-          return;
-        }
-        const d: PreviewResp = await r.json();
-        setPreview(d);
-      } catch {
-        setPreview({ status: "invalid", error: "Không kết nối được máy chủ." });
-      } finally {
-        setChecking(false);
-      }
-    }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [input]);
+    const c = new URLSearchParams(window.location.search).get("code");
+    if (c) Promise.resolve().then(() => setInput(normalizeInviteCode(c)));
+  }, []);
 
   async function redeem() {
     if (!preview || preview.status !== "ok" || preview.alreadyEnrolled) return;
@@ -106,34 +63,12 @@ export default function NhapMaLopPage() {
       </div>
 
       <div className="rounded-2xl p-6 space-y-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-        <input
+        <InviteCodeInput
           autoFocus
           value={input}
-          onChange={e => setInput(normalizeCode(e.target.value))}
-          placeholder="Mã mời (8 ký tự)"
-          aria-label="Mã mời lớp"
-          className="w-full text-center text-2xl font-mono tracking-widest font-bold py-3 rounded-xl focus:outline-none"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938", letterSpacing: "0.4em" }}
+          onChange={setInput}
+          onResult={(p, c) => { setPreview(p); setChecking(c); }}
         />
-
-        {input.length > 0 && input.length < 4 && (
-          <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>Mã có ít nhất 4 ký tự.</p>
-        )}
-
-        {checking && (
-          <div className="flex justify-center py-2 gap-1.5">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-2 h-2 rounded-full animate-bounce"
-                style={{ background: "#0068FF", animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        )}
-
-        {!checking && preview && preview.status === "invalid" && (
-          <div className="rounded-xl p-3 text-center" style={{ background: "#FEE2E2", color: "#B91C1C" }}>
-            <p className="text-sm font-semibold">{preview.error ?? "Mã không hợp lệ"}</p>
-          </div>
-        )}
 
         {!checking && ok && (
           <div className="rounded-xl p-4 space-y-2" style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}>

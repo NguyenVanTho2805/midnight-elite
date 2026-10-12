@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
+import { KinLogo } from "@/components/kin/KinLogo";
 
 export default function DangNhapPage() {
   const { login, user, isLoading } = useAuth();
@@ -49,9 +50,9 @@ export default function DangNhapPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex flex-col items-center gap-1">
-            <span className="text-h3" style={{ color: "var(--kin-th-navy)", letterSpacing: "-0.5px" }}>KiN</span>
-            <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Sổ lớp cho gia sư</span>
+          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex flex-col items-center gap-2">
+            <KinLogo size={36} textSize="var(--kin-co-h2)" />
+            <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Lớp học của bạn, gọn trong một chỗ</span>
           </Link>
           <h1 className="text-h4 mt-6 mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Chào mừng trở lại</h1>
           <p className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Đăng nhập để tiếp tục</p>

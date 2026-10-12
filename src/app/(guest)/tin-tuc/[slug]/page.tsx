@@ -32,7 +32,7 @@ const catColors: Record<Category, { bg: string; color: string }> = {
 const catLabels: Record<Category, string> = {
   "hoc-thuat":   "Học thuật",
   "tuyen-sinh":  "Tuyển sinh",
-  "tin-midnight":"Tin Midnight Elite",
+  "tin-midnight":"Tin KiN",
   "kinh-nghiem": "Kinh nghiệm",
 };
 
