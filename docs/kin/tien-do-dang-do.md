@@ -1,7 +1,7 @@
-# Tiến độ đang dở — chốt 11/10/2026 (Claude, nhánh `claude/peaceful-bell-6vfrb5`)
+# Tiến độ — chốt 12/10/2026 (Claude, nhánh `claude/peaceful-bell-6vfrb5`)
 
-Thọ yêu cầu tạm dừng để làm tiếp lúc khác. File này ghi đúng chỗ dừng. Ghi chú từng việc đã có trong Google Sheet
-(cột H/I của Thọ; không đụng cột J/K của Thanh).
+Mọi việc "sẵn sàng làm ngay" đã làm hoặc đã ghi rõ vì sao chưa làm. Ghi chú từng việc nằm trong Google Sheet (cột H/I của Thọ; không đụng cột J/K của Thanh).
+Bộ test chạy với Postgres + Next dev + Chromium thật nằm ở `tools/local-e2e/` (xem README ở đó).
 
 ## Đã xong và đã đẩy lên nhánh (đều có test, xem `tools/local-e2e/`)
 - Doanh thu: BE-074/075/076, FE-137, FE-153/154, FE-164
@@ -51,11 +51,19 @@ PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, m�
 "Đã xác minh số điện thoại" (chưa có OTP số điện thoại); Đăng nhập Zalo (cần ứng dụng Zalo đã đăng ký); AI soạn nháp kế hoạch buổi (Đợt 2, Coin).
 **Chỗ tài liệu mâu thuẫn:** link phiếu/báo cáo hết hạn 60 ngày (`gui-qua-zalo.md`, GD-28) và 30 ngày (PH-214 trong sheet) — đang dùng 60; link "Sổ của con" (TK-178) không có hạn tự động. Cần anh chốt một con số.
 
-## Chưa làm
-- FE-098/099/130/134/136/139/140 (tái cấu trúc/redesign).
-- Ghi sheet cho: TT-199 (row 200), các việc còn lại; báo cáo cuối.
-- KHÔNG làm (chờ Thọ/luật sư): PH-217..222, 226, 211 (cộng đồng/tin nhắn cho học sinh dưới 16 tuổi, chờ PH-225); TK-170 đăng nhập bằng mã 6 số;
-  nối "không tính phí" của báo nghỉ vào phiếu học phí (liên quan GD-25, đụng tiền).
+## Redesign / tái cấu trúc (FE-098/099/130/134/136/139/140) và component dùng chung
+- **XONG:** FE-139 (nhãn + lọc theo lớp ở kiểm duyệt cộng đồng), FE-140 (quyền danh mục: gia sư chỉ xem, quản trị mới đổi tên, con số theo người xem),
+  FE-157/158 (TutorCard, TutorProfileHeader tách thành component dùng chung, so ảnh trước/sau giống từng điểm ảnh; Hồ sơ gia sư có bản xem trước hồ sơ công khai).
+- **CHƯA LÀM, cần anh quyết hoặc cần khung thiết kế:** FE-098 / FE-134 / FE-130 (redesign hàng loạt trang guest, admin, bài giảng — repo chưa có khung thiết kế cho các trang đó);
+  FE-099 (`/diem-chuan` là 8 dòng gõ cứng nhưng ghi "Dữ liệu tuyển sinh 2020–2025" — cần quyết định: gắn nhãn minh hoạ, gỡ khỏi menu, hay làm CMS);
+  FE-136 (tách quản lý lớp ra khỏi `/admin/khoa-hoc` — đụng điểm danh, bài giảng, lịch học mà gia sư đang dùng hằng ngày; đề xuất 3 bước trong sheet);
+  FE-159 (SubscriptionPicker — "chọn mua" là tiền, giá/gói chưa chốt).
+- Đổi tên hiển thị "Midnight Elite" → "KiN": còn ~79 chỗ trong 21 file (Footer, layout/metadata, trang guest, AdminSidebar, email, AIChatWidget). Chưa đổi vì đụng email/SEO/tên miền, cần anh duyệt chuỗi mới.
+  Trang phụ huynh mới (`/phieu/[token]`, `/so-cua-con/[token]`) dùng chung khung guest nên vẫn hiện thanh menu "Midnight Elite" và nút "Bắt đầu miễn phí".
+
+## Không làm (chờ Thọ / luật sư / Thanh)
+PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh); TK-170 (đăng nhập bằng mã 6 số);
+nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).
 
 ## Việc Thọ cần làm khi triển khai
 - Vercel build chạy `prisma db push`: thêm cột `users.preferences`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`
@@ -63,3 +71,6 @@ PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, m�
 - Chưa chạy được `next build` trong môi trường này (Google Fonts bị chặn); đã kiểm `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.
+- Lưu ý hành vi mới (NV-188): màn xem lại bài thi không hiện đáp án câu sai cho tới khi học sinh chữa xong câu đó (khi đề cho phép chữa bài).
+- Lưu ý hành vi mới (FE-140): `/api/categories` trả con số `courseCount` theo người xem (gia sư chỉ thấy số khoá của mình).
+- Cần anh chốt: hạn link phiếu/báo cáo (30 hay 60 ngày) và có cho "Sổ của con" hết hạn không.
