@@ -14,6 +14,9 @@ import { loadPartyInvoices } from "@/lib/invoiceServer";
 import InvoiceCard from "@/components/parent/InvoiceCard";
 import UpcomingSessions from "@/components/parent/UpcomingSessions";
 import { loadStudentUpcoming } from "@/lib/absenceServer";
+import MonthlyReportCard from "@/components/parent/MonthlyReportCard";
+import { loadPartyReports } from "@/lib/monthlyReportServer";
+import { prevYearMonth } from "@/lib/monthlyReport";
 
 export const dynamic = "force-dynamic"; // link cá nhân, không cache
 
@@ -46,7 +49,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
   const courseIds = enrollments.map(e => e.course.id);
 
   const now = new Date();
-  const [attendance, fees, override, invoices, sessions] = await Promise.all([
+  const [attendance, fees, override, invoices, sessions, reports] = await Promise.all([
     courseIds.length === 0
       ? Promise.resolve([] as Array<{ status: string; session: { courseId: string } }>)
       : prisma.attendanceRecord.findMany({
@@ -63,6 +66,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
     loadPartyInvoices(studentId).then(list => list.filter(i => i.yearMonth === ym || i.status !== "paid")),
     // TT-202: buổi 14 ngày tới + nút báo nghỉ + số buổi bù đang giữ.
     loadStudentUpcoming(studentId, now),
+    // NV-189: báo cáo tháng gia sư đã duyệt (tháng này + tháng trước).
+    loadPartyReports(studentId, [ym, prevYearMonth(ym)]),
   ]);
 
   const attByCourse = new Map<string, { status: string }[]>();
@@ -136,6 +141,15 @@ export default async function SoCuaConPage({ params }: PageProps) {
             </section>
 
             <UpcomingSessions token={token} upcoming={sessions.upcoming} makeup={sessions.makeup} nowIso={now.toISOString()} />
+
+            {reports.length > 0 && (
+              <section className="mb-5" aria-labelledby="h-bao-cao">
+                <h2 id="h-bao-cao" className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Báo cáo tháng</h2>
+                <div className="space-y-3">
+                  {reports.map(r => <MonthlyReportCard key={`${r.yearMonth}-${r.tutorName}`} report={r} />)}
+                </div>
+              </section>
+            )}
 
             {invoices.length > 0 && (
               <section className="mb-5" aria-labelledby="h-phieu">

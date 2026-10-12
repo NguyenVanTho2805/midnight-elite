@@ -672,6 +672,34 @@ model ExamCorrection {
   @@map("exam_corrections")
 }
 
+// ─── BÁO CÁO THÁNG GỬI PHỤ HUYNH (NV-185/186/189) ─────────────────────────────
+// Một báo cáo = (gia sư × học sinh × tháng), chỉ gồm các môn/lớp của gia sư đó. Số liệu (chuyên cần, nỗ lực,
+// năng lực) luôn TÍNH LẠI từ dữ liệu thật khi gia sư mở; bảng này chỉ lưu phần gia sư soạn và phần đã duyệt:
+//   draftItems       — các dòng "Điều chưa đạt tháng này" gia sư đang đọc/sửa (KiN chỉ gợi ý sẵn)
+//   approvedItems    — bản gia sư đã bấm "Duyệt": phụ huynh trên "Sổ của con" CHỈ thấy bản này
+//   approvedSnapshot — số liệu từng môn đóng băng lúc duyệt, để phiếu phụ huynh không đổi sau đó
+//   zaloOpenedAt     — gia sư đã MỞ Zalo với tin soạn sẵn (KiN không biết tin có đi thật hay không)
+model MonthlyReport {
+  id               String    @id @default(cuid())
+  tutorId          String
+  studentId        String
+  yearMonth        String // "YYYY-MM" theo giờ VN
+  draftItems       Json?
+  approvedItems    Json?
+  approvedSnapshot Json?
+  approvedAt       DateTime?
+  zaloOpenedAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tutor   User @relation("ReportTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  student User @relation("ReportStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, studentId, yearMonth])
+  @@index([studentId, yearMonth])
+  @@map("monthly_reports")
+}
+
 // Admin (trung tâm/giáo viên sở hữu đề) gắn cờ này thủ công sau khi xác nhận
 // guest đã trả phí qua quy trình sales hiện có (KHÔNG có cổng thanh toán tự
 // động — xem plan Giai đoạn 3, reports/2026-07-13.md). Có bản ghi = được thi.
@@ -805,6 +833,8 @@ model User {
   answerReports       AnswerReport[]
   threadReports       ThreadReport[]
   tutorSubscriptions  TutorSubscription[]
+  monthlyReportsAsTutor   MonthlyReport[] @relation("ReportTutor")
+  monthlyReportsAsStudent MonthlyReport[] @relation("ReportStudent")
   absencesAsStudent    ClassAbsence[]      @relation("AbsenceStudent")
   makeupCredits        MakeupCredit[]      @relation("MakeupStudent")
   reminderLogsStudent  ClassReminderLog[]  @relation("ReminderStudent")
