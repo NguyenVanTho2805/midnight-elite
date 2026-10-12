@@ -34,6 +34,18 @@ export interface UserPreferences {
   mode?: KinMode;
   /** Gia sư tắt/bật tin nhắc lịch từng bên. Vắng mặt = bật cả hai. */
   reminders?: { parent: boolean; student: boolean };
+  /** PH-215 Kết nối: `showZalo` hiện số Zalo trên hồ sơ công khai (TẮT sẵn vì zalo.me/<số> để lộ số); `messenger` là tên trang m.me. */
+  connections?: { showZalo?: boolean; messenger?: string };
+}
+
+/** Tên trang Messenger (m.me/<tên>): chữ, số, chấm, gạch dưới, gạch ngang; 1–64 ký tự. Nhận cả dán nguyên link m.me. */
+export function normalizeMessengerHandle(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  let s = raw.trim();
+  const url = /^https?:\/\/(www\.)?(m\.me|messenger\.com\/t)\//i;
+  // Dán nguyên link thì bỏ phần đường dẫn/tham số phía sau; gõ tay thì giữ nguyên để "a/b" bị từ chối chứ không bị cắt âm thầm.
+  if (url.test(s)) s = s.replace(url, "").replace(/[/?#].*$/, "");
+  return /^[A-Za-z0-9._-]{1,64}$/.test(s) ? s : null;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -56,6 +68,13 @@ export function readPreferences(raw: unknown): UserPreferences {
       parent: typeof raw.reminders.parent === "boolean" ? raw.reminders.parent : true,
       student: typeof raw.reminders.student === "boolean" ? raw.reminders.student : true,
     };
+  }
+  if (isObj(raw.connections)) {
+    const c: NonNullable<UserPreferences["connections"]> = {};
+    if (typeof raw.connections.showZalo === "boolean") c.showZalo = raw.connections.showZalo;
+    const m = normalizeMessengerHandle(raw.connections.messenger);
+    if (m) c.messenger = m;
+    if (Object.keys(c).length) out.connections = c;
   }
   return out;
 }
@@ -98,6 +117,25 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
           r[rk] = rv;
         }
         next.reminders = r; break;
+      }
+      case "connections": {
+        if (v === null) { delete next.connections; break; }
+        if (!isObj(v)) return { ok: false, error: "connections không hợp lệ" };
+        const c = { ...(next.connections ?? {}) };
+        for (const [ck, cv] of Object.entries(v)) {
+          if (ck === "showZalo") {
+            if (cv === null) { delete c.showZalo; continue; }
+            if (typeof cv !== "boolean") return { ok: false, error: "showZalo phải là đúng-sai" };
+            c.showZalo = cv;
+          } else if (ck === "messenger") {
+            if (cv === null || cv === "") { delete c.messenger; continue; }
+            const h = normalizeMessengerHandle(cv);
+            if (!h) return { ok: false, error: "Tên trang Messenger chỉ gồm chữ, số, dấu chấm, gạch dưới, gạch ngang (tối đa 64 ký tự)" };
+            c.messenger = h;
+          } else return { ok: false, error: `connections không có "${ck.slice(0, 40)}"` };
+        }
+        if (Object.keys(c).length) next.connections = c; else delete next.connections;
+        break;
       }
       default:
         return { ok: false, error: `Không có tuỳ chọn "${k.slice(0, 40)}"` };

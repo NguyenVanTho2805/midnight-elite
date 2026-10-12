@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, CheckCircle, CloseCircle } from "griddy-icons";
 
@@ -109,6 +109,13 @@ export default function DangKyPage() {
 
   const [step, setStep]       = useState<1 | 2>(1);
   const [role, setRole]       = useState<Role>("student"); // FE-100
+  // PH-207: link "Tạo hồ sơ của bạn" ở hồ sơ công khai mở thẳng vai Gia sư (?vai=gia-su). Đọc sau khi gắn kết để không lệch với bản dựng ở máy chủ.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("vai") === "gia-su") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRole("tutor");
+    }
+  }, []);
   const [agreed, setAgreed]   = useState(false);
   const [showPass, setShowPass]       = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);

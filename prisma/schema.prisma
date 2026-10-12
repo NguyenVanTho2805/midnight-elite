@@ -800,6 +800,12 @@ model User {
   tutorVerifiedBy   String?   // userId admin đã duyệt
   tutorRejectedAt   DateTime?
   tutorRejectReason String?
+  // PH-212: quản trị khoá hồ sơ giả / bị báo cáo → hồ sơ công khai trả 404, gia sư vẫn dùng sổ lớp bình thường.
+  profileLockedAt   DateTime?
+  profileLockReason String?   @db.Text
+
+  profileVisits  ProfileVisit[]       @relation("ProfileVisitTutor")
+  profileReports TutorProfileReport[] @relation("ProfileReportTutor")
 
   ownedCourses        Course[]
   ownedExams          Exam[]
@@ -1665,4 +1671,46 @@ model Article {
   updatedAt   DateTime  @updatedAt
 
   @@map("articles")
+}
+
+// ─── PHỄU GIA SƯ (PH-207..212, đặc tả pheu-gia-su.md) ─────────────────────────
+// Mỗi lượt mở link hồ sơ công khai ghi 1 dòng theo đuôi ?n= (kênh). Không đếm được bài đăng trong nhóm Facebook,
+// chỉ đếm lượt bấm link. visitorKey là mã NGẪU NHIÊN theo phiên trình duyệt, chỉ để không đếm trùng — không phải định danh người.
+//   kind: "open" (mở link) | "full" (kéo tới cuối hồ sơ)
+model ProfileVisit {
+  id         String   @id @default(cuid())
+  tutorId    String
+  channel    String
+  kind       String
+  visitorKey String
+  createdAt  DateTime @default(now())
+
+  tutor User @relation("ProfileVisitTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, channel, kind, visitorKey])
+  @@index([tutorId, createdAt])
+  @@index([channel, createdAt])
+  @@map("profile_visits")
+}
+
+// Báo cáo hồ sơ gia sư (chống lừa đảo). Ai cũng gửi được, không cần tài khoản.
+//   reason: "thu-phi-truoc" (đòi chuyển khoản trước buổi thử) | "gia-mao" (hồ sơ giả / lớp ảo) | "khac"
+//   status: "open" | "resolved";  resolution: "dismissed" | "locked"
+model TutorProfileReport {
+  id         String    @id @default(cuid())
+  tutorId    String
+  reason     String
+  detail     String?   @db.Text
+  channel    String?
+  status     String    @default("open")
+  resolution String?
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime  @default(now())
+
+  tutor User @relation("ProfileReportTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@index([tutorId, status])
+  @@index([status, createdAt])
+  @@map("tutor_profile_reports")
 }

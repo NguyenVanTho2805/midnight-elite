@@ -57,6 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: "Hồ sơ học sinh",  href: "/admin/hoc-sinh",        Icon: UsersGroup,  permission: PERMISSIONS.MANAGE_STUDENTS  },
   { label: "Duyệt gia sư",    href: "/admin/ho-so-gia-su",    Icon: UserCheck,   permission: PERMISSIONS.MANAGE_TUTORS    },
+  { label: "Phễu gia sư",     href: "/admin/pheu",            Icon: ChartBar,    permission: PERMISSIONS.MANAGE_TUTORS    },
   { label: "Doanh thu",       href: "/admin/doanh-thu",        Icon: Wallet,     permission: PERMISSIONS.VIEW_REVENUE    },
   { label: "Quản trị viên",   href: "/admin/quan-tri-vien",    Icon: Edit,       permission: PERMISSIONS.MANAGE_ADMINS   },
 ];
