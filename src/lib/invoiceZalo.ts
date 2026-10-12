@@ -1,11 +1,11 @@
 // TT-199 giai đoạn 1 — gửi phiếu học phí qua Zalo bằng tay (spec gui-qua-zalo.md).
-//  • Link riêng từng phiếu, hết hạn sau 60 ngày (GD-28), mở không cần tài khoản.
+//  • Link riêng từng phiếu, hết hạn sau 30 ngày (Thọ chốt 12/10; PH-214 ghi 30 ngày, GD-28 từng ghi 60), mở không cần tài khoản.
 //  • Chat riêng: tin có tên con, số tiền và link. Nhóm Zalo lớp: tin chung, KHÔNG số tiền, KHÔNG link, KHÔNG tên con
 //    (ai trong nhóm cũng mở được link).
 //  • KiN chỉ ghi "đã mở Zalo", không bao giờ ghi "đã gửi".
 // Hàm thuần — dùng được ở cả máy chủ và trình duyệt.
 
-export const INVOICE_LINK_DAYS = 60;
+export const INVOICE_LINK_DAYS = 30;
 const DAY_MS = 24 * 3600_000;
 
 /** Phiếu có thể gửi cho phụ huynh: đã gửi, phụ huynh đã báo chuyển, hoặc đóng một phần. Nháp/đã đóng/đã huỷ thì không. */

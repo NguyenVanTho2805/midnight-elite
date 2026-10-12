@@ -1,5 +1,5 @@
 // TT-199 giai đoạn 1 — phiếu học phí riêng, mở bằng link gia sư gửi qua Zalo, không cần tài khoản.
-// Link hết hạn sau 60 ngày (GD-28). Thẻ xem trước của link (Open Graph) CHỈ có chữ chung — không tên con, không số tiền.
+// Link hết hạn sau 30 ngày (Thọ chốt 12/10). Thẻ xem trước của link (Open Graph) CHỈ có chữ chung — không tên con, không số tiền.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -42,7 +42,7 @@ export default async function PhieuPage({ params }: { params: Promise<{ token: s
   if (!inv) notFound();
   const now = new Date();
   if (!inv.viewTokenExpiresAt || inv.viewTokenExpiresAt.getTime() <= now.getTime()) {
-    return <Notice title="Link đã hết hạn" body="Link phiếu học phí chỉ dùng được trong 60 ngày. Anh/chị nhắn gia sư để được gửi lại link mới." />;
+    return <Notice title="Link đã hết hạn" body="Link phiếu học phí chỉ dùng được trong 30 ngày. Anh/chị nhắn gia sư để được gửi lại link mới." />;
   }
   if (inv.status === "cancelled") return <Notice title="Phiếu đã được huỷ" body="Gia sư đã huỷ phiếu này. Anh/chị liên hệ gia sư nếu cần biết thêm." />;
   if (!(PARENT_VISIBLE_STATUSES as string[]).includes(inv.status)) notFound(); // nháp: chưa gửi cho phụ huynh

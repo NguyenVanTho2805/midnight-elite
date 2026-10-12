@@ -28,12 +28,12 @@ Test: lib 37/37, API 48/48, trình duyệt 29/29. Giới hạn: loại dòng th�
 Phiếu học phí: tab Phiếu có nút "Gửi phiếu qua Zalo" (chỉ phiếu đã gửi / phụ huynh đã báo chuyển / đóng một phần). Hộp thoại chọn
 "Chat riêng" hoặc "Nhóm Zalo lớp", tin soạn sẵn theo `gui-qua-zalo.md`, gia sư sửa được; KiN mở Zalo (bảng chia sẻ trên điện thoại, chép + mở
 `zalo.me/<SĐT>` trên máy tính) và ghi "Đã mở Zalo lúc …" (không bao giờ "đã gửi"). Chat riêng có link riêng `/phieu/<mã 32 ký tự>` hết hạn sau
-60 ngày (GD-28), dùng lại link còn hạn, hết hạn thì cấp link mới; nhóm lớp chỉ có tin chung, không số tiền, không link, không tên con.
+30 ngày (Thọ chốt 12/10), dùng lại link còn hạn, hết hạn thì cấp link mới; nhóm lớp chỉ có tin chung, không số tiền, không link, không tên con.
 Trang `/phieu/[token]` không cần tài khoản, có QR + STK của gia sư + nút "Tôi đã chuyển"; thẻ xem trước chỉ chữ chung; ghi "Phụ huynh đã xem lúc …"
 từ trình duyệt (không phải lúc bot Zalo xem trước link). Điểm danh: nút "Nhắn phụ huynh" cho em đã LƯU điểm danh, tin "Buổi [môn] [ngày] của con [tên]: [trạng thái]."
 Test: lib 12/12, API 57/57, trình duyệt phiếu 33/33 và điểm danh 28/28.
 Chưa làm: câu mời xem "bản ghi buổi học" cho buổi Vắng (chưa có trang bản ghi buổi cho phụ huynh nên tin chưa kèm link); giai đoạn 2 (Zalo OA) chờ
-Thọ có pháp nhân; link "Sổ của con" (TK-178) vẫn KHÔNG có hạn tự động theo quyết định cũ — khác GD-28 (60 ngày) của link phiếu, cần Thọ chốt.
+Thọ có pháp nhân; link "Sổ của con" (TK-178) vẫn KHÔNG có hạn tự động (quyết định cũ; Thọ mới chốt hạn cho link phiếu).
 
 ## Phễu gia sư (PH-207..216, PH-223) — XONG phần dựng được, ngày 12/10
 - **A · Hồ sơ công khai + đo + chống lừa đảo** (PH-207/210/212/214): `/mentor/[id]` có số buổi đã dạy (từ sổ lớp), nhãn "Không thu phí nhận lớp",
@@ -49,7 +49,7 @@ Test: A lib 32 + API 52 + trình duyệt 35; B lib 49 + API 20 + trình duyệt 
 PH-208 (form đăng ký học thử: tên con + lớp + số Zalo phụ huynh + bằng chứng đồng ý — dữ liệu trẻ em, chờ PH-225); PH-211, PH-217..222, PH-226 (cộng đồng / tin nhắn học sinh);
 PH-224 (5 bậc thành thạo: ngưỡng từng bậc chờ anh Thanh chốt, mục 9.1 của pheu-gia-su.md); đánh giá hồ sơ chỉ sau 4 buổi phụ huynh xác nhận (PH-207: chưa có dữ liệu "buổi được phụ huynh xác nhận" trong sổ lớp này);
 "Đã xác minh số điện thoại" (chưa có OTP số điện thoại); Đăng nhập Zalo (cần ứng dụng Zalo đã đăng ký); AI soạn nháp kế hoạch buổi (Đợt 2, Coin).
-**Chỗ tài liệu mâu thuẫn:** link phiếu/báo cáo hết hạn 60 ngày (`gui-qua-zalo.md`, GD-28) và 30 ngày (PH-214 trong sheet) — đang dùng 60; link "Sổ của con" (TK-178) không có hạn tự động. Cần anh chốt một con số.
+**Hạn link phiếu: 30 ngày** (Thọ chốt 12/10; `gui-qua-zalo.md`/GD-28 ghi 60 là bản cũ). Link "Sổ của con" (TK-178) không có hạn tự động.
 
 ## Redesign / tái cấu trúc (FE-098/099/130/134/136/139/140) và component dùng chung
 - **XONG:** FE-139 (nhãn + lọc theo lớp ở kiểm duyệt cộng đồng), FE-140 (quyền danh mục: gia sư chỉ xem, quản trị mới đổi tên, con số theo người xem),
@@ -73,4 +73,4 @@ nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, ti�
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.
 - Lưu ý hành vi mới (NV-188): màn xem lại bài thi không hiện đáp án câu sai cho tới khi học sinh chữa xong câu đó (khi đề cho phép chữa bài).
 - Lưu ý hành vi mới (FE-140): `/api/categories` trả con số `courseCount` theo người xem (gia sư chỉ thấy số khoá của mình).
-- Cần anh chốt: hạn link phiếu/báo cáo (30 hay 60 ngày) và có cho "Sổ của con" hết hạn không.
+- Còn mở: có cho link "Sổ của con" hết hạn không (hiện không).

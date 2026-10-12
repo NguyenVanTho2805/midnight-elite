@@ -46,7 +46,7 @@ const mk = (tutorId: string, studentId: string, ym: string, status: string, amou
   const draft = await ta.inputValue();
   check("mặc định 'Chat riêng'", await dlg.getByRole("radio", { name: "Chat riêng với phụ huynh" }).isChecked());
   check("tin đúng mẫu: tháng 10, tên con, 1.200.000đ, hạn trước ngày 20, link /phieu/<32 hex>", /^Dạ em gửi anh\/chị phiếu học phí tháng 10 của con Minh Anh: 1\.200\.000đ, hạn trước ngày 20\. Anh\/chị bấm vào đây để xem phiếu và quét mã chuyển khoản: http:\/\/localhost:3100\/phieu\/[0-9a-f]{32}$/.test(draft), draft);
-  check("nói rõ: SĐT phụ huynh, link còn 60 ngày, KiN không gửi giúp", await dlg.getByText(/Sẽ mở Zalo của 0901234567/).isVisible() && await dlg.getByText(/Link phiếu dùng được 60 ngày nữa/).isVisible() && await dlg.getByText(/KiN không gửi giúp/).isVisible());
+  check("nói rõ: SĐT phụ huynh, link còn 30 ngày, KiN không gửi giúp", await dlg.getByText(/Sẽ mở Zalo của 0901234567/).isVisible() && await dlg.getByText(/Link phiếu dùng được 30 ngày nữa/).isVisible() && await dlg.getByText(/KiN không gửi giúp/).isVisible());
   const link = draft.match(/http\S+$/)![0];
 
   section("Sửa tin rồi mở Zalo");

@@ -46,13 +46,13 @@ const hex32 = /^\/phieu\/[0-9a-f]{32}$/;
     check(`${name} → không cấp link`, (await prisma.tuitionInvoice.findUnique({ where: { id: row.id } }))?.viewToken === null);
   }
 
-  section("Chat riêng: cấp link 60 ngày, dùng lại link còn hạn");
+  section("Chat riêng: cấp link 30 ngày, dùng lại link còn hạn");
   const t0 = Date.now();
   const p1 = await zalo(sent.id, { action: "prepare", target: "private" });
   check("200 + đường dẫn /phieu/<32 hex>", p1.status === 200 && hex32.test(p1.json?.path), p1.json);
   check("số điện thoại, tên con, tháng, số tiền còn lại", p1.json?.phone === "0901234567" && p1.json?.studentName === "Minh Anh" && p1.json?.yearMonth === "2026-10" && p1.json?.amount === 1_200_000 && p1.json?.parentName === "Hoa");
   const exp1 = new Date(p1.json.expiresAt).getTime();
-  check("hạn ≈ 60 ngày", Math.abs(exp1 - (t0 + 60 * DAY)) < 60_000, p1.json?.expiresAt);
+  check("hạn ≈ 30 ngày", Math.abs(exp1 - (t0 + 30 * DAY)) < 60_000, p1.json?.expiresAt);
   let row = await prisma.tuitionInvoice.findUnique({ where: { id: sent.id } });
   check("DB lưu token + hạn khớp", `/phieu/${row?.viewToken}` === p1.json.path && row?.viewTokenExpiresAt?.getTime() === exp1);
   const p2 = await zalo(sent.id, { action: "prepare", target: "private" });
@@ -75,7 +75,7 @@ const hex32 = /^\/phieu\/[0-9a-f]{32}$/;
   const oldTok = row!.viewToken!;
   await prisma.tuitionInvoice.update({ where: { id: sent.id }, data: { viewTokenExpiresAt: new Date(Date.now() - 1000) } });
   const p3 = await zalo(sent.id, { action: "prepare", target: "private" });
-  check("hết hạn → link mới khác link cũ, hạn mới 60 ngày", p3.status === 200 && p3.json.path !== `/phieu/${oldTok}` && Math.abs(new Date(p3.json.expiresAt).getTime() - (Date.now() + 60 * DAY)) < 60_000, p3.json);
+  check("hết hạn → link mới khác link cũ, hạn mới 30 ngày", p3.status === 200 && p3.json.path !== `/phieu/${oldTok}` && Math.abs(new Date(p3.json.expiresAt).getTime() - (Date.now() + 30 * DAY)) < 60_000, p3.json);
   check("link cũ không còn tìm thấy", (await page(oldTok)).status === 404);
 
   section("Nhóm Zalo lớp: không link");

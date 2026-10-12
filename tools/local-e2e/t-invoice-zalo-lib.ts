@@ -1,16 +1,16 @@
 import { INVOICE_LINK_DAYS, ZALO_SENDABLE_STATUSES, invoiceLinkExpiry, invoiceLinkState, invoiceLinkPath, invoiceLinkDaysLeft, privateInvoiceMessage, groupInvoiceMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { check, section, done } from "./h";
 
-section("Hạn link (GD-28: 60 ngày)");
+section("Hạn link (30 ngày, Thọ chốt 12/10)");
 const now = new Date("2026-10-12T05:00:00Z");
-check("hạn = 60 ngày sau", INVOICE_LINK_DAYS === 60 && invoiceLinkExpiry(now).getTime() - now.getTime() === 60 * 24 * 3600_000);
+check("hạn = 60 ngày sau", INVOICE_LINK_DAYS === 30 && invoiceLinkExpiry(now).getTime() - now.getTime() === 30 * 24 * 3600_000);
 const exp = invoiceLinkExpiry(now);
 check("trạng thái: chưa có / còn hạn / hết hạn", invoiceLinkState({ viewToken: null, viewTokenExpiresAt: null }, now) === "none"
   && invoiceLinkState({ viewToken: "x", viewTokenExpiresAt: exp }, now) === "live"
   && invoiceLinkState({ viewToken: "x", viewTokenExpiresAt: new Date(now.getTime() - 1) }, now) === "expired"
   && invoiceLinkState({ viewToken: "x", viewTokenExpiresAt: now }, now) === "expired"
   && invoiceLinkState({ viewToken: "x", viewTokenExpiresAt: null }, now) === "none");
-check("số ngày còn lại làm tròn lên, không âm", invoiceLinkDaysLeft(exp, now) === 60 && invoiceLinkDaysLeft(new Date(now.getTime() + 3600_000), now) === 1 && invoiceLinkDaysLeft(new Date(now.getTime() - 1e9), now) === 0);
+check("số ngày còn lại làm tròn lên, không âm", invoiceLinkDaysLeft(exp, now) === 30 && invoiceLinkDaysLeft(new Date(now.getTime() + 3600_000), now) === 1 && invoiceLinkDaysLeft(new Date(now.getTime() - 1e9), now) === 0);
 check("đường dẫn", invoiceLinkPath("ab12") === "/phieu/ab12");
 check("chỉ gửi được phiếu đã gửi / báo chuyển / đóng một phần", eq(ZALO_SENDABLE_STATUSES, ["sent", "parent_reported", "partial"]));
 function eq(a: unknown, b: unknown) { return JSON.stringify(a) === JSON.stringify(b); }

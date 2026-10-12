@@ -1,6 +1,6 @@
 // TT-199 giai đoạn 1 — gửi phiếu học phí qua Zalo bằng tay.
 //   POST { action: "prepare", target: "private" | "group" }
-//        private → cấp (hoặc dùng lại) link riêng của phiếu, hết hạn sau 60 ngày; trả path + số điện thoại phụ huynh.
+//        private → cấp (hoặc dùng lại) link riêng của phiếu, hết hạn sau 30 ngày; trả path + số điện thoại phụ huynh.
 //        group   → chỉ trả dữ liệu cho tin chung; KHÔNG cấp link (ai trong nhóm cũng mở được link).
 //   POST { action: "opened" } → ghi "Đã mở Zalo lúc …". KiN không biết tin có đi thật hay không → không ghi "đã gửi".
 import { NextRequest, NextResponse } from "next/server";
