@@ -84,3 +84,8 @@
   border: 2px solid var(--kin-nhan-link);
   padding: 11px 15px;
 }
+
+/* Vòng focus bàn phím: quy tắc chung ở globals.css viết cứng xanh cũ #0068FF; trong vùng web công khai đổi sang màu nhấn của chủ đề. */
+[data-vung="khach-sang"] :focus-visible {
+  outline-color: var(--kin-nhan-link);
+}

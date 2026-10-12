@@ -1,4 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { randomBytes } from "node:crypto";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM    = `KiN <${process.env.GMAIL_USER}>`;
@@ -7,7 +10,20 @@ const FROM    = `KiN <${process.env.GMAIL_USER}>`;
 // bắt buộc "From" phải trùng địa chỉ đã xác thực (GMAIL_USER), không dùng
 // được domain tuỳ ý như noreply@midnightelite-edu.com nữa.
 let transporter: Transporter | null = null;
+// Chỉ để test cục bộ: đặt EMAIL_SINK_DIR thì thư KHÔNG gửi đi mà ghi thành tệp JSON {from,to,subject,text,html} vào thư mục đó.
+// Môi trường thật không đặt biến này.
+function sinkTransport(dir: string): Transporter {
+  return {
+    async sendMail(m: { from?: string; to?: string; subject?: string; text?: string; html?: string }) {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${Date.now()}-${randomBytes(4).toString("hex")}.json`), JSON.stringify(m));
+      return { messageId: "sink" };
+    },
+  } as unknown as Transporter;
+}
+
 function getTransport(): Transporter {
+  if (process.env.EMAIL_SINK_DIR) return sinkTransport(process.env.EMAIL_SINK_DIR);
   if (!transporter) {
     const user = process.env.GMAIL_USER;
     const pass = process.env.GMAIL_APP_PASSWORD;
@@ -106,6 +122,42 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
       <p style="color:#a4a097;font-size:12px;margin:0">Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
     </div>
     <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
+  </div>
+</body>
+</html>`,
+  });
+}
+
+// ─── MÃ ĐĂNG NHẬP 6 SỐ (TK-170) ───────────────────────────────────────────────
+
+export async function sendLoginCodeEmail(to: string, name: string, code: string) {
+  const safeName = name.replace(/[<>&"]/g, "");
+  await getTransport().sendMail({
+    from: FROM,
+    to,
+    subject: `${code} là mã đăng nhập KiN của bạn`,
+    text: `Xin chào ${safeName},\n\nMã đăng nhập KiN của bạn: ${code}\n\nMã sống 10 phút và chỉ dùng được một lần. Nếu không phải bạn vừa xin mã, cứ bỏ qua email này: không ai vào được tài khoản nếu thiếu mã.\n\nKiN`,
+    html: `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f7f8fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:480px;margin:40px auto;padding:0 16px">
+    <div style="padding:0 0 20px;text-align:center">
+      <span style="font-size:24px;font-weight:800;color:#1e3a8a;letter-spacing:-0.3px">KiN</span>
+      <p style="color:#6b7280;font-size:13px;margin:6px 0 0">Lớp học của bạn, gọn trong một chỗ</p>
+    </div>
+    <div style="background:#ffffff;border-radius:14px;padding:32px;border:1px solid #e6e9ef">
+      <h1 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Mã đăng nhập của bạn</h1>
+      <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px">Xin chào ${safeName}, nhập mã này vào trang đăng nhập KiN:</p>
+      <div style="text-align:center;background:#eff4ff;border-radius:10px;padding:18px 0;margin:0 0 20px">
+        <span style="font-family:'SFMono-Regular',Consolas,monospace;font-size:34px;font-weight:700;letter-spacing:10px;color:#1e3a8a">${code}</span>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0">
+        Mã sống <strong>10 phút</strong> và chỉ dùng được một lần. Nếu không phải bạn vừa xin mã, cứ bỏ qua email này: không ai vào được tài khoản nếu thiếu mã.
+      </p>
+    </div>
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,

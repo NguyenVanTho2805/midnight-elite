@@ -3,3 +3,5 @@
 // hoạt động cho đến khi được migrate dần.
 export { KinInput, type KinInputProps } from "./Input";
 export { KinButton, type KinButtonProps } from "./Button";
+export { KinMark, KinLogo } from "./KinLogo";
+export { CodeBoxes, type CodeBoxesProps } from "./CodeBoxes";

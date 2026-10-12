@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { createSession, type SessionPayload } from "@/lib/session";
+import { signInResponse } from "@/lib/loginSession";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -26,28 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email hoặc mật khẩu không đúng" }, { status: 401 });
     }
 
-    if (user.banned) {
-      return NextResponse.json({ error: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ." }, { status: 403 });
-    }
-
-    const payload: SessionPayload = {
-      userId: user.id,
-      role:   user.role as "student" | "admin",
-    };
-    if (user.adminRole) payload.adminRole = user.adminRole as SessionPayload["adminRole"];
-
-    await createSession(payload);
-
-    return NextResponse.json({
-      id:            user.id,
-      name:          user.name,
-      email:         user.email,
-      role:          user.role,
-      adminRole:     user.adminRole,
-      phone:         user.phone,
-      school:        user.school,
-      emailVerified: user.emailVerified,
-    });
+    return await signInResponse(user);
   } catch (e) {
     console.error("[login]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });

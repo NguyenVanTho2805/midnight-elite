@@ -87,10 +87,22 @@ Nguồn: file Figma *KiN Design System* (`2orXvoHL2upkiGoMjlq8aX`). Đã đọc 
 - **Số liệu "1.200+ học sinh / 10.000+ đề / 6 gia sư" giữ nguyên như Figma và bản cũ — chưa có nguồn đếm tự động, cần người chịu trách nhiệm xác nhận trước khi đưa ra công khai.**
 - **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="khach-sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
 - **CHƯA làm (đều cần quyết định hoặc chưa có khung Figma tương ứng):**
-  - Đăng nhập "một ô, một mã" (Figma 21:9 / TK-170): đó là đổi cơ chế xác thực (mã 6 số dùng một lần, không mật khẩu, cần SMS/email, khoá 15 phút, cookie `kin_s`, phiên quản trị 12 giờ). Giao diện hiện vẫn email + mật khẩu.
+  - Đăng nhập "một ô, một mã": **đã làm ngày 13/10 qua email** — xem mục "Đăng nhập bằng mã 6 số qua email" ngay dưới đây. Chưa làm: đăng nhập bằng số điện thoại (cần SMS), cookie `kin_s`, phiên quản trị 12 giờ không gia hạn.
   - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); học sinh, quản trị chưa — admin trên tên miền riêng, cần làm cả bộ điều hướng.
   - Các trang không có khung Figma: `/khoa-hoc`, `/khoa-hoc/[id]`, `/thi-thu`, `/tin-tuc`, `/bang-xep-hang`, `/student/*`, `/admin/*` — vẫn giao diện cũ (xanh #0068FF), đã nằm trong thanh trên/chân trang mới nên lệch tông. `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần".
   - Chưa kiểm được phông thật trong môi trường làm việc (Google Fonts bị chặn nên chạy bằng phông thay thế); Vercel sẽ tải đúng Inter / Be Vietnam Pro / Plus Jakarta Sans.
+
+## Đăng nhập bằng mã 6 số qua email (TK-170) — XONG ngày 13/10 (Thọ chốt: dùng, và dùng email)
+Màn `/dang-nhap` dựng theo Figma 32:2 (nhập email) và 32:27 (nhập mã 6 số). Nhập email → KiN gửi mã → nhập mã là vào. **Đăng nhập bằng mật khẩu vẫn còn làm lối phụ** ("Đăng nhập bằng mật khẩu"), vì mọi tài khoản cũ có mật khẩu và đăng ký vẫn đặt mật khẩu; chưa tắt mật khẩu như Figma ghi "KiN không dùng mật khẩu".
+- **Quy tắc (đúng bản đồ đường vào Figma 33:2):** mã 6 số ngẫu nhiên an toàn mật mã; sống 10 phút; dùng một lần (xoá dòng ngay khi đúng, hai yêu cầu cùng mã đúng chỉ một cái vào được); sai 5 lần thì khoá email đó 15 phút (kể cả mã đúng và kể cả xin mã mới); xin mã mới được sau 60 giây.
+- **An toàn:** DB chỉ lưu băm HMAC-SHA256(khoá bí mật của server, "email:mã"), so bằng `timingSafeEqual`; lượt thử được TRỪ NGUYÊN TỬ trước khi so nên gửi song song 25 lần đoán cũng chỉ so được ≤ 5 lần; lần sai được giữ qua các lần xin mã mới trong 15 phút (không lách bằng cách xin mã liên tục); giới hạn thêm theo IP (10 lần xin / 30 lần nhập mỗi 10 phút) và theo email (6 lần xin / 10 phút, chống dội thư vào hộp thư người khác).
+- **Không lộ email nào có tài khoản:** email lạ vẫn nhận phản hồi y hệt (gửi, chờ 60 giây, còn 4/3/2/1 lần, khoá 15 phút), được mô phỏng trong bộ nhớ và không gửi thư thật. Tài khoản bị khoá (`banned`) vẫn nhận thư, vào bằng mã đúng thì bị từ chối 403 như đăng nhập mật khẩu.
+- **Lưu ý hạn chế:** mô phỏng email lạ và giới hạn theo IP/email nằm trong bộ nhớ từng máy chủ (serverless nhiều bản chạy song song thì mỗi bản đếm riêng) — phần chặn thật cho tài khoản có thật nằm trong DB nên vẫn đúng.
+- **Bảng mới (chỉ thêm):** `login_codes` (xem `prisma/schema.prisma`); build production tự tạo. Không đổi `emailVerified` khi đăng nhập bằng mã.
+- **Thư:** `sendLoginCodeEmail` trong `src/lib/email.ts` (màu KiN navy, có bản văn bản thường). Dùng Gmail SMTP sẵn có (`GMAIL_USER`, `GMAIL_APP_PASSWORD`); không cần biến mới. Chỉ để test cục bộ: đặt `EMAIL_SINK_DIR` thì thư ghi thành tệp JSON thay vì gửi.
+- **Đi kèm:** `/dang-nhap?redirect=` chỉ nhận đường dẫn nội bộ (trước đó nhận cả địa chỉ ngoài → có thể bị dùng để đẩy người dùng sang trang giả mạo sau khi đăng nhập); `AuthGuard` đưa người chưa đăng nhập về `/dang-nhap?redirect=<trang đang định vào>` để đăng nhập xong quay lại đúng trang (Figma 33:2).
+- **Test:** `t-login-code-lib` (43), `t-login-code` (61: API + Postgres thật, đua song song, đoán mã hàng loạt, email lạ, bị khoá, vai trò), `ui-login-code` (62: màn hình thật, gõ phím/dán mã, đồng hồ gửi lại, khoá, điện thoại 390px, chặn redirect ngoài).
+- **Chưa làm:** đăng nhập bằng số điện thoại (cần dịch vụ SMS — Figma có "Số điện thoại hoặc email"; hiện chỉ email); tắt hẳn mật khẩu; phiên 30 ngày gia hạn mỗi lần dùng và phiên quản trị 12 giờ (phiên hiện vẫn 7 ngày cho mọi vai).
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,
@@ -107,7 +119,7 @@ Chưa có: điểm HSA / ĐGNL ĐHQG-HCM / TSA theo từng trường (chưa tìm
 Test: lib 49/49, API 54/54, trình duyệt 57/57.
 
 ## Không làm (chờ Thọ / luật sư / Thanh)
-PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh); TK-170 (đăng nhập bằng mã 6 số);
+PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh);
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).
 
 ## Việc Thọ cần làm khi triển khai

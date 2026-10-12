@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth, Role } from "@/contexts/AuthContext";
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
 export default function AuthGuard({ requiredRole, children }: Props) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Admin được phép vào student routes (để preview nội dung)
   const adminViewingStudent = requiredRole === "student" && user?.role === "admin";
@@ -20,13 +21,14 @@ export default function AuthGuard({ requiredRole, children }: Props) {
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.replace("/dang-nhap");
+      // Đăng nhập xong quay lại đúng trang đang định vào, không đá về trang chủ (Figma 33:2, cột "hết hạn thì sao").
+      router.replace(`/dang-nhap?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     if (!allowed) {
       router.replace(user.role === "admin" ? "/admin" : "/student/hoc-tap");
     }
-  }, [user, isLoading, allowed, router]);
+  }, [user, isLoading, allowed, router, pathname]);
 
   if (isLoading) {
     return (

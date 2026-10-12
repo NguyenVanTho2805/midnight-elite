@@ -1797,3 +1797,24 @@ model ClassSessionChange {
   @@index([newDateKey])
   @@map("class_session_changes")
 }
+
+// ─── ĐĂNG NHẬP BẰNG MÃ 6 SỐ QUA EMAIL (TK-170, Figma "Đăng nhập" 21:9) ─────────────────────────────────────────
+// Mỗi email có tối đa MỘT mã đang sống (email là khoá duy nhất): xin mã mới thì ghi đè mã cũ.
+//   codeHash    — HMAC-SHA256(SESSION_SECRET, "email:mã"); KHÔNG lưu mã gốc; so bằng hàm so sánh thời gian hằng định.
+//   attempts    — số lần nhập sai đã dùng. Trừ TRƯỚC khi so mã (nguyên tử) để gửi song song nhiều đoán mã cũng không vượt 5 lần;
+//                 giữ qua các lần xin mã mới trong 15 phút để không lách bằng cách xin mã liên tục.
+//   lockedUntil — đủ 5 lần sai thì khoá email này 15 phút (kể cả khi xin mã mới).
+// Dùng xong (đúng mã) thì XOÁ dòng — mã một lần thì phải thật sự một lần. Xem src/lib/loginCode.ts.
+model LoginCode {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  codeHash    String
+  attempts    Int       @default(0)
+  sentAt      DateTime  @default(now())
+  expiresAt   DateTime
+  lockedUntil DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("login_codes")
+}

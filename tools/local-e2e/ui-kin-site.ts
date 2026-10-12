@@ -172,10 +172,11 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   await eventually("nhập đúng: viền xanh lá trạng thái #059669", async () => (await borderOf()) === "rgb(5, 150, 105)");
   const lp = await gctx.newPage(); watch(lp);
   await lp.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 240000 });
-  await lp.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-  check("đăng nhập bỏ trống: báo 'Vui lòng nhập đầy đủ thông tin'", await lp.getByText("Vui lòng nhập đầy đủ thông tin").isVisible());
-  const inputBorder = await lp.getByPlaceholder("ten@gmail.com").evaluate(e => getComputedStyle(e).borderTopColor);
-  check("ô nhập có viền #8b95a5 (đạt 3:1)", inputBorder === "rgb(139, 149, 165)", inputBorder);
+  // Màn đăng nhập mới (mã 6 số qua email) có test riêng ui-login-code; ở đây chỉ giữ kiểm tra chung của khung web công khai.
+  await lp.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
+  check("đăng nhập bỏ trống: báo 'Vui lòng nhập email'", await lp.getByText("Vui lòng nhập email").isVisible());
+  await lp.getByLabel("Email").evaluate(e => (e as HTMLElement).blur());
+  await eventually("ô nhập có viền #8b95a5 (đạt 3:1)", async () => (await lp.getByLabel("Email").evaluate(e => getComputedStyle(e).borderTopColor)) === "rgb(139, 149, 165)");
   const mctx2 = await ctxFor(null, { width: 390, height: 844 });
   for (const path of ["/dang-nhap", "/dang-ky", "/quen-mat-khau"]) {
     const mp2 = await mctx2.newPage(); watch(mp2);
