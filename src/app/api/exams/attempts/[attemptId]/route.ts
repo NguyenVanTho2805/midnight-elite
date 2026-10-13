@@ -58,6 +58,7 @@ export async function GET(
       answers,
       textAnswers,
       boolAnswers: boolAnswersByOption,
+      tabSwitchCount: attempt.tabSwitchCount ?? 0,
     });
   } catch (e) {
     console.error("[GET /api/exams/attempts/[attemptId]]", e);

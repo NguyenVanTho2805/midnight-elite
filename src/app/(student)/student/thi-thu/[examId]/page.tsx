@@ -22,7 +22,17 @@ interface LeaderboardRow {
   user: { name: string };
 }
 
+// Phòng thi khoá cứng Navy (Figma 27:2, TK-168/174): ô đáp án đang chọn mà tô màu chủ đề thầy cô thích (cổ vịt…) thì học sinh đọc nhầm
+// là "đáp án đúng", và phòng thi phải giống hệt nhau với mọi người. [data-vung="phong-thi"] đặt lại màu nhấn về Navy cho mọi phần bên trong.
 export default function ExamEntryPage() {
+  return (
+    <div data-vung="phong-thi">
+      <ExamEntryInner />
+    </div>
+  );
+}
+
+function ExamEntryInner() {
   const { examId } = useParams<{ examId: string }>();
   const { user }   = useAuth();
 
@@ -49,6 +59,7 @@ export default function ExamEntryPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewErr, setReviewErr] = useState("");
   const [showCorrection, setShowCorrection] = useState(false); // NV-188: màn Chữa bài
+  const [tabLeaves, setTabLeaves] = useState(0); // số lần rời tab trong lượt thi này (server đếm)
 
   // Load exam + student's existing result
   useEffect(() => {
@@ -128,6 +139,7 @@ export default function ExamEntryPage() {
       setSelected((state.answers ?? {}) as Record<string, string>);
       setEssayText(state.textAnswers ?? {});
       setClusterAnswers(state.boolAnswers ?? {});
+      setTabLeaves(state.tabSwitchCount ?? 0);
       setPhase("taking");
     } catch (e) {
       setStartErr(e instanceof Error ? e.message : "Không thể bắt đầu bài thi");
@@ -232,7 +244,7 @@ export default function ExamEntryPage() {
     const attemptId = attempt.attemptId;
     function report() {
       if (document.visibilityState === "hidden") {
-        api.examAttempts.tabEvent(attemptId).catch(() => {});
+        api.examAttempts.tabEvent(attemptId).then(r => { if (typeof r.tabSwitchCount === "number") setTabLeaves(r.tabSwitchCount); }).catch(() => {});
       }
     }
     document.addEventListener("visibilitychange", report);
@@ -560,6 +572,16 @@ export default function ExamEntryPage() {
           <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Làm bài nghiêm túc — điểm được chấm và ghi nhận tự động khi nộp bài.</p>
         </div>
 
+        {/* Figma 27:10 — dải báo rời tab: chỉ hiện khi đã rời ít nhất một lần; nói rõ hệ thống chỉ ĐẾM, không quay màn hình. */}
+        {tabLeaves > 0 && (
+          <div role="status" aria-live="polite" data-dai-roi-tab
+            className="mb-5 flex items-start gap-2 rounded-xl px-4 py-2.5 text-[length:var(--kin-co-small)]"
+            style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
+            <span aria-hidden className="mt-[7px] inline-block w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ background: "var(--kin-tt-cham-cho)" }} />
+            <span>Bạn đã rời khỏi tab {tabLeaves} lần. Hệ thống có ghi lại số lần, không quay màn hình.</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
           {/* Sidebar trái: sticky ngay cả khi cuộn — đếm ngược luôn hiện, không bị che bởi thanh điều hướng dưới.
               Không đặt items-start ở grid cha: cột trái cần "thừa hưởng" chiều cao của cột phải (câu hỏi) để
@@ -661,7 +683,7 @@ export default function ExamEntryPage() {
                           {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
                             <button key={label} type="button" disabled={isLocked}
                               onClick={() => selectClusterAnswer(o.id, val)}
-                              className="px-3 py-1 rounded-lg text-xs font-semibold border disabled:cursor-not-allowed"
+                              className="px-4 min-h-11 min-w-[52px] rounded-lg text-[length:var(--kin-co-small)] font-semibold border disabled:cursor-not-allowed"
                               style={clusterAnswers[o.id] === val
                                 ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                                 : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
@@ -676,7 +698,7 @@ export default function ExamEntryPage() {
                   <div className="space-y-2">
                     {q.options.map((o, oi) => (
                       <label key={o.id}
-                        className={`flex items-start gap-2.5 p-2.5 rounded-lg ${isLocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-[var(--kin-nen-bang)]"}`}
+                        className={`flex items-center gap-2.5 px-3 min-h-[var(--kin-cham-dap-an)] rounded-lg ${isLocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-[var(--kin-nen-bang)]"}`}
                         style={{ border: `1px solid ${selected[q.id] === o.id ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}` }}>
                         <input type="radio" name={`q-${q.id}`} className="mt-0.5" disabled={isLocked}
                           checked={selected[q.id] === o.id}

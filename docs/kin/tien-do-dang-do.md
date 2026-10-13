@@ -153,7 +153,7 @@ Dựng theo Figma "Vỏ — Quản trị" (11:287). Thay hẳn thanh bên tối 
 4. **Học thử** (thẻ thoả thuận 3 trạng thái 13:2, máy trạng thái 6 bước 14:2, A2 "phụ huynh đăng ký học thử không cần tài khoản", A5 "phụ huynh đăng yêu cầu tìm gia sư"): chưa có. Dính trẻ em + tiền → cần Thọ quyết.
 5. **Cộng đồng:** Hỏi đáp mở có "Mời học thử" + hàng chờ tự giữ (29:2), C1–C7 (bảng tin, chi tiết câu hỏi gợi ý trước, soạn bài chọn người xem, an toàn trẻ em, tin nhắn riêng, người chưa đăng nhập): chưa có (đang chờ PH-225 luật sư). Vỏ Quản trị 11:357 có loại dòng "Câu hỏi từ người chưa có tài khoản" — hàng chờ hiện chưa có loại này.
 6. **Thư viện (30:2)** gom theo buổi (video, PDF, đã xem/đã nộp): hiện `/thu-vien` chỉ liệt kê tài liệu của khoá miễn phí; module "Thư viện" của gia sư thực ra trỏ sang ngân hàng đề (`/admin/thi-thu/ngan-hang-de-thi`).
-7. **Phòng thi (27:2):** khoá cứng Navy chưa áp dụng — `[data-vung="phong-thi"]` có trong CSS nhưng không trang nào dùng (TK-168/174 ghi xong là chưa đúng); dải "Bạn đã rời khỏi tab N lần" chưa thấy; chưa kiểm ô đáp án cao 52px. Chữa bài (NV-188) thì có.
+7. ~~**Phòng thi (27:2):** khoá cứng Navy chưa áp dụng; dải "Bạn đã rời khỏi tab N lần" chưa có; ô đáp án 52px~~ — **ĐÃ LÀM 13/10** (mục "Phòng thi" bên dưới). Chữa bài (NV-188) đã có từ trước.
 8. **Vào lớp bằng mã mời (32:54):** `/student/nhap-ma-lop` chỉ có thẻ "Mã hợp lệ" + nút; thiếu xem trước lịch/giá/số buổi đã học, câu "Vào lớp là đồng ý ba điều", nút "Không phải lớp của tôi"; còn màu cũ.
 9. **Đăng nhập / Bản đồ đường vào (32:2, 33:2):** chưa có đăng nhập bằng số điện thoại (cần SMS), tắt mật khẩu, phiên 30 ngày (cookie `kin_s`), phụ huynh token 90 ngày (`kin_p`), quản trị 12 giờ không gia hạn (hiện 7 ngày cho mọi vai); chưa đặt `Referrer-Policy: no-referrer` cho đường dẫn phụ huynh (Quyết định #9).
 **B. Component Figma có mà code chưa có / chưa đủ** (`src/components/kin/`: Button, Input, CodeBoxes, KinLogo + `shell/`)
@@ -168,6 +168,14 @@ Dựng theo Figma "Vỏ — Quản trị" (11:287). Thay hẳn thanh bên tối 
 - Logo bản mono lỗi, toàn bộ icon/logo là bản dựng lại (Quyết định #15); Quyết định #13 (màu chữ vàng) còn mở; trang "Hai không gian" thiếu khung "Không gian 2"; dữ liệu mẫu không thống nhất (giờ học 19:00 / 19:30 / 22:15, số học sinh 24 / 5 / 14); 5 hình chữ nhật thừa trang Đăng nhập, 3 text rỗng ở màn Lớp.
 - `docs/kin/thiet-ke/ban-giao-man-hinh.md` được sheet nhắc nhưng **không có trong repo**.
 **D. Màu hex cũ còn lại:** xem đính chính ở mục "Áp ngôn ngữ KiN" (khoảng 1.600 mã / 95 file).
+
+## Phòng thi: khoá Navy + dải rời tab (Figma 27:2) — XONG ngày 13/10
+Phát hiện khi rà Figma: `[data-vung="phong-thi"]` (TK-168/174, ghi "xong" trong sổ) chỉ có trong CSS, không trang nào dùng → học sinh chọn chủ đề Cổ vịt thì ô đáp án đang chọn tô cổ vịt (gần màu "đúng" 53 đơn vị RGB). Giờ:
+- Trang `/student/thi-thu/[examId]` (mọi pha: vào phòng, làm bài, kết quả, xem lại) nằm trong `data-vung="phong-thi"` → màu nhấn luôn là Navy bất kể chủ đề người dùng; đo trong test: ngoài phòng thi `#0e7490`, trong phòng thi `#1e3a8a`.
+- **Dải "Bạn đã rời khỏi tab N lần. Hệ thống có ghi lại số lần, không quay màn hình."** (27:10): hiện khi đã rời ≥ 1 lần, vùng `role="status"`. Số lần do máy chủ đếm (đã có `tabSwitchCount`); API `POST /api/exams/[id]/start` và `GET /api/exams/attempts/[id]` trả thêm trường `tabSwitchCount` (chỉ thêm, không đổi trường cũ) nên vào lại lượt đang làm dải vẫn nhớ số lần.
+- Ô đáp án trắc nghiệm cao ≥ 52px (`--kin-cham-dap-an`), nút Đúng/Sai ≥ 44px.
+- Test `ui-exam-room` (17): khoá Navy đo bằng style thật, dải + số đếm DB, nhớ số lần khi vào lại, điện thoại 390px, không lỗi trình duyệt (đã thử đột biến: bỏ khung khoá thì test đỏ).
+- **Chưa làm / cần quyết:** khung đồng hồ + "PHẦN 1 · …" + "Câu 18 / 50" theo bố cục Figma (hiện vẫn bố cục cũ: cột trái đồng hồ + lưới câu hỏi); chatbot AI (`AIChatWidget`) vẫn hiện trong lúc làm bài — Figma phòng thi toàn màn hình không có, và đang là kênh gian lận tiềm năng; em chưa tự ẩn vì là quyết định sản phẩm.
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,

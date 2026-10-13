@@ -598,6 +598,8 @@ export interface ExamAttemptState {
   answers?: Record<string, string | null>;
   textAnswers?: Record<string, string>;
   boolAnswers?: Record<string, boolean | null>; // key = optionId (mệnh đề con)
+  /** Số lần học sinh đã rời tab trong lượt thi này (server đếm) — hiện ở dải "Bạn đã rời khỏi tab N lần". */
+  tabSwitchCount?: number;
   score?: number | null;
   totalPoints?: number;
 }

@@ -141,6 +141,7 @@ export async function POST(
       answers,
       textAnswers,
       boolAnswers: boolAnswersByOption,
+      tabSwitchCount: attempt.tabSwitchCount ?? 0,
     });
   } catch (e) {
     console.error("[POST /api/exams/[id]/start]", e);
