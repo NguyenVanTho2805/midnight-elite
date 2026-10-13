@@ -154,7 +154,7 @@ Dựng theo Figma "Vỏ — Quản trị" (11:287). Thay hẳn thanh bên tối 
 5. **Cộng đồng:** Hỏi đáp mở có "Mời học thử" + hàng chờ tự giữ (29:2), C1–C7 (bảng tin, chi tiết câu hỏi gợi ý trước, soạn bài chọn người xem, an toàn trẻ em, tin nhắn riêng, người chưa đăng nhập): chưa có (đang chờ PH-225 luật sư). Vỏ Quản trị 11:357 có loại dòng "Câu hỏi từ người chưa có tài khoản" — hàng chờ hiện chưa có loại này.
 6. **Thư viện (30:2)** gom theo buổi (video, PDF, đã xem/đã nộp): hiện `/thu-vien` chỉ liệt kê tài liệu của khoá miễn phí; module "Thư viện" của gia sư thực ra trỏ sang ngân hàng đề (`/admin/thi-thu/ngan-hang-de-thi`).
 7. ~~**Phòng thi (27:2):** khoá cứng Navy chưa áp dụng; dải "Bạn đã rời khỏi tab N lần" chưa có; ô đáp án 52px~~ — **ĐÃ LÀM 13/10** (mục "Phòng thi" bên dưới). Chữa bài (NV-188) đã có từ trước.
-8. **Vào lớp bằng mã mời (32:54):** `/student/nhap-ma-lop` chỉ có thẻ "Mã hợp lệ" + nút; thiếu xem trước lịch/giá/số buổi đã học, câu "Vào lớp là đồng ý ba điều", nút "Không phải lớp của tôi"; còn màu cũ.
+8. ~~**Vào lớp bằng mã mời (32:54)** thiếu xem trước lịch/giá/số buổi, thiếu "đồng ý ba điều", thiếu nút "Không phải lớp của tôi"~~ — **ĐÃ LÀM 13/10** (mục "Vào lớp bằng mã mời" bên dưới).
 9. **Đăng nhập / Bản đồ đường vào (32:2, 33:2):** chưa có đăng nhập bằng số điện thoại (cần SMS), tắt mật khẩu, phiên 30 ngày (cookie `kin_s`), phụ huynh token 90 ngày (`kin_p`), quản trị 12 giờ không gia hạn (hiện 7 ngày cho mọi vai); chưa đặt `Referrer-Policy: no-referrer` cho đường dẫn phụ huynh (Quyết định #9).
 **B. Component Figma có mà code chưa có / chưa đủ** (`src/components/kin/`: Button, Input, CodeBoxes, KinLogo + `shell/`)
 - **Nút:** thiếu kiểu "Nguy hiểm" (có Chính/Thường/Ghost); nút lệnh trong khung đọc tự viết riêng, chưa dùng `KinButton`.
@@ -176,6 +176,14 @@ Phát hiện khi rà Figma: `[data-vung="phong-thi"]` (TK-168/174, ghi "xong" tr
 - Ô đáp án trắc nghiệm cao ≥ 52px (`--kin-cham-dap-an`), nút Đúng/Sai ≥ 44px.
 - Test `ui-exam-room` (17): khoá Navy đo bằng style thật, dải + số đếm DB, nhớ số lần khi vào lại, điện thoại 390px, không lỗi trình duyệt (đã thử đột biến: bỏ khung khoá thì test đỏ).
 - **Chưa làm / cần quyết:** khung đồng hồ + "PHẦN 1 · …" + "Câu 18 / 50" theo bố cục Figma (hiện vẫn bố cục cũ: cột trái đồng hồ + lưới câu hỏi); chatbot AI (`AIChatWidget`) vẫn hiện trong lúc làm bài — Figma phòng thi toàn màn hình không có, và đang là kênh gian lận tiềm năng; em chưa tự ẩn vì là quyết định sản phẩm.
+
+## Vào lớp bằng mã mời (Figma 32:54) — XONG ngày 13/10
+`/student/nhap-ma-lop` dựng lại theo khung 32:54, nguyên tắc của Figma: **học sinh phải thấy tên gia sư và mức học phí TRƯỚC khi bấm "Vào lớp này"** (gõ nhầm một ký tự là vào nhầm lớp người khác, lúc đó mới cãi nhau tiền).
+- Thẻ "Bạn sắp vào lớp": tên lớp, Gia sư, Lịch (vd. "Thứ 3 & Thứ 5 · 19:30–21:30"; chưa đặt lịch thì nói rõ), Học phí ("55.000đ một buổi khi học 3 môn · tính theo tháng"), Đã học ("12 buổi" / "Chưa học buổi nào"). Khung "Vào lớp là đồng ý ba điều"; hai nút **Vào lớp này** / **Không phải lớp của tôi** (xoá mã, về ô nhập, không gọi máy chủ); chân trang "Xem trước rồi mới vào". Đang kiểm tra mã: khung xương hình thẻ, không vòng xoay.
+- API `GET /api/invites/by-code/[code]` trả THÊM (chỉ đọc, không đổi trường cũ): `schedule` (khung giờ đang bật), `taught` (số buổi đã qua), `tuition` {subjectCount, pricePerSession, override}. **Học phí tính đúng quy tắc AS-192/193:** số môn = các môn đang học của CÙNG gia sư + môn này (không đếm môn của gia sư khác); bậc thang 70/60/55/50 nghìn; em có `TuitionOverride` thì dùng mức riêng và ghi rõ. Lớp không có gia sư phụ trách thì `tuition = null` (không bịa mức học phí). Chữ ở `src/lib/invitePreview.ts` (thuần, có test).
+- Test: `t-invite-preview-lib` (15), `t-invite-preview` (14: API + Postgres thật — khung giờ đã tắt bị bỏ, buổi tương lai không tính, môn của gia sư khác không tính, mức riêng không lộ sang em khác, lớp không gia sư, chỉ đọc), `ui-invite-input` (26, đã cập nhật chữ mới + mục Figma + điện thoại 390px).
+- **Khác Figma:** thẻ nằm trong vỏ học sinh (không phải màn riêng); ô nhập hiện nhãn "Mã mời" nhưng tên truy cập vẫn là "Mã mời lớp".
+- **Chưa làm:** Figma ghi mã dạng `HSA-2K9-T7F3` (có gạch ngang, theo tên lớp) — mã hiện vẫn là 8 ký tự ngẫu nhiên (BE-064); đổi định dạng mã là việc riêng.
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,

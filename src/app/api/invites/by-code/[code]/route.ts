@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
+import { tuitionPreview } from "@/lib/invitePreview";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const session = await getSession();
@@ -44,6 +45,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     select: { id: true, status: true },
   });
 
+  // Xem trước cho học sinh (Figma 32:54): lịch học, số buổi đã học, học phí theo bậc thang SAU KHI vào lớp này.
+  // Chỉ đọc. Học phí chỉ có khi lớp có gia sư phụ trách (học phí tính theo gia sư); lớp của trung tâm thì để null.
+  const [slots, taught, otherSubjects, override] = await Promise.all([
+    prisma.classSchedule.findMany({ where: { courseId: course.id, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
+    prisma.attendanceSession.count({ where: { courseId: course.id, date: { lte: new Date() } } }),
+    course.owner
+      ? prisma.enrollment.count({ where: { userId: session.userId, status: "active", courseId: { not: course.id }, course: { ownerId: course.owner.id } } })
+      : Promise.resolve(0),
+    prisma.tuitionOverride.findUnique({ where: { userId: session.userId }, select: { pricePerSession: true } }),
+  ]);
+
   return NextResponse.json({
     status:          "ok",
     code:            inv!.code,
@@ -60,5 +72,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
       owner:       course.owner,
     },
     alreadyEnrolled: !!existing && existing.status === "active",
+    schedule:        slots,
+    taught,
+    tuition:         course.owner ? tuitionPreview(otherSubjects, override?.pricePerSession ?? null) : null,
   });
 }

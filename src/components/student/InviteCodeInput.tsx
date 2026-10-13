@@ -21,6 +21,10 @@ export type InvitePreviewOk = {
     owner: OwnerLite | null;
   };
   alreadyEnrolled: boolean;
+  /** Xem trước (Figma 32:54): lịch cố định hàng tuần, số buổi lớp đã học, học phí/buổi sau khi vào lớp (null nếu lớp không có gia sư phụ trách). */
+  schedule?: { dayOfWeek: number; startTime: string; endTime: string }[];
+  taught?: number;
+  tuition?: { subjectCount: number; pricePerSession: number; override: boolean } | null;
 };
 export type InvitePreviewInvalid = { status: "invalid"; error?: string; reason?: number };
 export type InvitePreview = InvitePreviewOk | InvitePreviewInvalid;
@@ -33,12 +37,13 @@ export function normalizeInviteCode(raw: string): string {
 const MIN_LEN = 4;
 
 export default function InviteCodeInput({
-  value, onChange, onResult, autoFocus = false,
+  value, onChange, onResult, autoFocus = false, id = "ma-moi-lop",
 }: {
   value: string;
   onChange: (code: string) => void;
   onResult?: (preview: InvitePreview | null, checking: boolean) => void;
   autoFocus?: boolean;
+  id?: string;
 }) {
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [checking, setChecking] = useState(false);
@@ -75,8 +80,11 @@ export default function InviteCodeInput({
   }, [value]);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-2">
+      {/* Figma 32:59: nhãn "Mã mời" phía trên, ô cao 48px, chữ đơn cách căn trái. Tên truy cập vẫn là "Mã mời lớp" (chứa nhãn hiện, đúng quy tắc label-in-name). */}
+      <label htmlFor={id} className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Mã mời</label>
       <input
+        id={id}
         autoFocus={autoFocus}
         value={value}
         onChange={e => onChange(normalizeInviteCode(e.target.value))}
@@ -84,20 +92,21 @@ export default function InviteCodeInput({
         aria-label="Mã mời lớp"
         autoComplete="off"
         spellCheck={false}
-        className="w-full text-center text-2xl font-mono tracking-widest font-bold py-3 rounded-xl focus:outline-none"
-        style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)", letterSpacing: "0.4em" }}
+        className="w-full h-12 px-[15px] font-mono text-[length:var(--kin-co-body)] tracking-[0.12em] rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] placeholder:tracking-normal placeholder:text-[var(--kin-chu-mo)]"
+        style={{ border: "1px solid var(--kin-vien-o-nhap)" }}
       />
 
       {value.length > 0 && value.length < MIN_LEN && (
         <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Mã có ít nhất {MIN_LEN} ký tự.</p>
       )}
 
+      {/* Đang kiểm tra: khung xương đúng hình thẻ xem trước (không vòng xoay — Figma 28:2 / trạng thái đang tải) */}
       {checking && (
-        <div className="flex justify-center py-2 gap-1.5" role="status" aria-label="Đang kiểm tra mã">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full animate-bounce"
-              style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i * 0.15}s` }} />
-          ))}
+        <div role="status" aria-busy="true" aria-label="Đang kiểm tra mã" className="rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] p-[15px] flex flex-col gap-3 animate-pulse">
+          <div className="h-[13px] w-1/3 rounded bg-[var(--kin-nen-re-chuot)]" />
+          <div className="h-[19px] w-3/4 rounded bg-[var(--kin-nen-re-chuot)]" />
+          <div className="h-[13px] w-full rounded bg-[var(--kin-nen-re-chuot)]" />
+          <div className="h-[13px] w-5/6 rounded bg-[var(--kin-nen-re-chuot)]" />
         </div>
       )}
 
