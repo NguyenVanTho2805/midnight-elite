@@ -68,7 +68,7 @@ export function ToastProvider({ children, defaultTimeout = 3000 }: { children: R
           <div
             key={e.id}
             className="pointer-events-auto px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl flex items-center gap-2 min-w-[200px] max-w-sm"
-            style={{ background: e.kind === "ok" ? "#16a34a" : e.kind === "err" ? "#dc2626" : "#334155" }}
+            style={{ background: e.kind === "ok" ? "var(--kin-tt-chu-xong)" : e.kind === "err" ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-phu)" }}
             role={e.kind === "err" ? "alert" : "status"}
           >
             <span>{e.kind === "ok" ? "✓" : e.kind === "err" ? "✗" : "ⓘ"}</span>

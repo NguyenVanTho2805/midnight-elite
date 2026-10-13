@@ -297,8 +297,8 @@ export default function ExamEntryPage() {
     return (
       <div className="max-w-lg mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Kết quả của bạn</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>{exam.title}</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Kết quả của bạn</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{exam.title}</p>
         </div>
 
         <div className="rounded-xl p-8 text-center"
@@ -337,7 +337,7 @@ export default function ExamEntryPage() {
 
         <button
           onClick={() => { setMyResult(null); setPhase("ready"); setCountdown(5); setScore(""); }}
-          className="w-full py-3 rounded-lg text-sm font-medium transition-colors hover:bg-[#fafafa]"
+          className="w-full py-3 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--kin-nen-bang)]"
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
           Thi lại đề này
         </button>
@@ -351,8 +351,8 @@ export default function ExamEntryPage() {
       <div className="max-w-2xl mx-auto space-y-5 pb-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-extrabold" style={{ color: "#1E2938" }}>Xem lại bài làm</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>{exam.title}</p>
+            <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Xem lại bài làm</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{exam.title}</p>
           </div>
           <button onClick={() => { setShowCorrection(false); setPhase("done"); }}
             className="text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
@@ -369,8 +369,8 @@ export default function ExamEntryPage() {
         ) : reviewData ? (
           <>
             {(reviewData.correctableCount ?? 0) > 0 && (
-              <div className="rounded-xl p-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}>
-                <p className="text-sm" style={{ color: "#0c4a6e" }}>
+              <div className="rounded-xl p-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
+                <p className="text-sm" style={{ color: "var(--kin-nhan-chu-tren-nhat)" }}>
                   Bạn có <strong>{reviewData.correctableCount} câu</strong> làm chưa đúng. Chữa lại từng câu: gợi ý trước, đáp án sau.
                 </p>
                 <button type="button" onClick={() => setShowCorrection(true)} className="px-4 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>
@@ -379,7 +379,7 @@ export default function ExamEntryPage() {
               </div>
             )}
             {!reviewData.canSeeAnswers && (
-              <div className="rounded-xl p-3 text-xs" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
+              <div className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
                 Đề thi này chưa cho phép xem đáp án lúc này — chỉ hiện câu trả lời của bạn.
               </div>
             )}
@@ -393,13 +393,13 @@ export default function ExamEntryPage() {
                     <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "var(--kin-nhan-link)" }}>{q.sectionLabel}</p>
                   )}
                 <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                  <p className="text-sm font-semibold mb-2" style={{ color: "#1E2938" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
+                  <p className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
 
                   {q.type === "MC" && (
                     <div className="space-y-1.5">
                       {q.options.map(o => {
                         const isMine = o.id === q.studentOptionId;
-                        const color = o.isCorrect === true ? "#16a34a" : o.isCorrect === false && isMine ? "#dc2626" : "var(--kin-chu-mo)";
+                        const color = o.isCorrect === true ? "var(--kin-tt-chu-xong)" : o.isCorrect === false && isMine ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)";
                         return (
                           <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color }}>
                             {isMine && <strong>→</strong>} <MathText text={o.text} />
@@ -413,7 +413,7 @@ export default function ExamEntryPage() {
                         </p>
                       )}
                       {q.correctionPending && (
-                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "#fef3c7", color: "#92400e" }}>
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                           Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — gợi ý sẽ hiện nếu chưa đúng, đáp án hiện sau khi bạn thử.
                         </p>
                       )}
@@ -464,7 +464,7 @@ export default function ExamEntryPage() {
                         <p style={{ color: "var(--kin-chu-mo)" }}>Đáp án đúng: {q.correctAnswer}</p>
                       )}
                       {q.correctionPending && (
-                        <p className="p-2 rounded-lg" style={{ background: "#fef3c7", color: "#92400e" }}>
+                        <p className="p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                           Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — đáp án hiện sau khi bạn thử.
                         </p>
                       )}
@@ -486,19 +486,19 @@ export default function ExamEntryPage() {
     return (
       <div className="max-w-lg mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Nộp kết quả</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>{exam.title}</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nộp kết quả</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{exam.title}</p>
         </div>
 
         <div className="rounded-xl p-6"
           style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <div className="mb-4 p-3 rounded-xl" style={{ background: "#dcfce7", border: "1px solid #86efac" }}>
-            <p className="text-sm font-semibold" style={{ color: "#065f46" }}>
+          <div className="mb-4 p-3 rounded-xl" style={{ background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>
               Đã mở Azota. Sau khi hoàn thành bài thi, nhập điểm của bạn dưới đây.
             </p>
           </div>
 
-          <label className="block text-sm font-semibold mb-2" style={{ color: "#1E2938" }}>
+          <label className="block text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>
             Điểm của bạn <span className="text-gray-400 font-normal">(ví dụ: 112 hoặc 8.5)</span>
           </label>
           <input
@@ -509,7 +509,7 @@ export default function ExamEntryPage() {
             onChange={e => { setScore(e.target.value); setSubmitErr(""); }}
             placeholder="0 — 150"
             className="w-full px-4 py-3 rounded-xl text-lg font-bold border-2 outline-none mb-4"
-            style={{ borderColor: submitErr ? "#fca5a5" : "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" }}
+            style={{ borderColor: submitErr ? "var(--kin-tt-vien-loi)" : "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" }}
           />
           {submitErr && <p className="text-xs mb-3" style={{ color: "var(--kin-tt-chu-loi)" }}>{submitErr}</p>}
 
@@ -556,8 +556,8 @@ export default function ExamEntryPage() {
     return (
       <div className="max-w-6xl mx-auto pb-10">
         <div className="mb-5">
-          <h1 className="text-xl font-extrabold" style={{ color: "#1E2938" }}>{exam.title}</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#6B7280" }}>Làm bài nghiêm túc — điểm được chấm và ghi nhận tự động khi nộp bài.</p>
+          <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Làm bài nghiêm túc — điểm được chấm và ghi nhận tự động khi nộp bài.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
@@ -570,7 +570,7 @@ export default function ExamEntryPage() {
               <p className="text-xs mb-1" style={{ color: "var(--kin-chu-mo)" }}>
                 {sectionWindows ? `Thời gian còn lại — ${sectionWindows[currentSectionIndex]?.label ?? ""}` : "Thời gian còn lại"}
               </p>
-              <p className="text-3xl font-extrabold tabular-nums" style={{ color: remainingSec < 60 ? "var(--kin-tt-chu-loi)" : "#1E2938" }}>{mm}:{ss}</p>
+              <p className="text-3xl font-extrabold tabular-nums" style={{ color: remainingSec < 60 ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-chinh)" }}>{mm}:{ss}</p>
             </div>
 
             <div className="rounded-xl p-4" style={cardStyle}>
@@ -600,7 +600,7 @@ export default function ExamEntryPage() {
 
             <button onClick={submitAttempt} disabled={submitting}
               className="w-full py-3 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: "#dc2626" }}>
+              style={{ background: "var(--kin-tt-chu-loi)" }}>
               {submitting ? "Đang nộp..." : "Kết thúc bài thi"}
             </button>
           </div>
@@ -617,7 +617,7 @@ export default function ExamEntryPage() {
                   <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "var(--kin-nhan-link)" }}>{q.sectionLabel}</p>
                 )}
               <div id={`q-${q.id}`} className="rounded-xl p-5" style={isLocked ? { ...cardStyle, opacity: 0.6 } : cardStyle}>
-                <p className="text-sm font-semibold mb-1" style={{ color: "#1E2938" }}>
+                <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>
                   Câu {idx + 1}: <MathText text={q.text} />
                 </p>
                 {isLocked && (
@@ -663,7 +663,7 @@ export default function ExamEntryPage() {
                               onClick={() => selectClusterAnswer(o.id, val)}
                               className="px-3 py-1 rounded-lg text-xs font-semibold border disabled:cursor-not-allowed"
                               style={clusterAnswers[o.id] === val
-                                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                                 : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                               {label}
                             </button>
@@ -697,7 +697,7 @@ export default function ExamEntryPage() {
 
         {startErr && (
           <p className="fixed bottom-4 left-1/2 -translate-x-1/2 text-xs px-3 py-2 rounded-lg z-50"
-            style={{ background: "#fef2f2", color: "var(--kin-tt-chu-loi)", border: "1px solid #fecaca" }}>{startErr}</p>
+            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>{startErr}</p>
         )}
       </div>
     );
@@ -707,8 +707,8 @@ export default function ExamEntryPage() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Phòng thi</h1>
-        <p className="text-sm mt-1" style={{ color: "#6B7280" }}>
+        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Phòng thi</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
           {exam.azotaUrl ? "Chuyển hướng tới Azota để làm bài" : "Vào phòng thi"}
         </p>
       </div>
@@ -723,8 +723,8 @@ export default function ExamEntryPage() {
             <ClipboardList size={28} />
           </div>
           <div>
-            <h2 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>{exam.title}</h2>
-            <p className="text-sm" style={{ color: "#9CA3AF" }}>{exam.date} · {exam.time}</p>
+            <h2 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</h2>
+            <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>{exam.date} · {exam.time}</p>
           </div>
         </div>
 
@@ -744,11 +744,11 @@ export default function ExamEntryPage() {
         </div>
 
         {/* Warning */}
-        <div className="rounded-xl p-4 mb-5" style={{ background: "#fef3c7", border: "1px solid #fde68a" }}>
-          <p className="text-xs font-semibold flex items-center gap-1.5 mb-1" style={{ color: "#92400e" }}>
+        <div className="rounded-xl p-4 mb-5" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+          <p className="text-xs font-semibold flex items-center gap-1.5 mb-1" style={{ color: "var(--kin-tt-chu-cho)" }}>
             <AlertTriangle size={13} /> Lưu ý quan trọng
           </p>
-          <p className="text-xs" style={{ color: "#78350f" }}>
+          <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>
             Làm bài nghiêm túc như thi thật. Kết quả sẽ được ghi nhận và tính vào GPA tháng.
           </p>
         </div>
@@ -756,13 +756,13 @@ export default function ExamEntryPage() {
         {/* Log info */}
         <div className="rounded-xl p-3 mb-5"
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <p className="text-xs font-semibold mb-1 flex items-center gap-1.5" style={{ color: "#6B7280" }}>
+          <p className="text-xs font-semibold mb-1 flex items-center gap-1.5" style={{ color: "var(--kin-chu-mo)" }}>
             <Pin size={13} /> Thông tin ghi nhận
           </p>
           <div className="space-y-1">
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>• Thời gian: {new Date().toLocaleString("vi-VN")}</p>
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>• Học viên: {studentName}</p>
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>• Mã đề thi: {exam.code}</p>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>• Thời gian: {new Date().toLocaleString("vi-VN")}</p>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>• Học viên: {studentName}</p>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>• Mã đề thi: {exam.code}</p>
           </div>
         </div>
 
@@ -789,7 +789,7 @@ export default function ExamEntryPage() {
               {startErr && <p className="text-xs mt-2 text-center" style={{ color: "var(--kin-tt-chu-loi)" }}>{startErr}</p>}
             </>
           ) : !exam.azotaUrl ? (
-            <div className="p-4 rounded-2xl text-center" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
+            <div className="p-4 rounded-2xl text-center" style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
               <p className="text-sm text-red-600 font-semibold">Đề thi chưa có link Azota</p>
               <p className="text-xs text-red-400 mt-1">Admin cần cập nhật Azota URL cho đề thi này.</p>
             </div>
@@ -807,7 +807,7 @@ export default function ExamEntryPage() {
               style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
               <span className="text-4xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{countdown}</span>
             </div>
-            <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>Đang chuyển hướng đến Azota...</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Đang chuyển hướng đến Azota...</p>
           </div>
         )}
       </div>
@@ -815,7 +815,7 @@ export default function ExamEntryPage() {
       {/* Rules */}
       <div className="rounded-xl p-5"
         style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-        <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "#1E2938" }}>
+        <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
           <ClipboardList size={16} /> Quy định phòng thi
         </h3>
         <ul className="space-y-2">
@@ -825,8 +825,8 @@ export default function ExamEntryPage() {
             "Kết quả tự động nộp khi hết giờ",
             "Vi phạm sẽ bị xử lý theo quy định kỷ luật (Strike system)",
           ].map((rule, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "#4B5563" }}>
-              <span className="mt-0.5 flex-shrink-0" style={{ color: "#FF2157" }}>•</span>
+            <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "var(--kin-chu-phu)" }}>
+              <span className="mt-0.5 flex-shrink-0" style={{ color: "var(--kin-tt-chu-loi)" }}>•</span>
               {rule}
             </li>
           ))}
@@ -835,7 +835,7 @@ export default function ExamEntryPage() {
 
       {exam.hasQuestions && (exam.showLeaderboard ?? true) && leaderboard.length > 0 && (
         <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <h3 className="text-sm font-bold mb-3" style={{ color: "#1E2938" }}>Bảng xếp hạng Top 10</h3>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Bảng xếp hạng Top 10</h3>
           <div className="space-y-2">
             {leaderboard.map((row, i) => (
               <div key={i} className="flex items-center justify-between text-sm">
@@ -852,7 +852,7 @@ export default function ExamEntryPage() {
 
       {exam.hasQuestions && history.length > 0 && (
         <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <h3 className="text-sm font-bold mb-3" style={{ color: "#1E2938" }}>Lịch sử làm bài</h3>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Lịch sử làm bài</h3>
           <div className="space-y-2">
             {history.map(h => (
               <div key={h.id} className="flex items-center justify-between text-sm">

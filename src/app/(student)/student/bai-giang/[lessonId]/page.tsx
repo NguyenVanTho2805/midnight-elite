@@ -99,9 +99,9 @@ function dbToLocalSections(dbSections: DBSection[], completedIds: Set<string>): 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<LessonType, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }> = {
   record:   { label: "Record",   color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", Icon: Play },
-  live:     { label: "LIVE",     color: "#00A63D", bg: "#d1fae5", Icon: Flash },
-  quiz:     { label: "Bài Tập",     color: "#FE9900", bg: "#fef3c7", Icon: Edit },
-  document: { label: "Tài liệu", color: "#6B7280", bg: "#f3f4f6", Icon: ClipboardList },
+  live:     { label: "LIVE",     color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Flash },
+  quiz:     { label: "Bài Tập",     color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Edit },
+  document: { label: "Tài liệu", color: "var(--kin-chu-mo)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: ClipboardList },
 };
 
 function TypeBadge({ type, small }: { type: LessonType; small?: boolean }) {
@@ -253,13 +253,13 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
           title={subtitlesOn ? "Tắt phụ đề" : "Bật phụ đề"}
           className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors"
           style={subtitlesOn
-            ? { background: "var(--kin-nhan-nen)", color: "#fff" }
-            : { background: "rgba(0,0,0,0.55)", color: "#fff" }}>
+            ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+            : { background: "rgba(0,0,0,0.55)", color: "var(--kin-chu-tren-nut-chinh)" }}>
           CC
         </button>
         {userEmail && (
           <div className="absolute bottom-14 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10"
-            style={{ color: "#fff" }}>
+            style={{ color: "var(--kin-chu-tren-nut-chinh)" }}>
             {userEmail}
           </div>
         )}
@@ -269,24 +269,24 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
 
   return (
     <div className="rounded-xl overflow-hidden"
-      style={{ background: "#0a0a0a", border: "1px solid var(--kin-vien-thuong)" }}>
+      style={{ background: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="relative" style={{ paddingBottom: "56.25%" }}>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <div className="w-20 h-20 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(100,100,100,0.5)" }}>
+            style={{ background: "color-mix(in srgb, var(--kin-chu-mo) 50%, transparent)" }}>
             <span className="text-3xl text-white ml-1">▶</span>
           </div>
           <p className="text-white text-xs opacity-50">Video chưa được cập nhật</p>
         </div>
         {userEmail && (
           <div className="absolute top-3 right-3 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg]"
-            style={{ color: "#fff" }}>
+            style={{ color: "var(--kin-chu-tren-nut-chinh)" }}>
             {userEmail}
           </div>
         )}
       </div>
       {duration && (
-        <div className="flex items-center gap-2 px-4 py-2" style={{ background: "#111" }}>
+        <div className="flex items-center gap-2 px-4 py-2" style={{ background: "var(--kin-chu-chinh)" }}>
           <span className="text-xs text-gray-400">Thời lượng: {duration}</span>
         </div>
       )}
@@ -299,29 +299,29 @@ function LiveContent({ zoomUrl }: { zoomUrl?: string | null }) {
     <div className="rounded-xl p-10 text-center"
       style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="w-20 h-20 rounded-xl flex items-center justify-center mx-auto mb-4"
-        style={{ background: "#00A63D" }}>
+        style={{ background: "var(--kin-tt-chu-xong)" }}>
         <Flash size={36} style={{ color: "white" }} />
       </div>
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: "#d1fae5", color: "#00A63D" }}>
-        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#00A63D" }} />
+        style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
+        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--kin-tt-chu-xong)" }} />
         Buổi học LIVE
       </div>
-      <h2 className="text-xl font-extrabold mb-2" style={{ color: "#1E2938" }}>
+      <h2 className="text-xl font-extrabold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>
         Buổi học sắp diễn ra
       </h2>
-      <p className="text-sm mb-6" style={{ color: "#6B7280" }}>
+      <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>
         Buổi học sẽ diễn ra trực tiếp qua Zoom. Link phòng sẽ hiển thị 15 phút trước giờ học.
       </p>
       {zoomUrl ? (
         <a href={zoomUrl} target="_blank" rel="noopener noreferrer"
           className="inline-block px-8 py-3 font-bold text-white text-sm"
-          style={{ background: "#00A63D", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
           Vào phòng Zoom →
         </a>
       ) : (
         <button disabled className="px-8 py-3 rounded-lg font-bold text-sm"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#9CA3AF" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
           Chưa đến giờ học
         </button>
       )}
@@ -334,31 +334,31 @@ function QuizContent({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: str
     <div className="rounded-xl p-10 text-center"
       style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="w-20 h-20 rounded-xl flex items-center justify-center mx-auto mb-4"
-        style={{ background: "#FE9900" }}>
+        style={{ background: "var(--kin-tt-cham-cho)" }}>
         <Edit size={36} style={{ color: "white" }} />
       </div>
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: "#fef3c7", color: "#FE9900" }}>
+        style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
         <Alarm size={12} /> Bài kiểm tra Azota
       </div>
       {deadline && (
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4 mx-2"
-          style={{ background: "#fee2e2", color: "var(--kin-tt-chu-loi)" }}>
+          style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
           <Alarm size={11} /> Deadline: {deadline}
         </div>
       )}
-      <p className="text-sm mb-6" style={{ color: "#6B7280" }}>
+      <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>
         Bài kiểm tra sẽ mở trong tab mới trên nền tảng Azota. Đảm bảo nộp bài trước deadline.
       </p>
       {azotaUrl ? (
         <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
           className="inline-block px-8 py-3 font-bold text-white text-sm"
-          style={{ background: "#FE9900", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
           Làm bài trên Azota →
         </a>
       ) : (
         <button disabled className="px-8 py-3 rounded-lg font-bold text-sm"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#9CA3AF" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
           Chưa có link bài
         </button>
       )}
@@ -371,17 +371,17 @@ function TabTaiLieu({ materials }: { materials: Material[] }) {
   if (!materials.length) return (
     <div className="text-center py-8">
       <FileDownload size={28} style={{ color: "var(--kin-vien-o-nhap)", margin: "0 auto 8px" }} />
-      <p className="text-sm" style={{ color: "#9CA3AF" }}>Chưa có tài liệu đính kèm.</p>
+      <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Chưa có tài liệu đính kèm.</p>
     </div>
   );
   return (
     <div>
-      <p className="text-xs font-semibold mb-2" style={{ color: "#6B7280" }}>Tài liệu:</p>
+      <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Tài liệu:</p>
       <div className="space-y-1.5">
         {materials.map((m, i) => (
           <a key={i} href={viewerHref(m.name, m.url)} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 hover:underline"
-            style={{ color: "#00A63D" }}>
+            style={{ color: "var(--kin-tt-chu-xong)" }}>
             <FileDownload size={16} style={{ flexShrink: 0 }} />
             <span className="text-sm font-medium truncate">{m.name}</span>
           </a>
@@ -426,8 +426,8 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
       className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
-          <p className="font-semibold text-sm" style={{ color: "#1E2938" }}>{assignment.title}</p>
-          {assignment.instructions && <p className="text-xs mt-1" style={{ color: "#6B7280" }}>{assignment.instructions}</p>}
+          <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{assignment.title}</p>
+          {assignment.instructions && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>{assignment.instructions}</p>}
         </div>
         {assignment.dueDate && (
           <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: "var(--kin-tt-chu-loi)" }}>
@@ -438,15 +438,15 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
 
       {assignment.fileUrl && (
         <a href={viewerHref(assignment.fileName || "de-bai", assignment.fileUrl)} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-3" style={{ color: "#00A63D" }}>
+          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-3" style={{ color: "var(--kin-tt-chu-xong)" }}>
           <FileDownload size={14} /> {assignment.fileName || "Tải đề bài"}
         </a>
       )}
 
       {sub?.gradedAt ? (
-        <div className="p-3 rounded-lg mb-2" style={{ background: "#dcfce7" }}>
+        <div className="p-3 rounded-lg mb-2" style={{ background: "var(--kin-tt-nen-xong)" }}>
           <p className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>Điểm: {sub.score}/{assignment.maxPoints}</p>
-          {sub.comment && <p className="text-xs mt-1" style={{ color: "#166534" }}>Nhận xét: {sub.comment}</p>}
+          {sub.comment && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-xong)" }}>Nhận xét: {sub.comment}</p>}
         </div>
       ) : sub ? (
         <p className="text-xs mb-2" style={{ color: "var(--kin-nhan-link)" }}>Đã nộp lúc {new Date(sub.submittedAt).toLocaleString("vi-VN")} — chờ chấm điểm.</p>
@@ -457,7 +457,7 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
           <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
             className="px-4 py-2 text-xs font-bold text-white rounded-lg disabled:opacity-50"
-            style={{ background: "#FE9900" }}>
+            style={{ background: "var(--kin-tt-cham-cho)" }}>
             {uploading ? "Đang nộp..." : sub ? "Nộp lại bài (hoặc kéo-thả file)" : "Nộp bài (hoặc kéo-thả file)"}
           </button>
         </>
@@ -479,22 +479,22 @@ function QuestionAnswerRow({ q, qi, locked, saving, onSelectOption, onEssayChang
     if (!locked) {
       return mine?.optionId === o.id
         ? { borderColor: "var(--kin-nhan-nen)", background: "var(--kin-nhan-nen-nhat)" }
-        : { borderColor: "var(--kin-vien-thuong)", background: "#fff" };
+        : { borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" };
     }
     // Đã khoá — tô xanh đáp án đúng, đỏ nếu học viên lỡ chọn sai.
-    if (o.isCorrect) return { borderColor: "#16a34a", background: "#dcfce7" };
-    if (mine?.optionId === o.id) return { borderColor: "#dc2626", background: "#fee2e2" };
-    return { borderColor: "var(--kin-vien-thuong)", background: "#fff" };
+    if (o.isCorrect) return { borderColor: "var(--kin-tt-chu-xong)", background: "var(--kin-tt-nen-xong)" };
+    if (mine?.optionId === o.id) return { borderColor: "var(--kin-tt-chu-loi)", background: "var(--kin-tt-nen-loi)" };
+    return { borderColor: "var(--kin-vien-thuong)", background: "var(--kin-nen-trang)" };
   }
 
   return (
-    <div className="rounded-lg p-3" style={{ background: "#fff", border: "1px solid var(--kin-vien-thuong)" }}>
+    <div className="rounded-lg p-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <p className="text-sm font-medium flex-1" style={{ color: "#1E2938" }}>
-          <span className="text-xs font-semibold mr-1" style={{ color: "#9CA3AF" }}>Câu {qi + 1}.</span>
+        <p className="text-sm font-medium flex-1" style={{ color: "var(--kin-chu-chinh)" }}>
+          <span className="text-xs font-semibold mr-1" style={{ color: "var(--kin-chu-mo)" }}>Câu {qi + 1}.</span>
           <MathText text={q.text} />
         </p>
-        <span className="text-xs flex-shrink-0" style={{ color: "#9CA3AF" }}>{q.points}đ</span>
+        <span className="text-xs flex-shrink-0" style={{ color: "var(--kin-chu-mo)" }}>{q.points}đ</span>
       </div>
       {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-48 rounded-lg border mb-2" style={{ borderColor: "var(--kin-vien-thuong)" }} />}
 
@@ -511,7 +511,7 @@ function QuestionAnswerRow({ q, qi, locked, saving, onSelectOption, onEssayChang
       ) : (
         <textarea
           className="w-full px-3 py-2 text-sm border rounded-lg outline-none resize-none focus:border-blue-400"
-          style={{ borderColor: "var(--kin-vien-thuong)", background: locked ? "var(--kin-nen-bang)" : "#fff" }}
+          style={{ borderColor: "var(--kin-vien-thuong)", background: locked ? "var(--kin-nen-bang)" : "var(--kin-nen-trang)" }}
           rows={3} disabled={locked}
           placeholder="Nhập câu trả lời..."
           value={mine?.textAnswer ?? ""}
@@ -519,7 +519,7 @@ function QuestionAnswerRow({ q, qi, locked, saving, onSelectOption, onEssayChang
           onBlur={e => onEssayBlur(e.target.value)} />
       )}
 
-      {saving && <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>Đang lưu...</p>}
+      {saving && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Đang lưu...</p>}
 
       {locked && q.explanation && (
         <p className="text-xs mt-2 p-2 rounded-lg" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>
@@ -532,7 +532,7 @@ function QuestionAnswerRow({ q, qi, locked, saving, onSelectOption, onEssayChang
             Điểm: {mine.pointsAwarded}/{q.points}{mine.teacherComment && ` — ${mine.teacherComment}`}
           </p>
         ) : (
-          <p className="text-xs mt-2" style={{ color: "#9CA3AF" }}>Chưa được giáo viên chấm.</p>
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>Chưa được giáo viên chấm.</p>
         )
       )}
     </div>
@@ -584,7 +584,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
   if (loading) {
     return (
       <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-        <p className="text-xs" style={{ color: "#9CA3AF" }}>Đang tải...</p>
+        <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Đang tải...</p>
       </div>
     );
   }
@@ -599,22 +599,22 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
     <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
-          <p className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "#1E2938" }}>
+          <p className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "var(--kin-chu-chinh)" }}>
             <span title="Làm trên web">🖥️</span> {assignment.title}
           </p>
-          {assignment.instructions && <p className="text-xs mt-1" style={{ color: "#6B7280" }}>{assignment.instructions}</p>}
+          {assignment.instructions && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>{assignment.instructions}</p>}
         </div>
         {assignment.dueDate && (
-          <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: locked ? "#6B7280" : "var(--kin-tt-chu-loi)" }}>
+          <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: locked ? "var(--kin-chu-mo)" : "var(--kin-tt-chu-loi)" }}>
             <Alarm size={11} /> {locked ? `Đã hết hạn ${fmtDue(assignment.dueDate)}` : `Hạn ${fmtDue(assignment.dueDate)}`}
           </p>
         )}
       </div>
 
       {locked ? (
-        <div className="p-3 rounded-lg mb-3" style={{ background: "#dcfce7" }}>
+        <div className="p-3 rounded-lg mb-3" style={{ background: "var(--kin-tt-nen-xong)" }}>
           <p className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>Điểm: {totalScore}/{maxScore}</p>
-          <p className="text-xs mt-0.5" style={{ color: "#166534" }}>
+          <p className="text-xs mt-0.5" style={{ color: "var(--kin-tt-chu-xong)" }}>
             Đã hết hạn — xem lại đáp án bên dưới.{hasUngradedEssay && " Một số câu tự luận chưa được chấm, điểm có thể thay đổi."}
           </p>
         </div>
@@ -624,7 +624,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
 
       {!expanded ? (
         <button onClick={() => setExpanded(true)}
-          className="px-4 py-2 text-xs font-bold text-white rounded-lg" style={{ background: "#FE9900" }}>
+          className="px-4 py-2 text-xs font-bold text-white rounded-lg" style={{ background: "var(--kin-tt-cham-cho)" }}>
           {locked ? "Xem lại bài làm" : completion.answered > 0 ? "Tiếp tục làm bài" : "Bắt đầu làm bài"}
         </button>
       ) : (
@@ -635,7 +635,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
               onEssayChange={text => updateEssayLocal(q.id, text)}
               onEssayBlur={text => saveAnswer(q.id, { textAnswer: text })} />
           ))}
-          <button onClick={() => setExpanded(false)} className="text-xs font-semibold" style={{ color: "#6B7280" }}>Thu gọn</button>
+          <button onClick={() => setExpanded(false)} className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Thu gọn</button>
         </div>
       )}
     </div>
@@ -652,7 +652,7 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
   }, [lessonId]);
 
   if (!azotaUrl && !loading && assignments.length === 0) {
-    return <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Bài học này không có bài kiểm tra.</p>;
+    return <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Bài học này không có bài kiểm tra.</p>;
   }
 
   return (
@@ -661,12 +661,12 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
         <div className="rounded-xl p-4 flex items-center justify-between gap-4"
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
           <div>
-            <p className="font-semibold text-sm" style={{ color: "#1E2938" }}>Quiz — Xử lý số liệu</p>
+            <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Quiz — Xử lý số liệu</p>
             {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}><Alarm size={11} /> Deadline: {deadline}</p>}
           </div>
           <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
             className="flex-shrink-0 px-4 py-2 text-xs font-bold text-white"
-            style={{ background: "#FE9900", borderRadius: "8px" }}>
+            style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
             Làm bài →
           </a>
         </div>
@@ -726,33 +726,33 @@ function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: stri
   return (
     <div className="space-y-4">
       {adminNote && (
-        <div className="rounded-xl p-4" style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+        <div className="rounded-xl p-4" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm">📌</span>
-            <span className="text-xs font-bold" style={{ color: "#92400E" }}>Lưu ý từ gia sư</span>
+            <span className="text-xs font-bold" style={{ color: "var(--kin-tt-chu-cho)" }}>Lưu ý từ gia sư</span>
           </div>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "#78350F" }}>{adminNote}</p>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "var(--kin-tt-chu-cho)" }}>{adminNote}</p>
         </div>
       )}
 
       <div>
-        <p className="text-xs font-semibold mb-2" style={{ color: "#6B7280" }}>Ghi chú cá nhân (chỉ bạn thấy)</p>
+        <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Ghi chú cá nhân (chỉ bạn thấy)</p>
         <textarea
           value={note} onChange={(e) => { setNote(e.target.value); setSaved(false); }}
           rows={5} placeholder={loading ? "Đang tải ghi chú..." : "Ghi chú của bạn về bài học này..."}
           disabled={loading}
           className="w-full p-4 rounded-xl text-sm resize-none outline-none"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#1E2938" }}
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}
         />
         <div className="flex items-center gap-3 mt-2">
           <button onClick={handleSave} disabled={loading || saving}
             className="px-5 py-2 text-sm font-bold transition-all"
-            style={{ background: saved ? "#00A63D" : "var(--kin-nhan-nen)", borderRadius: "8px", color: "white", opacity: saving ? 0.7 : 1 }}>
+            style={{ background: saved ? "var(--kin-tt-chu-xong)" : "var(--kin-nhan-nen)", borderRadius: "8px", color: "white", opacity: saving ? 0.7 : 1 }}>
             {saved ? "✓ Đã lưu" : saving ? "Đang lưu..." : "Lưu ghi chú"}
           </button>
           {note && (
             <button onClick={handleClear}
-              className="text-xs" style={{ color: "#9CA3AF" }}>
+              className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
               Xoá
             </button>
           )}
@@ -764,7 +764,7 @@ function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: stri
 
 type ScheduleItem = { type: LessonType; subject: string; topic: string; time: string; date: string };
 function TabLich({ items }: { items: ScheduleItem[] }) {
-  if (!items.length) return <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Không có sự kiện liên quan.</p>;
+  if (!items.length) return <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Không có sự kiện liên quan.</p>;
   return (
     <div className="space-y-2">
       {items.map((e: ScheduleItem, i: number) => {
@@ -777,8 +777,8 @@ function TabLich({ items }: { items: ScheduleItem[] }) {
               <cfg.Icon size={17} style={{ color: cfg.color }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate" style={{ color: "#1E2938" }}>{e.topic}</p>
-              <p className="text-xs" style={{ color: "#9CA3AF" }}>{e.date} · {e.time}</p>
+              <p className="font-semibold text-sm truncate" style={{ color: "var(--kin-chu-chinh)" }}>{e.topic}</p>
+              <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{e.date} · {e.time}</p>
             </div>
             <TypeBadge type={e.type} small />
           </div>
@@ -831,7 +831,7 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                 style={{ color: "var(--kin-chu-mo)" }}>
                 ← Khóa học
               </Link>
-              <p className="text-sm font-extrabold leading-snug line-clamp-2" style={{ color: "#1E2938" }}>{courseName}</p>
+              <p className="text-sm font-extrabold leading-snug line-clamp-2" style={{ color: "var(--kin-chu-chinh)" }}>{courseName}</p>
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--kin-vien-thuong)" }}>
                   <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--kin-nhan-nen)" }} />
@@ -855,12 +855,12 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-left"
                       style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-extrabold uppercase tracking-wide leading-tight" style={{ color: "#1E2938" }}>
+                        <p className="text-xs font-extrabold uppercase tracking-wide leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>
                           {section.title}
                         </p>
-                        <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{done}/{lessons.length} bài</p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{done}/{lessons.length} bài</p>
                       </div>
-                      <ChevronDown size={13} style={{ color: "#9CA3AF", transform: secOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+                      <ChevronDown size={13} style={{ color: "var(--kin-chu-mo)", transform: secOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
                     </button>
 
                     {secOpen && (
@@ -869,8 +869,8 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                           <div key={chapter.id}>
                             {/* Chapter sub-label (only if >1 chapter in section) */}
                             {section.chapters.length > 1 && (
-                              <div className="px-4 py-1.5" style={{ background: "#fafaf9", borderBottom: "1px solid #f0ede9" }}>
-                                <p className="text-xs font-semibold" style={{ color: "#9CA3AF" }}>
+                              <div className="px-4 py-1.5" style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-nhat)" }}>
+                                <p className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>
                                   {ci + 1}. {chapter.title}
                                 </p>
                               </div>
@@ -886,15 +886,15 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                                   style={{
                                     background: isCurrent ? "var(--kin-nhan-nen-nhat)" : "transparent",
                                     borderLeft: isCurrent ? "3px solid var(--kin-nhan-nen)" : "3px solid transparent",
-                                    borderBottom: "1px solid #f0ede9",
+                                    borderBottom: "1px solid var(--kin-vien-nhat)",
                                     opacity: lesson.isLocked ? 0.55 : 1,
                                     cursor: lesson.isLocked ? "not-allowed" : "pointer",
                                   }}>
                                   {/* Circle */}
                                   <div className="flex-shrink-0 mt-0.5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center"
                                     style={{
-                                      borderColor: isDone ? "#00A63D" : isCurrent ? "var(--kin-nhan-nen)" : "#d1d5db",
-                                      background: isDone ? "#00A63D" : isCurrent ? "var(--kin-nhan-nen)" : "transparent",
+                                      borderColor: isDone ? "var(--kin-tt-chu-xong)" : isCurrent ? "var(--kin-nhan-nen)" : "var(--kin-vien-o-nhap)",
+                                      background: isDone ? "var(--kin-tt-chu-xong)" : isCurrent ? "var(--kin-nhan-nen)" : "transparent",
                                     }}>
                                     {isDone && (
                                       <svg viewBox="0 0 10 8" width="8" height="8" fill="none">
@@ -902,7 +902,7 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                                       </svg>
                                     )}
                                     {!isDone && isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                    {lesson.isLocked && <Lock size={8} style={{ color: "#9CA3AF" }} />}
+                                    {lesson.isLocked && <Lock size={8} style={{ color: "var(--kin-chu-mo)" }} />}
                                   </div>
 
                                   {/* Text */}
@@ -919,7 +919,7 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                                         </span>
                                       )}
                                       {lesson.isFree && !lesson.isLocked && (
-                                        <span className="text-xs font-bold px-1.5 rounded-full" style={{ background: "#d1fae5", color: "#00A63D" }}>FREE</span>
+                                        <span className="text-xs font-bold px-1.5 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>FREE</span>
                                       )}
                                     </div>
                                   </div>
@@ -1016,17 +1016,17 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-5 text-center px-4">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-          style={{ background: isForbidden ? "#FFF7ED" : "var(--kin-nen-bang)" }}>
+          style={{ background: isForbidden ? "var(--kin-tt-nen-cho)" : "var(--kin-nen-bang)" }}>
           {isForbidden
-            ? <Lock size={28} style={{ color: "#FE9900" }} />
-            : <FileDownload size={28} style={{ color: "#9CA3AF" }} />
+            ? <Lock size={28} style={{ color: "var(--kin-tt-chu-cho)" }} />
+            : <FileDownload size={28} style={{ color: "var(--kin-chu-mo)" }} />
           }
         </div>
         <div>
-          <p className="text-lg font-extrabold mb-1" style={{ color: "#1E2938" }}>
+          <p className="text-lg font-extrabold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>
             {isForbidden ? "Bài học này yêu cầu mua khóa học" : "Không tìm thấy bài học"}
           </p>
-          <p className="text-sm" style={{ color: "#9CA3AF" }}>
+          <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>
             {isForbidden
               ? "Bạn chưa đăng ký khóa học này. Vui lòng mua khóa học để truy cập."
               : "Bài học không tồn tại hoặc đã bị xóa."}
@@ -1036,7 +1036,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           {isForbidden ? (
             <Link href="/khoa-hoc"
               className="px-4 py-2 text-sm font-bold text-white rounded-xl"
-              style={{ background: "#FE9900" }}>
+              style={{ background: "var(--kin-tt-cham-cho)" }}>
               Xem các khóa học
             </Link>
           ) : (
@@ -1131,12 +1131,12 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
         <div className="flex-1 min-w-0 px-4 md:px-6 py-5 space-y-4">
 
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-xs flex-wrap" style={{ color: "#9CA3AF" }}>
+          <div className="flex items-center gap-2 text-xs flex-wrap" style={{ color: "var(--kin-chu-mo)" }}>
             <Link href="/student" style={{ color: "var(--kin-nhan-link)" }}>Tổng quan</Link>
             <span>/</span>
             <Link href={`/student/hoc-tap?course=${dbCourse.id}`} style={{ color: "var(--kin-nhan-link)" }}>{dbCourse.name}</Link>
             <span>/</span>
-            <span style={{ color: "#1E2938" }} className="truncate max-w-[200px]">{lesson.title}</span>
+            <span style={{ color: "var(--kin-chu-chinh)" }} className="truncate max-w-[200px]">{lesson.title}</span>
           </div>
 
           {/* Content by type */}
@@ -1161,14 +1161,14 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
                   {lesson.code}
                 </span>
               </div>
-              <h1 className="text-xl font-extrabold leading-snug" style={{ color: "#1E2938" }}>{lesson.title}</h1>
-              <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "#9CA3AF" }}>
+              <h1 className="text-xl font-extrabold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{lesson.title}</h1>
+              <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
                 {lesson.teacherName && <span>{lesson.teacherName}</span>}
                 {lesson.duration && <span className="flex items-center gap-1"><Play size={11} />{lesson.duration}</span>}
                 <span className="flex items-center gap-1"><Eye size={11} />{lesson.views?.toLocaleString()} lượt xem</span>
                 {lesson.materials.length > 0 && <span className="flex items-center gap-1"><FileDownload size={11} />{lesson.materials.length} tài liệu</span>}
                 <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#00A63D" }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--kin-tt-chu-xong)" }} />
                   Đang theo dõi phiên học · Thiết bị 1/2
                 </span>
               </div>
@@ -1177,9 +1177,9 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
               onClick={() => isCompleted ? unmarkComplete(params.lessonId) : markComplete(params.lessonId)}
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
               style={{
-                background: isCompleted ? "#D1FAE5" : "var(--kin-nen-bang)",
-                border: `1px solid ${isCompleted ? "#86efac" : "var(--kin-vien-thuong)"}`,
-                color: isCompleted ? "#065F46" : "#9CA3AF",
+                background: isCompleted ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)",
+                border: `1px solid ${isCompleted ? "var(--kin-tt-vien-xong)" : "var(--kin-vien-thuong)"}`,
+                color: isCompleted ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)",
               }}>
               <CheckCircle size={14} />
               {isCompleted ? "Đã hoàn thành ✓" : "Đánh dấu xong"}
@@ -1196,7 +1196,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
                   style={{
                     borderBottom: `2px solid ${activeTab === t.key ? "var(--kin-nhan-nen)" : "transparent"}`,
                     marginBottom: "-1px",
-                    color: activeTab === t.key ? "var(--kin-nhan-link)" : "#9CA3AF",
+                    color: activeTab === t.key ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)",
                   }}>
                   {t.icon}
                   {t.label}
@@ -1214,19 +1214,19 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           <div className="flex items-stretch gap-4 pt-4 pb-6" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
             {prevLesson ? (
               <Link href={`/student/bai-giang/${prevLesson.id}`} className="flex-1 min-w-0 group">
-                <p className="text-xs mb-1 flex items-center gap-1" style={{ color: "#9CA3AF" }}>
+                <p className="text-xs mb-1 flex items-center gap-1" style={{ color: "var(--kin-chu-mo)" }}>
                   <ArrowLeft size={12} /> Bài trước
                 </p>
-                <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "#1E2938" }}>{prevLesson.title}</p>
+                <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "var(--kin-chu-chinh)" }}>{prevLesson.title}</p>
               </Link>
             ) : <div className="flex-1" />}
             <div className="w-px" style={{ background: "var(--kin-vien-thuong)" }} />
             {nextLesson ? (
               <Link href={`/student/bai-giang/${nextLesson.id}`} className="flex-1 min-w-0 text-right group">
-                <p className="text-xs mb-1 flex items-center gap-1 justify-end" style={{ color: "#9CA3AF" }}>
+                <p className="text-xs mb-1 flex items-center gap-1 justify-end" style={{ color: "var(--kin-chu-mo)" }}>
                   Bài tiếp <ArrowRight size={12} />
                 </p>
-                <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "#1E2938" }}>{nextLesson.title}</p>
+                <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "var(--kin-chu-chinh)" }}>{nextLesson.title}</p>
               </Link>
             ) : <div className="flex-1" />}
           </div>
@@ -1248,8 +1248,8 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           <div className="relative rounded-t-3xl p-4 max-h-[75vh] flex flex-col"
             style={{ background: "var(--kin-nen-trang)", borderTop: "1px solid var(--kin-vien-thuong)" }}>
             <div className="flex items-center justify-between mb-3">
-              <p className="font-extrabold" style={{ color: "#1E2938" }}>Nội dung khóa học</p>
-              <button onClick={() => setOutlineOpen(false)} className="text-sm" style={{ color: "#9CA3AF" }}>✕ Đóng</button>
+              <p className="font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nội dung khóa học</p>
+              <button onClick={() => setOutlineOpen(false)} className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>✕ Đóng</button>
             </div>
             <div className="overflow-y-auto flex-1">
               <LeftCourseSidebar

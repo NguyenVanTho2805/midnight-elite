@@ -48,8 +48,8 @@ const WEEK_DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const TYPE_CFG = {
-  exam:     { label: "Thi thử",  color: "#FF2157", bg: "#fee2e2", Icon: Edit },
-  deadline: { label: "Deadline", color: "#FE9900", bg: "#fef3c7", Icon: Alarm },
+  exam:     { label: "Thi thử",  color: "var(--kin-tt-chu-loi)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Edit },
+  deadline: { label: "Deadline", color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Alarm },
   class:    { label: "Buổi học", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", Icon: Play },
 } as const;
 
@@ -127,17 +127,17 @@ export default function LichHocPage() {
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Hôm nay",           value: todayCount,    color: "var(--kin-tt-chu-loi)", bg: "#fee2e2", border: "#fca5a5" },
-          { label: "Buổi học tuần này", value: classCount,    color: "#0055D4", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
-          { label: "Thi thử tuần này",  value: examCount,     color: "#FF2157", bg: "#fee2e2", border: "#fca5a5" },
-          { label: "Deadline tuần này", value: deadlineCount, color: "var(--kin-tt-chu-cho)", bg: "#fef3c7", border: "#fde68a" },
+          { label: "Hôm nay",           value: todayCount,    color: "var(--kin-tt-chu-loi)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-loi)" },
+          { label: "Buổi học tuần này", value: classCount,    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
+          { label: "Thi thử tuần này",  value: examCount,     color: "var(--kin-tt-chu-loi)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-loi)" },
+          { label: "Deadline tuần này", value: deadlineCount, color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-cho)" },
         ].map((s) => (
           <div key={s.label} className="rounded-xl p-4 text-center"
             style={{ background: s.bg, border: `1px solid ${s.border}` }}>
             {loading
               ? <div className="h-8 w-8 mx-auto mb-1 rounded-md animate-pulse" style={{ background: s.border }} />
               : <div className="text-2xl font-bold mb-0.5" style={{ color: s.color }}>{s.value}</div>}
-            <div className="text-xs" style={{ color: "#9CA3AF" }}>{s.label}</div>
+            <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -219,7 +219,7 @@ export default function LichHocPage() {
               <div key={iso}>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
-                    style={{ background: isToday ? "#dc2626" : "var(--kin-nhan-nen)" }}>
+                    style={{ background: isToday ? "var(--kin-tt-chu-loi)" : "var(--kin-nhan-nen)" }}>
                     {iso.slice(8)}
                   </div>
                   <div>
@@ -231,7 +231,7 @@ export default function LichHocPage() {
                 </div>
 
                 <div className="space-y-2 pl-3 border-l-2"
-                  style={{ borderColor: isToday ? "#dc2626" : "var(--kin-vien-thuong)" }}>
+                  style={{ borderColor: isToday ? "var(--kin-tt-chu-loi)" : "var(--kin-vien-thuong)" }}>
                   {dayEvents.map((event) => {
                     const cfg = TYPE_CFG[event.type];
                     return (

@@ -21,8 +21,8 @@ export interface ParentLinkItem {
 export type ParentLinkNotify = (message: string, type: "success" | "error") => void;
 
 const STATUS: Record<string, { text: string; bg: string; color: string }> = {
-  verified: { text: "Đã xác nhận", bg: "#d1fae5", color: "#065f46" },
-  pending:  { text: "Chờ xác nhận", bg: "#fef3c7", color: "#92400e" },
+  verified: { text: "Đã xác nhận", bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  pending:  { text: "Chờ xác nhận", bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
   revoked:  { text: "Đã thu hồi",  bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" },
 };
 
@@ -161,12 +161,12 @@ export default function ParentLinkWidget({
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => respond(link.id, "verify")} disabled={actingId === link.id}
                       className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white disabled:opacity-50"
-                      style={{ background: "#16a34a", borderRadius: "8px" }}>
+                      style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                       Xác nhận
                     </button>
                     <button onClick={() => respond(link.id, "revoke")} disabled={actingId === link.id}
                       className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
-                      style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: "8px" }}>
+                      style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)", borderRadius: "8px" }}>
                       Từ chối
                     </button>
                   </div>

@@ -99,7 +99,7 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá được nếu không còn đầu mục con hoặc câu hỏi nào bên trong.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={() => { onDelete(card.id); setConfirmDel(false); }} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={() => { onDelete(card.id); setConfirmDel(false); }} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>

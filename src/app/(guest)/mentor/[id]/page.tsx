@@ -68,8 +68,8 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
         <p className="text-5xl mb-4">🔍</p>
-        <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1E2938" }}>Không tìm thấy gia sư</h1>
-        <p className="text-sm mb-6" style={{ color: "#6B7280" }}>Gia sư này không tồn tại hoặc chưa được duyệt công khai.</p>
+        <h1 className="text-2xl font-extrabold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Không tìm thấy gia sư</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>Gia sư này không tồn tại hoặc chưa được duyệt công khai.</p>
         <Link href="/giang-vien" className="px-6 py-3 rounded-lg font-semibold text-white text-sm"
           style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
           Xem danh sách gia sư
@@ -83,7 +83,7 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
       <Link href="/giang-vien" className="inline-flex items-center gap-2 text-sm font-semibold"
-        style={{ color: "#6B7280" }}>
+        style={{ color: "var(--kin-chu-mo)" }}>
         <ArrowLeft size={16} /> Quay lại danh sách
       </Link>
 
@@ -92,9 +92,9 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
 
       {/* FE-113: lớp đang dạy */}
       <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-        <h2 className="font-extrabold text-sm mb-4" style={{ color: "#1E2938" }}>Lớp đang dạy</h2>
+        <h2 className="font-extrabold text-sm mb-4" style={{ color: "var(--kin-chu-chinh)" }}>Lớp đang dạy</h2>
         {classes.length === 0 ? (
-          <p className="text-sm py-4" style={{ color: "#9CA3AF" }}>Gia sư chưa có lớp công khai.</p>
+          <p className="text-sm py-4" style={{ color: "var(--kin-chu-mo)" }}>Gia sư chưa có lớp công khai.</p>
         ) : (
           <div className="space-y-3">
             {classes.map(c => (
@@ -102,17 +102,17 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
                 <div className="rounded-xl p-4 cursor-pointer hover:-translate-y-0.5 transition-transform"
                   style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="font-semibold text-sm leading-snug" style={{ color: "#1E2938" }}>{c.name}</p>
+                    <p className="font-semibold text-sm leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</p>
                     {c.classStatus !== "open" && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>
+                        style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                         {c.classStatus === "closed" ? "Đã đóng" : "Tạm ngừng"}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: "#9CA3AF" }}>
+                  <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: "var(--kin-chu-mo)" }}>
                     {c.rating.avg !== null && (
-                      <span style={{ color: "#FE9900" }}>★ {c.rating.avg.toFixed(1)}</span>
+                      <span style={{ color: "var(--kin-tt-chu-cho)" }}>★ {c.rating.avg.toFixed(1)}</span>
                     )}
                     <span>·</span>
                     <span>{c.activeCount.toLocaleString()} học viên</span>
@@ -141,8 +141,8 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
       {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
       {(tutor.zalo || tutor.messenger) && (
         <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <p className="text-sm" style={{ color: "#4B5563" }}>
-            {tutor.zalo ? <>Liên hệ qua Zalo: <b style={{ color: "#1E2938" }}>{tutor.zalo}</b></> : "Liên hệ gia sư"}
+          <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>
+            {tutor.zalo ? <>Liên hệ qua Zalo: <b style={{ color: "var(--kin-chu-chinh)" }}>{tutor.zalo}</b></> : "Liên hệ gia sư"}
           </p>
           <div className="flex gap-2 flex-wrap">
             {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className="px-4 py-2 rounded-lg text-sm font-semibold text-white min-h-[44px] inline-flex items-center" style={{ background: "var(--kin-nhan-nen)" }}>Nhắn Zalo</a>}
@@ -155,14 +155,14 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
       )}
 
       {/* PH-212: chống lừa đảo làm lợi thế — nhìn thấy trên hồ sơ, kèm nút Báo cáo */}
-      <div role="note" className="rounded-2xl p-5" style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
-        <p className="text-sm font-semibold" style={{ color: "#92400e" }}>Không chuyển khoản trước buổi học thử.</p>
-        <p className="text-sm mt-1" style={{ color: "#78350f" }}>Nếu ai đòi anh/chị chuyển khoản trước buổi học thử, đừng chuyển và bấm Báo cáo.</p>
+      <div role="note" className="rounded-2xl p-5" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+        <p className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>Không chuyển khoản trước buổi học thử.</p>
+        <p className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-cho)" }}>Nếu ai đòi anh/chị chuyển khoản trước buổi học thử, đừng chuyển và bấm Báo cáo.</p>
         <div className="mt-1"><ReportProfileButton tutorId={tutor.id} /></div>
       </div>
 
       {/* PH-207: vòng kéo gia sư mới — huy hiệu "tạo bằng KiN" bật sẵn */}
-      <div id="kin-profile-end" className="text-center text-sm py-2" style={{ color: "#6B7280" }}>
+      <div id="kin-profile-end" className="text-center text-sm py-2" style={{ color: "var(--kin-chu-mo)" }}>
         Hồ sơ tạo bằng KiN · sổ lớp miễn phí cho gia sư →{" "}
         <Link href="/dang-ky?vai=gia-su&n=ho-so" className="underline font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Tạo hồ sơ của bạn</Link>
       </div>

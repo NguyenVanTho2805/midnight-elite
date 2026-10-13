@@ -73,7 +73,7 @@ function toItem(u: ApiItem): Item {
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
     <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
-      style={{ background: ok ? "#16a34a" : "#dc2626" }}>
+      style={{ background: ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
       {ok ? "✓" : "✗"} {msg}
     </div>
   );
@@ -136,7 +136,7 @@ function ActionMenu({ itemId, onDelete }: { itemId: string; onDelete: () => void
                 </button>
                 <button onClick={() => { onDelete(); setOpen(false); setConfirmDel(false); }}
                   className="flex-1 py-1.5 rounded text-xs font-semibold text-white cursor-pointer"
-                  style={{ background: "#dc2626" }}>
+                  style={{ background: "var(--kin-tt-chu-loi)" }}>
                   Xoá
                 </button>
               </div>
@@ -254,7 +254,7 @@ function ItemDrawer({ open, onClose, onSaved }: {
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity cursor-pointer"
-              style={{ background: "#16a34a" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
@@ -290,7 +290,7 @@ function ItemDrawer({ open, onClose, onSaved }: {
 
           {/* Toggle trạng thái — luôn ở cuối form */}
           <div className="flex items-center justify-between py-3 px-4 rounded-lg"
-            style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
             <div>
               <p className="text-sm font-medium text-gray-700">Hiển thị trên website</p>
               <p className="text-xs text-gray-400">Tắt để lưu nháp</p>
@@ -434,7 +434,7 @@ function PageInner() {
             </button>
             <button onClick={() => setCreate(true)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-              style={{ background: "#16a34a" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               + Tạo mới
             </button>
           </div>

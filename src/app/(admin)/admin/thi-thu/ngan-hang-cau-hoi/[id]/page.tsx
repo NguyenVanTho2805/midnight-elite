@@ -13,9 +13,9 @@ import { DuplicateScanModal } from "@/components/DuplicateScanModal";
 const DIFFICULTY_KEYS: Difficulty[] = ["NB", "TH", "VD", "VDC"];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
-  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
+  TH:  { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 
 const TYPE_KEYS: QuestionType[] = ["MC", "ESSAY", "TRUE_FALSE_CLUSTER", "SHORT_ANSWER"];
@@ -216,7 +216,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá được nếu không còn {childLabel.toLowerCase()} nào bên trong hoặc câu hỏi nào gắn vào.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={handleDelete} disabled={busy} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={handleDelete} disabled={busy} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>
@@ -352,7 +352,7 @@ function PageInner() {
             <button key={t.v} onClick={() => setView(t.v)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
               style={view === t.v
-                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                 : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
               {t.label}
             </button>
@@ -428,7 +428,7 @@ function PageInner() {
                     <tr key={chapter.id} className="border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
                       <td className="px-4 py-3">{chapter.name}</td>
                       {DIFFICULTY_KEYS.map(k => (
-                        <td key={k} className="px-4 py-3 text-right" style={chapter.difficultyTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
+                        <td key={k} className="px-4 py-3 text-right" style={chapter.difficultyTotals[k] === 0 ? { color: "var(--kin-chu-mo)" } : undefined}>
                           {chapter.difficultyTotals[k]}
                         </td>
                       ))}
@@ -461,7 +461,7 @@ function PageInner() {
                     <tr key={chapter.id} className="border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
                       <td className="px-4 py-3">{chapter.name}</td>
                       {TYPE_KEYS.map(k => (
-                        <td key={k} className="px-4 py-3 text-right" style={chapter.typeTotals[k] === 0 ? { color: "#c9c6c0" } : undefined}>
+                        <td key={k} className="px-4 py-3 text-right" style={chapter.typeTotals[k] === 0 ? { color: "var(--kin-chu-mo)" } : undefined}>
                           {chapter.typeTotals[k]}
                         </td>
                       ))}

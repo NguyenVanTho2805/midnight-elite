@@ -78,49 +78,49 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
       <div className="rounded-3xl p-6 w-full max-w-sm mx-4"
-        style={{ background: "#F0F5FF", boxShadow: "16px 16px 32px #C5D0EA, -16px -16px 32px var(--kin-nen-trang)" }}>
+        style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-noi)" }}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-extrabold text-base" style={{ color: "#1E2938" }}>Liên hệ học sinh</h2>
+          <h2 className="font-extrabold text-base" style={{ color: "var(--kin-chu-chinh)" }}>Liên hệ học sinh</h2>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors text-xl cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px var(--kin-nen-trang)" }}>
+            style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
             ×
           </button>
         </div>
 
         <div className="rounded-2xl p-4 mb-5"
-          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px var(--kin-nen-trang)" }}>
+          style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl flex-shrink-0"
-              style={{ background: "linear-gradient(145deg, #FF2157, #cc0040)" }}>
+              style={{ background: "var(--kin-tt-chu-loi)" }}>
               {student.name[0]}
             </div>
             <div>
-              <p className="font-bold text-sm" style={{ color: "#1E2938" }}>{student.name}</p>
-              <p className="text-xs font-mono" style={{ color: "#9CA3AF" }}>{student.sbd}</p>
+              <p className="font-bold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{student.name}</p>
+              <p className="text-xs font-mono" style={{ color: "var(--kin-chu-mo)" }}>{student.sbd}</p>
             </div>
           </div>
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
-              <span style={{ color: "#6B7280" }}>GPA</span>
-              <span className="font-bold" style={{ color: "#FF2157" }}>{student.gpa.toFixed(1)}</span>
+              <span style={{ color: "var(--kin-chu-mo)" }}>GPA</span>
+              <span className="font-bold" style={{ color: "var(--kin-tt-chu-loi)" }}>{student.gpa.toFixed(1)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: "#6B7280" }}>Tiến độ</span>
-              <span className="font-bold" style={{ color: "#FE9900" }}>{Math.round(student.completion)}%</span>
+              <span style={{ color: "var(--kin-chu-mo)" }}>Tiến độ</span>
+              <span className="font-bold" style={{ color: "var(--kin-tt-chu-cho)" }}>{Math.round(student.completion)}%</span>
             </div>
             <div className="flex items-center justify-between">
-              <span style={{ color: "#6B7280" }}>Email</span>
+              <span style={{ color: "var(--kin-chu-mo)" }}>Email</span>
               <span style={{ color: "var(--kin-nhan-link)" }}>{student.email}</span>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl px-4 py-3 mb-4 flex items-center justify-between"
-          style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)" }}>
+          style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
           <div>
-            <p className="text-xs font-medium mb-0.5" style={{ color: "#6B7280" }}>Số điện thoại</p>
-            <p className="text-lg font-extrabold tracking-wide" style={{ color: "#1E2938" }}>
+            <p className="text-xs font-medium mb-0.5" style={{ color: "var(--kin-chu-mo)" }}>Số điện thoại</p>
+            <p className="text-lg font-extrabold tracking-wide" style={{ color: "var(--kin-chu-chinh)" }}>
               {student.phone ?? "Chưa có"}
             </p>
           </div>
@@ -128,8 +128,8 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
             <button onClick={copyPhone}
               className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
               style={copied
-                ? { background: "#dcfce7", color: "#166534" }
-                : { background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA, -3px -3px 6px var(--kin-nen-trang)", color: "var(--kin-nhan-link)" }}>
+                ? { background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }
+                : { background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-nhan-link)" }}>
               {copied ? "✓ Đã sao chép" : "Sao chép"}
             </button>
           )}
@@ -139,20 +139,20 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
           <button onClick={() => setShowRemind(v => !v)}
             className="flex items-center justify-center py-3 rounded-2xl text-sm font-bold cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
             style={showRemind
-              ? { background: "#FFF7ED", color: "#FE9900", border: "1px solid rgba(254,153,0,0.4)" }
-              : { background: "linear-gradient(135deg, #FE9900, #E07800)", color: "white" }}>
+              ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 40%, transparent)" }
+              : { background: "var(--kin-tt-cham-cho)", color: "white" }}>
             Nhắc nhở
           </button>
           <Link href="/admin/hoc-sinh" onClick={onClose}
             className="flex items-center justify-center py-3 rounded-2xl text-sm font-bold transition-all duration-150 hover:bg-red-50 active:scale-[0.98]"
-            style={{ background: "transparent", border: "1.5px solid #FF2157", color: "#FF2157" }}>
+            style={{ background: "transparent", border: "1.5px solid var(--kin-tt-chu-loi)", color: "var(--kin-tt-chu-loi)" }}>
             Xem hồ sơ
           </Link>
         </div>
 
         {remindSent ? (
           <div className="mt-3 py-2.5 rounded-2xl text-xs font-semibold text-center"
-            style={{ background: "#d1fae5", color: "#065f46" }}>
+            style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
             ✓ Đã gửi nhắc nhở qua email
           </div>
         ) : showRemind && (
@@ -160,7 +160,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
             <textarea rows={3} value={remindMsg} onChange={e => { setRemindMsg(e.target.value); setRemindError(null); }}
               placeholder={DEFAULT_MSG}
               className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)", border: "none", color: "#1E2938" }} />
+              style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)", border: "none", color: "var(--kin-chu-chinh)" }} />
             {remindError && (
               <p className="text-xs font-semibold text-center" style={{ color: "var(--kin-tt-chu-loi)" }}>
                 ✗ {remindError}
@@ -168,7 +168,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
             )}
             <button onClick={sendRemind} disabled={reminding}
               className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg, #FE9900, #E07800)" }}>
+              style={{ background: "var(--kin-tt-cham-cho)" }}>
               {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
             </button>
           </div>
@@ -262,20 +262,20 @@ export default function AdminDashboardPage() {
     // Super admin: 4 cards
     ? [
         { label: "Tổng học sinh",        value: String(students.length),                                              sub: studentSub,  color: "var(--kin-nhan-link)", Icon: UsersGroup      },
-        { label: "Gia sư đang VIP",      value: analytics ? `${analytics.totals.activeVipTutors}/${analytics.totals.tutorCount}` : "—", sub: undefined, color: "#0EA5E9", Icon: BookOpen },
-        { label: "Lớp đang mở",          value: String(analytics?.totals.classCount ?? "—"),                          sub: undefined,   color: "#00A63D", Icon: Badge           },
+        { label: "Gia sư đang VIP",      value: analytics ? `${analytics.totals.activeVipTutors}/${analytics.totals.tutorCount}` : "—", sub: undefined, color: "var(--kin-nhan-link)", Icon: BookOpen },
+        { label: "Lớp đang mở",          value: String(analytics?.totals.classCount ?? "—"),                          sub: undefined,   color: "var(--kin-tt-chu-xong)", Icon: Badge           },
         {
           label: "Doanh thu VIP (ròng)",
           value: analytics ? `${(analytics.totals.netVipRevenue / 1_000_000).toFixed(1)}Mđ` : "—",
           sub:   undefined,
-          color: "#FE9900",
+          color: "var(--kin-tt-chu-cho)",
           Icon:  Wallet,
         },
       ]
     // Content admin: 2 cards từ students
     : [
         { label: "Tổng học sinh",       value: String(students.length),                          sub: studentSub,  color: "var(--kin-nhan-link)", Icon: UsersGroup      },
-        { label: "Cần chú ý (GPA < 7)", value: String(lowGpaCount),  sub: undefined,   color: "#FF2157", Icon: NotificationAlert },
+        { label: "Cần chú ý (GPA < 7)", value: String(lowGpaCount),  sub: undefined,   color: "var(--kin-tt-chu-loi)", Icon: NotificationAlert },
       ],
   [canViewRevenue, students, analytics, studentSub]);
 
@@ -313,7 +313,7 @@ export default function AdminDashboardPage() {
       {callTarget && <CallModal student={callTarget} onClose={() => setCallTarget(null)} />}
       {bulkToast && (
         <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
-          style={{ background: bulkToast.startsWith("✓") ? "#16a34a" : "#dc2626" }}>
+          style={{ background: bulkToast.startsWith("✓") ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
           {bulkToast}
         </div>
       )}
@@ -321,15 +321,15 @@ export default function AdminDashboardPage() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Tổng quan quản trị</h1>
-          <p className="text-sm mt-1" style={{ color: "#6B7280" }}>Tổng quan sức khỏe hệ thống</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Tổng quan quản trị</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Tổng quan sức khỏe hệ thống</p>
         </div>
         <div className="px-3 py-1.5 rounded-full text-xs font-bold"
           style={isSuper
-            ? { background: "rgba(254,153,0,0.12)", color: "#FE9900", border: "1px solid rgba(254,153,0,0.3)" }
+            ? { background: "color-mix(in srgb, var(--kin-tt-cham-cho) 12%, transparent)", color: "var(--kin-tt-chu-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 30%, transparent)" }
             : isTeacher
-            ? { background: "rgba(22,163,74,0.12)", color: "var(--kin-tt-chu-xong)", border: "1px solid rgba(22,163,74,0.3)" }
-            : { background: "rgba(96,165,250,0.12)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.3)" }}>
+            ? { background: "color-mix(in srgb, var(--kin-tt-chu-xong) 12%, transparent)", color: "var(--kin-tt-chu-xong)", border: "1px solid color-mix(in srgb, var(--kin-tt-chu-xong) 30%, transparent)" }
+            : { background: "color-mix(in srgb, var(--kin-nhan-link) 12%, transparent)", color: "var(--kin-nhan-link)", border: "1px solid color-mix(in srgb, var(--kin-nhan-link) 30%, transparent)" }}>
           {isSuper ? "Cấp 1 - Super Admin" : isTeacher ? "Giáo viên" : "Cấp 2 - Content Admin"}
         </div>
       </div>
@@ -338,18 +338,18 @@ export default function AdminDashboardPage() {
       <div className={`grid gap-4 ${canViewRevenue ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2"}`}>
         {healthCards.map(card => (
           <div key={card.label} className="rounded-2xl p-5"
-            style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
+            style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
             <div className="mb-3">
               <card.Icon size={22} style={{ color: card.color }} />
             </div>
             {loading ? (
-              <div className="h-7 w-16 rounded animate-pulse mb-1" style={{ background: "#E2E8F4" }} />
+              <div className="h-7 w-16 rounded animate-pulse mb-1" style={{ background: "var(--kin-vien-thuong)" }} />
             ) : (
               <div className="text-2xl font-extrabold mb-1" style={{ color: card.color }}>{card.value}</div>
             )}
-            <div className="text-xs" style={{ color: "#6B7280" }}>{card.label}</div>
+            <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{card.label}</div>
             {!loading && card.sub && (
-              <div className="text-xs mt-1.5" style={{ color: "#9CA3AF" }}>{card.sub}</div>
+              <div className="text-xs mt-1.5" style={{ color: "var(--kin-chu-mo)" }}>{card.sub}</div>
             )}
           </div>
         ))}
@@ -358,27 +358,27 @@ export default function AdminDashboardPage() {
       {/* ── Charts row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top khoá học theo enrollment */}
-        <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
-          <h2 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "#1E2938" }}>
+        <div className="rounded-2xl p-6" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
+          <h2 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
             <ChartBar size={18} /> Lớp đông học viên nhất
           </h2>
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-7 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
+                <div key={i} className="h-7 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
               ))}
             </div>
           ) : (analytics?.topClasses ?? []).length === 0 ? (
-            <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>
+            <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>
               {canViewRevenue ? "Chưa có dữ liệu" : "Không có quyền xem"}
             </p>
           ) : (
             <div className="space-y-3">
               {(analytics?.topClasses ?? []).map(c => (
                 <div key={c.id} className="flex items-center gap-3">
-                  <div className="w-32 flex-shrink-0 text-xs truncate" style={{ color: "#1E2938" }}>{c.name}</div>
+                  <div className="w-32 flex-shrink-0 text-xs truncate" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</div>
                   <div className="flex-1 h-2 rounded-full"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px var(--kin-nen-trang)" }}>
+                    style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
                     <div className="h-2 rounded-full"
                       style={{ width: `${(c.students / chartMax * 100).toFixed(1)}%`, background: "var(--kin-nhan-nen)" }} />
                   </div>
@@ -393,9 +393,9 @@ export default function AdminDashboardPage() {
 
         {/* Kích hoạt gần đây (admin cấp 1) hoặc Thống kê học sinh (admin cấp 2) */}
         {canViewRevenue ? (
-          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
+          <div className="rounded-2xl p-6" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
+              <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
                 <CreditCard size={18} /> Mua VIP gần đây
               </h2>
               <Link href="/admin/doanh-thu" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
@@ -405,21 +405,21 @@ export default function AdminDashboardPage() {
             {loading ? (
               <div className="space-y-2">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
+                  <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
                 ))}
               </div>
             ) : recentVip.length === 0 ? (
-              <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>Chưa có giao dịch</p>
+              <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giao dịch</p>
             ) : (
               <div className="space-y-2">
                 {recentVip.map(e => (
                   <div key={e.id} className="grid grid-cols-12 items-center px-3 py-2.5 rounded-xl"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px var(--kin-nen-trang)" }}>
+                    style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
                     <div className="col-span-5">
-                      <div className="text-xs font-medium truncate" style={{ color: "#1E2938" }}>{e.tutorName}</div>
-                      <div className="text-xs" style={{ color: "#9CA3AF" }}>{e.createdAt.slice(0, 10)}</div>
+                      <div className="text-xs font-medium truncate" style={{ color: "var(--kin-chu-chinh)" }}>{e.tutorName}</div>
+                      <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{e.createdAt.slice(0, 10)}</div>
                     </div>
-                    <div className="col-span-4 text-xs truncate px-1" style={{ color: "#4B5563" }}>{e.planName}</div>
+                    <div className="col-span-4 text-xs truncate px-1" style={{ color: "var(--kin-chu-phu)" }}>{e.planName}</div>
                     <div className="col-span-3 text-right text-xs font-bold" style={{ color: "var(--kin-nhan-link)" }}>
                       {e.amount.toLocaleString("vi-VN")}đ
                     </div>
@@ -429,25 +429,25 @@ export default function AdminDashboardPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
-            <h2 className="text-base font-bold mb-5" style={{ color: "#1E2938" }}>Thống kê học sinh</h2>
+          <div className="rounded-2xl p-6" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
+            <h2 className="text-base font-bold mb-5" style={{ color: "var(--kin-chu-chinh)" }}>Thống kê học sinh</h2>
             {loading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
+                  <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {[
                   { label: "Học viên đã kích hoạt",  value: String(activatedCount),                                    color: "var(--kin-nhan-link)" },
-                  { label: "Chưa kích hoạt khoá",    value: String(inactiveCount),                                     color: "#6B7280" },
-                  { label: "GPA trung bình",          value: students.length ? avgGpa.toFixed(1) : "—",                color: "#0EA5E9" },
-                  { label: "Cần chú ý (GPA < 7)",    value: String(lowGpaCount),                                       color: "#FF2157" },
+                  { label: "Chưa kích hoạt khoá",    value: String(inactiveCount),                                     color: "var(--kin-chu-mo)" },
+                  { label: "GPA trung bình",          value: students.length ? avgGpa.toFixed(1) : "—",                color: "var(--kin-nhan-link)" },
+                  { label: "Cần chú ý (GPA < 7)",    value: String(lowGpaCount),                                       color: "var(--kin-tt-chu-loi)" },
                 ].map(row => (
                   <div key={row.label} className="flex justify-between items-center py-3 px-4 rounded-xl"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px var(--kin-nen-trang)" }}>
-                    <span className="text-sm" style={{ color: "#4B5563" }}>{row.label}</span>
+                    style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
+                    <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>{row.label}</span>
                     <span className="font-bold text-sm" style={{ color: row.color }}>{row.value}</span>
                   </div>
                 ))}
@@ -459,10 +459,10 @@ export default function AdminDashboardPage() {
 
       {/* ── Danger Zone ─────────────────────────────────────────────────────── */}
       {canViewStudents && (
-      <div className="rounded-2xl p-6" style={{ background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)" }}>
+      <div className="rounded-2xl p-6" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}>
-            <NotificationAlert size={18} style={{ color: "#FF2157" }} />
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
+            <NotificationAlert size={18} style={{ color: "var(--kin-tt-chu-loi)" }} />
             Học sinh cần can thiệp: GPA thấp nhất
           </h2>
           <div className="flex items-center gap-3">
@@ -470,8 +470,8 @@ export default function AdminDashboardPage() {
               onClick={() => setShowBulkRemind(v => !v)}
               className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all"
               style={showBulkRemind
-                ? { background: "#FFF7ED", color: "#FE9900", border: "1px solid rgba(254,153,0,0.4)" }
-                : { background: "linear-gradient(135deg,#FE9900,#E07800)", color: "white" }}>
+                ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 40%, transparent)" }
+                : { background: "var(--kin-tt-cham-cho)", color: "white" }}>
               Nhắc nhở tất cả
             </button>
             <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
@@ -482,23 +482,23 @@ export default function AdminDashboardPage() {
 
         {/* Bulk remind form */}
         {showBulkRemind && (
-          <div className="mb-5 p-4 rounded-2xl space-y-2" style={{ background: "#FFF7ED", border: "1px solid rgba(254,153,0,0.2)" }}>
-            <p className="text-xs font-semibold" style={{ color: "#92400e" }}>
+          <div className="mb-5 p-4 rounded-2xl space-y-2" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 20%, transparent)" }}>
+            <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>
               Gửi tới <strong>toàn bộ {students.length} học sinh</strong> trong hệ thống (không chỉ nhóm GPA thấp)
             </p>
             <textarea rows={3} value={bulkMsg} onChange={e => setBulkMsg(e.target.value)}
               placeholder={BULK_DEFAULT}
               className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-              style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA,inset -3px -3px 6px var(--kin-nen-trang)", border: "none", color: "#1E2938" }} />
+              style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)", border: "none", color: "var(--kin-chu-chinh)" }} />
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowBulkRemind(false); setBulkMsg(""); }}
                 className="px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px var(--kin-nen-trang)", color: "#6B7280" }}>
+                style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-chu-mo)" }}>
                 Hủy
               </button>
               <button onClick={sendBulkRemind} disabled={bulkSending}
                 className="px-4 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#FE9900,#E07800)" }}>
+                style={{ background: "var(--kin-tt-cham-cho)" }}>
                 {bulkSending ? "Đang gửi..." : `Gửi tới tất cả (${students.length} học sinh)`}
               </button>
             </div>
@@ -507,31 +507,31 @@ export default function AdminDashboardPage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: "#E2E8F4" }} />
+              <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
             ))}
           </div>
         ) : dangerStudents.length === 0 ? (
-          <p className="text-sm text-center py-6" style={{ color: "#9CA3AF" }}>
+          <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>
             Tất cả học sinh đều ổn, không ai có GPA dưới 7
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {dangerStudents.map(s => (
               <div key={s.id} className="flex items-center justify-between p-4 rounded-2xl"
-                style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px var(--kin-nen-trang)" }}>
+                style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
-                  <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#9CA3AF" }}>
+                  <div className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</div>
+                  <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "var(--kin-chu-mo)" }}>
                     <span className="font-mono">{s.sbd}</span>
                     <span>·</span>
-                    <span>GPA: <strong style={{ color: s.gpa < 6 ? "#FF2157" : "#FE9900" }}>{s.gpa.toFixed(1)}</strong></span>
+                    <span>GPA: <strong style={{ color: s.gpa < 6 ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-chu-cho)" }}>{s.gpa.toFixed(1)}</strong></span>
                     <span>·</span>
                     <span>{Math.round(s.completion)}% hoàn thành</span>
                   </div>
                 </div>
                 <button onClick={() => setCallTarget(s)}
                   className="ml-3 flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:-translate-y-0.5 cursor-pointer"
-                  style={{ background: "linear-gradient(135deg, #FF2157, #CC0033)" }}>
+                  style={{ background: "var(--kin-tt-chu-loi)" }}>
                   Liên hệ
                 </button>
               </div>
@@ -546,7 +546,7 @@ export default function AdminDashboardPage() {
         {QUICK_ACTIONS.map(a => (
           <Link key={a.label} href={a.href}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all hover:-translate-y-0.5 cursor-pointer"
-            style={{ background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px var(--kin-nen-trang)", color: "#1E2938" }}>
+            style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-chu-chinh)" }}>
             <a.Icon size={24} style={{ color: "var(--kin-nhan-link)" }} />
             <span className="text-xs font-semibold">{a.label}</span>
           </Link>

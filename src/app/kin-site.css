@@ -57,6 +57,9 @@
   --kin-tt-chu-xong: #047857;
   --kin-tt-chu-cho: #b45309;
   --kin-tt-chu-loi: #dc2626;
+  --kin-tt-cham-xong: #059669;
+  --kin-tt-cham-cho: #d97706;
+  --kin-tt-cham-trung-tinh: #767f8e;
   --kin-nhan-vien: color-mix(in srgb, var(--kin-nhan-nen) 28%, var(--kin-nen-trang));
   color-scheme: light;
 }
@@ -74,6 +77,71 @@
 }
 :root[data-chu-de="muc"] [data-vung="sang"] {
   --kin-nhan-link: #334155; --kin-nhan-nen-nhat: #f1f5f9; --kin-nhan-chu-tren-nhat: #0f172a;
+}
+
+/* ── Token dẫn xuất (đợt đổi màu 2) ─────────────────────────────────────────
+   Khai báo cho cả :root và [data-vung="sang"] để mỗi nơi tự tính theo token của chính nó
+   (phân giải ở phần tử khai báo — không khai ở :root rồi để thừa kế vào vùng sáng). */
+:root, [data-vung="sang"] {
+  /* Nền / viền cho thẻ trạng thái: pha nhạt màu chấm trạng thái với nền trang. */
+  --kin-tt-nen-xong: color-mix(in srgb, var(--kin-tt-cham-xong) 11%, var(--kin-nen-trang));
+  --kin-tt-nen-cho:  color-mix(in srgb, var(--kin-tt-cham-cho) 13%, var(--kin-nen-trang));
+  --kin-tt-nen-loi:  color-mix(in srgb, var(--kin-tt-chu-loi) 9%, var(--kin-nen-trang));
+  --kin-tt-vien-xong: color-mix(in srgb, var(--kin-tt-cham-xong) 32%, var(--kin-nen-trang));
+  --kin-tt-vien-cho:  color-mix(in srgb, var(--kin-tt-cham-cho) 36%, var(--kin-nen-trang));
+  --kin-tt-vien-loi:  color-mix(in srgb, var(--kin-tt-chu-loi) 30%, var(--kin-nen-trang));
+
+  /* Bóng: phẳng, viền mảnh — thay các bóng nổi/chìm kiểu neumorphism (#C5D0EA hai phía). */
+  --kin-bong-the:  0 0 0 1px var(--kin-vien-thuong), 0 1px 2px rgba(17, 24, 39, 0.06);
+  --kin-bong-chim: inset 0 1px 2px rgba(17, 24, 39, 0.08), 0 0 0 1px var(--kin-vien-thuong);
+  --kin-bong-noi:  0 0 0 1px var(--kin-vien-thuong), 0 12px 32px rgba(17, 24, 39, 0.14);
+
+  /* Bí danh cho tên biến CŨ (globals.css từng khai bằng mã hex) — trỏ về token KiN để mã cũ vẫn chạy mà không còn màu riêng. */
+  --canvas: var(--kin-nen-trang);
+  --surface: var(--kin-nen-bang);
+  --surface-soft: var(--kin-nen-bang);
+  --hairline: var(--kin-vien-thuong);
+  --hairline-soft: var(--kin-vien-nhat);
+  --hairline-strong: var(--kin-vien-o-nhap);
+  --ink-deep: var(--kin-chu-chinh);
+  --ink: var(--kin-chu-chinh);
+  --charcoal: var(--kin-chu-phu);
+  --slate: var(--kin-chu-phu);
+  --steel: var(--kin-chu-mo);
+  --stone: var(--kin-chu-mo);
+  --muted: var(--kin-vien-o-nhap);
+  --brand-navy: var(--kin-nhan-nen-re);
+  --brand-navy-mid: var(--kin-nhan-nen);
+  --tint-peach: var(--kin-tt-nen-cho);
+  --tint-rose: var(--kin-tt-nen-loi);
+  --tint-mint: var(--kin-tt-nen-xong);
+  --tint-lavender: var(--kin-nhan-nen-nhat);
+  --tint-sky: var(--kin-nhan-nen-nhat);
+  --tint-yellow: var(--kin-tt-nen-cho);
+  --tint-yellow-bold: var(--kin-tt-vien-cho);
+  --tint-cream: var(--kin-nen-bang);
+  --tint-gray: var(--kin-nen-re-chuot);
+  --semantic-success: var(--kin-tt-chu-xong);
+  --semantic-warning: var(--kin-tt-chu-cho);
+  --semantic-error: var(--kin-tt-chu-loi);
+  --background: var(--kin-nen-trang);
+  --foreground: var(--kin-chu-chinh);
+  --color-primary: var(--kin-nhan-nen);
+  --color-primary-light: var(--kin-nhan-link);
+  --color-primary-dark: var(--kin-nhan-nen-re);
+  --color-success: var(--kin-tt-chu-xong);
+  --color-warning: var(--kin-tt-cham-cho);
+  --color-danger: var(--kin-tt-chu-loi);
+  --color-info: var(--kin-nhan-link);
+  --color-surface: var(--kin-nen-bang);
+  --color-text: var(--kin-chu-chinh);
+  --color-text-muted: var(--kin-chu-mo);
+  --shadow-neu-raised: var(--kin-bong-the);
+  --shadow-neu-flat: var(--kin-bong-the);
+  --shadow-neu-pressed: var(--kin-bong-chim);
+  --shadow-neu-card: var(--kin-bong-the);
+  --key: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --amb: 0 10px 30px rgba(17, 24, 39, 0.08);
 }
 
 /* Ô nhập cũ (.notion-input) trong vùng web công khai: viền đủ 3:1 và vòng focus theo màu nhấn KiN. */

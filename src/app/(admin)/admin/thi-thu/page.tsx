@@ -51,9 +51,9 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
-  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
+  TH:  { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 
 // Giai đoạn 3.5 Cấp 1 — metadata song song với reviewQuestions[idx] cho cổng
@@ -701,7 +701,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 15px rgba(22,163,74,0.4), 0 2px 6px rgba(22,163,74,0.2)" }}>
+              style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)" }}>
               {saving ? "Đang lưu..." : "Lưu đề thi"}
             </button>
           </div>
@@ -820,14 +820,14 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Công khai & Trạng thái</h3>
             <div className="space-y-2">
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Trạng thái</p>
                   <p className="text-xs text-gray-400">Tắt = kết thúc · trạng thái tự động từ lịch</p>
                 </div>
                 <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
               </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Công khai</p>
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
@@ -843,13 +843,13 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               <p className="text-xs font-bold text-blue-600 mb-2">Preview — trạng thái tự động:</p>
               <div className="flex items-center gap-3">
                 <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
-                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
+                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)" }}>
                   {previewCode}
                 </span>
                 <span className="text-sm font-medium text-gray-800 flex-1 truncate">{form.title}</span>
                 {(() => {
                   const st = computeExamStatus(form.date.split("-").reverse().join("/"), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }, available: { label: "Đang mở", bg: "var(--kin-chu-tren-nut-chinh)", color: "var(--kin-tt-chu-xong)" }, completed: { label: "Đã kết thúc", bg: "var(--kin-chu-tren-nut-chinh)", color: "var(--kin-chu-mo)" } }[st];
                   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
                 })()}
               </div>
@@ -861,7 +861,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
 
         </div>
 
-        <div className="space-y-6 lg:border-l lg:pl-8" style={{ borderColor: "#eeece8" }}>
+        <div className="space-y-6 lg:border-l lg:pl-8" style={{ borderColor: "var(--kin-vien-nhat)" }}>
 
           {/* Câu hỏi thi */}
           <section>
@@ -930,7 +930,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     </button>
                     <button type="button" onClick={() => setSplitViewOn(v => !v)}
                       className="text-xs font-semibold"
-                      style={{ color: splitViewOn ? "#7e22ce" : "var(--kin-nhan-link)" }}>
+                      style={{ color: splitViewOn ? "var(--kin-nhan-link)" : "var(--kin-nhan-link)" }}>
                       {splitViewOn ? "✓ " : ""}🪟 Chế độ 2 khung
                     </button>
                     <button type="button" onClick={() => { setReviewQuestions(null); setParseErrs([]); setBankMeta([]); setPendingImageFiles({}); }}
@@ -941,12 +941,12 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                 </div>
 
                 {parseErrs.length > 0 && (
-                  <ul className="text-xs text-red-600 space-y-1 p-2 rounded-lg" style={{ background: "#fef2f2" }}>
+                  <ul className="text-xs text-red-600 space-y-1 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-loi)" }}>
                     {parseErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
                   </ul>
                 )}
 
-                <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <div>
                     <p className="text-xs font-medium text-gray-700">Thêm các câu hỏi này vào ngân hàng câu hỏi luôn?</p>
                     <p className="text-xs text-gray-400">Kiểm tra trùng lặp theo Môn/Chủ đề trước khi lưu</p>
@@ -968,7 +968,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                             className="px-2 py-1 rounded-full text-xs font-semibold border"
                             style={bulkDifficulty === d.value
                               ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
-                              : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                              : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                             {d.label}
                           </button>
                         ))}
@@ -1058,7 +1058,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                     className="px-2 py-0.5 rounded-full text-xs font-semibold border"
                                     style={bankMeta[idx].difficulty === d.value
                                       ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
-                                      : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                                      : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                                     {d.label}
                                   </button>
                                 ))}
@@ -1067,7 +1067,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                 <p className="text-xs text-gray-400 mt-1">Đang kiểm tra trùng lặp...</p>
                               )}
                               {bankMeta[idx].dupMatch && (
-                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#fef3c7", color: "#92400e" }}>
+                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                                   <p className="font-semibold">
                                     ⚠️ Trùng khớp với câu đã có trong ngân hàng
                                     (tạo bởi {bankMeta[idx].dupMatch.owner?.name ?? "?"}, {categoryPath(bankMeta[idx].dupMatch.categoryId, categories)})
@@ -1075,12 +1075,12 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                   <div className="flex gap-2 mt-1.5">
                                     <button type="button" onClick={() => updateBankMeta(idx, { resolution: "reuse" })}
                                       className="px-2 py-1 rounded font-semibold"
-                                      style={bankMeta[idx].resolution === "reuse" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
+                                      style={bankMeta[idx].resolution === "reuse" ? { background: "var(--kin-tt-chu-cho)", color: "var(--kin-chu-tren-nut-chinh)" } : { border: "1px solid var(--kin-tt-chu-cho)" }}>
                                       Dùng câu cũ
                                     </button>
                                     <button type="button" onClick={() => updateBankMeta(idx, { resolution: "new" })}
                                       className="px-2 py-1 rounded font-semibold"
-                                      style={bankMeta[idx].resolution === "new" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
+                                      style={bankMeta[idx].resolution === "new" ? { background: "var(--kin-tt-chu-cho)", color: "var(--kin-chu-tren-nut-chinh)" } : { border: "1px solid var(--kin-tt-chu-cho)" }}>
                                       Vẫn thêm câu mới
                                     </button>
                                   </div>
@@ -1105,7 +1105,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                 </div>
                               )}
                               {!bankMeta[idx].dupMatch && bankMeta[idx].similarMatches.length === 0 && bankMeta[idx].semanticMatches.length > 0 && (
-                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "#faf5ff", color: "#7e22ce" }}>
+                                <div className="mt-1.5 p-2 rounded-lg text-xs" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>
                                   <p className="font-semibold mb-1.5">🧠 Có {bankMeta[idx].semanticMatches.length} câu giống nghĩa trong ngân hàng (từ ngữ khác nhưng cùng nội dung)</p>
                                   <div className="space-y-1.5">
                                     {bankMeta[idx].semanticMatches.map(s => (
@@ -1114,7 +1114,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                                           {Math.round(s.similarity * 100)}% · {s.item.text} <span className="text-purple-400">({s.item.owner?.name ?? "?"})</span>
                                         </span>
                                         <button type="button" onClick={() => updateBankMeta(idx, { dupMatch: s.item, resolution: "reuse" })}
-                                          className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid #7e22ce" }}>
+                                          className="px-2 py-0.5 rounded font-semibold flex-shrink-0" style={{ border: "1px solid var(--kin-nhan-link)" }}>
                                           Dùng câu này
                                         </button>
                                       </div>
@@ -1185,7 +1185,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                       spellCheck={false}
                     />
                     {markupErrs.length > 0 && (
-                      <ul className="text-xs text-red-600 space-y-1 mt-1.5 p-2 rounded-lg" style={{ background: "#fef2f2" }}>
+                      <ul className="text-xs text-red-600 space-y-1 mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-loi)" }}>
                         {markupErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
                       </ul>
                     )}
@@ -1405,7 +1405,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
               <h2 className="text-base font-bold text-gray-800">Chỉnh sửa đề thi</h2>
               {exam && (
                 <span className="text-xs font-bold text-white px-2 py-0.5 rounded mt-0.5 inline-block"
-                  style={{ background: CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)" }}>
+                  style={{ background: CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)" }}>
                   {exam.code}
                 </span>
               )}
@@ -1418,7 +1418,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "linear-gradient(145deg,#0055D4,#0042AA)" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
@@ -1521,28 +1521,28 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Công khai & Trạng thái</h3>
             <div className="space-y-2">
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Trạng thái</p>
                   <p className="text-xs text-gray-400">Tắt = kết thúc đề thi · trạng thái tự động từ lịch</p>
                 </div>
                 <Toggle checked={form.active} onChange={() => set("active", !form.active)} />
               </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Công khai</p>
                   <p className="text-xs text-gray-400">Chưa đăng nhập vẫn thấy đề thi này</p>
                 </div>
                 <Toggle checked={form.activeGuest} onChange={() => set("activeGuest", !form.activeGuest)} />
               </div>
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div>
                   <p className="text-sm font-medium text-gray-700">Bảng xếp hạng</p>
                   <p className="text-xs text-gray-400">Học viên xem được Top 10 điểm cao nhất của đề này</p>
                 </div>
                 <Toggle checked={form.showLeaderboard} onChange={() => set("showLeaderboard", !form.showLeaderboard)} />
               </div>
-              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-sm font-medium text-gray-700">Mật khẩu vào thi</p>
                   <Toggle checked={form.requirePassword} onChange={() => set("requirePassword", !form.requirePassword)} />
@@ -1557,7 +1557,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                   </>
                 )}
               </div>
-              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <p className="text-sm font-medium text-gray-700 mb-1">Khi nào cho xem đáp án (màn "Xem lại bài làm")</p>
                 <p className="text-xs text-gray-400 mb-2">Điểm luôn hiện ngay sau khi nộp — mục này chỉ áp dụng cho đáp án đúng/giải thích.</p>
                 <select className={inp} value={form.answerVisibility}
@@ -1574,7 +1574,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                   </label>
                 )}
               </div>
-              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <p className="text-sm font-medium text-gray-700 mb-1">Khoá học liên quan</p>
                 <p className="text-xs text-gray-400 mb-2">Học viên đã đăng ký khoá học này luôn thi miễn phí, bất kể phí bên dưới.</p>
                 <select className={inp} value={form.courseId} onChange={e => set("courseId", e.target.value)}>
@@ -1582,14 +1582,14 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                   {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <p className="text-sm font-medium text-gray-700 mb-1">Phí thi (VNĐ)</p>
                 <p className="text-xs text-gray-400 mb-2">Bỏ trống = miễn phí cho tất cả. Có phí thì học viên khoá học ở trên vẫn miễn phí, người khác cần admin duyệt thủ công ở trang quản lý câu hỏi.</p>
                 <input type="number" min="0" placeholder="Miễn phí" className={inp}
                   value={form.price} onChange={e => set("price", e.target.value)} />
                 {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
               </div>
-              <div className="py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              <div className="py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <p className="text-sm font-medium text-gray-700 mb-1">Thang điểm câu Đúng-Sai 4 ý (%)</p>
                 <p className="text-xs text-gray-400 mb-2">% điểm câu nhận được theo số ý trả lời đúng — mặc định 10/25/50/100% (giống Azota).</p>
                 <div className="grid grid-cols-4 gap-2">
@@ -1612,7 +1612,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <span className="text-xs text-gray-400">Trạng thái:</span>
                 {(() => {
                   const st = computeExamStatus(fromInputDate(form.date), form.time, form.active);
-                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }, available: { label: "Đang mở", bg: "#D1FAE5", color: "#00A63D" }, completed: { label: "Đã kết thúc", bg: "#F3F4F6", color: "#6B7280" } }[st];
+                  const cfg = { upcoming: { label: "Sắp diễn ra", bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }, available: { label: "Đang mở", bg: "var(--kin-chu-tren-nut-chinh)", color: "var(--kin-tt-chu-xong)" }, completed: { label: "Đã kết thúc", bg: "var(--kin-chu-tren-nut-chinh)", color: "var(--kin-chu-mo)" } }[st];
                   return <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>;
                 })()}
               </div>
@@ -1654,8 +1654,8 @@ function countByStatus(exams: ExamRow[]) {
 
 const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
   upcoming:  { label: "Sắp diễn ra", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
-  available: { label: "Đang mở",     color: "#00A63D", bg: "#D1FAE5" },
-  completed: { label: "Đã kết thúc", color: "#6B7280", bg: "#F3F4F6" },
+  available: { label: "Đang mở",     color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  completed: { label: "Đã kết thúc", color: "var(--kin-chu-mo)", bg: "var(--kin-chu-tren-nut-chinh)" },
 };
 
 function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => void; onDelete: () => void }) {
@@ -1771,17 +1771,17 @@ export default function ThiThuAdminPage() {
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Quản lý Thi thử</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Tạo và quản lý đề thi thử ĐGNL, THPT</p>
+          <h1 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Quản lý Thi thử</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Tạo và quản lý đề thi thử ĐGNL, THPT</p>
         </div>
 
         {/* Stats — compact inline */}
         <div className="px-5 py-2.5 flex items-center gap-5 border-b border-gray-100">
           {[
-            { label: "Tổng đề",      val: stats.total,     color: "#374151" },
+            { label: "Tổng đề",      val: stats.total,     color: "var(--kin-chu-phu)" },
             { label: "Sắp diễn ra",  val: stats.upcoming,  color: "var(--kin-nhan-link)" },
-            { label: "Đang mở",      val: stats.available, color: "#00A63D" },
-            { label: "Đã kết thúc",  val: stats.completed, color: "#6B7280" },
+            { label: "Đang mở",      val: stats.available, color: "var(--kin-tt-chu-xong)" },
+            { label: "Đã kết thúc",  val: stats.completed, color: "var(--kin-chu-mo)" },
           ].map((s, i) => (
             <div key={s.label} className="flex items-center gap-1.5">
               {i > 0 && <span className="text-gray-200 mr-2">|</span>}
@@ -1824,7 +1824,7 @@ export default function ThiThuAdminPage() {
           <button
             onClick={() => setCreateOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
-            style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 15px rgba(22,163,74,0.4), 0 2px 6px rgba(22,163,74,0.2)" }}>
+            style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)" }}>
             + Tạo đề thi mới
           </button>
           <button onClick={() => { setSearch(""); setCat(""); setStatus(""); }}
@@ -1858,7 +1858,7 @@ export default function ThiThuAdminPage() {
               ))}
               {!loading && paged.map(exam => {
                 const s = STATUS_CFG[exam.status];
-                const grad = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+                const grad = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
                 return (
                   <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2.5">
@@ -1929,8 +1929,8 @@ export default function ThiThuAdminPage() {
                 <button key={p} onClick={() => setPage(p)}
                   className="w-7 h-7 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
                   style={p === page
-                    ? { background: "#16a34a", color: "white", borderColor: "#16a34a" }
-                    : { borderColor: "#E5E7EB", color: "#6B7280" }}>
+                    ? { background: "var(--kin-nhan-nen)", color: "white", borderColor: "var(--kin-nhan-nen)" }
+                    : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {p}
                 </button>
               ))}

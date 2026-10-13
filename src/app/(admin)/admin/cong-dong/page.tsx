@@ -29,14 +29,14 @@ interface ThreadsResponse {
 
 const CAT_MAP: Record<string, { label: string; color: string; bg: string }> = {
   "hoi-dap":     { label: "Hỏi đáp",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
-  "kinh-nghiem": { label: "Kinh nghiệm", color: "var(--kin-tt-chu-xong)", bg: "#dcfce7" },
-  "tai-lieu":    { label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "#fef3c7" },
-  "goc-vui":     { label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
+  "kinh-nghiem": { label: "Kinh nghiệm", color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  "tai-lieu":    { label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  "goc-vui":     { label: "Góc vui",     color: "var(--kin-nhan-link)", bg: "var(--kin-chu-tren-nut-chinh)" },
 };
 
 const NEU_CARD = {
-  background: "#F0F5FF",
-  boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px var(--kin-nen-trang)",
+  background: "var(--kin-nen-bang)",
+  boxShadow: "var(--kin-bong-the)",
   borderRadius: "16px",
 };
 
@@ -215,8 +215,8 @@ function CommunityAdmin() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Kiểm duyệt cộng đồng</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Kiểm duyệt cộng đồng</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>
             Ghim, xoá bài viết vi phạm — Tổng: {allThreads.length} bài
           </p>
         </div>
@@ -229,7 +229,7 @@ function CommunityAdmin() {
           onChange={e => setSearch(e.target.value)}
           placeholder="Tìm nội dung, tên tác giả..."
           className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #C5D0EA", color: "#1E2938" }}
+          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}
         />
         <ClassScopeSelect value={scope} onChange={v => { setScope(v); setAllThreads([]); setNextCursor(null); }} classes={classes} />
         <div className="flex gap-2 flex-wrap">
@@ -241,8 +241,8 @@ function CommunityAdmin() {
                 className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
                   background: active ? info.bg : "rgba(255,255,255,0.6)",
-                  color:      active ? info.color : "#64748B",
-                  border:     active ? `1px solid color-mix(in srgb, ${info.color} 25%, transparent)` : "1px solid #C5D0EA",
+                  color:      active ? info.color : "var(--kin-chu-mo)",
+                  border:     active ? `1px solid color-mix(in srgb, ${info.color} 25%, transparent)` : "1px solid var(--kin-vien-thuong)",
                 }}>
                 {info.label}
               </button>
@@ -254,11 +254,11 @@ function CommunityAdmin() {
       {/* Fetch error */}
       {fetchError && (
         <div className="flex items-center justify-between p-4 rounded-xl"
-          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
+          style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Lỗi tải dữ liệu</span>
           <button onClick={load}
             className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#DC2626" }}>
+            style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
         </div>
@@ -267,7 +267,7 @@ function CommunityAdmin() {
       {/* Action error (pin/delete/loadMore failures) */}
       {actionError && (
         <div className="flex items-center justify-between p-3 rounded-xl"
-          style={{ background: "#FEF3C7", border: "1px solid #FDE68A" }}>
+          style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>{actionError}</span>
           <button onClick={() => setActionError(null)}
             className="text-xs font-semibold ml-4 flex-shrink-0" style={{ color: "var(--kin-tt-chu-cho)" }}>
@@ -302,7 +302,7 @@ function CommunityAdmin() {
       {!loading && regular.length > 0 && (
         <section className="space-y-3">
           {pinned.length > 0 && (
-            <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#64748B" }}>
+            <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--kin-chu-mo)" }}>
               Bài viết ({regular.length})
             </h2>
           )}
@@ -315,7 +315,7 @@ function CommunityAdmin() {
 
       {/* Empty */}
       {!loading && !fetchError && filtered.length === 0 && (
-        <div className="text-center py-16" style={{ color: "#64748B" }}>
+        <div className="text-center py-16" style={{ color: "var(--kin-chu-mo)" }}>
           <p className="text-4xl mb-3">💬</p>
           <p className="font-semibold">Không có bài viết nào</p>
         </div>
@@ -351,7 +351,7 @@ function ThreadRowCard({
   return (
     <div className="rounded-xl p-4 flex items-start gap-4 transition-all"
       style={{
-        background: t.isPinned ? "rgba(0,104,255,0.04)" : "var(--kin-nen-trang)",
+        background: t.isPinned ? "color-mix(in srgb, var(--kin-nhan-nen) 4%, transparent)" : "var(--kin-nen-trang)",
         border: `1px solid ${t.isPinned ? "var(--kin-nhan-vien)" : "var(--kin-vien-thuong)"}`,
       }}>
 
@@ -363,15 +363,15 @@ function ThreadRowCard({
           {t.isPinned && (
             <span className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>📌 Đang ghim</span>
           )}
-          <span className="text-xs" style={{ color: "#94a3b8" }}>{formatDate(t.createdAt)}</span>
+          <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{formatDate(t.createdAt)}</span>
         </div>
 
         <p className="text-sm line-clamp-2 leading-relaxed" style={{ color: "var(--kin-chu-phu)" }}>
           {t.content}
         </p>
 
-        <div className="flex items-center gap-3 text-xs" style={{ color: "#94a3b8" }}>
-          <span className="font-semibold" style={{ color: "#1E2938" }}>{t.author.name}</span>
+        <div className="flex items-center gap-3 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
+          <span className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{t.author.name}</span>
           <span>♥ {t.likeCount}</span>
           <span>💬 {t.replyCount}</span>
         </div>
@@ -385,7 +385,7 @@ function ThreadRowCard({
           title={t.isPinned ? "Bỏ ghim" : "Ghim bài"}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
           style={{
-            background: t.isPinned ? "var(--kin-nhan-vien)" : "rgba(0,104,255,0.08)",
+            background: t.isPinned ? "var(--kin-nhan-vien)" : "color-mix(in srgb, var(--kin-nhan-nen) 8%, transparent)",
             color:      "var(--kin-nhan-link)",
           }}>
           {pinningId === t.id ? "..." : t.isPinned ? "Bỏ ghim" : "📌 Ghim"}
@@ -395,7 +395,7 @@ function ThreadRowCard({
           <div className="flex items-center gap-1.5">
             <button onClick={() => onDelete(t.id)} disabled={deletingId === t.id}
               className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-              style={{ background: "#DC2626" }}>
+              style={{ background: "var(--kin-tt-chu-loi)" }}>
               {deletingId === t.id ? "..." : "Xác nhận xoá"}
             </button>
             <button onClick={() => onConfirm(null)}
@@ -407,7 +407,7 @@ function ThreadRowCard({
         ) : (
           <button onClick={() => onConfirm(t.id)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: "#FEE2E2", color: "var(--kin-tt-chu-loi)" }}>
+            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
             Xoá
           </button>
         )}

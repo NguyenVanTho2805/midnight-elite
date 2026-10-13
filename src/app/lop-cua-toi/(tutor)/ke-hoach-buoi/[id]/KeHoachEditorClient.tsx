@@ -94,7 +94,7 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
           </p>
 
           {conflict && (
-            <div role="alert" className="rounded-xl p-4 mt-3 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "#1f2937", border: "1px solid var(--kin-vien-thuong)" }}>
+            <div role="alert" className="rounded-xl p-4 mt-3 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
               Kế hoạch này vừa được sửa ở nơi khác (tab hoặc máy khác). Tải lại để xem bản mới — thay đổi chưa lưu ở đây sẽ mất.{" "}
               <button className="underline font-semibold" onClick={() => void load()}>Tải lại</button>
             </div>
@@ -185,7 +185,7 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
                 <KinButton onClick={() => window.print()}>In {view === "gia-su" ? "bản gia sư" : "phiếu học sinh"}</KinButton>
                 <KinButton variant="secondary" onClick={() => void copyText_(view === "gia-su" ? renderTutorPlanText(plan, { courseName: plan.courseName }) : renderStudentSheetText(plan, { courseName: plan.courseName }))}>Sao chép dạng chữ</KinButton>
               </div>
-              <style>{`@media print { body * { visibility: hidden !important; } .kin-print, .kin-print * { visibility: visible !important; } .kin-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: #fff !important; color: #000 !important; } }`}</style>
+              <style>{`@media print { body * { visibility: hidden !important; } .kin-print, .kin-print * { visibility: visible !important; } .kin-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: var(--kin-nen-trang) !important; color: var(--kin-chu-chinh) !important; } }`}</style>
               {view === "gia-su" ? <TutorView plan={plan} /> : <StudentSheet plan={plan} />}
             </div>
           )}

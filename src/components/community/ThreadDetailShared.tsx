@@ -44,9 +44,9 @@ export interface ThreadDetail {
 
 export const CAT_MAP: Record<string, { label: string; color: string; bg: string }> = {
   "hoi-dap":     { label: "Hỏi đáp",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
-  "kinh-nghiem": { label: "Kinh nghiệm", color: "var(--kin-tt-chu-xong)", bg: "#dcfce7" },
-  "tai-lieu":    { label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "#fef3c7" },
-  "goc-vui":     { label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
+  "kinh-nghiem": { label: "Kinh nghiệm", color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  "tai-lieu":    { label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  "goc-vui":     { label: "Góc vui",     color: "var(--kin-nhan-link)", bg: "var(--kin-chu-tren-nut-chinh)" },
 };
 
 const AVATAR_COLORS = ["#0068FF", "#dc2626", "#16a34a", "#b45309", "#7c3aed", "#0891b2", "#be185d"];
@@ -206,7 +206,7 @@ export function ReplyCard({ r, onLike, onDelete }: {
               <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{r.author.name}</span>
               {r.author.isTeacher && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                  style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
+                  style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
               )}
               <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>· {timeAgo(r.createdAt)}</span>
             </div>
@@ -215,7 +215,7 @@ export function ReplyCard({ r, onLike, onDelete }: {
                 ? <div className="flex gap-1.5 flex-shrink-0">
                     <button onClick={handleDelete} disabled={deleting}
                       className="text-xs px-2 py-0.5 rounded font-bold text-white disabled:opacity-50"
-                      style={{ background: "#dc2626" }}>{deleting ? "..." : "Xoá"}</button>
+                      style={{ background: "var(--kin-tt-chu-loi)" }}>{deleting ? "..." : "Xoá"}</button>
                     <button onClick={() => setConfirmDelete(false)}
                       className="text-xs px-2 py-0.5 rounded"
                       style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
@@ -333,7 +333,7 @@ export function ReportPanel({
 }) {
   if (!reporting) return null;
   return (
-    <div className="p-3 rounded-lg" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+    <div className="p-3 rounded-lg" style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
       {reportDone ? (
         <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
       ) : (
@@ -342,12 +342,12 @@ export function ReportPanel({
             onChange={e => setReportReason(e.target.value)}
             placeholder="Lý do báo cáo bài viết này..."
             className="w-full text-xs rounded-lg px-2.5 py-2 outline-none resize-none"
-            style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid #fecaca" }} />
+            style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-loi)" }} />
           {reportError && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{reportError}</p>}
           <div className="flex gap-1.5 mt-2">
             <button onClick={onSubmit} disabled={reportSending}
               className="px-3 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-              style={{ background: "#dc2626" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
+              style={{ background: "var(--kin-tt-chu-loi)" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
             <button onClick={onCancel}
               className="px-3 py-1 rounded-lg text-xs font-semibold"
               style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>

@@ -106,7 +106,7 @@ export default function BaiDangClient() {
       ) : (
         <>
           {!draft.profilePublic && (
-            <div role="alert" className="rounded-xl p-4 mb-4 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "#1f2937", border: "1px solid var(--kin-vien-thuong)" }}>
+            <div role="alert" className="rounded-xl p-4 mb-4 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
               {draft.profileLocked ? "Hồ sơ công khai của bạn đang bị khoá, nên link trong bài chưa mở được. Liên hệ quản trị viên để được xem xét." : "Hồ sơ của bạn chưa được duyệt nên link công khai chưa mở được. Bài đăng sẽ dùng được ngay khi hồ sơ được duyệt."}
               {" "}<Link href="/lop-cua-toi/ho-so" className="underline font-semibold">Mở hồ sơ gia sư</Link>
             </div>

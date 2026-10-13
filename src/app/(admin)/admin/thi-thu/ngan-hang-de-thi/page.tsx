@@ -292,13 +292,13 @@ function PageInner() {
             </div>
           ) : (
             <button onClick={() => setAddingFolder(true)}
-              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0052DD" }}>
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
               📁+ Tạo thư mục
             </button>
           )}
           <DropZone onFiles={files => files[0] && processUpload(files[0])} disabled={uploading} className="inline-block rounded-lg">
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
               {uploading ? "Đang tải lên..." : "+ Tải hoặc kéo-thả file lên"}
             </button>
           </DropZone>
@@ -313,7 +313,7 @@ function PageInner() {
             {recentFiles.map(f => (
               <a key={f.id} href={f.fileUrl} target="_blank" rel="noopener noreferrer"
                 className="rounded-xl border p-3 hover:shadow-sm transition-shadow" style={{ borderColor: "var(--kin-vien-thuong)" }}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "#fff7ed" }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "var(--kin-tt-nen-cho)" }}>
                   <span className="text-lg">📄</span>
                 </div>
                 <p className="text-xs font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }} title={f.fileName}>{f.fileName}</p>
@@ -356,7 +356,7 @@ function PageInner() {
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá file lưu trữ — không ảnh hưởng câu hỏi đã tách và lưu vào ngân hàng trước đó.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDelTarget(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>

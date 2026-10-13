@@ -30,9 +30,9 @@ const CATEGORIES: Array<{ id: Category; label: string }> = [
 
 const catColors: Record<Exclude<Category, "all">, { bg: string; color: string }> = {
   "hoc-thuat":   { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  "tuyen-sinh":  { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
-  "tin-midnight":{ bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  "kinh-nghiem": { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
+  "tuyen-sinh":  { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
+  "tin-midnight":{ bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  "kinh-nghiem": { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
 };
 
 const catLabels: Record<Exclude<Category, "all">, string> = {
@@ -169,7 +169,7 @@ function ArticleCardFeatured({ article: a }: { article: Article }) {
   const cat = catColors[a.category] ?? { bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" };
   return (
     <Link href={`/tin-tuc/${a.slug}`}>
-      <div className="rounded-xl p-6 cursor-pointer transition-colors hover:bg-[#fafafa]"
+      <div className="rounded-xl p-6 cursor-pointer transition-colors hover:bg-[var(--kin-nen-bang)]"
         style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex items-start gap-5">
           <div className="hidden sm:block w-1 self-stretch rounded-full flex-shrink-0" style={{ background: "var(--kin-nhan-nen)" }} />
@@ -202,7 +202,7 @@ function ArticleCard({ article: a }: { article: Article }) {
   const cat = catColors[a.category] ?? { bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" };
   return (
     <Link href={`/tin-tuc/${a.slug}`}>
-      <div className="rounded-xl p-5 h-full cursor-pointer transition-colors hover:bg-[#fafafa]"
+      <div className="rounded-xl p-5 h-full cursor-pointer transition-colors hover:bg-[var(--kin-nen-bang)]"
         style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -211,7 +211,7 @@ function ArticleCard({ article: a }: { article: Article }) {
           </span>
           {a.tag && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>{a.tag}</span>
+              style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>{a.tag}</span>
           )}
         </div>
         <h3 className="font-bold text-base leading-snug mb-2" style={{ color: "var(--kin-chu-chinh)" }}>{a.title}</h3>

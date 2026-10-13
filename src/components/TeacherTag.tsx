@@ -15,7 +15,7 @@ export default function TeacherTag({
   const avatarStyle = variant === "onDark"
     ? { background: "rgba(255,255,255,0.25)", border: "2px solid rgba(255,255,255,0.6)", backdropFilter: blur ? "blur(4px)" : undefined }
     : { background: "var(--kin-nhan-nen)" };
-  const nameColor = variant === "onDark" ? "rgba(255,255,255,0.85)" : role ? "#1E2938" : "#6B7280";
+  const nameColor = variant === "onDark" ? "rgba(255,255,255,0.85)" : role ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)";
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -32,7 +32,7 @@ export default function TeacherTag({
         >
           {name}
         </p>
-        {role && <p className="text-xs truncate" style={{ color: "#9CA3AF" }}>{role}</p>}
+        {role && <p className="text-xs truncate" style={{ color: "var(--kin-chu-mo)" }}>{role}</p>}
       </div>
     </div>
   );

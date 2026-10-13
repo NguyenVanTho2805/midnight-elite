@@ -24,16 +24,16 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
-  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
+  TH:  { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 // Giai đoạn 4 — màu badge tỉ lệ trả lời đúng: xanh (dễ/ổn), vàng (trung
 // bình), đỏ (khó bất thường — có thể đề sai đáp án, đáng xem lại).
 function CORRECT_RATIO_COLOR(ratio: number): { bg: string; color: string } {
-  if (ratio >= 0.7) return { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" };
-  if (ratio >= 0.4) return { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" };
-  return { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" };
+  if (ratio >= 0.7) return { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" };
+  if (ratio >= 0.4) return { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" };
+  return { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" };
 }
 const TYPE_LABEL: Record<QuestionType, string> = {
   MC: "Trắc nghiệm", ESSAY: "Tự luận", TRUE_FALSE_CLUSTER: "Đúng-Sai 4 ý", SHORT_ANSWER: "Trả lời ngắn",
@@ -41,9 +41,9 @@ const TYPE_LABEL: Record<QuestionType, string> = {
 // Giai đoạn 6 — quy trình duyệt.
 const STATUS_LABEL: Record<BankItemStatus, string> = { draft: "Nháp", pending: "Chờ duyệt", approved: "Đã duyệt" };
 const STATUS_COLOR: Record<BankItemStatus, { bg: string; color: string }> = {
-  draft:    { bg: "#f3f4f6", color: "#6b7280" },
-  pending:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
-  approved: { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
+  draft:    { bg: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" },
+  pending:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  approved: { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
 };
 
 
@@ -229,7 +229,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={inpStyle}>Huỷ</button>
             <button onClick={handleSaveClick} disabled={saving || uploadingImage}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)" }}>
               {uploadingImage ? "Đang tải ảnh..." : saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
@@ -249,7 +249,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={d.value} type="button" onClick={() => setForm({ ...form, difficulty: d.value })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.difficulty === d.value
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {d.label}
                 </button>
@@ -269,7 +269,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={t.v} type="button" onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {t.label}
                 </button>
@@ -747,7 +747,7 @@ function PageInner() {
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá khỏi ngân hàng — không ảnh hưởng đề thi đã dùng câu này trước đó.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDelId(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>
@@ -766,7 +766,7 @@ function PageInner() {
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setRejectItem(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
               <button onClick={() => handleReject(rejectItem.id, rejectReason)} disabled={!rejectReason.trim()}
-                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#dc2626" }}>
+                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-tt-chu-loi)" }}>
                 Từ chối
               </button>
             </div>
@@ -784,7 +784,7 @@ function PageInner() {
             </button>
             <button onClick={() => setAddToExamOpen(true)} disabled={approvedSelectedCount === 0}
               title={approvedSelectedCount === 0 ? "Chỉ thêm được câu đã duyệt vào đề" : undefined}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
               Thêm vào đề{approvedSelectedCount > 0 ? ` (${approvedSelectedCount})` : ""}
             </button>
           </div>

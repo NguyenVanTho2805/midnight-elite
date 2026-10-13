@@ -103,7 +103,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
                   <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{thread.author.name}</span>
                   {thread.author.isTeacher && (
                     <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                      style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
+                      style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
                   )}
                 </div>
                 <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(thread.createdAt)}</p>
@@ -218,7 +218,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             replyText={replyText} setReplyText={setReplyText}
             replyImages={replyImages} setReplyImages={setReplyImages}
             replyError={replyError} uploading={replyUploading} replying={replying}
-            onSubmit={submitReply} wrapperBg="#ffffff" textareaBg="var(--kin-nen-bang)" inputRef={replyRef}
+            onSubmit={submitReply} wrapperBg="var(--kin-nen-trang)" textareaBg="var(--kin-nen-bang)" inputRef={replyRef}
           />
         ) : (
           <div className="rounded-xl border p-4 flex items-center justify-between gap-3"

@@ -97,7 +97,7 @@ export default function QuenMatKhauPage() {
 
                 {status === "error" && (
                   <div className="px-4 py-3 rounded-lg text-sm font-medium"
-                    style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}>
+                    style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
                     {errMsg}
                   </div>
                 )}

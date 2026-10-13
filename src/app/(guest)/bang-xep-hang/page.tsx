@@ -53,7 +53,7 @@ function TabThiThu() {
     <>
       <div className="text-center mb-6">
         <span className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-3"
-          style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)", border: "1px solid #fde68a" }}>
+          style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
           Cập nhật tự động từ kết quả thi thật
         </span>
         <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>
@@ -78,12 +78,12 @@ function TabThiThu() {
 
       {fetchError && (
         <div className="flex items-center justify-between p-4 rounded-xl mb-4"
-          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
+          style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Không thể tải bảng xếp hạng</span>
           <button onClick={() => { setFetchError(false); setLoading(true);
             const url = activeFilter === "Tất cả" ? "/api/leaderboard" : `/api/leaderboard?category=${encodeURIComponent(activeFilter)}`;
             fetch(url).then(r => r.ok ? r.json() : Promise.reject()).then(setApiData).catch(() => setFetchError(true)).finally(() => setLoading(false));
-          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#dc2626" }}>
+          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
         </div>
@@ -105,7 +105,7 @@ function TabThiThu() {
             <div className="rounded-xl p-4 mx-auto" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
               <div className="flex justify-center mb-2"><span className="text-2xl font-bold" style={{ color: "var(--kin-chu-mo)" }}>2</span></div>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3"
-                style={{ background: "linear-gradient(145deg,#9CA3AF,#6B7280)" }}>{top3[1].name[0]}</div>
+                style={{ background: "var(--kin-vien-o-nhap)" }}>{top3[1].name[0]}</div>
               <p className="text-xs font-bold mb-0.5 truncate" style={{ color: "var(--kin-chu-chinh)" }}>{top3[1].name}</p>
               <p className="text-xs mb-2 truncate" style={{ color: "var(--kin-chu-mo)" }}>{top3[1].school.split(",")[0]}</p>
               <p className="text-lg font-bold" style={{ color: "var(--kin-chu-mo)" }}>{top3[1].score}</p>
@@ -115,8 +115,8 @@ function TabThiThu() {
           {/* #1 */}
           <div className="text-center -mt-4">
             <div className="rounded-xl p-5 mx-auto relative notion-hero-band">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2" style={{ color: "#FDE047" }}><Crown size={28} /></div>
-              <div className="mt-4 flex justify-center mb-2" style={{ color: "#FDE047" }}><Trophy size={36} /></div>
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2" style={{ color: "var(--kin-tt-chu-cho)" }}><Crown size={28} /></div>
+              <div className="mt-4 flex justify-center mb-2" style={{ color: "var(--kin-tt-chu-cho)" }}><Trophy size={36} /></div>
               <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl mx-auto mb-3"
                 style={{ background: "rgba(255,255,255,0.2)" }}>{top3[0].name[0]}</div>
               <p className="text-sm font-bold mb-0.5 text-white truncate">{top3[0].name}</p>
@@ -156,7 +156,7 @@ function TabThiThu() {
               <div key={`${s.name}-${idx}`} className="grid grid-cols-12 items-center px-6 py-4"
                 style={{
                   borderBottom: idx < leaderboard.length - 1 ? "1px solid var(--kin-vien-thuong)" : "none",
-                  background: isMe ? "var(--kin-nhan-nen-nhat)" : idx < 3 ? "#fafafa" : "transparent",
+                  background: isMe ? "var(--kin-nhan-nen-nhat)" : idx < 3 ? "var(--kin-nen-bang)" : "transparent",
                   borderLeft: isMe ? "3px solid var(--kin-nhan-nen)" : "3px solid transparent",
                 }}>
                 <div className="col-span-1 flex items-center">
@@ -187,7 +187,7 @@ function TabThiThu() {
       {/* CTA — only for guests */}
       {!user && (
         <div className="notion-hero-band rounded-xl p-8 text-center">
-          <div className="flex justify-center mb-3" style={{ color: "#FDE047" }}><Trophy size={40} /></div>
+          <div className="flex justify-center mb-3" style={{ color: "var(--kin-tt-chu-cho)" }}><Trophy size={40} /></div>
           <h2 className="text-xl font-bold text-white mb-2">Tên bạn sẽ xuất hiện ở đây!</h2>
           <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.7)" }}>Thi thử để lên bảng xếp hạng toàn server.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -242,7 +242,7 @@ function TabVinhDanh() {
             <button key={opt.key} onClick={() => setSortKey(opt.key)}
               className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
               style={sortKey === opt.key
-                ? { background: "#b45309", color: "white", borderRadius: "8px" }
+                ? { background: "var(--kin-tt-chu-cho)", color: "white", borderRadius: "8px" }
                 : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {opt.label}
             </button>
@@ -254,11 +254,11 @@ function TabVinhDanh() {
 
       {fetchError && (
         <div className="flex items-center justify-between p-4 rounded-xl mb-4"
-          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
+          style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Không thể tải bảng vinh danh</span>
           <button onClick={() => { setFetchError(false);
             fetch("/api/honor-leaderboard").then(r => r.ok ? r.json() : Promise.reject()).then(setStudents).catch(() => setFetchError(true));
-          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "#dc2626" }}>
+          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
         </div>
@@ -274,7 +274,7 @@ function TabVinhDanh() {
         <div className="grid grid-cols-3 gap-4 mb-10 items-end">
           <div className="text-center">
             <div className="rounded-xl p-5 mx-auto" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-              <div className="text-2xl font-bold mb-3" style={{ color: "#9CA3AF" }}>2</div>
+              <div className="text-2xl font-bold mb-3" style={{ color: "var(--kin-chu-mo)" }}>2</div>
               <div className="flex justify-center mb-3"><Avatar name={top3[1].name} size={48} /></div>
               <p className="text-xs font-bold mb-0.5 truncate" style={{ color: "var(--kin-chu-chinh)" }}>{top3[1].name}</p>
               <p className="text-xs mb-2 truncate" style={{ color: "var(--kin-chu-mo)" }}>{top3[1].school.split(",")[0]}</p>
@@ -285,9 +285,9 @@ function TabVinhDanh() {
             <div className="h-8 flex items-end justify-center"><span className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Hạng 2</span></div>
           </div>
           <div className="text-center -mt-6">
-            <div className="rounded-xl p-6 mx-auto relative" style={{ background: "linear-gradient(145deg,#b45309,#92400e)" }}>
+            <div className="rounded-xl p-6 mx-auto relative" style={{ background: "var(--kin-tt-chu-cho)" }}>
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-white"><Crown size={28} /></div>
-              <div className="mt-4 flex justify-center mb-3" style={{ color: "#FDE047" }}><Trophy size={32} /></div>
+              <div className="mt-4 flex justify-center mb-3" style={{ color: "var(--kin-tt-chu-cho)" }}><Trophy size={32} /></div>
               <div className="flex justify-center mb-3"><Avatar name={top3[0].name} size={52} /></div>
               <p className="text-sm font-bold mb-0.5 text-white truncate">{top3[0].name}</p>
               <p className="text-xs mb-2 truncate" style={{ color: "rgba(255,255,255,0.8)" }}>{top3[0].school.split(",")[0]}</p>
@@ -317,7 +317,7 @@ function TabVinhDanh() {
           <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--kin-vien-thuong)", background: "var(--kin-nen-bang)" }}>
             <h2 className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Bảng xếp hạng đầy đủ</h2>
             <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
-              style={{ background: "#dcfce7", color: "#166534", border: "1px solid #86efac" }}>{students.length} học sinh</span>
+              style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)", border: "1px solid var(--kin-tt-vien-xong)" }}>{students.length} học sinh</span>
           </div>
           {ranked.map((s, idx) => {
             const badges = getBadges(s);
@@ -326,7 +326,7 @@ function TabVinhDanh() {
               <div key={s.id} className="flex items-center gap-4 px-6 py-4"
                 style={{
                   borderBottom: idx < ranked.length - 1 ? "1px solid var(--kin-vien-thuong)" : "none",
-                  background: isMe ? "var(--kin-nhan-nen-nhat)" : idx < 3 ? "#fafafa" : "transparent",
+                  background: isMe ? "var(--kin-nhan-nen-nhat)" : idx < 3 ? "var(--kin-nen-bang)" : "transparent",
                   borderLeft: isMe ? "3px solid var(--kin-nhan-nen)" : "3px solid transparent",
                 }}>
                 <div className="w-8 flex-shrink-0 text-center">
@@ -360,7 +360,7 @@ function TabVinhDanh() {
                     <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Điểm thi</p>
                   </div>
                   <div className="text-center hidden lg:block">
-                    <div className="text-sm font-bold" style={{ color: "#7C3AED" }}>{s.completion}%</div>
+                    <div className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>{s.completion}%</div>
                     <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Tiến độ</p>
                   </div>
                   <div className="text-center hidden lg:block">
@@ -419,7 +419,7 @@ function TabVinhDanh() {
 
       {/* CTA */}
       <div className="notion-hero-band rounded-xl p-8 sm:p-10 text-center">
-        <div className="flex justify-center mb-3" style={{ color: "#FDE047" }}><Trophy size={40} /></div>
+        <div className="flex justify-center mb-3" style={{ color: "var(--kin-tt-chu-cho)" }}><Trophy size={40} /></div>
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Tên bạn sẽ xuất hiện ở đây!</h2>
         <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.7)" }}>
           Học chăm chỉ, nộp bài đầy đủ và chinh phục bảng vinh danh KiN.

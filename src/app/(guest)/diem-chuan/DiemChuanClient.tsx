@@ -29,7 +29,7 @@ export default function DiemChuanClient({ rows }: { rows: PublicScore[] }) {
         </p>
       </div>
 
-      <div role="note" className="rounded-xl p-4 mb-6 text-sm" style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#78350f" }}>
+      <div role="note" className="rounded-xl p-4 mb-6 text-sm" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
         <strong>Đọc trước khi dùng.</strong> Mỗi trường dùng thang điểm và phương thức xét khác nhau, nên chỉ so sánh các năm có <em>cùng thang</em> (KiN chỉ hiện mức tăng/giảm khi đó).
         Dòng ghi <em>“Chưa đối chiếu”</em> là điểm lấy từ báo/nguồn công khai, chưa được KiN so với thông báo chính thức của trường — hãy mở nguồn và kiểm tra trên trang tuyển sinh của trường trước khi đăng ký nguyện vọng.
       </div>
@@ -83,7 +83,7 @@ export default function DiemChuanClient({ rows }: { rows: PublicScore[] }) {
                   {g.entries.map((e, i) => {
                     const delta = scoreDelta(e, g.entries[i + 1]);
                     return (
-                      <div key={e.id} className="rounded-lg px-3 py-2 min-w-[11rem]" style={{ border: "1px solid var(--kin-vien-thuong)", background: "#fafaf9" }}>
+                      <div key={e.id} className="rounded-lg px-3 py-2 min-w-[11rem]" style={{ border: "1px solid var(--kin-vien-thuong)", background: "var(--kin-nen-bang)" }}>
                         <a href={e.sourceUrl} target="_blank" rel="noopener noreferrer"
                           aria-label={`Năm ${e.year}: ${formatScore(e.score)} trên thang ${e.scale}. Nguồn: ${e.sourceName} (mở trang mới)`}
                           className="block" style={{ minHeight: 44 }}>

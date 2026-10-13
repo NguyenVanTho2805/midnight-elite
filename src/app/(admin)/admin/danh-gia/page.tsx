@@ -20,7 +20,7 @@ function StarDisplay({ value }: { value: number }) {
     <div className="flex gap-0.5">
       {[1,2,3,4,5].map(s => (
         <svg key={s} width="14" height="14" viewBox="0 0 24 24"
-          fill={s <= value ? "#FE9900" : "none"} stroke={s <= value ? "#FE9900" : "#D1D5DB"} strokeWidth="1.5">
+          fill={s <= value ? "var(--kin-tt-chu-cho)" : "none"} stroke={s <= value ? "var(--kin-tt-chu-cho)" : "var(--kin-chu-mo)"} strokeWidth="1.5">
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
         </svg>
       ))}
@@ -29,10 +29,10 @@ function StarDisplay({ value }: { value: number }) {
 }
 
 const STATUS_TAB = [
-  { key: "pending",  label: "Chờ duyệt",  color: "#FE9900", bg: "rgba(254,153,0,0.12)"  },
-  { key: "approved", label: "Đã duyệt",   color: "var(--kin-tt-chu-xong)", bg: "rgba(22,163,74,0.12)"  },
-  { key: "rejected", label: "Đã từ chối", color: "var(--kin-tt-chu-loi)", bg: "rgba(220,38,38,0.12)"  },
-  { key: "all",      label: "Tất cả",     color: "#6B7280", bg: "rgba(107,114,128,0.1)" },
+  { key: "pending",  label: "Chờ duyệt",  color: "var(--kin-tt-chu-cho)", bg: "color-mix(in srgb, var(--kin-tt-cham-cho) 12%, transparent)"  },
+  { key: "approved", label: "Đã duyệt",   color: "var(--kin-tt-chu-xong)", bg: "color-mix(in srgb, var(--kin-tt-chu-xong) 12%, transparent)"  },
+  { key: "rejected", label: "Đã từ chối", color: "var(--kin-tt-chu-loi)", bg: "color-mix(in srgb, var(--kin-tt-chu-loi) 12%, transparent)"  },
+  { key: "all",      label: "Tất cả",     color: "var(--kin-chu-mo)", bg: "color-mix(in srgb, var(--kin-chu-mo) 10%, transparent)" },
 ];
 
 function DanhGiaContent() {
@@ -80,8 +80,8 @@ function DanhGiaContent() {
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Đánh giá khóa học</h1>
-        <p className="text-sm mt-1" style={{ color: "#9CA3AF" }}>Duyệt hoặc từ chối đánh giá của học viên</p>
+        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Đánh giá khóa học</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Duyệt hoặc từ chối đánh giá của học viên</p>
       </div>
 
       {/* Tabs */}
@@ -91,7 +91,7 @@ function DanhGiaContent() {
             className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
             style={tab === t.key
               ? { background: t.bg, color: t.color, border: `1px solid color-mix(in srgb, ${t.color} 25%, transparent)` }
-              : { background: "var(--kin-nen-bang)", color: "#6B7280", border: "1px solid var(--kin-vien-thuong)" }}>
+              : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
             {t.label}
           </button>
         ))}
@@ -112,7 +112,7 @@ function DanhGiaContent() {
             ))}
           </div>
         ) : reviews.length === 0 ? (
-          <div className="py-16 text-center text-sm" style={{ color: "#9CA3AF" }}>
+          <div className="py-16 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>
             Không có đánh giá nào
           </div>
         ) : (
@@ -120,7 +120,7 @@ function DanhGiaContent() {
             <thead style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
               <tr>
                 {["Học viên", "Khóa học", "Sao", "Nhận xét", "Ngày gửi", "Trạng thái", ""].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "#9CA3AF" }}>{h}</th>
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -130,20 +130,20 @@ function DanhGiaContent() {
                 return (
                   <tr key={r.id} style={{ borderBottom: i < reviews.length - 1 ? "1px solid var(--kin-vien-thuong)" : "none" }}>
                     <td className="px-4 py-3">
-                      <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{r.user.name}</p>
-                      <p className="text-xs" style={{ color: "#9CA3AF" }}>{r.user.email}</p>
+                      <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{r.user.name}</p>
+                      <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{r.user.email}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm max-w-[160px] truncate" style={{ color: "#4B5563" }}>{r.course.name}</td>
+                    <td className="px-4 py-3 text-sm max-w-[160px] truncate" style={{ color: "var(--kin-chu-phu)" }}>{r.course.name}</td>
                     <td className="px-4 py-3"><StarDisplay value={r.rating} /></td>
-                    <td className="px-4 py-3 text-sm max-w-[220px]" style={{ color: "#4B5563" }}>
+                    <td className="px-4 py-3 text-sm max-w-[220px]" style={{ color: "var(--kin-chu-phu)" }}>
                       <p className="line-clamp-2">{r.comment}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "#9CA3AF" }}>
+                    <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--kin-chu-mo)" }}>
                       {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        style={{ background: st?.bg ?? "var(--kin-nen-bang)", color: st?.color ?? "#6B7280" }}>
+                        style={{ background: st?.bg ?? "var(--kin-nen-bang)", color: st?.color ?? "var(--kin-chu-mo)" }}>
                         {st?.label ?? r.status}
                       </span>
                     </td>
@@ -152,20 +152,20 @@ function DanhGiaContent() {
                         {r.status !== "approved" && (
                           <button disabled={acting === r.id} onClick={() => act(r.id, "approved")}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
-                            style={{ background: "#16a34a" }}>
+                            style={{ background: "var(--kin-nhan-nen)" }}>
                             Duyệt
                           </button>
                         )}
                         {r.status !== "rejected" && (
                           <button disabled={acting === r.id} onClick={() => act(r.id, "rejected")}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                            style={{ background: "#fee2e2", color: "var(--kin-tt-chu-loi)" }}>
+                            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
                             Từ chối
                           </button>
                         )}
                         <button disabled={acting === r.id} onClick={() => del(r.id)}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                          style={{ background: "var(--kin-nen-bang)", color: "#9CA3AF" }}>
+                          style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                           Xóa
                         </button>
                       </div>

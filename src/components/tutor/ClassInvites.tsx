@@ -112,7 +112,7 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
           <p className="text-sm mb-4" style={{ color: "var(--kin-chu-phu)" }}>Mã này sẽ không dùng được nữa. Học viên đã vào lớp bằng mã vẫn ở trong lớp.</p>
           <div className="flex justify-end gap-2">
             <KinButton variant="ghost" onClick={() => setRevoking(null)}>Đóng</KinButton>
-            <KinButton loading={busy} onClick={revoke} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "#fff" }}>Thu hồi</KinButton>
+            <KinButton loading={busy} onClick={revoke} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Thu hồi</KinButton>
           </div>
         </Modal>
       )}

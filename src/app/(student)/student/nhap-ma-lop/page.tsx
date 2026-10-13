@@ -56,8 +56,8 @@ export default function NhapMaLopPage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-10 space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Nhập mã mời lớp</h1>
-        <p className="text-sm mt-2" style={{ color: "#6B7280" }}>
+        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nhập mã mời lớp</h1>
+        <p className="text-sm mt-2" style={{ color: "var(--kin-chu-mo)" }}>
           Gia sư gửi cho bạn 1 mã (vd <code className="font-mono">A7B2K9D4</code>). Gõ hoặc dán vào ô dưới.
         </p>
       </div>
@@ -71,13 +71,13 @@ export default function NhapMaLopPage() {
         />
 
         {!checking && ok && (
-          <div className="rounded-xl p-4 space-y-2" style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}>
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#0369a1" }}>Mã hợp lệ</p>
-            <p className="text-lg font-bold" style={{ color: "#1E2938" }}>{preview.course.name}</p>
+          <div className="rounded-xl p-4 space-y-2" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--kin-nhan-link)" }}>Mã hợp lệ</p>
+            <p className="text-lg font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{preview.course.name}</p>
             {preview.course.owner && (
-              <p className="text-sm" style={{ color: "#4B5563" }}>Gia sư: {preview.course.owner.name}</p>
+              <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Gia sư: {preview.course.owner.name}</p>
             )}
-            <p className="text-xs" style={{ color: "#6B7280" }}>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
               {preview.course.classStatus === "open" ? "Đang nhận học viên." : "Lớp đang đóng — không nhận thêm."}
               {preview.maxUses !== null && (
                 <> · Còn {Math.max(0, preview.maxUses - preview.usedCount)} / {preview.maxUses} lượt dùng.</>

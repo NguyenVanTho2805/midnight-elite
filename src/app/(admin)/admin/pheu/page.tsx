@@ -154,7 +154,7 @@ function PheuContent() {
                       <div className="flex gap-2 flex-wrap">
                         <a href={`/mentor/${rep.tutorId}`} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg text-sm underline min-h-[44px] inline-flex items-center" style={{ color: "var(--kin-th-xanh-link)" }}>Xem hồ sơ</a>
                         <button type="button" disabled={busy === rep.id} onClick={() => void dismiss(rep)} className="px-3 py-2 rounded-lg text-sm min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>Bỏ qua</button>
-                        <button type="button" disabled={busy === rep.id} onClick={() => { setLocking(rep); setReason(""); }} className="px-3 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-tt-chu-loi)", color: "#fff" }}>Khoá hồ sơ</button>
+                        <button type="button" disabled={busy === rep.id} onClick={() => { setLocking(rep); setReason(""); }} className="px-3 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Khoá hồ sơ</button>
                       </div>
                     </div>
                   </li>
@@ -173,7 +173,7 @@ function PheuContent() {
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }} />
           <div className="flex gap-2 justify-end mt-4">
             <button type="button" onClick={() => setLocking(null)} className="px-4 py-2 rounded-lg text-sm min-h-[44px]">Đóng</button>
-            <button type="button" disabled={!reason.trim() || busy === locking.id} onClick={() => void lock()} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-tt-chu-loi)", color: "#fff" }}>Khoá hồ sơ</button>
+            <button type="button" disabled={!reason.trim() || busy === locking.id} onClick={() => void lock()} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Khoá hồ sơ</button>
           </div>
         </Modal>
       )}

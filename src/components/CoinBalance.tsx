@@ -21,9 +21,9 @@ export default function CoinBalance() {
 
   return (
     <div className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg flex-shrink-0"
-      style={{ background: "#FFFBEB", border: "1px solid #FDE68A", opacity: loading ? 0.5 : 1, transition: "opacity 0.15s" }}>
+      style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", opacity: loading ? 0.5 : 1, transition: "opacity 0.15s" }}>
       <span className="text-sm leading-none">🪙</span>
-      <span className="text-sm font-bold" style={{ color: "#92400E" }}>{balance}</span>
+      <span className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-cho)" }}>{balance}</span>
 
       {earned > 0 && (
         <span

@@ -13,9 +13,9 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
-  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
+  TH:  { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 
 // ─── DUYỆT CÂU TÁCH RA (gán Đầu mục, chống trùng, rồi lưu vào Ngân hàng) ──────
@@ -280,7 +280,7 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
             const m = meta[idx];
             if (!m) return null;
             return (
-              <div key={idx} className="rounded-lg p-3 border" style={{ borderColor: "var(--kin-vien-thuong)", background: m.include ? "#fff" : "var(--kin-nen-bang)" }}>
+              <div key={idx} className="rounded-lg p-3 border" style={{ borderColor: "var(--kin-vien-thuong)", background: m.include ? "var(--kin-nen-trang)" : "var(--kin-nen-bang)" }}>
                 <div className="flex items-start gap-2 mb-2">
                   <input type="checkbox" checked={m.include} onChange={e => updateMeta(idx, { include: e.target.checked })} className="mt-1" />
                   <div className="flex-1">
@@ -307,7 +307,7 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
                           className="px-2 py-0.5 rounded-full text-xs font-semibold border"
                           style={m.difficulty === d.value
                             ? { background: DIFFICULTY_COLOR[d.value].bg, color: DIFFICULTY_COLOR[d.value].color, borderColor: DIFFICULTY_COLOR[d.value].color }
-                            : { borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+                            : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                           {d.label}
                         </button>
                       ))}
@@ -315,17 +315,17 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
                     </div>
                     {m.checking && <p className="text-xs text-gray-400">Đang kiểm tra trùng lặp...</p>}
                     {m.dupMatch && (
-                      <div className="p-2 rounded-lg text-xs" style={{ background: "#fef3c7", color: "#92400e" }}>
+                      <div className="p-2 rounded-lg text-xs" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                         <p className="font-semibold">⚠️ Trùng khớp với câu đã có trong ngân hàng ({categoryPath(m.dupMatch.categoryId, categories)})</p>
                         <div className="flex gap-2 mt-1.5">
                           <button type="button" onClick={() => updateMeta(idx, { resolution: "skip" })}
                             className="px-2 py-1 rounded font-semibold"
-                            style={m.resolution === "skip" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
+                            style={m.resolution === "skip" ? { background: "var(--kin-tt-chu-cho)", color: "var(--kin-chu-tren-nut-chinh)" } : { border: "1px solid var(--kin-tt-chu-cho)" }}>
                             Bỏ qua (đã có)
                           </button>
                           <button type="button" onClick={() => updateMeta(idx, { resolution: "new" })}
                             className="px-2 py-1 rounded font-semibold"
-                            style={m.resolution === "new" ? { background: "#92400e", color: "#fff" } : { border: "1px solid #92400e" }}>
+                            style={m.resolution === "new" ? { background: "var(--kin-tt-chu-cho)", color: "var(--kin-chu-tren-nut-chinh)" } : { border: "1px solid var(--kin-tt-chu-cho)" }}>
                             Vẫn thêm câu mới
                           </button>
                         </div>
@@ -341,7 +341,7 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
         <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
           <button onClick={handleSaveAll} disabled={saving || loading || placing || questions.length === 0}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
             {saving ? "Đang lưu..." : "Lưu vào ngân hàng"}
           </button>
         </div>

@@ -53,9 +53,9 @@ const CAT_LABEL: Record<string, string> = Object.fromEntries(
 
 const CAT_COLOR: Record<string, { bg: string; color: string }> = {
   "hoc-thuat":   { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  "tuyen-sinh":  { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
-  "tin-midnight":{ bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  "kinh-nghiem": { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
+  "tuyen-sinh":  { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
+  "tin-midnight":{ bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  "kinh-nghiem": { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
 };
 
 const DRAWER_INIT: DrawerForm = {
@@ -116,7 +116,7 @@ function ActionMenu({ article, onEdit, onDelete }: {
                 </button>
                 <button onClick={() => { onDelete(); setOpen(false); setConfirm(false); }}
                   className="flex-1 py-1.5 rounded text-xs font-semibold text-white cursor-pointer"
-                  style={{ background: "#dc2626" }}>
+                  style={{ background: "var(--kin-tt-chu-loi)" }}>
                   Xoá
                 </button>
               </div>
@@ -330,7 +330,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
           {/* Toggles */}
           <div className="space-y-3">
             <div className="flex items-center justify-between py-3 px-4 rounded-lg"
-              style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
               <div>
                 <p className="text-sm font-medium text-gray-700">Ghim bài viết</p>
                 <p className="text-xs text-gray-400">Hiển thị nổi bật đầu trang</p>
@@ -338,7 +338,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
               <Toggle checked={form.isPinned} onChange={() => set("isPinned", !form.isPinned)} />
             </div>
             <div className="flex items-center justify-between py-3 px-4 rounded-lg"
-              style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+              style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
               <div>
                 <p className="text-sm font-medium text-gray-700">Xuất bản</p>
                 <p className="text-xs text-gray-400">Tắt để lưu nháp, không hiển thị công khai</p>
@@ -465,8 +465,8 @@ function PageInner() {
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Tin tức & Blog</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Quản lý bài viết và tin tức</p>
+          <h1 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Tin tức & Blog</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Quản lý bài viết và tin tức</p>
         </div>
 
         {/* Filters */}
@@ -501,7 +501,7 @@ function PageInner() {
             </button>
             <button onClick={openCreate}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-              style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               + Thêm bài viết
             </button>
           </div>

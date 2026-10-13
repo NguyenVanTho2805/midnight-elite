@@ -32,7 +32,7 @@ export default function AuthGuard({ requiredRole, children }: Props) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F0F5FF" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--kin-nen-bang)" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "var(--kin-nhan-nen)" }}>
             <span className="text-xl font-black text-white">T</span>

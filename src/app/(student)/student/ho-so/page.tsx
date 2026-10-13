@@ -30,7 +30,7 @@ interface Area { x: number; y: number; width: number; height: number; }
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function ToastBar({ toast }: { toast: ToastType }) {
-  const bg = toast.type === "success" ? "#00A63D" : toast.type === "error" ? "#dc2626" : "var(--kin-nhan-nen)";
+  const bg = toast.type === "success" ? "var(--kin-tt-chu-xong)" : toast.type === "error" ? "var(--kin-tt-chu-loi)" : "var(--kin-nhan-nen)";
   const Icon = toast.type === "success" ? CheckCircle : toast.type === "error" ? CloseCircle : AlertCircle;
   return (
     <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-lg flex items-center gap-2"
@@ -120,13 +120,13 @@ function ScoreSparkline({ results }: { results: ExamResultItem[] }) {
   const last = pts[pts.length - 1].split(",");
   return (
     <div className="mt-3 rounded-xl p-3" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-      <p className="text-xs font-semibold mb-2" style={{ color: "#9CA3AF" }}>Xu hướng điểm số</p>
+      <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Xu hướng điểm số</p>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ height: H }}>
         <polyline points={pts.join(" ")} fill="none" stroke="var(--kin-nhan-nen)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <circle cx={last[0]} cy={last[1]} r="3.5" fill="var(--kin-nhan-nen)" />
       </svg>
       <div className="flex justify-between mt-1">
-        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>{results[0].exam?.title?.slice(0, 18) ?? "Đề 1"}</span>
+        <span className="text-[10px]" style={{ color: "var(--kin-chu-mo)" }}>{results[0].exam?.title?.slice(0, 18) ?? "Đề 1"}</span>
         <span className="text-[10px] font-bold" style={{ color: "var(--kin-nhan-link)" }}>
           Mới nhất: {scores[scores.length - 1].toFixed(1)}
         </span>
@@ -167,11 +167,11 @@ function StreakCalendar({ counts }: { counts: Record<string, number> }) {
         ))}
       </div>
       <div className="flex items-center gap-2 mt-2 justify-end">
-        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>Ít</span>
+        <span className="text-[10px]" style={{ color: "var(--kin-chu-mo)" }}>Ít</span>
         {[0, 1, 2, 4].map(n => (
           <div key={n} className="w-3 h-3 rounded-sm" style={{ background: cellColor(n) }} />
         ))}
-        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>Nhiều</span>
+        <span className="text-[10px]" style={{ color: "var(--kin-chu-mo)" }}>Nhiều</span>
       </div>
     </div>
   );
@@ -405,7 +405,7 @@ export default function HoSoPage() {
           <div className="flex gap-3 mt-5">
             <button onClick={() => setCropSrc(null)}
               className="px-5 py-2.5 rounded-lg text-sm font-medium"
-              style={{ background: "#374151", color: "#d1d5db", borderRadius: "8px" }}>
+              style={{ background: "var(--kin-chu-phu)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               Hủy
             </button>
             <button onClick={handleSaveAvatar} disabled={avatarSaving}
@@ -470,7 +470,7 @@ export default function HoSoPage() {
               </button>
               <button onClick={() => { setShowLogoutConfirm(false); showToast("Đang đăng xuất...", "info"); setTimeout(() => logout(), 1500); }}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: "#dc2626", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-tt-chu-loi)", borderRadius: "8px" }}>
                 Xác nhận
               </button>
             </div>
@@ -504,7 +504,7 @@ export default function HoSoPage() {
               className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg flex items-center justify-center"
               style={{ background: "var(--kin-nhan-nen)", border: "2px solid var(--kin-nen-trang)" }}
               title="Đổi ảnh đại diện (hoặc kéo-thả ảnh vào đây)">
-              <PhotoCamera size={13} style={{ color: "#ffffff" }} />
+              <PhotoCamera size={13} style={{ color: "var(--kin-chu-tren-nut-chinh)" }} />
             </button>
           </DropZone>
 
@@ -645,7 +645,7 @@ export default function HoSoPage() {
                   <div key={entry.id} className="flex items-center gap-4 p-4 rounded-xl"
                     style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: i === 0 ? "#fef3c7" : "var(--kin-nen-bang)", border: `1px solid ${i === 0 ? "#fde68a" : "var(--kin-vien-thuong)"}` }}>
+                      style={{ background: i === 0 ? "var(--kin-tt-nen-cho)" : "var(--kin-nen-bang)", border: `1px solid ${i === 0 ? "var(--kin-tt-vien-cho)" : "var(--kin-vien-thuong)"}` }}>
                       {i === 0
                         ? <Trophy size={20} style={{ color: "var(--kin-tt-chu-cho)" }} />
                         : <span className="text-xs font-bold" style={{ color: "var(--kin-chu-mo)" }}>#{i + 1}</span>}
@@ -701,7 +701,7 @@ export default function HoSoPage() {
               {
                 label: "GPA trung bình",
                 value: userStats?.gpa != null ? userStats.gpa.toFixed(1) : "—",
-                color: "var(--kin-tt-chu-cho)", bg: "#fef3c7", border: "#fde68a",
+                color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-cho)",
                 sub: "/ 10 điểm",
               },
               {
@@ -713,13 +713,13 @@ export default function HoSoPage() {
               {
                 label: "Streak",
                 value: userStats != null ? `${userStats.streak} ngày` : "—",
-                color: "var(--kin-tt-chu-loi)", bg: "#fee2e2", border: "#fca5a5",
+                color: "var(--kin-tt-chu-loi)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-loi)",
                 sub: "liên tiếp",
               },
               {
                 label: "EXP tổng",
                 value: userStats != null ? userStats.exp.toLocaleString("vi-VN") : "—",
-                color: "#0891b2", bg: "#e0f2fe", border: "#7dd3fc",
+                color: "var(--kin-nhan-link)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-nhan-vien)",
                 sub: "điểm kinh nghiệm",
               },
             ].map((s) => (
@@ -757,7 +757,7 @@ export default function HoSoPage() {
           <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold" style={{ color: "var(--kin-chu-phu)" }}>Thiết bị (2/2)</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#fef3c7", color: "#92400e" }}>Tối đa 2</span>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>Tối đa 2</span>
             </div>
             <div className="space-y-2">
               {devices.map((device, i) => (
@@ -774,13 +774,13 @@ export default function HoSoPage() {
                     <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{device.lastActive}</p>
                   </div>
                   {device.current ? (
-                    <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "#d1fae5", color: "#065f46" }}>Hiện tại</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>Hiện tại</span>
                   ) : kickedDevices.has(i) ? (
                     <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>Đã kick</span>
                   ) : (
                     <button onClick={() => setKickedDevices(prev => new Set([...prev, i]))}
                       className="text-xs px-2 py-0.5 rounded-lg flex-shrink-0"
-                      style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>Kick</button>
+                      style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>Kick</button>
                   )}
                 </div>
               ))}
@@ -808,7 +808,7 @@ export default function HoSoPage() {
               </button>
               <button onClick={() => setShowLogoutConfirm(true)}
                 className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"
-                style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)", color: "var(--kin-tt-chu-loi)", borderRadius: "8px" }}>
                 Đăng xuất tất cả thiết bị
               </button>
             </div>

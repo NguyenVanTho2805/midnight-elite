@@ -74,7 +74,7 @@ function ResetContent() {
           {status === "success" && (
             <div className="text-center py-2">
               <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "#d1fae5", border: "1px solid #a7f3d0" }}>
+                style={{ background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)" }}>
                 <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-xong)" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -92,7 +92,7 @@ function ResetContent() {
           {status === "error" && !password && (
             <div className="text-center py-2">
               <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "#fee2e2", border: "1px solid #fecaca" }}>
+                style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
                 <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-loi)" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -160,7 +160,7 @@ function ResetContent() {
 
                 {errMsg && (
                   <div className="px-4 py-3 rounded-lg text-sm font-medium"
-                    style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}>
+                    style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
                     {errMsg}
                   </div>
                 )}

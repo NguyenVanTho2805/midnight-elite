@@ -30,9 +30,9 @@ interface Course {
 function TypeBadge({ type }: { type: string }) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
     record:   { label: "Video",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
-    live:     { label: "Live",     color: "var(--kin-tt-chu-loi)", bg: "#FEF2F2" },
-    quiz:     { label: "Bài tập", color: "#FE9900", bg: "#FFF7ED" },
-    document: { label: "Tài liệu", color: "#6B7280", bg: "#F9FAFB" },
+    live:     { label: "Live",     color: "var(--kin-tt-chu-loi)", bg: "var(--kin-chu-tren-nut-chinh)" },
+    quiz:     { label: "Bài tập", color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
+    document: { label: "Tài liệu", color: "var(--kin-chu-mo)", bg: "var(--kin-chu-tren-nut-chinh)" },
   };
   const s = map[parseLessonType(type)];
   return (
@@ -104,8 +104,8 @@ function HocTapContent() {
     }
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <BookOpen size={40} style={{ color: "#9CA3AF" }} />
-        <p className="text-sm" style={{ color: "#9CA3AF" }}>Bạn chưa có khóa học nào.</p>
+        <BookOpen size={40} style={{ color: "var(--kin-chu-mo)" }} />
+        <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Bạn chưa có khóa học nào.</p>
         <Link href="/khoa-hoc" className="text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>← Khóa học</Link>
       </div>
     );
@@ -151,11 +151,11 @@ function HocTapContent() {
       {/* Back button + breadcrumb */}
       <div className="flex items-center gap-3">
         <Link href="/khoa-hoc"
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors hover:bg-[#eceae6]"
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors hover:bg-[var(--kin-nen-re-chuot)]"
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)" }}>
           ← Khóa học
         </Link>
-        <span className="text-sm font-medium truncate" style={{ color: "#9CA3AF" }}>{course.name}</span>
+        <span className="text-sm font-medium truncate" style={{ color: "var(--kin-chu-mo)" }}>{course.name}</span>
       </div>
 
       {/* Course header card */}
@@ -163,10 +163,10 @@ function HocTapContent() {
         <div className="h-2" style={{ background: course.strip || "var(--kin-nhan-nen)" }} />
         <div className="p-5 flex items-start gap-4" style={{ background: "var(--kin-nen-trang)" }}>
           <div className="flex-1 min-w-0">
-            <p className="text-xs mb-1" style={{ color: "#9CA3AF" }}>{course.category}</p>
-            <h1 className="text-xl font-extrabold leading-snug mb-1" style={{ color: "#1E2938" }}>{course.name}</h1>
+            <p className="text-xs mb-1" style={{ color: "var(--kin-chu-mo)" }}>{course.category}</p>
+            <h1 className="text-xl font-extrabold leading-snug mb-1" style={{ color: "var(--kin-chu-chinh)" }}>{course.name}</h1>
             <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Gia sư: {course.instructor}</p>
-            <div className="flex items-center gap-4 mt-3 text-xs" style={{ color: "#9CA3AF" }}>
+            <div className="flex items-center gap-4 mt-3 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
               <span className="flex items-center gap-1"><Play size={11} />{course.hours}h video</span>
               <span className="flex items-center gap-1"><BookOpen size={11} />{course.lessons} bài học</span>
             </div>
@@ -174,7 +174,7 @@ function HocTapContent() {
           {/* Progress ring-ish summary */}
           <div className="flex-shrink-0 text-center">
             <p className="text-2xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{pct}%</p>
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>hoàn thành</p>
+            <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>hoàn thành</p>
             <p className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>{completedCount}/{allLessons.length} bài</p>
           </div>
         </div>
@@ -188,10 +188,10 @@ function HocTapContent() {
         <div className="px-5 pb-5">
           {isEnrolled === false ? (
             <div className="space-y-2">
-              <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>Bạn chưa đăng ký khóa học này</p>
+              <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Bạn chưa đăng ký khóa học này</p>
               <Link href={`/khoa-hoc/${courseId}`}
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white"
-                style={{ background: "#FE9900" }}>
+                style={{ background: "var(--kin-tt-cham-cho)" }}>
                 Mua khóa học ngay →
               </Link>
             </div>
@@ -205,7 +205,7 @@ function HocTapContent() {
             </Link>
           ) : (
             <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold"
-              style={{ background: "#D1FAE5", color: "#065F46", border: "1px solid #86efac" }}>
+              style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)", border: "1px solid var(--kin-tt-vien-xong)" }}>
               ✓ Đã hoàn thành khóa học
             </div>
           )}
@@ -214,7 +214,7 @@ function HocTapContent() {
 
       {/* Sections */}
       <div className="space-y-2">
-        <p className="text-sm font-extrabold" style={{ color: "#1E2938" }}>Nội dung khóa học</p>
+        <p className="text-sm font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nội dung khóa học</p>
         {course.sections.map(section => {
           const lessons = section.chapters.flatMap(c => c.lessons);
           const done    = lessons.filter(l => completedIds.has(l.id)).length;
@@ -225,13 +225,13 @@ function HocTapContent() {
                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
                 style={{ background: "var(--kin-nen-bang)" }}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-extrabold uppercase tracking-wide" style={{ color: "#1E2938" }}>
+                  <p className="text-sm font-extrabold uppercase tracking-wide" style={{ color: "var(--kin-chu-chinh)" }}>
                     {section.title}
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{done}/{lessons.length} bài hoàn thành</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{done}/{lessons.length} bài hoàn thành</p>
                 </div>
                 <ChevronDown size={14} style={{
-                  color: "#9CA3AF",
+                  color: "var(--kin-chu-mo)",
                   transform: isOpen ? "rotate(180deg)" : "none",
                   transition: "transform 0.2s",
                   flexShrink: 0,
@@ -243,8 +243,8 @@ function HocTapContent() {
                   {section.chapters.map((chapter, ci) => (
                     <div key={chapter.id}>
                       {section.chapters.length > 1 && (
-                        <div className="px-4 py-2" style={{ background: "#fafaf9", borderBottom: "1px solid #f0ede9" }}>
-                          <p className="text-xs font-semibold" style={{ color: "#9CA3AF" }}>
+                        <div className="px-4 py-2" style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-nhat)" }}>
+                          <p className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>
                             {ci + 1}. {chapter.title}
                           </p>
                         </div>
@@ -256,9 +256,9 @@ function HocTapContent() {
                           <button key={lesson.id}
                             onClick={() => !lesson.isLocked && router.push(`/student/bai-giang/${lesson.id}`)}
                             disabled={lesson.isLocked}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fafaf9]"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--kin-nen-bang)]"
                             style={{
-                              borderBottom: "1px solid #f0ede9",
+                              borderBottom: "1px solid var(--kin-vien-nhat)",
                               borderLeft: isNext ? "3px solid var(--kin-nhan-nen)" : "3px solid transparent",
                               background: isNext ? "var(--kin-nhan-nen-nhat)" : "transparent",
                               opacity: lesson.isLocked ? 0.5 : 1,
@@ -268,15 +268,15 @@ function HocTapContent() {
                             {/* Circle indicator */}
                             <div className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center"
                               style={{
-                                borderColor: isDone ? "#00A63D" : isNext ? "var(--kin-nhan-nen)" : "#d1d5db",
-                                background: isDone ? "#00A63D" : isNext ? "var(--kin-nhan-nen-nhat)" : "transparent",
+                                borderColor: isDone ? "var(--kin-tt-chu-xong)" : isNext ? "var(--kin-nhan-nen)" : "var(--kin-vien-o-nhap)",
+                                background: isDone ? "var(--kin-tt-chu-xong)" : isNext ? "var(--kin-nhan-nen-nhat)" : "transparent",
                               }}>
                               {isDone && (
                                 <svg viewBox="0 0 10 8" width="9" height="9" fill="none">
                                   <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
                               )}
-                              {!isDone && lesson.isLocked && <Lock size={8} style={{ color: "#9CA3AF" }} />}
+                              {!isDone && lesson.isLocked && <Lock size={8} style={{ color: "var(--kin-chu-mo)" }} />}
                             </div>
 
                             {/* Lesson info */}
@@ -293,13 +293,13 @@ function HocTapContent() {
                                   </span>
                                 )}
                                 {lesson.isFree && !lesson.isLocked && (
-                                  <span className="text-[10px] font-bold px-1.5 rounded-full" style={{ background: "#d1fae5", color: "#00A63D" }}>FREE</span>
+                                  <span className="text-[10px] font-bold px-1.5 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>FREE</span>
                                 )}
                               </div>
                             </div>
 
                             {isDone && (
-                              <Eye size={12} style={{ color: "#00A63D", flexShrink: 0 }} />
+                              <Eye size={12} style={{ color: "var(--kin-tt-chu-xong)", flexShrink: 0 }} />
                             )}
                           </button>
                         );

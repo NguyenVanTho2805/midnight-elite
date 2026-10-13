@@ -15,7 +15,7 @@ type Summary = CorrectionOverview["summary"];
 interface Overview { available: boolean; reason: string | null; items: CorrectionItem[]; summary: Summary }
 
 const CARD = { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" } as const;
-const OK = "#16a34a", BAD = "#dc2626", MUTED = "var(--kin-chu-mo)", INK = "#1E2938";
+const OK = "var(--kin-tt-chu-xong)", BAD = "var(--kin-tt-chu-loi)", MUTED = "var(--kin-chu-mo)", INK = "var(--kin-chu-chinh)";
 
 async function call<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
   try {
@@ -54,7 +54,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
   if (!data) return null;
   if (!data.available) {
     return (
-      <div className="rounded-xl p-4 text-sm" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
+      <div className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
         {data.reason ?? "Chưa có chế độ chữa bài cho đề này."}
         <div className="mt-2"><button type="button" onClick={onClose} className="font-semibold underline">Quay lại xem bài làm</button></div>
       </div>
@@ -111,7 +111,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
             <button key={it.questionId} type="button" onClick={() => go(i)} aria-current={i === pos ? "step" : undefined}
               aria-label={`Câu ${it.index}${done ? " — đã xong" : it.state === "hint" ? " — đang chữa" : " — chưa làm"}`}
               className="min-w-[44px] h-[44px] rounded-lg text-sm font-semibold"
-              style={{ background: i === pos ? "var(--kin-nhan-nen)" : done ? "#dcfce7" : "var(--kin-nen-bang)", color: i === pos ? "#fff" : done ? "#166534" : INK, border: "1px solid var(--kin-vien-thuong)" }}>
+              style={{ background: i === pos ? "var(--kin-nhan-nen)" : done ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)", color: i === pos ? "var(--kin-chu-tren-nut-chinh)" : done ? "var(--kin-tt-chu-xong)" : INK, border: "1px solid var(--kin-vien-thuong)" }}>
               {it.index}{done ? " ✓" : ""}
             </button>
           );
@@ -122,7 +122,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
         <p className="text-sm font-semibold mb-3" style={{ color: INK }}>Câu {item.index}: <MathText text={item.text} /></p>
 
         {item.state === "hint" && (
-          <div role="status" className="rounded-lg p-3 mb-3 text-sm" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
+          <div role="status" className="rounded-lg p-3 mb-3 text-sm" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
             <strong>Chưa đúng.</strong>{" "}
             {item.hint ? <>Gợi ý: <MathText text={item.hint} /></> : null}
           </div>
@@ -138,7 +138,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
                 <label key={o.id} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
                   style={{
                     border: `2px solid ${correct ? OK : wrongPick ? BAD : picked ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`,
-                    background: correct ? "#f0fdf4" : wrongPick ? "#fef2f2" : "#fff", color: INK, cursor: inputOpen ? "pointer" : "default",
+                    background: correct ? "var(--kin-tt-nen-xong)" : wrongPick ? "var(--kin-tt-nen-loi)" : "var(--kin-nen-trang)", color: INK, cursor: inputOpen ? "pointer" : "default",
                   }}>
                   <input type="radio" name={`q-${item.questionId}`} value={o.id} disabled={!inputOpen || busy} checked={picked} onChange={() => setPickOpt(o.id)} />
                   <span className="flex-1"><MathText text={o.text} /></span>
@@ -171,7 +171,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
               <div>
                 <label htmlFor={`rf-${item.questionId}`} className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Bạn thử viết lại một câu: gợi ý ở trên giúp bạn ở chỗ nào? (không bắt buộc)</label>
                 {item.reflection
-                  ? <p className="p-3 rounded-lg" style={{ background: "#f0f9ff", color: INK }}>{item.reflection}</p>
+                  ? <p className="p-3 rounded-lg" style={{ background: "var(--kin-nhan-nen-nhat)", color: INK }}>{item.reflection}</p>
                   : (
                     <div className="flex gap-2">
                       <input id={`rf-${item.questionId}`} value={reflect} maxLength={500} onChange={e => setReflect(e.target.value)} className="flex-1 rounded-lg px-3 py-2.5 text-sm min-h-[44px]" style={{ border: "1px solid var(--kin-vien-thuong)", color: INK }} />
@@ -208,7 +208,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
       </div>
 
       {allDone && (
-        <p role="status" className="text-sm rounded-xl p-3" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
+        <p role="status" className="text-sm rounded-xl p-3" style={{ background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)", color: "var(--kin-tt-chu-xong)" }}>
           Bạn đã chữa xong {data.summary.total} câu: {data.summary.solved} câu tự làm đúng, {data.summary.revealed} câu đã xem đáp án.
         </p>
       )}

@@ -24,9 +24,9 @@ interface Article {
 
 const catColors: Record<Category, { bg: string; color: string }> = {
   "hoc-thuat":   { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  "tuyen-sinh":  { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
-  "tin-midnight":{ bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  "kinh-nghiem": { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
+  "tuyen-sinh":  { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
+  "tin-midnight":{ bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  "kinh-nghiem": { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
 };
 
 const catLabels: Record<Category, string> = {
@@ -141,7 +141,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         )}
         {article.isPinned && (
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>📌 Nổi bật</span>
+            style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>📌 Nổi bật</span>
         )}
       </div>
 

@@ -101,7 +101,7 @@ export function AddToExamModal({ open, items, onClose, onAdded }: {
         <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
           <button onClick={handleAdd} disabled={!selectedExamId || saving}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
             {saving ? "Đang thêm..." : "Thêm vào đề"}
           </button>
         </div>

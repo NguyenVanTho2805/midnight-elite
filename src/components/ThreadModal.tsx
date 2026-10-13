@@ -189,7 +189,7 @@ export default function ThreadModal({
                       <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{thread.author.name}</span>
                       {thread.author.isTeacher && (
                         <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
-                          style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
+                          style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
                       )}
                     </div>
                     <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(thread.createdAt)}</p>
@@ -289,7 +289,7 @@ export default function ThreadModal({
                     replyText={replyText} setReplyText={setReplyText}
                     replyImages={replyImages} setReplyImages={setReplyImages}
                     replyError={replyError} uploading={replyUploading} replying={replying}
-                    onSubmit={submitReply} wrapperBg="#f9f9f8" textareaBg="#ffffff" inputRef={replyRef}
+                    onSubmit={submitReply} wrapperBg="var(--kin-nen-bang)" textareaBg="var(--kin-nen-trang)" inputRef={replyRef}
                   />
                 )}
 

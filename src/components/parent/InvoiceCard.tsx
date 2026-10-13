@@ -57,7 +57,7 @@ export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvo
       {open && (
         <div className="mt-4 flex flex-col sm:flex-row items-center gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={invoice.qrUrl!} alt={`Mã VietQR chuyển ${vnd(invoice.remaining)} cho ${invoice.tutorName}`} className="w-44 h-44 sm:w-52 sm:h-52 flex-shrink-0 rounded-lg" style={{ border: "1px solid var(--kin-vien-nhat)", background: "#fff" }} />
+          <img src={invoice.qrUrl!} alt={`Mã VietQR chuyển ${vnd(invoice.remaining)} cho ${invoice.tutorName}`} className="w-44 h-44 sm:w-52 sm:h-52 flex-shrink-0 rounded-lg" style={{ border: "1px solid var(--kin-vien-nhat)", background: "var(--kin-nen-trang)" }} />
           <div className="text-sm space-y-1 min-w-0" style={{ color: "var(--kin-chu-phu)" }}>
             {invoice.bank && <>
               <p>Ngân hàng: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.name}</b></p>

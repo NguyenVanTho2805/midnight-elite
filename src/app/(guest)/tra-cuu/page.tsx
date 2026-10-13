@@ -19,15 +19,15 @@ interface StudentResult {
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   "HSA":  { bg: "var(--kin-nhan-nen-nhat)", text: "var(--kin-nhan-chu-tren-nhat)" },
-  "THPT": { bg: "#dcfce7", text: "#15803d" },
-  "V-ACT": { bg: "#fef9c3", text: "#854d0e" },
+  "THPT": { bg: "var(--kin-tt-nen-xong)", text: "var(--kin-tt-chu-xong)" },
+  "V-ACT": { bg: "var(--kin-tt-nen-cho)", text: "var(--kin-tt-chu-cho)" },
 };
 
 function getCategoryStyle(category: string) {
   for (const key of Object.keys(CATEGORY_COLORS)) {
     if (category.toUpperCase().includes(key)) return CATEGORY_COLORS[key];
   }
-  return { bg: "#f1f0ef", text: "#57534e" };
+  return { bg: "var(--kin-nen-re-chuot)", text: "var(--kin-chu-phu)" };
 }
 
 function getInitial(name: string) {
@@ -111,7 +111,7 @@ export default function TraCuuPage() {
               <span className="absolute right-3 top-3">
                 {phone && (isValidPhone
                   ? <CheckCircle size={14} style={{ color: "var(--kin-tt-chu-xong)" }} />
-                  : <CloseCircle size={14} style={{ color: "#ef4444" }} />
+                  : <CloseCircle size={14} style={{ color: "var(--kin-tt-chu-loi)" }} />
                 )}
               </span>
             </div>
@@ -147,11 +147,11 @@ export default function TraCuuPage() {
       {/* Error */}
       {searched && error && (
         <div className="rounded-xl p-5 flex items-start gap-3"
-          style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
-          <CloseCircle size={18} style={{ color: "#c2410c", flexShrink: 0, marginTop: "1px" }} />
+          style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+          <CloseCircle size={18} style={{ color: "var(--kin-tt-chu-cho)", flexShrink: 0, marginTop: "1px" }} />
           <div>
-            <p className="text-sm font-semibold mb-0.5" style={{ color: "#c2410c" }}>Không tìm thấy</p>
-            <p className="text-xs" style={{ color: "#9a3412" }}>{error}</p>
+            <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>Không tìm thấy</p>
+            <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>{error}</p>
           </div>
         </div>
       )}
@@ -164,7 +164,7 @@ export default function TraCuuPage() {
               style={{ border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.05) 0px 2px 8px 0px" }}>
 
               {/* Student header */}
-              <div className="px-5 py-4 flex items-center gap-4" style={{ background: "var(--kin-nen-trang)", borderBottom: "1px solid #f1f0ef" }}>
+              <div className="px-5 py-4 flex items-center gap-4" style={{ background: "var(--kin-nen-trang)", borderBottom: "1px solid var(--kin-vien-nhat)" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-lg font-bold text-white"
                   style={{ background: "var(--kin-nhan-nen)" }}>
                   {getInitial(student.name)}
@@ -185,7 +185,7 @@ export default function TraCuuPage() {
               </div>
 
               {/* Courses */}
-              <div className="px-5 py-4" style={{ background: "#fafaf9" }}>
+              <div className="px-5 py-4" style={{ background: "var(--kin-nen-bang)" }}>
                 {student.courses.length === 0 ? (
                   <div className="flex items-center gap-2 py-2">
                     <BookOpen size={16} style={{ color: "var(--kin-vien-o-nhap)" }} />

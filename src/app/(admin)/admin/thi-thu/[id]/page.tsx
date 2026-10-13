@@ -142,7 +142,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
             <button onClick={() => { const input = toInput(form); if (input) onSave(form); }} disabled={saving}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)" }}>
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
@@ -162,7 +162,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {t.label}
                 </button>
@@ -506,7 +506,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
             <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Nhập hàng loạt câu hỏi</h2>
           </div>
           <button onClick={() => onImport(text)} disabled={saving || !text.trim()}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)" }}>
             {saving ? "Đang nhập..." : "Nhập"}
           </button>
         </div>
@@ -578,14 +578,14 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                       ← Quay lại
                     </button>
                     <button type="button" onClick={saveAiQuestions} disabled={aiSaving}
-                      className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+                      className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)" }}>
                       {aiSaving ? "Đang lưu..." : "Lưu câu hỏi này"}
                     </button>
                   </div>
                 </div>
 
                 {parseErrs.length > 0 && (
-                  <ul className="text-xs text-red-600 space-y-1 p-2 rounded-lg" style={{ background: "#fef2f2" }}>
+                  <ul className="text-xs text-red-600 space-y-1 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-loi)" }}>
                     {parseErrs.map((e, i) => <li key={i}>Khối {e.block}: {e.message}</li>)}
                   </ul>
                 )}
@@ -704,7 +704,7 @@ function DelModal({ target, onClose, onConfirm }: { target: { id: string; label:
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "#dc2626" }}>Xoá</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
         </div>
       </div>
     </div>
@@ -765,7 +765,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
                 <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={difficulty === d.value
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "#fff" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {d.label}
                 </button>
@@ -780,7 +780,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
           <button onClick={handleSave} disabled={saving || !categoryId}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{ background: "#16a34a" }}>
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
             {saving ? "Đang lưu..." : "Lưu"}
           </button>
         </div>
@@ -842,7 +842,7 @@ function GuestAccessPanel({ examId, showToast }: { examId: string; showToast: (m
           value={email} onChange={e => setEmail(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") grant(); }} />
         <button onClick={grant} disabled={submitting || !email.trim()}
-          className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+          className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)" }}>
           {submitting ? "Đang duyệt..." : "Duyệt"}
         </button>
       </div>
@@ -1008,7 +1008,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                       </div>
                       <button onClick={() => saveGrade(q.id, q.points)} disabled={saving === q.id}
                         className="mt-5 px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-60"
-                        style={{ background: "#16a34a" }}>
+                        style={{ background: "var(--kin-nhan-nen)" }}>
                         {saving === q.id ? "..." : "Lưu điểm"}
                       </button>
                     </div>
@@ -1077,7 +1077,7 @@ function AttemptsPanel({ examId }: { examId: string }) {
                       <td className="py-2 pr-3">{a.submittedAt ? new Date(a.submittedAt).toLocaleString("vi-VN") : "—"}</td>
                       <td className="py-2 pr-3">
                         {a.tabSwitchCount > 0 ? (
-                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>
+                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                             {a.tabSwitchCount} lần
                           </span>
                         ) : (
@@ -1086,7 +1086,7 @@ function AttemptsPanel({ examId }: { examId: string }) {
                       </td>
                       <td className="py-2 pr-3">
                         {a.ungradedEssayCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>
+                          <span className="px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                             Chưa chấm tự luận
                           </span>
                         )}

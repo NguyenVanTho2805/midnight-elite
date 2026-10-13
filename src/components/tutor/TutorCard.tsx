@@ -26,7 +26,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
     <div className="rounded-xl overflow-hidden flex flex-col"
       style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="px-6 py-5 flex items-center gap-4"
-        style={{ background: "linear-gradient(135deg,#0042AA 0%,#0068FF 60%,#38BDF8 100%)" }}>
+        style={{ background: "var(--kin-nhan-nen)" }}>
         <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 overflow-hidden"
           style={{ background: "rgba(255,255,255,0.2)", border: "2px solid rgba(255,255,255,0.4)" }}>
           {t.avatarBase64
@@ -39,7 +39,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
             <h3 className="text-lg font-bold text-white leading-tight truncate">{t.name}</h3>
             {t.tutorVerified && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                style={{ background: "rgba(255,255,255,0.25)", color: "#ffffff" }}>Đã xác minh</span>
+                style={{ background: "rgba(255,255,255,0.25)", color: "var(--kin-chu-tren-nut-chinh)" }}>Đã xác minh</span>
             )}
           </div>
           {t.subjects.length > 0 && (
@@ -52,9 +52,9 @@ export function TutorCard({ t }: { t: TutorListItem }) {
 
       <div className="p-5 flex flex-col flex-1 gap-4">
         {t.bio ? (
-          <p className="text-sm leading-relaxed line-clamp-3" style={{ color: "#4B5563" }}>{t.bio}</p>
+          <p className="text-sm leading-relaxed line-clamp-3" style={{ color: "var(--kin-chu-phu)" }}>{t.bio}</p>
         ) : (
-          <p className="text-sm italic" style={{ color: "#9CA3AF" }}>Chưa có giới thiệu</p>
+          <p className="text-sm italic" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giới thiệu</p>
         )}
 
         {t.subjects.length > 0 && (
@@ -69,17 +69,17 @@ export function TutorCard({ t }: { t: TutorListItem }) {
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div>
             <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{t.classCount}</p>
-            <p style={{ color: "#9CA3AF" }}>lớp đang dạy</p>
+            <p style={{ color: "var(--kin-chu-mo)" }}>lớp đang dạy</p>
           </div>
           <div>
             <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{t.studentCount}</p>
-            <p style={{ color: "#9CA3AF" }}>học viên</p>
+            <p style={{ color: "var(--kin-chu-mo)" }}>học viên</p>
           </div>
           <div>
             <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>
               {t.rating.avg !== null ? t.rating.avg.toFixed(1) : "—"}
             </p>
-            <p style={{ color: "#9CA3AF" }}>
+            <p style={{ color: "var(--kin-chu-mo)" }}>
               {t.rating.total > 0 ? `${t.rating.total} đánh giá` : "chưa có"}
             </p>
           </div>

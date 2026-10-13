@@ -85,11 +85,11 @@ export default function InviteCodeInput({
         autoComplete="off"
         spellCheck={false}
         className="w-full text-center text-2xl font-mono tracking-widest font-bold py-3 rounded-xl focus:outline-none"
-        style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "#1E2938", letterSpacing: "0.4em" }}
+        style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)", letterSpacing: "0.4em" }}
       />
 
       {value.length > 0 && value.length < MIN_LEN && (
-        <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>Mã có ít nhất {MIN_LEN} ký tự.</p>
+        <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Mã có ít nhất {MIN_LEN} ký tự.</p>
       )}
 
       {checking && (
@@ -102,7 +102,7 @@ export default function InviteCodeInput({
       )}
 
       {!checking && preview && preview.status === "invalid" && (
-        <div className="rounded-xl p-3 text-center" role="alert" style={{ background: "#FEE2E2", color: "#B91C1C" }}>
+        <div className="rounded-xl p-3 text-center" role="alert" style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
           <p className="text-sm font-semibold">{preview.error ?? "Mã không hợp lệ"}</p>
         </div>
       )}

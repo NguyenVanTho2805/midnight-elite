@@ -15,7 +15,7 @@ export function ErrorState({ message = "Có lỗi xảy ra, vui lòng thử lạ
       role="alert"
     >
       <div className="mb-3 w-14 h-14 flex items-center justify-center rounded-2xl text-2xl"
-        style={{ background: "#FEE2E2", color: "#B91C1C" }}>
+        style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
         ⚠
       </div>
       <p className="text-sm font-medium text-slate-700 max-w-md">{message}</p>

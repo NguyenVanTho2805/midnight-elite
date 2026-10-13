@@ -13,7 +13,7 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
     <div className="rounded-xl p-8" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex flex-col sm:flex-row items-start gap-6">
         <div className="w-24 h-24 rounded-xl flex items-center justify-center text-white text-3xl font-black flex-shrink-0 overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #0068FF, #0052DD)" }}>
+          style={{ background: "var(--kin-nhan-nen)" }}>
           {tutor.avatarBase64
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={tutor.avatarBase64} alt={tutor.name} className="w-full h-full object-cover" />
@@ -21,13 +21,13 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <Heading className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>{tutor.name}</Heading>
+            <Heading className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{tutor.name}</Heading>
             {tutor.tutorVerified && (
               <span className="text-xs font-bold px-3 py-1 rounded-full text-white"
-                style={{ background: "#00A63D" }}>Đã xác minh</span>
+                style={{ background: "var(--kin-tt-chu-xong)" }}>Đã xác minh</span>
             )}
             {/* PH-207/212: lời hứa của KiN với gia sư, nhìn thấy được trên hồ sơ chứ không chỉ nằm trong điều khoản */}
-            <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#dcfce7", color: "#166534" }}>Không thu phí nhận lớp</span>
+            <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>Không thu phí nhận lớp</span>
           </div>
           {tutor.subjects.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-1">
@@ -40,22 +40,22 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
 
           {/* FE-111: Bio đầy đủ (không line-clamp ở trang chi tiết). */}
           {tutor.bio && (
-            <p className="text-sm leading-relaxed mt-3 whitespace-pre-wrap" style={{ color: "#4B5563" }}>{tutor.bio}</p>
+            <p className="text-sm leading-relaxed mt-3 whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>{tutor.bio}</p>
           )}
 
           {/* FE-112: Stat thật (không hard-code) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
             {[
-              { Icon: Star, value: avgText, label: stats.rating.total > 0 ? `${stats.rating.total} đánh giá` : "chưa có", color: "#FE9900" },
+              { Icon: Star, value: avgText, label: stats.rating.total > 0 ? `${stats.rating.total} đánh giá` : "chưa có", color: "var(--kin-tt-chu-cho)" },
               { Icon: Users, value: stats.studentCount.toLocaleString(), label: "Học viên", color: "var(--kin-nhan-link)" },
-              { Icon: BookOpen, value: stats.classCount, label: "Lớp đang dạy", color: "#00A63D" },
-              { Icon: CalendarCheck, value: stats.sessionsTaught.toLocaleString(), label: "Buổi đã dạy (theo sổ lớp)", color: "#7C3AED" },
+              { Icon: BookOpen, value: stats.classCount, label: "Lớp đang dạy", color: "var(--kin-tt-chu-xong)" },
+              { Icon: CalendarCheck, value: stats.sessionsTaught.toLocaleString(), label: "Buổi đã dạy (theo sổ lớp)", color: "var(--kin-nhan-link)" },
             ].map(({ Icon, value, label, color }) => (
               <div key={label} className="rounded-xl p-3 text-center"
                 style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <Icon size={18} style={{ color, margin: "0 auto 4px" }} />
-                <div className="font-extrabold text-base" style={{ color: "#1E2938" }}>{value}</div>
-                <div className="text-xs" style={{ color: "#9CA3AF" }}>{label}</div>
+                <div className="font-extrabold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{value}</div>
+                <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{label}</div>
               </div>
             ))}
           </div>

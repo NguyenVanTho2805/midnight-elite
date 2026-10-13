@@ -52,10 +52,10 @@ type FeedItem =
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const THREAD_CATS = [
-  { key: "kinh-nghiem", label: "Chia sẻ",    color: "var(--kin-tt-chu-xong)", bg: "#dcfce7" },
+  { key: "kinh-nghiem", label: "Chia sẻ",    color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
   { key: "hoi-dap",     label: "Hỏi nhanh",  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
-  { key: "tai-lieu",    label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "#fef3c7" },
-  { key: "goc-vui",     label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
+  { key: "tai-lieu",    label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  { key: "goc-vui",     label: "Góc vui",     color: "var(--kin-nhan-link)", bg: "var(--kin-chu-tren-nut-chinh)" },
 ] as const;
 
 const CAT_MAP = Object.fromEntries(THREAD_CATS.map(c => [c.key, c])) as Record<
@@ -477,10 +477,10 @@ function PostForm({ user, balance, onThread, onQuestion }: {
           {/* Question-only: bounty info */}
           {postType === "question" && (
             <div className="mt-3 px-3 py-2.5 rounded-lg flex items-start gap-2"
-              style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
+              style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
               <span className="text-base leading-none flex-shrink-0">🪙</span>
               <div>
-                <p className="text-xs font-semibold" style={{ color: "#92400e" }}>
+                <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>
                   Trừ {QUESTION_COST} xu · Số dư hiện tại: {balance} xu
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
@@ -501,7 +501,7 @@ function PostForm({ user, balance, onThread, onQuestion }: {
               <button onClick={handlePost}
                 disabled={posting || uploading || !content.trim() || (postType === "question" && !title.trim())}
                 className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: postType === "question" ? "#b45309" : "var(--kin-nhan-nen)" }}>
+                style={{ background: postType === "question" ? "var(--kin-tt-chu-cho)" : "var(--kin-nhan-nen)" }}>
                 {uploading ? "Đang upload..." : posting
                   ? "Đang đăng..."
                   : postType === "question" ? "Đặt câu hỏi" : "Đăng bài"}
@@ -589,7 +589,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
               <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{t.author.name}</span>
               {t.author.isTeacher && (
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: "#fef3c7", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
+                  style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>Gia sư</span>
               )}
               <CatBadge cat={t.category} />
               {/* FE-119: badge phân biệt bài "chung" vs "trong lớp X". Chỉ hiển
@@ -617,7 +617,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button onClick={handleDelete} disabled={deleting}
               className="text-xs px-2.5 py-1 rounded-lg font-bold text-white disabled:opacity-50"
-              style={{ background: "#dc2626" }}>{deleting ? "..." : "Xoá"}</button>
+              style={{ background: "var(--kin-tt-chu-loi)" }}>{deleting ? "..." : "Xoá"}</button>
             <button onClick={() => setConfirmDelete(false)}
               className="text-xs px-2 py-1 rounded-lg"
               style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
@@ -681,7 +681,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
       </div>
 
       {reporting && (
-        <div className="mt-2 p-3 rounded-lg" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
+        <div className="mt-2 p-3 rounded-lg" style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           {reportDone ? (
             <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã gửi báo cáo, cảm ơn bạn!</p>
           ) : (
@@ -690,12 +690,12 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
                 onChange={e => { setReportReason(e.target.value); setReportError(""); }}
                 placeholder="Lý do báo cáo bài viết này..."
                 className="w-full text-xs rounded-lg px-2.5 py-2 outline-none resize-none"
-                style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid #fecaca" }} />
+                style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-loi)" }} />
               {reportError && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{reportError}</p>}
               <div className="flex gap-1.5 mt-2">
                 <button onClick={handleReport} disabled={reportSending}
                   className="px-3 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                  style={{ background: "#dc2626" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
+                  style={{ background: "var(--kin-tt-chu-loi)" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
                 <button onClick={() => { setReporting(false); setReportReason(""); setReportError(""); }}
                   className="px-3 py-1 rounded-lg text-xs font-semibold"
                   style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
@@ -715,7 +715,7 @@ function QuestionCard({ q, onOpen }: { q: QuestionDTO; onOpen: (id: string) => v
   return (
     <button className="block w-full text-left" onClick={() => onOpen(q.id)}>
       <article className="rounded-xl border p-4 transition-all hover:border-amber-300"
-        style={{ background: "var(--kin-nen-trang)", borderColor: answered ? "#bbf7d0" : "#fde68a" }}>
+        style={{ background: "var(--kin-nen-trang)", borderColor: answered ? "var(--kin-tt-vien-xong)" : "var(--kin-tt-vien-cho)" }}>
 
         <div className="flex items-start gap-2.5">
           <Avatar name={q.author.name} size={36} />
@@ -723,11 +723,11 @@ function QuestionCard({ q, onOpen }: { q: QuestionDTO; onOpen: (id: string) => v
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{q.author.name}</span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: answered ? "#dcfce7" : "#fffbeb", color: answered ? "#15803d" : "#92400e" }}>
+                style={{ background: answered ? "var(--kin-tt-nen-xong)" : "var(--kin-tt-nen-cho)", color: answered ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-cho)" }}>
                 {answered ? "✓ Đã giải" : "Đang mở"}
               </span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "#fffbeb", color: "var(--kin-tt-chu-cho)" }}>
+                style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                 🪙 {q.bountyPaid} xu
               </span>
             </div>
@@ -943,7 +943,7 @@ function CongDongInner() {
           <button key={tab.key} onClick={() => switchTab(tab.key)}
             className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap"
             style={activeTab === tab.key
-              ? { background: "var(--kin-nhan-nen)", color: "#ffffff" }
+              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
               : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
             {tab.label}
           </button>
@@ -970,10 +970,10 @@ function CongDongInner() {
       {/* Fetch error */}
       {fetchError && (
         <div className="flex items-center justify-between p-4 rounded-xl"
-          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
+          style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Lỗi tải dữ liệu</span>
           <button onClick={load} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#dc2626" }}>Thử lại</button>
+            style={{ background: "var(--kin-tt-chu-loi)" }}>Thử lại</button>
         </div>
       )}
 

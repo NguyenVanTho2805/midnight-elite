@@ -64,7 +64,7 @@ export function ConfirmModal({
                 ? "px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
                 : "px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
             }
-            style={!danger ? { background: "linear-gradient(135deg, #4F6BF5, #6B4FE8)" } : undefined}
+            style={!danger ? { background: "var(--kin-nhan-nen)" } : undefined}
           >
             {loading ? "..." : confirmLabel}
           </button>

@@ -5,17 +5,17 @@ import { useFollowedCourses } from "@/hooks/useFollowedCourses";
 import { useAuth } from "@/contexts/AuthContext";
 
 const categoryTheme: Record<string, string> = {
-  "ĐGNL HSA":        "linear-gradient(135deg,#0042AA,#0068FF,#38BDF8)",
-  "ĐGNL HCM":        "linear-gradient(135deg,#6D28D9,#8B5CF6,#C4B5FD)",
-  "Tốt nghiệp THPT": "linear-gradient(135deg,#15803D,#16a34a,#4ADE80)",
-  "TSA Bách Khoa":   "linear-gradient(135deg,#C2410C,#EA580C,#FB923C)",
-  "BCA":             "linear-gradient(135deg,#1E2938,#374151,#6B7280)",
+  "ĐGNL HSA":        "var(--kin-nhan-nen)",
+  "ĐGNL HCM":        "var(--kin-nhan-nen)",
+  "Tốt nghiệp THPT": "var(--kin-tt-chu-xong)",
+  "TSA Bách Khoa":   "var(--kin-tt-chu-cho)",
+  "BCA":             "var(--kin-chu-chinh)",
 };
 
 const CLASS_STATUS_LABEL: Record<string, { text: string; color: string; bg: string }> = {
-  open:   { text: "Đang nhận học viên", color: "#15803D", bg: "#DCFCE7" },
+  open:   { text: "Đang nhận học viên", color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
   closed: { text: "Đã đóng",             color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)" },
-  paused: { text: "Tạm dừng",           color: "#C2410C", bg: "#FFEDD5" },
+  paused: { text: "Tạm dừng",           color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
 };
 
 export default function LopTheoDoiPage() {
@@ -57,7 +57,7 @@ export default function LopTheoDoiPage() {
             Lớp đang theo dõi
             {!loading && items.length > 0 && (
               <span className="ml-2 text-sm font-semibold px-2 py-0.5 rounded-full align-middle"
-                style={{ background: "var(--kin-nhan-nen)", color: "#fff" }}>
+                style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }}>
                 {items.length}
               </span>
             )}
@@ -137,16 +137,16 @@ export default function LopTheoDoiPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Link href={`/khoa-hoc/${courseId}`}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:bg-[#f0f7ff]"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:bg-[var(--kin-nhan-nen-nhat)]"
                       style={{ color: "var(--kin-nhan-link)", border: "1px solid var(--kin-nhan-vien)" }}>
                       Chi tiết
                     </Link>
                     <button
                       onClick={() => unfollow(courseId)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[#FEF2F2]"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--kin-tt-nen-loi)]"
                       style={{ border: "1px solid var(--kin-vien-thuong)" }}
                       title="Bỏ theo dõi" aria-label="Bỏ theo dõi">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--kin-tt-chu-loi)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                       </svg>
                     </button>

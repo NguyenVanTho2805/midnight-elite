@@ -63,7 +63,7 @@ function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (r:
             style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Hủy</button>
           <button onClick={() => reason.trim() && onSubmit(reason.trim())}
             className="flex-1 py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#dc2626" }}>Gửi báo cáo</button>
+            style={{ background: "var(--kin-tt-chu-loi)" }}>Gửi báo cáo</button>
         </div>
       </div>
     </div>
@@ -226,15 +226,15 @@ export default function QuestionModal({
               {question && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{
-                    background: answered ? "#dcfce7" : "#fffbeb",
-                    color:      answered ? "#15803d" : "#92400e",
+                    background: answered ? "var(--kin-tt-nen-xong)" : "var(--kin-tt-nen-cho)",
+                    color:      answered ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-cho)",
                   }}>
                   {answered ? "✓ Đã giải" : "Đang mở"}
                 </span>
               )}
               {question && (
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "#fffbeb", color: "var(--kin-tt-chu-cho)" }}>
+                  style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                   🪙 {question.bountyPaid}
                 </span>
               )}
@@ -274,7 +274,7 @@ export default function QuestionModal({
 
                 {/* Question */}
                 <div className="rounded-xl p-4"
-                  style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
+                  style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>
                       {question.author.name} · {timeAgo(question.createdAt)}
@@ -298,8 +298,8 @@ export default function QuestionModal({
                   {question.answers.map(a => (
                     <div key={a.id} className="rounded-xl p-4"
                       style={{
-                        background: a.isAccepted ? "#f0fdf4" : "var(--kin-nen-trang)",
-                        border: a.isAccepted ? "1px solid #bbf7d0" : "1px solid var(--kin-vien-thuong)",
+                        background: a.isAccepted ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-trang)",
+                        border: a.isAccepted ? "1px solid var(--kin-tt-vien-xong)" : "1px solid var(--kin-vien-thuong)",
                         opacity: a.isPenalized ? 0.55 : 1,
                       }}>
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -307,13 +307,13 @@ export default function QuestionModal({
                         <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(a.createdAt)}</span>
                         {a.isAccepted && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: "#dcfce7", color: "#15803d" }}>
+                            style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
                             ✓ Được chấp nhận · +{ANSWER_REWARD} 🪙
                           </span>
                         )}
                         {a.isPenalized && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: "#fee2e2", color: "var(--kin-tt-chu-loi)" }}>⚠ Vi phạm</span>
+                            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>⚠ Vi phạm</span>
                         )}
                       </div>
                       <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>
@@ -323,7 +323,7 @@ export default function QuestionModal({
                         {question.isOwn && question.status === "open" && !a.isPenalized && (
                           <button onClick={() => acceptAnswer(a.id)}
                             className="text-xs font-bold px-3 py-1.5 rounded-lg text-white"
-                            style={{ background: "#15803d" }}>
+                            style={{ background: "var(--kin-nhan-nen)" }}>
                             ✓ Chấp nhận câu trả lời này
                           </button>
                         )}
@@ -350,7 +350,7 @@ export default function QuestionModal({
                 </div>
 
                 {/* Answer form */}
-                <div className="rounded-xl p-4" style={{ background: "#f9f9f8", border: "1px solid var(--kin-vien-thuong)" }}>
+                <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>
                     Câu trả lời hay nhất sẽ nhận <span style={{ color: "var(--kin-tt-chu-cho)" }}>+{ANSWER_REWARD} 🪙</span>
                   </p>

@@ -43,35 +43,35 @@ function TopStudentsSection() {
           ))}
         </div>
       ) : students.length === 0 ? (
-        <p className="text-center text-sm py-12" style={{ color: "#9CA3AF" }}>Chưa có dữ liệu</p>
+        <p className="text-center text-sm py-12" style={{ color: "var(--kin-chu-mo)" }}>Chưa có dữ liệu</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto">
           {students.map((s, i) => (
             <div key={s.userId}
               className="flex items-center gap-3 px-4 py-3 rounded-xl"
               style={{
-                background: i === 0 ? "linear-gradient(135deg,#b45309,#92400e)" : "var(--kin-nen-trang)",
+                background: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-nen-trang)",
                 border: i === 0 ? "none" : "1px solid var(--kin-vien-thuong)",
               }}>
               <div className="w-8 text-center flex-shrink-0">
                 {i < 3
                   ? <span className="text-xl">{MEDALS[i]}</span>
-                  : <span className="text-sm font-bold" style={{ color: i === 0 ? "#fbbf24" : "#9CA3AF" }}>#{i + 1}</span>}
+                  : <span className="text-sm font-bold" style={{ color: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-chu-mo)" }}>#{i + 1}</span>}
               </div>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
                 style={{
-                  background: i === 0 ? "rgba(255,255,255,0.2)" : "linear-gradient(135deg,#0055D4,#0068FF)",
+                  background: i === 0 ? "rgba(255,255,255,0.2)" : "var(--kin-nhan-nen)",
                   border: i === 0 ? "1px solid rgba(255,255,255,0.3)" : "none",
                 }}>
                 {s.name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate" style={{ color: i === 0 ? "#fff" : "#1E2938" }}>{s.name}</p>
-                {s.school && <p className="text-xs truncate" style={{ color: i === 0 ? "rgba(255,255,255,0.7)" : "#9CA3AF" }}>{s.school}</p>}
+                <p className="text-sm font-bold truncate" style={{ color: i === 0 ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-chu-chinh)" }}>{s.name}</p>
+                {s.school && <p className="text-xs truncate" style={{ color: i === 0 ? "rgba(255,255,255,0.7)" : "var(--kin-chu-mo)" }}>{s.school}</p>}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Trophy size={14} style={{ color: i === 0 ? "#fbbf24" : "#FE9900" }} />
-                <span className="text-sm font-extrabold" style={{ color: i === 0 ? "#fbbf24" : "#FE9900" }}>{s.best}</span>
+                <Trophy size={14} style={{ color: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-cho)" }} />
+                <span className="text-sm font-extrabold" style={{ color: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-cho)" }}>{s.best}</span>
               </div>
             </div>
           ))}

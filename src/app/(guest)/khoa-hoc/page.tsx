@@ -40,7 +40,7 @@ function toCourse(c: CourseFull): Course {
 }
 
 const categoryTheme = Object.fromEntries(
-  Object.entries(CATEGORY_GRADIENT).map(([k, bg]) => [k, { bg, strip: "#FDE047", stripText: "#1E2938" }])
+  Object.entries(CATEGORY_GRADIENT).map(([k, bg]) => [k, { bg, strip: "var(--kin-tt-chu-cho)", stripText: "var(--kin-chu-chinh)" }])
 ) as Record<string, { bg: string; strip: string; stripText: string }>;
 
 function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
@@ -111,7 +111,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
             <span key={t}
               className="px-2 py-0.5 rounded text-[11px] font-semibold"
               style={t === "Live"
-                ? { background: "#FEE2E2", color: "var(--kin-tt-chu-loi)" }
+                ? { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }
                 : { background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
               {t}
             </span>
@@ -162,7 +162,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
               href={`/student/hoc-tap?course=${course.slug}`}
               onClick={e => e.stopPropagation()}
               className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center transition-all hover:brightness-105 active:scale-95"
-              style={{ background: "#16a34a" }}>
+              style={{ background: "var(--kin-tt-chu-xong)" }}>
               Tiếp tục học →
             </Link>
           ) : (
@@ -253,7 +253,7 @@ function KhoaHocContent() {
             className="w-full text-left px-4 py-3 text-sm font-medium transition-colors"
             style={{
               color: !selectedSlug && activeCategory === "Tất cả" ? "var(--kin-nhan-link)" : "var(--kin-chu-phu)",
-              background: !selectedSlug && activeCategory === "Tất cả" ? "#dcecfa" : "transparent",
+              background: !selectedSlug && activeCategory === "Tất cả" ? "var(--kin-nhan-nen-nhat)" : "transparent",
               borderBottom: "1px solid var(--kin-vien-thuong)",
               borderLeft: !selectedSlug && activeCategory === "Tất cả" ? "2px solid var(--kin-nhan-nen)" : "2px solid transparent",
             }}>
@@ -266,7 +266,7 @@ function KhoaHocContent() {
                 className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors"
                 style={{
                   color: selectedSlug === course.slug ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)",
-                  background: selectedSlug === course.slug ? "#dcecfa" : "transparent",
+                  background: selectedSlug === course.slug ? "var(--kin-nhan-nen-nhat)" : "transparent",
                   borderBottom: "1px solid var(--kin-vien-thuong)",
                   borderLeft: selectedSlug === course.slug ? "2px solid var(--kin-nhan-nen)" : "2px solid transparent",
                   lineHeight: "1.4",
@@ -296,7 +296,7 @@ function KhoaHocContent() {
             {searchQuery && (
               <button onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full"
-                style={{ background: "var(--kin-vien-o-nhap)", color: "#fff" }}>
+                style={{ background: "var(--kin-vien-o-nhap)", color: "var(--kin-chu-tren-nut-chinh)" }}>
                 <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
               </button>
             )}
@@ -356,7 +356,7 @@ function KhoaHocContent() {
           {!coursesLoading && filtered.length === 0 && (
             <div className="text-center py-16 rounded-xl"
               style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-              <p className="text-base font-semibold mb-2" style={{ color: "#9CA3AF" }}>
+              <p className="text-base font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>
                 {searchQuery ? `Không tìm thấy "${searchQuery}"` : "Không có khóa học nào"}
               </p>
               <button onClick={() => { selectAll(); setSearchQuery(""); }} className="text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Xem tất cả</button>

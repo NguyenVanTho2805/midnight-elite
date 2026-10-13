@@ -10,8 +10,8 @@ export default function HoSoGiaSuPage() {
     <PermissionGuard required={PERMISSIONS.MANAGE_TUTORS}>
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-5">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Duyệt hồ sơ gia sư</h1>
-          <p className="text-sm mt-1" style={{ color: "#6B7280" }}>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Duyệt hồ sơ gia sư</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
             Xem giới thiệu và môn dạy của người nộp đơn rồi duyệt hoặc từ chối. Duyệt xong người đó đăng nhập lại để bắt đầu tạo lớp.
           </p>
         </div>

@@ -216,9 +216,9 @@ export default function DangKyPage() {
             ) : (
               <>
                 <h2 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Tài khoản đã tạo!</h2>
-                <div className="rounded-lg px-4 py-3 mb-5 text-left" style={{ background: "#fff7ed", border: "1px solid #fed7aa" }}>
-                  <p className="text-xs font-semibold mb-1" style={{ color: "#c2410c" }}>Không gửi được email xác thực</p>
-                  <p className="text-xs" style={{ color: "#9a3412" }}>
+                <div className="rounded-lg px-4 py-3 mb-5 text-left" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: "var(--kin-tt-chu-cho)" }}>Không gửi được email xác thực</p>
+                  <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>
                     Hệ thống đang trong quá trình cấu hình email. Vui lòng liên hệ admin để kích hoạt tài khoản theo cách thủ công.
                   </p>
                 </div>
@@ -528,7 +528,7 @@ export default function DangKyPage() {
 
               {serverError && (
                 <div className="px-4 py-3 rounded-lg text-sm font-medium"
-                  style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}>
+                  style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
                   {serverError}
                 </div>
               )}

@@ -12,7 +12,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="text-center max-w-md">
         <div className="w-24 h-24 rounded-xl flex items-center justify-center mx-auto mb-6"
-          style={{ background: "#fee2e2", border: "1px solid #fca5a5" }}>
+          style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <AlertTriangle size={44} style={{ color: "var(--kin-tt-chu-loi)" }} />
         </div>
 

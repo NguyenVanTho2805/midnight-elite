@@ -59,7 +59,7 @@ export default function KiemDuyetClient() {
             <p className="mt-2 text-xs" style={{ color: "var(--kin-chu-phu)" }}>Tác giả: <b>{r.thread.author.name}</b> · Báo cáo bởi <b>{r.reporter.name}</b></p>
             <p className="mt-1 text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Lý do: {r.reason}</p>
             <div className="mt-3 flex gap-2 flex-wrap">
-              <KinButton onClick={() => setConfirm(r)} loading={busy === r.id} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "#fff" }}>Xoá bài vi phạm</KinButton>
+              <KinButton onClick={() => setConfirm(r)} loading={busy === r.id} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Xoá bài vi phạm</KinButton>
               <KinButton variant="secondary" onClick={() => decide(r, "rejected")} loading={busy === r.id}>Bỏ qua</KinButton>
             </div>
           </li>
@@ -70,7 +70,7 @@ export default function KiemDuyetClient() {
           <p className="text-sm mb-4" style={{ color: "var(--kin-chu-phu)" }}>Bài viết sẽ bị ẩn khỏi cộng đồng lớp (hệ thống giữ lại bản lưu làm bằng chứng nếu có tranh chấp).</p>
           <div className="flex justify-end gap-2">
             <KinButton variant="ghost" onClick={() => setConfirm(null)}>Đóng</KinButton>
-            <KinButton onClick={() => decide(confirm, "approved")} loading={busy === confirm.id} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "#fff" }}>Xoá bài</KinButton>
+            <KinButton onClick={() => decide(confirm, "approved")} loading={busy === confirm.id} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Xoá bài</KinButton>
           </div>
         </Modal>
       )}

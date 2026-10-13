@@ -14,7 +14,7 @@ interface MyResult {
 
 const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
   upcoming:  { label: "Sắp diễn ra", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
-  available: { label: "Đang mở",     color: "var(--kin-tt-chu-xong)", bg: "#dcfce7" },
+  available: { label: "Đang mở",     color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
   completed: { label: "Đã kết thúc", color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)" },
 };
 
@@ -74,7 +74,7 @@ export default function ThiThuPage() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Đã làm",      val: done,      color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)", border: "var(--kin-vien-thuong)" },
-            { label: "Có thể thi",  val: available, color: "var(--kin-tt-chu-xong)", bg: "#dcfce7", border: "#86efac" },
+            { label: "Có thể thi",  val: available, color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-xong)" },
             { label: "Sắp diễn ra", val: upcoming,  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center"
@@ -104,7 +104,7 @@ export default function ThiThuPage() {
             const result   = exam.myResult;
             const hasDone  = !!result;
             const s        = STATUS_CFG[hasDone ? "completed" : exam.status];
-            const grad     = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+            const grad     = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
             const isLast   = idx === filtered.length - 1;
             // Đề gắn courseId mà học viên chưa ghi danh — vẫn hiện trong danh
             // sách (không ẩn hẳn) nhưng khoá nút vào thi, ghi rõ lý do thay vì
@@ -213,7 +213,7 @@ export default function ThiThuPage() {
 
         <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
           {[
-            { label: "Đề đang mở",  val: available, color: "var(--kin-tt-chu-xong)", bg: "#dcfce7", border: "#86efac" },
+            { label: "Đề đang mở",  val: available, color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-xong)" },
             { label: "Sắp diễn ra", val: upcoming,  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center"
@@ -258,7 +258,7 @@ export default function ThiThuPage() {
         <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
           {filtered.map((exam, idx) => {
             const s = STATUS_CFG[exam.status];
-            const grad = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+            const grad = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
             const isLast = idx === filtered.length - 1;
             return (
               <div key={exam.id} className="flex items-center gap-4 px-5 py-4"

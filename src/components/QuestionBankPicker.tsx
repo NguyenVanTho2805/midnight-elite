@@ -12,9 +12,9 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
   NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
-  TH:  { bg: "#dcfce7", color: "var(--kin-tt-chu-xong)" },
-  VD:  { bg: "#fef3c7", color: "var(--kin-tt-chu-cho)" },
-  VDC: { bg: "#fee2e2", color: "var(--kin-tt-chu-loi)" },
+  TH:  { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 const TYPE_LABEL: Record<QuestionType, string> = {
   MC: "Trắc nghiệm", ESSAY: "Tự luận", TRUE_FALSE_CLUSTER: "Đúng-Sai 4 ý", SHORT_ANSWER: "Trả lời ngắn",
@@ -157,7 +157,7 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
         <div className="flex justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
           <button onClick={handleAdd} disabled={selected.size === 0}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
             Thêm {selected.size > 0 ? `${selected.size} câu` : ""} đã chọn
           </button>
         </div>
