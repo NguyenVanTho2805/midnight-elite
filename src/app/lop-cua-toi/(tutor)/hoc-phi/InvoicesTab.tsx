@@ -128,7 +128,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
       </div>
 
       {!hasAccount && !loading && (
-        <div role="alert" className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "#1f2937", border: "1px solid var(--kin-vien-thuong)" }}>
+        <div role="alert" className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
           Bạn chưa lưu tài khoản nhận tiền nên phiếu chưa có mã QR.{" "}
           <button className="underline font-semibold" onClick={onGoPayout}>Cài đặt nhận tiền →</button>
         </div>
@@ -253,7 +253,7 @@ export function ReasonDialog({ title, label, cta, danger, onClose, onSubmit }: {
       <div className="flex justify-end gap-2">
         <KinButton variant="ghost" onClick={onClose}>Đóng</KinButton>
         <KinButton disabled={!reason.trim()} loading={busy} onClick={async () => { setBusy(true); await onSubmit(reason.trim()); setBusy(false); }}
-          style={danger ? { background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "#fff" } : undefined}>{cta}</KinButton>
+          style={danger ? { background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" } : undefined}>{cta}</KinButton>
       </div>
     </Modal>
   );

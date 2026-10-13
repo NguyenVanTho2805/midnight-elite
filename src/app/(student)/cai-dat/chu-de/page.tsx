@@ -24,11 +24,11 @@ const THEME_LABEL: Record<KinTheme, string> = {
 // Màu nhấn hiển thị trong card xem trước. Dùng giá trị cứng từ Figma —
 // không đổi theo trạng thái sáng/tối của app, vì card là ảnh demo.
 const THEME_PREVIEW: Record<KinTheme, { nen: string; chu: string }> = {
-  "navy":   { nen: "#1e3a8a", chu: "#ffffff" },
-  "co-vit": { nen: "#0e7490", chu: "#ffffff" },
-  "man":    { nen: "#6b21a8", chu: "#ffffff" },
-  "ca-phe": { nen: "#78350f", chu: "#ffffff" },
-  "muc":    { nen: "#0f172a", chu: "#ffffff" },
+  "navy":   { nen: "var(--kin-nhan-link)", chu: "var(--kin-nen-trang)" },
+  "co-vit": { nen: "var(--kin-nhan-link)", chu: "var(--kin-nen-trang)" },
+  "man":    { nen: "var(--kin-nhan-link)", chu: "var(--kin-nen-trang)" },
+  "ca-phe": { nen: "var(--kin-tt-chu-cho)", chu: "var(--kin-nen-trang)" },
+  "muc":    { nen: "var(--kin-chu-chinh)", chu: "var(--kin-nen-trang)" },
 };
 
 const MODE_LABEL: Record<KinMode, string> = {

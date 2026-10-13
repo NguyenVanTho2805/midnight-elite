@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
 import TutorApplicationsPanel from "@/components/admin/TutorApplicationsPanel";
+import { KinTabs } from "@/components/kin";
 import { useAuth, PERMISSIONS } from "@/contexts/AuthContext";
 
 interface UserRow {
@@ -16,11 +17,11 @@ interface UserRow {
 }
 
 const ROLE_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  admin_super:    { label: "Super Admin (Cấp 1)",   color: "#FE9900", bg: "#FFF7ED" },
-  admin_content:  { label: "Content Admin (Cấp 2)", color: "#0068FF", bg: "#EFF6FF" },
-  teacher:        { label: "Giáo viên",             color: "#16a34a", bg: "#F0FDF4" },
-  hoc_vien:       { label: "Học viên",              color: "#1D4ED8", bg: "#DBEAFE" },
-  chua_kich_hoat: { label: "Chưa KH",               color: "#6B7280", bg: "#F3F4F6" },
+  admin_super:    { label: "Super Admin (Cấp 1)",   color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  admin_content:  { label: "Content Admin (Cấp 2)", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+  teacher:        { label: "Giáo viên",             color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  hoc_vien:       { label: "Học viên",              color: "var(--kin-nhan-chu-tren-nhat)", bg: "var(--kin-nhan-nen-nhat)" },
+  chua_kich_hoat: { label: "Chưa KH",               color: "var(--kin-chu-mo)", bg: "var(--kin-chu-tren-nut-chinh)" },
 };
 
 function RoleBadge({ role, adminRole, enrollments }: {
@@ -129,7 +130,7 @@ export default function QuanTriVienPage() {
     <PermissionGuard required={PERMISSIONS.MANAGE_ADMINS}>
       {toast && (
         <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
-          style={{ background: toast.ok ? "#16a34a" : "#dc2626" }}>
+          style={{ background: toast.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
           {toast.ok ? "✓" : "✗"} {toast.msg}
         </div>
       )}
@@ -139,25 +140,21 @@ export default function QuanTriVienPage() {
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Quản trị viên</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
+          <h1 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Quản trị viên</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
         </div>
 
         {/* Tab */}
-        <div className="px-5 pt-2 flex gap-1 border-b border-gray-100 flex-shrink-0" role="tablist" aria-label="Nhóm quản trị">
-          {([
-            ["tai-khoan", "Tài khoản"],
-            ["gia-su", `Hồ sơ gia sư chờ duyệt${pendingTutors != null ? ` (${pendingTutors})` : ""}`],
-          ] as const).map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-              className="px-4 py-2 text-sm font-semibold border-b-2 -mb-px cursor-pointer"
-              style={tab === k
-                ? { borderColor: "#0068FF", color: "#0068FF" }
-                : { borderColor: "transparent", color: "#6B7280" }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <KinTabs
+          className="px-5 flex-shrink-0"
+          label="Nhóm quản trị"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: "tai-khoan", label: "Tài khoản" },
+            { key: "gia-su", label: `Hồ sơ gia sư chờ duyệt${pendingTutors != null ? ` (${pendingTutors})` : ""}` },
+          ]}
+        />
 
         {tab === "gia-su" ? (
           <div className="flex-1 overflow-auto p-5">
@@ -174,10 +171,10 @@ export default function QuanTriVienPage() {
             </div>
           ) : (
             [
-              { label: "Tổng",          val: users.length,   color: "#374151" },
-              { label: "Quản trị viên", val: counts.admin,   color: "#FE9900" },
-              { label: "Học viên",      val: counts.hocVien, color: "#0068FF" },
-              { label: "Chưa KH",       val: counts.chuaKH,  color: "#9CA3AF" },
+              { label: "Tổng",          val: users.length,   color: "var(--kin-chu-phu)" },
+              { label: "Quản trị viên", val: counts.admin,   color: "var(--kin-tt-chu-cho)" },
+              { label: "Học viên",      val: counts.hocVien, color: "var(--kin-nhan-link)" },
+              { label: "Chưa KH",       val: counts.chuaKH,  color: "var(--kin-chu-mo)" },
             ].map((s, i) => (
               <div key={s.label} className="flex items-center gap-1.5">
                 {i > 0 && <span className="text-gray-200 mr-2">|</span>}
@@ -198,8 +195,8 @@ export default function QuanTriVienPage() {
               <button key={f} onClick={() => setFilter(f)}
                 className="px-4 py-2 rounded-lg text-sm font-semibold border transition-all cursor-pointer"
                 style={filter === f
-                  ? { background: "linear-gradient(135deg,#0068FF,#0052DD)", color: "white", borderColor: "transparent" }
-                  : { background: "white", borderColor: "#E5E7EB", color: "#6B7280" }}>
+                  ? { background: "var(--kin-nhan-nen)", color: "white", borderColor: "transparent" }
+                  : { background: "white", borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 {f === "all"
                   ? `Tất cả (${users.length})`
                   : f === "admin"
@@ -273,7 +270,7 @@ export default function QuanTriVienPage() {
                     <td className="px-4 py-3 text-center">
                       {isAdmin
                         ? <span className="text-sm text-gray-300">—</span>
-                        : <span className="text-sm font-bold" style={{ color: "#0068FF" }}>{u._count.enrollments}</span>
+                        : <span className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>{u._count.enrollments}</span>
                       }
                     </td>
                     <td className="px-4 py-3">
@@ -287,7 +284,7 @@ export default function QuanTriVienPage() {
                           {!isAdmin && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg,#0068FF,#0052DD)" }}>
+                              style={{ background: "var(--kin-nhan-nen)" }}>
                               {busy ? "..." : "Thêm Admin Cấp 2"}
                             </button>
                           )}
@@ -302,39 +299,39 @@ export default function QuanTriVienPage() {
                           {isAdmin && isTeacher && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg,#0068FF,#0052DD)" }}>
+                              style={{ background: "var(--kin-nhan-nen)" }}>
                               {busy ? "..." : "Nâng lên Content Admin"}
                             </button>
                           )}
                           {isAdmin && !isSuper && !isTeacher && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_super")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg,#FE9900,#E07800)" }}>
+                              style={{ background: "var(--kin-tt-cham-cho)" }}>
                               {busy ? "..." : "Nâng lên Cấp 1"}
                             </button>
                           )}
                           {isAdmin && isSuper && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_content")} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-orange-300 disabled:opacity-50 cursor-pointer"
-                              style={{ color: "#FE9900", background: "#FFF7ED" }}>
+                              style={{ color: "var(--kin-tt-chu-cho)", background: "var(--kin-tt-nen-cho)" }}>
                               {busy ? "..." : "Hạ xuống Cấp 2"}
                             </button>
                           )}
                           {isAdmin && !confirming && (
                             <button onClick={() => setConfirm(u.id)} disabled={busy}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
-                              style={{ color: "#dc2626", background: "#FEF2F2" }}>
+                              style={{ color: "var(--kin-tt-chu-loi)", background: "var(--kin-tt-nen-loi)" }}>
                               Thu hồi quyền
                             </button>
                           )}
                           {isAdmin && confirming && (
                             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300"
-                              style={{ background: "#FEF2F2" }}>
-                              <span className="text-xs font-semibold" style={{ color: "#dc2626" }}>Chắc chắn?</span>
+                              style={{ background: "var(--kin-tt-nen-loi)" }}>
+                              <span className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Chắc chắn?</span>
                               <button onClick={() => { changeRole(u.id, "student"); setConfirm(null); }}
                                 disabled={busy}
                                 className="px-2 py-0.5 rounded text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
-                                style={{ background: "#dc2626" }}>
+                                style={{ background: "var(--kin-tt-chu-loi)" }}>
                                 {busy ? "..." : "Xác nhận"}
                               </button>
                               <button onClick={() => setConfirm(null)}

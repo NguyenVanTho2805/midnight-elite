@@ -39,7 +39,7 @@ const btnGhostOnNavy = "inline-flex items-center justify-center h-12 px-6 rounde
 
 export default function HomePage() {
   return (
-    <div data-vung="khach-sang" className="kin-chu-than min-h-screen flex flex-col bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)]">
+    <div data-vung="sang" className="kin-chu-than min-h-screen flex flex-col bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)]">
       <Navbar />
 
       <main className="flex-1">

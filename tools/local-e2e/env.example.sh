@@ -4,3 +4,4 @@ export DATABASE_URL="postgresql://postgres:<mat-khau>@localhost/kin_test"   # Po
 export SESSION_SECRET="test-secret-test-secret-test-secret-123456"
 export NEXT_TELEMETRY_DISABLED=1
 export BASE=http://localhost:3100
+export EMAIL_SINK_DIR=/tmp/kin-mail   # test đăng nhập bằng mã email đọc mã từ các tệp JSON ở đây; server dev cũng phải có biến này

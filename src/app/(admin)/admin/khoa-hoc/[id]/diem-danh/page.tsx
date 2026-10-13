@@ -49,10 +49,10 @@ function todayISO(): string {
 // Màu nền chip theo status — dùng semantic token của KiN, giữ 3 màu cố định
 // (xong/chờ/lỗi) không đổi theo chủ đề.
 const CHIP_COLORS: Record<AttendanceStatus, { bg: string; fg: string }> = {
-  present: { bg: "var(--kin-tt-cham-xong)",       fg: "#fff" },        // xanh lá
-  late:    { bg: "var(--kin-tt-cham-cho)",        fg: "#fff" },        // vàng
-  excused: { bg: "var(--kin-tt-cham-trung-tinh)", fg: "#fff" },        // xám
-  absent:  { bg: "var(--kin-tt-chu-loi)",         fg: "#fff" },        // đỏ
+  present: { bg: "var(--kin-tt-cham-xong)",       fg: "var(--kin-nen-trang)" },        // xanh lá
+  late:    { bg: "var(--kin-tt-cham-cho)",        fg: "var(--kin-nen-trang)" },        // vàng
+  excused: { bg: "var(--kin-tt-cham-trung-tinh)", fg: "var(--kin-nen-trang)" },        // xám
+  absent:  { bg: "var(--kin-tt-chu-loi)",         fg: "var(--kin-nen-trang)" },        // đỏ
 };
 
 export default function DiemDanhPage({ params }: { params: Promise<{ id: string }> }) {

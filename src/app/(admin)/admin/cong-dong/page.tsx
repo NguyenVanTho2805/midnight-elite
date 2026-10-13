@@ -28,20 +28,20 @@ interface ThreadsResponse {
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const CAT_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  "hoi-dap":     { label: "Hỏi đáp",    color: "#0068FF", bg: "#dbeafe" },
-  "kinh-nghiem": { label: "Kinh nghiệm", color: "#16a34a", bg: "#dcfce7" },
-  "tai-lieu":    { label: "Tài liệu",    color: "#b45309", bg: "#fef3c7" },
-  "goc-vui":     { label: "Góc vui",     color: "#7c3aed", bg: "#ede9fe" },
+  "hoi-dap":     { label: "Hỏi đáp",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+  "kinh-nghiem": { label: "Kinh nghiệm", color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  "tai-lieu":    { label: "Tài liệu",    color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  "goc-vui":     { label: "Góc vui",     color: "var(--kin-nhan-link)", bg: "var(--kin-chu-tren-nut-chinh)" },
 };
 
 const NEU_CARD = {
-  background: "#F0F5FF",
-  boxShadow: "8px 8px 16px #C5D0EA, -8px -8px 16px #ffffff",
+  background: "var(--kin-nen-bang)",
+  boxShadow: "var(--kin-bong-the)",
   borderRadius: "16px",
 };
 
 function CatBadge({ cat }: { cat: string }) {
-  const c = CAT_MAP[cat] ?? { label: cat, color: "#787671", bg: "#f6f5f4" };
+  const c = CAT_MAP[cat] ?? { label: cat, color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)" };
   return (
     <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
       style={{ background: c.bg, color: c.color }}>
@@ -215,8 +215,8 @@ function CommunityAdmin() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Kiểm duyệt cộng đồng</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#64748B" }}>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Kiểm duyệt cộng đồng</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>
             Ghim, xoá bài viết vi phạm — Tổng: {allThreads.length} bài
           </p>
         </div>
@@ -229,20 +229,20 @@ function CommunityAdmin() {
           onChange={e => setSearch(e.target.value)}
           placeholder="Tìm nội dung, tên tác giả..."
           className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #C5D0EA", color: "#1E2938" }}
+          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}
         />
         <ClassScopeSelect value={scope} onChange={v => { setScope(v); setAllThreads([]); setNextCursor(null); }} classes={classes} />
         <div className="flex gap-2 flex-wrap">
           {["all", "hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"].map(c => {
-            const info = c === "all" ? { label: "Tất cả", color: "#0068FF", bg: "#dbeafe" } : CAT_MAP[c];
+            const info = c === "all" ? { label: "Tất cả", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" } : CAT_MAP[c];
             const active = catFilter === c;
             return (
               <button key={c} onClick={() => setCatFilter(c)}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
                   background: active ? info.bg : "rgba(255,255,255,0.6)",
-                  color:      active ? info.color : "#64748B",
-                  border:     active ? `1px solid ${info.color}40` : "1px solid #C5D0EA",
+                  color:      active ? info.color : "var(--kin-chu-mo)",
+                  border:     active ? `1px solid color-mix(in srgb, ${info.color} 25%, transparent)` : "1px solid var(--kin-vien-thuong)",
                 }}>
                 {info.label}
               </button>
@@ -254,11 +254,11 @@ function CommunityAdmin() {
       {/* Fetch error */}
       {fetchError && (
         <div className="flex items-center justify-between p-4 rounded-xl"
-          style={{ background: "#FEE2E2", border: "1px solid #FECACA" }}>
-          <span className="text-sm font-semibold" style={{ color: "#DC2626" }}>Lỗi tải dữ liệu</span>
+          style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
+          <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Lỗi tải dữ liệu</span>
           <button onClick={load}
             className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#DC2626" }}>
+            style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
         </div>
@@ -267,10 +267,10 @@ function CommunityAdmin() {
       {/* Action error (pin/delete/loadMore failures) */}
       {actionError && (
         <div className="flex items-center justify-between p-3 rounded-xl"
-          style={{ background: "#FEF3C7", border: "1px solid #FDE68A" }}>
-          <span className="text-sm font-semibold" style={{ color: "#B45309" }}>{actionError}</span>
+          style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+          <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>{actionError}</span>
           <button onClick={() => setActionError(null)}
-            className="text-xs font-semibold ml-4 flex-shrink-0" style={{ color: "#B45309" }}>
+            className="text-xs font-semibold ml-4 flex-shrink-0" style={{ color: "var(--kin-tt-chu-cho)" }}>
             ✕ Đóng
           </button>
         </div>
@@ -280,7 +280,7 @@ function CommunityAdmin() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#e5e3df" }} />
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
           ))}
         </div>
       )}
@@ -288,7 +288,7 @@ function CommunityAdmin() {
       {/* Pinned section */}
       {!loading && pinned.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#0068FF" }}>
+          <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--kin-nhan-link)" }}>
             Bài ghim ({pinned.length})
           </h2>
           {pinned.map(t => (
@@ -302,7 +302,7 @@ function CommunityAdmin() {
       {!loading && regular.length > 0 && (
         <section className="space-y-3">
           {pinned.length > 0 && (
-            <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#64748B" }}>
+            <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--kin-chu-mo)" }}>
               Bài viết ({regular.length})
             </h2>
           )}
@@ -315,7 +315,7 @@ function CommunityAdmin() {
 
       {/* Empty */}
       {!loading && !fetchError && filtered.length === 0 && (
-        <div className="text-center py-16" style={{ color: "#64748B" }}>
+        <div className="text-center py-16" style={{ color: "var(--kin-chu-mo)" }}>
           <p className="text-4xl mb-3">💬</p>
           <p className="font-semibold">Không có bài viết nào</p>
         </div>
@@ -326,7 +326,7 @@ function CommunityAdmin() {
         <div className="text-center">
           <button onClick={loadMore} disabled={loadingMore}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             {loadingMore ? "Đang tải..." : "Tải thêm"}
           </button>
         </div>
@@ -351,8 +351,8 @@ function ThreadRowCard({
   return (
     <div className="rounded-xl p-4 flex items-start gap-4 transition-all"
       style={{
-        background: t.isPinned ? "rgba(0,104,255,0.04)" : "#ffffff",
-        border: `1px solid ${t.isPinned ? "#bfdbfe" : "#e5e3df"}`,
+        background: t.isPinned ? "color-mix(in srgb, var(--kin-nhan-nen) 4%, transparent)" : "var(--kin-nen-trang)",
+        border: `1px solid ${t.isPinned ? "var(--kin-nhan-vien)" : "var(--kin-vien-thuong)"}`,
       }}>
 
       {/* Content */}
@@ -361,17 +361,17 @@ function ThreadRowCard({
           <CatBadge cat={t.category} />
           <ClassScopeBadge course={t.course} />
           {t.isPinned && (
-            <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>📌 Đang ghim</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>📌 Đang ghim</span>
           )}
-          <span className="text-xs" style={{ color: "#94a3b8" }}>{formatDate(t.createdAt)}</span>
+          <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{formatDate(t.createdAt)}</span>
         </div>
 
-        <p className="text-sm line-clamp-2 leading-relaxed" style={{ color: "#37352f" }}>
+        <p className="text-sm line-clamp-2 leading-relaxed" style={{ color: "var(--kin-chu-phu)" }}>
           {t.content}
         </p>
 
-        <div className="flex items-center gap-3 text-xs" style={{ color: "#94a3b8" }}>
-          <span className="font-semibold" style={{ color: "#1E2938" }}>{t.author.name}</span>
+        <div className="flex items-center gap-3 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
+          <span className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{t.author.name}</span>
           <span>♥ {t.likeCount}</span>
           <span>💬 {t.replyCount}</span>
         </div>
@@ -385,8 +385,8 @@ function ThreadRowCard({
           title={t.isPinned ? "Bỏ ghim" : "Ghim bài"}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
           style={{
-            background: t.isPinned ? "#bfdbfe" : "rgba(0,104,255,0.08)",
-            color:      "#0068FF",
+            background: t.isPinned ? "var(--kin-nhan-vien)" : "color-mix(in srgb, var(--kin-nhan-nen) 8%, transparent)",
+            color:      "var(--kin-nhan-link)",
           }}>
           {pinningId === t.id ? "..." : t.isPinned ? "Bỏ ghim" : "📌 Ghim"}
         </button>
@@ -395,19 +395,19 @@ function ThreadRowCard({
           <div className="flex items-center gap-1.5">
             <button onClick={() => onDelete(t.id)} disabled={deletingId === t.id}
               className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-              style={{ background: "#DC2626" }}>
+              style={{ background: "var(--kin-tt-chu-loi)" }}>
               {deletingId === t.id ? "..." : "Xác nhận xoá"}
             </button>
             <button onClick={() => onConfirm(null)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: "#f6f5f4", color: "#787671" }}>
+              style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
               Huỷ
             </button>
           </div>
         ) : (
           <button onClick={() => onConfirm(t.id)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: "#FEE2E2", color: "#DC2626" }}>
+            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
             Xoá
           </button>
         )}

@@ -85,12 +85,135 @@ Nguồn: file Figma *KiN Design System* (`2orXvoHL2upkiGoMjlq8aX`). Đã đọc 
 - **Bỏ khỏi trang chủ so với bản cũ:** danh sách khoá học + tìm kiếm + theo dõi (vẫn đủ ở `/khoa-hoc`), dòng "Mua 1 lần, học trọn đời" (sai cách bán — KiN thu theo tháng), đếm ngược kỳ thi (ngày viết cứng), dòng thời gian "Hành trình phát triển", ô BCA (Figma chỉ có 4 ô).
   Thanh trên không còn "Gia sư" (`/giang-vien`) và "Bảng xếp hạng" vì Figma chỉ có 4 mục; cả hai chuyển xuống chân trang (cột Công cụ học tập, thêm dòng "Danh sách gia sư" ngoài 4 dòng của Figma để `/giang-vien` không mất lối vào). Muốn đưa lại lên thanh trên thì thêm vào `navLinks` trong `Navbar.tsx`.
 - **Số liệu "1.200+ học sinh / 10.000+ đề / 6 gia sư" giữ nguyên như Figma và bản cũ — chưa có nguồn đếm tự động, cần người chịu trách nhiệm xác nhận trước khi đưa ra công khai.**
-- **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="khach-sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
+- **Vùng sáng cố định:** thanh trên, chân trang, trang chủ và khung `(guest)` đặt `data-vung="sang"` (khoá chế độ sáng, vẫn theo chủ đề màu). Lý do: các trang guest/student còn lại viết cứng màu cho nền sáng; để thanh trên đổi tối theo máy thì vỡ trang. Khi mọi trang đã dùng token thì gỡ khối này.
 - **CHƯA làm (đều cần quyết định hoặc chưa có khung Figma tương ứng):**
-  - Đăng nhập "một ô, một mã" (Figma 21:9 / TK-170): đó là đổi cơ chế xác thực (mã 6 số dùng một lần, không mật khẩu, cần SMS/email, khoá 15 phút, cookie `kin_s`, phiên quản trị 12 giờ). Giao diện hiện vẫn email + mật khẩu.
-  - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); học sinh, quản trị chưa — admin trên tên miền riêng, cần làm cả bộ điều hướng.
-  - Các trang không có khung Figma: `/khoa-hoc`, `/khoa-hoc/[id]`, `/thi-thu`, `/tin-tuc`, `/bang-xep-hang`, `/student/*`, `/admin/*` — vẫn giao diện cũ (xanh #0068FF), đã nằm trong thanh trên/chân trang mới nên lệch tông. `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần".
+  - Đăng nhập "một ô, một mã": **đã làm ngày 13/10 qua email** — xem mục "Đăng nhập bằng mã 6 số qua email" ngay dưới đây. Chưa làm: đăng nhập bằng số điện thoại (cần SMS), cookie `kin_s`, phiên quản trị 12 giờ không gia hạn.
+  - Vỏ ứng dụng 4 vai kiểu Outlook (5:39): gia sư đã có (`TutorShell`, `OutlookShell`); **học sinh đã làm ngày 13/10** (mục "Vỏ học sinh" bên dưới); **quản trị cũng đã làm ngày 13/10** (mục "Vỏ quản trị").
+  - Các trang không có khung Figma: **đã áp ngôn ngữ KiN ngày 13/10** (mục "Áp ngôn ngữ KiN cho trang cũ" bên dưới). `/khoa-hoc` còn dòng cũ "Học trọn đời — Mua 1 lần" (chữ bán hàng, chờ Thọ chốt).
   - Chưa kiểm được phông thật trong môi trường làm việc (Google Fonts bị chặn nên chạy bằng phông thay thế); Vercel sẽ tải đúng Inter / Be Vietnam Pro / Plus Jakarta Sans.
+
+## Đăng nhập bằng mã 6 số qua email (TK-170) — XONG ngày 13/10 (Thọ chốt: dùng, và dùng email)
+Màn `/dang-nhap` dựng theo Figma 32:2 (nhập email) và 32:27 (nhập mã 6 số). Nhập email → KiN gửi mã → nhập mã là vào. **Đăng nhập bằng mật khẩu vẫn còn làm lối phụ** ("Đăng nhập bằng mật khẩu"), vì mọi tài khoản cũ có mật khẩu và đăng ký vẫn đặt mật khẩu; chưa tắt mật khẩu như Figma ghi "KiN không dùng mật khẩu".
+- **Quy tắc (đúng bản đồ đường vào Figma 33:2):** mã 6 số ngẫu nhiên an toàn mật mã; sống 10 phút; dùng một lần (xoá dòng ngay khi đúng, hai yêu cầu cùng mã đúng chỉ một cái vào được); sai 5 lần thì khoá email đó 15 phút (kể cả mã đúng và kể cả xin mã mới); xin mã mới được sau 60 giây.
+- **An toàn:** DB chỉ lưu băm HMAC-SHA256(khoá bí mật của server, "email:mã"), so bằng `timingSafeEqual`; lượt thử được TRỪ NGUYÊN TỬ trước khi so nên gửi song song 25 lần đoán cũng chỉ so được ≤ 5 lần; lần sai được giữ qua các lần xin mã mới trong 15 phút (không lách bằng cách xin mã liên tục); giới hạn thêm theo IP (10 lần xin / 30 lần nhập mỗi 10 phút) và theo email (6 lần xin / 10 phút, chống dội thư vào hộp thư người khác).
+- **Không lộ email nào có tài khoản:** email lạ vẫn nhận phản hồi y hệt (gửi, chờ 60 giây, còn 4/3/2/1 lần, khoá 15 phút), được mô phỏng trong bộ nhớ và không gửi thư thật. Tài khoản bị khoá (`banned`) vẫn nhận thư, vào bằng mã đúng thì bị từ chối 403 như đăng nhập mật khẩu.
+- **Lưu ý hạn chế:** mô phỏng email lạ và giới hạn theo IP/email nằm trong bộ nhớ từng máy chủ (serverless nhiều bản chạy song song thì mỗi bản đếm riêng) — phần chặn thật cho tài khoản có thật nằm trong DB nên vẫn đúng.
+- **Bảng mới (chỉ thêm):** `login_codes` (xem `prisma/schema.prisma`); build production tự tạo. Không đổi `emailVerified` khi đăng nhập bằng mã.
+- **Thư:** `sendLoginCodeEmail` trong `src/lib/email.ts` (màu KiN navy, có bản văn bản thường). Dùng Gmail SMTP sẵn có (`GMAIL_USER`, `GMAIL_APP_PASSWORD`); không cần biến mới. Chỉ để test cục bộ: đặt `EMAIL_SINK_DIR` thì thư ghi thành tệp JSON thay vì gửi.
+- **Đi kèm:** `/dang-nhap?redirect=` chỉ nhận đường dẫn nội bộ (trước đó nhận cả địa chỉ ngoài → có thể bị dùng để đẩy người dùng sang trang giả mạo sau khi đăng nhập); `AuthGuard` đưa người chưa đăng nhập về `/dang-nhap?redirect=<trang đang định vào>` để đăng nhập xong quay lại đúng trang (Figma 33:2).
+- **Test:** `t-login-code-lib` (43), `t-login-code` (61: API + Postgres thật, đua song song, đoán mã hàng loạt, email lạ, bị khoá, vai trò), `ui-login-code` (62: màn hình thật, gõ phím/dán mã, đồng hồ gửi lại, khoá, điện thoại 390px, chặn redirect ngoài).
+- **Chưa làm:** đăng nhập bằng số điện thoại (cần dịch vụ SMS — Figma có "Số điện thoại hoặc email"; hiện chỉ email); tắt hẳn mật khẩu; phiên 30 ngày gia hạn mỗi lần dùng và phiên quản trị 12 giờ (phiên hiện vẫn 7 ngày cho mọi vai).
+
+## Áp ngôn ngữ KiN cho các trang cũ không có khung Figma — XONG HAI ĐỢT, 13/10 (Thọ: "áp dụng luôn, không chờ")
+> **Lịch sử:** đợt 1 chỉ đổi BẢNG MÀU CŨ liệt kê bên dưới và báo là xong; đếm lại thì còn ~1.600 mã hex viết cứng trong 95 file (bảng màu "nổi" cũ của admin/học viên `#1E2938 #6B7280 #9CA3AF #C5D0EA #F0F5FF…` và màu trạng thái `#16A34A #DC2626 #FEF3C7…`) cùng ~1.350 lớp Tailwind kiểu `text-gray-500`. **Đợt 2** (cùng ngày) xử lý nốt, xem mục "Đợt 2" cuối phần này. Test `t-no-hex` giữ cho không quay lại.
+- **Cách làm:** công cụ chuyển có kiểm soát (không thay mù): ánh xạ màu cũ → token `--kin-*` THEO NGỮ CẢNH thuộc tính CSS (chữ / nền / viền / tô SVG), chạy trên ~88 file `.tsx` của `(guest)`, `(student)`, `(admin)` và các component dùng chung; sau đó rà tay các chỗ công cụ không an toàn (viền có độ trong suốt dùng `color-mix`, màu ghép chuỗi `${màu}40`, khoá React trùng sau khi hai màu cũ gộp thành một token). `globals.css`: `--color-primary*` trỏ về token KiN nên mọi class `bg-primary`… tự đổi.
+- **Vùng sáng cố định đổi tên `data-vung="khach-sang"` → `"sang"`** và đặt thêm cho `(student)` và `(admin)`. Trong vùng này `kin-site.css` khai báo lại token trung tính theo bản sáng + giá trị nhấn theo 5 chủ đề màu, kể cả viền focus và ô nhập (`.notion-input`) — trước đó viền focus toàn cục `#0068FF` làm rò màu cũ ra mọi ô nhập.
+- **Cố ý giữ nguyên màu cứng (là DỮ LIỆU, không phải giao diện):** màu thẻ/nhãn do quản trị chọn và lưu vào cơ sở dữ liệu (`TAG_COLORS` ở trang khoá học admin, khoá `"#0068FF": "MỚI"`), đánh dấu bằng `data-mau-du-lieu`; ô mẫu của bộ chọn chủ đề màu. Test `ui-kin-site` bỏ các chỗ có `data-mau-du-lieu` khi quét. (Phần còn lại ở đầu mục là chưa làm, không phải cố ý.)
+- **Test:** `ui-kin-site` (101 kiểm tra) quét các trang guest/student/admin tìm ĐÚNG BẢNG MÀU CŨ đã liệt kê (không phải mọi mã hex) trong style thật của trình duyệt, kiểm tra vùng sáng không đổi tối theo máy, tương phản chữ thật.
+- **Đợt 2 — 13/10:**
+  - Công cụ chuyển theo HỌ MÀU + NGỮ CẢNH (chữ / nền / viền / biểu tượng / bóng / gradient) trên 99 file: ~1.400 mã hex → token, 57 gradient xanh/xanh lá → màu đặc, 65 bóng neumorphism (`#C5D0EA` hai phía) → `--kin-bong-the/chim/noi` (phẳng, viền mảnh), 28 `rgba()` màu cũ → `color-mix` theo token.
+  - **Token mới** (`kin-site.css`): nền/viền trạng thái `--kin-tt-nen-xong|cho|loi`, `--kin-tt-vien-xong|cho|loi` (pha từ chấm trạng thái, tự theo vùng sáng/tối); bóng `--kin-bong-*`; **bí danh cho biến cũ** (`--ink`, `--canvas`, `--hairline`, `--tint-*`, `--color-primary`, `--shadow-neu-*`…) trỏ về token KiN thay vì giữ mã hex.
+  - **Bảng màu Tailwind** (`text-gray-*`, `border-blue-*`, `bg-red-*`… ~1.350 chỗ) trỏ về token trong `@theme inline` của `globals.css` — một chỗ sửa cho toàn app, tôn trọng vùng sáng cố định.
+  - `globals.css`: bỏ hẳn các lớp `.clay-*`/`.neu-*` kiểu nổi 3D (giờ phẳng, viền mảnh); nút thao tác chính màu xanh lá (Lưu / Tạo mới / Thêm…, 40 chỗ) đổi sang màu nhấn KiN (xanh lá chỉ còn dùng cho trạng thái "xong").
+  - **Còn mã hex có chủ ý** (có lý do trong `t-no-hex`): token (`kin-tokens.css`, `kin-site.css`), thư HTML (`email.ts` — ứng dụng thư bỏ qua biến CSS), dữ liệu mẫu khoá học/vinh danh, logo, màu nhãn khoá học lưu trong DB, bảng màu avatar phân loại + màu huy chương đồng.
+  - **Test:** `t-no-hex` (17) quét tĩnh mọi `.ts/.tsx/.css` tìm mã hex (kiểm đã thử đột biến: thêm một mã hex và một lớp `text-gray-950` thì test đỏ), mọi lớp màu Tailwind đang dùng đã có trong `@theme`, mọi biến cũ đang dùng có bí danh. ESLint: số lỗi không đổi (80 → 80, toàn lỗi có sẵn).
+  - **Chưa làm:** bố cục các trang cũ (không có khung Figma); chữ 9–10px (xem mục Rà soát Figma); dòng "Học trọn đời" ở `/khoa-hoc/[slug]`.
+- **Chưa làm / cần người:** dòng "Mua 1 lần" ở `/khoa-hoc`; logo K vẽ lại bằng SVG (cần SVG gốc từ Figma); phông Inter/Be Vietnam Pro/Plus Jakarta Sans chưa kiểm được thật ở đây (Google Fonts bị chặn).
+
+## Vỏ học sinh kiểu Outlook + "Việc của tôi" — XONG ngày 13/10 (Thọ: "làm vỏ học sinh rồi đến vỏ quản trị")
+Dựng theo Figma "Vỏ — Học sinh" (11:98) và đặc tả `docs/kin/thiet-ke/bo-cuc-outlook.md`. Thay thanh trên cũ + thanh dưới cũ của khu `/student/*`.
+- **Thanh module** (`src/components/kin/shell/ModuleRail.tsx`, dùng chung cho quản trị): máy tính cột trái 79px; điện thoại thanh dưới 60px. Bốn module đúng Figma: Việc của tôi · Lịch · Lớp · Thư viện, thêm **"Khác"** (bảng nổi) để các trang không có trong Figma (Thi thử, Bảng xếp hạng, Hỏi đáp, Cộng đồng, Khoá học, Gia sư, Tin tức, Điểm chuẩn, Hồ sơ, Học phí, Ví, Chủ đề màu, Đăng xuất) không mất lối vào khi bỏ thanh trên. Module đang ở dùng `aria-current` (không phải `aria-selected`); nút cao ≥ 44px.
+- **Badge đỏ chỉ đếm việc học sinh phải ra tay** (bài chưa nộp hạn trong 3 ngày hoặc đã quá hạn, hạn nộp ngoài trong 3 ngày) — KHÔNG đếm "chưa đọc". Có nhãn chữ "N việc cần xử lý".
+- **Việc của tôi** (`/student/viec-cua-toi`, thành trang đầu sau đăng nhập; `/student` chuyển về đây): danh sách 330px bên trái, khung đọc bên phải, mỗi khung cuộn riêng; điện thoại chọn một dòng thì hiện khung đọc, có nút ← quay lại; phím ↑ ↓ Home End; khung xương khi tải lần đầu (không vòng xoay); lỗi tải lại thì giữ danh sách cũ + dải báo lỗi + "Thử lại"; tải lại khi quay về tab.
+  Nội dung = dữ liệu thật: bài tập có hạn của các lớp đang học (chưa nộp / đã nộp / đã chấm kèm điểm và nhận xét), hạn nộp ngoài (Azota), buổi học trong 3 ngày tới (kể cả buổi dời/huỷ). Bài không có hạn, bài lớp khác, quá hạn > 14 ngày đều không hiện. Logic thuần ở `src/lib/studentTodo.ts`, đọc DB ở `studentTodoServer.ts`, API `GET /api/student/viec-cua-toi` (`?badge=1` chỉ trả số).
+- **Lịch dùng chung nguồn:** logic lịch tách khỏi `/api/schedule` sang `src/lib/studentSchedule.ts` để "Việc của tôi" và trang Lịch không thể lệch nhau; `/api/schedule` vẫn trả `{ events }` như cũ (test chặn hồi quy).
+- **Phòng thi (`/student/thi-thu/<mã đề>`) không có vỏ** — toàn màn hình, đúng đặc tả.
+- **Test:** `t-student-todo-lib` (43: từng quy tắc), `t-student-todo` (36: API + Postgres thật, đúng người, không rò dữ liệu giữa học sinh, rời lớp thì hết việc, `/api/schedule` không đổi dạng), `ui-student-shell` (62: bố cục 79/330, cuộn riêng, phím, bảng Khác, phòng thi không vỏ, khung xương/lỗi/trống, điện thoại 390px, chưa đăng nhập).
+- **Khác Figma có chủ ý:** (1) nhãn nhóm "Cần làm / Sắp tới / Đã xong" trong danh sách (Figma chỉ vẽ ba dòng mẫu). (2) Danh sách rộng 330px theo đặc tả (khung Figma vẽ ~200px vì khung mẫu nhỏ). (3) Icon vẽ lại bằng nét SVG (file icon gốc không tải được vì tường lửa chặn figma.com).
+- **Chưa làm:** các trang khách (`/thu-vien`, `/khoa-hoc`, `/giang-vien`, `/diem-chuan`…) vẫn nằm trong khung khách có thanh trên cũ — bấm "Thư viện" trong vỏ học sinh đi sang khung đó, chưa có vỏ học sinh bao quanh. Trang con của `/student/*` (Lớp, Hồ sơ, Học phí, Bài giảng, Phòng thi…) vẫn là giao diện trang cũ đặt trong vỏ mới và còn nhiều màu hex cũ (xem đính chính ở mục "Áp ngôn ngữ KiN"), chưa dựng lại theo Figma (không có khung Figma tương ứng).
+
+## Vỏ quản trị kiểu Outlook + "Chờ kiểm duyệt" — XONG ngày 13/10 (Thọ: "rồi đến vỏ quản trị")
+Dựng theo Figma "Vỏ — Quản trị" (11:287). Thay hẳn thanh bên tối kiểu nổi (neumorphic) + thanh trên cũ của `/admin/*`; xoá `AdminSidebar.tsx` (không còn nơi nào dùng).
+- **Thanh module + dải tab:** thanh module trái 79px / thanh dưới 60px (cùng `ModuleRail` với vỏ học sinh), bốn module **Kiểm duyệt · Người dùng · Nội dung · Báo cáo** (Figma vẽ ba nút cho vai kiểm duyệt; thêm Nội dung vì quản trị còn phải làm khoá học/đề thi/tin tức). Trang con của module hiện thành dải tab phía trên nội dung (`src/lib/adminNav.ts`). Dải trên có logo, vai, tên, "Trang học viên", Đăng xuất.
+  **Mọi trang quản trị cũ nguyên vẹn, nằm trong vỏ mới; quyền từng trang giữ nguyên** — test `t-admin-queue-lib` so bảng quyền mới với bảng cũ của thanh bên (cho từng vai: không thừa, không thiếu) và có một bước quét thư mục: thêm trang `/admin/...` mà quên đưa vào module thì test đỏ. `/admin/topups` vẫn không có lối vào (đúng như thanh bên cũ).
+- **Bỏ có chủ ý:** dòng "Hệ thống hoạt động bình thường" kèm chấm nhấp nháy (chữ cố định, không đo gì cả — dễ làm quản trị tưởng hệ thống được giám sát); ngăn kéo ☰ trên điện thoại (thay bằng thanh dưới + dải tab cuộn ngang). Test `ui-revenue` viết lại phần điện thoại/máy tính theo vỏ mới.
+- **Chờ kiểm duyệt** (`/admin/kiem-duyet`, `GET /api/admin/kiem-duyet`, `?badge=1`): MỘT hàng chờ gộp, danh sách + khung đọc, chờ lâu nhất lên trước. Bốn loại dòng, đều là dữ liệu thật đang chờ: hồ sơ gia sư xin duyệt, báo cáo bài viết, báo cáo hồ sơ gia sư, báo cáo câu trả lời. Badge trên "Kiểm duyệt" = số dòng đang chờ (có nhãn chữ), cập nhật ngay khi xử lý xong một dòng.
+  **Lệnh trong khung đọc gọi đúng API xử lý đã có** (không có đường xử lý mới): Duyệt / Từ chối gia sư (từ chối bắt buộc lý do ≤ 500), Gỡ / Giữ bài viết (hỏi lại một câu trước khi gỡ), Khoá hồ sơ công khai (bắt buộc lý do) / Bỏ qua báo cáo. Người chưa xác thực email: nút Duyệt bị khoá kèm lý do (máy chủ cũng chặn 409). Hai người xử lý cùng lúc → người sau nhận 409 và dòng tự biến mất.
+  **Báo cáo câu trả lời KHÔNG xử lý ngay trong hàng chờ:** "xác nhận vi phạm" trừ xu của người trả lời (vấn đề tiền) nên chỉ có liên kết sang trang riêng `/admin/cong-dong/bao-cao`, kèm cảnh báo khi câu trả lời đã được thưởng.
+- **Phạm vi theo quyền (đúng như các trang cũ):** quản lý trung tâm (admin_super, admin_content) thấy cả bốn loại; giáo viên chỉ thấy báo cáo bài viết trong lớp do mình sở hữu (không thấy báo cáo bài chung, lớp khác, hồ sơ gia sư, câu trả lời); học sinh bị chặn 403.
+- **Test:** `t-admin-queue-lib` (50), `t-admin-queue` (26: API + Postgres thật, từng vai, từng lệnh, cô lập dữ liệu giữa giáo viên), `ui-admin-shell` (42: bố cục 79/330, badge, duyệt/từ chối/gỡ bài với DB thật, giáo viên và quản trị nội dung, lỗi tải, điện thoại 390px, học sinh bị chặn).
+- **Chưa làm:** các trang quản trị cũ (khoá học, đề thi, học sinh…) chưa dựng lại theo dạng danh sách + khung đọc (không có khung Figma) — mới chỉ vào vỏ mới; màu còn rất nhiều hex cũ (xem đính chính ở mục "Áp ngôn ngữ KiN"), nên trông vẫn như app cũ đặt trong vỏ mới. Phiên quản trị 12 giờ không gia hạn (Figma 33:2) chưa làm; hiện vẫn 7 ngày. Chưa có lịch sử "đã xử lý" (hàng chờ chỉ hiện việc đang chờ).
+
+## Rà soát Figma ngày 13/10 — còn thiếu gì (chỉ đọc, không sửa code)
+Đối chiếu 35 trang của file *KiN Design System* (`2orXvoHL2upkiGoMjlq8aX`) với code. Mức kiểm: có/không có màn, module, component, luồng chính — **không** so từng điểm ảnh của ~100 khung. Các khung của Thanh (Lớp, Điểm danh, Học phí, Lịch, Kế hoạch buổi, Phễu A/B/D, phiếu/báo cáo tháng) em chỉ rà có-hay-không, chưa kiểm hình ảnh.
+**A. Màn / module trong Figma mà code CHƯA có hoặc làm lệch**
+1. **Vỏ Gia sư (9:2):** Figma = thanh module 79px + "Hộp việc" dạng danh sách + khung đọc. Code (`TutorShell`) = menu 226px + biểu tượng emoji, và "Hộp việc" (`/lop-cua-toi`) là trang thẻ số liệu, không phải danh sách + khung đọc. Nhãn mobile 9,5px dưới sàn chữ 11,1px. Chính Figma cũng có hai kiểu (rail 79px ở "Vỏ 4 vai", menu 226px ở "Khung gộp A+B+C") — cần chốt một.
+2. **Vỏ Phụ huynh (11:197)** (4 module, "Cần anh/chị xác nhận"): chưa có; hiện chỉ có khung tối giản `(parent)`. Nhưng Quyết định đêm #25/#26 đã bỏ xác nhận 72 giờ → khung này có thể đã lỗi thời, cần Thanh/Thọ chốt trước khi dựng.
+3. **Phụ huynh "báo ghi nhầm điểm danh"** (127:62) và trạng thái "Phụ huynh báo ghi nhầm · chờ xem lại bản ghi" ở màn Điểm danh (22:2): chưa có (không có bảng, không có route).
+4. **Học thử** (thẻ thoả thuận 3 trạng thái 13:2, máy trạng thái 6 bước 14:2, A2 "phụ huynh đăng ký học thử không cần tài khoản", A5 "phụ huynh đăng yêu cầu tìm gia sư"): chưa có. Dính trẻ em + tiền → cần Thọ quyết.
+5. **Cộng đồng:** Hỏi đáp mở có "Mời học thử" + hàng chờ tự giữ (29:2), C1–C7 (bảng tin, chi tiết câu hỏi gợi ý trước, soạn bài chọn người xem, an toàn trẻ em, tin nhắn riêng, người chưa đăng nhập): chưa có (đang chờ PH-225 luật sư). Vỏ Quản trị 11:357 có loại dòng "Câu hỏi từ người chưa có tài khoản" — hàng chờ hiện chưa có loại này.
+6. **Thư viện (30:2)** gom theo buổi (video, PDF, đã xem/đã nộp): hiện `/thu-vien` chỉ liệt kê tài liệu của khoá miễn phí; module "Thư viện" của gia sư thực ra trỏ sang ngân hàng đề (`/admin/thi-thu/ngan-hang-de-thi`).
+7. ~~**Phòng thi (27:2):** khoá cứng Navy chưa áp dụng; dải "Bạn đã rời khỏi tab N lần" chưa có; ô đáp án 52px~~ — **ĐÃ LÀM 13/10** (mục "Phòng thi" bên dưới). Chữa bài (NV-188) đã có từ trước.
+8. ~~**Vào lớp bằng mã mời (32:54)** thiếu xem trước lịch/giá/số buổi, thiếu "đồng ý ba điều", thiếu nút "Không phải lớp của tôi"~~ — **ĐÃ LÀM 13/10** (mục "Vào lớp bằng mã mời" bên dưới).
+9. **Đăng nhập / Bản đồ đường vào (32:2, 33:2):** chưa có đăng nhập bằng số điện thoại (cần SMS), tắt mật khẩu, phiên 30 ngày (cookie `kin_s`), phụ huynh token 90 ngày (`kin_p`), quản trị 12 giờ không gia hạn (hiện 7 ngày cho mọi vai); chưa đặt `Referrer-Policy: no-referrer` cho đường dẫn phụ huynh (Quyết định #9).
+**B. Component Figma có mà code chưa có / chưa đủ** — ~~Nút Nguy hiểm, Thẻ trạng thái, Tab, Toast, Hộp xác nhận~~ **ĐÃ LÀM 13/10** (mục "Bộ component" bên dưới). Còn lại:
+- **Biểu tượng:** bộ 6 icon Figma đang là bản vẽ lại; vai Quản trị trong Figma cũng dùng icon tạm (Quyết định #3); `TutorShell` dùng emoji.
+- Chữ dưới sàn 11,1px: ~~21 chỗ~~ → đã nâng hết trong `.tsx` (29 chỗ); còn `font-size: 10px` trong `kin-tokens.css` (huy hiệu đếm — file sinh từ Figma, không sửa tay).
+**C. Việc nằm ở phía Figma (không phải code)**
+- Trang "Toàn cảnh" còn 4 khung theo mô hình xác nhận 72 giờ cũ (91:3, 91:112, 91:666, 91:696) mâu thuẫn Quyết định #25/#26; màn Lớp còn "7/8 buổi" trong khi Quyết định #21 nói đã sửa thành 7/9.
+- TK-205/206: đồng bộ text style về thang 8 bậc; ~3.000 lớp chữ còn gõ cỡ tay.
+- Logo bản mono lỗi, toàn bộ icon/logo là bản dựng lại (Quyết định #15); Quyết định #13 (màu chữ vàng) còn mở; trang "Hai không gian" thiếu khung "Không gian 2"; dữ liệu mẫu không thống nhất (giờ học 19:00 / 19:30 / 22:15, số học sinh 24 / 5 / 14); 5 hình chữ nhật thừa trang Đăng nhập, 3 text rỗng ở màn Lớp.
+- `docs/kin/thiet-ke/ban-giao-man-hinh.md` được sheet nhắc nhưng **không có trong repo**.
+**D. Màu hex cũ còn lại:** xem đính chính ở mục "Áp ngôn ngữ KiN" (khoảng 1.600 mã / 95 file).
+
+## Phòng thi: khoá Navy + dải rời tab (Figma 27:2) — XONG ngày 13/10
+Phát hiện khi rà Figma: `[data-vung="phong-thi"]` (TK-168/174, ghi "xong" trong sổ) chỉ có trong CSS, không trang nào dùng → học sinh chọn chủ đề Cổ vịt thì ô đáp án đang chọn tô cổ vịt (gần màu "đúng" 53 đơn vị RGB). Giờ:
+- Trang `/student/thi-thu/[examId]` (mọi pha: vào phòng, làm bài, kết quả, xem lại) nằm trong `data-vung="phong-thi"` → màu nhấn luôn là Navy bất kể chủ đề người dùng; đo trong test: ngoài phòng thi `#0e7490`, trong phòng thi `#1e3a8a`.
+- **Dải "Bạn đã rời khỏi tab N lần. Hệ thống có ghi lại số lần, không quay màn hình."** (27:10): hiện khi đã rời ≥ 1 lần, vùng `role="status"`. Số lần do máy chủ đếm (đã có `tabSwitchCount`); API `POST /api/exams/[id]/start` và `GET /api/exams/attempts/[id]` trả thêm trường `tabSwitchCount` (chỉ thêm, không đổi trường cũ) nên vào lại lượt đang làm dải vẫn nhớ số lần.
+- Ô đáp án trắc nghiệm cao ≥ 52px (`--kin-cham-dap-an`), nút Đúng/Sai ≥ 44px.
+- Test `ui-exam-room` (17): khoá Navy đo bằng style thật, dải + số đếm DB, nhớ số lần khi vào lại, điện thoại 390px, không lỗi trình duyệt (đã thử đột biến: bỏ khung khoá thì test đỏ).
+- **Chưa làm / cần quyết:** khung đồng hồ + "PHẦN 1 · …" + "Câu 18 / 50" theo bố cục Figma (hiện vẫn bố cục cũ: cột trái đồng hồ + lưới câu hỏi); chatbot AI (`AIChatWidget`) vẫn hiện trong lúc làm bài — Figma phòng thi toàn màn hình không có, và đang là kênh gian lận tiềm năng; em chưa tự ẩn vì là quyết định sản phẩm.
+
+## Vào lớp bằng mã mời (Figma 32:54) — XONG ngày 13/10
+`/student/nhap-ma-lop` dựng lại theo khung 32:54, nguyên tắc của Figma: **học sinh phải thấy tên gia sư và mức học phí TRƯỚC khi bấm "Vào lớp này"** (gõ nhầm một ký tự là vào nhầm lớp người khác, lúc đó mới cãi nhau tiền).
+- Thẻ "Bạn sắp vào lớp": tên lớp, Gia sư, Lịch (vd. "Thứ 3 & Thứ 5 · 19:30–21:30"; chưa đặt lịch thì nói rõ), Học phí ("55.000đ một buổi khi học 3 môn · tính theo tháng"), Đã học ("12 buổi" / "Chưa học buổi nào"). Khung "Vào lớp là đồng ý ba điều"; hai nút **Vào lớp này** / **Không phải lớp của tôi** (xoá mã, về ô nhập, không gọi máy chủ); chân trang "Xem trước rồi mới vào". Đang kiểm tra mã: khung xương hình thẻ, không vòng xoay.
+- API `GET /api/invites/by-code/[code]` trả THÊM (chỉ đọc, không đổi trường cũ): `schedule` (khung giờ đang bật), `taught` (số buổi đã qua), `tuition` {subjectCount, pricePerSession, override}. **Học phí tính đúng quy tắc AS-192/193:** số môn = các môn đang học của CÙNG gia sư + môn này (không đếm môn của gia sư khác); bậc thang 70/60/55/50 nghìn; em có `TuitionOverride` thì dùng mức riêng và ghi rõ. Lớp không có gia sư phụ trách thì `tuition = null` (không bịa mức học phí). Chữ ở `src/lib/invitePreview.ts` (thuần, có test).
+- Test: `t-invite-preview-lib` (15), `t-invite-preview` (14: API + Postgres thật — khung giờ đã tắt bị bỏ, buổi tương lai không tính, môn của gia sư khác không tính, mức riêng không lộ sang em khác, lớp không gia sư, chỉ đọc), `ui-invite-input` (26, đã cập nhật chữ mới + mục Figma + điện thoại 390px).
+- **Khác Figma:** thẻ nằm trong vỏ học sinh (không phải màn riêng); ô nhập hiện nhãn "Mã mời" nhưng tên truy cập vẫn là "Mã mời lớp".
+- **Chưa làm:** Figma ghi mã dạng `HSA-2K9-T7F3` (có gạch ngang, theo tên lớp) — mã hiện vẫn là 8 ký tự ngẫu nhiên (BE-064); đổi định dạng mã là việc riêng.
+
+## Bộ component KiN còn thiếu (Figma 6:50, 8:139, 106:23, 106:30, 106:51) — XONG ngày 13/10
+Năm component Figma đã có trong `src/components/kin/` (xuất ở `index.ts`) và đã **thay vào chỗ đang dùng**, không để nằm không:
+- **`KinButton`** — thêm kiểu **Nguy hiểm** (`danger`: nền trắng, viền đủ 3:1, chữ đỏ) và `danger-solid` (nền đỏ đặc, dùng cho nút xác nhận trong hộp). Đủ trạng thái Figma: Rê chuột (Chính → `--kin-nhan-nen-re`, Thường/Ghost/Nguy hiểm → `--kin-nen-re-chuot`), Focus (vòng xanh 2px **ngoài** viền, offset 0), Tắt (mờ 45%). Cao ≥ 44px, chữ 13,3px, bo 9px. **Bỏ vòng xoay** (Figma: dùng chữ, không spinner): `loading` khoá nút + `aria-busy`, có `loadingLabel` thì đổi chữ ("Đang lưu…"). `kinButtonClass()` cho thẻ `<a>/<Link>` cùng dáng.
+- **`KinStatus`** (Thẻ trạng thái) — chấm 7px + chữ 13,3px, cao 16px, 4 loại Xong/Chờ/Lỗi/Trung tính, **hai bộ mã màu cố ý** (chấm 3:1, chữ 4,5:1; không gộp).
+- **`KinTabs`** — `role=tablist/tab`, mũi tên trái/phải (vòng lại), Home/End, roving tabindex, gạch chân 2px màu nhấn; cao 44px (Figma vẽ 40px, brand book đòi chạm ≥ 44). `KIN_TAB_BOX` + `KinTabInner` cho tab là **liên kết điều hướng** (`aria-current`, không `role=tab`).
+- **`KinToast`** — 400px, bo 10px, chấm 8px + tiêu đề đậm + dòng phụ 11,1px, 4 loại xong/chờ/lỗi/tin; lỗi là `role=alert`.
+- **`KinConfirm`** (Hộp xác nhận) — 420px, bo 14px; loại thường và **nguy hiểm** (tiêu đề đỏ, nút xác nhận đỏ đặc). Giữ tiêu điểm trong hộp, Escape/bấm nền = huỷ, khoá cuộn trang, trả tiêu điểm về nút đã mở. **Loại nguy hiểm: tiêu điểm đầu tiên ở nút Huỷ**.
+- Token mới trong `kin-site.css`: `--kin-bong-toast`, `--kin-bong-hop`, `--kin-phu-hop`.
+
+**Đã thay vào đâu:**
+| Chỗ cũ | Giờ |
+|---|---|
+| Nút lệnh trong khung đọc Outlook (`Command`, tự viết) | `KinButton` / `kinButtonClass`; `Command.kind` có thêm `danger` |
+| Trạng thái trong `ListRow` + `Badge` của gia sư (chấm tự vẽ) | `KinStatus` |
+| Dải tab của vỏ quản trị | `KIN_TAB_BOX` + `KinTabInner` |
+| Tab ở Quản trị viên, hồ sơ gia sư, Học phí, Kế hoạch buổi (nút tự viết, 4 kiểu khác nhau) | `KinTabs` |
+| `ToastProvider` (khối màu đặc) | hiển thị bằng `KinToast`; thêm `toast.warn` và tuỳ chọn `detail` |
+| `ConfirmModal` (không ai dùng) | còn là lớp bọc `KinConfirm` |
+| Thu hồi mã mời, Xoá bài vi phạm (gia sư) — `Modal` + nút đỏ viết tay | `KinConfirm` nguy hiểm + `KinButton variant="danger"` |
+| Xoá kế hoạch buổi — `window.confirm` của trình duyệt | `KinConfirm` nguy hiểm |
+| Khung "Xác nhận: …" ở Chờ kiểm duyệt (admin) | giữ khung nằm trong khung đọc (đúng đặc tả) nhưng dùng `KinButton`; hành động `danger` → nút đỏ |
+
+**Lỗi cũ phát hiện và sửa trên đường làm:** quy tắc chung `:focus-visible { border-radius: 4px }` trong `globals.css` ép **mọi** phần tử về bo 4px khi focus bàn phím (nút tròn, viên thuốc, thẻ bị méo) → đã bỏ dòng đó. Quy tắc chung `button:disabled { opacity: .55 }` và `:focus-visible { outline-offset: 2px }` nằm ngoài `@layer` nên **thắng cả lớp tiện ích Tailwind** — giá trị Figma (45%, offset 0) phải đặt ở `kin-site.css` theo `[data-kin-nut]`; ghi chú ngay chỗ đó. Enter không còn xác nhận từ bất kỳ đâu trong hộp (bản cũ: Enter ở nút Huỷ vẫn xác nhận).
+
+**Chữ dưới sàn 11,1px:** nâng hết 29 chỗ (`text-[9px]…[11px]` → `--kin-co-caption`) trong 15 file, kể cả nhãn thanh dưới của gia sư (9,5px) và huy hiệu. `t-kin-components` quét lại, đỏ nếu có chỗ mới.
+
+**Test:** `t-kin-components` (37, tĩnh), `ui-kin-components` (77, đo style tính ra trên trang mẫu `/kin-mau` — chỉ có ở dev; kích thước, màu theo token, rê chuột/focus/tắt/chờ, bàn phím, tương phản, chủ đề Cổ vịt, điện thoại 390px). `ui-plan` cập nhật cho hộp xác nhận xoá kế hoạch.
+
+**Khác Figma / chưa làm:**
+- Nút trong hộp xác nhận dùng `KinButton` (bo 9px, kiểu Thường nền trắng); Figma vẽ riêng nút hộp bo 8px nền bảng — chênh nhỏ, chưa đáng tách kiểu.
+- Toast có thêm nút × (Figma không vẽ) vì thông báo tự tắt sau 3 giây, người dùng bàn phím cần cách đóng sớm.
+- `TutorShell` vẫn là menu 226px + emoji (chỉ nâng cỡ chữ); các `window.confirm` còn lại ở trang quản trị thi thử/khoá học (8 chỗ) chưa đổi — chúng nằm trong luồng `async` dài, đổi từng chỗ cần chạm logic.
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,
@@ -107,14 +230,16 @@ Chưa có: điểm HSA / ĐGNL ĐHQG-HCM / TSA theo từng trường (chưa tìm
 Test: lib 49/49, API 54/54, trình duyệt 57/57.
 
 ## Không làm (chờ Thọ / luật sư / Thanh)
-PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh); TK-170 (đăng nhập bằng mã 6 số);
+PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh);
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).
 
 ## Việc Thọ cần làm khi triển khai
 - Build **production** trên Vercel chạy `prisma db push` (`scripts/db-push-on-production.mjs`; bản xem trước bỏ qua bước này; `PRISMA_ACCEPT_DATA_LOSS` đang 0 nên không xoá được gì). So với `main` ngày 09/10, lược đồ chỉ THÊM (đã kiểm bằng `git diff`: không có dòng nào bị xoá/sửa):
   - **14 bảng mới:** `class_absences`, `makeup_credits`, `class_reminder_logs`, `exam_corrections`, `monthly_reports`, `tutor_payout_accounts`, `tuition_invoices`, `bank_transactions`, `tuition_credits`, `profile_visits`, `tutor_profile_reports`, `session_plans`, `admission_scores`, `class_session_changes`.
   - **Cột mới (cho phép trống) trên bảng đã có:** `users.preferences`, `users.profileLockedAt`, `users.profileLockReason`, `courses.zaloGroupUrl`, `class_schedules.joinUrl`, `exam_questions.hint`, `question_bank_items.hint`, `attendance_records.zaloOpenedAt`.
-  - Bản xem trước dùng chung cơ sở dữ liệu với production và không có `SESSION_SECRET` nên KHÔNG đăng nhập / thử tính năng được; lần thử thật đầu tiên là sau khi lên production — nên tạo nhánh hoặc sao lưu Neon trước khi merge.
+  - **Bảng mới đợt 13/10 (PR #53):** `login_codes` (đăng nhập bằng mã 6 số qua email, TK-170). Chỉ thêm. Build production chạy `db push` TRƯỚC `next build` nên bảng có trước khi code mới lên; `db push` lỗi thì build đỏ và bản cũ vẫn chạy.
+  - Bản xem trước dùng chung cơ sở dữ liệu với production và không có `SESSION_SECRET` / `GMAIL_*` nên KHÔNG đăng nhập / thử tính năng được (bấm "Gửi mã đăng nhập" trên preview báo "Lỗi server" vì bảng `login_codes` chưa có trong DB dùng chung — đã đọc log Vercel xác nhận); lần thử thật đầu tiên là sau khi lên production — nên tạo nhánh hoặc sao lưu Neon trước khi merge.
+  - **Muốn bản xem thử đăng nhập được (làm một lần):** (1) Neon: tạo một nhánh từ DB production. (2) Vercel → Environment Variables: bỏ "Preview" khỏi biến `DATABASE_URL` đang dùng chung rồi thêm `DATABASE_URL` riêng cho **Preview** trỏ vào nhánh Neon; thêm cho **Preview** `SESSION_SECRET` (chuỗi ngẫu nhiên MỚI, không dùng lại của production), `GMAIL_USER`, `GMAIL_APP_PASSWORD`, và `PREVIEW_OWN_DB=1`. (3) `scripts/db-push-on-production.mjs` (đã sửa) thấy `PREVIEW_OWN_DB=1` ở preview thì `db push` vào DB riêng đó, bỏ qua `PRISMA_ACCEPT_DATA_LOSS` (lỡ trỏ nhầm thì từ chối xoá dữ liệu). **Không đặt `PREVIEW_OWN_DB=1` khi `DATABASE_URL` của preview còn là DB production.** Nhánh Neon mới chưa có tài khoản mẫu: sao từ production (có dữ liệu thật — cân nhắc) hoặc chạy `npm run db:seed` với `DATABASE_URL` của nhánh.
 - Không chạy được `next build` trong môi trường làm việc này (Google Fonts bị chặn), nhưng Vercel đã dựng thành công bản xem trước của nhánh (biên dịch, kiểm kiểu, 135 trang); `tsc` sạch, lint không tệ hơn mốc ban đầu, mọi trang chạy được trên Next dev.
 - Chưa kiểm được ảnh QR VietQR thật (img.vietqr.io bị chặn); mới kiểm được URL.
 - Lưu ý hành vi mới: gia sư hiện có (chưa chọn gì) vào chế độ gọn (Lịch + Học phí); bật lại ở Cài đặt → Module hiển thị.

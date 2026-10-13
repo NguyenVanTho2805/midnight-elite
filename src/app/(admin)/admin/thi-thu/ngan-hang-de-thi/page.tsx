@@ -19,13 +19,13 @@ function Breadcrumb({ view, onRoot }: { view: View; onRoot: () => void }) {
   return (
     <div className="flex items-center gap-1.5 text-sm mb-4">
       <button onClick={onRoot} className={view.type === "root" ? "font-bold" : "font-semibold text-blue-600 hover:underline"}
-        style={view.type === "root" ? { color: "#1a1a1a" } : undefined}>
+        style={view.type === "root" ? { color: "var(--kin-chu-chinh)" } : undefined}>
         Tất cả
       </button>
       {view.type === "folder" && (
         <>
           <span className="text-gray-400">›</span>
-          <span className="font-bold" style={{ color: "#1a1a1a" }}>{view.name}</span>
+          <span className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{view.name}</span>
         </>
       )}
     </div>
@@ -100,8 +100,8 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
   const allFileIdsSelected = files.length > 0 && files.every(f => selected.has(f.id));
 
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
-      <div className="flex items-center gap-3 px-4 py-3 text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+      <div className="flex items-center gap-3 px-4 py-3 text-xs text-gray-500 uppercase tracking-wide" style={{ background: "var(--kin-nen-bang)" }}>
         <input type="checkbox" checked={allFileIdsSelected} disabled={files.length === 0}
           onChange={e => setSelected(e.target.checked ? new Set(files.map(f => f.id)) : new Set())} />
         <button onClick={() => setSortAsc(v => !v)} className="flex items-center gap-1 hover:text-gray-700">
@@ -117,11 +117,11 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
       </div>
 
       {sortedFolders.map(f => (
-        <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-t group" style={{ borderColor: "#e5e3df" }}>
+        <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-t group" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <span className="w-4 flex-shrink-0" />
           {renaming === f.id ? (
             <div className="flex items-center gap-2 flex-1">
-              <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+              <input autoFocus className="flex-1 px-2 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
                 value={renameValue} onChange={e => setRenameValue(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleRenameFolder(f.id); if (e.key === "Escape") setRenaming(null); }} />
               <button onClick={() => handleRenameFolder(f.id)} className="text-xs font-semibold text-blue-600 flex-shrink-0">Lưu</button>
@@ -131,7 +131,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
             <>
               <button onClick={() => onOpenFolder(f)} className="flex items-center gap-2.5 flex-1 text-left py-0.5 min-w-0">
                 <span className="text-lg flex-shrink-0">📁</span>
-                <span className="text-sm font-medium truncate" style={{ color: "#1a1a1a" }}>{f.name}</span>
+                <span className="text-sm font-medium truncate" style={{ color: "var(--kin-chu-chinh)" }}>{f.name}</span>
               </button>
               <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ width: "17.5rem" }}>
                 <button onClick={() => { setRenaming(f.id); setRenameValue(f.name); }} className="text-xs font-semibold text-blue-600">Đổi tên</button>
@@ -143,16 +143,16 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
       ))}
 
       {sortedFiles.map(item => (
-        <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-t" style={{ borderColor: "#e5e3df" }}>
+        <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} className="flex-shrink-0" />
           <span className="text-lg flex-shrink-0">📄</span>
           <span className="text-sm flex-1 truncate" title={item.fileName}>{item.fileName}</span>
           <span className="w-28 text-right text-xs text-gray-500 truncate">{item.owner?.name ?? "—"}</span>
           <span className="w-24 text-right text-xs text-gray-400">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</span>
           <div className="flex items-center justify-end gap-2 flex-wrap" style={{ width: "17.5rem" }}>
-            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "#0068FF" }}>Xem</a>
-            <button onClick={() => onExtract(item)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Tách câu</button>
-            <select className="px-1 py-1 text-xs border rounded outline-none bg-white max-w-[6rem]" style={{ borderColor: "#e5e3df" }}
+            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Xem</a>
+            <button onClick={() => onExtract(item)} className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Tách câu</button>
+            <select className="px-1 py-1 text-xs border rounded outline-none bg-white max-w-[6rem]" style={{ borderColor: "var(--kin-vien-thuong)" }}
               value={item.folderId ?? ""} onChange={e => onMove(item, e.target.value)}>
               <option value="">Chưa phân loại</option>
               {allFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -270,7 +270,7 @@ function PageInner() {
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
 
       <div className="mb-5">
-        <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>Ngân hàng đề thi</h1>
+        <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Ngân hàng đề thi</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           Lưu trữ file đề gốc (PDF/Word) để xem lại sau — bấm &quot;Tách câu hỏi&quot; khi cần đưa câu vào{" "}
           <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="text-blue-600 hover:underline">Ngân hàng câu hỏi</Link>
@@ -280,25 +280,25 @@ function PageInner() {
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm kiếm..."
           className="flex-1 min-w-[200px] max-w-xs px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400"
-          style={{ borderColor: "#e5e3df" }} />
+          style={{ borderColor: "var(--kin-vien-thuong)" }} />
         <div className="flex items-center gap-2 flex-shrink-0">
           {addingFolder ? (
             <div className="flex items-center gap-2">
-              <input autoFocus className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "#e5e3df" }}
+              <input autoFocus className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}
                 placeholder="Tên thư mục..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") { setAddingFolder(false); setNewFolderName(""); } }} />
-              <button onClick={handleCreateFolder} className="px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>Thêm</button>
+              <button onClick={handleCreateFolder} className="px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>Thêm</button>
               <button onClick={() => { setAddingFolder(false); setNewFolderName(""); }} className="text-sm text-gray-400">Huỷ</button>
             </div>
           ) : (
             <button onClick={() => setAddingFolder(true)}
-              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0052DD" }}>
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
               📁+ Tạo thư mục
             </button>
           )}
           <DropZone onFiles={files => files[0] && processUpload(files[0])} disabled={uploading} className="inline-block rounded-lg">
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
               {uploading ? "Đang tải lên..." : "+ Tải hoặc kéo-thả file lên"}
             </button>
           </DropZone>
@@ -308,15 +308,15 @@ function PageInner() {
 
       {view.type === "root" && recentFiles.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-bold mb-3" style={{ color: "#1a1a1a" }}>Tải lên gần đây</h2>
+          <h2 className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Tải lên gần đây</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {recentFiles.map(f => (
               <a key={f.id} href={f.fileUrl} target="_blank" rel="noopener noreferrer"
-                className="rounded-xl border p-3 hover:shadow-sm transition-shadow" style={{ borderColor: "#e5e3df" }}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "#fff7ed" }}>
+                className="rounded-xl border p-3 hover:shadow-sm transition-shadow" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "var(--kin-tt-nen-cho)" }}>
                   <span className="text-lg">📄</span>
                 </div>
-                <p className="text-xs font-semibold truncate" style={{ color: "#1a1a1a" }} title={f.fileName}>{f.fileName}</p>
+                <p className="text-xs font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }} title={f.fileName}>{f.fileName}</p>
                 <p className="text-xs text-gray-400 mt-1">Ngày tải: {new Date(f.createdAt).toLocaleDateString("vi-VN")}</p>
                 {f.folder && <p className="text-xs text-gray-400 truncate">📁 {f.folder.name}</p>}
               </a>
@@ -355,8 +355,8 @@ function PageInner() {
             <p className="text-sm font-semibold mb-1">Xoá file &quot;{delTarget.fileName}&quot;?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá file lưu trữ — không ảnh hưởng câu hỏi đã tách và lưu vào ngân hàng trước đó.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDelTarget(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
-              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={() => setDelTarget(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
+              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>

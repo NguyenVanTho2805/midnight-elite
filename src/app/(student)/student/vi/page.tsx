@@ -33,9 +33,9 @@ const REASON_LABEL: Record<string, string> = {
 };
 
 function statusChip(s: string) {
-  if (s === "approved") return { label: "Đã duyệt",   bg: "#dcfce7", color: "#166534" };
-  if (s === "rejected") return { label: "Bị từ chối", bg: "#fee2e2", color: "#b91c1c" };
-  return                     { label: "Đang chờ",   bg: "#fef3c7", color: "#b45309" };
+  if (s === "approved") return { label: "Đã duyệt",   bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" };
+  if (s === "rejected") return { label: "Bị từ chối", bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" };
+  return                     { label: "Đang chờ",   bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" };
 }
 
 export default function CoinWalletPage() {
@@ -104,14 +104,14 @@ export default function CoinWalletPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Ví Coin</h1>
-        <p className="text-sm mt-1" style={{ color: "#6B7280" }}>
+        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Ví Coin</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
           1 Coin = 1 VND. Nạp Coin để mua gói VIP, hoặc dùng cho các hoạt động cộng đồng.
         </p>
       </div>
 
       {/* Số dư */}
-      <div className="rounded-2xl p-6" style={{ background: "linear-gradient(135deg, #0068FF, #0042AA)", color: "#fff" }}>
+      <div className="rounded-2xl p-6" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }}>
         <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Số dư hiện tại</p>
         <p className="text-4xl font-extrabold mt-1">
           {loading ? "..." : balance?.toLocaleString("vi-VN")} <span className="text-base font-semibold opacity-80">Coin</span>
@@ -119,77 +119,77 @@ export default function CoinWalletPage() {
       </div>
 
       {/* Form nạp */}
-      <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-        <h2 className="font-bold text-base" style={{ color: "#1E2938" }}>Yêu cầu nạp Coin</h2>
+      <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+        <h2 className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>Yêu cầu nạp Coin</h2>
 
         {bank && (
-          <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: "#f0f9ff", border: "1px solid #bae6fd", color: "#1E2938" }}>
-            <p className="font-semibold" style={{ color: "#0369a1" }}>Bước 1: Chuyển khoản thủ công</p>
+          <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)", color: "var(--kin-chu-chinh)" }}>
+            <p className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Bước 1: Chuyển khoản thủ công</p>
             <p>Ngân hàng: <b>{bank.bankName}</b></p>
             <p>Số tài khoản: <b className="font-mono">{bank.accountNo}</b></p>
             <p>Chủ TK: <b>{bank.accountName}</b></p>
             <p>Nội dung (quan trọng): <b className="font-mono">{bank.memo}</b></p>
-            <p className="text-xs mt-1" style={{ color: "#6B7280" }}>Sao chép đúng nội dung để admin đối chiếu nhanh.</p>
+            <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Sao chép đúng nội dung để admin đối chiếu nhanh.</p>
           </div>
         )}
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "#374151" }}>Bước 2 · Số tiền (VND)</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Bước 2 · Số tiền (VND)</label>
           <input
             value={amountVnd}
             onChange={e => setAmountVnd(e.target.value.replace(/[^0-9]/g, ""))}
             placeholder="VD: 300000"
             className="w-full px-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}
             inputMode="numeric"
           />
-          <p className="text-xs mt-1" style={{ color: "#6B7280" }}>
+          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
             Tối thiểu {MIN_TOPUP_VND.toLocaleString("vi-VN")}, tối đa {MAX_TOPUP_VND.toLocaleString("vi-VN")} VND / lần.
           </p>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "#374151" }}>Mã giao dịch ngân hàng (nếu có)</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Mã giao dịch ngân hàng (nếu có)</label>
           <input value={bankRef} onChange={e => setBankRef(e.target.value)} placeholder="FT25100500001234"
             className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }} />
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "#374151" }}>Ghi chú (không bắt buộc)</label>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Ghi chú (không bắt buộc)</label>
           <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
             placeholder="VD: Nạp 300k mua gói VIP tháng"
             className="w-full px-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }} />
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
         </div>
 
         <button type="submit" disabled={submitting}
           className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
-          style={{ background: "#0068FF" }}>
+          style={{ background: "var(--kin-nhan-nen)" }}>
           {submitting ? "Đang gửi..." : "Gửi yêu cầu nạp"}
         </button>
       </form>
 
       {/* Lịch sử yêu cầu nạp */}
       {reqs.length > 0 && (
-        <div className="rounded-2xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          <h2 className="font-bold text-base mb-3" style={{ color: "#1E2938" }}>Lịch sử yêu cầu nạp</h2>
+        <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <h2 className="font-bold text-base mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Lịch sử yêu cầu nạp</h2>
           <div className="space-y-2">
             {reqs.map(r => {
               const chip = statusChip(r.status);
               return (
                 <div key={r.id} className="rounded-xl p-3 flex items-start justify-between gap-3"
-                  style={{ background: "#f6f5f4" }}>
+                  style={{ background: "var(--kin-nen-bang)" }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>
+                    <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>
                       {r.amountVnd.toLocaleString("vi-VN")} VND → {r.coinAmount.toLocaleString("vi-VN")} Coin
                     </p>
-                    <p className="text-xs" style={{ color: "#6B7280" }}>
+                    <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
                       {new Date(r.createdAt).toLocaleString("vi-VN")}
                       {r.bankRef && <> · <span className="font-mono">{r.bankRef}</span></>}
                     </p>
                     {r.status === "rejected" && r.rejectReason && (
-                      <p className="text-xs mt-1" style={{ color: "#b91c1c" }}>Lý do: {r.rejectReason}</p>
+                      <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>Lý do: {r.rejectReason}</p>
                     )}
                   </div>
                   <span className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
@@ -202,19 +202,19 @@ export default function CoinWalletPage() {
       )}
 
       {/* Lịch sử Coin */}
-      <div className="rounded-2xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-        <h2 className="font-bold text-base mb-3" style={{ color: "#1E2938" }}>Giao dịch Coin gần đây</h2>
+      <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+        <h2 className="font-bold text-base mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Giao dịch Coin gần đây</h2>
         {txs.length === 0 ? (
-          <p className="text-sm italic" style={{ color: "#9CA3AF" }}>Chưa có giao dịch nào.</p>
+          <p className="text-sm italic" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giao dịch nào.</p>
         ) : (
           <div className="space-y-1">
             {txs.map(t => (
-              <div key={t.id} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: "#f3f4f6" }}>
+              <div key={t.id} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: "var(--kin-vien-nhat)" }}>
                 <div className="min-w-0">
-                  <p className="text-sm" style={{ color: "#1E2938" }}>{REASON_LABEL[t.reason] ?? t.reason}</p>
-                  <p className="text-xs" style={{ color: "#9CA3AF" }}>{new Date(t.createdAt).toLocaleString("vi-VN")}</p>
+                  <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{REASON_LABEL[t.reason] ?? t.reason}</p>
+                  <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{new Date(t.createdAt).toLocaleString("vi-VN")}</p>
                 </div>
-                <span className="text-sm font-bold" style={{ color: t.amount >= 0 ? "#16a34a" : "#dc2626" }}>
+                <span className="text-sm font-bold" style={{ color: t.amount >= 0 ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                   {t.amount >= 0 ? "+" : ""}{t.amount.toLocaleString("vi-VN")}
                 </span>
               </div>

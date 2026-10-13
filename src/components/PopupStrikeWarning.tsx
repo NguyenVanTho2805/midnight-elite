@@ -13,30 +13,30 @@ const strikeConfig = {
   1: {
     Icon: AlertTriangle,
     title: "Cảnh báo Strike 1/3",
-    bgColor: "#fef3c7",
-    borderColor: "#fde68a",
-    color: "#92400e",
-    accentBg: "#FE9900",
+    bgColor: "var(--kin-tt-nen-cho)",
+    borderColor: "var(--kin-tt-vien-cho)",
+    color: "var(--kin-tt-chu-cho)",
+    accentBg: "var(--kin-tt-chu-cho)",
     consequence: "Nhắc nhở. Tiếp tục vi phạm sẽ bị hạn chế tính năng.",
     canAppeal: true,
   },
   2: {
     Icon: AlertCircle,
     title: "Cảnh báo Strike 2/3 — Hạn chế tính năng",
-    bgColor: "#fee2e2",
-    borderColor: "#fca5a5",
-    color: "#991b1b",
-    accentBg: "#FF2157",
+    bgColor: "var(--kin-tt-nen-loi)",
+    borderColor: "var(--kin-tt-vien-loi)",
+    color: "var(--kin-tt-chu-loi)",
+    accentBg: "var(--kin-tt-chu-loi)",
     consequence: "Bị khoá Q&A và Cộng đồng trong 7 ngày. Một strike nữa sẽ bị đình chỉ.",
     canAppeal: true,
   },
   3: {
     Icon: StopCircle,
     title: "Strike 3/3 — Tài khoản bị đình chỉ",
-    bgColor: "#1E2938",
-    borderColor: "#374151",
-    color: "#ffffff",
-    accentBg: "#374151",
+    bgColor: "var(--kin-chu-chinh)",
+    borderColor: "var(--kin-chu-phu)",
+    color: "var(--kin-chu-tren-nut-chinh)",
+    accentBg: "var(--kin-chu-phu)",
     consequence: "Tài khoản tạm khoá. Vui lòng liên hệ admin để được hỗ trợ.",
     canAppeal: false,
   },
@@ -57,15 +57,15 @@ export default function PopupStrikeWarning({ strikeLevel, reason, onClose, onApp
         </div>
 
         {/* Body */}
-        <div className="p-6" style={{ background: "#F0F5FF" }}>
+        <div className="p-6" style={{ background: "var(--kin-nen-bang)" }}>
           {/* Strike indicators */}
           <div className="flex items-center justify-center gap-3 mb-5">
             {[1, 2, 3].map((s) => (
               <div key={s} className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-extrabold"
                 style={{
-                  background: s <= strikeLevel ? cfg.accentBg : "#F0F5FF",
-                  color: s <= strikeLevel ? "#fff" : "#9CA3AF",
-                  boxShadow: s <= strikeLevel ? "none" : "3px 3px 6px #C5D0EA, -3px -3px 6px #ffffff",
+                  background: s <= strikeLevel ? cfg.accentBg : "var(--kin-nen-bang)",
+                  color: s <= strikeLevel ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-chu-mo)",
+                  boxShadow: s <= strikeLevel ? "none" : "3px 3px 6px var(--kin-vien-thuong), -3px -3px 6px var(--kin-nen-trang)",
                 }}>
                 {s}
               </div>
@@ -73,9 +73,9 @@ export default function PopupStrikeWarning({ strikeLevel, reason, onClose, onApp
           </div>
 
           {/* Reason */}
-          <div className="rounded-xl p-4 mb-4" style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff" }}>
-            <p className="text-xs font-semibold mb-1" style={{ color: "#6B7280" }}>Lý do vi phạm</p>
-            <p className="text-sm font-semibold" style={{ color: "#1E2938" }}>{reason}</p>
+          <div className="rounded-xl p-4 mb-4" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-mo)" }}>Lý do vi phạm</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{reason}</p>
           </div>
 
           {/* Consequence */}
@@ -87,12 +87,12 @@ export default function PopupStrikeWarning({ strikeLevel, reason, onClose, onApp
           <div className="space-y-2">
             {cfg.canAppeal && onAppeal && (
               <button onClick={onAppeal} className="w-full py-3 rounded-xl text-sm font-bold text-white"
-                style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)" }}>
+                style={{ background: "var(--kin-nhan-nen)" }}>
                 Gửi khiếu nại
               </button>
             )}
             <button onClick={onClose} className="w-full py-3 rounded-xl text-sm font-semibold"
-              style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: "#6B7280" }}>
+              style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-chu-mo)" }}>
               {strikeLevel === 3 ? "Liên hệ admin" : "Đã hiểu"}
             </button>
           </div>

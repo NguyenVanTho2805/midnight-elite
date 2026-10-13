@@ -20,7 +20,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
     >
       {icon ? (
         <div className="mb-4 w-16 h-16 flex items-center justify-center rounded-2xl text-3xl"
-          style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}>
+          style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
           {icon}
         </div>
       ) : null}
@@ -33,7 +33,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, cl
           type="button"
           onClick={onAction}
           className="mt-5 px-5 py-2.5 rounded-2xl text-sm font-semibold text-white transition"
-          style={{ background: "linear-gradient(135deg, #4F6BF5, #6B4FE8)" }}
+          style={{ background: "var(--kin-nhan-nen)" }}
         >
           {actionLabel}
         </button>

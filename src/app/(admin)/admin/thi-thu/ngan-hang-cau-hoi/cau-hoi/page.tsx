@@ -23,17 +23,17 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "VDC", label: "Vận dụng cao" },
 ];
 const DIFFICULTY_COLOR: Record<Difficulty, { bg: string; color: string }> = {
-  NB:  { bg: "#dbeafe", color: "#0068FF" },
-  TH:  { bg: "#dcfce7", color: "#16a34a" },
-  VD:  { bg: "#fef3c7", color: "#b45309" },
-  VDC: { bg: "#fee2e2", color: "#dc2626" },
+  NB:  { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
+  TH:  { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  VD:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  VDC: { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 // Giai đoạn 4 — màu badge tỉ lệ trả lời đúng: xanh (dễ/ổn), vàng (trung
 // bình), đỏ (khó bất thường — có thể đề sai đáp án, đáng xem lại).
 function CORRECT_RATIO_COLOR(ratio: number): { bg: string; color: string } {
-  if (ratio >= 0.7) return { bg: "#dcfce7", color: "#16a34a" };
-  if (ratio >= 0.4) return { bg: "#fef3c7", color: "#b45309" };
-  return { bg: "#fee2e2", color: "#dc2626" };
+  if (ratio >= 0.7) return { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" };
+  if (ratio >= 0.4) return { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" };
+  return { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" };
 }
 const TYPE_LABEL: Record<QuestionType, string> = {
   MC: "Trắc nghiệm", ESSAY: "Tự luận", TRUE_FALSE_CLUSTER: "Đúng-Sai 4 ý", SHORT_ANSWER: "Trả lời ngắn",
@@ -41,9 +41,9 @@ const TYPE_LABEL: Record<QuestionType, string> = {
 // Giai đoạn 6 — quy trình duyệt.
 const STATUS_LABEL: Record<BankItemStatus, string> = { draft: "Nháp", pending: "Chờ duyệt", approved: "Đã duyệt" };
 const STATUS_COLOR: Record<BankItemStatus, { bg: string; color: string }> = {
-  draft:    { bg: "#f3f4f6", color: "#6b7280" },
-  pending:  { bg: "#fef3c7", color: "#b45309" },
-  approved: { bg: "#dcfce7", color: "#16a34a" },
+  draft:    { bg: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" },
+  pending:  { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  approved: { bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
 };
 
 
@@ -208,7 +208,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
   }
 
   const inp = "w-full px-3 py-2.5 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
-  const inpStyle = { borderColor: "#e5e3df" };
+  const inpStyle = { borderColor: "var(--kin-vien-thuong)" };
 
   return (
     <>
@@ -221,15 +221,15 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "#e5e3df" }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
-            <h2 className="text-base font-bold" style={{ color: "#1a1a1a" }}>{isEdit ? "Sửa câu hỏi" : "Thêm câu hỏi vào ngân hàng"}</h2>
+            <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{isEdit ? "Sửa câu hỏi" : "Thêm câu hỏi vào ngân hàng"}</h2>
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50" style={inpStyle}>Huỷ</button>
             <button onClick={handleSaveClick} disabled={saving || uploadingImage}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "#16a34a" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)" }}>
               {uploadingImage ? "Đang tải ảnh..." : saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
@@ -249,8 +249,8 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={d.value} type="button" onClick={() => setForm({ ...form, difficulty: d.value })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.difficulty === d.value
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
-                    : { borderColor: "#e5e3df", color: "#787671" }}>
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                    : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {d.label}
                 </button>
               ))}
@@ -269,8 +269,8 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={t.v} type="button" onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "#0068FF", borderColor: "#0068FF", color: "#fff" }
-                    : { borderColor: "#e5e3df", color: "#787671" }}>
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                    : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {t.label}
                 </button>
               ))}
@@ -333,7 +333,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "#0068FF" }}>+ Thêm đáp án</button>
+              <button type="button" onClick={addOption} className="mt-2 text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm đáp án</button>
             </div>
           )}
 
@@ -361,7 +361,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                   </div>
                 ))}
               </div>
-              <p className="mt-2 text-xs" style={{ color: "#a4a097" }}>Mỗi ý đúng/sai độc lập — học viên trả lời riêng từng ý, không phải chọn 1 trong 4.</p>
+              <p className="mt-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>Mỗi ý đúng/sai độc lập — học viên trả lời riêng từng ý, không phải chọn 1 trong 4.</p>
             </div>
           )}
 
@@ -371,12 +371,12 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
               <input className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
                 style={inpStyle} value={form.options[0] ?? ""}
                 onChange={e => setForm({ ...form, options: [e.target.value] })} placeholder="VD: 42" />
-              <p className="mt-1.5 text-xs" style={{ color: "#a4a097" }}>Chấm tự động bằng so khớp chính xác (không phân biệt hoa/thường, tự đổi dấu phẩy thập phân).</p>
+              <p className="mt-1.5 text-xs" style={{ color: "var(--kin-chu-mo)" }}>Chấm tự động bằng so khớp chính xác (không phân biệt hoa/thường, tự đổi dấu phẩy thập phân).</p>
             </div>
           )}
 
           {form.type === "ESSAY" && (
-            <div className="text-xs p-3 rounded-lg" style={{ background: "#f6f5f4", color: "#787671" }}>
+            <div className="text-xs p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
               Câu tự luận không có đáp án cố định — học viên gõ câu trả lời, giáo viên chấm điểm thủ công sau khi nộp bài.
             </div>
           )}
@@ -588,7 +588,7 @@ function PageInner() {
       </p>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "#1a1a1a" }}>
+          <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>
             {activeCategoryName ? `Câu hỏi trong "${activeCategoryName}"` : "Danh sách câu hỏi"}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} câu hỏi — chỉ câu Đã duyệt mới dùng chung/rút vào đề được, câu Nháp/Chờ duyệt chỉ chủ sở hữu và quản trị viên thấy</p>
@@ -596,10 +596,10 @@ function PageInner() {
         <div className="flex items-center gap-2">
           <button onClick={toggleSelectMode}
             className="px-4 py-2.5 text-sm font-semibold rounded-lg border"
-            style={selectMode ? { background: "#eff6ff", borderColor: "#0068FF", color: "#0068FF" } : { borderColor: "#e5e3df", color: "#787671" }}>
+            style={selectMode ? { background: "var(--kin-nhan-nen-nhat)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-link)" } : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
             {selectMode ? "Thoát chế độ chọn" : "Chọn nhiều"}
           </button>
-          <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#0068FF" }}>
+          <button onClick={openCreate} className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
             + Thêm câu hỏi
           </button>
         </div>
@@ -608,30 +608,30 @@ function PageInner() {
       <div className="flex flex-wrap gap-3 mb-4">
         <input
           className="flex-1 min-w-[200px] px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400"
-          style={{ borderColor: "#e5e3df" }}
+          style={{ borderColor: "var(--kin-vien-thuong)" }}
           placeholder="Tìm theo nội dung câu hỏi..."
           value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-        <select className="px-3 py-2 text-sm border rounded-lg outline-none max-w-[260px]" style={{ borderColor: "#e5e3df" }}
+        <select className="px-3 py-2 text-sm border rounded-lg outline-none max-w-[260px]" style={{ borderColor: "var(--kin-vien-thuong)" }}
           value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}>
           <option value="">Tất cả đầu mục</option>
           {categories.map(c => <option key={c.id} value={c.id}>{categoryPath(c.id, categories)}</option>)}
         </select>
-        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
+        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "var(--kin-vien-thuong)" }}
           value={difficultyFilter} onChange={e => { setDiff(e.target.value); setPage(1); }}>
           <option value="">Tất cả độ khó</option>
           {DIFFICULTIES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
         </select>
-        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "#e5e3df" }}
+        <select className="px-3 py-2 text-sm border rounded-lg outline-none" style={{ borderColor: "var(--kin-vien-thuong)" }}
           value={statusFilter} onChange={e => { setStatusFilter(e.target.value as BankItemStatus | ""); setPage(1); }}>
           <option value="">Tất cả trạng thái</option>
           {(Object.keys(STATUS_LABEL) as BankItemStatus[]).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
       </div>
 
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#e5e3df" }}>
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--kin-vien-thuong)" }}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "#f6f5f4" }}>
+            <tr className="text-left text-xs text-gray-500 uppercase tracking-wide" style={{ background: "var(--kin-nen-bang)" }}>
               {selectMode && <th className="px-4 py-3 w-8"></th>}
               <th className="px-4 py-3">Câu hỏi</th>
               <th className="px-4 py-3">Đầu mục</th>
@@ -650,7 +650,7 @@ function PageInner() {
             ) : items.length === 0 ? (
               <tr><td colSpan={selectMode ? 10 : 9} className="px-4 py-8 text-center text-gray-400">Chưa có câu hỏi nào</td></tr>
             ) : items.map(item => (
-              <tr key={item.id} className="border-t" style={{ borderColor: "#e5e3df" }}>
+              <tr key={item.id} className="border-t" style={{ borderColor: "var(--kin-vien-thuong)" }}>
                 {selectMode && (
                   <td className="px-4 py-3">
                     <input type="checkbox" checked={selected.has(item.id)}
@@ -695,16 +695,16 @@ function PageInner() {
                   <div className="flex flex-wrap gap-2">
                     {canEdit(item) && (
                       <>
-                        <button onClick={() => openEdit(item)} className="text-xs font-semibold" style={{ color: "#0068FF" }}>Sửa</button>
+                        <button onClick={() => openEdit(item)} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Sửa</button>
                         <button onClick={() => setDelId(item.id)} className="text-xs font-semibold text-red-500">Xoá</button>
                         {item.status === "draft" && (
-                          <button onClick={() => handleSubmit(item.id)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Gửi duyệt</button>
+                          <button onClick={() => handleSubmit(item.id)} className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Gửi duyệt</button>
                         )}
                       </>
                     )}
                     {!isTeacher && item.status === "pending" && (
                       <>
-                        <button onClick={() => handleApprove(item.id)} className="text-xs font-semibold" style={{ color: "#16a34a" }}>Duyệt</button>
+                        <button onClick={() => handleApprove(item.id)} className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Duyệt</button>
                         <button onClick={() => { setRejectItem(item); setRejectReason(""); }} className="text-xs font-semibold text-red-500">Từ chối</button>
                       </>
                     )}
@@ -722,10 +722,10 @@ function PageInner() {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-4 text-sm">
           <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-            className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "#e5e3df" }}>‹</button>
+            className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "var(--kin-vien-thuong)" }}>‹</button>
           <span className="text-gray-500">Trang {page}/{totalPages}</span>
           <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-            className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "#e5e3df" }}>›</button>
+            className="px-3 py-1.5 rounded-lg border disabled:opacity-40" style={{ borderColor: "var(--kin-vien-thuong)" }}>›</button>
         </div>
       )}
 
@@ -746,8 +746,8 @@ function PageInner() {
             <p className="text-sm font-semibold mb-1">Xoá câu hỏi này?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá khỏi ngân hàng — không ảnh hưởng đề thi đã dùng câu này trước đó.</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDelId(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
-              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "#dc2626" }}>Xoá</button>
+              <button onClick={() => setDelId(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
+              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>
@@ -760,13 +760,13 @@ function PageInner() {
             <p className="text-xs text-gray-500 mb-3">Câu sẽ về trạng thái Nháp kèm lý do, người soạn có thể sửa lại và gửi duyệt lần nữa.</p>
             <textarea autoFocus rows={3}
               className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400"
-              style={{ borderColor: "#e5e3df" }}
+              style={{ borderColor: "var(--kin-vien-thuong)" }}
               placeholder="Lý do từ chối..."
               value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setRejectItem(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "#e5e3df" }}>Huỷ</button>
+              <button onClick={() => setRejectItem(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
               <button onClick={() => handleReject(rejectItem.id, rejectReason)} disabled={!rejectReason.trim()}
-                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#dc2626" }}>
+                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-tt-chu-loi)" }}>
                 Từ chối
               </button>
             </div>
@@ -776,15 +776,15 @@ function PageInner() {
 
       {selectMode && selected.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center">
-          <div className="flex items-center gap-4 mb-4 px-5 py-3 rounded-xl shadow-lg bg-white border" style={{ borderColor: "#e5e3df" }}>
-            <span className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>Đã chọn {selected.size} câu</span>
+          <div className="flex items-center gap-4 mb-4 px-5 py-3 rounded-xl shadow-lg bg-white border" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+            <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Đã chọn {selected.size} câu</span>
             <button onClick={() => setSelected(new Map())} className="text-sm text-gray-500 hover:text-gray-700">Bỏ chọn tất cả</button>
-            <button onClick={() => setCopyModalOpen(true)} className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "#e5e3df", color: "#787671" }}>
+            <button onClick={() => setCopyModalOpen(true)} className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
               Copy vào đầu mục khác
             </button>
             <button onClick={() => setAddToExamOpen(true)} disabled={approvedSelectedCount === 0}
               title={approvedSelectedCount === 0 ? "Chỉ thêm được câu đã duyệt vào đề" : undefined}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "#16a34a" }}>
+              className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
               Thêm vào đề{approvedSelectedCount > 0 ? ` (${approvedSelectedCount})` : ""}
             </button>
           </div>

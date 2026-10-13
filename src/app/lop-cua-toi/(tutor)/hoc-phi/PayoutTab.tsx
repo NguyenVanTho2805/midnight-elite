@@ -118,10 +118,10 @@ export default function PayoutTab() {
             <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Khoá API</p>
             {a.hasKey && !newKey && <p className="text-sm mb-2" style={{ color: "var(--kin-chu-phu)" }}>Đã có khoá (đuôi …{a.keyHint}). Vì lý do an toàn KiN chỉ lưu bản băm nên không xem lại được. Cần khoá mới thì tạo lại — khoá cũ ngừng dùng được ngay.</p>}
             {newKey && (
-              <div role="alert" className="rounded-lg p-3 mb-2" style={{ background: "var(--kin-tt-cham-cho)", color: "#1f2937" }}>
+              <div role="alert" className="rounded-lg p-3 mb-2" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)" }}>
                 <p className="text-sm font-semibold mb-1">Khoá mới — chỉ hiện một lần này. Hãy dán vào SePay ngay.</p>
                 <div className="flex gap-2">
-                  <input readOnly value={newKey} onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 px-3 py-2 rounded-lg font-mono text-xs min-h-[44px]" style={{ background: "#fff", border: "1px solid #d1d5db", color: "#111827" }} aria-label="Khoá API mới" />
+                  <input readOnly value={newKey} onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 px-3 py-2 rounded-lg font-mono text-xs min-h-[44px]" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }} aria-label="Khoá API mới" />
                   <KinButton variant="secondary" onClick={() => copy(newKey, "khoá API")}>Sao chép</KinButton>
                 </div>
                 <button className="text-xs underline mt-2" onClick={() => setNewKey(null)}>Tôi đã lưu khoá, ẩn đi</button>

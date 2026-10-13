@@ -47,6 +47,8 @@ interface AuthContextType {
   user:      AuthUser | null;
   isLoading: boolean;
   login:     (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  /** Đăng nhập bằng mã 6 số gửi qua email (TK-170). `code` = wrong | locked | expired | format khi thất bại. */
+  loginWithCode: (email: string, code: string) => Promise<{ success: boolean; message?: string; code?: string; attemptsLeft?: number; retryAfterSec?: number }>;
   logout:    () => Promise<void>;
 }
 
@@ -77,7 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại" };
     setUser(toAuthUser(data));
-    router.push(data.role === "admin" ? "/admin" : "/student/hoc-tap");
+    router.push(data.role === "admin" ? "/admin" : "/student/viec-cua-toi");
+    return { success: true };
+  }
+
+  async function loginWithCode(email: string, code: string) {
+    const res = await fetch("/api/auth/code/verify", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ email, code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, attemptsLeft: data.attemptsLeft, retryAfterSec: data.retryAfterSec };
+    }
+    setUser(toAuthUser(data));
+    router.push(data.role === "admin" ? "/admin" : "/student/viec-cua-toi");
     return { success: true };
   }
 
@@ -88,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithCode, logout }}>
       {children}
     </AuthContext.Provider>
   );

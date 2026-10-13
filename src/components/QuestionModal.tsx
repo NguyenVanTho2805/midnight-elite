@@ -52,18 +52,18 @@ function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (r:
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
       <div className="w-full max-w-sm rounded-2xl p-5"
-        style={{ background: "#ffffff" }} onClick={e => e.stopPropagation()}>
-        <p className="text-sm font-bold mb-3" style={{ color: "#1a1a1a" }}>Báo cáo câu trả lời</p>
+        style={{ background: "var(--kin-nen-trang)" }} onClick={e => e.stopPropagation()}>
+        <p className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Báo cáo câu trả lời</p>
         <textarea value={reason} onChange={e => setReason(e.target.value)}
           placeholder="Lý do báo cáo (sai, spam, gian lận...)"
           rows={3} className="w-full p-3 rounded-lg text-sm resize-none outline-none"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1a1a1a" }} />
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
         <div className="flex gap-2 mt-3">
           <button onClick={onClose} className="flex-1 py-2 rounded-lg text-xs font-bold"
-            style={{ background: "#f6f5f4", color: "#787671" }}>Hủy</button>
+            style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Hủy</button>
           <button onClick={() => reason.trim() && onSubmit(reason.trim())}
             className="flex-1 py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#dc2626" }}>Gửi báo cáo</button>
+            style={{ background: "var(--kin-tt-chu-loi)" }}>Gửi báo cáo</button>
         </div>
       </div>
     </div>
@@ -189,7 +189,7 @@ export default function QuestionModal({
       {/* Toast */}
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[70] px-5 py-3 rounded-xl text-sm font-semibold text-white shadow-lg"
-          style={{ background: "#1a1a1a" }}>{toast}</div>
+          style={{ background: "var(--kin-chu-chinh)" }}>{toast}</div>
       )}
 
       {/* Backdrop */}
@@ -207,7 +207,7 @@ export default function QuestionModal({
         <div
           className="relative w-full sm:max-w-2xl sm:mx-4 flex flex-col overflow-hidden rounded-t-[20px] sm:rounded-[20px]"
           style={{
-            background: "#ffffff",
+            background: "var(--kin-nen-trang)",
             maxHeight: "92dvh",
             animation: "modalSlideUp 0.22s cubic-bezier(0.16,1,0.3,1)",
           }}
@@ -215,33 +215,33 @@ export default function QuestionModal({
         >
           {/* Drag handle (mobile) */}
           <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 sm:hidden">
-            <div className="w-10 h-1 rounded-full" style={{ background: "#e5e3df" }} />
+            <div className="w-10 h-1 rounded-full" style={{ background: "var(--kin-vien-thuong)" }} />
           </div>
 
           {/* Header */}
           <div className="flex-shrink-0 flex items-center justify-between px-5 py-3"
-            style={{ borderBottom: "1px solid #e5e3df" }}>
+            style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold" style={{ color: "#37352f" }}>Câu hỏi</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-phu)" }}>Câu hỏi</span>
               {question && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{
-                    background: answered ? "#dcfce7" : "#fffbeb",
-                    color:      answered ? "#15803d" : "#92400e",
+                    background: answered ? "var(--kin-tt-nen-xong)" : "var(--kin-tt-nen-cho)",
+                    color:      answered ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-cho)",
                   }}>
                   {answered ? "✓ Đã giải" : "Đang mở"}
                 </span>
               )}
               {question && (
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "#fffbeb", color: "#b45309" }}>
+                  style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                   🪙 {question.bountyPaid}
                 </span>
               )}
             </div>
             <button onClick={onClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all hover:bg-gray-100"
-              style={{ color: "#787671" }}>✕</button>
+              style={{ color: "var(--kin-chu-mo)" }}>✕</button>
           </div>
 
           {/* Scrollable body */}
@@ -252,7 +252,7 @@ export default function QuestionModal({
               <div className="p-5 space-y-3">
                 {[90, 75, 60, 85, 50].map((w, i) => (
                   <div key={i} className="h-4 rounded-lg animate-pulse"
-                    style={{ background: "#e5e3df", width: `${w}%` }} />
+                    style={{ background: "var(--kin-vien-thuong)", width: `${w}%` }} />
                 ))}
               </div>
             )}
@@ -261,10 +261,10 @@ export default function QuestionModal({
             {fetchError && (
               <div className="p-8 text-center">
                 <p className="text-2xl mb-3">⚠️</p>
-                <p className="font-semibold mb-1" style={{ color: "#1a1a1a" }}>Không thể tải câu hỏi</p>
+                <p className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Không thể tải câu hỏi</p>
                 <button onClick={() => questionId && fetchQuestion(questionId)}
                   className="mt-3 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-                  style={{ background: "#0068FF" }}>Thử lại</button>
+                  style={{ background: "var(--kin-nhan-nen)" }}>Thử lại</button>
               </div>
             )}
 
@@ -274,22 +274,22 @@ export default function QuestionModal({
 
                 {/* Question */}
                 <div className="rounded-xl p-4"
-                  style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
+                  style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-xs font-semibold" style={{ color: "#a4a097" }}>
+                    <span className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>
                       {question.author.name} · {timeAgo(question.createdAt)}
                     </span>
                   </div>
-                  <h2 className="text-base font-extrabold leading-snug mb-2" style={{ color: "#1a1a1a" }}>
+                  <h2 className="text-base font-extrabold leading-snug mb-2" style={{ color: "var(--kin-chu-chinh)" }}>
                     {question.title}
                   </h2>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#37352f" }}>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>
                     {question.content}
                   </p>
                 </div>
 
                 {/* Answers header */}
-                <p className="text-sm font-bold" style={{ color: "#1a1a1a" }}>
+                <p className="text-sm font-bold" style={{ color: "var(--kin-chu-chinh)" }}>
                   {question.answers.length} câu trả lời
                 </p>
 
@@ -298,44 +298,44 @@ export default function QuestionModal({
                   {question.answers.map(a => (
                     <div key={a.id} className="rounded-xl p-4"
                       style={{
-                        background: a.isAccepted ? "#f0fdf4" : "#ffffff",
-                        border: a.isAccepted ? "1px solid #bbf7d0" : "1px solid #e5e3df",
+                        background: a.isAccepted ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-trang)",
+                        border: a.isAccepted ? "1px solid var(--kin-tt-vien-xong)" : "1px solid var(--kin-vien-thuong)",
                         opacity: a.isPenalized ? 0.55 : 1,
                       }}>
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className="text-xs font-semibold" style={{ color: "#1a1a1a" }}>{a.author.name}</span>
-                        <span className="text-xs" style={{ color: "#a4a097" }}>{timeAgo(a.createdAt)}</span>
+                        <span className="text-xs font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{a.author.name}</span>
+                        <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(a.createdAt)}</span>
                         {a.isAccepted && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: "#dcfce7", color: "#15803d" }}>
+                            style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
                             ✓ Được chấp nhận · +{ANSWER_REWARD} 🪙
                           </span>
                         )}
                         {a.isPenalized && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: "#fee2e2", color: "#dc2626" }}>⚠ Vi phạm</span>
+                            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>⚠ Vi phạm</span>
                         )}
                       </div>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#37352f" }}>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>
                         {a.content}
                       </p>
                       <div className="flex gap-2 mt-2.5 flex-wrap">
                         {question.isOwn && question.status === "open" && !a.isPenalized && (
                           <button onClick={() => acceptAnswer(a.id)}
                             className="text-xs font-bold px-3 py-1.5 rounded-lg text-white"
-                            style={{ background: "#15803d" }}>
+                            style={{ background: "var(--kin-nhan-nen)" }}>
                             ✓ Chấp nhận câu trả lời này
                           </button>
                         )}
                         {!a.isOwn && !a.reportedByMe && !a.isPenalized && (
                           <button onClick={() => setReportTarget(a.id)}
                             className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                            style={{ background: "#f6f5f4", color: "#a4a097" }}>
+                            style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                             🚩 Báo cáo
                           </button>
                         )}
                         {a.reportedByMe && (
-                          <span className="text-xs" style={{ color: "#a4a097" }}>Đã báo cáo</span>
+                          <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Đã báo cáo</span>
                         )}
                       </div>
                     </div>
@@ -344,15 +344,15 @@ export default function QuestionModal({
                   {question.answers.length === 0 && (
                     <div className="text-center py-8">
                       <p className="text-2xl mb-2">💬</p>
-                      <p className="text-sm" style={{ color: "#787671" }}>Chưa có câu trả lời nào. Hãy là người đầu tiên!</p>
+                      <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Chưa có câu trả lời nào. Hãy là người đầu tiên!</p>
                     </div>
                   )}
                 </div>
 
                 {/* Answer form */}
-                <div className="rounded-xl p-4" style={{ background: "#f9f9f8", border: "1px solid #e5e3df" }}>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "#37352f" }}>
-                    Câu trả lời hay nhất sẽ nhận <span style={{ color: "#b45309" }}>+{ANSWER_REWARD} 🪙</span>
+                <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>
+                    Câu trả lời hay nhất sẽ nhận <span style={{ color: "var(--kin-tt-chu-cho)" }}>+{ANSWER_REWARD} 🪙</span>
                   </p>
                   <textarea
                     value={answerText}
@@ -360,13 +360,13 @@ export default function QuestionModal({
                     placeholder="Viết câu trả lời của bạn..."
                     rows={3}
                     className="w-full p-3 rounded-lg text-sm resize-none outline-none"
-                    style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1a1a1a" }}
+                    style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}
                   />
-                  {postError && <p className="text-xs mt-1 font-semibold" style={{ color: "#dc2626" }}>{postError}</p>}
+                  {postError && <p className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{postError}</p>}
                   <div className="flex justify-end mt-2">
                     <button onClick={submitAnswer} disabled={posting || !answerText.trim()}
                       className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-                      style={{ background: "#0068FF" }}>
+                      style={{ background: "var(--kin-nhan-nen)" }}>
                       {posting ? "Đang đăng..." : "Đăng trả lời"}
                     </button>
                   </div>

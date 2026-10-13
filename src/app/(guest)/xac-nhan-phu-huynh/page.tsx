@@ -62,35 +62,35 @@ function ConsentContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="w-full max-w-md">
-        <div className="rounded-xl p-10 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+        <div className="rounded-xl p-10 text-center" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
 
           {status === "loading" && (
             <>
-              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "#dbeafe", border: "1px solid #bfdbfe" }}>
+              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
                 <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
               </div>
-              <h1 className="text-lg font-bold" style={{ color: "#1a1a1a" }}>Đang tải yêu cầu...</h1>
+              <h1 className="text-lg font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Đang tải yêu cầu...</h1>
             </>
           )}
 
           {status === "pending" && info && (
             <>
-              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "#dbeafe", border: "1px solid #bfdbfe" }}>
+              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
                 <span className="text-2xl">👪</span>
               </div>
-              <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Yêu cầu xác nhận</h1>
-              <p className="text-sm mb-6" style={{ color: "#787671" }}>
-                <strong style={{ color: "#1a1a1a" }}>{info.studentName}</strong> đang đăng ký tham gia lớp{" "}
-                <strong style={{ color: "#0068FF" }}>&ldquo;{info.courseName}&rdquo;</strong>. Bạn có đồng ý không?
+              <h1 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Yêu cầu xác nhận</h1>
+              <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>
+                <strong style={{ color: "var(--kin-chu-chinh)" }}>{info.studentName}</strong> đang đăng ký tham gia lớp{" "}
+                <strong style={{ color: "var(--kin-nhan-link)" }}>&ldquo;{info.courseName}&rdquo;</strong>. Bạn có đồng ý không?
               </p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => respond("approved")}
                   disabled={submitting}
                   className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ background: "#16a34a", borderRadius: "8px" }}
+                  style={{ background: "var(--kin-tt-chu-xong)", borderRadius: "8px" }}
                 >
                   Đồng ý
                 </button>
@@ -98,7 +98,7 @@ function ConsentContent() {
                   onClick={() => respond("rejected")}
                   disabled={submitting}
                   className="px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50"
-                  style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}
+                  style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}
                 >
                   Từ chối
                 </button>
@@ -108,52 +108,52 @@ function ConsentContent() {
 
           {status === "approved" && (
             <>
-              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "#d1fae5", border: "1px solid #a7f3d0" }}>
-                <svg className="w-7 h-7" fill="none" stroke="#16a34a" strokeWidth={2.5} viewBox="0 0 24 24">
+              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)" }}>
+                <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-xong)" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Đã xác nhận đồng ý</h1>
-              <p className="text-sm" style={{ color: "#787671" }}>Cảm ơn bạn. Yêu cầu đã được ghi nhận.</p>
+              <h1 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Đã xác nhận đồng ý</h1>
+              <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Cảm ơn bạn. Yêu cầu đã được ghi nhận.</p>
             </>
           )}
 
           {status === "rejected" && (
             <>
-              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "#fee2e2", border: "1px solid #fecaca" }}>
-                <svg className="w-7 h-7" fill="none" stroke="#dc2626" strokeWidth={2.5} viewBox="0 0 24 24">
+              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
+                <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-loi)" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Đã từ chối</h1>
-              <p className="text-sm" style={{ color: "#787671" }}>Yêu cầu đã được ghi nhận là từ chối.</p>
+              <h1 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Đã từ chối</h1>
+              <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Yêu cầu đã được ghi nhận là từ chối.</p>
             </>
           )}
 
           {status === "expired" && (
             <>
-              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "#fef3c7", border: "1px solid #fde68a" }}>
-                <svg className="w-7 h-7" fill="none" stroke="#d97706" strokeWidth={2.5} viewBox="0 0 24 24">
+              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+                <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-cho)" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Link đã hết hạn</h1>
-              <p className="text-sm" style={{ color: "#787671" }}>Vui lòng liên hệ gia sư để được gửi lại yêu cầu.</p>
+              <h1 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Link đã hết hạn</h1>
+              <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Vui lòng liên hệ gia sư để được gửi lại yêu cầu.</p>
             </>
           )}
 
           {status === "error" && (
             <>
-              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "#fee2e2", border: "1px solid #fecaca" }}>
-                <svg className="w-7 h-7" fill="none" stroke="#dc2626" strokeWidth={2.5} viewBox="0 0 24 24">
+              <div className="w-14 h-14 rounded-xl mx-auto mb-5 flex items-center justify-center" style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
+                <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-loi)" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold mb-2" style={{ color: "#1a1a1a" }}>Có lỗi xảy ra</h1>
-              <p className="text-sm mb-6" style={{ color: "#787671" }}>{errMsg}</p>
+              <h1 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Có lỗi xảy ra</h1>
+              <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>{errMsg}</p>
               <Link href="/"
                 className="inline-block px-5 py-2 rounded-lg text-sm font-semibold text-white"
-                style={{ background: "#0068FF", borderRadius: "8px" }}>
+                style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                 Về trang chủ
               </Link>
             </>

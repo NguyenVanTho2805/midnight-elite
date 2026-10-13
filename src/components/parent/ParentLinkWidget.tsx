@@ -21,9 +21,9 @@ export interface ParentLinkItem {
 export type ParentLinkNotify = (message: string, type: "success" | "error") => void;
 
 const STATUS: Record<string, { text: string; bg: string; color: string }> = {
-  verified: { text: "Đã xác nhận", bg: "#d1fae5", color: "#065f46" },
-  pending:  { text: "Chờ xác nhận", bg: "#fef3c7", color: "#92400e" },
-  revoked:  { text: "Đã thu hồi",  bg: "#f6f5f4", color: "#a4a097" },
+  verified: { text: "Đã xác nhận", bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  pending:  { text: "Chờ xác nhận", bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  revoked:  { text: "Đã thu hồi",  bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" },
 };
 
 function StatusPill({ status }: { status: string }) {
@@ -37,10 +37,10 @@ function StatusPill({ status }: { status: string }) {
 
 function PersonRow({ name, email, children }: { name?: string; email?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+    <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate" style={{ color: "#37352f" }}>{name}</p>
-        <p className="text-xs truncate" style={{ color: "#a4a097" }}>{email}</p>
+        <p className="text-sm font-semibold truncate" style={{ color: "var(--kin-chu-phu)" }}>{name}</p>
+        <p className="text-xs truncate" style={{ color: "var(--kin-chu-mo)" }}>{email}</p>
       </div>
       {children}
     </div>
@@ -129,12 +129,12 @@ export default function ParentLinkWidget({
     return (
       <div aria-label="Liên kết phụ huynh">
         {rows.length === 0 ? (
-          <p className="text-sm" style={{ color: "#a4a097" }}>Chưa có liên kết phụ huynh nào.</p>
+          <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Chưa có liên kết phụ huynh nào.</p>
         ) : (
           <div className="space-y-2">
             {rows.map(r => (
               <PersonRow key={r.id} name={r.name} email={r.email}>
-                <span className="text-xs flex-shrink-0" style={{ color: "#787671" }}>{r.role}</span>
+                <span className="text-xs flex-shrink-0" style={{ color: "var(--kin-chu-mo)" }}>{r.role}</span>
                 <StatusPill status={r.status} />
               </PersonRow>
             ))}
@@ -145,15 +145,15 @@ export default function ParentLinkWidget({
   }
 
   return (
-    <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-      <h2 className="text-sm font-bold mb-1" style={{ color: "#37352f" }}>Liên kết phụ huynh</h2>
-      <p className="text-xs mb-4" style={{ color: "#a4a097" }}>
+    <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+      <h2 className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Liên kết phụ huynh</h2>
+      <p className="text-xs mb-4" style={{ color: "var(--kin-chu-mo)" }}>
         Khác với thông tin phụ huynh ở trên (chỉ là dữ liệu tự khai), mục này xác minh 2 chiều giữa 2 tài khoản thật.
       </p>
 
       {asStudent.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs font-semibold mb-2" style={{ color: "#787671" }}>Yêu cầu gửi tới bạn (với vai trò học viên)</p>
+          <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Yêu cầu gửi tới bạn (với vai trò học viên)</p>
           <div className="space-y-2">
             {asStudent.map(link => (
               <PersonRow key={link.id} name={link.parent?.name} email={link.parent?.email}>
@@ -161,12 +161,12 @@ export default function ParentLinkWidget({
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => respond(link.id, "verify")} disabled={actingId === link.id}
                       className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white disabled:opacity-50"
-                      style={{ background: "#16a34a", borderRadius: "8px" }}>
+                      style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
                       Xác nhận
                     </button>
                     <button onClick={() => respond(link.id, "revoke")} disabled={actingId === link.id}
                       className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
-                      style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", borderRadius: "8px" }}>
+                      style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)", borderRadius: "8px" }}>
                       Từ chối
                     </button>
                   </div>
@@ -180,9 +180,9 @@ export default function ParentLinkWidget({
       )}
 
       <div className="mb-4">
-        <p className="text-xs font-semibold mb-2" style={{ color: "#787671" }}>Con của bạn (với vai trò phụ huynh)</p>
+        <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Con của bạn (với vai trò phụ huynh)</p>
         {asParent.length === 0 ? (
-          <p className="text-sm" style={{ color: "#c8c4be" }}>Chưa gửi yêu cầu liên kết nào.</p>
+          <p className="text-sm" style={{ color: "var(--kin-vien-o-nhap)" }}>Chưa gửi yêu cầu liên kết nào.</p>
         ) : (
           <div className="space-y-2">
             {asParent.map(link => (
@@ -197,10 +197,10 @@ export default function ParentLinkWidget({
       <div className="flex gap-2">
         <input type="email" value={email} onChange={e => setEmail(e.target.value)}
           aria-label="Email tài khoản của con" placeholder="Email tài khoản của con"
-          className="notion-input flex-1 text-sm" style={{ color: "#1a1a1a" }} />
+          className="notion-input flex-1 text-sm" style={{ color: "var(--kin-chu-chinh)" }} />
         <button onClick={request} disabled={submitting}
           className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60 flex-shrink-0"
-          style={{ background: "#0068FF", borderRadius: "8px" }}>
+          style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
           {submitting ? "Đang gửi..." : "Gửi yêu cầu"}
         </button>
       </div>

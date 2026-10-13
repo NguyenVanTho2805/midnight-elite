@@ -73,7 +73,7 @@ export function Drawer({ open, title, onClose, children, footerActions, width = 
                     ? "px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
                     : "px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 }
-                style={a.kind === "primary" || !a.kind ? { background: "linear-gradient(135deg, #4F6BF5, #6B4FE8)" } : undefined}
+                style={a.kind === "primary" || !a.kind ? { background: "var(--kin-nhan-nen)" } : undefined}
               >{a.label}</button>
             ))}
           </footer>

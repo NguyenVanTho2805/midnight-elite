@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { KinButton } from "@/components/kin";
+import { KinButton, KinConfirm, KinTabs } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import {
   ACTIVITY_HINT, ACTIVITY_LABEL, ANSWER_MAX, GOAL_MAX, MAX_QUESTIONS, MINUTES_MAX, NOTES_MAX, PRODUCT_MAX, QUESTION_MAX, TITLE_MAX,
@@ -29,6 +29,7 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
   const [view, setView] = useState<View>("soan");
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [askDelete, setAskDelete] = useState(false);
   const seq = useRef(0);
 
   const snap = (p: Plan) => JSON.stringify({ t: p.title, g: p.goal, d: p.dateKey, a: p.activities });
@@ -69,10 +70,11 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
     notify.ok("Đã lưu kế hoạch.");
   }
   async function remove() {
-    if (busy || !window.confirm("Xoá kế hoạch này? Không khôi phục được.")) return;
+    if (busy) return;
     setBusy("delete");
     const r = await callApi(`/api/tutor/session-plans/${id}`, { method: "DELETE" });
     setBusy(null);
+    setAskDelete(false);
     if (!r.ok) { notify.err(r.data.error ?? "Không xoá được"); return; }
     router.push("/lop-cua-toi/ke-hoach-buoi");
   }
@@ -94,18 +96,13 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
           </p>
 
           {conflict && (
-            <div role="alert" className="rounded-xl p-4 mt-3 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "#1f2937", border: "1px solid var(--kin-vien-thuong)" }}>
+            <div role="alert" className="rounded-xl p-4 mt-3 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
               Kế hoạch này vừa được sửa ở nơi khác (tab hoặc máy khác). Tải lại để xem bản mới — thay đổi chưa lưu ở đây sẽ mất.{" "}
               <button className="underline font-semibold" onClick={() => void load()}>Tải lại</button>
             </div>
           )}
 
-          <div role="tablist" aria-label="Chế độ xem" className="flex gap-2 mt-4 flex-wrap">
-            {VIEWS.map(v => (
-              <button key={v.key} role="tab" aria-selected={view === v.key} onClick={() => setView(v.key)} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px]"
-                style={view === v.key ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" } : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>{v.label}</button>
-            ))}
-          </div>
+          <KinTabs className="mt-4" label="Chế độ xem" tabs={VIEWS} value={view} onChange={setView} />
 
           {view === "soan" && (
             <div className="mt-4 space-y-4">
@@ -171,7 +168,7 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
               <div className="sticky bottom-3 flex items-center justify-between gap-3 rounded-xl px-4 py-3 flex-wrap" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}>
                 <span role="status" className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>{dirty ? "Có thay đổi chưa lưu" : "Đã lưu"}</span>
                 <div className="flex gap-2 flex-wrap">
-                  <KinButton variant="ghost" loading={busy === "delete"} onClick={() => void remove()}>Xoá kế hoạch</KinButton>
+                  <KinButton variant="danger" disabled={!!busy} onClick={() => setAskDelete(true)}>Xoá kế hoạch</KinButton>
                   <KinButton loading={busy === "save"} disabled={!dirty} onClick={() => void save()}>Lưu kế hoạch</KinButton>
                 </div>
               </div>
@@ -185,12 +182,23 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
                 <KinButton onClick={() => window.print()}>In {view === "gia-su" ? "bản gia sư" : "phiếu học sinh"}</KinButton>
                 <KinButton variant="secondary" onClick={() => void copyText_(view === "gia-su" ? renderTutorPlanText(plan, { courseName: plan.courseName }) : renderStudentSheetText(plan, { courseName: plan.courseName }))}>Sao chép dạng chữ</KinButton>
               </div>
-              <style>{`@media print { body * { visibility: hidden !important; } .kin-print, .kin-print * { visibility: visible !important; } .kin-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: #fff !important; color: #000 !important; } }`}</style>
+              <style>{`@media print { body * { visibility: hidden !important; } .kin-print, .kin-print * { visibility: visible !important; } .kin-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: var(--kin-nen-trang) !important; color: var(--kin-chu-chinh) !important; } }`}</style>
               {view === "gia-su" ? <TutorView plan={plan} /> : <StudentSheet plan={plan} />}
             </div>
           )}
         </>
       )}
+      <KinConfirm
+        open={askDelete}
+        tone="nguy-hiem"
+        title="Xoá kế hoạch này?"
+        message="Kế hoạch bị xoá hẳn, không khôi phục được."
+        confirmLabel="Xoá kế hoạch"
+        cancelLabel="Giữ lại"
+        loading={busy === "delete"}
+        onCancel={() => setAskDelete(false)}
+        onConfirm={() => void remove()}
+      />
     </div>
   );
 }

@@ -24,9 +24,9 @@ export function TutorCard({ t }: { t: TutorListItem }) {
   // subject badges, stat (students + classes + rating), CTA xem hồ sơ.
   return (
     <div className="rounded-xl overflow-hidden flex flex-col"
-      style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="px-6 py-5 flex items-center gap-4"
-        style={{ background: "linear-gradient(135deg,#0042AA 0%,#0068FF 60%,#38BDF8 100%)" }}>
+        style={{ background: "var(--kin-nhan-nen)" }}>
         <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 overflow-hidden"
           style={{ background: "rgba(255,255,255,0.2)", border: "2px solid rgba(255,255,255,0.4)" }}>
           {t.avatarBase64
@@ -38,8 +38,8 @@ export function TutorCard({ t }: { t: TutorListItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-white leading-tight truncate">{t.name}</h3>
             {t.tutorVerified && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                style={{ background: "rgba(255,255,255,0.25)", color: "#ffffff" }}>Đã xác minh</span>
+              <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-md"
+                style={{ background: "rgba(255,255,255,0.25)", color: "var(--kin-chu-tren-nut-chinh)" }}>Đã xác minh</span>
             )}
           </div>
           {t.subjects.length > 0 && (
@@ -52,34 +52,34 @@ export function TutorCard({ t }: { t: TutorListItem }) {
 
       <div className="p-5 flex flex-col flex-1 gap-4">
         {t.bio ? (
-          <p className="text-sm leading-relaxed line-clamp-3" style={{ color: "#4B5563" }}>{t.bio}</p>
+          <p className="text-sm leading-relaxed line-clamp-3" style={{ color: "var(--kin-chu-phu)" }}>{t.bio}</p>
         ) : (
-          <p className="text-sm italic" style={{ color: "#9CA3AF" }}>Chưa có giới thiệu</p>
+          <p className="text-sm italic" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giới thiệu</p>
         )}
 
         {t.subjects.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {t.subjects.map(s => (
               <span key={s} className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: "#dbeafe", color: "#0068FF" }}>{s}</span>
+                style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>{s}</span>
             ))}
           </div>
         )}
 
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div>
-            <p className="font-bold text-base" style={{ color: "#1a1a1a" }}>{t.classCount}</p>
-            <p style={{ color: "#9CA3AF" }}>lớp đang dạy</p>
+            <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{t.classCount}</p>
+            <p style={{ color: "var(--kin-chu-mo)" }}>lớp đang dạy</p>
           </div>
           <div>
-            <p className="font-bold text-base" style={{ color: "#1a1a1a" }}>{t.studentCount}</p>
-            <p style={{ color: "#9CA3AF" }}>học viên</p>
+            <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{t.studentCount}</p>
+            <p style={{ color: "var(--kin-chu-mo)" }}>học viên</p>
           </div>
           <div>
-            <p className="font-bold text-base" style={{ color: "#1a1a1a" }}>
+            <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>
               {t.rating.avg !== null ? t.rating.avg.toFixed(1) : "—"}
             </p>
-            <p style={{ color: "#9CA3AF" }}>
+            <p style={{ color: "var(--kin-chu-mo)" }}>
               {t.rating.total > 0 ? `${t.rating.total} đánh giá` : "chưa có"}
             </p>
           </div>
@@ -87,7 +87,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
 
         <Link href={`/mentor/${t.id}`}
           className="mt-auto flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)" }}>
           Xem hồ sơ
         </Link>
       </div>
@@ -98,8 +98,8 @@ export function TutorCard({ t }: { t: TutorListItem }) {
 export function TutorCardSkeleton() {
   // FE-108: skeleton khi loading
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-      <div className="px-6 py-5 flex items-center gap-4" style={{ background: "#e5e3df" }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+      <div className="px-6 py-5 flex items-center gap-4" style={{ background: "var(--kin-vien-thuong)" }}>
         <div className="w-16 h-16 rounded-xl bg-slate-300 animate-pulse" />
         <div className="flex-1 space-y-2">
           <div className="h-5 bg-slate-300 rounded animate-pulse w-2/3" />

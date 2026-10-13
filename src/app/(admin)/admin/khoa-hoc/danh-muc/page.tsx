@@ -33,8 +33,8 @@ function DelModal({ name, onClose, onConfirm }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
       <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
         <div className="text-center mb-4">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "#FEF2F2" }}>
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#DC2626" strokeWidth={2}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "var(--kin-tt-nen-loi)" }}>
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="var(--kin-tt-chu-loi)" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </div>
@@ -50,7 +50,7 @@ function DelModal({ name, onClose, onConfirm }: {
           </button>
           <button onClick={onConfirm}
             className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
-            style={{ background: "#dc2626" }}>
+            style={{ background: "var(--kin-tt-chu-loi)" }}>
             Xoá
           </button>
         </div>
@@ -129,7 +129,7 @@ function CategoryDrawer({ mode, onClose, onSave, saving }: {
               disabled={!name.trim() || saving}
               onClick={() => name.trim() && onSave(name.trim())}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "#16a34a" }}>
+              style={{ background: "var(--kin-tt-chu-xong)" }}>
               {saving ? "Đang lưu…" : "Lưu"}
             </button>
           </div>
@@ -316,7 +316,7 @@ export default function DanhMucPage() {
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg"
-          style={{ background: toast.error ? "#dc2626" : "#16a34a" }}>
+          style={{ background: toast.error ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-chu-xong)" }}>
           {toast.error ? "✗" : "✓"} {toast.msg}
         </div>
       )}
@@ -369,7 +369,7 @@ export default function DanhMucPage() {
             <button
               onClick={() => setDrawer({ type: "add" })}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-              style={{ background: "#16a34a" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               + Thêm danh mục
             </button>
           )}
@@ -442,7 +442,7 @@ export default function DanhMucPage() {
                     <Link
                       href={`/admin/khoa-hoc?category=${encodeURIComponent(cat.name)}`}
                       className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity cursor-pointer"
-                      style={{ background: "#F0FDF4", color: "#16a34a" }}
+                      style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}
                       title="Xem khoá học trong danh mục">
                       {cat.courseCount}
                     </Link>

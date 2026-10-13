@@ -75,46 +75,35 @@ async function topupAndApprove(u: any, sup: any, amountVnd: number) {
   check("khối 'Lớp đông học viên nhất' có Toán 9", await page.getByText("Toán 9").first().isVisible());
   await shot(page, "admin-tong-quan");
 
-  section("Mobile 390px — vỏ admin dạng ngăn kéo");
+  section("Mobile 390px — vỏ admin: thanh module dưới + dải tab");
   const mp = await (await ctxFor(sup, { width: 390, height: 800 })).newPage();
   await mp.goto(`${ADMIN}/admin/doanh-thu`, { waitUntil: "networkidle" });
   await mp.getByText("3.100.000đ").first().waitFor({ timeout: 60000 });
+  await mp.addStyleTag({ content: "[data-agentation-root]{display:none!important}" }); // thanh công cụ dev, đè lên nút ngoài cùng bên phải
   const geo = await mp.evaluate(() => {
-    const aside = document.getElementById("admin-sidebar")!.getBoundingClientRect();
     const val = [...document.querySelectorAll("div")].find(d => d.textContent === "3.100.000đ" && d.className.includes("font-extrabold"))!.getBoundingClientRect();
-    return { asideRight: aside.right, valW: val.width, overflowX: document.documentElement.scrollWidth > window.innerWidth + 1 };
+    const bar = [...document.querySelectorAll('nav[aria-label="Module quản trị"]')].find(n => getComputedStyle(n).display !== "none")!.getBoundingClientRect(); // thanh dưới là position:fixed nên offsetParent luôn null
+    return { valW: val.width, overflowX: document.documentElement.scrollWidth > window.innerWidth + 1, barH: Math.round(bar.height), barBottom: Math.round(bar.bottom), vh: window.innerHeight };
   });
-  check("sidebar nằm ngoài màn hình khi đóng", geo.asideRight <= 1, geo);
   check("giá trị thẻ có chỗ hiển thị (>80px thay vì 0px)", geo.valW > 80, geo);
   check("không tràn ngang", !geo.overflowX, geo);
+  check("thanh module dưới cao 60px, dính đáy; không còn ngăn kéo ☰ / #admin-sidebar", geo.barH === 60 && geo.barBottom === geo.vh && (await mp.getByRole("button", { name: "Mở menu" }).count()) === 0 && (await mp.locator("#admin-sidebar").count()) === 0, geo);
   await shot(mp, "doanh-thu-mobile");
-  const burger = mp.getByRole("button", { name: "Mở menu" });
-  check("có nút menu ☰, aria-expanded=false", (await burger.getAttribute("aria-expanded")) === "false");
-  await burger.click();
-  await mp.getByRole("link", { name: "Tổng quan" }).waitFor();
-  await mp.waitForTimeout(300);
-  const open = await mp.evaluate(() => document.getElementById("admin-sidebar")!.getBoundingClientRect().left);
-  check("bấm ☰: sidebar trượt vào (left = 0)", Math.abs(open) < 2, open);
-  check("aria-expanded=true khi mở", (await burger.getAttribute("aria-expanded")) === "true");
-  await shot(mp, "admin-drawer-open");
-  await mp.keyboard.press("Escape");
-  await mp.waitForTimeout(300);
-  check("Escape đóng ngăn kéo", (await mp.evaluate(() => document.getElementById("admin-sidebar")!.getBoundingClientRect().right)) <= 1);
-  await burger.click();
-  await mp.getByRole("link", { name: "Quản trị viên" }).click();
+  const tabsM = mp.getByRole("navigation", { name: "Trang của Báo cáo" });
+  check("dải tab của module Báo cáo: 'Doanh thu' đang ở", (await tabsM.getByRole("link", { name: "Doanh thu" }).getAttribute("aria-current")) === "page");
+  await mp.getByRole("navigation", { name: "Module quản trị" }).getByRole("link", { name: /^Người dùng/ }).click();
+  await mp.waitForURL(/hoc-sinh/);
+  check("bấm module trên thanh dưới: điều hướng được", /\/admin\/hoc-sinh/.test(mp.url()));
+  await mp.getByRole("navigation", { name: "Trang của Người dùng" }).getByRole("link", { name: "Quản trị viên" }).click();
   await mp.waitForURL(/quan-tri-vien/);
-  await mp.waitForTimeout(300);
-  check("bấm một mục menu: điều hướng và tự đóng ngăn kéo", (await mp.evaluate(() => document.getElementById("admin-sidebar")!.getBoundingClientRect().right)) <= 1);
-  await burger.click();
-  await mp.mouse.click(380, 400); // bấm vào lớp phủ
-  await mp.waitForTimeout(300);
-  check("bấm lớp phủ cũng đóng", (await mp.evaluate(() => document.getElementById("admin-sidebar")!.getBoundingClientRect().right)) <= 1);
+  check("bấm tab trang con: điều hướng được", /quan-tri-vien/.test(mp.url()));
 
-  section("Desktop 1280px vẫn như cũ");
+  section("Desktop 1280px — thanh module cố định bên trái");
   const dp = await (await ctxFor(sup)).newPage();
   await dp.goto(`${ADMIN}/admin/doanh-thu`, { waitUntil: "networkidle" });
   await dp.getByText("3.100.000đ").first().waitFor({ timeout: 60000 });
-  check("sidebar hiện cố định, không có nút ☰", (await dp.evaluate(() => document.getElementById("admin-sidebar")!.getBoundingClientRect().left)) === 0 && !(await dp.getByRole("button", { name: "Mở menu" }).isVisible()));
+  const railBox = await dp.getByRole("navigation", { name: "Module quản trị" }).boundingBox();
+  check("thanh module rộng 79px, sát mép trái, không có nút ☰", !!railBox && railBox.x === 0 && Math.round(railBox.width) === 79 && !(await dp.getByRole("button", { name: "Mở menu" }).isVisible()), railBox);
 
   check("không có lỗi console/pageerror", errors.length === 0, errors.slice(0, 3));
   await closeAll();

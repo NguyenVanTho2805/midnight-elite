@@ -3,8 +3,8 @@
 // /api/invites/[id] (BE-066). Link chia sẻ mở thẳng trang nhập mã với mã điền sẵn.
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
-import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
+import { KinButton, KinConfirm } from "@/components/kin";
+import { Badge, CARD_STYLE, FIELD_STYLE, callApi, copyText, useNotify } from "@/components/tutor/shared";
 
 export interface Invite {
   id: string; code: string; maxUses: number | null; usedCount: number;
@@ -100,22 +100,24 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
                 <div className="mt-3 flex gap-2 flex-wrap">
                   <KinButton variant="secondary" onClick={() => copyLink(i)}>Sao chép link</KinButton>
                   <KinButton variant="ghost" onClick={() => copyText(i.code).then(ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép mã." : "Không sao chép được."))}>Sao chép mã</KinButton>
-                  <KinButton variant="ghost" onClick={() => setRevoking(i)}>Thu hồi</KinButton>
+                  <KinButton variant="danger" onClick={() => setRevoking(i)}>Thu hồi</KinButton>
                 </div>
               )}
             </li>
           );
         })}
       </ul>
-      {revoking && (
-        <Modal title={`Thu hồi mã ${revoking.code}?`} onClose={() => setRevoking(null)}>
-          <p className="text-sm mb-4" style={{ color: "var(--kin-chu-phu)" }}>Mã này sẽ không dùng được nữa. Học viên đã vào lớp bằng mã vẫn ở trong lớp.</p>
-          <div className="flex justify-end gap-2">
-            <KinButton variant="ghost" onClick={() => setRevoking(null)}>Đóng</KinButton>
-            <KinButton loading={busy} onClick={revoke} style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "#fff" }}>Thu hồi</KinButton>
-          </div>
-        </Modal>
-      )}
+      <KinConfirm
+        open={!!revoking}
+        tone="nguy-hiem"
+        title={`Thu hồi mã ${revoking?.code ?? ""}?`}
+        message="Mã này sẽ không dùng được nữa. Học viên đã vào lớp bằng mã vẫn ở trong lớp."
+        cancelLabel="Đóng"
+        confirmLabel="Thu hồi"
+        loading={busy}
+        onCancel={() => setRevoking(null)}
+        onConfirm={revoke}
+      />
     </>
   );
 }

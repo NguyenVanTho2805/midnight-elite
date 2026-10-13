@@ -72,8 +72,8 @@ export default function AdminTopupsPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Yêu cầu nạp Coin</h1>
-        <p className="text-sm mt-1" style={{ color: "#6B7280" }}>
+        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Yêu cầu nạp Coin</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
           Đối chiếu với sao kê ngân hàng rồi duyệt / từ chối. Admin_super và
           admin_content thấy được, gia sư không.
         </p>
@@ -84,48 +84,48 @@ export default function AdminTopupsPage() {
           <button key={s} onClick={() => setStatus(s)}
             className="px-3 py-1.5 rounded-full text-xs font-semibold"
             style={status === s
-              ? { background: "#0068FF", color: "#fff" }
-              : { background: "#f6f5f4", color: "#374151", border: "1px solid #e5e3df" }}>
+              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+              : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
             {s === "pending" ? "Đang chờ" : s === "approved" ? "Đã duyệt" : s === "rejected" ? "Đã từ chối" : "Tất cả"}
           </button>
         ))}
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         {loading ? (
-          <p className="p-8 text-center text-sm" style={{ color: "#9CA3AF" }}>Đang tải...</p>
+          <p className="p-8 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>Đang tải...</p>
         ) : rows.length === 0 ? (
-          <p className="p-8 text-center text-sm" style={{ color: "#9CA3AF" }}>Không có yêu cầu nào.</p>
+          <p className="p-8 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>Không có yêu cầu nào.</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold" style={{ color: "#6B7280" }}>User</th>
-                <th className="text-right px-4 py-3 font-semibold" style={{ color: "#6B7280" }}>VND / Coin</th>
-                <th className="text-left px-4 py-3 font-semibold" style={{ color: "#6B7280" }}>Bank ref</th>
-                <th className="text-left px-4 py-3 font-semibold" style={{ color: "#6B7280" }}>Thời điểm</th>
-                <th className="text-right px-4 py-3 font-semibold" style={{ color: "#6B7280" }}>Hành động</th>
+                <th className="text-left px-4 py-3 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>User</th>
+                <th className="text-right px-4 py-3 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>VND / Coin</th>
+                <th className="text-left px-4 py-3 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Bank ref</th>
+                <th className="text-left px-4 py-3 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Thời điểm</th>
+                <th className="text-right px-4 py-3 font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id} className="border-t" style={{ borderColor: "#f3f4f6" }}>
+                <tr key={r.id} className="border-t" style={{ borderColor: "var(--kin-vien-nhat)" }}>
                   <td className="px-4 py-3">
-                    <p className="font-semibold" style={{ color: "#1E2938" }}>{r.user.name}</p>
-                    <p className="text-xs" style={{ color: "#9CA3AF" }}>
+                    <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{r.user.name}</p>
+                    <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
                       {r.user.email}
-                      {r.user.adminRole === "teacher" && <> · <span style={{ color: "#b45309" }}>Gia sư</span></>}
+                      {r.user.adminRole === "teacher" && <> · <span style={{ color: "var(--kin-tt-chu-cho)" }}>Gia sư</span></>}
                     </p>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <p className="font-bold" style={{ color: "#1E2938" }}>{r.amountVnd.toLocaleString("vi-VN")} VND</p>
-                    <p className="text-xs" style={{ color: "#9CA3AF" }}>{r.coinAmount.toLocaleString("vi-VN")} Coin</p>
+                    <p className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{r.amountVnd.toLocaleString("vi-VN")} VND</p>
+                    <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{r.coinAmount.toLocaleString("vi-VN")} Coin</p>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-mono text-xs" style={{ color: "#1E2938" }}>{r.bankRef ?? "—"}</p>
-                    {r.note && <p className="text-xs mt-1" style={{ color: "#6B7280" }}>{r.note}</p>}
+                    <p className="font-mono text-xs" style={{ color: "var(--kin-chu-chinh)" }}>{r.bankRef ?? "—"}</p>
+                    {r.note && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>{r.note}</p>}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: "#6B7280" }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
                     {new Date(r.createdAt).toLocaleString("vi-VN")}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -133,14 +133,14 @@ export default function AdminTopupsPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={() => approve(r.id)} disabled={busyId === r.id}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                          style={{ background: "#16a34a" }}>Duyệt</button>
+                          style={{ background: "var(--kin-nhan-nen)" }}>Duyệt</button>
                         <button onClick={() => { setRejectId(r.id); setRejectReason(""); }} disabled={busyId === r.id}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-                          style={{ background: "#dc2626" }}>Từ chối</button>
+                          style={{ background: "var(--kin-tt-chu-loi)" }}>Từ chối</button>
                       </div>
                     ) : (
                       <span className="text-xs font-semibold"
-                        style={{ color: r.status === "approved" ? "#16a34a" : "#dc2626" }}>
+                        style={{ color: r.status === "approved" ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
                         {r.status === "approved" ? "Đã duyệt" : "Đã từ chối"}
                       </span>
                     )}
@@ -158,11 +158,11 @@ export default function AdminTopupsPage() {
           onClick={() => setRejectId(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5"
             onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold mb-2" style={{ color: "#1E2938" }}>Lý do từ chối</h3>
+            <h3 className="text-base font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Lý do từ chối</h3>
             <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3}
               placeholder="VD: Không tìm thấy giao dịch trong sao kê"
               className="w-full px-4 py-2.5 rounded-xl text-sm"
-              style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }} />
+              style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
             <div className="flex items-center justify-end gap-2 mt-3">
               <button onClick={() => setRejectId(null)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100">

@@ -146,8 +146,8 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         tagColor:      form.tag ? form.tagColor : null,
         bg:            bgImage
                          ? `url(${bgImage}) center/cover no-repeat`
-                         : CATEGORY_GRADIENT[form.category] ?? "linear-gradient(135deg,#374151,#1E2938)",
-        strip:         "#FDE047",
+                         : CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)",
+        strip:         "var(--kin-tt-chu-cho)",
         price:         +form.price,
         originalPrice: form.originalPrice ? +form.originalPrice : null,
         lessons:       +form.lessons,
@@ -203,7 +203,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             </button>
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 15px rgba(22,163,74,0.4), 0 2px 6px rgba(22,163,74,0.2)" }}>
+              style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)" }}>
               {saving ? "Đang lưu..." : "Tạo khoá học"}
             </button>
           </div>
@@ -244,7 +244,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="space-y-3">
               {/* Preview */}
               <div className="w-full h-24 rounded-xl overflow-hidden flex items-center justify-center relative"
-                style={{ background: form.bgImage ? `url(${form.bgImage}) center/cover no-repeat` : (CATEGORY_GRADIENT[form.category] ?? "#374151") }}>
+                style={{ background: form.bgImage ? `url(${form.bgImage}) center/cover no-repeat` : (CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)") }}>
                 <span className="text-white text-xs font-bold opacity-60 select-none">
                   {form.bgImage ? "Ảnh nền" : "Gradient mặc định theo danh mục"}
                 </span>
@@ -266,12 +266,12 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                 <DropZone onFiles={files => files[0] && setBgFile(files[0])} disabled={saving} className="rounded-lg">
                   <button onClick={() => bgFileRef.current?.click()} disabled={saving}
                     className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-                    style={{ borderColor: "#d1d5db", color: "#6B7280" }}>
+                    style={{ borderColor: "var(--kin-vien-o-nhap)", color: "var(--kin-chu-mo)" }}>
                     {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn hoặc kéo-thả ảnh (JPG, PNG, WebP)"}
                   </button>
                 </DropZone>
               ) : (
-                <p className="text-xs text-center py-2" style={{ color: "#b45309" }}>⚠ Chưa cấu hình Cloudinary</p>
+                <p className="text-xs text-center py-2" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Chưa cấu hình Cloudinary</p>
               )}
 
               <div>
@@ -362,9 +362,9 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Màu nhãn</label>
                 <div className="flex gap-2 mt-1">
                   {TAG_COLORS.map(c => (
-                    <button key={c} type="button" onClick={() => set("tagColor", c)}
+                    <button key={c} type="button" data-mau-du-lieu onClick={() => set("tagColor", c)}
                       className="w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center text-white text-xs font-bold"
-                      style={{ background: c, borderColor: form.tagColor === c ? "#1E2938" : "transparent" }}
+                      style={{ background: c, borderColor: form.tagColor === c ? "var(--kin-chu-chinh)" : "transparent" }}
                       title={TAG_LABELS[c]}>
                       {form.tagColor === c && "✓"}
                     </button>
@@ -375,7 +375,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
           </section>
 
           {/* Trạng thái */}
-          <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}>
+          <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
             <div>
               <p className="text-sm font-medium text-gray-700">Hiển thị trên website</p>
               <p className="text-xs text-gray-400">Tắt để lưu nháp, không hiện với học viên</p>
@@ -389,7 +389,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <p className="text-xs font-bold text-green-700 mb-2">Preview — học viên sẽ thấy:</p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-8 rounded flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "#374151" }}>KiN</div>
+                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)" }}>KiN</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{form.name}</p>
                   <p className="text-xs text-gray-500">{form.category} · {form.instructor}</p>
@@ -399,7 +399,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                     style={{ background: form.tagColor }}>{form.tag}</span>
                 )}
                 {form.price && (
-                  <span className="text-sm font-bold flex-shrink-0" style={{ color: "#FF2157" }}>
+                  <span className="text-sm font-bold flex-shrink-0" style={{ color: "var(--kin-tt-chu-loi)" }}>
                     {(+form.price).toLocaleString("vi-VN")}đ
                   </span>
                 )}
@@ -465,7 +465,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
           {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
           <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
-            style={{ color: "#0068FF" }}>
+            style={{ color: "var(--kin-nhan-link)" }}>
             Xem portal học viên
           </a>
           <button
@@ -475,7 +475,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
               try { await onDuplicate(); } finally { setDuplicating(false); setOpen(false); }
             }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
-            style={{ color: "#16a34a" }}>
+            style={{ color: "var(--kin-tt-chu-xong)" }}>
             {duplicating ? "Đang sao chép…" : "Sao chép khóa học"}
           </button>
           <div className="border-t border-gray-100 my-1" />
@@ -489,7 +489,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
                 <button onClick={() => setConfirmDel(false)}
                   className="flex-1 py-1.5 rounded text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
                 <button onClick={() => { onDelete(); setOpen(false); setConfirmDel(false); }}
-                  className="flex-1 py-1.5 rounded text-xs font-semibold text-white" style={{ background: "#dc2626" }}>Xoá</button>
+                  className="flex-1 py-1.5 rounded text-xs font-semibold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
               </div>
             </div>
           ) : (
@@ -551,8 +551,8 @@ function KhoaHocListInner() {
 
       {/* Header */}
       <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-        <h1 className="text-lg font-extrabold" style={{ color: "#1E2938" }}>Danh sách khoá học</h1>
-        <p className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>Quản lý toàn bộ khoá học trong hệ thống</p>
+        <h1 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Danh sách khoá học</h1>
+        <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Quản lý toàn bộ khoá học trong hệ thống</p>
       </div>
 
       {/* Filters */}
@@ -588,7 +588,7 @@ function KhoaHocListInner() {
           <button
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-            style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 15px rgba(22,163,74,0.4), 0 2px 6px rgba(22,163,74,0.2)" }}>
+            style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)" }}>
             + Tạo mới
           </button>
         </div>

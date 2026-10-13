@@ -3,6 +3,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useToast } from "@/components/ui";
+import { KinStatus, type StatusTone } from "@/components/kin/Status";
 
 // useToast() trả object MỚI mỗi lần render → đưa thẳng vào deps của useEffect/
 // useCallback sẽ làm effect chạy lại mỗi khi toast hiện (vòng lặp tải lại khi
@@ -46,20 +47,9 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 type Tone = "ok" | "wait" | "bad" | "neutral";
-const TONE: Record<Tone, { text: string; dot: string }> = {
-  ok:      { text: "var(--kin-tt-chu-xong)", dot: "var(--kin-tt-cham-xong)" },
-  wait:    { text: "var(--kin-tt-chu-cho)",  dot: "var(--kin-tt-cham-cho)" },
-  bad:     { text: "var(--kin-tt-chu-loi)",  dot: "var(--kin-tt-chu-loi)" },
-  neutral: { text: "var(--kin-chu-phu)",     dot: "var(--kin-tt-cham-trung-tinh)" },
-};
+const TONE_OF: Record<Tone, StatusTone> = { ok: "xong", wait: "cho", bad: "loi", neutral: "mo" };
 export function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  const t = TONE[tone];
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap" style={{ color: t.text }}>
-      <span aria-hidden className="inline-block w-2 h-2 rounded-full" style={{ background: t.dot }} />
-      {children}
-    </span>
-  );
+  return <KinStatus tone={TONE_OF[tone]}>{children}</KinStatus>;
 }
 export const invoiceTone = (status: string): Tone =>
   status === "paid" ? "ok" : status === "cancelled" ? "neutral" : status === "draft" ? "neutral" : status === "parent_reported" || status === "partial" ? "wait" : "wait";

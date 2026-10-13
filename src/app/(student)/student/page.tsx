@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function StudentDashboardPage() {
-  redirect("/student/hoc-tap");
+  redirect("/student/viec-cua-toi");
 }

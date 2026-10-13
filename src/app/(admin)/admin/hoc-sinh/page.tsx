@@ -21,8 +21,8 @@ interface Student {
 }
 
 const ROLE_CONFIG = {
-  "hoc-vien":       { label: "Học viên", labelFull: "Học viên",       bg: "#DBEAFE", color: "#1D4ED8" },
-  "chua-kich-hoat": { label: "Chưa KH",  labelFull: "Chưa kích hoạt", bg: "#F3F4F6", color: "#6B7280" },
+  "hoc-vien":       { label: "Học viên", labelFull: "Học viên",       bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" },
+  "chua-kich-hoat": { label: "Chưa KH",  labelFull: "Chưa kích hoạt", bg: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" },
 };
 
 interface ApiStudent {
@@ -61,16 +61,16 @@ function toStudent(u: ApiStudent): Student {
 }
 
 const STATUS_CONFIG = {
-  safe:   { label: "An toàn",  bg: "#d1fae5", color: "#065f46" },
-  warn:   { label: "Cảnh báo", bg: "#fef3c7", color: "#92400e" },
-  danger: { label: "Báo động", bg: "#fee2e2", color: "#991b1b" },
+  safe:   { label: "An toàn",  bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  warn:   { label: "Cảnh báo", bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  danger: { label: "Báo động", bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
 };
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
     <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
-      style={{ background: ok ? "#16a34a" : "#dc2626" }}>
+      style={{ background: ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
       {ok ? "✓" : "✗"} {msg}
     </div>
   );
@@ -219,11 +219,11 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="rounded-2xl w-full max-w-md mx-4 overflow-y-auto max-h-[90vh] bg-white"
-        style={{ border: "1px solid #e5e3df", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+        style={{ border: "1px solid var(--kin-vien-thuong)", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #e5e3df" }}>
-          <h2 className="font-bold text-base" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h2>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+          <h2 className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>Hồ sơ học sinh</h2>
           <button onClick={onClose}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg">
             ×
@@ -234,14 +234,14 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           {/* Avatar + name */}
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
-              style={{ background: "#0068FF" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               {student.name[0]}
             </div>
             <div>
-              <p className="font-bold text-base" style={{ color: "#1E2938" }}>{student.name}</p>
+              <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{student.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs font-semibold" style={{ color: "#0068FF" }}>{student.sbd}</span>
-                <span className="text-xs" style={{ color: "#9CA3AF" }}>· {student.lastSeen}</span>
+                <span className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>{student.sbd}</span>
+                <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>· {student.lastSeen}</span>
               </div>
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -257,25 +257,25 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           </div>
 
           {/* Info grid */}
-          <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+          <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {[
               { label: "Trường",   value: student.school },
               { label: "Khoá học", value: student.course },
               { label: "Email",    value: student.email  },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center text-xs">
-                <span style={{ color: "#6B7280" }}>{r.label}</span>
-                <span className="font-semibold text-right ml-2 truncate max-w-[180px]" style={{ color: "#1E2938" }}>{r.value}</span>
+                <span style={{ color: "var(--kin-chu-mo)" }}>{r.label}</span>
+                <span className="font-semibold text-right ml-2 truncate max-w-[180px]" style={{ color: "var(--kin-chu-chinh)" }}>{r.value}</span>
               </div>
             ))}
             <div className="flex justify-between items-center text-xs">
-              <span style={{ color: "#6B7280" }}>SĐT</span>
+              <span style={{ color: "var(--kin-chu-mo)" }}>SĐT</span>
               <div className="flex items-center gap-2">
-                <span className="font-semibold" style={{ color: "#1E2938" }}>{student.phone}</span>
+                <span className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{student.phone}</span>
                 {student.phone !== "—" && (
                   <button onClick={() => copy(student.phone.replace(/\s/g, ""))}
                     className="px-2 py-0.5 rounded text-xs font-semibold border transition-colors"
-                    style={{ borderColor: "#e5e3df", background: copied ? "#d1fae5" : "#fff", color: copied ? "#166534" : "#0068FF" }}>
+                    style={{ borderColor: "var(--kin-vien-thuong)", background: copied ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-trang)", color: copied ? "var(--kin-tt-chu-xong)" : "var(--kin-nhan-link)" }}>
                     {copied ? "✓" : "Sao chép"}
                   </button>
                 )}
@@ -286,13 +286,13 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "#9CA3AF" : student.gpa < 5 ? "#FF2157" : student.gpa < 7 ? "#FE9900" : "#0068FF" },
-              { label: "Tiến độ", value: `${student.completion}%`, color: "#8B5CF6" },
-              { label: "Điểm bài tập", value: student.assignmentAvg != null ? student.assignmentAvg.toFixed(1) : "—", color: "#16a34a" },
+              { label: "GPA",     value: student.gpa > 0 ? student.gpa.toFixed(1) : "—", color: student.gpa === 0 ? "var(--kin-chu-mo)" : student.gpa < 5 ? "var(--kin-tt-chu-loi)" : student.gpa < 7 ? "var(--kin-tt-chu-cho)" : "var(--kin-nhan-link)" },
+              { label: "Tiến độ", value: `${student.completion}%`, color: "var(--kin-nhan-link)" },
+              { label: "Điểm bài tập", value: student.assignmentAvg != null ? student.assignmentAvg.toFixed(1) : "—", color: "var(--kin-tt-chu-xong)" },
             ].map(s => (
-              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-xs mt-0.5" style={{ color: "#9CA3AF" }}>{s.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -300,12 +300,12 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           {/* Progress bar */}
           <div>
             <div className="flex justify-between text-xs mb-1.5">
-              <span style={{ color: "#6B7280" }}>Tiến độ khóa học</span>
-              <span className="font-bold" style={{ color: "#8B5CF6" }}>{student.completion}%</span>
+              <span style={{ color: "var(--kin-chu-mo)" }}>Tiến độ khóa học</span>
+              <span className="font-bold" style={{ color: "var(--kin-nhan-link)" }}>{student.completion}%</span>
             </div>
-            <div className="h-2 rounded-full" style={{ background: "#e5e3df" }}>
+            <div className="h-2 rounded-full" style={{ background: "var(--kin-vien-thuong)" }}>
               <div className="h-2 rounded-full transition-all"
-                style={{ width: `${student.completion}%`, background: "#8B5CF6" }} />
+                style={{ width: `${student.completion}%`, background: "var(--kin-nhan-nen)" }} />
             </div>
           </div>
 
@@ -316,26 +316,26 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
               disabled={banning}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50"
               style={banned
-                ? { borderColor: "#d1fae5", background: "#f0fdf4", color: "#16a34a" }
-                : { borderColor: "#fed7aa", background: "#fff7ed", color: "#c2410c" }}>
+                ? { borderColor: "var(--kin-tt-vien-xong)", background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }
+                : { borderColor: "var(--kin-tt-vien-cho)", background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
               {banning ? "Đang xử lý…" : banned ? "✓ Gỡ ban" : "Ban học sinh"}
             </button>
             {!confirmDel ? (
               <button
                 onClick={() => setConfirmDel(true)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors"
-                style={{ borderColor: "#fecaca", background: "#fff5f5", color: "#dc2626" }}>
+                style={{ borderColor: "var(--kin-tt-vien-loi)", background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
                 Xóa học sinh
               </button>
             ) : (
-              <div className="flex-1 rounded-xl border p-2.5 space-y-1.5" style={{ borderColor: "#fecaca", background: "#fff5f5" }}>
-                <p className="text-xs font-bold text-center" style={{ color: "#dc2626" }}>Xác nhận xóa?</p>
+              <div className="flex-1 rounded-xl border p-2.5 space-y-1.5" style={{ borderColor: "var(--kin-tt-vien-loi)", background: "var(--kin-tt-nen-loi)" }}>
+                <p className="text-xs font-bold text-center" style={{ color: "var(--kin-tt-chu-loi)" }}>Xác nhận xóa?</p>
                 <div className="flex gap-1.5">
                   <button onClick={() => setConfirmDel(false)}
-                    className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "#e5e3df", color: "#6B7280" }}>Huỷ</button>
+                    className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
                   <button onClick={deleteStudent} disabled={deleting}
                     className="flex-1 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                    style={{ background: "#dc2626" }}>{deleting ? "…" : "Xóa"}</button>
+                    style={{ background: "var(--kin-tt-chu-loi)" }}>{deleting ? "…" : "Xóa"}</button>
                 </div>
               </div>
             )}
@@ -343,16 +343,16 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
 
           {toast && (
             <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white text-center"
-              style={{ background: toast.ok ? "#16a34a" : "#dc2626" }}>
+              style={{ background: toast.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
               {toast.ok ? "✓" : "✗"} {toast.msg}
             </div>
           )}
 
           {/* Kích hoạt khoá học */}
           <div>
-            <p className="text-xs font-bold mb-2.5" style={{ color: "#1E2938" }}>Kích hoạt / Thu hồi khoá học</p>
+            <p className="text-xs font-bold mb-2.5" style={{ color: "var(--kin-chu-chinh)" }}>Kích hoạt / Thu hồi khoá học</p>
             {dbCourses.length === 0 ? (
-              <p className="text-xs text-center py-3" style={{ color: "#9CA3AF" }}>Chưa có khoá học nào trong hệ thống</p>
+              <p className="text-xs text-center py-3" style={{ color: "var(--kin-chu-mo)" }}>Chưa có khoá học nào trong hệ thống</p>
             ) : (
               <div className="space-y-2">
                 {dbCourses.map(course => {
@@ -361,13 +361,13 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                   return (
                     <div key={course.id}
                       className="flex items-center justify-between px-3 py-2.5 rounded-lg"
-                      style={{ background: enrolled ? "#f0fdf4" : "#f6f5f4", border: `1px solid ${enrolled ? "#bbf7d0" : "#e5e3df"}` }}>
+                      style={{ background: enrolled ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)", border: `1px solid ${enrolled ? "var(--kin-tt-vien-xong)" : "var(--kin-vien-thuong)"}` }}>
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="flex-shrink-0 text-sm font-bold" style={{ color: enrolled ? "#16a34a" : "#d1d5db" }}>
+                        <span className="flex-shrink-0 text-sm font-bold" style={{ color: enrolled ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)" }}>
                           {enrolled ? "✓" : "○"}
                         </span>
                         <span className="text-xs font-semibold truncate"
-                          style={{ color: enrolled ? "#065F46" : "#1E2938" }}>
+                          style={{ color: enrolled ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-chinh)" }}>
                           {course.name}
                         </span>
                       </div>
@@ -378,7 +378,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                             disabled={consentBusy === course.id}
                             title="Gửi email cho phụ huynh xác nhận (cần học viên đã có ParentLink verified)"
                             className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
-                            style={{ background: "#dbeafe", color: "#1D4ED8" }}>
+                            style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
                             {consentBusy === course.id ? "..." : "Xác nhận PH"}
                           </button>
                         )}
@@ -387,8 +387,8 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                           disabled={busy}
                           className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer"
                           style={enrolled
-                            ? { background: "#fee2e2", color: "#DC2626" }
-                            : { background: "#0068FF", color: "white" }}>
+                            ? { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }
+                            : { background: "var(--kin-nhan-nen)", color: "white" }}>
                           {busy ? "..." : enrolled ? "Thu hồi" : "Kích hoạt"}
                         </button>
                       </div>
@@ -403,8 +403,8 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           <button onClick={() => setShowRemind(v => !v)}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors border"
             style={showRemind
-              ? { background: "#fff7ed", color: "#FE9900", borderColor: "#fed7aa" }
-              : { background: "#FE9900", color: "white", borderColor: "transparent" }}>
+              ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", borderColor: "var(--kin-tt-vien-cho)" }
+              : { background: "var(--kin-tt-cham-cho)", color: "white", borderColor: "transparent" }}>
             Nhắc nhở học tập
           </button>
 
@@ -413,10 +413,10 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
               <textarea rows={3} value={remindMsg} onChange={e => setRemindMsg(e.target.value)}
                 placeholder={DEFAULT_REMIND}
                 className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
-                style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#1E2938" }} />
+                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
               <button onClick={sendRemind} disabled={reminding}
                 className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
-                style={{ background: "#FE9900" }}>
+                style={{ background: "var(--kin-tt-cham-cho)" }}>
                 {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
               </button>
             </div>
@@ -470,11 +470,11 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
-          borderLeft: "1px solid #e5e3df",
+          borderLeft: "1px solid var(--kin-vien-thuong)",
           boxShadow: "-8px 0 32px rgba(0,0,0,0.08)",
         }}>
 
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #e5e3df" }}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -485,13 +485,13 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           <div className="flex gap-2">
             <button onClick={onClose}
               className="px-3 py-1.5 rounded-lg text-sm border text-gray-600 hover:bg-gray-50 transition-colors"
-              style={{ borderColor: "#e5e3df" }}>
+              style={{ borderColor: "var(--kin-vien-thuong)" }}>
               Huỷ
             </button>
             <button onClick={handleSave}
               disabled={!form.name.trim() || !form.email.trim() || saving}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40 cursor-pointer"
-              style={{ background: "#16a34a" }}>
+              style={{ background: "var(--kin-nhan-nen)" }}>
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
@@ -658,15 +658,15 @@ export default function HocSinhPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#1E2938" }}>Hồ sơ học sinh</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#9CA3AF" }}>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Hồ sơ học sinh</h1>
+            <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>
               {students.length} học sinh · {counts.hocVien} có khóa học · {counts.chuaKH} chưa kích hoạt
             </p>
           </div>
           <button
             onClick={() => setShowAdd(true)}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             + Thêm học sinh
           </button>
         </div>
@@ -681,11 +681,11 @@ export default function HocSinhPage() {
                 onClick={() => setStatusFilter(active ? "all" : s)}
                 className="rounded-xl p-4 text-center transition-all cursor-pointer"
                 style={{
-                  background: active ? cfg.bg : "#ffffff",
-                  border: `1px solid ${active ? cfg.color : "#e5e3df"}`,
+                  background: active ? cfg.bg : "var(--kin-nen-trang)",
+                  border: `1px solid ${active ? cfg.color : "var(--kin-vien-thuong)"}`,
                 }}>
                 <div className="text-2xl font-bold" style={{ color: cfg.color }}>{counts[s]}</div>
-                <div className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{cfg.label}</div>
+                <div className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{cfg.label}</div>
               </button>
             );
           })}
@@ -693,7 +693,7 @@ export default function HocSinhPage() {
 
         {/* Filter row: role tabs trái + search phải */}
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#f6f5f4", border: "1px solid #e5e3df" }}>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {([
               { key: "all"            as const, label: "Tất cả"                       },
               { key: "hoc-vien"       as const, label: `Học viên · ${counts.hocVien}` },
@@ -702,8 +702,8 @@ export default function HocSinhPage() {
               <button key={f.key} onClick={() => setRoleFilter(f.key)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
                 style={roleFilter === f.key
-                  ? { background: "#ffffff", color: "#1E2938", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e3df" }
-                  : { background: "transparent", color: "#6B7280", border: "1px solid transparent" }}>
+                  ? { background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid var(--kin-vien-thuong)" }
+                  : { background: "transparent", color: "var(--kin-chu-mo)", border: "1px solid transparent" }}>
                 {f.label}
               </button>
             ))}
@@ -713,8 +713,8 @@ export default function HocSinhPage() {
             <input type="text" placeholder="Tìm theo tên, SĐT, email, SBD..."
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full px-4 py-2.5 pl-9 rounded-xl text-sm outline-none"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#1E2938" }} />
-            <div className="absolute left-3 top-3" style={{ color: "#9CA3AF" }}>
+              style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
+            <div className="absolute left-3 top-3" style={{ color: "var(--kin-chu-mo)" }}>
               <Search size={15} />
             </div>
           </div>
@@ -730,9 +730,9 @@ export default function HocSinhPage() {
 
         {/* Table */}
         <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white"
-          style={{ border: "1px solid #e5e3df" }}>
+          style={{ border: "1px solid var(--kin-vien-thuong)" }}>
           <div className="grid grid-cols-12 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#9CA3AF", background: "#f6f5f4", borderBottom: "1px solid #e5e3df" }}>
+            style={{ color: "var(--kin-chu-mo)", background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
             <div className="col-span-1 hidden sm:block">SBD</div>
             <div className="col-span-4 sm:col-span-3">Học sinh</div>
             <div className="col-span-2 hidden sm:block">Liên hệ</div>
@@ -746,15 +746,15 @@ export default function HocSinhPage() {
             {loading && (
               <div className="px-5 py-8 space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-11 rounded-lg animate-pulse" style={{ background: "#f6f5f4" }} />
+                  <div key={i} className="h-11 rounded-lg animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />
                 ))}
               </div>
             )}
             {!loading && filtered.length === 0 && (
               <div className="px-5 py-12 text-center">
-                <p className="font-semibold text-sm" style={{ color: "#6B7280" }}>Không tìm thấy học sinh</p>
+                <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-mo)" }}>Không tìm thấy học sinh</p>
                 <button onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); }}
-                  className="text-xs mt-2 cursor-pointer" style={{ color: "#0068FF" }}>
+                  className="text-xs mt-2 cursor-pointer" style={{ color: "var(--kin-nhan-link)" }}>
                   Xóa bộ lọc
                 </button>
               </div>
@@ -764,29 +764,29 @@ export default function HocSinhPage() {
               const isHV   = s.role === "hoc-vien";
               return (
                 <div key={s.userId} className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-gray-50 transition-colors"
-                  style={{ borderTop: i > 0 ? "1px solid #f0eeeb" : "none" }}>
+                  style={{ borderTop: i > 0 ? "1px solid var(--kin-vien-nhat)" : "none" }}>
                   <div className="col-span-1 hidden sm:block">
-                    <span className="text-xs font-mono" style={{ color: "#0068FF" }}>{s.sbd}</span>
+                    <span className="text-xs font-mono" style={{ color: "var(--kin-nhan-link)" }}>{s.sbd}</span>
                   </div>
                   <div className="col-span-4 sm:col-span-3">
-                    <div className="font-semibold text-sm" style={{ color: "#1E2938" }}>{s.name}</div>
-                    <div className="text-xs" style={{ color: "#9CA3AF" }}>{s.lastSeen}</div>
+                    <div className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</div>
+                    <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{s.lastSeen}</div>
                   </div>
                   <div className="col-span-2 hidden sm:block">
-                    <div className="text-xs" style={{ color: "#4B5563" }}>{s.phone}</div>
-                    <div className="text-xs truncate" style={{ color: "#9CA3AF" }}>{s.email}</div>
+                    <div className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{s.phone}</div>
+                    <div className="text-xs truncate" style={{ color: "var(--kin-chu-mo)" }}>{s.email}</div>
                   </div>
                   <div className="col-span-2">
                     {isHV ? (
-                      <span className="text-xs truncate block" style={{ color: "#1E2938" }}>{s.course}</span>
+                      <span className="text-xs truncate block" style={{ color: "var(--kin-chu-chinh)" }}>{s.course}</span>
                     ) : (
                       <span className="px-1.5 py-0.5 rounded text-xs font-medium"
-                        style={{ background: "#F3F4F6", color: "#6B7280" }}>Chưa KH</span>
+                        style={{ background: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" }}>Chưa KH</span>
                     )}
                   </div>
                   <div className="col-span-1 text-center">
                     <span className="text-sm font-bold"
-                      style={{ color: s.gpa === 0 ? "#d1d5db" : s.gpa < 5 ? "#FF2157" : s.gpa < 7 ? "#FE9900" : "#0068FF" }}>
+                      style={{ color: s.gpa === 0 ? "var(--kin-chu-mo)" : s.gpa < 5 ? "var(--kin-tt-chu-loi)" : s.gpa < 7 ? "var(--kin-tt-chu-cho)" : "var(--kin-nhan-link)" }}>
                       {s.gpa > 0 ? s.gpa.toFixed(1) : "—"}
                     </span>
                   </div>
@@ -800,7 +800,7 @@ export default function HocSinhPage() {
                     <button
                       onClick={() => setDetailTarget(s)}
                       className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-blue-50 cursor-pointer"
-                      style={{ color: "#0068FF", border: "1px solid #e5e3df" }}>
+                      style={{ color: "var(--kin-nhan-link)", border: "1px solid var(--kin-vien-thuong)" }}>
                       Chi tiết
                     </button>
                   </div>
@@ -810,7 +810,7 @@ export default function HocSinhPage() {
           </div>
 
           <div className="px-5 py-3 text-xs text-right flex-shrink-0"
-            style={{ borderTop: "1px solid #e5e3df", color: "#9CA3AF" }}>
+            style={{ borderTop: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
             {filtered.length}/{students.length} học sinh · GPA = 40% tiến độ + 60% điểm thi
           </div>
         </div>

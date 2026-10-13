@@ -49,11 +49,11 @@ export default function StudentBottomNav() {
         bottom: 16,
         left: "50%",
         transform: "translateX(-50%)",
-        background: "rgba(240, 245, 255, 0.88)",
+        background: "color-mix(in srgb, var(--kin-nen-bang) 88%, transparent)",
         backdropFilter: "blur(24px) saturate(160%)",
         WebkitBackdropFilter: "blur(24px) saturate(160%)",
         borderRadius: "999px",
-        boxShadow: "0 -2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(197,208,234,0.5)",
+        boxShadow: "0 -2px 4px rgba(0,0,0,0.04), 0 8px 24px color-mix(in srgb, var(--kin-vien-thuong) 50%, transparent)",
         height: 60,
         padding: "0 8px",
       }}
@@ -61,7 +61,7 @@ export default function StudentBottomNav() {
       {/* Regular nav items */}
       {navItems.map((item) => {
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
-        const color = active ? "#0068FF" : "#9CA3AF";
+        const color = active ? "var(--kin-nhan-nen)" : "var(--kin-chu-mo)";
         return (
           <Link
             key={item.href}
@@ -71,10 +71,10 @@ export default function StudentBottomNav() {
             <svg className="w-5 h-5" fill="none" stroke={color} strokeWidth={1.8} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d={item.iconPath} />
             </svg>
-            <span className="text-[10px] font-semibold" style={{ color }}>
+            <span className="text-[length:var(--kin-co-caption)] font-semibold" style={{ color }}>
               {item.label}
             </span>
-            {active && <span className="w-1 h-1 rounded-full" style={{ background: "#0068FF" }} />}
+            {active && <span className="w-1 h-1 rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
           </Link>
         );
       })}
@@ -88,17 +88,17 @@ export default function StudentBottomNav() {
           className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
           style={{
             background: profileActive
-              ? "linear-gradient(135deg, #0068FF, #2680FF)"
-              : "linear-gradient(135deg, #9CA3AF, #6B7280)",
-            boxShadow: profileActive ? "0 0 0 2px rgba(0,104,255,0.25)" : "none",
+              ? "var(--kin-nhan-nen)"
+              : "var(--kin-vien-o-nhap)",
+            boxShadow: profileActive ? "0 0 0 2px color-mix(in srgb, var(--kin-nhan-nen) 25%, transparent)" : "none",
           }}
         >
           {user?.avatar ?? "?"}
         </div>
-        <span className="text-[10px] font-semibold" style={{ color: profileActive ? "#0068FF" : "#9CA3AF" }}>
+        <span className="text-[length:var(--kin-co-caption)] font-semibold" style={{ color: profileActive ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)" }}>
           Tài khoản
         </span>
-        {profileActive && <span className="w-1 h-1 rounded-full" style={{ background: "#0068FF" }} />}
+        {profileActive && <span className="w-1 h-1 rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
       </Link>
     </nav>
   );

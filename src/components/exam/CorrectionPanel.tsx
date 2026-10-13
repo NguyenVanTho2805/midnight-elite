@@ -14,8 +14,8 @@ import type { CorrectionItem, CorrectionOverview } from "@/lib/examCorrectionSer
 type Summary = CorrectionOverview["summary"];
 interface Overview { available: boolean; reason: string | null; items: CorrectionItem[]; summary: Summary }
 
-const CARD = { background: "#ffffff", border: "1px solid #e5e3df" } as const;
-const OK = "#16a34a", BAD = "#dc2626", MUTED = "#787671", INK = "#1E2938";
+const CARD = { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" } as const;
+const OK = "var(--kin-tt-chu-xong)", BAD = "var(--kin-tt-chu-loi)", MUTED = "var(--kin-chu-mo)", INK = "var(--kin-chu-chinh)";
 
 async function call<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
   try {
@@ -54,7 +54,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
   if (!data) return null;
   if (!data.available) {
     return (
-      <div className="rounded-xl p-4 text-sm" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
+      <div className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
         {data.reason ?? "Chưa có chế độ chữa bài cho đề này."}
         <div className="mt-2"><button type="button" onClick={onClose} className="font-semibold underline">Quay lại xem bài làm</button></div>
       </div>
@@ -64,7 +64,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
     return (
       <div className="rounded-xl p-4 text-sm" style={{ ...CARD, color: INK }}>
         Không có câu nào cần chữa — bạn đã làm đúng các câu trắc nghiệm và câu điền ngắn.
-        <div className="mt-2"><button type="button" onClick={onClose} className="font-semibold underline" style={{ color: "#0068FF" }}>Quay lại xem bài làm</button></div>
+        <div className="mt-2"><button type="button" onClick={onClose} className="font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>Quay lại xem bài làm</button></div>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
             {data.summary.total - data.summary.remaining}/{data.summary.total} câu đã xong · Chữa bài chỉ để học, không đổi điểm bài thi.
           </p>
         </div>
-        <button type="button" onClick={onClose} className="text-sm font-semibold flex-shrink-0" style={{ color: "#0068FF" }}>← Xem bài làm</button>
+        <button type="button" onClick={onClose} className="text-sm font-semibold flex-shrink-0" style={{ color: "var(--kin-nhan-link)" }}>← Xem bài làm</button>
       </div>
 
       <nav aria-label="Các câu cần chữa" className="flex gap-1.5 flex-wrap">
@@ -111,7 +111,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
             <button key={it.questionId} type="button" onClick={() => go(i)} aria-current={i === pos ? "step" : undefined}
               aria-label={`Câu ${it.index}${done ? " — đã xong" : it.state === "hint" ? " — đang chữa" : " — chưa làm"}`}
               className="min-w-[44px] h-[44px] rounded-lg text-sm font-semibold"
-              style={{ background: i === pos ? "#0068FF" : done ? "#dcfce7" : "#f6f5f4", color: i === pos ? "#fff" : done ? "#166534" : INK, border: "1px solid #e5e3df" }}>
+              style={{ background: i === pos ? "var(--kin-nhan-nen)" : done ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)", color: i === pos ? "var(--kin-chu-tren-nut-chinh)" : done ? "var(--kin-tt-chu-xong)" : INK, border: "1px solid var(--kin-vien-thuong)" }}>
               {it.index}{done ? " ✓" : ""}
             </button>
           );
@@ -122,7 +122,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
         <p className="text-sm font-semibold mb-3" style={{ color: INK }}>Câu {item.index}: <MathText text={item.text} /></p>
 
         {item.state === "hint" && (
-          <div role="status" className="rounded-lg p-3 mb-3 text-sm" style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e" }}>
+          <div role="status" className="rounded-lg p-3 mb-3 text-sm" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
             <strong>Chưa đúng.</strong>{" "}
             {item.hint ? <>Gợi ý: <MathText text={item.hint} /></> : null}
           </div>
@@ -137,8 +137,8 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
               return (
                 <label key={o.id} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
                   style={{
-                    border: `2px solid ${correct ? OK : wrongPick ? BAD : picked ? "#0068FF" : "#e5e3df"}`,
-                    background: correct ? "#f0fdf4" : wrongPick ? "#fef2f2" : "#fff", color: INK, cursor: inputOpen ? "pointer" : "default",
+                    border: `2px solid ${correct ? OK : wrongPick ? BAD : picked ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`,
+                    background: correct ? "var(--kin-tt-nen-xong)" : wrongPick ? "var(--kin-tt-nen-loi)" : "var(--kin-nen-trang)", color: INK, cursor: inputOpen ? "pointer" : "default",
                   }}>
                   <input type="radio" name={`q-${item.questionId}`} value={o.id} disabled={!inputOpen || busy} checked={picked} onChange={() => setPickOpt(o.id)} />
                   <span className="flex-1"><MathText text={o.text} /></span>
@@ -153,7 +153,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
             <label htmlFor={`tl-${item.questionId}`} className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Câu trả lời của bạn</label>
             <input id={`tl-${item.questionId}`} value={inputOpen ? pickText : (item.yourText ?? "")} disabled={!inputOpen || busy} maxLength={200}
               onChange={e => setPickText(e.target.value)} className="w-full rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-              style={{ border: `2px solid ${finished && item.lastTryCorrect ? OK : !inputOpen && item.lastTryCorrect === false ? BAD : "#e5e3df"}`, color: INK }} />
+              style={{ border: `2px solid ${finished && item.lastTryCorrect ? OK : !inputOpen && item.lastTryCorrect === false ? BAD : "var(--kin-vien-thuong)"}`, color: INK }} />
             {!inputOpen && item.lastTryCorrect === false && <p className="text-xs mt-1 font-semibold" style={{ color: BAD }}>Chưa đúng</p>}
             {finished && item.answer?.correctText != null && <p className="text-sm mt-2" style={{ color: OK }}><strong>Đáp án đúng:</strong> <MathText text={item.answer.correctText} /></p>}
           </div>
@@ -165,17 +165,17 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
               {item.state === "solved" ? "Chính xác!" : "Đây là đáp án đúng."}
             </p>
             {item.answer?.explanation
-              ? <p className="p-3 rounded-lg" style={{ background: "#f6f5f4", color: MUTED }}><strong>Lời giải:</strong> <MathText text={item.answer.explanation} /></p>
+              ? <p className="p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: MUTED }}><strong>Lời giải:</strong> <MathText text={item.answer.explanation} /></p>
               : <p style={{ color: MUTED }}>Câu này chưa có lời giải chi tiết.</p>}
             {item.canReflect && (
               <div>
                 <label htmlFor={`rf-${item.questionId}`} className="block text-xs font-semibold mb-1" style={{ color: MUTED }}>Bạn thử viết lại một câu: gợi ý ở trên giúp bạn ở chỗ nào? (không bắt buộc)</label>
                 {item.reflection
-                  ? <p className="p-3 rounded-lg" style={{ background: "#f0f9ff", color: INK }}>{item.reflection}</p>
+                  ? <p className="p-3 rounded-lg" style={{ background: "var(--kin-nhan-nen-nhat)", color: INK }}>{item.reflection}</p>
                   : (
                     <div className="flex gap-2">
-                      <input id={`rf-${item.questionId}`} value={reflect} maxLength={500} onChange={e => setReflect(e.target.value)} className="flex-1 rounded-lg px-3 py-2.5 text-sm min-h-[44px]" style={{ border: "1px solid #e5e3df", color: INK }} />
-                      <button type="button" disabled={busy || !reflect.trim()} onClick={() => void act({ action: "reflect", text: reflect })} className="px-4 rounded-lg text-sm font-semibold disabled:opacity-50 min-h-[44px]" style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: INK }}>Lưu</button>
+                      <input id={`rf-${item.questionId}`} value={reflect} maxLength={500} onChange={e => setReflect(e.target.value)} className="flex-1 rounded-lg px-3 py-2.5 text-sm min-h-[44px]" style={{ border: "1px solid var(--kin-vien-thuong)", color: INK }} />
+                      <button type="button" disabled={busy || !reflect.trim()} onClick={() => void act({ action: "reflect", text: reflect })} className="px-4 rounded-lg text-sm font-semibold disabled:opacity-50 min-h-[44px]" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: INK }}>Lưu</button>
                     </div>
                   )}
               </div>
@@ -188,27 +188,27 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
         <div className="flex gap-2 flex-wrap mt-4">
           {inputOpen && (
             <button type="button" disabled={!canSubmit || busy} onClick={() => void act(item.type === "MC" ? { action: "submit", optionId: pickOpt } : { action: "submit", text: pickText })}
-              className="px-5 rounded-lg text-sm font-bold text-white disabled:opacity-50 min-h-[44px]" style={{ background: "#0068FF" }}>
+              className="px-5 rounded-lg text-sm font-bold text-white disabled:opacity-50 min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>
               {busy ? "Đang nộp…" : "Nộp câu này"}
             </button>
           )}
           {item.state === "hint" && !retrying && (
             <>
-              <button type="button" onClick={() => { setRetrying(true); setPickOpt(null); setPickText(""); }} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "#0068FF" }}>Thử lại</button>
-              {item.canReveal && <button type="button" disabled={busy} onClick={() => void act({ action: "reveal" })} className="px-5 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-50" style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: INK }}>Xem đáp án</button>}
+              <button type="button" onClick={() => { setRetrying(true); setPickOpt(null); setPickText(""); }} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>Thử lại</button>
+              {item.canReveal && <button type="button" disabled={busy} onClick={() => void act({ action: "reveal" })} className="px-5 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-50" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: INK }}>Xem đáp án</button>}
             </>
           )}
           {finished && pos < items.length - 1 && (
-            <button type="button" onClick={() => go(pos + 1)} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "#0068FF" }}>Sang câu tiếp</button>
+            <button type="button" onClick={() => go(pos + 1)} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>Sang câu tiếp</button>
           )}
           {finished && pos >= items.length - 1 && allDone && (
-            <button type="button" onClick={onClose} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "#0068FF" }}>Hoàn thành</button>
+            <button type="button" onClick={onClose} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>Hoàn thành</button>
           )}
         </div>
       </div>
 
       {allDone && (
-        <p role="status" className="text-sm rounded-xl p-3" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
+        <p role="status" className="text-sm rounded-xl p-3" style={{ background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)", color: "var(--kin-tt-chu-xong)" }}>
           Bạn đã chữa xong {data.summary.total} câu: {data.summary.solved} câu tự làm đúng, {data.summary.revealed} câu đã xem đáp án.
         </p>
       )}

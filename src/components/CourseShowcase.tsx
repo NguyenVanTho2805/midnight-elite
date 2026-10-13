@@ -12,7 +12,7 @@ const courses = [
     price: "từ 500.000đ",
     combo: "Combo 8 môn: 1.500.000đ",
     href: "/khoa-hoc/tot-nghiep",
-    accent: "#0068FF",
+    accent: "var(--kin-nhan-nen)",
   },
   {
     Icon: Star,
@@ -24,7 +24,7 @@ const courses = [
     price: "1.500.000đ",
     combo: "Trọn gói lộ trình HSA",
     href: "/khoa-hoc/hsa",
-    accent: "#FE9900",
+    accent: "var(--kin-tt-chu-cho)",
   },
   {
     Icon: Rocket,
@@ -36,26 +36,26 @@ const courses = [
     price: "1.500.000đ",
     combo: "Combo ĐGNL HCM + TSA",
     href: "/khoa-hoc/hcm-tsa",
-    accent: "#FF2157",
+    accent: "var(--kin-tt-chu-loi)",
   },
 ];
 
 export default function CourseShowcase() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: "#F0F5FF" }}>
+    <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="max-w-7xl mx-auto">
         {/* Section header */}
         <div className="text-center mb-14">
           <div
             className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold mb-4"
-            style={{ background: "#F0F5FF", boxShadow: "inset 3px 3px 6px #C5D0EA, inset -3px -3px 6px #ffffff", color: "#0068FF" }}
+            style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)", color: "var(--kin-nhan-link)" }}
           >
             Sản phẩm nổi bật
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: "#1E2938" }}>
-            Lộ trình học tập <span style={{ color: "#0068FF" }}>được thiết kế</span> cho từng mục tiêu
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4" style={{ color: "var(--kin-chu-chinh)" }}>
+            Lộ trình học tập <span style={{ color: "var(--kin-nhan-link)" }}>được thiết kế</span> cho từng mục tiêu
           </h2>
-          <p className="text-base max-w-xl mx-auto" style={{ color: "#6B7280" }}>
+          <p className="text-base max-w-xl mx-auto" style={{ color: "var(--kin-chu-mo)" }}>
             Không học lan man. Mỗi khóa học được thiết kế sát đề thi thực tế, có lộ trình rõ ràng và mentor hỗ trợ.
           </p>
         </div>
@@ -66,13 +66,13 @@ export default function CourseShowcase() {
             <div
               key={course.title}
               className="rounded-3xl p-6 flex flex-col"
-              style={{ background: "#F0F5FF", boxShadow: "12px 12px 24px #C5D0EA, -12px -12px 24px #ffffff" }}
+              style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-noi)" }}
             >
               {/* Top */}
               <div className="flex items-start justify-between mb-4">
                 <div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                  style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA, -4px -4px 8px #ffffff", color: course.accent }}
+                  style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: course.accent }}
                 >
                   <course.Icon size={24} />
                 </div>
@@ -85,8 +85,8 @@ export default function CourseShowcase() {
               </div>
 
               {/* Title & desc */}
-              <h3 className="text-lg font-bold mb-2" style={{ color: "#1E2938" }}>{course.title}</h3>
-              <p className="text-sm leading-relaxed mb-5" style={{ color: "#6B7280" }}>{course.description}</p>
+              <h3 className="text-lg font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>{course.title}</h3>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: "var(--kin-chu-mo)" }}>{course.description}</p>
 
               {/* Subjects */}
               <div className="flex flex-wrap gap-2 mb-6">
@@ -94,7 +94,7 @@ export default function CourseShowcase() {
                   <span
                     key={s}
                     className="px-2.5 py-1 rounded-lg text-xs font-medium"
-                    style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA, inset -2px -2px 4px #ffffff", color: "#4B5563" }}
+                    style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)", color: "var(--kin-chu-phu)" }}
                   >
                     {s}
                   </span>
@@ -104,18 +104,18 @@ export default function CourseShowcase() {
               {/* Pricing */}
               <div
                 className="rounded-2xl p-4 mb-5"
-                style={{ background: "#F0F5FF", boxShadow: "inset 4px 4px 8px #C5D0EA, inset -4px -4px 8px #ffffff" }}
+                style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}
               >
-                <div className="text-xs mb-1" style={{ color: "#6B7280" }}>Giá bán lẻ</div>
+                <div className="text-xs mb-1" style={{ color: "var(--kin-chu-mo)" }}>Giá bán lẻ</div>
                 <div className="text-xl font-extrabold mb-0.5" style={{ color: course.accent }}>{course.price}</div>
-                <div className="text-xs font-medium" style={{ color: "#1E2938" }}>{course.combo}</div>
+                <div className="text-xs font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{course.combo}</div>
               </div>
 
               {/* CTA */}
               <Link
                 href={course.href}
                 className="mt-auto w-full py-3 rounded-2xl text-sm font-bold text-center transition-all duration-200 hover:-translate-y-0.5"
-                style={{ background: "linear-gradient(145deg, #0055D4, #0042AA)", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff", color: "white" }}
+                style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)", color: "white" }}
               >
                 Xem chi tiết →
               </Link>
@@ -128,7 +128,7 @@ export default function CourseShowcase() {
           <Link
             href="/khoa-hoc"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold"
-            style={{ color: "#0068FF", background: "#F0F5FF", boxShadow: "6px 6px 12px #C5D0EA, -6px -6px 12px #ffffff" }}
+            style={{ color: "var(--kin-nhan-link)", background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}
           >
             Xem tất cả khóa học
             <span>→</span>

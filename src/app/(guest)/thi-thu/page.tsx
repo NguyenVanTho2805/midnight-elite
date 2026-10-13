@@ -13,9 +13,9 @@ interface MyResult {
 }
 
 const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
-  upcoming:  { label: "Sắp diễn ra", color: "#0068FF", bg: "#dbeafe" },
-  available: { label: "Đang mở",     color: "#16a34a", bg: "#dcfce7" },
-  completed: { label: "Đã kết thúc", color: "#787671", bg: "#f6f5f4" },
+  upcoming:  { label: "Sắp diễn ra", color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)" },
+  available: { label: "Đang mở",     color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)" },
+  completed: { label: "Đã kết thúc", color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)" },
 };
 
 export default function ThiThuPage() {
@@ -47,10 +47,10 @@ export default function ThiThuPage() {
 
   if (examsLoading) {
     return (
-      <div className="min-h-screen" style={{ background: "#f6f5f4" }}>
+      <div className="min-h-screen" style={{ background: "var(--kin-nen-bang)" }}>
         <div className="max-w-4xl mx-auto px-4 py-10 space-y-4 animate-pulse">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-20 rounded-xl" style={{ background: "#e5e3df" }} />
+            <div key={i} className="h-20 rounded-xl" style={{ background: "var(--kin-vien-thuong)" }} />
           ))}
         </div>
       </div>
@@ -66,16 +66,16 @@ export default function ThiThuPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>Thi thử</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#787671" }}>Luyện tập với đề thi thử được cập nhật liên tục</p>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Thi thử</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Luyện tập với đề thi thử được cập nhật liên tục</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Đã làm",      val: done,      color: "#787671", bg: "#f6f5f4", border: "#e5e3df" },
-            { label: "Có thể thi",  val: available, color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
-            { label: "Sắp diễn ra", val: upcoming,  color: "#0068FF", bg: "#dbeafe", border: "#93c5fd" },
+            { label: "Đã làm",      val: done,      color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)", border: "var(--kin-vien-thuong)" },
+            { label: "Có thể thi",  val: available, color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-xong)" },
+            { label: "Sắp diễn ra", val: upcoming,  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center"
               style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -91,20 +91,20 @@ export default function ThiThuPage() {
             <button key={c} onClick={() => setCat(c)}
               className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
               style={cat === c
-                ? { background: "#0068FF", color: "white", borderRadius: "8px" }
-                : { background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                ? { background: "var(--kin-nhan-nen)", color: "white", borderRadius: "8px" }
+                : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {c}
             </button>
           ))}
         </div>
 
         {/* Exam list */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
           {filtered.map((exam, idx) => {
             const result   = exam.myResult;
             const hasDone  = !!result;
             const s        = STATUS_CFG[hasDone ? "completed" : exam.status];
-            const grad     = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+            const grad     = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
             const isLast   = idx === filtered.length - 1;
             // Đề gắn courseId mà học viên chưa ghi danh — vẫn hiện trong danh
             // sách (không ẩn hẳn) nhưng khoá nút vào thi, ghi rõ lý do thay vì
@@ -112,31 +112,31 @@ export default function ThiThuPage() {
             const isLocked = !!exam.courseId && !enrolledIds.has(exam.courseId);
             return (
               <div key={exam.id} className="flex items-center gap-4 px-5 py-4"
-                style={{ borderBottom: isLast ? "none" : "1px solid #e5e3df" }}>
+                style={{ borderBottom: isLast ? "none" : "1px solid var(--kin-vien-thuong)" }}>
                 <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
                   style={{ background: grad }}>
                   {exam.code.split(".")[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold leading-snug" style={{ color: "#1a1a1a" }}>{exam.title}</p>
+                  <p className="text-sm font-semibold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                       style={{ background: s.bg, color: s.color }}>
                       {hasDone ? "Đã làm" : s.label}
                     </span>
-                    <span className="text-xs" style={{ color: "#a4a097" }}>{exam.date} · {exam.time}</span>
-                    <span className="text-xs" style={{ color: "#a4a097" }}>{exam.duration} · {exam.questions} câu</span>
+                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.date} · {exam.time}</span>
+                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.duration} · {exam.questions} câu</span>
                     {exam.participants > 0 && (
-                      <span className="text-xs" style={{ color: "#a4a097" }}>{exam.participants} thí sinh</span>
+                      <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.participants} thí sinh</span>
                     )}
                   </div>
                   {hasDone && (
                     <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-sm font-bold" style={{ color: "#0068FF" }}>
+                      <span className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>
                         {result.score}/{result.totalPoints}
                       </span>
                       {result.rank > 0 && (
-                        <span className="text-xs" style={{ color: "#a4a097" }}>Hạng #{result.rank}</span>
+                        <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Hạng #{result.rank}</span>
                       )}
                     </div>
                   )}
@@ -145,42 +145,42 @@ export default function ThiThuPage() {
                   {hasDone ? (
                     <Link href={`/student/thi-thu/${exam.id}`}
                       className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#787671" }}>
+                      style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                       Xem lại
                     </Link>
                   ) : isLocked ? (
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md text-right block"
-                      style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>
+                      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
                       Thuộc khóa {exam.courseName ?? "khác"} — chưa ghi danh
                     </span>
                   ) : exam.status === "upcoming" ? (
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "#dbeafe", color: "#0068FF" }}>Chờ mở</span>
+                      style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Chờ mở</span>
                   ) : exam.status === "available" ? (
                     <Link href={`/student/thi-thu/${exam.id}`}
                       className="text-xs font-semibold px-4 py-2 rounded-lg text-white"
-                      style={{ background: "#0068FF" }}>
+                      style={{ background: "var(--kin-nhan-nen)" }}>
                       Vào thi
                     </Link>
                   ) : (
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>Đã kết thúc</span>
+                      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>Đã kết thúc</span>
                   )}
                 </div>
               </div>
             );
           })}
           {filtered.length === 0 && (
-            <div className="py-16 text-center text-sm" style={{ color: "#a4a097" }}>
+            <div className="py-16 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>
               Không có đề thi nào trong danh mục này
             </div>
           )}
         </div>
 
         <div className="rounded-xl px-5 py-4 flex items-start gap-3"
-          style={{ background: "#dbeafe", border: "1px solid #bfdbfe" }}>
+          style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
           <span className="text-blue-600 text-lg flex-shrink-0">ℹ</span>
-          <p className="text-sm" style={{ color: "#1D4ED8" }}>
+          <p className="text-sm" style={{ color: "var(--kin-nhan-chu-tren-nhat)" }}>
             Kết quả thi thử được ghi nhận và tính vào <strong>Bảng xếp hạng vinh danh</strong> hàng tháng.
             Làm bài nghiêm túc để có điểm số chính xác nhất.
           </p>
@@ -194,18 +194,18 @@ export default function ThiThuPage() {
   const upcoming  = exams.filter(e => e.status === "upcoming").length;
 
   return (
-    <div className="min-h-screen" style={{ background: "#f6f5f4" }}>
+    <div className="min-h-screen" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
 
         <div className="text-center space-y-3">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
-            style={{ background: "#dbeafe", color: "#0068FF", border: "1px solid #bfdbfe" }}>
+            style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)", border: "1px solid var(--kin-nhan-vien)" }}>
             Thi thử KiN
           </span>
-          <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+          <h1 className="text-3xl font-bold" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.5px" }}>
             Đề thi thử miễn phí
           </h1>
-          <p className="text-sm max-w-lg mx-auto" style={{ color: "#787671" }}>
+          <p className="text-sm max-w-lg mx-auto" style={{ color: "var(--kin-chu-mo)" }}>
             Luyện tập với đề thi thử sát đề thật, được cập nhật liên tục.
             Đăng ký để lưu kết quả và theo dõi tiến độ.
           </p>
@@ -213,8 +213,8 @@ export default function ThiThuPage() {
 
         <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
           {[
-            { label: "Đề đang mở",  val: available, color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
-            { label: "Sắp diễn ra", val: upcoming,  color: "#0068FF", bg: "#dbeafe", border: "#93c5fd" },
+            { label: "Đề đang mở",  val: available, color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-xong)" },
+            { label: "Sắp diễn ra", val: upcoming,  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 text-center"
               style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -237,7 +237,7 @@ export default function ThiThuPage() {
             </Link>
             <Link href="/dang-nhap"
               className="px-4 py-2 rounded-lg text-sm font-semibold"
-              style={{ background: "#ffffff", color: "#0068FF", borderRadius: "8px" }}>
+              style={{ background: "var(--kin-nen-trang)", color: "var(--kin-nhan-link)", borderRadius: "8px" }}>
               Đăng nhập
             </Link>
           </div>
@@ -248,50 +248,50 @@ export default function ThiThuPage() {
             <button key={c} onClick={() => setCat(c)}
               className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
               style={cat === c
-                ? { background: "#0068FF", color: "white", borderRadius: "8px" }
-                : { background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                ? { background: "var(--kin-nhan-nen)", color: "white", borderRadius: "8px" }
+                : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {c}
             </button>
           ))}
         </div>
 
-        <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
           {filtered.map((exam, idx) => {
             const s = STATUS_CFG[exam.status];
-            const grad = CATEGORY_GRADIENT[exam.category] ?? "linear-gradient(135deg,#374151,#1E2938)";
+            const grad = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
             const isLast = idx === filtered.length - 1;
             return (
               <div key={exam.id} className="flex items-center gap-4 px-5 py-4"
-                style={{ borderBottom: isLast ? "none" : "1px solid #e5e3df" }}>
+                style={{ borderBottom: isLast ? "none" : "1px solid var(--kin-vien-thuong)" }}>
                 <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
                   style={{ background: grad }}>
                   {exam.code.split(".")[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold leading-snug" style={{ color: "#1a1a1a" }}>{exam.title}</p>
+                  <p className="text-sm font-semibold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                       style={{ background: s.bg, color: s.color }}>{s.label}</span>
-                    <span className="text-xs" style={{ color: "#a4a097" }}>{exam.date} · {exam.time}</span>
-                    <span className="text-xs" style={{ color: "#a4a097" }}>{exam.duration} · {exam.questions} câu</span>
+                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.date} · {exam.time}</span>
+                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.duration} · {exam.questions} câu</span>
                     {exam.participants > 0 && (
-                      <span className="text-xs" style={{ color: "#a4a097" }}>{exam.participants.toLocaleString("vi-VN")} thí sinh</span>
+                      <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.participants.toLocaleString("vi-VN")} thí sinh</span>
                     )}
                   </div>
                 </div>
                 <div className="flex-shrink-0">
                   {exam.status === "upcoming" && (
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "#dbeafe", color: "#0068FF" }}>Chờ mở</span>
+                      style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Chờ mở</span>
                   )}
                   {exam.status === "completed" && (
                     <span className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "#f6f5f4", color: "#787671", border: "1px solid #e5e3df" }}>Đã kết thúc</span>
+                      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>Đã kết thúc</span>
                   )}
                   {exam.status === "available" && (
                     <Link href={`/dang-nhap?redirect=${encodeURIComponent(`/student/thi-thu/${exam.id}`)}`}
                       className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-white"
-                      style={{ background: "#0068FF" }}>
+                      style={{ background: "var(--kin-nhan-nen)" }}>
                       Đăng nhập để thi
                     </Link>
                   )}
@@ -300,15 +300,15 @@ export default function ThiThuPage() {
             );
           })}
           {filtered.length === 0 && (
-            <div className="py-16 text-center text-sm" style={{ color: "#a4a097" }}>
+            <div className="py-16 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>
               Không có đề thi nào trong danh mục này
             </div>
           )}
         </div>
 
-        <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid #e5e3df" }}>
-            <p className="text-sm font-semibold" style={{ color: "#1a1a1a" }}>So sánh quyền truy cập</p>
+        <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>So sánh quyền truy cập</p>
           </div>
           <div>
             {[
@@ -321,39 +321,39 @@ export default function ThiThuPage() {
               { feature: "Bảng vinh danh",            guest: true,  student: true  },
             ].map((r, i, arr) => (
               <div key={r.feature} className="flex items-center px-5 py-3 gap-4"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid #e5e3df" : "none" }}>
-                <p className="flex-1 text-sm" style={{ color: "#37352f" }}>{r.feature}</p>
+                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--kin-vien-thuong)" : "none" }}>
+                <p className="flex-1 text-sm" style={{ color: "var(--kin-chu-phu)" }}>{r.feature}</p>
                 <div className="flex gap-8">
                   <span className="text-sm w-16 text-center font-semibold"
-                    style={{ color: r.guest ? "#16a34a" : "#c8c4be" }}>{r.guest ? "✓" : "×"}</span>
+                    style={{ color: r.guest ? "var(--kin-tt-chu-xong)" : "var(--kin-vien-o-nhap)" }}>{r.guest ? "✓" : "×"}</span>
                   <span className="text-sm w-16 text-center font-semibold"
-                    style={{ color: r.student ? "#16a34a" : "#c8c4be" }}>{r.student ? "✓" : "×"}</span>
+                    style={{ color: r.student ? "var(--kin-tt-chu-xong)" : "var(--kin-vien-o-nhap)" }}>{r.student ? "✓" : "×"}</span>
                 </div>
               </div>
             ))}
-            <div className="flex items-center px-5 py-3 gap-4" style={{ background: "#f6f5f4", borderTop: "1px solid #e5e3df" }}>
+            <div className="flex items-center px-5 py-3 gap-4" style={{ background: "var(--kin-nen-bang)", borderTop: "1px solid var(--kin-vien-thuong)" }}>
               <p className="flex-1 text-xs" />
               <div className="flex gap-8">
-                <p className="text-xs font-semibold w-16 text-center" style={{ color: "#a4a097" }}>Khách</p>
-                <p className="text-xs font-semibold w-16 text-center" style={{ color: "#0068FF" }}>Học viên</p>
+                <p className="text-xs font-semibold w-16 text-center" style={{ color: "var(--kin-chu-mo)" }}>Khách</p>
+                <p className="text-xs font-semibold w-16 text-center" style={{ color: "var(--kin-nhan-link)" }}>Học viên</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="text-center space-y-3 py-4">
-          <p className="text-sm" style={{ color: "#787671" }}>
+          <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>
             Tham gia cùng hàng nghìn học viên đang luyện thi tại KiN
           </p>
           <div className="flex gap-3 justify-center">
             <Link href="/dang-ky"
               className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
-              style={{ background: "#0068FF", borderRadius: "8px" }}>
+              style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
               Đăng ký miễn phí
             </Link>
             <Link href="/khoa-hoc"
               className="px-5 py-2.5 rounded-lg text-sm font-medium"
-              style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+              style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               Xem khóa học
             </Link>
           </div>

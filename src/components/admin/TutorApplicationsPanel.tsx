@@ -5,6 +5,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui";
+import { KinTabs } from "@/components/kin";
 
 type Status = "pending" | "approved" | "rejected";
 
@@ -121,30 +122,28 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Trạng thái hồ sơ gia sư">
-        {(Object.keys(STATUS_LABEL) as Status[]).map(s => (
-          <button key={s} role="tab" aria-selected={status === s} onClick={() => setStatus(s)}
-            className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer"
-            style={status === s
-              ? { background: "#0068FF", color: "#fff" }
-              : { background: "#f6f5f4", color: "#374151", border: "1px solid #e5e3df" }}>
-            {STATUS_LABEL[s]}{s === "pending" && status === "pending" && !loading && !failed ? ` (${items.length})` : ""}
-          </button>
-        ))}
-      </div>
+      <KinTabs
+        label="Trạng thái hồ sơ gia sư"
+        value={status}
+        onChange={setStatus}
+        tabs={(Object.keys(STATUS_LABEL) as Status[]).map(s => ({
+          key: s,
+          label: `${STATUS_LABEL[s]}${s === "pending" && status === "pending" && !loading && !failed ? ` (${items.length})` : ""}`,
+        }))}
+      />
 
       {loading ? (
         <div className="space-y-3" aria-busy="true">
           {[0, 1].map(i => <div key={i} className="h-28 rounded-xl animate-pulse bg-gray-100" />)}
         </div>
       ) : failed ? (
-        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
           Không tải được danh sách hồ sơ.{" "}
           <button className="underline font-semibold cursor-pointer" onClick={() => load(status)}>Thử lại</button>
         </div>
       ) : items.length === 0 ? (
         <div role="status" className="rounded-xl p-10 text-center text-sm"
-          style={{ background: "#fff", border: "1px dashed #e5e3df", color: "#6B7280" }}>
+          style={{ background: "var(--kin-nen-trang)", border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
           {status === "pending" ? "Không có hồ sơ nào đang chờ duyệt." : `Chưa có hồ sơ ${STATUS_LABEL[status].toLowerCase()}.`}
         </div>
       ) : (
@@ -155,30 +154,30 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
             const open = openBio.has(a.id);
             const busy = busyId === a.id;
             return (
-              <li key={a.id} className="rounded-xl p-4" style={{ background: "#fff", border: "1px solid #e5e3df" }}>
+              <li key={a.id} className="rounded-xl p-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <p className="font-bold" style={{ color: "#1E2938" }}>{a.name}</p>
-                    <p className="text-xs mt-0.5 break-all" style={{ color: "#6B7280" }}>
+                    <p className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{a.name}</p>
+                    <p className="text-xs mt-0.5 break-all" style={{ color: "var(--kin-chu-mo)" }}>
                       {a.email}
                       {a.phone ? ` · ${a.phone}` : ""}
                       {a.city ? ` · ${a.city}` : ""}
                     </p>
-                    <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>Nộp lúc {fmt(a.tutorAppliedAt)}</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Nộp lúc {fmt(a.tutorAppliedAt)}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {!a.emailVerified && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#FEF3C7", color: "#92400E" }}>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                         Chưa xác thực email
                       </span>
                     )}
                     {status === "approved" && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#DCFCE7", color: "#166534" }}>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
                         Đã duyệt {fmt(a.tutorVerifiedAt)}
                       </span>
                     )}
                     {status === "rejected" && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "#FEE2E2", color: "#991B1B" }}>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
                         Từ chối {fmt(a.tutorRejectedAt)}
                       </span>
                     )}
@@ -189,23 +188,23 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
                   <div className="flex flex-wrap gap-1.5 mt-3" aria-label="Môn dạy">
                     {a.subjects.map(s => (
                       <span key={s} className="px-2 py-0.5 rounded-full text-xs font-medium"
-                        style={{ background: "#EFF6FF", color: "#1D4ED8" }}>{s}</span>
+                        style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>{s}</span>
                     ))}
                   </div>
                 )}
 
-                <p className="mt-3 text-sm whitespace-pre-wrap" style={{ color: "#374151" }}>
-                  {bio ? (long && !open ? `${bio.slice(0, BIO_PREVIEW)}…` : bio) : <span style={{ color: "#9CA3AF" }}>(Chưa viết giới thiệu)</span>}
+                <p className="mt-3 text-sm whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>
+                  {bio ? (long && !open ? `${bio.slice(0, BIO_PREVIEW)}…` : bio) : <span style={{ color: "var(--kin-chu-mo)" }}>(Chưa viết giới thiệu)</span>}
                 </p>
                 {long && (
                   <button onClick={() => toggleBio(a.id)} className="mt-1 text-xs font-semibold underline cursor-pointer"
-                    style={{ color: "#0068FF" }} aria-expanded={open}>
+                    style={{ color: "var(--kin-nhan-link)" }} aria-expanded={open}>
                     {open ? "Thu gọn" : "Xem đầy đủ"}
                   </button>
                 )}
 
                 {status === "rejected" && a.tutorRejectReason && (
-                  <p className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "#FEF2F2", color: "#991B1B" }}>
+                  <p className="mt-3 text-sm rounded-lg px-3 py-2" style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
                     Lý do: {a.tutorRejectReason}
                   </p>
                 )}
@@ -215,16 +214,16 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
                     <button onClick={() => approve(a)} disabled={busy || !a.emailVerified}
                       title={a.emailVerified ? undefined : "Người nộp đơn chưa xác thực email nên chưa thể duyệt"}
                       className="px-4 py-2 rounded-lg text-sm font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      style={{ background: "#16a34a" }}>
+                      style={{ background: "var(--kin-nhan-nen)" }}>
                       {busy ? "Đang xử lý…" : "Duyệt"}
                     </button>
                     <button onClick={() => { setRejecting(a); setReason(""); }} disabled={busy}
                       className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 cursor-pointer"
-                      style={{ background: "#FEF2F2", color: "#dc2626", border: "1px solid #FECACA" }}>
+                      style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
                       Từ chối
                     </button>
                     {!a.emailVerified && (
-                      <span className="text-xs" style={{ color: "#92400E" }}>Cần xác thực email trước khi duyệt.</span>
+                      <span className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>Cần xác thực email trước khi duyệt.</span>
                     )}
                   </div>
                 )}
@@ -245,13 +244,13 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
               onChange={e => setReason(e.target.value)}
               placeholder="Ví dụ: Giới thiệu chưa nêu kinh nghiệm dạy, vui lòng bổ sung."
               className="mt-3 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400" />
-            <p className="text-xs text-right mt-1" style={{ color: "#9CA3AF" }}>{reason.length}/{REASON_MAX}</p>
+            <p className="text-xs text-right mt-1" style={{ color: "var(--kin-chu-mo)" }}>{reason.length}/{REASON_MAX}</p>
             <div className="mt-3 flex items-center justify-end gap-2">
               <button onClick={() => setRejecting(null)} disabled={busyId === rejecting.id}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 cursor-pointer">Hủy</button>
               <button onClick={reject} disabled={busyId === rejecting.id || !reason.trim()}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
-                style={{ background: "#dc2626" }}>
+                style={{ background: "var(--kin-tt-chu-loi)" }}>
                 {busyId === rejecting.id ? "Đang gửi…" : "Từ chối hồ sơ"}
               </button>
             </div>

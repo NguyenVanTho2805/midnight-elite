@@ -30,48 +30,48 @@ function TopStudentsSection() {
   return (
     <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto">
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-bold tracking-tight mb-2" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+        <h2 className="text-2xl font-bold tracking-tight mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.5px" }}>
           Top học viên nổi bật
         </h2>
-        <p className="text-sm" style={{ color: "#787671" }}>Xếp hạng dựa trên điểm thi thử cao nhất</p>
+        <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Xếp hạng dựa trên điểm thi thử cao nhất</p>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12 gap-1.5">
           {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "#0068FF", animationDelay: `${i*0.15}s` }} />
+            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i*0.15}s` }} />
           ))}
         </div>
       ) : students.length === 0 ? (
-        <p className="text-center text-sm py-12" style={{ color: "#9CA3AF" }}>Chưa có dữ liệu</p>
+        <p className="text-center text-sm py-12" style={{ color: "var(--kin-chu-mo)" }}>Chưa có dữ liệu</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto">
           {students.map((s, i) => (
             <div key={s.userId}
               className="flex items-center gap-3 px-4 py-3 rounded-xl"
               style={{
-                background: i === 0 ? "linear-gradient(135deg,#b45309,#92400e)" : "#ffffff",
-                border: i === 0 ? "none" : "1px solid #e5e3df",
+                background: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-nen-trang)",
+                border: i === 0 ? "none" : "1px solid var(--kin-vien-thuong)",
               }}>
               <div className="w-8 text-center flex-shrink-0">
                 {i < 3
                   ? <span className="text-xl">{MEDALS[i]}</span>
-                  : <span className="text-sm font-bold" style={{ color: i === 0 ? "#fbbf24" : "#9CA3AF" }}>#{i + 1}</span>}
+                  : <span className="text-sm font-bold" style={{ color: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-chu-mo)" }}>#{i + 1}</span>}
               </div>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
                 style={{
-                  background: i === 0 ? "rgba(255,255,255,0.2)" : "linear-gradient(135deg,#0055D4,#0068FF)",
+                  background: i === 0 ? "rgba(255,255,255,0.2)" : "var(--kin-nhan-nen)",
                   border: i === 0 ? "1px solid rgba(255,255,255,0.3)" : "none",
                 }}>
                 {s.name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate" style={{ color: i === 0 ? "#fff" : "#1E2938" }}>{s.name}</p>
-                {s.school && <p className="text-xs truncate" style={{ color: i === 0 ? "rgba(255,255,255,0.7)" : "#9CA3AF" }}>{s.school}</p>}
+                <p className="text-sm font-bold truncate" style={{ color: i === 0 ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-chu-chinh)" }}>{s.name}</p>
+                {s.school && <p className="text-xs truncate" style={{ color: i === 0 ? "rgba(255,255,255,0.7)" : "var(--kin-chu-mo)" }}>{s.school}</p>}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Trophy size={14} style={{ color: i === 0 ? "#fbbf24" : "#FE9900" }} />
-                <span className="text-sm font-extrabold" style={{ color: i === 0 ? "#fbbf24" : "#FE9900" }}>{s.best}</span>
+                <Trophy size={14} style={{ color: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-cho)" }} />
+                <span className="text-sm font-extrabold" style={{ color: i === 0 ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-cho)" }}>{s.best}</span>
               </div>
             </div>
           ))}
@@ -81,7 +81,7 @@ function TopStudentsSection() {
       <div className="text-center mt-8">
         <Link href="/bang-xep-hang"
           className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: "#f6f5f4", border: "1px solid #e5e3df", color: "#0068FF" }}>
+          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)" }}>
           Xem bảng xếp hạng đầy đủ →
         </Link>
       </div>
@@ -133,7 +133,7 @@ export default function GiangVienPage() {
             style={{ color: "rgba(255,255,255,0.45)" }}>Đội ngũ gia sư</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ letterSpacing: "-0.03em" }}>
             Học từ người thật,<br />
-            <span style={{ color: "#93C5FD" }}>kết quả thật</span>
+            <span style={{ color: "var(--kin-nhan-vien)" }}>kết quả thật</span>
           </h1>
           <p className="text-sm max-w-lg mx-auto" style={{ color: "rgba(255,255,255,0.6)" }}>
             Đội ngũ gia sư KiN — những người đang dạy live mỗi tối và theo sát từng học sinh.
@@ -144,17 +144,17 @@ export default function GiangVienPage() {
       {/* Filter + sort (FE-106) */}
       <section className="px-4 sm:px-6 lg:px-8 pt-8 max-w-7xl mx-auto">
         <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="tutor-subject" className="text-xs font-semibold" style={{ color: "#787671" }}>Môn</label>
+          <label htmlFor="tutor-subject" className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Môn</label>
           <select id="tutor-subject" value={subject} onChange={e => setSubject(e.target.value)}
             className="text-xs font-semibold px-3 py-1.5 rounded-full"
-            style={{ background: "#f6f5f4", color: "#1a1a1a", border: "1px solid #e5e3df" }}>
+            style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
             <option value="">Tất cả môn</option>
             {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <label htmlFor="tutor-sort" className="text-xs font-semibold ml-4" style={{ color: "#787671" }}>Sắp xếp</label>
+          <label htmlFor="tutor-sort" className="text-xs font-semibold ml-4" style={{ color: "var(--kin-chu-mo)" }}>Sắp xếp</label>
           <select id="tutor-sort" value={sort} onChange={e => setSort(e.target.value as SortKey)}
             className="text-xs font-semibold px-3 py-1.5 rounded-full"
-            style={{ background: "#f6f5f4", color: "#1a1a1a", border: "1px solid #e5e3df" }}>
+            style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
             <option value="rating">Đánh giá cao</option>
             <option value="students">Nhiều học viên</option>
             <option value="classes">Nhiều lớp</option>
@@ -170,7 +170,7 @@ export default function GiangVienPage() {
           </div>
         ) : error ? (
           <div className="text-center py-16">
-            <p className="text-sm" style={{ color: "#dc2626" }}>Không tải được danh sách gia sư. Thử lại sau.</p>
+            <p className="text-sm" style={{ color: "var(--kin-tt-chu-loi)" }}>Không tải được danh sách gia sư. Thử lại sau.</p>
           </div>
         ) : tutors && tutors.length === 0 ? (
           <EmptyState title="Chưa có gia sư nào phù hợp bộ lọc"
@@ -183,23 +183,23 @@ export default function GiangVienPage() {
         )}
       </section>
 
-      <div style={{ background: "#f6f5f4", borderTop: "1px solid #e5e3df", borderBottom: "1px solid #e5e3df" }}>
+      <div style={{ background: "var(--kin-nen-bang)", borderTop: "1px solid var(--kin-vien-thuong)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
         <TopStudentsSection />
       </div>
 
       {/* CTA */}
       <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-2xl mx-auto text-center">
-        <h2 className="text-xl font-bold mb-3" style={{ color: "#1a1a1a" }}>Bắt đầu học với gia sư ngay hôm nay</h2>
-        <p className="text-sm mb-6" style={{ color: "#787671" }}>Gọi tư vấn miễn phí để được ghép lớp phù hợp với lộ trình của bạn</p>
+        <h2 className="text-xl font-bold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Bắt đầu học với gia sư ngay hôm nay</h2>
+        <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>Gọi tư vấn miễn phí để được ghép lớp phù hợp với lộ trình của bạn</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/khoa-hoc"
             className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white text-center transition-all hover:brightness-105 active:scale-[0.98]"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             Xem khóa học
           </Link>
           <a href="tel:0384409051"
             className="px-6 py-2.5 rounded-xl text-sm font-semibold text-center transition-all hover:brightness-105 active:scale-[0.98]"
-            style={{ background: "#ffffff", border: "1px solid #e5e3df", color: "#37352f" }}>
+            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>
             Gọi 0384 409 051
           </a>
         </div>

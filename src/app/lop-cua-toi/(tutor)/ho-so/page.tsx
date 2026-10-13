@@ -28,7 +28,7 @@ export default async function HoSoGiaSuPage() {
         <p className="text-caption mt-1 mb-5" style={{ color: "var(--kin-chu-phu)" }}>{u.name}</p>
 
         {status === "pending" && (
-          <div role="status" className="rounded-xl p-4 mb-5 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "#1f2937", border: "1px solid var(--kin-vien-thuong)" }}>
+          <div role="status" className="rounded-xl p-4 mb-5 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
             <b>Hồ sơ đang chờ duyệt.</b> Một số tính năng bị giới hạn cho tới khi hồ sơ được xác minh. Bạn vẫn có thể cập nhật giới thiệu và môn dạy.
           </div>
         )}

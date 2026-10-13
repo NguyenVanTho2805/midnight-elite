@@ -24,12 +24,12 @@ interface Analytics {
   transactions: { id: string; tutorId: string; tutorName: string; planCode: string; amount: number; createdAt: string }[];
 }
 
-const CARD = { background: "#F0F5FF", boxShadow: "8px 8px 16px #C5D0EA,-8px -8px 16px #ffffff" } as const;
+const CARD = { background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" } as const;
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
     <div role="status" className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
-      style={{ background: ok ? "#16a34a" : "#dc2626" }}>
+      style={{ background: ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
       {ok ? "✓" : "✗"} {msg}
     </div>
   );
@@ -110,10 +110,10 @@ export default function DoanhThuPage() {
 
   const T = data?.totals;
   const cards = [
-    { label: "Doanh thu VIP (ròng)", value: T ? formatVnd(T.netVipRevenue) : "—", sub: T ? `${T.vipPurchases} lượt mua${T.refunds ? ` · hoàn ${formatVnd(T.refunds)}` : ""}` : "", color: "#0068FF" },
-    { label: "Gia sư đang VIP", value: T ? `${T.activeVipTutors}/${T.tutorCount}` : "—", sub: "trên tổng số gia sư đã duyệt", color: "#00A63D" },
-    { label: "Coin đã nạp", value: T ? formatVnd(T.topupTotal) : "—", sub: "trong khoảng đã chọn", color: "#0EA5E9" },
-    { label: "Coin đang trong ví", value: T ? formatVnd(T.coinOutstanding) : "—", sub: "toàn bộ người dùng, tại thời điểm xem", color: "#FE9900" },
+    { label: "Doanh thu VIP (ròng)", value: T ? formatVnd(T.netVipRevenue) : "—", sub: T ? `${T.vipPurchases} lượt mua${T.refunds ? ` · hoàn ${formatVnd(T.refunds)}` : ""}` : "", color: "var(--kin-nhan-link)" },
+    { label: "Gia sư đang VIP", value: T ? `${T.activeVipTutors}/${T.tutorCount}` : "—", sub: "trên tổng số gia sư đã duyệt", color: "var(--kin-tt-chu-xong)" },
+    { label: "Coin đã nạp", value: T ? formatVnd(T.topupTotal) : "—", sub: "trong khoảng đã chọn", color: "var(--kin-nhan-link)" },
+    { label: "Coin đang trong ví", value: T ? formatVnd(T.coinOutstanding) : "—", sub: "toàn bộ người dùng, tại thời điểm xem", color: "var(--kin-tt-chu-cho)" },
   ];
 
   return (
@@ -123,42 +123,42 @@ export default function DoanhThuPage() {
       <div className="space-y-6 overflow-y-auto" style={{ height: "calc(100vh - 104px)" }}>
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold" style={{ color: "#1E2938" }}>Doanh thu</h1>
-            <p className="text-sm mt-1 max-w-2xl" style={{ color: "#6B7280" }}>
+            <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Doanh thu</h1>
+            <p className="text-sm mt-1 max-w-2xl" style={{ color: "var(--kin-chu-mo)" }}>
               Doanh thu là Coin gia sư trả để mua gói VIP (1 Coin = 1 VND). Học phí phụ huynh chuyển thẳng cho gia sư qua VietQR, KiN không giữ nên không tính ở đây.
             </p>
           </div>
           <button onClick={() => load(from, to)}
             className="px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-150 active:scale-[0.97]"
-            style={{ background: "#F0F5FF", boxShadow: "4px 4px 8px #C5D0EA,-4px -4px 8px #ffffff", color: "#0068FF" }}>
+            style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-nhan-link)" }}>
             ↺ Tải lại
           </button>
         </div>
 
         {/* Khoảng ngày */}
         <div className="flex items-end gap-3 flex-wrap" role="group" aria-label="Khoảng thời gian">
-          <label className="text-xs" style={{ color: "#6B7280" }}>Từ ngày
+          <label className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Từ ngày
             <input type="date" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)}
-              className="block mt-1 px-3 py-1.5 rounded-xl text-sm outline-none" style={{ background: "#fff", border: "1px solid #C5D0EA", color: "#1E2938" }} />
+              className="block mt-1 px-3 py-1.5 rounded-xl text-sm outline-none" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
           </label>
-          <label className="text-xs" style={{ color: "#6B7280" }}>Đến ngày
+          <label className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Đến ngày
             <input type="date" value={to} min={from || undefined} onChange={e => setTo(e.target.value)}
-              className="block mt-1 px-3 py-1.5 rounded-xl text-sm outline-none" style={{ background: "#fff", border: "1px solid #C5D0EA", color: "#1E2938" }} />
+              className="block mt-1 px-3 py-1.5 rounded-xl text-sm outline-none" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
           </label>
           {([["month", "Tháng này"], ["30d", "30 ngày"], ["all", "Tất cả"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => preset(k)} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-              style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>{l}</button>
+              style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-nhan-link)" }}>{l}</button>
           ))}
-          <span className="text-xs pb-2" style={{ color: "#6B7280" }}>Đang xem: {rangeLabel} (giờ Việt Nam)</span>
+          <span className="text-xs pb-2" style={{ color: "var(--kin-chu-mo)" }}>Đang xem: {rangeLabel} (giờ Việt Nam)</span>
         </div>
         {rangeInvalid && (
-          <p role="alert" className="text-sm font-medium" style={{ color: "#B91C1C" }}>
+          <p role="alert" className="text-sm font-medium" style={{ color: "var(--kin-tt-chu-loi)" }}>
             Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. Số liệu bên dưới là của khoảng trước đó.
           </p>
         )}
 
         {failed ? (
-          <div role="alert" className="rounded-2xl p-8 text-center text-sm" style={{ background: "#FEF2F2", color: "#B91C1C" }}>
+          <div role="alert" className="rounded-2xl p-8 text-center text-sm" style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
             Không tải được dữ liệu doanh thu.{" "}
             <button className="underline font-semibold cursor-pointer" onClick={() => load(from, to)}>Thử lại</button>
           </div>
@@ -166,29 +166,29 @@ export default function DoanhThuPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {cards.map(c => (
               <div key={c.label} className="rounded-2xl p-5" style={CARD}>
-                <div className="text-xs mb-2" style={{ color: "#6B7280" }}>{c.label}</div>
-                {loading ? <div className="h-8 w-24 rounded animate-pulse mb-1" style={{ background: "#E2E8F4" }} />
+                <div className="text-xs mb-2" style={{ color: "var(--kin-chu-mo)" }}>{c.label}</div>
+                {loading ? <div className="h-8 w-24 rounded animate-pulse mb-1" style={{ background: "var(--kin-vien-thuong)" }} />
                   : <div className="text-xl lg:text-2xl font-extrabold mb-1 break-words" style={{ color: c.color }}>{c.value}</div>}
-                <div className="text-xs" style={{ color: "#6B7280" }}>{c.sub}</div>
+                <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{c.sub}</div>
               </div>
             ))}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <section className="rounded-2xl p-6" style={CARD} aria-labelledby="h-month">
-              <h2 id="h-month" className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "#1E2938" }}><ChartBar size={18} /> Theo tháng</h2>
-              {loading ? <div className="h-24 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
-                : (data?.byMonth ?? []).length === 0 ? <p className="text-sm text-center py-6" style={{ color: "#6B7280" }}>Chưa có giao dịch trong khoảng này.</p>
+              <h2 id="h-month" className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}><ChartBar size={18} /> Theo tháng</h2>
+              {loading ? <div className="h-24 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
+                : (data?.byMonth ?? []).length === 0 ? <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giao dịch trong khoảng này.</p>
                 : <div className="space-y-3">
                     {data!.byMonth.map(m => (
                       <div key={m.month} className="flex items-center gap-3">
-                        <div className="w-16 flex-shrink-0 text-xs font-mono" style={{ color: "#4B5563" }}>{m.month.slice(5)}/{m.month.slice(0, 4)}</div>
-                        <div className="flex-1 h-2 rounded-full" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${(m.vipRevenue / monthMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#00A63D,#16a34a)" }} />
+                        <div className="w-16 flex-shrink-0 text-xs font-mono" style={{ color: "var(--kin-chu-phu)" }}>{m.month.slice(5)}/{m.month.slice(0, 4)}</div>
+                        <div className="flex-1 h-2 rounded-full" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
+                          <div className="h-2 rounded-full" style={{ width: `${(m.vipRevenue / monthMax * 100).toFixed(1)}%`, background: "var(--kin-tt-chu-xong)" }} />
                         </div>
                         <div className="text-right flex-shrink-0 w-32">
-                          <div className="text-sm font-bold" style={{ color: "#00A63D" }}>{formatVnd(m.vipRevenue)}</div>
-                          <div className="text-xs" style={{ color: "#6B7280" }}>{m.vipCount} lượt · nạp {formatVnd(m.topup)}</div>
+                          <div className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>{formatVnd(m.vipRevenue)}</div>
+                          <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{m.vipCount} lượt · nạp {formatVnd(m.topup)}</div>
                         </div>
                       </div>
                     ))}
@@ -196,19 +196,19 @@ export default function DoanhThuPage() {
             </section>
 
             <section className="rounded-2xl p-6" style={CARD} aria-labelledby="h-plan">
-              <h2 id="h-plan" className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "#1E2938" }}><ChartBar size={18} /> Theo gói VIP</h2>
-              {loading ? <div className="h-24 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />
-                : (data?.byPlan ?? []).length === 0 ? <p className="text-sm text-center py-6" style={{ color: "#6B7280" }}>Chưa có gói nào được mua.</p>
+              <h2 id="h-plan" className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}><ChartBar size={18} /> Theo gói VIP</h2>
+              {loading ? <div className="h-24 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
+                : (data?.byPlan ?? []).length === 0 ? <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Chưa có gói nào được mua.</p>
                 : <div className="space-y-3">
                     {data!.byPlan.map(p => (
                       <div key={p.planCode} className="flex items-center gap-3">
-                        <div className="w-28 flex-shrink-0 text-sm truncate" style={{ color: "#1E2938" }}>{p.name}</div>
-                        <div className="flex-1 h-2 rounded-full" style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 4px #C5D0EA,inset -2px -2px 4px #ffffff" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${(p.revenue / planMax * 100).toFixed(1)}%`, background: "linear-gradient(90deg,#0068FF,#2680FF)" }} />
+                        <div className="w-28 flex-shrink-0 text-sm truncate" style={{ color: "var(--kin-chu-chinh)" }}>{p.name}</div>
+                        <div className="flex-1 h-2 rounded-full" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
+                          <div className="h-2 rounded-full" style={{ width: `${(p.revenue / planMax * 100).toFixed(1)}%`, background: "var(--kin-nhan-nen)" }} />
                         </div>
                         <div className="text-right flex-shrink-0 w-32">
-                          <div className="text-sm font-bold" style={{ color: "#0068FF" }}>{formatVnd(p.revenue)}</div>
-                          <div className="text-xs" style={{ color: "#6B7280" }}>{p.count} lượt mua</div>
+                          <div className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>{formatVnd(p.revenue)}</div>
+                          <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{p.count} lượt mua</div>
                         </div>
                       </div>
                     ))}
@@ -218,29 +218,29 @@ export default function DoanhThuPage() {
 
           <section className="rounded-2xl p-6" style={CARD} aria-labelledby="h-tutor">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <h2 id="h-tutor" className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}><ClipboardList size={18} /> Theo từng gia sư</h2>
+              <h2 id="h-tutor" className="text-base font-bold flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}><ClipboardList size={18} /> Theo từng gia sư</h2>
               <button onClick={exportTutors} disabled={!data || loading} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>↓ Xuất CSV</button>
+                style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-nhan-link)" }}>↓ Xuất CSV</button>
             </div>
             <RevenueByTutorTable rows={data?.byTutor ?? []} loading={loading} />
           </section>
 
           <section className="rounded-2xl p-6" style={CARD} aria-labelledby="h-tx">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <h2 id="h-tx" className="text-base font-bold flex items-center gap-2" style={{ color: "#1E2938" }}><ClipboardList size={18} /> Lịch sử mua VIP</h2>
+              <h2 id="h-tx" className="text-base font-bold flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}><ClipboardList size={18} /> Lịch sử mua VIP</h2>
               <button onClick={exportTransactions} disabled={!data || loading || data.transactions.length === 0} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-50"
-                style={{ background: "#F0F5FF", boxShadow: "3px 3px 6px #C5D0EA,-3px -3px 6px #ffffff", color: "#0068FF" }}>↓ Xuất CSV</button>
+                style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-nhan-link)" }}>↓ Xuất CSV</button>
             </div>
-            {loading ? <div className="space-y-2">{[0, 1, 2].map(i => <div key={i} className="h-11 rounded-xl animate-pulse" style={{ background: "#E2E8F4" }} />)}</div>
-              : (data?.transactions ?? []).length === 0 ? <p className="text-center py-8 text-sm" style={{ color: "#6B7280" }}>Chưa có giao dịch nào.</p>
+            {loading ? <div className="space-y-2">{[0, 1, 2].map(i => <div key={i} className="h-11 rounded-xl animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />)}</div>
+              : (data?.transactions ?? []).length === 0 ? <p className="text-center py-8 text-sm" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giao dịch nào.</p>
               : <ul className="space-y-2">
                   {data!.transactions.map(t => (
                     <li key={t.id} className="grid grid-cols-12 items-center gap-2 px-4 py-3 rounded-xl text-sm"
-                      style={{ background: "#F0F5FF", boxShadow: "inset 2px 2px 5px #C5D0EA,inset -2px -2px 5px #ffffff" }}>
-                      <span className="col-span-5 font-medium truncate" style={{ color: "#1E2938" }}>{t.tutorName}</span>
-                      <span className="col-span-3 text-xs" style={{ color: "#4B5563" }}>{data!.byPlan.find(p => p.planCode === t.planCode)?.name ?? t.planCode}</span>
-                      <span className="col-span-2 text-right font-bold tabular-nums" style={{ color: "#0068FF" }}>{formatVnd(t.amount)}</span>
-                      <span className="col-span-2 text-right text-xs" style={{ color: "#6B7280" }}>{vnDateKey(new Date(t.createdAt))}</span>
+                      style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
+                      <span className="col-span-5 font-medium truncate" style={{ color: "var(--kin-chu-chinh)" }}>{t.tutorName}</span>
+                      <span className="col-span-3 text-xs" style={{ color: "var(--kin-chu-phu)" }}>{data!.byPlan.find(p => p.planCode === t.planCode)?.name ?? t.planCode}</span>
+                      <span className="col-span-2 text-right font-bold tabular-nums" style={{ color: "var(--kin-nhan-link)" }}>{formatVnd(t.amount)}</span>
+                      <span className="col-span-2 text-right text-xs" style={{ color: "var(--kin-chu-mo)" }}>{vnDateKey(new Date(t.createdAt))}</span>
                     </li>
                   ))}
                 </ul>}

@@ -29,10 +29,10 @@ const CATEGORIES: Array<{ id: Category; label: string }> = [
 ];
 
 const catColors: Record<Exclude<Category, "all">, { bg: string; color: string }> = {
-  "hoc-thuat":   { bg: "#dbeafe", color: "#0068FF" },
-  "tuyen-sinh":  { bg: "#fee2e2", color: "#dc2626" },
-  "tin-midnight":{ bg: "#dcfce7", color: "#16a34a" },
-  "kinh-nghiem": { bg: "#fef3c7", color: "#b45309" },
+  "hoc-thuat":   { bg: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" },
+  "tuyen-sinh":  { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
+  "tin-midnight":{ bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
+  "kinh-nghiem": { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
 };
 
 const catLabels: Record<Exclude<Category, "all">, string> = {
@@ -81,8 +81,8 @@ export default function TinTucPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold" style={{ color: "#1a1a1a", letterSpacing: "-0.5px" }}>Tin tức & Blog</h1>
-        <p className="mt-1 text-sm" style={{ color: "#787671" }}>Kiến thức tuyển sinh, kinh nghiệm học tập và tin tức mới nhất từ KiN</p>
+        <h1 className="text-3xl font-bold" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.5px" }}>Tin tức & Blog</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--kin-chu-mo)" }}>Kiến thức tuyển sinh, kinh nghiệm học tập và tin tức mới nhất từ KiN</p>
       </div>
 
       {/* Search + filter */}
@@ -92,12 +92,12 @@ export default function TinTucPage() {
             value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kiếm bài viết..."
             className="notion-input w-full text-sm"
-            style={{ color: "#1a1a1a" }}
+            style={{ color: "var(--kin-chu-chinh)" }}
           />
           {search && (
             <button onClick={() => setSearch("")}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs cursor-pointer"
-              style={{ color: "#a4a097" }}>✕</button>
+              style={{ color: "var(--kin-chu-mo)" }}>✕</button>
           )}
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -105,8 +105,8 @@ export default function TinTucPage() {
             <button key={id} onClick={() => setActiveCategory(id)}
               className="px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
               style={activeCategory === id
-                ? { background: "#0068FF", color: "white", borderRadius: "8px" }
-                : { background: "#ffffff", border: "1px solid #e5e3df", color: "#787671", borderRadius: "8px" }}>
+                ? { background: "var(--kin-nhan-nen)", color: "white", borderRadius: "8px" }
+                : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {label}
             </button>
           ))}
@@ -117,11 +117,11 @@ export default function TinTucPage() {
       {loading && (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="rounded-xl p-6 animate-pulse" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-              <div className="h-4 w-24 rounded mb-3" style={{ background: "#e5e3df" }} />
-              <div className="h-6 w-3/4 rounded mb-2" style={{ background: "#e5e3df" }} />
-              <div className="h-4 w-full rounded mb-1" style={{ background: "#e5e3df" }} />
-              <div className="h-4 w-2/3 rounded" style={{ background: "#e5e3df" }} />
+            <div key={i} className="rounded-xl p-6 animate-pulse" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+              <div className="h-4 w-24 rounded mb-3" style={{ background: "var(--kin-vien-thuong)" }} />
+              <div className="h-6 w-3/4 rounded mb-2" style={{ background: "var(--kin-vien-thuong)" }} />
+              <div className="h-4 w-full rounded mb-1" style={{ background: "var(--kin-vien-thuong)" }} />
+              <div className="h-4 w-2/3 rounded" style={{ background: "var(--kin-vien-thuong)" }} />
             </div>
           ))}
         </div>
@@ -129,12 +129,12 @@ export default function TinTucPage() {
 
       {/* Fetch error */}
       {!loading && fetchError && (
-        <div className="rounded-xl p-12 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          <p className="font-semibold" style={{ color: "#1a1a1a" }}>Không thể tải bài viết</p>
-          <p className="text-sm mt-1" style={{ color: "#a4a097" }}>Kiểm tra kết nối và thử lại</p>
+        <div className="rounded-xl p-12 text-center" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Không thể tải bài viết</p>
+          <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Kiểm tra kết nối và thử lại</p>
           <button onClick={loadArticles}
             className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ background: "#0068FF" }}>
+            style={{ background: "var(--kin-nhan-nen)" }}>
             Thử lại
           </button>
         </div>
@@ -142,11 +142,11 @@ export default function TinTucPage() {
 
       {/* Empty / no results */}
       {!loading && !fetchError && filtered.length === 0 && (
-        <div className="rounded-xl p-12 text-center" style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
-          <p className="font-semibold" style={{ color: "#1a1a1a" }}>
+        <div className="rounded-xl p-12 text-center" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>
             {articles.length === 0 ? "Chưa có bài viết nào" : "Không tìm thấy bài viết nào"}
           </p>
-          <p className="text-sm mt-1" style={{ color: "#a4a097" }}>
+          <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
             {articles.length === 0 ? "Hãy quay lại sau nhé!" : "Thử từ khóa khác hoặc chọn danh mục khác"}
           </p>
         </div>
@@ -166,13 +166,13 @@ export default function TinTucPage() {
 }
 
 function ArticleCardFeatured({ article: a }: { article: Article }) {
-  const cat = catColors[a.category] ?? { bg: "#f6f5f4", color: "#787671" };
+  const cat = catColors[a.category] ?? { bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" };
   return (
     <Link href={`/tin-tuc/${a.slug}`}>
-      <div className="rounded-xl p-6 cursor-pointer transition-colors hover:bg-[#fafafa]"
-        style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-6 cursor-pointer transition-colors hover:bg-[var(--kin-nen-bang)]"
+        style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex items-start gap-5">
-          <div className="hidden sm:block w-1 self-stretch rounded-full flex-shrink-0" style={{ background: "#0068FF" }} />
+          <div className="hidden sm:block w-1 self-stretch rounded-full flex-shrink-0" style={{ background: "var(--kin-nhan-nen)" }} />
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -181,12 +181,12 @@ function ArticleCardFeatured({ article: a }: { article: Article }) {
               </span>
               {a.tag && (
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-                  style={{ background: "#0068FF" }}>{a.tag}</span>
+                  style={{ background: "var(--kin-nhan-nen)" }}>{a.tag}</span>
               )}
             </div>
-            <h2 className="text-xl font-bold mb-2 leading-snug" style={{ color: "#1a1a1a", letterSpacing: "-0.3px" }}>{a.title}</h2>
-            <p className="text-sm leading-relaxed mb-3 line-clamp-2" style={{ color: "#787671" }}>{a.excerpt}</p>
-            <div className="flex items-center gap-3 text-xs" style={{ color: "#a4a097" }}>
+            <h2 className="text-xl font-bold mb-2 leading-snug" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>{a.title}</h2>
+            <p className="text-sm leading-relaxed mb-3 line-clamp-2" style={{ color: "var(--kin-chu-mo)" }}>{a.excerpt}</p>
+            <div className="flex items-center gap-3 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
               <span>{a.author}</span><span>·</span>
               <span>{formatDate(a.publishedAt ?? a.createdAt)}</span><span>·</span>
               <span>{a.readTime} phút đọc</span>
@@ -199,11 +199,11 @@ function ArticleCardFeatured({ article: a }: { article: Article }) {
 }
 
 function ArticleCard({ article: a }: { article: Article }) {
-  const cat = catColors[a.category] ?? { bg: "#f6f5f4", color: "#787671" };
+  const cat = catColors[a.category] ?? { bg: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" };
   return (
     <Link href={`/tin-tuc/${a.slug}`}>
-      <div className="rounded-xl p-5 h-full cursor-pointer transition-colors hover:bg-[#fafafa]"
-        style={{ background: "#ffffff", border: "1px solid #e5e3df" }}>
+      <div className="rounded-xl p-5 h-full cursor-pointer transition-colors hover:bg-[var(--kin-nen-bang)]"
+        style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
             style={{ background: cat.bg, color: cat.color }}>
@@ -211,12 +211,12 @@ function ArticleCard({ article: a }: { article: Article }) {
           </span>
           {a.tag && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: "#fef3c7", color: "#b45309" }}>{a.tag}</span>
+              style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>{a.tag}</span>
           )}
         </div>
-        <h3 className="font-bold text-base leading-snug mb-2" style={{ color: "#1a1a1a" }}>{a.title}</h3>
-        <p className="text-xs leading-relaxed mb-3 line-clamp-3" style={{ color: "#787671" }}>{a.excerpt}</p>
-        <div className="flex items-center gap-2 text-xs" style={{ color: "#a4a097" }}>
+        <h3 className="font-bold text-base leading-snug mb-2" style={{ color: "var(--kin-chu-chinh)" }}>{a.title}</h3>
+        <p className="text-xs leading-relaxed mb-3 line-clamp-3" style={{ color: "var(--kin-chu-mo)" }}>{a.excerpt}</p>
+        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
           <span>{a.author}</span><span>·</span>
           <span>{formatDate(a.publishedAt ?? a.createdAt)}</span><span>·</span>
           <span>{a.readTime} phút</span>

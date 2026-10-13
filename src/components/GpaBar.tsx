@@ -2,7 +2,7 @@
 
 export function GpaBar({ value }: { value: number }) {
   const pct   = Math.min((value / 10) * 100, 100);
-  const color = value >= 8 ? "#16a34a" : value >= 6 ? "#f59e0b" : "#ef4444";
+  const color = value >= 8 ? "var(--kin-tt-chu-xong)" : value >= 6 ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-loi)";
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full bg-gray-200">
