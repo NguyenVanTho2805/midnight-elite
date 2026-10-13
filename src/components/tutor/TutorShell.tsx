@@ -69,13 +69,13 @@ export default function TutorShell({
       <nav aria-label="Module của gia sư"
         className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex z-30"
         style={{ background: "var(--kin-nen-bang)", borderTop: "1px solid var(--kin-vien-thuong)" }}>
-        {items.map(m => link(m, "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[9.5px] min-h-[44px]",
+        {items.map(m => link(m, "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[length:var(--kin-co-caption)] min-h-[44px]",
           <>
             <span aria-hidden className="text-[21px] leading-none">{ICON[m.key]}</span>
             <span className="truncate max-w-full px-1">{m.label}</span>
             {(badges[m.key] ?? 0) > 0 && <span className="absolute top-1 right-[22%]"><Badge n={badges[m.key]} /></span>}
           </>))}
-        <Link href="/lop-cua-toi/cai-dat" aria-label="Cài đặt" className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[9.5px] min-h-[44px]"
+        <Link href="/lop-cua-toi/cai-dat" aria-label="Cài đặt" className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[length:var(--kin-co-caption)] min-h-[44px]"
           style={itemStyle(isActive("/lop-cua-toi/cai-dat"))}>
           <span aria-hidden className="text-[21px] leading-none">⚙</span>
           <span>Cài đặt</span>

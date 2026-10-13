@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuth, getAdminRoleLabel } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { QUEUE_CHANGED } from "@/components/admin/KiemDuyet";
 import { matchSub, visibleModules } from "@/lib/adminNav";
 
@@ -64,10 +65,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             {tabs.map(t => {
               const active = hit?.sub.href === t.href;
               return (
-                <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined}
-                  className="inline-flex items-center px-3 whitespace-nowrap text-[length:var(--kin-co-small)] font-medium border-b-2 transition-colors hover:text-[var(--kin-chu-chinh)]"
-                  style={active ? { color: "var(--kin-th-navy)", borderColor: "var(--kin-th-navy)", fontWeight: 600 } : { color: "var(--kin-chu-mo)", borderColor: "transparent" }}>
-                  {t.label}
+                <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined} className={KIN_TAB_BOX}>
+                  <KinTabInner active={active}>{t.label}</KinTabInner>
                 </Link>
               );
             })}

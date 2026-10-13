@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
 import TutorApplicationsPanel from "@/components/admin/TutorApplicationsPanel";
+import { KinTabs } from "@/components/kin";
 import { useAuth, PERMISSIONS } from "@/contexts/AuthContext";
 
 interface UserRow {
@@ -144,20 +145,16 @@ export default function QuanTriVienPage() {
         </div>
 
         {/* Tab */}
-        <div className="px-5 pt-2 flex gap-1 border-b border-gray-100 flex-shrink-0" role="tablist" aria-label="Nhóm quản trị">
-          {([
-            ["tai-khoan", "Tài khoản"],
-            ["gia-su", `Hồ sơ gia sư chờ duyệt${pendingTutors != null ? ` (${pendingTutors})` : ""}`],
-          ] as const).map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-              className="px-4 py-2 text-sm font-semibold border-b-2 -mb-px cursor-pointer"
-              style={tab === k
-                ? { borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-link)" }
-                : { borderColor: "transparent", color: "var(--kin-chu-mo)" }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <KinTabs
+          className="px-5 flex-shrink-0"
+          label="Nhóm quản trị"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: "tai-khoan", label: "Tài khoản" },
+            { key: "gia-su", label: `Hồ sơ gia sư chờ duyệt${pendingTutors != null ? ` (${pendingTutors})` : ""}` },
+          ]}
+        />
 
         {tab === "gia-su" ? (
           <div className="flex-1 overflow-auto p-5">

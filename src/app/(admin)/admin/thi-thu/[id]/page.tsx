@@ -513,7 +513,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
         <div className="p-5 space-y-4">
           <div className="text-xs p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
             Mỗi câu hỏi là 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
-            <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "var(--kin-chu-chinh)" }}>{`Câu 1: Trắc nghiệm...
+            <pre className="mt-1.5 whitespace-pre-wrap text-[length:var(--kin-co-caption)]" style={{ color: "var(--kin-chu-chinh)" }}>{`Câu 1: Trắc nghiệm...
 Ảnh: https://... (tùy chọn, ảnh đã tải lên sẵn)
 *A. Đáp án đúng
 B. Đáp án sai
@@ -989,7 +989,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                     </div>
                     <div className="flex gap-2 items-start">
                       <div className="w-28">
-                        <label className="block text-[11px] text-gray-500 mb-1">Điểm (tối đa {q.points})</label>
+                        <label className="block text-[length:var(--kin-co-caption)] text-gray-500 mb-1">Điểm (tối đa {q.points})</label>
                         <input type="number" min={0} max={q.points} step={0.25}
                           className="w-full px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
                           style={{ borderColor: "var(--kin-vien-thuong)" }}
@@ -998,7 +998,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-[11px] text-gray-500 mb-1">Nhận xét (tùy chọn)</label>
+                        <label className="block text-[length:var(--kin-co-caption)] text-gray-500 mb-1">Nhận xét (tùy chọn)</label>
                         <input
                           className="w-full px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:border-blue-400"
                           style={{ borderColor: "var(--kin-vien-thuong)" }}
@@ -1013,7 +1013,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
                       </button>
                     </div>
                     {q.pointsAwarded != null && (
-                      <p className="text-[11px] mt-1.5" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã chấm: {q.pointsAwarded}/{q.points} điểm</p>
+                      <p className="text-[length:var(--kin-co-caption)] mt-1.5" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã chấm: {q.pointsAwarded}/{q.points} điểm</p>
                     )}
                   </div>
                 )}
@@ -1284,7 +1284,7 @@ function ThiThuQuestionsPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Câu {idx + 1}: <MathText text={q.text} /></p>
                       {q.type !== "MC" && (
-                        <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase"
+                        <span className="flex-shrink-0 text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-full uppercase"
                           style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                           {q.type === "ESSAY" ? "Tự luận" : q.type === "SHORT_ANSWER" ? "Trả lời ngắn" : "Đúng-Sai"}
                         </span>

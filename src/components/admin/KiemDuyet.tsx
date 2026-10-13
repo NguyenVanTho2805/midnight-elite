@@ -4,6 +4,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QueueAction, QueueItem } from "@/lib/adminQueue";
+import { KinButton } from "@/components/kin/Button";
 import {
   ErrorStrip, ListBody, ListHead, ListRow, ListSkeleton, OutlookPanes, ReadBody, ReadEmpty, ReadHead, ReadSection, type Command,
 } from "@/components/kin/shell/Outlook";
@@ -116,7 +117,7 @@ export default function KiemDuyet() {
     const mine = pending && pending.itemId === current.id ? current.detail.actions.find(a => a.key === pending.key) ?? null : null;
     const commands: Command[] = [
       ...current.detail.actions.map<Command>(a => ({
-        label: a.label, kind: a.kind === "primary" ? "primary" : "secondary", disabled: !!a.disabled || busy,
+        label: a.label, kind: a.kind, disabled: !!a.disabled || busy,
         onClick: () => start(current, a),
       })),
       ...current.detail.links.map<Command>(l => ({ label: l.label, href: l.href, kind: current.detail.actions.length === 0 ? "primary" : "secondary" })),
@@ -139,14 +140,11 @@ export default function KiemDuyet() {
                 <p className="text-[var(--kin-chu-chinh)]">{mine.confirm}</p>
               )}
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => run(current, mine)} disabled={busy || (!!mine.reason && reason.trim() === "")}
-                  className="inline-flex items-center justify-center min-h-11 px-[14px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-small)] font-medium bg-[var(--kin-th-navy)] text-[var(--kin-chu-tren-nut-chinh)] hover:bg-[var(--kin-th-navy-re)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                  {busy ? "Đang gửi…" : `Xác nhận: ${mine.label}`}
-                </button>
-                <button type="button" onClick={() => { setPending(null); setFail(null); }} disabled={busy}
-                  className="inline-flex items-center justify-center min-h-11 px-[14px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-small)] font-medium border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-bang)] transition-colors">
-                  Huỷ
-                </button>
+                <KinButton type="button" variant={mine.kind === "danger" ? "danger-solid" : "primary"} onClick={() => run(current, mine)}
+                  disabled={busy || (!!mine.reason && reason.trim() === "")} loading={busy} loadingLabel="Đang gửi…">
+                  {`Xác nhận: ${mine.label}`}
+                </KinButton>
+                <KinButton type="button" variant="secondary" onClick={() => { setPending(null); setFail(null); }} disabled={busy}>Huỷ</KinButton>
               </div>
             </div>
           )}

@@ -126,8 +126,8 @@ function ScoreSparkline({ results }: { results: ExamResultItem[] }) {
         <circle cx={last[0]} cy={last[1]} r="3.5" fill="var(--kin-nhan-nen)" />
       </svg>
       <div className="flex justify-between mt-1">
-        <span className="text-[10px]" style={{ color: "var(--kin-chu-mo)" }}>{results[0].exam?.title?.slice(0, 18) ?? "Đề 1"}</span>
-        <span className="text-[10px] font-bold" style={{ color: "var(--kin-nhan-link)" }}>
+        <span className="text-[length:var(--kin-co-caption)]" style={{ color: "var(--kin-chu-mo)" }}>{results[0].exam?.title?.slice(0, 18) ?? "Đề 1"}</span>
+        <span className="text-[length:var(--kin-co-caption)] font-bold" style={{ color: "var(--kin-nhan-link)" }}>
           Mới nhất: {scores[scores.length - 1].toFixed(1)}
         </span>
       </div>
@@ -167,11 +167,11 @@ function StreakCalendar({ counts }: { counts: Record<string, number> }) {
         ))}
       </div>
       <div className="flex items-center gap-2 mt-2 justify-end">
-        <span className="text-[10px]" style={{ color: "var(--kin-chu-mo)" }}>Ít</span>
+        <span className="text-[length:var(--kin-co-caption)]" style={{ color: "var(--kin-chu-mo)" }}>Ít</span>
         {[0, 1, 2, 4].map(n => (
           <div key={n} className="w-3 h-3 rounded-sm" style={{ background: cellColor(n) }} />
         ))}
-        <span className="text-[10px]" style={{ color: "var(--kin-chu-mo)" }}>Nhiều</span>
+        <span className="text-[length:var(--kin-co-caption)]" style={{ color: "var(--kin-chu-mo)" }}>Nhiều</span>
       </div>
     </div>
   );

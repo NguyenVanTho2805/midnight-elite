@@ -167,7 +167,7 @@ export function ImagePreviews({ images, onRemove }: { images: File[]; onRemove: 
           style={{ width: 64, height: 64 }}>
           <img src={URL.createObjectURL(img)} alt="" className="w-full h-full object-cover" />
           <button onClick={() => onRemove(i)}
-            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-white text-[length:var(--kin-co-caption)] font-bold"
             style={{ background: "rgba(0,0,0,0.55)" }}>✕</button>
         </div>
       ))}

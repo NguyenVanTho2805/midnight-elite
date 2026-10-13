@@ -38,7 +38,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-white leading-tight truncate">{t.name}</h3>
             {t.tutorVerified && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+              <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-md"
                 style={{ background: "rgba(255,255,255,0.25)", color: "var(--kin-chu-tren-nut-chinh)" }}>Đã xác minh</span>
             )}
           </div>

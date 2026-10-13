@@ -36,7 +36,7 @@ function TypeBadge({ type }: { type: string }) {
   };
   const s = map[parseLessonType(type)];
   return (
-    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: s.color, background: s.bg }}>
+    <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-md" style={{ color: s.color, background: s.bg }}>
       {s.label}
     </span>
   );
@@ -293,7 +293,7 @@ function HocTapContent() {
                                   </span>
                                 )}
                                 {lesson.isFree && !lesson.isLocked && (
-                                  <span className="text-[10px] font-bold px-1.5 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>FREE</span>
+                                  <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>FREE</span>
                                 )}
                               </div>
                             </div>

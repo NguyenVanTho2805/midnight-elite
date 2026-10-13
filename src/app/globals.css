@@ -311,10 +311,10 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
 }
 
 /* ── Focus ring ────────────────────────────────────────────────── */
+/* (13/10/2026: bỏ `border-radius: 4px` — khi focus bàn phím nó ép mọi phần tử về bo 4px, làm nút tròn/viên thuốc/thẻ méo hình.) */
 :focus-visible {
   outline: 2px solid var(--kin-nhan-link);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* ── Khối "clay" cũ: phẳng hoá theo KiN (viền mảnh, không đổ bóng 3D) ───── */

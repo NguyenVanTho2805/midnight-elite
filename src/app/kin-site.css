@@ -95,6 +95,10 @@
   --kin-bong-the:  0 0 0 1px var(--kin-vien-thuong), 0 1px 2px rgba(17, 24, 39, 0.06);
   --kin-bong-chim: inset 0 1px 2px rgba(17, 24, 39, 0.08), 0 0 0 1px var(--kin-vien-thuong);
   --kin-bong-noi:  0 0 0 1px var(--kin-vien-thuong), 0 12px 32px rgba(17, 24, 39, 0.14);
+  /* Thông báo nổi (Figma 106:3) và hộp xác nhận (Figma 106:31) + lớp phủ phía sau hộp. */
+  --kin-bong-toast: 0 4px 6px rgba(15, 23, 41, 0.1);
+  --kin-bong-hop:   0 10px 28px rgba(15, 23, 41, 0.18);
+  --kin-phu-hop:    rgba(15, 23, 41, 0.5);
 
   /* Bí danh cho tên biến CŨ (globals.css từng khai bằng mã hex) — trỏ về token KiN để mã cũ vẫn chạy mà không còn màu riêng. */
   --canvas: var(--kin-nen-trang);
@@ -143,6 +147,13 @@
   --key: 0 2px 4px rgba(0, 0, 0, 0.04);
   --amb: 0 10px 30px rgba(17, 24, 39, 0.08);
 }
+
+/* Component KiN (src/components/kin): các giá trị Figma khác quy tắc chung của globals.css (button:disabled, :focus-visible)
+   được đặt ở đây với độ ưu tiên cao hơn, vì quy tắc chung không nằm trong @layer nên thắng cả lớp tiện ích của Tailwind. */
+[data-kin-nut]:disabled { opacity: 0.45; }
+[data-kin-nut][aria-busy="true"]:disabled { cursor: progress; }
+[data-kin-nut]:focus-visible { outline-offset: 0; }   /* Figma: vòng focus đặt NGOÀI viền, sát nút */
+.kin-tab:focus-visible { outline-offset: -2px; }       /* tab nằm trong khung cuộn ngang: vòng ở TRONG để khỏi bị cắt */
 
 /* Ô nhập cũ (.notion-input) trong vùng web công khai: viền đủ 3:1 và vòng focus theo màu nhấn KiN. */
 [data-vung="sang"] .notion-input {

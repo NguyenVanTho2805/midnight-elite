@@ -4,14 +4,10 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { KinButton, kinButtonClass, type KinButtonVariant } from "@/components/kin/Button";
+import { KinStatus, STATUS_DOT, type StatusTone } from "@/components/kin/Status";
 
-export type Tone = "cho" | "loi" | "mo" | "xong";
-const DOT: Record<Tone, string> = {
-  cho: "var(--kin-tt-cham-cho)", loi: "var(--kin-tt-chu-loi)", mo: "var(--kin-tt-cham-trung-tinh)", xong: "var(--kin-tt-cham-xong)",
-};
-const TEXT: Record<Tone, string> = {
-  cho: "var(--kin-tt-chu-cho)", loi: "var(--kin-tt-chu-loi)", mo: "var(--kin-chu-mo)", xong: "var(--kin-tt-chu-xong)",
-};
+export type Tone = StatusTone;
 
 export function OutlookPanes({ list, read, open }: { list: ReactNode; read: ReactNode; open: boolean }) {
   return (
@@ -57,12 +53,7 @@ export function ListRow({ selected, onSelect, title, when, subtitle, status, str
         <span className="flex-shrink-0 text-[length:var(--kin-co-caption)] font-mono" style={{ color: muted }}>{when}</span>
       </div>
       <p className="truncate text-[length:var(--kin-co-small)]" style={{ color: muted }}>{subtitle}</p>
-      {status && (
-        <div className="flex items-center gap-1">
-          <span aria-hidden className="inline-block w-[7px] h-[7px] rounded-full" style={{ background: DOT[status.tone] }} />
-          <span className="text-[length:var(--kin-co-small)]" style={{ color: TEXT[status.tone] }}>{status.label}</span>
-        </div>
-      )}
+      {status && <KinStatus tone={status.tone}>{status.label}</KinStatus>}
     </div>
   );
 }
@@ -86,20 +77,17 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
 export function ErrorStrip({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div role="alert" className="flex items-center gap-2 px-[14px] py-2 text-[length:var(--kin-co-small)] border-b border-[var(--kin-tt-chu-loi)] bg-[var(--kin-nhan-nen-nhat)]">
-      <span aria-hidden className="inline-block w-[7px] h-[7px] rounded-full bg-[var(--kin-tt-chu-loi)]" />
+      <span aria-hidden className="inline-block w-[7px] h-[7px] rounded-full" style={{ background: STATUS_DOT.loi }} />
       <span className="flex-1 text-[var(--kin-tt-chu-loi)] font-semibold">{message}</span>
       <button type="button" onClick={onRetry} className="min-h-11 px-3 font-semibold text-[var(--kin-nhan-link)] hover:underline">Thử lại</button>
     </div>
   );
 }
 
-export interface Command { label: string; href?: string; onClick?: () => void; kind: "primary" | "secondary"; external?: boolean; disabled?: boolean }
+export interface Command { label: string; href?: string; onClick?: () => void; kind: "primary" | "secondary" | "danger"; external?: boolean; disabled?: boolean }
 
-const BTN = "inline-flex items-center justify-center min-h-11 px-[14px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-small)] font-medium transition-colors whitespace-nowrap";
-const BTN_KIND = {
-  primary: "bg-[var(--kin-th-navy)] text-[var(--kin-chu-tren-nut-chinh)] hover:bg-[var(--kin-th-navy-re)]",
-  secondary: "bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-bang)]",
-} as const;
+// Nút lệnh trong khung đọc dùng cùng dáng với KinButton (Figma "Nút" 6:50): "danger" là kiểu Nguy hiểm.
+const COMMAND_VARIANT: Record<Command["kind"], KinButtonVariant> = { primary: "primary", secondary: "secondary", danger: "danger" };
 
 export function ReadHead({ title, meta, commands, onBack }: { title: string; meta?: string; commands?: Command[]; onBack?: () => void }) {
   return (
@@ -114,8 +102,9 @@ export function ReadHead({ title, meta, commands, onBack }: { title: string; met
       {commands && commands.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-3">
           {commands.slice(0, 3).map(c => {
-            const cls = `${BTN} ${BTN_KIND[c.kind]}`;
-            if (c.onClick) return <button key={c.label} type="button" onClick={c.onClick} disabled={c.disabled} className={`${cls} disabled:opacity-50 disabled:cursor-not-allowed`}>{c.label}</button>;
+            const variant = COMMAND_VARIANT[c.kind];
+            if (c.onClick) return <KinButton key={c.label} type="button" variant={variant} onClick={c.onClick} disabled={c.disabled}>{c.label}</KinButton>;
+            const cls = kinButtonClass(variant);
             return c.external || !c.href?.startsWith("/")
               ? <a key={c.label} href={c.href} target="_blank" rel="noopener noreferrer" className={cls}>{c.label}</a>
               : <Link key={c.label} href={c.href} className={cls}>{c.label}</Link>;

@@ -10,18 +10,26 @@
 //   const toast = useToast();
 //   toast.ok("Đã lưu");
 //   toast.err("Không lưu được");
+//   toast.warn("Cần nhắc");                       // loại "chờ" (cam)
+//   toast.ok("Đã lưu điểm danh", { detail: "4 buổi được tính tiền" });   // dòng phụ 11,1px
 //   toast.show({ msg: "...", kind: "info", timeout: 5000 });
+// 13/10/2026: hiển thị bằng KinToast (Figma "Toast" 106:23) — chấm + tiêu đề đậm + dòng phụ, 4 loại xong/chờ/lỗi/tin.
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { KinToast, type ToastTone } from "@/components/kin/Toast";
 
-type Kind = "ok" | "err" | "info";
-interface Entry { id: number; msg: string; kind: Kind; }
+type Kind = "ok" | "err" | "info" | "warn";
+interface Entry { id: number; msg: string; detail?: string; kind: Kind; }
+interface Opts { timeout?: number; detail?: string }
+
+const TONE: Record<Kind, ToastTone> = { ok: "xong", err: "loi", info: "tin", warn: "cho" };
 
 interface ToastAPI {
-  ok: (msg: string, opts?: { timeout?: number }) => void;
-  err: (msg: string, opts?: { timeout?: number }) => void;
-  info: (msg: string, opts?: { timeout?: number }) => void;
-  show: (opts: { msg: string; kind?: Kind; timeout?: number }) => void;
+  ok: (msg: string, opts?: Opts) => void;
+  err: (msg: string, opts?: Opts) => void;
+  info: (msg: string, opts?: Opts) => void;
+  warn: (msg: string, opts?: Opts) => void;
+  show: (opts: Opts & { msg: string; kind?: Kind }) => void;
   dismiss: (id: number) => void;
 }
 
@@ -40,7 +48,7 @@ export function ToastProvider({ children, defaultTimeout = 3000 }: { children: R
 
   const show = useCallback<ToastAPI["show"]>((opts) => {
     const id = ++idRef.current;
-    setEntries(xs => [...xs, { id, msg: opts.msg, kind: opts.kind ?? "info" }]);
+    setEntries(xs => [...xs, { id, msg: opts.msg, detail: opts.detail, kind: opts.kind ?? "info" }]);
     const t = setTimeout(() => dismiss(id), opts.timeout ?? defaultTimeout);
     timeouts.current.set(id, t);
   }, [defaultTimeout, dismiss]);
@@ -53,9 +61,10 @@ export function ToastProvider({ children, defaultTimeout = 3000 }: { children: R
   }, []);
 
   const api: ToastAPI = {
-    ok:   (msg, opts) => show({ msg, kind: "ok",   timeout: opts?.timeout }),
-    err:  (msg, opts) => show({ msg, kind: "err",  timeout: opts?.timeout }),
-    info: (msg, opts) => show({ msg, kind: "info", timeout: opts?.timeout }),
+    ok:   (msg, opts) => show({ msg, kind: "ok",   ...opts }),
+    err:  (msg, opts) => show({ msg, kind: "err",  ...opts }),
+    info: (msg, opts) => show({ msg, kind: "info", ...opts }),
+    warn: (msg, opts) => show({ msg, kind: "warn", ...opts }),
     show,
     dismiss,
   };
@@ -63,22 +72,10 @@ export function ToastProvider({ children, defaultTimeout = 3000 }: { children: R
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none" aria-live="polite">
+      <div className="fixed top-4 left-4 right-4 sm:left-auto sm:w-[400px] z-[200] flex flex-col items-end gap-2 pointer-events-none" aria-live="polite">
         {entries.map(e => (
-          <div
-            key={e.id}
-            className="pointer-events-auto px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl flex items-center gap-2 min-w-[200px] max-w-sm"
-            style={{ background: e.kind === "ok" ? "var(--kin-tt-chu-xong)" : e.kind === "err" ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-phu)" }}
-            role={e.kind === "err" ? "alert" : "status"}
-          >
-            <span>{e.kind === "ok" ? "✓" : e.kind === "err" ? "✗" : "ⓘ"}</span>
-            <span className="flex-1">{e.msg}</span>
-            <button
-              type="button"
-              onClick={() => dismiss(e.id)}
-              className="opacity-70 hover:opacity-100 text-base leading-none"
-              aria-label="Đóng"
-            >×</button>
+          <div key={e.id} className="pointer-events-auto w-full max-w-[400px]">
+            <KinToast tone={TONE[e.kind]} title={e.msg} detail={e.detail} onClose={() => dismiss(e.id)} />
           </div>
         ))}
       </div>

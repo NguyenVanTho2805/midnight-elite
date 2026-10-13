@@ -71,7 +71,7 @@ export default function StudentBottomNav() {
             <svg className="w-5 h-5" fill="none" stroke={color} strokeWidth={1.8} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d={item.iconPath} />
             </svg>
-            <span className="text-[10px] font-semibold" style={{ color }}>
+            <span className="text-[length:var(--kin-co-caption)] font-semibold" style={{ color }}>
               {item.label}
             </span>
             {active && <span className="w-1 h-1 rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
@@ -95,7 +95,7 @@ export default function StudentBottomNav() {
         >
           {user?.avatar ?? "?"}
         </div>
-        <span className="text-[10px] font-semibold" style={{ color: profileActive ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)" }}>
+        <span className="text-[length:var(--kin-co-caption)] font-semibold" style={{ color: profileActive ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)" }}>
           Tài khoản
         </span>
         {profileActive && <span className="w-1 h-1 rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}

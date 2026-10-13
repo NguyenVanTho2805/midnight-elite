@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useState } from "react";
+import { KinTabs } from "@/components/kin";
 import InvoicesTab from "./InvoicesTab";
 import ReconcileTab from "./ReconcileTab";
 import PayoutTab from "./PayoutTab";
@@ -19,15 +20,15 @@ export default function HocPhiClient({ initialTab, pending }: { initialTab: Tab;
 
   return (
     <div>
-      <div role="tablist" aria-label="Học phí" className="flex gap-1 mb-4 overflow-x-auto" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
-        {TABS.map(t => (
-          <button key={t.key} role="tab" id={`tab-${t.key}`} aria-selected={tab === t.key} aria-controls={`panel-${t.key}`} onClick={() => choose(t.key)}
-            className="px-4 py-2.5 text-sm font-semibold whitespace-nowrap min-h-[44px] -mb-px"
-            style={{ borderBottom: `3px solid ${tab === t.key ? "var(--kin-th-navy)" : "transparent"}`, color: tab === t.key ? "var(--kin-th-navy)" : "var(--kin-chu-phu)" }}>
-            {t.label}{t.key === "doi-soat" && count > 0 ? ` (${count})` : ""}
-          </button>
-        ))}
-      </div>
+      <KinTabs
+        className="mb-4"
+        label="Học phí"
+        value={tab}
+        onChange={choose}
+        tabId={k => `tab-${k}`}
+        panelId={k => `panel-${k}`}
+        tabs={TABS.map(t => ({ key: t.key, label: `${t.label}${t.key === "doi-soat" && count > 0 ? ` (${count})` : ""}` }))}
+      />
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "phieu" && <InvoicesTab onGoPayout={() => choose("nhan-tien")} />}
         {tab === "doi-soat" && <ReconcileTab onCount={setCount} />}

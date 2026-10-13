@@ -156,12 +156,9 @@ Dựng theo Figma "Vỏ — Quản trị" (11:287). Thay hẳn thanh bên tối 
 7. ~~**Phòng thi (27:2):** khoá cứng Navy chưa áp dụng; dải "Bạn đã rời khỏi tab N lần" chưa có; ô đáp án 52px~~ — **ĐÃ LÀM 13/10** (mục "Phòng thi" bên dưới). Chữa bài (NV-188) đã có từ trước.
 8. ~~**Vào lớp bằng mã mời (32:54)** thiếu xem trước lịch/giá/số buổi, thiếu "đồng ý ba điều", thiếu nút "Không phải lớp của tôi"~~ — **ĐÃ LÀM 13/10** (mục "Vào lớp bằng mã mời" bên dưới).
 9. **Đăng nhập / Bản đồ đường vào (32:2, 33:2):** chưa có đăng nhập bằng số điện thoại (cần SMS), tắt mật khẩu, phiên 30 ngày (cookie `kin_s`), phụ huynh token 90 ngày (`kin_p`), quản trị 12 giờ không gia hạn (hiện 7 ngày cho mọi vai); chưa đặt `Referrer-Policy: no-referrer` cho đường dẫn phụ huynh (Quyết định #9).
-**B. Component Figma có mà code chưa có / chưa đủ** (`src/components/kin/`: Button, Input, CodeBoxes, KinLogo + `shell/`)
-- **Nút:** thiếu kiểu "Nguy hiểm" (có Chính/Thường/Ghost); nút lệnh trong khung đọc tự viết riêng, chưa dùng `KinButton`.
-- **Thẻ trạng thái** (Xong/Chờ/Lỗi/Trung tính dạng thẻ): chưa có component; danh sách chỉ có chấm + chữ.
-- **Tab** (Đang mở/Thường): chưa có component dùng chung (dải tab của vỏ quản trị tự vẽ).
-- **Toast** (Xong/Chờ/Lỗi/Tin) và **Hộp xác nhận** (Thường/Nguy hiểm): còn bản cũ ở `ui/Toast`, `ui/ConfirmModal`; chưa phải bộ KiN. Khung xác nhận của "Chờ kiểm duyệt" cũng tự vẽ.
-- **Biểu tượng:** bộ 6 icon Figma đang là bản vẽ lại; vai Quản trị trong Figma cũng dùng icon tạm (Quyết định #3); `TutorShell` dùng emoji. 21 chỗ chữ 9–10px dưới sàn 11,1px.
+**B. Component Figma có mà code chưa có / chưa đủ** — ~~Nút Nguy hiểm, Thẻ trạng thái, Tab, Toast, Hộp xác nhận~~ **ĐÃ LÀM 13/10** (mục "Bộ component" bên dưới). Còn lại:
+- **Biểu tượng:** bộ 6 icon Figma đang là bản vẽ lại; vai Quản trị trong Figma cũng dùng icon tạm (Quyết định #3); `TutorShell` dùng emoji.
+- Chữ dưới sàn 11,1px: ~~21 chỗ~~ → đã nâng hết trong `.tsx` (29 chỗ); còn `font-size: 10px` trong `kin-tokens.css` (huy hiệu đếm — file sinh từ Figma, không sửa tay).
 **C. Việc nằm ở phía Figma (không phải code)**
 - Trang "Toàn cảnh" còn 4 khung theo mô hình xác nhận 72 giờ cũ (91:3, 91:112, 91:666, 91:696) mâu thuẫn Quyết định #25/#26; màn Lớp còn "7/8 buổi" trong khi Quyết định #21 nói đã sửa thành 7/9.
 - TK-205/206: đồng bộ text style về thang 8 bậc; ~3.000 lớp chữ còn gõ cỡ tay.
@@ -184,6 +181,39 @@ Phát hiện khi rà Figma: `[data-vung="phong-thi"]` (TK-168/174, ghi "xong" tr
 - Test: `t-invite-preview-lib` (15), `t-invite-preview` (14: API + Postgres thật — khung giờ đã tắt bị bỏ, buổi tương lai không tính, môn của gia sư khác không tính, mức riêng không lộ sang em khác, lớp không gia sư, chỉ đọc), `ui-invite-input` (26, đã cập nhật chữ mới + mục Figma + điện thoại 390px).
 - **Khác Figma:** thẻ nằm trong vỏ học sinh (không phải màn riêng); ô nhập hiện nhãn "Mã mời" nhưng tên truy cập vẫn là "Mã mời lớp".
 - **Chưa làm:** Figma ghi mã dạng `HSA-2K9-T7F3` (có gạch ngang, theo tên lớp) — mã hiện vẫn là 8 ký tự ngẫu nhiên (BE-064); đổi định dạng mã là việc riêng.
+
+## Bộ component KiN còn thiếu (Figma 6:50, 8:139, 106:23, 106:30, 106:51) — XONG ngày 13/10
+Năm component Figma đã có trong `src/components/kin/` (xuất ở `index.ts`) và đã **thay vào chỗ đang dùng**, không để nằm không:
+- **`KinButton`** — thêm kiểu **Nguy hiểm** (`danger`: nền trắng, viền đủ 3:1, chữ đỏ) và `danger-solid` (nền đỏ đặc, dùng cho nút xác nhận trong hộp). Đủ trạng thái Figma: Rê chuột (Chính → `--kin-nhan-nen-re`, Thường/Ghost/Nguy hiểm → `--kin-nen-re-chuot`), Focus (vòng xanh 2px **ngoài** viền, offset 0), Tắt (mờ 45%). Cao ≥ 44px, chữ 13,3px, bo 9px. **Bỏ vòng xoay** (Figma: dùng chữ, không spinner): `loading` khoá nút + `aria-busy`, có `loadingLabel` thì đổi chữ ("Đang lưu…"). `kinButtonClass()` cho thẻ `<a>/<Link>` cùng dáng.
+- **`KinStatus`** (Thẻ trạng thái) — chấm 7px + chữ 13,3px, cao 16px, 4 loại Xong/Chờ/Lỗi/Trung tính, **hai bộ mã màu cố ý** (chấm 3:1, chữ 4,5:1; không gộp).
+- **`KinTabs`** — `role=tablist/tab`, mũi tên trái/phải (vòng lại), Home/End, roving tabindex, gạch chân 2px màu nhấn; cao 44px (Figma vẽ 40px, brand book đòi chạm ≥ 44). `KIN_TAB_BOX` + `KinTabInner` cho tab là **liên kết điều hướng** (`aria-current`, không `role=tab`).
+- **`KinToast`** — 400px, bo 10px, chấm 8px + tiêu đề đậm + dòng phụ 11,1px, 4 loại xong/chờ/lỗi/tin; lỗi là `role=alert`.
+- **`KinConfirm`** (Hộp xác nhận) — 420px, bo 14px; loại thường và **nguy hiểm** (tiêu đề đỏ, nút xác nhận đỏ đặc). Giữ tiêu điểm trong hộp, Escape/bấm nền = huỷ, khoá cuộn trang, trả tiêu điểm về nút đã mở. **Loại nguy hiểm: tiêu điểm đầu tiên ở nút Huỷ**.
+- Token mới trong `kin-site.css`: `--kin-bong-toast`, `--kin-bong-hop`, `--kin-phu-hop`.
+
+**Đã thay vào đâu:**
+| Chỗ cũ | Giờ |
+|---|---|
+| Nút lệnh trong khung đọc Outlook (`Command`, tự viết) | `KinButton` / `kinButtonClass`; `Command.kind` có thêm `danger` |
+| Trạng thái trong `ListRow` + `Badge` của gia sư (chấm tự vẽ) | `KinStatus` |
+| Dải tab của vỏ quản trị | `KIN_TAB_BOX` + `KinTabInner` |
+| Tab ở Quản trị viên, hồ sơ gia sư, Học phí, Kế hoạch buổi (nút tự viết, 4 kiểu khác nhau) | `KinTabs` |
+| `ToastProvider` (khối màu đặc) | hiển thị bằng `KinToast`; thêm `toast.warn` và tuỳ chọn `detail` |
+| `ConfirmModal` (không ai dùng) | còn là lớp bọc `KinConfirm` |
+| Thu hồi mã mời, Xoá bài vi phạm (gia sư) — `Modal` + nút đỏ viết tay | `KinConfirm` nguy hiểm + `KinButton variant="danger"` |
+| Xoá kế hoạch buổi — `window.confirm` của trình duyệt | `KinConfirm` nguy hiểm |
+| Khung "Xác nhận: …" ở Chờ kiểm duyệt (admin) | giữ khung nằm trong khung đọc (đúng đặc tả) nhưng dùng `KinButton`; hành động `danger` → nút đỏ |
+
+**Lỗi cũ phát hiện và sửa trên đường làm:** quy tắc chung `:focus-visible { border-radius: 4px }` trong `globals.css` ép **mọi** phần tử về bo 4px khi focus bàn phím (nút tròn, viên thuốc, thẻ bị méo) → đã bỏ dòng đó. Quy tắc chung `button:disabled { opacity: .55 }` và `:focus-visible { outline-offset: 2px }` nằm ngoài `@layer` nên **thắng cả lớp tiện ích Tailwind** — giá trị Figma (45%, offset 0) phải đặt ở `kin-site.css` theo `[data-kin-nut]`; ghi chú ngay chỗ đó. Enter không còn xác nhận từ bất kỳ đâu trong hộp (bản cũ: Enter ở nút Huỷ vẫn xác nhận).
+
+**Chữ dưới sàn 11,1px:** nâng hết 29 chỗ (`text-[9px]…[11px]` → `--kin-co-caption`) trong 15 file, kể cả nhãn thanh dưới của gia sư (9,5px) và huy hiệu. `t-kin-components` quét lại, đỏ nếu có chỗ mới.
+
+**Test:** `t-kin-components` (37, tĩnh), `ui-kin-components` (77, đo style tính ra trên trang mẫu `/kin-mau` — chỉ có ở dev; kích thước, màu theo token, rê chuột/focus/tắt/chờ, bàn phím, tương phản, chủ đề Cổ vịt, điện thoại 390px). `ui-plan` cập nhật cho hộp xác nhận xoá kế hoạch.
+
+**Khác Figma / chưa làm:**
+- Nút trong hộp xác nhận dùng `KinButton` (bo 9px, kiểu Thường nền trắng); Figma vẽ riêng nút hộp bo 8px nền bảng — chênh nhỏ, chưa đáng tách kiểu.
+- Toast có thêm nút × (Figma không vẽ) vì thông báo tự tắt sau 3 giây, người dùng bàn phím cần cách đóng sớm.
+- `TutorShell` vẫn là menu 226px + emoji (chỉ nâng cỡ chữ); các `window.confirm` còn lại ở trang quản trị thi thử/khoá học (8 chỗ) chưa đổi — chúng nằm trong luồng `async` dài, đổi từng chỗ cần chạm logic.
 
 ## Điểm chuẩn (FE-099) — dựng xong; DỮ LIỆU MỚI LÀ TẬP NHỎ, CHƯA ĐỐI CHIẾU — ngày 12/10
 `/diem-chuan` không còn 8 dòng gõ cứng bịa. Bảng mới `admission_scores` (chỉ thêm): mỗi dòng = một ngành, một năm, một phương thức, **kèm đường dẫn nguồn bắt buộc**,

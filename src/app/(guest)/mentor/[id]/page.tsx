@@ -104,7 +104,7 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <p className="font-semibold text-sm leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</p>
                     {c.classStatus !== "open" && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      <span className="text-[length:var(--kin-co-caption)] font-bold px-2 py-0.5 rounded-full"
                         style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                         {c.classStatus === "closed" ? "Đã đóng" : "Tạm ngừng"}
                       </span>

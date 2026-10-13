@@ -559,7 +559,7 @@ const TYPE_COLOR: Record<string, string> = {
 function DocBadge({ type }: { type: string }) {
   const t = type ?? "file";
   return (
-    <span className="w-8 h-8 rounded flex items-center justify-center text-white text-[10px] font-black flex-shrink-0 uppercase"
+    <span className="w-8 h-8 rounded flex items-center justify-center text-white text-[length:var(--kin-co-caption)] font-black flex-shrink-0 uppercase"
       style={{ background: TYPE_COLOR[t] ?? "var(--kin-chu-mo)" }}>
       {t}
     </span>

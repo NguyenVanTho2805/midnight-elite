@@ -5,6 +5,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui";
+import { KinTabs } from "@/components/kin";
 
 type Status = "pending" | "approved" | "rejected";
 
@@ -121,17 +122,15 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Trạng thái hồ sơ gia sư">
-        {(Object.keys(STATUS_LABEL) as Status[]).map(s => (
-          <button key={s} role="tab" aria-selected={status === s} onClick={() => setStatus(s)}
-            className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer"
-            style={status === s
-              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
-              : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
-            {STATUS_LABEL[s]}{s === "pending" && status === "pending" && !loading && !failed ? ` (${items.length})` : ""}
-          </button>
-        ))}
-      </div>
+      <KinTabs
+        label="Trạng thái hồ sơ gia sư"
+        value={status}
+        onChange={setStatus}
+        tabs={(Object.keys(STATUS_LABEL) as Status[]).map(s => ({
+          key: s,
+          label: `${STATUS_LABEL[s]}${s === "pending" && status === "pending" && !loading && !failed ? ` (${items.length})` : ""}`,
+        }))}
+      />
 
       {loading ? (
         <div className="space-y-3" aria-busy="true">

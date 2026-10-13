@@ -871,7 +871,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               <div className="space-y-3">
                 <div className="text-xs p-3 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                   Dán danh sách câu hỏi hoặc tải file (.txt, .csv, .xlsx). Mỗi câu hỏi 1 khối, cách nhau bởi dòng trống — loại câu hỏi tự nhận diện theo nội dung khối:
-                  <pre className="mt-1.5 whitespace-pre-wrap text-[11px]" style={{ color: "var(--kin-chu-chinh)" }}>{`Câu 1: Trắc nghiệm...
+                  <pre className="mt-1.5 whitespace-pre-wrap text-[length:var(--kin-co-caption)]" style={{ color: "var(--kin-chu-chinh)" }}>{`Câu 1: Trắc nghiệm...
 Ảnh: https://... (tùy chọn, ảnh đã tải lên sẵn)
 *A. Đáp án đúng
 B. Đáp án sai
@@ -1595,7 +1595,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <div className="grid grid-cols-4 gap-2">
                   {form.clusterPercents.map((p, idx) => (
                     <div key={idx}>
-                      <label className="block text-[11px] text-gray-500 mb-1">{idx + 1} ý đúng</label>
+                      <label className="block text-[length:var(--kin-co-caption)] text-gray-500 mb-1">{idx + 1} ý đúng</label>
                       <input type="number" min="0" max="100" className={inp}
                         value={p}
                         onChange={e => {

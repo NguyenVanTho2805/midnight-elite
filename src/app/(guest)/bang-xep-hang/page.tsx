@@ -170,7 +170,7 @@ function TabThiThu() {
                 <div className="col-span-5 flex items-center gap-2">
                   <div className="font-semibold text-sm" style={{ color: isMe ? "var(--kin-nhan-link)" : "var(--kin-chu-chinh)" }}>{s.name}</div>
                   {isMe && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "var(--kin-nhan-nen)" }}>Bạn</span>
+                    <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "var(--kin-nhan-nen)" }}>Bạn</span>
                   )}
                 </div>
                 <div className="col-span-3 hidden sm:block text-xs" style={{ color: "var(--kin-chu-mo)" }}>{s.school.split(",")[0]}</div>
@@ -342,7 +342,7 @@ function TabVinhDanh() {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-semibold text-sm" style={{ color: isMe ? "var(--kin-nhan-link)" : "var(--kin-chu-chinh)" }}>{s.name}</span>
                     {isMe && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "var(--kin-nhan-nen)" }}>Bạn</span>
+                      <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "var(--kin-nhan-nen)" }}>Bạn</span>
                     )}
                     {badges.map(b => (
                       <span key={b.id} title={b.title} className="px-1.5 py-0.5 text-xs rounded-full font-bold leading-none"

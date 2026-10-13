@@ -184,7 +184,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
             {nonZeroDifficulties.length > 0 && (
               <div className="flex items-center gap-1">
                 {nonZeroDifficulties.map(k => (
-                  <span key={k} className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold" style={DIFFICULTY_COLOR[k]}>
+                  <span key={k} className="px-1.5 py-0.5 rounded-full text-[length:var(--kin-co-caption)] font-semibold" style={DIFFICULTY_COLOR[k]}>
                     {k} {node.difficultyTotals[k]}
                   </span>
                 ))}

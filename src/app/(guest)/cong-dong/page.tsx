@@ -597,12 +597,12 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
                   thể hoặc "common" thì mọi bài trong view đều cùng phạm vi,
                   badge chỉ gây rối. */}
               {scope === "all" && t.course && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 truncate max-w-[160px]"
+                <span className="text-[length:var(--kin-co-caption)] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 truncate max-w-[160px]"
                   style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}
                   title={`Lớp ${t.course.name}`}>Lớp {t.course.name}</span>
               )}
               {scope === "all" && !t.course && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                <span className="text-[length:var(--kin-co-caption)] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
                   style={{ background: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" }}>Chung</span>
               )}
             </div>

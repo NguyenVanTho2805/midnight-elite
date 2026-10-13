@@ -58,7 +58,7 @@ export default function NotificationBell() {
         aria-label="Thông báo">
         <BellIcon size={18} style={{ color: "var(--kin-chu-mo)" }} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[length:var(--kin-co-caption)] font-bold text-white"
             style={{ background: "var(--kin-tt-chu-loi)" }}>
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>

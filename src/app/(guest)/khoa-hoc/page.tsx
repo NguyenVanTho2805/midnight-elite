@@ -109,7 +109,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
         <div className="flex flex-wrap items-center gap-1 mb-3">
           {course.types.map((t) => (
             <span key={t}
-              className="px-2 py-0.5 rounded text-[11px] font-semibold"
+              className="px-2 py-0.5 rounded text-[length:var(--kin-co-caption)] font-semibold"
               style={t === "Live"
                 ? { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }
                 : { background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
@@ -117,7 +117,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
             </span>
           ))}
           {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 2).map(tag => (
-            <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
+            <span key={tag} className="text-[length:var(--kin-co-caption)] px-1.5 py-0.5 rounded" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
               #{tag}
             </span>
           ))}
