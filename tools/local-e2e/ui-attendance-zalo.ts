@@ -1,4 +1,4 @@
-import { api, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
+import { BASE, api, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +15,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 
   await launch();
   const ctx = await ctxFor(T);
-  await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: ADMIN }).catch(() => {});
+  await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: BASE }).catch(() => {});
   const opened: string[] = [];
   await ctx.route(/\/\/(zalo\.me|chat\.zalo\.me)\//, route => { opened.push(route.request().url()); void route.fulfill({ status: 200, contentType: "text/html", body: "<title>zalo</title>" }); });
   // Origin admin chạy http thường (không phải ngữ cảnh an toàn) → navigator.clipboard không có; zaloShare dùng execCommand dự phòng.
@@ -26,13 +26,20 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
       return orig(cmd, ...a);
     };
   });
+  // 14/10: gia sư nay ở tên miền chính (localhost = ngữ cảnh an toàn) nên zaloShare dùng navigator.clipboard thay vì execCommand dự phòng — bắt cả hai đường.
+  await ctx.addInitScript(() => {
+    try {
+      const c = navigator.clipboard;
+      if (c && c.writeText) { const ow = c.writeText.bind(c); c.writeText = (t: string) => { (window as any).__copied = t; return ow(t).catch(() => {}); }; }
+    } catch { /* không có clipboard */ }
+  });
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/Failed to load resource|zalo/i.test(m.text())) errors.push(m.text()); });
 
   section("Chưa lưu thì chưa có nút Nhắn phụ huynh");
-  await page.goto(`${ADMIN}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
+  await page.goto(`${BASE}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
   await page.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await page.getByText("Em An").waitFor({ timeout: 30000 });
@@ -108,7 +115,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 
   section("Điện thoại 390px");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage();
-  await mp.goto(`${ADMIN}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle" });
+  await mp.goto(`${BASE}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle" });
   await mp.getByRole("button", { name: /Nhắn phụ huynh của Em An/ }).waitFor({ timeout: 60000 });
   check("không tràn ngang", await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   const bb = await mp.getByRole("button", { name: /Nhắn phụ huynh của Em An/ }).boundingBox();

@@ -1,4 +1,4 @@
-import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -20,7 +20,7 @@ import { prisma } from "@/lib/prisma";
   page.on("dialog", d => { dialogs.push(d.message()); d.dismiss().catch(() => {}); });
 
   section("Tab Cài đặt: Vận hành lớp");
-  await page.goto(`${ADMIN}/admin/khoa-hoc/${course.id}?tab=cai-dat`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=cai-dat`, { waitUntil: "networkidle" });
   const cap = page.getByLabel("Sức chứa (số học viên tối đa)");
   await cap.waitFor({ timeout: 60000 });
   check("sức chứa trống khi không giới hạn", (await cap.inputValue()) === "");
@@ -54,7 +54,7 @@ import { prisma } from "@/lib/prisma";
   await eventually("xoá trống → null (không giới hạn)", async () => (await prisma.course.findUnique({ where: { id: course.id } }))?.capacity === null);
 
   section("Tab Học viên: cột Trạng thái");
-  await page.goto(`${ADMIN}/admin/khoa-hoc/${course.id}?tab=hoc-vien`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=hoc-vien`, { waitUntil: "networkidle" });
   await page.getByText("Em Một").waitFor({ timeout: 60000 });
   check("có cột 'Trạng thái'", await page.getByRole("columnheader", { name: "Trạng thái" }).isVisible());
   check("Em Một → Đang học", await page.getByRole("row", { name: /Em Một/ }).getByText("Đang học").isVisible());

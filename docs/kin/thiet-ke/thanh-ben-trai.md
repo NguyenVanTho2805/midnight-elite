@@ -105,8 +105,10 @@ Nếu `(guest)/layout` đọc cookie phiên để chọn khung, **cả nhóm tra
 | Lấy lựa chọn của tài khoản về máy | `src/components/AccountThemeSync.tsx` |
 | Tuỳ chọn `rail` (đọc khoan dung, ghi nghiêm) | `src/lib/userPreferences.ts` |
 | Vỏ ở trang khách cho học viên / gia sư | `src/components/shell/GuestChrome.tsx`, `TutorShellClient.tsx`, `src/app/(guest)/layout.tsx` |
+| Menu tài khoản ở dải trên (làm sau, cùng ngày) | `src/components/kin/shell/AccountMenu.tsx`, gắn vào `StudentShell` / `TutorShell` |
+| Gia sư ở lại tên miền chính; đăng nhập xong vào thẳng dashboard (làm sau, cùng ngày) | `src/lib/hostRouting.ts` (thuần), `src/proxy.ts`, `src/components/tutor/TutorAdminFrame.tsx`, `src/app/(admin)/layout.tsx` |
 
-Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-sidebar` (56, trình duyệt thật: học viên, gia sư, quản trị, điện thoại, khách). Đã **thử phá cố ý**: bỏ script trước khi vẽ → test "không nháy" đỏ (`[79,1,0]`: thanh hiện 79px rồi mới thụt); trả `(guest)/layout` về bản cũ → các kiểm tra "Thư viện / trang khách" đỏ.
+Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-sidebar` (56, trình duyệt thật: học viên, gia sư, quản trị, điện thoại, khách). Làm sau: `t-host-routing-lib` (43), `ui-tutor-admin` (33), `ui-account-menu` (29). Đã **thử phá cố ý**: bỏ script trước khi vẽ → test "không nháy" đỏ (`[79,1,0]`: thanh hiện 79px rồi mới thụt); trả `(guest)/layout` về bản cũ → các kiểm tra "Thư viện / trang khách" đỏ.
 
 ---
 
@@ -114,11 +116,11 @@ Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-si
 
 | # | Việc | Vì sao chưa | Cần ai |
 |---|---|---|---|
-| 1 | **Khung Figma cho trạng thái thu**: nút mở, tiêu điểm, chấm đỏ | Figma chưa có; bản dựng tự suy ra từ `Nút module` | Thanh |
+| 1 | ~~**Khung Figma cho trạng thái thu**: nút mở, tiêu điểm, chấm đỏ~~ **ĐÃ VẼ 14/10** (chỉ thêm khung mới): 218:365, 218:424, 220:455 ở trang 5:39. Chưa ai nhìn ảnh chụp (xem `tien-do-dang-do.md` mục K) | — | Thanh xem lại |
 | 2 | **Thanh rộng 220px có nhãn + mục con** (phương án B) — gom "Khác" thành mục con | Cần thiết kế; đổi cách tìm trang | Thọ chọn có / không |
-| 3 | **Gia sư ↔ quản trị là hai tên miền**: "Bài KT" và "Thư viện" của gia sư nhảy sang `admin.…` và thanh bên đổi thành thanh quản trị (Kiểm duyệt, Người dùng…) | Đụng cách chia tên miền + cookie | Thọ (kiến trúc) |
+| 3 | ~~**Gia sư ↔ quản trị là hai tên miền**~~ **ĐÃ SỬA 14/10**: gia sư ở lại tên miền chính, cùng phiên, trong vỏ gia sư (`hostRouting.ts`). **Còn lại:** cookie vẫn không dùng chung giữa hai tên miền cho quản trị cấp 1 / nội dung | Đụng bảo mật phiên | Thọ nếu muốn dùng chung cookie |
 | 4 | **`/lop-cua-toi/[courseId]`** (xem một lớp) dùng khung riêng, không có thanh module | Cần quyết: thanh module + khung lớp cạnh nhau, hay giữ drill-in | Thọ + Thanh |
-| 5 | **Khi thu, "Khác" (hồ sơ, đăng xuất, trang phụ) nằm sau nút mở** | Cần thêm menu tài khoản ở dải trên (học viên hiện chỉ có xu + chuông; gia sư chỉ có tên) | Nên làm |
+| 5 | ~~**Khi thu, "Khác" (hồ sơ, đăng xuất, trang phụ) nằm sau nút mở**~~ **ĐÃ SỬA 14/10**: menu tài khoản ở dải trên (`AccountMenu`). "Trang phụ" khác trong "Khác" vẫn nằm sau thanh bên | — | — |
 | 6 | **Hết nháy hoàn toàn ở trang khách khi tải cứng** | Cần cookie gợi ý (không bí mật) + script trước khi vẽ để chừa chỗ 79px | Làm khi cần |
 | 7 | Điện thoại: ngăn kéo "thò ra từ trái" thay vì thanh dưới | Thanh dưới hợp một tay hơn; chưa có yêu cầu | Chỉ làm nếu Thọ muốn |
 | 8 | Rê chuột mép trái để thò ra tạm | Không có phương án bàn phím/cảm ứng | Hoãn |

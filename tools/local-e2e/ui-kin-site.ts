@@ -107,8 +107,11 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   check("chân trang nền trắng khi máy ở chế độ tối", fb === "rgb(255, 255, 255)", fb);
   check("chữ liên kết thanh trên vẫn tối (đọc được trên nền trắng)", await dp.locator("header nav a").first().evaluate(e => { const c = getComputedStyle(e).color.match(/\d+/g)!.map(Number); return c[0] < 100 && c[1] < 100; }));
 
-  section("Đã đăng nhập: thanh trên có menu tài khoản, không còn nút Đăng ký");
-  const uctx = await ctxFor(U, { width: 1440, height: 900 });
+  // 14/10: học viên / gia sư đã đăng nhập không còn thấy trang khách (mở "/" là vào thẳng dashboard — xem ui-tutor-admin), nên thanh trên của khách
+  // với menu tài khoản chỉ còn thấy ở QUẢN TRỊ (cấp 1 / nội dung) mở trang khách trên tên miền chính. Kiểm bằng một quản trị cấp 1.
+  section("Đã đăng nhập (quản trị): thanh trên khách có menu tài khoản, không còn nút Đăng ký");
+  const AD = await mkSuper("Nguyễn Minh Anh");
+  const uctx = await ctxFor(AD, { width: 1440, height: 900 });
   const up = await uctx.newPage(); watch(up);
   await up.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 240000 });
   const acc = up.locator("header").getByRole("button", { name: /Anh/ });

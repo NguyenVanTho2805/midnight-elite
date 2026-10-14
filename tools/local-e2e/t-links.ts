@@ -31,7 +31,7 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
   const STR = /(["'`])(\/[A-Za-z0-9\-_/${}.?=&#:%,\[\]+*]*)\1/g;
   const norm = (p: string) => p.split("#")[0].split("?")[0].replace(/\$\{[^}]*\}/g, "*").replace(/\/+$/, "").split("/").filter(Boolean);
   // Tiền tố / bản mẫu không phải liên kết: proxy.ts (so sánh tiền tố), StudentShell (`also` = tiền tố module), thư mục _template (không định tuyến).
-  const IGNORE = new Set(["src/proxy.ts", "src/app/(admin)/admin/_template/page.tsx"]);
+  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts", "src/app/(admin)/admin/_template/page.tsx"]); // hostRouting.ts: so khớp TIỀN TỐ ("/api", "/_next"), không phải liên kết
   const IGNORE_PATH = new Set(["/student/bai-giang"]);
   const badPages: string[] = [];
   let nLinks = 0;

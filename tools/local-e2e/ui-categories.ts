@@ -1,4 +1,4 @@
-import { mkTutor, mkCourse, mkSuper, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkTutor, mkCourse, mkSuper, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 
   section("Gia sư: xem được, không sửa được");
   const tp = await (await ctxFor(T)).newPage(); watch(tp);
-  await tp.goto(`${ADMIN}/admin/khoa-hoc/danh-muc`, { waitUntil: "networkidle", timeout: 120000 });
+  await tp.goto(`${BASE}/admin/khoa-hoc/danh-muc`, { waitUntil: "networkidle", timeout: 120000 });
   await tp.getByRole("columnheader", { name: "Khoá của bạn" }).waitFor({ timeout: 90000 });
   check("ghi rõ danh mục dùng chung, chỉ quản trị viên đổi tên", await tp.getByRole("note").filter({ hasText: /dùng chung cho mọi gia sư/ }).isVisible() && await tp.getByRole("note").filter({ hasText: /chỉ quản trị viên được đổi tên/ }).isVisible());
   check("thấy ĐỦ tên (Lý, Toán) — để chọn khi tạo khoá — nhưng đếm chỉ khoá của mình", await tp.getByRole("row", { name: /Toán/ }).innerText().then(t => /\s2\s*Chỉ quản trị viên sửa/.test(t.replace(/\n/g, " "))) && await tp.getByRole("row", { name: /Lý/ }).innerText().then(t => /\s0\s*Chỉ quản trị viên sửa/.test(t.replace(/\n/g, " "))));
@@ -52,7 +52,7 @@ import { prisma } from "@/lib/prisma";
 
   section("Điện thoại 390px");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage(); watch(mp);
-  await mp.goto(`${ADMIN}/admin/khoa-hoc/danh-muc`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp.goto(`${BASE}/admin/khoa-hoc/danh-muc`, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByRole("note").waitFor({ timeout: 60000 });
   check("không tràn ngang (bảng cuộn trong khung)", await mp.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   check("không lỗi trang", errors.length === 0, errors.slice(0, 4));
