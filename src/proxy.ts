@@ -1,51 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
+import { decrypt } from "@/lib/session";
+import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, type RouteSession } from "@/lib/hostRouting";
 
 // Tách admin ra domain riêng — admin.midnightelite-edu.com phục vụ đúng cây
 // route /admin (đã có sẵn ở src/app/(admin)/admin), domain chính không còn
-// cho vào /admin nữa (redirect hẳn sang domain admin). 1 codebase/1 deployment
-// duy nhất — chỉ đọc header Host để rewrite/redirect, không cần CORS/API
+// cho vào /admin nữa (redirect hẳn sang domain admin) — TRỪ gia sư: gia sư ở lại domain chính
+// để cùng một phiên, cùng một vỏ (xem src/lib/hostRouting.ts, nơi có toàn bộ quy tắc và test).
+// 1 codebase/1 deployment duy nhất — chỉ đọc header Host để rewrite/redirect, không cần CORS/API
 // riêng vì fetch("/api/...") tương đối vẫn cùng-origin trên cả 2 domain.
-const ADMIN_HOST = "admin.midnightelite-edu.com";
+const COOKIE_NAME = "midnight_session"; // giữ đúng tên ở src/lib/session.ts
 
-function isAdminHost(host: string): boolean {
-  return host === ADMIN_HOST || host.startsWith(`${ADMIN_HOST}:`); // cho phép cổng khi giả lập Host cục bộ
+async function sessionOf(req: NextRequest): Promise<RouteSession | null> {
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  return token ? await decrypt(token) : null;
 }
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
 
-  if (isAdminHost(host)) {
-    // API, tài nguyên tĩnh Next, trang đăng nhập dùng chung — giữ nguyên.
-    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap")) {
-      return NextResponse.next();
-    }
-    // "/" → dashboard admin.
-    if (pathname === "/") {
-      const url = req.nextUrl.clone();
-      url.pathname = "/admin";
-      return NextResponse.rewrite(url);
-    }
-    // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem src/lib/adminNav.ts)
-    // — cho qua nguyên trạng.
-    if (pathname.startsWith("/admin")) return NextResponse.next();
-    // Đường lạ trên domain admin (vd gõ nhầm /khoa-hoc) — không phục vụ trang
-    // công khai qua domain này, bật lại dashboard.
-    const url = req.nextUrl.clone();
-    url.pathname = "/admin";
-    return NextResponse.redirect(url);
-  }
+  const session = needsSession(host, pathname) ? await sessionOf(req) : null;
+  const d = decideRoute({ host, pathname, search, session });
 
-  // Domain chính: chặn hẳn đường cũ /admin/..., ép sang domain admin (giữ
-  // nguyên sub-path — bookmark/link cũ vẫn tới đúng chỗ, chỉ đổi domain).
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    const url = req.nextUrl.clone();
-    url.hostname = ADMIN_HOST;
-    url.pathname = pathname.replace(/^\/admin/, "") || "/";
-    return NextResponse.redirect(url, 308);
-  }
+  if (d.kind === "next") return NextResponse.next();
+  const url = req.nextUrl.clone();
+  if (d.kind === "rewrite") { url.pathname = d.pathname; return NextResponse.rewrite(url); }
 
-  return NextResponse.next();
+  url.pathname = d.pathname;
+  url.search = d.search ?? "";
+  if (d.host === "admin") url.hostname = ADMIN_HOST;
+  else if (d.host === "main") url.hostname = MAIN_HOST;
+  return NextResponse.redirect(url, d.status);
 }
 
 export const config = {

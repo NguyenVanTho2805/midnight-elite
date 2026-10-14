@@ -12,6 +12,7 @@ import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
 const MORE_GROUPS: MoreGroup[] = [
@@ -86,6 +87,8 @@ export default function StudentShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             <CoinBalance />
             <NotificationBell />
+            {user && <AccountMenu name={user.name} email={user.email} initial={user.avatar} onLogout={() => void logout()}
+              links={[{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
           </div>
         </div>
         {children}

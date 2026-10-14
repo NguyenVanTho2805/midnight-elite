@@ -54,7 +54,7 @@ import { prisma } from "@/lib/prisma";
   check("số đỏ trên Hộp việc = tổng việc (API) và có nhãn chữ", total === 4 && (await badge.innerText()) === String(total) && (await badge.getAttribute("aria-label")) === `${total} việc cần xử lý`, total);
   check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem").count() === 1);
   check("dải trên 48px: logo KiN dẫn về Hộp việc + tên người dùng", await pg.getByRole("link", { name: /KiN — Hộp việc/ }).getAttribute("href") === "/lop-cua-toi" && await pg.getByText("Cô Lan").first().isVisible());
-  check("bài KT / thư viện là liên kết sang trang quản trị", await mod("Bài KT").getAttribute("href") === "/admin/thi-thu" && await mod("Thư viện").getAttribute("href") === "/admin/thi-thu/ngan-hang-de-thi");
+  check("Bài KT → /admin/thi-thu (chạy ngay trên tên miền chính, trong vỏ gia sư); Thư viện → /thu-vien (thư viện các lớp mình dạy)", await mod("Bài KT").getAttribute("href") === "/admin/thi-thu" && await mod("Thư viện").getAttribute("href") === "/thu-vien");
 
   section("Danh sách + khung đọc");
   const opts = lb.getByRole("option");

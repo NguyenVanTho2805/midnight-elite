@@ -24,7 +24,7 @@ export const TUTOR_MODULES: readonly TutorModuleDef[] = [
   { key: "lich",     label: "Lịch",      href: "/lop-cua-toi/lich",                     always: true,  hint: "Lịch tuần, nhắc lịch, báo nghỉ sát giờ" },
   { key: "lop",      label: "Lớp",       href: "/lop-cua-toi/lop",                      always: false, hint: "Danh sách lớp, học viên, mã mời" },
   { key: "bai-kt",   label: "Bài KT",    href: "/admin/thi-thu",                        always: false, hint: "Đề thi và bài kiểm tra" },
-  { key: "thu-vien", label: "Thư viện",  href: "/admin/thi-thu/ngan-hang-de-thi",       always: false, hint: "Ngân hàng đề và tài liệu" },
+  { key: "thu-vien", label: "Thư viện",  href: "/thu-vien",                             always: false, hint: "Bản ghi và tài liệu của các lớp bạn dạy" },
   { key: "hoc-phi",  label: "Học phí",   href: "/lop-cua-toi/hoc-phi",                  always: true,  hint: "Phiếu học phí và đối soát chuyển khoản" },
 ];
 

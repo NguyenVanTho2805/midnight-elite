@@ -47,7 +47,7 @@ check("quản trị cấp 1 / cấp nội dung → không có ở trang khách (
 check("vai chưa rõ (null) → không có", shellFor({ role: null, adminRole: null }, "/thu-vien") === null);
 for (const p of NO_SHELL_PATHS) check(`${p} (đăng nhập / đăng ký / khôi phục) → không có thanh bên dù đã đăng nhập`, shellFor(student, p) === null && shellFor(tutor, p) === null && shellFor(student, p + "/x") === null);
 check("trang chỉ giống TIỀN TỐ ('/dang-nhap-gi-do') thì vẫn có thanh bên — so khớp theo đoạn đường dẫn, không theo chuỗi", shellFor(student, "/dang-nhap-gi-do") === "student" && shellFor(student, "/dang-ky-lop") === "student");
-check("danh sách loại trừ đủ 6 trang xác thực", NO_SHELL_PATHS.length === 6 && ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"].every(p => NO_SHELL_PATHS.includes(p)), NO_SHELL_PATHS);
+check("danh sách loại trừ đủ 6 trang xác thực", NO_SHELL_PATHS.length === 6 && ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"].every(p => (NO_SHELL_PATHS as readonly string[]).includes(p)), NO_SHELL_PATHS);
 
 section("Tuỳ chọn `rail` lưu theo tài khoản (User.preferences)");
 check("đọc: 'thu' và 'mo' giữ nguyên", readPreferences({ rail: "thu" }).rail === "thu" && readPreferences({ rail: "mo" }).rail === "mo");

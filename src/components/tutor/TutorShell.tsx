@@ -11,12 +11,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
-/** Mục nằm ở trang quản trị (tên miền khác): dùng thẻ <a> thường để trình duyệt chuyển hẳn sang. */
-const EXTERNAL = new Set(["bai-kt", "thu-vien"]);
+// Các trang /admin/* mà gia sư dùng (đề thi, ngân hàng đề, quản lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ này (src/lib/hostRouting.ts,
+// TutorAdminFrame) — nên Bài KT / Thư viện / Lớp là liên kết nội bộ chứ không còn nhảy sang tên miền quản trị.
 
 const MORE_BASE: MoreGroup[] = [
   { title: "Dạy học", links: [
@@ -60,9 +61,11 @@ export default function TutorShell({
   const items: ModuleItem[] = [
     ...visible.map<ModuleItem>(m => ({
       key: m.key, label: m.label, href: m.href, icon: ICON[m.key] ?? "viec", badge: badges[m.key],
-      external: EXTERNAL.has(m.key),
       // Hộp việc nằm ở đúng /lop-cua-toi nên chỉ sáng khi đúng đường dẫn đó (isUnder sẽ làm nó sáng ở mọi trang con).
-      active: m.key === "hop-viec" ? pathname === "/lop-cua-toi" : EXTERNAL.has(m.key) ? false : isUnder(pathname, m.href),
+      active: m.key === "hop-viec" ? pathname === "/lop-cua-toi"
+        : m.key === "bai-kt" ? isUnder(pathname, "/admin/thi-thu")   // đề thi + ngân hàng câu hỏi + ngân hàng đề (cùng một họ "bài kiểm tra")
+        : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/khoa-hoc")  // quản lớp / điểm danh / học viên của lớp
+        : isUnder(pathname, m.href),
     })),
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen },
   ];
@@ -77,7 +80,8 @@ export default function TutorShell({
             <RailOpenButton pending={Object.values(badges).reduce((a, n) => a + (n > 0 ? n : 0), 0)} />
             <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
           </div>
-          {user && <span className="truncate max-w-[200px] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">{user.name}</span>}
+          {user && <AccountMenu name={user.name} email={user.email} initial={user.avatar} onLogout={() => void logout()}
+            links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }]} />}
         </div>
         {children}
       </div>
