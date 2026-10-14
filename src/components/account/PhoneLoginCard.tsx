@@ -66,7 +66,7 @@ export default function PhoneLoginCard({ profilePhone, className = "", compact =
     setMsg({ kind: "error", text: data.error ?? (res ? "Không gửi được mã. Thử lại sau." : "Không có kết nối. Thử lại sau.") });
   }
 
-  async function confirm(value: string = code) {
+  async function submitCode(value: string = code) {
     if (busy) return;
     if (value.length !== 6) { setInvalid(true); setMsg({ kind: "error", text: "Mã gồm đúng 6 chữ số." }); return; }
     setBusy(true); setMsg(null);
@@ -115,9 +115,9 @@ export default function PhoneLoginCard({ profilePhone, className = "", compact =
               <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>
                 Mã vừa gửi tới <strong className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{e164 ? maskPhone(e164) : phone}</strong> qua SMS · mã sống 10 phút
               </p>
-              <div ref={boxes}><CodeBoxes value={code} onChange={v => { setCode(v); if (invalid) setInvalid(false); }} invalid={invalid} disabled={busy} onComplete={v => { void confirm(v); }} /></div>
+              <div ref={boxes}><CodeBoxes value={code} onChange={v => { setCode(v); if (invalid) setInvalid(false); }} invalid={invalid} disabled={busy} onComplete={v => { void submitCode(v); }} /></div>
               <div className="flex flex-wrap items-center gap-3">
-                <KinButton onClick={() => void confirm()} loading={busy} loadingLabel="Đang xác minh…" disabled={code.length !== 6}>Xác minh</KinButton>
+                <KinButton onClick={() => void submitCode()} loading={busy} loadingLabel="Đang xác minh…" disabled={code.length !== 6}>Xác minh</KinButton>
                 {cooldown > 0
                   ? <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-mo)" }} aria-live="polite">Gửi lại sau {Math.floor(cooldown / 60)}:{String(cooldown % 60).padStart(2, "0")}</span>
                   : <KinButton variant="ghost" onClick={() => void send()} disabled={busy}>Gửi lại mã</KinButton>}

@@ -26,7 +26,6 @@ const ALLOW: { file: RegExp; why: string }[] = [
   { file: /^src\/components\/community\/ThreadDetailShared\.tsx$/, why: "bảng màu avatar phân loại" },
   { file: /^src\/app\/\(guest\)\/khoa-hoc\/page\.tsx$/, why: "màu nhãn khoá học (Course.tagColor lưu trong DB) — giá trị mặc định khi chưa chọn" },
   { file: /^src\/app\/\(admin\)\/admin\/khoa-hoc\/(page|\[id\]\/page)\.tsx$/, why: "bộ chọn màu nhãn khoá học: các màu này được LƯU vào DB (Course.tagColor)" },
-  { file: /^src\/components\/CourseShowcase\.tsx$/, why: "dữ liệu mẫu khoá học có tagColor" },
 ];
 
 section("Mã hex viết cứng");

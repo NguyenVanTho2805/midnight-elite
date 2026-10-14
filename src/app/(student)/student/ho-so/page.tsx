@@ -452,8 +452,8 @@ export default function HoSoPage() {
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="w-full max-w-xs rounded-xl p-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.1) 0px 4px 20px 0px" }}>
-            <h2 className="text-base font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Đăng xuất tất cả?</h2>
-            <p className="text-sm mb-5" style={{ color: "var(--kin-chu-mo)" }}>Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, kể cả thiết bị hiện tại.</p>
+            <h2 className="text-base font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Đăng xuất?</h2>
+            <p className="text-sm mb-5" style={{ color: "var(--kin-chu-mo)" }}>Bạn sẽ được đăng xuất khỏi thiết bị này. Thiết bị khác (nếu có) vẫn đăng nhập.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowLogoutConfirm(false)}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium"
@@ -752,7 +752,7 @@ export default function HoSoPage() {
               <button onClick={() => setShowLogoutConfirm(true)}
                 className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"
                 style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)", color: "var(--kin-tt-chu-loi)", borderRadius: "8px" }}>
-                Đăng xuất tất cả thiết bị
+                Đăng xuất
               </button>
             </div>
           </div>
