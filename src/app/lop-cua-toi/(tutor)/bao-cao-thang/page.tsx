@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BaoCaoThangPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/bao-cao-thang");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/bao-cao-thang");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   return <BaoCaoClient />;
 }

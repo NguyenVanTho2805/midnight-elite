@@ -14,21 +14,21 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import TutorDashboard from "./TutorDashboard";
+import HopViec from "@/components/tutor/HopViec";
 import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 
 export const dynamic = "force-dynamic";
 
 export default async function LopCuaToiPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi");
 
-  // Gia sư: tổng quan đầy đủ (FE-141..144). Quản lý trung tâm và học viên giữ danh sách bên dưới.
+  // Gia sư: Hộp việc dạng danh sách + khung đọc (Figma 9:2). Quản lý trung tâm và học viên giữ danh sách bên dưới.
   if (session.role === "admin" && session.adminRole === "teacher") {
-    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true, preferences: true } });
-    // TT-203: chế độ gọn — Hộp việc chưa bật thì màn đầu là Lịch; Tổng quan vẫn mở được bằng đường dẫn.
+    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true } });
+    // TT-203: chế độ gọn — Hộp việc chưa bật thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở /lop-cua-toi/tong-quan.
     if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
-    return <TutorDashboard tutorId={session.userId} name={me?.name ?? "bạn"} />;
+    return <HopViec />;
   }
 
   // 2 danh sách tuỳ role.

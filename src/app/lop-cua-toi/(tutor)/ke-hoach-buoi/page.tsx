@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function KeHoachBuoiPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/ke-hoach-buoi");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/ke-hoach-buoi");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   return <KeHoachListClient />;
 }

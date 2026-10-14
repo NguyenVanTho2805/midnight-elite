@@ -84,7 +84,7 @@ import { prisma } from "@/lib/prisma";
 
   section("Lối tắt ở Tổng quan + học sinh không vào được");
   await prisma.user.update({ where: { id: T.id }, data: { preferences: { modules: ["hop-viec", "lop"] } } });
-  await page.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
   await page.getByRole("navigation", { name: /Lối tắt/ }).getByRole("link", { name: "Bài đăng tìm HS" }).waitFor({ timeout: 60000 });
   check("Tổng quan có lối tắt 'Bài đăng tìm HS'", true);
   const S = await mkUser({ name: "Học sinh" });

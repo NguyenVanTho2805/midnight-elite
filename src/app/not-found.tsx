@@ -32,9 +32,9 @@ export default function NotFoundPage() {
         </div>
 
         <p className="text-xs mt-8" style={{ color: "var(--kin-chu-mo)" }}>
-          Nếu bạn cho rằng đây là lỗi, hãy liên hệ{" "}
-          <a href="mailto:support@tsix.vn" className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
-            support@tsix.vn
+          Nếu bạn cho rằng đây là lỗi, hãy gọi{" "}
+          <a href="tel:0384409051" className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
+            0384 409 051
           </a>
         </p>
       </div>

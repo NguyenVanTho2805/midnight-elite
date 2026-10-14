@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LopPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/lop");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/lop");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   const d = await loadTutorDashboard(session.userId);
   return (

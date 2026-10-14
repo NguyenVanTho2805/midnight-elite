@@ -12,6 +12,7 @@ import Link from "next/link";
 import { BookOpen, ChartBar, CheckCircle, Flash } from "griddy-icons";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { prisma } from "@/lib/prisma";
 
 const HERO_CATEGORIES = [
   { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội" },
@@ -20,24 +21,39 @@ const HERO_CATEGORIES = [
   { label: "TSA Bách Khoa",   desc: "ĐH Bách Khoa HN" },
 ];
 
-// Số liệu giữ nguyên như Figma và bản cũ; chưa có nguồn đếm tự động.
-const STATS = [
-  { value: "1.200+",  label: "Học sinh đang học" },
-  { value: "10.000+", label: "Đề thi thử" },
-  { value: "6",       label: "Gia sư & trợ giảng" },
-];
+// Số liệu ở khung "Đang mở luyện thi" là SỐ ĐẾM THẬT từ cơ sở dữ liệu (làm mới mỗi giờ). Bản Figma ghi 1.200+ / 10.000+ / 6 nhưng đó là
+// số minh hoạ chưa có nguồn nên không dùng. Số nào bằng 0 thì ẩn; truy vấn lỗi thì ẩn cả khối (không bao giờ hiện số bịa).
+export const revalidate = 3600;
+
+async function loadStats(): Promise<{ value: string; label: string }[]> {
+  try {
+    const [learners, exams, tutors] = await Promise.all([
+      prisma.enrollment.groupBy({ by: ["userId"], where: { status: "active" } }).then(r => r.length),
+      prisma.exam.count({ where: { active: true } }),
+      prisma.user.count({ where: { role: "admin", adminRole: "teacher", tutorVerified: true, banned: false } }),
+    ]);
+    return [
+      { value: learners, label: "Học sinh đang học" },
+      { value: exams, label: "Đề thi thử" },
+      { value: tutors, label: "Gia sư" },
+    ].filter(s => s.value > 0).map(s => ({ value: s.value.toLocaleString("vi-VN"), label: s.label }));
+  } catch {
+    return [];
+  }
+}
 
 const WHY_ITEMS = [
   { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với gia sư thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức." },
   { Icon: ChartBar,    title: "Theo dõi tiến độ realtime", desc: "Dashboard cá nhân hiển thị tiến độ từng môn, GPA, streak và thứ hạng toàn hệ thống." },
   { Icon: BookOpen,    title: "Trợ giảng riêng 1-1",       desc: "Mỗi học sinh được phân công trợ giảng người thật để hỏi bài và định hướng lộ trình." },
-  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",    desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày. Ngoài giờ có AI hỗ trợ thêm." },
+  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",    desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày." },
 ];
 
 const btnOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] bg-white text-[var(--kin-nhan-nen)] font-semibold transition-opacity hover:opacity-90";
 const btnGhostOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] border border-white/30 text-white font-semibold transition-colors hover:bg-white/10";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const stats = await loadStats();
   return (
     <div data-vung="sang" className="kin-chu-than min-h-screen flex flex-col bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)]">
       <Navbar />
@@ -77,14 +93,16 @@ export default function HomePage() {
                   </Link>
                 ))}
               </div>
-              <dl className="grid grid-cols-3 gap-3 rounded-2xl border border-white/[0.12] bg-white/[0.06] p-5 m-0">
-                {STATS.map((s) => (
+              {stats.length > 0 && (
+              <dl className="grid gap-3 rounded-2xl border border-white/[0.12] bg-white/[0.06] p-5 m-0" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
+                {stats.map((s) => (
                   <div key={s.label} className="flex flex-col-reverse gap-1">
                     <dt className="text-[length:var(--kin-co-caption)] text-white/70">{s.label}</dt>
                     <dd className="kin-chu-tieu-de m-0 font-semibold text-[length:var(--kin-co-h4)] leading-tight text-white">{s.value}</dd>
                   </div>
                 ))}
               </dl>
+              )}
             </div>
           </div>
         </section>

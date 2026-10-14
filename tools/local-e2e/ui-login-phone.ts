@@ -1,0 +1,191 @@
+// Đăng nhập bằng số điện thoại — màn hình thật: ô "Số điện thoại hoặc email", mã SMS đọc từ SMS_SINK_DIR, thẻ xác minh số ở hồ sơ học sinh
+// và cài đặt gia sư, trạng thái khi SMS tắt (ô chỉ còn email, thẻ biến mất), điện thoại 390px.
+import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { BASE, mkTutor, mkUser, wipe, check, section, done, eventually } from "./h";
+import { launch, ctxFor, shot, closeAll } from "./ui";
+import { prisma } from "@/lib/prisma";
+
+const SINK = process.env.SMS_SINK_DIR;
+if (!SINK) { console.error("Cần SMS_SINK_DIR (xem env.example.sh) và server dev chạy với cùng biến này."); process.exit(2); }
+type Sms = { to: string; text: string };
+const sms = (to: string): Sms[] => readdirSync(SINK).sort().map(f => JSON.parse(readFileSync(join(SINK, f), "utf8")) as Sms).filter(m => m.to === to);
+const codeOf = (to: string) => sms(to).at(-1)?.text.match(/la (\d{6})\./)?.[1] ?? "";
+
+const RUN = Math.floor(Math.random() * 90_000_000) + 10_000_000;
+const phoneOf = (n: number) => `09${String(RUN + n).slice(-8)}`;
+const e164Of = (n: number) => `+84${phoneOf(n).slice(1)}`;
+const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).slice(-4)}`;
+
+(async () => {
+  rmSync(SINK, { recursive: true, force: true }); mkdirSync(SINK, { recursive: true });
+  await wipe();
+  const V = await mkUser({ name: "Em Đã Xác Minh" }), N = await mkUser({ name: "Em Chưa Xác Minh" }), S = await mkUser({ name: "Em Hoa" }), T = await mkTutor("Cô Lan");
+  await prisma.user.update({ where: { id: V.id }, data: { phone: phoneOf(1), phoneE164: e164Of(1), phoneVerifiedAt: new Date() } });
+  await prisma.user.update({ where: { id: N.id }, data: { phone: phoneOf(2) } });
+  await prisma.user.update({ where: { id: S.id }, data: { phone: phoneOf(3) } });
+  await prisma.user.update({ where: { id: T.id }, data: { phone: phoneOf(4) } });
+
+  await launch();
+  const errors: string[] = [];
+  const watch = (p: any) => { p.on("pageerror", (e: unknown) => errors.push(String(e))); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of (4|5)/i.test(m.text())) errors.push(m.text()); }); };
+  const hide = (p: any) => p.addStyleTag({ content: "[data-agentation-root]{display:none!important}" });
+
+  section("Màn đăng nhập khi SMS đã mở");
+  const g = await ctxFor(null, { width: 1280, height: 900 });
+  const p0 = await g.newPage(); watch(p0);
+  await p0.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  const box = p0.getByLabel("Số điện thoại hoặc email");
+  await box.waitFor({ timeout: 60000 });
+  check("ô có nhãn 'Số điện thoại hoặc email' và gợi ý cả hai dạng", await box.isVisible() && /0901 234 567 hoặc ten@gmail\.com/.test((await box.getAttribute("placeholder")) ?? ""));
+  check("nói rõ: số chỉ nhận mã khi đã xác minh trong Hồ sơ", await p0.getByText(/chỉ nhận được mã sau khi bạn đã xác minh số trong Hồ sơ/).isVisible());
+  check("vẫn là MỘT ô + nút 'Gửi mã đăng nhập', không có ô mật khẩu", await p0.getByRole("button", { name: "Gửi mã đăng nhập" }).isVisible() && await p0.getByLabel("Mật khẩu").count() === 0);
+  await shot(p0, "login-phone-1");
+  await box.fill("0901");
+  await p0.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
+  await eventually("số sai dạng → báo lỗi từ máy chủ", async () => await p0.getByRole("alert").filter({ hasText: "hợp lệ" }).first().isVisible());
+
+  section("Đăng nhập bằng số đã xác minh");
+  await box.fill(`${phoneOf(1).slice(0, 4)} ${phoneOf(1).slice(4, 7)} ${phoneOf(1).slice(7)}`);
+  await p0.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
+  await p0.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
+  check(`màn mã: 'Mã vừa gửi tới ${mask(1)} qua SMS' (che giữa số)`, await p0.getByText(mask(1), { exact: true }).isVisible() && await p0.getByText(/qua SMS · mã sống 10 phút/).isVisible());
+  check("đúng 1 SMS gửi tới đúng số, đúng chữ KiN", sms(e164Of(1)).length === 1 && sms(e164Of(1))[0].text.startsWith("KiN: Ma dang nhap cua ban la "), sms(e164Of(1)));
+  check("nút đổi là 'Đổi số điện thoại' (không phải 'Đổi email')", await p0.getByRole("button", { name: "Đổi số điện thoại" }).isVisible() && await p0.getByRole("button", { name: "Đổi email" }).count() === 0);
+  await shot(p0, "login-phone-2");
+  const real = codeOf(e164Of(1));
+  const wrong = real === "000000" ? "111111" : "000000";
+  await p0.locator('input[inputmode="numeric"], input[autocomplete="one-time-code"]').first().click();
+  await p0.keyboard.type(wrong);
+  await eventually("nhập sai → 'Mã không đúng — còn 4 lần thử' + giải thích khoá 'số điện thoại này'", async () => { const t = await p0.getByRole("alert").filter({ hasText: "Mã không đúng" }).innerText().catch(() => ""); return t.includes("Mã không đúng — còn 4 lần thử") && t.includes("khoá đăng nhập số điện thoại này trong 15 phút"); });
+  await p0.locator("input").first().click();
+  await p0.keyboard.type(real);
+  await p0.waitForURL(/\/student\/viec-cua-toi/, { timeout: 60000 });
+  const me = await (await p0.request.get(`${BASE}/api/auth/me`)).json();
+  check("nhập mã đúng → vào /student/viec-cua-toi, phiên đúng người", me.id === V.id && me.phoneVerified === true, me);
+  await g.close();
+
+  section("Gia sư đăng nhập bằng số → vào Hộp việc (không phải bảng quản trị)");
+  const TT = await mkTutor("Cô Hoa");
+  await prisma.user.update({ where: { id: TT.id }, data: { phone: phoneOf(5), phoneE164: e164Of(5), phoneVerifiedAt: new Date(), preferences: { modules: ["hop-viec", "lop"] } } });
+  const gt = await ctxFor(null, { width: 1280, height: 900 });
+  const pt = await gt.newPage(); watch(pt);
+  await pt.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await pt.getByLabel("Số điện thoại hoặc email").fill(phoneOf(5));
+  await pt.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
+  await pt.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
+  await pt.locator("input").first().click();
+  await pt.keyboard.type(codeOf(e164Of(5)));
+  await pt.waitForURL(/\/lop-cua-toi$/, { timeout: 60000 });
+  check("gia sư vào /lop-cua-toi (Hộp việc), không bị đưa sang /admin", new URL(pt.url()).pathname === "/lop-cua-toi", pt.url());
+  await pt.getByRole("listbox", { name: "Hộp việc" }).waitFor({ timeout: 60000 }).catch(() => {});
+  check("thanh module của gia sư hiện ra (đang ở vỏ gia sư)", await pt.getByRole("navigation", { name: "Module của gia sư" }).isVisible());
+  await gt.close();
+
+  section("Số CHƯA xác minh: không nhận SMS, có lời nhắc");
+  const g2 = await ctxFor(null, { width: 1280, height: 900 });
+  const p1 = await g2.newPage(); watch(p1);
+  await p1.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p1.getByLabel("Số điện thoại hoặc email").fill(phoneOf(2));
+  await p1.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
+  await p1.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
+  check("vẫn sang màn nhập mã (không lộ số chưa xác minh)", await p1.getByText(/qua SMS/).isVisible());
+  check("KHÔNG có SMS nào tới số này", sms(e164Of(2)).length === 0);
+  check("có lời nhắc 'Không nhận được SMS? Có thể số này chưa được xác minh…' + lối về email", await p1.getByText(/Không nhận được SMS\? Có thể số này chưa được xác minh trong Hồ sơ/).isVisible());
+  await g2.close();
+
+  section("Khi SMS tắt: ô chỉ còn email như cũ");
+  const g3 = await ctxFor(null, { width: 1280, height: 900 });
+  const p2 = await g3.newPage(); watch(p2);
+  await p2.route("**/api/auth/code/methods", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ email: true, phone: false }) }));
+  await p2.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p2.getByLabel("Email", { exact: true }).waitFor({ timeout: 60000 });
+  check("nhãn 'Email', gợi ý ten@gmail.com, không nhắc số điện thoại", (await p2.getByLabel("Email", { exact: true }).getAttribute("placeholder")) === "ten@gmail.com" && await p2.getByText(/số điện thoại/i).count() === 0);
+  check("ô là type=email", (await p2.getByLabel("Email", { exact: true }).getAttribute("type")) === "email");
+  await g3.close();
+
+  section("Thẻ xác minh số ở hồ sơ học sinh");
+  const g4 = await ctxFor(S, { width: 1280, height: 900 });
+  const p3 = await g4.newPage(); watch(p3);
+  await p3.goto(`${BASE}/student/ho-so`, { waitUntil: "networkidle", timeout: 120000 });
+  const card = p3.getByRole("region", { name: "Đăng nhập bằng số điện thoại" });
+  await card.waitFor({ timeout: 90000 });
+  await hide(p3);
+  check("thẻ hiện (SMS đã mở), ô số điền sẵn số trong hồ sơ", (await card.getByLabel("Số điện thoại").inputValue()) === phoneOf(3), await card.getByLabel("Số điện thoại").inputValue());
+  await shot(p3, "login-phone-card-1");
+  await card.getByLabel("Số điện thoại").fill("123");
+  await card.getByRole("button", { name: "Gửi mã SMS" }).click();
+  check("số sai dạng → báo ngay, không gọi máy chủ gửi", await card.locator("[role=alert]", { hasText: /Nhập số di động Việt Nam/ }).isVisible() && sms(e164Of(3)).length === 0);
+  await card.getByLabel("Số điện thoại").fill(phoneOf(3));
+  await card.getByRole("button", { name: "Gửi mã SMS" }).click();
+  await card.getByText(/Mã vừa gửi tới/).waitFor({ timeout: 30000 });
+  check(`hiện 'Mã vừa gửi tới ${mask(3)} qua SMS' + có SMS thật`, await card.getByText(mask(3), { exact: true }).isVisible() && sms(e164Of(3)).length === 1);
+  check("nút 'Gửi lại sau 0:xx' đang đếm, 'Xác minh' tắt khi chưa đủ 6 số", await card.getByText(/Gửi lại sau \d:\d\d/).isVisible() && await card.getByRole("button", { name: "Xác minh" }).isDisabled());
+  const cw = codeOf(e164Of(3)) === "000000" ? "111111" : "000000";
+  await card.locator("input").first().click();
+  await p3.keyboard.type(cw);
+  await eventually("mã sai → 'Mã không đúng — còn 4 lần thử'", async () => (await card.locator("[role=alert]").innerText().catch(() => "")).includes("còn 4 lần thử"));
+  await card.locator("input").first().click();
+  await p3.keyboard.type(codeOf(e164Of(3)));
+  await card.getByRole("button", { name: "Gỡ số" }).waitFor({ timeout: 30000 });
+  check(`mã đúng → 'Số ${mask(3)} đã xác minh', có nút 'Gỡ số', thông báo thành công`, await card.getByText(mask(3), { exact: true }).isVisible() && await card.getByRole("button", { name: "Gỡ số" }).isVisible() && await card.locator("[role=status]", { hasText: /Đã xác minh/ }).isVisible());
+  check("DB: phoneE164 + phoneVerifiedAt đã ghi", await (async () => { const u = await prisma.user.findUnique({ where: { id: S.id } }); return u?.phoneE164 === e164Of(3) && !!u?.phoneVerifiedAt; })());
+  await shot(p3, "login-phone-card-2");
+  await p3.reload({ waitUntil: "networkidle" });
+  await p3.getByRole("region", { name: "Đăng nhập bằng số điện thoại" }).getByRole("button", { name: "Gỡ số" }).waitFor({ timeout: 60000 });
+  check("tải lại trang vẫn thấy 'đã xác minh' (lưu thật, không chỉ trên màn hình)", true);
+  await p3.getByRole("region", { name: "Đăng nhập bằng số điện thoại" }).getByRole("button", { name: "Gỡ số" }).click();
+  const dlg = p3.getByRole("dialog", { name: "Gỡ số điện thoại đăng nhập?" });
+  await dlg.waitFor({ timeout: 15000 });
+  check("gỡ số hỏi lại bằng hộp KiN, tiêu điểm ở 'Huỷ'", await dlg.getByRole("button", { name: "Huỷ" }).evaluate(e => e === document.activeElement));
+  await dlg.getByRole("button", { name: "Huỷ" }).click();
+  check("Huỷ: số vẫn gắn (DB)", (await prisma.user.findUnique({ where: { id: S.id } }))?.phoneE164 === e164Of(3));
+  await p3.getByRole("region", { name: "Đăng nhập bằng số điện thoại" }).getByRole("button", { name: "Gỡ số" }).click();
+  await dlg.waitFor({ timeout: 15000 });
+  await dlg.getByRole("button", { name: "Gỡ số", exact: true }).click();
+  await eventually("xác nhận gỡ: DB xoá xác minh", async () => (await prisma.user.findUnique({ where: { id: S.id } }))?.phoneE164 === null);
+  await p3.getByRole("region", { name: "Đăng nhập bằng số điện thoại" }).getByRole("button", { name: "Gửi mã SMS" }).waitFor({ timeout: 30000 });
+  check("sau khi gỡ: thẻ quay về form 'Gửi mã SMS'", true);
+  await g4.close();
+
+  section("Thẻ xác minh số ở cài đặt gia sư");
+  const g5 = await ctxFor(T, { width: 1280, height: 900 });
+  const p4 = await g5.newPage(); watch(p4);
+  await p4.goto(`${BASE}/lop-cua-toi/cai-dat`, { waitUntil: "networkidle", timeout: 120000 });
+  const tc = p4.getByRole("region", { name: "Đăng nhập bằng số điện thoại" });
+  await tc.waitFor({ timeout: 90000 });
+  check("thẻ có ở cài đặt gia sư, ô số điền sẵn số hồ sơ", (await tc.getByLabel("Số điện thoại").inputValue()) === phoneOf(4));
+  await g5.close();
+
+  section("Khi SMS tắt: thẻ không có mặt");
+  const g6 = await ctxFor(S, { width: 1280, height: 900 });
+  const p5 = await g6.newPage(); watch(p5);
+  await p5.route("**/api/auth/code/methods", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ email: true, phone: false }) }));
+  await p5.goto(`${BASE}/student/ho-so`, { waitUntil: "networkidle", timeout: 120000 });
+  await p5.getByRole("heading", { name: "Bảo mật" }).waitFor({ timeout: 90000 });
+  check("không hiện thẻ (không hứa điều chưa làm được)", await p5.getByRole("region", { name: "Đăng nhập bằng số điện thoại" }).count() === 0);
+  await g6.close();
+
+  section("Điện thoại 390px");
+  const g7 = await ctxFor(null, { width: 390, height: 800 });
+  const p6 = await g7.newPage(); watch(p6);
+  await p6.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p6.getByLabel("Số điện thoại hoặc email").waitFor({ timeout: 60000 });
+  check("màn đăng nhập không tràn ngang", await p6.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
+  check("ô nhập cao ≥ 44px", (await p6.getByLabel("Số điện thoại hoặc email").evaluate(e => e.getBoundingClientRect().height)) >= 44);
+  await shot(p6, "login-phone-mobile");
+  await g7.close();
+  const g8 = await ctxFor(S, { width: 390, height: 800 });
+  const p7 = await g8.newPage(); watch(p7);
+  await p7.goto(`${BASE}/student/ho-so`, { waitUntil: "networkidle", timeout: 120000 });
+  const mc = p7.getByRole("region", { name: "Đăng nhập bằng số điện thoại" });
+  await mc.waitFor({ timeout: 90000 });
+  check("thẻ xác minh không tràn ngang trên điện thoại", await p7.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
+  check("nút trong thẻ cao ≥ 44px", (await mc.getByRole("button").evaluateAll(els => els.map(e => e.getBoundingClientRect().height))).every(h => h >= 44));
+  await g8.close();
+
+  section("Không lỗi trình duyệt");
+  check("không pageerror / console.error", errors.length === 0, errors.slice(0, 3));
+  await closeAll();
+  await done();
+})().catch(async e => { console.error("TEST CRASH", e); await closeAll().catch(() => {}); process.exit(1); });

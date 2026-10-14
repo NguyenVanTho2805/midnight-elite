@@ -69,3 +69,7 @@ cookies*.txt
 # bản sao bộ test cục bộ: mật khẩu DB thử và ảnh chụp không commit
 /tools/local-e2e/env.sh
 /tools/local-e2e/shots/
+
+# Rác phát triển (từng bị commit nhầm)
+/__dev.log
+/__screenshots/

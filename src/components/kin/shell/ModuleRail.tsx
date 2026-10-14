@@ -66,7 +66,7 @@ export function ModuleRail({ roleLabel, modules, ariaLabel, children }: {
     );
     const common = { className: `${cls} hover:bg-[var(--kin-nen-re-chuot)] transition-colors`, style, "aria-current": active ? ("page" as const) : undefined };
     if (m.onClick) {
-      return <button key={m.key} type="button" onClick={m.onClick} aria-haspopup="dialog" aria-expanded={m.expanded ?? false} aria-controls={m.controls} {...common}>{inner}</button>;
+      return <button key={m.key} type="button" onClick={m.onClick} data-khac-nut aria-haspopup="dialog" aria-expanded={m.expanded ?? false} aria-controls={m.controls} {...common}>{inner}</button>;
     }
     return m.external || !m.href?.startsWith("/")
       ? <a key={m.key} href={m.href} {...common}>{inner}</a>

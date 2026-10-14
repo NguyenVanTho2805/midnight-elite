@@ -197,7 +197,7 @@ export default function ParentLinkWidget({
       <div className="flex gap-2">
         <input type="email" value={email} onChange={e => setEmail(e.target.value)}
           aria-label="Email tài khoản của con" placeholder="Email tài khoản của con"
-          className="notion-input flex-1 text-sm" style={{ color: "var(--kin-chu-chinh)" }} />
+          className="notion-input flex-1 min-w-0 text-sm" style={{ color: "var(--kin-chu-chinh)" }} />
         <button onClick={request} disabled={submitting}
           className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60 flex-shrink-0"
           style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>

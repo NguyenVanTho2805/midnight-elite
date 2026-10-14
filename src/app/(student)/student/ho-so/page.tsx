@@ -1,12 +1,12 @@
 "use client";
 
+import PhoneLoginCard from "@/components/account/PhoneLoginCard";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import PopupDeviceLimit from "@/components/PopupDeviceLimit";
 import Cropper from "react-easy-crop";
 import {
   CheckCircle, CloseCircle, AlertCircle,
-  Trophy, Key, Mobile, Laptop, Edit, PhotoCamera,
+  Trophy, Key, Edit, PhotoCamera,
 } from "griddy-icons";
 import { BADGE_RULES } from "@/lib/honorData";
 import { DropZone } from "@/components/DropZone";
@@ -195,11 +195,9 @@ interface ProfileData {
 export default function HoSoPage() {
   const { user, logout } = useAuth();
   const [profile,           setProfile]           = useState<ProfileData | null>(null);
-  const [showDevicePopup,   setShowDevicePopup]   = useState(false);
   const [toast,             setToast]             = useState<ToastType | null>(null);
   const [examResults,       setExamResults]       = useState<ExamResultItem[]>([]);
   const [earnedBadgeIds,    setEarnedBadgeIds]    = useState<Set<string>>(new Set());
-  const [kickedDevices,     setKickedDevices]     = useState<Set<number>>(new Set());
   const [userStats,         setUserStats]         = useState<UserStats | null>(null);
   const [activityCounts,    setActivityCounts]    = useState<Record<string, number>>({});
   const [enrolledCourses,   setEnrolledCourses]   = useState<EnrolledCourseItem[]>([]);
@@ -372,12 +370,6 @@ export default function HoSoPage() {
   const studentIdStr = studentId ? `HS-${studentId}` : undefined;
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
-  // Mock device data — real device tracking not yet implemented
-  const devices = [
-    { name: "Chrome / Windows 11", lastActive: "Hôm nay, 21:32", current: true },
-    { name: "Safari / iPhone 15",  lastActive: "Hôm qua, 09:14", current: false },
-  ];
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -476,13 +468,6 @@ export default function HoSoPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {showDevicePopup && (
-        <PopupDeviceLimit
-          onClose={() => setShowDevicePopup(false)}
-          onKickOther={() => { setShowDevicePopup(false); showToast("Đã kick thiết bị", "success"); }}
-        />
       )}
 
       {/* ── Profile header ── */}
@@ -753,44 +738,7 @@ export default function HoSoPage() {
           {/* ── Streak Calendar ── */}
           <StreakCalendar counts={activityCounts} />
 
-          {/* ── Thiết bị (mock) ── */}
-          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold" style={{ color: "var(--kin-chu-phu)" }}>Thiết bị (2/2)</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>Tối đa 2</span>
-            </div>
-            <div className="space-y-2">
-              {devices.map((device, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
-                    {device.name.includes("iPhone") ? <Mobile size={18} /> : <Laptop size={18} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: kickedDevices.has(i) ? "var(--kin-chu-mo)" : "var(--kin-chu-phu)" }}>
-                      {device.name}{kickedDevices.has(i) ? " (đã kick)" : ""}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{device.lastActive}</p>
-                  </div>
-                  {device.current ? (
-                    <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>Hiện tại</span>
-                  ) : kickedDevices.has(i) ? (
-                    <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>Đã kick</span>
-                  ) : (
-                    <button onClick={() => setKickedDevices(prev => new Set([...prev, i]))}
-                      className="text-xs px-2 py-0.5 rounded-lg flex-shrink-0"
-                      style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>Kick</button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setShowDevicePopup(true)}
-              className="w-full mt-3 py-2 rounded-xl text-xs font-semibold border-2 border-dashed"
-              style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
-              + Mô phỏng đăng nhập thiết bị thứ 3
-            </button>
-          </div>
+          <PhoneLoginCard compact profilePhone={profile?.phone ?? null} />
 
           {/* ── Bảo mật ── */}
           <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
@@ -800,11 +748,6 @@ export default function HoSoPage() {
                 className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"
                 style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)", borderRadius: "8px" }}>
                 Đổi mật khẩu →
-              </button>
-              <button onClick={() => showToast("Tính năng kết nối Google đang phát triển", "info")}
-                className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"
-                style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)", borderRadius: "8px" }}>
-                Kết nối Google →
               </button>
               <button onClick={() => setShowLogoutConfirm(true)}
                 className="w-full py-2.5 rounded-lg text-sm font-medium text-left px-4"

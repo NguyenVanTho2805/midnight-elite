@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HoSoGiaSuPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/ho-so");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/ho-so");
   const u = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true },

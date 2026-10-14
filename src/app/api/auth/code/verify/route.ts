@@ -1,7 +1,8 @@
-// POST { email, code } → đổi mã 6 số lấy phiên đăng nhập (TK-170). Sai 5 lần thì khoá email 15 phút; đúng thì mã bị xoá ngay.
+// POST { email | phone, code } → đổi mã 6 số lấy phiên đăng nhập (TK-170). Sai 5 lần thì khoá email/số 15 phút; đúng thì mã bị xoá ngay.
 import { NextResponse } from "next/server";
 import { normalizeCodeInput, normalizeEmail } from "@/lib/loginCode";
-import { verifyLoginCode } from "@/lib/loginCodeServer";
+import { verifyLoginCode, verifyPhoneLoginCode } from "@/lib/loginCodeServer";
+import { normalizeVnPhone } from "@/lib/phone";
 import { signInResponse } from "@/lib/loginSession";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 
@@ -11,12 +12,16 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json().catch(() => null);
-    const email = normalizeEmail(body?.email);
-    if (!email) return NextResponse.json({ error: "Email không hợp lệ" }, { status: 400 });
+    const isPhone = typeof body?.phone === "string";
+    const email = isPhone ? null : normalizeEmail(body?.email);
+    const e164 = isPhone ? normalizeVnPhone(body.phone) : null;
+    if (isPhone ? !e164 : !email) {
+      return NextResponse.json({ error: isPhone ? "Số điện thoại không hợp lệ (số di động Việt Nam, 10 số)" : "Email không hợp lệ" }, { status: 400 });
+    }
     const code = normalizeCodeInput(body?.code);
     if (!code) return NextResponse.json({ error: "Mã gồm đúng 6 chữ số", code: "format" }, { status: 400 });
 
-    const r = await verifyLoginCode(email, code);
+    const r = isPhone ? await verifyPhoneLoginCode(e164!, code) : await verifyLoginCode(email!, code);
     switch (r.status) {
       case "ok":
         return await signInResponse(r.user);
@@ -24,7 +29,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Mã không đúng", code: "wrong", attemptsLeft: r.attemptsLeft }, { status: 401 });
       case "locked":
         return NextResponse.json(
-          { error: `Đăng nhập bằng email này đang bị khoá. Thử lại sau ${Math.ceil(r.retryAfterSec / 60)} phút.`, code: "locked", retryAfterSec: r.retryAfterSec },
+          { error: `Đăng nhập bằng ${isPhone ? "số điện thoại" : "email"} này đang bị khoá. Thử lại sau ${Math.ceil(r.retryAfterSec / 60)} phút.`, code: "locked", retryAfterSec: r.retryAfterSec },
           { status: 429, headers: { "Retry-After": String(r.retryAfterSec) } },
         );
       default:

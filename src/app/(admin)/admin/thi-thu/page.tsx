@@ -18,6 +18,7 @@ import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
 import { DropZone } from "@/components/DropZone";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -1245,6 +1246,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
 }) {
   const open = exam !== null;
   const [form, setForm]     = useState<EditForm | null>(null);
+  const { ask, dialog } = useKinConfirm();
   const [errors, setErrors] = useState<Partial<Record<keyof EditForm, string>>>({});
   const [saving, setSaving] = useState(false);
   const [applyingPoints, setApplyingPoints] = useState(false);
@@ -1364,7 +1366,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
     if (!form || !exam) return;
     const totalPoints = +form.totalPoints;
     if (!totalPoints || totalPoints <= 0) return;
-    if (!confirm(`Ghi đè điểm của toàn bộ câu hỏi hiện có trong đề này theo tổng ${totalPoints} điểm?`)) return;
+    if (!(await ask({ title: "Ghi đè điểm các câu hỏi?", message: `Điểm của toàn bộ câu hỏi hiện có trong đề này sẽ được ghi đè theo tổng ${totalPoints} điểm.`, confirmLabel: "Ghi đè" }))) return;
     setApplyingPoints(true);
     try {
       const { updated } = await api.examQuestions.setPoints(exam.id, totalPoints);
@@ -1381,6 +1383,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
 
   return (
     <>
+      {dialog}
       {open && (
         <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />
       )}
@@ -1708,6 +1711,7 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
 
 export default function ThiThuAdminPage() {
   const { data: apiExams, loading, refetch } = useExams();
+  const { ask, dialog } = useKinConfirm();
 
   // Re-compute status mỗi phút để badge tự cập nhật không cần reload
   const [, setTick] = useState(0);
@@ -1757,8 +1761,8 @@ export default function ThiThuAdminPage() {
       .then(refetch)
       .catch(e => showToast("Lỗi cập nhật: " + e.message, false));
   }
-  function deleteExam(id: string) {
-    if (!confirm("Xóa đề thi này?")) return;
+  async function deleteExam(id: string) {
+    if (!(await ask({ title: "Xóa đề thi này?", message: "Việc này không hoàn tác được." }))) return;
     api.exams.remove(id)
       .then(refetch)
       .catch(e => showToast("Lỗi xóa đề thi: " + e.message, false));
@@ -1766,6 +1770,7 @@ export default function ThiThuAdminPage() {
 
   return (
     <PermissionGuard required={PERMISSIONS.MANAGE_CURRICULUM}>
+      {dialog}
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 

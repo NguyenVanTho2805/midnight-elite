@@ -40,7 +40,7 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: "KiN — Luyện thi ĐGNL & Tốt nghiệp THPT",
-  description: "Nền tảng luyện thi ĐGNL (HSA, HCM, Bách Khoa) và Tốt nghiệp THPT hàng đầu Việt Nam. Học video bài giảng, thi thử, hỏi AI 24/7.",
+  description: "Nền tảng học cùng gia sư thật cho luyện thi ĐGNL & Tốt nghiệp THPT.", // chữ của chân trang Figma 152:46
   keywords: ["ĐGNL", "luyện thi", "HSA", "tốt nghiệp THPT", "học online", "KiN"],
   openGraph: {
     title: "KiN",

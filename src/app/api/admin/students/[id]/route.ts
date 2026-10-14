@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { staleVerification } from "@/lib/phone";
 
 // PUT /api/admin/students/[id] — cập nhật thông tin học sinh
 export async function PUT(
@@ -19,9 +20,12 @@ export async function PUT(
   }
 
   try {
+    // Quản trị sửa số của học sinh: số đã xác minh (đăng nhập SMS) hết hiệu lực nếu số đổi.
+    const cur = await prisma.user.findUnique({ where: { id }, select: { phoneE164: true } });
     const updated = await prisma.user.update({
       where: { id },
       data: {
+        ...(staleVerification(cur?.phoneE164, phone) ? { phoneE164: null, phoneVerifiedAt: null } : {}),
         name:   name.trim(),
         phone:  phone?.trim()  || null,
         school: school?.trim() || null,

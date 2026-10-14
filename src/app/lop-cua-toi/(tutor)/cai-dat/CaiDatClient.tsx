@@ -7,6 +7,7 @@ import { OPTIONAL_TUTOR_MODULES, TUTOR_MODULES, applyPreferencesPatch, normalize
 import { normalizeZaloGroupUrl } from "@/lib/funnel";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { KinButton } from "@/components/kin";
+import PhoneLoginCard from "@/components/account/PhoneLoginCard";
 import { FIELD_STYLE } from "@/components/tutor/shared";
 
 const CARD = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
@@ -176,6 +177,8 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
           <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>Gửi tin tự động cần Zalo OA đã xác thực, mở khi KiN có pháp nhân. Cho tới lúc đó KiN soạn sẵn tin và bạn tự bấm gửi.</p>
         </div>
       </section>
+
+      <PhoneLoginCard profilePhone={phone} />
 
       <section aria-labelledby="h-gd" className="rounded-xl p-4" style={CARD}>
         <h2 id="h-gd" className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Giao diện</h2>

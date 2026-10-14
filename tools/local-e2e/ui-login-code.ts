@@ -54,10 +54,10 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   check("không tràn ngang", await p0.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await shot(p0, "login-code-1-email");
   await send0.click();
-  check("để trống email rồi bấm gửi → báo 'Vui lòng nhập email'", await A(p0).getByText("Vui lòng nhập email").isVisible());
+  check("để trống email rồi bấm gửi → báo 'Vui lòng nhập số điện thoại hoặc email' (môi trường test có SMS nên ô nhận cả hai)", await A(p0).getByText("Vui lòng nhập số điện thoại hoặc email").isVisible());
   await p0.getByLabel("Email").fill("khong-phai-email");
   await send0.click();
-  await eventually("email sai dạng → báo 'Email không hợp lệ' từ máy chủ", async () => await A(p0).getByText("Email không hợp lệ").isVisible());
+  await eventually("email sai dạng → báo 'Nhập số điện thoại hoặc email hợp lệ' từ máy chủ", async () => await A(p0).getByText("Nhập số điện thoại hoặc email hợp lệ").isVisible());
   check("chưa có thư nào gửi đi", readdirSync(SINK).length === 0);
 
   section("Gửi mã → màn nhập mã (Figma 32:27)");
