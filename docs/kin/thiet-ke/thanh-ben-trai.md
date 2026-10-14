@@ -108,7 +108,7 @@ Nếu `(guest)/layout` đọc cookie phiên để chọn khung, **cả nhóm tra
 | Menu tài khoản ở dải trên (làm sau, cùng ngày) | `src/components/kin/shell/AccountMenu.tsx`, gắn vào `StudentShell` / `TutorShell` |
 | Gia sư ở lại tên miền chính; đăng nhập xong vào thẳng dashboard (làm sau, cùng ngày) | `src/lib/hostRouting.ts` (thuần), `src/proxy.ts`, `src/components/tutor/TutorAdminFrame.tsx`, `src/app/(admin)/layout.tsx` |
 
-Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-sidebar` (56, trình duyệt thật: học viên, gia sư, quản trị, điện thoại, khách). Làm sau: `t-host-routing-lib` (43), `ui-tutor-admin` (33), `ui-account-menu` (29). Đã **thử phá cố ý**: bỏ script trước khi vẽ → test "không nháy" đỏ (`[79,1,0]`: thanh hiện 79px rồi mới thụt); trả `(guest)/layout` về bản cũ → các kiểm tra "Thư viện / trang khách" đỏ.
+Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-sidebar` (57, trình duyệt thật: học viên, gia sư, quản trị, điện thoại, khách). Làm sau: `t-host-routing-lib` (43), `ui-tutor-admin` (33), `ui-account-menu` (29). Đã **thử phá cố ý**: bỏ script trước khi vẽ → test "không nháy" đỏ (`[79,1,0]`: thanh hiện 79px rồi mới thụt); trả `(guest)/layout` về bản cũ → các kiểm tra "Thư viện / trang khách" đỏ.
 
 ---
 
