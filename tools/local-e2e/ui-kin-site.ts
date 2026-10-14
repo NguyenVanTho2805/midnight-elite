@@ -181,8 +181,8 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   await nameInput.fill("Nguyễn Minh Anh");
   await eventually("nhập đúng: viền xanh lá trạng thái #059669", async () => (await borderOf()) === "rgb(5, 150, 105)");
   const lp = await gctx.newPage(); watch(lp);
-  await lp.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 240000 });
-  // Màn đăng nhập mới (mã 6 số qua email) có test riêng ui-login-code; ở đây chỉ giữ kiểm tra chung của khung web công khai.
+  await lp.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 240000 });
+  // Đăng nhập có hai tab (Mật khẩu là mặc định, Mã một lần mở bằng ?cach=ma); test riêng: ui-login-password và ui-login-code. Ở đây chỉ giữ kiểm tra chung của khung web công khai.
   await lp.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   check("đăng nhập bỏ trống: báo 'Vui lòng nhập số điện thoại hoặc email' (môi trường test có SMS)", await lp.getByText("Vui lòng nhập số điện thoại hoặc email").isVisible());
   await lp.getByLabel("Email").evaluate(e => (e as HTMLElement).blur());

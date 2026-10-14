@@ -11,6 +11,7 @@ import NotificationBell from "@/components/NotificationBell";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
 const MORE_GROUPS: MoreGroup[] = [
@@ -73,12 +74,15 @@ export default function StudentShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: "48px" }}>
-      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} />
+      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} onCollapse={closeMore} />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
         <VerifyEmailBanner />
         <div className="h-12 flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
-          <Link href="/student/viec-cua-toi" aria-label="KiN — Việc của tôi" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={badge} />
+            <Link href="/student/viec-cua-toi" aria-label="KiN — Việc của tôi" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          </div>
           <div className="flex items-center gap-2">
             <CoinBalance />
             <NotificationBell />

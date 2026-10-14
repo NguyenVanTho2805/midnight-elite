@@ -294,3 +294,24 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-che-do="sang"]) .kin-badge-dem { color: #0b0e14; }
 }
+
+/* ---------- Thanh bên trái thu / mở (14/10/2026; docs/kin/thiet-ke/thanh-ben-trai.md) ---------- */
+/* Nguồn sự thật: data-kin-rail="thu" trên <html> (src/lib/railState.ts đặt từ localStorage TRƯỚC khi vẽ trang, nên không nháy). Chỉ máy tính: ở điện
+   thoại thanh dưới luôn hiện và quy tắc này không áp (thanh trên máy tính vốn đã `hidden md:block`). */
+.kin-rail-wrap {
+  width: 79px;
+  overflow-x: clip; /* clip, không phải hidden: hidden biến khung này thành khung cuộn và làm `position: sticky` của thanh trong đó mất tác dụng */
+  transition: width 180ms ease-out;
+}
+html[data-kin-rail="thu"] .kin-rail-wrap {
+  width: 0;
+  visibility: hidden; /* gỡ khỏi thứ tự Tab và cây trợ năng: không ai Tab vào chỗ đang ẩn; đặt trễ để chạy xong chuyển động mới ẩn */
+  transition: width 180ms ease-out, visibility 0s linear 180ms;
+}
+.kin-rail-open { display: none; }
+@media (min-width: 768px) {
+  html[data-kin-rail="thu"] .kin-rail-open { display: inline-flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kin-rail-wrap, html[data-kin-rail="thu"] .kin-rail-wrap { transition-duration: 0s; transition-delay: 0s; }
+}

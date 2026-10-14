@@ -1,8 +1,10 @@
-// TK-170 — đăng nhập "một ô, một mã" (Figma 21:9: khung 32:2 nhập email, 32:27 nhập mã 6 số).
-// Nhập email → KiN gửi mã 6 số (sống 10 phút, dùng một lần, sai 5 lần khoá 15 phút, gửi lại sau 60 giây) → nhập mã là vào.
-// Khi máy chủ đã cấu hình SMS (/api/auth/code/methods) ô này nhận cả SỐ ĐIỆN THOẠI ("Số điện thoại hoặc email", Figma 33:2); chưa cấu hình
-// thì y như cũ, chỉ email. Số điện thoại chỉ nhận được mã nếu đã được xác minh trong Hồ sơ — hệ thống cố ý không báo số nào đã có tài khoản.
-// Đăng nhập bằng mật khẩu vẫn còn như LỐI PHỤ (tài khoản cũ đều có mật khẩu; đăng ký hiện vẫn đặt mật khẩu).
+// Đăng nhập (Figma 21:9: khung 32:2 màn đầu, 32:27 nhập mã 6 số).
+// 14/10/2026 (Thọ): đăng nhập bằng TÀI KHOẢN + MẬT KHẨU là đường chính, không chỉ gửi mã. Màn đầu có hai tab cùng một khung 420px:
+//   - "Mật khẩu" (mặc định): ô "Số điện thoại hoặc email" + ô Mật khẩu → /api/auth/login.
+//   - "Mã một lần": nhập email (hoặc số điện thoại) → KiN gửi mã 6 số (sống 10 phút, dùng một lần, sai 5 lần khoá 15 phút, gửi lại sau 60 giây)
+//     → nhập mã là vào. /dang-nhap?cach=ma mở thẳng tab này.
+// Figma 32:14 / 32:25 viết "KiN không dùng mật khẩu" — chữ đó KHÔNG đưa lên giao diện nữa vì trái với quyết định này; Figma cần được cập nhật.
+// Khi máy chủ đã cấu hình SMS (/api/auth/code/methods) ô nhận cả SỐ ĐIỆN THOẠI (Figma 33:2); số chỉ vào được nếu đã xác minh trong Hồ sơ.
 "use client";
 
 import Link from "next/link";
@@ -11,12 +13,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { CodeBoxes } from "@/components/kin/CodeBoxes";
+import { KinTabs } from "@/components/kin/Tabs";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
 import { landingPath } from "@/lib/landing";
 
 type Step = "email" | "code";
-type Notice = { kind: "wrong" | "locked" | "expired" | "error"; title: string; body?: string };
+type Method = "mat-khau" | "ma";
+type Notice = { kind: "wrong" | "locked" | "expired" | "error"; title: string; body?: string; offerCode?: boolean };
 
 const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)]";
 const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nhan-nen)] text-[var(--kin-chu-tren-nut-chinh)] text-[length:var(--kin-co-small)] font-semibold transition-colors hover:bg-[var(--kin-nhan-nen-re)] disabled:opacity-60 disabled:cursor-not-allowed";
@@ -32,9 +36,9 @@ function DangNhapForm() {
   const redirectTo   = safeRedirect(searchParams.get("redirect"));
 
   const [phoneOn, setPhoneOn]       = useState(false); // máy chủ đã mở đăng nhập bằng SMS chưa
+  const [method, setMethod]         = useState<Method>(searchParams.get("cach") === "ma" ? "ma" : "mat-khau");
   const [step, setStep]             = useState<Step>("email");
-  const [usePassword, setUsePassword] = useState(false);
-  const [email, setEmail]           = useState("");
+  const [email, setEmail]           = useState("");   // ô "tài khoản": dùng chung cho cả hai tab
   const [password, setPassword]     = useState("");
   const [showPass, setShowPass]     = useState(false);
   const [code, setCode]             = useState("");
@@ -45,6 +49,10 @@ function DangNhapForm() {
   const [now, setNow]               = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const codeRef = useRef<HTMLDivElement>(null);
+  // Tiêu điểm vào ô tài khoản đúng MỘT lần lúc mở trang. Không dùng autoFocus: mỗi lần đổi tab, vùng nội dung gắn lại và ô mới sẽ giành mất
+  // tiêu điểm khỏi dải tab, người dùng bàn phím không bấm mũi tên tiếp được (mẫu tab của WAI-ARIA: tiêu điểm ở lại trên tab).
+  const focusedOnce = useRef(false);
+  const focusOnce = (el: HTMLInputElement | null) => { if (el && !focusedOnce.current) { focusedOnce.current = true; el.focus(); } };
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -76,6 +84,10 @@ function DangNhapForm() {
   const asPhone = phoneOn && email.trim() !== "" && !email.includes("@");
   const channelWord = asPhone ? "số điện thoại" : "email";
   const shown = asPhone ? (() => { const e = normalizeVnPhone(email); return e ? maskPhone(e) : email.trim(); })() : email.trim().toLowerCase();
+
+  function chooseMethod(m: Method) {
+    setMethod(m); setNotice(null); setShowPass(false);
+  }
 
   async function sendCode(e?: React.FormEvent) {
     e?.preventDefault();
@@ -110,7 +122,9 @@ function DangNhapForm() {
     if (value.length !== 6) { setInvalid(true); setNotice({ kind: "error", title: "Mã gồm đúng 6 chữ số" }); return; }
     setNotice(null);
     setSubmitting(true);
-    const r = await loginWithCode(email, value);
+    let r: Awaited<ReturnType<typeof loginWithCode>>;
+    try { r = await loginWithCode(email, value); }
+    catch { setSubmitting(false); setNotice({ kind: "error", title: "Không có kết nối. Thử lại sau." }); return; }
     if (r.success) return; // AuthContext chuyển trang
     setSubmitting(false);
     if (r.code === "wrong") {
@@ -130,12 +144,20 @@ function DangNhapForm() {
 
   async function submitPassword(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setNotice(null);
-    if (!email || !password) { setNotice({ kind: "error", title: "Vui lòng nhập đầy đủ thông tin" }); return; }
+    if (!email.trim() || !password) { setNotice({ kind: "error", title: "Vui lòng nhập tài khoản và mật khẩu" }); return; }
     setSubmitting(true);
-    const result = await login(email, password);
-    if (!result.success) {
-      setNotice({ kind: "error", title: result.message ?? "Đăng nhập thất bại" });
+    try {
+      const result = await login(email, password);
+      if (!result.success) {
+        // Bị chặn tạm vì sai nhiều lần: mời sang đăng nhập bằng mã, đó là lối thoát ngay lúc này.
+        setNotice({ kind: result.code === "wait" ? "locked" : "error", title: result.message ?? "Đăng nhập thất bại", offerCode: result.code === "wait" });
+        setSubmitting(false);
+      }
+    } catch {
+      // Mất mạng giữa chừng: không để nút kẹt ở "Đang đăng nhập…".
+      setNotice({ kind: "error", title: "Không có kết nối. Thử lại sau." });
       setSubmitting(false);
     }
   }
@@ -156,8 +178,14 @@ function DangNhapForm() {
     >
       <p className="text-[length:var(--kin-co-small)] font-semibold" style={{ color: notice.kind === "expired" ? "var(--kin-chu-chinh)" : "var(--kin-tt-chu-loi)" }}>{notice.title}</p>
       {notice.body && <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-chinh)]">{notice.body}</p>}
+      {notice.offerCode && (
+        <button type="button" onClick={() => chooseMethod("ma")} className={`${linkBtn} self-start min-h-11`}>Đăng nhập bằng mã một lần</button>
+      )}
     </div>
   );
+
+  const idLabel = phoneOn ? "Số điện thoại hoặc email" : "Email";
+  const idPlaceholder = phoneOn ? "0901 234 567 hoặc ten@gmail.com" : "ten@gmail.com";
 
   return (
     <div className="kin-chu-than min-h-[calc(100vh-60px)] flex items-start sm:items-center justify-center px-4 py-8 sm:py-12 bg-[var(--kin-nen-bang)]">
@@ -168,27 +196,64 @@ function DangNhapForm() {
           <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Lớp học của bạn, gọn trong một chỗ</p>
         </div>
 
-        {step === "email" && !usePassword && (
-          <form onSubmit={sendCode} noValidate className="px-5 pt-2 pb-5 flex flex-col gap-4">
+        {step === "email" && (
+          <div className="px-5 pt-2 pb-5 flex flex-col gap-4">
             <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đăng nhập</h1>
-            <div className="flex flex-col gap-[6px]">
-              <label htmlFor="dn-email" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">{phoneOn ? "Số điện thoại hoặc email" : "Email"}</label>
-              <input id="dn-email" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete={phoneOn ? "username" : "email"} autoFocus value={email}
-                onChange={e => setEmail(e.target.value)} placeholder={phoneOn ? "0901 234 567 hoặc ten@gmail.com" : "ten@gmail.com"} className={field} />
-            </div>
-            {noticeBox}
-            <button type="submit" disabled={submitting} className={primaryBtn}>{submitting ? "Đang gửi mã..." : "Gửi mã đăng nhập"}</button>
-            <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">
-              Mỗi lần vào, bạn nhận một mã 6 số dùng một lần qua {phoneOn ? "SMS hoặc email" : "email"} — không có gì để quên, cũng không có gì để lộ.
-              {phoneOn && " Số điện thoại chỉ nhận được mã sau khi bạn đã xác minh số trong Hồ sơ; chưa xác minh thì dùng email."}
-            </p>
+            <KinTabs
+              label="Cách đăng nhập"
+              tabs={[{ key: "mat-khau", label: "Mật khẩu" }, { key: "ma", label: "Mã một lần" }]}
+              value={method}
+              onChange={chooseMethod}
+              tabId={k => `dn-tab-${k}`}
+              panelId={k => `dn-panel-${k}`}
+            />
+
+            {method === "mat-khau" && (
+              <form id="dn-panel-mat-khau" role="tabpanel" aria-labelledby="dn-tab-mat-khau" onSubmit={submitPassword} noValidate className="flex flex-col gap-4">
+                <div className="flex flex-col gap-[6px]">
+                  <label htmlFor="dn-id-pw" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">{idLabel}</label>
+                  <input id="dn-id-pw" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete="username" ref={focusOnce} value={email}
+                    onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} className={field} />
+                </div>
+                <div className="flex flex-col gap-[6px]">
+                  <label htmlFor="dn-pass" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Mật khẩu</label>
+                  <div className="relative">
+                    <input id="dn-pass" type={showPass ? "text" : "password"} autoComplete="current-password" value={password}
+                      onChange={e => setPassword(e.target.value)} placeholder="••••••••" className={`${field} pr-16`} />
+                    <button type="button" onClick={() => setShowPass(!showPass)} aria-pressed={showPass}
+                      className="absolute right-0 top-[2px] h-11 min-w-11 px-3 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">
+                      {showPass ? "Ẩn" : "Hiện"}
+                    </button>
+                  </div>
+                </div>
+                {noticeBox}
+                <button type="submit" disabled={submitting} className={primaryBtn}>{submitting ? "Đang đăng nhập..." : "Đăng nhập"}</button>
+                <Link href="/quen-mat-khau" className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Quên mật khẩu?</Link>
+              </form>
+            )}
+
+            {method === "ma" && (
+              <form id="dn-panel-ma" role="tabpanel" aria-labelledby="dn-tab-ma" onSubmit={sendCode} noValidate className="flex flex-col gap-4">
+                <div className="flex flex-col gap-[6px]">
+                  <label htmlFor="dn-email" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">{idLabel}</label>
+                  <input id="dn-email" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete={phoneOn ? "username" : "email"} ref={focusOnce} value={email}
+                    onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} className={field} />
+                </div>
+                {noticeBox}
+                <button type="submit" disabled={submitting} className={primaryBtn}>{submitting ? "Đang gửi mã..." : "Gửi mã đăng nhập"}</button>
+                <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">
+                  Không cần nhớ mật khẩu: bạn nhận một mã 6 số dùng một lần qua {phoneOn ? "SMS hoặc email" : "email"}.
+                  {phoneOn && " Số điện thoại chỉ nhận được mã sau khi bạn đã xác minh số trong Hồ sơ; chưa xác minh thì dùng email."}
+                </p>
+              </form>
+            )}
+
             <div className="flex items-center gap-[10px] py-1" aria-hidden="true">
               <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
               <span className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">hoặc</span>
               <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
             </div>
             <Link href="/student/nhap-ma-lop" className={secondaryBtn}>Tôi có mã mời vào lớp</Link>
-            <button type="button" onClick={() => { setUsePassword(true); setNotice(null); }} className={`${linkBtn} self-center min-h-11`}>Đăng nhập bằng mật khẩu</button>
             <div className="flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 bg-[var(--kin-nen-dang-chon)]">
               <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">Phụ huynh thì không cần đăng nhập</p>
               <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo-tren-nen-nhan)]">
@@ -196,35 +261,7 @@ function DangNhapForm() {
                 <Link href="/phu-huynh" className="font-semibold text-[var(--kin-nhan-link)] underline">Tìm hiểu thêm</Link>
               </p>
             </div>
-          </form>
-        )}
-
-        {step === "email" && usePassword && (
-          <form onSubmit={submitPassword} noValidate className="px-5 pt-2 pb-5 flex flex-col gap-4">
-            <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đăng nhập bằng mật khẩu</h1>
-            <div className="flex flex-col gap-[6px]">
-              <label htmlFor="dn-email-pw" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Email</label>
-              <input id="dn-email-pw" type="email" inputMode="email" autoComplete="email" value={email}
-                onChange={e => setEmail(e.target.value)} placeholder="ten@gmail.com" className={field} />
-            </div>
-            <div className="flex flex-col gap-[6px]">
-              <label htmlFor="dn-pass" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Mật khẩu</label>
-              <div className="relative">
-                <input id="dn-pass" type={showPass ? "text" : "password"} autoComplete="current-password" value={password}
-                  onChange={e => setPassword(e.target.value)} placeholder="••••••••" className={`${field} pr-16`} />
-                <button type="button" onClick={() => setShowPass(!showPass)} aria-pressed={showPass}
-                  className="absolute right-1 top-1 h-10 px-3 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">
-                  {showPass ? "Ẩn" : "Hiện"}
-                </button>
-              </div>
-            </div>
-            {noticeBox}
-            <button type="submit" disabled={submitting} className={primaryBtn}>{submitting ? "Đang đăng nhập..." : "Đăng nhập"}</button>
-            <div className="flex items-center justify-between">
-              <Link href="/quen-mat-khau" className={linkBtn}>Quên mật khẩu?</Link>
-              <button type="button" onClick={() => { setUsePassword(false); setNotice(null); }} className={`${linkBtn} min-h-11`}>Dùng mã qua email</button>
-            </div>
-          </form>
+          </div>
         )}
 
         {step === "code" && (

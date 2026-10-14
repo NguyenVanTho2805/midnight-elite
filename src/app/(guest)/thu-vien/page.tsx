@@ -42,7 +42,7 @@ export default async function ThuVienPage() {
           chapters: {
             select: {
               lessons: {
-                select: { title: true, documents: true, isFree: true, isLocked: true },
+                select: { title: true, documents: true, isFree: true },
               },
             },
           },
@@ -57,7 +57,9 @@ export default async function ThuVienPage() {
     for (const s of c.sections) {
       for (const ch of s.chapters) {
         for (const l of ch.lessons) {
-          if (!l.isFree && l.isLocked) continue;   // chỉ bài công khai
+          // Chỉ bài MIỄN PHÍ mới công khai. Không dùng isLocked để quyết định: cờ đó là giá trị tĩnh trong DB và gia sư hay quên khoá,
+          // nên API bài giảng đã bỏ qua nó (xem src/app/api/lessons/[id]/context/route.ts) — dùng nó ở đây từng làm lộ tài liệu của bài trả phí.
+          if (!l.isFree) continue;
           const list = parseDocuments(l.documents);
           for (const d of list) {
             docs.push({ courseName: c.name, lessonTitle: l.title, url: d.url, label: d.label });
@@ -76,7 +78,7 @@ export default async function ThuVienPage() {
   }
 
   return (
-    <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--kin-nen-trang)" }}>
       <div className="max-w-3xl mx-auto px-4 py-6">
         <header className="mb-5">
           <h1 className="text-h3 font-bold" style={{ color: "var(--kin-chu-chinh)" }}>

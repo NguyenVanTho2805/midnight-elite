@@ -1,4 +1,5 @@
 ﻿import type { Metadata } from "next";
+import Script from "next/script";
 import { Be_Vietnam_Pro, Inter, Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
@@ -8,6 +9,7 @@ import { GlobalDropGuard } from "@/components/GlobalDropGuard";
 import { ToastProvider } from "@/components/ui";
 import { ThemeApplier } from "@/components/ThemeApplier";
 import AccountThemeSync from "@/components/AccountThemeSync";
+import { RAIL_INIT_SCRIPT } from "@/lib/railState";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -66,6 +68,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
+          {/* Thanh bên đã thu thì ẩn ngay từ khung hình đầu (xem src/lib/railState.ts); không có dòng này thanh sẽ hiện ra rồi mới thụt vào. */}
+          <Script id="kin-rail-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
           <ThemeApplier />
           <GlobalDropGuard />
           <AuthProvider>

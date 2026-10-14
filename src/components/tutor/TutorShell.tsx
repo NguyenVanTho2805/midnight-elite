@@ -10,6 +10,7 @@ import { useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
@@ -68,11 +69,14 @@ export default function TutorShell({
 
   return (
     <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: "48px" }}>
-      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} />
+      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} onCollapse={closeMore} />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
         <div className="h-12 flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
-          <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={Object.values(badges).reduce((a, n) => a + (n > 0 ? n : 0), 0)} />
+            <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          </div>
           {user && <span className="truncate max-w-[200px] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">{user.name}</span>}
         </div>
         {children}

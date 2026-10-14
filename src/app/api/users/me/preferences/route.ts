@@ -1,7 +1,7 @@
 // TT-203 + TK-167 — lựa chọn giao diện theo TÀI KHOẢN (không theo máy).
 //
 // GET  → { preferences } đã chuẩn hoá (khoá lạ/giá trị hỏng bị bỏ khi đọc)
-// PUT  → body là bản vá { modules?, theme?, mode?, reminders? }; mỗi khoá thay giá trị cũ,
+// PUT  → body là bản vá { modules?, theme?, mode?, rail?, reminders?, connections? }; mỗi khoá thay giá trị cũ,
 //        `null` đưa khoá về mặc định. Khoá lạ/sai kiểu → 400, không ghi dở.
 // Đọc-sửa-ghi một cột JSON nên khoá theo người dùng: hai tab đổi chủ đề và module cùng
 // lúc không được ghi đè lên nhau.

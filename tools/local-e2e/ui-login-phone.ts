@@ -34,7 +34,7 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   section("Màn đăng nhập khi SMS đã mở");
   const g = await ctxFor(null, { width: 1280, height: 900 });
   const p0 = await g.newPage(); watch(p0);
-  await p0.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p0.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 120000 });
   const box = p0.getByLabel("Số điện thoại hoặc email");
   await box.waitFor({ timeout: 60000 });
   check("ô có nhãn 'Số điện thoại hoặc email' và gợi ý cả hai dạng", await box.isVisible() && /0901 234 567 hoặc ten@gmail\.com/.test((await box.getAttribute("placeholder")) ?? ""));
@@ -70,7 +70,7 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   await prisma.user.update({ where: { id: TT.id }, data: { phone: phoneOf(5), phoneE164: e164Of(5), phoneVerifiedAt: new Date(), preferences: { modules: ["hop-viec", "lop"] } } });
   const gt = await ctxFor(null, { width: 1280, height: 900 });
   const pt = await gt.newPage(); watch(pt);
-  await pt.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await pt.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 120000 });
   await pt.getByLabel("Số điện thoại hoặc email").fill(phoneOf(5));
   await pt.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await pt.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -85,7 +85,7 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   section("Số CHƯA xác minh: không nhận SMS, có lời nhắc");
   const g2 = await ctxFor(null, { width: 1280, height: 900 });
   const p1 = await g2.newPage(); watch(p1);
-  await p1.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p1.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 120000 });
   await p1.getByLabel("Số điện thoại hoặc email").fill(phoneOf(2));
   await p1.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p1.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -98,7 +98,7 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   const g3 = await ctxFor(null, { width: 1280, height: 900 });
   const p2 = await g3.newPage(); watch(p2);
   await p2.route("**/api/auth/code/methods", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ email: true, phone: false }) }));
-  await p2.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p2.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 120000 });
   await p2.getByLabel("Email", { exact: true }).waitFor({ timeout: 60000 });
   check("nhãn 'Email', gợi ý ten@gmail.com, không nhắc số điện thoại", (await p2.getByLabel("Email", { exact: true }).getAttribute("placeholder")) === "ten@gmail.com" && await p2.getByText(/số điện thoại/i).count() === 0);
   check("ô là type=email", (await p2.getByLabel("Email", { exact: true }).getAttribute("type")) === "email");
@@ -169,7 +169,7 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   section("Điện thoại 390px");
   const g7 = await ctxFor(null, { width: 390, height: 800 });
   const p6 = await g7.newPage(); watch(p6);
-  await p6.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 120000 });
+  await p6.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 120000 });
   await p6.getByLabel("Số điện thoại hoặc email").waitFor({ timeout: 60000 });
   check("màn đăng nhập không tràn ngang", await p6.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   check("ô nhập cao ≥ 44px", (await p6.getByLabel("Số điện thoại hoặc email").evaluate(e => e.getBoundingClientRect().height)) >= 44);

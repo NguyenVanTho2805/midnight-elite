@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuth, getAdminRoleLabel } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { QUEUE_CHANGED } from "@/components/admin/KiemDuyet";
 import { matchSub, visibleModules } from "@/lib/adminNav";
@@ -49,7 +50,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} />
       <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-60px)] md:h-screen">
         <div className="flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] flex-shrink-0" style={{ height: STRIP }}>
-          <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={badge} />
+            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          </div>
           <div className="flex items-center gap-3 min-w-0">
             {/* Trang học viên nằm ở tên miền riêng (midnightelite-edu.com): dùng <a>, không dùng <Link> (điều hướng khác nguồn). */}
             <a href="https://midnightelite-edu.com/student" target="_blank" rel="noopener noreferrer"
