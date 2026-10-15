@@ -11,6 +11,7 @@
 // vi cũ cho `npm run build` chạy từ máy dev).
 
 import { spawnSync } from "node:child_process";
+import { onlyUniqueConstraintAdditions } from "./db-push-guard.mjs";
 
 // Ngoại lệ duy nhất: bản xem trước có CƠ SỞ DỮ LIỆU RIÊNG (13/10/2026). Khi đã tạo một nhánh Neon riêng cho Preview và đặt
 // DATABASE_URL (chỉ phạm vi Preview) trỏ vào đó, đặt thêm PREVIEW_OWN_DB=1 (cũng chỉ phạm vi Preview) thì preview build mới
@@ -36,5 +37,21 @@ if (!previewOwnDb && process.env.PRISMA_ACCEPT_DATA_LOSS === "1") {
   args.push("--accept-data-loss");
 }
 
-const r = spawnSync("npx", args, { stdio: "inherit" });
+// Chạy và in lại đúng những gì Prisma in (cần đọc kết quả để biết vì sao nó từ chối).
+function push(argv) {
+  const res = spawnSync("npx", argv, { encoding: "utf8" });
+  if (res.stdout) process.stdout.write(res.stdout);
+  if (res.stderr) process.stderr.write(res.stderr);
+  return res;
+}
+
+let r = push(args);
+
+// Ngoại lệ hẹp (15/10/2026, PR #54): thêm `@unique` vào cột mới làm Prisma từ chối với cảnh báo "mất dữ liệu" dù KHÔNG mất gì (trùng giá trị thì
+// chính lệnh ALTER TABLE tự thất bại). Chỉ khi MỌI cảnh báo đều thuộc loại đó mới chạy lại với --accept-data-loss; một cảnh báo khác (xoá
+// cột/bảng, đổi kiểu...) thì vẫn từ chối như cũ và vẫn phải đặt PRISMA_ACCEPT_DATA_LOSS=1 bằng tay. Xem scripts/db-push-guard.mjs.
+if (r.status !== 0 && !args.includes("--accept-data-loss") && onlyUniqueConstraintAdditions(`${r.stdout ?? ""}\n${r.stderr ?? ""}`)) {
+  console.log("[build] Chỉ có cảnh báo 'thêm ràng buộc duy nhất' (không xoá/sửa dữ liệu nào) → chạy lại với --accept-data-loss.");
+  r = push([...args, "--accept-data-loss"]);
+}
 process.exit(r.status ?? 0);
