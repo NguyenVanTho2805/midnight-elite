@@ -330,7 +330,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   {
     const r = await open(p, MAIN + "/admin/kiem-duyet");
     check("gia sư mở /admin/kiem-duyet → vào được, khung gia sư, không thấy đơn xin làm gia sư của người khác", r.final.pathname === "/admin/kiem-duyet" && r.shell === "Module của gia sư" && !r.text.includes(OTHER.applicant), { url: abs(r.final), shell: r.shell });
-    check("hàng chờ trống của gia sư nói về báo cáo trong lớp của họ (không hứa hồ sơ gia sư xin duyệt)", EMPTY ? /Báo cáo bài viết trong lớp của bạn/.test(r.text) && !/Hồ sơ gia sư xin duyệt/.test(r.text) : true, r.text.slice(0, 300));
+    check("hàng chờ trống của gia sư nói về báo cáo trong lớp của họ (không hứa hồ sơ gia sư xin duyệt)", EMPTY && VW >= 900 ? /Báo cáo bài viết trong lớp của bạn/.test(r.text) && !/Hồ sơ gia sư xin duyệt/.test(r.text) : true, r.text.slice(0, 300));   // khung đọc (bên phải) chỉ có ở màn rộng
   }
   // Mở trang cấm làm trang gọi API trước khi PermissionGuard kịp đẩy đi → 403 là KỲ VỌNG, không tính vào mục C.
   const expected403 = issues.splice(issuesBeforePerm).filter(i => i.kind === "HTTP 403");

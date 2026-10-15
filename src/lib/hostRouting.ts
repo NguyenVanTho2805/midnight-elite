@@ -45,6 +45,9 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname)) return { kind: "next" };
     // Gia sư không thuộc về tên miền quản trị: đưa về tên miền chính (cùng đường dẫn).
     if (isTeacher(session)) return { kind: "redirect", status: 307, host: "main", pathname, search };
+    // Học viên có phiên ở tên miền admin (phiên cũ, từ trước khi cửa này từ chối học viên): đưa về dashboard học viên ở tên miền chính NGAY Ở MÁY CHỦ. Để AuthGuard
+    // ở máy khách làm thì router.replace sang tên miền khác bị CORS chặn (lỗi console) rồi mới rơi về tải cứng.
+    if (session?.role === "student" && (pathname === "/" || isAdminPath(pathname))) return { kind: "redirect", status: 307, host: "main", pathname: landingPath("student", undefined), search: "" };
     // "/" → dashboard admin.
     if (pathname === "/") return { kind: "rewrite", pathname: "/admin" };
     // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem src/lib/adminNav.ts) — cho qua nguyên trạng.

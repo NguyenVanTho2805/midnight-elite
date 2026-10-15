@@ -77,6 +77,8 @@ let seq = 700;
   check("có CTA 'Tạo lớp đầu tiên'", await p0.getByRole("link", { name: "Tạo lớp đầu tiên" }).isVisible());
   check("không có việc → thông báo", await p0.getByText("Hiện không có việc nào cần xử lý.").isVisible());
   check("mọi số liệu = 0", (await p0.locator("dd").first().innerText()) === "0");
+  await p0.getByRole("link", { name: "Tạo lớp đầu tiên" }).click();
+  await eventually("'Tạo lớp đầu tiên' → mở thẳng form 'Tạo khoá học mới' ở trang danh sách (không dừng ở danh sách trống)", async () => new URL(p0.url()).pathname === "/admin/khoa-hoc" && await p0.getByRole("heading", { name: "Tạo khoá học mới" }).isVisible(), 40000);
 
   section("Doanh thu /lop-cua-toi/doanh-thu");
   await page.goto(`${BASE}/lop-cua-toi/doanh-thu`, { waitUntil: "networkidle" });

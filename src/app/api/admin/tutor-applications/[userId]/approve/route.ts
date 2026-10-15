@@ -47,7 +47,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ us
     type:    "tutor_approved",
     title:   "Hồ sơ gia sư đã được duyệt",
     message: "Bạn đã là gia sư trên KiN. Đăng nhập lại để bắt đầu tạo lớp.",
-    link:    "/admin",
+    // Khung gia sư. Không dùng "/admin" (cửa cũ): người vừa được duyệt còn giữ phiên HỌC VIÊN, /admin với phiên đó bị đẩy sang tên miền admin — nơi cửa đăng nhập không nhận gia sư.
+    link:    "/lop-cua-toi",
   });
 
   return NextResponse.json({ success: true });
