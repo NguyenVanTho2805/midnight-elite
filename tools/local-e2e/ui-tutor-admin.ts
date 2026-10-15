@@ -41,7 +41,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   check("gia sư mở đúng /admin (bảng tổng quan quản trị) → về Hộp việc /lop-cua-toi", t2.status === 307 && path(t2.location) === "/lop-cua-toi", t2);
   for (const [name, c] of [["quản trị cấp 1", ac], ["học viên", sc], ["khách", undefined]] as const) {
     const r = await get("/admin/thi-thu?x=1", c);
-    check(`${name} mở /admin/thi-thu?x=1 → 308 sang tên miền admin, giữ tham số`, r.status === 308 && host(r.location)?.startsWith("admin.midnightelite-edu.com") === true && path(r.location) === "/thi-thu?x=1", r);
+    check(`${name} mở /admin/thi-thu?x=1 → 308 sang tên miền admin, giữ tham số`, r.status === 308 && host(r.location)?.startsWith("admin.midnightelite-edu.com") === true && path(r.location) === "/admin/thi-thu?x=1", r);
   }
 
   section("Máy chủ: tên miền admin");

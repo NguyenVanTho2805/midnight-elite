@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const r = isPhone ? await verifyPhoneLoginCode(e164!, code) : await verifyLoginCode(email!, code);
     switch (r.status) {
       case "ok":
-        return await signInResponse(r.user);
+        return await signInResponse(r.user, req);
       case "wrong":
         return NextResponse.json({ error: "Mã không đúng", code: "wrong", attemptsLeft: r.attemptsLeft }, { status: 401 });
       case "locked":

@@ -11,6 +11,7 @@ import { ThemeApplier } from "@/components/ThemeApplier";
 import AccountThemeSync from "@/components/AccountThemeSync";
 import { RAIL_INIT_SCRIPT } from "@/lib/railState";
 import { SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
+import { HOST_INIT_SCRIPT } from "@/lib/hostChrome";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -73,6 +74,8 @@ export default function RootLayout({
           <Script id="kin-rail-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
           {/* Máy này lần trước đăng nhập → ẩn khung khách (thanh trên + chân trang) từ khung hình đầu, khỏi nháy ra "trang chủ" rồi mới vào vỏ (src/lib/signedInShell.ts). */}
           <Script id="kin-shell-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: SHELL_INIT_SCRIPT }} />
+          {/* Tên miền admin không phải trang công khai: ẩn khung khách (thanh trên, chân trang) và nút chỉ dành cho khách ngay từ khung hình đầu (src/lib/hostChrome.ts). */}
+          <Script id="kin-host-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: HOST_INIT_SCRIPT }} />
           <ThemeApplier />
           <GlobalDropGuard />
           <AuthProvider>
