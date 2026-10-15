@@ -18,11 +18,17 @@ export function OutlookPanes({ list, read, open }: { list: ReactNode; read: Reac
   );
 }
 
-export function ListHead({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
+/** `aside`: một mảnh nhỏ ở bên phải tiêu đề (vd. vòng tiến độ). `subtitle` nhận cả ReactNode (vd. dòng chữ đổi bằng trượt). */
+export function ListHead({ title, subtitle, aside, children }: { title: string; subtitle?: ReactNode; aside?: ReactNode; children?: ReactNode }) {
   return (
     <div className="px-[14px] pt-3 pb-[10px] border-b border-[var(--kin-vien-thuong)]">
-      <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-body)] tracking-[-0.01em] text-[var(--kin-chu-chinh)]">{title}</h2>
-      {subtitle && <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] mt-[2px]">{subtitle}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-body)] tracking-[-0.01em] text-[var(--kin-chu-chinh)]">{title}</h2>
+          {subtitle && <div className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] mt-[2px]">{subtitle}</div>}
+        </div>
+        {aside}
+      </div>
       {children}
     </div>
   );
@@ -33,8 +39,10 @@ export function ListBody({ children, label, onKeyDown }: { children: ReactNode; 
   return <div role="listbox" aria-label={label} onKeyDown={onKeyDown} className="flex-1 min-h-0 overflow-y-auto">{children}</div>;
 }
 
-export function ListRow({ selected, onSelect, title, when, subtitle, status, strong, id }: {
+/** `strike`: việc đã xong — "draw" = vừa xong (nét gạch quét từ trái), "static" = xong từ trước. `bloom`: thứ tự dòng khi vừa hiện ra (độ trễ nở vào, Lucian No.079). */
+export function ListRow({ selected, onSelect, title, when, subtitle, status, strong, id, strike, bloom }: {
   selected: boolean; onSelect: () => void; title: string; when: string; subtitle: string; status?: { label: string; tone: Tone }; strong?: boolean; id?: string;
+  strike?: "draw" | "static"; bloom?: number;
 }) {
   const muted = selected ? "var(--kin-chu-mo-tren-nen-nhan)" : "var(--kin-chu-mo)";
   return (
@@ -45,11 +53,11 @@ export function ListRow({ selected, onSelect, title, when, subtitle, status, str
       tabIndex={selected ? 0 : -1}
       onClick={onSelect}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
-      className="flex flex-col gap-1 min-h-[50px] px-[14px] py-3 cursor-pointer border-b border-[var(--kin-vien-nhat)] hover:bg-[var(--kin-nen-bang)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)] transition-colors"
-      style={selected ? { background: "var(--kin-nen-dang-chon)", borderLeft: "3px solid var(--kin-th-navy)", paddingLeft: 11 } : undefined}
+      className={`${bloom !== undefined ? "kin-bloom " : ""}flex flex-col gap-1 min-h-[50px] px-[14px] py-3 cursor-pointer border-b border-[var(--kin-vien-nhat)] hover:bg-[var(--kin-nen-bang)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)] transition-colors`}
+      style={{ ...(selected ? { background: "var(--kin-nen-dang-chon)", borderLeft: "3px solid var(--kin-th-navy)", paddingLeft: 11 } : null), ...(bloom !== undefined ? { "--d": `${Math.min(bloom, 8) * 45}ms` } : null) } as React.CSSProperties}
     >
       <div className="flex items-baseline gap-2">
-        <p className={`flex-1 min-w-0 truncate text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] ${strong ? "font-semibold" : "font-medium"}`}>{title}</p>
+        <p className={`flex-1 min-w-0 truncate text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] ${strong ? "font-semibold" : "font-medium"}`}><span data-strike={strike} className="kin-strike kin-m">{title}</span></p>
         <span className="flex-shrink-0 text-[length:var(--kin-co-caption)] font-mono" style={{ color: muted }}>{when}</span>
       </div>
       <p className="truncate text-[length:var(--kin-co-small)]" style={{ color: muted }}>{subtitle}</p>
@@ -63,10 +71,10 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div aria-busy="true" aria-label="Đang tải">
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex flex-col gap-2 min-h-[50px] px-[14px] py-3 border-b border-[var(--kin-vien-nhat)] animate-pulse">
-          <div className="h-[13px] w-3/4 rounded bg-[var(--kin-nen-re-chuot)]" />
-          <div className="h-[13px] w-1/2 rounded bg-[var(--kin-nen-re-chuot)]" />
-          <div className="h-[11px] w-1/4 rounded bg-[var(--kin-nen-re-chuot)]" />
+        <div key={i} className="kin-m flex flex-col gap-2 min-h-[50px] px-[14px] py-3 border-b border-[var(--kin-vien-nhat)]">
+          <div className="h-[13px] w-3/4 rounded kin-skel kin-skel--lo" />
+          <div className="h-[13px] w-1/2 rounded kin-skel kin-skel--lo" />
+          <div className="h-[11px] w-1/4 rounded kin-skel kin-skel--lo" />
         </div>
       ))}
     </div>

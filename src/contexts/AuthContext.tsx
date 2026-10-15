@@ -49,7 +49,7 @@ interface AuthContextType {
   user:      AuthUser | null;
   isLoading: boolean;
   /** Đăng nhập bằng tài khoản + mật khẩu. `identifier` là email hoặc số di động đã xác minh. `code` = "wait" khi bị chặn tạm vì sai nhiều lần. */
-  login:     (identifier: string, password: string) => Promise<{ success: boolean; message?: string; code?: string }>;
+  login:     (identifier: string, password: string) => Promise<{ success: boolean; message?: string; code?: string; retryAfterSec?: number }>;
   /** Đăng nhập bằng mã 6 số gửi qua email (TK-170). `code` = wrong | locked | expired | format khi thất bại. */
   loginWithCode: (emailOrPhone: string, code: string) => Promise<{ success: boolean; message?: string; code?: string; attemptsLeft?: number; retryAfterSec?: number }>;
   logout:    () => Promise<void>;
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body:    JSON.stringify({ identifier, password }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code };
+    if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, retryAfterSec: data.retryAfterSec };
     setUser(toAuthUser(data));
     router.push(landingPath(data.role, data.adminRole));
     return { success: true };

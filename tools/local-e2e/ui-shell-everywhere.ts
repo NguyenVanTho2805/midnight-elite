@@ -18,6 +18,18 @@ async function guestChromeLeft(p: Page) {
   }));
 }
 
+// Chờ lối vào chuyển hướng 2 chặng (vd. /student/thi-thu → /thi-thu: trang /student trả về trước, trình duyệt chuyển tiếp sau) xong hẳn: đã rời khu /student và địa chỉ đứng yên ≥1,2 giây.
+// Chờ cố định 1,5 giây quá sát khi máy chạy chậm: chặng sau rơi vào lúc test đã mở "Khác" cho mục kế → hộp bị thay giữa chừng, click hết giờ.
+async function settled(p: Page) {
+  const end = Date.now() + 45000;
+  let last = p.url(), since = Date.now();
+  while (Date.now() < end) {
+    await p.waitForTimeout(150);
+    if (p.url() !== last) { last = p.url(); since = Date.now(); }
+    else if (Date.now() - since >= 1200 && !new URL(last).pathname.startsWith("/student/")) return;
+  }
+}
+
 (async () => {
   await wipe();
   const S = await mkUser({ name: "Học Sinh" });
@@ -62,7 +74,7 @@ async function guestChromeLeft(p: Page) {
       seen.push(label);
       await item.click();
       await p.waitForLoadState("load");
-      await p.waitForTimeout(1500);
+      await settled(p);
       const r = await guestChromeLeft(p);
       if (!r.rail || r.footer || r.guest > 0) lost.push(`${label} → ${new URL(p.url()).pathname} ${JSON.stringify(r)}`);
     }

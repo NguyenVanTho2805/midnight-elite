@@ -2,17 +2,21 @@
 // của GIA SƯ ra phiếu (không phải của KiN). "Tôi đã chuyển" chỉ báo cho gia sư —
 // chưa phải đã nhận tiền; gia sư xác nhận khi thấy tiền vào.
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { PartyInvoiceView } from "@/lib/invoiceServer";
+import { KinCopyButton } from "@/components/kin/CopyButton";
+import { KinFold, KinChevron } from "@/components/kin/Fold";
 
 const vnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 const monthLabel = (ym: string) => { const [y, m] = ym.split("-"); return `Tháng ${Number(m)}/${y}`; };
 
 export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvoiceView; reportUrl: string }) {
   const [status, setStatus] = useState(invoice.status);
+  // Khối QR + tài khoản gập/mở được (Lucian No.200): mặc định MỞ để luồng thanh toán không đổi; phụ huynh nhiều tháng chưa đóng gập bớt cho đỡ dài.
+  const [showPay, setShowPay] = useState(true);
+  const payId = useId();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
 
   const paid = status === "paid";
   const reported = status === "parent_reported";
@@ -30,9 +34,7 @@ export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvo
     } catch { setMsg({ text: "Lỗi kết nối, anh/chị thử lại sau.", ok: false }); }
     finally { setBusy(false); }
   }
-  async function copy(text: string, what: string) {
-    try { await navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(null), 2000); } catch { setMsg({ text: "Không sao chép được, anh/chị chép tay giúp.", ok: false }); }
-  }
+  function onCopyResult(ok: boolean) { if (!ok) setMsg({ text: "Không sao chép được, anh/chị chép tay giúp.", ok: false }); }
 
   const open = invoice.qrUrl !== null && !paid && invoice.remaining > 0;
 
@@ -55,22 +57,30 @@ export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvo
       </dl>
 
       {open && (
-        <div className="mt-4 flex flex-col sm:flex-row items-center gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={invoice.qrUrl!} alt={`Mã VietQR chuyển ${vnd(invoice.remaining)} cho ${invoice.tutorName}`} className="w-44 h-44 sm:w-52 sm:h-52 flex-shrink-0 rounded-lg" style={{ border: "1px solid var(--kin-vien-nhat)", background: "var(--kin-nen-trang)" }} />
-          <div className="text-sm space-y-1 min-w-0" style={{ color: "var(--kin-chu-phu)" }}>
-            {invoice.bank && <>
-              <p>Ngân hàng: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.name}</b></p>
-              <p>Số tài khoản: <b className="font-mono" style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.accountNo}</b>{" "}
-                <button type="button" className="underline text-xs" onClick={() => copy(invoice.bank!.accountNo, "stk")}>{copied === "stk" ? "Đã chép" : "Chép"}</button></p>
-              <p>Chủ tài khoản: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.accountName}</b></p>
-            </>}
-            <p>Số tiền: <b style={{ color: "var(--kin-chu-chinh)" }}>{vnd(invoice.remaining)}</b></p>
-            <p className="break-words">Nội dung: <b className="font-mono" style={{ color: "var(--kin-chu-chinh)" }}>{invoice.transferContent}</b>{" "}
-              <button type="button" className="underline text-xs" onClick={() => copy(invoice.transferContent, "nd")}>{copied === "nd" ? "Đã chép" : "Chép"}</button></p>
-            <p className="text-xs pt-1" style={{ color: "var(--kin-chu-mo)" }}>Anh/chị giữ nguyên mã {invoice.code} ở đầu nội dung để gia sư ghi nhận đúng.</p>
-          </div>
-        </div>
+        <>
+          <button type="button" aria-expanded={showPay} aria-controls={payId} onClick={() => setShowPay(v => !v)}
+            className="mt-3 inline-flex items-center gap-1.5 min-h-[44px] text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
+            {showPay ? "Ẩn cách chuyển khoản" : "Xem cách chuyển khoản"} <KinChevron open={showPay} />
+          </button>
+          <KinFold open={showPay} id={payId}>
+            <div className="pt-1 flex flex-col sm:flex-row items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={invoice.qrUrl!} alt={`Mã VietQR chuyển ${vnd(invoice.remaining)} cho ${invoice.tutorName}`} className="w-44 h-44 sm:w-52 sm:h-52 flex-shrink-0 rounded-lg" style={{ border: "1px solid var(--kin-vien-nhat)", background: "var(--kin-nen-trang)" }} />
+              <div className="text-sm space-y-1 min-w-0" style={{ color: "var(--kin-chu-phu)" }}>
+                {invoice.bank && <>
+                  <p>Ngân hàng: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.name}</b></p>
+                  <p>Số tài khoản: <b className="font-mono" style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.accountNo}</b>{" "}
+                    <KinCopyButton label="Chép số tài khoản" copiedLabel="Đã chép số tài khoản" text={invoice.bank.accountNo} onResult={onCopyResult} className="-my-[11px]" /></p>
+                  <p>Chủ tài khoản: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.accountName}</b></p>
+                </>}
+                <p>Số tiền: <b style={{ color: "var(--kin-chu-chinh)" }}>{vnd(invoice.remaining)}</b></p>
+                <p className="break-words">Nội dung: <b className="font-mono" style={{ color: "var(--kin-chu-chinh)" }}>{invoice.transferContent}</b>{" "}
+                  <KinCopyButton label="Chép nội dung chuyển khoản" copiedLabel="Đã chép nội dung" text={invoice.transferContent} onResult={onCopyResult} className="-my-[11px]" /></p>
+                <p className="text-xs pt-1" style={{ color: "var(--kin-chu-mo)" }}>Anh/chị giữ nguyên mã {invoice.code} ở đầu nội dung để gia sư ghi nhận đúng.</p>
+              </div>
+            </div>
+          </KinFold>
+        </>
       )}
 
       {!invoice.bank && !paid && (

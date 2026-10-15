@@ -353,6 +353,16 @@ Sau khi sửa: 13 bài đỏ chạy lại đều xanh (chạy lại riêng từn
 - **Logo nào:** dùng logo K đang có trong mã (`KinMark`, vẽ lại bằng SVG theo Figma 59:9). Nếu Thọ có file logo MỚI khác, chỉ cần thay phần `<svg>` trong `KinMark` — thanh trên, chân trang, màn đăng nhập và màn chờ cùng đổi theo.
 - **Test:** `ui-kin-loader` 13/13 (mã nguồn không còn "T" / chấm nhảy; trình đọc màn hình; giảm chuyển động; chỗ chờ trong trang).
 
+### S. Chuyển động lấy từ thư viện Lucian UX/UI (15/10/2026) — 13 element, giấy phép MIT
+- **Yêu cầu (Thọ):** xem lucianlabs.dev/uxui-prompt, cân nhắc lấy chuyển động đẹp, hợp; sau đó chọn: làm hết nhóm "nên lấy" + 014, 093, 062, 067, 040, 028.
+- **Cách đọc:** trang bị chặn mạng (403) nên đọc qua kho GitHub công khai `Seokwoooo/lucian-uxui-prompt` (api/v1, 200 element). Không chạy `npx skills add`; chỉ đọc mã.
+- **Đã làm:** 008 sao chép→tích · 039 tab trượt · 074 chuông · 079 khung xám quét sáng + nở · 012 dải lưu · 200/044 khối gập · 026 ô mã 6 số · 062 nút co vòng tròn + thẻ lắc · 067 đếm ngược khoá ·
+  014 + 093 vòng tiến độ / gạch ngang / ăn mừng ở "Việc của tôi" · 028 ô trả lời tự dãn + vòng đếm ký tự · 040 thanh bên rộng 220px + vạch trượt. Chi tiết từng cái, chỗ khác bản gốc và **giấy phép MIT đầy đủ**: `docs/kin/thu-vien-lucian.md`.
+- **Nền chung:** `src/app/kin-motion.css` (mọi chuyển động, token `--kin-*`, không hex), đường cong `--kin-ease` / `--kin-spring`, tắt hết khi người dùng đặt "giảm chuyển động"; `src/lib/replayClass.ts`, `src/lib/clipboard.ts`.
+- **Sửa theo hướng "đúng" chứ không chép nguyên:** nút co vòng tròn dùng logo K (Figma cấm spinner); không confetti; "Việc của tôi" không cho học viên tự tích (việc do hệ thống sinh); phiếu học phí gập QR mặc định **mở** (luồng thanh toán không đổi).
+- **Test mới:** `ui-motion-light` 42 · `ui-motion-login` 24 · `ui-motion-app` 46 · `t-rail-lib` 74 (+9 về trạng thái "rong"); cập nhật `ui-kin-components` (tab: một gạch chân chung) và `t-no-hex` (bỏ qua dòng ghi nguồn "Lucian UX/UI Prompt #NNN").
+- **Giới hạn / cần Thọ nhìn:** trạng thái thanh bên "rộng" **chưa có khung Figma** (Thanh cần vẽ); chưa kiểm hoạt hình bằng mắt trên máy thật ngoài ảnh chụp tĩnh; một số chuyển động (chuông rung, ăn mừng) chỉ thấy khi có thông báo / việc mới.
+
 ## Không làm (chờ Thọ / luật sư / Thanh)
 PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh);
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).

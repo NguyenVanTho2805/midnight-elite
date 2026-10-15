@@ -109,9 +109,9 @@ const H = 3_600_000;
   check("và có chấm đỏ nhìn thấy được", await openBtn(pg).locator("[data-rail-dot]").isVisible());
   await openBtn(pg).click();
 
-  section("Chuyển động: 180ms, tắt hẳn khi người dùng chọn giảm chuyển động");
+  section("Chuyển động: 450ms khi mở / mở rộng (thu lại vẫn 180ms), tắt hẳn khi người dùng chọn giảm chuyển động");
   const dur = await pg.evaluate(`getComputedStyle(document.querySelector("#kin-rail")).transitionDuration`) as string;
-  check("bình thường: có chuyển động ngắn (≈0,18s)", /0\.18s|180ms/.test(dur), dur);
+  check("bình thường: bề rộng đổi bằng chuyển động 0,45s (Lucian No.040; thu lại dùng 0,18s riêng)", /0\.45s|450ms/.test(dur), dur);
   const ctxRM = await ctxFor(S, { width: 1280, height: 800 });
   const prm = await ctxRM.newPage(); await prm.emulateMedia({ reducedMotion: "reduce" });
   await prm.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });

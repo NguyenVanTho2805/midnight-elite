@@ -13,6 +13,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { CodeBoxes } from "@/components/kin/CodeBoxes";
+import { KinSubmitButton } from "@/components/kin/SubmitButton";
+import { LockCountdown } from "@/components/kin/LockCountdown";
+import { replayClass } from "@/lib/replayClass";
 import { KinTabs } from "@/components/kin/Tabs";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
@@ -20,7 +23,7 @@ import { landingPath } from "@/lib/landing";
 
 type Step = "email" | "code";
 type Method = "mat-khau" | "ma";
-type Notice = { kind: "wrong" | "locked" | "expired" | "error"; title: string; body?: string; offerCode?: boolean };
+type Notice = { kind: "wrong" | "locked" | "expired" | "error"; title: string; body?: string; offerCode?: boolean; retryAfterSec?: number };
 
 const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)]";
 const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nhan-nen)] text-[var(--kin-chu-tren-nut-chinh)] text-[length:var(--kin-co-small)] font-semibold transition-colors hover:bg-[var(--kin-nhan-nen-re)] disabled:opacity-60 disabled:cursor-not-allowed";
@@ -48,6 +51,8 @@ function DangNhapForm() {
   const [resendAt, setResendAt]     = useState<number | null>(null);
   const [now, setNow]               = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [ok, setOk]                 = useState(false); // đăng nhập thành công, đang chờ chuyển trang (nút hiện dấu tích, sáu ô mã đổi màu xong)
+  const cardRef = useRef<HTMLDivElement>(null);        // thẻ đăng nhập: lắc đầu khi sai mật khẩu
   const codeRef = useRef<HTMLDivElement>(null);
   // Tiêu điểm vào ô tài khoản đúng MỘT lần lúc mở trang. Không dùng autoFocus: mỗi lần đổi tab, vùng nội dung gắn lại và ô mới sẽ giành mất
   // tiêu điểm khỏi dải tab, người dùng bàn phím không bấm mũi tên tiếp được (mẫu tab của WAI-ARIA: tiêu điểm ở lại trên tab).
@@ -107,7 +112,7 @@ function DangNhapForm() {
         setStep("code"); setCode(""); setInvalid(false); startCooldown(data.retryAfterSec ?? 60);
         focusFirstBox();
       } else if (res.status === 429 && data.code === "locked") {
-        setNotice({ kind: "locked", title: data.error, body: "Đây là chặn người đoán mã, không phải phạt bạn." });
+        setNotice({ kind: "locked", title: data.error, body: "Đây là chặn người đoán mã, không phải phạt bạn.", retryAfterSec: data.retryAfterSec });
       } else {
         setNotice({ kind: "error", title: data.error ?? "Không gửi được mã. Thử lại sau." });
       }
@@ -125,7 +130,7 @@ function DangNhapForm() {
     let r: Awaited<ReturnType<typeof loginWithCode>>;
     try { r = await loginWithCode(email, value); }
     catch { setSubmitting(false); setNotice({ kind: "error", title: "Không có kết nối. Thử lại sau." }); return; }
-    if (r.success) return; // AuthContext chuyển trang
+    if (r.success) { setOk(true); return; } // AuthContext chuyển trang
     setSubmitting(false);
     if (r.code === "wrong") {
       setInvalid(true); setCode("");
@@ -133,7 +138,7 @@ function DangNhapForm() {
       focusFirstBox();
     } else if (r.code === "locked") {
       setInvalid(true); setCode("");
-      setNotice({ kind: "locked", title: r.message ?? `Đã khoá đăng nhập ${channelWord} này`, body: "Đây là chặn người đoán mã, không phải phạt bạn." });
+      setNotice({ kind: "locked", title: r.message ?? `Đã khoá đăng nhập ${channelWord} này`, body: "Đây là chặn người đoán mã, không phải phạt bạn.", retryAfterSec: r.retryAfterSec });
     } else if (r.code === "expired") {
       setInvalid(true); setCode("");
       setNotice({ kind: "expired", title: "Mã đã hết hạn hoặc chưa được gửi", body: "Bấm “Gửi lại mã” để nhận mã mới." });
@@ -152,8 +157,11 @@ function DangNhapForm() {
       const result = await login(email, password);
       if (!result.success) {
         // Bị chặn tạm vì sai nhiều lần: mời sang đăng nhập bằng mã, đó là lối thoát ngay lúc này.
-        setNotice({ kind: result.code === "wait" ? "locked" : "error", title: result.message ?? "Đăng nhập thất bại", offerCode: result.code === "wait" });
+        setNotice({ kind: result.code === "wait" ? "locked" : "error", title: result.message ?? "Đăng nhập thất bại", offerCode: result.code === "wait", retryAfterSec: result.code === "wait" ? result.retryAfterSec : undefined });
         setSubmitting(false);
+        replayClass(cardRef.current, "kin-shake"); // sai → cả thẻ lắc đầu
+      } else {
+        setOk(true); // nút hiện dấu tích trong lúc AuthContext chuyển trang (không chờ thêm gì)
       }
     } catch {
       // Mất mạng giữa chừng: không để nút kẹt ở "Đang đăng nhập…".
@@ -171,13 +179,16 @@ function DangNhapForm() {
   const noticeBox = notice && (
     <div
       role="alert"
-      className="flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 border"
+      className="kin-notice-in kin-m flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 border"
       style={notice.kind === "expired"
         ? { background: "var(--kin-nen-nhan)", borderColor: "var(--kin-vien-thuong)" }
         : { background: "var(--kin-nhan-nen-nhat)", borderColor: "var(--kin-tt-chu-loi)" }}
     >
       <p className="text-[length:var(--kin-co-small)] font-semibold" style={{ color: notice.kind === "expired" ? "var(--kin-chu-chinh)" : "var(--kin-tt-chu-loi)" }}>{notice.title}</p>
       {notice.body && <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-chinh)]">{notice.body}</p>}
+      {notice.kind === "locked" && notice.retryAfterSec && notice.retryAfterSec > 0 && (
+        <LockCountdown key={notice.retryAfterSec + notice.title} seconds={notice.retryAfterSec} onRetry={() => setNotice(null)} />
+      )}
       {notice.offerCode && (
         <button type="button" onClick={() => chooseMethod("ma")} className={`${linkBtn} self-start min-h-11`}>Đăng nhập bằng mã một lần</button>
       )}
@@ -189,7 +200,7 @@ function DangNhapForm() {
 
   return (
     <div className="kin-chu-than min-h-[calc(100vh-60px)] flex items-start sm:items-center justify-center px-4 py-8 sm:py-12 bg-[var(--kin-nen-bang)]">
-      <div className="w-full max-w-[420px] rounded-2xl border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
+      <div ref={cardRef} className="w-full max-w-[420px] rounded-2xl border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
 
         <div className="px-5 pt-7 pb-5 flex flex-col gap-[6px]">
           <Link href="/" aria-label="KiN — trang chủ" className="inline-flex w-fit"><KinLogo size={32} textSize="var(--kin-co-h3, 23px)" /></Link>
@@ -227,7 +238,7 @@ function DangNhapForm() {
                   </div>
                 </div>
                 {noticeBox}
-                <button type="submit" disabled={submitting} className={primaryBtn}>{submitting ? "Đang đăng nhập..." : "Đăng nhập"}</button>
+                <KinSubmitButton busy={submitting} ok={ok} busyLabel="Đang đăng nhập..." className={primaryBtn}>Đăng nhập</KinSubmitButton>
                 <Link href="/quen-mat-khau" className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Quên mật khẩu?</Link>
               </form>
             )}
@@ -240,7 +251,7 @@ function DangNhapForm() {
                     onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} className={field} />
                 </div>
                 {noticeBox}
-                <button type="submit" disabled={submitting} className={primaryBtn}>{submitting ? "Đang gửi mã..." : "Gửi mã đăng nhập"}</button>
+                <KinSubmitButton busy={submitting} busyLabel="Đang gửi mã..." className={primaryBtn}>Gửi mã đăng nhập</KinSubmitButton>
                 <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">
                   Không cần nhớ mật khẩu: bạn nhận một mã 6 số dùng một lần qua {phoneOn ? "SMS hoặc email" : "email"}.
                   {phoneOn && " Số điện thoại chỉ nhận được mã sau khi bạn đã xác minh số trong Hồ sơ; chưa xác minh thì dùng email."}
@@ -273,11 +284,11 @@ function DangNhapForm() {
               </p>
             </div>
             <div ref={codeRef}>
-              <CodeBoxes value={code} onChange={v => { setCode(v); if (invalid) setInvalid(false); }} invalid={invalid} disabled={submitting} autoFocus
+              <CodeBoxes value={code} onChange={v => { setCode(v); if (invalid) setInvalid(false); }} invalid={invalid} ok={ok} disabled={submitting} autoFocus
                 onComplete={v => { void submitCode(v); }} />
             </div>
             {noticeBox}
-            <button type="submit" disabled={submitting || code.length !== 6} className={primaryBtn}>{submitting ? "Đang xác nhận..." : "Xác nhận"}</button>
+            <KinSubmitButton busy={submitting} ok={ok} disabled={code.length !== 6} busyLabel="Đang xác nhận..." className={primaryBtn}>Xác nhận</KinSubmitButton>
             <div className="flex items-center justify-center gap-[6px] text-[length:var(--kin-co-small)] min-h-11">
               <span className="text-[var(--kin-chu-phu)]">Chưa thấy mã?</span>
               {cooldown > 0

@@ -3,24 +3,33 @@
 // còn các thành phần React nghe sự kiện "kin-rail" để cập nhật nút bấm và aria.
 "use client";
 import { useSyncExternalStore } from "react";
-import { RAIL_ATTR, RAIL_KEY, type RailState } from "@/lib/railState";
+import { RAIL_ATTR, RAIL_KEY, RAIL_OPEN_KEY, reopenRail, type RailOpen, type RailState } from "@/lib/railState";
 
 const EVENT = "kin-rail";
 
 export function readRail(): RailState {
   if (typeof document === "undefined") return "mo";
-  return document.documentElement.getAttribute(RAIL_ATTR) === "thu" ? "thu" : "mo";
+  const a = document.documentElement.getAttribute(RAIL_ATTR);
+  return a === "thu" ? "thu" : a === "rong" ? "rong" : "mo";
 }
 
 /** Áp lên <html> và báo cho các thành phần đang nghe. Không lưu gì. */
 export function applyRail(s: RailState): void {
   const html = document.documentElement;
-  if (s === "thu") html.setAttribute(RAIL_ATTR, "thu"); else html.removeAttribute(RAIL_ATTR);
+  if (s === "mo") html.removeAttribute(RAIL_ATTR); else html.setAttribute(RAIL_ATTR, s);
   window.dispatchEvent(new Event(EVENT));
 }
 
 export function saveRailLocal(s: RailState): void {
-  try { localStorage.setItem(RAIL_KEY, s); } catch { /* chế độ riêng tư / bị chặn: bỏ qua, lần sau mặc định là hiện */ }
+  try {
+    localStorage.setItem(RAIL_KEY, s);
+    if (s !== "thu") localStorage.setItem(RAIL_OPEN_KEY, s); // nhớ bề rộng MỞ gần nhất để thu rồi mở lại về đúng chỗ
+  } catch { /* chế độ riêng tư / bị chặn: bỏ qua, lần sau mặc định là hiện */ }
+}
+
+/** Bề rộng để mở lại thanh sau khi thu ("mo" 79px hoặc "rong" 220px — cái đã dùng lần trước). */
+export function lastOpenRail(): RailOpen {
+  try { return reopenRail(localStorage.getItem(RAIL_OPEN_KEY)); } catch { return "mo"; }
 }
 
 /** Ghi lên tài khoản (không chờ, không báo lỗi: máy đã áp rồi). Chỉ gọi khi đã đăng nhập — các vỏ chỉ có khi đã đăng nhập. */

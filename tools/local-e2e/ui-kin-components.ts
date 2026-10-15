@@ -95,8 +95,10 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   check("cao ≥ 44px", (await tabs.evaluateAll(els => els.every(e => e.getBoundingClientRect().height >= 44))));
   const tabLook = (i: number) => tabs.nth(i).evaluate(e => { const [t, u] = [e.children[0] as HTMLElement, e.children[1] as HTMLElement]; return { w: getComputedStyle(t).fontWeight, c: getComputedStyle(t).color, fs: getComputedStyle(t).fontSize, uh: Math.round(u.getBoundingClientRect().height), ub: getComputedStyle(u).backgroundColor }; });
   const t0 = await tabLook(0), t1 = await tabLook(1);
-  check("đang mở: chữ đậm 600, đen, gạch chân 2px màu nhấn", t0.w === "600" && same(t0.c, chinh) && t0.uh === 2 && same(t0.ub, navy) && t0.fs === "13.3px", t0);
-  check("thường: chữ 400 xám, gạch chân trong suốt", t1.w === "400" && same(t1.c, mo) && t1.ub.includes("0, 0, 0, 0"), t1);
+  // 15/10/2026 (Lucian No.039): gạch chân 2px màu nhấn là MỘT thanh chung trượt giữa các tab (.kin-tab-ink), không còn là gạch riêng của từng tab.
+  const ink = await tabs.nth(0).evaluate(e => { const i = e.parentElement!.querySelector<HTMLElement>(".kin-tab-ink")!; const r = i.getBoundingClientRect(), t = e.getBoundingClientRect(); return { h: Math.round(r.height), bg: getComputedStyle(i).backgroundColor, dx: Math.abs(r.left - t.left), dw: Math.abs(r.width - t.width), dy: Math.abs(r.bottom - t.bottom) }; });
+  check("đang mở: chữ đậm 600, đen, cỡ 13.3px; gạch chân 2px màu nhấn là thanh chung nằm đúng dưới tab đó", t0.w === "600" && same(t0.c, chinh) && t0.fs === "13.3px" && ink.h === 2 && same(ink.bg, navy) && ink.dx < 1.5 && ink.dw < 1.5 && ink.dy < 3, { t0, ink });
+  check("thường: chữ 400 xám, không có gạch chân riêng (trong suốt)", t1.w === "400" && same(t1.c, mo) && t1.ub.includes("0, 0, 0, 0") && t0.ub.includes("0, 0, 0, 0"), t1);
   await tabs.nth(0).focus();
   await pg.keyboard.press("ArrowRight");
   check("→ chọn tab kế và chuyển tiêu điểm theo", (await tabs.nth(1).getAttribute("aria-selected")) === "true" && await tabs.nth(1).evaluate(e => e === document.activeElement) && await pg.locator('[data-mau="tab-dang-mo"]').innerText() === "Đang mở: ph");

@@ -6,16 +6,21 @@
 //   <KinTabs …>      — đổi nội dung trong trang (role=tablist/tab, mũi tên trái/phải, Home/End).
 //   KIN_TAB_BOX + <KinTabInner active> — đặt trong <Link aria-current="page"> khi tab là điều hướng giữa các trang
 //                                         (AdminShell). Đó là điều hướng, không phải tab → không dùng role=tab.
+// Gạch chân TRƯỢT (15/10/2026): chuyển động lấy từ Lucian UX/UI Prompt #039 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#039
+// (viên trượt di chuyển + đổi bề rộng, 0,5 giây, đường cong lò xo; CSS .kin-tab-ink ở src/app/kin-motion.css). Hình dáng vẫn theo Figma (gạch 2px màu nhấn);
+// chỉ khác là MỘT gạch chân đi từ tab này sang tab kia thay vì mỗi tab tự bật/tắt. Vị trí đặt thẳng lên DOM (không qua state) nên không dựng lại cả dải tab.
+// Dải tab cuộn ngang (điện thoại) thì tab vừa chọn được kéo về giữa (theo No.048).
 "use client";
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 export const KIN_TAB_BOX = "kin-tab group relative inline-flex flex-col justify-between gap-[10px] min-h-11 pt-3 px-4 whitespace-nowrap text-[length:var(--kin-co-small)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
 
-export function KinTabInner({ active, children }: { active: boolean; children: ReactNode }) {
+/** `bar={false}`: không vẽ gạch chân riêng — dùng trong KinTabs, nơi một gạch chân chung trượt giữa các tab. */
+export function KinTabInner({ active, children, bar = true }: { active: boolean; children: ReactNode; bar?: boolean }) {
   return (
     <>
       <span className={active ? "font-semibold text-[var(--kin-chu-chinh)]" : "font-normal text-[var(--kin-chu-mo)] group-hover:text-[var(--kin-chu-chinh)]"}>{children}</span>
-      <span aria-hidden className="block h-[2px] w-full" style={{ background: active ? "var(--kin-nhan-nen)" : "transparent" }} />
+      <span aria-hidden className="block h-[2px] w-full" style={{ background: bar && active ? "var(--kin-nhan-nen)" : "transparent" }} />
     </>
   );
 }
@@ -38,6 +43,42 @@ export interface KinTabsProps<K extends string = string> {
 
 export function KinTabs<K extends string = string>({ tabs, value, onChange, label, tabId, panelId, ruled = true, className = "" }: KinTabsProps<K>) {
   const refs = useRef(new Map<K, HTMLButtonElement>());
+  const listRef = useRef<HTMLDivElement>(null);
+  const inkRef = useRef<HTMLSpanElement>(null);
+  const first = useRef(true);
+
+  // Đặt gạch chân dưới tab đang mở (đo thẳng từ DOM, ghi thẳng vào biến CSS).
+  const place = useCallback(() => {
+    const el = refs.current.get(value), ink = inkRef.current;
+    if (!el || !ink) return;
+    ink.style.setProperty("--x", `${el.offsetLeft}px`);
+    ink.style.setProperty("--y", `${el.offsetTop + el.offsetHeight - 2}px`);
+    ink.style.setProperty("--w", `${el.offsetWidth}px`);
+    ink.dataset.on = "1";
+  }, [value]);
+  useLayoutEffect(() => { place(); }, [place, tabs]);
+  // Chỉ bật chuyển động SAU khung hình đầu — nếu không, gạch chân sẽ trượt từ mép trái vào lần hiện đầu tiên.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => { if (inkRef.current) inkRef.current.dataset.anim = "1"; });
+    return () => cancelAnimationFrame(id);
+  }, []);
+  // Chữ đổi bề rộng (nạp phông, xoay màn hình, đổi cỡ cửa sổ) thì đặt lại.
+  useEffect(() => {
+    const box = listRef.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => place());
+    ro.observe(box);
+    refs.current.forEach(el => ro.observe(el));
+    return () => ro.disconnect();
+  }, [place, tabs]);
+  // Dải tab dài hơn màn hình: kéo tab vừa chọn về giữa (không động tới cuộn của cả trang). Lần vẽ đầu giữ nguyên vị trí cuộn.
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const box = listRef.current, el = refs.current.get(value);
+    if (!box || !el || box.scrollWidth <= box.clientWidth) return;
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2, behavior: reduce ? "auto" : "smooth" });
+  }, [value]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = tabs.findIndex(t => t.key === value);
@@ -55,11 +96,13 @@ export function KinTabs<K extends string = string>({ tabs, value, onChange, labe
 
   return (
     <div
+      ref={listRef}
       role="tablist"
       aria-label={label}
       onKeyDown={onKeyDown}
-      className={`flex gap-2 overflow-x-auto ${ruled ? "border-b border-[var(--kin-vien-thuong)]" : ""} ${className}`}
+      className={`kin-m relative flex gap-2 overflow-x-auto ${ruled ? "border-b border-[var(--kin-vien-thuong)]" : ""} ${className}`}
     >
+      <span ref={inkRef} aria-hidden className="kin-tab-ink" />
       {tabs.map(t => {
         const active = t.key === value;
         return (
@@ -75,7 +118,7 @@ export function KinTabs<K extends string = string>({ tabs, value, onChange, labe
             onClick={() => onChange(t.key)}
             className={`${KIN_TAB_BOX} ${ruled ? "-mb-px" : ""} cursor-pointer`}
           >
-            <KinTabInner active={active}>{t.label}</KinTabInner>
+            <KinTabInner active={active} bar={false}>{t.label}</KinTabInner>
           </button>
         );
       })}

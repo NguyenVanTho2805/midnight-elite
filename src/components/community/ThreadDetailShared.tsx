@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadMany, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
+import { useAutoGrow, KinCharRing } from "@/components/kin/AutoGrow";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -266,6 +267,7 @@ export function ReplyForm({
   inputRef:         React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const imgRef = useRef<HTMLInputElement>(null);
+  useAutoGrow(inputRef, replyText); // ô trả lời cao dần theo chữ (Lucian No.028)
 
   return (
     <DropZone onFiles={files => setReplyImages(p => [...p, ...files.filter(f => f.type.startsWith("image/"))].slice(0, 2))}
@@ -276,7 +278,7 @@ export function ReplyForm({
           <textarea ref={inputRef} rows={3} maxLength={1000} value={replyText}
             onChange={e => setReplyText(e.target.value)}
             placeholder={`Trả lời ${threadAuthorName}...`}
-            className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
+            className="kin-grow w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
             style={{ background: textareaBg, color: "var(--kin-chu-chinh)", border: textareaBg === "var(--kin-nen-trang)" ? "1px solid var(--kin-vien-thuong)" : "none" }} />
 
           <ImagePreviews images={replyImages}
@@ -303,7 +305,7 @@ export function ReplyForm({
                   setReplyImages(p => [...p, ...valid].slice(0, 2));
                   e.target.value = "";
                 }} />
-              <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{replyText.length}/1000</span>
+              <KinCharRing count={replyText.length} max={1000} />
             </div>
             <button onClick={onSubmit} disabled={replying || uploading || !replyText.trim()}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
