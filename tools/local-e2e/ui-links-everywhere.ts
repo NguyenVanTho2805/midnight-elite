@@ -44,8 +44,13 @@ const STUDENT_ALIASES: Record<string, string> = {
   "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong",
   "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu",
 };
+// Trang CHỈ để chuyển hướng (page.tsx gọi redirect()): không phải liên kết sai mà là cửa vào cũ / ngắn gọn.
+const PAGE_REDIRECTS: Record<string, string> = { "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu" };
 function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
+  if (PAGE_REDIRECTS[reqPath] === finPath) return true;
+  // /ban-do là bản đồ cho MỌI người, có mục "Gia sư" (Lịch / Lớp / Học phí): quản trị không có vỏ gia sư nên các trang này đưa họ về danh sách lớp /lop-cua-toi.
+  if ((sc.role === "super" || sc.role === "content") && /^\/lop-cua-toi\/(lich|lop|hoc-phi)$/.test(reqPath)) return finPath === "/lop-cua-toi";
   if ((sc.role === "student" || sc.role === "tutor") && ["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) {
     return finPath === (sc.role === "student" ? "/student/viec-cua-toi" : "/lop-cua-toi");
   }
@@ -113,12 +118,17 @@ async function open(p: Page, url: string): Promise<{ status: number | null; fina
 }
 
 const GATE = "cổng đăng nhập (trang cần đăng nhập — đúng thiết kế với khách)";
+// Quản trị đang đăng nhập ở tên miền CHÍNH bấm liên kết /admin/...: sang tên miền admin, nơi cookie phiên là của RIÊNG tên miền đó nên phải đăng nhập lại (giới hạn đã biết,
+// xem docs/kin/tien-do-dang-do.md mục V). Chỉ chấp nhận khi trang đăng nhập đó GIỮ ?redirect= đúng trang đã bấm — đăng nhập xong về đúng chỗ.
+const HOSTGATE = "sang tên miền admin, phải đăng nhập lại (cookie mỗi tên miền một phiên — giới hạn đã biết)";
 function judge(sc: Scenario, requested: URL, r: { status: number | null; final: URL; text: string }): string | null {
   if (r.status !== null && r.status >= 400) return `HTTP ${r.status}`;
   if (/Trang không tồn tại|This page could not be found|Đường dẫn bạn truy cập không tồn tại/i.test(r.text)) return "giao diện 404";
   const reqP = norm(requested.pathname), finP = norm(r.final.pathname);
   if (finP === "/dang-nhap" && reqP !== "/dang-nhap") {
     const gated = isProtected(reqP) || (requested.host === new URL(ADMIN).host && reqP === "/"); // '/' của tên miền admin = dashboard quản trị
+    const crossHost = sc.user && requested.host !== r.final.host && r.final.host === new URL(ADMIN).host && /^\/admin(\/|$)/.test(reqP);
+    if (crossHost && r.final.searchParams.get("redirect") === requested.pathname + requested.search) return HOSTGATE;
     return sc.user ? "bị đẩy về trang đăng nhập dù đã đăng nhập" : gated ? GATE : "bị đẩy về trang đăng nhập";
   }
   if (reqP !== finP) return expectedRedirect(sc, reqP, finP) ? null : `đổi đích: ${requested.host}${reqP} → ${r.final.host}${finP}`;
@@ -215,8 +225,10 @@ async function runScenario(browser: import("playwright").Browser, sc: Scenario, 
     const ext = await runScenario(browser, sc, outcomes, allLinks);
     for (const [k, v] of ext) externals.set(`${sc.name} ${k}`, v);
     const mine = outcomes.slice(before);
-    const bad = mine.filter(o => o.why && o.why !== GATE);
+    const bad = mine.filter(o => o.why && o.why !== GATE && o.why !== HOSTGATE);
     const gates = mine.filter(o => o.why === GATE);
+    const hostGates = mine.filter(o => o.why === HOSTGATE);
+    if (hostGates.length) console.log(`  ℹ ${hostGates.length} đích /admin/... mở từ tên miền chính phải đăng nhập lại ở tên miền admin (giới hạn đã biết, ?redirect= giữ đúng trang): ${hostGates.slice(0, 4).map(g => new URL(g.requested).pathname).join(", ")}${hostGates.length > 4 ? " …" : ""}`);
     if (gates.length) console.log(`  ℹ ${gates.length} đích cần đăng nhập (khách bị đưa tới /dang-nhap): ${gates.slice(0, 4).map(g => new URL(g.requested).pathname).join(", ")}${gates.length > 4 ? " …" : ""}`);
     console.log(`  đã mở ${mine.length} đích trong ${Math.round((Date.now() - t0) / 1000)} giây`);
     const grouped = new Map<string, string[]>();
@@ -235,7 +247,7 @@ async function runScenario(browser: import("playwright").Browser, sc: Scenario, 
       let lu: URL; try { lu = new URL(l.href); } catch { continue; }
       lu.hash = "";
       const o = byTarget.get(sc + "|" + abs(lu));
-      const res = o ? (o.why === GATE ? "🔒 cần đăng nhập" : o.why ? `✗ ${o.why}` : o.requested === o.final ? "✓" : `✓→ ${o.final}`) : "·";
+      const res = o ? (o.why === GATE ? "🔒 cần đăng nhập" : o.why === HOSTGATE ? "↪ đăng nhập lại ở tên miền admin" : o.why ? `✗ ${o.why}` : o.requested === o.final ? "✓" : `✓→ ${o.final}`) : "·";
       const id = `${sc}|${l.region}|${l.text}|${l.href}`;
       const cur = uniq.get(id) ?? { sc, region: l.region, text: l.text, href: l.href, pages: new Set<string>(), res };
       cur.pages.add(new URL(l.from).pathname);

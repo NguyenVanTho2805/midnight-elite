@@ -246,7 +246,8 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   const ctx: BrowserContext = await browser.newContext({ viewport: { width: VW, height: VH }, locale: "vi-VN", extraHTTPHeaders: { "x-forwarded-proto": "http" } });
   // Thanh công cụ góp ý `agentation` chỉ có ở `next dev` (AgentationWrapper trả null ngoài development) nhưng nằm đè góc phải-dưới: ở khung điện thoại nó che nút «Khác»
   // của thanh module dưới đáy và mọi lần bấm bị chặn. Ẩn nó đi để bài rà đo đúng giao diện người dùng thật thấy.
-  await ctx.addInitScript(`(() => { const css = document.createElement("style"); css.textContent = "[data-agentation-root]{display:none !important}"; (document.head || document.documentElement).appendChild(css); })()`);
+  // (script khởi tạo chạy trước cả khi có <html>: phải đợi DOMContentLoaded mới gắn được thẻ <style>, nếu không báo "Cannot read properties of null (reading 'appendChild')" ở mọi trang)
+  await ctx.addInitScript(`(() => { const add = () => { const css = document.createElement("style"); css.textContent = "[data-agentation-root]{display:none !important}"; (document.head || document.documentElement).appendChild(css); }; if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add); else add(); })()`);
   const externalNavs: { from: string; url: string }[] = [];
   await ctx.route(u => u.origin !== MAIN_ORIGIN && /^https?:$/.test(u.protocol), route => {
     const r = route.request();

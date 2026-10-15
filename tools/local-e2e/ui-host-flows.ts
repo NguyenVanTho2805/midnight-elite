@@ -58,8 +58,9 @@ async function fillLogin(p: Page, email: string, password: string) {
     await p.goto(ADMIN + "/dang-nhap?redirect=%2Fadmin", { waitUntil: "domcontentloaded" }); await settle(p);
     await p.locator('input[type="email"], input[autocomplete="username"]').first().fill("quan.tri@example.com");
     await p.getByRole("link", { name: "Quên mật khẩu?" }).first().click();
-    await settle(p);
-    check("đến /quen-mat-khau ở tên miền CHÍNH (không quay lại đăng nhập admin)", u(p.url()).pathname === "/quen-mat-khau" && !u(p.url()).host.startsWith("admin."), p.url());
+    // chuyển tên miền + biên dịch lần đầu của /quen-mat-khau ở `next dev` có thể mất vài chục giây: chờ tới khi tới nơi thay vì đoán thời gian
+    await eventually("đến /quen-mat-khau ở tên miền CHÍNH (không quay lại đăng nhập admin)", () => u(p.url()).pathname === "/quen-mat-khau" && !u(p.url()).host.startsWith("admin."), 60000);
+    await p.locator("#qmk-email").waitFor({ timeout: 60000 }).catch(() => {});
     check("ô email đã điền sẵn email vừa gõ", (await p.locator("#qmk-email").inputValue().catch(() => "")) === "quan.tri@example.com");
     await ctx.close();
   }
