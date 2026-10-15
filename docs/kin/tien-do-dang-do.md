@@ -346,6 +346,13 @@ Sau khi sửa: 13 bài đỏ chạy lại đều xanh (chạy lại riêng từn
 - **Test:** `t-rail-lib` 65/65, `ui-shell-everywhere` 16/16; hồi quy các bài vỏ / menu tài khoản / liên kết ghi ở PR.
 - **Giới hạn:** vẫn còn 1–2 khung đầu không có thanh bên (chưa chừa chỗ 79px) trước khi vỏ hiện; quản trị xem thử thấy vỏ HỌC SINH chứ chưa có vỏ quản trị riêng trên tên miền chính.
 
+### R. Biểu tượng lúc đang tải = logo KiN (15/10/2026)
+- **Yêu cầu (Thọ):** "đổi biểu tượng lúc loading thành logo mới của tôi".
+- **Trước:** màn chờ toàn trang (`AuthGuard`) vẽ ô chữ **"T"** (dấu vết thương hiệu cũ) + 3 chấm nhảy; 5 trang khác (khoá học, học viên nổi bật, phòng thi thử, bài giảng, quản trị khoá học ×2) có hàng 3 chấm nhảy riêng.
+- **Đã làm:** một thành phần `KinLoader` (`src/components/kin/KinLoader.tsx`) dùng chính `KinMark` — thân K đứng yên, ba lưỡi sáng lần lượt (CSS `.kin-loader` trong `kin-tokens.css`); `role="status"` + chữ ẩn "Đang tải"; người đặt "giảm chuyển động" thì logo đứng yên. Thay vào 7 chỗ trên. **Giữ** hàng chấm của khung chat AI (là "đang gõ", không phải đang tải) và các vòng xoay nhỏ trong nút (vd. nút Tra cứu).
+- **Logo nào:** dùng logo K đang có trong mã (`KinMark`, vẽ lại bằng SVG theo Figma 59:9). Nếu Thọ có file logo MỚI khác, chỉ cần thay phần `<svg>` trong `KinMark` — thanh trên, chân trang, màn đăng nhập và màn chờ cùng đổi theo.
+- **Test:** `ui-kin-loader` 13/13 (mã nguồn không còn "T" / chấm nhảy; trình đọc màn hình; giảm chuyển động; chỗ chờ trong trang).
+
 ## Không làm (chờ Thọ / luật sư / Thanh)
 PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh);
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).

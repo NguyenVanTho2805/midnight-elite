@@ -8,6 +8,7 @@ import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem,
 import { MathText } from "@/components/MathText";
 import CorrectionPanel from "@/components/exam/CorrectionPanel";
 import ExamRoomView from "@/components/exam/ExamRoomView";
+import { KinLoader } from "@/components/kin/KinLoader";
 
 type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done" | "review";
 
@@ -287,12 +288,7 @@ function ExamEntryInner() {
   if (phase === "loading") {
     return (
       <div className="max-w-lg mx-auto flex justify-center py-20">
-        <div className="flex gap-1.5">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-2.5 h-2.5 rounded-full animate-bounce"
-              style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i * 0.15}s` }} />
-          ))}
-        </div>
+        <KinLoader size={44} />
       </div>
     );
   }

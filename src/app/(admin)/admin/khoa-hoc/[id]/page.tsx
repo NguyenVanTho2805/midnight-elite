@@ -11,6 +11,7 @@ import { MathText } from "@/components/MathText";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
 import { DAY_LABELS_VI } from "@/lib/types";
 import { useKinConfirm } from "@/components/kin/useConfirm";
+import { KinLoader } from "@/components/kin/KinLoader";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -2052,9 +2053,7 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
 
       {loading ? (
         <div className="py-12 flex justify-center">
-          <div className="flex gap-1.5">
-            {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce bg-blue-400" style={{ animationDelay: `${i*0.15}s` }} />)}
-          </div>
+          <KinLoader size={36} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-gray-400 text-sm">
@@ -2228,9 +2227,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
 
       {loading ? (
         <div className="py-12 flex justify-center">
-          <div className="flex gap-1.5">
-            {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce bg-blue-400" style={{ animationDelay: `${i*0.15}s` }} />)}
-          </div>
+          <KinLoader size={36} />
         </div>
       ) : schedules.length === 0 ? (
         <div className="py-12 text-center text-gray-400 text-sm">Chưa có khung giờ học nào — học viên sẽ không thấy buổi học nào trong lịch cho tới khi thêm.</div>
