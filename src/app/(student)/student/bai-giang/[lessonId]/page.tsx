@@ -17,6 +17,7 @@ import {
 } from "griddy-icons";
 import "plyr/dist/plyr.css";
 import { useKinConfirm } from "@/components/kin/useConfirm";
+import { KinLoader } from "@/components/kin/KinLoader";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -1005,11 +1006,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   if (ctxLoading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="flex gap-1.5">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i*0.15}s` }} />
-          ))}
-        </div>
+        <KinLoader size={44} />
       </div>
     );
   }

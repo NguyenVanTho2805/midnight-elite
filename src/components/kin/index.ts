@@ -9,4 +9,5 @@ export { KinToast, type KinToastProps, type ToastTone } from "./Toast";
 export { KinConfirm, type KinConfirmProps } from "./Confirm";
 export { useKinConfirm, type AskOptions } from "./useConfirm";
 export { KinMark, KinLogo } from "./KinLogo";
+export { KinLoader } from "./KinLoader";
 export { CodeBoxes, type CodeBoxesProps } from "./CodeBoxes";

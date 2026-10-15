@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProgress } from "@/hooks/useProgress";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import TeacherTag from "@/components/TeacherTag";
+import { KinLoader } from "@/components/kin/KinLoader";
 
 interface DBLesson { id: string; title: string; duration?: string | null; isFree: boolean }
 interface DBChapter { id: string; title: string; lessons: DBLesson[] }
@@ -192,11 +193,7 @@ export default function KhoaHocDetailPage() {
   if (!loaded) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="flex gap-1.5">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i*0.15}s` }} />
-          ))}
-        </div>
+        <KinLoader size={44} />
       </div>
     );
   }

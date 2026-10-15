@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Trophy } from "griddy-icons";
 import { EmptyState } from "@/components/ui";
 import { TutorCard, TutorCardSkeleton, type TutorListItem } from "@/components/tutor/TutorCard";
+import { KinLoader } from "@/components/kin/KinLoader";
 
 interface TopStudent { userId: string; name: string; school: string | null; best: number; }
 
@@ -37,10 +38,8 @@ function TopStudentsSection() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12 gap-1.5">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i*0.15}s` }} />
-          ))}
+        <div className="flex justify-center py-12">
+          <KinLoader size={36} />
         </div>
       ) : students.length === 0 ? (
         <p className="text-center text-sm py-12" style={{ color: "var(--kin-chu-mo)" }}>Chưa có dữ liệu</p>

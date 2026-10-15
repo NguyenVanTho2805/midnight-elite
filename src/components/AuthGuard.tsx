@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth, Role } from "@/contexts/AuthContext";
+import { KinLoader } from "@/components/kin/KinLoader";
 
 interface Props {
   requiredRole?: Role;
@@ -33,16 +34,7 @@ export default function AuthGuard({ requiredRole, children }: Props) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--kin-nen-bang)" }}>
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "var(--kin-nhan-nen)" }}>
-            <span className="text-xl font-black text-white">T</span>
-          </div>
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--kin-nhan-nen)", animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        </div>
+        <KinLoader size={56} />
       </div>
     );
   }
