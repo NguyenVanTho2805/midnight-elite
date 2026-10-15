@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BaiDangPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/bai-dang");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/bai-dang");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   return <BaiDangClient />;
 }

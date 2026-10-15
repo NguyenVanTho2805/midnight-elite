@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 
 interface Review {
   id: string;
@@ -37,6 +38,7 @@ const STATUS_TAB = [
 
 function DanhGiaContent() {
   const { toast, showToast } = useAdminToast();
+  const { ask, dialog } = useKinConfirm();
   const [tab, setTab] = useState("pending");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ function DanhGiaContent() {
   }
 
   async function del(id: string) {
-    if (!confirm("Xóa đánh giá này?")) return;
+    if (!(await ask({ title: "Xóa đánh giá này?", message: "Việc này không hoàn tác được." }))) return;
     setActing(id);
     const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
     setActing(null);
@@ -77,6 +79,7 @@ function DanhGiaContent() {
 
   return (
     <div>
+      {dialog}
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       {/* Header */}
       <div className="mb-6">

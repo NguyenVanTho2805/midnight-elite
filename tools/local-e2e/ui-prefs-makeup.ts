@@ -1,4 +1,4 @@
-import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -20,7 +20,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
-  await page.goto(`${ADMIN}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await page.getByText("Em An").waitFor({ timeout: 30000 });
@@ -49,7 +49,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
   await eventually("giao diện: lại thấy 'đang giữ 1'", async () => /đang giữ 1/.test(await rowA.innerText()));
 
   section("Lịch học của lớp: link vào lớp");
-  await page.goto(`${ADMIN}/admin/khoa-hoc/${course.id}?tab=lich-hoc`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=lich-hoc`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "+ Thêm khung giờ" }).click();
   await page.getByLabel(/Link vào lớp/).fill("https://meet.google.com/xyz-abcd-efg");
   await page.getByRole("button", { name: "Lưu khung giờ" }).click();

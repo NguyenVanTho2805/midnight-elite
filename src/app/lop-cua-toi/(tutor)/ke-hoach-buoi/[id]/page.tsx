@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function KeHoachEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
-  if (!session) redirect(`/dang-nhap?next=/lop-cua-toi/ke-hoach-buoi/${id}`);
+  if (!session) redirect(`/dang-nhap?redirect=/lop-cua-toi/ke-hoach-buoi/${id}`);
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   return <KeHoachEditorClient id={id} />;
 }

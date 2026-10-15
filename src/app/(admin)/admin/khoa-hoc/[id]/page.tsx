@@ -10,6 +10,7 @@ import { DropZone } from "@/components/DropZone";
 import { MathText } from "@/components/MathText";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
 import { DAY_LABELS_VI } from "@/lib/types";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -1209,6 +1210,7 @@ function InteractiveResultsModal({ assignment, onClose }: {
 
 function AssignmentEditor({ lessonId }: { lessonId: string }) {
   const [items, setItems]     = useState<AssignmentFull[]>([]);
+  const { ask, dialog } = useKinConfirm();
   const [loading, setLoading] = useState(true);
   const [adding, setAdding]   = useState(false);
   const [editing, setEditing] = useState<AssignmentFull | null>(null);
@@ -1251,7 +1253,7 @@ function AssignmentEditor({ lessonId }: { lessonId: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Xoá bài tập này? Toàn bộ bài học viên đã nộp cũng sẽ mất.")) return;
+    if (!(await ask({ title: "Xoá bài tập này?", message: "Toàn bộ bài học viên đã nộp cũng sẽ mất." }))) return;
     try {
       await api.assignments.remove(id);
       load();
@@ -1262,6 +1264,7 @@ function AssignmentEditor({ lessonId }: { lessonId: string }) {
 
   return (
     <div>
+      {dialog}
       <div className="flex items-center justify-between mb-3 pb-1 border-b border-gray-100">
         <p className="text-sm font-semibold text-gray-700">Bài tập tự nộp</p>
         {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm bài tập</button>}
@@ -2114,6 +2117,7 @@ const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00",
 
 function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
+  const { ask, dialog } = useKinConfirm();
   const [loading, setLoading]     = useState(true);
   const [adding, setAdding]       = useState(false);
   const [form, setForm]           = useState(SCHEDULE_FORM_INIT);
@@ -2153,7 +2157,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Xoá khung giờ học này?")) return;
+    if (!(await ask({ title: "Xoá khung giờ học này?", message: "Việc này không hoàn tác được." }))) return;
     setErr("");
     try {
       await api.classSchedules.remove(id);
@@ -2165,6 +2169,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
 
   return (
     <div>
+      {dialog}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <p className="text-sm font-bold text-gray-800">Khung giờ học cố định hàng tuần</p>

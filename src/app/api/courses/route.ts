@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isReservedCourseId } from "@/lib/courseIds";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -70,6 +71,11 @@ export async function POST(req: NextRequest) {
     }
     if (!data.name || !data.id) {
       return NextResponse.json({ error: "Thiếu id hoặc name" }, { status: 400 });
+    }
+
+    // Mã trùng tên một trang cố định của KiN (vd "lich") thì trang lớp không bao giờ mở được — xem src/lib/courseIds.ts.
+    if (isReservedCourseId(data.id)) {
+      return NextResponse.json({ error: `Mã "${data.id}" trùng tên một trang của KiN. Hãy đặt tên lớp khác để tạo mã khác.` }, { status: 400 });
     }
 
     // Kiểm tra slug trùng trước khi insert

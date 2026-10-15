@@ -14,7 +14,7 @@ const tools = [
 
 const roles = [
   { label: "Dành cho học sinh",  href: "/dang-ky"    },
-  { label: "Dành cho gia sư",    href: "/lop-cua-toi" },
+  { label: "Dành cho gia sư",    href: "/dang-ky?vai=gia-su" },
   { label: "Dành cho phụ huynh", href: "/phu-huynh"  },
 ];
 

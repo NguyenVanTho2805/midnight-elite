@@ -1,7 +1,5 @@
 import { Suspense } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import StudentBottomNav from "@/components/StudentBottomNav";
+import GuestChrome from "@/components/shell/GuestChrome";
 
 function PageSkeleton() {
   return (
@@ -20,14 +18,12 @@ function PageSkeleton() {
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
     <div data-vung="sang" className="min-h-screen flex flex-col" style={{ background: "var(--kin-nen-trang)" }}>
-      <Navbar />
-      <main className="flex-1 pb-24 md:pb-0">
+      {/* Khách: thanh trên + chân trang. Học viên / gia sư đã đăng nhập: vỏ của họ (thanh bên trái) — xem GuestChrome. */}
+      <GuestChrome>
         <Suspense fallback={<PageSkeleton />}>
           <div className="page-enter">{children}</div>
         </Suspense>
-      </main>
-      <Footer />
-      <StudentBottomNav />
+      </GuestChrome>
     </div>
   );
 }

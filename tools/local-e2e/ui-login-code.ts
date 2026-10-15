@@ -38,7 +38,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   const typeCode = async (p: any, c: string) => { await boxes(p).first().focus(); await p.keyboard.type(c, { delay: 25 }); };
 
   section("Màn nhập email (Figma 32:2)");
-  const p0 = await open("/dang-nhap");
+  const p0 = await open("/dang-nhap?cach=ma");
   await p0.getByRole("heading", { name: "Đăng nhập", exact: true }).waitFor({ timeout: 90000 });
   check("có logo K + câu 'Lớp học của bạn, gọn trong một chỗ'", await p0.locator("main svg").first().isVisible() && await p0.getByText("Lớp học của bạn, gọn trong một chỗ").isVisible());
   check("một ô Email + nút 'Gửi mã đăng nhập'", await p0.getByLabel("Email").isVisible() && await p0.getByRole("button", { name: "Gửi mã đăng nhập" }).isVisible());
@@ -50,14 +50,14 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   check("chữ giải thích: mã 6 số dùng một lần", await p0.getByText(/mã 6 số dùng một lần/).isVisible());
   check("nút 'Tôi có mã mời vào lớp' → /student/nhap-ma-lop", (await p0.getByRole("link", { name: "Tôi có mã mời vào lớp" }).getAttribute("href")) === "/student/nhap-ma-lop");
   check("khung 'Phụ huynh thì không cần đăng nhập' + link tìm hiểu", await p0.getByText("Phụ huynh thì không cần đăng nhập").isVisible() && (await p0.getByRole("link", { name: "Tìm hiểu thêm" }).getAttribute("href")) === "/phu-huynh");
-  check("có lối 'Đăng nhập bằng mật khẩu' và link 'Đăng ký ngay'", await p0.getByRole("button", { name: "Đăng nhập bằng mật khẩu" }).isVisible() && (await p0.getByRole("link", { name: "Đăng ký ngay" }).getAttribute("href")) === "/dang-ky");
+  check("tab 'Mã một lần' đang mở (?cach=ma), tab 'Mật khẩu' ngay cạnh, và link 'Đăng ký ngay'", await p0.getByRole("tab", { name: "Mã một lần" }).getAttribute("aria-selected") === "true" && await p0.getByRole("tab", { name: "Mật khẩu" }).isVisible() && (await p0.getByRole("link", { name: "Đăng ký ngay" }).getAttribute("href")) === "/dang-ky");
   check("không tràn ngang", await p0.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await shot(p0, "login-code-1-email");
   await send0.click();
-  check("để trống email rồi bấm gửi → báo 'Vui lòng nhập email'", await A(p0).getByText("Vui lòng nhập email").isVisible());
+  check("để trống email rồi bấm gửi → báo 'Vui lòng nhập số điện thoại hoặc email' (môi trường test có SMS nên ô nhận cả hai)", await A(p0).getByText("Vui lòng nhập số điện thoại hoặc email").isVisible());
   await p0.getByLabel("Email").fill("khong-phai-email");
   await send0.click();
-  await eventually("email sai dạng → báo 'Email không hợp lệ' từ máy chủ", async () => await A(p0).getByText("Email không hợp lệ").isVisible());
+  await eventually("email sai dạng → báo 'Nhập số điện thoại hoặc email hợp lệ' từ máy chủ", async () => await A(p0).getByText("Nhập số điện thoại hoặc email hợp lệ").isVisible());
   check("chưa có thư nào gửi đi", readdirSync(SINK).length === 0);
 
   section("Gửi mã → màn nhập mã (Figma 32:27)");
@@ -123,7 +123,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
 
   section("Sai 5 lần → khoá, nói rõ 15 phút");
   const L = await mkUser({ name: "Lê Khánh Vy" });
-  const p1 = await open("/dang-nhap");
+  const p1 = await open("/dang-nhap?cach=ma");
   await p1.getByLabel("Email").fill(L.email);
   await p1.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p1.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -147,7 +147,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
 
   section("Gửi lại mã (đồng hồ giả để khỏi chờ 60 giây thật)");
   const R = await mkUser({ name: "Phạm Quốc Huy" });
-  const p2 = await open("/dang-nhap", { clock: true });
+  const p2 = await open("/dang-nhap?cach=ma", { clock: true });
   await p2.getByLabel("Email").fill(R.email);
   await p2.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p2.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -165,7 +165,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   await p2.context().close();
 
   section("Email không có tài khoản: trải nghiệm y hệt (không lộ)");
-  const p3 = await open("/dang-nhap");
+  const p3 = await open("/dang-nhap?cach=ma");
   await p3.getByLabel("Email").fill(`nguoi.la.${Date.now().toString(36)}@khong-co.test`);
   await p3.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p3.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -174,31 +174,18 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   await eventually("nhập sai → 'Mã không đúng — còn 4 lần thử' như thật", async () => (await A(p3).innerText()).includes("còn 4 lần thử"));
   await p3.context().close();
 
-  section("Lối phụ: đăng nhập bằng mật khẩu");
-  const P = await mkUser({ name: "Có mật khẩu" });
+  section("Chuyển giữa hai cách (đăng nhập bằng mật khẩu có bài test riêng: ui-login-password)");
   const p4 = await open("/dang-nhap");
-  await p4.getByRole("button", { name: "Đăng nhập bằng mật khẩu" }).click();
-  await p4.getByLabel("Mật khẩu").waitFor();
-  check("hiện ô email + mật khẩu + 'Quên mật khẩu?' + 'Dùng mã qua email'", await p4.getByLabel("Email").isVisible() && await p4.getByRole("link", { name: "Quên mật khẩu?" }).isVisible() && await p4.getByRole("button", { name: "Dùng mã qua email" }).isVisible());
-  await p4.getByLabel("Email").fill(P.email);
-  await p4.getByLabel("Mật khẩu").fill("sai-mat-khau");
-  await p4.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-  await eventually("sai mật khẩu → 'Email hoặc mật khẩu không đúng'", async () => await A(p4).getByText("Email hoặc mật khẩu không đúng").isVisible());
-  await p4.getByLabel("Mật khẩu").fill("Passw0rd!");
-  await p4.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-  await p4.waitForURL(/\/student\//, { timeout: 120000 });
-  check("đúng mật khẩu → vào được", /\/student\//.test(p4.url()));
+  check("không có ?cach= thì mở tab 'Mật khẩu' (đường chính)", await p4.getByRole("tab", { name: "Mật khẩu" }).getAttribute("aria-selected") === "true" && await p4.locator("#dn-pass").isVisible());
+  await p4.getByLabel("Email").fill("giu-lai@test.local");
+  await p4.getByRole("tab", { name: "Mã một lần" }).click();
+  check("sang tab 'Mã một lần': có nút 'Gửi mã đăng nhập', ô tài khoản giữ nguyên chữ đã gõ", await p4.getByRole("button", { name: "Gửi mã đăng nhập" }).isVisible() && await p4.getByLabel("Email").inputValue() === "giu-lai@test.local");
   await p4.context().close();
-  const p4b = await open("/dang-nhap");
-  await p4b.getByRole("button", { name: "Đăng nhập bằng mật khẩu" }).click();
-  await p4b.getByRole("button", { name: "Dùng mã qua email" }).click();
-  check("quay lại được lối mã email", await p4b.getByRole("button", { name: "Gửi mã đăng nhập" }).isVisible());
-  await p4b.context().close();
 
   section("Tài khoản bị khoá");
   const B = await mkUser({ name: "Bị khoá" });
   await prisma.user.update({ where: { id: B.id }, data: { banned: true } });
-  const p5 = await open("/dang-nhap");
+  const p5 = await open("/dang-nhap?cach=ma");
   await p5.getByLabel("Email").fill(B.email);
   await p5.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p5.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -212,6 +199,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   const p6 = await open("/student/lich-hoc");
   await p6.waitForURL(/\/dang-nhap\?redirect=/, { timeout: 60000 });
   check("vào trang cần đăng nhập → /dang-nhap kèm ?redirect=trang đang định vào", decodeURIComponent(new URL(p6.url()).searchParams.get("redirect") ?? "") === "/student/lich-hoc", p6.url());
+  await p6.getByRole("tab", { name: "Mã một lần" }).click();
   await p6.getByLabel("Email").fill(G.email);
   await p6.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p6.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -220,7 +208,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   await p6.context().close();
   for (const evil of ["https://evil.example/phish", "//evil.example/phish", "/\\evil.example"]) {
     const X = await mkUser({ name: "Mở link lạ" });
-    const px = await open(`/dang-nhap?redirect=${encodeURIComponent(evil)}`);
+    const px = await open(`/dang-nhap?cach=ma&redirect=${encodeURIComponent(evil)}`);
     await px.getByLabel("Email").fill(X.email);
     await px.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
     await px.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });
@@ -232,7 +220,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
 
   section("Điện thoại 390px");
   const M = await mkUser({ name: "Điện thoại" });
-  const pm = await open("/dang-nhap", { width: 390, height: 844 });
+  const pm = await open("/dang-nhap?cach=ma", { width: 390, height: 844 });
   await pm.getByLabel("Email").fill(M.email);
   check("màn email không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await shot(pm, "login-code-5-mobile-email");

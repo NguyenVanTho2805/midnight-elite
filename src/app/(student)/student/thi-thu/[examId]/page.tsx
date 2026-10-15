@@ -7,6 +7,7 @@ import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
 import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic, type ExamAttemptReview } from "@/lib/api";
 import { MathText } from "@/components/MathText";
 import CorrectionPanel from "@/components/exam/CorrectionPanel";
+import ExamRoomView from "@/components/exam/ExamRoomView";
 
 type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done" | "review";
 
@@ -546,12 +547,6 @@ function ExamEntryInner() {
 
   // ── Taking: render câu hỏi + sidebar trái sticky (đếm ngược, tiến độ, jump-grid) ──
   if (phase === "taking" && attempt?.questions) {
-    const total = attempt.questions.length;
-    const answeredCount = attempt.questions.filter(isQuestionAnswered).length;
-    const mm = String(Math.floor(remainingSec / 60)).padStart(2, "0");
-    const ss = String(remainingSec % 60).padStart(2, "0");
-    const cardStyle = { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" };
-
     // Đề dùng giờ riêng Phần: Phần chưa tới lượt ẨN HOÀN TOÀN (chỉ hiện Phần
     // đang làm + các Phần đã xong, khoá chỉ đọc) — đề không dùng giờ riêng
     // Phần (sectionWindows null) thì hiện toàn bộ như cũ, không đổi gì.
@@ -565,163 +560,29 @@ function ExamEntryInner() {
       ? attempt.questions.filter(q => visibleSectionLabels.has(q.sectionLabel ?? null))
       : attempt.questions;
 
+    // Giao diện làm bài theo Figma 27:2 nằm ở ExamRoomView; trang giữ logic (lưu đáp án, giờ từng Phần, rời tab, tự nộp).
     return (
-      <div className="max-w-6xl mx-auto pb-10">
-        <div className="mb-5">
-          <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Làm bài nghiêm túc — điểm được chấm và ghi nhận tự động khi nộp bài.</p>
-        </div>
-
-        {/* Figma 27:10 — dải báo rời tab: chỉ hiện khi đã rời ít nhất một lần; nói rõ hệ thống chỉ ĐẾM, không quay màn hình. */}
-        {tabLeaves > 0 && (
-          <div role="status" aria-live="polite" data-dai-roi-tab
-            className="mb-5 flex items-start gap-2 rounded-xl px-4 py-2.5 text-[length:var(--kin-co-small)]"
-            style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
-            <span aria-hidden className="mt-[7px] inline-block w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ background: "var(--kin-tt-cham-cho)" }} />
-            <span>Bạn đã rời khỏi tab {tabLeaves} lần. Hệ thống có ghi lại số lần, không quay màn hình.</span>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-          {/* Sidebar trái: sticky ngay cả khi cuộn — đếm ngược luôn hiện, không bị che bởi thanh điều hướng dưới.
-              Không đặt items-start ở grid cha: cột trái cần "thừa hưởng" chiều cao của cột phải (câu hỏi) để
-              còn khoảng trống mà dính (sticky) trong lúc cuộn — nếu chỉ cao bằng nội dung của chính nó thì
-              sticky sẽ hết tác dụng ngay khi cuộn qua khỏi chiều cao đó. */}
-          <div className="space-y-3 md:sticky md:top-20 md:self-start order-1">
-            <div className="rounded-xl p-4 text-center" style={cardStyle}>
-              <p className="text-xs mb-1" style={{ color: "var(--kin-chu-mo)" }}>
-                {sectionWindows ? `Thời gian còn lại — ${sectionWindows[currentSectionIndex]?.label ?? ""}` : "Thời gian còn lại"}
-              </p>
-              <p className="text-3xl font-extrabold tabular-nums" style={{ color: remainingSec < 60 ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-chinh)" }}>{mm}:{ss}</p>
-            </div>
-
-            <div className="rounded-xl p-4" style={cardStyle}>
-              <p className="text-xs mb-1.5" style={{ color: "var(--kin-chu-mo)" }}>Đã hoàn thành {answeredCount}/{total}</p>
-              <div className="h-1.5 rounded-full" style={{ background: "var(--kin-nen-bang)" }}>
-                <div className="h-1.5 rounded-full" style={{ width: `${(answeredCount / total) * 100}%`, background: "var(--kin-nhan-nen)" }} />
-              </div>
-            </div>
-
-            <div className="rounded-xl p-4" style={cardStyle}>
-              <p className="text-xs mb-2" style={{ color: "var(--kin-chu-mo)" }}>Chọn câu hỏi</p>
-              <div className="grid grid-cols-5 md:grid-cols-4 gap-1.5">
-                {visibleQuestions.map((q, idx) => (
-                  <button key={q.id}
-                    onClick={() => document.getElementById(`q-${q.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                    className="w-full aspect-square rounded text-xs font-semibold"
-                    style={{
-                      background: isQuestionAnswered(q) ? "var(--kin-nhan-nen-nhat)" : "var(--kin-nen-bang)",
-                      color: isQuestionAnswered(q) ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)",
-                      border: "1px solid var(--kin-vien-thuong)",
-                    }}>
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={submitAttempt} disabled={submitting}
-              className="w-full py-3 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: "var(--kin-tt-chu-loi)" }}>
-              {submitting ? "Đang nộp..." : "Kết thúc bài thi"}
-            </button>
-          </div>
-
-          {/* Danh sách câu hỏi */}
-          <div className="space-y-5 order-2">
-            {visibleQuestions.map((q, idx) => {
-              const prevSection = idx > 0 ? visibleQuestions[idx - 1].sectionLabel : undefined;
-              const showSectionHeader = q.sectionLabel && q.sectionLabel !== prevSection;
-              const isLocked = lockedSectionLabels?.has(q.sectionLabel ?? null) ?? false;
-              return (
-              <Fragment key={q.id}>
-                {showSectionHeader && (
-                  <p className="text-xs font-bold uppercase tracking-wide pt-2" style={{ color: "var(--kin-nhan-link)" }}>{q.sectionLabel}</p>
-                )}
-              <div id={`q-${q.id}`} className="rounded-xl p-5" style={isLocked ? { ...cardStyle, opacity: 0.6 } : cardStyle}>
-                <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>
-                  Câu {idx + 1}: <MathText text={q.text} />
-                </p>
-                {isLocked && (
-                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-tt-chu-loi)" }}>Đã hết giờ Phần này — không thể sửa câu trả lời.</p>
-                )}
-                {q.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={q.imageUrl} alt="" className="max-w-full rounded-lg mb-3" />
-                )}
-
-                {q.type === "ESSAY" ? (
-                  <textarea
-                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400 disabled:cursor-not-allowed"
-                    style={{ border: "1px solid var(--kin-vien-thuong)" }}
-                    rows={5}
-                    disabled={isLocked}
-                    placeholder="Nhập câu trả lời của bạn..."
-                    value={essayText[q.id] ?? ""}
-                    onChange={e => updateEssayAnswer(q.id, e.target.value)}
-                    onBlur={() => saveEssayAnswer(q.id)}
-                  />
-                ) : q.type === "SHORT_ANSWER" ? (
-                  <input
-                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none focus:border-blue-400 disabled:cursor-not-allowed"
-                    style={{ border: "1px solid var(--kin-vien-thuong)" }}
-                    disabled={isLocked}
-                    placeholder="Nhập đáp án..."
-                    value={essayText[q.id] ?? ""}
-                    onChange={e => updateEssayAnswer(q.id, e.target.value)}
-                    onBlur={() => saveEssayAnswer(q.id)}
-                  />
-                ) : q.type === "TRUE_FALSE_CLUSTER" ? (
-                  <div className="space-y-2">
-                    {q.options.map(o => (
-                      <div key={o.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg"
-                        style={{ border: "1px solid var(--kin-vien-thuong)" }}>
-                        <span className="text-sm flex-1" style={{ color: "var(--kin-chu-phu)" }}>
-                          <strong>{o.subLabel})</strong> <MathText text={o.text} />
-                        </span>
-                        <div className="flex gap-1.5 flex-shrink-0">
-                          {([["Đúng", true], ["Sai", false]] as const).map(([label, val]) => (
-                            <button key={label} type="button" disabled={isLocked}
-                              onClick={() => selectClusterAnswer(o.id, val)}
-                              className="px-4 min-h-11 min-w-[52px] rounded-lg text-[length:var(--kin-co-small)] font-semibold border disabled:cursor-not-allowed"
-                              style={clusterAnswers[o.id] === val
-                                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
-                                : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {q.options.map((o, oi) => (
-                      <label key={o.id}
-                        className={`flex items-center gap-2.5 px-3 min-h-[var(--kin-cham-dap-an)] rounded-lg ${isLocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-[var(--kin-nen-bang)]"}`}
-                        style={{ border: `1px solid ${selected[q.id] === o.id ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}` }}>
-                        <input type="radio" name={`q-${q.id}`} className="mt-0.5" disabled={isLocked}
-                          checked={selected[q.id] === o.id}
-                          onChange={() => selectAnswer(q.id, o.id)} />
-                        <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>
-                          <strong>{String.fromCharCode(65 + oi)}.</strong> <MathText text={o.text} />
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              </Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {startErr && (
-          <p className="fixed bottom-4 left-1/2 -translate-x-1/2 text-xs px-3 py-2 rounded-lg z-50"
-            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>{startErr}</p>
-        )}
-      </div>
+      <ExamRoomView
+        examTitle={exam.title}
+        sectionLabels={sectionWindows ? sectionWindows.map(w => w.label) : null}
+        sectionIndex={currentSectionIndex}
+        questions={visibleQuestions}
+        totalQuestions={attempt.questions.length}
+        lockedLabels={lockedSectionLabels}
+        remainingSec={remainingSec}
+        tabLeaves={tabLeaves}
+        selected={selected}
+        essayText={essayText}
+        clusterAnswers={clusterAnswers}
+        isAnswered={isQuestionAnswered}
+        onSelect={selectAnswer}
+        onEssayChange={updateEssayAnswer}
+        onEssaySave={saveEssayAnswer}
+        onCluster={selectClusterAnswer}
+        onSubmit={submitAttempt}
+        submitting={submitting}
+        error={startErr}
+      />
     );
   }
 
@@ -841,12 +702,17 @@ function ExamEntryInner() {
           <ClipboardList size={16} /> Quy định phòng thi
         </h3>
         <ul className="space-y-2">
-          {[
-            "Không thoát khỏi trang Azota trong khi làm bài",
-            "Không chụp ảnh màn hình hoặc chia sẻ đề thi",
-            "Kết quả tự động nộp khi hết giờ",
-            "Vi phạm sẽ bị xử lý theo quy định kỷ luật (Strike system)",
-          ].map((rule, i) => (
+          {(exam.hasQuestions
+            ? [
+                "Hệ thống đếm số lần bạn rời khỏi tab khi làm bài. Không quay màn hình, không dùng camera.",
+                "Không chụp ảnh màn hình hoặc chia sẻ đề thi",
+                "Bài tự động nộp khi hết giờ",
+              ]
+            : [
+                "Không thoát khỏi trang Azota trong khi làm bài",
+                "Không chụp ảnh màn hình hoặc chia sẻ đề thi",
+              ]
+          ).map((rule, i) => (
             <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "var(--kin-chu-phu)" }}>
               <span className="mt-0.5 flex-shrink-0" style={{ color: "var(--kin-tt-chu-loi)" }}>•</span>
               {rule}

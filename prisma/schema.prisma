@@ -771,6 +771,11 @@ model User {
   email         String   @unique
   password      String
   phone         String?
+  // Số di động ĐÃ XÁC MINH bằng mã SMS (E.164, "+84901234567") — chỉ số này mới đăng nhập được bằng SMS. KHÔNG @unique trên `phone`
+  // vì đó là ô tự khai, nhiều người có thể khai cùng một số; unique ở đây vì mỗi số chỉ gắn được với MỘT tài khoản (NULL thì không giới hạn).
+  // Đổi `phone` sang số khác thì xoá cả hai cột này (xem src/lib/phoneVerify.ts).
+  phoneE164       String?   @unique
+  phoneVerifiedAt DateTime?
   dateOfBirth   DateTime? // dùng để tính tuổi tại backend cho ngưỡng xác nhận phụ huynh (D04) — không suy đoán từ input khác
   parentPhone   String? // dữ liệu cũ, tự khai — KHÔNG dùng để cấp quyền; nguồn tin cậy là ParentLink đã verified
   parentName    String? // dữ liệu cũ, tự khai — xem ghi chú parentPhone

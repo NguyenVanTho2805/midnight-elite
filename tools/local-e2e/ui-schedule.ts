@@ -40,9 +40,14 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.waitForLoadState("networkidle");
   const nav = page.getByRole("navigation", { name: "Module của gia sư" });
   await nav.waitFor();
-  const links = (await nav.getByRole("link").allInnerTexts()).map(t => t.replace(/\s+/g, " ").trim().replace(/^\S+ /, "")); // bỏ biểu tượng đầu dòng
-  check("thanh bên chỉ có Lịch + Học phí (+ Thêm module, Cài đặt)", links.some(l => l.startsWith("Lịch")) && links.some(l => l.startsWith("Học phí")) && !links.some(l => l.startsWith("Hộp việc") || l.startsWith("Lớp") || l.startsWith("Bài KT") || l.startsWith("Thư viện")), links);
-  check("có lối 'Thêm module'", links.some(l => l.includes("Thêm module")));
+  const links = (await nav.getByRole("link").allInnerTexts()).map(t => t.replace(/\s+/g, " ").trim());
+  check("thanh module chỉ có Lịch + Học phí (+ nút Khác)", links.some(l => l.startsWith("Lịch")) && links.some(l => l.startsWith("Học phí")) && !links.some(l => l.startsWith("Hộp việc") || l.startsWith("Lớp") || l.startsWith("Bài KT") || l.startsWith("Thư viện")) && (await nav.getByRole("button", { name: "Khác" }).count()) === 1, links);
+  await nav.getByRole("button", { name: "Khác" }).click();
+  const khac = page.getByRole("dialog", { name: "Các mục khác" });
+  await khac.waitFor();
+  check("có lối 'Thêm module' trong bảng Khác", (await khac.getByRole("link", { name: "Thêm module" }).getAttribute("href")) === "/lop-cua-toi/cai-dat#module");
+  await page.keyboard.press("Escape");
+  await khac.waitFor({ state: "hidden" });
   check("Lịch là mục đang chọn (aria-current)", (await nav.getByRole("link", { name: /^Lịch/ }).first().getAttribute("aria-current")) === "page");
   const lichBadge = nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem");
   await lichBadge.waitFor({ timeout: 10000 });
@@ -101,7 +106,8 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await eventually("số đỏ trên Lịch giảm", async () => (await lichBadge.innerText().catch(() => "")) === String(nDue - 1));
 
   section("TT-203: bật module ở Cài đặt");
-  await nav.getByRole("link", { name: /Cài đặt/ }).click();
+  await nav.getByRole("button", { name: "Khác" }).click();
+  await page.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Cài đặt", exact: true }).click();
   await page.getByRole("heading", { name: "Module hiển thị" }).waitFor({ timeout: 30000 });
   check("Lịch và Học phí: luôn bật, không tắt được", await page.getByRole("switch", { name: /Lịch/ }).isDisabled() && await page.getByRole("switch", { name: /Học phí/ }).isDisabled() && await page.getByRole("switch", { name: /Lịch/ }).isChecked());
   check("4 module còn lại đang tắt", (await Promise.all(["Hộp việc", "Lớp", "Bài KT", "Thư viện"].map(n => page.getByRole("switch", { name: new RegExp(`^${n}`) }).isChecked()))).every(v => v === false));
@@ -110,16 +116,16 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.getByRole("switch", { name: /^Lớp/ }).check();
   await eventually("DB: modules = [hop-viec, lop]", async () => JSON.stringify(((await prisma.user.findUnique({ where: { id: tutor.id }, select: { preferences: true } }))?.preferences as any)?.modules) === JSON.stringify(["hop-viec", "lop"]));
   await eventually("thanh bên có 4 module đúng thứ tự: Hộp việc, Lịch, Lớp, Học phí", async () => {
-    const t = (await nav.getByRole("link").allInnerTexts()).map(x => x.replace(/\s+/g, " ").trim().replace(/^\S+ /, ""));
+    const t = (await nav.getByRole("link").allInnerTexts()).map(x => x.replace(/\s+/g, " ").trim());
     const order = ["Hộp việc", "Lịch", "Lớp", "Học phí"].map(l => t.findIndex(x => x.startsWith(l)));
     return order.every(i => i >= 0) && order.every((v, i) => i === 0 || v > order[i - 1]);
   });
   await shot(page, "sched-settings");
   await nav.getByRole("link", { name: /^Hộp việc/ }).click();
-  await page.getByRole("heading", { name: "Việc cần làm" }).waitFor({ timeout: 60000 });
-  check("Hộp việc bật: mở Tổng quan, không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
+  await page.getByRole("listbox", { name: "Hộp việc" }).waitFor({ timeout: 60000 });
+  check("Hộp việc bật: mở Hộp việc (danh sách + khung đọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
   check("badge của Hộp việc (không còn badge ở Lịch)", (await nav.locator("a", { hasText: "Hộp việc" }).locator(".kin-badge-dem").count()) === 1 && (await nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").count()) === 0);
-  check("Hộp việc liệt kê 'Tin nhắc lịch đã tới hạn'", await page.getByText(/Tin nhắc lịch đã tới hạn, chờ bạn mở Zalo/).isVisible());
+  check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("option", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("option", { name: new RegExp(`^${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("option").allInnerTexts());
 
   section("Lưu theo tài khoản, không theo máy");
   const ctx2 = await ctxFor(tutor);

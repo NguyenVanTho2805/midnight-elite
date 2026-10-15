@@ -22,7 +22,7 @@ type Props = { params: Promise<{ courseId: string }> };
 export default async function LopPage({ params }: Props) {
   const { courseId } = await params;
   const session = await getSession();
-  if (!session) redirect(`/dang-nhap?next=/lop-cua-toi/${courseId}`);
+  if (!session) redirect(`/dang-nhap?redirect=/lop-cua-toi/${courseId}`);
 
   const course = await prisma.course.findUnique({
     where:  { id: courseId },

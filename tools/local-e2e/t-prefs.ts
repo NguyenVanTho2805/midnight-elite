@@ -50,6 +50,22 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   r = await api("PUT", "/api/users/me/preferences", { as: tutor, body: { modules: null } });
   check("modules:null → về chế độ gọn", r.status === 200 && r.json.preferences.modules === undefined && r.json.preferences.theme === "ca-phe", r.json);
 
+  section("Thanh bên thu/mở lưu theo tài khoản (rail)");
+  {
+  const ur = await mkUser({ name: "Thu thanh bên" });
+  check("mặc định không có khoá rail (= hiện)", (await api("GET", "/api/users/me/preferences", { as: ur })).json.preferences.rail === undefined);
+  const r1 = await api("PUT", "/api/users/me/preferences", { as: ur, body: { rail: "thu" } });
+  check("PUT rail=thu → 200, đọc lại thấy 'thu'", r1.status === 200 && r1.json.preferences.rail === "thu" && (await api("GET", "/api/users/me/preferences", { as: ur })).json.preferences.rail === "thu", r1);
+  const r2 = await api("PUT", "/api/users/me/preferences", { as: ur, body: { theme: "man" } });
+  check("đổi chủ đề không làm mất rail", r2.status === 200 && r2.json.preferences.rail === "thu" && r2.json.preferences.theme === "man", r2);
+  const r3 = await api("PUT", "/api/users/me/preferences", { as: ur, body: { rail: "mo" } });
+  check("PUT rail=mo → 'mo' (ghi rõ, để máy khác biết là đã mở)", r3.status === 200 && r3.json.preferences.rail === "mo", r3);
+  for (const bad of ["xxx", "THU", 1, true, [], {}]) { const r = await api("PUT", "/api/users/me/preferences", { as: ur, body: { rail: bad } }); check(`rail=${JSON.stringify(bad)} → 400, không ghi dở`, r.status === 400 && (await api("GET", "/api/users/me/preferences", { as: ur })).json.preferences.rail === "mo", r); }
+  const r4 = await api("PUT", "/api/users/me/preferences", { as: ur, body: { rail: null } });
+  check("PUT rail=null → xoá về mặc định", r4.status === 200 && r4.json.preferences.rail === undefined, r4);
+  check("chưa đăng nhập → 401", (await api("PUT", "/api/users/me/preferences", { body: { rail: "thu" } })).status === 401);
+  }
+
   section("Hai tab ghi cùng lúc không đè nhau");
   await Promise.all([
     api("PUT", "/api/users/me/preferences", { as: u, body: { theme: "man" } }),

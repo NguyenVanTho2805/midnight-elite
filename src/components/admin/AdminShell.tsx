@@ -7,11 +7,28 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuth, getAdminRoleLabel } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { QUEUE_CHANGED } from "@/components/admin/KiemDuyet";
-import { matchSub, visibleModules } from "@/lib/adminNav";
+import { matchSub, visibleModules, type AdminSub } from "@/lib/adminNav";
 
 const STRIP = 48, TABS = 44;
+
+/** Dải tab các trang con của module đang ở. Dùng chung cho vỏ quản trị và vỏ gia sư (gia sư mở các trang /admin/* ngay trên tên miền chính). */
+export function AdminTabStrip({ label, tabs, activeHref }: { label: string; tabs: AdminSub[]; activeHref?: string }) {
+  return (
+    <nav aria-label={`Trang của ${label}`} className="flex items-stretch gap-1 px-3 border-b border-[var(--kin-vien-thuong)] overflow-x-auto flex-shrink-0" style={{ height: TABS }}>
+      {tabs.map(t => {
+        const active = activeHref === t.href;
+        return (
+          <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined} className={KIN_TAB_BOX}>
+            <KinTabInner active={active}>{t.label}</KinTabInner>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -49,7 +66,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} />
       <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-60px)] md:h-screen">
         <div className="flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] flex-shrink-0" style={{ height: STRIP }}>
-          <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={badge} />
+            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          </div>
           <div className="flex items-center gap-3 min-w-0">
             {/* Trang học viên nằm ở tên miền riêng (midnightelite-edu.com): dùng <a>, không dùng <Link> (điều hướng khác nguồn). */}
             <a href="https://midnightelite-edu.com/student" target="_blank" rel="noopener noreferrer"
@@ -60,18 +80,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               className="inline-flex items-center min-h-11 px-2 text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-tt-chu-loi)] hover:underline">Đăng xuất</button>
           </div>
         </div>
-        {tabs && (
-          <nav aria-label={`Trang của ${current!.label}`} className="flex items-stretch gap-1 px-3 border-b border-[var(--kin-vien-thuong)] overflow-x-auto flex-shrink-0" style={{ height: TABS }}>
-            {tabs.map(t => {
-              const active = hit?.sub.href === t.href;
-              return (
-                <Link key={t.href} href={t.href} aria-current={active ? "page" : undefined} className={KIN_TAB_BOX}>
-                  <KinTabInner active={active}>{t.label}</KinTabInner>
-                </Link>
-              );
-            })}
-          </nav>
-        )}
+        {tabs && <AdminTabStrip label={current!.label} tabs={tabs} activeHref={hit?.sub.href} />}
         <main className={`flex-1 min-h-0 overflow-auto ${flush ? "" : "p-4 sm:p-6"}`}>{children}</main>
       </div>
     </div>

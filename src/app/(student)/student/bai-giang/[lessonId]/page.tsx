@@ -16,6 +16,7 @@ import {
   StickyNote,
 } from "griddy-icons";
 import "plyr/dist/plyr.css";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -399,11 +400,12 @@ function fmtDue(d: string | null): string {
 
 function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFull; onSubmitted: (a: AssignmentFull) => void }) {
   const [uploading, setUploading] = useState(false);
+  const { ask, dialog } = useKinConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const sub = assignment.mySubmission;
 
   async function submitFile(file: File) {
-    if (sub && sub.gradedAt && !confirm("Bài này đã được chấm điểm — nộp lại sẽ xoá điểm cũ và chờ chấm lại. Tiếp tục?")) return;
+    if (sub && sub.gradedAt && !(await ask({ title: "Nộp lại bài đã chấm?", message: "Bài này đã được chấm điểm — nộp lại sẽ xoá điểm cũ và chờ chấm lại.", confirmLabel: "Nộp lại" }))) return;
     setUploading(true);
     try {
       const result = await uploadToCloudinary(file, "assignments/submissions");
@@ -424,6 +426,7 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
   return (
     <DropZone onFiles={files => files[0] && submitFile(files[0])} disabled={uploading || !cloudinaryConfigured}
       className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+      {dialog}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{assignment.title}</p>

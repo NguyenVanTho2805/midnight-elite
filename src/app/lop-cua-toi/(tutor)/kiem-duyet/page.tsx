@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function KiemDuyetPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/kiem-duyet");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/kiem-duyet");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   return (
     <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>

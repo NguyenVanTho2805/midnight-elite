@@ -47,8 +47,8 @@ let seq = 700;
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/favicon|font|Failed to load resource|vietqr/i.test(m.text())) errors.push(m.text()); });
 
-  section("Tổng quan gia sư /lop-cua-toi");
-  await page.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle" });
+  section("Tổng quan gia sư /lop-cua-toi/tong-quan");
+  await page.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Lớp của tôi" }).waitFor({ timeout: 90000 });
   const dd = (label: string) => page.locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]").innerText();
   const PAID = invA.amountDue.toLocaleString("vi-VN"); // số tiền đã gạch của phiếu A
@@ -72,7 +72,7 @@ let seq = 700;
 
   section("Trạng thái rỗng + CTA");
   const p0 = await (await ctxFor(T0)).newPage();
-  await p0.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle" });
+  await p0.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
   await p0.getByText("Bạn chưa mở lớp nào").waitFor({ timeout: 60000 });
   check("có CTA 'Tạo lớp đầu tiên'", await p0.getByRole("link", { name: "Tạo lớp đầu tiên" }).isVisible());
   check("không có việc → thông báo", await p0.getByText("Hiện không có việc nào cần xử lý.").isVisible());
@@ -182,12 +182,12 @@ let seq = 700;
 
   section("Mobile 390");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage();
-  for (const path of ["/lop-cua-toi", "/lop-cua-toi/doanh-thu", "/lop-cua-toi/ho-so", "/lop-cua-toi/kiem-duyet", `/lop-cua-toi/${c1.id}`]) {
+  for (const path of ["/lop-cua-toi", "/lop-cua-toi/tong-quan", "/lop-cua-toi/doanh-thu", "/lop-cua-toi/ho-so", "/lop-cua-toi/kiem-duyet", `/lop-cua-toi/${c1.id}`]) {
     await mp.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
     await mp.waitForTimeout(800);
     check(`${path}: không tràn ngang`, !(await mp.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
   }
-  await mp.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle" });
+  await mp.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
   await shot(mp, "dash-tutor-mobile");
 
   check("không lỗi console/pageerror", errors.length === 0, errors.slice(0, 4));

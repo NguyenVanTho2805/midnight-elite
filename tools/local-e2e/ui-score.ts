@@ -172,9 +172,9 @@ import { SEED_SCORES } from "@/lib/admissionScoreSeed";
   section("Phân quyền trong giao diện");
   const tctx = await ctxFor(T);
   const tp = await tctx.newPage(); watch(tp);
-  await tp.goto(`${ADMIN}/admin/diem-chuan`, { waitUntil: "networkidle", timeout: 120000 });
-  await tp.waitForURL(u => !u.pathname.includes("diem-chuan"), { timeout: 30000 }).catch(() => {});
-  check("gia sư mở thẳng /admin/diem-chuan → bị đưa về /admin, không thấy bảng", !tp.url().includes("diem-chuan") && (await tp.getByRole("heading", { name: "Điểm chuẩn tuyển sinh" }).count()) === 0);
+  await tp.goto(`${BASE}/admin/diem-chuan`, { waitUntil: "networkidle", timeout: 120000 });
+  await tp.waitForURL(u => /\/lop-cua-toi(\/|$)/.test(u.pathname), { timeout: 30000 }).catch(() => {}); // /admin của gia sư → /lop-cua-toi (chế độ gọn thì tiếp tục sang Lịch)
+  check("gia sư mở thẳng /admin/diem-chuan → bị đưa khỏi trang (về /admin rồi khu gia sư /lop-cua-toi trên tên miền chính), không thấy bảng", !tp.url().includes("diem-chuan") && /\/lop-cua-toi(\/|$)/.test(new URL(tp.url()).pathname) && (await tp.getByRole("heading", { name: "Điểm chuẩn tuyển sinh" }).count()) === 0);
   check("gia sư không thấy mục 'Điểm chuẩn' ở menu", (await tp.getByRole("link", { name: "Điểm chuẩn", exact: true }).count()) === 0);
 
   section("Điện thoại 390px");

@@ -1,12 +1,37 @@
-// TT-203 — vỏ của gia sư. Menu trái (máy tính) / thanh dưới (điện thoại, ngón cái với tới đáy).
-// Chỉ hiện module đang bật: mặc định chế độ gọn = Lịch + Học phí; còn lại bật ở Cài đặt → Module
-// hiển thị hoặc nút "+ Thêm". Tắt module chỉ ẨN khỏi thanh bên — dữ liệu giữ nguyên.
+// TT-203 — vỏ của gia sư theo bố cục Outlook (Figma "Vỏ — Gia sư" 9:2): thanh module 79px bên trái (điện thoại: thanh dưới 60px)
+// + dải trên 48px. Chỉ hiện module đang bật; mặc định "chế độ gọn" = Lịch + Học phí. Tắt module chỉ ẨN khỏi thanh — dữ liệu giữ nguyên.
+// 13/10/2026: bỏ menu 226px + biểu tượng emoji + nhãn 9,5px; các trang không có trên thanh (Doanh thu, Báo cáo tháng, Kế hoạch buổi,
+// Kiểm duyệt, Hồ sơ gia sư, Bài đăng, Cài đặt) vào qua bảng "Khác" như vỏ học sinh. Hộp việc đang ở đúng /lop-cua-toi, nên mục này
+// chỉ sáng khi đúng đường dẫn đó (các trang con không làm nó sáng theo).
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { KinLogo } from "@/components/kin/KinLogo";
+import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import { AccountMenu } from "@/components/kin/shell/AccountMenu";
+import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
-const ICON: Record<string, string> = { "hop-viec": "📥", lich: "🗓", lop: "👥", "bai-kt": "📝", "thu-vien": "📚", "hoc-phi": "💳" };
+const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
+// Các trang /admin/* mà gia sư dùng (đề thi, ngân hàng đề, quản lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ này (src/lib/hostRouting.ts,
+// TutorAdminFrame) — nên Bài KT / Thư viện / Lớp là liên kết nội bộ chứ không còn nhảy sang tên miền quản trị.
+
+const MORE_BASE: MoreGroup[] = [
+  { title: "Dạy học", links: [
+    { label: "Tổng quan", href: "/lop-cua-toi/tong-quan" },
+    { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi" },
+    { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang" },
+    { label: "Kiểm duyệt cộng đồng", href: "/lop-cua-toi/kiem-duyet" },
+  ] },
+  { title: "Tiền", links: [{ label: "Doanh thu", href: "/lop-cua-toi/doanh-thu" }] },
+  { title: "Giới thiệu", links: [
+    { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" },
+    { label: "Bài đăng tìm học sinh", href: "/lop-cua-toi/bai-dang" },
+  ] },
+];
 
 export default function TutorShell({
   modules, badges, children,
@@ -18,69 +43,50 @@ export default function TutorShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const items = visibleTutorModules({ modules });
+  const { user, logout } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const closeMore = useCallback(() => setMoreOpen(false), []);
+  const visible = visibleTutorModules({ modules });
   const hiddenCount = 4 - modules.length;
-  const isActive = (href: string) => (href === "/lop-cua-toi" ? pathname === href : pathname === href || pathname.startsWith(href + "/"));
 
-  const itemStyle = (active: boolean) => ({
-    background: active ? "var(--kin-nen-nhan)" : "transparent",
-    color: active ? "var(--kin-th-navy)" : "var(--kin-chu-chinh)",
-    fontWeight: active ? 600 : 500,
-  } as const);
+  const groups: MoreGroup[] = [
+    ...MORE_BASE,
+    { title: "Tài khoản", links: [
+      { label: "Cài đặt", href: "/lop-cua-toi/cai-dat" },
+      ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module" }] : []),
+    ] },
+  ];
+  const moreActive = moreOpen || groups.some(g => g.links.some(l => isUnder(pathname, l.href)));
 
-  const Badge = ({ n }: { n: number }) => n > 0
-    ? <span className="kin-badge-dem" aria-label={`${n} việc cần xử lý`}>{n > 99 ? "99+" : n}</span>
-    : null;
-
-  const link = (m: { key: string; href: string; label: string }, cls: string, extra: React.ReactNode) => {
-    const props = { className: cls, style: itemStyle(isActive(m.href)), "aria-current": isActive(m.href) ? ("page" as const) : undefined };
-    // Module quản lý bài/đề nằm ở trang quản trị (khác tên miền): dùng thẻ <a> thường để trình duyệt chuyển hẳn sang.
-    return m.href.startsWith("/admin")
-      ? <a key={m.key} href={m.href} {...props}>{extra}</a>
-      : <Link key={m.key} href={m.href} {...props}>{extra}</Link>;
-  };
+  const items: ModuleItem[] = [
+    ...visible.map<ModuleItem>(m => ({
+      key: m.key, label: m.label, href: m.href, icon: ICON[m.key] ?? "viec", badge: badges[m.key],
+      // Hộp việc nằm ở đúng /lop-cua-toi nên chỉ sáng khi đúng đường dẫn đó (isUnder sẽ làm nó sáng ở mọi trang con).
+      active: m.key === "hop-viec" ? pathname === "/lop-cua-toi"
+        : m.key === "bai-kt" ? isUnder(pathname, "/admin/thi-thu")   // đề thi + ngân hàng câu hỏi + ngân hàng đề (cùng một họ "bài kiểm tra")
+        : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/khoa-hoc")  // quản lớp / điểm danh / học viên của lớp
+        : isUnder(pathname, m.href),
+    })),
+    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen },
+  ];
 
   return (
-    <div className="md:flex min-h-screen" style={{ background: "var(--kin-nen-trang)" }}>
-      <nav aria-label="Module của gia sư"
-        className="hidden md:flex flex-col w-[226px] flex-shrink-0 p-3 gap-1 sticky top-0 h-screen overflow-y-auto"
-        style={{ background: "var(--kin-nen-bang)", borderRight: "1px solid var(--kin-vien-thuong)" }}>
-        <p className="px-3 py-2 text-lg font-bold" style={{ color: "var(--kin-chu-chinh)" }}>KiN</p>
-        {items.map(m => link(m, "flex items-center gap-3 px-3 rounded-lg min-h-[44px] text-sm",
-          <>
-            <span aria-hidden>{ICON[m.key]}</span>
-            <span className="flex-1">{m.label}</span>
-            <Badge n={badges[m.key] ?? 0} />
-          </>))}
-        <div className="mt-auto pt-3 flex flex-col gap-1" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
-          {hiddenCount > 0 && (
-            <Link href="/lop-cua-toi/cai-dat#module" className="flex items-center gap-3 px-3 rounded-lg min-h-[44px] text-sm" style={{ color: "var(--kin-nhan-link)" }}>
-              <span aria-hidden>＋</span> Thêm module
-            </Link>
-          )}
-          <Link href="/lop-cua-toi/cai-dat" className="flex items-center gap-3 px-3 rounded-lg min-h-[44px] text-sm" style={itemStyle(isActive("/lop-cua-toi/cai-dat"))}>
-            <span aria-hidden>⚙</span> Cài đặt
-          </Link>
+    <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: "48px" }}>
+      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} onCollapse={closeMore} />
+
+      <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+        <div className="h-12 flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={Object.values(badges).reduce((a, n) => a + (n > 0 ? n : 0), 0)} />
+            <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+          </div>
+          {user && <AccountMenu name={user.name} email={user.email} initial={user.avatar} onLogout={() => void logout()}
+            links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }]} />}
         </div>
-      </nav>
+        {children}
+      </div>
 
-      <div className="flex-1 min-w-0 pb-[68px] md:pb-0">{children}</div>
-
-      <nav aria-label="Module của gia sư"
-        className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex z-30"
-        style={{ background: "var(--kin-nen-bang)", borderTop: "1px solid var(--kin-vien-thuong)" }}>
-        {items.map(m => link(m, "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[length:var(--kin-co-caption)] min-h-[44px]",
-          <>
-            <span aria-hidden className="text-[21px] leading-none">{ICON[m.key]}</span>
-            <span className="truncate max-w-full px-1">{m.label}</span>
-            {(badges[m.key] ?? 0) > 0 && <span className="absolute top-1 right-[22%]"><Badge n={badges[m.key]} /></span>}
-          </>))}
-        <Link href="/lop-cua-toi/cai-dat" aria-label="Cài đặt" className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-[length:var(--kin-co-caption)] min-h-[44px]"
-          style={itemStyle(isActive("/lop-cua-toi/cai-dat"))}>
-          <span aria-hidden className="text-[21px] leading-none">⚙</span>
-          <span>Cài đặt</span>
-        </Link>
-      </nav>
+      {moreOpen && <MorePanel id="khac-bang" groups={groups} onClose={closeMore} user={user} onLogout={() => void logout()} />}
     </div>
   );
 }

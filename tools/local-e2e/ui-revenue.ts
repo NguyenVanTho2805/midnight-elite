@@ -82,7 +82,7 @@ async function topupAndApprove(u: any, sup: any, amountVnd: number) {
   await mp.addStyleTag({ content: "[data-agentation-root]{display:none!important}" }); // thanh công cụ dev, đè lên nút ngoài cùng bên phải
   const geo = await mp.evaluate(() => {
     const val = [...document.querySelectorAll("div")].find(d => d.textContent === "3.100.000đ" && d.className.includes("font-extrabold"))!.getBoundingClientRect();
-    const bar = [...document.querySelectorAll('nav[aria-label="Module quản trị"]')].find(n => getComputedStyle(n).display !== "none")!.getBoundingClientRect(); // thanh dưới là position:fixed nên offsetParent luôn null
+    const bar = [...document.querySelectorAll('nav[aria-label="Module quản trị"]')].find(n => n.getClientRects().length > 0)!.getBoundingClientRect(); // thanh dưới là position:fixed nên offsetParent luôn null; thanh máy tính nằm trong khung bọc bị ẩn (bản thân nó vẫn là flex) nên không xét display của riêng nó mà xét có vùng hiển thị thật hay không
     return { valW: val.width, overflowX: document.documentElement.scrollWidth > window.innerWidth + 1, barH: Math.round(bar.height), barBottom: Math.round(bar.bottom), vh: window.innerHeight };
   });
   check("giá trị thẻ có chỗ hiển thị (>80px thay vì 0px)", geo.valW > 80, geo);

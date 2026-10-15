@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProgress } from "@/hooks/useProgress";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import TeacherTag from "@/components/TeacherTag";
-import { COURSE_HASHTAGS } from "@/lib/courseData";
 
 interface DBLesson { id: string; title: string; duration?: string | null; isFree: boolean }
 interface DBChapter { id: string; title: string; lessons: DBLesson[] }
@@ -268,17 +267,9 @@ export default function KhoaHocDetailPage() {
                   style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>
                   {course.category}
                 </span>
-                {(COURSE_HASHTAGS[course.id] ?? []).map(tag => (
-                  <span key={tag} className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
-                    #{tag}
-                  </span>
-                ))}
                 {course.openDate && <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Khai giảng: {course.openDate}</span>}
               </div>
               <h1 className="text-2xl font-extrabold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>{course.name}</h1>
-              <p className="text-sm leading-relaxed mb-3" style={{ color: "var(--kin-chu-mo)" }}>
-                Khóa học toàn diện với đầy đủ bài giảng video theo chuyên đề.
-              </p>
               {course.instructor && (
                 <TeacherTag className="mb-5" name={course.instructor} avatar={course.teacherAvatar ?? course.instructor[0]} size={36} role="Gia sư phụ trách" />
               )}
@@ -452,35 +443,6 @@ export default function KhoaHocDetailPage() {
               )}
             </div>
 
-            {/* Guarantees */}
-            <div className="space-y-2.5 pt-4" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
-              {[
-                "Kích hoạt sau khi xác nhận thanh toán",
-                "Học trọn đời, không hết hạn",
-                "Xem trên điện thoại & máy tính",
-                "AI hỗ trợ giải bài 24/7",
-                "Kèm tài liệu PDF miễn phí",
-              ].map((g) => (
-                <div key={g} className="flex items-center gap-2 text-xs" style={{ color: "var(--kin-chu-phu)" }}>
-                  <span style={{ color: "var(--kin-tt-chu-xong)" }}>✓</span>
-                  <span>{g}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Combo suggestion */}
-            {course.id !== "combo-8-mon" && (
-              <div className="mt-5 rounded-xl p-4"
-                style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-                <p className="text-xs font-bold mb-2" style={{ color: "var(--kin-tt-chu-cho)" }}>Tiết kiệm hơn với Combo</p>
-                <p className="text-xs mb-3" style={{ color: "var(--kin-chu-mo)" }}>Mua Combo 8 môn chỉ 1.500.000đ — tiết kiệm 57%!</p>
-                <Link href="/khoa-hoc/combo-8-mon"
-                  className="block w-full py-2 rounded-xl text-xs font-bold text-center"
-                  style={{ background: "var(--kin-tt-cham-cho)", color: "white" }}>
-                  Xem Combo 8 môn →
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       </div>

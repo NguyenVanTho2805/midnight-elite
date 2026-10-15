@@ -1,3 +1,6 @@
+// KHÔNG GẮN LẠI vào giao diện cho tới khi nối AI thật. Bong bóng này KHÔNG gọi AI nào: sau 2 giây nó trả một trong năm đoạn chữ viết sẵn
+// (AI_REPLIES), kể cả câu "đã đối chiếu với 47 đề thi thử" — thông tin bịa, học sinh sẽ tưởng là AI thật trả lời. Đã gỡ khỏi
+// src/app/(student)/layout.tsx ngày 14/10/2026. Giữ lại phần giao diện (kéo thả, khung chat) để dùng khi có AI thật.
 "use client";
 
 import { useState, useRef, useEffect } from "react";

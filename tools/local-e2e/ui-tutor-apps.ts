@@ -77,9 +77,10 @@ async function applicant(name: string, emailVerified: boolean) {
   section("Gia sư thường bị đẩy khỏi trang");
   const tctx = await ctxFor(teacher);
   const tp = await tctx.newPage();
-  await tp.goto(`${ADMIN}/admin/ho-so-gia-su`, { waitUntil: "networkidle" });
-  await tp.waitForURL(/\/admin\/?$/, { timeout: 30000 });
-  check("redirect về /admin", true);
+  await tp.goto(`${BASE}/admin/ho-so-gia-su`, { waitUntil: "networkidle" });
+  await tp.waitForURL(u => !u.pathname.includes("ho-so-gia-su"), { timeout: 30000 });
+  await tp.waitForURL(/\/lop-cua-toi(\/|$)/, { timeout: 30000 }); // /admin của gia sư → Hộp việc /lop-cua-toi (chế độ gọn thì tiếp tục sang Lịch) — hostRouting.ts
+  check("bị đưa khỏi trang → /admin → khu của gia sư /lop-cua-toi (tên miền chính)", true);
   check("sidebar gia sư không có 'Duyệt gia sư'", (await tp.getByText("Duyệt gia sư").count()) === 0);
 
   check("không có lỗi console/pageerror ở trang chính", errors.filter(e => !/favicon|font/i.test(e)).length === 0, errors.slice(0, 3));

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DoanhThuGiaSuPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/doanh-thu");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/doanh-thu");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect(session.role === "student" ? "/student/hoc-phi" : "/lop-cua-toi");
   return (
     <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>

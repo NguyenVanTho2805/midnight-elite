@@ -8,6 +8,7 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFileFull, type ExamFileFolderFull } from "@/lib/api";
 import { ExtractReviewModal } from "@/components/ExtractReviewModal";
 import { DropZone } from "@/components/DropZone";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 
 // ─── DUYỆT THƯ MỤC KIỂU FILE MANAGER (1 cấp phẳng, giống trang "Đề thi" của
 // Azota — thư mục VÀ file gộp chung 1 bảng, không tách view riêng). Root =
@@ -46,13 +47,14 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
   onExtract: (f: ExamFileFull) => void;
   onMove: (f: ExamFileFull, folderId: string) => void;
   // Xoá từng file: mở modal xác nhận (nút Xoá ở từng dòng). Xoá hàng loạt:
-  // xoá thẳng luôn (đã có 1 lần confirm() gộp cho cả nhóm ở handleDeleteSelected).
+  // xoá thẳng luôn (đã có 1 hộp xác nhận gộp cho cả nhóm ở handleDeleteSelected).
   onRequestDeleteFile: (f: ExamFileFull) => void;
   onDeleteFileNow: (f: ExamFileFull) => Promise<void>;
   showToast: (msg: string, ok?: boolean) => void;
   loading: boolean;
 }) {
   const [renaming, setRenaming] = useState<string | null>(null);
+  const { ask, dialog } = useKinConfirm();
   const [renameValue, setRenameValue] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -69,7 +71,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
   }
 
   async function handleDeleteFolder(id: string) {
-    if (!confirm("Xoá thư mục này? (chỉ xoá được nếu không còn file bên trong)")) return;
+    if (!(await ask({ title: "Xoá thư mục này?", message: "Chỉ xoá được khi không còn file bên trong." }))) return;
     try {
       await api.examFileFolders.remove(id);
       onDeleted();
@@ -80,7 +82,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
 
   async function handleDeleteSelected() {
     if (selected.size === 0) return;
-    if (!confirm(`Xoá ${selected.size} file đã chọn?`)) return;
+    if (!(await ask({ title: `Xoá ${selected.size} file đã chọn?`, message: "Việc này không hoàn tác được." }))) return;
     for (const f of files) {
       if (selected.has(f.id)) await onDeleteFileNow(f);
     }
@@ -101,6 +103,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+      {dialog}
       <div className="flex items-center gap-3 px-4 py-3 text-xs text-gray-500 uppercase tracking-wide" style={{ background: "var(--kin-nen-bang)" }}>
         <input type="checkbox" checked={allFileIdsSelected} disabled={files.length === 0}
           onChange={e => setSelected(e.target.checked ? new Set(files.map(f => f.id)) : new Set())} />

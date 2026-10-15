@@ -33,11 +33,12 @@ const SECTIONS: Section[] = [
     roleNote: "Đang học KiN",
     color: "var(--kin-ph-class)",
     entries: [
-      { href: "/lop-cua-toi",            label: "Lớp của tôi",   note: "Hộp việc Outlook, chọn 1 lớp vào" },
-      { href: "/student/student/hoc-tap", label: "Học tập",        note: "Chương - bài - tiến độ" },
-      { href: "/student/student/lich-hoc", label: "Lịch học",     note: "Buổi tuần này + sắp tới" },
-      { href: "/student/student/hoc-phi", label: "Học phí",        note: "Phiếu + VietQR" },
-      { href: "/student/cai-dat/chu-de",  label: "Đổi chủ đề",     note: "5 chủ đề × 3 chế độ" },
+      { href: "/student/viec-cua-toi",   label: "Việc của tôi",  note: "Bài cần nộp, hạn sắp tới" },
+      { href: "/lop-cua-toi",            label: "Lớp của tôi",   note: "Các lớp bạn đang học" },
+      { href: "/student/hoc-tap",        label: "Học tập",        note: "Chương - bài - tiến độ" },
+      { href: "/student/lich-hoc",       label: "Lịch học",       note: "Buổi tuần này + sắp tới" },
+      { href: "/student/hoc-phi",        label: "Học phí",        note: "Phiếu + VietQR" },
+      { href: "/cai-dat/chu-de",         label: "Đổi chủ đề",     note: "5 chủ đề × 3 chế độ" },
     ],
   },
   {
@@ -45,10 +46,11 @@ const SECTIONS: Section[] = [
     roleNote: "Dạy lớp trên KiN",
     color: "var(--kin-ph-hub)",
     entries: [
-      { href: "/lop-cua-toi",            label: "Lớp của tôi",     note: "Mở trang Outlook" },
-      { href: "/admin/khoa-hoc",         label: "Quản khoá",       note: "Tạo lớp + chương bài" },
-      { href: "/admin/khoa-hoc",         label: "Điểm danh",       note: "Vào lớp bất kỳ → tab Điểm danh" },
-      { href: "/admin/khoa-hoc",         label: "Danh sách HS",     note: "Trong trang lớp → Hoc-vien" },
+      { href: "/lop-cua-toi",            label: "Hộp việc",        note: "Việc cần xử lý: đối soát, báo nghỉ, bài chưa chấm" },
+      { href: "/lop-cua-toi/lich",       label: "Lịch",            note: "Buổi dạy, nhắc lịch, báo nghỉ sát giờ" },
+      { href: "/lop-cua-toi/lop",        label: "Lớp",             note: "Danh sách lớp, học viên, mã mời" },
+      { href: "/lop-cua-toi/hoc-phi",    label: "Học phí",         note: "Phiếu học phí và đối soát chuyển khoản" },
+      { href: "/admin/khoa-hoc",         label: "Quản khoá",       note: "Tạo lớp + chương bài + điểm danh" },
     ],
   },
   {
@@ -57,7 +59,7 @@ const SECTIONS: Section[] = [
     color: "var(--kin-ph-exam)",
     entries: [
       { href: "#so-cua-con",   label: "Sổ của con",     note: "Mở link gia sư gửi qua Zalo (không cần đăng nhập)" },
-      { href: "/dang-nhap",    label: "Đăng nhập",       note: "Nếu đã liên kết tài khoản" },
+      { href: "/phu-huynh",    label: "Phụ huynh vào thế nào?", note: "Không tài khoản, không mật khẩu" },
     ],
   },
 ];

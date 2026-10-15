@@ -2,6 +2,7 @@
 // Thuần (không Prisma) để test. Đọc thì khoan dung (bỏ khoá lạ/giá trị hỏng, không
 // bao giờ ném lỗi làm hỏng trang), ghi thì nghiêm (khoá lạ hay sai kiểu → từ chối).
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
+import { parseRail, type RailState } from "@/lib/railState";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -23,7 +24,7 @@ export const TUTOR_MODULES: readonly TutorModuleDef[] = [
   { key: "lich",     label: "Lịch",      href: "/lop-cua-toi/lich",                     always: true,  hint: "Lịch tuần, nhắc lịch, báo nghỉ sát giờ" },
   { key: "lop",      label: "Lớp",       href: "/lop-cua-toi/lop",                      always: false, hint: "Danh sách lớp, học viên, mã mời" },
   { key: "bai-kt",   label: "Bài KT",    href: "/admin/thi-thu",                        always: false, hint: "Đề thi và bài kiểm tra" },
-  { key: "thu-vien", label: "Thư viện",  href: "/admin/thi-thu/ngan-hang-de-thi",       always: false, hint: "Ngân hàng đề và tài liệu" },
+  { key: "thu-vien", label: "Thư viện",  href: "/thu-vien",                             always: false, hint: "Bản ghi và tài liệu của các lớp bạn dạy" },
   { key: "hoc-phi",  label: "Học phí",   href: "/lop-cua-toi/hoc-phi",                  always: true,  hint: "Phiếu học phí và đối soát chuyển khoản" },
 ];
 
@@ -32,6 +33,8 @@ export interface UserPreferences {
   modules?: OptionalTutorModule[];
   theme?: KinTheme;
   mode?: KinMode;
+  /** Thanh bên trái: "thu" = thụt vào, "mo" = hiện. Vắng mặt = hiện (mặc định). Lưu theo tài khoản, máy khác lấy về khi đăng nhập. */
+  rail?: RailState;
   /** Gia sư tắt/bật tin nhắc lịch từng bên. Vắng mặt = bật cả hai. */
   reminders?: { parent: boolean; student: boolean };
   /** PH-215 Kết nối: `showZalo` hiện số Zalo trên hồ sơ công khai (TẮT sẵn vì zalo.me/<số> để lộ số); `messenger` là tên trang m.me. */
@@ -80,6 +83,8 @@ export function readPreferences(raw: unknown): UserPreferences {
   if (Array.isArray(raw.modules)) out.modules = canonicalModules(raw.modules);
   if (inList(KIN_THEMES, raw.theme)) out.theme = raw.theme;
   if (inList(KIN_MODES, raw.mode)) out.mode = raw.mode;
+  const rail = parseRail(raw.rail);
+  if (rail) out.rail = rail;
   if (isObj(raw.reminders)) {
     out.reminders = {
       parent: typeof raw.reminders.parent === "boolean" ? raw.reminders.parent : true,
@@ -126,6 +131,12 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
         if (v === null) { delete next.mode; break; }
         if (!inList(KIN_MODES, v)) return { ok: false, error: "Chế độ sáng/tối không hợp lệ" };
         next.mode = v; break;
+      case "rail": {
+        if (v === null) { delete next.rail; break; }
+        const r = parseRail(v);
+        if (!r) return { ok: false, error: "Thanh bên chỉ nhận 'mo' hoặc 'thu'" };
+        next.rail = r; break;
+      }
       case "reminders": {
         if (v === null) { delete next.reminders; break; }
         if (!isObj(v)) return { ok: false, error: "reminders không hợp lệ" };

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CaiDatPage() {
   const session = await getSession();
-  if (!session) redirect("/dang-nhap?next=/lop-cua-toi/cai-dat");
+  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/cai-dat");
   if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
   const [me, classes] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true, phone: true } }),

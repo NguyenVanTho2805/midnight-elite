@@ -1,5 +1,6 @@
 "use client";
 
+import { landingPath } from "@/lib/landing";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type Permission, type AdminRole } from "@/lib/permissions";
@@ -46,9 +47,10 @@ export interface AuthUser {
 interface AuthContextType {
   user:      AuthUser | null;
   isLoading: boolean;
-  login:     (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  /** Đăng nhập bằng tài khoản + mật khẩu. `identifier` là email hoặc số di động đã xác minh. `code` = "wait" khi bị chặn tạm vì sai nhiều lần. */
+  login:     (identifier: string, password: string) => Promise<{ success: boolean; message?: string; code?: string }>;
   /** Đăng nhập bằng mã 6 số gửi qua email (TK-170). `code` = wrong | locked | expired | format khi thất bại. */
-  loginWithCode: (email: string, code: string) => Promise<{ success: boolean; message?: string; code?: string; attemptsLeft?: number; retryAfterSec?: number }>;
+  loginWithCode: (emailOrPhone: string, code: string) => Promise<{ success: boolean; message?: string; code?: string; attemptsLeft?: number; retryAfterSec?: number }>;
   logout:    () => Promise<void>;
 }
 
@@ -70,31 +72,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(identifier: string, password: string) {
     const res = await fetch("/api/auth/login", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, password }),
+      body:    JSON.stringify({ identifier, password }),
     });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại" };
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code };
     setUser(toAuthUser(data));
-    router.push(data.role === "admin" ? "/admin" : "/student/viec-cua-toi");
+    router.push(landingPath(data.role, data.adminRole));
     return { success: true };
   }
 
-  async function loginWithCode(email: string, code: string) {
+  // Có '@' → email; không có → số điện thoại (máy chủ chuẩn hoá và kiểm).
+  async function loginWithCode(emailOrPhone: string, code: string) {
     const res = await fetch("/api/auth/code/verify", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, code }),
+      body:    JSON.stringify(emailOrPhone.includes("@") ? { email: emailOrPhone, code } : { phone: emailOrPhone, code }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, attemptsLeft: data.attemptsLeft, retryAfterSec: data.retryAfterSec };
     }
     setUser(toAuthUser(data));
-    router.push(data.role === "admin" ? "/admin" : "/student/viec-cua-toi");
+    router.push(landingPath(data.role, data.adminRole));
     return { success: true };
   }
 

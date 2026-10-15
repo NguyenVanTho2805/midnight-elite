@@ -1,17 +1,15 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { BADGE_RULES, computeRankings, type HonorStudent, type SortKey } from "@/lib/honorData";
 import { GpaBar } from "@/components/GpaBar";
-import { DropZone } from "@/components/DropZone";
 
 // TABS ngoài component — tránh recreate mỗi render
 const TABS = [
   { id: "leaderboard" as const, label: "Bảng xếp hạng" },
   { id: "badges"      as const, label: "Trao Badge" },
-  { id: "import"      as const, label: "Import điểm thi" },
 ] as const;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -37,11 +35,7 @@ export default function VinhDanhPage() {
   const [sortKey, setSortKey]   = useState<SortKey>("gpa");
   const [grantedBadges, setGrantedBadges] = useState<Set<string>>(new Set());
   const [toast, setToast]       = useState<{ msg: string; type: "success" | "error" | "info" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"leaderboard" | "badges" | "import">("leaderboard");
-  const [importFile, setImportFile] = useState<string | null>(null);
-  const [importedExam, setImportedExam] = useState("");
-  const [importedDate, setImportedDate] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<"leaderboard" | "badges">("leaderboard");
 
   const [students, setStudents] = useState<HonorStudent[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -112,13 +106,6 @@ export default function VinhDanhPage() {
     });
     const total = eligible.reduce((a, b) => a + b.students.length, 0);
     showToast(`Đã cấp toàn bộ badge, ${total} lượt trao`, "success");
-  }
-
-  function handleImport() {
-    if (!importedExam) { showToast("Chọn kỳ thi trước khi import", "error"); return; }
-    if (!importedDate) { showToast("Chọn ngày thi trước khi import", "error"); return; }
-    if (!importFile)   { showToast("Chọn file CSV trước khi import", "error"); return; }
-    showToast("Tính năng import CSV đang phát triển. Kết quả sẽ được thêm thủ công qua API.", "info");
   }
 
   const eligible = useMemo(() =>
@@ -342,61 +329,6 @@ export default function VinhDanhPage() {
           </div>
         )}
 
-        {/* ─── TAB: IMPORT ─────────────────────────────────────────────────── */}
-        {activeTab === "import" && (
-          <div className="space-y-4">
-            <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)" }}>
-              <h3 className="font-bold text-sm mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Import điểm từ kỳ thi bên ngoài (Azota)</h3>
-              <p className="text-xs mb-1" style={{ color: "var(--kin-chu-mo)" }}>
-                Import kết quả thi từ Azota vào hệ thống. Điểm sẽ cập nhật bảng xếp hạng.
-              </p>
-              <div className="px-3 py-2 rounded-xl text-xs mb-4" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
-                ⚠️ Tính năng import CSV đang phát triển. Hiện tại nhập điểm thủ công qua trang quản lý Thi thử.
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Kỳ thi</label>
-                  <input type="text" value={importedExam} onChange={e => setImportedExam(e.target.value)}
-                    placeholder="VD: ĐGNL HSA Mock #5"
-                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                    style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)", border: "none", color: "var(--kin-chu-chinh)" }} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Ngày thi</label>
-                  <input type="date" value={importedDate} onChange={e => setImportedDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                    style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)", border: "none", color: "var(--kin-chu-chinh)" }} />
-                </div>
-              </div>
-              <DropZone onFiles={files => files[0] && setImportFile(files[0].name)} className="rounded-2xl">
-                <div
-                  className="border-2 border-dashed rounded-2xl p-8 text-center mb-4 cursor-pointer transition-all hover:border-blue-400"
-                  style={{ borderColor: importFile ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)" }}
-                  onClick={() => fileRef.current?.click()}>
-                  {importFile ? (
-                    <>
-                      <div className="text-sm font-semibold mb-1" style={{ color: "var(--kin-nhan-link)" }}>{importFile}</div>
-                      <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Click để chọn file khác</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-3xl mb-2 font-light" style={{ color: "var(--kin-chu-mo)" }}>↑</div>
-                      <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Kéo thả file CSV vào đây</p>
-                      <p className="text-xs mb-3" style={{ color: "var(--kin-chu-mo)" }}>hoặc click để chọn từ máy tính</p>
-                    </>
-                  )}
-                  <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) setImportFile(f.name); }} />
-                </div>
-              </DropZone>
-              <button onClick={handleImport}
-                className="w-full py-3 rounded-xl text-sm font-bold text-white cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
-                style={{ background: "var(--kin-nhan-nen)" }}>
-                {importFile ? "Import (Đang phát triển)" : "Chọn file CSV / Excel"}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </PermissionGuard>
   );

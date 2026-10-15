@@ -26,6 +26,13 @@ const vnTomorrowDow = () => new Date(Date.now() + 86400_000 + 7 * 3600_000).getU
     const orig = document.execCommand.bind(document);
     (document as any).execCommand = (cmd: string, ...a: any[]) => { if (cmd === "copy") (window as any).__copied = (document.querySelector("textarea[readonly]") as HTMLTextAreaElement | null)?.value ?? ""; return orig(cmd, ...a); };
   });
+  // 14/10: gia sư nay ở tên miền chính (localhost = ngữ cảnh an toàn) nên zaloShare dùng navigator.clipboard thay vì execCommand dự phòng — bắt cả hai đường.
+  await ctx.addInitScript(() => {
+    try {
+      const c = navigator.clipboard;
+      if (c && c.writeText) { const ow = c.writeText.bind(c); c.writeText = (t: string) => { (window as any).__copied = t; return ow(t).catch(() => {}); }; }
+    } catch { /* không có clipboard */ }
+  });
   const errors: string[] = [];
   const watch = (p: any) => { p.on("pageerror", (e: unknown) => errors.push(String(e))); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|zalo|m\.me/i.test(m.text())) errors.push(m.text()); }); };
   const copied = (p: any) => p.evaluate(() => (window as any).__copied ?? "");
@@ -82,7 +89,7 @@ const vnTomorrowDow = () => new Date(Date.now() + 86400_000 + 7 * 3600_000).getU
 
   section("Điểm danh: tin CHUNG vào nhóm Zalo lớp");
   const ap = await ctx.newPage(); watch(ap);
-  await ap.goto(`${ADMIN}/admin/khoa-hoc/${toan.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
+  await ap.goto(`${BASE}/admin/khoa-hoc/${toan.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
   await ap.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
   await ap.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await ap.getByText("Em An").waitFor({ timeout: 30000 });

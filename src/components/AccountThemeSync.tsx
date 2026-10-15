@@ -1,4 +1,4 @@
-// TK-167 — chủ đề màu lưu theo TÀI KHOẢN, không theo máy. Vào máy mới (hoặc xoá dữ liệu
+// TK-167 — chủ đề màu (và, từ 14/10/2026, thanh bên thu/mở) lưu theo TÀI KHOẢN, không theo máy. Vào máy mới (hoặc xoá dữ liệu
 // trình duyệt) thì chủ đề đã chọn trên tài khoản được kéo về và áp ngay; localStorage chỉ
 // còn là bản nháp để trang không nháy sang Navy trước khi server trả lời.
 // Phải nằm trong AuthProvider (cần biết ai đang đăng nhập); khách thì không gọi gì.
@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { applyTheme, saveTheme } from "@/components/ThemeApplier";
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
+import { parseRail } from "@/lib/railState";
+import { applyRail, saveRailLocal } from "@/components/kin/shell/railStore";
 
 /** Sự kiện phát ra khi chủ đề được kéo về từ tài khoản. */
 export const THEME_SYNC_EVENT = "kin-theme-sync";
@@ -22,8 +24,12 @@ export default function AccountThemeSync() {
       try {
         const r = await fetch("/api/users/me/preferences", { credentials: "same-origin" });
         if (!r.ok || cancelled) return;
-        const { preferences: p } = (await r.json()) as { preferences?: { theme?: string; mode?: string } };
-        if (!p || (!p.theme && !p.mode)) return;
+        const { preferences: p } = (await r.json()) as { preferences?: { theme?: string; mode?: string; rail?: string } };
+        if (!p) return;
+        // Thanh bên thu/mở cũng theo TÀI KHOẢN: tài khoản đã chọn thì máy này làm theo (máy chưa chọn gì thì giữ mặc định là hiện).
+        const rail = parseRail(p.rail);
+        if (rail) { applyRail(rail); saveRailLocal(rail); }
+        if (!p.theme && !p.mode) return;
         const theme = (KIN_THEMES as readonly string[]).includes(p.theme ?? "") ? (p.theme as KinTheme) : null;
         const mode = (KIN_MODES as readonly string[]).includes(p.mode ?? "") ? (p.mode as KinMode) : null;
         const html = document.documentElement;

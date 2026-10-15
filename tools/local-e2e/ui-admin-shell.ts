@@ -1,5 +1,5 @@
 // Vỏ quản trị kiểu Outlook (Figma 11:287): thanh module, dải tab trang con, "Chờ kiểm duyệt" (danh sách + khung đọc + lệnh), quyền từng vai, điện thoại 390px.
-import { mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -132,14 +132,13 @@ import { prisma } from "@/lib/prisma";
   check("3 module: Kiểm duyệt, Nội dung, Báo cáo", namesC.length === 3 && !namesC.some(n => /Người dùng/.test(n)), namesC);
   await cc.close();
 
-  section("Giáo viên: chỉ thấy phần của mình");
+  section("Giáo viên: chỉ thấy phần của mình (14/10: ở LẠI tên miền chính, trong vỏ gia sư — không sang tên miền quản trị)");
   const ct = await ctxFor(T, { width: 1280, height: 800 });
   const pt = await ct.newPage(); watch(pt);
-  await pt.goto(`${ADMIN}/admin/kiem-duyet`, { waitUntil: "networkidle", timeout: 120000 });
+  await pt.goto(`${BASE}/admin/kiem-duyet`, { waitUntil: "networkidle", timeout: 120000 });
   await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).waitFor({ timeout: 90000 });
-  const railT = pt.getByRole("navigation", { name: railName });
-  const namesT = await railT.getByRole("link").allInnerTexts();
-  check("module: Kiểm duyệt, Nội dung, Báo cáo (không có Người dùng)", namesT.length === 3 && !namesT.some(n => /Người dùng/.test(n)), namesT);
+  check("vẫn ở tên miền chính (không bị chuyển sang admin.…)", !new URL(pt.url()).host.startsWith("admin."), pt.url());
+  check("thanh bên là của GIA SƯ; không có thanh bên quản trị", await pt.getByRole("navigation", { name: "Module của gia sư" }).first().isVisible() && (await pt.getByRole("navigation", { name: railName }).count()) === 0);
   check("hàng chờ của giáo viên: đúng 1 dòng — bài viết của lớp mình", await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).getByRole("option").count() === 1 && (await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).innerText()).includes("Bài viết bị báo cáo") && !(await pt.content()).includes("Gia sư chờ duyệt"));
   check("dải tab của Kiểm duyệt không có 'Duyệt gia sư' / 'Báo cáo trả lời' (không đủ quyền)", await pt.getByRole("navigation", { name: "Trang của Kiểm duyệt" }).getByRole("link", { name: /Duyệt gia sư|Báo cáo trả lời/ }).count() === 0);
   await ct.close();

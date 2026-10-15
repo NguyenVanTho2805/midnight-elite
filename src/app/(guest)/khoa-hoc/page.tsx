@@ -3,7 +3,7 @@
 import { useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { COURSE_CATEGORIES, CATEGORY_GRADIENT, COURSE_HASHTAGS } from "@/lib/courseData";
+import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useCourses } from "@/hooks/useCourses";
 import { useFollowedCourses } from "@/hooks/useFollowedCourses";
 import { useAuth } from "@/contexts/AuthContext";
@@ -114,11 +114,6 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
                 ? { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }
                 : { background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
               {t}
-            </span>
-          ))}
-          {(COURSE_HASHTAGS[course.slug] ?? []).slice(0, 2).map(tag => (
-            <span key={tag} className="text-[length:var(--kin-co-caption)] px-1.5 py-0.5 rounded" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
-              #{tag}
             </span>
           ))}
         </div>
@@ -365,20 +360,6 @@ function KhoaHocContent() {
         </div>
       </div>
 
-      {/* Guarantee bar */}
-      <div className="mt-12 rounded-xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center"
-        style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-        {[
-          { title: "Kích hoạt nhanh chóng", desc: "Admin duyệt và kích hoạt tài khoản trong vòng 24 giờ" },
-          { title: "Học trọn đời",          desc: "Mua 1 lần, xem không giới hạn" },
-          { title: "Hỏi bài không giới hạn",  desc: "Trợ giảng người thật phản hồi trong ngày, AI hỗ trợ ngoài giờ" },
-        ].map(g => (
-          <div key={g.title}>
-            <div className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>{g.title}</div>
-            <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{g.desc}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

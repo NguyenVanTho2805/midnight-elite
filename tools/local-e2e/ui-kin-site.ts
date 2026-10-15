@@ -1,6 +1,7 @@
 // Khung web công khai theo Figma KiN: thanh trên, trang chủ, chân trang, /phu-huynh.
 // Kiểm cả cấu trúc lẫn số đo thật (màu nền hero, chiều cao nút, tương phản chữ nhỏ trên nền navy, không tràn ngang).
-import { BASE, mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkUser, mkTutor, mkCourse, mkSuper, wipe, check, eventually, section, done } from "./h";
+import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 
 // Tương phản WCAG giữa màu chữ (có thể có alpha) và nền đã phối.
@@ -41,8 +42,17 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   check("hai nút hero: Xem lớp học → /khoa-hoc, Thi thử miễn phí → /thi-thu, cao 48px", (await cta1.getAttribute("href")) === "/khoa-hoc" && (await cta2.getAttribute("href")) === "/thi-thu" && (await cta1.boundingBox())?.height === 48);
   const tiles = await hero.getByRole("link").filter({ hasText: /ĐGNL HSA|ĐGNL HCM|Tốt nghiệp THPT|TSA Bách Khoa/ }).count();
   check("4 ô kỳ thi đang mở", tiles === 4, tiles);
-  const stats = await hero.locator("dl dd").allInnerTexts();
-  check("3 số liệu: 1.200+ · 10.000+ · 6", JSON.stringify(stats) === JSON.stringify(["1.200+", "10.000+", "6"]), stats);
+  const stats0 = await hero.locator("dl dd").allInnerTexts();
+  check("cơ sở dữ liệu chưa có lớp / đề / gia sư → KHÔNG hiện số liệu nào (không còn 1.200+ · 10.000+ · 6 bịa)", stats0.length === 0 && await hero.locator("dl").count() === 0, stats0);
+  const tut = await mkTutor("Cô Lan"), course = await mkCourse(tut.id, { name: "Toán 9" });
+  await prisma.enrollment.create({ data: { userId: U.id, courseId: course.id, status: "active" } });
+  await prisma.exam.create({ data: { id: "ex-home", code: "ex-home", title: "Đề thử", category: "Toán", date: "01/01/2030", time: "08:00", duration: "45 phút", questions: 0, status: "available", createdAt: "2020", ownerId: tut.id } });
+  await p.reload({ waitUntil: "networkidle" });
+  const stats1 = await hero.locator("dl dd").allInnerTexts(), labels1 = await hero.locator("dl dt").allInnerTexts();
+  check("có dữ liệu thật → hiện đúng số đếm: 1 học sinh đang học · 1 đề thi thử · 1 gia sư", JSON.stringify(stats1) === JSON.stringify(["1", "1", "1"]) && JSON.stringify(labels1) === JSON.stringify(["Học sinh đang học", "Đề thi thử", "Gia sư"]), [stats1, labels1]);
+  await prisma.exam.update({ where: { id: "ex-home" }, data: { active: false } });
+  await p.reload({ waitUntil: "networkidle" });
+  check("đề bị tắt thì không được đếm: số 'Đề thi thử' biến mất, hai số còn lại giữ nguyên", JSON.stringify(await hero.locator("dl dd").allInnerTexts()) === JSON.stringify(["1", "1"]));
   const box = await hero.locator("h1").boundingBox();
   check("khối hero rộng 1280px, chữ bắt đầu ở x=80 (Figma 151:3)", !!box && Math.abs(box.x - 80) <= 1, box?.x);
 
@@ -72,7 +82,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   check("khung CTA 760px: nút Tạo tài khoản → /dang-ky", (await p.getByRole("link", { name: /Tạo tài khoản miễn phí/ }).getAttribute("href")) === "/dang-ky");
   const foot = p.locator("footer");
   const footLinks = await foot.getByRole("link").evaluateAll(els => els.map(e => [e.textContent?.trim(), e.getAttribute("href")]));
-  const want = [["Thi thử ĐGNL miễn phí", "/thi-thu"], ["Bảng xếp hạng", "/bang-xep-hang"], ["Tra cứu điểm chuẩn", "/diem-chuan"], ["Tin tức tuyển sinh", "/tin-tuc"], ["Danh sách gia sư", "/giang-vien"], ["Dành cho học sinh", "/dang-ky"], ["Dành cho gia sư", "/lop-cua-toi"], ["Dành cho phụ huynh", "/phu-huynh"], ["Chính sách bảo mật", "/chinh-sach"]];
+  const want = [["Thi thử ĐGNL miễn phí", "/thi-thu"], ["Bảng xếp hạng", "/bang-xep-hang"], ["Tra cứu điểm chuẩn", "/diem-chuan"], ["Tin tức tuyển sinh", "/tin-tuc"], ["Danh sách gia sư", "/giang-vien"], ["Dành cho học sinh", "/dang-ky"], ["Dành cho gia sư", "/dang-ky?vai=gia-su"], ["Dành cho phụ huynh", "/phu-huynh"], ["Chính sách bảo mật", "/chinh-sach"]];
   check("chân trang có đủ 3 cột Figma + liên kết đúng", want.every(([t, h]) => footLinks.some(l => l[0] === t && l[1] === h)), footLinks);
   check("chân trang giữ hotline 0384 409 051", (await foot.innerText()).includes("0384 409 051"));
   check("không tràn ngang ở 1440px", await p.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
@@ -97,8 +107,11 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   check("chân trang nền trắng khi máy ở chế độ tối", fb === "rgb(255, 255, 255)", fb);
   check("chữ liên kết thanh trên vẫn tối (đọc được trên nền trắng)", await dp.locator("header nav a").first().evaluate(e => { const c = getComputedStyle(e).color.match(/\d+/g)!.map(Number); return c[0] < 100 && c[1] < 100; }));
 
-  section("Đã đăng nhập: thanh trên có menu tài khoản, không còn nút Đăng ký");
-  const uctx = await ctxFor(U, { width: 1440, height: 900 });
+  // 14/10: học viên / gia sư đã đăng nhập không còn thấy trang khách (mở "/" là vào thẳng dashboard — xem ui-tutor-admin), nên thanh trên của khách
+  // với menu tài khoản chỉ còn thấy ở QUẢN TRỊ (cấp 1 / nội dung) mở trang khách trên tên miền chính. Kiểm bằng một quản trị cấp 1.
+  section("Đã đăng nhập (quản trị): thanh trên khách có menu tài khoản, không còn nút Đăng ký");
+  const AD = await mkSuper("Nguyễn Minh Anh");
+  const uctx = await ctxFor(AD, { width: 1440, height: 900 });
   const up = await uctx.newPage(); watch(up);
   await up.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 240000 });
   const acc = up.locator("header").getByRole("button", { name: /Anh/ });
@@ -171,10 +184,10 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   await nameInput.fill("Nguyễn Minh Anh");
   await eventually("nhập đúng: viền xanh lá trạng thái #059669", async () => (await borderOf()) === "rgb(5, 150, 105)");
   const lp = await gctx.newPage(); watch(lp);
-  await lp.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 240000 });
-  // Màn đăng nhập mới (mã 6 số qua email) có test riêng ui-login-code; ở đây chỉ giữ kiểm tra chung của khung web công khai.
+  await lp.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 240000 });
+  // Đăng nhập có hai tab (Mật khẩu là mặc định, Mã một lần mở bằng ?cach=ma); test riêng: ui-login-password và ui-login-code. Ở đây chỉ giữ kiểm tra chung của khung web công khai.
   await lp.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
-  check("đăng nhập bỏ trống: báo 'Vui lòng nhập email'", await lp.getByText("Vui lòng nhập email").isVisible());
+  check("đăng nhập bỏ trống: báo 'Vui lòng nhập số điện thoại hoặc email' (môi trường test có SMS)", await lp.getByText("Vui lòng nhập số điện thoại hoặc email").isVisible());
   await lp.getByLabel("Email").evaluate(e => (e as HTMLElement).blur());
   await eventually("ô nhập có viền #8b95a5 (đạt 3:1)", async () => (await lp.getByLabel("Email").evaluate(e => getComputedStyle(e).borderTopColor)) === "rgb(139, 149, 165)");
   const mctx2 = await ctxFor(null, { width: 390, height: 844 });
