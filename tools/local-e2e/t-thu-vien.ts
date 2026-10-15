@@ -101,5 +101,10 @@ const D = 24 * 3_600_000;
   const t2h = await page(t2c);
   check("gia sư khác chỉ thấy lớp của mình (Lý 10), không thấy Toán 9", t2h.includes("Lý 10 lớp khác") && !t2h.includes("Toán 9 công khai") && !t2h.includes("TL-MIEN-PHI"));
 
+  section("Gia sư mới chưa mở lớp nào");
+  const T3 = await mkTutor("Cô Mới");
+  const t3h = await page(await cookieFor(T3));
+  check("thông báo 'Bạn chưa mở lớp nào' + lối 'Tạo lớp' mở THẲNG form tạo lớp (/admin/khoa-hoc?tao=1), không dừng ở danh sách trống", t3h.includes("Bạn chưa mở lớp nào") && t3h.includes('href="/admin/khoa-hoc?tao=1"'), t3h.match(/Bạn chưa mở lớp nào[\s\S]{0,300}/)?.[0]);
+
   await done();
 })();

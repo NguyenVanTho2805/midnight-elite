@@ -268,7 +268,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     "/lop-cua-toi", "/lop-cua-toi/tong-quan", "/lop-cua-toi/lich", "/lop-cua-toi/lop", "/lop-cua-toi/hoc-phi", "/lop-cua-toi/doanh-thu", "/lop-cua-toi/bao-cao-thang",
     "/lop-cua-toi/ke-hoach-buoi", ...(full?.planId ? [`/lop-cua-toi/ke-hoach-buoi/${full.planId}`] : []), "/lop-cua-toi/kiem-duyet", "/lop-cua-toi/ho-so", "/lop-cua-toi/bai-dang", "/lop-cua-toi/cai-dat",
     ...(full ? [`/lop-cua-toi/${course1}`, `/lop-cua-toi/${course2}`] : []),
-    "/admin/khoa-hoc", "/admin/khoa-hoc/tao-moi", ...(full ? [`/admin/khoa-hoc/${course1}`] : []), "/admin/khoa-hoc/danh-muc",
+    "/admin/khoa-hoc", "/admin/khoa-hoc/tao-moi", ...(full ? [`/admin/khoa-hoc/${course1}`, ...["chuong-bai", "lich-hoc", "hoc-vien"].map(t => `/admin/khoa-hoc/${course1}?tab=${t}`)] : []), "/admin/khoa-hoc/danh-muc",
     "/admin/thi-thu", "/admin/thi-thu/tao-moi", ...(full ? [`/admin/thi-thu/${full.examId}`] : []), "/admin/thi-thu/ngan-hang-cau-hoi", "/admin/thi-thu/ngan-hang-de-thi",
     "/thu-vien", "/khoa-hoc", ...(full ? [`/khoa-hoc/${course1}`] : []), "/giang-vien", `/mentor/${T.id}`, "/thi-thu", "/cong-dong", "/tin-tuc", "/diem-chuan", "/bang-xep-hang", "/cai-dat/chu-de", "/",
   ].map(s => MAIN + s);
@@ -372,7 +372,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     if (v.why) continue;
     const fu = new URL(v.final);
     if (fu.origin !== MAIN_ORIGIN) continue;
-    const pt = pattern(fu);
+    const pt = pattern(fu) + (fu.searchParams.get("tab") ? `?tab=${fu.searchParams.get("tab")}` : "");   // mỗi tab của trang sửa khoá / cộng đồng là một kiểu trang riêng
     if (patternsDone.has(pt)) continue;
     patternsDone.add(pt); clickTargets.push(v.final);
   }

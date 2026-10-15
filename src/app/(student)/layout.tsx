@@ -36,7 +36,7 @@ function Content({ children }: { children: React.ReactNode }) {
 function Shell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
-  const tutorOnShared = user?.role === "admin" && user.adminRole === "teacher" && pathname.startsWith("/cai-dat");
+  const tutorOnShared = user?.role === "admin" && user.adminRole === "teacher" && pathname === "/cai-dat/chu-de";
   return tutorOnShared ? <TutorShellClient>{children}</TutorShellClient> : <StudentShell>{children}</StudentShell>;
 }
 
