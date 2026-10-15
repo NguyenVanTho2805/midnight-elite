@@ -129,13 +129,13 @@ export default function QuanTriVienPage() {
   return (
     <PermissionGuard required={PERMISSIONS.MANAGE_ADMINS}>
       {toast && (
-        <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
+        <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-xl"
           style={{ background: toast.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
           {toast.ok ? "✓" : "✗"} {toast.msg}
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
         style={{ height: "calc(100vh - 104px)" }}>
 
         {/* Header */}
@@ -196,7 +196,7 @@ export default function QuanTriVienPage() {
                 className="px-4 py-2 rounded-lg text-sm font-semibold border transition-all cursor-pointer"
                 style={filter === f
                   ? { background: "var(--kin-nhan-nen)", color: "white", borderColor: "transparent" }
-                  : { background: "white", borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
+                  : { background: "var(--kin-nen-trang)", borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 {f === "all"
                   ? `Tất cả (${users.length})`
                   : f === "admin"
@@ -305,7 +305,7 @@ export default function QuanTriVienPage() {
                           )}
                           {isAdmin && !isSuper && !isTeacher && (
                             <button onClick={() => changeRole(u.id, "admin", "admin_super")} disabled={busy}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50 cursor-pointer transition-all duration-150 active:scale-[0.97]"
                               style={{ background: "var(--kin-tt-cham-cho)" }}>
                               {busy ? "..." : "Nâng lên Cấp 1"}
                             </button>
@@ -330,7 +330,7 @@ export default function QuanTriVienPage() {
                               <span className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Chắc chắn?</span>
                               <button onClick={() => { changeRole(u.id, "student"); setConfirm(null); }}
                                 disabled={busy}
-                                className="px-2 py-0.5 rounded text-xs font-bold text-white disabled:opacity-50 cursor-pointer"
+                                className="px-2 py-0.5 rounded text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50 cursor-pointer"
                                 style={{ background: "var(--kin-tt-chu-loi)" }}>
                                 {busy ? "..." : "Xác nhận"}
                               </button>

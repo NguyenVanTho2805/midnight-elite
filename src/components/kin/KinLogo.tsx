@@ -25,8 +25,8 @@ export function KinMark({ size = 32, className, style }: { size?: number; classN
   );
 }
 
-/** Logo + chữ "KiN". Chữ theo màu nhấn của chủ đề (Figma: --kin-nhan-nen). */
-export function KinLogo({ size = 32, textSize = "var(--kin-co-h4, 19.2px)", color = "var(--kin-nhan-nen, #1e3a8a)" }: {
+/** Logo + chữ "KiN". Chữ theo màu nhấn của chủ đề; dùng --kin-nhan-chu-tren-nhat (= --kin-nhan-nen ở chế độ sáng, bản sáng hơn ở chế độ tối) để đọc được trên nền tối. */
+export function KinLogo({ size = 32, textSize = "var(--kin-co-h4, 19.2px)", color = "var(--kin-nhan-chu-tren-nhat, #1e3a8a)" }: {
   size?: number;
   textSize?: string;
   color?: string;

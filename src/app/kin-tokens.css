@@ -148,9 +148,13 @@
 
 /* ---------- Năm chủ đề ---------- */
 /* Chủ đề CHỈ đổi màu nhấn. Xanh lá, vàng, đỏ trạng thái không bao giờ đổi. */
+/* [data-chu-de-xem="…"] (thêm 15/10/2026, ngoài bản xuất Figma): cho phép MỘT khối bất kỳ hiện đúng màu của chủ đề đó dù trang đang ở chủ đề khác —
+   dùng ở thẻ xem trước trên trang Chủ đề màu. Mọi khối chủ đề dưới đây khai chung selector này; nếu sinh lại file từ Figma phải giữ.
+   (Test ui-theme đo từng thẻ xem trước khớp màu nhấn của chủ đề tương ứng.) */
 
 /* Navy */
-:root[data-chu-de="navy"] {
+:root[data-chu-de="navy"],
+[data-chu-de-xem="navy"] {
   --kin-nhan-nen: #1e3a8a;
   --kin-nhan-nen-re: #172554;
   --kin-nhan-chu-tren-nen: #ffffff;
@@ -158,13 +162,15 @@
   --kin-nhan-nen-nhat: #eff4ff;
   --kin-nhan-chu-tren-nhat: #1e3a8a;
 }
-:root[data-chu-de="navy"][data-che-do="toi"] {
+:root[data-chu-de="navy"][data-che-do="toi"],
+:root[data-che-do="toi"] [data-chu-de-xem="navy"] {
   --kin-nhan-link: #60a5fa;
   --kin-nhan-nen-nhat: #101a2c;
   --kin-nhan-chu-tren-nhat: #60a5fa;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-chu-de="navy"]:not([data-che-do="sang"]) {
+  :root[data-chu-de="navy"]:not([data-che-do="sang"]),
+  :root:not([data-che-do="sang"]) [data-chu-de-xem="navy"] {
     --kin-nhan-link: #60a5fa;
     --kin-nhan-nen-nhat: #101a2c;
     --kin-nhan-chu-tren-nhat: #60a5fa;
@@ -172,7 +178,8 @@
 }
 
 /* Cổ vịt */
-:root[data-chu-de="co-vit"] {
+:root[data-chu-de="co-vit"],
+[data-chu-de-xem="co-vit"] {
   --kin-nhan-nen: #0e7490;
   --kin-nhan-nen-re: #155e75;
   --kin-nhan-chu-tren-nen: #ffffff;
@@ -180,13 +187,15 @@
   --kin-nhan-nen-nhat: #eaf6fa;
   --kin-nhan-chu-tren-nhat: #0e7490;
 }
-:root[data-chu-de="co-vit"][data-che-do="toi"] {
+:root[data-chu-de="co-vit"][data-che-do="toi"],
+:root[data-che-do="toi"] [data-chu-de-xem="co-vit"] {
   --kin-nhan-link: #38bdf8;
   --kin-nhan-nen-nhat: #08202b;
   --kin-nhan-chu-tren-nhat: #38bdf8;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-chu-de="co-vit"]:not([data-che-do="sang"]) {
+  :root[data-chu-de="co-vit"]:not([data-che-do="sang"]),
+  :root:not([data-che-do="sang"]) [data-chu-de-xem="co-vit"] {
     --kin-nhan-link: #38bdf8;
     --kin-nhan-nen-nhat: #08202b;
     --kin-nhan-chu-tren-nhat: #38bdf8;
@@ -194,7 +203,8 @@
 }
 
 /* Mận */
-:root[data-chu-de="man"] {
+:root[data-chu-de="man"],
+[data-chu-de-xem="man"] {
   --kin-nhan-nen: #6b21a8;
   --kin-nhan-nen-re: #581c87;
   --kin-nhan-chu-tren-nen: #ffffff;
@@ -202,13 +212,15 @@
   --kin-nhan-nen-nhat: #f7effd;
   --kin-nhan-chu-tren-nhat: #6b21a8;
 }
-:root[data-chu-de="man"][data-che-do="toi"] {
+:root[data-chu-de="man"][data-che-do="toi"],
+:root[data-che-do="toi"] [data-chu-de-xem="man"] {
   --kin-nhan-link: #c084fc;
   --kin-nhan-nen-nhat: #1b0f2b;
   --kin-nhan-chu-tren-nhat: #c084fc;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-chu-de="man"]:not([data-che-do="sang"]) {
+  :root[data-chu-de="man"]:not([data-che-do="sang"]),
+  :root:not([data-che-do="sang"]) [data-chu-de-xem="man"] {
     --kin-nhan-link: #c084fc;
     --kin-nhan-nen-nhat: #1b0f2b;
     --kin-nhan-chu-tren-nhat: #c084fc;
@@ -216,7 +228,8 @@
 }
 
 /* Cà phê */
-:root[data-chu-de="ca-phe"] {
+:root[data-chu-de="ca-phe"],
+[data-chu-de-xem="ca-phe"] {
   --kin-nhan-nen: #78350f;
   --kin-nhan-nen-re: #5c2a0c;
   --kin-nhan-chu-tren-nen: #ffffff;
@@ -224,13 +237,15 @@
   --kin-nhan-nen-nhat: #fbf1e9;
   --kin-nhan-chu-tren-nhat: #78350f;
 }
-:root[data-chu-de="ca-phe"][data-che-do="toi"] {
+:root[data-chu-de="ca-phe"][data-che-do="toi"],
+:root[data-che-do="toi"] [data-chu-de-xem="ca-phe"] {
   --kin-nhan-link: #fdba74;
   --kin-nhan-nen-nhat: #241408;
   --kin-nhan-chu-tren-nhat: #fdba74;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-chu-de="ca-phe"]:not([data-che-do="sang"]) {
+  :root[data-chu-de="ca-phe"]:not([data-che-do="sang"]),
+  :root:not([data-che-do="sang"]) [data-chu-de-xem="ca-phe"] {
     --kin-nhan-link: #fdba74;
     --kin-nhan-nen-nhat: #241408;
     --kin-nhan-chu-tren-nhat: #fdba74;
@@ -238,7 +253,8 @@
 }
 
 /* Mực */
-:root[data-chu-de="muc"] {
+:root[data-chu-de="muc"],
+[data-chu-de-xem="muc"] {
   --kin-nhan-nen: #0f172a;
   --kin-nhan-nen-re: #020617;
   --kin-nhan-chu-tren-nen: #ffffff;
@@ -246,13 +262,15 @@
   --kin-nhan-nen-nhat: #f1f5f9;
   --kin-nhan-chu-tren-nhat: #0f172a;
 }
-:root[data-chu-de="muc"][data-che-do="toi"] {
+:root[data-chu-de="muc"][data-che-do="toi"],
+:root[data-che-do="toi"] [data-chu-de-xem="muc"] {
   --kin-nhan-link: #cbd5e1;
   --kin-nhan-nen-nhat: #131a26;
   --kin-nhan-chu-tren-nhat: #cbd5e1;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-chu-de="muc"]:not([data-che-do="sang"]) {
+  :root[data-chu-de="muc"]:not([data-che-do="sang"]),
+  :root:not([data-che-do="sang"]) [data-chu-de-xem="muc"] {
     --kin-nhan-link: #cbd5e1;
     --kin-nhan-nen-nhat: #131a26;
     --kin-nhan-chu-tren-nhat: #cbd5e1;

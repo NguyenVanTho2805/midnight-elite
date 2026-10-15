@@ -128,7 +128,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
       </div>
 
       {!hasAccount && !loading && (
-        <div role="alert" className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+        <div role="alert" className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-cho)" }}>
           Bạn chưa lưu tài khoản nhận tiền nên phiếu chưa có mã QR.{" "}
           <button className="underline font-semibold" onClick={onGoPayout}>Cài đặt nhận tiền →</button>
         </div>

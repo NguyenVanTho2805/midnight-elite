@@ -50,7 +50,7 @@ export function Table<T>({
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pageSize)) : 1;
 
   return (
-    <div className={`rounded-2xl bg-white shadow-sm ${className}`}>
+    <div className={`rounded-2xl bg-[var(--kin-nen-trang)] shadow-sm ${className}`}>
       {filterSlot ? (
         <div className="px-4 py-3 border-b border-slate-200">{filterSlot}</div>
       ) : null}

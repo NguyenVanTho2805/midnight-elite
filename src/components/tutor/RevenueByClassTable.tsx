@@ -29,7 +29,7 @@ export default function RevenueByClassTable({ rows }: { rows: ClassRevenueRow[] 
               <td className="px-4 py-2.5">
                 <div className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{r.name}</div>
                 <div className="h-1.5 rounded-full mt-1.5" style={{ background: "var(--kin-nen-nhan)" }} aria-hidden>
-                  <div className="h-1.5 rounded-full" style={{ width: `${(r.collected / max * 100).toFixed(1)}%`, background: "var(--kin-th-navy)" }} />
+                  <div className="h-1.5 rounded-full" style={{ width: `${(r.collected / max * 100).toFixed(1)}%`, background: "var(--kin-nhan-diem)" }} />
                 </div>
               </td>
               <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(r.collected)}</td>
@@ -40,7 +40,7 @@ export default function RevenueByClassTable({ rows }: { rows: ClassRevenueRow[] 
         <tfoot>
           <tr style={{ borderTop: "2px solid var(--kin-vien-thuong)" }}>
             <th scope="row" className="text-left px-4 py-2.5" style={{ color: "var(--kin-chu-chinh)" }}>Tổng</th>
-            <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: "var(--kin-th-navy)" }}>{vnd(total)}</td>
+            <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: "var(--kin-nhan-diem)" }}>{vnd(total)}</td>
             <td className="hidden sm:table-cell" />
           </tr>
         </tfoot>

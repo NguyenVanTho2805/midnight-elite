@@ -40,8 +40,8 @@ export default function MonthlyReportCard({ report }: { report: PartyReport }) {
               <p className="text-sm font-medium mb-2" style={{ color: "var(--kin-chu-chinh)" }}>{s.courseName}</p>
               <div className="space-y-2.5">
                 <Bar label="Chuyên cần" value={s.attendance.ratio === null ? null : s.attendance.ratio * 100} max={100}
-                  text={s.attendance.ratio === null ? "chưa có buổi điểm danh" : `${Math.round(s.attendance.ratio * 100)}% · ${s.attendance.sessions} buổi`} color="var(--kin-th-navy)" />
-                <Bar label="Nỗ lực" value={s.effort} max={10} text={s.effort === null ? "chưa đo được" : `${s.effort}/10`} color="var(--kin-th-navy)" />
+                  text={s.attendance.ratio === null ? "chưa có buổi điểm danh" : `${Math.round(s.attendance.ratio * 100)}% · ${s.attendance.sessions} buổi`} color="var(--kin-nhan-diem)" />
+                <Bar label="Nỗ lực" value={s.effort} max={10} text={s.effort === null ? "chưa đo được" : `${s.effort}/10`} color="var(--kin-nhan-diem)" />
                 <Bar label="Năng lực" value={m.value} max={10}
                   text={m.value === null ? "chưa có bài kiểm tra" : `${fmtScore(m.value)}/10${scores ? ` (${scores})` : ""}`} color={TONE[m.tone]} />
                 <p className="text-xs font-semibold" style={{ color: TONE[m.tone] }}>{m.text}</p>

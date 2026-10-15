@@ -23,7 +23,7 @@ export function ErrorState({ message = "Có lỗi xảy ra, vui lòng thử lạ
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-700 bg-white hover:bg-red-50 transition"
+          className="mt-4 px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-700 bg-[var(--kin-nen-trang)] hover:bg-red-50 transition"
         >
           Thử lại
         </button>

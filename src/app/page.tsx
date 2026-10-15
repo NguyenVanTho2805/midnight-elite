@@ -49,7 +49,7 @@ const WHY_ITEMS = [
   { Icon: CheckCircle, title: "Hỏi bài không giới hạn",    desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày." },
 ];
 
-const btnOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] bg-white text-[var(--kin-nhan-nen)] font-semibold transition-opacity hover:opacity-90";
+const btnOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-trang)] text-[var(--kin-nhan-nen)] font-semibold transition-opacity hover:opacity-90";
 const btnGhostOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] border border-white/30 text-white font-semibold transition-colors hover:bg-white/10";
 
 export default async function HomePage() {

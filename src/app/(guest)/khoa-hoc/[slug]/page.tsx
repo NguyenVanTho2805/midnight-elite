@@ -243,7 +243,7 @@ export default function KhoaHocDetailPage() {
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
-                <div className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-bold text-white z-10" style={{ background: "var(--kin-tt-chu-loi)" }}>
+                <div className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] z-10" style={{ background: "var(--kin-tt-chu-loi)" }}>
                   MIỄN PHÍ xem thử
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function KhoaHocDetailPage() {
               <div className="relative h-56 sm:h-72 flex items-center justify-center"
                 style={{ background: "var(--kin-nhan-nen)" }}>
                 <p className="text-white font-semibold text-sm opacity-60">Chưa có video giới thiệu</p>
-                <div className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>
+                <div className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>
                   MIỄN PHÍ xem thử
                 </div>
               </div>
@@ -356,7 +356,7 @@ export default function KhoaHocDetailPage() {
                               {lesson.title}
                             </span>
                             {lesson.isFree && (
-                              <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-xong)" }}>Free</span>
+                              <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-xong)" }}>Free</span>
                             )}
                           </div>
                           <span className="text-xs flex-shrink-0" style={{ color: "var(--kin-chu-mo)" }}>{lesson.duration ?? ""}</span>
@@ -410,7 +410,7 @@ export default function KhoaHocDetailPage() {
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-3xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{course.price.toLocaleString("vi-VN")}đ</span>
                 {discount > 0 && (
-                  <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>-{discount}%</span>
+                  <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>-{discount}%</span>
                 )}
               </div>
               {course.originalPrice && <div className="text-sm line-through" style={{ color: "var(--kin-chu-mo)" }}>{course.originalPrice.toLocaleString("vi-VN")}đ</div>}

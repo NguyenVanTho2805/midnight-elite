@@ -116,7 +116,7 @@ export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse
       : "kin-rail-it relative w-[66px] min-h-[44px] flex flex-col items-center justify-center gap-1 rounded-[var(--kin-bo-sm)] pt-2 pb-[6px] px-0 text-[length:var(--kin-co-caption)] tracking-[0.01em]";
     const style = {
       background: active ? "var(--kin-nen-nhan)" : "transparent",
-      color: active ? "var(--kin-th-navy)" : "var(--kin-chu-mo)",
+      color: active ? "var(--kin-nhan-diem)" : "var(--kin-chu-mo)",
       fontWeight: 600,
       "--i": index,
     } as CSSProperties;

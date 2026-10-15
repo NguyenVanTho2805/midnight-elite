@@ -190,7 +190,7 @@ function HocTapContent() {
             <div className="space-y-2">
               <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Bạn chưa đăng ký khóa học này</p>
               <Link href={`/khoa-hoc/${courseId}`}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white"
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-[var(--kin-chu-tren-nut-chinh)]"
                 style={{ background: "var(--kin-tt-cham-cho)" }}>
                 Mua khóa học ngay →
               </Link>

@@ -174,7 +174,8 @@ function DangNhapForm() {
     setStep("email"); setCode(""); setInvalid(false); setNotice(null);
   }
 
-  if (isLoading) return null;
+  // Không `return null` khi isLoading (15/10/2026): máy chủ vẽ rỗng còn trình duyệt vẽ form nếu /api/auth/me trả về trước khi vùng này kịp hydrate → lỗi
+  // "Hydration failed" lúc có lúc không (~một nửa lần tải cứng). Luôn vẽ form: khách thấy ngay, người đã đăng nhập vẫn bị chuyển đi bởi effect phía trên.
 
   const noticeBox = notice && (
     <div
@@ -239,7 +240,7 @@ function DangNhapForm() {
                 </div>
                 {noticeBox}
                 <KinSubmitButton busy={submitting} ok={ok} busyLabel="Đang đăng nhập..." className={primaryBtn}>Đăng nhập</KinSubmitButton>
-                <Link href="/quen-mat-khau" className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Quên mật khẩu?</Link>
+                <Link href={email.includes("@") ? `/quen-mat-khau?email=${encodeURIComponent(email.trim())}` : "/quen-mat-khau"} className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Quên mật khẩu?</Link>
               </form>
             )}
 

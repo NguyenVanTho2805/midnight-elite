@@ -106,7 +106,7 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
                   {!cancelled && !s.absence && confirming !== k && (
                     <button type="button" onClick={() => { setConfirming(k); setMsg(null); }}
                       className="px-3 py-2 rounded-lg text-sm min-h-[44px] flex-shrink-0"
-                      style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>
+                      style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>
                       Báo nghỉ
                     </button>
                   )}

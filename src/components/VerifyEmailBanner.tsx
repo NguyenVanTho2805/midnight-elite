@@ -46,7 +46,7 @@ export default function VerifyEmailBanner() {
         ) : (
           <button onClick={resend} disabled={sending}
             className="text-xs font-bold px-3 py-1.5 rounded-full transition-all disabled:opacity-60"
-            style={{ background: "var(--kin-tt-cham-cho)", color: "white" }}>
+            style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-tren-nut-chinh)" }}>
             {sending ? "Đang gửi..." : "Gửi lại email"}
           </button>
         )}

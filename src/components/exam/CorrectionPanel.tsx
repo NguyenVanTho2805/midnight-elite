@@ -111,7 +111,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
             <button key={it.questionId} type="button" onClick={() => go(i)} aria-current={i === pos ? "step" : undefined}
               aria-label={`Câu ${it.index}${done ? " — đã xong" : it.state === "hint" ? " — đang chữa" : " — chưa làm"}`}
               className="min-w-[44px] h-[44px] rounded-lg text-sm font-semibold"
-              style={{ background: i === pos ? "var(--kin-nhan-nen)" : done ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)", color: i === pos ? "var(--kin-chu-tren-nut-chinh)" : done ? "var(--kin-tt-chu-xong)" : INK, border: "1px solid var(--kin-vien-thuong)" }}>
+              style={{ background: i === pos ? "var(--kin-nhan-nen)" : done ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)", color: i === pos ? "var(--kin-nhan-chu-tren-nen)" : done ? "var(--kin-tt-chu-xong)" : INK, border: "1px solid var(--kin-vien-thuong)" }}>
               {it.index}{done ? " ✓" : ""}
             </button>
           );

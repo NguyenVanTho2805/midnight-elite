@@ -33,7 +33,7 @@ function Content({ children }: { children: React.ReactNode }) {
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard requiredRole="student">
-      <div data-vung="sang" className="min-h-screen" style={{ background: "var(--kin-nen-trang)" }}>
+      <div className="min-h-screen" style={{ background: "var(--kin-nen-trang)" }}>
         <StudentShell>
           <Content>{children}</Content>
         </StudentShell>

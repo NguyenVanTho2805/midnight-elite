@@ -240,7 +240,7 @@ function CommunityAdmin() {
               <button key={c} onClick={() => setCatFilter(c)}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                 style={{
-                  background: active ? info.bg : "rgba(255,255,255,0.6)",
+                  background: active ? info.bg : "var(--kin-nen-bang)",
                   color:      active ? info.color : "var(--kin-chu-mo)",
                   border:     active ? `1px solid color-mix(in srgb, ${info.color} 25%, transparent)` : "1px solid var(--kin-vien-thuong)",
                 }}>
@@ -257,7 +257,7 @@ function CommunityAdmin() {
           style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Lỗi tải dữ liệu</span>
           <button onClick={load}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
             style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
@@ -394,7 +394,7 @@ function ThreadRowCard({
         {confirmDelete === t.id ? (
           <div className="flex items-center gap-1.5">
             <button onClick={() => onDelete(t.id)} disabled={deletingId === t.id}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
               style={{ background: "var(--kin-tt-chu-loi)" }}>
               {deletingId === t.id ? "..." : "Xác nhận xoá"}
             </button>

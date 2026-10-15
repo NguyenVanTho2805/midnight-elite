@@ -37,7 +37,7 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
                 <div className="flex gap-2 flex-wrap mt-auto">
                   {[["Mở lớp", `/lop-cua-toi/${c.id}`], ["Điểm danh", `/admin/khoa-hoc/${c.id}/diem-danh`], ["Danh sách HS", `/admin/khoa-hoc/${c.id}/hoc-vien`]].map(([l, h]) => (
                     <Link key={h} href={h} className="px-3 py-2 text-sm rounded-lg min-h-[44px] inline-flex items-center whitespace-nowrap"
-                      style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>{l}</Link>
+                      style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>{l}</Link>
                   ))}
                 </div>
               </li>

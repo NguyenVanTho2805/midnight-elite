@@ -111,7 +111,7 @@ export default function CoinWalletPage() {
       </div>
 
       {/* Số dư */}
-      <div className="rounded-2xl p-6" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }}>
+      <div className="rounded-2xl p-6" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
         <p className="text-xs font-semibold uppercase tracking-wider opacity-80">Số dư hiện tại</p>
         <p className="text-4xl font-extrabold mt-1">
           {loading ? "..." : balance?.toLocaleString("vi-VN")} <span className="text-base font-semibold opacity-80">Coin</span>

@@ -95,7 +95,7 @@ function ActionMenu({ article, onEdit, onDelete }: {
         ···
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg shadow-xl border border-gray-200 bg-white py-1">
+        <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
           <button onClick={() => { onEdit(); setOpen(false); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
             <span className="w-5 text-center">✏️</span> Chỉnh sửa
@@ -115,7 +115,7 @@ function ActionMenu({ article, onEdit, onDelete }: {
                   Huỷ
                 </button>
                 <button onClick={() => { onDelete(); setOpen(false); setConfirm(false); }}
-                  className="flex-1 py-1.5 rounded text-xs font-semibold text-white cursor-pointer"
+                  className="flex-1 py-1.5 rounded text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)] cursor-pointer"
                   style={{ background: "var(--kin-tt-chu-loi)" }}>
                   Xoá
                 </button>
@@ -209,7 +209,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(600px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -218,7 +218,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
           visibility: open ? "visible" : "hidden",
         }}>
 
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light cursor-pointer">
@@ -273,7 +273,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">
                 Danh mục <span className="text-red-500">*</span>
               </label>
-              <select className={INP + " bg-white"} value={form.category}
+              <select className={INP + " bg-[var(--kin-nen-trang)]"} value={form.category}
                 onChange={e => set("category", e.target.value)}>
                 {CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -460,7 +460,7 @@ function PageInner() {
         onSaved={() => { loadData(); showToast(editId ? "Đã cập nhật bài viết" : "Đã tạo bài viết"); }}
       />
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0"
         style={{ height: "calc(100vh - 104px)" }}>
 
         {/* Header */}
@@ -480,7 +480,7 @@ function PageInner() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
             <select value={catFilter} onChange={e => setCat(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
               <option value="">Tất cả danh mục</option>
               {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
@@ -488,7 +488,7 @@ function PageInner() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
             <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
               <option value="">Tất cả</option>
               <option value="published">Đã xuất bản</option>
               <option value="draft">Nháp</option>

@@ -6,6 +6,7 @@ import { sendVerificationEmail } from "@/lib/email";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 import { grantSignupBonus } from "@/lib/wallet";
 import { parseTutorProfileInput } from "@/lib/tutorProfile";
+import { normalizeVnPhone } from "@/lib/phone";
 
 // POST /api/auth/register-tutor — đăng ký tài khoản kèm đơn làm gia sư
 // (BE-050). Cùng luồng với /api/auth/register (rate limit, hash, email xác
@@ -16,6 +17,9 @@ import { parseTutorProfileInput } from "@/lib/tutorProfile";
 // (BE-052). Lý do: ~15 route coi role "admin" là toàn quyền xem nội dung
 // mọi khoá học, nên cấp role admin trước khi duyệt = ai đăng ký cũng xem
 // được hết. Duyệt xong mới chuyển sang role "admin" + adminRole "teacher".
+//
+// 15/10/2026: gia sư chỉ nộp tên, số điện thoại (Zalo, để quản trị liên hệ xác minh), email, mật khẩu, giới thiệu, môn dạy. Không còn nhận / lưu
+// SĐT phụ huynh, trường, tỉnh-thành (trước đây trang vẫn gửi nhưng máy chủ bỏ lặng lẽ hoặc không nơi nào dùng).
 export async function POST(req: Request) {
   const ip = getClientIp(req);
   const blocked = limitOrBlock(ip, "register", 5, 60_000);
@@ -23,13 +27,17 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, email, password, phone, city } = body;
+    const { name, email, password, phone } = body;
 
     if (!name?.trim() || !email?.trim() || !password) {
       return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
     }
     if (typeof password !== "string" || password.length < 8) {
       return NextResponse.json({ error: "Mật khẩu cần ít nhất 8 ký tự" }, { status: 400 });
+    }
+    // Số điện thoại là bắt buộc với gia sư (quản trị gọi/nhắn Zalo để xác minh) và phải là số di động VN thật.
+    if (typeof phone !== "string" || !normalizeVnPhone(phone)) {
+      return NextResponse.json({ error: "Số điện thoại không hợp lệ (số di động Việt Nam, 10 số)" }, { status: 400 });
     }
     const profile = parseTutorProfileInput({ bio: body.bio, subjects: body.subjects ?? [] });
     if (profile.error) return NextResponse.json({ error: profile.error }, { status: 400 });
@@ -52,8 +60,7 @@ export async function POST(req: Request) {
         name:           name.trim(),
         email:          normalizedEmail,
         password:       hashed,
-        phone:          phone?.trim() || null,
-        city:           city?.trim() || null,
+        phone:          phone.replace(/\s/g, ""),
         role:           "student",
         emailVerified:  false,
         bio:            profile.bio ?? null,

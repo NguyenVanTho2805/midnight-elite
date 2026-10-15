@@ -21,16 +21,6 @@ const THEME_LABEL: Record<KinTheme, string> = {
   "muc":    "Mực",
 };
 
-// Màu nhấn hiển thị trong card xem trước. Dùng giá trị cứng từ Figma —
-// không đổi theo trạng thái sáng/tối của app, vì card là ảnh demo.
-const THEME_PREVIEW: Record<KinTheme, { nen: string; chu: string }> = {
-  "navy":   { nen: "var(--kin-nhan-link)", chu: "var(--kin-nen-trang)" },
-  "co-vit": { nen: "var(--kin-nhan-link)", chu: "var(--kin-nen-trang)" },
-  "man":    { nen: "var(--kin-nhan-link)", chu: "var(--kin-nen-trang)" },
-  "ca-phe": { nen: "var(--kin-tt-chu-cho)", chu: "var(--kin-nen-trang)" },
-  "muc":    { nen: "var(--kin-chu-chinh)", chu: "var(--kin-nen-trang)" },
-};
-
 const MODE_LABEL: Record<KinMode, string> = {
   "auto": "Theo máy",
   "sang": "Sáng",
@@ -88,7 +78,6 @@ export default function ChonChuDePage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {KIN_THEMES.map(t => {
               const selected = ready && t === theme;
-              const p = THEME_PREVIEW[t];
               return (
                 <button
                   key={t}
@@ -98,11 +87,18 @@ export default function ChonChuDePage() {
                   className="rounded-xl p-3 flex flex-col items-center gap-2 transition-all"
                   style={{
                     background: "var(--kin-nen-bang)",
-                    border: `2px solid ${selected ? "var(--kin-th-navy)" : "var(--kin-vien-thuong)"}`,
+                    border: `2px solid ${selected ? "var(--kin-nhan-diem)" : "var(--kin-vien-thuong)"}`,
                   }}>
-                  <div className="w-full h-12 rounded-md flex items-center justify-center text-xs font-semibold"
-                    style={{ background: p.nen, color: p.chu }}>
-                    Aa
+                  {/* Xem trước: khối mang data-chu-de-xem nhận ĐÚNG màu của chủ đề t (kin-tokens.css), không phải chủ đề đang bật. */}
+                  <div data-chu-de-xem={t} aria-hidden="true" className="w-full rounded-md overflow-hidden" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
+                    <div className="h-12 flex items-center justify-center text-xs font-semibold"
+                      style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
+                      Aa
+                    </div>
+                    <div className="px-2 py-1 text-center text-[length:var(--kin-co-caption)] font-semibold"
+                      style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
+                      Liên kết
+                    </div>
                   </div>
                   <span className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>
                     {THEME_LABEL[t]}
@@ -131,7 +127,7 @@ export default function ChonChuDePage() {
                   style={{
                     background: selected ? "var(--kin-nen-nhan)" : "var(--kin-nen-bang)",
                     color: "var(--kin-chu-chinh)",
-                    border: `2px solid ${selected ? "var(--kin-th-navy)" : "var(--kin-vien-thuong)"}`,
+                    border: `2px solid ${selected ? "var(--kin-nhan-diem)" : "var(--kin-vien-thuong)"}`,
                   }}>
                   {MODE_LABEL[m]}
                 </button>

@@ -111,8 +111,8 @@ export default function RosterPage({ params }: { params: Promise<{ id: string }>
                       style={{ borderTop: "1px solid var(--kin-vien-nhat)" }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                            style={{ background: "var(--kin-th-navy)" }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-[var(--kin-nhan-chu-tren-nen)] flex-shrink-0"
+                            style={{ background: "var(--kin-nhan-nen)" }}>
                             {s.name[0]?.toUpperCase() ?? "?"}
                           </div>
                           <span className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</span>
@@ -140,8 +140,8 @@ export default function RosterPage({ params }: { params: Promise<{ id: string }>
                   className="rounded-xl p-4"
                   style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                      style={{ background: "var(--kin-th-navy)" }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-[var(--kin-nhan-chu-tren-nen)] flex-shrink-0"
+                      style={{ background: "var(--kin-nhan-nen)" }}>
                       {s.name[0]?.toUpperCase() ?? "?"}
                     </div>
                     <div className="flex-1 min-w-0">

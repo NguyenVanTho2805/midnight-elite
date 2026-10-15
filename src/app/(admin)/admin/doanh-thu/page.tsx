@@ -28,7 +28,7 @@ const CARD = { background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
-    <div role="status" className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
+    <div role="status" className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-xl"
       style={{ background: ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
       {ok ? "✓" : "✗"} {msg}
     </div>

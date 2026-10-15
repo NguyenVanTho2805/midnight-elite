@@ -30,7 +30,7 @@ export default async function TutorDashboard({ tutorId, name }: { tutorId: strin
           <nav aria-label="Lối tắt" className="flex gap-2 flex-wrap">
             {[["Học phí", "/lop-cua-toi/hoc-phi"], ["Báo cáo tháng", "/lop-cua-toi/bao-cao-thang"], ["Bài đăng tìm HS", "/lop-cua-toi/bai-dang"], ["Kế hoạch buổi", "/lop-cua-toi/ke-hoach-buoi"], ["Doanh thu", "/lop-cua-toi/doanh-thu"], ["Hồ sơ gia sư", "/lop-cua-toi/ho-so"]].map(([l, h]) => (
               <Link key={h} href={h} className="px-3 py-2 text-sm rounded-lg min-h-[44px] inline-flex items-center"
-                style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>{l}</Link>
+                style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>{l}</Link>
             ))}
           </nav>
         </header>

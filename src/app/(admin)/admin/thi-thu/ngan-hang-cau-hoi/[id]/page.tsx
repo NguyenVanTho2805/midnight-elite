@@ -211,12 +211,12 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
 
       {confirmDel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
-          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+          <div className="bg-[var(--kin-nen-trang)] rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Xoá {selfLabel.toLowerCase()} &quot;{node.name}&quot;?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá được nếu không còn {childLabel.toLowerCase()} nào bên trong hoặc câu hỏi nào gắn vào.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setConfirmDel(false)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={handleDelete} disabled={busy} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
+              <button onClick={handleDelete} disabled={busy} className="px-3 py-1.5 text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>
@@ -352,7 +352,7 @@ function PageInner() {
             <button key={t.v} onClick={() => setView(t.v)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
               style={view === t.v
-                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                 : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
               {t.label}
             </button>
@@ -362,7 +362,7 @@ function PageInner() {
 
       {copying && root && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
-          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+          <div className="bg-[var(--kin-nen-trang)] rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Copy ngân hàng &quot;{root.name}&quot;</p>
             <p className="text-xs text-gray-500 mb-3">Nhân bản toàn bộ cây đầu mục + câu hỏi bên trong sang 1 ngân hàng mới.</p>
             <input autoFocus className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-blue-400" style={{ borderColor: "var(--kin-vien-thuong)" }}

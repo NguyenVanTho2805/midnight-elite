@@ -155,7 +155,7 @@ export default function OutlookShell({ courseId, courseName, category, role }: {
                         background: isActive ? "var(--kin-nen-nhan)" : "transparent",
                         color:      isActive ? "var(--kin-nhan-chu-tren-nhat)" : "var(--kin-chu-chinh)",
                         fontWeight: isActive ? 600 : 400,
-                        borderLeft: `3px solid ${isActive ? "var(--kin-th-navy)" : "transparent"}`,
+                        borderLeft: `3px solid ${isActive ? "var(--kin-nhan-diem)" : "transparent"}`,
                       }}>
                       <span aria-hidden>{it.icon}</span>
                       {it.label}

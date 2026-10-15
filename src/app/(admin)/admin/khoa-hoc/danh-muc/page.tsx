@@ -31,7 +31,7 @@ function DelModal({ name, onClose, onConfirm }: {
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
         <div className="text-center mb-4">
           <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "var(--kin-tt-nen-loi)" }}>
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="var(--kin-tt-chu-loi)" strokeWidth={2}>
@@ -49,7 +49,7 @@ function DelModal({ name, onClose, onConfirm }: {
             Huỷ
           </button>
           <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] transition-colors"
             style={{ background: "var(--kin-tt-chu-loi)" }}>
             Xoá
           </button>
@@ -104,7 +104,7 @@ function CategoryDrawer({ mode, onClose, onSave, saving }: {
         />
       )}
       <div
-        className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(440px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -112,7 +112,7 @@ function CategoryDrawer({ mode, onClose, onSave, saving }: {
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -128,7 +128,7 @@ function CategoryDrawer({ mode, onClose, onSave, saving }: {
             <button
               disabled={!name.trim() || saving}
               onClick={() => name.trim() && onSave(name.trim())}
-              className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50 transition-opacity"
               style={{ background: "var(--kin-tt-chu-xong)" }}>
               {saving ? "Đang lưu…" : "Lưu"}
             </button>
@@ -197,7 +197,7 @@ function ActionMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
         ···
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg shadow-xl border border-gray-200 bg-white py-1">
+        <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
           <button
             onClick={() => { setOpen(false); onEdit(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer">
@@ -311,11 +311,11 @@ export default function DanhMucPage() {
   const totalCourses = categories.reduce((a, c) => a + c.courseCount, 0);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
+    <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg"
+        <div className="fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-lg"
           style={{ background: toast.error ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-chu-xong)" }}>
           {toast.error ? "✗" : "✓"} {toast.msg}
         </div>

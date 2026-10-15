@@ -249,7 +249,7 @@ export default function AIChatWidget() {
         whileTap={{ scale: 0.9 }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className="fixed z-50 w-14 h-14 rounded-full flex items-center justify-center text-white select-none"
+        className="fixed z-50 w-14 h-14 rounded-full flex items-center justify-center select-none"
         style={{
           top:    pos.y,
           left:   pos.x,
@@ -259,6 +259,7 @@ export default function AIChatWidget() {
           background: open
             ? "var(--kin-tt-chu-loi)"
             : "var(--kin-nhan-nen)",
+          color: open ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-nhan-chu-tren-nen)",
           boxShadow: open
             ? "0 8px 24px color-mix(in srgb, var(--kin-tt-chu-loi) 40%, transparent)"
             : "0 8px 24px color-mix(in srgb, var(--kin-nhan-nen) 40%, transparent)",

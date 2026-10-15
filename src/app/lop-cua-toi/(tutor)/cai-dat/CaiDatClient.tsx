@@ -184,7 +184,7 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
         <h2 id="h-gd" className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Giao diện</h2>
         <p className="text-xs mt-1 mb-3" style={{ color: "var(--kin-chu-phu)" }}>Chủ đề màu và chế độ sáng/tối cũng lưu theo tài khoản.</p>
         <Link href="/cai-dat/chu-de" className="inline-flex items-center px-4 py-2 rounded-lg text-sm min-h-[44px]"
-          style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>Chọn chủ đề màu</Link>
+          style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>Chọn chủ đề màu</Link>
       </section>
     </div>
   );

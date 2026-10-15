@@ -228,9 +228,12 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
       await gp2.waitForTimeout(1200);
       const bad = await legacyScan(gp2);
       check(`[${label}] ${path}: không còn xanh cũ #0068FF trong chữ/nền/viền`, bad.length === 0, bad.slice(0, 5));
-      // Đo bằng một phần tử thử trong khu sáng: tránh so chuỗi "#fff" / "#ffffff" (CSS đã rút gọn mã màu).
-      const bg = await gp2.evaluate(`(() => { const host = document.querySelector('[data-vung="sang"]'); const d = document.createElement('div'); d.style.background = 'var(--kin-nen-trang)'; host.appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
-      check(`[${label}] ${path}: máy ở chế độ tối nhưng khu này vẫn sáng (nền trắng)`, bg === "rgb(255, 255, 255)", bg);
+      // Đo bằng một phần tử thử (tránh so chuỗi "#fff" / "#ffffff": CSS đã rút gọn mã màu).
+      // Khách: khu web công khai khoá SÁNG dù máy tối. Đã đăng nhập (học viên / quản trị): theo chế độ của họ — "Theo máy" + máy tối → TỐI
+      // (15/10/2026: trước đây hai khung này cũng bị khoá sáng nên chọn "Tối" ở trang Chủ đề màu không có tác dụng; xem ui-theme).
+      const bg = await gp2.evaluate(`(() => { const host = document.querySelector('[data-vung="sang"]') || document.body; const d = document.createElement('div'); d.style.background = 'var(--kin-nen-trang)'; host.appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; })()`);
+      if (label === "khách") check(`[${label}] ${path}: máy ở chế độ tối nhưng khu này vẫn sáng (nền trắng)`, bg === "rgb(255, 255, 255)", bg);
+      else check(`[${label}] ${path}: máy ở chế độ tối + "Theo máy" → khu này tối theo máy (nền gần đen)`, bg === "rgb(11, 14, 20)", bg);
       await gp2.close();
     }
     await gc.close();

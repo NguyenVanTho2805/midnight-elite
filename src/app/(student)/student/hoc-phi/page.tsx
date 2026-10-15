@@ -155,7 +155,7 @@ export default function HocPhiPage() {
             <div className="flex items-center justify-between pt-2 border-t"
               style={{ borderColor: "var(--kin-vien-nhat)" }}>
               <span className="text-body font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Phải đóng</span>
-              <span className="text-h4" style={{ color: "var(--kin-th-navy)" }}>{formatVnd(data.finalAmount)}</span>
+              <span className="text-h4" style={{ color: "var(--kin-nhan-diem)" }}>{formatVnd(data.finalAmount)}</span>
             </div>
           </div>
 

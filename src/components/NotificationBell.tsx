@@ -92,7 +92,7 @@ export default function NotificationBell() {
         aria-expanded={open}>
         <BellIcon size={18} style={{ color: "var(--kin-chu-mo)" }} />
         <span ref={badgeRef} aria-hidden="true" data-zero={unreadCount > 0 ? undefined : ""}
-          className="kin-badge absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[length:var(--kin-co-caption)] font-bold text-white"
+          className="kin-badge absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[length:var(--kin-co-caption)] font-bold text-[var(--kin-chu-tren-nut-chinh)]"
           style={{ background: "var(--kin-tt-chu-loi)" }}>
           {unreadCount > 9 ? "9+" : unreadCount}
         </span>

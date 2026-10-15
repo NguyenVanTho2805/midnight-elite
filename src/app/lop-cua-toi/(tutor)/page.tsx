@@ -108,7 +108,7 @@ export default async function LopCuaToiPage() {
                       className="px-3 py-1.5 text-sm rounded-lg whitespace-nowrap"
                       style={{
                         background: "var(--kin-nen-nhan)",
-                        color:      "var(--kin-th-navy)",
+                        color:      "var(--kin-nhan-diem)",
                         border:     "1px solid var(--kin-vien-thuong)",
                       }}>
                       {a.label}

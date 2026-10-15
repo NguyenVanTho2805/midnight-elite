@@ -84,7 +84,7 @@ export default function AdminTopupsPage() {
           <button key={s} onClick={() => setStatus(s)}
             className="px-3 py-1.5 rounded-full text-xs font-semibold"
             style={status === s
-              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
               : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
             {s === "pending" ? "Đang chờ" : s === "approved" ? "Đã duyệt" : s === "rejected" ? "Đã từ chối" : "Tất cả"}
           </button>
@@ -135,7 +135,7 @@ export default function AdminTopupsPage() {
                           className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
                           style={{ background: "var(--kin-nhan-nen)" }}>Duyệt</button>
                         <button onClick={() => { setRejectId(r.id); setRejectReason(""); }} disabled={busyId === r.id}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
                           style={{ background: "var(--kin-tt-chu-loi)" }}>Từ chối</button>
                       </div>
                     ) : (
@@ -156,7 +156,7 @@ export default function AdminTopupsPage() {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
           style={{ background: "rgba(15,23,42,0.5)" }}
           onClick={() => setRejectId(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5"
+          <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-2xl w-full max-w-md p-5"
             onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Lý do từ chối</h3>
             <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3}
@@ -170,7 +170,7 @@ export default function AdminTopupsPage() {
               </button>
               <button onClick={() => reject(rejectId, rejectReason)}
                 disabled={!rejectReason.trim() || busyId === rejectId}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] bg-red-600 hover:bg-red-700 disabled:opacity-50">
                 Xác nhận từ chối
               </button>
             </div>

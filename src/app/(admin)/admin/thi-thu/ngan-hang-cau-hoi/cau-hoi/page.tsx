@@ -213,7 +213,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(560px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -221,7 +221,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
             <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{isEdit ? "Sửa câu hỏi" : "Thêm câu hỏi vào ngân hàng"}</h2>
@@ -249,7 +249,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={d.value} type="button" onClick={() => setForm({ ...form, difficulty: d.value })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.difficulty === d.value
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {d.label}
                 </button>
@@ -269,7 +269,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
                 <button key={t.v} type="button" onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {t.label}
                 </button>
@@ -742,12 +742,12 @@ function PageInner() {
 
       {delId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
-          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+          <div className="bg-[var(--kin-nen-trang)] rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Xoá câu hỏi này?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá khỏi ngân hàng — không ảnh hưởng đề thi đã dùng câu này trước đó.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDelId(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
+              <button onClick={handleDelete} className="px-3 py-1.5 text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>
@@ -755,7 +755,7 @@ function PageInner() {
 
       {rejectItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
-          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+          <div className="bg-[var(--kin-nen-trang)] rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Từ chối câu hỏi này?</p>
             <p className="text-xs text-gray-500 mb-3">Câu sẽ về trạng thái Nháp kèm lý do, người soạn có thể sửa lại và gửi duyệt lần nữa.</p>
             <textarea autoFocus rows={3}
@@ -766,7 +766,7 @@ function PageInner() {
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setRejectItem(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
               <button onClick={() => handleReject(rejectItem.id, rejectReason)} disabled={!rejectReason.trim()}
-                className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ background: "var(--kin-tt-chu-loi)" }}>
+                className="px-3 py-1.5 text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg disabled:opacity-50" style={{ background: "var(--kin-tt-chu-loi)" }}>
                 Từ chối
               </button>
             </div>
@@ -776,7 +776,7 @@ function PageInner() {
 
       {selectMode && selected.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center">
-          <div className="flex items-center gap-4 mb-4 px-5 py-3 rounded-xl shadow-lg bg-white border" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+          <div className="flex items-center gap-4 mb-4 px-5 py-3 rounded-xl shadow-lg bg-[var(--kin-nen-trang)] border" style={{ borderColor: "var(--kin-vien-thuong)" }}>
             <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Đã chọn {selected.size} câu</span>
             <button onClick={() => setSelected(new Map())} className="text-sm text-gray-500 hover:text-gray-700">Bỏ chọn tất cả</button>
             <button onClick={() => setCopyModalOpen(true)} className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>

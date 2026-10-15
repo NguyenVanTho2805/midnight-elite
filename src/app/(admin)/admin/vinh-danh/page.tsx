@@ -272,7 +272,7 @@ export default function VinhDanhPage() {
                 Hệ thống tự xác định học sinh đủ điều kiện. Badge được ghi nhận trong phiên này.
               </p>
               <button onClick={grantAllBadges}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-white cursor-pointer transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
+                className="px-4 py-2 rounded-xl text-sm font-bold text-[var(--kin-chu-tren-nut-chinh)] cursor-pointer transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
                 style={{ background: "var(--kin-tt-cham-cho)" }}>
                 Cấp tất cả badge
               </button>

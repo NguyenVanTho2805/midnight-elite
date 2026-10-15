@@ -143,7 +143,7 @@ function Content() {
             </p>
           )}
           <div className="flex flex-wrap items-end gap-3">
-            <button type="button" className={btn} style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }} onClick={() => { setFormError(""); setEditing({ id: null, form: emptyForm() }); }}>+ Thêm dòng</button>
+            <button type="button" className={btn} style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }} onClick={() => { setFormError(""); setEditing({ id: null, form: emptyForm() }); }}>+ Thêm dòng</button>
             <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} onClick={() => { setDry(null); setImporting(true); }}>Nhập CSV / JSON</button>
             <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} disabled={busy === "seed"} onClick={() => void seed()}>Nạp dữ liệu khởi đầu ({data.seedCount} dòng)</button>
             <label className="text-xs ml-auto" style={{ color: "var(--kin-chu-phu)" }}>Tìm trường / ngành
@@ -244,7 +244,7 @@ function Content() {
             {formError && <p role="alert" className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{formError}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} onClick={() => setEditing(null)}>Huỷ</button>
-              <button type="submit" className={btn} style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }} disabled={busy === "save"}>Lưu</button>
+              <button type="submit" className={btn} style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }} disabled={busy === "save"}>Lưu</button>
             </div>
           </form>
         </Modal>
@@ -287,7 +287,7 @@ function Content() {
           <div className="flex justify-end gap-2 pt-3">
             <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} onClick={() => setImporting(false)}>Đóng</button>
             <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} disabled={!text.trim() || busy === "check"} onClick={() => void check()}>Kiểm tra</button>
-            <button type="button" className={btn} style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }}
+            <button type="button" className={btn} style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}
               disabled={!(dry && dry.text === text && dry.res.ok) || busy === "import"} onClick={() => void runImport()}>Nhập</button>
           </div>
         </Modal>

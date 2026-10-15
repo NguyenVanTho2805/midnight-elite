@@ -32,7 +32,7 @@ export default function ReportProfileButton({ tutorId }: { tutorId: string }) {
           {done ? (
             <div role="status">
               <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Đã nhận báo cáo của anh/chị. KiN sẽ xem xét và khoá hồ sơ nếu có căn cứ.</p>
-              <div className="mt-4 text-right"><button type="button" onClick={close} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px]" style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }}>Đóng</button></div>
+              <div className="mt-4 text-right"><button type="button" onClick={close} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px]" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>Đóng</button></div>
             </div>
           ) : (
             <>
@@ -51,7 +51,7 @@ export default function ReportProfileButton({ tutorId }: { tutorId: string }) {
               {err && <p role="alert" className="text-sm mt-2" style={{ color: "var(--kin-tt-chu-loi)" }}>{err}</p>}
               <div className="flex gap-2 justify-end mt-4">
                 <button type="button" onClick={close} className="px-4 py-2 rounded-lg text-sm min-h-[44px]" style={{ color: "var(--kin-chu-phu)" }}>Huỷ</button>
-                <button type="button" onClick={() => void submit()} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }}>{busy ? "Đang gửi…" : "Gửi báo cáo"}</button>
+                <button type="button" onClick={() => void submit()} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>{busy ? "Đang gửi…" : "Gửi báo cáo"}</button>
               </div>
             </>
           )}

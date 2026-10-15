@@ -227,7 +227,7 @@ export default function LichClient() {
             Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> trong trang lớp.
           </p>
           <Link href="/lop-cua-toi/lop" className="inline-flex items-center mt-4 px-4 py-2 rounded-lg text-sm min-h-[44px]"
-            style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>Xem các lớp của tôi</Link>
+            style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>Xem các lớp của tôi</Link>
         </div>
       ) : (
         <div className={loading ? "opacity-70" : ""}>
@@ -238,7 +238,7 @@ export default function LichClient() {
               <section key={k} aria-labelledby={`d-${k}`} className="mb-5">
                 <h2 id={`d-${k}`} className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
                   {WEEKDAY[dayOfWeekOfKey(k)]} {ddmm(k)}
-                  {k === todayKey && <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)" }}>Hôm nay</span>}
+                  {k === todayKey && <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)" }}>Hôm nay</span>}
                 </h2>
                 <ul className="space-y-2">
                   {occs.map(o => (

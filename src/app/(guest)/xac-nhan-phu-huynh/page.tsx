@@ -89,7 +89,7 @@ function ConsentContent() {
                 <button
                   onClick={() => respond("approved")}
                   disabled={submitting}
-                  className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
                   style={{ background: "var(--kin-tt-chu-xong)", borderRadius: "8px" }}
                 >
                   Đồng ý

@@ -36,7 +36,7 @@ import { prisma } from "@/lib/prisma";
   await pg.evaluate(`document.documentElement.setAttribute("data-chu-de", "co-vit")`);
   const probe = (sel: string) => pg.evaluate(`(() => { const el = document.querySelector(${JSON.stringify(sel)}); const cs = getComputedStyle(el); return { nen: cs.getPropertyValue("--kin-nhan-nen").trim(), link: cs.getPropertyValue("--kin-nhan-link").trim() }; })()`) as Promise<{ nen: string; link: string }>;
   const inRoom = await probe('[data-vung="phong-thi"]');
-  const outside = await pg.evaluate(`getComputedStyle(document.querySelector('[data-vung="sang"]')).getPropertyValue("--kin-nhan-nen").trim()`) as string;
+  const outside = await pg.evaluate(`getComputedStyle(document.documentElement).getPropertyValue("--kin-nhan-nen").trim()`) as string;
   check("trang phòng thi có khung data-vung='phong-thi'", await pg.locator('[data-vung="phong-thi"]').count() === 1);
   check("chủ đề Cổ vịt: ngoài phòng thi màu nhấn là cổ vịt (#0e7490)", outside === "#0e7490", outside);
   check("…nhưng TRONG phòng thi vẫn là Navy (#1e3a8a, link #2563eb)", inRoom.nen === "#1e3a8a" && inRoom.link === "#2563eb", inRoom);
