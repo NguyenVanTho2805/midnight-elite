@@ -1,12 +1,18 @@
 // "Việc của tôi" của học sinh (Figma "Vỏ — Học sinh" 11:98): danh sách bên trái, khung đọc bên phải (điện thoại: chọn một dòng thì
 // hiện khung đọc, có nút ← quay lại). Dữ liệu từ /api/student/viec-cua-toi (bài tập + hạn nộp ngoài + buổi học sắp tới).
 // Lỗi tải: giữ danh sách cũ, hiện dải báo lỗi có nút thử lại. Đang tải lần đầu: khung xương, không vòng xoay.
+// 15/10/2026 — chuyển động lấy từ Lucian UX/UI Prompt (MIT; docs/kin/thu-vien-lucian.md): vòng tiến độ "x/y việc đã xong" ở đầu danh sách (No.014), việc vừa xong bị
+// gạch ngang từ trái sang (No.014), xong hết việc cần làm thì vòng đổi màu xong + sóng lan + dòng phụ đổi chữ (No.093), dòng hiện ra theo thứ tự (No.079).
+// Việc ở đây do hệ thống sinh ra (bài phải nộp, hạn nộp) nên học viên KHÔNG tự tích; chuyển động chạy khi một việc chuyển sang "đã xong" lúc danh sách làm mới
+// (vd. nộp bài xong rồi quay lại tab này). Buổi học đã qua chỉ để biết, không gạch.
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import {
   ErrorStrip, ListBody, ListHead, ListRow, ListSkeleton, OutlookPanes, ReadBody, ReadEmpty, ReadHead, ReadSection,
 } from "@/components/kin/shell/Outlook";
+import { KinProgressRing } from "@/components/kin/ProgressRing";
+import { KinSwapText } from "@/components/kin/SwapText";
 
 const GROUPS: { key: "can-lam" | "sap-toi" | "da-xong"; label: string }[] = [
   { key: "can-lam", label: "Cần làm" },
@@ -21,11 +27,21 @@ export default function ViecCuaToi() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [readOpen, setReadOpen] = useState(false);
   const focusRow = useRef<string | null>(null);
+  // Việc đã xong ở lần tải trước: dòng nào lần này mới xong thì gạch ngang chạy hoạt hình (lần tải đầu: không có dòng "vừa xong").
+  const known = useRef<Map<string, boolean> | null>(null);
+  const [justDone, setJustDone] = useState<Set<string>>(() => new Set());
 
   const load = useCallback(() => {
     fetch("/api/student/viec-cua-toi", { credentials: "same-origin", cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setItems(Array.isArray(d.items) ? d.items : []); setError(false); })
+      .then(d => {
+        const next: StudentTodoItem[] = Array.isArray(d.items) ? d.items : [];
+        const prev = known.current;
+        known.current = new Map(next.map(i => [i.id, i.done]));
+        setJustDone(prev ? new Set(next.filter(i => i.done && prev.get(i.id) === false).map(i => i.id)) : new Set());
+        setItems(next);
+        setError(false);
+      })
       .catch(() => setError(true));
   }, []);
 
@@ -37,6 +53,10 @@ export default function ViecCuaToi() {
   }, [load]);
 
   const list = items ?? [];
+  // Tiến độ chỉ đếm VIỆC (bài tập, hạn nộp): cần làm + đã xong. Buổi học sắp tới / đã qua chỉ để biết nên không tính.
+  const needs = list.filter(i => i.needsAction).length;
+  const doneTasks = list.filter(i => i.done && i.kind !== "buoi-hoc").length;
+  const total = needs + doneTasks;
   // Dòng đang chọn: giữ nguyên nếu còn trong danh sách mới, không thì rơi về dòng đầu.
   const current = list.find(i => i.id === selectedId) ?? list[0] ?? null;
 
@@ -61,7 +81,11 @@ export default function ViecCuaToi() {
 
   const listPane = (
     <>
-      <ListHead title="Việc của tôi" subtitle="Bài phải nộp và buổi sắp tới" />
+      <ListHead
+        title="Việc của tôi"
+        subtitle={<KinSwapText alt={total > 0 && needs === 0} a="Bài phải nộp và buổi sắp tới" b="Đã xong hết việc cần làm" />}
+        aside={items !== null && total > 0 ? <KinProgressRing done={doneTasks} total={total} label="Việc đã xong" /> : undefined}
+      />
       {error && <ErrorStrip message="Không tải được danh sách." onRetry={load} />}
       {items === null && !error ? (
         <ListSkeleton rows={5} />
@@ -87,6 +111,8 @@ export default function ViecCuaToi() {
                     subtitle={i.subtitle}
                     status={i.status}
                     strong={i.needsAction}
+                    strike={i.kind !== "buoi-hoc" && i.done ? (justDone.has(i.id) ? "draw" : "static") : undefined}
+                    bloom={list.indexOf(i)}
                   />
                 ))}
               </div>

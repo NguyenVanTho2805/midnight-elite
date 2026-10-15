@@ -12,6 +12,7 @@
    của tokens cũ dưới đây — migrate dần. */
 @import "./kin-tokens.css";
 @import "./kin-site.css";
+@import "./kin-motion.css";
 
 :root {
   /* Màu (--color-*, --canvas, --ink, --hairline, --tint-*, --semantic-*, --shadow-neu-*…): đã chuyển sang kin-site.css, trỏ về token KiN. */

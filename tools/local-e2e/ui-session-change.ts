@@ -92,7 +92,8 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
     const striked = await c.getByText("Toán 9", { exact: true }).first().evaluate(e => getComputedStyle(e).textDecorationLine.includes("line-through")).catch(() => false);
     return (await c.getByText("Đã huỷ", { exact: true }).count()) >= 1 && /buổi đã huỷ/.test(await c.innerText()) && striked;
   });
-  await openCard();
+  // Sau khi ghi "đã mở Zalo", trang còn phải tải lại lịch (GET) mới hiện dòng "Đã mở Zalo báo lớp lúc …": chờ dòng đó thay vì giả định đã xong.
+  await eventually("giao diện làm mới xong: dòng 'Đã mở Zalo báo lớp lúc …' hiện trong chi tiết", async () => { await openCard(); return page.getByText(/Đã mở Zalo báo lớp lúc \d{2}:\d{2}/).isVisible(); }, 15000);
   check("chi tiết: 'Buổi này đã huỷ — lý do: Cô ốm' + 'Đã mở Zalo báo lớp lúc …'", await page.getByText(/Buổi này đã huỷ — lý do: Cô ốm/).isVisible() && await page.getByText(/Đã mở Zalo báo lớp lúc \d{2}:\d{2}/).isVisible());
   check("buổi huỷ KHÔNG còn mục 'Nhắc lịch' và nhãn báo nghỉ là 'Buổi đã huỷ — không tính phí, không buổi bù'", (await page.getByRole("heading", { name: "Nhắc lịch" }).count()) === 0 && await page.getByText("Buổi đã huỷ — không tính phí, không buổi bù").isVisible());
   check("có các nút: Mở lại tin báo lớp, Sửa lý do huỷ, Đổi thành dời buổi, Khôi phục lịch cũ", await page.getByRole("button", { name: "Mở lại tin báo lớp" }).isVisible() && await page.getByRole("button", { name: "Sửa lý do huỷ" }).isVisible() && await page.getByRole("button", { name: "Đổi thành dời buổi" }).isVisible() && await page.getByRole("button", { name: "Khôi phục lịch cũ" }).isVisible());

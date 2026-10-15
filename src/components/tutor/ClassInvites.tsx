@@ -4,7 +4,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton, KinConfirm } from "@/components/kin";
-import { Badge, CARD_STYLE, FIELD_STYLE, callApi, copyText, useNotify } from "@/components/tutor/shared";
+import { Badge, CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
+import { KinCopyButton } from "@/components/kin/CopyButton";
 
 export interface Invite {
   id: string; code: string; maxUses: number | null; usedCount: number;
@@ -63,11 +64,6 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => Date.now());
 
-  async function copyLink(i: Invite) {
-    const url = `${window.location.origin}/student/nhap-ma-lop?code=${i.code}`;
-    const ok = await copyText(url);
-    if (ok) notify.ok("Đã sao chép link mời."); else notify.err("Không sao chép được.");
-  }
   async function revoke() {
     if (!revoking) return;
     setBusy(true);
@@ -98,8 +94,8 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
               </p>
               {st.usable && (
                 <div className="mt-3 flex gap-2 flex-wrap">
-                  <KinButton variant="secondary" onClick={() => copyLink(i)}>Sao chép link</KinButton>
-                  <KinButton variant="ghost" onClick={() => copyText(i.code).then(ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép mã." : "Không sao chép được."))}>Sao chép mã</KinButton>
+                  <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép link" text={() => `${window.location.origin}/student/nhap-ma-lop?code=${i.code}`} onResult={ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép link mời." : "Không sao chép được.")}>Sao chép link</KinCopyButton>
+                  <KinCopyButton appearance="button" buttonVariant="ghost" label="Sao chép mã" text={i.code} onResult={ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép mã." : "Không sao chép được.")}>Sao chép mã</KinCopyButton>
                   <KinButton variant="danger" onClick={() => setRevoking(i)}>Thu hồi</KinButton>
                 </div>
               )}

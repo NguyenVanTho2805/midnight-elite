@@ -1,7 +1,7 @@
 // Nút "Mở thanh bên" ở dải trên của vỏ. Chỉ hiện khi thanh đang THU và trên máy tính (CSS .kin-rail-open ở kin-tokens.css); điện thoại luôn có thanh dưới.
 // Khi thu, thanh bên ẩn luôn cả chấm đỏ "còn việc" của module, nên nút này mang chấm đỏ thay (và nói số việc bằng chữ cho trình đọc màn hình).
 "use client";
-import { useRail } from "./railStore";
+import { lastOpenRail, useRail } from "./railStore";
 
 export function RailOpenButton({ pending = 0 }: { pending?: number }) {
   const [state, setState] = useRail();
@@ -15,7 +15,7 @@ export function RailOpenButton({ pending = 0 }: { pending?: number }) {
       aria-controls="kin-rail"
       title="Mở thanh bên (phím [)"
       onClick={() => {
-        setState("mo");
+        setState(lastOpenRail());
         // Thanh vừa hiện lại: đưa tiêu điểm sang nút đối diện để người dùng bàn phím không bị mất chỗ.
         requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-rail-close]")?.focus());
       }}

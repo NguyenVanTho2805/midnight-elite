@@ -1,0 +1,262 @@
+/* Chuyển động lấy từ "Lucian UX/UI Prompt" (https://lucianlabs.dev/uxui-prompt/) — MIT License, Copyright (c) 2026 Seokwoooo.
+   Giấy phép đầy đủ + danh sách element đã lấy: docs/kin/thu-vien-lucian.md. Mỗi khối bên dưới ghi số element gốc (#NNN).
+   Quy ước: chỉ lấy PHẦN CHUYỂN ĐỘNG (thời lượng, đường cong, độ trễ giữ nguyên), dựng lại bằng token --kin-* (không mã màu cứng) và lớp .kin-m*.
+   Người đặt "giảm chuyển động" thì mọi chuyển động tắt (khối cuối tệp), nội dung vẫn hiện đủ ở trạng thái cuối. */
+
+:root {
+  --kin-ease: cubic-bezier(.2, .8, .2, 1);
+  --kin-spring: cubic-bezier(.34, 1.45, .64, 1);
+}
+
+/* ───────── No.008 Nút sao chép → dấu tích (src/components/kin/CopyButton.tsx) ───────── */
+.kin-copy { position: relative; display: inline-flex; }
+.kin-copy-ico { position: relative; display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; flex: none; }
+.kin-copy-ico svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+  transition: opacity .25s var(--kin-ease), transform .5s var(--kin-spring);
+}
+.kin-copy-ico .ok { opacity: 0; transform: scale(.4) rotate(-30deg); }
+.kin-copy-ico .ok path { stroke-width: 2.6; stroke-dasharray: 22; stroke-dashoffset: 22; transition: stroke-dashoffset .4s var(--kin-ease) .1s; }
+.kin-copy[data-copy="done"] .kin-copy-ico .cp { opacity: 0; transform: scale(.4) rotate(30deg); }
+.kin-copy[data-copy="done"] .kin-copy-ico .ok { opacity: 1; transform: none; }
+.kin-copy[data-copy="done"] .kin-copy-ico .ok path { stroke-dashoffset: 0; }
+.kin-copy[data-copy="done"] .kin-copy-ico { color: var(--kin-tt-chu-xong); }
+.kin-copy[data-copy="fail"] .kin-copy-ico { color: var(--kin-tt-chu-loi); }
+
+/* Nút chỉ có biểu tượng: 44px (cao tối thiểu của KiN), ấn xuống co lại như lò xo; xong thì nền xanh nhạt. */
+.kin-copy-btn {
+  display: inline-grid; place-items: center; width: var(--kin-cham-toi-thieu, 44px); height: var(--kin-cham-toi-thieu, 44px);
+  border-radius: var(--kin-bo-md); color: var(--kin-chu-phu); vertical-align: middle;
+  transition: background-color .35s var(--kin-ease), color .35s var(--kin-ease), transform .45s var(--kin-spring);
+}
+.kin-copy-btn--sm { width: 32px; height: 32px; }
+.kin-copy-btn:hover { background: var(--kin-nen-re-chuot); color: var(--kin-chu-chinh); }
+.kin-copy-btn:active { transform: scale(.88); }
+.kin-copy[data-copy="done"] .kin-copy-btn { background: color-mix(in srgb, var(--kin-tt-chu-xong) 14%, transparent); color: var(--kin-tt-chu-xong); }
+/* Bong bóng "Đã sao chép" nảy lên phía trên nút. */
+.kin-copy-tip {
+  position: absolute; right: -6px; bottom: calc(100% + 4px); z-index: 30; pointer-events: none; white-space: nowrap;
+  padding: 6px 12px; border-radius: var(--kin-bo-sm); background: var(--kin-chu-chinh); color: var(--kin-nen-trang);
+  font-size: var(--kin-co-caption, 12px); font-weight: 600;
+  opacity: 0; transform: translateY(8px) scale(.8); transform-origin: 80% 100%;
+  transition: opacity .25s var(--kin-ease), transform .5s var(--kin-spring);
+}
+.kin-copy-tip::after { content: ""; position: absolute; right: 18px; bottom: -4px; width: 8px; height: 8px; background: inherit; border-radius: 2px; transform: rotate(45deg); }
+.kin-copy[data-copy="done"] .kin-copy-tip, .kin-copy[data-copy="fail"] .kin-copy-tip { opacity: 1; transform: none; }
+.kin-copy[data-copy="fail"] .kin-copy-tip { background: var(--kin-tt-chu-loi); color: var(--kin-chu-tren-nut-chinh); }
+
+/* ───────── No.039 Gạch chân tab trượt (src/components/kin/Tabs.tsx) ───────── */
+.kin-tab-ink {
+  position: absolute; left: 0; top: 0; height: 2px; width: var(--w, 0px); pointer-events: none;
+  background: var(--kin-nhan-nen); transform: translate(var(--x, 0px), var(--y, 0px)); opacity: 0;
+}
+.kin-tab-ink[data-on] { opacity: 1; }
+.kin-tab-ink[data-anim] { transition: transform .5s var(--kin-spring), width .5s var(--kin-spring); }
+.kin-m [role="tab"] > span:first-child { transition: color .35s var(--kin-ease); }
+
+/* ───────── No.074 Chuông thông báo (src/components/NotificationBell.tsx) ───────── */
+.kin-bell { transition: transform .3s var(--kin-spring), background-color .2s; }
+.kin-bell:active { transform: scale(.9); }
+.kin-bell svg { transform-origin: 50% 15%; }
+.kin-bell.kin-bell-ring svg { animation: kin-bell-ring .9s var(--kin-ease); }
+@keyframes kin-bell-ring { 10% { transform: rotate(18deg); } 25% { transform: rotate(-16deg); } 40% { transform: rotate(12deg); } 55% { transform: rotate(-8deg); } 70% { transform: rotate(4deg); } }
+.kin-badge { transition: transform .4s var(--kin-spring); font-variant-numeric: tabular-nums; }
+.kin-badge[data-zero] { transform: scale(0); }
+.kin-badge.kin-badge-pop { animation: kin-badge-pop .4s var(--kin-spring); }
+@keyframes kin-badge-pop { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1); } }
+/* Bảng nở ra từ chỗ chuông. */
+.kin-pan { transform-origin: calc(100% - 18px) -8px; animation: kin-pan-in .45s var(--kin-spring) both; }
+@keyframes kin-pan-in { from { opacity: 0; transform: scale(.9) translateY(-6px); } to { opacity: 1; transform: none; } }
+/* Dòng mới: cao dần từ 0 rồi rơi vào chỗ. */
+.kin-notif-it { display: grid; grid-template-rows: 1fr; }
+.kin-notif-in { min-height: 0; }
+.kin-notif-btn { transition: background-color .3s, transform .5s var(--kin-spring), opacity .3s; }
+.kin-notif-it--new { animation: kin-notif-grow .45s var(--kin-ease) both; }
+.kin-notif-it--new .kin-notif-in { overflow: hidden; }
+.kin-notif-it--new .kin-notif-btn { animation: kin-notif-drop .5s var(--kin-spring) both; }
+@keyframes kin-notif-grow { from { grid-template-rows: 0fr; } to { grid-template-rows: 1fr; } }
+@keyframes kin-notif-drop { from { transform: translateY(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Đã đọc: chấm co lại. */
+.kin-dot { transition: transform .35s var(--kin-spring), opacity .25s; }
+.kin-dot[data-read] { transform: scale(0); opacity: 0; }
+
+/* ───────── No.079 Khung xám nở thành nội dung ───────── */
+/* Một vệt sáng quét chung cả màn hình (background-attachment: fixed ⇒ mọi khung xám cùng thấy MỘT vệt, giống bản gốc đồng bộ vị trí bằng JS);
+   trình duyệt không hỗ trợ fixed (iOS) thì mỗi khối tự quét, vẫn đẹp. Hết chờ thì nội dung thật "nở" vào từ trên xuống: .kin-bloom + --d (độ trễ). */
+.kin-skel {
+  --skel: var(--kin-vien-thuong);
+  background: linear-gradient(100deg, transparent 28%, color-mix(in srgb, var(--kin-nen-trang) 60%, transparent) 45%, transparent 62%) -700px 0 / 700px 100% no-repeat fixed, var(--skel);
+  animation: kin-skel-shine 1.6s linear infinite;
+}
+.kin-skel--soft { --skel: var(--kin-nen-nhan); }
+@keyframes kin-skel-shine { to { background-position: 100vw 0, 0 0; } }
+/* KHÔNG dùng "forwards": giữ transform sau khi xong sẽ tạo khối chứa mới, làm hỏng position:sticky (xem .page-enter ở globals.css). */
+.kin-bloom { animation: kin-bloom-in .6s var(--kin-spring) backwards; animation-delay: var(--d, 0s); }
+@keyframes kin-bloom-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ───────── No.012 Dải đánh dấu (src/components/kin/Bookmark.tsx) ───────── */
+.kin-mark { transition: transform .5s var(--kin-spring), color .3s var(--kin-ease), background-color .2s; }
+.kin-mark:hover { background: var(--kin-nen-re-chuot); }
+.kin-mark:active { transform: scale(.9); }
+.kin-mark-in { clip-path: inset(0 0 100% 0); transition: clip-path .55s cubic-bezier(.6, 0, .3, 1); }
+.kin-mark[data-on] .kin-mark-in { clip-path: inset(0 0 0 0); }
+.kin-mark-out { transition: stroke .2s .4s; }
+.kin-mark[data-on] .kin-mark-out { stroke: transparent; }
+.kin-mark-ring { position: absolute; inset: -2px; border-radius: var(--kin-bo-md); box-shadow: 0 0 0 2px var(--kin-nhan-link); opacity: 0; pointer-events: none; }
+.kin-mark.kin-mark-burst .kin-mark-ring { animation: kin-mark-ring .6s var(--kin-ease); }
+.kin-mark.kin-mark-burst .kin-mark-ico { animation: kin-mark-drop .7s var(--kin-ease); }
+@keyframes kin-mark-drop { 0% { transform: translateY(0); } 30% { transform: translateY(5px) scaleY(.9); } 60% { transform: translateY(-4px); } 100% { transform: none; } }
+@keyframes kin-mark-ring { from { opacity: 1; transform: scale(.9); } to { opacity: 0; transform: scale(1.35); } }
+
+/* ───────── No.200 / No.044 Khối gập mở (src/components/kin/Fold.tsx) ───────── */
+.kin-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s var(--kin-ease); }
+.kin-fold[data-open] { grid-template-rows: 1fr; }
+.kin-fold-in { min-height: 0; overflow: hidden; opacity: 0; transition: opacity .3s var(--kin-ease); }
+.kin-fold[data-open] > .kin-fold-in { opacity: 1; }
+.kin-chevron { transition: transform .45s var(--kin-spring); }
+.kin-chevron[data-open] { transform: rotate(180deg); }
+
+/* ───────── No.026 Ô nhập mã 6 số (src/components/kin/CodeBoxes.tsx) ───────── */
+.kin-code-cell { transition: box-shadow .25s var(--kin-ease), background-color .4s var(--kin-ease), color .4s, border-color .25s, transform .45s var(--kin-spring); }
+.kin-code-cell.kin-code-pop { animation: kin-code-pop .4s var(--kin-spring); }
+@keyframes kin-code-pop { from { transform: translateY(12%) scale(.94); opacity: .5; } }
+/* Đang kiểm tra: sáu ô nhấp nhô lần lượt thành sóng. */
+.kin-code[data-state="check"] .kin-code-cell { animation: kin-code-wave .6s var(--kin-ease) infinite; animation-delay: calc(var(--i) * 60ms); }
+@keyframes kin-code-wave { 40% { transform: translateY(-8px); } }
+/* Đúng: sáu ô lần lượt chuyển sang màu xong. */
+.kin-code[data-state="ok"] .kin-code-cell { background: color-mix(in srgb, var(--kin-tt-chu-xong) 14%, var(--kin-nen-bang)); border-color: var(--kin-tt-chu-xong); color: var(--kin-tt-chu-xong); transition-delay: calc(var(--i) * 50ms); }
+/* Sai: cả hàng lắc đầu. */
+.kin-code.kin-code-shake { animation: kin-code-shake .45s var(--kin-ease); }
+@keyframes kin-code-shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+
+/* ───────── No.062 Nút gửi co thành vòng tròn + thẻ lắc khi sai (src/components/kin/SubmitButton.tsx, trang đăng nhập) ───────── */
+.kin-go { position: relative; display: flex; align-items: center; justify-content: center; margin-inline: auto; overflow: hidden;
+  transition: width .45s var(--kin-spring), border-radius .45s var(--kin-spring), background-color .4s, transform .3s var(--kin-spring); }
+.kin-go:active:not(:disabled) { transform: scale(.97); }
+.kin-go-label { white-space: nowrap; transition: opacity .2s; }
+.kin-go-spin, .kin-go-ok { position: absolute; left: 50%; top: 50%; margin: -11px 0 0 -11px; width: 22px; height: 22px; opacity: 0; transition: opacity .2s .15s; pointer-events: none; }
+.kin-go-ok path { stroke-dasharray: 22; stroke-dashoffset: 22; transition: stroke-dashoffset .4s var(--kin-ease) .2s; }
+.kin-go[data-state="busy"], .kin-go[data-state="ok"] { width: 3rem; border-radius: 9999px; padding-inline: 0; opacity: 1; }
+.kin-go[data-state="busy"] .kin-go-label, .kin-go[data-state="ok"] .kin-go-label { opacity: 0; }
+.kin-go[data-state="busy"] .kin-go-spin { opacity: 1; }
+.kin-go[data-state="ok"] { background: var(--kin-tt-chu-xong); color: var(--kin-chu-tren-nut-chinh); }
+.kin-go[data-state="ok"] .kin-go-ok { opacity: 1; }
+.kin-go[data-state="ok"] .kin-go-ok path { stroke-dashoffset: 0; }
+.kin-shake { animation: kin-shake-card .5s cubic-bezier(.36, .07, .19, .97); }
+@keyframes kin-shake-card { 15% { transform: translateX(-9px) rotate(-.6deg); } 30% { transform: translateX(8px) rotate(.5deg); } 45% { transform: translateX(-6px); } 60% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
+.kin-notice-in { animation: kin-notice-in .35s var(--kin-ease) both; }
+@keyframes kin-notice-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ───────── No.067 Đếm ngược khi bị khoá (src/components/kin/LockCountdown.tsx) ───────── */
+.kin-lock-dial { position: relative; width: 120px; height: 120px; --p: 1; }
+.kin-lock-dial > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.kin-lock-dial circle { fill: none; stroke-width: 8; }
+.kin-lock-dial .t { stroke: var(--kin-vien-thuong); }
+.kin-lock-dial .p { stroke: var(--kin-tt-chu-cho); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--p) * 100); transition: stroke .4s; }
+.kin-lock[data-open] .kin-lock-dial .p { stroke: var(--kin-tt-chu-xong); }
+.kin-lock-icon { position: absolute; left: 50%; top: 50%; width: 38px; height: 43px; margin: -34px 0 0 -19px; }
+.kin-lock-icon svg { width: 100%; height: 100%; overflow: visible; }
+.kin-lock-icon .sh { fill: none; stroke: var(--kin-chu-chinh); stroke-width: 6; stroke-linecap: round; transform-origin: 46px 30px; transition: transform .7s var(--kin-spring); }
+.kin-lock[data-open] .kin-lock-icon .sh { transform: translateY(-8px) rotate(28deg); }
+.kin-lock-icon .bd { fill: var(--kin-chu-chinh); transition: fill .4s; }
+.kin-lock[data-open] .kin-lock-icon .bd { fill: var(--kin-tt-chu-xong); }
+.kin-lock-icon .kh { fill: var(--kin-nen-trang); }
+.kin-lock-time { position: absolute; left: 0; right: 0; bottom: 20px; text-align: center; font-size: var(--kin-co-small); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--kin-chu-phu); }
+.kin-lock-title { position: relative; height: 24px; width: 100%; }
+.kin-lock-title > p { position: absolute; left: 0; right: 0; text-align: center; font-weight: 700; font-size: var(--kin-co-small); color: var(--kin-chu-chinh); transition: opacity .35s, transform .5s var(--kin-spring); }
+.kin-lock-title .b { opacity: 0; transform: translateY(10px); }
+.kin-lock[data-open] .kin-lock-title .a { opacity: 0; transform: translateY(-10px); }
+.kin-lock[data-open] .kin-lock-title .b { opacity: 1; transform: none; }
+.kin-lock-retry { background: var(--kin-nen-re-chuot); color: var(--kin-chu-mo); transition: background-color .4s, color .4s, transform .3s var(--kin-spring); }
+.kin-lock[data-open] .kin-lock-retry { background: var(--kin-nhan-nen); color: var(--kin-nhan-chu-tren-nen); }
+
+/* ───────── No.014 / No.093 Vòng tiến độ, gạch ngang việc xong, đổi dòng chữ (KinProgressRing, KinSwapText, Outlook.tsx ListRow) ───────── */
+.kin-ring { position: relative; flex: none; }
+.kin-ring > svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.kin-ring circle { fill: none; stroke-width: 5; stroke-linecap: round; }
+.kin-ring .bg { stroke: var(--kin-vien-thuong); }
+.kin-ring .fg { stroke: var(--kin-nhan-nen); stroke-dasharray: 125.7; stroke-dashoffset: calc(125.7 * (1 - var(--p, 0))); transition: stroke-dashoffset .7s var(--kin-spring), stroke .4s var(--kin-ease); }
+.kin-ring[data-all] .fg { stroke: var(--kin-tt-chu-xong); }
+.kin-ring-num { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--kin-co-caption); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--kin-chu-chinh); transition: opacity .3s, transform .5s var(--kin-spring); }
+.kin-ring-done { position: absolute; inset: 22%; border-radius: 50%; display: grid; place-items: center; background: var(--kin-tt-chu-xong); color: var(--kin-chu-tren-nut-chinh); transform: scale(0); transition: transform .55s var(--kin-spring); }
+.kin-ring-done svg { width: 70%; height: 70%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.kin-ring[data-all] .kin-ring-num { opacity: 0; transform: scale(.5); }
+.kin-ring[data-all] .kin-ring-done { transform: none; }
+/* Đủ việc: sóng lan quanh vòng + mười chấm toả ra (thay cho confetti của bản gốc). */
+.kin-ring::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0; }
+.kin-ring.kin-ring-burst::after { animation: kin-ring-wave 1.1s .45s var(--kin-ease); }
+@keyframes kin-ring-wave { 0% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--kin-tt-chu-xong) 50%, transparent); } 100% { opacity: 0; box-shadow: 0 0 0 20px color-mix(in srgb, var(--kin-tt-chu-xong) 0%, transparent); } }
+.kin-ring-p { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 2px; background: var(--c); opacity: 0; pointer-events: none; }
+.kin-ring.kin-ring-burst .kin-ring-p { animation: kin-ring-dot .8s var(--kin-ease) forwards; }
+@keyframes kin-ring-dot { 0% { opacity: 1; transform: rotate(var(--a)) translateY(-14px) scale(.6); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-34px) scale(1.1) rotate(160deg); } }
+.kin-swap { position: relative; display: block; overflow: hidden; white-space: nowrap; }
+.kin-swap > span { display: block; transition: transform .5s var(--kin-spring), opacity .3s var(--kin-ease); }
+.kin-swap > span + span { position: absolute; left: 0; top: 0; transform: translateY(100%); opacity: 0; color: var(--kin-tt-chu-xong); font-weight: 600; }
+.kin-swap[data-alt] > span:first-child { transform: translateY(-100%); opacity: 0; }
+.kin-swap[data-alt] > span + span { transform: none; opacity: 1; }
+/* Việc xong: tiêu đề xám đi, một nét gạch quét từ trái sang. data-strike="draw" = vừa xong (chạy hoạt hình); "static" = xong từ trước (đứng yên ở trạng thái cuối). */
+.kin-strike { position: relative; }
+.kin-strike[data-strike] { color: var(--kin-chu-mo); }
+.kin-strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 2px; border-radius: 2px; background: var(--kin-chu-mo); transform: scaleX(0); transform-origin: 0 50%; pointer-events: none; }
+.kin-strike[data-strike="static"]::after { transform: scaleX(1); }
+.kin-strike[data-strike="draw"] { animation: kin-strike-fade .4s var(--kin-ease); }
+.kin-strike[data-strike="draw"]::after { animation: kin-strike-draw .45s var(--kin-ease) .18s both; }
+@keyframes kin-strike-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes kin-strike-fade { from { color: var(--kin-chu-chinh); } }
+.kin-skel--lo { --skel: var(--kin-nen-re-chuot); }
+
+/* ───────── No.028 Ô nhập tự dãn + vòng đếm ký tự (src/components/kin/AutoGrow.tsx) ───────── */
+.kin-grow { transition: height .25s var(--kin-ease); }
+.kin-chars { position: relative; display: inline-block; width: 30px; height: 30px; flex: none; transition: transform .45s var(--kin-spring); }
+.kin-chars > svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.kin-chars circle { fill: none; stroke-width: 3; }
+.kin-chars .bg { stroke: var(--kin-vien-thuong); }
+.kin-chars .fg { stroke: var(--kin-nhan-nen); stroke-linecap: round; stroke-dasharray: 75.4; stroke-dashoffset: calc(75.4 * (1 - var(--p, 0))); transition: stroke-dashoffset .3s var(--kin-ease), stroke .3s var(--kin-ease); }
+.kin-chars-left { position: absolute; inset: 0; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
+.kin-chars[data-near] { transform: scale(1.25); }
+.kin-chars[data-near] .fg { stroke: var(--kin-tt-chu-cho); }
+.kin-chars[data-near] .kin-chars-left { opacity: 1; color: var(--kin-tt-chu-cho); }
+.kin-chars[data-over] .fg { stroke: var(--kin-tt-chu-loi); }
+.kin-chars[data-over] .kin-chars-left { color: var(--kin-tt-chu-loi); }
+
+/* ───────── No.040 Thanh bên mở rộng có nhãn + vạch nổi bật trượt (src/components/kin/shell/ModuleRail.tsx) ───────── */
+/* Ba trạng thái theo data-kin-rail trên <html>: (không có) = "mo" 79px · "rong" = 220px · "thu" = 0 (kin-tokens.css). Chiều rộng khung ngoài đổi bằng ease 0,45 giây
+   (không dùng lò xo cho chiều rộng của cả cột: overshoot làm nội dung bên cạnh dựng lại bố cục dội qua dội lại); lò xo dùng cho vạch nổi bật và chữ. */
+.kin-rail-wrap { transition: width .45s var(--kin-ease); }
+@media (prefers-reduced-motion: reduce) { .kin-rail-wrap { transition-duration: 0s; transition-delay: 0s; } } /* sau quy tắc trên: giữ đúng "0s" như kin-tokens.css */
+html[data-kin-rail="rong"] .kin-rail-wrap { width: 220px; }
+html[data-kin-rail="rong"] .kin-rail-nav { width: 220px; align-items: stretch; padding-inline: 10px; }
+html[data-kin-rail="rong"] .kin-rail-items { align-items: stretch; }
+html[data-kin-rail="rong"] .kin-rail-close { align-self: flex-start; }
+html[data-kin-rail="rong"] .kin-rail-role { text-align: left; padding-left: 16px; align-self: stretch; }
+/* Mục: hàng ngang — biểu tượng bên trái, nhãn bên phải hiện lần lượt (trễ 0,12 giây + 35ms mỗi mục). */
+html[data-kin-rail="rong"] .kin-rail-it { width: 100%; flex-direction: row; justify-content: flex-start; gap: 14px; min-height: 48px; padding: 0 0 0 16px; font-size: var(--kin-co-small); }
+html[data-kin-rail="rong"] .kin-rail-it .kin-rail-lab { text-align: left; animation: kin-rail-lab-in .5s var(--kin-spring) both; animation-delay: calc(.12s + var(--i, 0) * 35ms); }
+@keyframes kin-rail-lab-in { from { opacity: 0; transform: translateX(-8px); } }
+html[data-kin-rail="rong"] .kin-rail-it .kin-badge-dem { left: auto; right: 14px; top: 50%; margin-top: -9px; }
+/* Bảng "Khác" neo cạnh thanh: dời theo bề rộng (chỉ máy tính). */
+@media (min-width: 768px) { html[data-kin-rail="rong"] #khac-bang { left: 228px; } }
+/* Vạch nổi bật dùng chung: một khối nền trượt tới mục đang chọn. Chưa đo được (lần vẽ đầu của máy chủ) thì mục tự mang nền như cũ. */
+.kin-rail-hl { position: absolute; left: 0; top: 0; width: var(--w, 0px); height: var(--h, 0px); transform: translate(var(--x, 0px), var(--y, 0px)); border-radius: var(--kin-bo-sm); background: var(--kin-nen-nhan); opacity: 0; pointer-events: none; }
+.kin-rail-hl[data-on] { opacity: 1; }
+.kin-rail-hl[data-anim] { transition: transform .5s var(--kin-spring), width .45s var(--kin-ease), height .45s var(--kin-ease); }
+.kin-rail-items[data-hl] .kin-rail-it[aria-current="page"] { background: transparent !important; }
+/* Nút mở rộng / thu hẹp ở cạnh dưới thanh: chỉ hiện khi rê chuột vào thanh, có tiêu điểm bàn phím, hoặc đang ở trạng thái rộng. */
+.kin-rail-wide { position: absolute; right: 0; bottom: 16px; z-index: 2; width: 26px; height: 36px; display: grid; place-items: center; border-radius: 10px 0 0 10px; background: var(--kin-nen-re-chuot); color: var(--kin-chu-phu); opacity: 0; transition: opacity .2s, background-color .2s; }
+.kin-rail-wrap:hover .kin-rail-wide, .kin-rail-wide:focus-visible, html[data-kin-rail="rong"] .kin-rail-wide { opacity: 1; }
+.kin-rail-wide:hover { background: var(--kin-vien-thuong); color: var(--kin-chu-chinh); }
+.kin-rail-wide svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--kin-spring); }
+html[data-kin-rail="rong"] .kin-rail-wide svg { transform: rotate(180deg); }
+
+/* ───────── Giảm chuyển động: tắt hết, nội dung đứng ở trạng thái cuối ───────── */
+@media (prefers-reduced-motion: reduce) {
+  .kin-m, .kin-m *, .kin-m *::before, .kin-m *::after, .kin-skel, .kin-bloom,
+  .kin-rail-hl, .kin-rail-lab, .kin-rail-wide, .kin-rail-wide *,
+  .kin-chars, .kin-chars *, .kin-grow,
+  .kin-ring, .kin-ring *, .kin-ring::after, .kin-swap, .kin-swap *, .kin-strike, .kin-strike::after,
+  .kin-copy, .kin-code, .kin-code *, .kin-shake, .kin-notice-in, .kin-copy *, .kin-copy *::before, .kin-copy *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; transition-delay: 0s !important; scroll-behavior: auto !important;
+  }
+}

@@ -12,8 +12,9 @@ const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d
 walk(ROOT);
 const rel = (p: string) => relative(process.cwd(), p).replaceAll("\\", "/");
 
-// Mã hex 3/4/6/8 chữ số không nằm sau chữ/số/&/ (loại neo URL, thực thể HTML, mã băm trong chuỗi)
-const HEX = /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![\w-])/g;
+// Mã hex 3/4/6/8 chữ số không nằm sau chữ/số/&/ (loại neo URL, thực thể HTML, mã băm trong chuỗi).
+// Cũng bỏ qua dòng ghi bản quyền "Lucian UX/UI Prompt #008" (số thứ tự element, không phải màu; MIT buộc phải giữ dòng ghi nguồn — docs/kin/thu-vien-lucian.md).
+const HEX = /(?<![\w&/#-])(?<!Prompt )#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![\w-])/g;
 
 const ALLOW: { file: RegExp; why: string }[] = [
   { file: /^src\/app\/kin-(tokens|site)\.css$/, why: "nơi ĐỊNH NGHĨA token KiN (kin-tokens.css sinh từ Figma, không sửa tay)" },

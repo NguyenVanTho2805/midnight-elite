@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   CAT_MAP, timeAgo, Avatar, MediaGrid, Lightbox, ReplyCard, ReplyForm, ReportPanel, useThreadDetail,
 } from "@/components/community/ThreadDetailShared";
+import { KinCopyButton } from "@/components/kin/CopyButton";
+import { KinBookmark } from "@/components/kin/Bookmark";
 
 export default function ThreadModal({
   threadId,
@@ -23,7 +25,6 @@ export default function ThreadModal({
   const router   = useRouter();
 
   const [mounted, setMounted]         = useState(false);
-  const [copied, setCopied]           = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef  = useRef<HTMLDivElement>(null);
@@ -74,12 +75,6 @@ export default function ThreadModal({
     }
   }
 
-  function copyLink() {
-    if (!thread) return;
-    navigator.clipboard.writeText(`${window.location.origin}/cong-dong/${thread.id}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   if (!threadId || !mounted) return null;
 
@@ -232,23 +227,9 @@ export default function ThreadModal({
 
                   <div className="flex-1" />
 
-                  <button onClick={handleBookmark} disabled={bookmarking} title={thread.bookmarkedByMe ? "Bỏ lưu" : "Lưu bài"}
-                    className="px-2.5 py-1.5 rounded-lg transition-colors"
-                    style={{ color: thread.bookmarkedByMe ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)" }}>
-                    {thread.bookmarkedByMe
-                      ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v18l-7-3.5L5 22V4z"/></svg>
-                      : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 4a2 2 0 012-2h10a2 2 0 012 2v18l-7-3.5L5 22V4z"/></svg>
-                    }
-                  </button>
+                  <KinBookmark on={thread.bookmarkedByMe} onToggle={handleBookmark} busy={bookmarking} />
 
-                  <button onClick={copyLink}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{ color: copied ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)" }}>
-                    {copied
-                      ? <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>Đã sao chép</>
-                      : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>Chia sẻ</>
-                    }
-                  </button>
+                  <KinCopyButton size="sm" label="Chia sẻ — sao chép liên kết bài viết" text={() => `${window.location.origin}/cong-dong/${thread.id}`} />
 
                   {user && user.id !== thread.author.id && (
                     <button onClick={() => setReporting(p => !p)}

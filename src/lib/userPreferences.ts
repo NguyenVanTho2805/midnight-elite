@@ -134,7 +134,7 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
       case "rail": {
         if (v === null) { delete next.rail; break; }
         const r = parseRail(v);
-        if (!r) return { ok: false, error: "Thanh bên chỉ nhận 'mo' hoặc 'thu'" };
+        if (!r) return { ok: false, error: "Thanh bên chỉ nhận 'mo', 'rong' hoặc 'thu'" };
         next.rail = r; break;
       }
       case "reminders": {

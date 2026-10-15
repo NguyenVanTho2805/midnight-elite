@@ -8,11 +8,8 @@ interface SkeletonProps {
 export function Skeleton({ className = "", rounded = "xl" }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse ${className}`}
+      className={`kin-skel kin-m ${className}`}
       style={{
-        background: "var(--kin-vien-thuong)",
-        backgroundSize: "200% 100%",
-        animation: "skeleton-shimmer 1.5s infinite",
         borderRadius: rounded === "full" ? "9999px"
           : rounded === "2xl" ? "1rem"
           : rounded === "xl" ? "0.75rem"

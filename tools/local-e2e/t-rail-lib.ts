@@ -1,6 +1,6 @@
 // Thanh bên trái thu/mở (14/10/2026) — phần THUẦN: src/lib/railState.ts (trạng thái, phím tắt, script chạy trước khi vẽ),
 // src/lib/signedInShell.ts (người nào, ở trang nào thì có thanh bên), và tuỳ chọn `rail` trong src/lib/userPreferences.ts.
-import { RAIL_KEY, RAIL_ATTR, RAIL_INIT_SCRIPT, parseRail, toggleRail, isRailShortcut } from "@/lib/railState";
+import { RAIL_KEY, RAIL_ATTR, RAIL_OPEN_KEY, RAIL_INIT_SCRIPT, parseRail, toggleRail, widenRail, reopenRail, isRailShortcut } from "@/lib/railState";
 import { shellFor, NO_SHELL_PATHS, shellHintFor, parseShellHint, SHELL_HINT_KEY, SHELL_HINT_ATTR, SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { readPreferences, applyPreferencesPatch } from "@/lib/userPreferences";
 import { check, section, done } from "./h";
@@ -52,6 +52,23 @@ for (const p of NO_SHELL_PATHS) check(`${p} (đăng nhập / đăng ký / khôi 
 check("trang chỉ giống TIỀN TỐ ('/dang-nhap-gi-do') thì vẫn có thanh bên — so khớp theo đoạn đường dẫn, không theo chuỗi", shellFor(student, "/dang-nhap-gi-do") === "student" && shellFor(student, "/dang-ky-lop") === "student");
 check("danh sách loại trừ đủ 6 trang xác thực", NO_SHELL_PATHS.length === 6 && ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"].every(p => (NO_SHELL_PATHS as readonly string[]).includes(p)), NO_SHELL_PATHS);
 
+section("Trạng thái thứ ba 'rong' (220px, có nhãn) — Lucian No.040, 15/10/2026");
+check("parseRail nhận 'rong' (ba giá trị hợp lệ: mo / rong / thu)", parseRail("rong") === "rong" && parseRail("mo") === "mo" && parseRail("thu") === "thu");
+check("giá trị gần giống vẫn bị từ chối ('RONG', 'wide', 'rộng')", ["RONG", "Rong", "wide", "rộng", " rong"].every(v => parseRail(v) === null));
+check("phím '[': đang mở (79px hoặc 220px) → thu; đang thu → mở", toggleRail("mo") === "thu" && toggleRail("rong") === "thu" && toggleRail("thu") === "mo");
+check("nút mở rộng: hẹp ⇄ rộng; đang thu thì KHÔNG đổi (không tự mở thanh bằng nút này)", widenRail("mo") === "rong" && widenRail("rong") === "mo" && widenRail("thu") === "thu");
+check("mở lại sau khi thu về đúng bề rộng đã dùng ('rong' → 'rong'); chưa có / giá trị lạ → 79px", reopenRail("rong") === "rong" && reopenRail("mo") === "mo" && [null, undefined, "", "thu", "x", 1].every(v => reopenRail(v) === "mo"));
+check("khoá nhớ bề rộng mở khác khoá trạng thái hiện tại", (RAIL_OPEN_KEY as string) !== RAIL_KEY);
+{
+  const run = (stored: string | null) => {
+    const attrs = new Map<string, string>();
+    new Function("localStorage", "document", RAIL_INIT_SCRIPT)({ getItem: (k: string) => (k === RAIL_KEY ? stored : null) }, { documentElement: { setAttribute: (k: string, v: string) => void attrs.set(k, v) } });
+    return attrs.get(RAIL_ATTR) ?? null;
+  };
+  check("script trước khi vẽ: đã lưu 'rong' → data-kin-rail=rong ngay từ khung hình đầu (không nháy 79px rồi nở ra)", run("rong") === "rong");
+  check("…đã lưu 'thu' → thu như cũ; 'mo' / rỗng / lạ → không đặt gì (mặc định 79px)", run("thu") === "thu" && run("mo") === null && run(null) === null && run("") === null && run("RONG") === null);
+}
+
 section("Gợi ý vỏ — không nháy khung khách khi tải cứng (src/lib/signedInShell.ts)");
 check("gợi ý của học viên = 'student', gia sư = 'tutor', quản trị = 'student', khách = null", shellHintFor(student) === "student" && shellHintFor(tutor) === "tutor" && shellHintFor(adminSuper) === "student" && shellHintFor(null) === null);
 check("parseShellHint chỉ nhận 'student' / 'tutor' — giá trị lạ, rỗng, sai kiểu → null", parseShellHint("student") === "student" && parseShellHint("tutor") === "tutor" && [undefined, null, "", "Student", "admin", 1, true, {}].every(v => parseShellHint(v) === null));
@@ -81,6 +98,7 @@ section("Tuỳ chọn `rail` lưu theo tài khoản (User.preferences)");
 check("đọc: 'thu' và 'mo' giữ nguyên", readPreferences({ rail: "thu" }).rail === "thu" && readPreferences({ rail: "mo" }).rail === "mo");
 check("đọc khoan dung: giá trị hỏng bị bỏ, không ném lỗi, các khoá khác còn nguyên", (() => { const p = readPreferences({ rail: "xxx", theme: "man" }); return p.rail === undefined && p.theme === "man"; })());
 check("vá: đặt 'thu'", (() => { const r = applyPreferencesPatch({}, { rail: "thu" }); return r.ok && r.value.rail === "thu"; })());
+check("tài khoản nhớ được 'rong': đọc và vá đều nhận (máy khác cũng mở rộng)", readPreferences({ rail: "rong" }).rail === "rong" && (() => { const r = applyPreferencesPatch({}, { rail: "rong" }); return r.ok && r.value.rail === "rong"; })());
 check("vá: null đưa về mặc định (xoá khoá)", (() => { const r = applyPreferencesPatch({ rail: "thu" }, { rail: null }); return r.ok && !("rail" in r.value); })());
 for (const bad of ["xxx", "THU", 1, true, [], {}]) check(`vá nghiêm: rail=${JSON.stringify(bad)} → từ chối cả bản vá`, !applyPreferencesPatch({}, { rail: bad }).ok);
 check("vá rail không làm mất khoá khác", (() => { const r = applyPreferencesPatch({ theme: "man", modules: ["lop"] }, { rail: "thu" }); return r.ok && r.value.theme === "man" && r.value.modules?.[0] === "lop" && r.value.rail === "thu"; })());

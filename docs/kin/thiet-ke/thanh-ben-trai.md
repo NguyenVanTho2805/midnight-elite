@@ -133,3 +133,10 @@ Thọ gửi ảnh vỏ HỌC SINH (tài khoản quản trị "Admin TSIX") và n
 - **Nháy "trang chủ" lúc tải cứng:** xem 3.4 và 6.6 (đã làm).
 - **Test:** `t-rail-lib` (65, thuần), `ui-shell-everywhere` (16, trình duyệt thật: 4 loại tài khoản × 11 chức năng; đúng thao tác của Thọ — mở "Khác" bấm 10 mục + "Thư viện"; gợi ý vỏ cho học viên, khách, gợi ý cũ, gia sư).
 - **Chưa làm / cần Thọ nhìn:** quản trị xem thử khu học sinh đang thấy vỏ HỌC SINH (đúng ảnh Thọ gửi) chứ không phải vỏ quản trị — nếu muốn quản trị có một vỏ riêng trên tên miền chính thì đó là thiết kế mới, chưa làm.
+
+## 8. Trạng thái thứ ba "rộng" 220px (15/10/2026, Thọ chọn; chuyển động theo Lucian UX/UI Prompt No.040)
+- **Ba trạng thái:** `mo` 79px (Figma, mặc định) · `rong` 220px (nhãn chữ NẰM CẠNH biểu tượng) · `thu` 0px. Lưu như cũ: `localStorage kin.thanh-ben` + tuỳ chọn tài khoản `rail` (nay nhận thêm `rong`); `kin.thanh-ben-truoc` nhớ bề rộng MỞ gần nhất.
+- **Điều khiển:** nút mũi tên ở **cạnh dưới thanh** (hiện khi rê chuột vào thanh, có tiêu điểm, hoặc đang ở trạng thái rộng; `aria-pressed`). Phím `[` và nút "Mở thanh bên" mở lại về ĐÚNG bề rộng đã dùng (79 hoặc 220). Điện thoại: không đổi (thanh dưới 60px, không có nút).
+- **Chuyển động:** khung ngoài đổi bề rộng bằng ease 0,45 giây; nhãn hiện lần lượt (trễ 0,12 giây + 35ms mỗi mục); **vạch nổi bật dùng chung trượt (lò xo 0,5 giây)** tới mục đang chọn — áp cả ở 79px (thay cho nền từng mục tự bật/tắt). Bảng "Khác" dời theo bề rộng.
+- **Không nháy khi tải lại:** `RAIL_INIT_SCRIPT` đặt `data-kin-rail=rong` trước khi vẽ (test lấy mẫu bề rộng trong lúc dựng trang).
+- **Chưa làm:** khung Figma cho trạng thái rộng (Thanh vẽ), mục con. Test: `t-rail-lib` (74), `ui-motion-app` (46).
