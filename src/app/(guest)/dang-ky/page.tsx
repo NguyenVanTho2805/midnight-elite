@@ -53,11 +53,13 @@ function validateStep1(f: Step1Fields, role: Role): Step1Errors {
   if (!f.name.trim())        e.name = "Vui lòng nhập họ và tên";
   if (!f.phone.trim())       e.phone = "Vui lòng nhập số điện thoại có Zalo";
   else if (!validatePhone(f.phone)) e.phone = "Số điện thoại không hợp lệ";
-  if (f.parentPhone.trim() && !validatePhone(f.parentPhone))
-                             e.parentPhone = "Số điện thoại không hợp lệ";
-  if (!f.city)               e.city = "Vui lòng chọn tỉnh / thành phố";
-  // Trường chỉ bắt buộc với học viên — gia sư không nhất thiết đang đi học.
-  if (role === "student" && !f.school.trim()) e.school = "Vui lòng nhập tên trường";
+  // Gia sư chỉ nhập những gì quản trị cần để duyệt hồ sơ (họ tên, số điện thoại Zalo để liên hệ, giới thiệu, môn dạy) — 15/10/2026 bỏ SĐT phụ huynh,
+  // trường và tỉnh/thành: máy chủ không lưu hai ô đầu (bị bỏ lặng lẽ), tỉnh/thành không nơi nào dùng. Học viên giữ đủ như cũ.
+  if (role === "student") {
+    if (f.parentPhone.trim() && !validatePhone(f.parentPhone)) e.parentPhone = "Số điện thoại không hợp lệ";
+    if (!f.city)               e.city = "Vui lòng chọn tỉnh / thành phố";
+    if (!f.school.trim())      e.school = "Vui lòng nhập tên trường";
+  }
   // Field riêng gia sư
   if (role === "tutor") {
     if (!f.bio.trim())                e.bio = "Vui lòng viết vài dòng giới thiệu";
@@ -165,15 +167,16 @@ export default function DangKyPage() {
       const body: Record<string, unknown> = {
         name:        s1.name.trim(),
         phone:       s1.phone.replace(/\s/g, ""),
-        parentPhone: s1.parentPhone.replace(/\s/g, ""),
-        city:        s1.city,
-        school:      s1.school.trim(),
         email:       s2.email.trim(),
         password:    s2.password,
       };
       if (role === "tutor") {
         body.bio = s1.bio.trim();
         body.subjects = s1.subjects;
+      } else {
+        body.parentPhone = s1.parentPhone.replace(/\s/g, "");
+        body.city        = s1.city;
+        body.school      = s1.school.trim();
       }
       const res = await fetch(endpoint, {
         method: "POST",
@@ -342,9 +345,9 @@ export default function DangKyPage() {
               </div>
 
               {/* SĐT học sinh + SĐT phụ huynh */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className={role === "tutor" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>SĐT học sinh (Zalo) *</label>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>{role === "tutor" ? "Số điện thoại (Zalo) *" : "SĐT học sinh (Zalo) *"}</label>
                   <div className="relative">
                     <input type="tel" placeholder="0901 234 567" value={s1.phone}
                       onChange={e => setS1(p => ({ ...p, phone: e.target.value }))}
@@ -356,7 +359,13 @@ export default function DangKyPage() {
                     </span>
                   </div>
                   <FieldError msg={t1.phone ? e1.phone : undefined} />
+                  {role === "tutor" && (
+                    <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
+                      Quản trị KiN dùng số này để liên hệ xác minh hồ sơ. Số không hiện công khai (bạn tự bật nếu muốn hiện Zalo trên hồ sơ).
+                    </p>
+                  )}
                 </div>
+                {role === "student" && (
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
                     SĐT phụ huynh
@@ -375,9 +384,11 @@ export default function DangKyPage() {
                   </div>
                   <FieldError msg={t1.parentPhone ? e1.parentPhone : undefined} />
                 </div>
+                )}
               </div>
 
               {/* Tỉnh + Trường */}
+              {role === "student" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Tỉnh / Thành phố *</label>
@@ -394,8 +405,7 @@ export default function DangKyPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
-                    {role === "tutor" ? "Trường / nơi học/làm" : "Tên trường *"}
-                    {role === "tutor" && <span className="ml-1 font-normal" style={{ color: "var(--kin-chu-mo)" }}>(tuỳ chọn)</span>}
+                    Tên trường *
                   </label>
                   <div className="relative">
                     <input type="text" placeholder="THPT Chu Văn An" value={s1.school}
@@ -410,6 +420,7 @@ export default function DangKyPage() {
                   <FieldError msg={t1.school ? e1.school : undefined} />
                 </div>
               </div>
+              )}
 
               {/* FE-100: Field riêng Gia sư — bio + subjects. Render inline
                   thay vì tạo step riêng để giữ 2-bước gọn và cùng UX. */}

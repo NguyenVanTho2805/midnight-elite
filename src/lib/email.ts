@@ -88,40 +88,68 @@ export async function sendVerificationEmail(to: string, name: string, token: str
 
 export async function sendPasswordResetEmail(to: string, name: string, token: string) {
   const link = `${APP_URL}/dat-lai-mat-khau?token=${token}`;
-
+  const safeName = escapeHtml(name);
   await getTransport().sendMail({
     from: FROM,
     to,
-    subject: "Đặt lại mật khẩu — KiN",
+    subject: "Đặt lại mật khẩu KiN",
+    text: `Xin chào ${name.replace(/[<>&"]/g, "")},\n\nBạn (hoặc ai đó) vừa xin đặt lại mật khẩu KiN. Mở link này để tạo mật khẩu mới:\n${link}\n\nLink sống 30 phút và chỉ dùng được một lần. Nếu không phải bạn, cứ bỏ qua email này: mật khẩu hiện tại vẫn nguyên và không ai vào được tài khoản của bạn.\n\nKiN`,
     html: `
 <!DOCTYPE html>
 <html lang="vi">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <div style="max-width:520px;margin:40px auto;padding:0 16px">
-    <div style="text-align:center;padding:32px 0 24px">
-      <div style="display:inline-block;background:#0068FF;color:#fff;font-weight:900;font-size:20px;padding:10px 22px;border-radius:10px;letter-spacing:-0.3px">KiN</div>
-      <p style="color:#a4a097;font-size:13px;margin:8px 0 0">Education Platform</p>
+<body style="margin:0;padding:0;background:#f7f8fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:480px;margin:40px auto;padding:0 16px">
+    <div style="padding:0 0 20px;text-align:center">
+      <span style="font-size:24px;font-weight:800;color:#1e3a8a;letter-spacing:-0.3px">KiN</span>
+      <p style="color:#6b7280;font-size:13px;margin:6px 0 0">Lớp học của bạn, gọn trong một chỗ</p>
     </div>
-    <div style="background:#ffffff;border-radius:16px;padding:36px 32px;border:1px solid #e5e3df">
-      <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 8px;letter-spacing:-0.3px">Đặt lại mật khẩu</h1>
-      <p style="color:#787671;font-size:14px;line-height:1.6;margin:0 0 8px">Xin chào <strong>${name}</strong>,</p>
-      <p style="color:#787671;font-size:14px;line-height:1.6;margin:0 0 28px">
-        Chúng tôi nhận được yêu cầu đặt lại mật khẩu. Bấm nút bên dưới để tạo mật khẩu mới.
-        Link chỉ có hiệu lực trong <strong>1 giờ</strong>.
+    <div style="background:#ffffff;border-radius:14px;padding:32px;border:1px solid #e6e9ef">
+      <h1 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Đặt lại mật khẩu</h1>
+      <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px">Xin chào ${safeName}, bạn vừa xin đặt lại mật khẩu KiN. Bấm nút dưới đây để tạo mật khẩu mới:</p>
+      <div style="text-align:center;margin:0 0 24px">
+        <a href="${link}" style="display:inline-block;background:#1e3a8a;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:8px">Tạo mật khẩu mới</a>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 16px">
+        Link sống <strong>30 phút</strong> và chỉ dùng được một lần. Nếu nút không mở được, dán đường dẫn này vào trình duyệt:
       </p>
-      <div style="text-align:center;margin:0 0 28px">
-        <a href="${link}" style="display:inline-block;background:#dc2626;color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:10px">
-          Đặt lại mật khẩu →
-        </a>
-      </div>
-      <div style="background:#f6f5f4;border-radius:10px;padding:14px 16px;margin:0 0 20px;border:1px solid #e5e3df">
-        <p style="color:#787671;font-size:12px;margin:0 0 6px">Nếu nút trên không hoạt động, copy link này:</p>
-        <p style="margin:0;word-break:break-all"><a href="${link}" style="color:#0068FF;font-size:12px">${link}</a></p>
-      </div>
-      <p style="color:#a4a097;font-size:12px;margin:0">Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+      <p style="margin:0 0 20px;word-break:break-all"><a href="${link}" style="color:#2563eb;font-size:12px">${link}</a></p>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0">
+        Nếu không phải bạn xin, cứ bỏ qua email này: mật khẩu hiện tại vẫn nguyên và không ai vào được tài khoản của bạn.
+      </p>
     </div>
-    <p style="text-align:center;color:#c8c4be;font-size:12px;margin:24px 0">© 2026 KiN</p>
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin:24px 0">© 2026 KiN</p>
+  </div>
+</body>
+</html>`,
+  });
+}
+
+/** Thư báo SAU khi mật khẩu đã đổi (đặt lại hoặc đổi trong hồ sơ): nếu không phải mình làm thì biết ngay để xử lý. */
+export async function sendPasswordChangedEmail(to: string, name: string) {
+  const safeName = escapeHtml(name);
+  await getTransport().sendMail({
+    from: FROM,
+    to,
+    subject: "Mật khẩu KiN của bạn vừa được đổi",
+    text: `Xin chào ${name.replace(/[<>&"]/g, "")},\n\nMật khẩu tài khoản KiN của bạn vừa được đổi. Nếu là bạn thì không cần làm gì thêm.\n\nNếu KHÔNG phải bạn, hãy vào ${APP_URL}/quen-mat-khau để đặt lại mật khẩu ngay, rồi báo cho KiN qua hotline trên trang chủ.\n\nKiN`,
+    html: `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f7f8fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:480px;margin:40px auto;padding:0 16px">
+    <div style="padding:0 0 20px;text-align:center">
+      <span style="font-size:24px;font-weight:800;color:#1e3a8a;letter-spacing:-0.3px">KiN</span>
+    </div>
+    <div style="background:#ffffff;border-radius:14px;padding:32px;border:1px solid #e6e9ef">
+      <h1 style="color:#111827;font-size:18px;font-weight:700;margin:0 0 8px">Mật khẩu của bạn vừa được đổi</h1>
+      <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 16px">Xin chào ${safeName}, mật khẩu tài khoản KiN của bạn vừa được đổi. Nếu là bạn thì không cần làm gì thêm.</p>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0">
+        Nếu <strong>không phải bạn</strong>, hãy <a href="${APP_URL}/quen-mat-khau" style="color:#2563eb">đặt lại mật khẩu ngay</a>, rồi báo cho KiN qua hotline ở chân trang chủ.
+      </p>
+    </div>
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin:24px 0">© 2026 KiN</p>
   </div>
 </body>
 </html>`,

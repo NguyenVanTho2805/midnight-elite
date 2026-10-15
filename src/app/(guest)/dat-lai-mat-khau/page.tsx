@@ -1,189 +1,187 @@
+// Đặt lại mật khẩu (15/10/2026 làm lại): mở từ link trong thư của /quen-mat-khau. Hỏi máy chủ link còn dùng được không NGAY khi mở (hết hạn / đã dùng thì
+// báo luôn, khỏi gõ mật khẩu rồi mới biết) → nhập mật khẩu mới + nhập lại → đổi xong là đăng nhập luôn và vào đúng trang của vai (học viên / gia sư / quản trị).
+// Chuyển trang bằng tải cứng (window.location) để AuthContext đọc lại phiên vừa được máy chủ cấp; chuyển mềm sẽ vẫn coi là chưa đăng nhập.
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { KinLogo } from "@/components/kin/KinLogo";
+import { KinSubmitButton } from "@/components/kin/SubmitButton";
+import { MAX_PASSWORD_LEN, MIN_PASSWORD_LEN, validateNewPassword } from "@/lib/passwordPolicy";
 
-function getPasswordStrength(p: string) {
+const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus:border-2 focus:px-[13px]";
+const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nhan-nen)] text-[var(--kin-nhan-chu-tren-nen)] text-[length:var(--kin-co-small)] font-semibold transition-colors hover:bg-[var(--kin-nhan-nen-re)] disabled:opacity-60";
+const linkBtn = "text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:underline";
+
+function strengthOf(p: string): { level: number; label: string; color: string } {
   if (!p) return { level: 0, label: "", color: "" };
-  if (p.length < 6)  return { level: 1, label: "Quá yếu",    color: "var(--kin-tt-chu-loi)" };
-  if (p.length < 8)  return { level: 2, label: "Yếu",         color: "var(--kin-tt-chu-cho)" };
-  if (/[A-Z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p))
-                     return { level: 5, label: "Rất mạnh",    color: "var(--kin-nhan-link)" };
-  if (/[A-Z]/.test(p) && /[0-9]/.test(p))
-                     return { level: 4, label: "Mạnh",         color: "var(--kin-tt-chu-xong)" };
-  return             { level: 3, label: "Trung bình",          color: "var(--kin-tt-chu-cho)" };
+  if (p.length < 6) return { level: 1, label: "Quá yếu", color: "var(--kin-tt-chu-loi)" };
+  if (p.length < MIN_PASSWORD_LEN) return { level: 2, label: "Yếu", color: "var(--kin-tt-chu-cho)" };
+  if (/[A-Z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p)) return { level: 5, label: "Rất mạnh", color: "var(--kin-nhan-diem)" };
+  if (/[A-Z]/.test(p) && /[0-9]/.test(p)) return { level: 4, label: "Mạnh", color: "var(--kin-tt-chu-xong)" };
+  return { level: 3, label: "Trung bình", color: "var(--kin-tt-chu-cho)" };
 }
 
-function ResetContent() {
-  const params = useSearchParams();
-  const router = useRouter();
-  const token  = params.get("token") ?? "";
+type Phase = "checking" | "invalid" | "form" | "done";
 
-  const [password, setPassword] = useState("");
-  const [confirm,  setConfirm]  = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [status,   setStatus]   = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errMsg,   setErrMsg]   = useState("");
-
-  const strength = getPasswordStrength(password);
-  const mismatch = confirm.length > 0 && password !== confirm;
-
-  useEffect(() => {
-    document.title = "Đặt lại mật khẩu — KiN";
-  }, []);
-
-  useEffect(() => {
-    if (!token) { setStatus("error"); setErrMsg("Link không hợp lệ"); }
-  }, [token]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (password.length < 8) { setErrMsg("Mật khẩu cần ít nhất 8 ký tự"); return; }
-    if (password !== confirm) { setErrMsg("Mật khẩu xác nhận không khớp"); return; }
-    setStatus("loading"); setErrMsg("");
-    try {
-      const res  = await fetch("/api/auth/reset-password", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setErrMsg(data.error); setStatus("error"); return; }
-      setStatus("success");
-      setTimeout(() => router.push(data.role === "admin" ? "/admin" : "/student/hoc-tap"), 2000);
-    } catch {
-      setErrMsg("Lỗi kết nối, vui lòng thử lại");
-      setStatus("error");
-    }
-  }
-
+function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--kin-nen-bang)" }}>
-      <div className="w-full max-w-md">
-
-        <div className="text-center mb-8">
-          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex flex-col items-center gap-2">
-            <KinLogo size={36} textSize="var(--kin-co-h2)" />
-            <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Lớp học của bạn, gọn trong một chỗ</span>
-          </Link>
+    <div className="kin-chu-than min-h-[calc(100vh-60px)] flex items-start sm:items-center justify-center px-4 py-8 sm:py-12 bg-[var(--kin-nen-bang)]">
+      <div className="w-full max-w-[420px] rounded-2xl border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
+        <div className="px-5 pt-7 pb-5 flex flex-col gap-[6px]">
+          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex w-fit"><KinLogo size={32} textSize="var(--kin-co-h3, 23px)" /></Link>
+          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Lớp học của bạn, gọn trong một chỗ</p>
         </div>
-
-        <div className="rounded-xl p-8" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
-
-          {status === "success" && (
-            <div className="text-center py-2">
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)" }}>
-                <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-xong)" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>
-                Đặt lại mật khẩu thành công!
-              </h2>
-              <p className="text-sm mb-4" style={{ color: "var(--kin-chu-mo)" }}>Đang chuyển đến Dashboard...</p>
-              <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--kin-vien-thuong)" }}>
-                <div className="h-1 animate-pulse" style={{ background: "var(--kin-nhan-nen)", width: "100%" }} />
-              </div>
-            </div>
-          )}
-
-          {status === "error" && !password && (
-            <div className="text-center py-2">
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
-                <svg className="w-7 h-7" fill="none" stroke="var(--kin-tt-chu-loi)" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Link không hợp lệ</h2>
-              <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>{errMsg}</p>
-              <Link href="/quen-mat-khau"
-                className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white"
-                style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
-                Yêu cầu link mới
-              </Link>
-            </div>
-          )}
-
-          {status !== "success" && (status !== "error" || password.length > 0) && token && (
-            <>
-              <div className="mb-6">
-                <h1 className="text-xl font-bold mb-1" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Tạo mật khẩu mới</h1>
-                <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Nhập mật khẩu mới cho tài khoản của bạn.</p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Mật khẩu mới</label>
-                  <div className="relative">
-                    <input
-                      type={showPass ? "text" : "password"} value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Tối thiểu 8 ký tự" required
-                      className="notion-input w-full text-sm pr-14"
-                      style={{ color: "var(--kin-chu-chinh)" }}
-                    />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-3 text-xs font-medium" style={{ color: "var(--kin-chu-mo)" }}>
-                      {showPass ? "Ẩn" : "Hiện"}
-                    </button>
-                  </div>
-                  {password.length > 0 && (
-                    <div className="mt-2">
-                      <div className="flex gap-1 mb-1">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className="flex-1 h-1 rounded-full transition-all"
-                            style={{ background: i <= strength.level ? strength.color : "var(--kin-vien-thuong)" }} />
-                        ))}
-                      </div>
-                      {strength.label && <p className="text-xs font-semibold" style={{ color: strength.color }}>{strength.label}</p>}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Xác nhận mật khẩu</label>
-                  <input
-                    type={showPass ? "text" : "password"} value={confirm}
-                    onChange={e => setConfirm(e.target.value)}
-                    placeholder="Nhập lại mật khẩu" required
-                    className="notion-input w-full text-sm"
-                    style={{ color: "var(--kin-chu-chinh)", borderColor: mismatch ? "var(--kin-tt-chu-loi)" : undefined }}
-                  />
-                  {mismatch && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>Mật khẩu không khớp</p>}
-                  {!mismatch && confirm.length > 0 && password === confirm && (
-                    <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-xong)" }}>✓ Mật khẩu khớp</p>
-                  )}
-                </div>
-
-                {errMsg && (
-                  <div className="px-4 py-3 rounded-lg text-sm font-medium"
-                    style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
-                    {errMsg}
-                  </div>
-                )}
-
-                <button type="submit"
-                  disabled={status === "loading" || mismatch || password.length < 8}
-                  className="w-full py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50"
-                  style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
-                  {status === "loading" ? "Đang lưu..." : "Đặt lại mật khẩu"}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+        {children}
       </div>
     </div>
   );
 }
 
-export default function DatLaiMatKhauPage() {
+function DatLaiForm() {
+  const params = useSearchParams();
+  const token = params.get("token") ?? "";
+  const [phase, setPhase] = useState<Phase>("checking");
+  const [reason, setReason] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const firstRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { document.title = "Đặt lại mật khẩu — KiN"; }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!token) { setReason("Link không hợp lệ. Hãy mở đúng link trong email, hoặc yêu cầu link mới."); setPhase("invalid"); return; }
+      try {
+        const res = await fetch(`/api/auth/reset-password?token=${encodeURIComponent(token)}`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok && data.valid) setPhase("form");
+        else { setReason(data.error ?? "Link không hợp lệ hoặc đã hết hạn. Hãy yêu cầu link mới."); setPhase("invalid"); }
+      } catch {
+        if (!cancelled) { setReason("Không kiểm tra được link (lỗi kết nối). Hãy tải lại trang."); setPhase("invalid"); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  useEffect(() => { if (phase === "form") firstRef.current?.focus(); }, [phase]);
+
+  const strength = strengthOf(password);
+  const mismatch = confirm.length > 0 && password !== confirm;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const bad = validateNewPassword(password);
+    if (bad) { setError(bad); return; }
+    if (password !== confirm) { setError("Mật khẩu nhập lại chưa khớp"); return; }
+    setBusy(true); setError("");
+    try {
+      const res = await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, password }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.code === "invalid" || data.code === "expired") { setReason(data.error ?? "Link không còn dùng được."); setPhase("invalid"); return; }
+        setError(data.error ?? "Không đổi được mật khẩu. Thử lại sau ít phút.");
+        return;
+      }
+      setPhase("done");
+      const next = typeof data.next === "string" && data.next.startsWith("/") ? data.next : "/dang-nhap";
+      setTimeout(() => window.location.assign(next), 1500);
+    } catch {
+      setError("Lỗi kết nối, vui lòng thử lại");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (phase === "checking") {
+    return (
+      <Shell>
+        <div className="px-5 pt-2 pb-8"><p role="status" className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Đang kiểm tra link…</p></div>
+      </Shell>
+    );
+  }
+
+  if (phase === "invalid") {
+    return (
+      <Shell>
+        <div className="px-5 pt-2 pb-6 flex flex-col gap-4">
+          <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Link không dùng được</h1>
+          <div role="alert" className="rounded-[var(--kin-bo-sm)] px-[14px] py-3 border text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]"
+            style={{ background: "var(--kin-tt-nen-cho)", borderColor: "var(--kin-tt-vien-cho)" }}>{reason}</div>
+          <Link href="/quen-mat-khau" className={`${primaryBtn} inline-flex items-center justify-center`}>Yêu cầu link mới</Link>
+          <Link href="/dang-nhap" className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Về trang đăng nhập</Link>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (phase === "done") {
+    return (
+      <Shell>
+        <div className="px-5 pt-2 pb-8 flex flex-col gap-2">
+          <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đã đổi mật khẩu</h1>
+          <p role="status" className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Bạn đã được đăng nhập. Đang chuyển vào KiN…</p>
+        </div>
+      </Shell>
+    );
+  }
+
   return (
-    <Suspense>
-      <ResetContent />
-    </Suspense>
+    <Shell>
+      <form onSubmit={submit} noValidate className="px-5 pt-2 pb-6 flex flex-col gap-4">
+        <div className="flex flex-col gap-[6px]">
+          <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Tạo mật khẩu mới</h1>
+          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Đặt xong là bạn đăng nhập luôn.</p>
+        </div>
+
+        <div className="flex flex-col gap-[6px]">
+          <label htmlFor="dl-mk" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Mật khẩu mới</label>
+          <div className="relative">
+            <input id="dl-mk" ref={firstRef} type={show ? "text" : "password"} autoComplete="new-password" value={password} maxLength={MAX_PASSWORD_LEN}
+              onChange={e => { setPassword(e.target.value); if (error) setError(""); }} placeholder={`Tối thiểu ${MIN_PASSWORD_LEN} ký tự`} className={`${field} pr-16`} />
+            <button type="button" onClick={() => setShow(s => !s)} aria-pressed={show}
+              className="absolute right-0 top-[2px] h-11 min-w-11 px-3 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">
+              {show ? "Ẩn" : "Hiện"}
+            </button>
+          </div>
+          {strength.level > 0 && (
+            <div className="flex items-center gap-2" aria-live="polite">
+              <div className="flex gap-1 flex-1" aria-hidden="true">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-1 flex-1 rounded-full" style={{ background: i <= strength.level ? strength.color : "var(--kin-vien-thuong)" }} />
+                ))}
+              </div>
+              <span className="text-[length:var(--kin-co-caption)] font-semibold" style={{ color: strength.color }}>{strength.label}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-[6px]">
+          <label htmlFor="dl-nl" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Nhập lại mật khẩu</label>
+          <input id="dl-nl" type={show ? "text" : "password"} autoComplete="new-password" value={confirm} maxLength={MAX_PASSWORD_LEN}
+            onChange={e => { setConfirm(e.target.value); if (error) setError(""); }} placeholder="Nhập lại mật khẩu"
+            aria-invalid={mismatch || undefined} className={field}
+            style={mismatch ? { borderColor: "var(--kin-tt-chu-loi)" } : undefined} />
+          {mismatch && <p className="text-[length:var(--kin-co-caption)]" style={{ color: "var(--kin-tt-chu-loi)" }}>Mật khẩu nhập lại chưa khớp</p>}
+        </div>
+
+        {error && (
+          <div role="alert" className="rounded-[var(--kin-bo-sm)] px-[14px] py-3 border text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]"
+            style={{ background: "var(--kin-tt-nen-loi)", borderColor: "var(--kin-tt-vien-loi)" }}>{error}</div>
+        )}
+
+        <KinSubmitButton busy={busy} busyLabel="Đang lưu..." className={primaryBtn}>Đặt lại mật khẩu</KinSubmitButton>
+      </form>
+    </Shell>
   );
+}
+
+export default function DatLaiMatKhauPage() {
+  return <Suspense><DatLaiForm /></Suspense>;
 }
