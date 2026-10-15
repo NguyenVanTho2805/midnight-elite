@@ -105,12 +105,12 @@ let seq = 700;
   await page.getByLabel("Thêm môn dạy").fill("toán"); await page.getByLabel("Thêm môn dạy").press("Enter"); // trùng không phân biệt hoa thường
   check("thêm môn: 'Toán' + 'Vật lý', trùng 'toán' bị bỏ", (await page.getByRole("list", { name: "Môn đã chọn" }).locator("li").count()) === 2);
   await page.getByRole("button", { name: "Bỏ môn Vật lý" }).click();
-  await page.getByRole("button", { name: "+ Hoá học" }).click();
+  await page.getByRole("button", { name: "+ Hóa học" }).click();
   await page.getByRole("button", { name: "Lưu hồ sơ" }).click();
   await page.getByText("Đã lưu hồ sơ.").waitFor({ timeout: 20000 });
   const dbU = await prisma.user.findUnique({ where: { id: T.id } });
-  check("DB: bio + môn [Toán, Hoá học]", dbU?.bio === "Dạy Toán 10 năm. Đỗ chuyên Toán." && dbU.subjects.join() === "Toán,Hoá học", dbU);
-  await page.getByRole("button", { name: "Bỏ môn Toán" }).click(); await page.getByRole("button", { name: "Bỏ môn Hoá học" }).click();
+  check("DB: bio + môn [Toán, Hóa học]", dbU?.bio === "Dạy Toán 10 năm. Đỗ chuyên Toán." && dbU.subjects.join() === "Toán,Hóa học", dbU);
+  await page.getByRole("button", { name: "Bỏ môn Toán" }).click(); await page.getByRole("button", { name: "Bỏ môn Hóa học" }).click();
   await page.getByRole("button", { name: "Lưu hồ sơ" }).click();
   await page.getByText("Chọn ít nhất 1 môn dạy").waitFor({ timeout: 10000 });
   check("không cho lưu khi 0 môn", true);

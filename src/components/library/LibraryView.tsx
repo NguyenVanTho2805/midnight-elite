@@ -24,7 +24,7 @@ function Row({ chip, chipVideo, title, sub, href, status }: { chip: string; chip
 }
 
 function Lesson({ l, role, courseId }: { l: LibLesson; role: "student" | "tutor"; courseId: string }) {
-  const open = role === "student" ? `/student/bai-giang/${l.id}` : `/admin/khoa-hoc/${courseId}`;
+  const open = role === "student" ? `/student/bai-giang/${l.id}` : `/admin/khoa-hoc/${courseId}?tab=chuong-bai`;
   return (
     <section aria-labelledby={`l-${l.id}`} className="rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] overflow-hidden bg-[var(--kin-nen-trang)]">
       <div className="flex items-center gap-3 px-4 py-3 bg-[var(--kin-nen-bang)] border-b border-[var(--kin-vien-thuong)]">

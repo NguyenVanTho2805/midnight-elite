@@ -4,7 +4,8 @@ import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 
 const BIO_MAX = 2000, SUBJECTS_MAX = 10, SUBJECT_LEN = 50;
-const SUGGEST = ["Toán", "Vật lý", "Hoá học", "Sinh học", "Ngữ văn", "Tiếng Anh", "Lịch sử", "Địa lý", "Tin học", "GDCD", "Luyện thi HSA", "Kỹ năng"];
+// Chính tả KHỚP form đăng ký gia sư (dang-ky/page.tsx: "Hóa học", "Kỹ năng mềm"). Gia sư đăng ký bằng "Hóa học" mà gợi ý ghi "Hoá học" thì hồ sơ hiện hai môn trùng nhau.
+const SUGGEST = ["Toán", "Vật lý", "Hóa học", "Sinh học", "Ngữ văn", "Tiếng Anh", "Lịch sử", "Địa lý", "Tin học", "GDCD", "Luyện thi HSA", "Kỹ năng mềm"];
 
 // Thu nhỏ ảnh về 256×256 (cắt giữa) rồi mã hoá JPEG — API giới hạn ~120KB.
 async function toAvatarDataUrl(file: File): Promise<string> {

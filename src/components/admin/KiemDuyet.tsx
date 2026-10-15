@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QueueAction, QueueItem } from "@/lib/adminQueue";
 import { KinButton } from "@/components/kin/Button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ErrorStrip, ListBody, ListHead, ListRow, ListSkeleton, OutlookPanes, ReadBody, ReadEmpty, ReadHead, ReadSection, type Command,
 } from "@/components/kin/shell/Outlook";
@@ -15,6 +16,7 @@ export const QUEUE_CHANGED = "kin:hang-cho-doi";
 const KIND_LABEL: Record<QueueItem["kind"], string> = { "gia-su": "Hồ sơ gia sư", "bai-viet": "Bài viết", "ho-so": "Hồ sơ bị báo cáo", "tra-loi": "Câu trả lời" };
 
 export default function KiemDuyet() {
+  const { user } = useAuth();
   const [items, setItems] = useState<QueueItem[] | null>(null);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export default function KiemDuyet() {
       </>
     );
   } else {
-    readPane = <ReadEmpty title={items === null ? "Đang tải…" : "Hàng chờ trống"} text={items === null ? undefined : "Hồ sơ gia sư xin duyệt và các báo cáo mới sẽ hiện ở đây."} />;
+    readPane = <ReadEmpty title={items === null ? "Đang tải…" : "Hàng chờ trống"} text={items === null ? undefined : user?.adminRole === "teacher" ? "Báo cáo bài viết trong lớp của bạn sẽ hiện ở đây." : "Hồ sơ gia sư xin duyệt và các báo cáo mới sẽ hiện ở đây."} />;
   }
 
   return <OutlookPanes list={listPane} read={readPane} open={readOpen && !!current} />;

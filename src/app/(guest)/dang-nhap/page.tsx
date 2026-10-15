@@ -8,7 +8,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KinLogo } from "@/components/kin/KinLogo";
@@ -31,6 +31,8 @@ const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nh
 const secondaryBtn = "w-full h-12 px-4 inline-flex items-center justify-center rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] transition-colors hover:bg-[var(--kin-nen-re-chuot)]";
 const linkBtn = "text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:underline";
 
+const MAIN_LOGIN_DEFAULT = "https://midnightelite-edu.com/dang-nhap";
+const noopSubscribe = () => () => {};
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 function DangNhapForm() {
@@ -38,11 +40,13 @@ function DangNhapForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const redirectTo   = safeRedirect(searchParams.get("redirect"));
-  // Cửa đăng nhập của tên miền chính — chỉ hiện ở tên miền admin (data-chi-admin). Bản dựng sẵn không biết tên miền nên mặc định là tên miền thật; chạy cục bộ thì suy từ tên miền đang mở.
-  const [mainLogin, setMainLogin] = useState("https://midnightelite-edu.com/dang-nhap");
-  useEffect(() => {
-    if (isAdminHost(window.location.host)) setMainLogin(mainLoginUrl(window.location.host, window.location.protocol));
-  }, []);
+  // Cửa đăng nhập của tên miền chính — chỉ hiện ở tên miền admin (data-chi-admin). Bản dựng sẵn không biết tên miền nên mặc định là tên miền thật; ở trình duyệt thì suy từ tên miền đang mở
+  // (useSyncExternalStore: không setState trong effect, và lúc hydrate vẫn dùng bản của máy chủ nên không lệch).
+  const mainLogin = useSyncExternalStore(
+    noopSubscribe,
+    () => (isAdminHost(window.location.host) ? mainLoginUrl(window.location.host, window.location.protocol) : MAIN_LOGIN_DEFAULT),
+    () => MAIN_LOGIN_DEFAULT,
+  );
 
   const [phoneOn, setPhoneOn]       = useState(false); // máy chủ đã mở đăng nhập bằng SMS chưa
   const [method, setMethod]         = useState<Method>(searchParams.get("cach") === "ma" ? "ma" : "mat-khau");
