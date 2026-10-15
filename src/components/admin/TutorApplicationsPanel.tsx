@@ -236,7 +236,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
       {rejecting && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: "rgba(15,23,42,0.5)" }}
           onClick={() => setRejecting(null)} role="dialog" aria-modal="true" aria-labelledby="reject-title">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <h2 id="reject-title" className="text-base font-semibold text-slate-800">Từ chối hồ sơ của {rejecting.name}</h2>
             <p className="mt-1 text-sm text-slate-600">Lý do sẽ được gửi cho người nộp đơn. Tài khoản vẫn là học viên bình thường.</p>
             <label htmlFor="reject-reason" className="sr-only">Lý do từ chối</label>
@@ -249,7 +249,7 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
               <button onClick={() => setRejecting(null)} disabled={busyId === rejecting.id}
                 className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 cursor-pointer">Hủy</button>
               <button onClick={reject} disabled={busyId === rejecting.id || !reason.trim()}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50 cursor-pointer"
                 style={{ background: "var(--kin-tt-chu-loi)" }}>
                 {busyId === rejecting.id ? "Đang gửi…" : "Từ chối hồ sơ"}
               </button>

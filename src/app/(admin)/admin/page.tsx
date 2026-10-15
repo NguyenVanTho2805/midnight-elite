@@ -91,7 +91,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
         <div className="rounded-2xl p-4 mb-5"
           style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-chim)" }}>
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-extrabold text-xl flex-shrink-0"
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-[var(--kin-chu-tren-nut-chinh)] font-extrabold text-xl flex-shrink-0"
               style={{ background: "var(--kin-tt-chu-loi)" }}>
               {student.name[0]}
             </div>
@@ -140,7 +140,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
             className="flex items-center justify-center py-3 rounded-2xl text-sm font-bold cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
             style={showRemind
               ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 40%, transparent)" }
-              : { background: "var(--kin-tt-cham-cho)", color: "white" }}>
+              : { background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-tren-nut-chinh)" }}>
             Nhắc nhở
           </button>
           <Link href="/admin/hoc-sinh" onClick={onClose}
@@ -167,7 +167,7 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
               </p>
             )}
             <button onClick={sendRemind} disabled={reminding}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
               style={{ background: "var(--kin-tt-cham-cho)" }}>
               {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
             </button>
@@ -312,7 +312,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6 overflow-y-auto" style={{ height: "calc(100vh - 104px)" }}>
       {callTarget && <CallModal student={callTarget} onClose={() => setCallTarget(null)} />}
       {bulkToast && (
-        <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
+        <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-xl"
           style={{ background: bulkToast.startsWith("✓") ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
           {bulkToast}
         </div>
@@ -471,7 +471,7 @@ export default function AdminDashboardPage() {
               className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all"
               style={showBulkRemind
                 ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 40%, transparent)" }
-                : { background: "var(--kin-tt-cham-cho)", color: "white" }}>
+                : { background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-tren-nut-chinh)" }}>
               Nhắc nhở tất cả
             </button>
             <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
@@ -497,7 +497,7 @@ export default function AdminDashboardPage() {
                 Hủy
               </button>
               <button onClick={sendBulkRemind} disabled={bulkSending}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
                 style={{ background: "var(--kin-tt-cham-cho)" }}>
                 {bulkSending ? "Đang gửi..." : `Gửi tới tất cả (${students.length} học sinh)`}
               </button>
@@ -530,7 +530,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <button onClick={() => setCallTarget(s)}
-                  className="ml-3 flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:-translate-y-0.5 cursor-pointer"
+                  className="ml-3 flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] transition-all hover:-translate-y-0.5 cursor-pointer"
                   style={{ background: "var(--kin-tt-chu-loi)" }}>
                   Liên hệ
                 </button>

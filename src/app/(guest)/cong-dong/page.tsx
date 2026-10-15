@@ -502,8 +502,8 @@ function PostForm({ user, balance, onThread, onQuestion }: {
                 style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
               <button onClick={handlePost}
                 disabled={posting || uploading || !content.trim() || (postType === "question" && !title.trim())}
-                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: postType === "question" ? "var(--kin-tt-chu-cho)" : "var(--kin-nhan-nen)" }}>
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
+                style={{ background: postType === "question" ? "var(--kin-tt-chu-cho)" : "var(--kin-nhan-nen)", color: postType === "question" ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-nhan-chu-tren-nen)" }}>
                 {uploading ? "Đang upload..." : posting
                   ? "Đang đăng..."
                   : postType === "question" ? "Đặt câu hỏi" : "Đăng bài"}
@@ -612,7 +612,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
         {confirmDelete && (
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button onClick={handleDelete} disabled={deleting}
-              className="text-xs px-2.5 py-1 rounded-lg font-bold text-white disabled:opacity-50"
+              className="text-xs px-2.5 py-1 rounded-lg font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
               style={{ background: "var(--kin-tt-chu-loi)" }}>{deleting ? "..." : "Xoá"}</button>
             <button onClick={() => setConfirmDelete(false)}
               className="text-xs px-2 py-1 rounded-lg"
@@ -675,7 +675,7 @@ function ThreadCard({ thread: t, scope, onLike, onBookmark, onDelete, onOpen, cu
               {reportError && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{reportError}</p>}
               <div className="flex gap-1.5 mt-2">
                 <button onClick={handleReport} disabled={reportSending}
-                  className="px-3 py-1 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                  className="px-3 py-1 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
                   style={{ background: "var(--kin-tt-chu-loi)" }}>{reportSending ? "..." : "Gửi báo cáo"}</button>
                 <button onClick={() => { setReporting(false); setReportReason(""); setReportError(""); }}
                   className="px-3 py-1 rounded-lg text-xs font-semibold"
@@ -924,7 +924,7 @@ function CongDongInner() {
           <button key={tab.key} onClick={() => switchTab(tab.key)}
             className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap"
             style={activeTab === tab.key
-              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+              ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
               : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
             {tab.label}
           </button>
@@ -953,7 +953,7 @@ function CongDongInner() {
         <div className="flex items-center justify-between p-4 rounded-xl"
           style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Lỗi tải dữ liệu</span>
-          <button onClick={load} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
+          <button onClick={load} className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
             style={{ background: "var(--kin-tt-chu-loi)" }}>Thử lại</button>
         </div>
       )}

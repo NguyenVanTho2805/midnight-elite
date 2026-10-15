@@ -156,7 +156,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
             <Link
               href={`/student/hoc-tap?course=${course.slug}`}
               onClick={e => e.stopPropagation()}
-              className="flex-1 py-2.5 rounded-lg text-xs font-bold text-white text-center transition-all hover:brightness-105 active:scale-95"
+              className="flex-1 py-2.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] text-center transition-all hover:brightness-105 active:scale-95"
               style={{ background: "var(--kin-tt-chu-xong)" }}>
               Tiếp tục học →
             </Link>

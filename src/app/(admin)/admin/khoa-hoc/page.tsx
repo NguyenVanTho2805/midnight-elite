@@ -173,7 +173,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
       )}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(540px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -183,7 +183,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         }}>
 
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -289,7 +289,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <select className={inp + " bg-white"} value={form.category} onChange={e => set("category", e.target.value)}>
+                <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} onChange={e => set("category", e.target.value)}>
                   {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -388,7 +388,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="p-4 rounded-xl border border-dashed border-green-300 bg-green-50">
               <p className="text-xs font-bold text-green-700 mb-2">Preview — học viên sẽ thấy:</p>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-8 rounded flex items-center justify-center text-xs font-black text-white flex-shrink-0"
+                <div className="w-12 h-8 rounded flex items-center justify-center text-xs font-black text-[var(--kin-chu-tren-nut-chinh)] flex-shrink-0"
                   style={{ background: CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)" }}>KiN</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{form.name}</p>
@@ -453,7 +453,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
         ···
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-52 rounded-lg shadow-xl border border-gray-200 bg-white py-1">
+        <div className="absolute right-0 z-50 mt-1 w-52 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
           {items.map(item => (
             <Link key={item.label} href={`/admin/khoa-hoc/${courseId}?tab=${item.tab}`}
               onClick={() => setOpen(false)}
@@ -489,7 +489,7 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
                 <button onClick={() => setConfirmDel(false)}
                   className="flex-1 py-1.5 rounded text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
                 <button onClick={() => { onDelete(); setOpen(false); setConfirmDel(false); }}
-                  className="flex-1 py-1.5 rounded text-xs font-semibold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
+                  className="flex-1 py-1.5 rounded text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
               </div>
             </div>
           ) : (
@@ -545,7 +545,7 @@ function KhoaHocListInner() {
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
+    <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
 
@@ -566,7 +566,7 @@ function KhoaHocListInner() {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
           <select value={catFilter} onChange={e => setCat(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
             <option value="">Chọn danh mục</option>
             {apiCategories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -574,7 +574,7 @@ function KhoaHocListInner() {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
           <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
             <option value="">Tất cả</option>
             <option value="active">Đang hiển thị</option>
             <option value="inactive">Ẩn</option>

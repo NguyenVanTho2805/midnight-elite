@@ -54,7 +54,7 @@ export function ListRow({ selected, onSelect, title, when, subtitle, status, str
       onClick={onSelect}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={`${bloom !== undefined ? "kin-bloom " : ""}flex flex-col gap-1 min-h-[50px] px-[14px] py-3 cursor-pointer border-b border-[var(--kin-vien-nhat)] hover:bg-[var(--kin-nen-bang)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)] transition-colors`}
-      style={{ ...(selected ? { background: "var(--kin-nen-dang-chon)", borderLeft: "3px solid var(--kin-th-navy)", paddingLeft: 11 } : null), ...(bloom !== undefined ? { "--d": `${Math.min(bloom, 8) * 45}ms` } : null) } as React.CSSProperties}
+      style={{ ...(selected ? { background: "var(--kin-nen-dang-chon)", borderLeft: "3px solid var(--kin-nhan-diem)", paddingLeft: 11 } : null), ...(bloom !== undefined ? { "--d": `${Math.min(bloom, 8) * 45}ms` } : null) } as React.CSSProperties}
     >
       <div className="flex items-baseline gap-2">
         <p className={`flex-1 min-w-0 truncate text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] ${strong ? "font-semibold" : "font-medium"}`}><span data-strike={strike} className="kin-strike kin-m">{title}</span></p>

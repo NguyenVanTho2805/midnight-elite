@@ -52,7 +52,7 @@ function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (re
         <div className="flex gap-2 mt-3">
           <button onClick={onClose} className="flex-1 py-2 rounded-lg text-xs font-bold"
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Hủy</button>
-          <button onClick={() => reason.trim() && onSubmit(reason.trim())} className="flex-1 py-2 rounded-lg text-xs font-bold text-white"
+          <button onClick={() => reason.trim() && onSubmit(reason.trim())} className="flex-1 py-2 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
             style={{ background: "var(--kin-tt-chu-loi)" }}>Gửi báo cáo</button>
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-4">
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-semibold text-white shadow-lg" style={{ background: "var(--kin-chu-chinh)" }}>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-lg" style={{ background: "var(--kin-chu-chinh)" }}>
           {toast}
         </div>
       )}

@@ -4,12 +4,21 @@
    1. Cỡ chữ: Figma có 6 biến --kin-co-* nhưng kin-tokens.css (sinh từ bản
       xuất cũ) chưa có. Giá trị lấy từ get_variable_defs trang chủ 145:8.
    2. [data-vung="sang"]: khoá chế độ SÁNG cho thanh trên, chân trang, trang chủ
-      và khung guest / học viên / quản trị. Lý do: các trang này đã đổi màu viết
-      cứng sang token KiN nhưng chưa có bản tối (nền, ảnh, biểu đồ vẫn viết cho
-      nền sáng). Nếu để tối theo máy thì chỗ này tối chỗ kia trắng. Khi từng khu
-      có bản tối thì bỏ thuộc tính data-vung ở khu đó.
+      và khung khách — CHỈ khi người xem chưa đăng nhập (html chưa có data-kin-vo).
+      Đã đăng nhập (học viên / gia sư / quản trị) thì mọi nơi theo chủ đề + chế độ
+      sáng/tối của người dùng (15/10/2026: trước đó khung học viên + quản trị cũng
+      bị khoá sáng nên chọn "Tối" ở trang Chủ đề màu không có tác dụng).
+      Lý do còn khoá cho khách: trang chủ / trang công khai chưa có bản tối trong Figma.
       Màu nhấn (chủ đề) vẫn theo lựa chọn của người dùng — chỉ khoá sáng/tối.
    ============================================================ */
+
+/* Điều khiển gốc của trình duyệt (ô chọn <select>, thanh cuộn, ô ngày…) theo chế độ sáng/tối của người dùng.
+   Không khai thì ở chế độ tối các ô này vẫn nền trắng. Vùng sáng cố định của khách tự đặt color-scheme: light bên dưới. */
+:root[data-che-do="toi"] { color-scheme: dark; }
+:root[data-che-do="sang"] { color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-che-do]) { color-scheme: dark; }
+}
 
 :root {
   --kin-co-caption: 11.1px;
@@ -35,7 +44,7 @@
   font-weight: 800;
 }
 
-[data-vung="sang"] {
+:root:not([data-kin-vo]) [data-vung="sang"] {
   --kin-nen-trang: #ffffff;
   --kin-nen-bang: #f7f8fa;
   --kin-nen-re-chuot: #f1f3f6;
@@ -62,20 +71,22 @@
   --kin-tt-cham-trung-tinh: #767f8e;
   --kin-nhan-vien: color-mix(in srgb, var(--kin-nhan-nen) 28%, var(--kin-nen-trang));
   color-scheme: light;
+  /* Chữ không đặt màu riêng thừa kế từ <body> (token của chế độ tối → chữ sáng trên nền trắng): đặt lại theo token của vùng. */
+  color: var(--kin-chu-chinh);
 }
-:root[data-chu-de="navy"] [data-vung="sang"] {
+:root[data-chu-de="navy"]:not([data-kin-vo]) [data-vung="sang"] {
   --kin-nhan-link: #2563eb; --kin-nhan-nen-nhat: #eff4ff; --kin-nhan-chu-tren-nhat: #1e3a8a;
 }
-:root[data-chu-de="co-vit"] [data-vung="sang"] {
+:root[data-chu-de="co-vit"]:not([data-kin-vo]) [data-vung="sang"] {
   --kin-nhan-link: #0e7490; --kin-nhan-nen-nhat: #eaf6fa; --kin-nhan-chu-tren-nhat: #0e7490;
 }
-:root[data-chu-de="man"] [data-vung="sang"] {
+:root[data-chu-de="man"]:not([data-kin-vo]) [data-vung="sang"] {
   --kin-nhan-link: #7e22ce; --kin-nhan-nen-nhat: #f7effd; --kin-nhan-chu-tren-nhat: #6b21a8;
 }
-:root[data-chu-de="ca-phe"] [data-vung="sang"] {
+:root[data-chu-de="ca-phe"]:not([data-kin-vo]) [data-vung="sang"] {
   --kin-nhan-link: #7c2d12; --kin-nhan-nen-nhat: #fbf1e9; --kin-nhan-chu-tren-nhat: #78350f;
 }
-:root[data-chu-de="muc"] [data-vung="sang"] {
+:root[data-chu-de="muc"]:not([data-kin-vo]) [data-vung="sang"] {
   --kin-nhan-link: #334155; --kin-nhan-nen-nhat: #f1f5f9; --kin-nhan-chu-tren-nhat: #0f172a;
 }
 
@@ -83,6 +94,9 @@
    Khai báo cho cả :root và [data-vung="sang"] để mỗi nơi tự tính theo token của chính nó
    (phân giải ở phần tử khai báo — không khai ở :root rồi để thừa kế vào vùng sáng). */
 :root, [data-vung="sang"] {
+  /* Màu nhấn dùng làm CHỮ / VIỀN / thanh tiến độ trên nền trang: = màu nhấn của chủ đề ở chế độ sáng, bản sáng hơn đọc được ở chế độ tối.
+     (Thay --kin-th-navy cố định ở các chỗ lẽ ra phải đổi theo chủ đề: thanh bên, chip, viền đang chọn, số tiền.) */
+  --kin-nhan-diem: var(--kin-nhan-chu-tren-nhat);
   /* Nền / viền cho thẻ trạng thái: pha nhạt màu chấm trạng thái với nền trang. */
   --kin-tt-nen-xong: color-mix(in srgb, var(--kin-tt-cham-xong) 11%, var(--kin-nen-trang));
   --kin-tt-nen-cho:  color-mix(in srgb, var(--kin-tt-cham-cho) 13%, var(--kin-nen-trang));
@@ -155,19 +169,14 @@
 [data-kin-nut]:focus-visible { outline-offset: 0; }   /* Figma: vòng focus đặt NGOÀI viền, sát nút */
 .kin-tab:focus-visible { outline-offset: -2px; }       /* tab nằm trong khung cuộn ngang: vòng ở TRONG để khỏi bị cắt */
 
-/* Ô nhập cũ (.notion-input) trong vùng web công khai: viền đủ 3:1 và vòng focus theo màu nhấn KiN. */
-[data-vung="sang"] .notion-input {
+/* Ô nhập cũ (.notion-input): viền đủ 3:1, nền/chữ theo token (đúng cả chế độ tối) và vòng focus theo màu nhấn KiN. `:root` để thắng .notion-input của globals.css (import sau file này). */
+:root .notion-input {
   background: var(--kin-nen-trang);
   border-color: var(--kin-vien-o-nhap);
   border-radius: var(--kin-bo-md);
   color: var(--kin-chu-chinh);
 }
-[data-vung="sang"] .notion-input:focus {
+:root .notion-input:focus {
   border: 2px solid var(--kin-nhan-link);
   padding: 11px 15px;
-}
-
-/* Vòng focus bàn phím: quy tắc chung ở globals.css viết cứng xanh cũ #0068FF; trong vùng web công khai đổi sang màu nhấn của chủ đề. */
-[data-vung="sang"] :focus-visible {
-  outline-color: var(--kin-nhan-link);
 }

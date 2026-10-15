@@ -155,7 +155,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
           <div className="flex items-center justify-end gap-2 flex-wrap" style={{ width: "17.5rem" }}>
             <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Xem</a>
             <button onClick={() => onExtract(item)} className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>Tách câu</button>
-            <select className="px-1 py-1 text-xs border rounded outline-none bg-white max-w-[6rem]" style={{ borderColor: "var(--kin-vien-thuong)" }}
+            <select className="px-1 py-1 text-xs border rounded outline-none bg-[var(--kin-nen-trang)] max-w-[6rem]" style={{ borderColor: "var(--kin-vien-thuong)" }}
               value={item.folderId ?? ""} onChange={e => onMove(item, e.target.value)}>
               <option value="">Chưa phân loại</option>
               {allFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -354,12 +354,12 @@ function PageInner() {
 
       {delTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
-          <div className="bg-white rounded-xl p-5 max-w-sm w-full mx-4">
+          <div className="bg-[var(--kin-nen-trang)] rounded-xl p-5 max-w-sm w-full mx-4">
             <p className="text-sm font-semibold mb-1">Xoá file &quot;{delTarget.fileName}&quot;?</p>
             <p className="text-xs text-gray-500 mb-4">Chỉ xoá file lưu trữ — không ảnh hưởng câu hỏi đã tách và lưu vào ngân hàng trước đó.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDelTarget(null)} className="px-3 py-1.5 text-sm border rounded-lg text-gray-600" style={{ borderColor: "var(--kin-vien-thuong)" }}>Huỷ</button>
-              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
+              <button onClick={handleDeleteConfirmed} className="px-3 py-1.5 text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
             </div>
           </div>
         </div>

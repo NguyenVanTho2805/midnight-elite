@@ -16,17 +16,15 @@ function Frame({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard requiredRole="admin">
-      <div data-vung="sang">
-        <Frame>
-          <Suspense fallback={
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl" style={{ background: "var(--kin-vien-thuong)" }} />)}
-            </div>
-          }>
-            <div className="page-enter">{children}</div>
-          </Suspense>
-        </Frame>
-      </div>
+      <Frame>
+        <Suspense fallback={
+          <div className="animate-pulse space-y-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl" style={{ background: "var(--kin-vien-thuong)" }} />)}
+          </div>
+        }>
+          <div className="page-enter">{children}</div>
+        </Suspense>
+      </Frame>
     </AuthGuard>
   );
 }

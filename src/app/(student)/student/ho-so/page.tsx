@@ -461,7 +461,7 @@ export default function HoSoPage() {
                 Hủy
               </button>
               <button onClick={() => { setShowLogoutConfirm(false); showToast("Đang đăng xuất...", "info"); setTimeout(() => logout(), 1500); }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)]"
                 style={{ background: "var(--kin-tt-chu-loi)", borderRadius: "8px" }}>
                 Xác nhận
               </button>

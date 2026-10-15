@@ -225,7 +225,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
           <p className="text-body" style={{ color: "var(--kin-chu-phu)" }}>Chưa có buổi điểm danh cho ngày này.</p>
           <button type="button" onClick={createSession} disabled={saving}
             className="px-5 py-2.5 rounded-lg text-body-sm font-semibold disabled:opacity-50"
-            style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }}>
+            style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
             {saving ? "Đang tạo..." : "Tạo buổi điểm danh"}
           </button>
         </div>
@@ -279,7 +279,7 @@ export default function DiemDanhPage({ params }: { params: Promise<{ id: string 
             </div>
             <button type="button" onClick={saveAll} disabled={saving || dirty.size === 0}
               className="px-5 py-2 rounded-lg text-body-sm font-semibold disabled:opacity-50"
-              style={{ background: "var(--kin-th-navy)", color: "var(--kin-chu-tren-nut-chinh)" }}>
+              style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
               {saving ? "Đang lưu..." : "Lưu điểm danh"}
             </button>
           </div>
@@ -360,7 +360,7 @@ function RosterRowView({ r, index, onPick, onToggleMakeup, unsaved, onZalo }: {
         {r.status && !unsaved && (
           <div className="mt-1 flex items-center gap-2 flex-wrap">
             <button type="button" onClick={() => onZalo(r)} aria-label={`Nhắn phụ huynh của ${r.name} qua Zalo`}
-              className="text-caption font-semibold underline min-h-[44px] sm:min-h-0" style={{ color: "var(--kin-th-navy)" }}>
+              className="text-caption font-semibold underline min-h-[44px] sm:min-h-0" style={{ color: "var(--kin-nhan-diem)" }}>
               Nhắn phụ huynh
             </button>
             {r.zaloOpenedAt && <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Đã mở Zalo lúc {vnWhen(r.zaloOpenedAt)}</span>}

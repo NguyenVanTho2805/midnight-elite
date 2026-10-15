@@ -60,7 +60,7 @@ export function AddToExamModal({ open, items, onClose, onAdded }: {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-      <div className="bg-white rounded-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div>
             <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Thêm vào đề thi</h2>

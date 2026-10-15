@@ -362,20 +362,20 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
 
 /* ── Liquid Glass surfaces ──────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--kin-nen-trang) 72%, transparent);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
 
 .glass-heavy {
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--kin-nen-trang) 88%, transparent);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
 }
 
 /* Floating glass pill — CSS scroll-driven border-radius collapse */
 .glass-nav-pill {
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--kin-nen-trang) 85%, transparent);
   backdrop-filter: blur(30px) saturate(180%);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   border-radius: 20px;

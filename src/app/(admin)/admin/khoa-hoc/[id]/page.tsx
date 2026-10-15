@@ -191,7 +191,7 @@ function Drawer({ open, title, onClose, onSave, saving, children }: {
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(480px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -199,7 +199,7 @@ function Drawer({ open, title, onClose, onSave, saving, children }: {
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light transition-colors">×</button>
             <h2 className="text-base font-bold text-gray-800">{title}</h2>
@@ -225,7 +225,7 @@ function DelModal({ target, onClose, onConfirm }: { target: DelTarget; onClose: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
         <div className="text-center mb-5">
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "var(--kin-tt-nen-loi)" }}>
             <svg viewBox="0 0 20 20" className="w-7 h-7" fill="var(--kin-tt-chu-loi)"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/></svg>
@@ -238,7 +238,7 @@ function DelModal({ target, onClose, onConfirm }: { target: DelTarget; onClose: 
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
         </div>
       </div>
     </div>
@@ -350,7 +350,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
   return (
     <div>
       {saved && (
-        <div className="mb-4 px-4 py-3 rounded-lg text-sm font-semibold text-white" style={{ background: "var(--kin-tt-chu-xong)" }}>
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-xong)" }}>
           ✓ Đã lưu thay đổi thành công
         </div>
       )}
@@ -375,7 +375,7 @@ function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: CourseD
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
-            <select className={inp + " bg-white"} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+            <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
               <option value="">— Chọn danh mục —</option>
               {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
               {/* Luôn giữ giá trị hiện tại nếu chưa load xong */}
@@ -561,7 +561,7 @@ const TYPE_COLOR: Record<string, string> = {
 function DocBadge({ type }: { type: string }) {
   const t = type ?? "file";
   return (
-    <span className="w-8 h-8 rounded flex items-center justify-center text-white text-[length:var(--kin-co-caption)] font-black flex-shrink-0 uppercase"
+    <span className="w-8 h-8 rounded flex items-center justify-center text-[var(--kin-chu-tren-nut-chinh)] text-[length:var(--kin-co-caption)] font-black flex-shrink-0 uppercase"
       style={{ background: TYPE_COLOR[t] ?? "var(--kin-chu-mo)" }}>
       {t}
     </span>
@@ -605,7 +605,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
   function remove(i: number) { save(docs.filter((_, idx) => idx !== i)); }
   function removePending(i: number) { onPendingChange(pending.filter((_, idx) => idx !== i)); }
 
-  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white";
+  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-[var(--kin-nen-trang)]";
 
   return (
     <div>
@@ -727,7 +727,7 @@ function QuestionRow({ q, qi, onChange, onRemove }: {
   onChange: (patch: Partial<LocalQuestion>) => void;
   onRemove: () => void;
 }) {
-  const inpSm = "px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white w-full";
+  const inpSm = "px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-[var(--kin-nen-trang)] w-full";
 
   function setType(type: "MC" | "ESSAY") {
     onChange(type === "MC"
@@ -898,7 +898,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
     });
   }
 
-  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-white w-full";
+  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-[var(--kin-nen-trang)] w-full";
 
   return (
     <div className="border border-dashed border-gray-300 rounded-xl p-3 space-y-2">
@@ -1048,7 +1048,7 @@ function GradeSubmissionsModal({ assignment, onClose, onGraded }: {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-bold text-gray-800">Bài nộp — {assignment.title}</h2>
@@ -1129,7 +1129,7 @@ function InteractiveResultsModal({ assignment, onClose }: {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-      <div className="bg-white rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-bold text-gray-800">Kết quả — {assignment.title}</h2>
@@ -1795,7 +1795,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
       <DelModal target={del} onClose={() => setDel(null)} onConfirm={delConfirm} />
 
       {toast && (
-        <div className="mb-4 px-4 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center gap-2" style={{ background: "var(--kin-tt-chu-xong)" }}>
+        <div className="mb-4 px-4 py-2.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] flex items-center gap-2" style={{ background: "var(--kin-tt-chu-xong)" }}>
           <svg viewBox="0 0 10 8" className="w-4 h-4 flex-shrink-0"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
           {toast}
         </div>
@@ -1865,7 +1865,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
                     }}
                     onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
                   >
-                    <div className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-white hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-2 pl-8 pr-4 py-2.5 bg-[var(--kin-nen-trang)] hover:bg-gray-50 transition-colors">
                       <DragHandle />
                       <button onClick={() => toggleCh(chapter.id)} className="text-gray-400 text-xs flex-shrink-0">
                         {expanded.chapters.has(chapter.id) ? "▼" : "▶"}
@@ -2189,7 +2189,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Thứ</label>
               <select value={form.dayOfWeek} onChange={e => setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) }))}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white">
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
                 {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
               </select>
             </div>
@@ -2292,7 +2292,7 @@ export default function KhoaHocDetailPage() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 p-10 text-center">
         <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm text-gray-500">Đang tải khoá học...</p>
       </div>
@@ -2301,7 +2301,7 @@ export default function KhoaHocDetailPage() {
 
   if (error || !course) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 p-10 text-center">
         <p className="text-red-500 font-semibold mb-2">Không tìm thấy khoá học</p>
         <Link href="/admin/khoa-hoc" className="text-sm text-blue-600 hover:underline">← Quay lại danh sách</Link>
       </div>
@@ -2309,7 +2309,7 @@ export default function KhoaHocDetailPage() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
+    <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}

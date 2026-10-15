@@ -57,7 +57,7 @@ export default function LopTheoDoiPage() {
             Lớp đang theo dõi
             {!loading && items.length > 0 && (
               <span className="ml-2 text-sm font-semibold px-2 py-0.5 rounded-full align-middle"
-                style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }}>
+                style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
                 {items.length}
               </span>
             )}

@@ -18,7 +18,7 @@ export function ClassScopeSelect({ value, onChange, classes, id = "loc-lop" }: {
     <label className="text-xs font-semibold flex items-center gap-2" style={{ color: "var(--kin-chu-mo)" }} htmlFor={id}>
       Lớp
       <select id={id} aria-label="Lọc theo lớp" value={value} onChange={e => onChange(e.target.value)} className="px-3 py-2 rounded-xl text-sm min-h-[44px]"
-        style={{ background: "rgba(255,255,255,0.8)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
+        style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
         <option value="all">Tất cả (chung + mọi lớp)</option>
         <option value="null">Chỉ cộng đồng chung</option>
         {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

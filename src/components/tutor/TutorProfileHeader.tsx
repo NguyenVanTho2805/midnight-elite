@@ -23,7 +23,7 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <Heading className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{tutor.name}</Heading>
             {tutor.tutorVerified && (
-              <span className="text-xs font-bold px-3 py-1 rounded-full text-white"
+              <span className="text-xs font-bold px-3 py-1 rounded-full text-[var(--kin-chu-tren-nut-chinh)]"
                 style={{ background: "var(--kin-tt-chu-xong)" }}>Đã xác minh</span>
             )}
             {/* PH-207/212: lời hứa của KiN với gia sư, nhìn thấy được trên hồ sơ chứ không chỉ nằm trong điều khoản */}

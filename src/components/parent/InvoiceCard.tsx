@@ -53,7 +53,7 @@ export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvo
 
       <dl className="mt-3 flex gap-6 text-sm">
         <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Phải đóng</dt><dd className="font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(invoice.amountDue)}</dd></div>
-        {!paid && <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại</dt><dd className="font-bold tabular-nums" style={{ color: "var(--kin-th-navy)" }}>{vnd(invoice.remaining)}</dd></div>}
+        {!paid && <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại</dt><dd className="font-bold tabular-nums" style={{ color: "var(--kin-nhan-diem)" }}>{vnd(invoice.remaining)}</dd></div>}
       </dl>
 
       {open && (

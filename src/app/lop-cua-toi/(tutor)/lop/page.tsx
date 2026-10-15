@@ -20,7 +20,7 @@ export default async function LopPage() {
           <p className="text-caption mt-1" style={{ color: "var(--kin-chu-phu)" }}>{d.classes.length} lớp bạn đang dạy · {d.totalStudents} học viên</p>
         </div>
         <Link href="/lop-cua-toi/bao-cao-thang" className="px-3 py-2 text-sm rounded-lg min-h-[44px] inline-flex items-center"
-          style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>Báo cáo tháng</Link>
+          style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>Báo cáo tháng</Link>
       </header>
       <TutorClassList classes={d.classes} headingId="h-lop" />
     </div>

@@ -188,7 +188,7 @@ export default function LichHocPage() {
             <button key={t} onClick={() => setActiveType(t)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium"
               style={activeType === t
-                ? { background: cfg?.color ?? "var(--kin-chu-phu)", color: "white", borderRadius: "8px" }
+                ? { background: cfg?.color ?? "var(--kin-chu-phu)", color: "var(--kin-chu-tren-nut-chinh)", borderRadius: "8px" }
                 : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {cfg && <cfg.Icon size={12} />}
               {t === "all" ? "Tất cả" : TYPE_CFG[t].label}
@@ -218,8 +218,8 @@ export default function LichHocPage() {
             return (
               <div key={iso}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white flex-shrink-0"
-                    style={{ background: isToday ? "var(--kin-tt-chu-loi)" : "var(--kin-nhan-nen)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+                    style={{ background: isToday ? "var(--kin-tt-chu-loi)" : "var(--kin-nhan-nen)", color: isToday ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-nhan-chu-tren-nen)" }}>
                     {iso.slice(8)}
                   </div>
                   <div>

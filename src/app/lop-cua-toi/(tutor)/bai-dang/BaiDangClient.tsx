@@ -106,7 +106,7 @@ export default function BaiDangClient() {
       ) : (
         <>
           {!draft.profilePublic && (
-            <div role="alert" className="rounded-xl p-4 mb-4 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <div role="alert" className="rounded-xl p-4 mb-4 text-sm" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-cho)" }}>
               {draft.profileLocked ? "Hồ sơ công khai của bạn đang bị khoá, nên link trong bài chưa mở được. Liên hệ quản trị viên để được xem xét." : "Hồ sơ của bạn chưa được duyệt nên link công khai chưa mở được. Bài đăng sẽ dùng được ngay khi hồ sơ được duyệt."}
               {" "}<Link href="/lop-cua-toi/ho-so" className="underline font-semibold">Mở hồ sơ gia sư</Link>
             </div>
@@ -125,7 +125,7 @@ export default function BaiDangClient() {
               <div className="mt-2 flex gap-2 flex-wrap items-center">
                 {groupName && !isSaved && <KinButton variant="secondary" onClick={() => void saveGroups([...savedGroups, groupName])}>Lưu nhóm này</KinButton>}
                 {savedGroups.map(g => (
-                  <span key={g} className="inline-flex items-center gap-1 rounded-full pl-3 pr-1 py-0.5 text-xs" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)", border: "1px solid var(--kin-vien-thuong)" }}>
+                  <span key={g} className="inline-flex items-center gap-1 rounded-full pl-3 pr-1 py-0.5 text-xs" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>
                     <button type="button" onClick={() => setGroup(g)} className="min-h-[32px]">{g}</button>
                     <button type="button" aria-label={`Xoá nhóm ${g}`} onClick={() => void saveGroups(savedGroups.filter(x => x !== g))} className="w-8 h-8 rounded-full">×</button>
                   </span>

@@ -124,17 +124,17 @@ export default function BaoCaoTraLoiPage() {
             {[1, 2].map(i => <div key={i} className="h-28 rounded-xl bg-gray-100 animate-pulse" />)}
           </div>
         ) : threadReports.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+          <div className="rounded-xl border border-gray-200 bg-[var(--kin-nen-trang)] p-8 text-center">
             <p className="text-sm text-gray-400">Không có report nào đang chờ duyệt</p>
           </div>
         ) : shownThreadReports.length === 0 ? (
-          <div role="status" className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+          <div role="status" className="rounded-xl border border-gray-200 bg-[var(--kin-nen-trang)] p-8 text-center">
             <p className="text-sm text-gray-400">Không có report nào trong phạm vi đã chọn</p>
           </div>
         ) : (
           <div className="space-y-4">
             {shownThreadReports.map(r => (
-              <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-5">
+              <div key={r.id} className="rounded-xl border border-gray-200 bg-[var(--kin-nen-trang)] p-5">
                 <div className="flex items-center gap-2 flex-wrap mb-2">
                   <ClassScopeBadge course={r.thread.course} />
                   <p className="text-xs text-gray-400">
@@ -154,7 +154,7 @@ export default function BaoCaoTraLoiPage() {
 
                 <div className="flex gap-2">
                   <button onClick={() => resolveThread(r.id, "approved")} disabled={busyId === r.id}
-                    className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-red-600 disabled:opacity-50">
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] bg-red-600 disabled:opacity-50">
                     Xác nhận vi phạm (xoá bài)
                   </button>
                   <button onClick={() => resolveThread(r.id, "rejected")} disabled={busyId === r.id}
@@ -176,13 +176,13 @@ export default function BaoCaoTraLoiPage() {
             {[1, 2].map(i => <div key={i} className="h-32 rounded-xl bg-gray-100 animate-pulse" />)}
           </div>
         ) : answerReports.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
+          <div className="rounded-xl border border-gray-200 bg-[var(--kin-nen-trang)] p-10 text-center">
             <p className="text-sm text-gray-400">Không có report nào đang chờ duyệt</p>
           </div>
         ) : (
           <div className="space-y-4">
             {answerReports.map(r => (
-              <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-5">
+              <div key={r.id} className="rounded-xl border border-gray-200 bg-[var(--kin-nen-trang)] p-5">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-gray-400">
                     Báo cáo bởi <span className="font-semibold text-gray-600">{r.reporter.name}</span> · {timeAgo(r.createdAt)}
@@ -208,7 +208,7 @@ export default function BaoCaoTraLoiPage() {
 
                 <div className="flex gap-2">
                   <button onClick={() => resolveAnswer(r.id, "approved")} disabled={busyId === r.id}
-                    className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-red-600 disabled:opacity-50">
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] bg-red-600 disabled:opacity-50">
                     Xác nhận vi phạm {r.answer.rewardPaid != null ? "(trừ xu)" : ""}
                   </button>
                   <button onClick={() => resolveAnswer(r.id, "rejected")} disabled={busyId === r.id}

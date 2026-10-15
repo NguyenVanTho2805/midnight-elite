@@ -670,7 +670,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />
       )}
       <div
-        className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "100vw",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -680,7 +680,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
         }}>
 
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-8 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-8 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -727,7 +727,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <CategoryField className={inp + " bg-white"} value={form.category} options={categoryOptions}
+                <CategoryField className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} options={categoryOptions}
                   onChange={v => set("category", v)} />
               </div>
             </div>
@@ -750,7 +750,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Thời lượng</label>
-                <select className={inp + " bg-white"} value={form.duration} onChange={e => set("duration", e.target.value)}>
+                <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.duration} onChange={e => set("duration", e.target.value)}>
                   {DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
@@ -761,7 +761,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
                 {reviewQuestions?.length ? (
                   <input type="number" className={inp + " bg-gray-50"} value={form.questions} readOnly />
                 ) : (
-                  <PresetSelectField className={inp + " bg-white"} value={form.questions}
+                  <PresetSelectField className={inp + " bg-[var(--kin-nen-trang)]"} value={form.questions}
                     presets={QUESTION_COUNT_PRESETS} onChange={v => set("questions", v)} placeholder="Nhập số câu..." />
                 )}
                 {errors.questions && <p className="text-xs text-red-500 mt-1">{errors.questions}</p>}
@@ -769,7 +769,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Tổng điểm</label>
-                <PresetSelectField className={inp + " bg-white"} value={form.totalPoints}
+                <PresetSelectField className={inp + " bg-[var(--kin-nen-trang)]"} value={form.totalPoints}
                   presets={TOTAL_POINTS_PRESETS} onChange={v => set("totalPoints", v)} placeholder="Nhập tổng điểm..." />
               </div>
               <div className="col-span-2 flex items-center justify-between">
@@ -792,7 +792,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
               {!!reviewQuestions?.length && (
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-xs text-gray-500 flex-shrink-0">Khuôn điểm đề thi:</span>
-                  <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+                  <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]"
                     value={scorePreset} onChange={e => setScorePreset(e.target.value as keyof typeof SCORE_PRESETS)}>
                     {Object.entries(SCORE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
@@ -843,7 +843,7 @@ function CreateExamDrawer({ open, exams, categoryOptions, onClose, onCreated, sh
             <div className="p-4 rounded-xl border border-dashed border-blue-300 bg-blue-50">
               <p className="text-xs font-bold text-blue-600 mb-2">Preview — trạng thái tự động:</p>
               <div className="flex items-center gap-3">
-                <span className="px-2 py-0.5 rounded text-xs font-bold text-white"
+                <span className="px-2 py-0.5 rounded text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
                   style={{ background: CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)" }}>
                   {previewCode}
                 </span>
@@ -1388,7 +1388,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />
       )}
       <div
-        className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+        className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "100vw",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -1398,7 +1398,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
         }}>
 
         {/* Header */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-8 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-8 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -1407,7 +1407,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
             <div>
               <h2 className="text-base font-bold text-gray-800">Chỉnh sửa đề thi</h2>
               {exam && (
-                <span className="text-xs font-bold text-white px-2 py-0.5 rounded mt-0.5 inline-block"
+                <span className="text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] px-2 py-0.5 rounded mt-0.5 inline-block"
                   style={{ background: CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)" }}>
                   {exam.code}
                 </span>
@@ -1448,7 +1448,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                  <CategoryField className={inp + " bg-white"} value={form.category} options={categoryOptions}
+                  <CategoryField className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} options={categoryOptions}
                     onChange={v => set("category", v)} />
                 </div>
               </div>
@@ -1472,7 +1472,7 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Thời lượng</label>
-                <select className={inp + " bg-white"} value={form.duration} onChange={e => set("duration", e.target.value)}>
+                <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.duration} onChange={e => set("duration", e.target.value)}>
                   {DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
@@ -1480,13 +1480,13 @@ function EditExamDrawer({ exam, categoryOptions, onClose, onSaved, showToast }: 
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
                   Số câu hỏi <span className="text-red-500">*</span>
                 </label>
-                <PresetSelectField className={inp + " bg-white"} value={form.questions}
+                <PresetSelectField className={inp + " bg-[var(--kin-nen-trang)]"} value={form.questions}
                   presets={QUESTION_COUNT_PRESETS} onChange={v => set("questions", v)} placeholder="Nhập số câu..." />
                 {errors.questions && <p className="text-xs text-red-500 mt-1">{errors.questions}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Tổng điểm</label>
-                <PresetSelectField className={inp + " bg-white"} value={form.totalPoints}
+                <PresetSelectField className={inp + " bg-[var(--kin-nen-trang)]"} value={form.totalPoints}
                   presets={TOTAL_POINTS_PRESETS} onChange={v => set("totalPoints", v)} placeholder="Nhập tổng điểm..." />
                 {errors.totalPoints && <p className="text-xs text-red-500 mt-1">{errors.totalPoints}</p>}
               </div>
@@ -1677,7 +1677,7 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
         style={{ lineHeight: 1 }}>···
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg shadow-xl border border-gray-200 bg-white py-1">
+        <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
           <button onClick={() => { setOpen(false); onEdit(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 text-left cursor-pointer">
             Chỉnh sửa
@@ -1772,7 +1772,7 @@ export default function ThiThuAdminPage() {
     <PermissionGuard required={PERMISSIONS.MANAGE_CURRICULUM}>
       {dialog}
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
@@ -1807,7 +1807,7 @@ export default function ThiThuAdminPage() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
             <select value={catFilter} onChange={e => setCat(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
               <option value="">Tất cả danh mục</option>
               {examCategories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -1815,7 +1815,7 @@ export default function ThiThuAdminPage() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
             <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
               <option value="">Tất cả trạng thái</option>
               <option value="upcoming">Sắp diễn ra</option>
               <option value="available">Đang mở</option>

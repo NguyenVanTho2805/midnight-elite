@@ -55,7 +55,7 @@ export function MorePanel({ id, groups, onClose, user, onLogout }: {
             <Link key={l.href} href={l.href} onClick={onClose}
               aria-current={isUnder(pathname, l.href) ? "page" : undefined}
               className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors"
-              style={isUnder(pathname, l.href) ? { background: "var(--kin-nen-nhan)", color: "var(--kin-th-navy)" } : undefined}>
+              style={isUnder(pathname, l.href) ? { background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)" } : undefined}>
               {l.label}
             </Link>
           ))}

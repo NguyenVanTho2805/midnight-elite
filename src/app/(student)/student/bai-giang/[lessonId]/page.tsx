@@ -255,8 +255,8 @@ function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }
           title={subtitlesOn ? "Tắt phụ đề" : "Bật phụ đề"}
           className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors"
           style={subtitlesOn
-            ? { background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
-            : { background: "rgba(0,0,0,0.55)", color: "var(--kin-chu-tren-nut-chinh)" }}>
+            ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
+            : { background: "rgba(0,0,0,0.55)", color: "var(--kin-nhan-chu-tren-nen)" }}>
           CC
         </button>
         {userEmail && (
@@ -354,7 +354,7 @@ function QuizContent({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: str
       </p>
       {azotaUrl ? (
         <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-block px-8 py-3 font-bold text-white text-sm"
+          className="inline-block px-8 py-3 font-bold text-[var(--kin-chu-tren-nut-chinh)] text-sm"
           style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
           Làm bài trên Azota →
         </a>
@@ -460,7 +460,7 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
         <>
           <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="px-4 py-2 text-xs font-bold text-white rounded-lg disabled:opacity-50"
+            className="px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg disabled:opacity-50"
             style={{ background: "var(--kin-tt-cham-cho)" }}>
             {uploading ? "Đang nộp..." : sub ? "Nộp lại bài (hoặc kéo-thả file)" : "Nộp bài (hoặc kéo-thả file)"}
           </button>
@@ -628,7 +628,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
 
       {!expanded ? (
         <button onClick={() => setExpanded(true)}
-          className="px-4 py-2 text-xs font-bold text-white rounded-lg" style={{ background: "var(--kin-tt-cham-cho)" }}>
+          className="px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg" style={{ background: "var(--kin-tt-cham-cho)" }}>
           {locked ? "Xem lại bài làm" : completion.answered > 0 ? "Tiếp tục làm bài" : "Bắt đầu làm bài"}
         </button>
       ) : (
@@ -669,7 +669,7 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
             {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}><Alarm size={11} /> Deadline: {deadline}</p>}
           </div>
           <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-            className="flex-shrink-0 px-4 py-2 text-xs font-bold text-white"
+            className="flex-shrink-0 px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
             style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
             Làm bài →
           </a>
@@ -751,7 +751,7 @@ function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: stri
         <div className="flex items-center gap-3 mt-2">
           <button onClick={handleSave} disabled={loading || saving}
             className="px-5 py-2 text-sm font-bold transition-all"
-            style={{ background: saved ? "var(--kin-tt-chu-xong)" : "var(--kin-nhan-nen)", borderRadius: "8px", color: "white", opacity: saving ? 0.7 : 1 }}>
+            style={{ background: saved ? "var(--kin-tt-chu-xong)" : "var(--kin-nhan-nen)", borderRadius: "8px", color: saved ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-nhan-chu-tren-nen)", opacity: saving ? 0.7 : 1 }}>
             {saved ? "✓ Đã lưu" : saving ? "Đang lưu..." : "Lưu ghi chú"}
           </button>
           {note && (
@@ -905,7 +905,7 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                                         <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                                       </svg>
                                     )}
-                                    {!isDone && isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                    {!isDone && isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-[var(--kin-nen-trang)]" />}
                                     {lesson.isLocked && <Lock size={8} style={{ color: "var(--kin-chu-mo)" }} />}
                                   </div>
 
@@ -1035,7 +1035,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
         <div className="flex gap-3">
           {isForbidden ? (
             <Link href="/khoa-hoc"
-              className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+              className="px-4 py-2 text-sm font-bold text-[var(--kin-chu-tren-nut-chinh)] rounded-xl"
               style={{ background: "var(--kin-tt-cham-cho)" }}>
               Xem các khóa học
             </Link>

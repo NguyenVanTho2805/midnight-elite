@@ -126,7 +126,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(560px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -134,7 +134,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
             <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{initial ? "Sửa câu hỏi" : "Thêm câu hỏi"}</h2>
@@ -162,7 +162,7 @@ function QuestionDrawer({ open, initial, onClose, onSave, saving }: {
                   onClick={() => setForm({ ...form, type: t.v })}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={form.type === t.v
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {t.label}
                 </button>
@@ -492,7 +492,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(640px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -500,7 +500,7 @@ function BulkImportDrawer({ open, onClose, onImport, saving, result, examId, sho
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
             <h2 className="text-base font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Nhập hàng loạt câu hỏi</h2>
@@ -592,7 +592,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 flex-shrink-0">Khuôn điểm đề thi:</span>
-                  <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-white"
+                  <select className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]"
                     value={scorePreset} onChange={e => setScorePreset(e.target.value as keyof typeof SCORE_PRESETS)}>
                     {Object.entries(SCORE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
@@ -697,14 +697,14 @@ function DelModal({ target, onClose, onConfirm }: { target: { id: string; label:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
         <div className="text-center mb-5">
           <h2 className="text-base font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Xoá câu hỏi?</h2>
           <p className="text-sm text-gray-500">Xoá "{target.label}". Không thể hoàn tác.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
         </div>
       </div>
     </div>
@@ -749,7 +749,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
         <h2 className="text-base font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Lưu vào ngân hàng câu hỏi</h2>
         <p className="text-sm text-gray-500 mb-4">"{target.label}"</p>
         <div className="space-y-3 mb-5">
@@ -765,7 +765,7 @@ function SaveToBankModal({ target, onClose, onSave, saving }: {
                 <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
                   style={difficulty === d.value
-                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)" }
+                    ? { background: "var(--kin-nhan-nen)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                     : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                   {d.label}
                 </button>
@@ -915,7 +915,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(640px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -923,7 +923,7 @@ function GradeAttemptDrawer({ attemptId, onClose, onGraded }: {
           pointerEvents: open ? "auto" : "none",
           visibility: open ? "visible" : "hidden",
         }}>
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
             <div>

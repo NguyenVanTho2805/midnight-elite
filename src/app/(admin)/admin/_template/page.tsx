@@ -72,7 +72,7 @@ function toItem(u: ApiItem): Item {
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
-    <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
+    <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-xl"
       style={{ background: ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
       {ok ? "✓" : "✗"} {msg}
     </div>
@@ -113,7 +113,7 @@ function ActionMenu({ itemId, onDelete }: { itemId: string; onDelete: () => void
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg shadow-xl border border-gray-200 bg-white py-1">
+        <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
           {/* Nav links */}
           {navItems.map(item => (
             <Link key={item.label} href={item.href} onClick={() => setOpen(false)}
@@ -135,7 +135,7 @@ function ActionMenu({ itemId, onDelete }: { itemId: string; onDelete: () => void
                   Huỷ
                 </button>
                 <button onClick={() => { onDelete(); setOpen(false); setConfirmDel(false); }}
-                  className="flex-1 py-1.5 rounded text-xs font-semibold text-white cursor-pointer"
+                  className="flex-1 py-1.5 rounded text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)] cursor-pointer"
                   style={{ background: "var(--kin-tt-chu-loi)" }}>
                   Xoá
                 </button>
@@ -229,7 +229,7 @@ function ItemDrawer({ open, onClose, onSaved }: {
       )}
 
       {/* Drawer panel */}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto shadow-2xl"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
         style={{
           width: "min(480px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(110%)",  // 110% = hoàn toàn ra ngoài
@@ -239,7 +239,7 @@ function ItemDrawer({ open, onClose, onSaved }: {
         }}>
 
         {/* ── Sticky header — không scroll mất khi form dài ─────────────── */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -279,7 +279,7 @@ function ItemDrawer({ open, onClose, onSaved }: {
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <select className={INP + " bg-white"} value={form.category} onChange={e => set("category", e.target.value)}>
+                <select className={INP + " bg-[var(--kin-nen-trang)]"} value={form.category} onChange={e => set("category", e.target.value)}>
                   <option value="">— Chọn —</option>
                   <option value="a">Danh mục A</option>
                 </select>
@@ -383,7 +383,7 @@ function PageInner() {
         │  → không bao giờ scroll trang, luôn vừa màn hình       │
         └─────────────────────────────────────────────────────────┘
       */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
+      <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col"
         style={{ height: "calc(100vh - 104px)" }}>
 
         {/* ── Breadcrumb ── py-3 + bg-gray-50 ─────────────────────────────── */}
@@ -409,7 +409,7 @@ function PageInner() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
             <select value={catFilter} onChange={e => setCat(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
               <option value="">Tất cả danh mục</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -419,7 +419,7 @@ function PageInner() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
             <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-white focus:border-blue-400">
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
               <option value="">Tất cả</option>
               <option value="active">Đang hiển thị</option>
               <option value="inactive">Ẩn</option>

@@ -46,7 +46,7 @@ export function Drawer({ open, title, onClose, children, footerActions, width = 
       />
       {/* panel */}
       <aside
-        className="fixed top-0 right-0 bottom-0 z-[151] bg-white shadow-2xl flex flex-col transition-transform duration-200 ease-out"
+        className="fixed top-0 right-0 bottom-0 z-[151] bg-[var(--kin-nen-trang)] shadow-2xl flex flex-col transition-transform duration-200 ease-out"
         style={{ width: `min(${width}px, 100vw)`, transform: open ? "translateX(0)" : "translateX(100%)" }}
         role="dialog"
         aria-modal="true"

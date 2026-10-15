@@ -96,7 +96,7 @@ export default function KeHoachEditorClient({ id }: { id: string }) {
           </p>
 
           {conflict && (
-            <div role="alert" className="rounded-xl p-4 mt-3 text-sm" style={{ background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <div role="alert" className="rounded-xl p-4 mt-3 text-sm" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-cho)" }}>
               Kế hoạch này vừa được sửa ở nơi khác (tab hoặc máy khác). Tải lại để xem bản mới — thay đổi chưa lưu ở đây sẽ mất.{" "}
               <button className="underline font-semibold" onClick={() => void load()}>Tải lại</button>
             </div>

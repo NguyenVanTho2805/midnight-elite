@@ -83,7 +83,7 @@ function TabThiThu() {
           <button onClick={() => { setFetchError(false); setLoading(true);
             const url = activeFilter === "Tất cả" ? "/api/leaderboard" : `/api/leaderboard?category=${encodeURIComponent(activeFilter)}`;
             fetch(url).then(r => r.ok ? r.json() : Promise.reject()).then(setApiData).catch(() => setFetchError(true)).finally(() => setLoading(false));
-          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>
+          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
         </div>
@@ -242,7 +242,7 @@ function TabVinhDanh() {
             <button key={opt.key} onClick={() => setSortKey(opt.key)}
               className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
               style={sortKey === opt.key
-                ? { background: "var(--kin-tt-chu-cho)", color: "white", borderRadius: "8px" }
+                ? { background: "var(--kin-tt-chu-cho)", color: "var(--kin-chu-tren-nut-chinh)", borderRadius: "8px" }
                 : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
               {opt.label}
             </button>
@@ -258,7 +258,7 @@ function TabVinhDanh() {
           <span className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Không thể tải bảng vinh danh</span>
           <button onClick={() => { setFetchError(false);
             fetch("/api/honor-leaderboard").then(r => r.ok ? r.json() : Promise.reject()).then(setStudents).catch(() => setFetchError(true));
-          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white" style={{ background: "var(--kin-tt-chu-loi)" }}>
+          }} className="px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>
             Thử lại
           </button>
         </div>

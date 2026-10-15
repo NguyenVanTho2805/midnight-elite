@@ -69,7 +69,7 @@ const STATUS_CONFIG = {
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
-    <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-white shadow-xl"
+    <div className="fixed top-4 right-4 z-[200] px-4 py-3 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-xl"
       style={{ background: ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
       {ok ? "✓" : "✗"} {msg}
     </div>
@@ -218,7 +218,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="rounded-2xl w-full max-w-md mx-4 overflow-y-auto max-h-[90vh] bg-white"
+      <div className="rounded-2xl w-full max-w-md mx-4 overflow-y-auto max-h-[90vh] bg-[var(--kin-nen-trang)]"
         style={{ border: "1px solid var(--kin-vien-thuong)", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
 
         {/* Header */}
@@ -334,7 +334,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                   <button onClick={() => setConfirmDel(false)}
                     className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
                   <button onClick={deleteStudent} disabled={deleting}
-                    className="flex-1 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                    className="flex-1 py-1 rounded-lg text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
                     style={{ background: "var(--kin-tt-chu-loi)" }}>{deleting ? "…" : "Xóa"}</button>
                 </div>
               </div>
@@ -342,7 +342,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           </div>
 
           {toast && (
-            <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white text-center"
+            <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] text-center"
               style={{ background: toast.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>
               {toast.ok ? "✓" : "✗"} {toast.msg}
             </div>
@@ -404,7 +404,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors border"
             style={showRemind
               ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", borderColor: "var(--kin-tt-vien-cho)" }
-              : { background: "var(--kin-tt-cham-cho)", color: "white", borderColor: "transparent" }}>
+              : { background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-tren-nut-chinh)", borderColor: "transparent" }}>
             Nhắc nhở học tập
           </button>
 
@@ -415,7 +415,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                 className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
                 style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
               <button onClick={sendRemind} disabled={reminding}
-                className="w-full py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-60 cursor-pointer"
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-60 cursor-pointer"
                 style={{ background: "var(--kin-tt-cham-cho)" }}>
                 {reminding ? "Đang gửi..." : "Gửi nhắc nhở qua email"}
               </button>
@@ -463,7 +463,7 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
   return (
     <>
       {open && <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />}
-      <div className="fixed top-0 right-0 bottom-0 z-50 bg-white overflow-y-auto"
+      <div className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto"
         style={{
           width: "min(440px, 100vw)",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -474,7 +474,7 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           boxShadow: "-8px 0 32px rgba(0,0,0,0.08)",
         }}>
 
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
           <div className="flex items-center gap-3">
             <button onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
@@ -522,7 +522,7 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Kích hoạt khoá học ngay</label>
             <select value={form.courseId} onChange={e => setForm(f => ({ ...f, courseId: e.target.value }))}
-              className={inp + " bg-white"}>
+              className={inp + " bg-[var(--kin-nen-trang)]"}>
               <option value="">— Không kích hoạt —</option>
               {dbCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -729,7 +729,7 @@ export default function HocSinhPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-white"
+        <div className="rounded-xl overflow-hidden flex flex-col flex-1 bg-[var(--kin-nen-trang)]"
           style={{ border: "1px solid var(--kin-vien-thuong)" }}>
           <div className="grid grid-cols-12 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
             style={{ color: "var(--kin-chu-mo)", background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>

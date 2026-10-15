@@ -183,7 +183,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                   <div className="mt-3 pt-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid var(--kin-vien-nhat)" }}>
                     <span className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Tổng phải đóng</span>
-                    <span className="font-bold text-lg" style={{ color: "var(--kin-th-navy)" }}>
+                    <span className="font-bold text-lg" style={{ color: "var(--kin-nhan-diem)" }}>
                       {formatVnd(feeBreakdown.finalAmount)}
                     </span>
                   </div>
