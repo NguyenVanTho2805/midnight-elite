@@ -1,7 +1,7 @@
 // Thanh bên trái thu/mở (14/10/2026) — phần THUẦN: src/lib/railState.ts (trạng thái, phím tắt, script chạy trước khi vẽ),
 // src/lib/signedInShell.ts (người nào, ở trang nào thì có thanh bên), và tuỳ chọn `rail` trong src/lib/userPreferences.ts.
 import { RAIL_KEY, RAIL_ATTR, RAIL_INIT_SCRIPT, parseRail, toggleRail, isRailShortcut } from "@/lib/railState";
-import { shellFor, NO_SHELL_PATHS } from "@/lib/signedInShell";
+import { shellFor, NO_SHELL_PATHS, shellHintFor, parseShellHint, SHELL_HINT_KEY, SHELL_HINT_ATTR, SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { readPreferences, applyPreferencesPatch } from "@/lib/userPreferences";
 import { check, section, done } from "./h";
 
@@ -43,11 +43,39 @@ const student = { role: "student", adminRole: null }, tutor = { role: "admin", a
 check("học viên ở trang khách (/thu-vien, /khoa-hoc…) → thanh bên học viên", ["/thu-vien", "/khoa-hoc", "/khoa-hoc/toan-9", "/giang-vien", "/diem-chuan", "/tin-tuc", "/cong-dong", "/bang-xep-hang", "/ban-do", "/chinh-sach"].every(p => shellFor(student, p) === "student"));
 check("gia sư ở trang khách → thanh bên gia sư", ["/thu-vien", "/khoa-hoc", "/giang-vien", "/tin-tuc"].every(p => shellFor(tutor, p) === "tutor"));
 check("khách (chưa đăng nhập) → không có", shellFor(null, "/thu-vien") === null);
-check("quản trị cấp 1 / cấp nội dung → không có ở trang khách (họ có vỏ riêng trên tên miền quản trị)", shellFor({ role: "admin", adminRole: "admin_super" }, "/thu-vien") === null && shellFor({ role: "admin", adminRole: "admin_content" }, "/thu-vien") === null);
+const adminSuper = { role: "admin", adminRole: "admin_super" }, adminContent = { role: "admin", adminRole: "admin_content" };
+check("quản trị cấp 1 / cấp nội dung → vỏ HỌC VIÊN ở mọi trang khách (xem thử khu học sinh; 15/10/2026: trước đây rơi ra khung khách)", ["/thu-vien", "/thi-thu", "/cong-dong", "/bang-xep-hang", "/tin-tuc", "/khoa-hoc", "/giang-vien", "/diem-chuan"].every(p => shellFor(adminSuper, p) === "student" && shellFor(adminContent, p) === "student"));
+check("quản trị không có adminRole (tài khoản cũ) → cũng vỏ học viên, không rơi ra khung khách", shellFor({ role: "admin", adminRole: null }, "/thu-vien") === "student" && shellFor({ role: "admin" }, "/thu-vien") === "student");
+check("mọi người đã đăng nhập (học viên, gia sư, quản trị) đều có vỏ ở trang khách — không ai thấy thanh trên + chân trang của khách", [student, tutor, adminSuper, adminContent].every(u => shellFor(u, "/thu-vien") !== null));
 check("vai chưa rõ (null) → không có", shellFor({ role: null, adminRole: null }, "/thu-vien") === null);
 for (const p of NO_SHELL_PATHS) check(`${p} (đăng nhập / đăng ký / khôi phục) → không có thanh bên dù đã đăng nhập`, shellFor(student, p) === null && shellFor(tutor, p) === null && shellFor(student, p + "/x") === null);
 check("trang chỉ giống TIỀN TỐ ('/dang-nhap-gi-do') thì vẫn có thanh bên — so khớp theo đoạn đường dẫn, không theo chuỗi", shellFor(student, "/dang-nhap-gi-do") === "student" && shellFor(student, "/dang-ky-lop") === "student");
 check("danh sách loại trừ đủ 6 trang xác thực", NO_SHELL_PATHS.length === 6 && ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"].every(p => (NO_SHELL_PATHS as readonly string[]).includes(p)), NO_SHELL_PATHS);
+
+section("Gợi ý vỏ — không nháy khung khách khi tải cứng (src/lib/signedInShell.ts)");
+check("gợi ý của học viên = 'student', gia sư = 'tutor', quản trị = 'student', khách = null", shellHintFor(student) === "student" && shellHintFor(tutor) === "tutor" && shellHintFor(adminSuper) === "student" && shellHintFor(null) === null);
+check("parseShellHint chỉ nhận 'student' / 'tutor' — giá trị lạ, rỗng, sai kiểu → null", parseShellHint("student") === "student" && parseShellHint("tutor") === "tutor" && [undefined, null, "", "Student", "admin", 1, true, {}].every(v => parseShellHint(v) === null));
+check("khoá và thuộc tính không trùng với của thanh bên thu/mở", (SHELL_HINT_KEY as string) !== RAIL_KEY && (SHELL_HINT_ATTR as string) !== RAIL_ATTR && SHELL_HINT_ATTR === "data-kin-vo");
+check("script chạy trước khi vẽ: một dòng, không chứa '</script', bọc try (không ném lỗi khi localStorage bị chặn)", !SHELL_INIT_SCRIPT.includes("\n") && !/<\/script/i.test(SHELL_INIT_SCRIPT) && SHELL_INIT_SCRIPT.startsWith("try{") && SHELL_INIT_SCRIPT.endsWith("catch(e){}"));
+{
+  type Doc = { documentElement: { getAttribute: (k: string) => string | null; setAttribute: (k: string, v: string) => void } };
+  const run = (stored: string | null) => {
+    const attrs = new Map<string, string>();
+    const documentRef: Doc = { documentElement: { getAttribute: k => attrs.get(k) ?? null, setAttribute: (k, v) => void attrs.set(k, v) } };
+    const localStorageRef = { getItem: (k: string) => (k === SHELL_HINT_KEY ? stored : null) };
+    new Function("localStorage", "document", SHELL_INIT_SCRIPT)(localStorageRef, documentRef);
+    return documentRef.documentElement.getAttribute(SHELL_HINT_ATTR);
+  };
+  check("script: đã nhớ 'student' → đặt data-kin-vo=student lên <html>", run("student") === "student");
+  check("script: đã nhớ 'tutor' → đặt data-kin-vo=tutor", run("tutor") === "tutor");
+  check("script: chưa nhớ gì → không đặt gì (khách vẫn thấy khung khách)", run(null) === null);
+  check("script: giá trị hỏng ('admin', rỗng) → không đặt gì", run("admin") === null && run("") === null);
+  check("script: localStorage ném lỗi (trình duyệt chặn) → im lặng, không đặt gì", (() => {
+    const attrs = new Map<string, string>();
+    new Function("localStorage", "document", SHELL_INIT_SCRIPT)({ getItem: () => { throw new Error("blocked"); } }, { documentElement: { setAttribute: (k: string, v: string) => void attrs.set(k, v) } });
+    return attrs.size === 0;
+  })());
+}
 
 section("Tuỳ chọn `rail` lưu theo tài khoản (User.preferences)");
 check("đọc: 'thu' và 'mo' giữ nguyên", readPreferences({ rail: "thu" }).rail === "thu" && readPreferences({ rail: "mo" }).rail === "mo");

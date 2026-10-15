@@ -74,7 +74,7 @@ Trên laptop 1280px, khung Outlook của "Việc của tôi" = thanh 79 + danh s
 10. **Máy khác / nhiều tab.** Nguồn đúng là **tài khoản** (cùng cách với chủ đề màu, TK-167): đăng nhập ở máy mới thì lấy lựa chọn của tài khoản. `localStorage` chỉ là bản nháp để khỏi nháy.
 
 ### 3.4 Vì sao trang khách quyết định ở máy khách, không ở máy chủ
-Nếu `(guest)/layout` đọc cookie phiên để chọn khung, **cả nhóm trang khách thành dựng-lại-mỗi-lần** (mất bộ nhớ đệm), trong đó có các trang cần SEO (`/khoa-hoc`, `/giang-vien`, `/diem-chuan`, `/tin-tuc`). → quyết định bằng `AuthContext` ở máy khách (`GuestChrome`). **Hệ quả đã biết:** lần *tải cứng* đầu tiên, người đã đăng nhập thấy khung khách một thoáng rồi đổi sang vỏ; chuyển trang trong ứng dụng thì không nháy.
+Nếu `(guest)/layout` đọc cookie phiên để chọn khung, **cả nhóm trang khách thành dựng-lại-mỗi-lần** (mất bộ nhớ đệm), trong đó có các trang cần SEO (`/khoa-hoc`, `/giang-vien`, `/diem-chuan`, `/tin-tuc`). → quyết định bằng `AuthContext` ở máy khách (`GuestChrome`). **Hệ quả đã biết:** lần *tải cứng* đầu tiên, người đã đăng nhập thấy khung khách một thoáng rồi đổi sang vỏ; chuyển trang trong ứng dụng thì không nháy. **Đã bớt (15/10):** máy nhớ "lần trước đăng nhập kiểu gì" (`localStorage kin.vo`), một dòng chạy trước khi vẽ đặt `data-kin-vo` lên `<html>` và CSS ẩn thanh trên + chân trang của khách ngay từ khung hình đầu — hết "hiện ra trang chủ một thoáng" (xem 6.6). Trang vẫn không phải dựng lại mỗi lần.
 
 ---
 
@@ -121,7 +121,15 @@ Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-si
 | 3 | ~~**Gia sư ↔ quản trị là hai tên miền**~~ **ĐÃ SỬA 14/10**: gia sư ở lại tên miền chính, cùng phiên, trong vỏ gia sư (`hostRouting.ts`). **Còn lại:** cookie vẫn không dùng chung giữa hai tên miền cho quản trị cấp 1 / nội dung | Đụng bảo mật phiên | Thọ nếu muốn dùng chung cookie |
 | 4 | **`/lop-cua-toi/[courseId]`** (xem một lớp) dùng khung riêng, không có thanh module | Cần quyết: thanh module + khung lớp cạnh nhau, hay giữ drill-in | Thọ + Thanh |
 | 5 | ~~**Khi thu, "Khác" (hồ sơ, đăng xuất, trang phụ) nằm sau nút mở**~~ **ĐÃ SỬA 14/10**: menu tài khoản ở dải trên (`AccountMenu`). "Trang phụ" khác trong "Khác" vẫn nằm sau thanh bên | — | — |
-| 6 | **Hết nháy hoàn toàn ở trang khách khi tải cứng** | Cần cookie gợi ý (không bí mật) + script trước khi vẽ để chừa chỗ 79px | Làm khi cần |
+| 6 | ~~**Hết nháy ở trang khách khi tải cứng**~~ **ĐÃ LÀM 15/10** theo cách đã ghi (gợi ý ở `localStorage` + script trước khi vẽ + CSS `html[data-kin-vo] [data-guest-chrome]`; `src/lib/signedInShell.ts`, `src/lib/shellHint.ts`). **Còn lại:** trong 1–2 khung đầu nội dung hiện không có thanh bên (chừa chỗ 79px chưa làm) rồi thanh bên hiện ra; gợi ý chỉ để *ẩn* khung khách, vỏ thật vẫn do `shellFor` quyết sau khi biết người dùng | Làm khi cần chừa chỗ 79px |
 | 7 | Điện thoại: ngăn kéo "thò ra từ trái" thay vì thanh dưới | Thanh dưới hợp một tay hơn; chưa có yêu cầu | Chỉ làm nếu Thọ muốn |
 | 8 | Rê chuột mép trái để thò ra tạm | Không có phương án bàn phím/cảm ứng | Hoãn |
 | 9 | Quản trị cấp 1 / cấp nội dung ở trang khách của tên miền chính | Không có trang nào cần | Không cần |
+
+## 7. Sửa 15/10/2026 — "đã vào vai trò thì mọi chức năng mở trong khung thanh bên"
+Thọ gửi ảnh vỏ HỌC SINH (tài khoản quản trị "Admin TSIX") và nói "Thi thử", "Thư viện", "Hỏi đáp / Cộng đồng"… lại hiện ra trang kiểu trang chủ. Dựng lại bằng trình duyệt thật: **học viên và gia sư luôn giữ thanh bên; quản trị cấp 1 / cấp nội dung thì mất thanh bên ở MỌI trang khách** (trừ /cai-dat/chu-de) và thấy thanh trên + chân trang của khách.
+- **Nguyên nhân:** `AuthGuard` cho quản trị vào `/student/*` để xem thử (hiện vỏ HỌC SINH), nhưng `shellFor` chỉ cho vỏ học viên và gia sư. Các mục trong "Khác" (`/student/thi-thu`, `/student/hoi-dap`, `/student/cong-dong`, `/student/bang-xep-hang`, `/student/tin-tuc`) chỉ là lệnh chuyển hướng sang trang khách (`/thi-thu`, `/cong-dong`…), và "Thư viện" / "Khoá học" / "Gia sư" / "Điểm chuẩn" vốn là trang khách → quản trị rơi ra khung khách.
+- **Sửa:** mọi người đã đăng nhập đều có vỏ ở trang khách — quản trị (kể cả tài khoản cũ không có `adminRole`) được **vỏ học viên** ở chế độ xem thử. Vỏ quản trị thật vẫn chỉ ở tên miền quản trị. Các trang đăng nhập / đăng ký / khôi phục vẫn không có vỏ.
+- **Nháy "trang chủ" lúc tải cứng:** xem 3.4 và 6.6 (đã làm).
+- **Test:** `t-rail-lib` (65, thuần), `ui-shell-everywhere` (16, trình duyệt thật: 4 loại tài khoản × 11 chức năng; đúng thao tác của Thọ — mở "Khác" bấm 10 mục + "Thư viện"; gợi ý vỏ cho học viên, khách, gợi ý cũ, gia sư).
+- **Chưa làm / cần Thọ nhìn:** quản trị xem thử khu học sinh đang thấy vỏ HỌC SINH (đúng ảnh Thọ gửi) chứ không phải vỏ quản trị — nếu muốn quản trị có một vỏ riêng trên tên miền chính thì đó là thiết kế mới, chưa làm.
