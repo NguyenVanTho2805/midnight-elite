@@ -135,17 +135,17 @@ const age = (userId: string, ms: number) => prisma.passwordResetToken.updateMany
   check("có thư BÁO 'mật khẩu vừa được đổi' (nếu không phải mình thì biết ngay) kèm link xin đặt lại", notice.length === 1 && /quen-mat-khau/.test(notice[0].text));
 
   section("Đặt lại xong thì bộ đếm đăng nhập sai của tài khoản được xoá (người quên mật khẩu thường đã gõ sai nhiều lần)");
-  const T = await mkUser({ name: "Gõ sai nhiều lần" });
-  for (let i = 0; i < 5; i++) await login(T.email, "SaiMatKhau#" + i); // đủ 5 lần sai → các lần sau bị làm chậm 1,5 giây (src/lib/loginThrottle.ts)
-  const t0 = Date.now();
-  const slowWrong = await login(T.email, "SaiMatKhau#6");
-  const slowMs = Date.now() - t0;
+  const G = await mkUser({ name: "Gõ sai nhiều lần" });
+  for (let i = 0; i < 5; i++) await login(G.email, "SaiMatKhau#" + i); // đủ 5 lần sai → các lần sau bị làm chậm 1,5 giây (src/lib/loginThrottle.ts)
+  const g0 = Date.now();
+  const slowWrong = await login(G.email, "SaiMatKhau#6");
+  const slowMs = Date.now() - g0;
   check(`trước khi đặt lại: lần thử kế tiếp bị làm chậm (≥ 1,4 giây, đo ${slowMs} ms) và vẫn là 401`, slowWrong.status === 401 && slowMs >= 1400, slowMs);
-  await forgot(T.email);
-  const rT = await reset(tokenIn(resetMails(T.email)[0]), "MatKhauMoi#2026");
-  const t1 = Date.now();
-  const fastLogin = await login(T.email, "MatKhauMoi#2026");
-  const fastMs = Date.now() - t1;
+  await forgot(G.email);
+  const rT = await reset(tokenIn(resetMails(G.email)[0]), "MatKhauMoi#2026");
+  const g1 = Date.now();
+  const fastLogin = await login(G.email, "MatKhauMoi#2026");
+  const fastMs = Date.now() - g1;
   check(`sau khi đặt lại: đăng nhập bằng mật khẩu mới vào luôn, không bị làm chậm (< 1,3 giây, đo ${fastMs} ms)`, rT.status === 200 && fastLogin.status === 200 && fastMs < 1300, { rT: rT.status, fastMs });
 
   section("Email chưa xác thực: mở được link trong hộp thư = chứng minh hộp thư → coi như đã xác thực");
