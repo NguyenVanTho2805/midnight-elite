@@ -209,6 +209,14 @@ function HocTapContent() {
               ✓ Đã hoàn thành khóa học
             </div>
           )}
+          {/* "Lớp" là đường học theo thứ tự; muốn tìm lại một tệp / bản ghi / điểm bài tập thì sang Thư viện (đúng khối của lớp này). */}
+          {isEnrolled === true && (
+            <Link href={`/thu-vien#c-${courseId}`} data-thu-vien-link
+              className="mt-3 min-h-11 flex items-center justify-center text-sm font-semibold hover:underline"
+              style={{ color: "var(--kin-nhan-link)" }}>
+              Tài liệu &amp; bản ghi của lớp này →
+            </Link>
+          )}
         </div>
       </div>
 

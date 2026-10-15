@@ -82,6 +82,8 @@ const D = 24 * 3_600_000;
   check("lối 'Mở bài' dẫn tới trang bài giảng của học viên; video và bài tập cũng vậy", h.includes('href="/student/bai-giang/l1"') && h.includes('href="/student/bai-giang/l2"'));
   check("ghi chú Figma: video là đường dẫn, KiN không lưu file video", h.includes("KiN không lưu file video"));
   check("không có nút 'Sửa bài' / lối sang trang quản trị ở bản học viên", !h.includes("Sửa bài") && !h.includes("/admin/"));
+  check("mỗi lớp có lối 'Học tiếp trong lớp →' sang /student/hoc-tap?course=<lớp> (Lớp = đường học, Thư viện = nơi tìm lại)", h.includes(`href="/student/hoc-tap?course=${A.id}"`) && h.includes("Học tiếp trong lớp"));
+  check("khối của lớp có neo id=c-<lớp> để trang Lớp trỏ thẳng vào (/thu-vien#c-<lớp>)", h.includes(`id="c-${A.id}"`));
 
   section("Học viên chờ phụ huynh duyệt (pending_consent) và học viên chưa vào lớp");
   const h2 = await page(s2c);
@@ -95,6 +97,7 @@ const D = 24 * 3_600_000;
   check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /admin/khoa-hoc/<lớp>", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/admin/khoa-hoc/${A.id}`));
   check("bài tập: 'N bài nộp · M chờ chấm' (không phải trạng thái của một học viên)", th.includes("2 bài nộp · 0 chờ chấm".replace("0 chờ chấm", "đã chấm hết")) || th.includes("bài nộp"), th.match(/\d+ bài nộp[^<]*/g));
   check("gia sư không thấy 'Đã xem' (không có tiến độ cá nhân)", !th.includes("Đã xem"));
+  check("gia sư KHÔNG có lối 'Học tiếp trong lớp' (đó là của học viên)", !th.includes("Học tiếp trong lớp") && !th.includes("/student/hoc-tap"));
   const t2h = await page(t2c);
   check("gia sư khác chỉ thấy lớp của mình (Lý 10), không thấy Toán 9", t2h.includes("Lý 10 lớp khác") && !t2h.includes("Toán 9 công khai") && !t2h.includes("TL-MIEN-PHI"));
 

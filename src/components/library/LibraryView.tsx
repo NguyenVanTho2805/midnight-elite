@@ -70,7 +70,13 @@ export default function LibraryView({ role, classes }: { role: "student" | "tuto
           <div className="flex flex-col gap-8">
             {classes.map(c => (
               <section key={c.id} aria-labelledby={`c-${c.id}`}>
-                <h2 id={`c-${c.id}`} className="mb-3 text-[length:var(--kin-co-body)] font-semibold text-[var(--kin-chu-chinh)]">{c.name}</h2>
+                <div className="mb-3 flex items-baseline justify-between gap-3">
+                  <h2 id={`c-${c.id}`} className="text-[length:var(--kin-co-body)] font-semibold text-[var(--kin-chu-chinh)]">{c.name}</h2>
+                  {/* "Lớp" là đường học theo thứ tự (tiến độ, "Tiếp tục học"); Thư viện là nơi tìm lại — nối hai nơi để khỏi hỏi "khác gì?". */}
+                  {role === "student" && (
+                    <Link href={`/student/hoc-tap?course=${c.id}`} data-lop-link className="flex-shrink-0 min-h-11 inline-flex items-center text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:underline">Học tiếp trong lớp →</Link>
+                  )}
+                </div>
                 {c.lessons.length === 0 ? (
                   <p className="rounded-[var(--kin-bo-sm)] px-4 py-3 text-[length:var(--kin-co-small)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[var(--kin-chu-phu)]">
                     Lớp này chưa có bản ghi, tài liệu hay bài tập nào.
