@@ -3,6 +3,7 @@
 import { landingPath } from "@/lib/landing";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { syncShellHint } from "@/lib/shellHint";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type Permission, type AdminRole } from "@/lib/permissions";
 
 // Re-export for consumers that import from AuthContext
@@ -71,6 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Nhớ "máy này đang đăng nhập kiểu gì" để lần tải cứng sau không nháy khung khách (src/lib/signedInShell.ts). Chỉ ghi khi đã biết chắc (hết isLoading).
+  useEffect(() => {
+    if (!isLoading) syncShellHint(user);
+  }, [user, isLoading]);
 
   async function login(identifier: string, password: string) {
     const res = await fetch("/api/auth/login", {

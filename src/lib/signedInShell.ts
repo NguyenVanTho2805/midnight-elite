@@ -2,8 +2,12 @@
 // trang khách như /thu-vien, /khoa-hoc, /giang-vien… nằm ngoài nhóm trang có vỏ, nên trước đây học viên bấm "Thư viện" trên thanh bên là thanh bên biến mất,
 // đổi sang thanh trên + chân trang của khách.
 //
-// Quyết định: chỉ học viên và gia sư có vỏ ở trang khách. Quản trị có vỏ riêng trên tên miền quản trị (admin.midnightelite-edu.com) — trên tên miền
-// chính họ không có trang nào cần vỏ. Các trang xác thực không có vỏ dù đã đăng nhập (người dùng chỉ ghé qua rồi bị đưa đi chỗ khác).
+// Quyết định (sửa 15/10/2026, Thọ: "đã vào vai trò rồi thì chỉ xuất hiện dashboard kiểu left sidebar"): MỌI người đã đăng nhập đều có vỏ ở trang khách.
+//   - học viên → vỏ học viên; gia sư → vỏ gia sư;
+//   - quản trị cấp 1 / cấp nội dung → vỏ HỌC VIÊN (chế độ xem thử): AuthGuard vốn đã cho họ vào /student/* để xem như học viên, nên bấm "Thi thử", "Thư viện",
+//     "Hỏi đáp"… từ đó mà rơi ra khung khách (thanh trên + chân trang) là lỗi. Vỏ quản trị thật vẫn chỉ ở tên miền quản trị (admin.midnightelite-edu.com),
+//     tên miền đó không phục vụ trang khách nào.
+// Các trang xác thực không có vỏ dù đã đăng nhập (người dùng chỉ ghé qua rồi bị đưa đi chỗ khác).
 export const NO_SHELL_PATHS = ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"] as const;
 
 export type ShellKind = "student" | "tutor";
@@ -14,6 +18,23 @@ export function shellFor(user: { role: string | null; adminRole?: string | null 
   if (!user) return null;
   if (NO_SHELL_PATHS.some(p => under(pathname, p))) return null;
   if (user.role === "student") return "student";
-  if (user.role === "admin" && user.adminRole === "teacher") return "tutor";
+  if (user.role === "admin") return user.adminRole === "teacher" ? "tutor" : "student";
   return null;
 }
+
+// ─── GỢI Ý VỎ (không nháy khung khách khi tải cứng) ───────────────────────────────────────────────────────────────────────────────────────────
+// Quyết định vỏ ở máy khách sau khi /api/auth/me trả lời (xem GuestChrome), nên lần tải cứng đầu tiên một người đã đăng nhập thấy khung khách một thoáng
+// (thanh trên + chân trang như trang chủ) rồi mới đổi sang vỏ. Cách chữa giống thanh bên thu/mở (src/lib/railState.ts): nhớ "lần trước máy này đăng nhập
+// kiểu gì" trong localStorage, và một dòng chạy TRƯỚC khi vẽ trang đặt data-kin-vo lên <html>; CSS (kin-tokens.css) ẩn khung khách khi có thuộc tính đó.
+// Gợi ý chỉ để ẨN khung khách trong lúc chờ — vỏ thật vẫn do shellFor quyết sau khi biết người dùng; gợi ý cũ (đã đăng xuất ở máy khác, phiên hết hạn)
+// bị xoá ngay khi /api/auth/me trả lời "không ai".
+export const SHELL_HINT_KEY = "kin.vo";
+export const SHELL_HINT_ATTR = "data-kin-vo";
+
+export const parseShellHint = (v: unknown): ShellKind | null => (v === "student" || v === "tutor" ? v : null);
+
+/** Vỏ của người này ở một trang khách thường (không phải trang xác thực) — chính là thứ cần nhớ làm gợi ý. */
+export const shellHintFor = (user: { role: string | null; adminRole?: string | null } | null): ShellKind | null => shellFor(user, "/");
+
+/** Chạy TRƯỚC khi trình duyệt vẽ trang (chèn ở layout gốc). Một dòng, không chứa "</script", không ném lỗi khi localStorage bị chặn. */
+export const SHELL_INIT_SCRIPT = `try{var v=localStorage.getItem(${JSON.stringify(SHELL_HINT_KEY)});if(v==="student"||v==="tutor")document.documentElement.setAttribute(${JSON.stringify(SHELL_HINT_ATTR)},v)}catch(e){}`;

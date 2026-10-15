@@ -10,6 +10,7 @@ import { ToastProvider } from "@/components/ui";
 import { ThemeApplier } from "@/components/ThemeApplier";
 import AccountThemeSync from "@/components/AccountThemeSync";
 import { RAIL_INIT_SCRIPT } from "@/lib/railState";
+import { SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -70,6 +71,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col antialiased">
           {/* Thanh bên đã thu thì ẩn ngay từ khung hình đầu (xem src/lib/railState.ts); không có dòng này thanh sẽ hiện ra rồi mới thụt vào. */}
           <Script id="kin-rail-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
+          {/* Máy này lần trước đăng nhập → ẩn khung khách (thanh trên + chân trang) từ khung hình đầu, khỏi nháy ra "trang chủ" rồi mới vào vỏ (src/lib/signedInShell.ts). */}
+          <Script id="kin-shell-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: SHELL_INIT_SCRIPT }} />
           <ThemeApplier />
           <GlobalDropGuard />
           <AuthProvider>

@@ -308,6 +308,10 @@ html[data-kin-rail="thu"] .kin-rail-wrap {
   visibility: hidden; /* gỡ khỏi thứ tự Tab và cây trợ năng: không ai Tab vào chỗ đang ẩn; đặt trễ để chạy xong chuyển động mới ẩn */
   transition: width 180ms ease-out, visibility 0s linear 180ms;
 }
+/* Khung khách (thanh trên + chân trang) ẩn khi máy này lần trước đã đăng nhập: data-kin-vo do SHELL_INIT_SCRIPT đặt trước khi vẽ trang, rồi AuthContext xoá nếu
+   hoá ra không còn ai đăng nhập. CHỈ ẩn lúc còn chờ ("cho", GuestChrome đặt khi AuthContext chưa trả lời): hết chờ mà người dùng ở trang không có vỏ (/quen-mat-khau…) thì
+   khung khách phải hiện. Không có quy tắc này, mỗi lần tải cứng /thu-vien, /khoa-hoc… người đã đăng nhập thấy "trang chủ" một thoáng trước khi vào vỏ. */
+html[data-kin-vo] [data-guest-chrome="cho"] { display: none !important; }
 .kin-rail-open { display: none; }
 @media (min-width: 768px) {
   html[data-kin-rail="thu"] .kin-rail-open { display: inline-flex; }
