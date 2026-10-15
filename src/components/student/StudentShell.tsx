@@ -14,6 +14,7 @@ import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
 
 const MORE_GROUPS: { title: string; links: { label: string; href: string }[] }[] = [
   { title: "Học tập", links: [
+    { label: "Tiếng Anh tự học", href: "/student/tieng-anh" },
     { label: "Thi thử", href: "/student/thi-thu" },
     { label: "Bảng xếp hạng", href: "/student/bang-xep-hang" },
     { label: "Hỏi đáp", href: "/student/hoi-dap" },

@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/expire-tutor-subscriptions",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/english-voa",
+      "schedule": "30 23 * * *"
     }
   ]
 }
