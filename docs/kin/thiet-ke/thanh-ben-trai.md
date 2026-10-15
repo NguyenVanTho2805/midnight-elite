@@ -116,7 +116,7 @@ Test: `t-rail-lib` (54, thuần), `t-prefs` (+11 về `rail`, tổng 38), `ui-si
 
 | # | Việc | Vì sao chưa | Cần ai |
 |---|---|---|---|
-| 1 | ~~**Khung Figma cho trạng thái thu**: nút mở, tiêu điểm, chấm đỏ~~ **ĐÃ VẼ 14/10** (chỉ thêm khung mới): 218:365, 218:424, 220:455 ở trang 5:39. Chưa ai nhìn ảnh chụp (xem `tien-do-dang-do.md` mục K) | — | Thanh xem lại |
+| 1 | ~~**Khung Figma cho trạng thái thu**: nút mở, tiêu điểm, chấm đỏ~~ **ĐÃ VẼ 14/10** (chỉ thêm khung mới): 218:365, 218:424, 220:455 ở trang 5:39. Thọ đã xem ngày 15/10: không có vấn đề (xem `tien-do-dang-do.md` mục K) | — | Thanh xem lại |
 | 2 | **Thanh rộng 220px có nhãn + mục con** (phương án B) — gom "Khác" thành mục con | Cần thiết kế; đổi cách tìm trang | Thọ chọn có / không |
 | 3 | ~~**Gia sư ↔ quản trị là hai tên miền**~~ **ĐÃ SỬA 14/10**: gia sư ở lại tên miền chính, cùng phiên, trong vỏ gia sư (`hostRouting.ts`). **Còn lại:** cookie vẫn không dùng chung giữa hai tên miền cho quản trị cấp 1 / nội dung | Đụng bảo mật phiên | Thọ nếu muốn dùng chung cookie |
 | 4 | **`/lop-cua-toi/[courseId]`** (xem một lớp) dùng khung riêng, không có thanh module | Cần quyết: thanh module + khung lớp cạnh nhau, hay giữ drill-in | Thọ + Thanh |
