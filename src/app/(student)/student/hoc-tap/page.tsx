@@ -188,11 +188,12 @@ function HocTapContent() {
         <div className="px-5 pb-5">
           {isEnrolled === false ? (
             <div className="space-y-2">
-              <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Bạn chưa đăng ký khóa học này</p>
+              <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Bạn chưa vào lớp này</p>
+              {/* Học viên học miễn phí, không có bước "mua" (quyết định D01): nút đưa tới trang lớp (cách vào lớp: mã mời của gia sư / nhắn tư vấn). */}
               <Link href={`/khoa-hoc/${courseId}`}
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-[var(--kin-chu-tren-nut-chinh)]"
                 style={{ background: "var(--kin-tt-cham-cho)" }}>
-                Mua khóa học ngay →
+                Xem lớp học →
               </Link>
             </div>
           ) : nextLesson ? (

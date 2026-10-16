@@ -68,7 +68,7 @@ export default function StudentShell({ children }: { children: ReactNode }) {
   const modules: ModuleItem[] = [
     { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", icon: "viec", badge },
     { key: "lich", label: "Lịch", href: "/student/lich-hoc", icon: "lich" },
-    { key: "lop", label: "Lớp", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop"], icon: "lop" },
+    { key: "lop", label: "Lớp", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/lop-cua-toi"], icon: "lop" },
     { key: "thu-vien", label: "Thư viện", href: "/thu-vien", icon: "thu-vien" },
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen },
   ];

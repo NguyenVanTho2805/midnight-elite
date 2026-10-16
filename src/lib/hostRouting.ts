@@ -11,6 +11,11 @@
 //     Trước đây các đường đó bị đẩy về /admin rồi về lại đăng nhập (quay vòng); nay chuyển sang TÊN MIỀN CHÍNH, giữ đường dẫn và tham số.
 //   - Từ tên miền chính sang admin GIỮ NGUYÊN đường dẫn (/admin/kiem-duyet → admin…/admin/kiem-duyet). Trước đây bỏ tiền tố /admin nên đích
 //     (admin…/kiem-duyet) lại bị đẩy về dashboard: liên kết / bookmark cũ không bao giờ tới đúng trang.
+// 16/10/2026 (rà vai khách: bấm "Quản khoá" ở /ban-do khi chưa đăng nhập):
+//   - MỌI chuyển hướng ở đây là 307 chứ không phải 308. Đích phụ thuộc người đang xem (gia sư ở lại tên miền chính, người khác bị đẩy sang admin) mà 308 là
+//     "vĩnh viễn": trình duyệt nhớ luôn. Đã dựng lại bằng Chromium: một người mở midnightelite-edu.com/admin/khoa-hoc lúc CHƯA đăng nhập (bị 308 sang admin), sau đó
+//     đăng nhập gia sư rồi mở đúng địa chỉ ấy → trình duyệt dùng lại bản nhớ và đẩy thẳng sang tên miền admin (nơi gia sư không có phiên), không hỏi máy chủ nữa.
+//     proxy.ts còn đặt Cache-Control: no-store lên mọi chuyển hướng.
 import { landingPath } from "@/lib/landing";
 import { safeRedirect } from "@/lib/safeRedirect";
 
@@ -22,7 +27,7 @@ export interface RouteInput { host: string; pathname: string; search: string; se
 export type RouteDecision =
   | { kind: "next" }
   | { kind: "rewrite"; pathname: string }
-  | { kind: "redirect"; status: 307 | 308; pathname: string; search?: string; host?: "main" | "admin" };
+  | { kind: "redirect"; status: 307; pathname: string; search?: string; host?: "main" | "admin" };
 
 export const isAdminHost = (host: string): boolean => host === ADMIN_HOST || host.startsWith(`${ADMIN_HOST}:`); // cho phép cổng khi giả lập Host cục bộ
 
@@ -65,7 +70,7 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     }
     // Chặn hẳn đường cũ /admin/..., ép sang tên miền admin. GIỮ NGUYÊN toàn bộ đường dẫn (kể cả /admin) — tên miền admin chỉ phục vụ /admin/*, nên bỏ tiền tố
     // sẽ rơi vào nhánh "đường lạ" và liên kết / bookmark cũ không bao giờ tới đúng trang.
-    return { kind: "redirect", status: 308, host: "admin", pathname, search };
+    return { kind: "redirect", status: 307, host: "admin", pathname, search };
   }
 
   if (isLearnerOrTeacher(session) && (pathname === "/" || AUTH_PAGES.includes(pathname))) {
@@ -85,8 +90,10 @@ export function hostAcceptsLogin(host: string, role: string, adminRole?: string 
   return role === "admin" && (adminRole === "admin_super" || adminRole === "admin_content");
 }
 
-/** Địa chỉ trang đăng nhập của tên miền chính, suy từ tên miền admin đang dùng (giữ cổng khi chạy thử cục bộ). */
-export function mainLoginUrl(adminHostHeader: string, protocol: string): string {
+/** Địa chỉ trang đăng nhập của tên miền chính, suy từ tên miền admin đang dùng (giữ cổng khi chạy thử cục bộ).
+ *  `redirect`: trang người dùng đang định vào (vd /admin/khoa-hoc) — mang theo để gia sư đăng nhập nhầm cửa quản trị, sang cửa chính xong, vào đúng trang đó. */
+export function mainLoginUrl(adminHostHeader: string, protocol: string, redirect?: string | null): string {
   const mainHost = adminHostHeader.replace(/^admin\./, "");
-  return `${protocol}//${mainHost}/dang-nhap`;
+  const next = safeRedirect(redirect ?? null);
+  return `${protocol}//${mainHost}/dang-nhap${next ? `?redirect=${encodeURIComponent(next)}` : ""}`;
 }

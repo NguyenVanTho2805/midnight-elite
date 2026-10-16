@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId: id } },
     });
-    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chỉ học viên đã mua khóa học mới có thể đánh giá" }, { status: 403 });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chỉ học viên của lớp này mới có thể đánh giá" }, { status: 403 });
   }
 
   const existing = await prisma.courseReview.findUnique({

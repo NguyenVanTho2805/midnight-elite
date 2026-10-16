@@ -316,6 +316,12 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   const wrongShell = visited.filter(v => v.shell && v.shell !== "Module của gia sư" && !new URL(v.final).pathname.startsWith("/student"));
   for (const w2 of wrongShell.slice(0, 20)) console.log(`   ✗ ${new URL(w2.final).pathname} hiện khung "${w2.shell}"`);
   check("mọi trang ngoài /student/* đều dùng khung GIA SƯ", wrongShell.length === 0, wrongShell.slice(0, 5).map(w2 => [new URL(w2.final).pathname, w2.shell]));
+  // 16/10/2026: bản đầu của bài rà này chỉ bắt khung SAI, không bắt "không có khung nào" — nên trang lớp /lop-cua-toi/[lớp] (trần, không thanh module, không dải trên) lọt qua.
+  // Bài rà vai học sinh (ui-role-everything) kiểm cả hai chiều và bắt được; nay kiểm cả hai chiều ở đây.
+  const NO_SHELL_OK = /^\/(dang-nhap|dang-ky|quen-mat-khau|dat-lai-mat-khau|xac-thuc-email|xac-nhan-phu-huynh|phieu|so-cua-con|xem-tai-lieu)(\/|$)/;   // trang xác thực / trang phụ huynh mở bằng link
+  const bareShell = visited.filter(v => !v.why && new URL(v.final).origin === MAIN_ORIGIN && !v.shell && !NO_SHELL_OK.test(new URL(v.final).pathname));
+  for (const w2 of bareShell.slice(0, 20)) console.log(`   ✗ ${new URL(w2.final).pathname} KHÔNG có khung gia sư (trang trần)`);
+  check("mọi trang của gia sư (kể cả trang công khai, trang lớp) nằm trong khung GIA SƯ — không trang nào hiện trần", bareShell.length === 0, bareShell.slice(0, 5).map(w2 => new URL(w2.final).pathname));
   const shellSeen = new Set(visited.map(v => v.shell));
   check("đã thực sự nhìn thấy khung gia sư ở nhiều trang (bài rà không rỗng)", visited.filter(v => v.shell === "Module của gia sư").length >= 20, [...shellSeen]);
 

@@ -20,10 +20,10 @@ check("gia sư mở /admin/thi-thu → ở lại (next)", eq(d(MAIN, "/admin/thi
 check("gia sư mở trang sâu /admin/khoa-hoc/abc/diem-danh → ở lại", eq(d(MAIN, "/admin/khoa-hoc/abc/diem-danh", tutor), { kind: "next" }));
 check("gia sư mở đúng /admin (bảng tổng quan quản trị, không dành cho gia sư) → về Hộp việc /lop-cua-toi", eq(d(MAIN, "/admin", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi" }));
 for (const [name, s] of [["quản trị cấp 1", sup], ["quản trị nội dung", content], ["học viên", student], ["khách", null]] as const)
-  check(`${name} mở /admin/thi-thu?x=1 → 308 sang tên miền admin, GIỮ NGUYÊN đường dẫn /admin/thi-thu và tham số`, eq(d(MAIN, "/admin/thi-thu", s, "?x=1"), { kind: "redirect", status: 308, host: "admin", pathname: "/admin/thi-thu", search: "?x=1" }), d(MAIN, "/admin/thi-thu", s, "?x=1"));
+  check(`${name} mở /admin/thi-thu?x=1 → 307 (KHÔNG phải 308: đích phụ thuộc phiên, 308 bị trình duyệt nhớ) sang tên miền admin, GIỮ NGUYÊN đường dẫn /admin/thi-thu và tham số`, eq(d(MAIN, "/admin/thi-thu", s, "?x=1"), { kind: "redirect", status: 307, host: "admin", pathname: "/admin/thi-thu", search: "?x=1" }), d(MAIN, "/admin/thi-thu", s, "?x=1"));
 // 15/10/2026: trước đây bỏ tiền tố /admin ("/admin/kiem-duyet" → "/kiem-duyet"), mà tên miền admin chỉ phục vụ /admin/* nên đích đó lại bị đẩy về dashboard: link/bookmark cũ không bao giờ tới đúng trang.
 check("đích của lần chuyển tên miền là một đường dẫn tên miền admin PHỤC VỤ (không bị đẩy tiếp)", (["/admin/kiem-duyet", "/admin/khoa-hoc/abc/diem-danh", "/admin"] as string[]).every(path => { const r = d(MAIN, path, sup); return r.kind === "redirect" && d(ADM, (r as { pathname: string }).pathname, sup).kind !== "redirect"; }));
-check("/admin (không đường dẫn phụ) của quản trị → 308 sang tên miền admin, đường dẫn /admin", eq(d(MAIN, "/admin", sup), { kind: "redirect", status: 308, host: "admin", pathname: "/admin", search: "" }));
+check("/admin (không đường dẫn phụ) của quản trị → 307 sang tên miền admin, đường dẫn /admin", eq(d(MAIN, "/admin", sup), { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "" }));
 check("/administrator (chỉ giống tiền tố) KHÔNG bị coi là /admin", eq(d(MAIN, "/administrator", sup), { kind: "next" }) && eq(d(MAIN, "/administrator", tutor), { kind: "next" }));
 
 section("Tên miền chính — người đã đăng nhập không thấy trang giới thiệu của khách");

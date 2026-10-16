@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { landingPath } from "@/lib/landing";
 
 function VerifyContent() {
   const params = useSearchParams();
-  const router = useRouter();
   const token  = params.get("token");
 
   const [status, setStatus] = useState<"loading" | "success" | "already" | "error">("loading");
@@ -21,7 +21,13 @@ function VerifyContent() {
         if (data.success) {
           setName(data.name ?? "");
           setStatus("success");
-          setTimeout(() => router.push("/student/hoc-tap"), 3000);
+          // Đã tự đăng nhập (máy chủ tạo phiên ở bước xác thực) → vào trang đầu của vai (học viên: "Việc của tôi", đúng như sau khi đăng nhập). Trước đây là /student/hoc-tap:
+          // học viên mới thấy "Bạn chưa có khóa học nào" dù trang vừa ghi "Đang chuyển đến Dashboard".
+          // TẢI CỨNG chứ không router.push: AuthProvider chỉ hỏi /api/auth/me MỘT lần lúc mở trang (lúc đó chưa có phiên) nên `user` vẫn null; chuyển trang kiểu máy khách vào khu học viên thì
+          // AuthGuard thấy user = null, đẩy sang /dang-nhap, proxy lại đẩy về (đã có cookie) → học viên mới thấy TRANG TRẮNG sau khi xác thực (dựng lại 16/10/2026).
+          // /dat-lai-mat-khau vốn đã tải cứng vì lý do này.
+          const landing = typeof data.landing === "string" && data.landing.startsWith("/") ? data.landing : landingPath("student");
+          setTimeout(() => window.location.assign(landing), 3000);
         } else if (data.already) {
           setStatus("already");
         } else {
@@ -30,7 +36,7 @@ function VerifyContent() {
         }
       })
       .catch(() => { setStatus("error"); setErrMsg("Lỗi kết nối"); });
-  }, [token, router]);
+  }, [token]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--kin-nen-bang)" }}>

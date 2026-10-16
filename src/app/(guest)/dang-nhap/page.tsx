@@ -42,9 +42,10 @@ function DangNhapForm() {
   const redirectTo   = safeRedirect(searchParams.get("redirect"));
   // Cửa đăng nhập của tên miền chính — chỉ hiện ở tên miền admin (data-chi-admin). Bản dựng sẵn không biết tên miền nên mặc định là tên miền thật; ở trình duyệt thì suy từ tên miền đang mở
   // (useSyncExternalStore: không setState trong effect, và lúc hydrate vẫn dùng bản của máy chủ nên không lệch).
+  // Mang theo ?redirect= (trang người dùng đang định vào, vd /admin/khoa-hoc): gia sư bị đẩy nhầm sang cửa quản trị, sang cửa chính đăng nhập xong thì vào đúng trang đó.
   const mainLogin = useSyncExternalStore(
     noopSubscribe,
-    () => (isAdminHost(window.location.host) ? mainLoginUrl(window.location.host, window.location.protocol) : MAIN_LOGIN_DEFAULT),
+    () => (isAdminHost(window.location.host) ? mainLoginUrl(window.location.host, window.location.protocol, redirectTo) : MAIN_LOGIN_DEFAULT),
     () => MAIN_LOGIN_DEFAULT,
   );
 

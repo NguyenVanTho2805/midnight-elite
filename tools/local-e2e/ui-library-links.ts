@@ -47,7 +47,8 @@ import { launch, ctxFor, closeAll } from "./ui";
   const octx = await ctxFor(O, { width: 1280, height: 800 });
   const op = await octx.newPage(); watch(op);
   await op.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await eventually("trang Lớp của người chưa đăng ký đã tải xong (có nút 'Mua khóa học ngay')", async () => (await op.getByText("Mua khóa học ngay").count()) > 0, 90000);
+  await eventually("trang Lớp của người chưa vào lớp đã tải xong (có nút 'Xem lớp học →'; học viên học miễn phí nên không còn 'Mua khóa học ngay')", async () => (await op.getByText("Xem lớp học →").count()) > 0, 90000);
+  check("không còn nút 'Mua khóa học ngay' (quyết định D01: không có bước mua)", (await op.getByText("Mua khóa học ngay").count()) === 0);
   check("KHÔNG có 'Tài liệu & bản ghi của lớp này' (chưa có quyền học)", (await op.locator("[data-thu-vien-link]").count()) === 0);
 
   check("không có lỗi trang / console", errors.length === 0, errors.slice(0, 3));

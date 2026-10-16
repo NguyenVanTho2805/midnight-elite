@@ -85,7 +85,8 @@ export default async function HomePage() {
                 {HERO_CATEGORIES.map((c) => (
                   <Link
                     key={c.label}
-                    href="/khoa-hoc"
+                    // Mỗi ô là một kỳ thi: mở danh sách lớp đã lọc đúng kỳ thi đó (trang /khoa-hoc đọc ?category= với đúng các tên này). Trước đây cả bốn ô đều mở danh sách chưa lọc.
+                    href={`/khoa-hoc?category=${encodeURIComponent(c.label)}`}
                     className="flex flex-col gap-[3px] rounded-[var(--kin-bo-xl)] border border-white/10 bg-white/[0.08] p-[14px] transition-colors hover:bg-white/[0.14]"
                   >
                     <span className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-small)] text-white">{c.label}</span>

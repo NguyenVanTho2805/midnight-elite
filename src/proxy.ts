@@ -30,7 +30,10 @@ export async function proxy(req: NextRequest) {
   url.search = d.search ?? "";
   if (d.host === "admin") url.hostname = ADMIN_HOST;
   else if (d.host === "main") url.hostname = MAIN_HOST;
-  return NextResponse.redirect(url, d.status);
+  const res = NextResponse.redirect(url, d.status);
+  // Đích phụ thuộc phiên (gia sư ở lại tên miền chính, người khác bị đẩy sang admin) nên không được để trình duyệt / CDN nhớ chuyển hướng — xem hostRouting.ts (16/10/2026).
+  res.headers.set("Cache-Control", "no-store");
+  return res;
 }
 
 export const config = {

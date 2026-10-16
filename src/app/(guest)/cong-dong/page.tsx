@@ -758,11 +758,16 @@ function CongDongInner() {
   const [openThreadId, setOpenThreadId]     = useState<string | null>(null);
   const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
 
-  function syncUrl(nextTab: TabKey = activeTab, nextScope: string = scope) {
+  // Địa chỉ của danh sách theo đúng tab / phạm vi đang xem.
+  function listHref(nextTab: TabKey = activeTab, nextScope: string = scope) {
     const parts: string[] = [];
     if (nextTab !== "all") parts.push(`tab=${encodeURIComponent(nextTab)}`);
     if (nextScope !== "all") parts.push(`scope=${encodeURIComponent(nextScope)}`);
-    router.replace(parts.length === 0 ? "/cong-dong" : `/cong-dong?${parts.join("&")}`);
+    return parts.length === 0 ? "/cong-dong" : `/cong-dong?${parts.join("&")}`;
+  }
+
+  function syncUrl(nextTab: TabKey = activeTab, nextScope: string = scope) {
+    router.replace(listHref(nextTab, nextScope));
   }
 
   function switchTab(tab: TabKey) {
@@ -775,8 +780,9 @@ function CongDongInner() {
     syncUrl(activeTab, s);
   }
 
-  function requireLogin() {
-    router.push("/dang-nhap?redirect=/cong-dong");
+  // Khách bấm thích / lưu / mở câu hỏi → đăng nhập xong quay lại đúng chỗ đang xem (tab, phạm vi — hoặc chính câu hỏi vừa bấm), không rơi về tab "Tất cả".
+  function requireLogin(next: string = listHref()) {
+    router.push(`/dang-nhap?redirect=${encodeURIComponent(next)}`);
   }
 
   // FE-117: dựng query string cho courseId theo scope. "all" bỏ qua param
@@ -970,7 +976,7 @@ function CongDongInner() {
       {/* Feed */}
       {!loading && feedItems.map(item =>
         item._type === "question"
-          ? <QuestionCard key={`q-${item.id}`} q={item} onOpen={id => user ? setOpenQuestionId(id) : requireLogin()} />
+          ? <QuestionCard key={`q-${item.id}`} q={item} onOpen={id => user ? setOpenQuestionId(id) : requireLogin(`/cong-dong/hoi-dap/${id}`)} />
           : <ThreadCard key={`t-${item.id}`} thread={item} scope={scope}
               onLike={handleLike} onBookmark={handleBookmark}
               onDelete={id => setThreads(prev => prev.filter(x => x.id !== id))}

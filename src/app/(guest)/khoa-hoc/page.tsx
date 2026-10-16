@@ -138,20 +138,23 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
 
         {/* Action buttons */}
         <div className="flex gap-2 mt-auto" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={() => onToggleFollow()}
-            aria-pressed={following}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
-            style={following
-              ? { background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)", border: "1px solid var(--kin-nhan-vien)" }
-              : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24"
-              fill={following ? "currentColor" : "none"}
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
-            </svg>
-            {following ? "Đang theo dõi" : "Theo dõi lớp"}
-          </button>
+          {/* Lớp mình đã học thì không còn "theo dõi" (API trả 409 "Bạn đã là học viên của lớp này"): chỉ còn nút vào học. */}
+          {!isEnrolled && (
+            <button
+              onClick={() => onToggleFollow()}
+              aria-pressed={following}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
+              style={following
+                ? { background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)", border: "1px solid var(--kin-nhan-vien)" }
+                : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24"
+                fill={following ? "currentColor" : "none"}
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+              </svg>
+              {following ? "Đang theo dõi" : "Theo dõi lớp"}
+            </button>
+          )}
           {isEnrolled ? (
             <Link
               href={`/student/hoc-tap?course=${course.slug}`}

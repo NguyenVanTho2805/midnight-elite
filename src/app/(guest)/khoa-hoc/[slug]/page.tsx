@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,16 +27,26 @@ interface Review {
 }
 
 function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+  const star = (s: number) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill={s <= value ? "var(--kin-tt-chu-cho)" : "none"} stroke={s <= value ? "var(--kin-tt-chu-cho)" : "var(--kin-chu-mo)"} strokeWidth="1.5">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+    </svg>
+  );
+  // Chỉ để xem: một ảnh có chữ mô tả, KHÔNG phải năm nút bấm (trước đây là 5 <button> kiểu submit không tên, bấm không làm gì).
+  if (!onChange) {
+    return (
+      <div className="flex gap-1" role="img" aria-label={`${Math.round(value * 10) / 10} trên 5 sao`}>
+        {[1,2,3,4,5].map(s => <span key={s} className="inline-flex">{star(s)}</span>)}
+      </div>
+    );
+  }
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1" role="group" aria-label="Chọn số sao">
       {[1,2,3,4,5].map(s => (
-        <button key={s} type={onChange ? "button" : undefined}
-          onClick={() => onChange?.(s)}
-          className={onChange ? "transition-transform hover:scale-110" : ""}
-          style={{ cursor: onChange ? "pointer" : "default", background: "none", border: "none", padding: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill={s <= value ? "var(--kin-tt-chu-cho)" : "none"} stroke={s <= value ? "var(--kin-tt-chu-cho)" : "var(--kin-chu-mo)"} strokeWidth="1.5">
-            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-          </svg>
+        <button key={s} type="button" onClick={() => onChange(s)} aria-label={`${s} sao`} aria-pressed={s <= value}
+          className="transition-transform hover:scale-110"
+          style={{ cursor: "pointer", background: "none", border: "none", padding: 0 }}>
+          {star(s)}
         </button>
       ))}
     </div>
@@ -46,6 +56,7 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
 function ReviewsSection({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avg, setAvg] = useState<number | null>(null);
   const [total, setTotal] = useState(0);
@@ -66,7 +77,7 @@ function ReviewsSection({ courseId }: { courseId: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) { router.push("/dang-nhap"); return; }
+    if (!user) { router.push(`/dang-nhap?redirect=${encodeURIComponent(pathname)}`); return; }   // đăng nhập xong quay lại ĐÚNG trang lớp này
     setError(""); setSubmitting(true);
     const res = await fetch(`/api/courses/${courseId}/reviews`, {
       method: "POST",
@@ -326,7 +337,7 @@ export default function KhoaHocDetailPage() {
                       function toggleComplete(e: React.MouseEvent) {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (!user) { router.push("/dang-nhap"); return; }
+                        if (!user) { router.push(`/dang-nhap?redirect=${encodeURIComponent(`/khoa-hoc/${slug}`)}`); return; }
                         isCompleted ? unmarkComplete(lesson.id) : markComplete(lesson.id);
                       }
 
@@ -394,7 +405,7 @@ export default function KhoaHocDetailPage() {
                 </div>
               ))}
             </div>
-            <p className="text-xs mt-4 text-center" style={{ color: "var(--kin-chu-mo)" }}>... và nhiều bài học khác sau khi mua khóa học</p>
+            <p className="text-xs mt-4 text-center" style={{ color: "var(--kin-chu-mo)" }}>... và nhiều bài học khác sau khi vào lớp</p>
           </div>
 
           {/* Reviews */}

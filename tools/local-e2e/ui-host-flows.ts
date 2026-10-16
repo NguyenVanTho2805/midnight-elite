@@ -6,6 +6,8 @@
 //   H4  Nút công khai gõ nhầm ở tên miền admin (/khoa-hoc) → trang công khai ở tên miền chính.
 //   H5  Học viên / gia sư đăng nhập nhầm cửa admin → thông báo rõ (không để lại phiên ở tên miền admin, không trang trắng, không quay vòng).
 //   H6  Quản trị đăng nhập đúng cửa → vào đúng trang đích (redirect), kể cả trang sâu.
+//   H7  (16/10/2026) Chuyển hướng không bị trình duyệt NHỚ: chưa đăng nhập mở /admin/khoa-hoc (bị đẩy sang cửa admin), rồi đăng nhập GIA SƯ và mở lại đúng địa chỉ đó → vào được
+//       trang quản khoá ở tên miền chính. Trước đây là 308 (vĩnh viễn): trình duyệt dùng lại bản nhớ, gia sư mãi bị đẩy sang tên miền không có phiên của họ.
 import { launch, closeAll } from "./ui";
 import { mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
@@ -104,6 +106,26 @@ async function fillLogin(p: Page, email: string, password: string) {
     await fillLogin(p, SA.email, "Passw0rd!");
     await eventually("redirect=/admin/kiem-duyet → vào đúng trang đó (ở tên miền admin)", () => u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/admin/kiem-duyet", 40000);
     await eventually("khung quản trị hiện ra (thanh module QUẢN TRỊ)", async () => (await p.locator("body").innerText()).includes("QUẢN TRỊ"));
+    await ctx.close();
+  }
+
+  section("H7. Chưa đăng nhập mở /admin/khoa-hoc, rồi đăng nhập gia sư và mở lại đúng địa chỉ đó (chuyển hướng không bị trình duyệt nhớ)");
+  {
+    const { ctx, p } = await fresh();
+    await p.goto(MAIN + "/admin/khoa-hoc", { waitUntil: "domcontentloaded" }); await settle(p);
+    check("lần 1 (chưa đăng nhập) → cửa đăng nhập quản trị ở tên miền admin, giữ ?redirect=", u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/dang-nhap" && u(p.url()).searchParams.get("redirect") === "/admin/khoa-hoc", p.url());
+    // Lối "Học viên / gia sư đăng nhập tại midnightelite-edu.com" phải mang theo trang đang định vào.
+    const hint = p.locator('[data-chi-admin] a[href*="midnightelite-edu.com"]').first();
+    const href = await hint.getAttribute("href").catch(() => null);
+    check("lối sang cửa chính mang theo ?redirect=/admin/khoa-hoc", !!href && u(href).host === u(MAIN).host && u(href).pathname === "/dang-nhap" && u(href).searchParams.get("redirect") === "/admin/khoa-hoc", href);
+    await hint.click().catch(() => {}); await settle(p);
+    check("bấm lối đó → trang đăng nhập của tên miền chính (không phải cửa admin)", !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/dang-nhap", p.url());
+    await fillLogin(p, T.email, "Passw0rd!");
+    await eventually("gia sư đăng nhập xong → vào ĐÚNG /admin/khoa-hoc ở tên miền chính (không bị đẩy sang tên miền admin)", () => !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/admin/khoa-hoc", 40000);
+    await eventually("trong vỏ gia sư", async () => (await p.locator('nav[aria-label="Module của gia sư"]').count()) > 0, 20000);
+    // Mở LẠI đúng địa chỉ ấy bằng tay trên cùng trình duyệt: không được dùng bản chuyển hướng đã nhớ từ lần 1.
+    await p.goto(MAIN + "/admin/khoa-hoc", { waitUntil: "domcontentloaded" }); await settle(p);
+    check("mở lại đúng địa chỉ cũ → ở lại tên miền chính", !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/admin/khoa-hoc", p.url());
     await ctx.close();
   }
 
