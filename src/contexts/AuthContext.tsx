@@ -119,8 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
-    router.push("/");
+    // Tải cứng về "/" thay vì setUser(null) + router.push("/"): đang đứng trong khung AuthGuard (/student, /admin…) thì `user` về null làm AuthGuard
+    // router.replace sang /dang-nhap?redirect=… ngay giữa lúc router.push("/") còn chạy, và bên nào xong sau thì thắng → đăng xuất xong lại rơi vào trang đăng nhập.
+    // Tải cứng thì state tự sạch; chỉ cần xoá gợi ý vỏ đã nhớ (việc mà effect theo `user` vẫn làm ở đường cũ).
+    syncShellHint(null);
+    window.location.assign("/");
   }
 
   return (

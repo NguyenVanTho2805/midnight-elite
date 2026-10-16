@@ -1,6 +1,6 @@
 // AuthGuard + AuthContext.refresh (16/10/2026): máy chủ tạo phiên SAU lần gọi /api/auth/me lúc mở trang mà trang không tải cứng
 // (vd GET /api/auth/verify-email tự đăng nhập) → trước đây `user` vẫn null → AuthGuard đẩy sang /dang-nhap → proxy.ts 307 đẩy về lại → TRANG TRẮNG.
-// Trình duyệt thật. Ca A/B là ca lỗi gốc (đỏ trước khi sửa); ca C khẳng định khách thật vẫn bị chuyển sang đăng nhập, không vòng lặp, chỉ thêm 1 lần /api/auth/me; ca D người đã có phiên không bị gọi thừa.
+// Trình duyệt thật. Ca A/B là ca lỗi gốc (đỏ trước khi sửa); ca C khẳng định khách thật vẫn bị chuyển sang đăng nhập, không vòng lặp, chỉ thêm 1 lần /api/auth/me.
 import { BASE, mkUser, wipe, check, eventually, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, shot, closeAll } from "./ui";
@@ -99,6 +99,23 @@ const mkToken = async (userId: string) => {
   check("không gọi thừa: /api/auth/me chỉ 1 lần lúc mở trang (dev StrictMode tối đa 2)", td.me >= 1 && td.me <= 2, td.me);
   check("không đi qua /dang-nhap", td.loginHits.length === 0, td.loginHits);
   await ctxD.close();
+
+  // ───────────────────────────── E. Đăng xuất (router.push("/") trong AuthContext) không bị AuthGuard kéo sang /dang-nhap
+  section("E. Đăng xuất từ trang học viên");
+  const E = await mkUser({ name: "Quốc Bảo" });
+  const ctxE = await ctxFor(E);
+  const pe = await ctxE.newPage(); watch(pe);
+  const te = track(pe);
+  await pe.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
+  await acct(pe, "Quốc Bảo").click();
+  await pe.getByRole("menu", { name: "Tài khoản" }).getByRole("menuitem", { name: "Đăng xuất" }).click();
+  await eventually("về trang chủ của khách", async () => new URL(pe.url()).pathname === "/");
+  await new Promise(r => setTimeout(r, 3500)); // chờ thêm: nếu AuthGuard còn kéo sang đăng nhập thì sẽ lộ ra ở đây
+  await shot(pe, "auth-refresh-E");
+  check("3,5 giây sau vẫn ở '/', không bị đẩy sang /dang-nhap", new URL(pe.url()).pathname === "/", pe.url());
+  check("không có lần nào đi tới /dang-nhap", te.loginHits.length === 0, te.loginHits);
+  check("trang chủ không trắng", !(await isBlank(pe)));
+  await ctxE.close();
 
   await eventually("không có lỗi trang / console", () => errors.length === 0);
   if (errors.length) console.log("   lỗi:", errors.slice(0, 4));
