@@ -31,6 +31,7 @@ async function applicant(name: string, emailVerified: boolean) {
   const u1 = await prisma.user.findUnique({ where: { id: a1.id } });
   check("A thành admin/teacher + tutorVerified", u1?.role === "admin" && u1?.adminRole === "teacher" && u1?.tutorVerified === true, u1);
   check("có thông báo cho A", (await prisma.notification.count({ where: { userId: a1.id, type: "tutor_approved" } })) === 1);
+  check("thông báo duyệt trỏ vào khung gia sư /lop-cua-toi (không phải cửa cũ /admin)", (await prisma.notification.findFirst({ where: { userId: a1.id, type: "tutor_approved" } }))?.link === "/lop-cua-toi");
   check("có audit tutor.approve", (await prisma.auditLog.count({ where: { action: "tutor.approve", resourceId: a1.id } })) === 1);
   const again = await api("POST", `/api/admin/tutor-applications/${a1.id}/approve`, { as: sup });
   check("duyệt lần 2 → 409", again.status === 409, again);

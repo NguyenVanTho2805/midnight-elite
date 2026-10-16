@@ -20,8 +20,10 @@ check("gia sư mở /admin/thi-thu → ở lại (next)", eq(d(MAIN, "/admin/thi
 check("gia sư mở trang sâu /admin/khoa-hoc/abc/diem-danh → ở lại", eq(d(MAIN, "/admin/khoa-hoc/abc/diem-danh", tutor), { kind: "next" }));
 check("gia sư mở đúng /admin (bảng tổng quan quản trị, không dành cho gia sư) → về Hộp việc /lop-cua-toi", eq(d(MAIN, "/admin", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi" }));
 for (const [name, s] of [["quản trị cấp 1", sup], ["quản trị nội dung", content], ["học viên", student], ["khách", null]] as const)
-  check(`${name} mở /admin/thi-thu?x=1 → 308 sang tên miền admin, bỏ tiền tố /admin, giữ tham số`, eq(d(MAIN, "/admin/thi-thu", s, "?x=1"), { kind: "redirect", status: 308, host: "admin", pathname: "/thi-thu", search: "?x=1" }), d(MAIN, "/admin/thi-thu", s, "?x=1"));
-check("/admin (không đường dẫn phụ) của quản trị → 308 sang tên miền admin, đường dẫn '/'", eq(d(MAIN, "/admin", sup), { kind: "redirect", status: 308, host: "admin", pathname: "/", search: "" }));
+  check(`${name} mở /admin/thi-thu?x=1 → 307 (KHÔNG phải 308: đích phụ thuộc phiên, 308 bị trình duyệt nhớ) sang tên miền admin, GIỮ NGUYÊN đường dẫn /admin/thi-thu và tham số`, eq(d(MAIN, "/admin/thi-thu", s, "?x=1"), { kind: "redirect", status: 307, host: "admin", pathname: "/admin/thi-thu", search: "?x=1" }), d(MAIN, "/admin/thi-thu", s, "?x=1"));
+// 15/10/2026: trước đây bỏ tiền tố /admin ("/admin/kiem-duyet" → "/kiem-duyet"), mà tên miền admin chỉ phục vụ /admin/* nên đích đó lại bị đẩy về dashboard: link/bookmark cũ không bao giờ tới đúng trang.
+check("đích của lần chuyển tên miền là một đường dẫn tên miền admin PHỤC VỤ (không bị đẩy tiếp)", (["/admin/kiem-duyet", "/admin/khoa-hoc/abc/diem-danh", "/admin"] as string[]).every(path => { const r = d(MAIN, path, sup); return r.kind === "redirect" && d(ADM, (r as { pathname: string }).pathname, sup).kind !== "redirect"; }));
+check("/admin (không đường dẫn phụ) của quản trị → 307 sang tên miền admin, đường dẫn /admin", eq(d(MAIN, "/admin", sup), { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "" }));
 check("/administrator (chỉ giống tiền tố) KHÔNG bị coi là /admin", eq(d(MAIN, "/administrator", sup), { kind: "next" }) && eq(d(MAIN, "/administrator", tutor), { kind: "next" }));
 
 section("Tên miền chính — người đã đăng nhập không thấy trang giới thiệu của khách");
@@ -45,7 +47,19 @@ section("Tên miền admin");
 for (const p of ["/api/auth/login", "/_next/static/x.js", "/dang-nhap"]) check(`${p} → giữ nguyên`, eq(d(ADM, p, sup), { kind: "next" }) && eq(d(ADM, p, null), { kind: "next" }) && eq(d(ADM, p, tutor), { kind: "next" }));
 check("'/' → viết lại thành /admin (dashboard admin)", eq(d(ADM, "/", sup), { kind: "rewrite", pathname: "/admin" }) && eq(d(ADM, "/", null), { kind: "rewrite", pathname: "/admin" }));
 check("/admin/kiem-duyet → qua", eq(d(ADM, "/admin/kiem-duyet", sup), { kind: "next" }) && eq(d(ADM, "/admin/kiem-duyet", null), { kind: "next" }));
-check("đường lạ (/khoa-hoc) → về /admin", eq(d(ADM, "/khoa-hoc", sup), { kind: "redirect", status: 307, pathname: "/admin" }));
+// 15/10/2026: học viên có phiên CŨ ở tên miền admin (từ trước khi cửa admin từ chối học viên) → đưa về dashboard học viên ở tên miền chính ngay ở máy chủ.
+// Để AuthGuard ở máy khách làm thì router.replace sang tên miền khác bị CORS chặn (console.error) rồi mới rơi về tải cứng.
+check("học viên có phiên ở tên miền admin mở /admin/kiem-duyet → 307 sang tên miền chính, dashboard học viên", eq(d(ADM, "/admin/kiem-duyet", student, "?x=1"), { kind: "redirect", status: 307, host: "main", pathname: "/student/viec-cua-toi", search: "" }));
+check("học viên có phiên ở tên miền admin mở '/' hoặc /admin → cũng về dashboard học viên (không rewrite vào /admin)", eq(d(ADM, "/", student), { kind: "redirect", status: 307, host: "main", pathname: "/student/viec-cua-toi", search: "" }) && eq(d(ADM, "/admin", student), { kind: "redirect", status: 307, host: "main", pathname: "/student/viec-cua-toi", search: "" }));
+check("học viên ở tên miền admin: /dang-nhap và API KHÔNG bị đụng (còn đăng nhập lại / đăng xuất được)", eq(d(ADM, "/dang-nhap", student), { kind: "next" }) && eq(d(ADM, "/api/auth/logout", student), { kind: "next" }));
+check("học viên ở tên miền admin mở trang công khai /khoa-hoc → vẫn sang tên miền chính ĐÚNG đường dẫn (không bị ép về dashboard)", eq(d(ADM, "/khoa-hoc", student, "?q=1"), { kind: "redirect", status: 307, host: "main", pathname: "/khoa-hoc", search: "?q=1" }));
+// 15/10/2026 (Thọ mở admin.midnightelite-edu.com/dang-nhap: mọi nút công khai quay lại chính trang đăng nhập): tên miền admin không phục vụ trang nào ngoài
+// /admin, nhưng các nút công khai (thanh trên, chân trang, "Quên mật khẩu?", liên kết trong thư) vẫn trỏ tới đó → chuyển sang tên miền CHÍNH, đúng đường dẫn + tham số.
+for (const [path, search] of [["/khoa-hoc", ""], ["/thi-thu", ""], ["/cong-dong", "?tab=hoi-dap-qa"], ["/tin-tuc", ""], ["/dang-ky", "?vai=gia-su"], ["/quen-mat-khau", "?email=a%40b.c"], ["/dat-lai-mat-khau", "?token=x"], ["/chinh-sach", ""], ["/student/nhap-ma-lop", ""], ["/mentor/abc", ""]] as const)
+  check(`${path}${search} trên tên miền admin → 307 sang tên miền chính, giữ đường dẫn và tham số`, eq(d(ADM, path, sup, search), { kind: "redirect", status: 307, host: "main", pathname: path, search }) && eq(d(ADM, path, null, search), { kind: "redirect", status: 307, host: "main", pathname: path, search }), d(ADM, path, null, search));
+check("tệp tĩnh (/plyr.svg, /og-kin.png) vẫn được phục vụ trên tên miền admin — không bị đẩy đi", ["/plyr.svg", "/og-kin.png", "/robots.txt"].every(p => eq(d(ADM, p, sup), { kind: "next" }) && eq(d(ADM, p, null), { kind: "next" })));
+check("'/' vẫn là dashboard admin (viết lại, không chuyển tên miền)", eq(d(ADM, "/", sup), { kind: "rewrite", pathname: "/admin" }));
+check("/administrator (chỉ giống tiền tố) KHÔNG được coi là /admin trên tên miền admin → sang tên miền chính", eq(d(ADM, "/administrator", sup), { kind: "redirect", status: 307, host: "main", pathname: "/administrator", search: "" }));
 check("GIA SƯ trên tên miền admin → đưa về tên miền chính, giữ đường dẫn và tham số", eq(d(ADM, "/admin/thi-thu", tutor, "?a=1"), { kind: "redirect", status: 307, host: "main", pathname: "/admin/thi-thu", search: "?a=1" }), d(ADM, "/admin/thi-thu", tutor, "?a=1"));
 check("gia sư ở '/' của tên miền admin → cũng đưa về tên miền chính", d(ADM, "/", tutor).kind === "redirect");
 check("gia sư vẫn gọi được API / đăng nhập trên tên miền admin (không bị chuyển)", eq(d(ADM, "/api/auth/me", tutor), { kind: "next" }) && eq(d(ADM, "/dang-nhap", tutor), { kind: "next" }));
@@ -53,6 +67,6 @@ check("gia sư vẫn gọi được API / đăng nhập trên tên miền admin 
 section("needsSession — chỉ giải mã phiên khi cần");
 check("tên miền chính: chỉ '/', /admin*, /dang-ky, /dang-nhap cần phiên", ["/", "/admin", "/admin/x", "/dang-ky", "/dang-nhap"].every(p => needsSession(MAIN, p)));
 check("tên miền chính: trang khách, API, học viên, gia sư KHÔNG tốn giải mã", ["/thu-vien", "/khoa-hoc", "/api/auth/me", "/student/x", "/lop-cua-toi", "/quen-mat-khau"].every(p => !needsSession(MAIN, p)));
-check("tên miền admin: mọi trang cần phiên (để nhận ra gia sư), trừ API / _next / đăng nhập", needsSession(ADM, "/") && needsSession(ADM, "/admin/x") && needsSession(ADM, "/khoa-hoc") && !needsSession(ADM, "/api/x") && !needsSession(ADM, "/_next/x") && !needsSession(ADM, "/dang-nhap"));
+check("tên miền admin: mọi trang cần phiên (để nhận ra gia sư), trừ API / _next / đăng nhập", needsSession(ADM, "/") && needsSession(ADM, "/admin/x") && needsSession(ADM, "/khoa-hoc") && !needsSession(ADM, "/api/x") && !needsSession(ADM, "/_next/x") && !needsSession(ADM, "/dang-nhap") && !needsSession(ADM, "/plyr.svg"));
 
 done();

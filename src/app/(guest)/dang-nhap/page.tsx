@@ -8,7 +8,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KinLogo } from "@/components/kin/KinLogo";
@@ -20,6 +20,7 @@ import { KinTabs } from "@/components/kin/Tabs";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
 import { landingPath } from "@/lib/landing";
+import { isAdminHost, mainLoginUrl } from "@/lib/hostRouting";
 
 type Step = "email" | "code";
 type Method = "mat-khau" | "ma";
@@ -30,6 +31,8 @@ const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nh
 const secondaryBtn = "w-full h-12 px-4 inline-flex items-center justify-center rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] transition-colors hover:bg-[var(--kin-nen-re-chuot)]";
 const linkBtn = "text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:underline";
 
+const MAIN_LOGIN_DEFAULT = "https://midnightelite-edu.com/dang-nhap";
+const noopSubscribe = () => () => {};
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 function DangNhapForm() {
@@ -37,6 +40,14 @@ function DangNhapForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const redirectTo   = safeRedirect(searchParams.get("redirect"));
+  // Cửa đăng nhập của tên miền chính — chỉ hiện ở tên miền admin (data-chi-admin). Bản dựng sẵn không biết tên miền nên mặc định là tên miền thật; ở trình duyệt thì suy từ tên miền đang mở
+  // (useSyncExternalStore: không setState trong effect, và lúc hydrate vẫn dùng bản của máy chủ nên không lệch).
+  // Mang theo ?redirect= (trang người dùng đang định vào, vd /admin/khoa-hoc): gia sư bị đẩy nhầm sang cửa quản trị, sang cửa chính đăng nhập xong thì vào đúng trang đó.
+  const mainLogin = useSyncExternalStore(
+    noopSubscribe,
+    () => (isAdminHost(window.location.host) ? mainLoginUrl(window.location.host, window.location.protocol, redirectTo) : MAIN_LOGIN_DEFAULT),
+    () => MAIN_LOGIN_DEFAULT,
+  );
 
   const [phoneOn, setPhoneOn]       = useState(false); // máy chủ đã mở đăng nhập bằng SMS chưa
   const [method, setMethod]         = useState<Method>(searchParams.get("cach") === "ma" ? "ma" : "mat-khau");
@@ -260,19 +271,27 @@ function DangNhapForm() {
               </form>
             )}
 
-            <div className="flex items-center gap-[10px] py-1" aria-hidden="true">
-              <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
-              <span className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">hoặc</span>
-              <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
+            {/* Chỉ dành cho khách / học viên ở tên miền chính — ẩn ở cửa quản trị (data-chi-khach, xem src/lib/hostChrome.ts). `contents`: khối bọc không tạo hộp, các phần tử vẫn xếp trong cột. */}
+            <div data-chi-khach className="contents">
+              <div className="flex items-center gap-[10px] py-1" aria-hidden="true">
+                <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
+                <span className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">hoặc</span>
+                <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
+              </div>
+              <Link href="/student/nhap-ma-lop" className={secondaryBtn}>Tôi có mã mời vào lớp</Link>
+              <div className="flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 bg-[var(--kin-nen-dang-chon)]">
+                <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">Phụ huynh thì không cần đăng nhập</p>
+                <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo-tren-nen-nhan)]">
+                  Gia sư gửi cho anh chị một đường dẫn riêng. Bấm vào là xem được buổi học và học phí của con — không tài khoản, không mật khẩu.{" "}
+                  <Link href="/phu-huynh" className="font-semibold text-[var(--kin-nhan-link)] underline">Tìm hiểu thêm</Link>
+                </p>
+              </div>
             </div>
-            <Link href="/student/nhap-ma-lop" className={secondaryBtn}>Tôi có mã mời vào lớp</Link>
-            <div className="flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 bg-[var(--kin-nen-dang-chon)]">
-              <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">Phụ huynh thì không cần đăng nhập</p>
-              <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo-tren-nen-nhan)]">
-                Gia sư gửi cho anh chị một đường dẫn riêng. Bấm vào là xem được buổi học và học phí của con — không tài khoản, không mật khẩu.{" "}
-                <Link href="/phu-huynh" className="font-semibold text-[var(--kin-nhan-link)] underline">Tìm hiểu thêm</Link>
-              </p>
-            </div>
+            {/* Ngược lại, chỉ ở cửa quản trị: học viên / gia sư đăng nhập ở tên miền chính (cookie phiên không dùng chung giữa hai tên miền). */}
+            <p data-chi-admin className="text-center text-[length:var(--kin-co-caption)] text-[var(--kin-chu-phu)]">
+              Đây là cửa đăng nhập dành cho quản trị. Học viên / gia sư đăng nhập tại{" "}
+              <a href={mainLogin} className="font-semibold text-[var(--kin-nhan-link)] underline">midnightelite-edu.com</a>.
+            </p>
           </div>
         )}
 
@@ -306,7 +325,7 @@ function DangNhapForm() {
         )}
 
         {step === "email" && (
-          <p className="px-5 py-4 text-center text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)] bg-[var(--kin-nen-re-chuot)]">
+          <p data-chi-khach className="px-5 py-4 text-center text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)] bg-[var(--kin-nen-re-chuot)]">
             Chưa có tài khoản?{" "}
             <Link href="/dang-ky" className="font-semibold text-[var(--kin-nhan-link)] hover:underline">Đăng ký ngay</Link>
           </p>

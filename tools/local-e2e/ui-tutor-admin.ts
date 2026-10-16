@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 async function get(path: string, cookie?: string) {
   const res = await fetch(BASE + path, { redirect: "manual", headers: cookie ? { cookie } : {} });
   await res.arrayBuffer();
-  return { status: res.status, location: res.headers.get("location") };
+  return { status: res.status, location: res.headers.get("location"), cacheControl: res.headers.get("cache-control") };
 }
 // fetch không cho đặt header Host, nên dùng http.request để giả lập tên miền admin.
 function getAsAdminHost(path: string, cookie?: string): Promise<{ status: number; location: string | null }> {
@@ -41,7 +41,9 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   check("gia sư mở đúng /admin (bảng tổng quan quản trị) → về Hộp việc /lop-cua-toi", t2.status === 307 && path(t2.location) === "/lop-cua-toi", t2);
   for (const [name, c] of [["quản trị cấp 1", ac], ["học viên", sc], ["khách", undefined]] as const) {
     const r = await get("/admin/thi-thu?x=1", c);
-    check(`${name} mở /admin/thi-thu?x=1 → 308 sang tên miền admin, giữ tham số`, r.status === 308 && host(r.location)?.startsWith("admin.midnightelite-edu.com") === true && path(r.location) === "/thi-thu?x=1", r);
+    check(`${name} mở /admin/thi-thu?x=1 → 307 (không phải 308) sang tên miền admin, giữ tham số`, r.status === 307 && host(r.location)?.startsWith("admin.midnightelite-edu.com") === true && path(r.location) === "/admin/thi-thu?x=1", r);
+    // 16/10/2026: 308 là "vĩnh viễn" nên trình duyệt nhớ — người mở /admin/... lúc chưa đăng nhập rồi đăng nhập gia sư sẽ mãi bị đẩy sang tên miền admin. Mọi chuyển hướng phải cấm lưu.
+    check(`${name}: chuyển hướng sang tên miền admin kèm Cache-Control: no-store`, /no-store/.test(r.cacheControl ?? ""), r.cacheControl);
   }
 
   section("Máy chủ: tên miền admin");

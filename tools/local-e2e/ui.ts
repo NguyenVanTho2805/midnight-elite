@@ -5,7 +5,7 @@ import { BASE, cookieFor, type TUser } from "./h";
 let browser: Browser | null = null;
 export const ADMIN = "http://admin.midnightelite-edu.com:3100"; // middleware ép /admin sang host này
 export async function launch() {
-  browser = await chromium.launch({ headless: true, executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox", "--no-proxy-server", "--host-resolver-rules=MAP admin.midnightelite-edu.com 127.0.0.1, MAP localhost 127.0.0.1"] });
+  browser = await chromium.launch({ headless: true, executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox", "--no-proxy-server", "--host-resolver-rules=MAP admin.midnightelite-edu.com 127.0.0.1, MAP midnightelite-edu.com 127.0.0.1, MAP localhost 127.0.0.1"] });
   return browser;
 }
 export async function ctxFor(u: TUser | null, o: { width?: number; height?: number } = {}): Promise<BrowserContext> {

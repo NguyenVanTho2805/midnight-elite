@@ -72,11 +72,18 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
   const [toast, setToast]               = useState("");
 
   function load() {
+    // Chưa đăng nhập (hoặc phiên hết hạn) → API trả 401 {error}; câu hỏi không có → 404 {error}. Trước đây cả hai được nhét thẳng vào `question`
+    // rồi đọc question.author.name → TypeError, trang sập, nút "Thử lại" của khung báo lỗi không làm gì. Nay: 401 sang đăng nhập rồi quay lại ĐÚNG câu hỏi này,
+    // lỗi khác thì hiện "Không tìm thấy câu hỏi".
+    let toLogin = false;
     fetch(`/api/questions/${id}`)
-      .then(r => r.json())
+      .then(r => {
+        if (r.status === 401) { toLogin = true; router.replace(`/dang-nhap?redirect=${encodeURIComponent(`/cong-dong/hoi-dap/${id}`)}`); return null; }
+        return r.ok ? (r.json() as Promise<QuestionDetailDTO>) : null;
+      })
       .then(setQuestion)
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!toLogin) setLoading(false); });   // đang chuyển trang thì giữ khung chờ, không nháy "Không tìm thấy"
   }
 
   useEffect(load, [id]);

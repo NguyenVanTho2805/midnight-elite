@@ -24,7 +24,7 @@ function Row({ chip, chipVideo, title, sub, href, status }: { chip: string; chip
 }
 
 function Lesson({ l, role, courseId }: { l: LibLesson; role: "student" | "tutor"; courseId: string }) {
-  const open = role === "student" ? `/student/bai-giang/${l.id}` : `/admin/khoa-hoc/${courseId}`;
+  const open = role === "student" ? `/student/bai-giang/${l.id}` : `/admin/khoa-hoc/${courseId}?tab=chuong-bai`;
   return (
     <section aria-labelledby={`l-${l.id}`} className="rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] overflow-hidden bg-[var(--kin-nen-trang)]">
       <div className="flex items-center gap-3 px-4 py-3 bg-[var(--kin-nen-bang)] border-b border-[var(--kin-vien-thuong)]">
@@ -64,7 +64,7 @@ export default function LibraryView({ role, classes }: { role: "student" | "tuto
           <div className="rounded-[var(--kin-bo-the)] p-6 text-center text-[length:var(--kin-co-small)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[var(--kin-chu-phu)]">
             {role === "student"
               ? <>Bạn chưa vào lớp nào nên chưa có gì ở đây. <Link href="/student/nhap-ma-lop" className="font-semibold text-[var(--kin-nhan-link)] underline">Nhập mã mời để vào lớp</Link>.</>
-              : <>Bạn chưa mở lớp nào. <Link href="/admin/khoa-hoc" className="font-semibold text-[var(--kin-nhan-link)] underline">Tạo lớp</Link> rồi thêm bài giảng, tài liệu và bài tập.</>}
+              : <>Bạn chưa mở lớp nào. <Link href="/admin/khoa-hoc?tao=1" className="font-semibold text-[var(--kin-nhan-link)] underline">Tạo lớp</Link> rồi thêm bài giảng, tài liệu và bài tập.</>}
           </div>
         ) : (
           <div className="flex flex-col gap-8">

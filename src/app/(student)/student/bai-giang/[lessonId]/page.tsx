@@ -944,7 +944,7 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
 
       {/* Toggle tab — desktop only */}
       {!mobile && (
-        <button onClick={onToggle}
+        <button onClick={onToggle} aria-label={isOpen ? "Thu gọn danh sách bài học" : "Mở danh sách bài học"} aria-expanded={isOpen}
           className="flex-shrink-0 self-start mt-10 flex items-center justify-center rounded-r-lg text-sm font-bold transition-colors hover:bg-[var(--kin-vien-thuong)]"
           style={{
             width: 16, height: 48,
@@ -1024,21 +1024,28 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
         </div>
         <div>
           <p className="text-lg font-extrabold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>
-            {isForbidden ? "Bài học này yêu cầu mua khóa học" : "Không tìm thấy bài học"}
+            {isForbidden ? "Bài học này dành cho học sinh của lớp" : "Không tìm thấy bài học"}
           </p>
           <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>
             {isForbidden
-              ? "Bạn chưa đăng ký khóa học này. Vui lòng mua khóa học để truy cập."
+              ? "Bạn chưa vào lớp này. Nhập mã mời của gia sư để vào lớp, hoặc xem các lớp đang mở."   // học sinh học miễn phí (quyết định D01), không có bước "mua"
               : "Bài học không tồn tại hoặc đã bị xóa."}
           </p>
         </div>
         <div className="flex gap-3">
           {isForbidden ? (
-            <Link href="/khoa-hoc"
-              className="px-4 py-2 text-sm font-bold text-[var(--kin-chu-tren-nut-chinh)] rounded-xl"
-              style={{ background: "var(--kin-tt-cham-cho)" }}>
-              Xem các khóa học
-            </Link>
+            <>
+              <Link href="/student/nhap-ma-lop"
+                className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+                style={{ background: "var(--kin-nhan-nen)" }}>
+                Nhập mã mời
+              </Link>
+              <Link href="/khoa-hoc"
+                className="px-4 py-2 text-sm font-semibold rounded-xl"
+                style={{ border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)" }}>
+                Xem các lớp học
+              </Link>
+            </>
           ) : (
             <Link href="/student"
               className="px-4 py-2 text-sm font-bold text-white rounded-xl"
@@ -1235,7 +1242,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
       {/* Mobile outline toggle */}
       <div className="xl:hidden fixed bottom-20 right-4 z-40">
-        <button onClick={() => setOutlineOpen(v => !v)}
+        <button onClick={() => setOutlineOpen(v => !v)} aria-label="Danh sách bài học" aria-expanded={outlineOpen}
           className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg"
           style={{ background: "var(--kin-nhan-nen)" }}>
           <StickyNote size={22} />

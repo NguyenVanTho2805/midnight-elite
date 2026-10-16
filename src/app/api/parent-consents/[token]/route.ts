@@ -67,7 +67,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     where:   { token },
     include: {
       parentLink: { include: { student: { select: { name: true } } } },
-      enrollment: { include: { course: { select: { name: true, ownerId: true } } } },
+      enrollment: { include: { course: { select: { id: true, name: true, ownerId: true } } } },
     },
   });
   if (!consent) return NextResponse.json({ error: "Link không hợp lệ" }, { status: 404 });
@@ -130,13 +130,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     link: `/student/hoc-tap`,
   });
 
-  const ownerId = consent.enrollment?.course.ownerId;
-  if (ownerId) {
+  const course  = consent.enrollment?.course;
+  const ownerId = course?.ownerId;
+  if (course && ownerId) {
     await notify(ownerId, {
       type:    "parent_consent_responded",
       title:   "Cập nhật xác nhận phụ huynh",
       message: `Phụ huynh của ${studentName} đã ${approved ? "đồng ý" : "từ chối"} cho tham gia lớp "${courseName}".`,
-      link:    `/admin/hoc-sinh`,
+      // Tab "Học viên đăng ký" của ĐÚNG lớp (nơi hiện "Chờ phụ huynh xác nhận"). Trước đây /admin/hoc-sinh — trang chỉ dành cho quản trị: gia sư bấm là bị đẩy về Hộp việc, không thấy học viên nào.
+      link:    `/admin/khoa-hoc/${course.id}?tab=hoc-vien`,
     });
   }
 

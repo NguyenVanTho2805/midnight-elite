@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
+import { landingPath } from "@/lib/landing";
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token");
@@ -33,5 +34,6 @@ export async function GET(req: Request) {
       : {}),
   });
 
-  return NextResponse.json({ success: true, name: record.user.name });
+  // `landing`: trang đầu của vai này (cùng nguồn với đăng nhập: src/lib/landing.ts) — trang xác thực chuyển người dùng tới đó. Trước đây trang cứng /student/hoc-tap.
+  return NextResponse.json({ success: true, name: record.user.name, landing: landingPath(record.user.role, record.user.adminRole) });
 }

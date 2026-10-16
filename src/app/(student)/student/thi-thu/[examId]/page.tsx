@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
@@ -26,6 +27,16 @@ interface LeaderboardRow {
 
 // Phòng thi khoá cứng Navy (Figma 27:2, TK-168/174): ô đáp án đang chọn mà tô màu chủ đề thầy cô thích (cổ vịt…) thì học sinh đọc nhầm
 // là "đáp án đúng", và phòng thi phải giống hệt nhau với mọi người. [data-vung="phong-thi"] đặt lại màu nhấn về Navy cho mọi phần bên trong.
+// Phòng thi KHÔNG có vỏ (thanh module): chỉ lúc đang LÀM BÀI mới cần khoá cứng. Các màn trước và sau bài (chuẩn bị vào thi, kết quả, đề không tồn tại) từng không có liên kết nào
+// để đi tiếp — học viên nộp bài xong, hoặc mở nhầm đề, chỉ còn nút Back của trình duyệt (16/10/2026).
+function ExamExitLink() {
+  return (
+    <div>
+      <Link href="/student/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
+    </div>
+  );
+}
+
 export default function ExamEntryPage() {
   return (
     <div data-vung="phong-thi">
@@ -294,9 +305,11 @@ function ExamEntryInner() {
   }
 
   if (phase === "error" || !exam) {
+    // Phòng thi không có vỏ (thanh module) nên trang lỗi này từng là ngõ cụt: chỉ một dòng chữ, không đường đi đâu. Link cũ / đề đã xoá → có lối về danh sách đề.
     return (
-      <div className="max-w-lg mx-auto text-center py-20">
+      <div className="max-w-lg mx-auto text-center py-20 space-y-4">
         <p className="font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>Không tìm thấy đề thi</p>
+        <Link href="/student/thi-thu" className="inline-block text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
       </div>
     );
   }
@@ -350,6 +363,7 @@ function ExamEntryInner() {
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
           Thi lại đề này
         </button>
+        <ExamExitLink />
       </div>
     );
   }
@@ -585,6 +599,7 @@ function ExamEntryInner() {
   // ── Ready + Entering (default exam info view) ────────────────────────────────
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      <ExamExitLink />
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Phòng thi</h1>
         <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>

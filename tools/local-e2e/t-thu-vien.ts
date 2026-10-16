@@ -94,12 +94,17 @@ const D = 24 * 3_600_000;
   section("Gia sư: thư viện các lớp MÌNH dạy");
   const th = await page(tc);
   check("phụ đề nói đây là các lớp bạn dạy; hiện lớp của mình, KHÔNG hiện lớp của gia sư khác", th.includes("Bản ghi và tài liệu của các lớp bạn dạy") && th.includes("Toán 9 công khai") && !th.includes("Lý 10 lớp khác"));
-  check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /admin/khoa-hoc/<lớp>", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/admin/khoa-hoc/${A.id}`));
+  check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /admin/khoa-hoc/<lớp>?tab=chuong-bai (đúng tab chương bài, không phải Cài đặt)", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/admin/khoa-hoc/${A.id}?tab=chuong-bai`));
   check("bài tập: 'N bài nộp · M chờ chấm' (không phải trạng thái của một học viên)", th.includes("2 bài nộp · 0 chờ chấm".replace("0 chờ chấm", "đã chấm hết")) || th.includes("bài nộp"), th.match(/\d+ bài nộp[^<]*/g));
   check("gia sư không thấy 'Đã xem' (không có tiến độ cá nhân)", !th.includes("Đã xem"));
   check("gia sư KHÔNG có lối 'Học tiếp trong lớp' (đó là của học viên)", !th.includes("Học tiếp trong lớp") && !th.includes("/student/hoc-tap"));
   const t2h = await page(t2c);
   check("gia sư khác chỉ thấy lớp của mình (Lý 10), không thấy Toán 9", t2h.includes("Lý 10 lớp khác") && !t2h.includes("Toán 9 công khai") && !t2h.includes("TL-MIEN-PHI"));
+
+  section("Gia sư mới chưa mở lớp nào");
+  const T3 = await mkTutor("Cô Mới");
+  const t3h = await page(await cookieFor(T3));
+  check("thông báo 'Bạn chưa mở lớp nào' + lối 'Tạo lớp' mở THẲNG form tạo lớp (/admin/khoa-hoc?tao=1), không dừng ở danh sách trống", t3h.includes("Bạn chưa mở lớp nào") && t3h.includes('href="/admin/khoa-hoc?tao=1"'), t3h.match(/Bạn chưa mở lớp nào[\s\S]{0,300}/)?.[0]);
 
   await done();
 })();

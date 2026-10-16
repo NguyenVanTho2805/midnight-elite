@@ -180,3 +180,9 @@
   border: 2px solid var(--kin-nhan-link);
   padding: 11px 15px;
 }
+
+/* Tên miền admin (admin.midnightelite-edu.com) không phải trang công khai (src/lib/hostChrome.ts đặt data-kin-host="admin" lên <html> trước khi vẽ):
+   ẩn khung khách (thanh trên, chân trang) và các nút chỉ dành cho khách (đăng ký, mã mời vào lớp…); hiện lối sang cửa đăng nhập của học viên / gia sư. */
+html[data-kin-host="admin"] [data-guest-chrome],
+html[data-kin-host="admin"] [data-chi-khach] { display: none !important; }
+html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }

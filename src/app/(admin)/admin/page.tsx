@@ -178,11 +178,13 @@ function CallModal({ student, onClose }: { student: ApiStudent; onClose: () => v
   );
 }
 
+// `permission` khớp đúng quyền mà trang đích đòi (PermissionGuard của từng trang / src/lib/adminNav.ts). Thiếu quyền thì ẩn nút: trước đây quản trị nội dung bấm
+// "Hồ sơ học sinh" / "Doanh thu" bị PermissionGuard đẩy ngược về chính dashboard mà không báo gì (15/10/2026).
 const QUICK_ACTIONS = [
-  { label: "Thêm khóa học",  Icon: BookOpen, href: "/admin/khoa-hoc"  },
-  { label: "Đăng vinh danh", Icon: Badge,    href: "/admin/vinh-danh" },
-  { label: "Hồ sơ học sinh", Icon: Edit,     href: "/admin/hoc-sinh"  },
-  { label: "Doanh thu",      Icon: Upload,   href: "/admin/doanh-thu" },
+  { label: "Thêm khóa học",  Icon: BookOpen, href: "/admin/khoa-hoc",  permission: PERMISSIONS.MANAGE_COURSES  },
+  { label: "Đăng vinh danh", Icon: Badge,    href: "/admin/vinh-danh", permission: PERMISSIONS.MANAGE_HONOR    },
+  { label: "Hồ sơ học sinh", Icon: Edit,     href: "/admin/hoc-sinh",  permission: PERMISSIONS.MANAGE_STUDENTS },
+  { label: "Doanh thu",      Icon: Upload,   href: "/admin/doanh-thu", permission: PERMISSIONS.VIEW_REVENUE    },
 ];
 
 const BULK_DEFAULT = "Xin chào các bạn học viên, thầy/cô nhắc nhở các bạn duy trì tiến độ học tập đều đặn nhé! Hãy vào hệ thống xem video bài giảng và hoàn thành bài tập đúng hạn.";
@@ -543,7 +545,7 @@ export default function AdminDashboardPage() {
 
       {/* ── Quick Actions ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {QUICK_ACTIONS.map(a => (
+        {QUICK_ACTIONS.filter(a => hasPermission(user, a.permission)).map(a => (
           <Link key={a.label} href={a.href}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all hover:-translate-y-0.5 cursor-pointer"
             style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-chu-chinh)" }}>

@@ -520,7 +520,8 @@ function KhoaHocListInner() {
   }));
 
   const { toast, showToast } = useAdminToast();
-  const [createOpen, setCreateOpen] = useState(false);
+  // ?tao=1: nút "Tạo lớp đầu tiên" của gia sư mới (và đường cũ /admin/khoa-hoc/tao-moi) mở thẳng form tạo thay vì dừng ở danh sách trống.
+  const [createOpen, setCreateOpen] = useState(searchParams.get("tao") === "1");
   const [search, setSearch]         = useState("");
   const [catFilter, setCat]         = useState(searchParams.get("category") ?? "");
   const [statusFilter, setStatus]   = useState("");

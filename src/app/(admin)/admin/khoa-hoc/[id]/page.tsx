@@ -12,6 +12,7 @@ import { CATEGORY_GRADIENT } from "@/lib/courseData";
 import { DAY_LABELS_VI } from "@/lib/types";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -44,6 +45,7 @@ interface CourseDB {
   openDate: string; price: number; originalPrice?: number | null;
   lessons: number; hours: number; tag?: string | null; tagColor?: string | null;
   introVideo?: string | null; zaloGroupLink?: string | null; bg: string; createdAt: string;
+  ownerId?: string | null;
   capacity?: number | null; classStatus?: string;
   types: string[];
   sections: SectionDB[];
@@ -2275,6 +2277,7 @@ export default function KhoaHocDetailPage() {
   const activeTab: TabId = (rawTab && TABS.some(t => t.id === rawTab) ? rawTab : "cai-dat") as TabId;
   function setTab(tab: TabId) { router.push(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`); }
 
+  const { user } = useAuth();
   const [course, setCourse] = useState<CourseDB | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]    = useState("");
@@ -2299,10 +2302,13 @@ export default function KhoaHocDetailPage() {
     );
   }
 
-  if (error || !course) {
+  // Gia sư (adminRole "teacher") chỉ sửa được khoá của mình — cùng luật `ownsResource` ở các API ghi. API đọc khoá là công khai nên trang vẫn tải được khoá của người khác;
+  // không có dòng này, gia sư gõ nhầm / mở link cũ của khoá khác sẽ thấy đủ giao diện sửa (Lưu, Học viên đăng ký…) rồi mới bị 403 từng thao tác.
+  const notMine = !!course && user?.adminRole === "teacher" && course.ownerId !== user.id;
+  if (error || !course || notMine) {
     return (
       <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 p-10 text-center">
-        <p className="text-red-500 font-semibold mb-2">Không tìm thấy khoá học</p>
+        <p className="text-red-500 font-semibold mb-2">{notMine ? "Bạn không có quyền với khoá học này" : "Không tìm thấy khoá học"}</p>
         <Link href="/admin/khoa-hoc" className="text-sm text-blue-600 hover:underline">← Quay lại danh sách</Link>
       </div>
     );

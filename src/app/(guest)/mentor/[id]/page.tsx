@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { ArrowLeft, CheckCircle } from "griddy-icons";
 import ProfileTracker from "@/components/tutor/ProfileTracker";
 import TutorProfileHeader from "@/components/tutor/TutorProfileHeader";
@@ -61,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function MentorProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await fetchTutor(id);
+  const [data, session] = await Promise.all([fetchTutor(id), getSession()]);
 
   // FE-115: không tìm thấy
   if (!data) {
@@ -162,9 +163,15 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
       </div>
 
       {/* PH-207: vòng kéo gia sư mới — huy hiệu "tạo bằng KiN" bật sẵn */}
+      {/* Lời mời chỉ dành cho KHÁCH. Người đã đăng nhập bấm vào thì /dang-ky đẩy ngược về dashboard (nút như không làm gì); học viên không cần, gia sư đã có hồ sơ.
+          Giữ khung #kin-profile-end cho ProfileTracker đo "xem hết hồ sơ" với mọi người. */}
       <div id="kin-profile-end" className="text-center text-sm py-2" style={{ color: "var(--kin-chu-mo)" }}>
-        Hồ sơ tạo bằng KiN · sổ lớp miễn phí cho gia sư →{" "}
-        <Link href="/dang-ky?vai=gia-su&n=ho-so" className="underline font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Tạo hồ sơ của bạn</Link>
+        {!session && (
+          <>
+            Hồ sơ tạo bằng KiN · sổ lớp miễn phí cho gia sư →{" "}
+            <Link href="/dang-ky?vai=gia-su&n=ho-so" className="underline font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Tạo hồ sơ của bạn</Link>
+          </>
+        )}
       </div>
 
       <ProfileTracker tutorId={tutor.id} />

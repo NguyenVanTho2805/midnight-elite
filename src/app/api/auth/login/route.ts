@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     }
 
     loginThrottle.ok(target.key);
-    return await signInResponse(user);
+    return await signInResponse(user, req);
   } catch (e) {
     console.error("[login]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
