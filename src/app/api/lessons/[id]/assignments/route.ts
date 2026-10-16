@@ -3,11 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
+import { canViewCourseContent } from "@/lib/lessonAccess";
 
 // GET /api/lessons/[id]/assignments — danh sách bài tập tự nộp của 1 bài
-// giảng. Bất kỳ ai đã đăng nhập đều xem được danh sách (giống tài liệu đính
-// kèm) — kèm `mySubmission` khi người gọi là học viên đã nộp, để trang bài
-// giảng không cần gọi thêm request thứ 2. Param dùng tên `id` (không phải
+// giảng, kèm `mySubmission` khi người gọi là học viên đã nộp, để trang bài
+// giảng không cần gọi thêm request thứ 2. Danh sách mang `fileUrl` (đề bài) và
+// hướng dẫn — nội dung của lớp — nên chỉ trả cho người có quyền với bài học đó:
+// bài học thử miễn phí thì mọi tài khoản; bài khác thì học viên ghi danh
+// (active, hoặc suspended chỉ xem lại), quản trị, gia sư chủ lớp. Trước 16/10/2026
+// MỌI tài khoản đã đăng nhập đều lấy được đề bài của lớp trả phí. Param dùng tên `id` (không phải
 // `lessonId`) để khớp với src/app/api/lessons/[id]/context/route.ts đã có
 // sẵn — Next.js không cho 2 route cùng cấp dùng tên slug khác nhau.
 export async function GET(
@@ -20,6 +24,21 @@ export async function GET(
   const { id: lessonId } = await params;
 
   try {
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { isFree: true, chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
+    });
+    if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+    if (!lesson.isFree) {
+      const { courseId, course } = lesson.chapter.section;
+      const enrolled = auth.role === "admin"
+        ? null
+        : await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId } } });
+      if (!canViewCourseContent(auth, course, enrolled, { includeSuspended: true })) {
+        return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+      }
+    }
+
     const assignments = await prisma.assignment.findMany({
       where: { lessonId },
       orderBy: { createdAt: "asc" },

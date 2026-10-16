@@ -47,7 +47,8 @@ export async function GET(req: NextRequest) {
       orderBy: { sortOrder: "asc" },
     });
 
-    return NextResponse.json(courses);
+    // Link nhóm Zalo là của người trong lớp — danh sách công khai (trang chủ, danh mục) không mang nó; chỉ bảng quản trị (?all=1) mới cần.
+    return NextResponse.json(allFlag === "1" ? courses : courses.map(c => ({ ...c, zaloGroupLink: null })));
   } catch (e) {
     console.error("[GET /api/courses]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

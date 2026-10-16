@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { canViewCourseContent, courseTreeForViewer } from "@/lib/lessonAccess";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -30,40 +31,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
 
     const session = await getSession();
-    let hasAccess = false;
-
-    if (session) {
-      if (session.role === "admin") {
-        hasAccess = true;
-      } else {
-        const enrolled = await prisma.enrollment.findUnique({
-          where: { userId_courseId: { userId: session.userId, courseId: id } },
-        });
-        // "pending_consent" chưa được học, "suspended" chỉ xem lại nhưng
-        // không có hoạt động mới — hasAccess ở route này quyết định mở khoá
-        // toàn bộ lessons, nên dùng active làm chuẩn.
-        hasAccess = isEnrollmentActive(enrolled);
-      }
-    }
+    // Quản trị / gia sư không cần tra ghi danh; học viên thì cần. "pending_consent" chưa được học, "suspended" chỉ xem lại nhưng
+    // không có hoạt động mới — route này quyết định mở khoá toàn bộ lessons, nên dùng active làm chuẩn.
+    const enrolled = session && session.role !== "admin"
+      ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: id } } })
+      : null;
+    // Toàn quyền = thấy NỘI DUNG mọi bài (gia sư chỉ với lớp của mình — xem src/lib/lessonAccess.ts). Khác với việc lớp ẩn có hiện hay không (bên dưới).
+    const fullAccess = canViewCourseContent(session, course, enrolled);
 
     // Hidden courses: only admin or enrolled students can access
-    if (!course.status && !hasAccess) {
+    if (!course.status && !fullAccess && session?.role !== "admin") {
       return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     }
 
-    // Học viên đã mua/đã enroll (hoặc admin) thì mọi bài học đều mở khoá,
-    // bất kể cờ isLocked tĩnh trong DB — isLocked chỉ còn ý nghĩa cho khách chưa mua.
-    if (hasAccess) {
-      course.sections = course.sections.map(s => ({
-        ...s,
-        chapters: s.chapters.map(c => ({
-          ...c,
-          lessons: c.lessons.map(l => ({ ...l, isLocked: false })),
-        })),
-      }));
-    }
+    // Người có toàn quyền thì mọi bài học đều mở khoá, bất kể cờ isLocked tĩnh trong DB. Người khác (khách, học viên chưa vào lớp, gia sư của lớp khác):
+    // bài không miễn phí luôn hiện khoá VÀ bị cắt videoUrl / zoomUrl / azotaUrl / documents / adminNote — trước đây "khoá" chỉ là cờ giao diện
+    // còn nội dung vẫn nằm trong JSON (lộ qua DevTools). Link nhóm Zalo của lớp cũng chỉ dành cho người trong lớp.
+    const body = courseTreeForViewer(course, fullAccess);
+    if (!fullAccess) body.zaloGroupLink = null;
 
-    return NextResponse.json(course);
+    return NextResponse.json(body);
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

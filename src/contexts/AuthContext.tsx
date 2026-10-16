@@ -1,7 +1,7 @@
 "use client";
 
 import { landingPath } from "@/lib/landing";
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { syncShellHint } from "@/lib/shellHint";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type Permission, type AdminRole } from "@/lib/permissions";
@@ -53,6 +53,8 @@ interface AuthContextType {
   /** Đăng nhập bằng mã 6 số gửi qua email (TK-170). `code` = wrong | locked | expired | format khi thất bại. */
   loginWithCode: (emailOrPhone: string, code: string) => Promise<{ success: boolean; message?: string; code?: string; attemptsLeft?: number; retryAfterSec?: number }>;
   logout:    () => Promise<void>;
+  /** Hỏi lại /api/auth/me và cập nhật `user` (không đụng `isLoading`). Trả về người đang đăng nhập, hoặc null nếu máy chủ nói không có phiên. */
+  refresh:   () => Promise<AuthUser | null>;
 }
 
 // ─── CONTEXT ─────────────────────────────────────────────────────────────────
@@ -71,6 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  // /api/auth/me chỉ được hỏi một lần lúc mở trang, nên phiên do MÁY CHỦ tạo sau đó (xác thực email tự đăng nhập) không vào `user` nếu trang không tải cứng.
+  // AuthGuard gọi hàm này một lần trước khi đuổi người dùng sang đăng nhập — xem src/components/AuthGuard.tsx.
+  const refresh = useCallback(async (): Promise<AuthUser | null> => {
+    try {
+      const r = await fetch("/api/auth/me", { cache: "no-store" });
+      const data = await r.json().catch(() => null);
+      const next = data?.id ? toAuthUser(data) : null;
+      setUser(next);
+      return next;
+    } catch {
+      return null;
+    }
   }, []);
 
   // Nhớ "máy này đang đăng nhập kiểu gì" để lần tải cứng sau không nháy khung khách (src/lib/signedInShell.ts). Chỉ ghi khi đã biết chắc (hết isLoading).
@@ -117,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithCode, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, loginWithCode, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

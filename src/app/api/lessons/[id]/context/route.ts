@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { canViewCourseContent, courseTreeForViewer } from "@/lib/lessonAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -41,38 +42,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const course   = lesson.chapter.section.course;
   const courseId = course.id;
 
-  let fullAccess = session.role === "admin";
+  // "suspended" được xem lại nội dung đã mở (R01) nhưng không mark done/nộp bài mới — route này chỉ trả metadata để render trang, nên cho đọc.
+  // "pending_consent" chưa được học — rơi xuống nhánh isFree. Gia sư chỉ có toàn quyền với lớp CỦA MÌNH (xem src/lib/lessonAccess.ts).
+  const enrolled = session.role === "admin"
+    ? null
+    : await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } } });
+  const fullAccess = canViewCourseContent(session, course, enrolled, { includeSuspended: true });
 
-  if (!fullAccess) {
-    const enrolled = await prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId: session.userId, courseId } },
-    });
-    // "suspended" được xem lại nội dung đã mở (R01) nhưng không mark done/nộp
-    // bài mới — route này chỉ trả metadata để render trang, nên cho đọc.
-    // "pending_consent" chưa được học — rơi xuống nhánh isFree.
-    if (enrolled && (enrolled.status === "active" || enrolled.status === "suspended")) {
-      fullAccess = true;
-    } else if (!lesson.isFree) {
-      // Chưa enroll và bài này không phải học thử miễn phí
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
-    }
-    // Chưa enroll nhưng bài này isFree → cho xem riêng bài này, không mở khoá cả khoá học
+  if (!fullAccess && !lesson.isFree) {
+    // Chưa vào lớp (hoặc gia sư của lớp khác) và bài này không phải học thử miễn phí
+    return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
   }
+  // Chưa vào lớp nhưng bài này isFree → cho xem riêng bài này, không mở khoá cả khoá học
 
-  // Normalise isLocked for every lesson so the frontend can trust this flag blindly:
-  // - enrolled/admin → all unlocked (regardless of DB value)
-  // - not enrolled   → locked iff not free (regardless of DB value)
-  // This prevents admins forgetting to set isLocked=true from leaking paid content.
-  course.sections = course.sections.map(s => ({
-    ...s,
-    chapters: s.chapters.map(c => ({
-      ...c,
-      lessons: c.lessons.map(l => ({
-        ...l,
-        isLocked: fullAccess ? false : !l.isFree,
-      })),
-    })),
-  }));
+  // Chuẩn hoá isLocked cho MỌI bài để giao diện tin cờ này mù quáng:
+  // - toàn quyền (học viên đã vào lớp / quản trị / gia sư chủ lớp) → mở khoá hết (bất kể giá trị trong DB);
+  // - người khác → bài không miễn phí luôn khoá VÀ bị cắt videoUrl / zoomUrl / azotaUrl / documents / adminNote
+  //   (trước đây chỉ đặt cờ nên cây bài học của lớp vẫn mang nội dung bài trả phí tới người xem bài học thử — lộ qua DevTools).
+  // Gán lại NGAY TRÊN `course`: `lesson.chapter.section.course` cùng là đối tượng này, nên bản `lesson` trả về cũng phải sạch (không cây bài học thứ hai chưa cắt).
+  course.sections = courseTreeForViewer(course, fullAccess).sections;
+  if (!fullAccess) course.zaloGroupLink = null;
 
   return NextResponse.json({ lesson, course, enrolled: fullAccess });
 }

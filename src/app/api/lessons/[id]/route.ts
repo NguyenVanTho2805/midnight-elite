@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
-import { isEnrollmentActive } from "@/lib/enrollment";
+import { canViewCourseContent } from "@/lib/lessonAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -12,22 +12,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const lesson = await prisma.lesson.findUnique({
     where: { id },
-    include: { chapter: { select: { section: { select: { courseId: true } } } } },
+    include: { chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
-  // Admin: full access
-  if (session.role === "admin") return NextResponse.json(lesson);
-
-  // Student: chỉ access nếu đang enroll active khoá của bài học này.
-  // "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua
-  // route /context (R01) — route này trả raw lesson nên dùng active làm chuẩn,
-  // nhất quán với progress/[lessonId], assignments/[id]/submit sau PR #6.
-  const courseId = lesson.chapter.section.courseId;
-  const enrolled = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId: session.userId, courseId } },
-  });
-  if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+  // Quản trị cấp 1 / nội dung: toàn quyền. Gia sư: chỉ lớp của mình (bài học thử miễn phí thì ai cũng xem được) — trước đây MỌI tài khoản admin,
+  // kể cả gia sư của lớp khác, đọc được videoUrl / tài liệu của bài trả phí.
+  // Học viên: chỉ khi đang ghi danh active khoá của bài học này. "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua
+  // route /context (R01) — route này trả raw lesson nên dùng active làm chuẩn, nhất quán với progress/[lessonId], assignments/[id]/submit sau PR #6.
+  const { courseId, course } = lesson.chapter.section;
+  const enrolled = session.role === "admin"
+    ? null
+    : await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } } });
+  const fullAccess = canViewCourseContent(session, course, enrolled);
+  if (!fullAccess && !(session.role === "admin" && lesson.isFree)) {
+    return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+  }
 
   return NextResponse.json(lesson);
 }
