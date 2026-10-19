@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkCronAuth } from "@/lib/cronAuth";
 import { sendClassReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
@@ -17,13 +18,8 @@ function sleep(ms: number) {
 // remind-exam, xem vercel.json.
 // Authorization header: Bearer CRON_SECRET
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
-    }
-  }
+  const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
+  if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
 
   // Thứ của ngày mai theo giờ VN (UTC+7) — xem vnDayOfWeek trong lib/types.ts
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);

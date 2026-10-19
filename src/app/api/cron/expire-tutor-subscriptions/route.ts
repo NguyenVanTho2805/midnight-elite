@@ -12,22 +12,18 @@
 // Mỗi lần expire ghi 1 AuditLog "tutor_subscription.expire" (BE-062).
 //
 // Vercel Cron chạy hàng ngày 0:00 UTC (xem vercel.json). Auth qua
-// Bearer CRON_SECRET nếu env có — chống gọi ngoài.
+// Bearer CRON_SECRET (bắt buộc — thiếu env thì từ chối, xem lib/cronAuth.ts).
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkCronAuth } from "@/lib/cronAuth";
 import { logAction } from "@/lib/auditLog";
 
 const BATCH_SIZE = 100;
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
-    }
-  }
+  const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
+  if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
 
   const now = new Date();
   const expired: { id: string; userId: string; planCode: string }[] = [];
