@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
-import { canViewCourseContent, courseTreeForViewer } from "@/lib/lessonAccess";
+import { canViewCourseContent, courseTreeForViewer, redactCourseForOutsider } from "@/lib/lessonAccess";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -46,11 +46,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     // Người có toàn quyền thì mọi bài học đều mở khoá, bất kể cờ isLocked tĩnh trong DB. Người khác (khách, học viên chưa vào lớp, gia sư của lớp khác):
     // bài không miễn phí luôn hiện khoá VÀ bị cắt videoUrl / zoomUrl / azotaUrl / documents / adminNote — trước đây "khoá" chỉ là cờ giao diện
-    // còn nội dung vẫn nằm trong JSON (lộ qua DevTools). Link nhóm Zalo của lớp cũng chỉ dành cho người trong lớp.
-    const body = courseTreeForViewer(course, fullAccess);
-    if (!fullAccess) body.zaloGroupLink = null;
-
-    return NextResponse.json(body);
+    // còn nội dung vẫn nằm trong JSON (lộ qua DevTools). Hai link nhóm Zalo của lớp cũng chỉ dành cho người trong lớp.
+    const tree = courseTreeForViewer(course, fullAccess);
+    return NextResponse.json(fullAccess ? tree : redactCourseForOutsider(tree));
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

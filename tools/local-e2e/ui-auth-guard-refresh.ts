@@ -8,6 +8,8 @@
 //   R3  Khách thật sự chưa đăng nhập, router.push vào khu học sinh từ trang công khai → /dang-nhap?redirect= đúng trang (hỏi lại đúng một lần: 2 lần tổng cộng)
 //   R4  Học sinh đã đăng nhập mở thẳng /student/viec-cua-toi → vào được, không hỏi /api/auth/me thêm lần nào ngoài lần của AuthProvider
 //   R5  Đăng xuất ở khu học sinh vẫn tải cứng về "/" (không rơi vào /dang-nhap?redirect=<trang cũ>)
+//   R6  Tài khoản đã bị quản trị xoá nhưng cookie còn hạn (30 ngày): mở khu học sinh → /dang-nhap hiện form (không trang trắng) và cookie bị xoá;
+//       trước đây /api/auth/me trả null mà giữ cookie, proxy thấy "đã đăng nhập" nên đẩy /dang-nhap và /dang-ky ngược về trang cũ → trắng, không đăng nhập lại được
 import { BASE, mkTutor, mkCourse, mkUser, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -92,6 +94,23 @@ const GUARDED = "/student/viec-cua-toi";
     await eventually("về '/' (không phải /dang-nhap?redirect=...)", () => at(p).pathname === "/", 30000);
     await p.waitForTimeout(1500);
     check("vẫn ở '/' sau khi mọi thứ lắng xuống", at(p).pathname === "/", at(p).pathname + at(p).search);
+    await ctx.close();
+  }
+
+  section("R6. Cookie còn hạn nhưng tài khoản đã bị xoá");
+  {
+    const GONE = await mkUser({ name: "Học Sinh Bị Xoá" });
+    const { ctx, p } = await freshPage(GONE);
+    await prisma.user.delete({ where: { id: GONE.id } });
+    await p.goto(`${BASE}${GUARDED}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await eventually("sang /dang-nhap (không kẹt ở trang trắng)", () => at(p).pathname === "/dang-nhap", 30000);
+    await eventually("trang đăng nhập hiện form (có ô mật khẩu)", async () => (await p.locator('input[type="password"]').count()) > 0, 30000);
+    await p.waitForTimeout(1500);
+    check("vẫn ở /dang-nhap sau khi lắng xuống (proxy không đẩy ngược)", at(p).pathname === "/dang-nhap", at(p).pathname + at(p).search);
+    const cookies = await ctx.cookies(BASE);
+    check("cookie phiên của tài khoản đã xoá bị xoá", !cookies.some(c => c.name === "midnight_session"), cookies.map(c => c.name));
+    await p.goto(`${BASE}/dang-ky`, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await eventually("mở được /dang-ky (không bị đẩy ngược về trang cũ)", () => at(p).pathname === "/dang-ky", 30000);
     await ctx.close();
   }
 

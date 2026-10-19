@@ -3,12 +3,15 @@
 //
 // Bối cảnh (16/10/2026): GET /api/courses/[id] và GET /api/lessons/[id]/context trả nguyên bản ghi Lesson cho cả khách chưa đăng nhập / học viên chưa ghi danh,
 // chỉ đặt lại cờ isLocked — "khoá" chỉ là cờ giao diện, ai mở DevTools cũng lấy được videoUrl / documents của bài trả phí.
-// Quy tắc: bài `isFree` (học thử) công khai; mọi bài khác chỉ lộ nội dung cho người có TOÀN QUYỀN với lớp đó (xem canViewCourseContent).
+// Quy tắc: bài `isFree` (học thử) công khai và luôn mở khoá với người ngoài lớp; mọi bài khác chỉ lộ nội dung cho người có TOÀN QUYỀN với lớp đó (xem canViewCourseContent).
 // Không tin cờ isLocked trong DB để quyết định cắt nội dung: quên đặt isLocked = true từng làm lộ bài trả phí (xem chú thích ở /context).
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 
 /** Các cột nội dung của Lesson — chỉ người có toàn quyền với lớp mới được thấy (trừ bài học thử miễn phí). */
 export const LESSON_CONTENT_FIELDS = ["videoUrl", "zoomUrl", "azotaUrl", "azotaDeadline", "documents", "adminNote"] as const;
+
+/** Các cột của Course chỉ dành cho người trong lớp: hai link nhóm Zalo (zaloGroupLink do quản trị đặt ở trang sửa khoá; zaloGroupUrl do gia sư gắn ở Cài đặt → Kết nối). */
+export const COURSE_PRIVATE_FIELDS = ["zaloGroupLink", "zaloGroupUrl"] as const;
 
 export interface ViewerSession {
   userId: string;
@@ -38,9 +41,12 @@ export function canViewCourseContent(
 
 type LessonLike = { isFree: boolean; isLocked: boolean };
 
-/** Bài học dưới con mắt của người KHÔNG có toàn quyền: bài không miễn phí bị cắt nội dung và luôn hiện khoá; bài học thử giữ nguyên. */
+/**
+ * Bài học dưới con mắt của người KHÔNG có toàn quyền: bài không miễn phí bị cắt nội dung và luôn hiện khoá; bài học thử giữ nguyên nội dung và luôn mở khoá
+ * (cờ isLocked trong DB mặc định true và là công tắc rời với isFree, nên gia sư chỉ bật "Học thử miễn phí" vẫn phải xem được — như /context vẫn làm trước đây).
+ */
 export function redactLessonForOutsider<T extends LessonLike>(lesson: T): T {
-  if (lesson.isFree) return lesson;
+  if (lesson.isFree) return lesson.isLocked ? { ...lesson, isLocked: false } : lesson;
   const out: Record<string, unknown> = { ...lesson, isLocked: true };
   for (const f of LESSON_CONTENT_FIELDS) out[f] = f === "documents" ? "[]" : null;
   return out as T;
@@ -62,4 +68,11 @@ export function courseTreeForViewer<L extends LessonLike, C extends TreeLike<L>>
       chapters: s.chapters.map(c => ({ ...c, lessons: c.lessons.map(l => lessonForViewer(l, fullAccess)) })),
     })),
   };
+}
+
+/** Khoá dưới con mắt của người KHÔNG ở trong lớp: bỏ các link nhóm Zalo (xem COURSE_PRIVATE_FIELDS). Trả bản sao, không sửa đối tượng gốc. */
+export function redactCourseForOutsider<T extends Partial<Record<(typeof COURSE_PRIVATE_FIELDS)[number], string | null>>>(course: T): T {
+  const out: Record<string, unknown> = { ...course };
+  for (const f of COURSE_PRIVATE_FIELDS) if (f in out) out[f] = null;
+  return out as T;
 }

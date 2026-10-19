@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { canViewCourseContent, courseTreeForViewer } from "@/lib/lessonAccess";
+import { canViewCourseContent, courseTreeForViewer, COURSE_PRIVATE_FIELDS } from "@/lib/lessonAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -57,11 +57,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   // Chuẩn hoá isLocked cho MỌI bài để giao diện tin cờ này mù quáng:
   // - toàn quyền (học viên đã vào lớp / quản trị / gia sư chủ lớp) → mở khoá hết (bất kể giá trị trong DB);
-  // - người khác → bài không miễn phí luôn khoá VÀ bị cắt videoUrl / zoomUrl / azotaUrl / documents / adminNote
+  // - người khác → bài học thử luôn mở khoá; bài không miễn phí luôn khoá VÀ bị cắt videoUrl / zoomUrl / azotaUrl / documents / adminNote
   //   (trước đây chỉ đặt cờ nên cây bài học của lớp vẫn mang nội dung bài trả phí tới người xem bài học thử — lộ qua DevTools).
   // Gán lại NGAY TRÊN `course`: `lesson.chapter.section.course` cùng là đối tượng này, nên bản `lesson` trả về cũng phải sạch (không cây bài học thứ hai chưa cắt).
   course.sections = courseTreeForViewer(course, fullAccess).sections;
-  if (!fullAccess) course.zaloGroupLink = null;
+  if (!fullAccess) for (const f of COURSE_PRIVATE_FIELDS) course[f] = null;   // hai link nhóm Zalo của lớp
 
   return NextResponse.json({ lesson, course, enrolled: fullAccess });
 }

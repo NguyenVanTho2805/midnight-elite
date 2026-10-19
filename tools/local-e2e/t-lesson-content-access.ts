@@ -13,15 +13,17 @@ const SECRET = {
   doc: "https://files.example.com/BI-MAT.pdf",
   note: "GHI-CHU-NOI-BO-BI-MAT",
   forgot: "https://video.example.com/QUEN-DAT-KHOA",   // bài trả phí nhưng DB ghi isLocked = false
-  zalo: "https://zalo.me/g/NHOM-LOP-BI-MAT",
+  zalo: "https://zalo.me/g/NHOM-LOP-BI-MAT",           // Course.zaloGroupLink (quản trị đặt ở trang sửa khoá)
+  zaloUrl: "https://zalo.me/g/NHOM-GIA-SU-BI-MAT",     // Course.zaloGroupUrl (gia sư gắn ở Cài đặt → Kết nối)
+  deadline: "HAN-NOP-BI-MAT-2031",                       // Lesson.azotaDeadline
   assignFile: "https://files.example.com/DE-BAI-BI-MAT.pdf",
   assignText: "HUONG-DAN-DE-BAI-BI-MAT",
 };
 const OPEN = { video: "https://video.example.com/HOC-THU-CONG-KHAI", doc: "https://files.example.com/HOC-THU.pdf" };
-const PAID_TOKENS = [SECRET.video, SECRET.zoom, SECRET.azota, "BI-MAT.pdf", SECRET.note, SECRET.forgot];
+const PAID_TOKENS = [SECRET.video, SECRET.zoom, SECRET.azota, "BI-MAT.pdf", SECRET.note, SECRET.forgot, SECRET.deadline];
 
 const has = (text: string, s: string) => text.includes(s);
-const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo].filter(t => has(text, t));
+const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo, SECRET.zaloUrl].filter(t => has(text, t));
 
 (async () => {
   await wipe();
@@ -36,7 +38,7 @@ const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo].filter(t => has(te
   const S_SUSP = await mkUser({ name: "HS tạm dừng" });
 
   const C = await mkCourse(T1.id, { name: "Lớp có bài trả phí" });
-  await prisma.course.update({ where: { id: C.id }, data: { price: 500000, zaloGroupLink: SECRET.zalo, status: true } });
+  await prisma.course.update({ where: { id: C.id }, data: { price: 500000, zaloGroupLink: SECRET.zalo, zaloGroupUrl: SECRET.zaloUrl, status: true } });
   for (const [u, status] of [[S_PEND, "pending_consent"], [S_ACT, "active"], [S_SUSP, "suspended"]] as const) {
     await prisma.enrollment.create({ data: { userId: u.id, courseId: C.id, status } });
   }
@@ -45,11 +47,13 @@ const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo].filter(t => has(te
   const mk = (k: string, order: number, o: Record<string, unknown>) =>
     prisma.lesson.create({ data: { id: `les-${k}-${stamp}`, code: `L${order}`, title: `Bài ${k}`, type: "record", order, chapterId: chap.id, ...o } as never });
   const lPaid = await mk("paid", 1, {
-    isLocked: true, isFree: false, duration: "45 phút", videoUrl: SECRET.video, zoomUrl: SECRET.zoom, azotaUrl: SECRET.azota, azotaDeadline: "2026-12-31",
+    isLocked: true, isFree: false, duration: "45 phút", videoUrl: SECRET.video, zoomUrl: SECRET.zoom, azotaUrl: SECRET.azota, azotaDeadline: SECRET.deadline,
     documents: JSON.stringify([{ name: "tai-lieu", url: SECRET.doc }]), adminNote: SECRET.note,
   });
   const lForgot = await mk("forgot", 2, { isLocked: false, isFree: false, videoUrl: SECRET.forgot });
   const lFree = await mk("free", 3, { isLocked: false, isFree: true, videoUrl: OPEN.video, documents: JSON.stringify([{ name: "hoc-thu", url: OPEN.doc }]) });
+  // Bài học thử với cờ isLocked của DB = true (mặc định của cột; "Khoá bài" và "Học thử miễn phí" là hai công tắc rời nhau): người ngoài lớp vẫn phải thấy MỞ KHOÁ.
+  const lFreeLocked = await mk("freelocked", 4, { isLocked: true, isFree: true, videoUrl: OPEN.video + "-2" });
   await prisma.assignment.create({ data: { lessonId: lPaid.id, title: "Bài tập lớp trả phí", instructions: SECRET.assignText, fileUrl: SECRET.assignFile, fileName: "de-bai.pdf", maxPoints: 10, ownerId: T1.id, mode: "file" } });
   // Lớp ẨN (status = false) để giữ nguyên quy tắc "ai thấy lớp ẩn".
   const H = await mkCourse(T1.id, { name: "Lớp ẩn" });
@@ -75,17 +79,19 @@ const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo].filter(t => has(te
     check(`${v.who}: 200`, r.status === 200, r.status);
     const lessons = (r.json?.sections?.[0]?.chapters?.[0]?.lessons ?? []) as Array<Record<string, unknown>>;
     const byId = (id: string) => lessons.find(l => l.id === id) ?? {};
-    check(`${v.who}: thấy đủ 3 bài (tiêu đề / loại / thời lượng còn nguyên để trang giới thiệu hiện danh sách)`, lessons.length === 3 && byId(lPaid.id).title === "Bài paid" && byId(lPaid.id).duration === "45 phút");
+    check(`${v.who}: thấy đủ 4 bài (tiêu đề / loại / thời lượng còn nguyên để trang giới thiệu hiện danh sách)`, lessons.length === 4 && byId(lPaid.id).title === "Bài paid" && byId(lPaid.id).duration === "45 phút");
     if (v.full) {
       check(`${v.who}: thấy nội dung bài trả phí`, has(r.text, SECRET.video) && has(r.text, SECRET.zoom) && has(r.text, SECRET.azota) && has(r.text, "BI-MAT.pdf") && has(r.text, SECRET.note));
       check(`${v.who}: mọi bài mở khoá`, lessons.every(l => l.isLocked === false));
-      check(`${v.who}: thấy link nhóm Zalo của lớp`, r.json?.zaloGroupLink === SECRET.zalo);
+      check(`${v.who}: thấy cả hai link nhóm Zalo của lớp`, r.json?.zaloGroupLink === SECRET.zalo && r.json?.zaloGroupUrl === SECRET.zaloUrl);
+      check(`${v.who}: thấy hạn nộp Azota của bài trả phí`, byId(lPaid.id).azotaDeadline === SECRET.deadline);
     } else {
       check(`${v.who}: KHÔNG lộ videoUrl / zoom / azota / tài liệu / ghi chú của bài trả phí`, leaks(r.text).length === 0, leaks(r.text));
       check(`${v.who}: bài trả phí hiện khoá (kể cả bài DB quên đặt isLocked)`, byId(lPaid.id).isLocked === true && byId(lForgot.id).isLocked === true);
       check(`${v.who}: các cột nội dung của bài trả phí là null / "[]"`, byId(lPaid.id).videoUrl === null && byId(lPaid.id).documents === "[]" && byId(lPaid.id).adminNote === null && byId(lForgot.id).videoUrl === null);
       check(`${v.who}: bài học thử miễn phí vẫn công khai (đúng thiết kế)`, byId(lFree.id).videoUrl === OPEN.video && has(r.text, OPEN.doc));
-      check(`${v.who}: link nhóm Zalo bị ẩn`, r.json?.zaloGroupLink === null);
+      check(`${v.who}: bài học thử có cờ DB isLocked = true vẫn MỞ KHOÁ và còn nội dung`, byId(lFreeLocked.id).isLocked === false && byId(lFreeLocked.id).videoUrl === OPEN.video + "-2" && byId(lFree.id).isLocked === false);
+      check(`${v.who}: cả hai link nhóm Zalo bị ẩn`, r.json?.zaloGroupLink === null && r.json?.zaloGroupUrl === null);
     }
   }
   const hidden = async (v: V) => (await api("GET", `/api/courses/${H.id}`, { as: v.as })).status;
@@ -105,6 +111,8 @@ const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo].filter(t => has(te
     } else {
       check(`${v.who}: cây bài học KHÔNG mang nội dung bài trả phí (cả `+"`lesson.chapter...course.sections`"+` lẫn `+"`course.sections`"+`)`, leaks(r.text).length === 0, leaks(r.text));
       check(`${v.who}: bài học thử xem được`, r.json?.lesson?.videoUrl === OPEN.video);
+      const treeLessons = (r.json?.course?.sections?.[0]?.chapters?.[0]?.lessons ?? []) as Array<Record<string, unknown>>;
+      check(`${v.who}: trong cây, bài học thử mở khoá kể cả khi DB ghi isLocked = true; bài trả phí khoá`, treeLessons.find(l => l.id === lFreeLocked.id)?.isLocked === false && treeLessons.find(l => l.id === lPaid.id)?.isLocked === true && treeLessons.find(l => l.id === lForgot.id)?.isLocked === true);
     }
   }
 
@@ -151,13 +159,13 @@ const leaks = (text: string) => [...PAID_TOKENS, SECRET.zalo].filter(t => has(te
 
   section("GET /api/courses — danh sách công khai không mang link nhóm Zalo");
   const pubList = await api("GET", "/api/courses");
-  check("khách: danh sách có lớp nhưng không có link nhóm Zalo", pubList.status === 200 && (pubList.json as Array<{ id: string }>).some(c => c.id === C.id) && !has(pubList.text, SECRET.zalo));
+  check("khách: danh sách có lớp nhưng không có link nhóm Zalo nào (cả hai cột)", pubList.status === 200 && (pubList.json as Array<{ id: string }>).some(c => c.id === C.id) && !has(pubList.text, SECRET.zalo) && !has(pubList.text, SECRET.zaloUrl));
   const stuList = await api("GET", "/api/courses", { as: S_ACT });
-  check("học viên: danh sách không có link nhóm Zalo", stuList.status === 200 && !has(stuList.text, SECRET.zalo));
+  check("học viên: danh sách không có link nhóm Zalo nào", stuList.status === 200 && !has(stuList.text, SECRET.zalo) && !has(stuList.text, SECRET.zaloUrl));
   const ownList = await api("GET", "/api/courses?all=1", { as: T1 });
-  check("gia sư chủ lớp: bảng quản trị (?all=1) vẫn có link nhóm Zalo để sửa", ownList.status === 200 && has(ownList.text, SECRET.zalo));
+  check("gia sư chủ lớp: bảng quản trị (?all=1) vẫn có cả hai link nhóm Zalo", ownList.status === 200 && has(ownList.text, SECRET.zalo) && has(ownList.text, SECRET.zaloUrl));
   const otherList = await api("GET", "/api/courses?all=1", { as: T2 });
-  check("gia sư lớp khác: ?all=1 chỉ thấy lớp của mình (không có lớp này, không có link)", otherList.status === 200 && !has(otherList.text, SECRET.zalo));
+  check("gia sư lớp khác: ?all=1 chỉ thấy lớp của mình (không có lớp này, không có link)", otherList.status === 200 && !has(otherList.text, SECRET.zalo) && !has(otherList.text, SECRET.zaloUrl));
 
   section("Sửa / xoá bài vẫn đúng quyền (không đổi)");
   const putOwn = await api("PUT", `/api/lessons/${lPaid.id}`, { as: T1, body: { adminNote: SECRET.note } });

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
+import { redactCourseForOutsider } from "@/lib/lessonAccess";
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,8 +48,8 @@ export async function GET(req: NextRequest) {
       orderBy: { sortOrder: "asc" },
     });
 
-    // Link nhóm Zalo là của người trong lớp — danh sách công khai (trang chủ, danh mục) không mang nó; chỉ bảng quản trị (?all=1) mới cần.
-    return NextResponse.json(allFlag === "1" ? courses : courses.map(c => ({ ...c, zaloGroupLink: null })));
+    // Link nhóm Zalo (cả zaloGroupLink lẫn zaloGroupUrl) là của người trong lớp — danh sách công khai (trang chủ, danh mục) không mang chúng; chỉ bảng quản trị (?all=1) mới cần.
+    return NextResponse.json(allFlag === "1" ? courses : courses.map(redactCourseForOutsider));
   } catch (e) {
     console.error("[GET /api/courses]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
