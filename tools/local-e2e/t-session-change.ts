@@ -174,7 +174,7 @@ const occOf = (r: any, key: string) => (r.json.occurrences as any[]).find(o => o
   const rC = await prisma.classSchedule.create({ data: { courseId: c3.id, dayOfWeek: tdow, startTime: "18:00", endTime: "19:00" } });
   const dayAfter = addDaysKey(tomorrow, 1); // "ngày kia": buổi gốc của Địa 9 nằm ở đây rồi được dời VÀO ngày mai
   const rM = await prisma.classSchedule.create({ data: { courseId: cm.id, dayOfWeek: dayOfWeekOfKey(dayAfter), startTime: "16:00", endTime: "17:00" } });
-  const cron = async () => { await prisma.notification.deleteMany({ where: { type: "class_reminder" } }); const r = await api("GET", "/api/cron/remind-class"); const n = await prisma.notification.findMany({ where: { type: "class_reminder" } }); return { r, n }; };
+  const cron = async () => { await prisma.notification.deleteMany({ where: { type: "class_reminder" } }); const r = await api("GET", "/api/cron/remind-class", { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } }); const n = await prisma.notification.findMany({ where: { type: "class_reminder" } }); return { r, n }; };
   let run = await cron();
   check("khi chưa có thay đổi: Hoá + Sử đều được nhắc lúc 18:00 (2 học viên mỗi lớp)", run.r.status === 200 && run.n.filter(x => /Hoá 9|Sử 9/.test(x.message) && x.message.includes("18:00")).length === 4, run.n.map(x => x.message));
   await api("POST", POST, { as: T, body: { scheduleId: rC.id, dateKey: tomorrow, kind: "cancel" } });

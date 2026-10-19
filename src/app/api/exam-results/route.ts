@@ -49,7 +49,9 @@ export async function GET(req: Request) {
   return NextResponse.json([]);
 }
 
-// POST /api/exam-results — nộp kết quả thi
+// POST /api/exam-results — học sinh TỰ KHAI điểm cho đề làm bên ngoài (Azota).
+// Đề có câu hỏi trong KiN được chấm ở server (finalizeAttempt → upsertBestResult);
+// điểm tự khai không được ghi đè lên đó, nếu không ai cũng gửi 150 rồi lên đầu bảng xếp hạng.
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
@@ -64,8 +66,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Thông tin điểm không hợp lệ (0–150)" }, { status: 400 });
   }
 
-  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  const exam = await prisma.exam.findUnique({
+    where:  { id: examId },
+    select: { id: true, _count: { select: { examQuestions: true } } },
+  });
   if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+  if (exam._count.examQuestions > 0) {
+    return NextResponse.json(
+      { error: "Đề này làm và chấm ngay trong KiN, không nhận điểm tự khai." },
+      { status: 403 },
+    );
+  }
 
   // Upsert + tăng participants (chỉ lần nộp đầu) trong cùng 1 transaction để tránh race condition
   const result = await prisma.$transaction(async (tx) => {

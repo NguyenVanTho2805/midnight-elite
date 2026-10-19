@@ -6,3 +6,4 @@ export NEXT_TELEMETRY_DISABLED=1
 export BASE=http://localhost:3100
 export EMAIL_SINK_DIR=/tmp/kin-mail   # test đăng nhập bằng mã email đọc mã từ các tệp JSON ở đây; server dev cũng phải có biến này
 export SMS_SINK_DIR=/tmp/kin-sms   # test đăng nhập bằng SMS đọc mã từ các tệp JSON ở đây; server dev cũng phải có biến này. Bản production BỎ QUA biến này.
+export CRON_SECRET="test-cron-secret-test-cron-secret"   # /api/cron/* bắt buộc khoá này (≥ 16 ký tự); server dev cũng phải có biến này

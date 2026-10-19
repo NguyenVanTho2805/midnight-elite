@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkCronAuth } from "@/lib/cronAuth";
 import { sendExamReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
 
@@ -13,13 +14,8 @@ function sleep(ms: number) {
 // Vercel Cron gọi GET mỗi ngày 0:00 UTC (7:00 SA giờ VN)
 // Authorization header: Bearer CRON_SECRET
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
-    }
-  }
+  const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
+  if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
 
   // Ngày mai theo UTC+7 (Vietnam Standard Time)
   const now      = new Date();
