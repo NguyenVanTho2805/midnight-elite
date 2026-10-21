@@ -3,7 +3,7 @@
 Soạn 21/10/2026. **Bản nháp để Thọ và Thanh duyệt.**
 **Thiết kế Figma (21/10):** trang “🆕 Nâng cấp lần 1 (21/10)” trong file KiN Design System, khung E1–E5 (ĐX-01, ĐX-03), F1–F3 (ĐX-00/05/06), G1–G2 (ĐX-02, chờ Q2), H1 (ĐX-04), I1 (ĐX-07 phương án nhẹ, chờ Q5). Chưa thiết kế ĐX-08 và ĐX-09 vì dính tiền / dữ liệu trẻ em.
 
-**Trạng thái 21/10:** ĐX-00, ĐX-01, ĐX-03 và ĐX-04 đã làm phần mã (xem `tien-do-dang-do.md`, mục "ĐX-00", "ĐX-01", "ĐX-03" và "ĐX-04"; test dùng DB và test trình duyệt chưa chạy được ở máy làm việc). Các việc còn lại chưa làm.
+**Trạng thái 21/10:** ĐX-00, ĐX-01, ĐX-03, ĐX-04 và ĐX-05 đã làm phần mã (xem `tien-do-dang-do.md`, mục "ĐX-00", "ĐX-01", "ĐX-03", "ĐX-04" và "ĐX-05"; Thọ đã chốt Q2–Q5 ngày 21/10, còn ĐX-02, ĐX-06, ĐX-07 chưa làm; test dùng DB và test trình duyệt chưa chạy được ở máy làm việc). Các việc còn lại chưa làm.
 Mọi việc đang đi chung nhánh `claude/keen-allen-wiz3em` vì phiên làm việc chỉ được đẩy lên một nhánh; mục 5 "mỗi ĐX một nhánh" chỉ áp dụng khi tách PR sau.
 
 Nguồn: báo cáo research "Sổ Gia Sư (sogiasu.com) + 14 nền tảng tham khảo" (bản 2.1, khảo sát 19/10/2026).
@@ -247,10 +247,10 @@ Phụ thuộc: ĐX-00 → ĐX-05 · ĐX-04 → ĐX-08 · ĐX-02 → ĐX-09 (thô
 | # | Câu hỏi | Ai | Ảnh hưởng | Mặc định đề xuất |
 |---|---|---|---|---|
 | Q1 | "Buổi đã dạy" = phiên đến hôm nay có ít nhất 1 em có mặt/muộn; có chặn tạo phiên tương lai không? | Thọ | ĐX-00, ĐX-05 | Chỉ đổi cách đếm, không chặn |
-| Q2 | Thêm dependency `web-push`; giờ yên lặng cho push; file logo PNG; chỉ bật push ở Production | Thọ | ĐX-02 | Theo mục 3, ĐX-02 |
-| Q3 | Chỉ số nào hiện công khai; có hiện "đúng hạn %" không | Thanh + Thọ | ĐX-05 | 3 chỉ số đầu; "đúng hạn %" tắt |
-| Q4 | Thêm lại Tỉnh/Thành, quận/huyện, hình thức, trường, giá tham khảo vào Hồ sơ gia sư? Nhóm nào bắt buộc hiện? | Thọ | ĐX-06 | Thêm vào Hồ sơ, không vào form đăng ký |
-| Q5 | Học sinh không tài khoản có phải nhu cầu thật của nhóm 1–20 em không? | Thọ + Thanh | ĐX-07 | Chưa làm |
+| Q2 | Thêm dependency `web-push`; giờ yên lặng cho push; file logo PNG; chỉ bật push ở Production | Thọ | ĐX-02 | Theo mục 3, ĐX-02 · **Thọ chốt 21/10: làm theo đề xuất** |
+| Q3 | Chỉ số nào hiện công khai; có hiện "đúng hạn %" không | Thanh + Thọ | ĐX-05 | 3 chỉ số đầu; "đúng hạn %" tắt · **Thọ chốt 21/10: đúng đề xuất** |
+| Q4 | Thêm lại Tỉnh/Thành, quận/huyện, hình thức, trường, giá tham khảo vào Hồ sơ gia sư? Nhóm nào bắt buộc hiện? | Thọ | ĐX-06 | Thêm vào Hồ sơ, không vào form đăng ký · **Thọ chốt 21/10: thêm, tuỳ chọn, không nhóm nào bắt buộc** |
+| Q5 | Học sinh không tài khoản có phải nhu cầu thật của nhóm 1–20 em không? | Thọ + Thanh | ĐX-07 | Chưa làm · **Thọ chốt 21/10: làm phương án nhẹ "mời hàng loạt"; KHÔNG làm học sinh không tài khoản** |
 | Q6 | Ngưỡng nào của ĐX-04 mới mở ĐX-08 | Thọ + Thanh | ĐX-08 | 30% trong 2 tháng (chưa có căn cứ) |
 | Q7 | Hỏi luật sư biến thể form rút gọn | Thọ | ĐX-09 | Thêm vào PH-225 |
 | Q8 | Có đưa bản text của báo cáo research vào `docs/kin/bao-cao/` để trích dẫn? | Thọ | Mọi mục | Có, chỉ phần chữ |
