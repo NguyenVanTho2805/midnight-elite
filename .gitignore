@@ -65,6 +65,8 @@ __screenshots/
 __screenshots.mjs
 cookies*.txt
 *.png
+# ngoại lệ: biểu tượng ứng dụng PWA (ĐX-02) phải được commit — manifest và thông báo đẩy tham chiếu tới chúng
+!/public/icons/*.png
 
 # bản sao bộ test cục bộ: mật khẩu DB thử và ảnh chụp không commit
 /tools/local-e2e/env.sh

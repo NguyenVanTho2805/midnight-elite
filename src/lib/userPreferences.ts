@@ -4,6 +4,7 @@
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
 import { parseRail, type RailState } from "@/lib/railState";
 import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
+import { readPushPrefs, type PushTypes } from "@/lib/pushRules";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -46,6 +47,12 @@ export interface UserPreferences {
    * nên đổi chủ đề hay module không làm mất khu vực đã khai.
    */
   teaching?: TutorTeaching;
+  /**
+   * ĐX-02: công tắc từng LOẠI thông báo đẩy của gia sư (vắng = dùng mặc định của loại đó). Như `teaching`, chỉ ghi qua API riêng
+   * (PUT /api/push/settings, có kiểm dữ liệu và khoá giao dịch `prefsLockKey`); API giao diện từ chối khoá "push" nhưng giữ nguyên giá trị đang có.
+   * Danh sách thiết bị đã bật nằm ở bảng push_subscriptions, không nằm ở đây.
+   */
+  push?: { types: Partial<PushTypes> };
 }
 
 /** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
@@ -112,6 +119,8 @@ export function readPreferences(raw: unknown): UserPreferences {
   }
   const teaching = readTeaching(raw.teaching);
   if (teaching) out.teaching = teaching;
+  const push = readPushPrefs(raw.push);
+  if (push) out.push = push;
   return out;
 }
 

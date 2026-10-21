@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isPushType } from "@/lib/pushRules";
 
 type NotificationInput = {
   type: string;
@@ -7,14 +9,32 @@ type NotificationInput = {
   link?: string;
 };
 
+// ĐX-02: thông báo loại có trong danh sách đẩy (absence_late, bank_tx_pending, invoice_paid) còn được ĐẨY ra điện thoại gia sư (src/lib/pushServer.ts).
+// Việc đẩy chạy SAU khi phản hồi đã trả (after) nên không làm chậm webhook / API; ngoài phạm vi một yêu cầu (script, test) thì chạy ngay.
+// Loại ngoài danh sách thì không tốn thêm gì (không đụng DB, không nạp web-push).
+function deferPush(userId: string, type: string, leadMinutes?: number): void {
+  const run = async () => {
+    try {
+      const { pushToUser } = await import("@/lib/pushServer");
+      await pushToUser(userId, type, { leadMinutes });
+    } catch (e) {
+      console.error("[notify] Không đẩy được thông báo:", e);
+    }
+  };
+  try { after(run); } catch { void run(); }
+}
+
 // Tạo thông báo cho 1 user. Cố ý nuốt lỗi — thông báo là tính năng phụ trợ,
 // không bao giờ được làm hỏng hành động chính (enroll, reply, like...).
-export async function notify(userId: string, data: NotificationInput): Promise<void> {
+// `leadMinutes`: chỉ cho absence_late — còn bao nhiêu phút tới giờ học (dưới 2 giờ thì được đẩy cả trong giờ yên lặng).
+export async function notify(userId: string, data: NotificationInput, opts: { leadMinutes?: number } = {}): Promise<void> {
   try {
     await prisma.notification.create({ data: { userId, ...data } });
   } catch (e) {
     console.error("[notify] Không tạo được thông báo:", e);
+    return;
   }
+  if (isPushType(data.type)) deferPush(userId, data.type, opts.leadMinutes);
 }
 
 // Tạo thông báo cho nhiều user cùng lúc (vd broadcast bài viết mới, đề thi mới).

@@ -51,6 +51,9 @@ export const metadata: Metadata = {
     description: "Chinh phục ĐGNL & Tốt nghiệp THPT cùng KiN",
     type: "website",
   },
+  // ĐX-02: iPhone chỉ nhận thông báo đẩy khi KiN đã được "Thêm vào Màn hình chính" (iOS 16.4+); hai dòng dưới cho biểu tượng và tên đúng khi thêm.
+  appleWebApp: { capable: true, title: "KiN", statusBarStyle: "default" },
+  icons: { apple: "/icons/kin-180.png" },
 };
 
 export default function RootLayout({
