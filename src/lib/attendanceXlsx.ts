@@ -22,7 +22,8 @@ export async function attendanceXlsx(grid: AttendanceGrid): Promise<Uint8Array> 
 
   const dateCols = grid.dates.length;
   const summaryStart = 3 + dateCols; // cột (1-based) của "Có mặt"
-  ws.getColumn(1).width = 6;
+  // Cột A đủ rộng cho "Điểm danh" / "Tháng" ở hai dòng đề (ô B cạnh bên đã có chữ nên A không tràn sang được).
+  ws.getColumn(1).width = 13;
   ws.getColumn(2).width = Math.max(18, Math.min(40, ...grid.rows.map(r => r.name.length + 2)));
   for (let c = 3; c < summaryStart; c++) ws.getColumn(c).width = 6;
   for (let c = summaryStart; c < summaryStart + SUMMARY_HEADERS.length; c++) ws.getColumn(c).width = 14;

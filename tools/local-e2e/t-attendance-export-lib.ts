@@ -112,6 +112,7 @@ check("tên sheet ≤ 31 ký tự và không chứa : \\ / ? * [ ]", sheetNameOf
   check("tên '=HYPERLINK(...)' ra đúng CHỮ đó, không phải công thức", injR > 0 && typeof injCell.value === "string" && injCell.value === INJ && !injCell.formula, injCell.value);
   const v = ws.views[0] as { state?: string; xSplit?: number; ySplit?: number };
   check("đóng băng tiêu đề và hai cột đầu", v.state === "frozen" && v.xSplit === 2 && v.ySplit === HEADER_ROW_INDEX + 1, v);
+  check("cột A đủ rộng cho chữ “Điểm danh” ở dòng đề (không bị ô B bên cạnh cắt)", (ws.getColumn(1).width ?? 0) >= 12, ws.getColumn(1).width);
   const lastVals: unknown[] = []; ws.eachRow(r => lastVals.push(r.getCell(1).value));
   check("dòng cuối là chú giải", lastVals[lastVals.length - 1] === GRID_LEGEND, lastVals[lastVals.length - 1]);
 
