@@ -94,6 +94,10 @@ export default function GiangVienPage() {
   const [error, setError]     = useState(false);
   const [subject, setSubject] = useState<string>("");
   const [sort, setSort]       = useState<SortKey>("active"); // ĐX-05: gia sư có dạy trong 30 ngày qua lên trước
+  // ĐX-06: lọc theo Tỉnh/Thành và hình thức dạy. Gia sư chưa khai khu vực không khớp bộ lọc nào đang bật.
+  const [city, setCity]       = useState<string>("");
+  const [mode, setMode]       = useState<"" | "online" | "offline">("");
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,13 +111,15 @@ export default function GiangVienPage() {
     const qs = new URLSearchParams();
     if (subject) qs.set("subject", subject);
     qs.set("sort", sort);
+    if (city) qs.set("city", city);
+    if (mode) qs.set("mode", mode);
     fetch(`/api/tutors?${qs}`)
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then((d: { items: TutorListItem[] }) => { if (!cancelled) setTutors(d.items); })
+      .then((d: { items: TutorListItem[]; facets?: { cities: string[] } }) => { if (!cancelled) { setTutors(d.items); setCityOptions(d.facets?.cities ?? []); } })
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [subject, sort]);
+  }, [subject, sort, city, mode]);
 
   // FE-106: option subject lấy từ union tất cả subjects xuất hiện.
   const subjectOptions = useMemo(() => {
@@ -150,6 +156,26 @@ export default function GiangVienPage() {
             <option value="">Tất cả môn</option>
             {subjectOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          {/* ĐX-06: chỉ hiện khi đã có gia sư khai khu vực; chọn rồi mà danh sách tỉnh trống (do đổi môn) vẫn giữ lựa chọn để bỏ chọn được */}
+          {(cityOptions.length > 0 || city) && (
+            <>
+              <label htmlFor="tutor-city" className="text-xs font-semibold ml-4" style={{ color: "var(--kin-chu-mo)" }}>Tỉnh/Thành</label>
+              <select id="tutor-city" value={city} onChange={e => setCity(e.target.value)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+                <option value="">Tất cả tỉnh/thành</option>
+                {(city && !cityOptions.includes(city) ? [city, ...cityOptions] : cityOptions).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </>
+          )}
+          <label htmlFor="tutor-mode" className="text-xs font-semibold ml-4" style={{ color: "var(--kin-chu-mo)" }}>Hình thức</label>
+          <select id="tutor-mode" value={mode} onChange={e => setMode(e.target.value as "" | "online" | "offline")}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full"
+            style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <option value="">Mọi hình thức</option>
+            <option value="online">Online</option>
+            <option value="offline">Dạy trực tiếp</option>
+          </select>
           <label htmlFor="tutor-sort" className="text-xs font-semibold ml-4" style={{ color: "var(--kin-chu-mo)" }}>Sắp xếp</label>
           <select id="tutor-sort" value={sort} onChange={e => setSort(e.target.value as SortKey)}
             className="text-xs font-semibold px-3 py-1.5 rounded-full"
@@ -174,7 +200,7 @@ export default function GiangVienPage() {
           </div>
         ) : tutors && tutors.length === 0 ? (
           <EmptyState title="Chưa có gia sư nào phù hợp bộ lọc"
-            description={subject ? `Thử bỏ bộ lọc môn "${subject}" hoặc chọn môn khác.` : "Hiện chưa có gia sư nào được duyệt."}
+            description={subject ? `Thử bỏ bộ lọc môn "${subject}" hoặc chọn môn khác.` : (city || mode) ? "Thử bỏ bộ lọc tỉnh/thành hoặc hình thức dạy. Gia sư chưa khai khu vực sẽ không hiện khi đang lọc." : "Hiện chưa có gia sư nào được duyệt."}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

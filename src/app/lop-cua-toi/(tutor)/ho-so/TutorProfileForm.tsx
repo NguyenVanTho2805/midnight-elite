@@ -2,9 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
+import { CITY_MAX, CREDENTIAL_MAX, DISTRICT_MAX, MODE_LABEL, TEACHING_MODES, priceText as fmtPrice, type TeachingMode, type TutorTeaching } from "@/lib/tutorArea";
 
 const BIO_MAX = 2000, SUBJECTS_MAX = 10, SUBJECT_LEN = 50;
 // Chính tả KHỚP form đăng ký gia sư (dang-ky/page.tsx: "Hóa học", "Kỹ năng mềm"). Gia sư đăng ký bằng "Hóa học" mà gợi ý ghi "Hoá học" thì hồ sơ hiện hai môn trùng nhau.
+// ĐX-06: chỉ là GỢI Ý khi gõ Tỉnh/Thành (không bắt buộc chọn trong danh sách); tên khác vẫn nhận, "TP.HCM" / "Sài Gòn" được KiN thống nhất khi lưu.
+const CITY_SUGGEST = ["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ", "Huế"];
 const SUGGEST = ["Toán", "Vật lý", "Hóa học", "Sinh học", "Ngữ văn", "Tiếng Anh", "Lịch sử", "Địa lý", "Tin học", "GDCD", "Luyện thi HSA", "Kỹ năng mềm"];
 
 // Thu nhỏ ảnh về 256×256 (cắt giữa) rồi mã hoá JPEG — API giới hạn ~120KB.
@@ -16,9 +19,19 @@ async function toAvatarDataUrl(file: File): Promise<string> {
   return c.toDataURL("image/jpeg", 0.85);
 }
 
-export default function TutorProfileForm({ initialBio, initialSubjects }: { initialBio: string; initialSubjects: string[] }) {
+export default function TutorProfileForm({ initialBio, initialSubjects, initialCity, initialTeaching }: {
+  initialBio: string; initialSubjects: string[];
+  /** ĐX-06: Tỉnh/Thành (users.city) và mục khu vực / hình thức đã lưu (null = chưa khai). */
+  initialCity: string; initialTeaching: TutorTeaching | null;
+}) {
   const notify = useNotify();
   const [bio, setBio] = useState(initialBio);
+  const [city, setCity] = useState(initialCity);
+  const [district, setDistrict] = useState(initialTeaching?.district ?? "");
+  const [mode, setMode] = useState<"" | TeachingMode>(initialTeaching?.mode ?? "");
+  const [credential, setCredential] = useState(initialTeaching?.credential ?? "");
+  const [price, setPrice] = useState(initialTeaching?.price !== undefined ? String(initialTeaching.price) : "");
+  const [showPrice, setShowPrice] = useState(initialTeaching?.showPrice === true);
   const [subjects, setSubjects] = useState<string[]>(initialSubjects);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,8 +56,14 @@ export default function TutorProfileForm({ initialBio, initialSubjects }: { init
 
   async function save() {
     if (subjects.length === 0) { notify.err("Chọn ít nhất 1 môn dạy"); return; }
+    // ĐX-06: Tỉnh/Thành + khu vực / hình thức / trường + bằng cấp / giá tham khảo đi cùng một lần lưu. Để trống hết thì GỠ cả mục (hồ sơ công khai
+    // không còn hiện khu vực). Giá chỉ hiện khi gia sư bật công tắc; tắt công tắc thì giá không ra công khai dù vẫn nhớ trong ô.
+    const priceNum = price ? Number(price) : null;
+    if (showPrice && !priceNum) { notify.err("Bật hiện giá thì hãy nhập giá tham khảo mỗi buổi"); return; }
+    const empty = !city.trim() && !district.trim() && !mode && !credential.trim() && !price && !showPrice;
+    const teaching = empty ? null : { district: district.trim() || null, mode: mode || null, credential: credential.trim() || null, price: priceNum, showPrice };
     setSaving(true);
-    const r = await callApi<{ error?: string }>("/api/users/me/tutor-profile", { method: "PUT", body: JSON.stringify({ bio, subjects }) });
+    const r = await callApi<{ error?: string }>("/api/users/me/tutor-profile", { method: "PUT", body: JSON.stringify({ bio, subjects, city: city.trim() || null, teaching }) });
     setSaving(false);
     if (r.ok) notify.ok("Đã lưu hồ sơ."); else notify.err(r.data.error ?? "Không lưu được hồ sơ");
   }
@@ -105,6 +124,61 @@ export default function TutorProfileForm({ initialBio, initialSubjects }: { init
           {SUGGEST.filter(s => !subjects.some(x => x.toLocaleLowerCase("vi") === s.toLocaleLowerCase("vi"))).map(s => (
             <button key={s} type="button" onClick={() => addSubject(s)} className="px-3 py-1.5 rounded-full text-sm min-h-[44px]" style={{ border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>+ {s}</button>
           ))}
+        </div>
+      </section>
+
+      {/* ĐX-06 (Thọ chốt Q4): tuỳ chọn, không nhóm nào bắt buộc, KHÔNG nằm ở form đăng ký. Tự khai, KiN không xác minh. */}
+      <section className="rounded-xl p-5 space-y-4" style={CARD_STYLE} aria-labelledby="h-khu-vuc">
+        <div>
+          <h2 id="h-khu-vuc" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Khu vực và hình thức dạy</h2>
+          <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>
+            Tuỳ chọn. Hiện công khai trên hồ sơ của bạn và giúp phụ huynh lọc theo nơi ở. KiN chỉ hiện quận/huyện, <b>không bao giờ hiện địa chỉ nhà</b> — đừng nhập số nhà hay tên đường ở đây.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="khuvuc-city" className="block text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Tỉnh/Thành</label>
+          <input id="khuvuc-city" list="khuvuc-city-goi-y" value={city} maxLength={CITY_MAX} onChange={e => setCity(e.target.value)} placeholder="Ví dụ: Hà Nội" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE} autoComplete="off" />
+          <datalist id="khuvuc-city-goi-y">{CITY_SUGGEST.map(c => <option key={c} value={c} />)}</datalist>
+        </div>
+
+        <div>
+          <label htmlFor="khuvuc-district" className="block text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Quận/Huyện</label>
+          <input id="khuvuc-district" value={district} maxLength={DISTRICT_MAX} onChange={e => setDistrict(e.target.value)} placeholder="Ví dụ: Cầu Giấy" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE} autoComplete="off" />
+        </div>
+
+        <div role="radiogroup" aria-labelledby="khuvuc-mode-label">
+          <p id="khuvuc-mode-label" className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Hình thức dạy</p>
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--kin-vien-o-nhap)" }}>
+            {TEACHING_MODES.map(m => (
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(mode === m ? "" : m)}
+                className="flex-1 px-2 py-2 text-sm font-semibold min-h-[44px]"
+                style={{ background: mode === m ? "var(--kin-nhan-nen)" : "var(--kin-nen-trang)", color: mode === m ? "var(--kin-nhan-chu-tren-nen)" : "var(--kin-chu-chinh)" }}>
+                {MODE_LABEL[m]}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Bấm lại lựa chọn đang chọn để bỏ chọn.</p>
+        </div>
+
+        <div>
+          <label htmlFor="khuvuc-credential" className="block text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Trường và bằng cấp chính (tối đa {CREDENTIAL_MAX} ký tự)</label>
+          <input id="khuvuc-credential" value={credential} maxLength={CREDENTIAL_MAX} onChange={e => setCredential(e.target.value)} placeholder="Ví dụ: ĐH Sư phạm Hà Nội · Cử nhân Toán" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE} autoComplete="off" />
+          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Tự khai. KiN không xác minh và hồ sơ công khai ghi rõ “tự khai”.</p>
+        </div>
+
+        <div className="rounded-lg p-3" style={{ background: "var(--kin-nen-bang)" }}>
+          <div className="flex items-center justify-between gap-3">
+            <span id="khuvuc-price-label" className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Hiện giá tham khảo mỗi buổi</span>
+            <button type="button" role="switch" aria-checked={showPrice} aria-labelledby="khuvuc-price-label" onClick={() => setShowPrice(!showPrice)}
+              className="relative w-12 h-7 rounded-full flex-shrink-0" style={{ background: showPrice ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)" }}>
+              <span aria-hidden className="absolute top-1 w-5 h-5 rounded-full" style={{ left: showPrice ? "26px" : "4px", background: "var(--kin-nen-trang)" }} />
+            </button>
+          </div>
+          <label htmlFor="khuvuc-price" className="block text-xs mt-2 mb-1" style={{ color: "var(--kin-chu-phu)" }}>Giá tham khảo mỗi buổi (đồng)</label>
+          <input id="khuvuc-price" inputMode="numeric" value={price} maxLength={8} onChange={e => setPrice(e.target.value.replace(/\D/g, ""))} placeholder="Ví dụ: 150000" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE} autoComplete="off" />
+          {price && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }} data-testid="gia-xem-truoc">{fmtPrice(Number(price))}</p>}
+          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>Tắt thì hồ sơ không hiện giá (phụ huynh hỏi qua Zalo). Đây chỉ là giá tham khảo: KiN không thu hộ và không dùng số này để tính tiền.</p>
         </div>
       </section>
 
