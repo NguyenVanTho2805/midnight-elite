@@ -14,13 +14,14 @@
 //
 // Dùng token --kin-* để màu nhất quán với 5 chủ đề của KiN.
 "use client";
-import { useEffect, useState, useCallback, use as usePromise } from "react";
+import { Suspense, useEffect, useState, useCallback, use as usePromise } from "react";
+import { useSearchParams } from "next/navigation";
 import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { KinButton } from "@/components/kin";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
 import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
-import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { hmOf, isValidDateKey, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 
 const vnWhen = (iso: string) => `${hmOf(vnMinutesOfDay(new Date(iso)))} ngày ${vnDateKeyOf(new Date(iso)).slice(8, 10)}/${vnDateKeyOf(new Date(iso)).slice(5, 7)}`;
 
@@ -55,12 +56,19 @@ const CHIP_COLORS: Record<AttendanceStatus, { bg: string; fg: string }> = {
   absent:  { bg: "var(--kin-tt-chu-loi)",         fg: "var(--kin-nen-trang)" },        // đỏ
 };
 
-export default function DiemDanhPage({ params }: { params: Promise<{ id: string }> }) {
+// ĐX-01: Hộp việc dẫn tới `?date=YYYY-MM-DD` (buổi chưa điểm danh xong) — mở sẵn đúng ngày đó; thiếu / sai định dạng thì như cũ (hôm nay).
+// useSearchParams cần Suspense khi dựng sẵn trang.
+export default function DiemDanhPage(props: { params: Promise<{ id: string }> }) {
+  return <Suspense fallback={null}><DiemDanhView {...props} /></Suspense>;
+}
+
+function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = usePromise(params);
+  const queryDate = useSearchParams().get("date");
   // useNotify (danh tính ổn định) chứ không phải useToast(): useToast() trả object mới mỗi lần render, đưa vào
   // deps của load() làm trang tự tải lại mỗi khi thông báo hiện/tắt — và xoá các ô điểm danh chưa lưu.
   const toast = useNotify();
-  const [date, setDate]           = useState<string>(todayISO());
+  const [date, setDate]           = useState<string>(() => (queryDate && isValidDateKey(queryDate) ? queryDate : todayISO()));
   const [session, setSession]     = useState<Session | null>(null);
   const [roster, setRoster]       = useState<RosterRow[]>([]);
   const [loading, setLoading]     = useState(true);

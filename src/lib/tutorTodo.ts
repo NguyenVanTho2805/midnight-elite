@@ -9,6 +9,7 @@ export interface TodoCounts {
   lateAbsences: number;     // TT-202: báo nghỉ sát giờ chờ gia sư bấm một nút
   remindersDue: number;     // TT-201: tin nhắc lịch đã tới hạn, chưa mở Zalo
   makeupExpiring: number;   // TT-202: buổi bù còn ≤ 3 ngày là hết hạn
+  unmarkedSessions: number; // ĐX-01: buổi đã qua giờ mà còn em chưa có điểm danh (14 ngày qua)
 }
 export interface TodoItem { key: string; label: string; count: number; href: string; urgent: boolean }
 
@@ -22,6 +23,7 @@ export function buildTodoItems(c: TodoCounts): TodoItem[] {
     { key: "ungraded", label: "Bài tự luận / bài nộp chưa chấm", count: c.ungraded, href: "/lop-cua-toi/lop", urgent: false },
     { key: "reminders", label: "Tin nhắc lịch đã tới hạn, chờ bạn mở Zalo", count: c.remindersDue, href: "/lop-cua-toi/lich", urgent: false },
     { key: "makeup", label: "Buổi bù sắp hết hạn (trong 3 ngày)", count: c.makeupExpiring, href: "/lop-cua-toi/lich", urgent: false },
+    { key: "unmarked", label: "Buổi đã qua giờ, chưa điểm danh xong", count: c.unmarkedSessions, href: "/lop-cua-toi/lop", urgent: false },
     { key: "draft", label: "Phiếu học phí nháp chưa gửi", count: c.draftInvoices, href: "/lop-cua-toi/hoc-phi", urgent: false },
   ];
   // Chỉ hiện việc có thật; việc khẩn đứng trước, cùng nhóm thì nhiều trước.

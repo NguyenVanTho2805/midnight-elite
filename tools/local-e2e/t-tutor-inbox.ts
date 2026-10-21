@@ -66,5 +66,54 @@ import { loadTutorTodoTotal } from "@/lib/tutorDashboard";
   await prisma.bankTransaction.updateMany({ where: { tutorId: T.id }, data: { status: "resolved" } });
   const r3 = await api("GET", "/api/tutor/hop-viec", { as: T });
   check("đối soát xong → dòng 'khoản tiền vào' không còn", !(r3.json.items as any[]).some(i => i.id === "bank"), r3.json.items.map((i: any) => i.id));
+  // ─── ĐX-01: buổi đã qua giờ, chưa điểm danh xong ───────────────────────────────────────────────────────────
+  section("Buổi đã qua giờ, chưa điểm danh xong (ĐX-01)");
+  const vnKey = (off: number) => new Date(Date.now() + 7 * 3600_000 + off * 86400_000).toISOString().slice(0, 10);
+  const k10 = vnKey(-10), k3 = vnKey(-3); // cùng thứ trong tuần → khung giờ này có đúng 2 buổi trong 14 ngày qua
+  const long = new Date(Date.now() - 30 * 86400_000);
+  const dow = new Date(`${k3}T00:00:00Z`).getUTCDay();
+  const R1 = await prisma.classSchedule.create({ data: { courseId: c1.id, dayOfWeek: dow, startTime: "09:00", endTime: "10:00", createdAt: long } });
+  // Các em ghi danh từ 30 ngày trước (ghi danh SAU khi buổi kết thúc thì không thuộc buổi đó)
+  await prisma.enrollment.updateMany({ where: { courseId: c1.id }, data: { createdAt: long } });
+  const un = async (as = T) => ((await api("GET", "/api/tutor/hop-viec", { as })).json.items as any[]).find(i => i.id === "unmarked");
+
+  let u = await un();
+  check("2 buổi đã qua giờ, chưa em nào có bản ghi → '2 buổi đã qua giờ, chưa điểm danh xong'", u?.title === "2 buổi đã qua giờ, chưa điểm danh xong", u?.title);
+  check("việc cũ nhất (10 ngày trước) đứng đầu; nêu lớp, 'thiếu 2/2 em' và tên hai em", u?.detail.rows[0].title === "Toán 9" && /thiếu 2\/2 em: Em An, Em Bình/.test(u.detail.rows[0].sub) && u.detail.rows[0].href === `/admin/khoa-hoc/${c1.id}/diem-danh?date=${k10}`, u?.detail.rows);
+  check("em chờ phụ huynh xác nhận (chưa học) không bị tính; là việc thường, không khẩn", !/Em Chờ/.test(JSON.stringify(u)) && u?.urgent === false);
+  const tot0 = await api("GET", "/api/tutor/hop-viec", { as: T });
+  check("số đỏ trên thanh module vẫn bằng tổng các loại (kể cả loại mới)", tot0.json.total === (await loadTutorTodoTotal(T.id)) && tot0.json.total === (tot0.json.items as any[]).reduce((n, i) => n + Number(i.title.match(/^\d+/)?.[0] ?? 0), 0), tot0.json.total);
+
+  const s3 = await prisma.attendanceSession.create({ data: { courseId: c1.id, date: new Date(`${k3}T00:00:00Z`), createdBy: T.id } });
+  await prisma.attendanceRecord.create({ data: { sessionId: s3.id, userId: S.id, status: "present" } });
+  u = await un();
+  check("Em An đã có bản ghi → buổi gần đây chỉ còn thiếu 1/2 (Em Bình)", /thiếu 1\/2 em: Em Bình/.test(u?.detail.rows.find((x: any) => x.href.endsWith(k3))?.sub ?? ""), u?.detail.rows);
+  await prisma.attendanceRecord.create({ data: { sessionId: s3.id, userId: S2.id, status: "excused" } });
+  u = await un();
+  check("đủ 2 em (có phép cũng là đã ghi) → buổi này biến mất, còn 1 buổi", u?.title === "1 buổi đã qua giờ, chưa điểm danh xong" && !u.detail.rows.some((x: any) => x.href.endsWith(k3)), u?.title);
+
+  await prisma.classAbsence.create({ data: { courseId: c1.id, scheduleId: R1.id, dateKey: k10, startAt: new Date(`${k10}T02:00:00Z`), studentId: S2.id, reportedBy: "parent", leadMinutes: 30, status: "charged" } });
+  u = await un();
+  check("Em Bình đã có báo nghỉ ('tính phí' — không sinh bản ghi điểm danh) → buổi 10 ngày trước chỉ còn thiếu 1/1 (Em An)", /thiếu 1\/1 em: Em An/.test(u?.detail.rows[0]?.sub ?? ""), u?.detail.rows);
+
+  await prisma.classSessionChange.create({ data: { courseId: c1.id, scheduleId: R1.id, dateKey: k10, kind: "cancel", changedBy: T.id } });
+  check("gia sư Huỷ buổi đó → dòng việc biến mất", !(await un()));
+  await prisma.classSessionChange.deleteMany({ where: { scheduleId: R1.id } });
+  check("bỏ Huỷ → việc quay lại", (await un())?.title === "1 buổi đã qua giờ, chưa điểm danh xong");
+  await prisma.classSessionChange.create({ data: { courseId: c1.id, scheduleId: R1.id, dateKey: k10, kind: "move", newDateKey: vnKey(2), newStartTime: "09:00", newEndTime: "10:00", changedBy: T.id } });
+  check("buổi bị dời sang ngày tương lai → chưa tới hạn, biến mất", !(await un()));
+  await prisma.classSessionChange.deleteMany({ where: { scheduleId: R1.id } });
+
+  await prisma.course.update({ where: { id: c1.id }, data: { classStatus: "closed" } });
+  check("lớp đã đóng → không nhắc", !(await un()));
+  await prisma.course.update({ where: { id: c1.id }, data: { classStatus: "open" } });
+  check("mở lại lớp → việc quay lại", !!(await un()));
+
+  section("ĐX-01: cô lập giữa hai gia sư");
+  await prisma.classSchedule.create({ data: { courseId: c2.id, dayOfWeek: dow, startTime: "09:00", endTime: "10:00", createdAt: long } });
+  await prisma.enrollment.updateMany({ where: { courseId: c2.id }, data: { createdAt: long } });
+  const u2 = await un(T2);
+  check("cô Hoa thấy việc của lớp MÌNH (Văn 9) và không thấy lớp Toán 9 / Em Bình của cô Lan", u2?.title === "2 buổi đã qua giờ, chưa điểm danh xong" && /Văn 9/.test(JSON.stringify(u2)) && !/Toán 9|Em Bình/.test(JSON.stringify(u2)), u2);
+  check("cô Lan không thấy lớp Văn 9", !/Văn 9/.test(JSON.stringify(await un())));
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

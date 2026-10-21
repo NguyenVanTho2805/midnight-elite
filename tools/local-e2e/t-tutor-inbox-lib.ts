@@ -3,14 +3,19 @@ import { buildInboxItems, inboxTotal, inboxWhen, inboxDateTime, inboxVnd, INBOX_
 import { check, section, done } from "./h";
 
 const none: InboxSource = { count: 0, rows: [], at: null };
-const raw = (o: Partial<InboxRaw>): InboxRaw => ({ absence: none, check: none, bank: none, consent: none, reports: none, ungraded: none, reminders: none, makeup: none, draft: none, ...o });
+const raw = (o: Partial<InboxRaw>): InboxRaw => ({ absence: none, check: none, bank: none, consent: none, reports: none, ungraded: none, unmarked: none, reminders: none, makeup: none, draft: none, ...o });
 const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ title: `Em ${i + 1}`, sub: `chi tiết ${i + 1}`, href: "/lop-cua-toi/lich" }));
 const NOW = new Date("2026-10-14T05:00:00Z"); // 12:00 giờ Việt Nam
 
 section("buildInboxItems");
 check("không việc nào → rỗng", buildInboxItems(raw({}), NOW).length === 0);
 check("loại có count=0 bị bỏ dù còn rows", buildInboxItems(raw({ bank: { count: 0, rows: rows(2), at: null } }), NOW).length === 0);
-check("mọi loại việc đều có trong thứ tự khai báo (9)", INBOX_KINDS.length === 9 && new Set(INBOX_KINDS).size === 9, INBOX_KINDS);
+check("mọi loại việc đều có trong thứ tự khai báo (10, kể cả unmarked của ĐX-01)", INBOX_KINDS.length === 10 && new Set(INBOX_KINDS).size === 10 && INBOX_KINDS.includes("unmarked"), INBOX_KINDS);
+const un = buildInboxItems(raw({ unmarked: { count: 3, rows: [{ title: "Toán 9", sub: "buổi 20/10 19:00 · thiếu 2/5 em: An, Bình", href: "/admin/khoa-hoc/c1/diem-danh?date=2026-10-20" }], at: "2026-10-20T12:00:00Z" } }), NOW)[0];
+check("ĐX-01: 'unmarked' là việc thường (không khẩn), tiêu đề có số buổi, có chữ trạng thái", un.id === "unmarked" && !un.urgent && un.title === "3 buổi đã qua giờ, chưa điểm danh xong" && un.status.label === "Chưa điểm danh" && un.status.tone === "cho", un);
+check("ĐX-01: dòng việc dẫn tới trang điểm danh của lớp kèm ngày; khung đọc nói rõ học phí không đổi", un.detail.rows[0].href === "/admin/khoa-hoc/c1/diem-danh?date=2026-10-20" && /Học phí không đổi/.test(un.detail.meta), un.detail);
+const mixedU = buildInboxItems(raw({ unmarked: { count: 9, rows: rows(2), at: null }, bank: { count: 1, rows: rows(1), at: null } }), NOW);
+check("ĐX-01: việc khẩn (bank 1) vẫn đứng trước unmarked (9)", mixedU.map(i => i.id).join() === "bank,unmarked", mixedU.map(i => i.id));
 
 const mixed = buildInboxItems(raw({
   draft: { count: 9, rows: rows(3), at: "2026-10-01T03:00:00Z" },

@@ -4,7 +4,7 @@
 //
 // Chỉ hiện việc có thật và cần gia sư ra tay (bo-cuc-outlook.md: số đỏ chỉ đếm việc cần ra tay). Không có dòng "đã xong"
 // giả; không có loại việc nào không có nguồn dữ liệu thật.
-export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "reminders" | "makeup" | "draft";
+export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "draft";
 export type InboxTone = "xong" | "cho" | "loi" | "mo";
 
 export interface InboxRow { title: string; sub: string; href?: string }
@@ -78,6 +78,11 @@ const META: Record<InboxKind, Meta> = {
   ungraded: {
     urgent: false, title: n => `${n} bài chưa chấm`, status: { label: "Chờ chấm", tone: "cho" },
     hint: "Bài nộp hoặc câu tự luận của học sinh chưa có điểm.",
+    commands: [],
+  },
+  unmarked: {
+    urgent: false, title: n => `${n} buổi đã qua giờ, chưa điểm danh xong`, status: { label: "Chưa điểm danh", tone: "cho" },
+    hint: "Buổi học đã diễn ra nhưng còn em chưa có điểm danh, nên Sổ của con và báo cáo tháng còn thiếu. Mở trang điểm danh của lớp để ghi; buổi không diễn ra thì Huỷ buổi ở Lịch. Học phí không đổi.",
     commands: [],
   },
   draft: {

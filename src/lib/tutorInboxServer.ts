@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { loadTutorTodoCounts } from "@/lib/tutorDashboard";
 import { loadTutorSchedule } from "@/lib/reminderServer";
+import { loadUnmarkedSessions } from "@/lib/unmarkedServer";
+import { unmarkedHref } from "@/lib/unmarkedSessions";
 import { addDaysKey, isMakeupExpiringSoon, MAKEUP_WARN_DAYS, vnDateKeyOf } from "@/lib/classSessions";
 import { INBOX_DETAIL_LIMIT, inboxDateTime, inboxVnd, type InboxRaw, type InboxRow, type InboxSource } from "@/lib/tutorInbox";
 
@@ -14,8 +16,11 @@ const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` 
 export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date()): Promise<InboxRaw> {
   const own = { ownerId: tutorId };
   const today = vnDateKeyOf(now);
-  const [c, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week] = await Promise.all([
-    loadTutorTodoCounts(tutorId, now),
+  // Tải danh sách buổi chưa điểm danh MỘT lần, dùng cho cả bộ đếm lẫn chi tiết từng dòng.
+  const unmarkedP = loadUnmarkedSessions(tutorId, now);
+  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week] = await Promise.all([
+    loadTutorTodoCounts(tutorId, now, { unmarked: unmarkedP }),
+    unmarkedP,
     prisma.classAbsence.findMany({
       where: { status: "pending", course: own }, orderBy: { startAt: "asc" }, take,
       select: { startAt: true, leadMinutes: true, reason: true, student: { select: { name: true } }, course: { select: { name: true } } },
@@ -112,6 +117,11 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       sub: `Lý do: ${cut(r.reason, 60)}${r.thread.course ? ` · ${r.thread.course.name}` : ""}`, href: "/lop-cua-toi/kiem-duyet",
     })), reports[0]?.createdAt),
     ungraded: mk(c.ungraded, ungradedRows, ungradedAt),
+    unmarked: mk(c.unmarkedSessions, unmarked.slice(0, take).map(u => ({
+      title: u.courseName,
+      sub: `buổi ${inboxDateTime(u.startAt)} · thiếu ${u.missing}/${u.total} em${u.missingNames.length ? `: ${u.missingNames.join(", ")}${u.missing > u.missingNames.length ? "…" : ""}` : ""}`,
+      href: unmarkedHref(u.courseId, u.dateKey),
+    })), unmarked[0]?.startAt),
     draft: mk(c.draftInvoices, drafts.map(i => ({
       title: i.student.name, sub: `Phiếu nháp ${monthText(i.yearMonth)} · ${inboxVnd(i.amountDue)}`, href: "/lop-cua-toi/hoc-phi",
     })), drafts[0]?.createdAt),
