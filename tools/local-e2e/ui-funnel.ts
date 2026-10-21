@@ -1,4 +1,4 @@
-import { BASE, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkCourse, mkSuper, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
   await prisma.user.update({ where: { id: T.id }, data: { bio: "Gia sư Toán 9 nhiều năm, dạy lớp nhỏ và theo sát từng em.", subjects: ["Toán 9"], phone: "0901234567" } });
   const SA = await mkSuper("Quản trị");
   const c1 = await mkCourse(T.id, { name: "Toán 9" });
-  for (const d of ["2026-09-03", "2026-09-10", "2026-09-17"]) await prisma.attendanceSession.create({ data: { courseId: c1.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
+  for (const d of ["2026-09-03", "2026-09-10", "2026-09-17"]) await mkAttendanceSession(c1.id, T.id, new Date(`${d}T00:00:00Z`));
 
   await launch();
   const errors: string[] = [];
@@ -21,7 +21,7 @@ import { prisma } from "@/lib/prisma";
   await page.goto(`${BASE}/mentor/${T.id}?n=FB-HN9`, { waitUntil: "networkidle", timeout: 120000 });
   await page.getByRole("heading", { name: "Cô Lan" }).waitFor({ timeout: 90000 });
   check("nhãn 'Đã xác minh' + 'Không thu phí nhận lớp' nhìn thấy trên hồ sơ", await page.getByText("Đã xác minh", { exact: true }).isVisible() && await page.getByText("Không thu phí nhận lớp", { exact: true }).isVisible());
-  check("ô 'Buổi đã dạy (theo sổ lớp)' = 3 (gia sư không tự sửa được)", await page.getByText("Buổi đã dạy (theo sổ lớp)").isVisible() && /3\s*Buổi đã dạy/.test((await page.locator("div", { hasText: /^3Buổi đã dạy/ }).first().innerText().catch(() => "3 Buổi đã dạy")).replace(/\s+/g, " ")) || (await page.getByText("3", { exact: true }).count()) > 0);
+  check("ô 'Buổi đã dạy (theo sổ lớp)' = 3 (từ sổ lớp: buổi đã diễn ra, có em có mặt)", await page.getByText("Buổi đã dạy (theo sổ lớp)").isVisible() && /3\s*Buổi đã dạy/.test((await page.locator("div", { hasText: /^3Buổi đã dạy/ }).first().innerText().catch(() => "3 Buổi đã dạy")).replace(/\s+/g, " ")) || (await page.getByText("3", { exact: true }).count()) > 0);
   check("khung cảnh báo: không chuyển khoản trước buổi học thử + dòng 'bấm Báo cáo'", await page.getByText("Không chuyển khoản trước buổi học thử.").isVisible() && await page.getByText(/đừng chuyển và bấm Báo cáo/).isVisible());
   check("số Zalo KHÔNG hiện (gia sư chưa bật)", (await page.getByText(/Liên hệ qua Zalo/).count()) === 0 && !(await page.content()).includes("0901234567"));
   const cta = page.getByRole("link", { name: "Tạo hồ sơ của bạn" });

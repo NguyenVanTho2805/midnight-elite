@@ -1,4 +1,4 @@
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
   await prisma.user.update({ where: { id: L.id }, data: { tutorVerified: true, profileLockedAt: new Date(), profileLockReason: "x", bio: "Bị khoá", subjects: ["Hoá"] } });
   const c1 = await mkCourse(T.id, { name: "Toán 9", capacity: 5 });
   for (let i = 0; i < 2; i++) await prisma.enrollment.create({ data: { userId: (await mkUser({ name: `HS ${i}` })).id, courseId: c1.id, status: "active" } });
-  for (const d of ["2026-09-03", "2026-09-10", "2026-09-17"]) await prisma.attendanceSession.create({ data: { courseId: c1.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
+  for (const d of ["2026-09-03", "2026-09-10", "2026-09-17"]) await mkAttendanceSession(c1.id, T.id, new Date(`${d}T00:00:00Z`));
 
   await launch();
   const errors: string[] = [];
@@ -26,7 +26,7 @@ import { prisma } from "@/lib/prisma";
   const txt = (await sec.innerText()).replace(/\s+/g, " ");
   check("đúng thứ khách thấy: 'Đã xác minh', 'Không thu phí nhận lớp', môn, giới thiệu", txt.includes("Đã xác minh") && txt.includes("Không thu phí nhận lớp") && txt.includes("Toán 9") && txt.includes("Gia sư Toán 9 nhiều năm."), txt);
   check("bốn con số lấy từ sổ lớp: 1 lớp, 2 học viên, 3 buổi đã dạy", /2\s*Học viên/.test(txt) && /1\s*Lớp đang dạy/.test(txt) && /3\s*Buổi đã dạy/.test(txt), txt);
-  check("nói rõ số buổi/lớp không tự sửa được + liên kết tới trang công khai", await sec.getByText(/không tự sửa được/).isVisible() && (await sec.getByRole("link", { name: "Mở trang công khai" }).getAttribute("href")) === `/mentor/${T.id}`);
+  check("nói rõ số buổi/lớp không có ô nhập tay + liên kết tới trang công khai", await sec.getByText(/không có ô nhập tay/).isVisible() && (await sec.getByRole("link", { name: "Mở trang công khai" }).getAttribute("href")) === `/mentor/${T.id}`);
   check("form sửa giới thiệu/môn vẫn có bên dưới", await page.getByRole("button", { name: /Lưu/ }).first().isVisible());
   await shot(page, "profile-preview");
 

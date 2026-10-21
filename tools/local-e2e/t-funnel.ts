@@ -1,4 +1,4 @@
-import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
+import { api, mkTutor, mkUser, mkCourse, mkSuper, mkAttendanceSession, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 
 const RUN = Math.random().toString(16).slice(2, 10);
@@ -17,12 +17,19 @@ const vk = (n: number) => `${RUN}-visitor-${n}`;
   const S = await mkUser({ name: "Học sinh" });
   await prisma.user.update({ where: { id: T.id }, data: { phone: "+84 901 234 567", bio: "Gia sư Toán" , subjects: ["Toán 9"] } });
   const c1 = await mkCourse(T.id, { name: "Toán 9" }), c2 = await mkCourse(T.id, { name: "Toán 10" });
-  for (const [c, d] of [[c1, "2026-09-03"], [c1, "2026-09-10"], [c2, "2026-09-11"]] as const) await prisma.attendanceSession.create({ data: { courseId: c.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
-  await prisma.attendanceSession.create({ data: { courseId: (await mkCourse(T2.id, { name: "Lý" })).id, date: new Date("2026-09-05T00:00:00Z"), createdBy: T2.id } });
+  // 3 buổi ĐÃ DẠY: có mặt / một phiên lẫn "có phép + có mặt + muộn" (không được đếm đôi) / chỉ có "muộn"
+  const taught: Array<[typeof c1, string, string[]]> = [[c1, "2026-09-03", ["present"]], [c1, "2026-09-10", ["excused", "present", "late"]], [c2, "2026-09-11", ["late"]]];
+  for (const [c, d, st] of taught) await mkAttendanceSession(c.id, T.id, new Date(`${d}T00:00:00Z`), st);
+  // ĐX-00: những phiên KHÔNG được tính — rỗng, chỉ có "có phép", chỉ có "có phép + vắng", và phiên ở ngày tương lai dù có em có mặt
+  await mkAttendanceSession(c1.id, T.id, new Date("2026-09-17T00:00:00Z"), []);
+  await mkAttendanceSession(c1.id, T.id, new Date("2026-09-24T00:00:00Z"), ["excused"]);
+  await mkAttendanceSession(c2.id, T.id, new Date("2026-09-25T00:00:00Z"), ["excused", "absent"]);
+  await mkAttendanceSession(c2.id, T.id, new Date(Date.now() + 5 * 86400_000), ["present"]);
+  await mkAttendanceSession((await mkCourse(T2.id, { name: "Lý" })).id, T2.id, new Date("2026-09-05T00:00:00Z"));
 
   section("Hồ sơ công khai: số buổi đã dạy từ sổ lớp");
   let g = await api("GET", `/api/tutors/${T.id}`);
-  check("200, 3 buổi (chỉ lớp của gia sư này, không lẫn buổi của gia sư khác)", g.status === 200 && g.json?.stats?.sessionsTaught === 3 && g.json?.stats?.classCount === 2, g.json?.stats);
+  check("200, 3 buổi (chỉ lớp của gia sư này, không lẫn buổi của gia sư khác; phiên rỗng / chỉ có phép / ngày tương lai KHÔNG tính)", g.status === 200 && g.json?.stats?.sessionsTaught === 3 && g.json?.stats?.classCount === 2, g.json?.stats);
   check("số Zalo KHÔNG lộ khi chưa bật (tắt sẵn)", g.json?.tutor?.zalo === null && !JSON.stringify(g.json).includes("901234567"));
   check("gia sư chưa duyệt → 404", (await api("GET", `/api/tutors/${pending.id}`)).status === 404);
 
