@@ -85,7 +85,7 @@ const OLD: [string, Permission | null][] = [
   ["/admin/thi-thu", PERMISSIONS.MANAGE_CURRICULUM], ["/admin/thi-thu/ngan-hang-cau-hoi", PERMISSIONS.MANAGE_CURRICULUM], ["/admin/thi-thu/ngan-hang-de-thi", PERMISSIONS.MANAGE_CURRICULUM],
   ["/admin/danh-gia", PERMISSIONS.MANAGE_COURSES], ["/admin/vinh-danh", PERMISSIONS.MANAGE_HONOR], ["/admin/tin-tuc", PERMISSIONS.MANAGE_NEWS],
   ["/admin/cong-dong", PERMISSIONS.MANAGE_COMMUNITY], ["/admin/cong-dong/bao-cao", PERMISSIONS.MANAGE_COMMUNITY],
-  ["/admin/hoc-sinh", PERMISSIONS.MANAGE_STUDENTS], ["/admin/ho-so-gia-su", PERMISSIONS.MANAGE_TUTORS], ["/admin/pheu", PERMISSIONS.MANAGE_TUTORS],
+  ["/admin/hoc-sinh", PERMISSIONS.MANAGE_STUDENTS], ["/admin/ho-so-gia-su", PERMISSIONS.MANAGE_TUTORS], ["/admin/pheu", PERMISSIONS.MANAGE_TUTORS], ["/admin/so-do", PERMISSIONS.MANAGE_TUTORS],
   ["/admin/diem-chuan", PERMISSIONS.MANAGE_NEWS], ["/admin/doanh-thu", PERMISSIONS.VIEW_REVENUE], ["/admin/quan-tri-vien", PERMISSIONS.MANAGE_ADMINS],
 ];
 for (const r of roles) {
@@ -97,7 +97,7 @@ for (const r of roles) {
 }
 check("'Hàng chờ' (/admin/kiem-duyet) hiện cho mọi vai quản trị", roles.every(r => hrefsOf(r).includes("/admin/kiem-duyet")));
 check("chưa biết vai (đang tải) → chỉ trang không đòi quyền", JSON.stringify(hrefsOf(null)) === JSON.stringify(["/admin/kiem-duyet", "/admin"]), hrefsOf(null));
-check("gia sư (teacher) không thấy: Người dùng, Doanh thu, Phễu, Duyệt gia sư, Quản trị viên", !["/admin/hoc-sinh", "/admin/doanh-thu", "/admin/pheu", "/admin/ho-so-gia-su", "/admin/quan-tri-vien"].some(h => hrefsOf("teacher").includes(h)));
+check("gia sư (teacher) không thấy: Người dùng, Doanh thu, Phễu, Số đo, Duyệt gia sư, Quản trị viên", !["/admin/hoc-sinh", "/admin/doanh-thu", "/admin/pheu", "/admin/so-do", "/admin/ho-so-gia-su", "/admin/quan-tri-vien"].some(h => hrefsOf("teacher").includes(h)));
 check("module không còn trang con nào thì ẩn cả module (content không có 'Người dùng')", !visibleModules("admin_content").some(m => m.key === "nguoi-dung") && visibleModules("admin_super").length === ADMIN_MODULES.length);
 check("đường vào module = trang con đầu tiên được phép (teacher → Nội dung mở 'Khoá học')", visibleModules("teacher").find(m => m.key === "noi-dung")!.href === "/admin/khoa-hoc" && visibleModules("admin_super").find(m => m.key === "nguoi-dung")!.href === "/admin/hoc-sinh");
 check("không có hai module cùng khoá; không có trang con nằm ở hai module", new Set(ADMIN_MODULES.map(m => m.key)).size === ADMIN_MODULES.length && new Set(ADMIN_MODULES.flatMap(m => m.subs.map(s => s.href))).size === ADMIN_MODULES.flatMap(m => m.subs).length);

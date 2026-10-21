@@ -44,6 +44,7 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Tổng quan", href: "/admin" },
       { label: "Doanh thu", href: "/admin/doanh-thu", permission: PERMISSIONS.VIEW_REVENUE },
       { label: "Phễu gia sư", href: "/admin/pheu", permission: PERMISSIONS.MANAGE_TUTORS },
+      { label: "Số đo sản phẩm", href: "/admin/so-do", permission: PERMISSIONS.MANAGE_TUTORS },
     ],
   },
 ];
