@@ -15,6 +15,8 @@ export async function GET(req: Request) {
 
   if (!record)                          return NextResponse.json({ error: "Token không hợp lệ" }, { status: 400 });
   if (record.expiresAt < new Date())    return NextResponse.json({ error: "Token đã hết hạn" },   { status: 400 });
+  // NC2-033: tài khoản bị khoá không được xác thực email để tự nhận phiên (cùng chữ với signInResponse).
+  if (record.user.banned)               return NextResponse.json({ error: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ." }, { status: 403 });
   if (record.user.emailVerified)        return NextResponse.json({ already: true });
 
   // Xác thực email

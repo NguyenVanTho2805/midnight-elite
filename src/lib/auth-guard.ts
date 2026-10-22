@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { getSession, type SessionPayload } from "./session";
+import { getSessionChecked, type SessionPayload } from "./session";
 import { checkPermission, type Permission } from "./permissions";
 
+// NC2-033: tài khoản bị khoá → 403 (có chữ rõ); đã bị xoá / phiên quản trị quá hạn theo vai DB → 401. Chỉ áp cho yêu cầu ghi (xem getSessionChecked).
+const BANNED_MSG = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ.";
+
 export async function requirePermission(permission: Permission): Promise<SessionPayload | NextResponse> {
-  const session = await getSession();
+  const { session, denied } = await getSessionChecked();
+  if (denied === "banned") return NextResponse.json({ error: BANNED_MSG }, { status: 403 });
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
   if (session.role !== "admin") return NextResponse.json({ error: "Không có quyền admin" }, { status: 403 });
   if (!checkPermission(session.adminRole, permission)) {
@@ -46,7 +50,8 @@ export function isNextResponse(v: unknown): v is NextResponse {
 }
 
 export async function requireSession(): Promise<SessionPayload | NextResponse> {
-  const session = await getSession();
+  const { session, denied } = await getSessionChecked();
+  if (denied === "banned") return NextResponse.json({ error: BANNED_MSG }, { status: 403 });
   if (!session) return NextResponse.json({ error: "Vui lòng đăng nhập" }, { status: 401 });
   return session;
 }
