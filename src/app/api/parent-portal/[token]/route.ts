@@ -24,7 +24,8 @@ import { loadPartyInvoices } from "@/lib/invoiceServer";
 import { loadStudentUpcoming } from "@/lib/absenceServer";
 import { loadPartyReports } from "@/lib/monthlyReportServer";
 import { prevYearMonth } from "@/lib/monthlyReport";
-import { currentYearMonth, parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { vnMonthKey } from "@/lib/revenue";
+import { parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 
 type MonthlyFeeRow = {
   courseId: string;
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   // yearMonth: lấy từ query ?yearMonth=YYYY-MM, mặc định tháng hiện tại.
   const ym = parseYearMonth(new URL(req.url).searchParams.get("yearMonth"))?.yearMonth
-          ?? currentYearMonth();
+          ?? vnMonthKey(new Date()); // tháng theo giờ Việt Nam (00:00–06:59 ngày 01 không còn hiện tháng trước)
 
   const studentId = link.student.id;
 
