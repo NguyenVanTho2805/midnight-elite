@@ -1,7 +1,7 @@
 # Kế hoạch phát triển thêm — rút từ báo cáo research Sổ Gia Sư
 
 Soạn 21/10/2026. **Bản nháp để Thọ và Thanh duyệt.**
-**Trạng thái 21/10:** ĐX-00 đã làm phần mã (xem `tien-do-dang-do.md`, mục "ĐX-00"; test DB chưa chạy được). Các việc còn lại chưa làm.
+**Trạng thái 21/10:** ĐX-00 và ĐX-01 đã làm phần mã (xem `tien-do-dang-do.md`, mục "ĐX-00" và "ĐX-01"; test dùng DB chưa chạy được ở máy làm việc). Các việc còn lại chưa làm.
 Mọi việc đang đi chung nhánh `claude/keen-allen-wiz3em` vì phiên làm việc chỉ được đẩy lên một nhánh; mục 5 "mỗi ĐX một nhánh" chỉ áp dụng khi tách PR sau.
 
 Nguồn: báo cáo research "Sổ Gia Sư (sogiasu.com) + 14 nền tảng tham khảo" (bản 2.1, khảo sát 19/10/2026).
