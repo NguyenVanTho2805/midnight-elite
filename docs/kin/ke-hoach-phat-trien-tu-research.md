@@ -3,7 +3,7 @@
 Soạn 21/10/2026. **Bản nháp để Thọ và Thanh duyệt.**
 **Thiết kế Figma (21/10):** trang “🆕 Nâng cấp lần 1 (21/10)” trong file KiN Design System, khung E1–E5 (ĐX-01, ĐX-03), F1–F3 (ĐX-00/05/06), G1–G2 (ĐX-02, Thọ đã chốt Q2), H1 (ĐX-04), I1 (ĐX-07 phương án nhẹ, Thọ đã chốt Q5). Chưa thiết kế ĐX-08 và ĐX-09 vì dính tiền / dữ liệu trẻ em.
 
-**Trạng thái 21/10:** ĐX-00, ĐX-01, ĐX-02 (còn chờ Thọ đặt khoá VAPID và biến môi trường Production, xem NC1-034), ĐX-03, ĐX-04, ĐX-05, ĐX-06 và ĐX-07 (phương án nhẹ "mời cả lớp một lần") đã làm phần mã (xem `tien-do-dang-do.md`, các mục cùng tên; Thọ đã chốt Q2–Q5 ngày 21/10; ĐX-08 và ĐX-09 chưa làm vì dính tiền / dữ liệu trẻ em; test dùng DB và test trình duyệt chưa chạy được ở máy làm việc). Các việc còn lại chưa làm.
+**Trạng thái 21/10:** ĐX-00, ĐX-01, ĐX-02 (còn chờ Thọ đặt khoá VAPID và biến môi trường Production, xem NC1-034), ĐX-03, ĐX-04, ĐX-05, ĐX-06 và ĐX-07 (phương án nhẹ "mời cả lớp một lần") đã làm phần mã (xem `tien-do-dang-do.md`, các mục cùng tên; Thọ đã chốt Q2–Q5 ngày 21/10; ĐX-08 và ĐX-09 chưa làm vì dính tiền / dữ liệu trẻ em). **Cập nhật 22/10:** test dùng DB và test trình duyệt đã chạy thật trên Postgres cục bộ + Chromium (kết quả, lỗi tìm ra, và các bài đỏ đã chứng minh là có sẵn ở bản nền: mục "Chạy thật 22/10" trong `tien-do-dang-do.md`); chưa thử gửi tin tới thiết bị thật (NC1-033/034). Các việc còn lại chưa làm.
 Mọi việc đang đi chung nhánh `claude/keen-allen-wiz3em` vì phiên làm việc chỉ được đẩy lên một nhánh; mục 5 "mỗi ĐX một nhánh" chỉ áp dụng khi tách PR sau.
 
 Nguồn: báo cáo research "Sổ Gia Sư (sogiasu.com) + 14 nền tảng tham khảo" (bản 2.1, khảo sát 19/10/2026).
