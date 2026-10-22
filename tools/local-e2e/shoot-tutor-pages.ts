@@ -19,6 +19,8 @@ const TAG = process.argv[2] ?? "before";
     for (const [label, url] of [["giang-vien", "http://localhost:3100/giang-vien"], ["mentor", `http://localhost:3100/mentor/${T.id}`], ["mentor-trong", `http://localhost:3100/mentor/${T2.id}`]] as const) {
       const p = await c.newPage();
       await p.goto(url, { waitUntil: "networkidle", timeout: 120000 });
+      // /giang-vien nạp danh sách bằng API ở máy khách: chụp khi thẻ đã hiện (trước đây chụp trúng khung chờ nên ảnh trước/sau không so được).
+      if (label === "giang-vien") { await p.getByText("Nguyễn Văn Mới").first().waitFor({ timeout: 90000 }); await p.getByText("Cô Lan").first().waitFor({ timeout: 30000 }); }
       await p.waitForTimeout(800);
       // ẩn phần động không liên quan (nút Next dev, thông báo)
       await p.addStyleTag({ content: "nextjs-portal, [data-nextjs-toast] { display: none !important; }" });
