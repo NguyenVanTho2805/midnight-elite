@@ -274,7 +274,7 @@ export default function LichClient() {
         <div className="rounded-xl p-8 text-center" style={{ ...CARD_STYLE, borderStyle: "dashed" }}>
           <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Tuần này chưa có buổi học nào</p>
           <p className="text-sm mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-            Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> trong trang lớp.
+            Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> của trang quản khoá (mở lớp → Quản khoá).
           </p>
           <Link href="/lop-cua-toi/lop" className="inline-flex items-center mt-4 px-4 py-2 rounded-lg text-sm min-h-[44px]"
             style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>Xem các lớp của tôi</Link>

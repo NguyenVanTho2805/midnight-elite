@@ -12,6 +12,7 @@ import { toSlug } from "@/lib/slug";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { DropZone } from "@/components/DropZone";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
@@ -69,6 +70,12 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
   useEffect(() => {
     if (!open) { setForm(CREATE_INIT); setErrors({}); setSaving(false); setBgImageFile(null); }
   }, [open]);
+
+  // NC2-021: gia sư tạo lớp thì ô "Gia sư" hiện TÊN CHÍNH HỌ (trước đây luôn là "KiN" → thẻ lớp công khai ghi người dạy là "KiN").
+  // Suy ra lúc vẽ, không đặt lại state: chỉ thay khi ô còn nguyên mặc định, không ghi đè thứ người dùng đã gõ.
+  const { user } = useAuth();
+  const teacherName = user?.adminRole === "teacher" ? user.name?.trim() : "";
+  const instructor = teacherName && form.instructor === CREATE_INIT.instructor ? teacherName : form.instructor;
 
   // Escape key
   useEffect(() => {
@@ -138,8 +145,8 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         adminName:     form.name.trim(),
         shortTitle:    form.name.trim().toUpperCase().split(" ").slice(0, 2).join("\n"),
         category:      form.category,
-        instructor:    form.instructor,
-        teacherAvatar: form.instructor[0] ?? "?",
+        instructor,
+        teacherAvatar: instructor[0] ?? "?",
         openDate:      form.openDate.split("-").reverse().join("/"),
         types:         ["Video"],
         tag:           form.tag || null,
@@ -296,7 +303,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Gia sư</label>
                 <input className={inp} placeholder="Thầy Nguyễn Minh"
-                  value={form.instructor} onChange={e => set("instructor", e.target.value)} />
+                  value={instructor} onChange={e => set("instructor", e.target.value)} />
               </div>
               <div data-field="openDate">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
