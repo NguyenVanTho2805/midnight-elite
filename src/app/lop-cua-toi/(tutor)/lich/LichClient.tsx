@@ -11,6 +11,7 @@ import { KinButton } from "@/components/kin";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { addDaysKey, buildGroupReminderMessage, dayOfWeekOfKey, describeLead, hmOf, vnDateKeyOf, vnMinutesOfDay, weekRangeOf } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
+import { buildWeeklyScheduleMessage, coursesInWeek, occurrencesOfCourse } from "@/lib/weeklyScheduleMessage";
 import { sessionChangeMessage, CHANGE_REASON_MAX } from "@/lib/sessionChange";
 import type { ReminderItem, ScheduleOccurrence, ScheduleStudent } from "@/lib/reminderServer";
 
@@ -51,6 +52,9 @@ export default function LichClient() {
   const [groupCompose, setGroupCompose] = useState<{ occ: ScheduleOccurrence; text: string } | null>(null); // PH-216: nhắc cả lớp vào nhóm Zalo
   const [changing, setChanging] = useState<ChangeDraft | null>(null); // hộp thoại Dời / Huỷ
   const [notice, setNotice] = useState<ChangeNotice | null>(null);    // hộp "Báo lớp qua Zalo" sau khi đổi lịch
+  const [weekPick, setWeekPick] = useState("");                     // NC2-024: lớp được chọn để gửi lịch tuần
+  const [weekCompose, setWeekCompose] = useState<{ courseId: string; courseName: string; from: string; text: string; groupUrl: string | null } | null>(null);
+  const [weekOpened, setWeekOpened] = useState<Record<string, string>>({}); // "lớp|đầu tuần" → "HH:mm" đã mở Zalo (chỉ trong phiên)
   const seq = useRef(0);
 
   const load = useCallback(async (f: string, quiet = false) => {
@@ -115,6 +119,31 @@ export default function LichClient() {
     if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
     notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
     setGroupCompose(null);
+  }
+
+  const weekCourses = coursesInWeek(data?.occurrences ?? []);
+  const weekCourseId = weekCourses.some(c => c.id === weekPick) ? weekPick : (weekCourses[0]?.id ?? "");
+
+  function startWeekCompose() {
+    const c = weekCourses.find(x => x.id === weekCourseId);
+    if (!c || !data) return;
+    const occs = occurrencesOfCourse(data.occurrences, c.id);
+    setWeekCompose({
+      courseId: c.id, courseName: c.name, from,
+      text: buildWeeklyScheduleMessage({ subject: c.name, from, occurrences: occs }),
+      groupUrl: occs.find(o => o.zaloGroupUrl)?.zaloGroupUrl ?? null,
+    });
+  }
+
+  async function openWeekZalo() {
+    if (!weekCompose) return;
+    const res = await openZalo({ text: weekCompose.text, groupUrl: weekCompose.groupUrl });
+    if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    // KiN chỉ ghi "đã mở Zalo" trong phiên này (chưa có chỗ lưu riêng cho lịch tuần), không biết tin có đi thật hay không.
+    const t = new Date();
+    setWeekOpened(m => ({ ...m, [`${weekCompose.courseId}|${weekCompose.from}`]: hmOf(vnMinutesOfDay(t)) }));
+    notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
+    setWeekCompose(null);
   }
 
   function startChange(occ: ScheduleOccurrence, kind: "cancel" | "move") {
@@ -209,6 +238,27 @@ export default function LichClient() {
         </div>
       </header>
 
+      {/* NC2-024: gửi lịch tuần của MỘT lớp qua Zalo — tin theo tuần đang xem */}
+      {!failed && (data || !loading) && (
+        <div className="rounded-xl p-3 mb-4 flex items-center gap-3 flex-wrap" style={CARD_STYLE} role="group" aria-label="Gửi lịch tuần qua Zalo">
+          {weekCourses.length > 1 && (
+            <label className="text-xs flex items-center gap-2" style={{ color: "var(--kin-chu-phu)" }}>Lớp
+              <select value={weekCourseId} onChange={e => setWeekPick(e.target.value)} className="px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+                {weekCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
+          <KinButton variant="secondary" disabled={!weekCourseId || loading} onClick={startWeekCompose}>Gửi lịch tuần qua Zalo</KinButton>
+          <span className="text-xs" style={{ color: weekOpened[`${weekCourseId}|${from}`] ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-phu)" }} aria-live="polite">
+            {!weekCourseId
+              ? "Tuần này chưa có buổi nào để gửi lịch. Chuyển sang tuần có buổi học để gửi."
+              : weekOpened[`${weekCourseId}|${from}`]
+                ? `Đã mở Zalo lúc ${weekOpened[`${weekCourseId}|${from}`]}`
+                : `Tin lịch tuần ${ddmm(from)} – ${ddmm(addDaysKey(from, 6))} của một lớp, không tên em. KiN không gửi giúp.`}
+          </span>
+        </div>
+      )}
+
       {failed && (
         <div role="alert" className="rounded-xl p-3 mb-4 flex items-center justify-between gap-3" style={{ ...CARD_STYLE, borderColor: "var(--kin-tt-chu-loi)" }}>
           <span className="text-sm" style={{ color: "var(--kin-tt-chu-loi)" }}>Không tải được lịch. Kiểm tra mạng rồi thử lại.</span>
@@ -255,6 +305,21 @@ export default function LichClient() {
             );
           })}
         </div>
+      )}
+
+      {weekCompose && (
+        <Modal title={`Lịch tuần ${ddmm(weekCompose.from)} – ${ddmm(addDaysKey(weekCompose.from, 6))} — ${weekCompose.courseName}`} onClose={() => setWeekCompose(null)}>
+          <label className="block text-sm" htmlFor="tin-lich-tuan">Tin lịch tuần (sửa được trước khi gửi)</label>
+          <textarea id="tin-lich-tuan" rows={8} value={weekCompose.text} onChange={e => setWeekCompose(c => (c ? { ...c, text: e.target.value } : c))}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+            Tin chung cho cả lớp: không tên em, không tiền, không link phiếu. {weekCompose.groupUrl ? "Sẽ mở nhóm Zalo của lớp." : <>Chưa gắn nhóm Zalo — KiN sẽ chép tin và mở Zalo, bạn chọn đúng nhóm. Gắn nhóm ở <Link href="/lop-cua-toi/cai-dat#ket-noi" className="underline" style={{ color: "var(--kin-nhan-link)" }}>Cài đặt → Kết nối</Link>.</>} KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+          </p>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" onClick={async () => { if (await copyText(weekCompose.text)) notify.ok("Đã sao chép tin."); else notify.err("Không sao chép được."); }}>Chép tin</KinButton>
+            <KinButton onClick={() => void openWeekZalo()} disabled={!weekCompose.text.trim()}>{weekCompose.groupUrl ? "Mở nhóm Zalo lớp" : "Mở Zalo"}</KinButton>
+          </div>
+        </Modal>
       )}
 
       {groupCompose && (
