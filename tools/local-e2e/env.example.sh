@@ -12,3 +12,5 @@ export SMS_SINK_DIR=/tmp/kin-sms   # test đăng nhập bằng SMS đọc mã t�
 # export VAPID_PUBLIC_KEY=<publicKey>
 # export VAPID_PRIVATE_KEY=<privateKey>
 # export VAPID_SUBJECT=mailto:test@example.com
+# Máy Mac (không có /opt/pw-browsers): dùng Chrome cài sẵn cho các bài ui-*.ts.
+# export CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
