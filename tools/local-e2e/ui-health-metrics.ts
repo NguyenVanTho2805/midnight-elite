@@ -1,6 +1,6 @@
 // ĐX-04 (NC1-054) — trang quản trị "Số đo sản phẩm" trên trình duyệt: sáu thẻ, mẫu số + định nghĩa, "chưa đủ dữ liệu", menu, lỗi + Thử lại, điện thoại.
 // Cần Postgres + Next dev + Playwright (xem README).
-import { mkTutor, mkUser, mkSuper, wipe, check, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkSuper, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { generateInvoiceCode } from "@/lib/tuitionInvoice";
@@ -74,7 +74,8 @@ const KEYS = ["zaloOpened", "parentViewed", "paidIn14", "bank", "timely", "tutor
   section("Gia sư không vào được");
   const tctx = await ctxFor(T);
   const tp = await tctx.newPage(); watch(tp);
-  await tp.goto(`${ADMIN}/admin/so-do`, { waitUntil: "networkidle", timeout: 120000 });
+  // Mở bằng tên miền CHÍNH (BASE): gia sư ở lại đó. Mở bằng tên miền admin thì bị chuyển sang midnightelite-edu.com, nơi ctxFor() không đặt cookie phiên (cookie không dùng chung giữa hai tên miền) → thành khách → chuyển ngược lại → vòng lặp chuyển hướng của bộ test, không phải lỗi sản phẩm.
+  await tp.goto(`${BASE}/admin/so-do`, { waitUntil: "networkidle", timeout: 120000 });
   await new Promise(r => setTimeout(r, 1500));
   check("gia sư không thấy sáu thẻ số đo", (await tp.locator("[data-metric]").count()) === 0 && (await tp.getByText(/^Mẫu số:/).count()) === 0);
 
