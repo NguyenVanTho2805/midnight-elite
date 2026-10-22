@@ -10,6 +10,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui";
 import { MIN_TOPUP_VND, MAX_TOPUP_VND } from "@/lib/coinTopup-constants";
+import { useAuth } from "@/contexts/AuthContext";
+import { TRIAL_MODE_BANNER_TITLE, TRIAL_MODE_BANNER_BODY } from "@/lib/trialMode";
 
 interface CoinTx { id: string; amount: number; reason: string; sourceType: string | null; createdAt: string; }
 interface TopupReq {
@@ -40,6 +42,10 @@ function statusChip(s: string) {
 
 export default function CoinWalletPage() {
   const toast = useToast();
+  const { user } = useAuth();
+  // NC2-023: gia sư thấy banner thay cho form nạp khi KiN đang chạy thử miễn phí. Học sinh KHÔNG đổi.
+  const isTutor = user?.role === "admin" && user.adminRole === "teacher";
+  const [trial, setTrial] = useState<boolean | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [txs, setTxs]         = useState<CoinTx[]>([]);
   const [reqs, setReqs]       = useState<TopupReq[]>([]);
@@ -75,6 +81,17 @@ export default function CoinWalletPage() {
     void loadAll();
   }, [loadAll]);
 
+  useEffect(() => {
+    if (!isTutor) return;
+    let off = false;
+    fetch("/api/users/me/subscription", { credentials: "same-origin", cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!off) setTrial(d?.trial === true); })
+      .catch(() => { if (!off) setTrial(false); });
+    return () => { off = true; };
+  }, [isTutor]);
+  const hideTopup = isTutor && trial !== false;  // chờ biết cờ rồi mới hiện form: không chớp form mua trước banner
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const n = Number(amountVnd.replace(/[^0-9]/g, ""));
@@ -106,7 +123,9 @@ export default function CoinWalletPage() {
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Ví Coin</h1>
         <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-          1 Coin = 1 VND. Nạp Coin để mua gói VIP, hoặc dùng cho các hoạt động cộng đồng.
+          {hideTopup
+            ? "1 Coin = 1 VND. Coin dùng cho các hoạt động cộng đồng."
+            : "1 Coin = 1 VND. Nạp Coin để mua gói VIP, hoặc dùng cho các hoạt động cộng đồng."}
         </p>
       </div>
 
@@ -118,8 +137,16 @@ export default function CoinWalletPage() {
         </p>
       </div>
 
+      {/* Giai đoạn chạy thử (NC2-023): gia sư thấy banner thay cho form nạp */}
+      {hideTopup && trial === true && (
+        <div role="status" className="rounded-2xl p-5 space-y-1" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
+          <h2 className="font-bold text-base" style={{ color: "var(--kin-nhan-link)" }}>{TRIAL_MODE_BANNER_TITLE}</h2>
+          <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{TRIAL_MODE_BANNER_BODY}</p>
+        </div>
+      )}
+
       {/* Form nạp */}
-      <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+      {!hideTopup && <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <h2 className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>Yêu cầu nạp Coin</h2>
 
         {bank && (
@@ -168,7 +195,7 @@ export default function CoinWalletPage() {
           style={{ background: "var(--kin-nhan-nen)" }}>
           {submitting ? "Đang gửi..." : "Gửi yêu cầu nạp"}
         </button>
-      </form>
+      </form>}
 
       {/* Lịch sử yêu cầu nạp */}
       {reqs.length > 0 && (
