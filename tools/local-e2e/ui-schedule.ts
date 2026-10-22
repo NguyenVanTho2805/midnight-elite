@@ -3,7 +3,7 @@ import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey, hmOf, instantOf, dueReminderKinds } from "@/lib/classSessions";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 
 async function slot(courseId: string, min: number, joinUrl: string | null = null) {
   const t = new Date(Date.now() + min * 60_000);
@@ -123,6 +123,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await shot(page, "sched-settings");
   await nav.getByRole("link", { name: /^Hộp việc/ }).click();
   await page.getByRole("listbox", { name: "Hộp việc" }).waitFor({ timeout: 60000 });
+  await page.waitForURL(u => u.pathname === "/lop-cua-toi", { timeout: 60000 }).catch(() => {}); // NC2-004
   check("Hộp việc bật: mở Hộp việc (danh sách + khung đọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
   check("badge của Hộp việc (không còn badge ở Lịch)", (await nav.locator("a", { hasText: "Hộp việc" }).locator(".kin-badge-dem").count()) === 1 && (await nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").count()) === 0);
   check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("option", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("option", { name: new RegExp(`^${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("option").allInnerTexts());
@@ -155,10 +156,12 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   const sctx = await ctxFor(stuA);
   const sp = await sctx.newPage();
   await sp.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  await sp.waitForURL(u => !u.pathname.includes("/lop-cua-toi/lich"), { timeout: 60000 }).catch(() => {}); // NC2-004
   check("học viên mở trang Lịch gia sư → bị chuyển đi", !sp.url().includes("/lop-cua-toi/lich"), sp.url());
   const gctx = await ctxFor(null);
   const gp = await gctx.newPage();
   await gp.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  await gp.waitForURL(/\/dang-nhap/, { timeout: 60000 }).catch(() => {}); // NC2-004
   check("khách → trang đăng nhập", gp.url().includes("/dang-nhap"), gp.url());
 
   check("không lỗi trang", errors.length === 0, errors.slice(0, 3));

@@ -90,6 +90,7 @@ import { prisma } from "@/lib/prisma";
   const S = await mkUser({ name: "Học sinh" });
   const sp = await (await ctxFor(S)).newPage();
   await sp.goto(`${BASE}/lop-cua-toi/bai-dang`, { waitUntil: "networkidle", timeout: 90000 });
+  await sp.waitForURL(u => !u.pathname.includes("/bai-dang"), { timeout: 60000 }).catch(() => {}); // NC2-004: đọc URL ngay sau goto là chập chờn
   check("học sinh vào /bai-dang bị chuyển đi", !sp.url().includes("/bai-dang"), sp.url());
 
   section("Điện thoại 390px");

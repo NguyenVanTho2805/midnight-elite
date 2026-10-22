@@ -209,6 +209,7 @@ import { prisma } from "@/lib/prisma";
   const cs = await ctxFor(S, { width: 1280, height: 800 });
   const ps = await cs.newPage(); watch(ps);
   await ps.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle", timeout: 120000 });
+  await ps.waitForURL(u => u.pathname === "/lop-cua-toi", { timeout: 60000 }).catch(() => {}); // NC2-004: chuyển hướng phía trình duyệt sau networkidle
   check("học viên vào /tong-quan → chuyển về /lop-cua-toi (danh sách lớp của họ)", new URL(ps.url()).pathname === "/lop-cua-toi", ps.url());
   check("học viên không thấy Hộp việc / thanh module gia sư", await ps.getByRole("listbox", { name: "Hộp việc" }).count() === 0 && await ps.getByRole("navigation", { name: RAIL }).count() === 0);
   await cs.close();
