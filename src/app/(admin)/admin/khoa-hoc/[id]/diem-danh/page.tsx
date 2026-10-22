@@ -17,7 +17,8 @@
 import { Suspense, useEffect, useState, useCallback, use as usePromise } from "react";
 import { useSearchParams } from "next/navigation";
 import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
-import { KinButton } from "@/components/kin";
+import Link from "next/link";
+import { KinButton, kinButtonClass } from "@/components/kin";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
 import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
@@ -196,6 +197,10 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
     setGroupText(null);
   }
 
+  // ĐX-03: bảng cả THÁNG của ngày đang chọn (ô ngày đang gõ dở / rỗng thì lấy tháng hiện tại).
+  const exportMonth = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : todayISO().slice(0, 7);
+  const exportLabel = `${exportMonth.slice(5, 7)}/${exportMonth.slice(0, 4)}`;
+
   // Thống kê nhanh
   const counts = roster.reduce((acc, r) => {
     if (r.status) acc[r.status] = (acc[r.status] ?? 0) + 1;
@@ -220,6 +225,14 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
             className="px-3 py-1.5 text-body-sm font-semibold rounded-lg"
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
         </div>
+      </div>
+
+      {/* ĐX-03: xuất bảng điểm danh cả tháng — tải CSV / Excel, hoặc mở trang in để Lưu thành PDF */}
+      <div className="flex items-center gap-2 flex-wrap" role="group" aria-label={`Xuất bảng điểm danh tháng ${exportLabel}`}>
+        <span className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Bảng tháng {exportLabel}:</span>
+        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=csv`} download className={kinButtonClass("secondary")}>Tải CSV</a>
+        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=xlsx`} download className={kinButtonClass("secondary")}>Tải Excel</a>
+        <Link href={`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
       </div>
 
       {/* State: loading / no-session / session */}

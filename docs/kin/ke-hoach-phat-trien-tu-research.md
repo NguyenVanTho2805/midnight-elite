@@ -1,7 +1,9 @@
 # Kế hoạch phát triển thêm — rút từ báo cáo research Sổ Gia Sư
 
 Soạn 21/10/2026. **Bản nháp để Thọ và Thanh duyệt.**
-**Trạng thái 21/10:** ĐX-00 và ĐX-01 đã làm phần mã (xem `tien-do-dang-do.md`, mục "ĐX-00" và "ĐX-01"; test dùng DB chưa chạy được ở máy làm việc). Các việc còn lại chưa làm.
+**Thiết kế Figma (21/10):** trang “🆕 Nâng cấp lần 1 (21/10)” trong file KiN Design System, khung E1–E5 (ĐX-01, ĐX-03), F1–F3 (ĐX-00/05/06), G1–G2 (ĐX-02, chờ Q2), H1 (ĐX-04), I1 (ĐX-07 phương án nhẹ, chờ Q5). Chưa thiết kế ĐX-08 và ĐX-09 vì dính tiền / dữ liệu trẻ em.
+
+**Trạng thái 21/10:** ĐX-00, ĐX-01 và ĐX-03 đã làm phần mã (xem `tien-do-dang-do.md`, mục "ĐX-00", "ĐX-01" và "ĐX-03"; test dùng DB và test trình duyệt chưa chạy được ở máy làm việc). Các việc còn lại chưa làm.
 Mọi việc đang đi chung nhánh `claude/keen-allen-wiz3em` vì phiên làm việc chỉ được đẩy lên một nhánh; mục 5 "mỗi ĐX một nhánh" chỉ áp dụng khi tách PR sau.
 
 Nguồn: báo cáo research "Sổ Gia Sư (sogiasu.com) + 14 nền tảng tham khảo" (bản 2.1, khảo sát 19/10/2026).
