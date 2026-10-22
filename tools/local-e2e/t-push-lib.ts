@@ -233,8 +233,8 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   const tokens = src("src/app/kin-tokens.css");
   const navy = tokens.match(/--kin-th-navy:\s*(#[0-9a-fA-F]{6})/)?.[1];
   check("màu chủ đề của manifest = --kin-th-navy (chế độ sáng) trong kin-tokens.css; nền trắng", !!navy && m.theme_color?.toLowerCase() === navy.toLowerCase() && m.background_color === "#ffffff", [navy, m.theme_color]);
-  check("biểu tượng và service worker KHÔNG bị .gitignore chặn (lúc làm xong ĐX-02, '*.png' trong .gitignore đã làm biểu tượng không được commit — manifest sẽ trỏ vào tệp không có trên Vercel)",
-    [...(m.icons ?? []).map(i => `public${i.src}`), "public/icons/kin-180.png", "public/sw.js"].every(f => spawnSync("git", ["check-ignore", "-q", f], { cwd: process.cwd() }).status === 1));
+  check("biểu tượng và service worker KHÔNG bị .gitignore chặn (cùng lỗi với ảnh chia sẻ public/og-kin.png mà /mentor/[id] trỏ tới: không bao giờ được commit; lúc làm xong ĐX-02, '*.png' trong .gitignore đã làm biểu tượng không được commit — manifest sẽ trỏ vào tệp không có trên Vercel)",
+    [...(m.icons ?? []).map(i => `public${i.src}`), "public/icons/kin-180.png", "public/sw.js", "public/og-kin.png"].every(f => spawnSync("git", ["check-ignore", "-q", f], { cwd: process.cwd() }).status === 1));
   check("biểu tượng cảm ứng của Apple 180×180 có thật và được khai ở layout; layout bật appleWebApp", pngSize("icons/kin-180.png") === "180x180" && /icons:\s*\{\s*apple:\s*"\/icons\/kin-180\.png"/.test(src("src/app/layout.tsx")) && /appleWebApp:\s*\{\s*capable:\s*true/.test(src("src/app/layout.tsx")));
   const cfgMod = (await import("../../next.config")).default;
   const hdrs = await cfgMod.headers?.();
