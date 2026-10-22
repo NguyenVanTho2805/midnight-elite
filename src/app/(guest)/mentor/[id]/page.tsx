@@ -12,6 +12,7 @@ import ProfileTracker from "@/components/tutor/ProfileTracker";
 import TutorProfileHeader from "@/components/tutor/TutorProfileHeader";
 import ReportProfileButton from "@/components/tutor/ReportProfileButton";
 import { profileOg } from "@/lib/funnel";
+import type { PublicArea } from "@/lib/tutorArea";
 
 type Rating = { avg: number | null; total: number };
 type ClassRow = {
@@ -22,7 +23,7 @@ type ClassRow = {
 };
 type ApiShape = {
   tutor: { id: string; name: string; avatarBase64: string | null; bio: string | null;
-    subjects: string[]; tutorVerified: boolean; tutorVerifiedAt: string | null; zalo: string | null; messenger: string | null };
+    subjects: string[]; tutorVerified: boolean; tutorVerifiedAt: string | null; zalo: string | null; messenger: string | null; area?: PublicArea | null };
   stats: { classCount: number; studentCount: number; sessionsTaught: number; recentlyActive?: boolean; rating: Rating };
   classes: ClassRow[];
 };

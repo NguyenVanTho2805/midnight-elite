@@ -84,7 +84,7 @@ check("dòng An: ký hiệu ✓ M V rồi 5 số đếm và 80", anRow.join("|")
 check("dòng cuối là chú giải; trước nó là dòng trống", m[m.length - 1][0] === GRID_LEGEND && m[m.length - 2].length === 0);
 check("cellText: trống cho chưa điểm danh, '–' cho không thuộc lớp", cellText(null) === "" && cellText("na") === "–" && cellText("late") === "M");
 const csv = toCsv(m);
-check("CSV có BOM UTF-8 và xuống dòng CRLF", csv.startsWith("﻿") && csv.includes("\r\n"));
+check("CSV có BOM UTF-8 và xuống dòng CRLF", csv.startsWith("\uFEFF") && csv.includes("\r\n"));
 check("CSV chống tiêm công thức: tên bắt đầu bằng '=' được đặt dấu nháy đơn đứng đầu", csv.includes(`'=HYPERLINK`) && !/(^|,)=HYPERLINK/m.test(csv), csv.split("\r\n").find(l => l.includes("HYPERLINK")));
 check("CSV giữ ký hiệu ✓ và tên có dấu", csv.includes("✓") && csv.includes("Toán 9 — lớp A"));
 

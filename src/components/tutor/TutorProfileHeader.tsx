@@ -2,8 +2,9 @@
 // Dùng ở hồ sơ công khai /mentor/[id] và ở bản xem trước trong Hồ sơ gia sư (Dashboard). Tách nguyên văn từ trang hồ sơ, không đổi giao diện.
 import { Star, BookOpen, Users, CalendarCheck } from "griddy-icons";
 import { initials } from "@/components/tutor/TutorCard";
+import { MODE_LABEL, areaLine, hasPublicArea, priceText, type PublicArea } from "@/lib/tutorArea";
 
-export interface ProfileHeaderTutor { name: string; avatarBase64: string | null; bio: string | null; subjects: string[]; tutorVerified: boolean }
+export interface ProfileHeaderTutor { name: string; avatarBase64: string | null; bio: string | null; subjects: string[]; tutorVerified: boolean; /** ĐX-06: khu vực / hình thức / trường + bằng cấp / giá tham khảo, TỰ KHAI. */ area?: PublicArea | null }
 export interface ProfileHeaderStats { classCount: number; studentCount: number; sessionsTaught: number; /** ĐX-05: có ít nhất 1 buổi đã dạy trong 30 ngày qua. */ recentlyActive?: boolean; rating: { avg: number | null; total: number } }
 
 /** `as`: cấp tiêu đề của tên gia sư — "h1" ở trang hồ sơ công khai, "h2" khi nhúng vào trang đã có h1 (xem trước ở Hồ sơ gia sư). */
@@ -41,6 +42,24 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
                 <span key={s} className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>{s}</span>
               ))}
+            </div>
+          )}
+
+          {/* ĐX-06: khu vực và hình thức dạy — gia sư TỰ KHAI, KiN không xác minh. Chỉ quận/huyện, không địa chỉ nhà. Giá chỉ hiện khi gia sư tự bật. */}
+          {hasPublicArea(tutor.area) && (
+            <div className="mt-3 space-y-1.5" data-testid="tutor-area">
+              {(tutor.area.city || tutor.area.district || tutor.area.mode) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(tutor.area.city || tutor.area.district) && (
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>{areaLine(tutor.area)}</span>
+                  )}
+                  {tutor.area.mode && (
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>{MODE_LABEL[tutor.area.mode]}</span>
+                  )}
+                </div>
+              )}
+              {tutor.area.credential && <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{tutor.area.credential} <span style={{ color: "var(--kin-chu-mo)" }}>(tự khai)</span></p>}
+              {tutor.area.price !== null && <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{priceText(tutor.area.price)} <span className="text-xs font-normal" style={{ color: "var(--kin-chu-mo)" }}>· giá tham khảo</span></p>}
             </div>
           )}
 

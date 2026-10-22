@@ -1,5 +1,6 @@
 // FE-157 — thẻ gia sư dùng chung (lưới /giang-vien và các nơi liệt kê gia sư). Tách nguyên văn từ trang danh sách, không đổi giao diện.
 import Link from "next/link";
+import { MODE_LABEL, areaLine, hasPublicArea, priceText, type PublicArea } from "@/lib/tutorArea";
 
 export interface TutorListItem {
   id: string;
@@ -14,6 +15,8 @@ export interface TutorListItem {
   sessionsTaught: number;
   /** ĐX-05: có ít nhất 1 buổi đã dạy trong 30 ngày qua. */
   recentlyActive: boolean;
+  /** ĐX-06: khu vực / hình thức / trường + bằng cấp (tự khai) / giá tham khảo (chỉ khi gia sư bật). null = chưa lưu mục này. */
+  area?: PublicArea | null;
   rating: { avg: number | null; total: number };
 }
 
@@ -67,6 +70,15 @@ export function TutorCard({ t }: { t: TutorListItem }) {
               <span key={s} className="text-xs px-2 py-0.5 rounded-full font-medium"
                 style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>{s}</span>
             ))}
+          </div>
+        )}
+
+        {/* ĐX-06: khu vực + hình thức (tự khai); giá chỉ khi gia sư tự bật */}
+        {hasPublicArea(t.area) && (t.area.city || t.area.district || t.area.mode || t.area.price !== null) && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs" data-testid="tutor-area">
+            {(t.area.city || t.area.district) && <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>{areaLine(t.area)}</span>}
+            {t.area.mode && <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>{MODE_LABEL[t.area.mode]}</span>}
+            {t.area.price !== null && <span style={{ color: "var(--kin-chu-phu)" }}>{priceText(t.area.price)}</span>}
           </div>
         )}
 

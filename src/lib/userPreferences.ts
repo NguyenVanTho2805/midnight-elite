@@ -3,6 +3,7 @@
 // bao giờ ném lỗi làm hỏng trang), ghi thì nghiêm (khoá lạ hay sai kiểu → từ chối).
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
 import { parseRail, type RailState } from "@/lib/railState";
+import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -39,7 +40,16 @@ export interface UserPreferences {
   reminders?: { parent: boolean; student: boolean };
   /** PH-215 Kết nối: `showZalo` hiện số Zalo trên hồ sơ công khai (TẮT sẵn vì zalo.me/<số> để lộ số); `messenger` là tên trang m.me. */
   connections?: { showZalo?: boolean; messenger?: string; groups?: string[] };
+  /**
+   * ĐX-06: khu vực / hình thức / trường + bằng cấp / giá tham khảo của gia sư (tự khai). CHỈ ghi được qua PUT /api/users/me/tutor-profile
+   * (có kiểm dữ liệu riêng), KHÔNG qua API giao diện này: `applyPreferencesPatch` từ chối khoá "teaching" nhưng GIỮ nguyên giá trị đang có,
+   * nên đổi chủ đề hay module không làm mất khu vực đã khai.
+   */
+  teaching?: TutorTeaching;
 }
+
+/** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
+export const prefsLockKey = (userId: string) => `prefs:${userId}`;
 
 export const MAX_GROUPS = 20;
 export const GROUP_NAME_MAX = 60;
@@ -100,6 +110,8 @@ export function readPreferences(raw: unknown): UserPreferences {
     if (gs && gs.length) c.groups = gs;
     if (Object.keys(c).length) out.connections = c;
   }
+  const teaching = readTeaching(raw.teaching);
+  if (teaching) out.teaching = teaching;
   return out;
 }
 

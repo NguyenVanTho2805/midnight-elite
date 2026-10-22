@@ -9,6 +9,7 @@ import { readPreferences } from "@/lib/userPreferences";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
 import { recentTaughtSessionWhere } from "@/lib/tutorActivity";
+import { publicArea } from "@/lib/tutorArea";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
     select: {
       id: true, name: true, avatarBase64: true, bio: true, subjects: true,
-      tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true,
+      tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true, city: true,
     },
   });
   if (!t) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
@@ -104,6 +105,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       zalo: readPreferences(t.preferences).connections?.showZalo ? normalizeZaloPhone(t.phone) : null,
       // PH-215: trang Messenger do gia sư chủ động nhập → hiện nút "Nhắn Messenger" (tin điền sẵn qua m.me/<tên>?text=).
       messenger: readPreferences(t.preferences).connections?.messenger ?? null,
+      // ĐX-06: khu vực / hình thức / trường + bằng cấp / giá tham khảo, TỰ KHAI. null khi gia sư chưa lưu mục này (không lộ users.city cũ).
+      // Chỉ quận/huyện, không địa chỉ nhà; giá chỉ có khi gia sư tự bật.
+      area: publicArea(t.city, readPreferences(t.preferences).teaching),
     },
     stats: {
       classCount:   classes.length,

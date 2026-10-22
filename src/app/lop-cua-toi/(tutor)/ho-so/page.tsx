@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
 import TutorProfileForm from "./TutorProfileForm";
 import PublicProfilePreview from "@/components/tutor/PublicProfilePreview";
+import { readPreferences } from "@/lib/userPreferences";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function HoSoGiaSuPage() {
   if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/ho-so");
   const u = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true },
+    select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true, city: true, preferences: true },
   });
   if (!u || (u.adminRole !== "teacher" && !u.tutorAppliedAt)) redirect("/lop-cua-toi");
   const status = u.adminRole === "teacher" ? "approved" : tutorApplicationStatus(u);
@@ -50,7 +51,7 @@ export default async function HoSoGiaSuPage() {
         {status === "approved" && <PublicProfilePreview tutorId={u.id} reason={u.profileLockedAt ? "bi-khoa" : u.tutorVerified ? null : "chua-duyet"} />}
         {status !== "approved" && <PublicProfilePreview tutorId={u.id} reason="chua-duyet" />}
 
-        <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} />
+        <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} initialCity={u.city ?? ""} initialTeaching={readPreferences(u.preferences).teaching ?? null} />
       </div>
     </div>
   );
