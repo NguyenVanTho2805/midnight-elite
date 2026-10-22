@@ -47,7 +47,7 @@ export default function PublicProfilePreview({ tutorId, reason }: { tutorId: str
         <>
           <TutorProfileHeader tutor={state.tutor} stats={state.stats} as="h2" />
           <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
-            Giới thiệu và môn dạy sửa ở form bên dưới. Số buổi, số lớp lấy từ sổ lớp nên bạn không tự sửa được. <Link href={`/mentor/${tutorId}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Mở trang công khai</Link>.
+            Giới thiệu và môn dạy sửa ở form bên dưới. Số buổi, số lớp lấy từ sổ lớp (không có ô nhập tay); một buổi chỉ được tính khi đã diễn ra và có ít nhất 1 em có mặt. <Link href={`/mentor/${tutorId}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Mở trang công khai</Link>.
           </p>
         </>
       )}

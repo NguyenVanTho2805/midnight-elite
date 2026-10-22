@@ -1,4 +1,4 @@
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
   await prisma.user.update({ where: { id: N.id }, data: { tutorVerified: false } });
   const c1 = await mkCourse(T.id, { name: "Toán 9", capacity: 5 });
   for (let i = 0; i < 2; i++) await prisma.enrollment.create({ data: { userId: (await mkUser({ name: `HS ${i}` })).id, courseId: c1.id, status: "active" } });
-  for (const d of ["2026-09-03", "2026-09-10"]) await prisma.attendanceSession.create({ data: { courseId: c1.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
+  for (const d of ["2026-09-03", "2026-09-10"]) await mkAttendanceSession(c1.id, T.id, new Date(`${d}T00:00:00Z`));
   // một lượt mở link cũ để bảng "Link nào mang người về" có dữ liệu
   await prisma.profileVisit.createMany({ data: [{ tutorId: T.id, channel: "fb-gia-su-toan-ha-noi", kind: "open", visitorKey: "seed-visitor-1" }, { tutorId: T.id, channel: "fb-gia-su-toan-ha-noi", kind: "full", visitorKey: "seed-visitor-1" }, { tutorId: T.id, channel: "fb-gia-su-toan-ha-noi", kind: "open", visitorKey: "seed-visitor-2" }] });
 

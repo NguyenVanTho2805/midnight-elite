@@ -163,7 +163,7 @@ export default function BaiDangClient() {
               <label className="block text-sm" htmlFor="bai-dang-text">Bài đăng (sửa được; đổi nhóm, giờ, học phí hoặc lớp sẽ soạn lại)</label>
               <textarea id="bai-dang-text" rows={11} value={text} onChange={e => setText(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
               <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-                Số buổi đã dạy lấy từ sổ lớp, bạn không tự sửa được. Dòng “{pronoun} không nhận chuyển khoản trước buổi học thử.” luôn được giữ ở cuối bài.
+                Số buổi đã dạy lấy từ sổ lớp (buổi đã diễn ra và có em có mặt), không có ô nhập tay. Dòng “{pronoun} không nhận chuyển khoản trước buổi học thử.” luôn được giữ ở cuối bài.
               </p>
             </div>
 

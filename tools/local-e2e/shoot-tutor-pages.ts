@@ -1,5 +1,5 @@
 // Chụp /giang-vien và /mentor/[id] với dữ liệu cố định để so trước/sau khi tách component (FE-157/158).
-import { mkTutor, mkUser, mkCourse, wipe } from "./h";
+import { mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 const TAG = process.argv[2] ?? "before";
@@ -11,7 +11,7 @@ const TAG = process.argv[2] ?? "before";
   await prisma.user.update({ where: { id: T3.id }, data: { tutorVerified: true, bio: "Mới vào nghề, dạy Lý và Hoá cho học sinh lớp 8–9.", subjects: ["Vật lý", "Hoá học", "Sinh học", "Tin học", "Văn"] } });
   const c1 = await mkCourse(T.id, { name: "Toán 9", capacity: 5 }), c2 = await mkCourse(T.id, { name: "Toán 10" });
   for (let i = 0; i < 3; i++) await prisma.enrollment.create({ data: { userId: (await mkUser({ name: `HS ${i}` })).id, courseId: c1.id, status: "active" } });
-  for (const [c, d] of [[c1, "2026-09-03"], [c1, "2026-09-10"], [c2, "2026-09-11"]] as const) await prisma.attendanceSession.create({ data: { courseId: c.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
+  for (const [c, d] of [[c1, "2026-09-03"], [c1, "2026-09-10"], [c2, "2026-09-11"]] as const) await mkAttendanceSession(c.id, T.id, new Date(`${d}T00:00:00Z`));
   await launch();
   const ctx = await ctxFor(null);
   for (const [name, w, h] of [["desktop", 1280, 900], ["mobile", 390, 800]] as const) {

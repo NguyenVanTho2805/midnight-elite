@@ -1,4 +1,4 @@
-import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
+import { api, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -14,7 +14,11 @@ import { prisma } from "@/lib/prisma";
   const other = await mkCourse(T2.id, { name: "Lý 9" });
   for (let i = 0; i < 3; i++) await prisma.enrollment.create({ data: { userId: (await mkUser({ name: `HS ${i}` })).id, courseId: open1.id, status: "active" } });
   await prisma.enrollment.create({ data: { userId: (await mkUser({ name: "HS chờ" })).id, courseId: open1.id, status: "pending_consent" } }); // không chiếm chỗ
-  for (const [c, d] of [[open1, "2026-09-03"], [open1, "2026-09-10"], [open2, "2026-09-11"], [other, "2026-09-12"]] as const) await prisma.attendanceSession.create({ data: { courseId: c.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
+  for (const [c, d] of [[open1, "2026-09-03"], [open1, "2026-09-10"], [open2, "2026-09-11"], [other, "2026-09-12"]] as const) await mkAttendanceSession(c.id, T.id, new Date(`${d}T00:00:00Z`));
+  // ĐX-00: phiên rỗng, chỉ có "có phép", và phiên ngày tương lai KHÔNG được đếm vào "số buổi đã dạy"
+  await mkAttendanceSession(open1.id, T.id, new Date("2026-09-17T00:00:00Z"), []);
+  await mkAttendanceSession(open2.id, T.id, new Date("2026-09-18T00:00:00Z"), ["excused"]);
+  await mkAttendanceSession(open2.id, T.id, new Date(Date.now() + 5 * 86400_000), ["present"]);
 
   section("/api/tutor/post-draft");
   check("chưa đăng nhập → 401; học sinh → bị chặn", (await api("GET", "/api/tutor/post-draft")).status === 401 && [401, 403].includes((await api("GET", "/api/tutor/post-draft", { as: S })).status));
@@ -22,7 +26,7 @@ import { prisma } from "@/lib/prisma";
   check("200, xưng hô gợi ý 'Cô', môn từ hồ sơ", d.status === 200 && d.json?.pronoun === "Cô" && d.json?.name === "Cô Lan" && JSON.stringify(d.json?.subjects) === JSON.stringify(["Toán 9", "Toán 10"]), d.json);
   check("chỉ lớp đang MỞ của chính gia sư (không lớp đã đóng, không lớp người khác)", JSON.stringify(d.json?.classes?.map((c: any) => c.name).sort()) === JSON.stringify(["Toán 10", "Toán 9"]), d.json?.classes);
   check("chỗ còn: 5 − 3 học sinh đang học = 2 (không tính 'chờ đồng ý'); lớp không giới hạn → null", d.json?.classes?.find((c: any) => c.name === "Toán 9")?.seatsLeft === 2 && d.json?.classes?.find((c: any) => c.name === "Toán 10")?.seatsLeft === null);
-  check("số buổi đã dạy = 3 (chỉ lớp của mình, kể cả lớp đã đóng, không lẫn lớp gia sư khác)", d.json?.sessionsTaught === 3, d.json?.sessionsTaught);
+  check("số buổi đã dạy = 3 (chỉ lớp của mình, không lẫn lớp gia sư khác; phiên rỗng / chỉ có phép / ngày tương lai không tính)", d.json?.sessionsTaught === 3, d.json?.sessionsTaught);
   check("hồ sơ công khai: đã duyệt → true", d.json?.profilePublic === true && d.json?.profileLocked === false);
   const d2 = await api("GET", "/api/tutor/post-draft", { as: T2 });
   check("Thầy Khang: xưng 'Thầy', 1 buổi", d2.json?.pronoun === "Thầy" && d2.json?.sessionsTaught === 1);

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { readPreferences } from "@/lib/userPreferences";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
+import { taughtSessionWhere } from "@/lib/taughtSessions";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,8 +51,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       _avg:   { rating: true },
       _count: { _all: true },
     }),
-    // PH-207: số buổi đã dạy lấy từ sổ lớp (buổi điểm danh), gia sư không tự sửa được.
-    courseIds.length === 0 ? 0 : prisma.attendanceSession.count({ where: { courseId: { in: courseIds } } }),
+    // PH-207 + ĐX-00: số buổi đã dạy lấy từ sổ lớp — chỉ phiên có ngày ≤ hôm nay (giờ VN) và ít nhất 1 em có mặt/muộn
+    // (src/lib/taughtSessions.ts). Đây là số gia sư tự ghi khi điểm danh, không phải bằng chứng đã xác minh.
+    courseIds.length === 0 ? 0 : prisma.attendanceSession.count({ where: { courseId: { in: courseIds }, ...taughtSessionWhere() } }),
   ]);
 
   const activeByCourse = new Map(enrollCounts.map(r => [r.courseId, r._count._all]));
