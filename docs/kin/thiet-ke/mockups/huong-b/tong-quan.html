@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="vi" data-chu-de="navy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hộp việc · KiN gia sư</title>
+<link rel="stylesheet" href="../kin-tokens.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="tabbar" aria-label="Module của gia sư"><div class="vai">GIA SƯ</div><a href="tong-quan.html" class="" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l2-8h12l2 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg><span class="kin-badge-dem" aria-label="8 việc cần xử lý">8</span><span>Hộp việc</span></a><a href="lich.html" class=""><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Lịch</span></a><a href="lop.html" class=""><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="10" r="2"/><path d="M17 15c2.2 0 4 1.8 4 4"/></svg><span>Lớp</span></a><a href="#" class="only-rail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span>Bài KT</span></a><a href="#" class="only-rail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/></svg><span>Thư viện</span></a><a href="hoc-phi.html" class=""><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><span>Học phí</span></a><a href="#" class=""><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Khác</span></a></nav>
+<main class="main">
+<header class="top"><div><h1>Hộp việc</h1><p class="phu">Chào buổi chiều, Cô Lan · Thứ Năm 22/10</p></div></header>
+<div class="stack">
+  <details class="card viec" open>
+    <summary>
+      <span class="dong-so"><span class="so">8</span><span class="dam">việc cần làm</span></span>
+      <span class="chip cho">Cần xử lý</span>
+    </summary>
+    <ul>
+      <li><a class="dong-viec" href="lich.html"><span>1 báo nghỉ sát giờ</span><span class="chip cho">Cần xử lý</span></a></li>
+      <li><a class="dong-viec" href="hoc-phi.html"><span>1 khoản tiền vào cần đối soát</span><span class="chip">Cần bạn quyết</span></a></li>
+      <li><a class="dong-viec" href="lop.html"><span>2 học sinh chờ phụ huynh xác nhận</span><span class="chip cho">Chờ bạn</span></a></li>
+      <li><a class="dong-viec" href="lop.html"><span>4 buổi chưa điểm danh</span><span class="chip">Chưa làm</span></a></li>
+    </ul>
+    <a class="lk" href="#">Xem tất cả 8 việc</a>
+  </details>
+
+  <section class="card lop l2" aria-label="Buổi kế tiếp">
+    <p class="phu">Buổi kế tiếp · Thứ Sáu 23/10</p>
+    <div class="hang" style="margin-top:4px">
+      <div><p class="so">19:00</p><p>Toán 9 · 2 học viên</p></div>
+      <a class="btn" href="lich.html">Vào lớp</a>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Học phí tháng 10">
+    <div class="hang">
+      <p class="phu">Đã thu tháng 10</p>
+      <button class="icon-nut" type="button" id="mat" aria-label="Ẩn số tiền" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </div>
+    <p class="so xong" id="so-thu" data-v="480.000đ">480.000đ</p>
+    <p class="phu" style="margin-top:4px">Còn lại <span class="dam" style="color:var(--kin-tt-chu-cho)" id="so-con" data-v="560.000đ">560.000đ</span></p>
+  </section>
+</div><details class="tt"><summary>Trạng thái khác</summary><div class="khoi stack"><p class="phu">Chưa có việc nào</p><p class="dam" style="color:var(--kin-tt-chu-xong)">Không có việc cần làm.</p><p class="phu">Gia sư mới, chưa có lớp</p><div class="card rong-cau"><p class="mo"><span class="dam">Bạn chưa mở lớp nào</span><br>Tạo lớp đầu tiên, rồi gửi mã mời cho học viên để vào lớp.</p><a class="btn" href="lop.html">Tạo lớp đầu tiên</a></div><p class="phu">Đang tải</p><div class="card" aria-busy="true" aria-label="Đang tải"><p class="phu" style="margin-bottom:10px">Đang tải…</p><div class="sk"></div><div class="sk n"></div></div><p class="phu">Lỗi tải</p><div class="dai-loi" role="alert"><span>Không tải được Hộp việc.</span><button class="lk" type="button">Thử lại</button></div></div></details>
+</main>
+<script>
+(function(){var b=document.getElementById('mat'),a=['so-thu','so-con'];
+b.addEventListener('click',function(){var on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);b.setAttribute('aria-label',on?'Hiện số tiền':'Ẩn số tiền');
+a.forEach(function(i){var e=document.getElementById(i);e.textContent=on?'••••••':e.dataset.v;});});})();
+</script>
+</body>
+</html>

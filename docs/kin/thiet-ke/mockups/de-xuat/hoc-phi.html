@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="vi" data-chu-de="navy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiN · Học phí (gia sư)</title>
+<link rel="stylesheet" href="../kin-tokens.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<symbol id="i-viec" viewBox="0 0 24 24"><path d="M4 13l2-7h12l2 7v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/></symbol>
+<symbol id="i-lich" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+<symbol id="i-lop" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/></symbol>
+<symbol id="i-bai" viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"/><path d="M9.5 14l2 2 3.5-4"/></symbol>
+<symbol id="i-thuvien" viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="M16 6l4 1-3 13-4-1"/></symbol>
+<symbol id="i-tien" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-khac" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></symbol>
+<symbol id="i-nha" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></symbol>
+<symbol id="i-mat" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+</svg>
+<nav class="thanh" aria-label="Module của gia sư"><span class="nhan">GIA SƯ</span><a class="muc " href="tong-quan.html"><span class="dem" aria-label="8 việc cần xử lý">8</span><svg aria-hidden="true"><use href="#i-viec"/></svg><span>Hộp việc</span></a><a class="muc " href="lich.html"><svg aria-hidden="true"><use href="#i-lich"/></svg><span>Lịch</span></a><a class="muc " href="lop.html"><svg aria-hidden="true"><use href="#i-lop"/></svg><span>Lớp</span></a><a class="muc chi-may-tinh" href="#"><svg aria-hidden="true"><use href="#i-bai"/></svg><span>Bài KT</span></a><a class="muc chi-may-tinh" href="#"><svg aria-hidden="true"><use href="#i-thuvien"/></svg><span>Thư viện</span></a><a class="muc " href="hoc-phi.html" aria-current="page"><svg aria-hidden="true"><use href="#i-tien"/></svg><span>Học phí</span></a><button class="muc day" type="button" aria-haspopup="dialog" aria-expanded="false"><svg aria-hidden="true"><use href="#i-khac"/></svg><span>Khác</span></button></nav>
+<main class="trang">
+<header class="dau">
+  <h1>Học phí</h1>
+  <div class="ben-phai">
+    <button class="lnk chi-icon" type="button" aria-label="Tháng trước">‹</button>
+    <span class="dam">Tháng 10/2026</span>
+    <button class="lnk chi-icon" type="button" aria-label="Tháng sau">›</button>
+  </div>
+</header>
+
+<div class="tab-chu" role="tablist" style="margin-top:4px">
+  <button role="tab" id="t-phieu" aria-selected="true" aria-controls="p-phieu" type="button">Phiếu</button>
+  <button role="tab" id="t-doisoat" aria-selected="false" aria-controls="p-doisoat" type="button">Chờ đối soát · 1</button>
+  <button role="tab" id="t-nhan" aria-selected="false" aria-controls="p-nhan" type="button">Nhận tiền</button>
+</div>
+
+<div id="p-phieu" role="tabpanel" aria-labelledby="t-phieu">
+  <dl class="hai-so" style="margin-top:20px">
+    <div class="xong"><dt>Đã thu</dt><dd>480.000đ</dd></div>
+    <div class="cho"><dt>Còn lại</dt><dd>560.000đ</dd></div>
+  </dl>
+
+  <a class="row" href="#p-doisoat" data-tab="t-doisoat"><span class="gt">1 khoản tiền vào cần đối soát</span><span class="st cho">Chờ bạn</span></a>
+
+  <div class="nhom" style="margin-top:8px">
+    <div class="phieu" style="padding:14px 0;border-bottom:1px solid var(--kin-vien-nhat)">
+      <div class="hang giua" style="align-items:center;flex-wrap:nowrap">
+        <div><b>Đỗ Hà</b><div class="phu"><span class="ma">KINTQF43</span></div></div>
+        <div style="text-align:right"><div class="so-tien dam" style="font-size:18px;color:var(--kin-tt-chu-cho)">560.000đ</div><span class="st">Nháp</span></div>
+      </div>
+      <button class="btn rong" type="button" style="margin-top:10px">Gửi phiếu</button>
+      <div class="hang">
+        <button class="lnk" type="button">Sao chép tin nhắn</button>
+      </div>
+      <details class="them">
+        <summary>Thao tác khác</summary>
+        <div class="hang">
+          <button class="lnk" type="button">Sửa số tiền</button>
+          <button class="lnk" type="button">Huỷ phiếu</button>
+        </div>
+        <details>
+          <summary class="lnk" style="cursor:pointer;list-style:none">Xem trước phiếu như phụ huynh sẽ thấy</summary>
+          <div class="nen-nhe" style="text-align:center;margin-top:4px">
+            <p class="phu">Học phí tháng 10/2026</p>
+            <p class="so-tien dam" style="font-size:22px">560.000đ</p>
+            <div style="width:132px;height:132px;margin:10px auto;border:1px dashed var(--kin-vien-o-nhap);border-radius:var(--kin-bo-xl);display:flex;align-items:center;justify-content:center" class="phu">Khung mã QR</div>
+            <p><span class="ma dam">KINTQF43</span> <button class="lnk" type="button" style="padding-left:8px">Sao chép</button></p>
+            <p style="margin-top:4px"><span class="st cho">Chưa đóng</span></p>
+          </div>
+        </details>
+      </details>
+    </div>
+
+    <details class="da-dong">
+      <summary class="row"><span class="gt"><b>Đã đóng</b><span class="phu"> · 1 phiếu · 480.000đ</span></span></summary>
+      <div class="phieu" style="padding:14px 0;border-bottom:1px solid var(--kin-vien-nhat)">
+        <div class="hang giua" style="align-items:center;flex-wrap:nowrap">
+          <div><b>Trần Gia Bảo</b><div class="phu">Đã nhận 480.000đ</div></div>
+          <div style="text-align:right"><div class="so-tien dam" style="font-size:18px">480.000đ</div><span class="st xong">Đã đóng</span></div>
+        </div>
+        <div class="hang"><button class="lnk" type="button">Sao chép tin nhắn</button></div>
+      </div>
+    </details>
+  </div>
+  <button class="lnk" type="button" style="margin-top:4px">Lập phiếu cả lớp</button>
+</div>
+
+<div id="p-doisoat" role="tabpanel" aria-labelledby="t-doisoat" hidden>
+  <div style="padding:20px 0 4px">
+    <label class="phu" style="display:flex;align-items:center;gap:8px;min-height:44px"><input type="checkbox" style="width:20px;height:20px"> Hiện cả khoản đã xử lý</label>
+    <div class="hang giua" style="align-items:baseline">
+      <b class="so-tien" style="font-size:22px">560.000đ</b>
+      <span class="st cho">Chờ bạn</span>
+    </div>
+    <p class="phu">22/10 · 08:42 · Không có mã</p>
+    <p style="margin-top:6px"><span class="ma">CK HOC PHI CHO CON</span></p>
+    <p class="phu" style="margin-top:10px">Gợi ý phiếu cùng số tiền</p>
+    <p>Đỗ Hà · Tháng 10/2026 · <span class="ma">KINTQF43</span></p>
+    <button class="btn rong" type="button" style="margin-top:12px">Ghép vào phiếu này</button>
+    <div class="hang"><button class="lnk" type="button">Ghép vào phiếu…</button><button class="lnk" type="button">Không phải tiền học</button></div>
+    <p class="phu" style="margin-top:6px">KiN không tự ghép khi chưa chắc. Bạn bấm từng khoản.</p>
+  </div>
+</div>
+
+<div id="p-nhan" role="tabpanel" aria-labelledby="t-nhan" hidden>
+  <div style="padding:20px 0 4px">
+    <p class="dam">Chưa lưu tài khoản nhận tiền</p>
+    <p class="phu">Phiếu có mã riêng, tiền chuyển thẳng vào tài khoản của bạn. KiN chỉ đọc tiền vào để gạch phiếu, không giữ tiền.</p>
+    <label class="truong"><span>Ngân hàng</span><select><option>Chọn ngân hàng</option></select></label>
+    <label class="truong"><span>Số tài khoản</span><input inputmode="numeric" autocomplete="off"></label>
+    <label class="truong"><span>Tên chủ tài khoản</span><input autocomplete="off"></label>
+    <button class="btn rong" type="button" style="margin-top:16px">Lưu tài khoản</button>
+  </div>
+</div>
+</main>
+<script>
+(function(){var tabs=[].slice.call(document.querySelectorAll('[role=tab]'));
+function show(id){tabs.forEach(function(t){var on=t.id===id;t.setAttribute('aria-selected',on);document.getElementById(t.getAttribute('aria-controls')).hidden=!on;});}
+tabs.forEach(function(t){t.addEventListener('click',function(){show(t.id);});});
+var go=document.querySelector('[data-tab]');if(go){go.addEventListener('click',function(e){e.preventDefault();show(go.getAttribute('data-tab'));});}})();
+</script>
+</body>
+</html>
