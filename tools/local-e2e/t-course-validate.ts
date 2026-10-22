@@ -71,5 +71,15 @@ const body = (o: Record<string, unknown> = {}) => ({
   check("PATCH chỉ đổi sức chứa / trạng thái lớp (không có giá) vẫn 200", cap.status === 200 && cap.json.capacity === 30, cap.json);
   const sup2 = await api("PUT", `/api/courses/${mine.id}`, { as: SUP, body: { price: 90_000_000 } });
   check("quản trị sửa giá 90 triệu → vẫn 200 (hành vi cũ)", sup2.status === 200 && sup2.json.price === 90_000_000, sup2.json);
+
+  section("Lớp cũ có giá vượt trần (tạo trước khi có trần): vẫn sửa được phần khác");
+  const old0 = await mkCourse(T.id, { name: "Lớp cũ giá cao" });
+  const old = await prisma.course.update({ where: { id: old0.id }, data: { price: MAX_TUTOR_COURSE_PRICE_VND + 10_000_000 } });
+  const rename = await api("PUT", `/api/courses/${old.id}`, { as: T, body: { name: "Đổi tên lớp cũ", price: old.price } });
+  check("đổi tên, gửi lại đúng giá cũ → 200, giá cũ giữ nguyên", rename.status === 200 && (await prisma.course.findUniqueOrThrow({ where: { id: old.id } })).price === old.price, rename.json);
+  const raise = await api("PUT", `/api/courses/${old.id}`, { as: T, body: { price: old.price + 1 } });
+  check("ĐỔI giá lên mức vượt trần → vẫn 400", raise.status === 400, raise.json);
+  const lower = await api("PUT", `/api/courses/${old.id}`, { as: T, body: { price: MAX_TUTOR_COURSE_PRICE_VND } });
+  check("hạ giá về đúng trần → 200", lower.status === 200, lower.json);
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });
