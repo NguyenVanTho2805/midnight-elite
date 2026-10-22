@@ -20,7 +20,8 @@ const TAG = process.argv[2] ?? "before";
       const p = await c.newPage();
       await p.goto(url, { waitUntil: "networkidle", timeout: 120000 });
       // /giang-vien nạp danh sách bằng API ở máy khách: chụp khi thẻ đã hiện (trước đây chụp trúng khung chờ nên ảnh trước/sau không so được).
-      if (label === "giang-vien") { await p.getByText("Nguyễn Văn Mới").first().waitFor({ timeout: 90000 }); await p.getByText("Cô Lan").first().waitFor({ timeout: 30000 }); }
+      // Chờ KHUNG CHỜ (animate-pulse) biến mất: chờ theo tên gia sư không đủ vì chữ có thể đã có trong DOM trước khi danh sách vẽ xong.
+      if (label === "giang-vien") { await p.getByText("Nguyễn Văn Mới").first().waitFor({ timeout: 90000 }); await p.waitForFunction(() => !document.querySelector(".animate-pulse"), undefined, { timeout: 90000 }); }
       await p.waitForTimeout(800);
       // ẩn phần động không liên quan (nút Next dev, thông báo)
       await p.addStyleTag({ content: "nextjs-portal, [data-nextjs-toast] { display: none !important; }" });
