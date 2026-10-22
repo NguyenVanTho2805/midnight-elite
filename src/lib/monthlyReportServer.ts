@@ -9,6 +9,7 @@
 import { prisma } from "@/lib/prisma";
 import { computeAttendanceStats } from "@/lib/attendance";
 import { vnMonthKey } from "@/lib/revenue";
+import { attendanceDateWindow } from "@/lib/taughtSessions";
 import { buildSubjectMetrics, type SubjectMonthMetrics, type TutorChangedSession } from "@/lib/monthlyReport";
 import { changesToTutorChanged } from "@/lib/sessionChange";
 
@@ -65,7 +66,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
 
   const [records, assignments, results, changes] = await Promise.all([
     prisma.attendanceRecord.findMany({
-      where: { userId: studentId, session: { courseId: { in: courseIds }, date: { gte: attStart, lt: attEnd } } },
+      where: { userId: studentId, session: { courseId: { in: courseIds }, date: attendanceDateWindow(attStart, attEnd) } },
       select: { status: true, session: { select: { courseId: true } } },
     }),
     prisma.assignment.findMany({

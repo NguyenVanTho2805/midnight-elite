@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
+import { attendanceDateWindow } from "@/lib/taughtSessions";
 import { loadPartyInvoices } from "@/lib/invoiceServer";
 import { loadStudentUpcoming } from "@/lib/absenceServer";
 import { loadPartyReports } from "@/lib/monthlyReportServer";
@@ -123,7 +124,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   }).attendanceRecord.findMany({
     where: {
       userId: studentId,
-      session: { courseId: { in: courseIds }, date: { gte: firstDay, lt: nextMonth } },
+      session: { courseId: { in: courseIds }, date: attendanceDateWindow(firstDay, nextMonth) },
     },
     select: { status: true, session: { select: { courseId: true } } },
   });

@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
+import { attendanceDateWindow } from "@/lib/taughtSessions";
 import { currentYearMonth, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 import { loadPartyInvoices } from "@/lib/invoiceServer";
 import InvoiceCard from "@/components/parent/InvoiceCard";
@@ -53,7 +54,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
     courseIds.length === 0
       ? Promise.resolve([] as Array<{ status: string; session: { courseId: string } }>)
       : prisma.attendanceRecord.findMany({
-          where: { userId: studentId, session: { courseId: { in: courseIds }, date: { gte: firstDay, lt: nextMonth } } },
+          where: { userId: studentId, session: { courseId: { in: courseIds }, date: attendanceDateWindow(firstDay, nextMonth, now) } },
           select: { status: true, session: { select: { courseId: true } } },
         }),
     courseIds.length === 0
