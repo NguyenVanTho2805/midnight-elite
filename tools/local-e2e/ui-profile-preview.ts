@@ -69,7 +69,7 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   const sec3 = page.getByRole("region", { name: /Hồ sơ công khai của bạn trông thế này/ });
   await sec3.getByRole("heading", { name: "Cô Lan", level: 2 }).waitFor({ timeout: 30000 });
   const form2 = page.locator("section", { has: page.getByRole("heading", { name: "Khu vực và hình thức dạy" }) });
-  check("tải lại: form điền sẵn đúng (Tỉnh/Thành đã thống nhất 'TP. Hồ Chí Minh')", (await form2.getByLabel("Tỉnh/Thành").inputValue()) === "TP. Hồ Chí Minh" && (await form2.getByLabel("Quận/Huyện").inputValue()) === "Quận 7" && (await form2.getByRole("radio", { name: "Dạy trực tiếp" }).getAttribute("aria-checked")) === "true");
+  check("tải lại: form điền sẵn đúng (Tỉnh/Thành đã thống nhất 'TP. Hồ Chí Minh')", (await form2.getByLabel("Tỉnh/Thành").inputValue()) === "TP. Hồ Chí Minh" && (await form2.getByLabel("Quận/Huyện").inputValue()) === "Quận 7" && (await form2.getByRole("radio", { name: "Dạy trực tiếp", exact: true }).getAttribute("aria-checked")) === "true");
   const pv = (await sec3.innerText()).replace(/\s+/g, " ");
   check("bản xem trước: 'TP. Hồ Chí Minh · Quận 7', 'Dạy trực tiếp', trường + bằng cấp kèm '(tự khai)'; giá chưa hiện vì công tắc tắt", /TP\. Hồ Chí Minh · Quận 7/.test(pv) && /Dạy trực tiếp/.test(pv) && /ĐH Bách khoa · Kỹ sư \(tự khai\)/.test(pv) && !/150\.000đ/.test(pv), pv);
   await form2.getByRole("switch").click();
