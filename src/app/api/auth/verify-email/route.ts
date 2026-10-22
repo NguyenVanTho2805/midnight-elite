@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
+import { tutorApplicationStatus } from "@/lib/tutorProfile";
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token");
@@ -35,5 +36,8 @@ export async function GET(req: Request) {
   });
 
   // `landing`: trang đầu của vai này (cùng nguồn với đăng nhập: src/lib/landing.ts) — trang xác thực chuyển người dùng tới đó. Trước đây trang cứng /student/hoc-tap.
-  return NextResponse.json({ success: true, name: record.user.name, landing: landingPath(record.user.role, record.user.adminRole) });
+  // NC2-029: gia sư vừa đăng ký (chưa duyệt) rơi vào khung học viên — trang xác thực cần biết để không hứa "Dashboard".
+  const u = record.user;
+  const tutorPending = u.role === "student" && !u.adminRole && tutorApplicationStatus(u) === "pending";
+  return NextResponse.json({ success: true, name: u.name, landing: landingPath(u.role, u.adminRole), tutorPending });
 }

@@ -13,6 +13,7 @@ import {
 } from "@/components/kin/shell/Outlook";
 import { KinProgressRing } from "@/components/kin/ProgressRing";
 import { KinSwapText } from "@/components/kin/SwapText";
+import { useAuth } from "@/contexts/AuthContext";
 
 const GROUPS: { key: "can-lam" | "sap-toi" | "da-xong"; label: string }[] = [
   { key: "can-lam", label: "Cần làm" },
@@ -22,6 +23,9 @@ const GROUPS: { key: "can-lam" | "sap-toi" | "da-xong"; label: string }[] = [
 const groupOf = (i: StudentTodoItem) => (i.needsAction ? "can-lam" : i.done ? "da-xong" : "sap-toi");
 
 export default function ViecCuaToi() {
+  // NC2-029: gia sư vừa đăng ký, hồ sơ chưa duyệt → thẻ báo "chờ duyệt" (cờ lấy từ /api/auth/me qua AuthContext, chỉ của chính người dùng).
+  const { user } = useAuth();
+  const tutorPending = user?.tutorPending === true;
   const [items, setItems] = useState<StudentTodoItem[] | null>(null);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -86,6 +90,12 @@ export default function ViecCuaToi() {
         subtitle={<KinSwapText alt={total > 0 && needs === 0} a="Bài phải nộp và buổi sắp tới" b="Đã xong hết việc cần làm" />}
         aside={items !== null && total > 0 ? <KinProgressRing done={doneTasks} total={total} label="Việc đã xong" /> : undefined}
       />
+      {tutorPending && (
+        <div role="status" data-tutor-pending className="mx-[14px] mt-3 rounded-xl p-3 text-[length:var(--kin-co-small)]"
+          style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-chu-chinh)" }}>
+          <b>Hồ sơ gia sư của bạn đang chờ quản trị duyệt.</b> KiN sẽ báo khi xong.
+        </div>
+      )}
       {error && <ErrorStrip message="Không tải được danh sách." onRetry={load} />}
       {items === null && !error ? (
         <ListSkeleton rows={5} />

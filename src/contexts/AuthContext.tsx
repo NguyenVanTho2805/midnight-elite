@@ -43,6 +43,8 @@ export interface AuthUser {
   zaloPhone?:    string | null;
   adminRole?:    AdminRole;
   emailVerified: boolean;
+  /** NC2-029: đã nộp đơn gia sư, đang chờ quản trị duyệt (vẫn là học viên). */
+  tutorPending?: boolean;
 }
 
 interface AuthContextType {
@@ -148,5 +150,6 @@ function toAuthUser(data: Record<string, unknown>): AuthUser {
     zaloPhone:     data.zaloPhone as string | null,
     adminRole:     data.adminRole as AdminRole | undefined,
     emailVerified: Boolean(data.emailVerified),
+    tutorPending:  data.tutorPending === true,
   };
 }

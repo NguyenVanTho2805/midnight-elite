@@ -5,16 +5,18 @@
 // Hành trình (người thật dùng chuột + bàn phím, không gọi API tắt):
 //   G1  Trang chủ → "Đăng ký" → form gia sư 2 bước → "Kiểm tra hộp thư" → thư trong EMAIL_SINK_DIR → liên kết xác thực
 //   --  (NGOÀI người dùng) quản trị bấm duyệt hồ sơ (qua API, như các bài khác) — KHÔNG tính vào số đo
-//   G2  Đăng xuất phiên "học viên" cũ + Đăng nhập lại (phiên mới mang quyền gia sư) → vào app gia sư → "Tạo lớp đầu tiên" → drawer → lưu
-//   G3  Khung giờ học hằng tuần (trang quản khoá → tab Lịch học)
-//   G4  "Mời cả lớp một lần" (ĐX-07, tab Mã mời của lớp)
+//   G2  Đăng xuất phiên "học viên" cũ + Đăng nhập lại (phiên mới mang quyền gia sư) → vào app gia sư → "Tạo lớp đầu tiên" → drawer (CHỈ gõ Tên) → lưu
+//       → NC2-029: tự chuyển thẳng tới trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học
+//   G3  Khung giờ học hằng tuần (tab Lịch học đã mở sẵn)
+//   G4  Nút "Mở lớp" ở trang quản khoá → "Mời cả lớp một lần" (ĐX-07, tab Mã mời của lớp)
+//   NC2-029 còn kiểm: thẻ "chờ duyệt" chỉ hiện đúng người; chữ trang xác thực; giá/bài/ngày mặc định; quản trị tạo lớp vẫn bắt buộc đủ; lối "Mở lớp" ở menu ···
 //   G5  Hộp việc (mặc định TẮT ở chế độ gọn → bật ở Cài đặt rồi mở)
 //
 // THỜI GIAN là thời gian MÁY đo trên máy dev (có cả thời gian biên dịch lần đầu của Next dev), KHÔNG phải thời gian người.
 // Để khách quan: chạy bài HAI lần liên tiếp và lấy số lần hai (máy ấm). Mỗi lần chạy xoá sạch DB riêng (wipe) rồi tự dựng dữ liệu.
 import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { BASE, mkSuper, api, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkSuper, mkUser, api, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
 import type { Page, Locator } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -132,11 +134,33 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   if (cur) cur.clicks++;   // người dùng mở thư và bấm liên kết = 1 lần bấm
   await p.goto(`${BASE}${new URL(link!).pathname}${new URL(link!).search}`, GOTO);
   await eventually("trang báo 'Xác thực thành công'", async () => (await body()).includes("Xác thực thành công"), 60000);
+  // NC2-029(b): gia sư chờ duyệt không được hứa "Dashboard"; chữ phải nói đúng sự thật.
+  await eventually("trang xác thực nói hồ sơ gia sư đang chờ duyệt", async () => (await body()).includes("Hồ sơ gia sư của bạn đang chờ quản trị duyệt"), 15000);
+  check("trang xác thực không còn hứa 'Dashboard' cho gia sư chờ duyệt", !(await body()).includes("Dashboard"));
   await eventually("tự chuyển sang trang đầu của vai (hồ sơ gia sư còn chờ duyệt nên vẫn là học viên)", () => at().pathname.startsWith("/student/"), 30000);
   const landedAfterVerify = at().pathname;
   await p.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
   const pendingText = await body();
+  // NC2-029(a): thẻ "chờ duyệt" ở Việc của tôi, đúng người.
+  await p.waitForSelector("[data-tutor-pending]", { timeout: 30000 }).catch(() => {});
+  const pendingCard = await p.locator("[data-tutor-pending]").count();
+  const pendingCardText = pendingCard ? await p.locator("[data-tutor-pending]").first().innerText() : "";
+  const meBefore = await p.evaluate(async () => (await (await fetch("/api/auth/me")).json()) as Record<string, unknown>);
   end();
+  check("Việc của tôi có thẻ 'hồ sơ gia sư đang chờ quản trị duyệt' cho gia sư vừa đăng ký", pendingCard === 1 && /đang chờ quản trị duyệt/.test(pendingCardText) && /KiN sẽ báo khi xong/.test(pendingCardText), pendingCardText);
+  check("/api/auth/me trả cờ tutorPending=true cho đúng người đó, không lộ ngày/lý do đơn", meBefore.tutorPending === true && !("tutorAppliedAt" in meBefore) && !("tutorRejectedAt" in meBefore), Object.keys(meBefore));
+  {
+    // Học viên thường (chưa nộp đơn) KHÔNG thấy thẻ và cờ là false.
+    const plain = await mkUser({ name: "Học viên thường", role: "student" });
+    const pc = await ctxFor(plain, { width: 1280, height: 900 });
+    const pp = await pc.newPage();
+    await pp.goto(`${BASE}/student/viec-cua-toi`, GOTO);
+    await pp.getByRole("heading", { name: "Việc của tôi" }).first().waitFor({ timeout: 90000 });
+    await pp.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
+    const me2 = await pp.evaluate(async () => (await (await fetch("/api/auth/me")).json()) as Record<string, unknown>);
+    check("học viên thường: không có thẻ 'chờ duyệt' và tutorPending=false", (await pp.locator("[data-tutor-pending]").count()) === 0 && me2.tutorPending === false, me2.tutorPending);
+    await pc.close();
+  }
   const u0 = await prisma.user.findUnique({ where: { email } });
   check("DB: tài khoản có đơn gia sư đang chờ, email đã xác thực", !!u0 && u0.emailVerified === true && !!u0.tutorAppliedAt && u0.role === "student", u0 && { v: u0.emailVerified, r: u0.role });
   check("DB: giới thiệu + môn dạy đã lưu", !!u0 && (u0.bio ?? "").includes("Cử nhân Toán") && JSON.stringify(u0.subjects) === JSON.stringify(["Toán"]));
@@ -191,14 +215,16 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   const courseName = `Toán 9 — lớp đầu tiên ${stamp.slice(-3)}`;
   const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
   const dr = p.locator("div.fixed.right-0");
+  // NC2-029: gia sư chỉ gõ TÊN; ngày khai giảng / giá / số bài học để trống (nhãn ghi "tuỳ chọn").
+  check("drawer của gia sư ghi '(tuỳ chọn)' ở Ngày khai giảng / Giá bán / Số bài học", (drawerText.match(/tuỳ chọn · mặc định/g) ?? []).length === 3, drawerText.slice(0, 400));
   await typeIn(dr.getByPlaceholder("VD: ĐGNL HSA — Trọn gói lộ trình"), courseName);
-  await typeIn(dr.locator('input[type="date"]'), today);
-  await typeIn(dr.getByPlaceholder("2990000"), "500000");
-  await typeIn(dr.getByPlaceholder("96"), "24");
   await click(dr.getByRole("button", { name: "Tạo khoá học" }));
   await eventually("DB: lớp có chủ là gia sư vừa đăng ký", async () => !!(await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } })), 90000);
   const course = (await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } }))!;
-  await eventually("drawer đóng, lớp hiện trong danh sách", async () => (await drawerTitle.isHidden().catch(() => false)) && (await body()).includes(courseName), 60000);
+  await eventually("NC2-029: tự chuyển tới trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học", () => at().pathname === `/admin/khoa-hoc/${course.id}` && at().searchParams.get("tab") === "lich-hoc", 120000);
+  await eventually("có thông báo thành công 'Đã tạo khoá học mới' (như cũ)", async () => (await body()).includes("Đã tạo khoá học mới"), 30000);
+  const [dd, mm, yyyy] = [today.slice(8, 10), today.slice(5, 7), today.slice(0, 4)];
+  check("DB: bỏ trống → giá 0, số bài học 0, ngày khai giảng = hôm nay giờ VN", course.price === 0 && course.lessons === 0 && course.openDate === `${dd}/${mm}/${yyyy}`, { price: course.price, lessons: course.lessons, openDate: course.openDate, today });
   end();
   check("DB: lớp tạo ra thuộc gia sư (ownerId) và đang mở", course.ownerId === u0!.id && course.status === true, { ownerId: course.ownerId, status: course.status });
   console.log(`  ghi nhận: ô 'Gia sư' của lớp mới = ${JSON.stringify(course.instructor)} (ĐỀ XUẤT chưa làm: tự điền tên gia sư — ghi tên thật vào thẻ lớp CÔNG KHAI, mâu thuẫn công tắc Ẩn hồ sơ, chờ Thọ quyết)`);
@@ -206,14 +232,8 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
 
   // ───────────────────── G3: khung giờ học ở trang quản khoá (tab Lịch học) ─────────────────────
   begin("G3", "lớp → khung giờ học");
-  section("G3. Danh sách khoá → ··· → Cài đặt → tab 'Lịch học' → '+ Thêm khung giờ'");
-  const row = p.locator("tr", { hasText: courseName });
-  await click(row.getByRole("button", { name: "···" }));
-  sub("menu ··· của dòng khoá");
-  await click(p.getByRole("link", { name: "Cài đặt", exact: true }));
-  await eventually("tới trang quản khoá của lớp", () => at().pathname === `/admin/khoa-hoc/${course.id}`, 120000);
-  await click(p.getByRole("button", { name: "Lịch học", exact: true }));
-  sub("tab 'Lịch học' của trang quản khoá");
+  section("G3. (đã ở trang quản khoá, tab 'Lịch học' mở sẵn) → '+ Thêm khung giờ'");
+  await p.getByRole("button", { name: "+ Thêm khung giờ" }).waitFor({ timeout: 90000 });
   await click(p.getByRole("button", { name: "+ Thêm khung giờ" }));
   sub("form thêm khung giờ");
   const rSched = await req(p, "khung giờ học (form thêm)", "Thứ / giờ bắt đầu / giờ kết thúc đều CÓ SẴN giá trị mặc định (Thứ 2, 19:00–21:00); không ô nào có dấu *");
@@ -230,35 +250,11 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   // ───────────────────── G4: Mời cả lớp một lần (tab Mã mời của lớp) ─────────────────────
   begin("G4", "khung giờ → mời cả lớp");
   section("G4. Tới trang lớp /lop-cua-toi/<lớp> → tab 'Mã mời' → 'Mời cả lớp một lần'");
-  // Đường bấm thật từ trang quản khoá tới trang lớp: thanh bên chỉ có Lịch / Học phí / Khác (chế độ gọn, module 'Lớp' tắt).
-  const railLop = p.locator('nav[aria-label="Module của gia sư"]').getByRole("link", { name: /^Lớp/ });
-  let how = "";
-  if (await railLop.count()) { how = "thanh bên → Lớp → thẻ lớp"; await click(railLop.first()); await click(p.getByRole("link", { name: new RegExp(courseName.slice(0, 12)) }).first()); }
-  else {
-    // thử: thanh bên → Lịch (đã có buổi) → thẻ buổi có liên kết tới lớp?
-    await click(p.locator('nav[aria-label="Module của gia sư"]').getByRole("link", { name: /^Lịch/ }).first());
-    await eventually("tới Lịch", () => at().pathname === "/lop-cua-toi/lich", 90000);
-    await p.getByText(courseName.slice(0, 14)).first().waitFor({ timeout: 60000 });
-    const direct = p.locator(`a[href="/lop-cua-toi/${course.id}"]`);
-    if (await direct.count()) { how = "Lịch → liên kết tới lớp"; await click(direct.first()); }
-    else {
-      await click(p.getByRole("button", { name: new RegExp(courseName.slice(0, 14)) }).first());   // mở thẻ buổi
-      const direct2 = p.locator(`a[href="/lop-cua-toi/${course.id}"]`);
-      if (await direct2.count()) { how = "Lịch → mở thẻ buổi → liên kết tới lớp"; await click(direct2.first()); }
-      else {
-        how = "KHÔNG CÓ LỐI BẤM tới trang lớp ở chế độ gọn: phải mở 'Khác' → Cài đặt → bật module 'Lớp' → Lớp → thẻ lớp";
-        await click(p.locator('nav[aria-label="Module của gia sư"]').getByRole("button", { name: "Khác" }));
-        await click(p.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Cài đặt", exact: true }));
-        await eventually("tới Cài đặt", () => at().pathname === "/lop-cua-toi/cai-dat", 90000);
-        await click(p.locator("#m-lop"));
-        await eventually("module Lớp bật", async () => (await p.locator('nav[aria-label="Module của gia sư"]').getByRole("link", { name: /^Lớp/ }).count()) > 0, 30000);
-        await click(p.locator('nav[aria-label="Module của gia sư"]').getByRole("link", { name: /^Lớp/ }).first());
-        await eventually("tới /lop-cua-toi/lop", () => at().pathname === "/lop-cua-toi/lop", 90000);
-        await click(p.getByRole("link", { name: new RegExp(courseName.slice(0, 12)) }).first());
-      }
-    }
-  }
-  console.log(`    (đường tới trang lớp: ${how})`);
+  // NC2-029: nút "Mở lớp" ngay ở trang quản khoá (trước đây phải đi Khác → Cài đặt → bật module Lớp → Lớp → thẻ lớp).
+  const moLop = p.getByRole("link", { name: "Mở lớp", exact: true });
+  check("trang quản khoá có nút 'Mở lớp' trỏ tới trang lớp", (await moLop.count()) === 1 && (await moLop.getAttribute("href")) === `/lop-cua-toi/${course.id}`);
+  await click(moLop);
+  console.log("    (đường tới trang lớp: nút 'Mở lớp' ở trang quản khoá)");
   await eventually("tới /lop-cua-toi/<lớp>", () => at().pathname === `/lop-cua-toi/${course.id}`, 120000);
   await click(p.getByRole("button", { name: "Mã mời", exact: true }));
   sub("tab 'Mã mời' (có sẵn khối 'Mời cả lớp một lần')");
@@ -297,6 +293,36 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   end();
   check("Hộp việc mở được, không rơi vào trang lỗi", !/Application error|Lỗi|Không tìm thấy/i.test(inboxText.slice(0, 600)) && at().pathname === "/lop-cua-toi", inboxText.slice(0, 300));
   check("Hộp việc đang trống việc hoặc liệt kê việc — có chữ giải thích, không trắng", inboxText.replace(/\s+/g, "").length > 200);
+
+  // ───────────────────── NC2-029: kiểm thêm (không tính vào số đo) ─────────────────────
+  section("NC2-029. Menu ··· của gia sư có 'Mở lớp'; quản trị tạo lớp vẫn bắt buộc đủ 4 ô");
+  await p.goto(`${BASE}/admin/khoa-hoc`, GOTO);
+  const row2 = p.locator("tr", { hasText: courseName });
+  await row2.getByRole("button", { name: "···" }).click({ timeout: 60000 });
+  const menuLink = p.getByRole("link", { name: /^Mở lớp/ });
+  check("menu ··· (gia sư) có 'Mở lớp' trỏ tới /lop-cua-toi/<lớp>", (await menuLink.count()) === 1 && (await menuLink.getAttribute("href")) === `/lop-cua-toi/${course.id}`);
+  {
+    const before = await prisma.course.count();
+    const ac = await ctxFor(root, { width: 1280, height: 900 });
+    const ap2 = await ac.newPage();
+    await ap2.goto(`${BASE}/admin/khoa-hoc?tao=1`, GOTO);
+    const adr = ap2.locator("div.fixed.right-0");
+    await adr.getByRole("heading", { name: "Tạo khoá học mới" }).waitFor({ timeout: 90000 });
+    await ap2.waitForTimeout(400);
+    const aText = await adr.innerText();
+    const stars = await adr.locator("label span.text-red-500").count();
+    check("quản trị trung tâm: drawer vẫn có 4 dấu * (Tên, Ngày khai giảng, Giá bán, Số bài học), không '(tuỳ chọn · mặc định)'", stars === 4 && !aText.includes("tuỳ chọn · mặc định"), { stars });
+    await adr.getByRole("button", { name: "Tạo khoá học" }).click();
+    await ap2.waitForTimeout(600);
+    const aText2 = await adr.innerText();
+    check("quản trị: để trống bấm Tạo → báo đủ 4 lỗi, không tạo lớp", ["không được để trống", "Chọn ngày khai giảng", "Giá bán phải là số dương", "Số bài học phải là số"].every(k => aText2.includes(k)) && (await prisma.course.count()) === before, aText2.slice(0, 300));
+    await adr.getByPlaceholder("VD: ĐGNL HSA — Trọn gói lộ trình").fill("Lớp quản trị thử");
+    await adr.getByRole("button", { name: "Tạo khoá học" }).click();
+    await ap2.waitForTimeout(600);
+    const aText3 = await adr.innerText();
+    check("quản trị: chỉ gõ Tên vẫn bị từ chối (ngày, giá, số bài còn thiếu), không tạo lớp", aText3.includes("Chọn ngày khai giảng") && aText3.includes("Giá bán phải là số dương") && (await prisma.course.count()) === before);
+    await ac.close();
+  }
 
   // ───────────────────── Kiểm chung ─────────────────────
   section("Kiểm chung toàn hành trình");
