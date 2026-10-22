@@ -62,3 +62,11 @@ Tên file: `t-*.ts` = logic thuần + API; `ui-*.ts` = trình duyệt. Mỗi fil
 - 16/10: `next dev` in cảnh báo React "Encountered a script tag while rendering React component" khi một trang trong nhóm `(parent)` (`/phieu/<mã sai>`, `/so-cua-con/<mã sai>`) trả 404 thật bằng `notFound()`; 404 gốc thì không. Là cảnh báo của React bản phát triển, giao diện vẫn đủ; bài rà ghi riêng, không tính lỗi, và chưa kiểm được ở bản dựng production.
 - Layout của `(guest)` có `loading.tsx` nên `notFound()` trả HTTP 200 kèm thân trang 404 (kiểm theo chuỗi `NEXT_HTTP_ERROR_FALLBACK;404`).
 - `getByLabel` trên `<label>` bọc `<select>` bị tính cả chữ các option vào tên → dùng `aria-label` hoặc `locator("label").locator("select")`.
+
+## Dựng DB thử khi máy chặn tải engine Prisma (22/10/2026, đã chạy thật)
+Máy làm việc của Claude có sẵn Postgres 16 (`/usr/lib/postgresql/16`, cụm `main` đang tắt) nhưng `binaries.prisma.sh` bị chặn (403) nên `prisma db push` không chạy được. Cách đã dùng, chạy được đầu-cuối:
+1. `pg_ctlcluster 16 main start`; đặt mật khẩu, `createdb kin_test`, `CREATE EXTENSION pg_trgm`. **pgvector không có** → cột `embedding` đổi `vector(768)` thành `text` (chỉ tầng "giống nghĩa" cần).
+2. DDL: `tools/local-e2e/gen-schema-sql.mjs` (engine schema WASM, xem đầu tệp) → `sed 's/vector(768)/text/g' | psql`. `prisma generate` cần `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1`.
+3. `src/lib/prisma.ts` nối bằng driver Neon (WebSocket) nên cần `node tools/local-e2e/neon-ws-proxy.mjs &` (cổng 443, chứng chỉ tự ký → `NODE_TLS_REJECT_UNAUTHORIZED=0`) VÀ `host all all 127.0.0.1/32 trust` trong `pg_hba.conf` (driver Neon gửi mật khẩu "chạy trước"; proxy bỏ thông điệp đó). Chỉ dùng ở máy test.
+4. `source tools/local-e2e/env.sh` (có mẫu thêm `PUSH_ENABLED=1` + `VAPID_*` cho `t-push` / `ui-push-settings`), `bash tools/local-e2e/dev-start.sh`, thêm `127.0.0.1 midnightelite-edu.com admin.midnightelite-edu.com` vào `/etc/hosts`.
+5. Đừng chạy `pkill -f <tên tệp>` trong cùng lệnh bash có chứa tên tệp đó — nó giết luôn shell (mã thoát 144); dùng `pgrep -f "^node tools/..."` neo đầu dòng.

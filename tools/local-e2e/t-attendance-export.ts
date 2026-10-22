@@ -60,7 +60,9 @@ const INJ = "=cmd|' /C calc'!A0";
   section("CSV");
   const csv = await api("GET", U(c1.id, "month=2026-09&format=csv"), { as: T });
   check("200, text/csv UTF-8, tải về với tên tệp ASCII có tháng", csv.status === 200 && /text\/csv; charset=utf-8/.test(csv.headers.get("content-type") ?? "") && /attachment; filename="diem-danh-toan-9-lop-a-2026-09\.csv"/.test(csv.headers.get("content-disposition") ?? ""), [csv.headers.get("content-type"), csv.headers.get("content-disposition")]);
-  check("BOM UTF-8, tên lớp và ký hiệu đúng, no-store", csv.text.startsWith("﻿") && csv.text.includes("Toán 9 — lớp A") && csv.text.includes("✓") && /no-store/.test(csv.headers.get("cache-control") ?? ""));
+  // `Response.text()` của fetch BỎ dấu BOM đầu tệp (đúng chuẩn), nên không thấy được BOM qua `csv.text`: đọc byte thô để kiểm EF BB BF.
+  const csvBytes = (await raw(U(c1.id, "month=2026-09&format=csv"), T)).bytes;
+  check("BOM UTF-8 (byte EF BB BF đầu tệp), tên lớp và ký hiệu đúng, no-store", csvBytes[0] === 0xef && csvBytes[1] === 0xbb && csvBytes[2] === 0xbf && csv.text.includes("Toán 9 — lớp A") && csv.text.includes("✓") && /no-store/.test(csv.headers.get("cache-control") ?? ""));
   check("tên học sinh bắt đầu bằng '=' bị vô hiệu hoá (dấu nháy đơn), không thành công thức", csv.text.includes("'=cmd") && !/(^|,)=cmd/m.test(csv.text), csv.text.split("\r\n").find(l => l.includes("cmd")));
 
   section("Excel");
