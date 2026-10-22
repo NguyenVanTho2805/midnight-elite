@@ -59,6 +59,7 @@ const STUB_SRC = `(a) => {
     return { page, errors };
   };
   const here = (p: Awaited<ReturnType<typeof open>>["page"]) => p.getByTestId("push-here");
+  const secOf = (p: Awaited<ReturnType<typeof open>>["page"]) => p.locator("#thong-bao-day");
   const stateOf = (p: Awaited<ReturnType<typeof open>>["page"]) => here(p).getAttribute("data-state");
 
   section("Hệ thống đang bật");
@@ -69,10 +70,11 @@ const STUB_SRC = `(a) => {
   section("Chưa bật: giao diện và giá trị mặc định");
   const { page, errors } = probe;
   check("trạng thái 'off', badge 'Chưa bật', nút 'Bật trên máy này'; KHÔNG có nút Tắt / Gửi thử", await stateOf(page) === "off" && await here(page).getByText("Chưa bật", { exact: true }).isVisible() && await here(page).getByRole("button", { name: "Bật trên máy này" }).isVisible() && (await here(page).getByRole("button", { name: /Tắt máy này|Gửi thử/ }).count()) === 0);
-  const sw = (name: string) => page.getByRole("switch", { name });
+  // Phạm vi trong mục "Thông báo đẩy": công tắc module "Lịch" ở trên cũng có chữ "báo nghỉ sát giờ" trong phần mô tả nên tìm theo tên trên cả trang bị trùng.
+  const sw = (name: string) => page.locator("#thong-bao-day").getByRole("switch", { name });
   check("ba công tắc: báo nghỉ BẬT, tiền chưa khớp BẬT, phiếu đóng đủ TẮT", await sw("Báo nghỉ sát giờ").isChecked() && await sw("Khoản tiền vào chưa khớp phiếu").isChecked() && !(await sw("Phiếu học phí đã đóng đủ").isChecked()));
-  check("có ghi: giờ yên lặng 22:00–07:00 + ngoại lệ dưới 2 giờ; chữ khoá màn hình không có tên / tiền; hướng dẫn iPhone 16.4+", await page.getByText("Giờ yên lặng 22:00–07:00").isVisible() && await page.getByText(/báo nghỉ còn dưới 2 giờ/).isVisible() && await page.getByText(/không có tên học sinh hay số tiền/).isVisible() && await page.getByText(/iOS 16\.4/).isVisible());
-  check("chưa đăng ký gì: không có mục 'Thiết bị đã bật'", (await page.getByRole("heading", { name: /Thiết bị đã bật/ }).count()) === 0);
+  check("có ghi: giờ yên lặng 22:00–07:00 + ngoại lệ dưới 2 giờ; chữ khoá màn hình không có tên / tiền; hướng dẫn iPhone 16.4+", await secOf(page).getByText("Giờ yên lặng 22:00–07:00").isVisible() && await secOf(page).getByText(/báo nghỉ còn dưới 2 giờ/).isVisible() && await secOf(page).getByText(/không có tên học sinh hay số tiền/).isVisible() && await secOf(page).getByText(/iOS 16\.4/).isVisible());
+  check("chưa đăng ký gì: không có mục 'Thiết bị đã bật'", (await secOf(page).getByRole("heading", { name: /Thiết bị đã bật/ }).count()) === 0);
   await shot(page, "push-settings-off");
 
   section("Bật trên máy này");
@@ -83,7 +85,7 @@ const STUB_SRC = `(a) => {
   const row = await prisma.pushSubscription.findFirst({ where: { userId: T.id } });
   check("DB có đúng một thiết bị của gia sư, đúng endpoint và khoá; userAgent là Chrome", (await prisma.pushSubscription.count({ where: { userId: T.id } })) === 1 && row?.endpoint === `https://fcm.googleapis.com/fcm/send/ui-${stamp}` && row?.p256dh === P256DH && /Chrome/.test(row?.userAgent ?? ""));
   check("hiện badge 'Đã bật', nút 'Tắt máy này' và 'Gửi thử'; danh sách thiết bị ghi '· máy này' và KHÔNG có nút Gỡ cho chính máy này", await here(page).getByText("Đã bật", { exact: true }).isVisible() && await here(page).getByRole("button", { name: "Tắt máy này" }).isVisible() && await here(page).getByRole("button", { name: "Gửi thử" }).isVisible()
-    && await page.getByText(/· máy này/).isVisible() && (await page.getByRole("button", { name: /^Gỡ / }).count()) === 0);
+    && await secOf(page).getByText(/· máy này/).isVisible() && (await secOf(page).getByRole("button", { name: /^Gỡ / }).count()) === 0);
   check("trang không in endpoint hay khoá ra màn hình", !(await page.content()).includes(`ui-${stamp}`) && !(await page.content()).includes(P256DH));
   await page.getByText("Đã bật thông báo đẩy trên máy này.").waitFor({ timeout: 15000 }).catch(() => {});
   await shot(page, "push-settings-on");
@@ -112,11 +114,11 @@ const STUB_SRC = `(a) => {
   await page.unroute("**/api/push/test");
   await prisma.pushSubscription.create({ data: { userId: T.id, endpoint: `https://web.push.apple.com/ui-${stamp}-iphone`, p256dh: P256DH, auth: AUTH, userAgent: IPHONE } });
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: /Thiết bị đã bật \(2\/10\)/ }).waitFor({ timeout: 60000 });
-  const rm = page.getByRole("button", { name: /^Gỡ Safari · iPhone/ });
-  check("thiết bị thứ hai (Safari · iPhone) có nút Gỡ; máy này không có", (await rm.count()) === 1 && (await page.getByRole("button", { name: /^Gỡ / }).count()) === 1);
+  await secOf(page).getByRole("heading", { name: /Thiết bị đã bật \(2\/10\)/ }).waitFor({ timeout: 60000 });
+  const rm = secOf(page).getByRole("button", { name: /^Gỡ Safari · iPhone/ });
+  check("thiết bị thứ hai (Safari · iPhone) có nút Gỡ; máy này không có", (await rm.count()) === 1 && (await secOf(page).getByRole("button", { name: /^Gỡ / }).count()) === 1);
   await rm.click();
-  await eventually("Gỡ → danh sách còn 1 thiết bị, DB chỉ còn máy này", async () => (await page.getByRole("heading", { name: /Thiết bị đã bật \(1\/10\)/ }).count()) === 1 && (await prisma.pushSubscription.count({ where: { userId: T.id } })) === 1);
+  await eventually("Gỡ → danh sách còn 1 thiết bị, DB chỉ còn máy này", async () => (await secOf(page).getByRole("heading", { name: /Thiết bị đã bật \(1\/10\)/ }).count()) === 1 && (await prisma.pushSubscription.count({ where: { userId: T.id } })) === 1);
 
   section("Tắt máy này");
   await here(page).getByRole("button", { name: "Tắt máy này" }).click();
@@ -152,7 +154,7 @@ const STUB_SRC = `(a) => {
   const mob = await open({}, { width: 390, height: 800 });
   check("không tràn ngang", await mob.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   const bb = await here(mob.page).getByRole("button", { name: "Bật trên máy này" }).boundingBox();
-  const sb = await mob.page.getByRole("switch", { name: "Báo nghỉ sát giờ" }).boundingBox();
+  const sb = await mob.page.locator("#thong-bao-day").getByRole("switch", { name: "Báo nghỉ sát giờ" }).boundingBox();
   check("nút Bật cao ≥ 44px; công tắc đủ lớn để chạm (≥ 20px, cả dòng ≥ 44px)", !!bb && bb.height >= 44 && !!sb && sb.width >= 20, { bb, sb });
   await shot(mob.page, "push-settings-mobile");
 

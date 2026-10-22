@@ -13,7 +13,11 @@ interface Settings { enabled: boolean; reason: string | null; publicKey: string 
 interface Env { supported: boolean; ios: boolean; standalone: boolean; permission: "default" | "granted" | "denied"; localSub: boolean; fp: string | null }
 
 const MUTED = { color: "var(--kin-chu-phu)" } as const;
-const when = (iso: string) => new Date(iso).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+/** "22/10 06:03" (giờ của trình duyệt). toLocaleString("vi-VN") với các tuỳ chọn này ra "06:03 22-10": ngày đứng sau giờ và dùng gạch ngang, khó đọc. */
+const when = (iso: string) => {
+  const d = new Date(iso), p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 /** Đọc những gì chỉ trình duyệt biết: có hỗ trợ không, quyền, đã cài vào Màn hình chính chưa, đăng ký đẩy hiện có. */
 async function readEnv(): Promise<Env> {

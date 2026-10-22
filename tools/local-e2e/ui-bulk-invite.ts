@@ -5,8 +5,9 @@ import { BASE, mkTutor, mkCourse, wipe, check, eventually, section, done } from 
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 
+// Dữ liệu mẫu CỐ Ý khác ví dụ trong ô dán (placeholder "Minh Anh, 0912 345 678"): nếu trùng thì bài kiểm "trang không còn tên / số nào" bắt nhầm chính placeholder.
 // Số mẫu dùng trong bài kiểm, ở mọi cách viết (liền, cách quãng, bỏ số 0 đầu). Dò đúng các số này, không đoán theo dạng chữ số.
-const SAMPLE_PHONES = ["0912345678", "0987654321", "0912 345 678", "0987 654 321", "912345678", "987654321"];
+const SAMPLE_PHONES = ["0933111222", "0944333444", "0933 111 222", "0944 333 444", "933111222", "944333444"];
 const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
 
 (async () => {
@@ -35,12 +36,12 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   check("chưa dán gì: nút tạo bị khoá, chưa có dòng báo", await create.isDisabled() && (await page.getByText(/em hợp lệ/).count()) === 0);
 
   section("Dòng lỗi được chỉ rõ, chưa cho tạo");
-  await box.fill("Minh Anh, 0912 345 678\nQuốc Huy, 0912345\n\nBảo Ngọc");
+  await box.fill("Bảo Châu, 0933 111 222\nGia Huy, 0933111\n\nBảo Ngọc");
   await eventually("báo 1 em hợp lệ, dòng 2 (số thiếu chữ số) và dòng 4 (thiếu số), nút vẫn khoá", async () => {
     const t = await page.locator("[id$='-sum']").innerText();
     return t.includes("1 em hợp lệ") && t.includes("Dòng 2:") && t.includes("đang có 7") && t.includes("Dòng 4:") && await create.isDisabled();
   });
-  await box.fill("1. Minh Anh, 0912 345 678\n2. Minh Khôi\t0912345678\nQuốc Huy - 0987 654 321\nQuốc Huy - 0987654321");
+  await box.fill("1. Bảo Châu, 0933 111 222\n2. Bảo Long\t0933111222\nGia Huy - 0944 333 444\nGia Huy - 0944333444");
   await eventually("sửa xong: 3 em hợp lệ, bỏ 1 dòng trùng, hai anh em cùng số vẫn giữ, nút mở", async () => {
     const t = await page.locator("[id$='-sum']").innerText();
     return t.includes("3 em hợp lệ") && t.includes("bỏ 1 dòng trùng") && !t.includes("Dòng") && await create.isEnabled();
@@ -55,7 +56,7 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   const code = (await codeEl.innerText()).trim();
   const posts = writes.slice(before).filter(w => w.url.includes(`/api/courses/${c.id}/invites`));
   check("đúng 1 yêu cầu tạo mã; nội dung CHỈ có maxUses (3) và expiresAt", posts.length === 1 && JSON.stringify(Object.keys(JSON.parse(posts[0].body)).sort()) === JSON.stringify(["expiresAt", "maxUses"]) && JSON.parse(posts[0].body).maxUses === 3, posts);
-  check("KHÔNG yêu cầu ghi nào (POST/PUT/PATCH/DELETE) mang số điện thoại hay tên em", writes.every(w => !hasPhone(w.body) && !/Minh Anh|Minh Kh|Quốc Huy/.test(w.body)), writes.map(w => `${w.method} ${w.url}`));
+  check("KHÔNG yêu cầu ghi nào (POST/PUT/PATCH/DELETE) mang số điện thoại hay tên em", writes.every(w => !hasPhone(w.body) && !/Bảo Châu|Bảo Lo|Gia Huy/.test(w.body)), writes.map(w => `${w.method} ${w.url}`));
   const inv = await prisma.classInvite.findFirst({ where: { courseId: c.id } });
   const days = inv?.expiresAt ? (inv.expiresAt.getTime() - Date.now()) / 86_400_000 : -1;
   check("DB: một mã, đúng mã trên màn hình, 3 lượt, hạn ~14 ngày", (await prisma.classInvite.count({ where: { courseId: c.id } })) === 1 && inv?.code === code && inv?.maxUses === 3 && days > 13.9 && days < 14.1, { code, inv });
@@ -67,14 +68,14 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   await shot(page, "bulk-invite-ket-qua");
 
   section("Mở Zalo từng phụ huynh");
-  await rowsLoc.nth(0).getByRole("button", { name: /^Mở Zalo cho phụ huynh Minh Anh/ }).click();
+  await rowsLoc.nth(0).getByRole("button", { name: /^Mở Zalo cho phụ huynh Bảo Châu/ }).click();
   await eventually("mở đúng chat Zalo của số đó; dòng đổi thành 'Đã mở Zalo lúc HH:mm', nút thành 'Mở lại'", async () =>
-    zalo.some(u => u.includes("zalo.me/0912345678")) && /Đã mở Zalo lúc \d{2}:\d{2}/.test(await rowsLoc.nth(0).innerText()) && (await rowsLoc.nth(0).getByRole("button", { name: /^Mở lại Zalo cho phụ huynh Minh Anh/ }).count()) === 1);
+    zalo.some(u => u.includes("zalo.me/0933111222")) && /Đã mở Zalo lúc \d{2}:\d{2}/.test(await rowsLoc.nth(0).innerText()) && (await rowsLoc.nth(0).getByRole("button", { name: /^Mở lại Zalo cho phụ huynh Bảo Châu/ }).count()) === 1);
   const msg = await clip();
-  check("tin đã chép: tự giới thiệu 'đây là Cô Lan', có tên em, tên lớp, link vào lớp với mã điền sẵn và mã lớp; KHÔNG có số điện thoại", msg.includes("đây là Cô Lan") && msg.includes("Minh Anh") && msg.includes("Toán 9A") && msg.includes(`${BASE}/student/nhap-ma-lop?code=${code}`) && msg.includes(code) && !hasPhone(msg), msg);
+  check("tin đã chép: tự giới thiệu 'đây là Cô Lan', có tên em, tên lớp, link vào lớp với mã điền sẵn và mã lớp; KHÔNG có số điện thoại", msg.includes("đây là Cô Lan") && msg.includes("Bảo Châu") && msg.includes("Toán 9A") && msg.includes(`${BASE}/student/nhap-ma-lop?code=${code}`) && msg.includes(code) && !hasPhone(msg), msg);
   check("hai dòng còn lại vẫn 'Chưa mở Zalo' (không đánh dấu hộ)", (await page.getByText("Chưa mở Zalo").count()) === 2);
   await rowsLoc.nth(1).getByRole("button", { name: /^Chép tin cho phụ huynh/ }).click();
-  await eventually("'Chép tin' chép tin của đúng em (Minh Khôi) mà KHÔNG đánh dấu là đã mở Zalo", async () => (await clip()).includes("Minh Khôi") && (await page.getByText("Chưa mở Zalo").count()) === 2);
+  await eventually("'Chép tin' chép tin của đúng em (Bảo Long) mà KHÔNG đánh dấu là đã mở Zalo", async () => (await clip()).includes("Bảo Long") && (await page.getByText("Chưa mở Zalo").count()) === 2);
 
   section("Làm đợt mới: hỏi lại khi còn người chưa nhắn");
   await page.getByRole("button", { name: "Làm đợt mới" }).click();
@@ -93,8 +94,10 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   await page.getByRole("button", { name: "Mã mời", exact: true }).click();
   await page.getByText(code, { exact: true }).waitFor({ timeout: 60000 });
   const html = await page.content();
-  check("danh sách mã mời có mã vừa tạo 'Đã dùng 0/3 lượt'; HTML trang không còn số / tên em nào", html.includes("Đã dùng 0/3 lượt") && !hasPhone(html) && !/Minh Anh|Quốc Huy/.test(html));
-  check("sessionStorage / localStorage không giữ số điện thoại", await page.evaluate(() => !/0912345678|0987654321/.test(JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }))));
+  check("danh sách mã mời có mã vừa tạo, ghi 'Đã dùng 0/3 lượt'", (await page.locator("body").innerText()).replace(/\s+/g, " ").includes("Đã dùng 0/3 lượt"), (await page.locator("body").innerText()).slice(0, 300));
+  check("HTML trang không còn số điện thoại phụ huynh nào", !hasPhone(html), SAMPLE_PHONES.filter(p => html.includes(p)));
+  check("HTML trang không còn tên em nào", !/Bảo Châu|Bảo Long|Gia Huy/.test(html), ["Bảo Châu", "Bảo Long", "Gia Huy"].filter(n => html.includes(n)));
+  check("sessionStorage / localStorage không giữ số điện thoại", await page.evaluate(() => !/0933111222|0944333444/.test(JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }))));
 
   section("Điện thoại (390px)");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage();
@@ -102,7 +105,7 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   await mp.locator("select").first().selectOption({ label: "🔗 Mã mời" });
   const mbox = mp.getByLabel("Danh sách em và số phụ huynh");
   await mbox.waitFor({ timeout: 60000 });
-  await mbox.fill("Minh Anh, 0912345678");
+  await mbox.fill("Bảo Châu, 0933111222");
   await mp.getByRole("button", { name: "Tạo mã mời và soạn tin" }).click();
   await mp.getByTestId("bulk-code").waitFor({ timeout: 60000 });
   check("không tràn ngang", await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
