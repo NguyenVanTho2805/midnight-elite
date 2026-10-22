@@ -8,7 +8,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { callApi } from "@/components/tutor/shared";
 import type { HealthMetricsPayload } from "@/lib/healthMetricsServer";
 import {
-  METRIC_DEFS, METRIC_ORDER, MIN_SAMPLE, insufficientText, percentOf, ratio, ratioText, sampleText,
+  ACTIVATION_ORDER, METRIC_DEFS, METRIC_ORDER, MIN_SAMPLE, hoursText, insufficientText, percentOf, ratio, ratioText, sampleText,
   type MetricKey, type Ratio,
 } from "@/lib/healthMetrics";
 
@@ -71,7 +71,7 @@ function SoDoContent() {
 
       {loading && !data ? (
         <div aria-busy="true" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {METRIC_ORDER.map(k => <div key={k} className="h-44 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />)}
+          {[...METRIC_ORDER, ...ACTIVATION_ORDER].map(k => <div key={k} className="h-44 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />)}
         </div>
       ) : failed || !data ? (
         <div role="alert" className="rounded-xl p-6 text-center text-sm" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
@@ -84,6 +84,15 @@ function SoDoContent() {
           </p>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {METRIC_ORDER.map(k => <Card key={k} k={k} data={data} />)}
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }} data-testid="nhom-gia-su-moi">Gia sư mới vào</h2>
+            <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>
+              {data.activation.registered} gia sư đăng ký trong {data.days} ngày gần nhất. Mỗi thẻ chỉ tính gia sư đã đăng ký đủ lâu để có thể đạt mốc; gia sư mới vào hôm nay chưa bị tính là “bỏ”.
+            </p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {ACTIVATION_ORDER.map(k => <Card key={k} k={k} data={data} />)}
           </div>
           <div className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
             Đọc bảng: số đo dùng để chọn việc tiếp theo, không phải điểm của gia sư. Ví dụ nếu “Phiếu gia sư đã mở Zalo” thấp thì sửa bước gửi phiếu trước,
@@ -151,6 +160,31 @@ function Card({ k, data }: { k: MetricKey; data: Payload }) {
     return (
       <Shell k={k} big={ratioText(t)}>
         <RatioBody r={t} noun="buổi đã điểm danh" extra={t.unmeasured > 0 ? `${t.unmeasured} buổi chỉ có “Có phép” tự sinh, không đo` : undefined} />
+      </Shell>
+    );
+  }
+  if (k === "actClass" || k === "actTeach") {
+    const act = data.activation, r = k === "actClass" ? act.classIn24h : act.taughtIn7d, c = k === "actClass" ? act.cohort24 : act.cohort7;
+    return (
+      <Shell k={k} big={ratioText(r)}>
+        <RatioBody r={r} noun="gia sư" extra={`đăng ký từ ${vnDm(c.from)} đến ${vnDm(c.to)}`} />
+      </Shell>
+    );
+  }
+  if (k === "actMedian") {
+    const m = data.activation.firstClassHours;
+    return (
+      <Shell k={k} big={hoursText(m.hours)}>
+        {m.enough
+          ? <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Trung vị của {m.n} gia sư đã có lớp</p>
+          : (
+            <>
+              <p className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
+                <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-cho)" }} />Chưa đủ dữ liệu
+              </p>
+              <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{m.n} gia sư đã có lớp · cần từ {MIN_SAMPLE} mới hiện con số</p>
+            </>
+          )}
       </Shell>
     );
   }

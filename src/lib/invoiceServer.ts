@@ -11,6 +11,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import type { SessionPayload } from "@/lib/session";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { notify } from "@/lib/notify";
 import { computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 import {
   INVOICE_STATUS, INVOICE_STATUS_LABEL, PARENT_VISIBLE_STATUSES, OPEN_STATUSES, buildInvoiceQrUrl, buildTransferContent,
@@ -198,7 +199,7 @@ export async function loadPartyInvoices(studentId: string, yearMonth?: string): 
 // "Tôi đã chuyển": chỉ ghi nhận phụ huynh BÁO đã chuyển — chưa phải đã nhận tiền.
 // Trả null nếu phiếu không thuộc em này / không ở trạng thái cho phép.
 export async function markParentReported(studentId: string, code: string): Promise<{ ok: true; alreadyReported: boolean } | { ok: false; status: number; error: string }> {
-  const inv = await prisma.tuitionInvoice.findUnique({ where: { code }, select: { id: true, studentId: true, status: true } });
+  const inv = await prisma.tuitionInvoice.findUnique({ where: { code }, select: { id: true, tutorId: true, studentId: true, status: true } });
   if (!inv || inv.studentId !== studentId) return { ok: false, status: 404, error: "Không tìm thấy phiếu" };
   if (inv.status === "parent_reported") return { ok: true, alreadyReported: true };
   if (inv.status !== "sent" && inv.status !== "partial") {
@@ -208,5 +209,33 @@ export async function markParentReported(studentId: string, code: string): Promi
     where: { id: inv.id, status: { in: ["sent", "partial"] } },
     data: { status: "parent_reported", parentReportedAt: new Date() },
   });
-  return r.count === 1 ? { ok: true, alreadyReported: false } : { ok: false, status: 409, error: "Phiếu vừa đổi trạng thái, tải lại trang" };
+  if (r.count !== 1) return { ok: false, status: 409, error: "Phiếu vừa đổi trạng thái, tải lại trang" };
+  await notifyTutorParentReported(inv.tutorId, inv.id); // NC2-010: chỉ báo tin, không đổi cách ghi nhận ở trên
+  return { ok: true, alreadyReported: false };
+}
+
+/** Khoảng chống dội của thông báo `parent_reported`: một phiếu tối đa một thông báo mỗi 24 giờ. */
+export const PARENT_REPORTED_DEDUPE_MS = 24 * 3600_000;
+/** Đích của thông báo: khoá phiếu (id nội bộ, không phải mã phiếu in cho phụ huynh) nằm ở tham số `phieu` để tra chống dội; trang bỏ qua tham số này. */
+export const parentReportedLink = (invoiceId: string) => `/lop-cua-toi/hoc-phi?phieu=${invoiceId}`;
+
+/**
+ * NC2-010 — báo GIA SƯ chủ phiếu rằng có phụ huynh bấm "Tôi đã chuyển". Chữ trong ứng dụng dựng từ LOẠI: không tên em / phụ huynh, không số tiền, không mã phiếu.
+ * Chống dội: đã có thông báo `parent_reported` cho đúng phiếu này trong 24 giờ qua thì không tạo thêm (tra bảng Notification, không thêm cột).
+ * Cố ý nuốt lỗi như notify(): báo tin không bao giờ làm hỏng việc ghi nhận chính.
+ */
+export async function notifyTutorParentReported(tutorId: string, invoiceId: string, now: Date = new Date()): Promise<boolean> {
+  try {
+    const link = parentReportedLink(invoiceId);
+    const recent = await prisma.notification.findFirst({
+      where: { userId: tutorId, type: "parent_reported", link, createdAt: { gt: new Date(now.getTime() - PARENT_REPORTED_DEDUPE_MS) } },
+      select: { id: true },
+    });
+    if (recent) return false;
+    await notify(tutorId, { type: "parent_reported", title: "Phụ huynh báo đã chuyển khoản", message: "Có phụ huynh báo đã chuyển khoản, cần đối soát. Mở phiếu học phí để xem.", link });
+    return true;
+  } catch (e) {
+    console.error("[parent_reported] Không báo được gia sư:", e);
+    return false;
+  }
 }

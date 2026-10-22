@@ -10,6 +10,8 @@ Tài liệu bàn giao ở `docs/kin/`:
 - `docs/kin/thiet-ke/` — đặc tả bố cục Outlook, khu cộng đồng, token màu.
 - `docs/kin/backlog/` — 151 việc, cột "Sẵn sàng làm ngay".
 - `docs/kin/nguyen-mau/` — 5 trang HTML mở bằng trình duyệt.
+- `docs/kin/bao-cao/research-so-gia-su-2026-10-19.md` — bản chữ báo cáo research "Sổ Gia Sư + 14 nền tảng" (19/10/2026); căn cứ của các việc ĐX-xx và NC2-xxx.
+- `docs/kin/ke-hoach-nang-cap-2.md` — kế hoạch Nâng cấp lần 2 (đối chiếu sheet · repo · research); việc ở `docs/kin/backlog/nang-cap-lan-2.csv`.
 
 Bản sổ lớp đang chạy thật: github.com/aodtsix-cmd/kin-app
 

@@ -7,6 +7,7 @@ import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
 import { guessPronoun } from "@/lib/funnel";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
 
@@ -29,13 +30,16 @@ export async function GET() {
     prisma.attendanceSession.count({ where: { course: { ownerId: auth.userId }, ...taughtSessionWhere() } }),
   ]);
   const activeBy = new Map(active.map(a => [a.courseId, a._count._all]));
+  const hidden = me.tutorVerified && !me.profileLockedAt && isProfileHidden(readPreferences(me.preferences)); // chỉ báo "ẩn" khi hồ sơ lẽ ra đang công khai
   return NextResponse.json({
     tutorId: me.id,
     name: me.name,
     pronoun: guessPronoun(me.name),
     subjects: me.subjects,
     // Hồ sơ công khai chỉ mở khi đã được duyệt và không bị khoá; nếu không thì link trong bài sẽ không mở được.
-    profilePublic: me.tutorVerified && !me.profileLockedAt,
+    // NC2-022: gia sư tự chọn Ẩn cũng làm link không mở được.
+    profilePublic: me.tutorVerified && !me.profileLockedAt && !hidden,
+    profileHidden: hidden,
     profileLocked: !!me.profileLockedAt,
     classes: courses.map(c => ({ id: c.id, name: c.name, seatsLeft: c.capacity === null ? null : Math.max(0, c.capacity - (activeBy.get(c.id) ?? 0)) })),
     sessionsTaught,

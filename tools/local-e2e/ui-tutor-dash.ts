@@ -159,7 +159,7 @@ let seq = 700;
   await eventually("chưa có mã → thông báo", () => page.getByText("Chưa có mã mời nào.").isVisible());
   await page.getByLabel(/Số lượt dùng tối đa/).fill("2");
   await page.getByLabel(/Hiệu lực/).fill("7");
-  await page.getByRole("button", { name: "Tạo mã mời" }).click();
+  await page.getByRole("button", { name: "Tạo mã mời", exact: true }).click(); // exact: ĐX-07 thêm nút "Tạo mã mời và soạn tin" (NC2-004)
   await page.getByText(/Đã tạo mã/).waitFor({ timeout: 20000 });
   const inv = await prisma.classInvite.findFirst({ where: { courseId: c1.id } });
   check("DB: mã 8 ký tự, maxUses 2, hết hạn ~7 ngày", inv?.code.length === 8 && inv.maxUses === 2 && Math.abs((inv.expiresAt!.getTime() - Date.now()) - 7 * 86400000) < 3600000, inv);

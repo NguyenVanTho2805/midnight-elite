@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
+import { validateTutorCourseFields } from "@/lib/courseValidation";
 
 export async function GET(req: NextRequest) {
   try {
@@ -71,6 +72,12 @@ export async function POST(req: NextRequest) {
     }
     if (!data.name || !data.id) {
       return NextResponse.json({ error: "Thiếu id hoặc name" }, { status: 400 });
+    }
+
+    // NC2-035: gia sư chỉ được gửi giá/số bài/giờ/trạng thái hợp lý. Quản trị giữ hành vi cũ. Chỉ từ chối, không đổi cách tính phí.
+    if (auth.adminRole === "teacher") {
+      const bad = validateTutorCourseFields(data);
+      if (bad) return NextResponse.json({ error: bad }, { status: 400 });
     }
 
     // Mã trùng tên một trang cố định của KiN (vd "lich") thì trang lớp không bao giờ mở được — xem src/lib/courseIds.ts.

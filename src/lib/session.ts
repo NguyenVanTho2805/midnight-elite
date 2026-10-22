@@ -1,5 +1,6 @@
 ﻿import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { METHOD_HEADER, isWriteMethod, reconcileSession, type DbAuthState, type DenyReason } from "@/lib/sessionVerify";
 import { isPastMaxAge, sessionLifetimeMs, shouldRenew } from "@/lib/sessionPolicy";
 
 // Cookie giữ tên cũ "midnight_session" để không đăng xuất mọi người khi đổi mốc (Figma 33:2 gọi là kin_s; đổi tên là việc riêng).
@@ -27,12 +28,16 @@ function claims(p: SessionPayload): SessionPayload {
   return c;
 }
 
-export async function encrypt(payload: SessionPayload): Promise<string> {
+/** `iat` (giây): chỉ dùng khi đồng bộ vai của phiên đang sống — giữ mốc đăng nhập thật, không kéo dài phiên. Mặc định = bây giờ. */
+export interface IssueOptions { iat?: number }
+
+export async function encrypt(payload: SessionPayload, opts: IssueOptions = {}): Promise<string> {
   const c = claims(payload);
+  const issuedMs = typeof opts.iat === "number" ? opts.iat * 1000 : Date.now();
   return new SignJWT({ ...c })
     .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(Math.floor((Date.now() + sessionLifetimeMs(c)) / 1000))
+    .setIssuedAt(Math.floor(issuedMs / 1000))
+    .setExpirationTime(Math.floor((issuedMs + sessionLifetimeMs(c)) / 1000))
     .sign(getKey());
 }
 
@@ -48,10 +53,11 @@ export async function decrypt(token: string): Promise<SessionPayload | null> {
   }
 }
 
-export async function createSession(payload: SessionPayload) {
+export async function createSession(payload: SessionPayload, opts: IssueOptions = {}) {
   const c          = claims(payload);
-  const token      = await encrypt(c);
-  const expiresAt  = new Date(Date.now() + sessionLifetimeMs(c));
+  const token      = await encrypt(c, opts);
+  const issuedMs   = typeof opts.iat === "number" ? opts.iat * 1000 : Date.now();
+  const expiresAt  = new Date(issuedMs + sessionLifetimeMs(c));
   const store      = await cookies();
 
   store.set(COOKIE_NAME, token, {
@@ -68,11 +74,40 @@ export async function deleteSession() {
   store.delete(COOKIE_NAME);
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
+// NC2-033: yêu cầu GHI (POST/PUT/PATCH/DELETE) được đối chiếu với DB MỘT lần (cache theo yêu cầu): bị xoá/bị khoá → từ chối + xoá cookie;
+// vai DB lệch token → dùng vai DB. Yêu cầu đọc giữ nguyên hành vi cũ (chỉ tin token, /api/auth/me tự đồng bộ).
+// React cache() KHÔNG khử trùng trong route handler (đã đo: 3 lần gọi = 3 truy vấn), nên nhớ theo đối tượng headers() của chính yêu cầu.
+const authStateMemo = new WeakMap<object, Map<string, Promise<DbAuthState | null>>>();
+
+async function loadAuthState(req: object, userId: string): Promise<DbAuthState | null> {
+  let perReq = authStateMemo.get(req);
+  if (!perReq) { perReq = new Map(); authStateMemo.set(req, perReq); }
+  let p = perReq.get(userId);
+  if (!p) {
+    p = import("@/lib/prisma").then(({ prisma }) => prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, banned: true } }));
+    perReq.set(userId, p);
+  }
+  return p;
+}
+
+export interface CheckedSession { session: SessionPayload | null; denied?: DenyReason }
+
+export async function getSessionChecked(): Promise<CheckedSession> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
-  if (!token) return null;
-  return decrypt(token);
+  if (!token) return { session: null };
+  const session = await decrypt(token);
+  if (!session) return { session: null };
+  const reqHeaders = await headers();
+  if (!isWriteMethod(reqHeaders.get(METHOD_HEADER))) return { session };
+  const verdict = reconcileSession(session, await loadAuthState(reqHeaders, session.userId), Date.now());
+  if (verdict.ok) return { session: verdict.session };
+  try { store.delete(COOKIE_NAME); } catch { /* ngữ cảnh không ghi được cookie: vẫn từ chối */ }
+  return { session: null, denied: verdict.reason };
+}
+
+export async function getSession(): Promise<SessionPayload | null> {
+  return (await getSessionChecked()).session;
 }
 
 /**

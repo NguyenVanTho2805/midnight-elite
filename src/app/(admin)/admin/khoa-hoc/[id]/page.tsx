@@ -13,6 +13,7 @@ import { DAY_LABELS_VI } from "@/lib/types";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -2278,6 +2279,18 @@ export default function KhoaHocDetailPage() {
   function setTab(tab: TabId) { router.push(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`); }
 
   const { user } = useAuth();
+  // NC2-029: vừa tạo lớp xong (gia sư được chuyển thẳng tới đây với ?moi=1) → báo thành công như danh sách khoá vẫn báo.
+  const { toast, showToast } = useAdminToast();
+  const justCreated = searchParams.get("moi") === "1";
+  // NC2-035: hiện đúng một lần rồi xoá ?moi=1 khỏi URL (router.replace, không thêm mục lịch sử) để F5 không báo lại.
+  useEffect(() => {
+    if (!justCreated) return;
+    showToast("Đã tạo khoá học mới");
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete("moi");
+    const qs = rest.toString();
+    router.replace(`/admin/khoa-hoc/${courseSlug}${qs ? `?${qs}` : ""}`);
+  }, [justCreated]); // eslint-disable-line react-hooks/exhaustive-deps
   const [course, setCourse] = useState<CourseDB | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]    = useState("");
@@ -2316,6 +2329,7 @@ export default function KhoaHocDetailPage() {
 
   return (
     <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}
@@ -2334,6 +2348,14 @@ export default function KhoaHocDetailPage() {
               ID: {course.adminId} · Slug: {course.id} · {course.category}
             </p>
           </div>
+          {/* NC2-029: gia sư (đã qua kiểm "notMine" ở trên nên chắc chắn là chủ lớp) mở thẳng trang lớp — tab Mã mời, học viên… */}
+          {user?.adminRole === "teacher" && (
+            <Link href={`/lop-cua-toi/${course.id}`}
+              className="ml-auto flex-shrink-0 inline-flex items-center min-h-[44px] px-4 rounded-lg text-sm font-semibold"
+              style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)", boxShadow: "var(--kin-bong-the)" }}>
+              Mở lớp
+            </Link>
+          )}
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { InsufficientBalanceError } from "@/lib/wallet";
 import { COIN_REASONS, COIN_SOURCE_TYPES } from "@/lib/wallet-constants";
 import { getTutorVIPPlan, nextPeriod } from "@/lib/tutorSubscription";
 import { logAction } from "@/lib/auditLog";
+import { isTrialMode, TRIAL_MODE_MESSAGE } from "@/lib/trialMode";
 
 // POST /api/subscriptions/[code]/purchase — gia sư mua VIP. Chỉ adminRole
 // = "teacher" mua được (admin_super/admin_content vận hành platform, không
@@ -24,6 +25,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ co
   if (isNextResponse(auth)) return auth;
   if (auth.role !== "admin" || auth.adminRole !== "teacher") {
     return NextResponse.json({ error: "Chỉ gia sư mới cần gói VIP" }, { status: 403 });
+  }
+
+  // NC2-023: giai đoạn chạy thử → chưa bán gói; chặn TRƯỚC khi đụng ví/bản ghi nào.
+  if (isTrialMode()) {
+    return NextResponse.json({ error: TRIAL_MODE_MESSAGE, trial: true }, { status: 403 });
   }
 
   const { code } = await params;

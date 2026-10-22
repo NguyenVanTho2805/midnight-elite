@@ -73,6 +73,10 @@ const STUB_SRC = `(a) => {
   // Phạm vi trong mục "Thông báo đẩy": công tắc module "Lịch" ở trên cũng có chữ "báo nghỉ sát giờ" trong phần mô tả nên tìm theo tên trên cả trang bị trùng.
   const sw = (name: string) => page.locator("#thong-bao-day").getByRole("switch", { name });
   check("ba công tắc: báo nghỉ BẬT, tiền chưa khớp BẬT, phiếu đóng đủ TẮT", await sw("Báo nghỉ sát giờ").isChecked() && await sw("Khoản tiền vào chưa khớp phiếu").isChecked() && !(await sw("Phiếu học phí đã đóng đủ").isChecked()));
+  check("NC2-010/011: có thêm hai công tắc mới, MẶC ĐỊNH TẮT, đúng nhãn + mô tả ('Có phụ huynh báo đã chuyển khoản, cần đối soát' / nhắc điểm danh 7 giờ sáng)",
+    !(await sw("Phụ huynh báo đã chuyển khoản").isChecked()) && !(await sw("Nhắc điểm danh buổi hôm qua").isChecked())
+    && await secOf(page).getByText("Có phụ huynh báo đã chuyển khoản, cần đối soát").isVisible() && await secOf(page).getByText(/7 giờ sáng báo hôm qua còn bao nhiêu buổi chưa điểm danh/).isVisible()
+    && (await secOf(page).getByRole("switch").count()) === 5);
   check("có ghi: giờ yên lặng 22:00–07:00 + ngoại lệ dưới 2 giờ; chữ khoá màn hình không có tên / tiền; hướng dẫn iPhone 16.4+", await secOf(page).getByText("Giờ yên lặng 22:00–07:00").isVisible() && await secOf(page).getByText(/báo nghỉ còn dưới 2 giờ/).isVisible() && await secOf(page).getByText(/không có tên học sinh hay số tiền/).isVisible() && await secOf(page).getByText(/iOS 16\.4/).isVisible());
   check("chưa đăng ký gì: không có mục 'Thiết bị đã bật'", (await secOf(page).getByRole("heading", { name: /Thiết bị đã bật/ }).count()) === 0);
   await shot(page, "push-settings-off");
@@ -98,6 +102,9 @@ const STUB_SRC = `(a) => {
   section("Công tắc từng loại lưu theo tài khoản");
   await sw("Phiếu học phí đã đóng đủ").click(); // công tắc điều khiển bởi state sau khi máy chủ trả lời nên dùng click(), không check()
   await eventually("DB: preferences.push.types.invoice_paid = true", async () => ((await prisma.user.findUnique({ where: { id: T.id }, select: { preferences: true } }))?.preferences as any)?.push?.types?.invoice_paid === true);
+  await sw("Phụ huynh báo đã chuyển khoản").click();
+  await sw("Nhắc điểm danh buổi hôm qua").click();
+  await eventually("DB: bật parent_reported + unmarked_daily (hai loại mới)", async () => { const t = ((await prisma.user.findUnique({ where: { id: T.id }, select: { preferences: true } }))?.preferences as any)?.push?.types; return t?.parent_reported === true && t?.unmarked_daily === true; });
   await sw("Báo nghỉ sát giờ").click();
   await eventually("DB: tắt báo nghỉ, phiếu đóng đủ vẫn bật", async () => { const t = ((await prisma.user.findUnique({ where: { id: T.id }, select: { preferences: true } }))?.preferences as any)?.push?.types; return t?.absence_late === false && t?.invoice_paid === true; });
   await page.reload({ waitUntil: "networkidle" });

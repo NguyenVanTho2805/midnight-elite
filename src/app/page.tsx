@@ -13,6 +13,8 @@ import { BookOpen, ChartBar, CheckCircle, Flash } from "griddy-icons";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
+import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
 
 const HERO_CATEGORIES = [
   { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội" },
@@ -30,7 +32,8 @@ async function loadStats(): Promise<{ value: string; label: string }[]> {
     const [learners, exams, tutors] = await Promise.all([
       prisma.enrollment.groupBy({ by: ["userId"], where: { status: "active" } }).then(r => r.length),
       prisma.exam.count({ where: { active: true } }),
-      prisma.user.count({ where: { role: "admin", adminRole: "teacher", tutorVerified: true, banned: false } }),
+      // NC2-022: gia sư đã chọn ẨN hồ sơ không tính vào số "Gia sư" công khai.
+      prisma.user.findMany({ where: { role: "admin", adminRole: "teacher", tutorVerified: true, banned: false }, select: { preferences: true } }).then(r => r.filter(t => !isProfileHidden(readPreferences(t.preferences))).length),
     ]);
     return [
       { value: learners, label: "Học sinh đang học" },

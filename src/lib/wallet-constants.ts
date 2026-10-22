@@ -9,6 +9,19 @@ export const ANSWER_REWARD = 20; // xu thưởng khi câu trả lời được c
 // ─── Hành động học tập ────────────────────────────────────────────────────────
 export const LESSON_REWARD = 3;  // xu nhận khi hoàn thành bài học lần đầu tiên
 
+// ─── Thưởng làm bài (quiz / bài tập) ──────────────────────────────────────────
+// Coin của học sinh CHỈ đến từ thưởng như thế này, không mua bằng tiền (xem API
+// nạp Coin: học sinh bị chặn). Đây là nền để sau này làm game trong web mà không
+// biến thành đánh bạc bằng tiền thật.
+export const QUIZ_REWARD_BASE       = 5;    // xu khi nộp đúng hạn và đúng từ 50% trở lên
+export const QUIZ_REWARD_FAST_BONUS = 5;    // xu cộng thêm khi làm nhanh VÀ đúng từ 80%
+export const QUIZ_MIN_SCORE_RATIO   = 0.5;  // dưới mức này không thưởng (chống nộp bừa)
+export const QUIZ_FAST_SCORE_RATIO  = 0.8;  // mức đúng tối thiểu để được thưởng nhanh
+export const QUIZ_FAST_TIME_RATIO   = 0.5;  // dùng tối đa 50% thời gian cho phép = "nhanh"
+export const QUIZ_MIN_SECONDS       = 30;   // nộp sớm hơn mức này không được thưởng nhanh
+export const QUIZ_MAX_TAB_SWITCH    = 3;    // rời tab quá mức này thì không thưởng
+export const MAX_QUIZ_REWARDS_PER_DAY = 5;  // tối đa 5 lượt được thưởng mỗi ngày
+
 // ─── Cộng đồng ────────────────────────────────────────────────────────────────
 export const THREAD_REWARD = 5;  // xu nhận khi đăng bài viết
 export const REPLY_REWARD  = 2;  // xu nhận khi trả lời bài viết
@@ -40,6 +53,7 @@ export const COIN_REASONS = {
   ANSWER_REWARD:       "answer_reward",         // thưởng khi trả lời được chấp nhận
   REPORT_PENALTY:      "report_penalty",        // phạt khi trả lời bị báo cáo vi phạm
   LESSON_REWARD:       "lesson_reward",         // thưởng khi hoàn thành bài học lần đầu
+  QUIZ_REWARD:         "quiz_reward",           // thưởng khi làm bài đúng hạn, đúng nhiều (thêm khi nhanh)
   THREAD_REWARD:       "thread_reward",         // thưởng khi đăng bài viết cộng đồng
   REPLY_REWARD:        "reply_reward",          // thưởng khi trả lời bài viết cộng đồng
   CLASS_SUBSCRIPTION:  "class_subscription",    // (chưa dùng) trừ khi học viên mua gói lớp — backlog gốc
@@ -56,6 +70,7 @@ export const DEFAULT_SOURCE_TYPE_FOR_REASON: Partial<Record<CoinReason, CoinSour
   [COIN_REASONS.SIGNUP_BONUS]:        COIN_SOURCE_TYPES.REWARD,
   [COIN_REASONS.ANSWER_REWARD]:       COIN_SOURCE_TYPES.REWARD,
   [COIN_REASONS.LESSON_REWARD]:       COIN_SOURCE_TYPES.REWARD,
+  [COIN_REASONS.QUIZ_REWARD]:         COIN_SOURCE_TYPES.REWARD,
   [COIN_REASONS.THREAD_REWARD]:       COIN_SOURCE_TYPES.REWARD,
   [COIN_REASONS.REPLY_REWARD]:        COIN_SOURCE_TYPES.REWARD,
   [COIN_REASONS.QUESTION_COST]:       COIN_SOURCE_TYPES.PENALTY,

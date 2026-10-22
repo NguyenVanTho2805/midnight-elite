@@ -19,6 +19,12 @@ export async function POST(req: NextRequest) {
   const auth = await requireSession();
   if (isNextResponse(auth)) return auth;
 
+  // Coin của học sinh chỉ kiếm bằng học (thưởng làm bài), không mua bằng tiền. Học phí chuyển khoản
+  // đi đường riêng (phiếu học phí + webhook SePay), không qua Coin.
+  if (auth.role === "student") {
+    return NextResponse.json({ error: "Coin của học sinh nhận từ làm bài, không nạp bằng tiền. Học phí chuyển khoản theo phiếu của gia sư." }, { status: 403 });
+  }
+
   let body: unknown = null;
   try { body = await req.json(); } catch { /* fall through */ }
   if (!body || typeof body !== "object") {

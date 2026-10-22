@@ -36,3 +36,14 @@ export function isTaughtSession(s: { date: Date; records: ReadonlyArray<{ status
   if (s.date.getTime() > new Date(`${vnDateKeyOf(now)}T00:00:00Z`).getTime()) return false;
   return s.records.some(r => (TAUGHT_RECORD_STATUSES as readonly string[]).includes(r.status));
 }
+
+/**
+ * NC2-026a — khoảng ngày điểm danh cho số liệu chuyên cần của phụ huynh / báo cáo tháng.
+ * Cắt phần tương lai: bản ghi "excused" do báo nghỉ trước (absenceServer.markExcused) nằm ở ngày CHƯA tới
+ * không được tính vào "N buổi" hay tỷ lệ. Ngày hôm nay (giờ VN) vẫn tính, ngày mai thì không.
+ * `first`/`nextFirst` là 00:00 UTC (ngày đầu tháng này / tháng sau), cùng quy ước `AttendanceSession.date`.
+ */
+export function attendanceDateWindow(first: Date, nextFirst: Date, now: Date = new Date()): { gte: Date; lt: Date } {
+  const tomorrow = new Date(new Date(`${vnDateKeyOf(now)}T00:00:00Z`).getTime() + 86_400_000);
+  return { gte: first, lt: nextFirst.getTime() < tomorrow.getTime() ? nextFirst : tomorrow };
+}

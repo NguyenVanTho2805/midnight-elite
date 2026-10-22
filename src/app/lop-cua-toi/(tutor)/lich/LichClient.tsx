@@ -11,6 +11,8 @@ import { KinButton } from "@/components/kin";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { addDaysKey, buildGroupReminderMessage, dayOfWeekOfKey, describeLead, hmOf, vnDateKeyOf, vnMinutesOfDay, weekRangeOf } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
+import { classAccent } from "@/lib/classColor";
+import { buildWeeklyScheduleMessage, coursesInWeek, occurrencesOfCourse } from "@/lib/weeklyScheduleMessage";
 import { sessionChangeMessage, CHANGE_REASON_MAX } from "@/lib/sessionChange";
 import type { ReminderItem, ScheduleOccurrence, ScheduleStudent } from "@/lib/reminderServer";
 
@@ -22,6 +24,7 @@ interface Payload {
 interface Resolved { status: string; message: string; phone: string | null }
 
 const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+const WEEKDAY_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
 const vnHm = (iso: string) => hmOf(vnMinutesOfDay(new Date(iso)));
 const vnDayHm = (iso: string) => `${vnHm(iso)} ngày ${ddmm(vnDateKeyOf(new Date(iso)))}`;
@@ -51,6 +54,9 @@ export default function LichClient() {
   const [groupCompose, setGroupCompose] = useState<{ occ: ScheduleOccurrence; text: string } | null>(null); // PH-216: nhắc cả lớp vào nhóm Zalo
   const [changing, setChanging] = useState<ChangeDraft | null>(null); // hộp thoại Dời / Huỷ
   const [notice, setNotice] = useState<ChangeNotice | null>(null);    // hộp "Báo lớp qua Zalo" sau khi đổi lịch
+  const [weekPick, setWeekPick] = useState("");                     // NC2-024: lớp được chọn để gửi lịch tuần
+  const [weekCompose, setWeekCompose] = useState<{ courseId: string; courseName: string; from: string; text: string; groupUrl: string | null } | null>(null);
+  const [weekOpened, setWeekOpened] = useState<Record<string, string>>({}); // "lớp|đầu tuần" → "HH:mm" đã mở Zalo (chỉ trong phiên)
   const seq = useRef(0);
 
   const load = useCallback(async (f: string, quiet = false) => {
@@ -115,6 +121,31 @@ export default function LichClient() {
     if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
     notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
     setGroupCompose(null);
+  }
+
+  const weekCourses = coursesInWeek(data?.occurrences ?? []);
+  const weekCourseId = weekCourses.some(c => c.id === weekPick) ? weekPick : (weekCourses[0]?.id ?? "");
+
+  function startWeekCompose() {
+    const c = weekCourses.find(x => x.id === weekCourseId);
+    if (!c || !data) return;
+    const occs = occurrencesOfCourse(data.occurrences, c.id);
+    setWeekCompose({
+      courseId: c.id, courseName: c.name, from,
+      text: buildWeeklyScheduleMessage({ subject: c.name, from, occurrences: occs }),
+      groupUrl: occs.find(o => o.zaloGroupUrl)?.zaloGroupUrl ?? null,
+    });
+  }
+
+  async function openWeekZalo() {
+    if (!weekCompose) return;
+    const res = await openZalo({ text: weekCompose.text, groupUrl: weekCompose.groupUrl });
+    if (!res.opened) { if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
+    // KiN chỉ ghi "đã mở Zalo" trong phiên này (chưa có chỗ lưu riêng cho lịch tuần), không biết tin có đi thật hay không.
+    const t = new Date();
+    setWeekOpened(m => ({ ...m, [`${weekCompose.courseId}|${weekCompose.from}`]: hmOf(vnMinutesOfDay(t)) }));
+    notify.info(res.method === "share" ? "Chọn nhóm Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào nhóm rồi bấm gửi.");
+    setWeekCompose(null);
   }
 
   function startChange(occ: ScheduleOccurrence, kind: "cancel" | "move") {
@@ -196,10 +227,10 @@ export default function LichClient() {
   const occByDay = (k: string) => (data?.occurrences ?? []).filter(o => o.dateKey === k);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <header className="mb-4 flex items-start justify-between gap-3 flex-wrap">
+    <div className="max-w-3xl mx-auto px-4 py-5">
+      <header className="mb-3 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-h3 font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Lịch</h1>
+          <h1 className="text-lg font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Lịch</h1>
           <p className="text-caption mt-1" style={{ color: "var(--kin-chu-phu)" }} aria-live="polite">Tuần {ddmm(from)} – {ddmm(addDaysKey(from, 6))}</p>
         </div>
         <div className="flex gap-2 flex-wrap" role="group" aria-label="Chuyển tuần">
@@ -208,6 +239,47 @@ export default function LichClient() {
           <KinButton variant="secondary" onClick={() => setFrom(addDaysKey(from, 7))}>Tuần sau →</KinButton>
         </div>
       </header>
+
+      {/* Dải 7 ngày: hôm nay tô đặc, chấm = có buổi, bấm để nhảy tới ngày đó (thay cho lưới 7 cột khó đọc trên điện thoại) */}
+      <nav aria-label="Các ngày trong tuần" className="grid grid-cols-7 gap-1 mb-3">
+        {days.map(k => {
+          const n = occByDay(k).filter(o => o.status !== "cancelled").length;
+          const isToday = k === todayKey;
+          const style = isToday
+            ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", border: "1px solid var(--kin-nhan-nen)" }
+            : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" };
+          const inner = (<>
+            <span className="text-[11px]">{WEEKDAY_SHORT[dayOfWeekOfKey(k)]}</span>
+            <span className="text-sm font-semibold tabular-nums">{k.slice(8, 10)}</span>
+            <span aria-hidden className="w-1.5 h-1.5 rounded-full" style={{ background: n > 0 ? (isToday ? "var(--kin-nhan-chu-tren-nen)" : "var(--kin-tt-cham-xong)") : "transparent" }} />
+          </>);
+          const cls = "rounded-lg py-1 flex flex-col items-center min-h-[48px]";
+          return n > 0
+            ? <a key={k} href={`#d-${k}`} className={cls} style={style} aria-label={`${WEEKDAY[dayOfWeekOfKey(k)]} ${ddmm(k)}, ${n} buổi${isToday ? ", hôm nay" : ""}`}>{inner}</a>
+            : <span key={k} className={cls} style={{ ...style, opacity: isToday ? 1 : 0.55 }} aria-label={`${WEEKDAY[dayOfWeekOfKey(k)]} ${ddmm(k)}, không có buổi${isToday ? ", hôm nay" : ""}`}>{inner}</span>;
+        })}
+      </nav>
+
+      {/* NC2-024: gửi lịch tuần của MỘT lớp qua Zalo — tin theo tuần đang xem */}
+      {!failed && (data || !loading) && (
+        <div className="rounded-lg px-3 py-2 mb-4 flex items-center gap-3 flex-wrap" style={CARD_STYLE} role="group" aria-label="Gửi lịch tuần qua Zalo">
+          {weekCourses.length > 1 && (
+            <label className="text-xs flex items-center gap-2 max-w-full" style={{ color: "var(--kin-chu-phu)" }}>Lớp
+              <select value={weekCourseId} onChange={e => setWeekPick(e.target.value)} className="px-3 py-2 rounded-lg text-sm min-h-[44px] min-w-0 max-w-full" style={FIELD_STYLE}>
+                {weekCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
+          <KinButton variant="secondary" disabled={!weekCourseId || loading} onClick={startWeekCompose}>Gửi lịch tuần qua Zalo</KinButton>
+          <span className="text-xs" style={{ color: weekOpened[`${weekCourseId}|${from}`] ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-phu)" }} aria-live="polite">
+            {!weekCourseId
+              ? "Tuần này chưa có buổi nào để gửi lịch. Chuyển sang tuần có buổi học để gửi."
+              : weekOpened[`${weekCourseId}|${from}`]
+                ? `Đã mở Zalo lúc ${weekOpened[`${weekCourseId}|${from}`]}`
+                : `Tin lịch tuần ${ddmm(from)} – ${ddmm(addDaysKey(from, 6))} của một lớp, không tên em. KiN không gửi giúp.`}
+          </span>
+        </div>
+      )}
 
       {failed && (
         <div role="alert" className="rounded-xl p-3 mb-4 flex items-center justify-between gap-3" style={{ ...CARD_STYLE, borderColor: "var(--kin-tt-chu-loi)" }}>
@@ -224,7 +296,7 @@ export default function LichClient() {
         <div className="rounded-xl p-8 text-center" style={{ ...CARD_STYLE, borderStyle: "dashed" }}>
           <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Tuần này chưa có buổi học nào</p>
           <p className="text-sm mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-            Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> trong trang lớp.
+            Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> của trang quản khoá (mở lớp → Quản khoá).
           </p>
           <Link href="/lop-cua-toi/lop" className="inline-flex items-center mt-4 px-4 py-2 rounded-lg text-sm min-h-[44px]"
             style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-vien-thuong)" }}>Xem các lớp của tôi</Link>
@@ -235,8 +307,8 @@ export default function LichClient() {
             const occs = occByDay(k);
             if (occs.length === 0) return null;
             return (
-              <section key={k} aria-labelledby={`d-${k}`} className="mb-5">
-                <h2 id={`d-${k}`} className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
+              <section key={k} aria-labelledby={`d-${k}`} className="mb-4">
+                <h2 id={`d-${k}`} className="text-xs font-semibold mb-1.5 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
                   {WEEKDAY[dayOfWeekOfKey(k)]} {ddmm(k)}
                   {k === todayKey && <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)" }}>Hôm nay</span>}
                 </h2>
@@ -255,6 +327,21 @@ export default function LichClient() {
             );
           })}
         </div>
+      )}
+
+      {weekCompose && (
+        <Modal title={`Lịch tuần ${ddmm(weekCompose.from)} – ${ddmm(addDaysKey(weekCompose.from, 6))} — ${weekCompose.courseName}`} onClose={() => setWeekCompose(null)}>
+          <label className="block text-sm" htmlFor="tin-lich-tuan">Tin lịch tuần (sửa được trước khi gửi)</label>
+          <textarea id="tin-lich-tuan" rows={8} value={weekCompose.text} onChange={e => setWeekCompose(c => (c ? { ...c, text: e.target.value } : c))}
+            className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
+          <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
+            Tin chung cho cả lớp: không tên em, không tiền, không link phiếu. {weekCompose.groupUrl ? "Sẽ mở nhóm Zalo của lớp." : <>Chưa gắn nhóm Zalo — KiN sẽ chép tin và mở Zalo, bạn chọn đúng nhóm. Gắn nhóm ở <Link href="/lop-cua-toi/cai-dat#ket-noi" className="underline" style={{ color: "var(--kin-nhan-link)" }}>Cài đặt → Kết nối</Link>.</>} KiN không gửi giúp: bạn tự bấm gửi trong Zalo.
+          </p>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <KinButton variant="secondary" onClick={async () => { if (await copyText(weekCompose.text)) notify.ok("Đã sao chép tin."); else notify.err("Không sao chép được."); }}>Chép tin</KinButton>
+            <KinButton onClick={() => void openWeekZalo()} disabled={!weekCompose.text.trim()}>{weekCompose.groupUrl ? "Mở nhóm Zalo lớp" : "Mở Zalo"}</KinButton>
+          </div>
+        </Modal>
       )}
 
       {groupCompose && (
@@ -375,15 +462,16 @@ function OccurrenceCard(p: {
   const cancelled = occ.status === "cancelled";
   const detailId = `chi-tiet-${occ.key}`;
   return (
-    <div className="rounded-xl" style={CARD_STYLE}>
+    <div className="rounded-lg overflow-hidden" style={{ ...CARD_STYLE, borderLeft: `3px solid ${cancelled ? "var(--kin-tt-cham-trung-tinh)" : classAccent(occ.courseId)}` }}>
       <button type="button" onClick={p.onToggle} aria-expanded={p.expanded} aria-controls={detailId}
-        className="w-full text-left px-4 py-3 flex items-center gap-3 min-h-[44px]">
-        <span className="font-bold tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
+        className="w-full text-left px-3 py-2 flex items-center gap-3 min-h-[44px]">
+        <span className="font-semibold tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
         <span className="flex-1 min-w-0">
-          <span className="block font-semibold truncate" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{occ.courseName}</span>
-          <span className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>
-            {occ.students.length} học viên · {cancelled ? "buổi đã huỷ" : done ? "đã kết thúc" : occ.started ? "đang diễn ra" : "sắp tới"}
-            {occ.status === "moved" && occ.movedFrom && <> · dời từ {WEEKDAY[dayOfWeekOfKey(occ.movedFrom.dateKey)]} {ddmm(occ.movedFrom.dateKey)} {vnHm(occ.movedFrom.startAt)}</>}
+          <span className="block text-sm font-medium break-words" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{occ.courseName}</span>
+          <span className="block text-xs flex items-center gap-1.5" style={{ color: "var(--kin-chu-phu)" }}>
+            <span aria-hidden className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: cancelled ? "var(--kin-tt-cham-trung-tinh)" : done ? "var(--kin-tt-cham-xong)" : occ.started ? "var(--kin-tt-cham-cho)" : "var(--kin-th-xanh-link)" }} />
+            <span>{occ.students.length} học viên · {cancelled ? "buổi đã huỷ" : done ? "đã kết thúc" : occ.started ? "đang diễn ra" : "sắp tới"}
+            {occ.status === "moved" && occ.movedFrom && <> · dời từ {WEEKDAY[dayOfWeekOfKey(occ.movedFrom.dateKey)]} {ddmm(occ.movedFrom.dateKey)} {vnHm(occ.movedFrom.startAt)}</>}</span>
           </span>
         </span>
         <span className="flex flex-col items-end gap-1 flex-shrink-0">

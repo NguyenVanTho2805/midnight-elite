@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decrypt } from "@/lib/session";
+import { METHOD_HEADER } from "@/lib/sessionVerify";
 import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, type RouteSession } from "@/lib/hostRouting";
 
 // Tách admin ra domain riêng — admin.midnightelite-edu.com phục vụ đúng cây
@@ -22,9 +23,12 @@ export async function proxy(req: NextRequest) {
   const session = needsSession(host, pathname) ? await sessionOf(req) : null;
   const d = decideRoute({ host, pathname, search, session });
 
-  if (d.kind === "next") return NextResponse.next();
+  // NC2-033: báo phương thức thật xuống getSession() (đối chiếu DB cho yêu cầu ghi). Luôn GHI ĐÈ — client không tự khai "GET" được.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set(METHOD_HEADER, req.method);
+  if (d.kind === "next") return NextResponse.next({ request: { headers: requestHeaders } });
   const url = req.nextUrl.clone();
-  if (d.kind === "rewrite") { url.pathname = d.pathname; return NextResponse.rewrite(url); }
+  if (d.kind === "rewrite") { url.pathname = d.pathname; return NextResponse.rewrite(url, { request: { headers: requestHeaders } }); }
 
   url.pathname = d.pathname;
   url.search = d.search ?? "";

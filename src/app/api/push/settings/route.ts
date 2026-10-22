@@ -10,7 +10,7 @@ import type { Prisma } from "@/generated/prisma/client";
 
 // ĐX-02 — trang Cài đặt → "Thông báo đẩy" (gia sư).
 //   GET /api/push/settings[?e=<SHA-256 của endpoint máy này>] → hệ thống có được gửi không, khoá công khai VAPID, công tắc từng loại, thiết bị đã bật.
-//   PUT /api/push/settings { absence_late?, bank_tx_pending?, invoice_paid? } → đổi công tắc (đúng-sai; tên lạ → 400, không ghi dở).
+//   PUT /api/push/settings { absence_late?, bank_tx_pending?, invoice_paid?, parent_reported?, unmarked_daily? } → đổi công tắc (đúng-sai; tên lạ → 400, không ghi dở).
 // Máy này được nhận ra bằng dấu vân tay `e` (không đưa endpoint lên URL). Không trả endpoint hay khoá của bất kỳ thiết bị nào.
 
 export async function GET(req: NextRequest) {

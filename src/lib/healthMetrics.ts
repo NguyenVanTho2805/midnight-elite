@@ -155,10 +155,129 @@ export function adoptionMetrics(tutorIds: string[], teachingIds: Array<string | 
   return { tutors: all.size, teaching: inAll(teachingIds), invoicing: inAll(invoicingIds) };
 }
 
+// ─── Gia sư mới vào: kích hoạt (chỉ số 7, 8, 9 — NC2-020) ─────────────────────────────────────────────────────
+/** Chỉ số 7: lớp đầu tiên phải được tạo trong chừng này giờ kể từ lúc đăng ký. */
+export const ACTIVATION_CLASS_HOURS = 24;
+/** Chỉ số 8: buổi đã dạy đầu tiên phải có trong chừng này ngày kể từ lúc đăng ký. */
+export const ACTIVATION_TEACH_DAYS = 7;
+const HOUR = 3_600_000;
+/** Giờ chữ "08:00:00" mà POST /api/courses luôn ghi kèm ngày (xem parseCourseCreatedAt). */
+const COURSE_DEFAULT_HOUR_VN = 8;
+
+/** Ngày VN (yyyy-mm-dd) của một thời điểm — cùng quy ước với vnDateKeyOf ở classSessions.ts nhưng tự chứa để tệp này thuần. */
+function vnKey(t: Date): string { return new Date(t.getTime() + 7 * HOUR).toISOString().slice(0, 10); }
+
+/**
+ * `Course.createdAt` là CHUỖI và có ba dạng thật trong DB:
+ *  • "22/10/2026 08:00:00" — POST /api/courses (toLocaleDateString("vi-VN") + giờ chữ cố định 08:00:00);
+ *  • "22/10/2026"          — nhân bản lớp (chỉ có ngày);
+ *  • ISO "2026-10-22T03:12:00.000Z" — dữ liệu nhập / bài test.
+ * Dạng ISO có giờ thật. Hai dạng dd/mm/yyyy chỉ tin được NGÀY (giờ chữ là hằng số, không phải lúc bấm tạo), nên với chúng trả về
+ * 08:00 giờ VN của ngày đó. Hệ quả nói thẳng ở màn: lớp đầu tính theo NGÀY ghi trên lớp, sai số tới cỡ một ngày.
+ * Không parse được → null (lớp đó bị bỏ qua, không đoán).
+ */
+export function parseCourseCreatedAt(raw: string | null | undefined): Date | null {
+  const s = (raw ?? "").trim();
+  if (!s) return null;
+  const vi = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ ,T]+\d{1,2}:\d{2}(?::\d{2})?)?$/.exec(s);
+  if (vi) {
+    const d = Number(vi[1]), m = Number(vi[2]), y = Number(vi[3]);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const t = new Date(Date.UTC(y, m - 1, d, COURSE_DEFAULT_HOUR_VN - 7, 0, 0));
+    return t.getUTCDate() === d ? t : null; // 31/02 bị JS đẩy sang tháng sau → bỏ
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const hasTime = /T\d{2}:\d{2}/.test(s);
+    const t = new Date(hasTime ? s : `${s.slice(0, 10)}T${String(COURSE_DEFAULT_HOUR_VN - 7).padStart(2, "0")}:00:00Z`);
+    return Number.isNaN(t.getTime()) ? null : t;
+  }
+  return null;
+}
+
+export interface TutorSignup { id: string; createdAt: Date }
+export interface OwnedCourseRow { ownerId: string | null; createdAt: string }
+export interface TaughtSessionRow { ownerId: string | null; date: Date }
+
+/**
+ * Giờ từ lúc đăng ký đến lúc tạo lớp đầu của gia sư (lớp do CHÍNH em tạo: ownerId). Lấy lớp sớm nhất.
+ * • Lớp có NGÀY trước ngày đăng ký (dữ liệu lệch: chuyển chủ, nhập tay) → bỏ, không tính là "lớp đầu".
+ * • Lớp cùng ngày đăng ký nhưng giờ (chữ 08:00) rơi trước lúc đăng ký → coi là 0 giờ, không để số âm.
+ */
+export function hoursToFirstClass(reg: Date, courseCreatedAts: string[]): number | null {
+  let best: number | null = null;
+  for (const raw of courseCreatedAts) {
+    const t = parseCourseCreatedAt(raw);
+    if (!t || vnKey(t) < vnKey(reg)) continue;
+    const h = Math.max(0, (t.getTime() - reg.getTime()) / HOUR);
+    if (best === null || h < best) best = h;
+  }
+  return best;
+}
+
+export function median(xs: number[]): number | null {
+  if (xs.length === 0) return null;
+  const a = [...xs].sort((x, y) => x - y), m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+export interface MedianMetric { n: number; enough: boolean; hours: number | null }
+
+export interface ActivationMetrics {
+  /** Gia sư đăng ký trong khoảng đang xem (chưa lọc theo tuổi). */
+  registered: number;
+  /** (7) trong số gia sư đăng ký trong khoảng và đã đủ 24 giờ: bao nhiêu tạo lớp đầu trong 24 giờ. */
+  classIn24h: Ratio;
+  /** (8) trong số gia sư đã đủ 7 ngày: bao nhiêu có buổi đã dạy đầu trong 7 ngày. */
+  taughtIn7d: Ratio;
+  /** (9) trung vị giờ từ đăng ký đến lớp đầu, chỉ gia sư đã có lớp. */
+  firstClassHours: MedianMetric;
+  /** Khoảng đăng ký của từng lứa, để ghi lên màn. */
+  cohort24: { from: Date; to: Date };
+  cohort7: { from: Date; to: Date };
+}
+/**
+ * `tutors`: gia sư thuộc tập đo (xem METRIC_DEFS). `courses` / `taught`: lớp và buổi đã dạy (ĐX-00) của họ; dòng của người
+ * ngoài tập bị bỏ. Buổi đã dạy đếm khi `date` (00:00 UTC của ngày VN) nằm từ ngày VN của lúc đăng ký đến đúng 7×24 giờ sau đăng ký.
+ */
+export function activationMetrics(tutors: TutorSignup[], courses: OwnedCourseRow[], taught: TaughtSessionRow[], now: Date, days: number): ActivationMetrics {
+  const from = now.getTime() - days * DAY;
+  const inWin = tutors.filter(t => t.createdAt.getTime() >= from && t.createdAt.getTime() <= now.getTime());
+  const byOwner = new Map<string, string[]>();
+  for (const c of courses) if (c.ownerId) (byOwner.get(c.ownerId) ?? byOwner.set(c.ownerId, []).get(c.ownerId)!).push(c.createdAt);
+  const taughtBy = new Map<string, Date[]>();
+  for (const s of taught) if (s.ownerId) (taughtBy.get(s.ownerId) ?? taughtBy.set(s.ownerId, []).get(s.ownerId)!).push(s.date);
+
+  const hours = (t: TutorSignup) => hoursToFirstClass(t.createdAt, byOwner.get(t.id) ?? []);
+  const c24To = now.getTime() - ACTIVATION_CLASS_HOURS * HOUR, c7To = now.getTime() - ACTIVATION_TEACH_DAYS * DAY;
+  const old24 = inWin.filter(t => t.createdAt.getTime() <= c24To);
+  const old7 = inWin.filter(t => t.createdAt.getTime() <= c7To);
+  const classIn24 = old24.filter(t => { const h = hours(t); return h !== null && h <= ACTIVATION_CLASS_HOURS; });
+  const taughtIn7 = old7.filter(t => {
+    const lo = new Date(`${vnKey(t.createdAt)}T00:00:00Z`).getTime(), hi = t.createdAt.getTime() + ACTIVATION_TEACH_DAYS * DAY;
+    return (taughtBy.get(t.id) ?? []).some(d => d.getTime() >= lo && d.getTime() <= hi);
+  });
+  const hs = inWin.map(hours).filter((h): h is number => h !== null);
+  return {
+    registered: inWin.length,
+    classIn24h: ratio(classIn24.length, old24.length),
+    taughtIn7d: ratio(taughtIn7.length, old7.length),
+    firstClassHours: { n: hs.length, enough: hs.length >= MIN_SAMPLE, hours: hs.length >= MIN_SAMPLE ? Math.round((median(hs) ?? 0) * 10) / 10 : null },
+    cohort24: { from: new Date(from), to: new Date(c24To) },
+    cohort7: { from: new Date(from), to: new Date(c7To) },
+  };
+}
+/** "5,5 giờ" / "1 giờ"; dưới một giờ ghi phút. */
+export function hoursText(h: number | null): string {
+  if (h === null) return "—";
+  if (h < 1) return `${Math.round(h * 60)} phút`;
+  return `${String(h).replace(".", ",")} giờ`;
+}
+
 // ─── Định nghĩa hiện trên màn ─────────────────────────────────────────────────────────────────────────────────
-export type MetricKey = "zaloOpened" | "parentViewed" | "paidIn14" | "bank" | "timely" | "tutors";
+export type MetricKey = "zaloOpened" | "parentViewed" | "paidIn14" | "bank" | "timely" | "tutors" | "actClass" | "actTeach" | "actMedian";
 export interface MetricDef { key: MetricKey; title: string; definition: string; denominator: string }
 export const METRIC_ORDER: MetricKey[] = ["zaloOpened", "parentViewed", "paidIn14", "bank", "timely", "tutors"];
+/** Nhóm thẻ "Gia sư mới vào" (NC2-020), vẽ riêng bên dưới sáu thẻ trên. */
+export const ACTIVATION_ORDER: MetricKey[] = ["actClass", "actTeach", "actMedian"];
 export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
   zaloOpened: {
     key: "zaloOpened", title: "Phiếu gia sư đã mở Zalo",
@@ -189,5 +308,20 @@ export const METRIC_DEFS: Record<MetricKey, MetricDef> = {
     key: "tutors", title: "Gia sư đang dùng",
     definition: "Gia sư đã duyệt, không bị khoá, có ít nhất 1 buổi đã dạy (có em có mặt hoặc muộn) trong khoảng; và số gia sư gửi ít nhất 1 phiếu trong khoảng. Chỉ đếm số gia sư, không hiện tên.",
     denominator: "gia sư đã duyệt và không bị khoá",
+  },
+  actClass: {
+    key: "actClass", title: "Tạo lớp đầu trong 24 giờ",
+    definition: "Gia sư tạo lớp đầu tiên (lớp do chính em tạo) trong 24 giờ kể từ lúc đăng ký. Chỉ tính gia sư đã đăng ký đủ 24 giờ, để em mới vào hôm nay chưa bị tính là “bỏ”. Tính mọi gia sư đã đăng ký trừ người bị cấm hoặc bị khoá hồ sơ, kể cả em chưa được duyệt: đây là đo từ lúc đăng ký, và chỉ tính người đã duyệt thì bỏ sót đúng những em bỏ dở giữa chừng. Giờ của lớp lấy theo NGÀY ghi trên lớp (KiN chưa lưu giờ tạo lớp), nên sai số cỡ một ngày.",
+    denominator: "gia sư đăng ký trong khoảng và đã đủ 24 giờ kể từ lúc đăng ký",
+  },
+  actTeach: {
+    key: "actTeach", title: "Có buổi đã dạy trong 7 ngày",
+    definition: "Gia sư có buổi điểm danh đầu tiên được tính là “buổi đã dạy” (ngày không ở tương lai, có em có mặt hoặc muộn — cùng định nghĩa ở hồ sơ công khai) trong 7 ngày kể từ lúc đăng ký. Chỉ tính gia sư đã đăng ký đủ 7 ngày, cùng tập gia sư với thẻ “Tạo lớp đầu”. Đây là điểm danh gia sư tự ghi trên KiN, không phải bằng chứng đã xác minh.",
+    denominator: "gia sư đăng ký trong khoảng và đã đủ 7 ngày kể từ lúc đăng ký",
+  },
+  actMedian: {
+    key: "actMedian", title: "Giờ từ đăng ký đến lớp đầu",
+    definition: "Trung vị số giờ từ lúc đăng ký đến lúc tạo lớp đầu tiên, chỉ trong số gia sư đã có lớp. Gia sư chưa có lớp không nằm trong con số này (chúng hiện ở thẻ “Tạo lớp đầu”), nên số thật có thể cao hơn. Tính theo ngày ghi trên lớp nên sai số cỡ một ngày.",
+    denominator: "gia sư đăng ký trong khoảng và đã có ít nhất một lớp",
   },
 };

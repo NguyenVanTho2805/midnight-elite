@@ -8,6 +8,8 @@ import { tutorApplicationStatus } from "@/lib/tutorProfile";
 import TutorProfileForm from "./TutorProfileForm";
 import PublicProfilePreview from "@/components/tutor/PublicProfilePreview";
 import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
+import ProfileVisibilityToggle from "./ProfileVisibilityToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,7 @@ export default async function HoSoGiaSuPage() {
   });
   if (!u || (u.adminRole !== "teacher" && !u.tutorAppliedAt)) redirect("/lop-cua-toi");
   const status = u.adminRole === "teacher" ? "approved" : tutorApplicationStatus(u);
+  const hidden = isProfileHidden(readPreferences(u.preferences)); // NC2-022
 
   return (
     <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
@@ -44,11 +47,12 @@ export default async function HoSoGiaSuPage() {
           <p className="mb-5 text-sm inline-flex items-center gap-2" style={{ color: "var(--kin-tt-chu-xong)" }}>
             <span aria-hidden className="w-2 h-2 rounded-full inline-block" style={{ background: "var(--kin-tt-cham-xong)" }} />
             <b>Đã xác minh</b>{u.tutorVerifiedAt && <span style={{ color: "var(--kin-chu-phu)" }}>từ {u.tutorVerifiedAt.toLocaleDateString("vi-VN")}</span>}
-            {" · "}<Link href={`/mentor/${u.id}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Xem hồ sơ công khai</Link>
+            {" · "}{hidden ? <span data-testid="dang-an">Hồ sơ đang ẩn</span> : <Link href={`/mentor/${u.id}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Xem hồ sơ công khai</Link>}
           </p>
         )}
 
-        {status === "approved" && <PublicProfilePreview tutorId={u.id} reason={u.profileLockedAt ? "bi-khoa" : u.tutorVerified ? null : "chua-duyet"} />}
+        {status === "approved" && <ProfileVisibilityToggle initialHidden={hidden} />}
+        {status === "approved" && <PublicProfilePreview tutorId={u.id} hidden={hidden} reason={u.profileLockedAt ? "bi-khoa" : u.tutorVerified ? null : "chua-duyet"} />}
         {status !== "approved" && <PublicProfilePreview tutorId={u.id} reason="chua-duyet" />}
 
         <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} initialCity={u.city ?? ""} initialTeaching={readPreferences(u.preferences).teaching ?? null} />

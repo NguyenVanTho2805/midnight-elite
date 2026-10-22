@@ -5,6 +5,7 @@ import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { effectiveSlot } from "@/lib/sessionChange";
+import { sendUnmarkedDaily, type UnmarkedDailyResult } from "@/lib/unmarkedDailyServer";
 
 const BATCH_SIZE  = 20;
 const BATCH_DELAY = 1200;
@@ -24,6 +25,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
     }
   }
+
+  // NC2-011: tin "Hôm qua có N buổi chưa điểm danh" (gia sư). Chạy SAU phần nhắc học viên để nếu nó chậm / hết giờ thì nhắc lịch học viên ngày mai
+  // (việc cũ, quan trọng hơn) đã đi rồi; nhưng phải gọi ở CẢ hai nhánh trả về, vì phần nhắc học viên thoát sớm khi ngày mai không có buổi nào.
+  // Lỗi ở đây không được làm hỏng phản hồi của cron.
+  const runUnmarked = async (): Promise<UnmarkedDailyResult | { error: true }> => {
+    try { return await sendUnmarkedDaily(); } catch (e) { console.error("[cron/remind-class] unmarked_daily:", e); return { error: true }; }
+  };
 
   // Thứ của ngày mai theo giờ VN (UTC+7) — xem vnDayOfWeek trong lib/types.ts
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -58,7 +66,8 @@ export async function GET(req: NextRequest) {
   }
 
   if (todays.length === 0) {
-    return NextResponse.json({ sent: 0, message: `Không có buổi học nào vào ${dayLabel}` });
+    const unmarked = await runUnmarked();
+    return NextResponse.json({ sent: 0, message: `Không có buổi học nào vào ${dayLabel}`, unmarked });
   }
 
   let totalSent = 0;
@@ -103,9 +112,11 @@ export async function GET(req: NextRequest) {
 
   console.log(`[cron/remind-class] ${dayLabel} →`, log.join(" | "), `| Đã gửi: ${totalSent}`);
 
+  const unmarked = await runUnmarked();
   return NextResponse.json({
     day:       dayLabel,
     schedules: log,
     sent:      totalSent,
+    unmarked,
   });
 }

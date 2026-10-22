@@ -19,11 +19,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
+import { attendanceDateWindow } from "@/lib/taughtSessions";
 import { loadPartyInvoices } from "@/lib/invoiceServer";
 import { loadStudentUpcoming } from "@/lib/absenceServer";
 import { loadPartyReports } from "@/lib/monthlyReportServer";
 import { prevYearMonth } from "@/lib/monthlyReport";
-import { currentYearMonth, parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { vnMonthKey } from "@/lib/revenue";
+import { parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
 
 type MonthlyFeeRow = {
   courseId: string;
@@ -71,7 +73,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   // yearMonth: lấy từ query ?yearMonth=YYYY-MM, mặc định tháng hiện tại.
   const ym = parseYearMonth(new URL(req.url).searchParams.get("yearMonth"))?.yearMonth
-          ?? currentYearMonth();
+          ?? vnMonthKey(new Date()); // tháng theo giờ Việt Nam (00:00–06:59 ngày 01 không còn hiện tháng trước)
 
   const studentId = link.student.id;
 
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   }).attendanceRecord.findMany({
     where: {
       userId: studentId,
-      session: { courseId: { in: courseIds }, date: { gte: firstDay, lt: nextMonth } },
+      session: { courseId: { in: courseIds }, date: attendanceDateWindow(firstDay, nextMonth) },
     },
     select: { status: true, session: { select: { courseId: true } } },
   });

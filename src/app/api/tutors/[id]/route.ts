@@ -6,12 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
+import { getSession } from "@/lib/session";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
 import { recentTaughtSessionWhere } from "@/lib/tutorActivity";
 import { publicArea } from "@/lib/tutorArea";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const t = await prisma.user.findFirst({
@@ -28,7 +30,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true, city: true,
     },
   });
+  // NC2-022: gia sư chọn ẨN hồ sơ → như chưa duyệt / bị khoá (404). /mentor/[id], thẻ og và xem trước của người khác đều đi qua đây.
   if (!t) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
+  // Ngoại lệ DUY NHẤT: chính gia sư xem trước hồ sơ của mình (?preview=1, có phiên đúng chủ) — để Hồ sơ gia sư vẫn cho xem và ghi "đang ẩn".
+  // Trang công khai /mentor/[id] gọi route này KHÔNG kèm cookie nên vẫn nhận 404.
+  const profileHidden = isProfileHidden(readPreferences(t.preferences));
+  if (profileHidden) {
+    const owner = new URL(req.url).searchParams.get("preview") === "1" && (await getSession())?.userId === id;
+    if (!owner) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
+  }
 
   const courses = await prisma.course.findMany({
     where:   { ownerId: id, status: true },
@@ -93,6 +103,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const studentCount = classes.reduce((s, c) => s + c.activeCount, 0);
 
   return NextResponse.json({
+    // NC2-022: chỉ có thể true khi chính chủ xem trước (xem trên); người ngoài không bao giờ nhận được phản hồi này.
+    profileHidden,
     tutor: {
       id:              t.id,
       name:            t.name,

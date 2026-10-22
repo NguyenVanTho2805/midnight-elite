@@ -1,6 +1,6 @@
 // ĐX-04 (NC1-054) — GET /api/admin/health-metrics với dữ liệu thật: quyền, số đo tính tay, các nhiễu phải bị loại, không lộ tên.
 // Cần Postgres + Next dev (xem README). Phần công thức thuần đã có ở t-health-metrics-lib.ts.
-import { api, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
+import { api, mkUser, mkTutor, mkSuper, mkCourse, mkAttendanceSession, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { generateInvoiceCode } from "@/lib/tuitionInvoice";
 import { generatePortalToken } from "@/lib/parentPortal";
@@ -101,6 +101,46 @@ const dateOf = (daysAgo: number) => new Date(`${vnDateKeyOf(ago(daysAgo * DAY))}
   const text = JSON.stringify(res.json);
   check("không có tên học sinh / gia sư / email / nội dung giao dịch / mã phiếu / token trong phản hồi",
     ![T.name, T2.name, "Học sinh Bí Mật", "Gia sư chưa duyệt", T.email, "ND bí mật", "KINABCDE"].some(x => text.includes(x)) && !/"(name|email|phone|content|code|viewToken|studentId|tutorId)"/.test(text), text.slice(0, 200));
+
+  section("Gia sư mới vào — chỉ số 7, 8, 9 (NC2-020), số tính tay");
+  // 12 gia sư N0..N11 đăng ký đúng 10 ngày trước (đủ tuổi 24h và 7 ngày). Giờ lớp đầu ghi dạng ISO nên chính xác tới từng giờ.
+  const REG = ago(10 * DAY);
+  const at = (ms: number) => new Date(REG.getTime() + ms).toISOString();
+  const N: Awaited<ReturnType<typeof mkTutor>>[] = [];
+  for (let i = 0; i < 12; i++) {
+    const u = await mkTutor(`Gia sư mới Kín ${String(i).padStart(2, "0")}`);
+    await prisma.user.update({ where: { id: u.id }, data: { createdAt: REG, ...(i === 11 ? { tutorVerified: false } : {}) } }); // N11 chưa được duyệt: vẫn nằm trong mẫu số
+    N.push(u);
+  }
+  const firstClass = [3 * HOUR, 3 * HOUR, 3 * HOUR, 3 * HOUR, 3 * HOUR, 23 * HOUR, 25 * HOUR, 72 * HOUR]; // N0–N4 trong 24h; N5 23h kịp; N6 25h trễ; N7 3 ngày; N8–N11 chưa có lớp
+  const cs: Awaited<ReturnType<typeof mkCourse>>[] = [];
+  for (let i = 0; i < firstClass.length; i++) {
+    const c = await mkCourse(N[i].id, { name: `Lớp thử mới ${i}` });
+    await prisma.course.update({ where: { id: c.id }, data: { createdAt: at(firstClass[i]) } });
+    cs.push(c);
+  }
+  // Buổi đã dạy đầu: N0–N3 và N7 sau 2 ngày (kịp); N4 sau 8 ngày (trễ); N5 chỉ có "Có phép" (không phải buổi đã dạy)
+  for (const i of [0, 1, 2, 3, 7]) await mkAttendanceSession(cs[i].id, N[i].id, dateOf(8));
+  await mkAttendanceSession(cs[4].id, N[4].id, dateOf(2));
+  await mkAttendanceSession(cs[5].id, N[5].id, dateOf(8), ["excused"]);
+  // Nhiễu: gia sư đăng ký 10 ngày trước nhưng bị cấm / khoá hồ sơ KHÔNG nằm trong mẫu số
+  for (const f of [{ banned: true }, { profileLockedAt: new Date() }]) {
+    const x = await mkTutor("Gia sư loại khỏi mẫu");
+    await prisma.user.update({ where: { id: x.id }, data: { createdAt: REG, ...f } });
+    await mkCourse(x.id, { name: "Lớp nhiễu" });
+  }
+  const a = (await api("GET", URL("?days=30"), { as: SA })).json.activation;
+  // Mẫu số: 12 gia sư đủ tuổi (N0–N11); gia sư T, T2, T3 (đăng ký vừa xong) CHƯA đủ 24h nên không vào mẫu số.
+  check("đăng ký trong 30 ngày = 15 (12 gia sư thử + T, T2, T3 vừa tạo; gia sư bị cấm / khoá không tính)", a.registered === 15, a.registered);
+  check("chỉ số 7: 6/12 tạo lớp đầu trong 24h (N0–N4, N5 ở 23h; N6 ở 25h không kịp) — gia sư chưa duyệt vẫn trong mẫu số", a.classIn24h.n === 6 && a.classIn24h.d === 12 && a.classIn24h.enough, a.classIn24h);
+  check("chỉ số 8: 5/12 có buổi đã dạy đầu trong 7 ngày (N0–N3, N7; N4 sau 8 ngày và N5 chỉ “Có phép” không tính)", a.taughtIn7d.n === 5 && a.taughtIn7d.d === 12 && a.taughtIn7d.enough, a.taughtIn7d);
+  // Giờ lớp đầu: 3 giờ ×5, 23, 25, 72 (N0–N7) + 3 lớp vừa tạo của T, T2, T3 (gần 0 giờ) = 11 giá trị; sắp xếp: 0,0,0,3,3,3,3,3,23,25,72 → trung vị = giá trị thứ 6 = 3
+  check("chỉ số 9: trung vị 3 giờ trên 11 gia sư đã có lớp; người chưa có lớp không nằm trong con số", a.firstClassHours.n === 11 && a.firstClassHours.enough && a.firstClassHours.hours === 3, a.firstClassHours);
+  const a7 = (await api("GET", URL("?days=7"), { as: SA })).json.activation;
+  check("cột 7 ngày: 12 gia sư thử đăng ký 10 ngày trước nằm ngoài → mẫu số 0 / chưa đủ dữ liệu ở cả ba chỉ số (hai trạng thái cùng hiện được)", a7.registered === 3 && !a7.classIn24h.enough && a7.classIn24h.d === 0 && !a7.taughtIn7d.enough && !a7.firstClassHours.enough, a7);
+  const text2 = JSON.stringify((await api("GET", URL("?days=30"), { as: SA })).json);
+  check("phản hồi mới không lộ tên / email / id gia sư", !N.some(u => text2.includes(u.name) || text2.includes(u.email) || text2.includes(u.id)) && !text2.includes("Gia sư mới Kín") && !/"(ownerId|userId|id)"/.test(JSON.stringify(a)), JSON.stringify(a).slice(0, 200));
+  check("trường cũ còn nguyên (invoices, bank, timeliness, tutors, minSample)", ["invoices", "bank", "timeliness", "tutors", "minSample", "days", "since", "generatedAt"].every(k => k in JSON.parse(text2)));
 
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

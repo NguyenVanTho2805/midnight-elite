@@ -9,7 +9,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
 import { computeAttendanceStats } from "@/lib/attendance";
-import { currentYearMonth, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { attendanceDateWindow } from "@/lib/taughtSessions";
+import { computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { vnMonthKey } from "@/lib/revenue";
+import { emptyEnrollmentNotice } from "@/lib/parentPortal";
 import { loadPartyInvoices } from "@/lib/invoiceServer";
 import InvoiceCard from "@/components/parent/InvoiceCard";
 import UpcomingSessions from "@/components/parent/UpcomingSessions";
@@ -36,7 +39,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
   if (!link) notFound();
 
   const studentId = link.student.id;
-  const ym = currentYearMonth();
+  const ym = vnMonthKey(new Date()); // tháng theo giờ Việt Nam
   const [yStr, mStr] = ym.split("-");
   const y = Number(yStr), m = Number(mStr);
   const firstDay = new Date(Date.UTC(y, m - 1, 1));
@@ -47,13 +50,17 @@ export default async function SoCuaConPage({ params }: PageProps) {
     include: { course: { select: { id: true, name: true } } },
   });
   const courseIds = enrollments.map(e => e.course.id);
+  // Không có lớp đang học: chỉ cần TRẠNG THÁI ghi danh (không lấy tên lớp) để nói đúng câu.
+  const otherStatuses = enrollments.length === 0
+    ? (await prisma.enrollment.findMany({ where: { userId: studentId, status: { in: ["suspended", "pending_consent"] } }, select: { status: true } })).map(e => e.status)
+    : [];
 
   const now = new Date();
   const [attendance, fees, override, invoices, sessions, reports] = await Promise.all([
     courseIds.length === 0
       ? Promise.resolve([] as Array<{ status: string; session: { courseId: string } }>)
       : prisma.attendanceRecord.findMany({
-          where: { userId: studentId, session: { courseId: { in: courseIds }, date: { gte: firstDay, lt: nextMonth } } },
+          where: { userId: studentId, session: { courseId: { in: courseIds }, date: attendanceDateWindow(firstDay, nextMonth, now) } },
           select: { status: true, session: { select: { courseId: true } } },
         }),
     courseIds.length === 0
@@ -107,7 +114,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
         {enrollments.length === 0 ? (
           <div className="rounded-xl p-5 text-center"
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>
-            Em chưa ghi danh lớp nào.
+            {emptyEnrollmentNotice(otherStatuses)}
           </div>
         ) : (
           <>

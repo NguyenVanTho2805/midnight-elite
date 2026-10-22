@@ -6,6 +6,7 @@
 //              "students" (số học viên giảm dần) | "classes" (số lớp đang dạy). Giá trị lạ → mặc định.
 //   city    — ĐX-06: lọc theo Tỉnh/Thành (so khớp bỏ dấu, "TP.HCM" = "Hồ Chí Minh")
 //   mode    — ĐX-06: "online" | "offline" (dạy trực tiếp); gia sư dạy cả hai khớp cả hai bộ lọc
+//   NC2-022: gia sư chọn ẨN hồ sơ (User.preferences.profile.hidden) không có mặt ở đây (cả danh sách lẫn facets).
 //   Gia sư chưa lưu mục khu vực không khớp bộ lọc city/mode nào đang bật. Trả thêm `facets.cities` (các tỉnh có gia sư, tính SAU lọc môn
 //   nhưng TRƯỚC lọc tỉnh/hình thức để danh sách chọn không co lại khi đang chọn).
 //
@@ -22,6 +23,7 @@ import { taughtSessionWhere } from "@/lib/taughtSessions";
 import { parseTutorSort, recentTaughtSessionWhere, sortTutors } from "@/lib/tutorActivity";
 import { cityFacets, matchesArea, parseModeFilter, publicArea, type PublicArea } from "@/lib/tutorArea";
 import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
 
 export type TutorListItem = {
   id: string;
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
   const city    = searchParams.get("city")?.trim() || null;
   const mode    = parseModeFilter(searchParams.get("mode"));
 
-  const found = await prisma.user.findMany({
+  const foundAll = await prisma.user.findMany({
     where: {
       role: "admin",
       adminRole: "teacher",
@@ -61,6 +63,8 @@ export async function GET(req: NextRequest) {
       id: true, name: true, avatarBase64: true, bio: true, subjects: true, tutorVerified: true, city: true, preferences: true,
     },
   });
+  // NC2-022: lọc ở đây (không ở truy vấn) vì `preferences` là JSON và đã được đọc sẵn; "vắng khoá" phải nghĩa là HIỆN.
+  const found = foundAll.filter(t => !isProfileHidden(readPreferences(t.preferences)));
   const areaOf = new Map(found.map(t => [t.id, publicArea(t.city, readPreferences(t.preferences).teaching)]));
   const facets = { cities: cityFacets([...areaOf.values()]) };
   const tutors = found.filter(t => matchesArea(areaOf.get(t.id) ?? null, { city, mode }));
