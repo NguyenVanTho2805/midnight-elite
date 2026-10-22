@@ -5,6 +5,7 @@ import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinThe
 import { parseRail, type RailState } from "@/lib/railState";
 import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
 import { readPushPrefs, type PushTypes } from "@/lib/pushRules";
+import { readProfilePrefs, type TutorProfilePrefs } from "@/lib/tutorVisibility";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -53,6 +54,11 @@ export interface UserPreferences {
    * Danh sách thiết bị đã bật nằm ở bảng push_subscriptions, không nằm ở đây.
    */
   push?: { types: Partial<PushTypes> };
+  /**
+   * NC2-022: công tắc Hiện / Ẩn hồ sơ công khai (`profile.hidden`). Vắng = HIỆN. Như `teaching`, chỉ ghi qua PUT /api/users/me/tutor-profile
+   * (khoá giao dịch `prefsLockKey`); API giao diện từ chối khoá "profile" nhưng giữ nguyên giá trị đang có.
+   */
+  profile?: TutorProfilePrefs;
 }
 
 /** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
@@ -121,6 +127,8 @@ export function readPreferences(raw: unknown): UserPreferences {
   if (teaching) out.teaching = teaching;
   const push = readPushPrefs(raw.push);
   if (push) out.push = push;
+  const profile = readProfilePrefs(raw.profile);
+  if (profile) out.profile = profile;
   return out;
 }
 

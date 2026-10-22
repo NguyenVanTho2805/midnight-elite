@@ -1,7 +1,7 @@
 // ĐX-06 (NC1-074) — khu vực và hình thức dạy với dữ liệu thật: quyền, kiểm dữ liệu, lưu / đọc, CÔNG KHAI (opt-in, giá chỉ khi bật),
 // không mất khi đổi giao diện (kể cả hai yêu cầu đồng thời), lọc theo tỉnh / hình thức.
 // Cần Postgres + Next dev (xem README). Phần thuần đã có ở t-tutor-area-lib.ts.
-import { api, mkTutor, mkUser, wipe, check, section, done, type TUser } from "./h";
+import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 
 const PROFILE = "/api/users/me/tutor-profile";
@@ -81,6 +81,71 @@ const names = (j: any) => (j.items as any[]).map(x => x.name).sort().join(" | ")
   const fa = (await q("")).facets, fb = (await q("city=hcm&mode=offline")).facets;
   check("facets.cities = các tỉnh có gia sư, không trùng, sắp theo tên; KHÔNG co lại khi đang lọc", JSON.stringify(fa.cities) === JSON.stringify(["Hà Nội", "TP. Hồ Chí Minh"]) && JSON.stringify(fb.cities) === JSON.stringify(fa.cities), [fa, fb]);
   check("lọc không ra ai → items rỗng nhưng facets vẫn có", (await q("city=Khong%20Co%20Tinh")).items.length === 0 && (await q("city=Khong%20Co%20Tinh")).facets.cities.length === 2);
+
+  // ───────── NC2-022: công tắc Hiện / Ẩn hồ sơ công khai ─────────
+  section("NC2-022 Hiện / Ẩn hồ sơ: quyền và kiểm dữ liệu");
+  const H = await mkTutor("Thầy Ẩn Thử"), H2 = await mkTutor("Cô Hiện Thử");
+  await put(H, { teaching: { district: "Quận 1", mode: "online", credential: "ĐH Sư phạm" } });
+  await put(H2, { teaching: { district: "Quận 2", mode: "online" } });
+  const hc = await mkCourse(H.id, { name: "Lớp thử của thầy ẩn" });
+  await prisma.enrollment.create({ data: { userId: S.id, courseId: hc.id, status: "active" } });
+  const dbPrefs = async (t: TUser) => (await prisma.user.findUnique({ where: { id: t.id }, select: { preferences: true } }))?.preferences as any;
+  const pubStatus = async (t: TUser, qs = "") => (await api("GET", `/api/tutors/${t.id}${qs}`)).status;
+  const inList = async (t: TUser, qs = "") => ((await api("GET", `/api/tutors${qs}`)).json.items as any[]).some(x => x.id === t.id);
+  check("mặc định HIỆN: GET hồ sơ của mình → profile.hidden = false; công khai 200 và có trong danh sách", (await api("GET", PROFILE, { as: H })).json.profile?.hidden === false && (await pubStatus(H)) === 200 && (await inList(H)));
+  check("chưa đăng nhập → 401; học sinh → 403 (không ghi được)", (await put(undefined, { profile: { hidden: true } })).status === 401 && (await put(S, { profile: { hidden: true } })).status === 403);
+  check("gia sư KHÁC không ghi được vào hồ sơ của H (PUT luôn ghi vào chính người gọi)", (await put(H2, { profile: { hidden: true } })).status === 200 && (await dbPrefs(H))?.profile === undefined);
+  await put(H2, { profile: { hidden: false } });
+  const badH = async (profile: unknown) => (await put(H, { profile })).status;
+  check("sai kiểu / khoá lạ → 400 và KHÔNG ghi dở", (await badH({ hidden: "true" })) === 400 && (await badH({ hidden: 1 })) === 400 && (await badH({ hidden: null })) === 400
+    && (await badH({ isPublic: false })) === 400 && (await badH("x")) === 400 && (await badH(null)) === 400 && (await badH([])) === 400 && (await dbPrefs(H))?.profile === undefined);
+  check("API giao diện KHÔNG ghi được profile (400)", (await put(H, { profile: { hidden: true } }, PREFS)).status === 400 && (await dbPrefs(H))?.profile === undefined);
+  check("PUT không gửi profile (chỉ đổi giới thiệu) → công tắc giữ nguyên", (await put(H, { bio: "bio" })).status === 200 && (await api("GET", PROFILE, { as: H })).json.profile?.hidden === false);
+
+  section("NC2-022 ẨN: không ai thấy nữa");
+  const vis0 = (await api("GET", "/api/tutors")).json;
+  const res = await put(H, { profile: { hidden: true } });
+  check("200, GET của chính gia sư trả profile.hidden = true; DB ghi preferences.profile.hidden (không thêm cột)", res.status === 200 && res.json.profile?.hidden === true && (await dbPrefs(H))?.profile?.hidden === true, res.json);
+  check("khu vực đã khai KHÔNG mất khi ẩn", (await dbPrefs(H))?.teaching?.district === "Quận 1");
+  check("GET /api/tutors/[id] → 404 (người ngoài)", (await pubStatus(H)) === 404);
+  check("?preview=1 không mở khoá cho người ngoài / gia sư khác / học sinh", (await pubStatus(H, "?preview=1")) === 404
+    && (await api("GET", `/api/tutors/${H.id}?preview=1`, { as: H2 })).status === 404 && (await api("GET", `/api/tutors/${H.id}?preview=1`, { as: S })).status === 404);
+  check("CHÍNH gia sư xem trước (?preview=1 + phiên) → 200, có cờ profileHidden; không có ?preview=1 vẫn 404", (await api("GET", `/api/tutors/${H.id}?preview=1`, { as: H })).status === 200 && (await api("GET", `/api/tutors/${H.id}?preview=1`, { as: H })).json.profileHidden === true && (await api("GET", `/api/tutors/${H.id}`, { as: H })).status === 404);
+  check("GET /api/tutors bỏ gia sư ẩn; người khác vẫn còn", !(await inList(H)) && (await inList(H2)));
+  check("lọc theo môn / tỉnh / hình thức cũng không lộ", !(await inList(H, "?mode=online")) && (await inList(H2, "?mode=online")));
+  const visHidden = (await api("GET", "/api/tutors")).json;
+  check("số lượng trong danh sách giảm đúng 1", vis0.items.length - visHidden.items.length === 1, [vis0.items.length, visHidden.items.length]);
+  // Facets không đếm gia sư ẩn: cho H một tỉnh DUY NHẤT rồi ẩn.
+  await put(H, { city: "Thành phố Chỉ Có Thầy Ẩn", profile: { hidden: false } });
+  const fOn = (await api("GET", "/api/tutors")).json.facets.cities as string[];
+  await put(H, { profile: { hidden: true } });
+  const fOff = (await api("GET", "/api/tutors")).json.facets.cities as string[];
+  check("facets.cities: tỉnh của người ẩn có khi hiện, MẤT khi ẩn", fOn.includes("Thành phố Chỉ Có Thầy Ẩn") && !fOff.includes("Thành phố Chỉ Có Thầy Ẩn"), [fOn, fOff]);
+  check("ghi lượt xem hồ sơ ẩn bị từ chối (404, không đếm)", (await api("POST", `/api/tutors/${H.id}/visit`, { body: { kind: "open", vk: "abcdefgh1234" } })).status === 404
+    && (await prisma.profileVisit.count({ where: { tutorId: H.id } })) === 0);
+  const draft = (await api("GET", "/api/tutor/post-draft", { as: H })).json;
+  check("bài đăng tìm học sinh: profilePublic = false, profileHidden = true", draft.profilePublic === false && draft.profileHidden === true, draft);
+  check("lớp và học sinh của gia sư không bị ảnh hưởng (lớp và đăng ký còn nguyên, gia sư vẫn thấy lớp của mình)", (await prisma.course.count({ where: { ownerId: H.id } })) === 1 && (await prisma.enrollment.count({ where: { courseId: hc.id } })) === 1);
+
+  section("NC2-022 Hiện lại: về như cũ");
+  check("hiện lại → 200; khoá profile bị XOÁ khỏi DB (về đúng như chưa từng bấm)", (await put(H, { profile: { hidden: false } })).status === 200 && (await dbPrefs(H))?.profile === undefined);
+  check("công khai 200, có trong danh sách, facets có lại", (await pubStatus(H)) === 200 && (await inList(H)) && ((await api("GET", "/api/tutors")).json.facets.cities as string[]).includes("Thành phố Chỉ Có Thầy Ẩn"));
+  check("bài đăng: profilePublic = true, profileHidden = false", (await api("GET", "/api/tutor/post-draft", { as: H })).json.profilePublic === true && (await api("GET", "/api/tutor/post-draft", { as: H })).json.profileHidden === false);
+  check("Q11: bật Hiện không đòi trường/bằng cấp (xoá hết khu vực rồi ẩn → hiện vẫn được)", (await put(H, { teaching: null, profile: { hidden: true } })).status === 200 && (await put(H, { profile: { hidden: false } })).status === 200 && (await pubStatus(H)) === 200);
+
+  section("NC2-022 Không làm mất khoá khác; hai yêu cầu đồng thời");
+  await put(H, { teaching: { district: "Quận 9", mode: "both" }, profile: { hidden: true } });
+  check("đổi chế độ sáng/tối ở API giao diện: ẩn + khu vực còn nguyên", (await put(H, { mode: "toi" }, PREFS)).status === 200 && (await dbPrefs(H))?.profile?.hidden === true && (await dbPrefs(H))?.teaching?.district === "Quận 9");
+  check("đổi module / kết nối / nhắc lịch: công tắc còn nguyên", (await put(H, { modules: ["lop"], connections: { messenger: "thay.an" }, reminders: { parent: false } }, PREFS)).status === 200 && (await dbPrefs(H))?.profile?.hidden === true);
+  check("lưu khu vực (không gửi profile) → vẫn ẨN", (await put(H, { teaching: { district: "Quận 10" } })).status === 200 && (await dbPrefs(H))?.profile?.hidden === true);
+  let lost2 = 0;
+  for (let i = 0; i < 8; i++) {
+    const wantHidden = i % 2 === 1, wantMode = i % 2 ? "toi" : "sang";
+    await Promise.all([put(H, { profile: { hidden: wantHidden } }), put(H, { mode: wantMode }, PREFS), put(H, { teaching: { district: `Quận ${i + 20}`, mode: "offline" } })]);
+    const p = await dbPrefs(H);
+    if (!!p?.profile?.hidden !== wantHidden || p?.mode !== wantMode || p?.teaching?.district !== `Quận ${i + 20}`) lost2++;
+  }
+  check("ba yêu cầu ĐỒNG THỜI (ẩn/hiện + đổi sáng/tối + lưu khu vực) × 8 lần: không lần nào ghi đè mất phần của bên kia", lost2 === 0, lost2);
 
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

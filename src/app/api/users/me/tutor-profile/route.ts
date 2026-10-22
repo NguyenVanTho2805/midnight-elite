@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { parseTutorProfileInput, tutorApplicationStatus } from "@/lib/tutorProfile";
 import { prefsLockKey, readPreferences } from "@/lib/userPreferences";
+import { applyProfileHidden, isProfileHidden } from "@/lib/tutorVisibility";
 import type { Prisma } from "@/generated/prisma/client";
 
 // GET/PUT /api/users/me/tutor-profile — gia sư xem/sửa hồ sơ của mình (BE-049).
@@ -12,6 +13,7 @@ import type { Prisma } from "@/generated/prisma/client";
 //
 // ĐX-06: ngoài giới thiệu và môn dạy còn có `city` (Tỉnh/Thành, cột users.city) và `teaching` (quận/huyện, hình thức, trường + bằng cấp,
 // giá tham khảo; User.preferences.teaching). Thiếu khoá → giữ nguyên; `teaching: null` → xoá cả mục. Mọi thứ TỰ KHAI, kiểm ở tutorArea.ts.
+// NC2-022: `profile: { hidden: boolean }` — công tắc Hiện / Ẩn hồ sơ công khai (User.preferences.profile.hidden, mặc định HIỆN), kiểm ở tutorVisibility.ts.
 
 const SELECT = {
   bio: true, subjects: true, adminRole: true,
@@ -34,6 +36,8 @@ function toDTO(u: {
     // ĐX-06: của CHÍNH gia sư (không phải bản công khai): trả lại đúng thứ đã lưu để form điền sẵn.
     city:             u.city,
     teaching:         readPreferences(u.preferences).teaching ?? null,
+    // NC2-022: đang ẩn khỏi nơi công khai? (mặc định false = hiện)
+    profile:          { hidden: isProfileHidden(readPreferences(u.preferences)) },
   };
 }
 
@@ -76,12 +80,12 @@ export async function PUT(req: NextRequest) {
   // `teaching` nằm trong User.preferences: đọc-sửa-ghi một cột JSON nên dùng CÙNG khoá giao dịch với /api/users/me/preferences,
   // để đổi chủ đề/module ở tab khác không ghi đè lên khu vực vừa lưu (và ngược lại).
   const updated = await prisma.$transaction(async (tx) => {
-    if (parsed.teaching !== undefined) {
+    if (parsed.teaching !== undefined || parsed.hidden !== undefined) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${prefsLockKey(auth.userId)}))`;
       const cur = await tx.user.findUnique({ where: { id: auth.userId }, select: { preferences: true } });
       const prefs = readPreferences(cur?.preferences);
-      if (parsed.teaching === null) delete prefs.teaching; else prefs.teaching = parsed.teaching;
-      data.preferences = prefs as Prisma.InputJsonValue;
+      if (parsed.teaching === null) delete prefs.teaching; else if (parsed.teaching !== undefined) prefs.teaching = parsed.teaching;
+      data.preferences = applyProfileHidden(prefs, parsed.hidden) as Prisma.InputJsonValue;
     }
     return tx.user.update({ where: { id: auth.userId }, data, select: SELECT });
   });

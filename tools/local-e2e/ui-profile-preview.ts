@@ -109,11 +109,64 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   check("sau khi bị khoá: chuyển sang thông báo", true);
   await prisma.user.update({ where: { id: T.id }, data: { profileLockedAt: null, profileLockReason: null } });
 
+  section("NC2-022: công tắc Hiện / Ẩn hồ sơ công khai");
+  await page.reload({ waitUntil: "networkidle" });
+  const sw = page.getByTestId("hien-an-cong-tac"), state = page.getByTestId("hien-an-trang-thai");
+  await sw.waitFor({ timeout: 60000 });
+  check("mặc định HIỆN: công tắc bật, ghi 'Hiện' + chữ giải thích", (await sw.getAttribute("aria-checked")) === "true" && (await state.innerText()) === "Hiện" && await page.getByText("Phụ huynh có thể tìm thấy và xem hồ sơ của bạn.").isVisible());
+  check("bật Hiện không đòi trường/bằng cấp (công tắc không bị khoá)", await sw.isEnabled());
+  // Lỗi mạng: chặn PUT → báo lỗi + 'Thử lại', công tắc KHÔNG đổi sang Ẩn
+  await page.route("**/api/users/me/tutor-profile", r => (r.request().method() === "PUT" ? r.abort() : r.continue()));
+  await sw.click();
+  await page.getByRole("alert").filter({ hasText: /Thử lại/ }).waitFor({ timeout: 30000 });
+  check("lỗi: hiện lời báo + nút Thử lại; trạng thái vẫn 'Hiện' (chưa lưu được thì không giả vờ đã ẩn)", (await state.innerText()) === "Hiện" && await page.getByRole("button", { name: "Thử lại" }).isVisible());
+  await page.unroute("**/api/users/me/tutor-profile");
+  await page.getByRole("button", { name: "Thử lại" }).click();
+  await page.getByText("Hồ sơ đang ẩn — khách không thấy trang này").waitFor({ timeout: 60000 });
+  check("Thử lại thành công: 'Ẩn', chữ giải thích mới, bản xem trước VẪN xem được và ghi 'Hồ sơ đang ẩn'", (await state.innerText()) === "Ẩn" && (await sw.getAttribute("aria-checked")) === "false"
+    && await page.getByText("Hồ sơ không hiện trên trang Gia sư và link cũ báo không tìm thấy; lớp và học sinh của bạn không bị ảnh hưởng.").isVisible()
+    && await page.getByRole("region", { name: /Hồ sơ công khai của bạn trông thế này/ }).getByRole("heading", { name: "Cô Lan", level: 2 }).isVisible());
+  check("DB: preferences.profile.hidden = true", ((await prisma.user.findUnique({ where: { id: T.id }, select: { preferences: true } }))?.preferences as any)?.profile?.hidden === true);
+  await page.reload({ waitUntil: "networkidle" });
+  await sw.waitFor({ timeout: 60000 });
+  check("tải lại: vẫn Ẩn, vẫn xem trước được, dòng 'Hồ sơ đang ẩn' thay link 'Xem hồ sơ công khai'", (await sw.getAttribute("aria-checked")) === "false" && await page.getByText("Hồ sơ đang ẩn — khách không thấy trang này").waitFor({ timeout: 30000 }).then(() => true)
+    && (await page.getByRole("link", { name: "Xem hồ sơ công khai" }).count()) === 0 && (await page.getByRole("link", { name: "Mở trang công khai" }).count()) === 0);
+  await shot(page, "profile-hidden");
+
+  const pubH = await (await ctxFor(null)).newPage(); watch(pubH);
+  await pubH.goto(`${BASE}/mentor/${T.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await pubH.getByRole("heading", { name: "Không tìm thấy gia sư", level: 1 }).waitFor({ timeout: 60000 });
+  check("/mentor/[id] khi ẩn: 'Không tìm thấy gia sư', không lộ tên / giới thiệu", !(await pubH.locator("body").innerText()).includes("Cô Lan") && !(await pubH.locator("body").innerText()).includes("Gia sư Toán 9 nhiều năm"));
+  check("thẻ xem trước link (og) không lộ gì: tiêu đề chung, không tên gia sư", !/Cô Lan/.test(await pubH.title()) && !/Cô Lan/.test((await pubH.locator('meta[property="og:title"]').first().getAttribute("content").catch(() => "")) ?? "") && (await pubH.locator('meta[name="robots"]').first().getAttribute("content").catch(() => "")) !== null);
+  const lstH = await (await ctxFor(null)).newPage(); watch(lstH);
+  await lstH.goto(`${BASE}/giang-vien`, { waitUntil: "networkidle", timeout: 120000 });
+  await lstH.getByRole("heading", { name: /gia sư/i }).first().waitFor({ timeout: 60000 });
+  await lstH.waitForTimeout(1500);
+  check("/giang-vien: không còn thẻ Cô Lan", (await lstH.locator("h3", { hasText: "Cô Lan" }).count()) === 0 && !(await lstH.locator("body").innerText()).includes("Cô Lan"));
+  const bd = await (await ctxFor(T)).newPage(); watch(bd);
+  await bd.goto(`${BASE}/lop-cua-toi/bai-dang`, { waitUntil: "networkidle", timeout: 120000 });
+  await bd.getByText("Hồ sơ của bạn đang ẩn nên link trong bài chưa mở được").waitFor({ timeout: 60000 });
+  check("bài đăng tìm học sinh: cảnh báo 'đang ẩn nên link chưa mở được' + đường tới Hồ sơ gia sư", await bd.getByRole("link", { name: "Mở hồ sơ gia sư" }).isVisible());
+
+  await sw.click();
+  await page.getByText("Phụ huynh có thể tìm thấy và xem hồ sơ của bạn.").waitFor({ timeout: 60000 });
+  await page.getByRole("link", { name: "Mở trang công khai" }).waitFor({ timeout: 60000 });
+  check("bật Hiện lại: công tắc bật, xem trước trở về bình thường (có link 'Mở trang công khai'), không còn dòng 'đang ẩn'", (await sw.getAttribute("aria-checked")) === "true" && (await page.getByTestId("xem-truoc-dang-an").count()) === 0
+    && ((await prisma.user.findUnique({ where: { id: T.id }, select: { preferences: true } }))?.preferences as any)?.profile === undefined);
+  await pubH.reload({ waitUntil: "networkidle" });
+  await pubH.getByRole("heading", { name: "Cô Lan", level: 1 }).waitFor({ timeout: 60000 });
+  check("hồ sơ công khai mở lại ngay (cùng link cũ)", await pubH.getByRole("heading", { name: "Cô Lan", level: 1 }).isVisible());
+  // Giữ trạng thái ẨN cho phần 390px bên dưới
+  await sw.click();
+  await page.getByTestId("xem-truoc-dang-an").waitFor({ timeout: 60000 });
+
   section("Điện thoại 390px");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage(); watch(mp);
   await mp.goto(`${BASE}/lop-cua-toi/ho-so`, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByRole("heading", { name: "Cô Lan", level: 2 }).waitFor({ timeout: 60000 });
   check("không tràn ngang", await mp.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
+  const box = await mp.getByTestId("hien-an-cong-tac").boundingBox();
+  check("NC2-022 ở 390px (đang ẨN): công tắc cao ≥ 44px, rộng ≥ 44px, nằm trong màn hình; không tràn ngang", !!box && box.height >= 44 && box.width >= 44 && box.x + box.width <= 390 && await mp.getByTestId("xem-truoc-dang-an").isVisible(), box);
   await shot(mp, "profile-preview-mobile");
   check("không lỗi trang", errors.length === 0, errors.slice(0, 4));
   done();
