@@ -833,6 +833,7 @@ model User {
   cartItems           CartItem[]
   courseReviews       CourseReview[]
   notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
   examResults         ExamResult[]
   examAttempts        ExamAttempt[]
   badges              UserBadge[]
@@ -1404,6 +1405,28 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+// ─── THÔNG BÁO ĐẨY (ĐX-02) ────────────────────────────────────────────────────
+// Mỗi dòng là MỘT trình duyệt / thiết bị của gia sư đã bật "Thông báo đẩy". `endpoint` + `p256dh` + `auth` là thứ trình duyệt cấp
+// (khoá công khai của thiết bị, không phải bí mật của tài khoản). `endpoint` unique: một thiết bị đổi tài khoản thì dòng chuyển sang người mới.
+// `revokedAt` đặt khi dịch vụ đẩy trả 404/410 (thiết bị đã gỡ quyền) — không gửi nữa; người dùng bấm tắt / gỡ thì XOÁ hẳn dòng.
+// Chữ gửi đi dựng từ LOẠI thông báo (src/lib/pushRules.ts), không đọc từ bảng notifications.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("push_subscriptions")
 }
 
 // ─── LESSON PROGRESS ──────────────────────────────────────────────────────────

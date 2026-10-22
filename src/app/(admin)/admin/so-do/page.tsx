@@ -14,8 +14,14 @@ import {
 
 type Payload = HealthMetricsPayload & { minSample: number };
 
-const vnDm = (iso: string) => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(iso));
-const vnWhen = (iso: string) => new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(iso));
+// "22/10" và "06:03 22/10" theo giờ Việt Nam. Intl.DateTimeFormat("vi-VN", { day, month }) ra "22-10" (gạch ngang), nên ghép từ các phần ngày / tháng / giờ.
+const vnParts = (iso: string) => {
+  const o: Record<string, string> = {};
+  for (const p of new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", hourCycle: "h23", timeZone: "Asia/Ho_Chi_Minh" }).formatToParts(new Date(iso))) o[p.type] = p.value;
+  return o;
+};
+const vnDm = (iso: string) => { const p = vnParts(iso); return `${p.day}/${p.month}`; };
+const vnWhen = (iso: string) => { const p = vnParts(iso); return `${p.hour}:${p.minute} ${p.day}/${p.month}`; };
 
 export default function SoDoPage() {
   return (

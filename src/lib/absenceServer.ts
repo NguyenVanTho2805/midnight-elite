@@ -124,7 +124,7 @@ export async function reportAbsence(i: ReportAbsenceInput): Promise<ReportAbsenc
       title: "Báo nghỉ sát giờ",
       message: `${student?.name ?? "Học viên"} xin nghỉ buổi ${sched.course.name} lúc ${hmOf(vnMinutesOfDay(startAt))} ngày ${slot.dateKey.slice(8, 10)}/${slot.dateKey.slice(5, 7)} (${describeLead(cls.leadMinutes)}). Bấm một nút để xử lý.`,
       link: "/lop-cua-toi/lich",
-    }).catch(() => {});
+    }, { leadMinutes: cls.leadMinutes }).catch(() => {});
   }
   return result;
 }

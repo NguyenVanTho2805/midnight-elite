@@ -30,7 +30,7 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   const txt = (await sec.innerText()).replace(/\s+/g, " ");
   check("đúng thứ khách thấy: 'Đã xác minh', 'Không thu phí nhận lớp', môn, giới thiệu", txt.includes("Đã xác minh") && txt.includes("Không thu phí nhận lớp") && txt.includes("Toán 9") && txt.includes("Gia sư Toán 9 nhiều năm."), txt);
   check("bốn con số lấy từ sổ lớp: 1 lớp, 2 học viên, 3 buổi đã dạy", /2\s*Học viên/.test(txt) && /1\s*Lớp đang dạy/.test(txt) && /3\s*Buổi đã dạy/.test(txt), txt);
-  check("ĐX-05: chưa có buổi nào trong 30 ngày qua → CHƯA có nhãn 'Có dạy trong 30 ngày qua'", (await sec.getByTestId("recently-active").count()) === 0 && !txt.includes("Có dạy trong 30 ngày qua"), txt);
+  check("ĐX-05: chưa có buổi nào trong 30 ngày qua → CHƯA có nhãn 'Có dạy trong 30 ngày qua'", (await sec.getByTestId("recently-active").count()) === 0, txt); // không dò theo chữ: dòng giải thích của phần xem trước cũng nhắc tới nhãn này
   check("ĐX-05 (Q3): không có 'đúng hạn %' và không có vế 'phụ huynh xác nhận' trong bản xem trước", !/đúng hạn|phụ huynh xác nhận|%/.test(txt), txt);
   check("nói rõ số buổi/lớp không có ô nhập tay + liên kết tới trang công khai", await sec.getByText(/không có ô nhập tay/).isVisible() && (await sec.getByRole("link", { name: "Mở trang công khai" }).getAttribute("href")) === `/mentor/${T.id}`);
   check("form sửa giới thiệu/môn vẫn có bên dưới", await page.getByRole("button", { name: /Lưu/ }).first().isVisible());
@@ -59,7 +59,7 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   check("công tắc giá mặc định TẮT", (await form.getByRole("switch").getAttribute("aria-checked")) === "false");
   await form.getByLabel("Tỉnh/Thành").fill("tp.hcm");
   await form.getByLabel("Quận/Huyện").fill("Quận 7");
-  await form.getByRole("radio", { name: "Dạy trực tiếp" }).click();
+  await form.getByRole("radio", { name: "Dạy trực tiếp", exact: true }).click(); // exact: "Online + dạy trực tiếp" cũng chứa chữ này
   await form.getByLabel(/Trường và bằng cấp chính/).fill("ĐH Bách khoa · Kỹ sư");
   await form.getByLabel("Giá tham khảo mỗi buổi (đồng)").fill("150000");
   check("ô giá chỉ nhận chữ số và hiện bản xem trước '150.000đ / buổi'", await form.getByTestId("gia-xem-truoc").innerText() === "150.000đ / buổi");

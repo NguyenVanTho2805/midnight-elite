@@ -8,6 +8,7 @@ import { normalizeZaloGroupUrl } from "@/lib/funnel";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { KinButton } from "@/components/kin";
 import PhoneLoginCard from "@/components/account/PhoneLoginCard";
+import PushSettings from "@/components/tutor/PushSettings";
 import { FIELD_STYLE } from "@/components/tutor/shared";
 
 const CARD = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
@@ -117,6 +118,8 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
           <Switch id="r-student" checked={channels.student} onChange={v => void save({ reminders: { student: v } }, v ? "Đã bật nhắc cho học sinh." : "Đã tắt nhắc cho học sinh.")} label="Nhắc học sinh" hint="Tin nhắc cho chính học sinh" />
         </div>
       </section>
+
+      <PushSettings />
 
       <section id="ket-noi" aria-labelledby="h-kn" className="rounded-xl p-4" style={CARD}>
         <h2 id="h-kn" className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Kết nối</h2>
