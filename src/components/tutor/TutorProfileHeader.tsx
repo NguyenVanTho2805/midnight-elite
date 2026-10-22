@@ -4,7 +4,7 @@ import { Star, BookOpen, Users, CalendarCheck } from "griddy-icons";
 import { initials } from "@/components/tutor/TutorCard";
 
 export interface ProfileHeaderTutor { name: string; avatarBase64: string | null; bio: string | null; subjects: string[]; tutorVerified: boolean }
-export interface ProfileHeaderStats { classCount: number; studentCount: number; sessionsTaught: number; rating: { avg: number | null; total: number } }
+export interface ProfileHeaderStats { classCount: number; studentCount: number; sessionsTaught: number; /** ĐX-05: có ít nhất 1 buổi đã dạy trong 30 ngày qua. */ recentlyActive?: boolean; rating: { avg: number | null; total: number } }
 
 /** `as`: cấp tiêu đề của tên gia sư — "h1" ở trang hồ sơ công khai, "h2" khi nhúng vào trang đã có h1 (xem trước ở Hồ sơ gia sư). */
 export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }: { tutor: ProfileHeaderTutor; stats: ProfileHeaderStats; as?: "h1" | "h2" }) {
@@ -28,6 +28,12 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
             )}
             {/* PH-207/212: lời hứa của KiN với gia sư, nhìn thấy được trên hồ sơ chứ không chỉ nằm trong điều khoản */}
             <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>Không thu phí nhận lớp</span>
+            {/* ĐX-05 (Q3): chỉ nói gia sư có ghi sổ gần đây — không phải nhãn chất lượng và không phải "đã xác minh" */}
+            {stats.recentlyActive && (
+              <span className="text-xs font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-tt-chu-xong)" }} data-testid="recently-active">
+                <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-xong)" }} />Có dạy trong 30 ngày qua
+              </span>
+            )}
           </div>
           {tutor.subjects.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-1">

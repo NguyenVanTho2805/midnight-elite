@@ -10,6 +10,10 @@ export interface TutorListItem {
   tutorVerified: boolean;
   classCount: number;
   studentCount: number;
+  /** ĐX-00: số buổi ĐÃ DẠY theo sổ lớp (gia sư tự ghi, "ghi trên KiN"). */
+  sessionsTaught: number;
+  /** ĐX-05: có ít nhất 1 buổi đã dạy trong 30 ngày qua. */
+  recentlyActive: boolean;
   rating: { avg: number | null; total: number };
 }
 
@@ -84,6 +88,18 @@ export function TutorCard({ t }: { t: TutorListItem }) {
             </p>
           </div>
         </div>
+
+        {/* ĐX-05 (Q3): hai số tự động từ sổ lớp. Không có chữ "đã xác minh" vì gia sư tự ghi sổ. Số 0 thì không hiện để thẻ không nói điều tiêu cực về người mới. */}
+        {(t.sessionsTaught > 0 || t.recentlyActive) && (
+          <p className="text-xs flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--kin-chu-phu)" }} data-testid="tutor-activity">
+            {t.sessionsTaught > 0 && <span>{t.sessionsTaught.toLocaleString("vi-VN")} buổi đã dạy</span>}
+            {t.recentlyActive && (
+              <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>
+                <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-xong)" }} />Có dạy trong 30 ngày qua
+              </span>
+            )}
+          </p>
+        )}
 
         <Link href={`/mentor/${t.id}`}
           className="mt-auto flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold"

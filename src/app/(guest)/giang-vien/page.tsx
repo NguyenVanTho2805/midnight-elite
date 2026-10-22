@@ -12,7 +12,7 @@ import { KinLoader } from "@/components/kin/KinLoader";
 
 interface TopStudent { userId: string; name: string; school: string | null; best: number; }
 
-type SortKey = "rating" | "students" | "classes";
+type SortKey = "active" | "rating" | "students" | "classes";
 
 function TopStudentsSection() {
   const [students, setStudents] = useState<TopStudent[]>([]);
@@ -93,7 +93,7 @@ export default function GiangVienPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(false);
   const [subject, setSubject] = useState<string>("");
-  const [sort, setSort]       = useState<SortKey>("rating");
+  const [sort, setSort]       = useState<SortKey>("active"); // ĐX-05: gia sư có dạy trong 30 ngày qua lên trước
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +154,7 @@ export default function GiangVienPage() {
           <select id="tutor-sort" value={sort} onChange={e => setSort(e.target.value as SortKey)}
             className="text-xs font-semibold px-3 py-1.5 rounded-full"
             style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
+            <option value="active">Hoạt động gần đây</option>
             <option value="rating">Đánh giá cao</option>
             <option value="students">Nhiều học viên</option>
             <option value="classes">Nhiều lớp</option>

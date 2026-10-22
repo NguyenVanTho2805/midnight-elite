@@ -23,7 +23,7 @@ type ClassRow = {
 type ApiShape = {
   tutor: { id: string; name: string; avatarBase64: string | null; bio: string | null;
     subjects: string[]; tutorVerified: boolean; tutorVerifiedAt: string | null; zalo: string | null; messenger: string | null };
-  stats: { classCount: number; studentCount: number; sessionsTaught: number; rating: Rating };
+  stats: { classCount: number; studentCount: number; sessionsTaught: number; recentlyActive?: boolean; rating: Rating };
   classes: ClassRow[];
 };
 

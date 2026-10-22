@@ -2,8 +2,8 @@
 //
 // Query:
 //   subject — lọc theo môn (so khớp phần tử trong `User.subjects` string[])
-//   sort    — "rating" (mặc định, giảm dần) | "students" (số học viên giảm
-//              dần) | "classes" (số lớp đang dạy)
+//   sort    — "active" (mặc định: gia sư có dạy trong 30 ngày qua lên trước, ĐX-05) | "rating" (đánh giá giảm dần) |
+//              "students" (số học viên giảm dần) | "classes" (số lớp đang dạy). Giá trị lạ → mặc định.
 //
 // Chỉ trả gia sư đã duyệt: `role = "admin" AND adminRole = "teacher" AND
 // tutorVerified = true`. Người đang chờ duyệt KHÔNG hiện ở public.
@@ -14,6 +14,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { taughtSessionWhere } from "@/lib/taughtSessions";
+import { parseTutorSort, recentTaughtSessionWhere, sortTutors } from "@/lib/tutorActivity";
 
 export type TutorListItem = {
   id: string;
@@ -24,13 +26,17 @@ export type TutorListItem = {
   tutorVerified: boolean;
   classCount: number;
   studentCount: number;
+  /** ĐX-00: buổi ĐÃ DẠY theo sổ lớp (cùng số với hồ sơ chi tiết). Gia sư tự ghi, không phải bằng chứng đã xác minh. */
+  sessionsTaught: number;
+  /** ĐX-05: có ít nhất 1 buổi đã dạy trong 30 ngày qua. */
+  recentlyActive: boolean;
   rating: { avg: number | null; total: number };
 };
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const subject = searchParams.get("subject")?.trim() || null;
-  const sort    = (searchParams.get("sort") ?? "rating") as "rating" | "students" | "classes";
+  const sort    = parseTutorSort(searchParams.get("sort"));
 
   const tutors = await prisma.user.findMany({
     where: {
@@ -80,6 +86,18 @@ export async function GET(req: NextRequest) {
   });
   for (const c of courses) if (c.ownerId) courseOwner.set(c.id, c.ownerId);
 
+  // ĐX-05: số buổi đã dạy và "có dạy trong 30 ngày qua" của từng gia sư. Chỉ tính lớp đang bật (status = true) như hồ sơ chi tiết
+  // (api/tutors/[id]) để số trên thẻ và số trên hồ sơ không bao giờ lệch nhau.
+  const ownedLive = { ownerId: { in: ids }, status: true };
+  const [taughtRows, recentRows] = await Promise.all([
+    prisma.attendanceSession.groupBy({ by: ["courseId"], where: { course: ownedLive, ...taughtSessionWhere() }, _count: { _all: true } }),
+    prisma.attendanceSession.findMany({ where: { course: ownedLive, ...recentTaughtSessionWhere() }, select: { courseId: true }, distinct: ["courseId"] }),
+  ]);
+  const sessionsTaught = new Map<string, number>();
+  for (const r of taughtRows) { const o = courseOwner.get(r.courseId); if (o) sessionsTaught.set(o, (sessionsTaught.get(o) ?? 0) + r._count._all); }
+  const recentOwners = new Set<string>();
+  for (const r of recentRows) { const o = courseOwner.get(r.courseId); if (o) recentOwners.add(o); }
+
   const classCount = new Map<string, number>();
   for (const r of classRows) if (r.ownerId) classCount.set(r.ownerId, r._count._all);
 
@@ -114,14 +132,12 @@ export async function GET(req: NextRequest) {
       tutorVerified: t.tutorVerified,
       classCount:    classCount.get(t.id) ?? 0,
       studentCount:  studentCount.get(t.id) ?? 0,
+      sessionsTaught: sessionsTaught.get(t.id) ?? 0,
+      recentlyActive: recentOwners.has(t.id),
       rating:        { avg, total: n },
     };
   });
 
-  // Sort client-friendly — không dùng DB vì rating/students đã tính ở memory.
-  if (sort === "students") items.sort((a, b) => b.studentCount - a.studentCount);
-  else if (sort === "classes") items.sort((a, b) => b.classCount - a.classCount);
-  else items.sort((a, b) => (b.rating.avg ?? -1) - (a.rating.avg ?? -1));
-
-  return NextResponse.json({ items });
+  // Thứ tự xác định (hoà thì theo tên) và nằm ở hàm thuần có test: src/lib/tutorActivity.ts.
+  return NextResponse.json({ items: sortTutors(items, sort) });
 }
