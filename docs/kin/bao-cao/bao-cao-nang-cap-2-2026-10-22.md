@@ -57,7 +57,7 @@ PR #63 gộp sau #71/#72 chỉ xung đột ở `tools/local-e2e/env.example.sh` 
 3. Xác nhận **Q1** (tick NC1-Q1), **Q12** (đảo ghi chú NC1-030 "để sau"); TK-170: đề nghị tick.
 4. Quyết **F2, F3** ở trang phụ huynh (NC2-026b) và **đề xuất rút gọn luồng tạo lớp** (NC2-029; đo: 9 route / 7 ô bắt buộc / 22 lần bấm, vượt ngưỡng ≤ 3 màn).
 5. Đọc/duyệt các tài liệu **nháp** do agent soạn trước khi dùng: `cau-hoi-luat-su.md` (Q-LS-01: kho có hai văn bản luật dữ liệu cá nhân mâu thuẫn), `du-thao-chinh-sach.md`, `nc2-012-…`, `nc2-026-…`.
-6. Dán tab "Nâng cấp lần 2" vào sheet (đã tạo cùng lượt này nếu còn thiếu thì dùng `nang-cap-lan-2.csv`).
+6. **Sheet đã được cập nhật 22/10** (xem lại, sửa nếu sai): tab "Nâng cấp lần 2" mới tạo từ `nang-cap-lan-2.csv` (cột Thọ/Thọ Note đã điền, 18 dòng tick TRUE theo "Xong khi"; cột Thanh để trống); tab "Nâng cấp lần 1": tick NC1-Q1 (theo prompt) và NỐI ghi chú vào NC1-Q1, Q8, 030, 031, 100, 110, 111 (không tick các dòng khác); "Trang tính1": nối ghi chú vào TK-170 (đề nghị tick, chưa tick) và PH-225. Không đụng cột Thanh / Thanh Note.
 7. Merge PR theo thứ tự ở mục (b). **Đặt `CRON_SECRET` (≥ 16 ký tự) ở Vercel Production TRƯỚC khi merge #63** — sau #63 cron bắt buộc khoá; thiếu thì 3 cron (nhắc lớp, nhắc thi, hết hạn gói VIP) trả 503 và dừng.
 
 ## Đã dừng và vì sao
