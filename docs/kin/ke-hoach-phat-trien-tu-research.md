@@ -7,7 +7,7 @@ Soạn 21/10/2026. **Bản nháp để Thọ và Thanh duyệt.**
 Mọi việc đang đi chung nhánh `claude/keen-allen-wiz3em` vì phiên làm việc chỉ được đẩy lên một nhánh; mục 5 "mỗi ĐX một nhánh" chỉ áp dụng khi tách PR sau.
 
 Nguồn: báo cáo research "Sổ Gia Sư (sogiasu.com) + 14 nền tảng tham khảo" (bản 2.1, khảo sát 19/10/2026).
-File gốc không nằm trong repo, nên mỗi việc dưới đây trích lại ý chính của nó.
+Bản chữ (không ảnh) của báo cáo nay nằm ở `docs/kin/bao-cao/research-so-gia-su-2026-10-19.md` (NC2-005, Q8); mỗi việc dưới đây vẫn trích lại ý chính của nó.
 Đối chiếu với: `tien-do-dang-do.md` (ghi đến 16/10), `quyet-dinh-va-doi-chieu.md`, `quyet-dinh-giao-dien-va-hoc-phi.md`,
 `prisma/schema.prisma`, mã nguồn, và cột H/I/J/K của sheet *Trang tính1* (đọc 21/10).
 
