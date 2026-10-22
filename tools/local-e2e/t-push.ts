@@ -250,6 +250,75 @@ const err = (statusCode?: number) => Object.assign(new Error(statusCode ? `push 
   await new Promise(r => setTimeout(r, 300));
   check("người không có thiết bị (học sinh) nhận thông báo loại này → không đẩy, không lỗi", calls.length === 0);
 
+  section("NC2-010: phụ huynh bấm 'Tôi đã chuyển' → báo gia sư chủ phiếu (3 route, chống dội 24 giờ, cô lập, đẩy)");
+  const PA = await mkTutor("Cô Phương"), PB = await mkTutor("Thầy Quân"), PC = await mkTutor("Cô Cúc"), PD = await mkTutor("Thầy Đạt");
+  const sA = await mkUser({ name: "Em Nguyễn Văn Khoa" }), sB = await mkUser({ name: "Em Lê Thị Mai" }), sC = await mkUser({ name: "Em Trần Bảo" }), sP = await mkUser({ name: "Em Phạm Hùng" }), sQ = await mkUser({ name: "Em Vũ Quang" });
+  const parentU = await mkUser({ name: "Phụ huynh Khoa" });
+  const portal = (await import("@/lib/parentPortal")).generatePortalToken();
+  await prisma.parentLink.create({ data: { parentId: parentU.id, studentId: sB.id, status: "verified", verifiedAt: new Date(), portalToken: portal } });
+  const { generateInvoiceCode } = await import("@/lib/tuitionInvoice");
+  let ymSeq = 0;
+  const mkInv = async (tutor: TUser, stu: TUser, o: { status?: string; viewToken?: string } = {}) => prisma.tuitionInvoice.create({ data: {
+    code: generateInvoiceCode(), tutorId: tutor.id, studentId: stu.id, yearMonth: `2027-${String(++ymSeq).padStart(2, "0")}`, amountDue: 1_234_000, status: o.status ?? "sent",
+    viewToken: o.viewToken ?? null, viewTokenExpiresAt: o.viewToken ? new Date(Date.now() + 30 * 86400_000) : null,
+  } });
+  const viewTok = (await import("node:crypto")).randomBytes(16).toString("hex"); // ngẫu nhiên mỗi lần chạy: bộ giới hạn tốc độ của máy chủ nhớ theo token
+  const i1 = await mkInv(PA, sA, { viewToken: viewTok }), i2 = await mkInv(PA, sB), i3 = await mkInv(PA, sC), i4 = await mkInv(PB, sP);
+  const rep = (as: TUser | null, path: string) => api("POST", path, as ? { as } : {});
+  const pr = (t: TUser, extra: Record<string, unknown> = {}) => prisma.notification.findMany({ where: { userId: t.id, type: "parent_reported", ...extra } });
+  const rPhieu = `/api/phieu/${viewTok}/reported`, rPortal = (code: string) => `/api/parent-portal/${portal}/invoices/${code}/reported`, rMe = (code: string) => `/api/users/me/invoices/${code}/reported`;
+
+  const a1 = [await rep(null, rPhieu), await rep(null, rPhieu), await rep(null, rPhieu)];
+  check("route /api/phieu: bấm 3 lần → 200 cả ba (lần 2, 3 'alreadyReported'); phiếu sang parent_reported", a1.every(r => r.status === 200) && a1[0].json.alreadyReported === false && a1[1].json.alreadyReported === true && (await prisma.tuitionInvoice.findUnique({ where: { id: i1.id } }))?.status === "parent_reported", a1.map(r => r.json));
+  const a2 = [await rep(null, rPortal(i2.code)), await rep(null, rPortal(i2.code)), await rep(null, rPortal(i2.code))];
+  check("route parent-portal: bấm 3 lần → 200 cả ba", a2.every(r => r.status === 200), a2.map(r => r.json));
+  const a3 = [await rep(sC, rMe(i3.code)), await rep(sC, rMe(i3.code)), await rep(sC, rMe(i3.code))];
+  check("route users/me: bấm 3 lần → 200 cả ba", a3.every(r => r.status === 200), a3.map(r => r.json));
+  const nA = await pr(PA);
+  check("gia sư chủ phiếu có ĐÚNG 3 thông báo (mỗi phiếu đúng 1, qua từng route 3 lần bấm)", nA.length === 3 && new Set(nA.map(n => n.link)).size === 3, nA.map(n => n.link));
+  check("đích → /lop-cua-toi/hoc-phi (kèm khoá phiếu ở tham số `phieu`), chưa đọc", nA.every(n => /^\/lop-cua-toi\/hoc-phi\?phieu=[a-z0-9]+$/.test(n.link ?? "") && n.isRead === false) && nA.some(n => n.link === `/lop-cua-toi/hoc-phi?phieu=${i1.id}`));
+  const blob = JSON.stringify(nA.map(n => [n.title, n.message]));
+  check("chữ thông báo dựng từ LOẠI: không tên em / phụ huynh, không số tiền, không mã phiếu, không chữ số nào", !/Khoa|Mai|Bảo|Phạm/.test(blob) && !/\d/.test(blob) && !blob.includes(i1.code) && !/1\.234|1234/.test(blob), blob);
+  check("gia sư KHÁC (PB, PC) không nhận thông báo nào của phiếu PA", (await pr(PB)).length === 0 && (await pr(PC)).length === 0);
+  const rB = await rep(sP, rMe(i4.code));
+  check("phiếu của PB do em của PB báo → chỉ PB nhận (1), PA vẫn 3", rB.status === 200 && (await pr(PB)).length === 1 && (await pr(PA)).length === 3);
+
+  // Chống dội theo phiếu: đưa phiếu về 'sent' (như gia sư huỷ báo) rồi báo lại trong 24 giờ → ghi nhận lại nhưng không thêm thông báo.
+  await prisma.tuitionInvoice.update({ where: { id: i1.id }, data: { status: "sent" } });
+  const again = await rep(null, rPhieu);
+  check("báo lại cùng phiếu trong 24 giờ (sau khi về 'sent') → ghi nhận lại bình thường nhưng KHÔNG thêm thông báo", again.status === 200 && again.json.alreadyReported === false && (await pr(PA, { link: `/lop-cua-toi/hoc-phi?phieu=${i1.id}` })).length === 1);
+  await prisma.notification.updateMany({ where: { userId: PA.id, link: `/lop-cua-toi/hoc-phi?phieu=${i1.id}` }, data: { createdAt: new Date(Date.now() - 25 * 3600_000) } });
+  await prisma.tuitionInvoice.update({ where: { id: i1.id }, data: { status: "sent" } });
+  await rep(null, rPhieu);
+  check("sau 24 giờ (thông báo cũ đã 25 giờ) → báo lại thì có thông báo MỚI (2 cho phiếu này)", (await pr(PA, { link: `/lop-cua-toi/hoc-phi?phieu=${i1.id}` })).length === 2);
+
+  // Báo không thành công thì KHÔNG báo gia sư
+  const nBefore = (await pr(PA)).length;
+  const bad1 = await rep(null, `/api/phieu/${"b".repeat(32)}/reported`), bad2 = await rep(null, rPortal("KIN00000"));
+  const paid = await mkInv(PA, sQ); await prisma.tuitionInvoice.update({ where: { id: paid.id }, data: { status: "paid" } });
+  const bad3 = await rep(sQ, rMe(paid.code)), bad4 = await rep(sA, rMe(i2.code));
+  check("token rác (404), mã sai (404), phiếu đã đóng đủ (409), phiếu của em khác (404) → KHÔNG tạo thông báo nào", [bad1.status, bad2.status, bad3.status, bad4.status].join() === "404,404,409,404" && (await pr(PA)).length === nBefore, [bad1.status, bad2.status, bad3.status, bad4.status]);
+  check("tiền KHÔNG đổi: số đã thu của mọi phiếu vẫn 0 (chỉ báo tin)", (await prisma.tuitionInvoice.findMany({ where: { tutorId: { in: [PA.id, PB.id] } } })).every(i => i.paidAmount === 0));
+
+  // Đẩy: mặc định TẮT; bật thì đẩy với chữ cố định không số / tên (gọi thẳng markParentReported để bộ gửi giả trong tiến trình này bắt được)
+  reset();
+  const { markParentReported } = await import("@/lib/invoiceServer");
+  await post(PC, sub("pc")); await post(PD, sub("pd"));
+  const iC = await mkInv(PC, sA), iD = await mkInv(PD, sB);
+  await markParentReported(sA.id, iC.code);
+  await new Promise(r => setTimeout(r, 500));
+  check("công tắc parent_reported mặc định TẮT → có thông báo trong ứng dụng nhưng KHÔNG đẩy", (await pr(PC)).length === 1 && calls.length === 0, calls);
+  await put(PD, { parent_reported: true });
+  await markParentReported(sB.id, iD.code);
+  const quietNow2 = inQuietHours(vnMinutesOfDay(new Date()));
+  await new Promise(r => setTimeout(r, 600));
+  check(`bật công tắc: ${quietNow2 ? "đang giờ yên lặng thật → không đẩy" : "ngoài giờ yên lặng → đẩy đúng 1 tin tới máy của PD"}`, calls.length === (quietNow2 ? 0 : 1) && calls.every(c => c.endpoint === ep("pd")), calls);
+  if (!quietNow2) check("chữ đẩy = chữ của loại ('Có phụ huynh báo đã chuyển khoản, cần đối soát'), không chữ số, không tên; url /lop-cua-toi/hoc-phi", JSON.stringify(calls[0].payload) === JSON.stringify(pushPayload("parent_reported")) && !/\d|Lê Thị Mai/.test(JSON.stringify(calls[0].payload)) && calls[0].payload.url === "/lop-cua-toi/hoc-phi", calls[0]);
+  reset();
+  const dpd = await pushToUser(PD.id, "parent_reported", { now: DAY });
+  const npd = await pushToUser(PD.id, "parent_reported", { now: NIGHT });
+  check("ban ngày đẩy; 23:00 giờ VN (giờ yên lặng) thì không", dpd.sent === 1 && npd.skipped === "quiet-hours");
+
   setPushSender(null);
   await done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

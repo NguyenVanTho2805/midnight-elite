@@ -61,7 +61,7 @@ async function deliver(
  * Đẩy tin loại `type` tới mọi thiết bị đang bật của `userId`, nếu: loại đó nằm trong danh sách cho phép, hệ thống được phép gửi
  * (PUSH_ENABLED, khoá VAPID, không phải bản xem trước), gia sư chưa tắt loại đó, và (trừ báo nghỉ sát giờ) không đang giờ yên lặng.
  */
-export async function pushToUser(userId: string, type: string, o: { leadMinutes?: number; now?: Date; env?: Record<string, string | undefined> } = {}): Promise<PushOutcome> {
+export async function pushToUser(userId: string, type: string, o: { leadMinutes?: number; count?: number; now?: Date; env?: Record<string, string | undefined> } = {}): Promise<PushOutcome> {
   try {
     if (!isPushType(type)) return none("type-not-allowed");
     const cfg = pushConfig(o.env ?? process.env);
@@ -73,7 +73,7 @@ export async function pushToUser(userId: string, type: string, o: { leadMinutes?
     const subs = await prisma.pushSubscription.findMany({ where: { userId, revokedAt: null }, select: { id: true, endpoint: true, p256dh: true, auth: true } });
     if (!subs.length) return none("no-devices");
     // Báo nghỉ sát giờ cần thấy ngay (còn dưới 2 giờ tới giờ học) nên xin dịch vụ đẩy chuyển gấp; hai loại còn lại là tin thường.
-    return await deliver(cfg, subs, serializePayload(pushPayload(type)), { TTL: PUSH_DEFS[type].ttl, urgency: type === "absence_late" ? "high" : "normal" });
+    return await deliver(cfg, subs, serializePayload(pushPayload(type, { count: o.count })), { TTL: PUSH_DEFS[type].ttl, urgency: type === "absence_late" ? "high" : "normal" });
   } catch (e) {
     console.error("[push] pushToUser:", e);
     return { skipped: null, sent: 0, failed: 1, revoked: 0 };

@@ -24,16 +24,16 @@ const keys = webpush.generateVAPIDKeys();
 const P256DH = keys.publicKey, AUTH = keys.privateKey.slice(0, 22);
 /** Một thời điểm theo GIỜ VIỆT NAM (UTC+7). */
 const vn = (hh: number, mm = 0) => new Date(Date.UTC(2026, 9, 21, hh - 7, mm));
-const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_paid: true };
+const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_paid: true, parent_reported: true, unmarked_daily: true };
 
 (async () => {
   section("Loại tin và mặc định");
-  check("đúng ba loại: absence_late, bank_tx_pending, invoice_paid", eq(PUSH_TYPES, ["absence_late", "bank_tx_pending", "invoice_paid"]) && PUSH_TYPES.every(isPushType));
+  check("đúng năm loại: absence_late, bank_tx_pending, invoice_paid, parent_reported, unmarked_daily", eq(PUSH_TYPES, ["absence_late", "bank_tx_pending", "invoice_paid", "parent_reported", "unmarked_daily"]) && PUSH_TYPES.every(isPushType));
   check("loại lạ / không phải chuỗi không được nhận", !isPushType("enrollment") && !isPushType("thread_reply") && !isPushType("") && !isPushType(null) && !isPushType(5) && !isPushType("ABSENCE_LATE"));
-  check("mặc định: báo nghỉ sát giờ BẬT, tiền chưa khớp BẬT, phiếu đóng đủ TẮT (Thọ chốt 21/10)", eq(resolvePushTypes(undefined), { absence_late: true, bank_tx_pending: true, invoice_paid: false }));
+  check("mặc định: báo nghỉ sát giờ BẬT, tiền chưa khớp BẬT, phiếu đóng đủ TẮT (Thọ chốt 21/10)", eq(resolvePushTypes(undefined), { absence_late: true, bank_tx_pending: true, invoice_paid: false, parent_reported: false, unmarked_daily: false }));
   check("đọc khoan dung: rác / mảng / công tắc sai kiểu → dùng mặc định từng cái", eq(resolvePushTypes("x"), resolvePushTypes(undefined)) && eq(resolvePushTypes([true]), resolvePushTypes(undefined))
     && eq(resolvePushTypes({ absence_late: "false", bank_tx_pending: 0, invoice_paid: null }), resolvePushTypes(undefined)));
-  check("giá trị đã lưu thắng mặc định (cả hai chiều)", eq(resolvePushTypes({ absence_late: false, invoice_paid: true }), { absence_late: false, bank_tx_pending: true, invoice_paid: true }));
+  check("giá trị đã lưu thắng mặc định (cả hai chiều)", eq(resolvePushTypes({ absence_late: false, invoice_paid: true }), { absence_late: false, bank_tx_pending: true, invoice_paid: true, parent_reported: false, unmarked_daily: false }));
   check("readPushPrefs chỉ giữ công tắc đúng tên và đúng kiểu; không còn gì thì null", eq(readPushPrefs({ types: { absence_late: false, evil: true, bank_tx_pending: "x" } }), { types: { absence_late: false } })
     && readPushPrefs({ types: {} }) === null && readPushPrefs(null) === null && readPushPrefs({ types: [true] }) === null && readPushPrefs("x") === null);
   check("readPreferences GIỮ preferences.push (đổi giao diện không làm mất công tắc); khoá lạ bị bỏ", eq(readPreferences({ theme: "navy", push: { types: { invoice_paid: true }, junk: 1 } }).push, { types: { invoice_paid: true } })
@@ -75,7 +75,7 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   section("Chữ gửi đi: dựng từ LOẠI, không tên em, không số tiền");
   check("đúng chữ Figma G2 cho báo nghỉ và tiền chưa khớp", eq(pushPayload("absence_late"), { title: "Có 1 báo nghỉ sát giờ cần xử lý", body: "Bấm để mở Hộp việc.", url: "/lop-cua-toi" })
     && eq(pushPayload("bank_tx_pending"), { title: "Có khoản tiền vào chưa khớp phiếu", body: "Bấm để xem và gạch thủ công.", url: "/lop-cua-toi/hoc-phi?tab=doi-soat" }));
-  check("pushPayload chỉ nhận MỘT tham số (loại): không có đường nào đưa tên em / số tiền vào chữ", pushPayload.length === 1);
+  check("pushPayload nhận loại + tuỳ chọn { count } (không có đường nào khác đưa tên em / số tiền vào chữ)", pushPayload.length <= 2);
   check("mọi loại: chỉ ba khoá title/body/url; url là đường dẫn cùng tên miền (bắt đầu '/', không '//')", PUSH_TYPES.every(t => eq(Object.keys(pushPayload(t)), ["title", "body", "url"]) && /^\/(?!\/)/.test(pushPayload(t).url)));
   check("không có số tiền, số điện thoại hay dãy số nào trong chữ (chữ số duy nhất là '1' của 'Có 1 báo nghỉ')", PUSH_TYPES.every(t => { const s = `${PUSH_DEFS[t].title} ${PUSH_DEFS[t].body}`; return (s.match(/\d/g) ?? []).length === (t === "absence_late" ? 1 : 0) && !/VND|₫|\bđồng\b|@/i.test(s); }));
   check("serializePayload: JSON đúng ba khoá, không thêm gì; ≤ 300 byte (xa mức 4KB của dịch vụ đẩy)", PUSH_TYPES.every(t => { const j = JSON.parse(serializePayload(pushPayload(t))); return eq(Object.keys(j), ["title", "body", "url"]) && serializePayload(pushPayload(t)).length < 300; }));
@@ -253,7 +253,7 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   check("GET settings không trả endpoint hay khoá của thiết bị (select có endpoint chỉ để tính dấu vân tay; kết quả không có)", /endpoint: true/.test(src("src/app/api/push/settings/route.ts")) && !/endpoint: s\.endpoint|p256dh|auth: s\./.test(src("src/app/api/push/settings/route.ts").split("const devices")[1] ?? ""));
   check("lưu công tắc dùng CÙNG khoá giao dịch prefsLockKey với API giao diện / hồ sơ gia sư", /pg_advisory_xact_lock\(hashtext\(\$\{prefsLockKey\(auth\.userId\)\}\)\)/.test(src("src/app/api/push/settings/route.ts")));
   check("nút Gửi thử có giới hạn (nhật ký push.test) và không tính khi chưa có thiết bị", /action: "push\.test"/.test(src("src/app/api/push/test/route.ts")) && before(src("src/app/api/push/test/route.ts"), "devices === 0", "await logAction("));
-  check("chữ đẩy dựng từ LOẠI: pushServer không đọc bảng notifications và gọi pushPayload(type)", !/prisma\.notification|\.message\b[^)]/.test(server.replace(/\(r\.reason as Error\)\?\.message/, "")) && /pushPayload\(type\)/.test(server));
+  check("chữ đẩy dựng từ LOẠI: pushServer không đọc bảng notifications và gọi pushPayload(type)", !/prisma\.notification|\.message\b[^)]/.test(server.replace(/\(r\.reason as Error\)\?\.message/, "")) && /pushPayload\(type, \{ count: o\.count \}\)/.test(server));
   check("pushToUser kiểm môi trường (pushConfig) TRƯỚC khi đụng DB; loại ngoài danh sách thoát trước cả hai", before(server, "isPushType(type)", "pushConfig(") && before(server, "pushConfig(", "prisma.user.findUnique"));
   check("404 / 410 → đánh dấu revokedAt (không gửi nữa); lỗi khác không làm mất thiết bị", /code === 404 \|\| code === 410/.test(server) && /revokedAt: now/.test(server) && /else \{ failed\+\+/.test(server));
   check("báo nghỉ sát giờ xin dịch vụ đẩy chuyển GẤP (urgency high); hai loại kia bình thường", /type === "absence_late" \? "high" : "normal"/.test(server));
@@ -274,6 +274,21 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   check("đăng ký thất bại ở máy chủ thì gỡ đăng ký vừa tạo ở trình duyệt (không để lại đăng ký mồ côi)", /if \(createdHere\) await sub\.unsubscribe\(\)/.test(ui));
   check("chữ trên giao diện: có hướng dẫn iPhone 16.4+, giờ yên lặng 22:00–07:00 và ngoại lệ dưới 2 giờ", /iOS 16\.4/.test(ui) && /22:00–07:00/.test(ui) && /dưới 2 giờ/.test(ui) && /Dùng iPhone\?/.test(ui));
   check("không dùng màu hex trong giao diện mới (t-no-hex)", ![ui, src("src/lib/pushClient.ts"), rules, server].some(t => /#[0-9a-fA-F]{3,8}\b/.test(t)));
+
+  
+  section("NC2-010/011: parent_reported và unmarked_daily");
+  check("hai loại mới MẶC ĐỊNH TẮT (và ba loại cũ giữ nguyên mặc định)", PUSH_DEFS.parent_reported.defaultOn === false && PUSH_DEFS.unmarked_daily.defaultOn === false && PUSH_DEFS.absence_late.defaultOn && PUSH_DEFS.bank_tx_pending.defaultOn && !PUSH_DEFS.invoice_paid.defaultOn);
+  check("parent_reported: chữ 'Có phụ huynh báo đã chuyển khoản, cần đối soát'; đích /lop-cua-toi/hoc-phi; chữ không có chữ số", pushPayload("parent_reported").title === "Có phụ huynh báo đã chuyển khoản, cần đối soát" && pushPayload("parent_reported").url === "/lop-cua-toi/hoc-phi" && !/\d/.test(`${pushPayload("parent_reported").title} ${pushPayload("parent_reported").body}`));
+  check("parent_reported: bỏ qua `count` (kể cả count lạ) — chữ vẫn là chữ gốc", eq(pushPayload("parent_reported", { count: 7 }), pushPayload("parent_reported")) && eq(pushPayload("absence_late", { count: 7 }), pushPayload("absence_late")));
+  check("unmarked_daily: có `count` hợp lệ → đúng MỘT dãy số là N; đích /lop-cua-toi", [1, 2, 9, 10, 999].every(n => { const t = pushPayload("unmarked_daily", { count: n }); const all = `${t.title} ${t.body} ${t.url}`; return t.title === `Hôm qua có ${n} buổi chưa điểm danh` && eq(all.match(/\d+/g), [String(n)]) && t.url === "/lop-cua-toi"; }));
+  check("unmarked_daily: thiếu / sai `count` (0, âm, 1000, thập phân, NaN, chuỗi) → chữ gốc KHÔNG có số nào", [undefined, 0, -3, 1000, 2.5, NaN, Infinity, "3" as unknown as number].every(n => { const t = pushPayload("unmarked_daily", { count: n }); return t.title === PUSH_DEFS.unmarked_daily.title && !/\d/.test(`${t.title} ${t.body} ${t.url}`); }));
+  check("unmarked_daily: serializePayload vẫn đúng ba khoá, < 300 byte", (() => { const j = serializePayload(pushPayload("unmarked_daily", { count: 12 })); return eq(Object.keys(JSON.parse(j)), ["title", "body", "url"]) && j.length < 300; })());
+  const flip = (t: "parent_reported" | "unmarked_daily") => ({ ...resolvePushTypes(undefined), [t]: true });
+  check("mặc định, cả hai loại KHÔNG được đẩy dù ban ngày ('type-off'); bật thì đẩy ban ngày", (["parent_reported", "unmarked_daily"] as const).every(t => eq(decidePush({ type: t, types: resolvePushTypes(undefined), now: day }), { send: false, reason: "type-off" }) && decidePush({ type: t, types: flip(t), now: day }).send === true));
+  check("parent_reported: giờ yên lặng (23:00) KHÔNG đẩy, kể cả có leadMinutes nhỏ", eq(decidePush({ type: "parent_reported", types: ALL_ON, now: night, leadMinutes: 5 }), { send: false, reason: "quiet-hours" }));
+  check("unmarked_daily: đúng 07:00 và 07:05 giờ VN (giờ chạy cron) → ĐẨY; 06:59 → yên lặng", decidePush({ type: "unmarked_daily", types: ALL_ON, now: vn(7, 0) }).send === true && decidePush({ type: "unmarked_daily", types: ALL_ON, now: vn(7, 5) }).send === true && eq(decidePush({ type: "unmarked_daily", types: ALL_ON, now: vn(6, 59) }), { send: false, reason: "quiet-hours" }));
+  check("công tắc mới nhận qua bản vá; tên lạ vẫn bị từ chối cả bản vá", eq(parsePushTypesPatch({ parent_reported: true, unmarked_daily: false }), { ok: true, value: { parent_reported: true, unmarked_daily: false } }) && !parsePushTypesPatch({ parent_reported: true, evil: true }).ok);
+  check("quét tĩnh: notify() nhận { count } và chuyển cho pushToUser; pushServer chuyển count cho pushPayload", /opts\.count/.test(notifySrc) && /count: o\.count/.test(server));
 
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

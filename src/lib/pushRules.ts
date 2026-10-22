@@ -6,9 +6,11 @@
 //  • Giờ yên lặng 22:00–07:00 (classSessions.ts): chỉ tạo thông báo trong ứng dụng, không đẩy — trừ báo nghỉ sát giờ (còn dưới 2 giờ là tới giờ học).
 //  • Chỉ gửi thật khi PUSH_ENABLED=1 (đặt ở môi trường Production) và đủ khoá VAPID; bản xem trước của Vercel dùng chung DB với production nên không bao giờ gửi.
 //  • Loại tin ban đầu: absence_late, bank_tx_pending (mặc định BẬT) và invoice_paid (tuỳ chọn, mặc định TẮT).
+//  • NC2-010/011: thêm parent_reported (phụ huynh bấm "Tôi đã chuyển") và unmarked_daily (07:00 "Hôm qua có N buổi chưa điểm danh"), cả hai mặc định TẮT.
+//    Số duy nhất được phép đưa vào chữ đẩy là N của unmarked_daily (một số nguyên 1–999, truyền qua `count`); không tên, không số tiền.
 import { ABSENCE_NOTICE_MINUTES, inQuietHours, vnMinutesOfDay } from "@/lib/classSessions";
 
-export const PUSH_TYPES = ["absence_late", "bank_tx_pending", "invoice_paid"] as const;
+export const PUSH_TYPES = ["absence_late", "bank_tx_pending", "invoice_paid", "parent_reported", "unmarked_daily"] as const;
 export type PushType = (typeof PUSH_TYPES)[number];
 export type PushTypes = Record<PushType, boolean>;
 
@@ -40,7 +42,19 @@ export const PUSH_DEFS: Record<PushType, PushTypeDef> = {
     label: "Phiếu học phí đã đóng đủ", hint: "Tuỳ chọn, mặc định tắt.", defaultOn: false,
     title: "Có phiếu học phí vừa đóng đủ", body: "Bấm để xem phiếu.", url: "/lop-cua-toi/hoc-phi", ttl: 12 * 3600,
   },
+  parent_reported: {
+    label: "Phụ huynh báo đã chuyển khoản", hint: "Có phụ huynh báo đã chuyển khoản, cần đối soát. Mặc định tắt.", defaultOn: false,
+    title: "Có phụ huynh báo đã chuyển khoản, cần đối soát", body: "Bấm để xem phiếu học phí.", url: "/lop-cua-toi/hoc-phi", ttl: 12 * 3600,
+  },
+  unmarked_daily: {
+    label: "Nhắc điểm danh buổi hôm qua", hint: "7 giờ sáng báo hôm qua còn bao nhiêu buổi chưa điểm danh. Mặc định tắt.", defaultOn: false,
+    // Chữ gốc KHÔNG có số; pushPayload("unmarked_daily", { count }) chèn N.
+    title: "Hôm qua có buổi chưa điểm danh", body: "Bấm để mở Hộp việc.", url: "/lop-cua-toi", ttl: 12 * 3600,
+  },
 };
+
+/** N hợp lệ của unmarked_daily: số nguyên 1–999. */
+export const isUnmarkedCount = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 999;
 
 export const PUSH_TEST_TEXT = { title: "Thông báo thử từ KiN", body: "Nếu bạn thấy dòng này, thông báo đẩy đã hoạt động.", url: "/lop-cua-toi/cai-dat" } as const;
 
@@ -96,10 +110,14 @@ export function decidePush(o: { type: string; types: PushTypes; now: Date; leadM
 
 export interface PushPayload { title: string; body: string; url: string }
 
-/** Chữ gửi đi cho một loại — hàm của `type` và không gì khác. */
-export function pushPayload(type: PushType): PushPayload {
+/**
+ * Chữ gửi đi cho một loại — hàm của `type`; ngoại lệ DUY NHẤT là `opts.count` (chỉ unmarked_daily): số buổi chưa điểm danh hôm qua.
+ * `count` không hợp lệ (không phải số nguyên 1–999) hoặc dùng cho loại khác thì bị bỏ qua — chữ vẫn là chữ gốc của loại.
+ */
+export function pushPayload(type: PushType, opts: { count?: number } = {}): PushPayload {
   const d = PUSH_DEFS[type];
-  return { title: d.title, body: d.body, url: d.url };
+  const title = type === "unmarked_daily" && isUnmarkedCount(opts.count) ? `Hôm qua có ${opts.count} buổi chưa điểm danh` : d.title;
+  return { title, body: d.body, url: d.url };
 }
 
 /** Chuỗi JSON gửi qua dịch vụ đẩy: đúng ba khoá, không thêm gì (service worker chỉ tin ba khoá này). */
