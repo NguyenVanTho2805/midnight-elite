@@ -3,7 +3,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from "playwrig
 import { BASE, cookieFor, type TUser } from "./h";
 
 let browser: Browser | null = null;
-export const ADMIN = "http://admin.midnightelite-edu.com:3100"; // middleware ép /admin sang host này
+export const ADMIN = `http://admin.midnightelite-edu.com:${new URL(BASE).port || 3100}`; // middleware ép /admin sang host này (cổng theo BASE)
 export async function launch() {
   // CHROMIUM_PATH: đường dẫn trình duyệt Chromium/Chrome. Mặc định là bản Playwright trong hộp cát Linux; trên máy Mac đặt
   // CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" (xem env.example.sh).

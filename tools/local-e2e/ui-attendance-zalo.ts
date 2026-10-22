@@ -2,7 +2,7 @@ import { BASE, api, mkUser, mkTutor, mkCourse, wipe, check, eventually, section,
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 (async () => {
