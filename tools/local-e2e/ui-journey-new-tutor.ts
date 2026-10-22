@@ -201,7 +201,8 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await eventually("drawer đóng, lớp hiện trong danh sách", async () => (await drawerTitle.isHidden().catch(() => false)) && (await body()).includes(courseName), 60000);
   end();
   check("DB: lớp tạo ra thuộc gia sư (ownerId) và đang mở", course.ownerId === u0!.id && course.status === true, { ownerId: course.ownerId, status: course.status });
-  check("DB: ô 'Gia sư' của lớp tự điền TÊN gia sư (không còn mặc định 'KiN' — sửa chặn nhỏ của NC2-021)", course.instructor === NAME && course.teacherAvatar === NAME[0], { instructor: course.instructor, avatar: course.teacherAvatar });
+  console.log(`  ghi nhận: ô 'Gia sư' của lớp mới = ${JSON.stringify(course.instructor)} (ĐỀ XUẤT chưa làm: tự điền tên gia sư — ghi tên thật vào thẻ lớp CÔNG KHAI, mâu thuẫn công tắc Ẩn hồ sơ, chờ Thọ quyết)`);
+  check("DB: lớp có người dạy được ghi (giá trị mặc định hiện tại; xem ghi nhận ở trên)", typeof course.instructor === "string" && course.instructor.length > 0, { instructor: course.instructor, avatar: course.teacherAvatar });
 
   // ───────────────────── G3: khung giờ học ở trang quản khoá (tab Lịch học) ─────────────────────
   begin("G3", "lớp → khung giờ học");

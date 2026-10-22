@@ -46,10 +46,12 @@ const src = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
   section("Quét tĩnh: cron + notify");
   const cron = src("src/app/api/cron/remind-class/route.ts");
-  const iCall = cron.indexOf("sendUnmarkedDaily()"), iEarly = cron.indexOf("if (todays.length === 0)");
-  check("cron gọi sendUnmarkedDaily() TRƯỚC lệnh thoát sớm 'todays.length === 0' (ngày mai không có buổi vẫn báo tin hôm qua)", iCall > 0 && iEarly > 0 && iCall < iEarly);
+  const iEarly = cron.indexOf("if (todays.length === 0)"), iEarlyRet = cron.indexOf("return NextResponse.json({ sent: 0", iEarly), iEarlyCall = cron.indexOf("await runUnmarked()", iEarly);
+  check("cron gọi runUnmarked() Ở nhánh thoát sớm 'todays.length === 0', TRƯỚC lệnh return (ngày mai không có buổi vẫn báo tin hôm qua)", iEarly > 0 && iEarlyCall > iEarly && iEarlyCall < iEarlyRet);
+  const iLoop = cron.indexOf("for (const sched of"), iFinalCall = cron.lastIndexOf("await runUnmarked()"), iFinalRet = cron.lastIndexOf("return NextResponse.json({");
+  check("cron: tin hôm qua chạy SAU vòng nhắc học viên (nhắc lịch học viên đi trước), rồi mới trả kết quả", iLoop > 0 && iFinalCall > iLoop && iFinalCall < iFinalRet && iFinalCall !== iEarlyCall);
   check("cron: cả hai nhánh trả JSON đều có trường `unmarked`, trường cũ (sent, message, day, schedules) còn nguyên", /sent: 0, message:[^\n]*unmarked \}/.test(cron) && /schedules: log/.test(cron) && /sent:      totalSent,\s+unmarked,/.test(cron));
-  check("cron: lỗi của tin hôm qua bị bắt (try/catch), không làm hỏng phần nhắc học viên", /try \{ unmarked = await sendUnmarkedDaily\(\)/.test(cron));
+  check("cron: lỗi của tin hôm qua bị bắt (try/catch), không làm hỏng phần nhắc học viên", /try \{ return await sendUnmarkedDaily\(\); \} catch/.test(cron));
   check("cron: đoạn xác thực CRON_SECRET không bị đụng", /const secret = process\.env\.CRON_SECRET;[\s\S]{0,300}Bearer \$\{secret\}/.test(cron));
   const srv = src("src/lib/unmarkedDailyServer.ts");
   check("chỉ duyệt gia sư có lớp mở + khung giờ hoạt động (một truy vấn), không quét mọi người dùng", /classSchedules: \{ some: \{ active: true \} \}/.test(srv) && !/prisma\.user\.findMany/.test(srv));

@@ -54,7 +54,7 @@ export function buildWeeklyScheduleMessage(i: { subject: string; from: string; o
     return head;
   });
   return [
-    `KiN gửi lịch học tuần ${ddmm(i.from)} – ${ddmm(to)} của lớp ${i.subject}:`,
+    `Lịch học tuần ${ddmm(i.from)} – ${ddmm(to)} của lớp ${i.subject}:`,
     ...lines,
     "Cần nghỉ thì báo riêng với thầy/cô trước giờ học nhé.",
   ].join("\n");

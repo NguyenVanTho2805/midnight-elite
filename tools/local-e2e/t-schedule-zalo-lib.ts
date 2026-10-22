@@ -14,7 +14,7 @@ const occ = (courseId: string, name: string, dateKey: string, s: string, e: stri
 section("Buổi thường");
 const normal = [occ("c1", "Toán 9", "2026-10-19", "18:00", "19:30"), occ("c1", "Toán 9", "2026-10-21", "18:00", "19:30")];
 const m1 = buildWeeklyScheduleMessage({ subject: "Toán 9", from: FROM, occurrences: normal });
-check("tiêu đề ghi rõ ngày bắt đầu–kết thúc tuần và tên lớp", m1.split("\n")[0] === "KiN gửi lịch học tuần 19/10 – 25/10 của lớp Toán 9:", m1);
+check("tiêu đề ghi rõ ngày bắt đầu–kết thúc tuần và tên lớp", m1.split("\n")[0] === "Lịch học tuần 19/10 – 25/10 của lớp Toán 9:", m1);
 check("mỗi buổi: thứ + dd/mm + giờ bắt đầu–kết thúc", m1.includes("- Thứ Hai 19/10, 18:00–19:30") && m1.includes("- Thứ Tư 21/10, 18:00–19:30"), m1);
 check("kết thúc bằng câu báo nghỉ riêng", m1.endsWith("Cần nghỉ thì báo riêng với thầy/cô trước giờ học nhé."));
 check("không có chữ 'nghỉ)' hay 'dời' khi mọi buổi thường", !/\(nghỉ\)|dời/.test(m1));

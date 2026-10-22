@@ -26,10 +26,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // NC2-011: tin "Hôm qua có N buổi chưa điểm danh" chạy TRƯỚC phần nhắc ngày mai, vì phần dưới thoát sớm khi ngày mai không có buổi nào.
-  // Lỗi ở đây không được làm hỏng phần nhắc học viên.
-  let unmarked: UnmarkedDailyResult | { error: true };
-  try { unmarked = await sendUnmarkedDaily(); } catch (e) { console.error("[cron/remind-class] unmarked_daily:", e); unmarked = { error: true }; }
+  // NC2-011: tin "Hôm qua có N buổi chưa điểm danh" (gia sư). Chạy SAU phần nhắc học viên để nếu nó chậm / hết giờ thì nhắc lịch học viên ngày mai
+  // (việc cũ, quan trọng hơn) đã đi rồi; nhưng phải gọi ở CẢ hai nhánh trả về, vì phần nhắc học viên thoát sớm khi ngày mai không có buổi nào.
+  // Lỗi ở đây không được làm hỏng phản hồi của cron.
+  const runUnmarked = async (): Promise<UnmarkedDailyResult | { error: true }> => {
+    try { return await sendUnmarkedDaily(); } catch (e) { console.error("[cron/remind-class] unmarked_daily:", e); return { error: true }; }
+  };
 
   // Thứ của ngày mai theo giờ VN (UTC+7) — xem vnDayOfWeek trong lib/types.ts
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -64,6 +66,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (todays.length === 0) {
+    const unmarked = await runUnmarked();
     return NextResponse.json({ sent: 0, message: `Không có buổi học nào vào ${dayLabel}`, unmarked });
   }
 
@@ -109,6 +112,7 @@ export async function GET(req: NextRequest) {
 
   console.log(`[cron/remind-class] ${dayLabel} →`, log.join(" | "), `| Đã gửi: ${totalSent}`);
 
+  const unmarked = await runUnmarked();
   return NextResponse.json({
     day:       dayLabel,
     schedules: log,

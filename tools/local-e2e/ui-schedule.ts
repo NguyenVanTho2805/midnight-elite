@@ -176,7 +176,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await wdlg.waitFor();
   const wta = wdlg.getByLabel("Tin lịch tuần (sửa được trước khi gửi)");
   const wtext = await wta.inputValue();
-  check("tin ghi ngày bắt đầu–kết thúc tuần và tên lớp", wtext.startsWith(`KiN gửi lịch học tuần ${weekTitle(wk)} của lớp Toán 9:`), wtext);
+  check("tin ghi ngày bắt đầu–kết thúc tuần và tên lớp", wtext.startsWith(`Lịch học tuần ${weekTitle(wk)} của lớp Toán 9:`), wtext);
   check("buổi huỷ ghi '(nghỉ)', buổi dời ghi ngày/giờ MỚI", wtext.includes(`${ddm(mon)}, 18:00–19:00 (nghỉ)`) && wtext.includes(`${ddm(thuK)}, 15:00–16:00 (dời từ`), wtext);
   check("tin không có tên em, tiền, link", !/Em An|Em Bình|\d\s?đ(?![\p{L}])|https?:/iu.test(wtext), wtext);
   check("nút gửi là 'Mở nhóm Zalo lớp' vì lớp có link nhóm; có 'Chép tin'", await wdlg.getByRole("button", { name: "Mở nhóm Zalo lớp" }).isVisible() && await wdlg.getByRole("button", { name: "Chép tin" }).isVisible());
