@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton, KinConfirm } from "@/components/kin";
 import { Badge, CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 import { KinCopyButton } from "@/components/kin/CopyButton";
+import BulkInvite from "@/components/tutor/BulkInvite";
 
 export interface Invite {
   id: string; code: string; maxUses: number | null; usedCount: number;
@@ -119,7 +120,7 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
 }
 
 // Khối đầy đủ cho Hộp việc của lớp.
-export default function ClassInvitesPanel({ courseId }: { courseId: string }) {
+export default function ClassInvitesPanel({ courseId, courseName, tutorName }: { courseId: string; courseName?: string; tutorName?: string | null }) {
   const [items, setItems] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -143,6 +144,7 @@ export default function ClassInvitesPanel({ courseId }: { courseId: string }) {
   return (
     <div className="space-y-4">
       <ClassInviteForm courseId={courseId} onCreated={() => load()} />
+      {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => load()} /> : null}
       {loading ? <div className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />
         : failed ? <div role="alert" className="rounded-xl p-5 text-center text-sm" style={CARD_STYLE}>Không tải được danh sách mã mời. <button className="underline font-semibold" onClick={load}>Thử lại</button></div>
         : <ClassInviteList items={items} onChanged={load} />}

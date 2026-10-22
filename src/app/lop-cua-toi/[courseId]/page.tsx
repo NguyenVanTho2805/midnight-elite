@@ -50,5 +50,10 @@ export default async function LopPage({ params }: Props) {
 
   const roleView: "tutor" | "student" = isOwner || isElevated ? "tutor" : "student";
 
-  return <OutlookShell courseId={course.id} courseName={course.name} category={course.category} role={roleView} />;
+  // Tên người đang xem để tin mời phụ huynh tự giới thiệu gia sư; học viên không cần.
+  const viewerName = roleView === "tutor"
+    ? (await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true } }))?.name ?? null
+    : null;
+
+  return <OutlookShell courseId={course.id} courseName={course.name} category={course.category} role={roleView} viewerName={viewerName} />;
 }
