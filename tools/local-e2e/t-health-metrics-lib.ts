@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  MIN_SAMPLE, METRIC_DEFS, METRIC_ORDER, ON_TIME_AFTER_DATE_MS, PAY_WINDOW_DAYS,
+  MIN_SAMPLE, METRIC_DEFS, METRIC_ORDER, ON_TIME_AFTER_DATE_MS, PAY_WINDOW_DAYS, ACTIVATION_ORDER,
+  activationMetrics, hoursText, hoursToFirstClass, median, parseCourseCreatedAt,
   adoptionMetrics, bankMetrics, classifyTx, firstTutorMark, insufficientText, invoiceMetrics, percentOf, ratio, ratioText, sampleText, timelinessMetric,
   type InvoiceRow, type MarkRecord, type SessionRow, type TxRow,
 } from "@/lib/healthMetrics";
@@ -112,6 +113,71 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms);
   check("đếm theo gia sư, không theo số buổi/phiếu (a hai buổi vẫn là 1)", adoptionMetrics(["a"], ["a", "a", "a"], ["a", "a"]).teaching === 1);
   check("tử số luôn ≤ mẫu số", (() => { const r = adoptionMetrics(["a", "b"], ["a", "b", "c"], ["a", "b", "c", "d"]); return r.teaching <= r.tutors && r.invoicing <= r.tutors; })());
 
+  section("Gia sư mới vào — chỉ số 7, 8, 9 (NC2-020)");
+  check("Course.createdAt dạng vi-VN có giờ chữ / chỉ ngày / ISO ngày / ISO có giờ đều ra đúng thời điểm (ngày ghi trên lớp, 08:00 giờ VN)",
+    parseCourseCreatedAt("22/10/2026 08:00:00")?.toISOString() === "2026-10-22T01:00:00.000Z" && parseCourseCreatedAt("22/10/2026")?.toISOString() === "2026-10-22T01:00:00.000Z"
+    && parseCourseCreatedAt("2026-10-22")?.toISOString() === "2026-10-22T01:00:00.000Z" && parseCourseCreatedAt("2026-10-22T03:12:00.000Z")?.toISOString() === "2026-10-22T03:12:00.000Z");
+  check("chuỗi lạ / rỗng / ngày không có thật (31/02) → null, không đoán", parseCourseCreatedAt("abc") === null && parseCourseCreatedAt("") === null && parseCourseCreatedAt(null) === null && parseCourseCreatedAt("31/02/2026 08:00:00") === null && parseCourseCreatedAt("13/13/2026") === null);
+  const REG = new Date("2026-10-21T05:00:00Z"); // 12:00 giờ VN
+  const iso = (ms: number) => new Date(REG.getTime() + ms).toISOString();
+  check("giờ tới lớp đầu: lấy lớp SỚM nhất; chưa có lớp → null", hoursToFirstClass(REG, [iso(5 * HOUR), iso(2 * HOUR)]) === 2 && hoursToFirstClass(REG, []) === null);
+  check("lớp cùng ngày đăng ký nhưng giờ chữ 08:00 rơi trước lúc đăng ký → 0 giờ, không âm", hoursToFirstClass(REG, ["21/10/2026 08:00:00"]) === 0);
+  check("lớp có NGÀY trước ngày đăng ký (dữ liệu lệch) và lớp không đọc được → bỏ, không thành 'lớp đầu'", hoursToFirstClass(REG, ["20/10/2026 08:00:00", "abc"]) === null && hoursToFirstClass(REG, ["20/10/2026", iso(3 * HOUR)]) === 3);
+  check("trung vị: lẻ, chẵn, rỗng", median([5, 1, 3]) === 3 && median([1, 2, 3, 4]) === 2.5 && median([]) === null && median([7]) === 7);
+  check("chữ giờ: 5,5 giờ · 1 giờ · 30 phút · —", hoursText(5.5) === "5,5 giờ" && hoursText(1) === "1 giờ" && hoursText(0.5) === "30 phút" && hoursText(null) === "—");
+
+  // Dựng lứa: 13 gia sư T0..T12 đăng ký cách đây 10 ngày; Y1 mới 3 giờ; Y2 3 ngày; Out1 ngoài khoảng 30 ngày.
+  const reg10 = ago(10 * DAY);
+  const rg = (ms: number) => new Date(reg10.getTime() + ms).toISOString();
+  const tutors = [
+    ...Array.from({ length: 13 }, (_, i) => ({ id: `T${i}`, createdAt: reg10 })),
+    { id: "Y1", createdAt: ago(3 * HOUR) }, { id: "Y2", createdAt: ago(3 * DAY) }, { id: "Out1", createdAt: ago(40 * DAY) },
+  ];
+  const courses = [
+    ...[0, 1, 2, 3, 4, 5].map(i => ({ ownerId: `T${i}`, createdAt: rg(2 * HOUR) })),     // trong 24 giờ
+    { ownerId: "T6", createdAt: rg(24 * HOUR) },                                          // đúng 24 giờ: kịp
+    { ownerId: "T7", createdAt: rg(24 * HOUR + 1000) },                                   // trễ 1 giây: không kịp
+    { ownerId: "T8", createdAt: rg(72 * HOUR) },                                          // 3 ngày
+    { ownerId: "T11", createdAt: "abc" },                                                 // không đọc được → coi như chưa có lớp
+    { ownerId: "T12", createdAt: rg(5 * HOUR) },
+    { ownerId: "Y1", createdAt: new Date(ago(3 * HOUR).getTime() + HOUR).toISOString() },
+    { ownerId: "Y2", createdAt: new Date(ago(3 * DAY).getTime() + HOUR).toISOString() },
+    { ownerId: "Out1", createdAt: new Date(ago(40 * DAY).getTime() + HOUR).toISOString() },
+    { ownerId: "KHONG-CO-TRONG-TAP", createdAt: rg(HOUR) },                              // người ngoài tập: bỏ
+    { ownerId: null, createdAt: rg(HOUR) },                                                // lớp không chủ: bỏ
+  ];
+  const dayUtc = (ms: number) => new Date(`${new Date(reg10.getTime() + ms + 7 * HOUR).toISOString().slice(0, 10)}T00:00:00Z`);
+  const taught = [
+    ...[0, 1, 2, 3, 4].map(i => ({ ownerId: `T${i}`, date: dayUtc(3 * DAY) })),
+    { ownerId: "T5", date: dayUtc(7 * DAY) },          // 2026-10-18 00:00Z ≤ đăng ký + 7×24h: kịp
+    { ownerId: "T6", date: dayUtc(8 * DAY) },          // ngày thứ 8: không kịp
+    { ownerId: "T7", date: dayUtc(-1 * DAY) },         // trước ngày đăng ký: không tính
+    { ownerId: null, date: dayUtc(DAY) },
+  ];
+  const act = activationMetrics(tutors, courses, taught, NOW, 30);
+  check("đăng ký trong 30 ngày = 15 (Out1 ngoài khoảng bị loại)", act.registered === 15, act.registered);
+  check("chỉ số 7: 9/14 — mẫu số là gia sư đã đủ 24 giờ (Y1 mới 3 giờ KHÔNG tính); T6 đúng 24h kịp, T7 trễ 1 giây không; 'abc' = chưa có lớp",
+    act.classIn24h.n === 9 && act.classIn24h.d === 14 && act.classIn24h.enough && ratioText(act.classIn24h) === "64%", act.classIn24h);
+  check("chỉ số 8: 6/13 — mẫu số là gia sư đã đủ 7 ngày (Y2 mới 3 ngày không tính); đúng 7×24h kịp, ngày thứ 8 / trước ngày đăng ký / lớp không chủ không tính",
+    act.taughtIn7d.n === 6 && act.taughtIn7d.d === 13 && act.taughtIn7d.enough && ratioText(act.taughtIn7d) === "46%", act.taughtIn7d);
+  check("chỉ số 9: trung vị 2 giờ trên 12 gia sư đã có lớp (gồm cả Y1, Y2; không gồm người chưa có lớp)", act.firstClassHours.n === 12 && act.firstClassHours.enough && act.firstClassHours.hours === 2, act.firstClassHours);
+  check("khoảng lứa ghi rõ: 24h lùi 24 giờ, 7 ngày lùi 7 ngày", act.cohort24.to.getTime() === NOW.getTime() - 24 * HOUR && act.cohort7.to.getTime() === NOW.getTime() - 7 * DAY && act.cohort24.from.getTime() === NOW.getTime() - 30 * DAY);
+  const young = activationMetrics(tutors.filter(x => ["T0", "T1", "T2", "T3", "T4", "T5"].includes(x.id)), courses, taught, NOW, 30);
+  check("ít gia sư (6 < 10): cả ba chỉ số 'chưa đủ dữ liệu', không có phần trăm và không có trung vị, vẫn có số mẫu",
+    !young.classIn24h.enough && young.classIn24h.rate === null && young.classIn24h.d === 6 && !young.taughtIn7d.enough && young.taughtIn7d.d === 6 && !young.firstClassHours.enough && young.firstClassHours.hours === null && young.firstClassHours.n === 6 && /^6 gia sư · cần từ 10/.test(insufficientText(young.classIn24h, "gia sư")), young);
+  const only9 = activationMetrics(tutors.slice(0, 9), [], [], NOW, 30);
+  check("9 gia sư không ai có lớp: 0/9 chưa đủ (không hiện 0%); trung vị n=0", !only9.classIn24h.enough && ratioText(only9.classIn24h) === "—" && only9.firstClassHours.n === 0 && only9.firstClassHours.hours === null);
+  const newOnly = activationMetrics([{ id: "N", createdAt: ago(23 * HOUR) }], [], [], NOW, 7);
+  check("gia sư đăng ký 23 giờ trước: chưa vào mẫu số của chỉ số 7 và 8 (không bị tính là 'bỏ')", newOnly.registered === 1 && newOnly.classIn24h.d === 0 && newOnly.taughtIn7d.d === 0);
+  const edge7 = activationMetrics([{ id: "E", createdAt: ago(7 * DAY) }, { id: "E2", createdAt: ago(7 * DAY + 1000) }], [], [], NOW, 7);
+  check("ranh giới khoảng 7 ngày và tuổi 7 ngày: đúng 7×24h thì tính (cả khoảng lẫn tuổi), quá 1 giây thì ra khỏi khoảng", edge7.registered === 1 && edge7.taughtIn7d.d === 1, edge7);
+  const edge24 = activationMetrics([{ id: "E", createdAt: ago(24 * HOUR) }, { id: "E2", createdAt: ago(24 * HOUR - 1000) }], [], [], NOW, 30);
+  check("ranh giới tuổi 24 giờ: đúng 24 giờ thì vào mẫu số, thiếu 1 giây thì chưa", edge24.classIn24h.d === 1, edge24.classIn24h);
+  check("ba thẻ mới có định nghĩa + mẫu số, và định nghĩa nói rõ tập gia sư được tính + giới hạn giờ của lớp",
+    ACTIVATION_ORDER.length === 3 && ACTIVATION_ORDER.every(k => { const d = METRIC_DEFS[k]; return d.key === k && d.definition.length > 60 && d.denominator.length > 10; })
+    && /chưa được duyệt/.test(METRIC_DEFS.actClass.definition) && /NGÀY ghi trên lớp/.test(METRIC_DEFS.actClass.definition) && /buổi đã dạy/.test(METRIC_DEFS.actTeach.definition) && /chưa có lớp không nằm/.test(METRIC_DEFS.actMedian.definition));
+  check("kết quả chỉ có số và ngày: không có id / tên gia sư", !/"(id|name|email|ownerId|tutorId)"/.test(JSON.stringify(act)));
+
   section("Định nghĩa hiện trên màn");
   check("đủ sáu chỉ số, không trùng, mỗi chỉ số có tên + định nghĩa + mẫu số", METRIC_ORDER.length === 6 && new Set(METRIC_ORDER).size === 6 && METRIC_ORDER.every(k => { const d = METRIC_DEFS[k]; return d.key === k && d.title.length > 3 && d.definition.length > 30 && d.denominator.length > 5; }));
   check("định nghĩa nói thật giới hạn: 'đã mở Zalo' không phải 'đã gửi'; điểm danh chỉ đo buổi đã có", /không biết tin có thật sự được gửi/.test(METRIC_DEFS.zaloOpened.definition) && /Chỉ đo các buổi ĐÃ có điểm danh/.test(METRIC_DEFS.timely.definition));
@@ -128,6 +194,10 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms);
   check("truy vấn tái dùng định nghĩa 'buổi đã dạy' của ĐX-00 và bộ lọc gia sư công khai", /taughtSessionWhere\(now\)/.test(srv) && /tutorVerified: true, banned: false, profileLockedAt: null/.test(srv));
   check("trang: PermissionGuard MANAGE_TUTORS, vẽ đủ sáu chỉ số theo METRIC_ORDER, có 'Chưa đủ dữ liệu' và 'Mẫu số:'",
     /PermissionGuard required=\{PERMISSIONS\.MANAGE_TUTORS\}/.test(page) && /METRIC_ORDER\.map/.test(page) && /Chưa đủ dữ liệu/.test(page) && /Mẫu số:/.test(page) && /METRIC_DEFS\[k\]/.test(page));
+  check("NC2-020: truy vấn gia sư mới chỉ chọn id + createdAt, lớp chỉ ownerId + createdAt, buổi chỉ date + ownerId; không đòi tutorVerified; vẫn loại cấm / khoá hồ sơ",
+    /where: \{ role: "admin", adminRole: "teacher", banned: false, profileLockedAt: null, createdAt: \{ gte: since, lte: now \} \},\s*select: \{ id: true, createdAt: true \}/.test(srv)
+    && /select: \{ ownerId: true, createdAt: true \}/.test(srv) && /select: \{ date: true, course: \{ select: \{ ownerId: true \} \} \}/.test(srv));
+  check("NC2-020: trang vẽ nhóm 'Gia sư mới vào' theo ACTIVATION_ORDER", /ACTIVATION_ORDER\.map/.test(page) && /Gia sư mới vào/.test(page));
   check("trang: chọn 7 / 30 / 90 ngày, có trạng thái đang tải và lỗi + Thử lại", /\[7, 30, 90\]/.test(page) && /aria-busy="true"/.test(page) && /role="alert"/.test(page) && /Thử lại/.test(page));
   check("trang không viết số tự nghĩ: mọi số lấy từ dữ liệu API (không có chuỗi phần trăm cố định)", !/\b\d{1,3}%/.test(page.replace(/{ratioText[^}]*}/g, "")));
   const baoCao = ADMIN_MODULES.find(x => x.key === "bao-cao");
