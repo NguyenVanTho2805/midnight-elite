@@ -60,7 +60,7 @@ const DAY = 24 * 60 * 60 * 1000;
   const w = await api("GET", "/api/wallet", { as: S });
   check("học sinh xem ví → 200, đúng số dư", w.status === 200 && w.json.balance === 1_000_000, w.json);
   const tp = await api("POST", "/api/wallet/topups", { as: S, body: { amountVnd: 100000, bankRef: "FTNC2023" } });
-  check("học sinh gửi yêu cầu nạp → 201 (cả hai chế độ)", tp.status === 201, tp.json);
+  check("học sinh gửi yêu cầu nạp → 403 (cả hai chế độ): Coin học sinh chỉ nhận từ làm bài", tp.status === 403 && (await prisma.coinTopupRequest.count({ where: { userId: S.id } })) === 0, tp.json);
   check("học sinh xem danh sách yêu cầu nạp → 200", (await api("GET", "/api/wallet/topups", { as: S })).status === 200);
   await done();
 })();

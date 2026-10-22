@@ -90,7 +90,8 @@ export default function CoinWalletPage() {
       .catch(() => { if (!off) setTrial(false); });
     return () => { off = true; };
   }, [isTutor]);
-  const hideTopup = isTutor && trial !== false;  // chờ biết cờ rồi mới hiện form: không chớp form mua trước banner
+  // Học sinh không nạp Coin bằng tiền (Coin chỉ nhận từ làm bài). Gia sư: chờ biết cờ rồi mới hiện form, không chớp form mua trước banner.
+  const hideTopup = !isTutor || trial !== false;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,9 +124,11 @@ export default function CoinWalletPage() {
       <div>
         <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Ví Coin</h1>
         <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-          {hideTopup
-            ? "1 Coin = 1 VND. Coin dùng cho các hoạt động cộng đồng."
-            : "1 Coin = 1 VND. Nạp Coin để mua gói VIP, hoặc dùng cho các hoạt động cộng đồng."}
+          {!isTutor
+            ? "Coin nhận được khi làm bài đúng hạn và đúng nhiều, làm nhanh được thêm. Coin không mua được bằng tiền."
+            : hideTopup
+              ? "1 Coin = 1 VND. Coin dùng cho các hoạt động cộng đồng."
+              : "1 Coin = 1 VND. Nạp Coin để mua gói VIP, hoặc dùng cho các hoạt động cộng đồng."}
         </p>
       </div>
 
@@ -138,7 +141,7 @@ export default function CoinWalletPage() {
       </div>
 
       {/* Giai đoạn chạy thử (NC2-023): gia sư thấy banner thay cho form nạp */}
-      {hideTopup && trial === true && (
+      {isTutor && hideTopup && trial === true && (
         <div role="status" className="rounded-2xl p-5 space-y-1" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
           <h2 className="font-bold text-base" style={{ color: "var(--kin-nhan-link)" }}>{TRIAL_MODE_BANNER_TITLE}</h2>
           <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{TRIAL_MODE_BANNER_BODY}</p>

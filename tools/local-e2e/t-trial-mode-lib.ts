@@ -35,7 +35,7 @@ import { check, section, done } from "./h";
   const walletLinks = hits(/["'`]\/student\/vi["'`?#]/, "src").filter(f => f.endsWith(".tsx"));
   check("liên kết tới /student/vi chỉ nằm ở vỏ học sinh (gia sư không có mục menu nào dẫn tới)", walletLinks.length === 1 && walletLinks[0] === "src/components/student/StudentShell.tsx", walletLinks);
   const vi = files.find(f => f.rel === "src/app/(student)/student/vi/page.tsx")!.txt;
-  check("trang /student/vi dùng cờ (hàm hideTopup) và bọc form nạp bằng !hideTopup", /hideTopup\s*=\s*isTutor\s*&&\s*trial\s*!==\s*false/.test(vi) && /\{!hideTopup && <form/.test(vi));
+  check("trang /student/vi dùng cờ (hàm hideTopup: học sinh luôn ẩn, gia sư theo cờ) và bọc form nạp bằng !hideTopup", /hideTopup\s*=\s*!isTutor\s*\|\|\s*trial\s*!==\s*false/.test(vi) && /\{!hideTopup && <form/.test(vi));
   const purchase = files.find(f => f.rel === "src/app/api/subscriptions/[code]/purchase/route.ts")!.txt;
   const iGate = purchase.indexOf("isTrialMode()"), iDb = purchase.indexOf("await prisma.$transaction");
   check("API mua gói chặn bằng isTrialMode() TRƯỚC prisma.$transaction", iGate > 0 && iDb > iGate && /status:\s*403/.test(purchase.slice(iGate, iDb)));

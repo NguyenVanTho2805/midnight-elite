@@ -114,3 +114,11 @@ Chỉ gồm việc không đụng dữ liệu trẻ em và không đụng tiền
 - Chuẩn bị sẵn nhưng không dựng: danh sách nơi cần ô đồng ý (PH-208, PH-211) để áp ngay khi luật sư trả lời.
 
 **Chưa làm được cho tới khi có trả lời:** PH-208, PH-211, PH-217–222, PH-226, ĐX-09 (cần Q-LS-01..12); ĐX-08 (cần Q-LS-13..15 và quyết định Q6 về tiền).
+
+## Bổ sung 22/10 — Coin thưởng và game cược (Q-LS-16)
+Chủ dự án định làm game trong web (poker, cờ cá ngựa, cờ tỉ phú…) cho học sinh, dùng Coin để cược. Hiện Coin của học sinh chỉ kiếm bằng làm bài (không nạp bằng tiền, không đổi ra tiền). Câu hỏi cho luật sư trước khi làm game:
+1. Game "cược" bằng Coin chỉ kiếm được nhờ học, không mua, không đổi ra tiền hay quà: có bị coi là đánh bạc hay trò chơi có thưởng theo pháp luật Việt Nam không? Điều kiện nào để chắc chắn không bị coi như vậy?
+2. Người chơi là trẻ em dưới 16 và dưới 18 tuổi: có hạn chế riêng cho cơ chế "cược", dù chỉ là tiền ảo?
+3. Nếu sau này cho đổi Coin lấy quà, ưu đãi học phí hay giảm giá: điểm nào làm Coin có giá trị tài sản và kéo game vào diện bị quản lý?
+4. Hiện ví gia sư có Coin quy đổi 1 Coin = 1 đồng (mua VIP). Cần tách hẳn loại Coin này khỏi Coin thưởng của học sinh ở mức nào để không dính tới câu 1–3?
+(Đây là câu hỏi cho người có chuyên môn; agent không đưa kết luận pháp lý.)

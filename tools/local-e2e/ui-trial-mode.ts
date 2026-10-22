@@ -61,9 +61,9 @@ async function buyEntries(p: Page) {
   const sp = await sctx.newPage(); watch(sp);
   await sp.goto(`${BASE}/student/vi`, { waitUntil: "networkidle", timeout: 150000 });
   await sp.getByRole("heading", { name: "Ví Coin" }).waitFor({ timeout: 90000 });
-  check("học sinh vẫn thấy form nạp Coin", await sp.getByRole("button", { name: /Gửi yêu cầu nạp/ }).isVisible() && await sp.getByPlaceholder("VD: 300000").isVisible());
+  check("học sinh KHÔNG còn thấy form nạp Coin (Coin học sinh chỉ nhận từ làm bài)", !(await sp.getByRole("button", { name: /Gửi yêu cầu nạp/ }).isVisible()) && !(await sp.getByPlaceholder("VD: 300000").isVisible()));
   check("học sinh KHÔNG thấy banner chạy thử", (await sp.getByText("KiN miễn phí trong giai đoạn chạy thử").count()) === 0);
-  check("dòng mô tả của học sinh giữ nguyên", await sp.getByText(/Nạp Coin để mua gói VIP/).isVisible());
+  check("dòng mô tả của học sinh nói Coin nhận từ làm bài, không mua được", await sp.getByText(/Coin không mua được bằng tiền/).isVisible());
   await shot(sp, on ? "trial-student-wallet-on" : "trial-student-wallet-off");
 
   await closeAll();
