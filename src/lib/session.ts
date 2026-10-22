@@ -27,12 +27,16 @@ function claims(p: SessionPayload): SessionPayload {
   return c;
 }
 
-export async function encrypt(payload: SessionPayload): Promise<string> {
+/** `iat` (giây): chỉ dùng khi đồng bộ vai của phiên đang sống — giữ mốc đăng nhập thật, không kéo dài phiên. Mặc định = bây giờ. */
+export interface IssueOptions { iat?: number }
+
+export async function encrypt(payload: SessionPayload, opts: IssueOptions = {}): Promise<string> {
   const c = claims(payload);
+  const issuedMs = typeof opts.iat === "number" ? opts.iat * 1000 : Date.now();
   return new SignJWT({ ...c })
     .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(Math.floor((Date.now() + sessionLifetimeMs(c)) / 1000))
+    .setIssuedAt(Math.floor(issuedMs / 1000))
+    .setExpirationTime(Math.floor((issuedMs + sessionLifetimeMs(c)) / 1000))
     .sign(getKey());
 }
 
@@ -48,10 +52,11 @@ export async function decrypt(token: string): Promise<SessionPayload | null> {
   }
 }
 
-export async function createSession(payload: SessionPayload) {
+export async function createSession(payload: SessionPayload, opts: IssueOptions = {}) {
   const c          = claims(payload);
-  const token      = await encrypt(c);
-  const expiresAt  = new Date(Date.now() + sessionLifetimeMs(c));
+  const token      = await encrypt(c, opts);
+  const issuedMs   = typeof opts.iat === "number" ? opts.iat * 1000 : Date.now();
+  const expiresAt  = new Date(issuedMs + sessionLifetimeMs(c));
   const store      = await cookies();
 
   store.set(COOKIE_NAME, token, {
