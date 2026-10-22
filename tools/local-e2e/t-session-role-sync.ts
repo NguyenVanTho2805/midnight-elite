@@ -87,6 +87,51 @@ const me = (token: string | null, qs = "", extra: Record<string, string> = {}) =
   const rold = await me(await forge(P, "student", null, 13 * H));
   check("student 13 giờ tuổi được lên quản trị → phải đăng nhập lại (null), không cấp phiên quản trị mới", (await rold.json()) === null && cookieOf(rold) === "");
 
+  // NC2-035 — ba ca còn thiếu từ rà soát bảo mật.
+  section("NC2-035: gia sư phiên 29 ngày được nâng lên quản trị → KHÔNG nhận phiên quản trị 12 giờ");
+  const GT = await mkUser({ name: "Gia sư lên quản trị", role: "admin", adminRole: "admin_super" }); // DB: đã là quản trị
+  const r29 = await me(await forge(GT, "admin", "teacher", 29 * D, 1 * D)); // token: gia sư, iat cách đây 29 ngày, còn hạn 1 ngày
+  check("gia sư 29 ngày → admin_super: /me trả null (phải đăng nhập lại bằng mã)", (await r29.json()) === null);
+  const ck29 = cookieOf(r29);
+  check("…và KHÔNG cấp cookie quản trị nào (không cookie, hoặc cookie rỗng/xoá)", ck29 === "" || ck29.split(".").length !== 3 || claims(ck29).role !== "admin", ck29.slice(0, 30));
+  const r29b = await me(await forge(GT, "admin", "teacher", 11 * H, 29 * D));
+  const c29b = cookieOf(r29b) ? claims(cookieOf(r29b)) : null;
+  check("đối chứng: gia sư mới 11 giờ lên quản trị vẫn được (còn trong 12 giờ), giữ iat", c29b?.adminRole === "admin_super" && Math.abs(c29b.iat - (nowS() - 11 * 3600)) <= 2 && c29b.exp - c29b.iat === 12 * 3600, c29b);
+  const r29c = await me(await forge(GT, "admin", "teacher", 12 * H + 60_000, 29 * D));
+  check("ranh giới: 12 giờ + 1 phút → null", (await r29c.json()) === null && cookieOf(r29c) === "");
+
+  section("NC2-035: người dùng bị xoá giữa chừng khi gọi /me");
+  const GONE = await mkUser({ name: "Sắp bị xoá" });
+  const goneTok = await forge(GONE, "student", null, 1 * H);
+  check("trước khi xoá: /me trả đúng người", (await (await me(goneTok)).json())?.id === GONE.id);
+  await prisma.user.delete({ where: { id: GONE.id } });
+  const rg = await me(goneTok);
+  check("sau khi xoá: 200 + null (không 500), không cấp cookie", rg.status === 200 && (await rg.json()) === null && cookieOf(rg) === "", rg.status);
+  const GONE2 = await mkUser({ name: "Gia sư bị xoá", role: "admin", adminRole: "teacher", tutorVerified: true });
+  const gone2Tok = await forge(GONE2, "admin", "teacher", 1 * H);
+  await prisma.user.delete({ where: { id: GONE2.id } });
+  const rg2 = await me(gone2Tok);
+  check("gia sư bị xoá: cũng 200 + null, không cookie", rg2.status === 200 && (await rg2.json()) === null && cookieOf(rg2) === "");
+  const GONE3 = await mkUser({ name: "Xoá giữa lúc song song" });
+  const gone3Tok = await forge(GONE3, "student", null, 1 * H);
+  const racing = Promise.all([me(gone3Tok), me(gone3Tok), me(gone3Tok)]);
+  await prisma.user.delete({ where: { id: GONE3.id } });
+  const rr = await racing;
+  check("xoá đúng lúc 3 lần /me chạy: không lần nào 5xx", rr.every(x => x.status === 200), rr.map(x => x.status));
+
+  section("NC2-035: hai /me song song với vai lệch DB");
+  const PL = await mkUser({ name: "Vừa lên quản trị", role: "admin", adminRole: "admin_content" });
+  const plTok = await forge(PL, "student", null, 2 * H);
+  const [pa, pb] = await Promise.all([me(plTok), me(plTok)]);
+  const [ja, jb] = [await pa.json(), await pb.json()];
+  const [ca, cb] = [cookieOf(pa) ? claims(cookieOf(pa)) : null, cookieOf(pb) ? claims(cookieOf(pb)) : null];
+  check("cả hai 200 và cùng thấy vai admin_content", pa.status === 200 && pb.status === 200 && ja?.adminRole === "admin_content" && jb?.adminRole === "admin_content", [ja?.adminRole, jb?.adminRole]);
+  check("cả hai cookie mới đúng vai, cùng userId, cùng iat gốc (không bên nào kéo dài phiên)", !!ca && !!cb && ca.role === "admin" && cb.role === "admin" && ca.adminRole === "admin_content" && cb.adminRole === "admin_content" && ca.userId === PL.id && cb.userId === PL.id && ca.iat === cb.iat && ca.iat === claims(plTok).iat && ca.exp === cb.exp, { ca, cb });
+  const pc = await me(cookieOf(pa));
+  check("dùng cookie của lần song song: vai khớp, không cấp thêm cookie", (await pc.json())?.adminRole === "admin_content" && cookieOf(pc) === "");
+  const [d1, d2, d3] = await Promise.all([me(await forge(AD, "admin", "admin_content", 2 * H, 10 * H)), me(await forge(AD, "admin", "admin_content", 2 * H, 10 * H)), me(await forge(AD, "admin", "admin_content", 2 * H, 10 * H))]);
+  check("hạ quyền song song 3 lần: đều về student, không lần nào lỗi", [d1, d2, d3].every(x => x.status === 200) && (await Promise.all([d1, d2, d3].map(x => x.json()))).every(j => j?.role === "student"));
+
   section("Không chuyển hướng");
   check("/me luôn 200 JSON (không 3xx)", before.status === 200 && r1.status === 200 && rold.status === 200);
   done();

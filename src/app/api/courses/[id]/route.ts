@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
+import { validateTutorCourseFields } from "@/lib/courseValidation";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -90,6 +91,12 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
   ];
   for (const key of allowed) {
     if (key in body) data[key] = body[key];
+  }
+
+  // NC2-035: như POST /api/courses — chỉ vai gia sư bị kiểm giá trị vô lý.
+  if (auth.adminRole === "teacher") {
+    const bad = validateTutorCourseFields(data);
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 });
   }
 
   // capacity: null = không giới hạn; nếu đang giảm, phải lớn hơn hoặc bằng

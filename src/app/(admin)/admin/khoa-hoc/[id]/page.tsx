@@ -2282,7 +2282,15 @@ export default function KhoaHocDetailPage() {
   // NC2-029: vừa tạo lớp xong (gia sư được chuyển thẳng tới đây với ?moi=1) → báo thành công như danh sách khoá vẫn báo.
   const { toast, showToast } = useAdminToast();
   const justCreated = searchParams.get("moi") === "1";
-  useEffect(() => { if (justCreated) showToast("Đã tạo khoá học mới"); }, [justCreated]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NC2-035: hiện đúng một lần rồi xoá ?moi=1 khỏi URL (router.replace, không thêm mục lịch sử) để F5 không báo lại.
+  useEffect(() => {
+    if (!justCreated) return;
+    showToast("Đã tạo khoá học mới");
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete("moi");
+    const qs = rest.toString();
+    router.replace(`/admin/khoa-hoc/${courseSlug}${qs ? `?${qs}` : ""}`);
+  }, [justCreated]); // eslint-disable-line react-hooks/exhaustive-deps
   const [course, setCourse] = useState<CourseDB | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]    = useState("");

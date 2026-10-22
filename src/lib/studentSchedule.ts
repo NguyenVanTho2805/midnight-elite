@@ -1,8 +1,7 @@
 // Sự kiện trong lịch của học sinh (buổi thi, hạn nộp, buổi học đã áp dụng huỷ/dời). Tách ra khỏi route /api/schedule để
 // "Việc của tôi" dùng chung đúng một nguồn — không có hai cách tính lịch lệch nhau.
 import { prisma } from "@/lib/prisma";
-import { vnDayOfWeek } from "@/lib/types";
-import { hmOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { hmOf, vnMinutesOfDay, vnDateKeyOf, addDaysKey, dayOfWeekOfKey } from "@/lib/classSessions";
 import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 
@@ -26,14 +25,12 @@ function toISO(raw: string): string | null {
 }
 
 export async function loadStudentScheduleEvents(userId: string, now: Date = new Date()): Promise<ScheduleEvent[]> {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const todayISO = today.toISOString().slice(0, 10);
+  // NC2-035: "hôm nay" và cửa sổ 90 ngày tính theo NGÀY VIỆT NAM bằng khoá ngày (không setHours/toISOString theo múi giờ máy chủ:
+  // máy chạy +07 làm khoá ngày lệch 1 ngày so với thứ → buổi huỷ/dời ở lịch học viên rơi sai ngày; máy UTC thì lệch sau 17:00 UTC).
+  const todayISO = vnDateKeyOf(now);
 
   // 90-day window to avoid loading years of past data
-  const ninetyDaysLater = new Date(today);
-  ninetyDaysLater.setDate(today.getDate() + 90);
-  const maxISO = ninetyDaysLater.toISOString().slice(0, 10);
+  const maxISO = addDaysKey(todayISO, 90);
 
   const events: ScheduleEvent[] = [];
 
@@ -116,9 +113,8 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
     if (classSchedules.length > 0) {
       const windowDates: { iso: string; dow: number }[] = [];
       for (let i = 0; i <= 90; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        windowDates.push({ iso: d.toISOString().slice(0, 10), dow: vnDayOfWeek(d) });
+        const iso = addDaysKey(todayISO, i);
+        windowDates.push({ iso, dow: dayOfWeekOfKey(iso) });
       }
 
       // Gia sư có thể HUỶ hoặc DỜI một buổi: buổi huỷ vẫn hiện (kèm "ĐÃ HUỶ") để học viên không đi nhầm, buổi dời hiện ở ngày/giờ mới.
