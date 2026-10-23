@@ -20,6 +20,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
+import { removeUninvoicedChargesForSession, syncSessionCharges } from "@/lib/feeChargeServer";
 
 type SessionRow = { id: string; courseId: string; date: Date; note: string | null; createdBy: string; createdAt: Date };
 type SessionDelegate = {
@@ -181,6 +182,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           });
         }
       }
+      // HP-14: lớp tạo sau theo buổi/giờ → sinh/sửa dòng học phí của buổi này TRONG CÙNG transaction (điểm danh và phí không lệch nhau).
+      // Lớp cách cũ (mặc định): trả sớm, không ghi gì.
+      await syncSessionCharges(tx, {
+        sessionId: id, courseId: session.courseId, sessionDate: session.date, by: auth.userId,
+        items: items.map(i => ({ userId: i.userId, status: i.status, makeupUsed: !!i.makeupCreditId })),
+      });
     });
   } catch (e) {
     if (e instanceof MakeupError) return NextResponse.json({ error: e.message }, { status: 400 });
@@ -203,6 +210,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   // Xoá buổi thì trả lại các buổi bù đã gắn vào buổi này.
   await prisma.makeupCredit.updateMany({ where: { usedSessionId: id }, data: { status: "active", usedAt: null, usedSessionId: null } });
+  await removeUninvoicedChargesForSession(prisma, id); // HP-14: dòng phí CHƯA vào phiếu của buổi này bỏ theo; dòng đã vào phiếu giữ nguyên
   await asSessions().delete({ where: { id } });
   await logAction(auth.userId, "attendance_session.delete", "AttendanceSession", id, {
     courseId: session.courseId, date: session.date.toISOString(),

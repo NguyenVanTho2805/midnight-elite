@@ -15,6 +15,8 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
+import LopHocPhi from "@/components/tutor/LopHocPhi";
+import type { FeeMode } from "@/lib/tuitionFee";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "ma-moi" | "hoc-phi" | "cong-dong";
 export interface LopChiTietData {
@@ -25,6 +27,8 @@ export interface LopChiTietData {
   sessionsTaught: number;
   inviteCode: string | null;
   initialTab: LopTab; justCreated: boolean; scheduleFailed: boolean;
+  /** HP-15: hình thức học phí của lớp. Lớp cũ = "monthly_sessions". */
+  feeMode: FeeMode;
 }
 
 const dm = (key: string) => `${key.slice(8, 10)}/${key.slice(5, 7)}`;
@@ -145,10 +149,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           </section>
         )}
 
-        {tab === "hoc-phi" && (
-          <OpenPage title="Học phí và đối soát" href="/lop-cua-toi/hoc-phi" action="Mở Học phí"
-            note="Lập phiếu có mã, theo dõi tiền vào, nhận tiền thẳng vào tài khoản của cô. Học phí tính theo tháng, không tính theo buổi có mặt." />
-        )}
+        {tab === "hoc-phi" && <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />}
 
         {tab === "cong-dong" && (
           <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"

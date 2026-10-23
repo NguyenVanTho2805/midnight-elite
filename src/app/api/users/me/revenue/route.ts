@@ -56,7 +56,12 @@ export async function GET(req: NextRequest) {
     monthMap.set(mk, m);
 
     // Quy về lớp theo tỉ lệ tiền từng môn trên phiếu (chính xác từng đồng).
-    const subjects = ((r.invoice?.breakdown as { perSubject?: Subject[] } | null)?.perSubject ?? []).filter(s => s.courseId);
+    // HP-14: phiếu có dòng phí kiểu mới (chargeLines) thì tính cả vào tỉ lệ theo lớp. Phiếu cũ không có chargeLines → đúng như trước.
+    const bd = r.invoice?.breakdown as { perSubject?: Subject[]; chargeLines?: Array<{ courseId?: string; courseName?: string; amount?: number }> } | null;
+    const subjects = [
+      ...(bd?.perSubject ?? []),
+      ...(bd?.chargeLines ?? []).map(l => ({ courseId: l.courseId, courseName: l.courseName, subtotal: l.amount })),
+    ].filter(s => s.courseId);
     if (subjects.length === 0) {
       const c = classMap.get("?") ?? { courseId: "?", name: "Không rõ lớp", collected: 0 };
       c.collected += r.appliedAmount; classMap.set("?", c);

@@ -17,6 +17,7 @@ import OutlookShell from "./OutlookShell";
 import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
 import { formatScheduleRules } from "@/lib/tutorClassTable";
 import { vnDateKeyOf } from "@/lib/classSessions";
+import { normalizeFeeMode } from "@/lib/tuitionFee";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function LopPage({ params, searchParams }: Props) {
 
   const course = await prisma.course.findUnique({
     where:  { id: courseId },
-    select: { id: true, name: true, category: true, ownerId: true },
+    select: { id: true, name: true, category: true, ownerId: true, feeMode: true },
   });
   if (!course) notFound();
 
@@ -77,7 +78,7 @@ export default async function LopPage({ params, searchParams }: Props) {
       students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })),
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
-      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi",
+      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", feeMode: normalizeFeeMode(course.feeMode),
     }} />;
   }
 

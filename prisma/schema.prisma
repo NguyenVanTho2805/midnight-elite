@@ -69,6 +69,14 @@ model Course {
   classInvites       ClassInvite[]
   monthlyFees        MonthlyCourseFee[]
   attendanceSessions AttendanceSession[]
+  feeRates           CourseFeeRate[]
+  studentFeeRates    CourseStudentRate[]
+  feeCharges         FeeCharge[]
+
+  // HP-15 (23/10/2026): cách tính học phí của lớp, CHỌN LÚC TẠO LỚP và chỉ lớp tạo sau mới khác mặc định.
+  //   "monthly_sessions" (mặc định, MỌI lớp cũ) : gia sư nhập số buổi tháng (MonthlyCourseFee) — cách tính hiện tại, KHÔNG đổi.
+  //   "per_session" | "per_hour" | "per_course" : học phí sinh ra từ buổi đã điểm danh (FeeCharge), đơn giá ở CourseFeeRate.
+  feeMode String @default("monthly_sessions")
 
   @@index([ownerId])
   @@map("courses")
@@ -1287,6 +1295,80 @@ model PaymentReversal {
   @@index([bankTransactionId])
   @@index([invoiceId])
   @@map("payment_reversals")
+}
+
+// ─── HỌC PHÍ KIỂU MỚI (HP-14..HP-17, 23/10/2026) ──────────────────────────────────────────────────────────────
+// Chỉ lớp có Course.feeMode khác "monthly_sessions" dùng các bảng này. Lớp cũ không có dòng nào ở đây và phiếu của lớp cũ
+// KHÔNG đổi một đồng. Bảng MỚI; không khoá ngoại tới User (tránh đụng model User), chỉ khoá tới Course (xoá lớp thì xoá theo).
+// Quy tắc "tiền chốt vào sự kiện": FeeCharge lưu số tiền đã tính ngay lúc điểm danh; khi vào phiếu (invoiceId) thì ĐÓNG BĂNG.
+
+// Lịch sử đơn giá của lớp. Đơn giá áp cho buổi có ngày >= effectiveFrom (ngày VN, "YYYY-MM-DD"); buổi trước đơn giá đầu tiên dùng đơn giá đầu tiên.
+//   per_session: rate = đ / buổi ; per_hour: rate = đ / giờ + sessionMinutes ; per_course: rate = đ / khoá / học sinh.
+model CourseFeeRate {
+  id             String   @id @default(cuid())
+  courseId       String
+  mode           String
+  rate           Int
+  sessionMinutes Int? // chỉ per_hour: một buổi dài bao nhiêu phút
+  effectiveFrom  String
+  note           String?  @db.Text
+  createdBy      String
+  createdAt      DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, effectiveFrom])
+  @@index([courseId])
+  @@map("course_fee_rates")
+}
+
+// HP-17: đơn giá riêng cho một cặp (học sinh, lớp). Cùng đơn vị với đơn giá lớp (đ/buổi, đ/giờ hoặc đ/khoá). Có hiệu lực từ ngày.
+// Không dùng TuitionOverride (đó là giá theo em TOÀN CỤC của cách tính cũ, giữ nguyên).
+model CourseStudentRate {
+  id            String   @id @default(cuid())
+  courseId      String
+  studentId     String
+  rate          Int
+  effectiveFrom String
+  note          String?  @db.Text
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId, effectiveFrom])
+  @@index([courseId, studentId])
+  @@map("course_student_rates")
+}
+
+// Một dòng phí đã tính. kind: "session" (một buổi, gắn recordId) | "course" (cả khoá, một lần) | "extra" (phí khác, HP-18).
+// invoiceId null = chưa vào phiếu nào (còn sửa được: đổi đơn giá, đổi trạng thái điểm danh). Đã vào phiếu = đóng băng.
+model FeeCharge {
+  id         String   @id @default(cuid())
+  tutorId    String
+  courseId   String
+  studentId  String
+  kind       String
+  recordId   String? // AttendanceRecord.id cho kind=session. Nullable nên @unique cho phép nhiều dòng không có recordId.
+  dateKey    String // ngày VN của buổi / ngày phát sinh
+  yearMonth  String // tháng của dateKey — phiếu tháng đó gom dòng này
+  amount     Int // đồng, đã làm tròn từng dòng
+  units      Int? // per_hour: số phút của buổi
+  rate       Int? // đơn giá đã áp
+  rateSource String   @default("class") // "class" | "student"
+  mode       String
+  label      String? // kind=extra: tên khoản (tài liệu, quỹ lớp…)
+  invoiceId  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([recordId])
+  @@index([tutorId, studentId, yearMonth])
+  @@index([courseId, dateKey])
+  @@index([invoiceId])
+  @@map("fee_charges")
 }
 
 // ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────

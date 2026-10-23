@@ -13,6 +13,8 @@ import type { SessionPayload } from "@/lib/session";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { notify } from "@/lib/notify";
 import { computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { FEE_MODE_LEGACY, composeFinalAmount, groupChargeLines, normalizeFeeMode } from "@/lib/tuitionFee";
+import { PREVIEW_BLOCKED_MESSAGE, ensureCourseCharges, loadUninvoicedCharges, moneyPathsBlocked } from "@/lib/feeChargeServer";
 import {
   INVOICE_STATUS, INVOICE_STATUS_LABEL, PARENT_VISIBLE_STATUSES, OPEN_STATUSES, buildInvoiceQrUrl, buildTransferContent,
   bankName, generateInvoiceCode, remainingOf, statusAfterPayment, type InvoiceStatus,
@@ -105,27 +107,41 @@ export async function issueInvoice(opts: {
 
       const enrollments = await tx.enrollment.findMany({
         where: { userId: studentId, status: ENROLLMENT_STATUS.ACTIVE, course: { ownerId: tutorId } },
-        include: { course: { select: { id: true, name: true } } },
+        include: { course: { select: { id: true, name: true, feeMode: true } } },
       });
-      if (enrollments.length === 0) return { ok: false, reason: "Em chưa học lớp nào của bạn" } as IssueResult;
+
+      // HP-14: lớp tạo sau có thể tính theo buổi/giờ/khoá (Course.feeMode). Lớp cũ (mặc định) đi ĐÚNG đường cũ bên dưới.
+      const legacyEnrollments = enrollments.filter(e => normalizeFeeMode(e.course.feeMode) === FEE_MODE_LEGACY);
+      const hasNewMode = legacyEnrollments.length < enrollments.length;
+      if (hasNewMode && moneyPathsBlocked()) return { ok: false, reason: PREVIEW_BLOCKED_MESSAGE } as IssueResult;
+      if (hasNewMode) await ensureCourseCharges(tx, { tutorId, studentId, yearMonth, now: new Date(), courses: enrollments.map(e => e.course) });
+      const chargeRows = hasNewMode || !moneyPathsBlocked()
+        ? await loadUninvoicedCharges(tx, { tutorId, studentId, yearMonth, lock: true })
+        : [];
+      if (enrollments.length === 0 && chargeRows.length === 0) return { ok: false, reason: "Em chưa học lớp nào của bạn" } as IssueResult;
 
       const [fees, override] = await Promise.all([
-        tx.monthlyCourseFee.findMany({ where: { yearMonth, courseId: { in: enrollments.map(e => e.courseId) } } }),
+        tx.monthlyCourseFee.findMany({ where: { yearMonth, courseId: { in: legacyEnrollments.map(e => e.courseId) } } }),
         tx.tuitionOverride.findUnique({ where: { userId: studentId } }),
       ]);
       const feeByCourse = new Map(fees.map(f => [f.courseId, f]));
-      const subjects: SubjectFeeInput[] = enrollments.map(e => ({
+      const subjects: SubjectFeeInput[] = legacyEnrollments.map(e => ({
         courseId: e.course.id, courseName: e.course.name,
         sessionCount: feeByCourse.get(e.courseId)?.sessionCount ?? 0,
         freeCount: feeByCourse.get(e.courseId)?.freeCount ?? 0,
       }));
-      if (subjects.every(s => s.sessionCount === 0)) return { ok: false, reason: "Chưa nhập số buổi của tháng này" } as IssueResult;
+      if (subjects.every(s => s.sessionCount === 0) && chargeRows.length === 0) {
+        return { ok: false, reason: hasNewMode ? "Chưa có buổi nào được tính phí trong tháng này" : "Chưa nhập số buổi của tháng này" } as IssueResult;
+      }
 
       const b = computeMonthlyFee({ subjects, override: override?.pricePerSession ?? null, scholarship: opts.scholarship, discount: opts.discount });
-      if (b.finalAmount <= 0) return { ok: false, reason: "Số phải đóng bằng 0đ" } as IssueResult;
+      const chargesTotal = chargeRows.reduce((sum, r) => sum + r.amount, 0);
+      // chargesTotal = 0 (mọi lớp cũ) → composeFinalAmount trả đúng b.finalAmount: phiếu cũ không lệch một đồng.
+      const finalAmount = composeFinalAmount(b, chargesTotal);
+      if (finalAmount <= 0) return { ok: false, reason: "Số phải đóng bằng 0đ" } as IssueResult;
 
-      const credit = await consumeCredits(tx, tutorId, studentId, b.finalAmount);
-      const amountDue = b.finalAmount - credit.used;
+      const credit = await consumeCredits(tx, tutorId, studentId, finalAmount);
+      const amountDue = finalAmount - credit.used;
       const paidByCredit = amountDue === 0;
 
       for (let attempt = 0; attempt < 6; attempt++) {
@@ -138,9 +154,17 @@ export async function issueInvoice(opts: {
             paidAmount: 0,
             status: paidByCredit ? INVOICE_STATUS.PAID : INVOICE_STATUS.DRAFT,
             paidAt: paidByCredit ? new Date() : null,
-            breakdown: { ...b, creditApplied: credit.used, creditParts: credit.parts, grossDue: b.finalAmount } as unknown as Prisma.InputJsonValue,
+            breakdown: (chargeRows.length === 0
+              ? { ...b, creditApplied: credit.used, creditParts: credit.parts, grossDue: b.finalAmount } // lớp cũ: đúng hình dạng và số như trước
+              : { ...b, finalAmount, chargeLines: groupChargeLines(chargeRows), chargesTotal, creditApplied: credit.used, creditParts: credit.parts, grossDue: finalAmount }
+            ) as unknown as Prisma.InputJsonValue,
           },
         });
+        if (chargeRows.length > 0) {
+          // Đóng băng các dòng phí vào phiếu. Đã khoá FOR UPDATE ở trên nên không dòng nào bị đổi giữa lúc đọc và lúc gắn.
+          const frozen = await tx.feeCharge.updateMany({ where: { id: { in: chargeRows.map(r => r.id) }, invoiceId: null }, data: { invoiceId: inv.id } });
+          if (frozen.count !== chargeRows.length) throw new Error("Dòng phí đổi trong lúc lập phiếu");
+        }
         return { ok: true, invoice: { id: inv.id, code: inv.code, studentId, amountDue, status: inv.status, creditApplied: credit.used } } as IssueResult;
       }
       throw new Error("Không sinh được mã phiếu");
