@@ -21,15 +21,23 @@ export async function GET() {
   const [profiles, defs, courses, families] = await Promise.all([
     prisma.studentProfile.findMany({ where: { tutorId: auth.userId }, select: PROFILE_SELECT, orderBy: [{ createdAt: "desc" }], take: 1000 }),
     prisma.studentFieldDef.findMany({ where: { tutorId: auth.userId }, select: { id: true, label: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
-    prisma.course.findMany({ where: { ownerId: auth.userId }, select: { id: true, name: true }, orderBy: { sortOrder: "asc" } }),
+    prisma.course.findMany({ where: { ownerId: auth.userId }, select: { id: true, name: true, capacity: true }, orderBy: { sortOrder: "asc" } }),
     prisma.familyGroup.findMany({ where: { tutorId: auth.userId }, select: { id: true, label: true, guardianName: true, guardianPhone: true }, orderBy: { createdAt: "asc" } }),
   ]);
+  // Chỗ đã dùng của từng lớp (LO-14 danh sách chờ): em có tài khoản đang học + hồ sơ không tài khoản đang "Hoạt động". Chỉ để cảnh báo, không chặn.
+  const [enrolled, profCounts] = await Promise.all([
+    prisma.enrollment.groupBy({ by: ["courseId"], where: { status: "active", course: { ownerId: auth.userId } }, _count: { _all: true } }),
+    prisma.studentProfile.groupBy({ by: ["courseId"], where: { tutorId: auth.userId, status: "active", userId: null, courseId: { not: null } }, _count: { _all: true } }),
+  ]);
+  const filled = new Map<string, number>();
+  for (const e of enrolled) filled.set(e.courseId, (filled.get(e.courseId) ?? 0) + e._count._all);
+  for (const e of profCounts) if (e.courseId) filled.set(e.courseId, (filled.get(e.courseId) ?? 0) + e._count._all);
   const rows = await consentRowsOf(profiles.map(p => p.id));
   const acct = await accountFacts(profiles.map(p => p.userId).filter((x): x is string => !!x));
   const out = profiles.map(p => viewOf(p, rows.get(p.id) ?? [], now, p.userId ? acct.get(p.userId) : undefined));
   // Số điện thoại phụ huynh của gia đình chỉ hiện khi hồ sơ có phạm vi "family" — ở đây chỉ trả nhãn gia đình, không trả liên hệ cho em bị khoá.
   return NextResponse.json({
-    profiles: out, fieldDefs: defs, courses, families: families.map(f => ({ id: f.id, label: f.label })),
+    profiles: out, fieldDefs: defs, courses: courses.map(c => ({ id: c.id, name: c.name, capacity: c.capacity, filled: filled.get(c.id) ?? 0 })), families: families.map(f => ({ id: f.id, label: f.label })),
     limits: { customFields: customFieldsMax(), importRows: importMaxRows() },
   }, { headers: NO_STORE });
 }

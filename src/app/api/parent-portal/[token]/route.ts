@@ -23,6 +23,7 @@ import { attendanceDateWindow } from "@/lib/taughtSessions";
 import { loadPartyInvoices } from "@/lib/invoiceServer";
 import { loadStudentUpcoming } from "@/lib/absenceServer";
 import { loadPartyReports } from "@/lib/monthlyReportServer";
+import { loadPartyScores } from "@/lib/sessionScoreServer";
 import { prevYearMonth } from "@/lib/monthlyReport";
 import { vnMonthKey } from "@/lib/revenue";
 import { parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
@@ -85,6 +86,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const { upcoming, makeup } = await loadStudentUpcoming(studentId, new Date());
   // NV-189: báo cáo tháng ĐÃ DUYỆT (tháng đang xem + tháng trước) — mục "Điều chưa đạt" luôn có trong mỗi báo cáo.
   const reports = await loadPartyReports(studentId, [ym, prevYearMonth(ym)]);
+  // BU-11: điểm từng buổi của ĐÚNG em này (chỉ khi đồng ý ghi điểm còn hiệu lực).
+  const scores = await loadPartyScores(studentId);
 
   // Các lớp em đang học (status = active).
   const enrollments = await prisma.enrollment.findMany({
@@ -103,6 +106,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       upcoming,
       makeup,
       reports,
+      scores,
     });
   }
 
@@ -204,6 +208,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     upcoming,
     makeup,
     reports,
+    scores,
     total: feeBreakdown
       ? { gross: feeBreakdown.gross, finalAmount: feeBreakdown.finalAmount, pricePerSession: feeBreakdown.pricePerSession, subjectCount: feeBreakdown.subjectCount }
       : null,

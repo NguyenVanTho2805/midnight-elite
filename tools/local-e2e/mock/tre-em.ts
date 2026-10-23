@@ -2,6 +2,8 @@
 // CHƯA có ý kiến luật sư: dữ liệu này chỉ để thử giao diện trên máy.
 import { CONSENT_TEXT_VERSION } from "@/lib/consentPolicy";
 import { newId } from "@/lib/studentProfileServer";
+import { randomBytes } from "node:crypto";
+import { mkUser } from "../h";
 import type { MockCtx } from "../mock-seed";
 
 const TAG = "(thử)";
@@ -61,10 +63,43 @@ export default async function mock(ctx: MockCtx): Promise<string[]> {
   }
   await prisma.auditLog.create({ data: { actorId: tutor.id, action: "student_profile.import", resourceType: "StudentProfile", resourceId: batchId, metadata: { count: 3, source: "paste", rights: true } } });
 
+  // 10-11. Hai anh chị em chung liên hệ (HS-12) — gia đình thử; Bé Lô Ba chưa có phạm vi 'anh chị em' nên bị ẩn khỏi danh sách anh chị em.
+  await prisma.familyGroup.deleteMany({ where: { tutorId: tutor.id, label: { contains: TAG } } });
+  const fam = await prisma.familyGroup.create({ data: { tutorId: tutor.id, label: `Gia đình Thử ${TAG}`, guardianName: "Chị Mai", guardianPhone: "0912000099" } });
+  for (const [n, extra] of [["Bé Anh Cả", ["family"]], ["Bé Em Út", ["family"]], ["Bé Cùng Nhà Ẩn", []]] as const) {
+    const id = await mk(n, { ageGroup: "u7", guardianName: "Chị Mai", guardianPhone: "0912000099", familyId: fam.id, source: "manual" });
+    await consent(id, ["guardian"], ["basic", ...extra]);
+  }
+  // 12-13. Hai em chờ xếp lớp theo thứ tự (LO-14)
+  const e2 = await mk("Bé Chờ Thứ Hai", { ageGroup: "7to15", guardianName: "Chị Vy", guardianPhone: "0912000006", status: "waitlist", waitlistedAt: new Date(now.getTime() + 60_000), source: "request" });
+  await consent(e2, ["guardian", "child"], ["basic"]);
+
+  // Điểm từng buổi (BU-11): em có tài khoản trong lớp đầu tiên của gia sư, hồ sơ riêng có phạm vi 'scores', một buổi điểm danh có điểm, và link Sổ của con cho phụ huynh.
+  let scoreLine = "";
+  if (course) {
+    const stuName = `Em Điểm Thử ${TAG}`;
+    let stu = await prisma.user.findFirst({ where: { name: stuName } });
+    if (!stu) { const u = await mkUser({ name: stuName }); stu = await prisma.user.findUniqueOrThrow({ where: { id: u.id } }); }
+    await prisma.enrollment.upsert({ where: { userId_courseId: { userId: stu.id, courseId: course.id } }, create: { userId: stu.id, courseId: course.id, status: "active" }, update: { status: "active" } });
+    await prisma.studentProfile.deleteMany({ where: { tutorId: tutor.id, userId: stu.id } });
+    const pid = await mk(stuName.replace(` ${TAG}`, ""), { ageGroup: "16plus", userId: stu.id, source: "manual" });
+    await consent(pid, ["self"], ["basic", "scores"]);
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const sess = await prisma.attendanceSession.upsert({ where: { courseId_date: { courseId: course.id, date } }, create: { courseId: course.id, date, createdBy: tutor.id }, update: {} });
+    await prisma.attendanceRecord.upsert({ where: { sessionId_userId: { sessionId: sess.id, userId: stu.id } }, create: { sessionId: sess.id, userId: stu.id, status: "present" }, update: {} });
+    await prisma.sessionStudentScore.upsert({ where: { sessionId_userId: { sessionId: sess.id, userId: stu.id } }, create: { sessionId: sess.id, userId: stu.id, tutorId: tutor.id, score: 8.5, homeworkPct: 90 }, update: { score: 8.5, homeworkPct: 90 } });
+    const token = randomBytes(16).toString("hex");
+    const par = await mkUser({ name: "Phụ huynh Em Điểm Thử (thử)" });
+    await prisma.parentLink.create({ data: { parentId: par.id, studentId: stu.id, status: "verified", verifiedAt: now, portalToken: token } });
+    scoreLine = `Điểm từng buổi — giasu@kin.local → Điểm danh của lớp "${course.name}" ngày hôm nay (/admin/khoa-hoc/${course.id}/diem-danh): mục 'Điểm từng buổi' dưới bảng, em 'Em Điểm Thử' có ô nhập (8,5 điểm, 90%); các em khác ghi 'Thiếu đồng ý ghi điểm'. Phụ huynh: ${process.env.BASE ?? "http://localhost:3000"}/so-cua-con/${token} → mục 'Điểm từng buổi'.`;
+  }
+
   return [
-    "Hồ sơ học sinh + đồng ý — đăng nhập giasu@kin.local → Học sinh (/lop-cua-toi/hoc-sinh): bấm tab 'Hồ sơ' (8 hồ sơ thử gắn '(thử)') và 'Chờ xếp lớp' (Bé Chờ Lớp).",
+    "Hồ sơ học sinh + đồng ý — đăng nhập giasu@kin.local → Học sinh (/lop-cua-toi/hoc-sinh): bấm tab 'Hồ sơ' (11 hồ sơ thử gắn '(thử)') và 'Chờ xếp lớp' (Bé Chờ Lớp).",
     "Bấm 'Mở hồ sơ' của 'Bé Minh Anh': đủ đồng ý, có thông tin mở rộng và trường tuỳ chỉnh; 'Bé Đã Thu Hồi': hồ sơ bị ẩn, chỉ còn tên + ô ghi đồng ý lại; sổ đồng ý và nhật ký sửa nằm cuối trang.",
     "Bấm 'Thêm học sinh' để chạy wizard 4 bước (ô đồng ý không tích sẵn, chưa tích đủ thì không lưu được); 'Nhập danh sách' để dán/CSV/Excel/lịch có xem trước và lỗi từng dòng; 'Trường tuỳ chỉnh' ở cuối trang Học sinh.",
+    "Gia đình + danh sách chờ — trang Học sinh: tab 'Chờ xếp lớp' có 2 em theo thứ tự (Bé Chờ Lớp trước); mở hồ sơ 'Bé Anh Cả' để thấy mục 'Gia đình (chung liên hệ)': liên hệ chung, em cùng nhà, và 1 em bị ẩn vì chưa có đồng ý 'anh chị em'.",
+    ...(scoreLine ? [scoreLine] : []),
     "Em tự đồng ý: đăng nhập hocsinh@kin.local → Hồ sơ (/student/ho-so), thẻ 'Đồng ý để gia sư ghi thông tin lớp học của em'.",
   ];
 }

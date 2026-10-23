@@ -55,7 +55,7 @@ export default function ConsentBox({ parties, value, onChange, optionalScopes = 
       <div className="mt-3 border-t border-[var(--kin-vien-nhat)] pt-3">
         <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Phạm vi ghi thông tin</p>
         <ul className="mt-1 space-y-0.5">
-          {(["basic", ...optionalScopes.filter(s => s !== "basic")] as ConsentScope[]).map(s => {
+          {([...new Set<ConsentScope>(["basic", ...forcedScopes, ...optionalScopes])]).map(s => {
             const forced = forcedScopes.includes(s);
             return (
               <li key={s}>

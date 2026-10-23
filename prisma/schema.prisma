@@ -2024,7 +2024,7 @@ model SessionStudentScore {
   sessionId   String
   userId      String
   tutorId     String
-  score       Int? // 0..10
+  score       Float? // 0..10, bước 0,25
   homeworkPct Int? // 0..100
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())

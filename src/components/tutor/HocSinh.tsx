@@ -20,7 +20,7 @@ import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TABLE_HEAD, KIN_TABLE_ROW
 type TabKey = "active" | "suspended" | "profiles" | "waitlist";
 /** Hồ sơ riêng của gia sư (đã che theo đồng ý): chỉ các trường dùng ở danh sách. */
 interface ProfileRowUi {
-  id: string; name: string; userId: string | null; courseId: string | null; status: ProfileStatus; guardianName?: string | null; consentLevel: "full" | "basic_only" | "locked";
+  id: string; name: string; userId: string | null; courseId: string | null; status: ProfileStatus; guardianName?: string | null; waitlistedAt?: string | null; consentLevel: "full" | "basic_only" | "locked";
   consent: { kind: "child" | "adult" };
 }
 const COLS = "md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_auto]";
@@ -63,8 +63,10 @@ export default function HocSinh() {
   const standalone = useMemo(() => profiles.filter(p => !p.userId), [profiles]);
   const nProfiles = standalone.filter(p => p.status !== "waitlist").length;
   const nWait = standalone.filter(p => p.status === "waitlist").length;
+  // Danh sách chờ xếp theo thứ tự vào chờ (ai chờ trước đứng trước); các hồ sơ khác theo thứ tự API (mới nhất trước).
   const shownProfiles = standalone.filter(p => (tab === "waitlist" ? p.status === "waitlist" : p.status !== "waitlist")
-    && (!courseId || p.courseId === courseId) && (!needle || p.name.toLowerCase().includes(needle)));
+    && (!courseId || p.courseId === courseId) && (!needle || p.name.toLowerCase().includes(needle)))
+    .sort((x, y) => (tab === "waitlist" ? (x.waitlistedAt ?? "").localeCompare(y.waitlistedAt ?? "") : 0));
   const shown = all.filter(r => r.status === tab && (!courseId || r.courseId === courseId)
     && (!needle || [r.name, r.email, r.phone ?? "", r.school ?? ""].some(v => v.toLowerCase().includes(needle))));
   const nActive = countOf("active");
@@ -116,7 +118,7 @@ export default function HocSinh() {
                 <ul aria-label={tab === "waitlist" ? "Danh sách chờ xếp lớp" : "Hồ sơ không tài khoản"}>
                   {shownProfiles.map(p => (
                     <li key={p.id} data-ho-so className={`grid ${PCOLS} gap-x-4 gap-y-1 ${KIN_TABLE_ROW}`}>
-                      <div className="min-w-0"><p className="text-[var(--kin-chu-chinh)] break-words">{p.name}</p><p className="text-[var(--kin-chu-mo)]">{STATUS_LABEL[p.status]}</p></div>
+                      <div className="min-w-0"><p className="text-[var(--kin-chu-chinh)] break-words">{p.name}</p><p className="text-[var(--kin-chu-mo)]">{p.status === "waitlist" ? `Chờ thứ ${shownProfiles.indexOf(p) + 1}${p.waitlistedAt ? ` · từ ${fmtDate(p.waitlistedAt)}` : ""}` : STATUS_LABEL[p.status]}</p></div>
                       <p className="text-[var(--kin-chu-chinh)] break-words">{p.courseId ? courseNames.get(p.courseId) ?? "" : "Chưa xếp lớp"}</p>
                       <p className="text-[var(--kin-chu-mo)] break-words">{p.consentLevel === "locked" ? "Đã ẩn" : `${p.consent.kind === "adult" ? "Người lớn" : "Con"} · ${payerLabel(p.consent.kind, p.guardianName)}`}</p>
                       <p><KinStatus tone={p.consentLevel === "locked" ? "loi" : p.consentLevel === "full" ? "xong" : "cho"}>{p.consentLevel === "locked" ? "Thiếu đồng ý, đã ẩn" : p.consentLevel === "full" ? "Đủ đồng ý" : "Đủ cho thông tin cơ bản"}</KinStatus></p>

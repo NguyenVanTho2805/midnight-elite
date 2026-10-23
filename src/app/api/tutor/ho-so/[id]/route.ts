@@ -10,7 +10,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { attestationFromBody, evaluateConsent, requiredConsent, type ConsentRow, type ConsentScope, isAgeGroup } from "@/lib/consentPolicy";
 import { changedFields, parseProfileInput } from "@/lib/studentProfile";
 import {
-  accountFacts, birthKeyOf, consentRowsOf, courseOwnedBy, editLogOf, grantConsent, ownProfile, revokeConsent, studentIsInTutorClass, tutorCustomIds, viewOf,
+  PROFILE_SELECT, accountFacts, birthKeyOf, consentRowsOf, courseOwnedBy, editLogOf, grantConsent, ownProfile, revokeConsent, studentIsInTutorClass, tutorCustomIds, viewOf,
 } from "@/lib/studentProfileServer";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -30,7 +30,20 @@ export async function GET(_req: Request, { params }: Ctx) {
     select: { id: true, party: true, scopes: true, method: true, textVersion: true, grantedAt: true, revokedAt: true, revokeCause: true, batchId: true },
     orderBy: { grantedAt: "desc" },
   });
+  // HS-12: liên hệ chung + các em cùng gia đình, CHỈ khi hồ sơ này có đồng ý phạm vi "family"; mỗi em cùng nhà chỉ hiện nếu chính em đó cũng có.
+  let family: { id: string; label: string; guardianName: string | null; guardianPhone: string | null; members: { id: string; name: string }[]; hiddenMembers: number } | null = null;
+  if (own.profile.familyId && view.consent.ok.family) {
+    const fam = await prisma.familyGroup.findUnique({ where: { id: own.profile.familyId }, select: { id: true, label: true, guardianName: true, guardianPhone: true, tutorId: true } });
+    if (fam && fam.tutorId === auth.userId) {
+      const mem = await prisma.studentProfile.findMany({ where: { familyId: fam.id, tutorId: auth.userId, NOT: { id } }, select: PROFILE_SELECT });
+      const mrows = await consentRowsOf(mem.map(m => m.id));
+      const macct = await accountFacts(mem.map(m => m.userId).filter((x): x is string => !!x));
+      const shown = mem.filter(m => viewOf(m, mrows.get(m.id) ?? [], new Date(), m.userId ? macct.get(m.userId) : undefined).consent.ok.family);
+      family = { id: fam.id, label: fam.label, guardianName: fam.guardianName, guardianPhone: fam.guardianPhone, members: shown.map(m => ({ id: m.id, name: m.name })), hiddenMembers: mem.length - shown.length };
+    }
+  }
   return NextResponse.json({
+    family,
     profile: view,
     ledger: ledger.map(r => ({ ...r, grantedAt: r.grantedAt.toISOString(), revokedAt: r.revokedAt?.toISOString() ?? null })),
     editLog: await editLogOf(id),

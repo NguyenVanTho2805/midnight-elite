@@ -14,12 +14,13 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { AGE_GROUP_LABEL, PARTY_LABEL, REVOKE_NOTE, SCOPE_LABEL, payerLabel, type ConsentParty, type ConsentScope } from "@/lib/consentPolicy";
 import { FIELD_LABEL, STATUS_LABEL, type ProfileStatus } from "@/lib/studentProfile";
 import ConsentBox, { EMPTY_CONSENT, consentBody, type ConsentValue } from "@/components/tutor/ConsentBox";
-import { SelectField, TextArea, TextField, fmtVnDateTime, jfetch, keyToVn } from "@/components/tutor/studentUi";
+import { SelectField, TextArea, TextField, fmtVnDate, fmtVnDateTime, jfetch, keyToVn } from "@/components/tutor/studentUi";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface Detail {
   profile: any; ledger: { id: string; party: ConsentParty; scopes: ConsentScope[]; method: string; textVersion: string; grantedAt: string; revokedAt: string | null; revokeCause: string | null; batchId: string | null }[];
   editLog: { at: string; action: string; fields: string[] }[]; accountSelfConsent: boolean;
+  family: { id: string; label: string; guardianName: string | null; guardianPhone: string | null; members: { id: string; name: string }[]; hiddenMembers: number } | null;
 }
 const ACTION_LABEL: Record<string, string> = {
   "student_profile.create": "Tạo hồ sơ", "student_profile.update": "Sửa", "student_profile.consent": "Ghi thêm đồng ý", "student_profile.revoke": "Thu hồi đồng ý", "student_profile.import": "Nhập hàng loạt",
@@ -31,7 +32,10 @@ export default function HoSoHocSinh({ id }: { id: string }) {
   const router = useRouter();
   const { ask, dialog } = useKinConfirm();
   const [d, setD] = useState<Detail | null>(null);
-  const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
+  const [courses, setCourses] = useState<{ id: string; name: string; capacity: number | null; filled: number }[]>([]);
+  const [families, setFamilies] = useState<{ id: string; label: string }[]>([]);
+  const [newFam, setNewFam] = useState<{ label: string; guardianName: string; guardianPhone: string } | null>(null);
+  const [famErr, setFamErr] = useState("");
   const [defs, setDefs] = useState<{ id: string; label: string }[]>([]);
   const [state, setState] = useState<"load" | "ok" | "err" | "404" | "403">("load");
   const [f, setF] = useState<Record<string, string>>({});
@@ -46,7 +50,7 @@ export default function HoSoHocSinh({ id }: { id: string }) {
   const fill = useCallback((p: any) => {
     setF({
       name: p.name ?? "", ageGroup: p.ageGroup ?? "", status: p.status ?? "active", courseId: p.courseId ?? "", guardianName: p.guardianName ?? "", guardianPhone: p.guardianPhone ?? "",
-      birthDate: keyToVn(p.birthDate), address: p.address ?? "", phone: p.phone ?? "", phoneExtra: p.phoneExtra ?? "", email: p.email ?? "", emailExtra: p.emailExtra ?? "",
+      familyId: p.familyId ?? "", birthDate: keyToVn(p.birthDate), address: p.address ?? "", phone: p.phone ?? "", phoneExtra: p.phoneExtra ?? "", email: p.email ?? "", emailExtra: p.emailExtra ?? "",
       startDate: keyToVn(p.startDate), subjects: (p.subjects ?? []).join(", "), notes: p.notes ?? "",
     });
     setCustom(p.customData ?? {});
@@ -61,7 +65,7 @@ export default function HoSoHocSinh({ id }: { id: string }) {
     if (a.status === 404) { setState("404"); return; }
     if (a.status === 403) { setState("403"); return; }
     if (!a.ok || !b.ok) { setState("err"); return; }
-    setD(a.json); setCourses(b.json.courses ?? []); setDefs(b.json.fieldDefs ?? []);
+    setD(a.json); setCourses(b.json.courses ?? []); setDefs(b.json.fieldDefs ?? []); setFamilies(b.json.families ?? []);
     fill(a.json.profile); setState("ok");
   }, [fill]);
   const load = useCallback(() => { fetchAll().then(apply); }, [fetchAll, apply]);
@@ -82,6 +86,7 @@ export default function HoSoHocSinh({ id }: { id: string }) {
     const body: Record<string, unknown> = {
       name: f.name, ageGroup: f.ageGroup, status: f.status, courseId: f.courseId || null, guardianName: f.guardianName, guardianPhone: f.guardianPhone,
       subjects: f.subjects,
+      ...(f.familyId !== (d?.profile.familyId ?? "") ? { familyId: f.familyId || null } : {}),
     };
     for (const k of EXT) if (k !== "subjects") body[k] = f[k] ?? "";
     body.customData = Object.fromEntries(Object.entries(custom).filter(([, v]) => v.trim()));
@@ -99,6 +104,24 @@ export default function HoSoHocSinh({ id }: { id: string }) {
     }
     if (r.status === 400 && r.json?.errors) setErrors(r.json.errors);
     setMsg({ tone: "err", text: r.json?.error ?? "Chưa lưu được, thử lại nhé." });
+  }
+
+  /** LO-14: xếp em đang chờ vào lớp (đổi sang Hoạt động + gán lớp). Chỉ cảnh báo khi lớp đã đủ chỗ, không chặn. */
+  async function placeInClass() {
+    if (!f.courseId) { setMsg({ tone: "err", text: "Chọn lớp để xếp em vào." }); return; }
+    setBusy(true); setMsg(null);
+    const r = await jfetch(`/api/tutor/ho-so/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "active", courseId: f.courseId }) });
+    setBusy(false);
+    if (r.ok) { setMsg({ tone: "ok", text: "Đã xếp em vào lớp." }); load(); } else setMsg({ tone: "err", text: r.json?.error ?? "Chưa xếp được, thử lại nhé." });
+  }
+
+  /** HS-12: tạo gia đình mới (nhãn + liên hệ phụ huynh chung) rồi chọn luôn; gắn thật khi bấm Lưu (cần phạm vi đồng ý “anh chị em”). */
+  async function createFamily() {
+    if (!newFam) return;
+    setFamErr("");
+    const r = await jfetch("/api/tutor/gia-dinh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newFam) });
+    if (r.status === 201) { setFamilies(prev => [...prev, r.json.family]); setF(prev => ({ ...prev, familyId: r.json.family.id })); setNewFam(null); }
+    else setFamErr(r.json?.error ?? "Chưa tạo được gia đình.");
   }
 
   async function reconsent() {
@@ -174,6 +197,41 @@ export default function HoSoHocSinh({ id }: { id: string }) {
               </SelectField>
               <TextField label="Tên phụ huynh" value={f.guardianName} onChange={set("guardianName")} error={errors.guardianName} maxLength={60} />
               <TextField label="Số Zalo / điện thoại phụ huynh" type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} error={errors.guardianPhone} />
+            </div>
+
+            {p.status === "waitlist" && (
+              <KinCallout title={`Em đang chờ xếp lớp${p.waitlistedAt ? ` từ ngày ${fmtVnDate(p.waitlistedAt)}` : ""}`}>
+                {(() => { const c = courses.find(x => x.id === f.courseId); return c ? (c.capacity !== null && c.filled >= c.capacity ? `Lớp ${c.name} đã đủ chỗ (${c.filled}/${c.capacity}). Bạn vẫn xếp được nếu muốn.` : `Lớp ${c.name}: ${c.filled}${c.capacity !== null ? `/${c.capacity}` : ""} em đang học.`) : "Chọn lớp ở ô “Lớp” rồi bấm Xếp vào lớp."; })()}
+                <span className="block mt-2"><button type="button" data-place disabled={busy || !f.courseId} onClick={placeInClass} className={kinButtonClass("secondary")}>Xếp vào lớp</button></span>
+              </KinCallout>
+            )}
+
+            <h2 className="text-[length:var(--kin-co-tieu-de)] font-medium pt-2">Gia đình (chung liên hệ)</h2>
+            <div data-family className="grid gap-3">
+              <SelectField label="Gia đình" value={f.familyId ?? ""} onChange={set("familyId")} hint="Anh chị em cùng nhà dùng chung liên hệ phụ huynh. KiN không gộp phiếu học phí theo gia đình.">
+                <option value="">Không thuộc gia đình nào</option>
+                {families.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+              </SelectField>
+              {d.family && (
+                <div data-family-info className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+                  <p>Liên hệ chung của {d.family.label}: {d.family.guardianName || "chưa ghi tên"}{d.family.guardianPhone ? `, ${d.family.guardianPhone}` : ""}.</p>
+                  <p>Anh chị em: {d.family.members.length ? d.family.members.map(m => m.name).join(", ") : "chưa có em nào khác"}{d.family.hiddenMembers ? ` (và ${d.family.hiddenMembers} em chưa đủ đồng ý để hiện)` : ""}.</p>
+                </div>
+              )}
+              {newFam ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <TextField label="Tên gia đình" value={newFam.label} onChange={v => setNewFam({ ...newFam, label: v })} maxLength={40} />
+                  <TextField label="Tên phụ huynh" value={newFam.guardianName} onChange={v => setNewFam({ ...newFam, guardianName: v })} maxLength={60} />
+                  <TextField label="Số Zalo phụ huynh" type="tel" inputMode="tel" value={newFam.guardianPhone} onChange={v => setNewFam({ ...newFam, guardianPhone: v })} />
+                  <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
+                    <button type="button" onClick={createFamily} disabled={!newFam.label.trim()} className={kinButtonClass("secondary")}>Tạo gia đình</button>
+                    <button type="button" onClick={() => { setNewFam(null); setFamErr(""); }} className={kinButtonClass("ghost")}>Huỷ</button>
+                    {famErr && <span role="alert" className="text-[var(--kin-tt-chu-loi)]">{famErr}</span>}
+                  </div>
+                </div>
+              ) : (
+                <div><button type="button" data-new-family onClick={() => setNewFam({ label: "", guardianName: "", guardianPhone: "" })} className={kinButtonClass("secondary")}>Tạo gia đình mới</button></div>
+              )}
             </div>
 
             <h2 className="text-[length:var(--kin-co-tieu-de)] font-medium pt-2">Thông tin mở rộng</h2>

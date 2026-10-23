@@ -29,6 +29,7 @@ import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type Atten
 import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
 import { hmOf, isValidDateKey, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+import DiemBuoi from "@/components/tutor/DiemBuoi";
 
 const vnWhen = (iso: string) => `${hmOf(vnMinutesOfDay(new Date(iso)))} ngày ${vnDateKeyOf(new Date(iso)).slice(8, 10)}/${vnDateKeyOf(new Date(iso)).slice(5, 7)}`;
 
@@ -314,6 +315,9 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
               {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Không tạo học phí khi lưu.
             </span>
           </div>
+
+          {/* BU-11: điểm 0-10 và % BTVN từng em (chỉ khi hồ sơ của em có đồng ý) */}
+          <DiemBuoi sessionId={session.id} />
         </>
       )}
 

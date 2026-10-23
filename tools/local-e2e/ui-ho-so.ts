@@ -177,7 +177,7 @@ import { prisma } from "@/lib/prisma";
   await go("/lop-cua-toi/hoc-sinh", "Em Có Tài Khoản");
   check("tab Hồ sơ đếm 3 (Một, Excel Một, Csv… không có) — mọi hồ sơ không tài khoản trừ chờ", await pg.getByRole("tab", { name: /^Hồ sơ · \d+$/ }).isVisible() && await pg.getByRole("tab", { name: "Chờ xếp lớp · 1" }).isVisible());
   await pg.getByRole("tab", { name: "Chờ xếp lớp · 1" }).click();
-  check("tab Chờ xếp lớp: đúng em chờ, có chữ trạng thái", await pg.locator("[data-ho-so]").count() === 1 && await pg.locator("[data-ho-so]").getByText("Em Excel Hai").isVisible() && await pg.locator("[data-ho-so]").getByText("Đang chờ xếp lớp").isVisible());
+  check("tab Chờ xếp lớp: đúng em chờ, có chữ trạng thái", await pg.locator("[data-ho-so]").count() === 1 && await pg.locator("[data-ho-so]").getByText("Em Excel Hai").isVisible() && await pg.locator("[data-ho-so]").getByText(/Chờ thứ 1/).isVisible());
   await pg.getByRole("tab", { name: "Đang học · 1" }).click();
   const href = await pg.getByRole("link", { name: "Hồ sơ riêng của Em Có Tài Khoản" }).getAttribute("href");
   check("em có tài khoản: 'Hồ sơ riêng' dẫn tới wizard với ?userId=", href === `/lop-cua-toi/hoc-sinh/them?userId=${S.id}`, href);
