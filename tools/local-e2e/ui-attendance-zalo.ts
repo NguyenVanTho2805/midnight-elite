@@ -40,7 +40,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 
   section("Chưa lưu thì chưa có nút Nhắn phụ huynh");
   await page.goto(`${BASE}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
-  await page.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
+  await page.getByRole("heading", { name: "Điểm danh", level: 2 }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await page.getByText("Em An").waitFor({ timeout: 30000 });
   const rowA = page.locator("div.flex.items-center.gap-3", { hasText: "Em An" }).last();

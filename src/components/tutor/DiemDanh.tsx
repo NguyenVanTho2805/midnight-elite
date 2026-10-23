@@ -23,6 +23,7 @@ import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import Link from "next/link";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import { KinSectionHead } from "@/components/kin/SectionHead";
+import { KinStatus } from "@/components/kin/Status";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
 import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
@@ -207,6 +208,15 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
     return acc;
   }, {} as Record<string, number>);
 
+  const exportBlock = (
+      <div className={`flex items-center gap-2 flex-wrap ${embedded ? "" : "pt-4 border-t border-[var(--kin-vien-nhat)]"}`} role="group" aria-label={`Xuất bảng điểm danh tháng ${exportLabel}`}>
+        <span className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Bảng tháng {exportLabel}:</span>
+        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=csv`} download className={kinButtonClass("secondary")}>Tải CSV</a>
+        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=xlsx`} download className={kinButtonClass("secondary")}>Tải Excel</a>
+        <Link href={`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
+      </div>
+  );
+
   return (
     <div className={embedded ? "space-y-5" : "max-w-4xl mx-auto px-4 py-6 space-y-5"}>
       {/* Đầu trang: nhúng trong trang lớp thì chỉ còn "Buổi đang xem" + "Điểm danh" (Figma 299:112581). */}
@@ -220,33 +230,34 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
           <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0}>Tất cả có mặt</KinButton>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <>
+          {/* Điện thoại (Figma 299:116181): tiêu đề "<Lớp> · Điểm danh", nhãn "Chọn buổi học", ô ngày đầy bề ngang. */}
           <div>
-            <h1 className="text-h4" style={{ color: "var(--kin-chu-chinh)" }}>Điểm danh</h1>
+            <h1 className="text-h4" style={{ color: "var(--kin-chu-chinh)" }}>{courseName ? `${courseName} · ` : ""}Điểm danh</h1>
             <p className="text-body-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
               Vắng không trừ tiền. Hệ số dùng cho chuyên cần.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="dd-date" className="text-body-sm font-semibold" style={{ color: "var(--kin-chu-phu)" }}>Ngày</label>
+          <div>
+            <label htmlFor="dd-date" className="block text-body-sm mb-2" style={{ color: "var(--kin-chu-mo)" }}>Chọn buổi học</label>
             <input id="dd-date" type="date" value={date}
               onChange={e => setDate(e.target.value)}
-              className="px-3 py-1.5 text-body-sm font-semibold rounded-lg"
-              style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
+              className="w-full sm:w-auto px-3 min-h-11 text-body-sm rounded-lg"
+              style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
           </div>
+        </>
+      )}
+      {!embedded && (
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--kin-vien-nhat)]">
+          <h2 className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Điểm danh</h2>
+          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0}>Tất cả có mặt</KinButton>
         </div>
       )}
       {embedded && (
         <KinSectionHead title="Điểm danh" aside={session && roster.length > 0 ? `${roster.length - (counts.none ?? 0)}/${roster.length} em đã chọn` : undefined} />
       )}
 
-      {/* ĐX-03: xuất bảng điểm danh cả tháng — tải CSV / Excel, hoặc mở trang in để Lưu thành PDF */}
-      <div className="flex items-center gap-2 flex-wrap" role="group" aria-label={`Xuất bảng điểm danh tháng ${exportLabel}`}>
-        <span className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Bảng tháng {exportLabel}:</span>
-        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=csv`} download className={kinButtonClass("secondary")}>Tải CSV</a>
-        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=xlsx`} download className={kinButtonClass("secondary")}>Tải Excel</a>
-        <Link href={`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
-      </div>
+      {embedded && exportBlock}
 
       {/* State: loading / no-session / session */}
       {loading ? (
@@ -301,7 +312,7 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
           </div>
 
           {/* Lưu: nút thường (Figma), dính đáy để bấm được khi danh sách dài; lưu KHÔNG tạo học phí */}
-          <div className="sticky bottom-4 flex items-center gap-x-4 gap-y-2 flex-wrap bg-[var(--kin-nen-trang)] py-3">
+          <div className={`${embedded ? "sticky bottom-4" : ""} flex items-center gap-x-4 gap-y-2 flex-wrap bg-[var(--kin-nen-trang)] py-3`}>
             <KinButton variant="secondary" onClick={saveAll} disabled={dirty.size === 0} loading={saving} loadingLabel="Đang lưu...">Lưu điểm danh</KinButton>
             <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
               {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Không tạo học phí khi lưu.
@@ -309,6 +320,8 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
           </div>
         </>
       )}
+
+      {!embedded && exportBlock}
 
       {groupText !== null && (
         <Modal title="Nhắn nhóm Zalo lớp" onClose={() => setGroupText(null)}>
@@ -360,11 +373,11 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo }: {
     <div className="flex flex-wrap items-center gap-3 py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)]">
       <div className="basis-full flex items-baseline justify-between gap-2 min-w-0">
         <p className="text-[length:var(--kin-co-tieu-de)] leading-6 text-[var(--kin-chu-chinh)] truncate">{r.name}</p>
-        <span className="text-[length:var(--kin-co-goc)] flex-shrink-0" style={{ color: r.status ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)" }}>
+        <KinStatus tone={r.status === "present" ? "xong" : r.status === "late" ? "cho" : r.status === "absent" ? "loi" : "mo"} className="flex-shrink-0">
           {r.status ? ATTENDANCE_LABEL[r.status] : "Chưa điểm danh"}{unsaved ? " · chưa lưu" : ""}
-        </span>
+        </KinStatus>
       </div>
-      <div className="basis-full grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="basis-full grid grid-cols-4 gap-2">
         {SHOWN.map(s => {
           const picked = r.status === s;
           return (
@@ -372,7 +385,7 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo }: {
             <button key={s} type="button" onClick={() => onPick(r.userId, s)} aria-pressed={picked}
               title={`${ATTENDANCE_LABEL[s]} (hệ số ×${ATTENDANCE_COEFFICIENT[s]})`}
               aria-label={`${ATTENDANCE_LABEL[s]} hệ số ${ATTENDANCE_COEFFICIENT[s]}`}
-              className={`min-h-11 px-2 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] whitespace-nowrap transition-colors ${picked
+              className={`min-h-11 px-1 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] whitespace-nowrap transition-colors ${picked
                 ? "bg-[var(--kin-nen-nhan)] border-[var(--kin-nhan-diem)] font-semibold text-[var(--kin-chu-chinh)]"
                 : "bg-[var(--kin-nen-trang)] border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
               {ATTENDANCE_LABEL[s]}

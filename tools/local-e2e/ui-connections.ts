@@ -90,7 +90,7 @@ const vnTomorrowDow = () => new Date(Date.now() + 86400_000 + 7 * 3600_000).getU
   section("Điểm danh: tin CHUNG vào nhóm Zalo lớp");
   const ap = await ctx.newPage(); watch(ap);
   await ap.goto(`${BASE}/admin/khoa-hoc/${toan.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
-  await ap.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
+  await ap.getByRole("heading", { name: "Điểm danh", level: 2 }).waitFor({ timeout: 90000 });
   await ap.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await ap.getByText("Em An").waitFor({ timeout: 30000 });
   const grpBtn = ap.getByRole("button", { name: "Nhắn nhóm Zalo lớp" });

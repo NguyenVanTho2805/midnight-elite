@@ -35,6 +35,7 @@ import { BASE } from "./h";
   await p.getByRole("heading", { name: "Toán 9", level: 1 }).waitFor({ timeout: 90000 });
   check("dòng phụ: 1 học sinh · lịch", (await body()).includes("1 học sinh · T6 · 19:00–20:30"));
   check("có tab Buổi học & điểm danh / Học sinh · 1 / Mã mời", (await p.getByRole("tab").allInnerTexts()).join("|").includes("Học sinh · 1") && await p.getByRole("tab", { name: "Mã mời" }).isVisible());
+  await p.getByRole("button", { name: "Tạo buổi điểm danh" }).waitFor({ timeout: 90000 });
   check("điểm danh nhúng: ô 'Buổi đang xem' + 'Tạo buổi điểm danh'", await p.getByLabel("Buổi đang xem").isVisible() && await p.getByRole("button", { name: "Tạo buổi điểm danh" }).isVisible());
   await p.getByRole("button", { name: "Mời học sinh" }).click();
   await p.getByText("Tạo mã mời mới").waitFor({ timeout: 60000 });
