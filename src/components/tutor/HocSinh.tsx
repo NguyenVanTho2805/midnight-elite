@@ -36,6 +36,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { tim
 export default function HocSinh() {
   const [rows, setRows] = useState<TutorStudentRow[] | null>(null);
   const [profiles, setProfiles] = useState<ProfileRowUi[]>([]);
+  const [newRequests, setNewRequests] = useState(0);
   const [courseNames, setCourseNames] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState(false);
   const [q, setQ] = useState("");
@@ -52,6 +53,9 @@ export default function HocSinh() {
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(d => { setProfiles(Array.isArray(d.profiles) ? d.profiles : []); setCourseNames(new Map<string, string>((d.courses ?? []).map((c: { id: string; name: string }) => [c.id, c.name]))); })
       .catch(() => setProfiles([]));
+    // Yêu cầu tìm gia sư của khách gửi tới mình (KH-04): chỉ để hiện số yêu cầu mới; lỗi thì bỏ qua.
+    fetch("/api/tutor/yeu-cau", { credentials: "same-origin", cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null)).then(d => setNewRequests(d && typeof d.newCount === "number" ? d.newCount : 0)).catch(() => setNewRequests(0));
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -76,6 +80,7 @@ export default function HocSinh() {
       <KinPageHeader title="Học sinh"
         sub={<>{rows ? `${nActive} học sinh đang học · ` : <span aria-hidden className="invisible">00 học sinh đang học · </span>}Chỉ gồm học sinh trong các lớp của bạn.</>}
         actions={<>
+          <Link href="/lop-cua-toi/yeu-cau" className={kinButtonClass("secondary")}>{newRequests > 0 ? `Yêu cầu tìm gia sư · ${newRequests} mới` : "Yêu cầu tìm gia sư"}</Link>
           <Link href="/lop-cua-toi/hoc-sinh/nhap" className={kinButtonClass("secondary")}>Nhập danh sách</Link>
           <Link href="/lop-cua-toi/hoc-sinh/them" className={kinButtonClass("primary")}>Thêm học sinh</Link>
         </>} />

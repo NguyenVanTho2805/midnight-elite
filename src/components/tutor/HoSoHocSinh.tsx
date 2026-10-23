@@ -195,8 +195,8 @@ export default function HoSoHocSinh({ id }: { id: string }) {
               <SelectField label="Nhóm tuổi" value={f.ageGroup} onChange={set("ageGroup")} hint={p.consent.conflict ? "Ngày sinh và nhóm tuổi chưa khớp: KiN dùng nhóm đòi nhiều đồng ý hơn." : undefined}>
                 {(["u7", "7to15", "16plus"] as const).map(g => <option key={g} value={g}>{AGE_GROUP_LABEL[g]}</option>)}
               </SelectField>
-              <TextField label="Tên phụ huynh" value={f.guardianName} onChange={set("guardianName")} error={errors.guardianName} maxLength={60} />
-              <TextField label="Số Zalo / điện thoại phụ huynh" type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} error={errors.guardianPhone} />
+              <TextField label={kind === "adult" ? "Tên liên hệ" : "Tên phụ huynh"} value={f.guardianName} onChange={set("guardianName")} error={errors.guardianName} maxLength={60} />
+              <TextField label={kind === "adult" ? "Số Zalo / điện thoại liên hệ" : "Số Zalo / điện thoại phụ huynh"} type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} error={errors.guardianPhone} />
             </div>
 
             {p.status === "waitlist" && (

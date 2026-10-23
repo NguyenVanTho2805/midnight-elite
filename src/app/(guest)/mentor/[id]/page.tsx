@@ -147,6 +147,8 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
             <KinLinkButton href={classes[0] ? `/khoa-hoc/${classes[0].id}` : "/khoa-hoc"}>
               Đăng ký học với {firstName}
             </KinLinkButton>
+            {/* KH-04: khách không cần tài khoản gửi yêu cầu (cấp học, môn, khung giờ, số Zalo) tới gia sư này; có hộp đồng ý và trang theo dõi. */}
+            <KinLinkButton href={`/mentor/${tutor.id}/yeu-cau`} variant="secondary">Gửi yêu cầu tìm gia sư</KinLinkButton>
             {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
             {tutor.zalo && (
               <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-phu)" }}>Liên hệ qua Zalo: <b style={{ color: "var(--kin-chu-chinh)" }}>{tutor.zalo}</b></p>

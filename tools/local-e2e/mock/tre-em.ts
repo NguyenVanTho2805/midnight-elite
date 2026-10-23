@@ -94,12 +94,33 @@ export default async function mock(ctx: MockCtx): Promise<string[]> {
     scoreLine = `Điểm từng buổi — giasu@kin.local → Điểm danh của lớp "${course.name}" ngày hôm nay (/admin/khoa-hoc/${course.id}/diem-danh): mục 'Điểm từng buổi' dưới bảng, em 'Em Điểm Thử' có ô nhập (8,5 điểm, 90%); các em khác ghi 'Thiếu đồng ý ghi điểm'. Phụ huynh: ${process.env.BASE ?? "http://localhost:3000"}/so-cua-con/${token} → mục 'Điểm từng buổi'.`;
   }
 
+  // Yêu cầu tìm gia sư của khách gửi tới giasu@kin.local (KH-04 / PH-07): một mới, một đã nhận (có hồ sơ), một đã từ chối. Xoá lô thử cũ rồi dựng lại.
+  await prisma.user.update({ where: { id: tutor.id }, data: { tutorVerified: true } }); // hồ sơ công khai để khách gửi yêu cầu được
+  await prisma.tutorRequest.deleteMany({ where: { targetTutorId: tutor.id, subject: { contains: TAG } } });
+  const mkReq = async (subject: string, status: "new" | "accepted" | "declined", extra: Record<string, unknown> = {}) => {
+    const r = await prisma.tutorRequest.create({
+      data: {
+        trackToken: randomBytes(16).toString("hex"), targetTutorId: tutor.id, level: "thcs", subject: `${subject} ${TAG}`, mode: "online", slots: "tối thứ 3, 5", status,
+        contactName: status === "new" ? "Chị Hà (thử)" : null, contactPhone: status === "new" ? "0912000777" : "", note: status === "new" ? "Con yếu hình học (thử)" : null, phoneKey: randomBytes(16).toString("hex"),
+        decidedAt: status === "new" ? null : now, ...extra,
+      },
+    });
+    await prisma.consentRecord.create({
+      data: { subjectType: "tutor_request", subjectId: r.id, party: "guardian", scopes: ["basic"], method: "guest_form", textVersion: CONSENT_TEXT_VERSION, givenById: null, givenByRole: "guest", ...(status === "declined" ? { revokedAt: now, revokeCause: "request_declined" } : {}) },
+    });
+    return r;
+  };
+  const rNew = await mkReq("Toán 9", "new");
+  const rDone = await mkReq("Văn 8", "accepted", { profileId: e2 });
+  await mkReq("Lý 10", "declined");
+
   return [
     "Hồ sơ học sinh + đồng ý — đăng nhập giasu@kin.local → Học sinh (/lop-cua-toi/hoc-sinh): bấm tab 'Hồ sơ' (11 hồ sơ thử gắn '(thử)') và 'Chờ xếp lớp' (Bé Chờ Lớp).",
     "Bấm 'Mở hồ sơ' của 'Bé Minh Anh': đủ đồng ý, có thông tin mở rộng và trường tuỳ chỉnh; 'Bé Đã Thu Hồi': hồ sơ bị ẩn, chỉ còn tên + ô ghi đồng ý lại; sổ đồng ý và nhật ký sửa nằm cuối trang.",
     "Bấm 'Thêm học sinh' để chạy wizard 4 bước (ô đồng ý không tích sẵn, chưa tích đủ thì không lưu được); 'Nhập danh sách' để dán/CSV/Excel/lịch có xem trước và lỗi từng dòng; 'Trường tuỳ chỉnh' ở cuối trang Học sinh.",
     "Gia đình + danh sách chờ — trang Học sinh: tab 'Chờ xếp lớp' có 2 em theo thứ tự (Bé Chờ Lớp trước); mở hồ sơ 'Bé Anh Cả' để thấy mục 'Gia đình (chung liên hệ)': liên hệ chung, em cùng nhà, và 1 em bị ẩn vì chưa có đồng ý 'anh chị em'.",
     ...(scoreLine ? [scoreLine] : []),
+    `Yêu cầu tìm gia sư — giasu@kin.local → Học sinh → nút 'Yêu cầu tìm gia sư · 1 mới' (/lop-cua-toi/yeu-cau): 1 yêu cầu mới (có số Zalo, nút Tiếp nhận / Từ chối), 1 đã nhận (có liên kết mở hồ sơ 'Bé Chờ Thứ Hai'), 1 đã từ chối. Khách theo dõi: ${process.env.BASE ?? "http://localhost:3000"}/yeu-cau/${rNew.trackToken} (đang chờ, có nút Rút) và /yeu-cau/${rDone.trackToken} (gia sư đã nhận). Khách gửi mới: mở /giang-vien → hồ sơ gia sư → 'Gửi yêu cầu tìm gia sư' (chờ vài giây rồi mới gửi được).`,
     "Em tự đồng ý: đăng nhập hocsinh@kin.local → Hồ sơ (/student/ho-so), thẻ 'Đồng ý để gia sư ghi thông tin lớp học của em'.",
   ];
 }
