@@ -69,6 +69,7 @@ model Course {
   classInvites       ClassInvite[]
   monthlyFees        MonthlyCourseFee[]
   attendanceSessions AttendanceSession[]
+  studentProfiles    StudentProfile[]
 
   @@index([ownerId])
   @@map("courses")
@@ -785,6 +786,9 @@ model User {
   phoneE164       String?   @unique
   phoneVerifiedAt DateTime?
   dateOfBirth   DateTime? // dùng để tính tuổi tại backend cho ngưỡng xác nhận phụ huynh (D04) — không suy đoán từ input khác
+  // 23/10/2026 (D04): lúc CHÍNH học sinh tự bấm đồng ý để gia sư ghi thông tin lớp học của em (đồng ý kép từ 7 tuổi, tự đồng ý từ 16).
+  // null = em chưa bấm. Cột nullable nên không mất dữ liệu cũ. Về null khi em thu hồi.
+  selfConsentAt DateTime?
   parentPhone   String? // dữ liệu cũ, tự khai — KHÔNG dùng để cấp quyền; nguồn tin cậy là ParentLink đã verified
   parentName    String? // dữ liệu cũ, tự khai — xem ghi chú parentPhone
   school        String?
@@ -881,6 +885,12 @@ model User {
   bankTransactions     BankTransaction[]   @relation("BankTxTutor")
   tuitionCredits       TuitionCredit[]     @relation("CreditTutor")
   tuitionCreditsOwned  TuitionCredit[]     @relation("CreditStudent")
+  studentProfilesOwned StudentProfile[]    @relation("StudentProfileTutor")
+  studentProfilesAbout StudentProfile[]    @relation("StudentProfileUser")
+  studentFieldDefs     StudentFieldDef[]   @relation("StudentFieldDefTutor")
+  familyGroups         FamilyGroup[]       @relation("FamilyGroupTutor")
+  tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
+  sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
 
   @@map("users")
 }
@@ -1034,6 +1044,7 @@ model AttendanceSession {
   course   Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator  User                @relation("AttendanceSessionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   records  AttendanceRecord[]
+  scores   SessionStudentScore[]
 
   @@unique([courseId, date])
   @@index([courseId, date])
@@ -1900,4 +1911,156 @@ model LoginCode {
   updatedAt   DateTime  @updatedAt
 
   @@map("login_codes")
+}
+
+// ─── HỒ SƠ HỌC SINH CỦA GIA SƯ + ĐỒNG Ý DỮ LIỆU TRẺ (23/10/2026) ───────────────
+// Chủ dự án quyết 23/10: "Làm đầy đủ, có hộp đồng ý" cho dữ liệu trẻ dưới 16. CHƯA có ý kiến luật sư (Nghị định 13/2023,
+// Luật Trẻ em 2016, Luật 91/2025) — cần có trước khi mở cho người dùng thật. Quy tắc ở src/lib/consentPolicy.ts.
+// Mọi bảng dưới đây là bảng MỚI (chỉ thêm), không đổi bảng cũ ngoài hai cột/quan hệ nói ở trên.
+
+// Hồ sơ RIÊNG của một gia sư về một em: không có tài khoản (userId null) hoặc là ghi chú riêng của gia sư về em đã có tài khoản
+// (userId có giá trị — KHÔNG đụng dữ liệu tài khoản của em, gia sư khác không thấy). Chỉ chủ hồ sơ (tutorId) đọc/sửa được.
+// Chỉ lưu được khi đã có đồng ý đủ bên (ConsentRecord); thu hồi → các trường ngoài tên bị che (xem maskProfile).
+model StudentProfile {
+  id            String    @id @default(cuid())
+  tutorId       String
+  userId        String? // em đã có tài khoản và đang học lớp của chính gia sư này; null = hồ sơ không tài khoản
+  courseId      String? // lớp của gia sư (kiểm ở máy chủ); với status waitlist là lớp em đang chờ
+  name          String
+  // Nhóm tuổi gia sư khai khi chưa có ngày sinh: "u7" (dưới 7) | "7to15" | "16plus". Có ngày sinh thì ngày sinh quyết định.
+  ageGroup      String
+  status        String    @default("active") // "active" | "inactive" | "waitlist"
+  familyId      String?
+  guardianName  String?
+  guardianPhone String?
+  // ── Nhóm "mở rộng" (cần phạm vi đồng ý "extended")
+  birthDate     String? // "YYYY-MM-DD"
+  address       String?
+  phone         String?
+  phoneExtra    String?
+  email         String?
+  emailExtra    String?
+  startDate     String? // ngày bắt đầu học "YYYY-MM-DD"
+  subjects      String[]  @default([])
+  notes         String?   @db.Text
+  customData    Json? // { [StudentFieldDef.id]: "chữ" }
+  source        String    @default("manual") // "manual" | "wizard" | "paste" | "csv" | "request"
+  batchId       String? // lần nhập hàng loạt (ConsentRecord.batchId cùng giá trị)
+  requestId     String? // từ yêu cầu tìm gia sư (TutorRequest)
+  waitlistedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tutor  User         @relation("StudentProfileTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  user   User?        @relation("StudentProfileUser", fields: [userId], references: [id], onDelete: Cascade)
+  course Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  family FamilyGroup? @relation(fields: [familyId], references: [id], onDelete: SetNull)
+
+  @@index([tutorId, status])
+  @@index([userId])
+  @@index([courseId])
+  @@index([familyId])
+  @@map("student_profiles")
+}
+
+// Sổ ghi vết đồng ý. Mỗi dòng = một bên (party) đồng ý một nhóm phạm vi (scopes) bằng một phương thức, kèm phiên bản chữ đã hiện.
+// Thu hồi = đặt revokedAt (không xoá dòng — giữ vết). Đồng ý lại = dòng MỚI. Không chứa tên/số liên lạc của trẻ, chỉ id.
+// "tutor_attestation" nghĩa là GIA SƯ tự xác nhận đã có đồng ý của phụ huynh/em; KiN KHÔNG kiểm tra giấy tờ nên không phải "đã xác minh".
+model ConsentRecord {
+  id          String    @id @default(cuid())
+  subjectType String // "student_profile" | "tutor_request"
+  subjectId   String
+  party       String // "guardian" | "child" | "self"
+  scopes      String[] // "basic" | "extended" | "scores" | "family"
+  method      String // "tutor_attestation" | "guest_form"
+  textVersion String
+  givenById   String? // người bấm (gia sư); khách không đăng nhập = null
+  givenByRole String // "tutor" | "guest"
+  batchId     String?
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+  revokeCause String? // "guardian_request" | "child_request" | "tutor_decision" | "profile_deleted"
+
+  @@index([subjectType, subjectId])
+  @@index([batchId])
+  @@map("consent_records")
+}
+
+// Trường tuỳ chỉnh của gia sư (LO-18). Số trường tối đa cấu hình bằng KIN_CUSTOM_FIELDS_MAX (xem studentProfile.ts).
+model StudentFieldDef {
+  id        String   @id @default(cuid())
+  tutorId   String
+  label     String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tutor User @relation("StudentFieldDefTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@index([tutorId])
+  @@map("student_field_defs")
+}
+
+// Hồ sơ gia đình dùng chung liên hệ (HS-12). CHỈ chung liên hệ — KHÔNG gộp phiếu học phí theo gia đình.
+model FamilyGroup {
+  id            String   @id @default(cuid())
+  tutorId       String
+  label         String
+  guardianName  String?
+  guardianPhone String?
+  createdAt     DateTime @default(now())
+
+  tutor    User             @relation("FamilyGroupTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  profiles StudentProfile[]
+
+  @@index([tutorId])
+  @@map("family_groups")
+}
+
+// Điểm 0-10 và % hoàn thành BTVN của một em trong một buổi (BU-11). Chỉ gia sư của lớp và phụ huynh của đúng em đó (qua link Sổ của con) thấy.
+// Chỉ ghi được khi hồ sơ của em có đồng ý phạm vi "scores". Bảng riêng để KHÔNG đụng AttendanceRecord (điểm danh/học phí).
+model SessionStudentScore {
+  id          String   @id @default(cuid())
+  sessionId   String
+  userId      String
+  tutorId     String
+  score       Int? // 0..10
+  homeworkPct Int? // 0..100
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User              @relation("SessionScoreStudent", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("session_student_scores")
+}
+
+// Yêu cầu tìm gia sư của khách (KH-04 / PH-07). Chỉ thu tối thiểu: cấp học, môn, khu vực, khung giờ, tên + số Zalo của PHỤ HUYNH.
+// KHÔNG thu tên hay ngày sinh của trẻ. Gửi kèm đồng ý của phụ huynh (ConsentRecord, method "guest_form"). Theo dõi bằng mã trackToken.
+model TutorRequest {
+  id            String    @id @default(cuid())
+  trackToken    String    @unique
+  targetTutorId String? // gửi tới đúng một gia sư (từ /mentor/<id>); null = yêu cầu chung (chưa có ai nhận)
+  level         String // "tieu-hoc" | "thcs" | "thpt" | "khac"
+  subject       String
+  city          String?
+  district      String?
+  mode          String? // "online" | "offline" | "both"
+  slots         String? // khung giờ muốn học (chữ tự do ngắn)
+  note          String?
+  contactName   String? // tên PHỤ HUYNH
+  contactPhone  String // SĐT Zalo PHỤ HUYNH, 10 số
+  phoneKey      String // băm một chiều của SĐT để chống spam (không dùng để hiện)
+  status        String    @default("new") // "new" | "accepted" | "declined" | "closed"
+  decidedAt     DateTime?
+  profileId     String? // hồ sơ gia sư tạo khi tiếp nhận
+  createdAt     DateTime  @default(now())
+
+  target User? @relation("TutorRequestTarget", fields: [targetTutorId], references: [id], onDelete: SetNull)
+
+  @@index([targetTutorId, status])
+  @@index([phoneKey, createdAt])
+  @@map("tutor_requests")
 }

@@ -17,25 +17,29 @@ export function isEnrollmentActive(e: { status: string } | null | undefined): bo
 }
 
 // Quyết định status cho Enrollment MỚI TẠO — BE-046.
-// Mọi nơi tạo Enrollment (ClassInvite.redeem khi 1.4.6 có; admin/students
-// enrollment riêng; hoặc migration seed) PHẢI gọi hàm này thay vì hardcode
-// "active" để logic parental consent chốt 1 chỗ, không rải khắp nơi.
+// Mọi nơi tạo Enrollment (ClassInvite.redeem; admin/enrollments) PHẢI gọi hàm này thay vì hardcode "active"
+// để logic đồng ý của phụ huynh chốt 1 chỗ.
 //
-// Hiện tại — theo D04 chốt 04/10/2026: feature parental consent KHÔNG bật
-// trong giai đoạn đầu, mọi Enrollment mới mặc định "active" bất kể tuổi.
-// Hàm vẫn tồn tại và nhận userId để khi bật feature chỉ sửa 1 hàm, không
-// phải audit lại route nào.
-//
-// Khi bật (ngưỡng 18 theo D04 tạm chốt), logic sẽ là:
-//   1. Lấy user.dateOfBirth
-//   2. Nếu tuổi < 18 VÀ chưa có ParentConsent approved → "pending_consent"
-//   3. Ngược lại → "active"
-// Model `ParentConsent` chưa có trên main — xem BE-047 (chờ nhánh Parent
-// merge). Khi có, thêm 2 dòng vào hàm này + đổi return từ Promise về giữ.
+// 23/10/2026 — chủ dự án quyết "làm đầy đủ, có hộp đồng ý" cho dữ liệu trẻ dưới 16 (CHƯA có ý kiến luật sư).
+// CÔNG TẮC `KIN_ENROLL_CONSENT_GATE=1` (mặc định TẮT: không đổi hành vi hiện có của người dùng đang dùng):
+// khi bật, học sinh có ngày sinh trong tài khoản cho thấy dưới 16 tuổi, chưa có ParentConsent "approved" nào,
+// vào lớp mới sẽ ở "pending_consent" (không có quyền học tới khi phụ huynh duyệt qua /api/parent-consents).
+// Học sinh KHÔNG có ngày sinh vẫn "active": tài khoản tự khai, KiN không đoán tuổi. Phần đồng ý của CHÍNH em (từ 7 tuổi) chưa chặn ở đây.
+import { CONSENT_ADULT_AGE, ageOnKey } from "@/lib/consentPolicy";
+import { vnDateKeyOf } from "@/lib/classSessions";
+
+export function enrollmentStatusFor(o: { gateOn: boolean; birthKey: string | null; now: Date; guardianApproved: boolean }): EnrollmentStatus {
+  if (!o.gateOn) return ENROLLMENT_STATUS.ACTIVE;
+  const age = ageOnKey(o.birthKey, vnDateKeyOf(o.now));
+  if (age === null || age >= CONSENT_ADULT_AGE) return ENROLLMENT_STATUS.ACTIVE;
+  return o.guardianApproved ? ENROLLMENT_STATUS.ACTIVE : ENROLLMENT_STATUS.PENDING_CONSENT;
+}
+
 export async function deriveStatusForNewEnrollment(userId: string): Promise<EnrollmentStatus> {
-  // Placeholder: luôn active cho tới khi parental consent bật (D04). Giữ
-  // tham số userId để chữ ký không đổi khi logic bật — callers không phải
-  // sửa. Void để ESLint không warn "unused" trước ngày đó.
-  void userId;
-  return ENROLLMENT_STATUS.ACTIVE;
+  if (process.env.KIN_ENROLL_CONSENT_GATE !== "1") return ENROLLMENT_STATUS.ACTIVE;
+  const { prisma } = await import("@/lib/prisma"); // nạp muộn: tệp này cũng được import ở nơi không cần DB
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { dateOfBirth: true } });
+  const birthKey = u?.dateOfBirth ? new Date(u.dateOfBirth.getTime() + 7 * 3600_000).toISOString().slice(0, 10) : null;
+  const approved = await prisma.parentConsent.count({ where: { status: "approved", parentLink: { studentId: userId } } });
+  return enrollmentStatusFor({ gateOn: true, birthKey, now: new Date(), guardianApproved: approved > 0 });
 }

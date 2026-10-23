@@ -11,6 +11,7 @@ import {
 import { BADGE_RULES } from "@/lib/honorData";
 import { DropZone } from "@/components/DropZone";
 import ParentLinkWidget from "@/components/parent/ParentLinkWidget";
+import SelfConsentCard from "@/components/account/SelfConsentCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -581,6 +582,9 @@ export default function HoSoPage() {
 
           {/* ── Liên kết phụ huynh (ParentLink có xác minh) ── */}
           <ParentLinkWidget onNotify={showToast} />
+
+          {/* ── Em tự đồng ý để gia sư ghi thông tin lớp học (User.selfConsentAt) ── */}
+          <SelfConsentCard onNotify={showToast} />
 
           {/* ── Mạng xã hội ── */}
           <Section title="Mạng xã hội"
