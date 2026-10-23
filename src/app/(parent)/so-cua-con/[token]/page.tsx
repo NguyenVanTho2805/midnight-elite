@@ -181,7 +181,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 </ParentSection>
 
                 <ParentSection id="h-chuyen-can" title="Chuyên cần tháng này">
-                  <ul className="divide-y" style={{ borderColor: "var(--kin-vien-nhat)" }}>
+                  <ul className="divide-y divide-[color:var(--kin-vien-nhat)]">
                     {enrollments.map(e => {
                       const stats = computeAttendanceStats(attByCourse.get(e.course.id) ?? []);
                       return (
@@ -212,7 +212,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 {invoices.length > 0 && (
                   <section aria-labelledby="h-phieu">
                     <h2 id="h-phieu" className="text-sm font-semibold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Phiếu học phí</h2>
-                    <div className="space-y-5 divide-y" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+                    <div className="space-y-5 divide-y divide-[color:var(--kin-vien-thuong)]">
                       {invoices.map(inv => (
                         <div key={inv.id} className="first:pt-0 pt-5">
                           <InvoiceCard plain invoice={inv} reportUrl={`/api/parent-portal/${token}/invoices/${inv.code}/reported`} />

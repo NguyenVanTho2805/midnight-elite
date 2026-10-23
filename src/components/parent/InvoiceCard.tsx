@@ -61,10 +61,10 @@ export default function InvoiceCard({ invoice, reportUrl, plain = false }: { inv
             {showPay ? "Ẩn cách chuyển khoản" : "Xem cách chuyển khoản"} <KinChevron open={showPay} />
           </button>
           <KinFold open={showPay} id={payId}>
-            <div className="pt-1 flex flex-col sm:flex-row items-center gap-4">
+            <div className={`pt-1 flex flex-col sm:flex-row items-center gap-4${plain ? " lg:flex-col" : ""}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={invoice.qrUrl!} alt={`Mã VietQR chuyển ${vnd(invoice.remaining)} cho ${invoice.tutorName}`} className="w-44 h-44 sm:w-52 sm:h-52 flex-shrink-0 rounded-lg" style={{ border: "1px solid var(--kin-vien-nhat)", background: "var(--kin-nen-trang)" }} />
-              <div className="text-sm space-y-1 min-w-0" style={{ color: "var(--kin-chu-phu)" }}>
+              <div className="text-sm space-y-1 min-w-0 w-full sm:w-auto lg:w-full" style={{ color: "var(--kin-chu-phu)" }}>
                 {invoice.bank && <>
                   <p>Ngân hàng: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.name}</b></p>
                   <p>Số tài khoản: <b className="font-mono" style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.accountNo}</b>{" "}

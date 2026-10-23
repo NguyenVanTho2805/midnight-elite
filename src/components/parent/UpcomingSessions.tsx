@@ -78,7 +78,7 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
       {items.length === 0 ? (
         <p className="text-sm rounded-lg p-3" style={{ ...band, color: "var(--kin-chu-phu)" }}>14 ngày tới con chưa có buổi học nào theo lịch.</p>
       ) : (
-        <ul className="divide-y" style={{ borderColor: "var(--kin-vien-nhat)" }}>
+        <ul className="divide-y divide-[color:var(--kin-vien-nhat)]">
           {items.map(s => {
             const k = keyOf(s);
             const st = s.absence ? STATUS_TEXT[s.absence.status] : null;
