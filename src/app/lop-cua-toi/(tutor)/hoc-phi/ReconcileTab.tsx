@@ -6,6 +6,7 @@ import { KinButton } from "@/components/kin";
 import Link from "next/link";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { kinButtonClass } from "@/components/kin/Button";
+import { ReverseDialog } from "./PaymentTools";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 
 interface InvView { id: string; code: string; yearMonth: string; studentName: string; amountDue: number; paidAmount: number; remaining: number; status: string }
@@ -28,6 +29,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [picker, setPicker] = useState<Tx | null>(null);
+  const [reverseId, setReverseId] = useState<string | null>(null); // HP-21
   const seq = useRef(0);
 
   const load = useCallback(async (all: boolean) => {
@@ -99,6 +101,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
                   <div className="text-right">
                     {pending
                       ? <Badge tone={tx.kind === "exact" ? "wait" : "bad"}>{tx.kindLabel}</Badge>
+                      : tx.status === "reversed" ? <Badge tone="neutral">Đã hoàn tác</Badge>
                       : <Badge tone="ok">{RESOLUTION[tx.resolution ?? ""] ?? "Đã xử lý"}</Badge>}
                   </div>
                 </div>
@@ -108,6 +111,10 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
                   <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }}>
                     Phiếu <b>{tx.invoice.code}</b> · {tx.invoice.studentName} · {monthLabel(tx.invoice.yearMonth)} · còn lại <b>{vnd(tx.invoice.remaining)}</b> / {vnd(tx.invoice.amountDue)}
                   </p>
+                )}
+
+                {(tx.status === "matched" || tx.status === "resolved") && tx.invoice && (
+                  <div className="mt-3"><KinButton variant="secondary" onClick={() => setReverseId(tx.id)}>Hoàn tác khoản này…</KinButton></div>
                 )}
 
                 {pending && (tx.kind === "no_code" || tx.kind === "unknown_code") && tx.suggestions.length > 0 && (
@@ -146,6 +153,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
         </ul>
       )}
 
+      {reverseId && <ReverseDialog txId={reverseId} onClose={() => setReverseId(null)} onDone={() => load(showAll)} />}
       {picker && <PickInvoice tx={picker} onClose={() => setPicker(null)}
         onPick={async (inv, excess) => { if (await resolve(picker, { action: "match_invoice", invoiceId: inv.id, ...(excess ? { excess } : {}) }, "Đã ghép vào phiếu.")) setPicker(null); }} />}
     </div>

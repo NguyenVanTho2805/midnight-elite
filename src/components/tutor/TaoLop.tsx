@@ -1,7 +1,9 @@
 // "Tạo lớp" của gia sư (Figma "Gia sư · Tạo lớp đầu tiên" 299:112849): MỘT trang, không ngăn kéo. Cột trái: Thông tin lớp, Lịch học;
 // cột phải: việc nên làm sau khi tạo + ghi chú giai đoạn ra mắt. Gọi đúng API của ngăn kéo "Tạo khoá học mới" (POST /api/courses, giá/bài học mặc định 0,
 // ngày khai giảng = ngày buổi đầu hoặc hôm nay giờ VN) rồi POST khung giờ; xong đi thẳng tới trang lớp, mở tab "Mã mời".
-// KHÔNG có (chưa có tính năng, không bịa): "Cách tính học phí" theo lớp (buổi/giờ/khoá, đơn giá, kỳ tổng hợp) và "Thêm học sinh" dán danh sách/Excel
+// HP-15: "Cách tính học phí" chọn LÚC TẠO LỚP — mặc định giữ cách hiện tại (gia sư nhập số buổi từng tháng); theo buổi / giờ / khoá là lựa chọn của lớp mới.
+// Không đổi được hình thức của lớp đã tạo; đơn giá đổi sau ở tab Học phí của lớp (có ngày hiệu lực, có xem trước). Số tiền do máy chủ tính, ở đây chỉ nhắc lại.
+// KHÔNG có (chưa có tính năng, không bịa): kỳ tổng hợp và "Thêm học sinh" dán danh sách/Excel
 // (đụng dữ liệu học sinh và phụ huynh, nên dừng: học sinh vào lớp bằng mã mời).
 "use client";
 import Link from "next/link";
@@ -11,6 +13,7 @@ import { api } from "@/lib/api";
 import { toSlug } from "@/lib/slug";
 import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { vnDateKeyOf } from "@/lib/classSessions";
+import { FEE_MODES, FEE_MODE_HINT, FEE_MODE_LABEL, FEE_MODE_LEGACY, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type FeeMode } from "@/lib/tuitionFee";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
@@ -30,6 +33,9 @@ export default function TaoLop() {
   const [start, setStart] = useState("19:00");
   const [end, setEnd] = useState("20:30");
   const [firstDate, setFirstDate] = useState(todayKey);
+  const [feeMode, setFeeMode] = useState<FeeMode>(FEE_MODE_LEGACY); // HP-15: mặc định = cách hiện tại
+  const [feeRate, setFeeRate] = useState("");
+  const [feeMinutes, setFeeMinutes] = useState("90");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,18 +51,26 @@ export default function TaoLop() {
     const clean = name.trim();
     if (!clean) { setError("Cô nhập tên lớp trước nhé."); return; }
     if (day !== "" && (!start || !end || end <= start)) { setError("Giờ kết thúc phải sau giờ bắt đầu."); return; }
+    let fee: Record<string, unknown> = {};
+    if (isNewFeeMode(feeMode)) {
+      const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) });
+      if (!v.ok) { setError(v.error); return; }
+      fee = { feeMode, feeRate: v.value.rate, ...(v.value.sessionMinutes != null ? { feeSessionMinutes: v.value.sessionMinutes } : {}) };
+    }
     setBusy(true); setError(null);
     const slug = toSlug(clean);
     const cat = category.trim() || "Khác";
     const openKey = firstDate || todayKey;
     try {
-      await api.courses.create({
+      const payload = {
+        ...fee,
         id: slug, name: clean, adminName: clean, shortTitle: clean.toUpperCase().split(" ").slice(0, 2).join("\n"),
         category: cat, instructor: "KiN", teacherAvatar: "K", openDate: openKey.split("-").reverse().join("/"),
         types: ["Video"], tag: null, tagColor: null,
         bg: CATEGORY_GRADIENT[cat] ?? "var(--kin-chu-phu)", strip: "var(--kin-tt-chu-cho)",
         price: 0, originalPrice: null, lessons: 0, hours: 0, status: true,
-      });
+      };
+      await api.courses.create(payload);
     } catch (err) {
       setError(`Chưa tạo được lớp: ${err instanceof Error ? err.message : "lỗi không rõ"}. Cô kiểm tra tên lớp rồi bấm lại.`);
       setBusy(false);
@@ -91,6 +105,41 @@ export default function TaoLop() {
                 <datalist id="tl-mon">{options.map(o => <option key={o} value={o} />)}</datalist>
               </label>
             </div>
+          </section>
+
+          <section aria-labelledby="tl-phi">
+            <KinSectionHead id="tl-phi" title="Cách tính học phí" aside="Chọn một lần" />
+            <fieldset className="pt-5">
+              <legend className="sr-only">Cách tính học phí của lớp</legend>
+              <div className="space-y-2">
+                {FEE_MODES.map(m => (
+                  <label key={m} className="flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] py-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                    <input type="radio" name="tl-fee-mode" className="mt-1" checked={feeMode === m} onChange={() => { setFeeMode(m); setError(null); }} />
+                    <span><span className="font-medium">{FEE_MODE_LABEL[m]}</span>{m === FEE_MODE_LEGACY ? " · mặc định" : ""}
+                      <span className="block text-[var(--kin-chu-mo)]">{FEE_MODE_HINT[m]}</span></span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {isNewFeeMode(feeMode) && (
+              <div className="pt-4 grid sm:grid-cols-2 gap-5">
+                <label className={LABEL}>Đơn giá ({FEE_RATE_UNIT[feeMode]}) *
+                  <input inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
+                    placeholder="Ví dụ: 150000" className={`${FIELD} mt-2`} />
+                </label>
+                {feeMode === "per_hour" && (
+                  <label className={LABEL}>Một buổi dài (phút) *
+                    <input inputMode="numeric" value={feeMinutes} onChange={e => { setFeeMinutes(e.target.value.replace(/[^\d]/g, "")); setError(null); }} className={`${FIELD} mt-2`} />
+                  </label>
+                )}
+                <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+                  {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0
+                    ? `Mỗi buổi ${Number(feeMinutes)} phút tính ${hourlyAmount(Number(feeRate), Number(feeMinutes)).toLocaleString("vi-VN")}đ (làm tròn từng buổi). `
+                    : ""}
+                  Học phí chỉ tính khi cô điểm danh em có mặt hoặc đi muộn. Phiếu đã chốt không bao giờ đổi khi cô đổi đơn giá sau này.
+                </p>
+              </div>
+            )}
           </section>
 
           <section aria-labelledby="tl-lich">
