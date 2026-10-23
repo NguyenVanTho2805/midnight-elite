@@ -55,7 +55,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   check(`Hộp việc tắt: việc hiện thành số đỏ trên Lịch (= 1 báo nghỉ + ${nDue} tin nhắc)`, (await lichBadge.innerText()) === String(1 + nDue) && (await lichBadge.getAttribute("aria-label")) === `${1 + nDue} việc cần xử lý`, await lichBadge.innerText());
 
   section("Lịch: buổi + chấm báo nghỉ + nhắc lịch");
-  await page.getByRole("heading", { name: "Lịch", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Lịch dạy", exact: true }).waitFor();
   await page.getByText("Toán 9").first().waitFor({ timeout: 15000 });
   check("buổi hôm nay hiện kèm 'Hôm nay'", await page.getByText("Hôm nay", { exact: true }).first().isVisible());
   check("chấm kèm chữ: '1 báo nghỉ sát giờ' và tin nhắc chờ gửi", await page.getByText("1 báo nghỉ sát giờ").isVisible() && await page.getByText(`${nDue} tin nhắc chờ gửi`).isVisible());
@@ -168,7 +168,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
   const bar2 = page.getByRole("group", { name: "Gửi lịch tuần qua Zalo" });
   await bar2.waitFor({ timeout: 60000 });
-  const sendBtn = bar2.getByRole("button", { name: "Gửi lịch tuần qua Zalo" });
+  const sendBtn = bar2.getByRole("button", { name: "Mở Zalo", exact: true });
   await eventually("thanh có chọn lớp (2 lớp có buổi) và nút mở được", async () => (await bar2.getByLabel("Lớp").count()) === 1 && (await sendBtn.isEnabled()));
   await bar2.getByLabel("Lớp").selectOption({ label: "Toán 9" });
   await sendBtn.click();
@@ -198,7 +198,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.keyboard.press("Escape");
   await ldlg.waitFor({ state: "detached" });
   await bar2.getByLabel("Lớp").selectOption({ label: "Toán 9" });
-  await page.getByRole("button", { name: "Tuần sau →" }).click();
+  await page.getByRole("button", { name: "Tuần sau ›" }).click();
   await eventually("đổi tuần → tiêu đề tuần đổi và trạng thái 'đã mở' không dính sang tuần khác", async () => (await page.getByText(`Tuần ${weekTitle(addDaysKey(wk, 7))}`).count()) >= 1 && (await bar2.getByText(/Đã mở Zalo lúc/).count()) === 0);
   await eventually("nút mở lại được ở tuần sau", () => sendBtn.isEnabled());
   await sendBtn.click();
@@ -215,7 +215,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await ep.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
   const ebar = ep.getByRole("group", { name: "Gửi lịch tuần qua Zalo" });
   await ebar.waitFor({ timeout: 60000 });
-  check("không có buổi: nút bị khoá", await ebar.getByRole("button", { name: "Gửi lịch tuần qua Zalo" }).isDisabled());
+  check("không có buổi: nút bị khoá", await ebar.getByRole("button", { name: "Mở Zalo", exact: true }).isDisabled());
   check("có lời giải thích, không có ô chọn lớp", await ebar.getByText(/chưa có buổi nào để gửi lịch/).isVisible() && (await ebar.getByLabel("Lớp").count()) === 0);
 
   section("NC2-024: điện thoại 390px");
@@ -224,12 +224,12 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await wp.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
   const wbar = wp.getByRole("group", { name: "Gửi lịch tuần qua Zalo" });
   await wbar.waitFor({ timeout: 60000 });
-  await eventually("nút mở được trên điện thoại", () => wbar.getByRole("button", { name: "Gửi lịch tuần qua Zalo" }).isEnabled());
-  const bb = await wbar.getByRole("button", { name: "Gửi lịch tuần qua Zalo" }).boundingBox();
+  await eventually("nút mở được trên điện thoại", () => wbar.getByRole("button", { name: "Mở Zalo", exact: true }).isEnabled());
+  const bb = await wbar.getByRole("button", { name: "Mở Zalo", exact: true }).boundingBox();
   const sb = await wbar.getByLabel("Lớp").boundingBox();
   check("nút và ô chọn lớp cao ≥ 44px", !!bb && bb.height >= 44 && !!sb && sb.height >= 44, { bb, sb });
   check("thanh không tràn ngang 390px", await wp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-  await wbar.getByRole("button", { name: "Gửi lịch tuần qua Zalo" }).click();
+  await wbar.getByRole("button", { name: "Mở Zalo", exact: true }).click();
   const mdlg = wp.getByRole("dialog");
   await mdlg.waitFor();
   const mbtn = await mdlg.getByRole("button", { name: /Mở/ }).first().boundingBox();

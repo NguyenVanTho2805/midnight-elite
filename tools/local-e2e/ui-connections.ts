@@ -127,7 +127,7 @@ const vnTomorrowDow = () => new Date(Date.now() + 86400_000 + 7 * 3600_000).getU
   section("Lịch: nhắc cả lớp vào nhóm");
   const lp = await ctx.newPage(); watch(lp);
   await lp.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
-  await lp.getByRole("heading", { name: "Lịch", exact: true }).waitFor({ timeout: 90000 });
+  await lp.getByRole("heading", { name: "Lịch dạy", exact: true }).waitFor({ timeout: 90000 });
   await lp.getByRole("button", { name: /Toán 9/ }).first().click();
   const gRem = lp.getByRole("button", { name: "Nhắc cả lớp trong nhóm Zalo" });
   await gRem.waitFor({ timeout: 30000 });
