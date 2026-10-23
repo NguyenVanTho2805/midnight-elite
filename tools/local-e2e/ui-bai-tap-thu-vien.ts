@@ -67,6 +67,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   const sub = await prisma.assignmentSubmission.findFirst({ where: { assignmentId: "bt-a1" } });
   check("chấm xong: DB có điểm 8,5 + phản hồi + gradedAt", sub?.score === 8.5 && sub.comment === "Em trình bày đồ thị rõ hơn nhé." && !!sub.gradedAt, sub);
   await eventually2(pg, async () => /Chờ chấm · 0/.test((await pg.getByRole("tablist", { name: "Lọc theo tình trạng" }).innerText()).replace(/\s+/g, " ")), "danh sách tải lại: Chờ chấm · 0");
+  check("sau khi danh sách tải lại, lời xác nhận vẫn còn và khung chấm không bị gỡ", await pg.getByText("Đã gửi điểm và phản hồi cho học sinh.").isVisible());
 
   await pg.getByRole("tab", { name: /Đã hoàn tất/ }).click();
   check("tab Đã hoàn tất: bài hết hạn đã chấm hiện, bài đang giao thì không", await pg.getByText("Ôn tập chương 1").isVisible() && await pg.getByText("Viết đoạn văn nghị luận").count() === 0);
