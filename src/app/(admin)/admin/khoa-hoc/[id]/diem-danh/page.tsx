@@ -19,6 +19,7 @@ import { useSearchParams } from "next/navigation";
 import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import Link from "next/link";
 import { KinButton, kinButtonClass } from "@/components/kin";
+import { KinStatus } from "@/components/kin/Status";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
 import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
@@ -47,15 +48,6 @@ function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-
-// Màu nền chip theo status — dùng semantic token của KiN, giữ 3 màu cố định
-// (xong/chờ/lỗi) không đổi theo chủ đề.
-const CHIP_COLORS: Record<AttendanceStatus, { bg: string; fg: string }> = {
-  present: { bg: "var(--kin-tt-cham-xong)",       fg: "var(--kin-nen-trang)" },        // xanh lá
-  late:    { bg: "var(--kin-tt-cham-cho)",        fg: "var(--kin-nen-trang)" },        // vàng
-  excused: { bg: "var(--kin-tt-cham-trung-tinh)", fg: "var(--kin-nen-trang)" },        // xám
-  absent:  { bg: "var(--kin-tt-chu-loi)",         fg: "var(--kin-nen-trang)" },        // đỏ
-};
 
 // ĐX-01: Hộp việc dẫn tới `?date=YYYY-MM-DD` (buổi chưa điểm danh xong) — mở sẵn đúng ngày đó; thiếu / sai định dạng thì như cũ (hôm nay).
 // useSearchParams cần Suspense khi dựng sẵn trang.
@@ -135,6 +127,11 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
     setDirty(prev => new Set(prev).add(userId));
   }
 
+  function markAllPresent() {
+    setRoster(prev => prev.map(r => (r.status === "present" ? r : { ...r, status: "present" as AttendanceStatus })));
+    setDirty(prev => { const n = new Set(prev); roster.forEach(r => { if (r.status !== "present") n.add(r.userId); }); return n; });
+  }
+
   function setUseMakeup(userId: string, on: boolean) {
     setRoster(prev => prev.map(r => r.userId === userId ? { ...r, useMakeup: on } : r));
     setDirty(prev => new Set(prev).add(userId));
@@ -210,29 +207,19 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-h4" style={{ color: "var(--kin-chu-chinh)" }}>Điểm danh</h1>
-          <p className="text-body-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-            Vắng không trừ tiền. Hệ số dùng cho chuyên cần.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="dd-date" className="text-body-sm font-semibold" style={{ color: "var(--kin-chu-phu)" }}>Ngày</label>
-          <input id="dd-date" type="date" value={date}
-            onChange={e => setDate(e.target.value)}
-            className="px-3 py-1.5 text-body-sm font-semibold rounded-lg"
-            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
-        </div>
+      {/* Header: tiêu đề lớp + dòng phụ; ô chọn buổi học đầy bề ngang trên điện thoại (Figma 299:116181) */}
+      <div>
+        <h1 className="text-h4" style={{ color: "var(--kin-chu-chinh)" }}>{courseName ? `${courseName} · ` : ""}Điểm danh</h1>
+        <p className="text-body-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
+          Vắng không trừ tiền. Hệ số dùng cho chuyên cần.
+        </p>
       </div>
-
-      {/* ĐX-03: xuất bảng điểm danh cả tháng — tải CSV / Excel, hoặc mở trang in để Lưu thành PDF */}
-      <div className="flex items-center gap-2 flex-wrap" role="group" aria-label={`Xuất bảng điểm danh tháng ${exportLabel}`}>
-        <span className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Bảng tháng {exportLabel}:</span>
-        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=csv`} download className={kinButtonClass("secondary")}>Tải CSV</a>
-        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=xlsx`} download className={kinButtonClass("secondary")}>Tải Excel</a>
-        <Link href={`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
+      <div>
+        <label htmlFor="dd-date" className="block text-body-sm mb-2" style={{ color: "var(--kin-chu-mo)" }}>Chọn buổi học</label>
+        <input id="dd-date" type="date" value={date}
+          onChange={e => setDate(e.target.value)}
+          className="w-full sm:w-auto px-3 min-h-11 text-body-sm rounded-lg"
+          style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
       </div>
 
       {/* State: loading / no-session / session */}
@@ -257,7 +244,7 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
       ) : (
         <>
           {/* Stat strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="hidden sm:grid sm:grid-cols-5 gap-2">
             {([
               { k: "present", label: "Có mặt" },
               { k: "late",    label: "Muộn" },
@@ -274,7 +261,7 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
           </div>
 
           {/* PH-216: tin điểm danh CHUNG vào nhóm Zalo lớp — không nêu em nào vắng */}
-          <div className="flex items-center justify-between gap-3 flex-wrap rounded-lg px-3 py-2" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
             <p className="text-caption" style={{ color: "var(--kin-chu-phu)" }}>
               {allMarked ? "Tin chung cho nhóm Zalo lớp (không nêu tên em nào)." : "Điểm danh và lưu đủ các em rồi mới nhắn nhóm."}
               {" "}{zaloGroupUrl ? "Đã gắn nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo (Cài đặt → Kết nối)."}
@@ -285,27 +272,40 @@ function DiemDanhView({ params }: { params: Promise<{ id: string }> }) {
           </div>
 
           {/* Roster rows */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--kin-vien-nhat)]">
+            <h2 className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Điểm danh</h2>
+            <button type="button" onClick={markAllPresent} className={kinButtonClass("secondary")}>Tất cả có mặt</button>
+          </div>
+          <div className="overflow-hidden" style={{ background: "var(--kin-nen-trang)" }}>
             {roster.map((r, i) => (
               <RosterRowView key={r.userId} r={r} index={i} onPick={setStatus} onToggleMakeup={setUseMakeup}
                 unsaved={dirty.has(r.userId)} onZalo={startCompose} />
             ))}
           </div>
 
-          {/* Sticky action — mobile-first */}
-          <div className="sticky bottom-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3"
-            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "0 10px 30px rgba(0,0,0,0.08)" }}>
-            <div className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>
-              {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu` : "Đã lưu tất cả"}
-            </div>
+          {/* Lưu: nút nằm thẳng dưới danh sách (Figma 299:116181), không nổi đè thanh dưới của vỏ */}
+          <div>
             <button type="button" onClick={saveAll} disabled={saving || dirty.size === 0}
-              className="px-5 py-2 rounded-lg text-body-sm font-semibold disabled:opacity-50"
-              style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
+              className={`${kinButtonClass("primary")} disabled:opacity-50`}>
               {saving ? "Đang lưu..." : "Lưu điểm danh"}
             </button>
+            <p className="mt-3 text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>
+              {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu` : "Đã lưu tất cả"}. Lưu không tạo học phí.
+            </p>
           </div>
         </>
       )}
+
+      <div className="pt-2">
+      {/* ĐX-03: xuất bảng điểm danh cả tháng — tải CSV / Excel, hoặc mở trang in để Lưu thành PDF */}
+      <div className="flex items-center gap-2 flex-wrap pt-4 border-t border-[var(--kin-vien-nhat)]" role="group" aria-label={`Xuất bảng điểm danh tháng ${exportLabel}`}>
+        <span className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Bảng tháng {exportLabel}:</span>
+        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=csv`} download className={kinButtonClass("secondary")}>Tải CSV</a>
+        <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=xlsx`} download className={kinButtonClass("secondary")}>Tải Excel</a>
+        <Link href={`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
+      </div>
+
+      </div>
 
       {groupText !== null && (
         <Modal title="Nhắn nhóm Zalo lớp" onClose={() => setGroupText(null)}>
@@ -352,10 +352,11 @@ function RosterRowView({ r, index, onPick, onToggleMakeup, unsaved, onZalo }: {
   const hasMakeup = r.makeupAvailable.length > 0 || r.makeupUsedId !== null;
   const nextExpire = r.makeupAvailable[0]?.expiresAt;
   const initials = r.name.trim().split(/\s+/).map(p => p[0]).slice(-2).join("").toUpperCase();
+  const tone = r.status === "present" ? "xong" : r.status === "late" ? "cho" : r.status === "absent" ? "loi" : "mo";
   return (
-    <div className="flex items-center gap-3 px-4 py-3"
+    <div className="flex flex-wrap items-center gap-3 px-1 sm:px-2 py-4"
       style={{ borderTop: index === 0 ? undefined : "1px solid var(--kin-vien-nhat)" }}>
-      <div className="w-9 h-9 rounded-full flex items-center justify-center text-caption font-bold flex-shrink-0 overflow-hidden"
+      <div className="hidden sm:flex w-9 h-9 rounded-full items-center justify-center text-caption font-bold flex-shrink-0 overflow-hidden"
         style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-chu-mo-tren-nen-nhan)" }}>
         {r.avatar
           // eslint-disable-next-line @next/next/no-img-element
@@ -363,32 +364,13 @@ function RosterRowView({ r, index, onPick, onToggleMakeup, unsaved, onZalo }: {
           : initials}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-body-sm font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }}>{r.name}</p>
+        <p className="text-[length:var(--kin-co-tieu-de)] leading-6 truncate" style={{ color: "var(--kin-chu-chinh)" }}>{r.name}</p>
         {r.studentId !== null && (
           <p className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Mã HS {r.studentId}</p>
         )}
-        {hasMakeup && (
-          <label className="flex items-center gap-2 text-caption mt-1 min-h-[44px] sm:min-h-0" style={{ color: present ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
-            <input type="checkbox" checked={!!r.useMakeup && present} disabled={!present}
-              onChange={e => onToggleMakeup(r.userId, e.target.checked)} />
-            <span>
-              Dùng 1 buổi bù cho buổi này
-              {nextExpire && !r.makeupUsedId ? ` (đang giữ ${r.makeupAvailable.length}, gần nhất hết hạn ${new Date(nextExpire).toLocaleDateString("vi-VN")})` : r.makeupUsedId ? " (đã dùng ở buổi này)" : ""}
-              {!present && " — chỉ dùng khi học viên có mặt/muộn"}
-            </span>
-          </label>
-        )}
-        {r.status && !unsaved && (
-          <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => onZalo(r)} aria-label={`Nhắn phụ huynh của ${r.name} qua Zalo`}
-              className="text-caption font-semibold underline min-h-[44px] sm:min-h-0" style={{ color: "var(--kin-nhan-diem)" }}>
-              Nhắn phụ huynh
-            </button>
-            {r.zaloOpenedAt && <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Đã mở Zalo lúc {vnWhen(r.zaloOpenedAt)}</span>}
-          </div>
-        )}
       </div>
-      <div className="flex items-center gap-1 flex-wrap justify-end">
+      <KinStatus tone={tone} className="flex-shrink-0">{r.status ? ATTENDANCE_LABEL[r.status] : "Chưa điểm danh"}</KinStatus>
+      <div className="basis-full grid grid-cols-4 gap-2">
         {([
           ATTENDANCE_STATUS.PRESENT,
           ATTENDANCE_STATUS.LATE,
@@ -396,24 +378,46 @@ function RosterRowView({ r, index, onPick, onToggleMakeup, unsaved, onZalo }: {
           ATTENDANCE_STATUS.ABSENT,
         ] as const).map(s => {
           const picked = r.status === s;
-          const c = CHIP_COLORS[s];
+          // TK-182: điện thoại giấu hệ số (×1.0) cho 4 nút vào vừa một hàng; vẫn có aria-label + title.
           return (
-            // TK-182 (09/10/2026): mobile <sm giấu hệ số (×1.0) để 4 nút
-            // vào vừa 1 hàng. Vẫn giữ aria-label cho screen reader +
-            // tooltip title cho desktop hover.
             <button key={s} type="button" onClick={() => onPick(r.userId, s)}
               title={`${ATTENDANCE_LABEL[s]} (hệ số ×${ATTENDANCE_COEFFICIENT[s]})`}
               aria-label={`${ATTENDANCE_LABEL[s]} hệ số ${ATTENDANCE_COEFFICIENT[s]}`}
-              className="px-2.5 py-1.5 rounded-lg text-caption font-semibold whitespace-nowrap min-h-[44px] sm:min-h-0"
+              aria-pressed={picked}
+              className="px-1 py-2 rounded-lg text-[length:var(--kin-co-goc)] whitespace-nowrap min-h-11"
               style={picked
-                ? { background: c.bg, color: c.fg }
-                : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
+                ? { background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)", border: "1px solid var(--kin-nen-nhan)", fontWeight: 600 }
+                : { background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
               {ATTENDANCE_LABEL[s]}
               <span className="hidden sm:inline"> · ×{ATTENDANCE_COEFFICIENT[s]}</span>
             </button>
           );
         })}
       </div>
+      {(hasMakeup || (r.status && !unsaved)) && (
+        <div className="basis-full min-w-0">
+          {hasMakeup && (
+            <label className="flex items-center gap-2 text-caption min-h-[44px] sm:min-h-0" style={{ color: present ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
+              <input type="checkbox" checked={!!r.useMakeup && present} disabled={!present}
+                onChange={e => onToggleMakeup(r.userId, e.target.checked)} />
+              <span>
+                Dùng 1 buổi bù cho buổi này
+                {nextExpire && !r.makeupUsedId ? ` (đang giữ ${r.makeupAvailable.length}, gần nhất hết hạn ${new Date(nextExpire).toLocaleDateString("vi-VN")})` : r.makeupUsedId ? " (đã dùng ở buổi này)" : ""}
+                {!present && " — chỉ dùng khi học viên có mặt/muộn"}
+              </span>
+            </label>
+          )}
+          {r.status && !unsaved && (
+            <div className="flex-wrap flex items-center gap-2">
+              <button type="button" onClick={() => onZalo(r)} aria-label={`Nhắn phụ huynh của ${r.name} qua Zalo`}
+                className="text-caption font-semibold underline min-h-[44px] sm:min-h-0" style={{ color: "var(--kin-nhan-diem)" }}>
+                Nhắn phụ huynh
+              </button>
+              {r.zaloOpenedAt && <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Đã mở Zalo lúc {vnWhen(r.zaloOpenedAt)}</span>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
