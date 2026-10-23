@@ -1,0 +1,243 @@
+// Hồ sơ học sinh + đồng ý (23/10/2026) bằng trình duyệt thật: wizard 4 bước (HS-13), hồ sơ (HS-03/04/10/11), trường tuỳ chỉnh (LO-18),
+// nhập dán / CSV / Excel / lịch có XEM TRƯỚC và lỗi từng dòng (LO-06, LO-17), hộp đồng ý, thu hồi, xoá, quyền, 390px, em tự đồng ý.
+// Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-ho-so.ts
+import { api, BASE, mkCourse, mkTutor, mkUser, wipe, check, section, done } from "./h";
+import { launch, ctxFor, shot, closeAll } from "./ui";
+import { prisma } from "@/lib/prisma";
+
+(async () => {
+  await wipe();
+  const T = await mkTutor("Cô Lan"), O = await mkTutor("Cô Khác");
+  for (const u of [T, O]) await prisma.user.update({ where: { id: u.id }, data: { preferences: { modules: ["hop-viec", "lop", "bai-kt", "thu-vien"] } } });
+  const c1 = await mkCourse(T.id, { name: "Toán 9" });
+  const S = await mkUser({ name: "Em Có Tài Khoản" });
+  await prisma.enrollment.create({ data: { userId: S.id, courseId: c1.id, status: "active" } });
+  const errors: string[] = [];
+  const watch = (p: any) => { p.on("pageerror", (e: unknown) => errors.push(String(e))); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of [45]/i.test(m.text())) errors.push(m.text()); }); };
+  await launch();
+
+  const pg = await (await ctxFor(T, { width: 1280, height: 900 })).newPage(); watch(pg);
+  const go = async (path: string, ready: string | RegExp) => { await pg.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 }); await pg.getByText(ready).first().waitFor({ timeout: 90000 }); };
+
+  section("Wizard 4 bước (HS-13)");
+  await go("/lop-cua-toi/hoc-sinh/them", "Bước 1 trên 4");
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  check("bước 1: chưa chọn nhóm tuổi → báo lỗi, ở lại bước 1", await pg.getByText("Chọn nhóm tuổi của em").isVisible() && await pg.getByText("Bước 1 trên 4").isVisible());
+  await pg.getByLabel("Con (dưới 16 tuổi)").check();
+  check("chọn Con → hiện câu hỏi tuổi; Người lớn → người thanh toán là chính người học", await pg.getByText("Em bao nhiêu tuổi?").isVisible());
+  await pg.getByLabel("Từ 7 đến 15 tuổi").check();
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  await pg.getByText("Bước 2 trên 4").waitFor();
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  check("bước 2: tên trống → báo lỗi", await pg.getByText("Nhập tên em").first().isVisible());
+  const NAME = "Bé Thử Wizard";
+  await pg.getByLabel("Tên em").fill(NAME);
+  await pg.getByLabel("Lớp").selectOption(c1.id);
+  await pg.getByLabel("Tên phụ huynh").fill("Chị Hoa");
+  await pg.getByLabel(/Số Zalo/).fill("0912");
+  check("người thanh toán hiện theo loại: phụ huynh + tên", await pg.getByText("Người thanh toán: Phụ huynh Chị Hoa.").isVisible());
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  await pg.getByText("Bước 3 trên 4").waitFor();
+  await pg.getByLabel("Địa chỉ").fill("Số 9 phố Thử");
+  await pg.getByLabel("Ngày sinh").fill("15/03/2014");
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  await pg.getByText("Bước 4 trên 4").waitFor();
+  const save = pg.getByRole("button", { name: "Lưu hồ sơ" });
+  check("bước 4: hộp đồng ý có 2 bên (phụ huynh + em), KHÔNG tích sẵn; nút Lưu khoá", await pg.locator("[data-consent-party]").count() === 2 && await pg.locator("[data-consent-party]:checked").count() === 0 && await save.isDisabled());
+  check("phạm vi 'Thông tin mở rộng' bị ép bật (vì có địa chỉ/ngày sinh), không bỏ được", await pg.locator("[data-consent-scope=extended]").isChecked() && await pg.locator("[data-consent-scope=extended]").isDisabled());
+  check("hộp nói thật: KiN không kiểm tra giấy tờ, không 'đã xác minh'", await pg.getByText(/KiN không kiểm tra giấy tờ/).isVisible() && !/đã xác minh phụ huynh/i.test(await pg.locator("[data-consent-box]").innerText()));
+  await pg.locator("[data-consent-party=guardian]").check();
+  check("mới tích phụ huynh → vẫn khoá (thiếu em)", await save.isDisabled());
+  await pg.locator("[data-consent-party=child]").check();
+  check("tích đủ → mở khoá", await save.isEnabled());
+  await shot(pg, "ho-so-wizard-b4");
+  await save.click();
+  await pg.getByText("Bước 2 trên 4").waitFor({ timeout: 30000 });
+  check("số phụ huynh sai → máy chủ báo lỗi và đưa về bước 2 kèm lời nêu ô sai; chưa có hồ sơ nào", await pg.getByText("Số điện thoại phụ huynh phải đủ 10 chữ số").first().isVisible() && await prisma.studentProfile.count() === 0);
+  await pg.getByLabel(/Số Zalo/).fill("0912345678");
+  for (let i = 0; i < 2; i++) await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  await pg.getByText("Bước 4 trên 4").waitFor();
+  check("quay lại bước 4 sau khi máy chủ từ chối: ô đã tích trong phiên này còn nguyên, Lưu mở được", await pg.locator("[data-consent-party]").count() === 2 && await save.isEnabled());
+  for (const p of ["guardian", "child"]) { const b = pg.locator(`[data-consent-party=${p}]`); if (!(await b.isChecked())) await b.check(); }
+  await save.click();
+  await pg.waitForURL(/\/lop-cua-toi\/hoc-sinh\/c[0-9a-f]{24}$/, { timeout: 60000 });
+  const prof = await prisma.studentProfile.findFirst({ where: { name: NAME } });
+  const pid = prof!.id;
+  check("lưu xong → vào trang hồ sơ; DB có hồ sơ + 2 dòng đồng ý (phụ huynh, em) đúng phạm vi", !!prof && prof.guardianPhone === "0912345678" && prof.birthDate === "2014-03-15" && (await prisma.consentRecord.count({ where: { subjectId: pid, revokedAt: null } })) === 2);
+
+  section("Hồ sơ: xem, sửa kèm nhật ký, loại Con + người thanh toán (HS-03/04/10/11)");
+  await pg.getByRole("heading", { name: NAME, level: 1 }).waitFor({ timeout: 60000 });
+  check("tiêu đề + 'Con' + 'Người thanh toán: Phụ huynh Chị Hoa' + 'Đủ đồng ý'", await pg.locator("[data-profile-kind]").innerText() === "Con" && await pg.getByText("Người thanh toán: Phụ huynh Chị Hoa").isVisible() && await pg.locator("[data-consent-level]").getByText("Đủ đồng ý").isVisible());
+  check("hiện đủ thông tin mở rộng (địa chỉ, ngày sinh dd/mm/yyyy)", await pg.getByLabel("Địa chỉ").inputValue() === "Số 9 phố Thử" && await pg.getByLabel("Ngày sinh").inputValue() === "15/03/2014");
+  check("sổ đồng ý: 2 dòng, ghi 'Gia sư xác nhận', có bản chữ, 'Còn hiệu lực'", await pg.locator("[data-ledger-row]").count() === 2 && await pg.locator("[data-ledger]").getByText(/Gia sư xác nhận lúc/).first().isVisible() && await pg.locator("[data-ledger]").getByText("Còn hiệu lực").count() === 2);
+  await pg.getByLabel("Số điện thoại của em").fill("0987654321");
+  await pg.getByLabel("Trạng thái").selectOption("inactive");
+  await pg.getByRole("button", { name: "Lưu thay đổi" }).click();
+  await pg.getByText(/Đã lưu\. Trường đã đổi/).waitFor({ timeout: 30000 });
+  await pg.locator("[data-profile-status]", { hasText: "Không hoạt động" }).waitFor({ timeout: 30000 }); // đợi tải lại sau khi lưu
+  await pg.locator("[data-edit-log]").getByText(/Sửa: /).first().waitFor({ timeout: 30000 });
+  check("sửa SĐT + trạng thái → báo đúng tên trường đã đổi; trạng thái 'Không hoạt động'", (await pg.getByText(/Đã lưu\. Trường đã đổi/).innerText()).includes("SĐT của em") && (await pg.getByText(/Đã lưu\. Trường đã đổi/).innerText()).includes("Trạng thái") && await pg.locator("[data-profile-status]").innerText() === "Không hoạt động");
+  check("nhật ký sửa có dòng 'Sửa' với tên trường, KHÔNG có số điện thoại", await pg.locator("[data-edit-log]").getByText(/Sửa: .*SĐT của em/).first().isVisible() && !(await pg.locator("[data-edit-log]").innerText()).includes("0987654321"));
+  await pg.getByLabel("Ngày sinh").fill("32/13/2014");
+  await pg.getByRole("button", { name: "Lưu thay đổi" }).click();
+  await pg.getByText(/Ngày sinh chưa đúng/).first().waitFor({ timeout: 30000 });
+  check("ngày sinh sai → lời báo ngay cạnh ô, không lưu", await pg.getByText(/Ngày sinh chưa đúng/).first().isVisible() && (await prisma.studentProfile.findUnique({ where: { id: pid } }))?.birthDate === "2014-03-15");
+  await pg.getByLabel("Ngày sinh").fill("15/03/2014");
+
+  section("Thu hồi đồng ý → hồ sơ bị ẩn → đồng ý lại");
+  await pg.getByRole("button", { name: /Thu hồi đồng ý của phụ huynh/ }).click();
+  await pg.getByRole("dialog").waitFor();
+  check("hộp xác nhận KiN (không phải window.confirm) nêu hệ quả", await pg.getByRole("dialog").getByText(/ẩn mọi thông tin của em trừ tên/).isVisible());
+  await pg.getByRole("dialog").getByRole("button", { name: "Thu hồi đồng ý" }).click();
+  await pg.locator("[data-locked]").waitFor({ timeout: 30000 });
+  const body = await pg.locator("main, body").first().innerText();
+  check("hồ sơ khoá: KHÔNG còn địa chỉ / SĐT / ngày sinh trên màn hình", !body.includes("Số 9 phố Thử") && !body.includes("0987654321") && !body.includes("0912345678") && !body.includes("15/03/2014"));
+  check("sổ đồng ý ghi 'Đã thu hồi' kèm lý do, dòng cũ còn đó", await pg.locator("[data-ledger]").getByText(/Đã thu hồi .*theo yêu cầu của phụ huynh/).isVisible());
+  check("DB: dòng của phụ huynh có revokedAt, không bị xoá", (await prisma.consentRecord.count({ where: { subjectId: pid, party: "guardian", revokedAt: { not: null } } })) === 1);
+  const reBtn = pg.getByRole("button", { name: "Ghi đồng ý lại" });
+  check("nút 'Ghi đồng ý lại' khoá khi chưa tích gì", await reBtn.isDisabled());
+  await pg.locator("[data-consent-party=guardian]").check();
+  await reBtn.click();
+  await pg.locator("[data-consent-level]").getByText(/Đủ đồng ý|Mới đủ đồng ý/).waitFor({ timeout: 30000 });
+  check("đồng ý lại với phạm vi cơ bản → hồ sơ mở lại (thông tin mở rộng vẫn chưa đủ phạm vi extended → chỉ cơ bản)", await pg.locator("[data-locked]").count() === 0 && await pg.getByText("Mới đủ đồng ý cho thông tin cơ bản").isVisible() && await pg.getByLabel("Địa chỉ").inputValue() === "");
+
+  section("Xoá hồ sơ");
+  await pg.getByRole("button", { name: "Xoá hồ sơ" }).click();
+  await pg.getByRole("dialog").getByRole("button", { name: "Xoá hồ sơ" }).click();
+  await pg.waitForURL(/\/lop-cua-toi\/hoc-sinh$/, { timeout: 60000 });
+  check("xoá → về danh sách; DB không còn hồ sơ; dòng đồng ý không còn hiệu lực", (await prisma.studentProfile.count({ where: { id: pid } })) === 0 && (await prisma.consentRecord.count({ where: { subjectId: pid, revokedAt: null } })) === 0);
+
+  section("Trường tuỳ chỉnh (LO-18)");
+  await go("/lop-cua-toi/hoc-sinh/truong", "Trường tuỳ chỉnh");
+  check("rỗng có lời giải thích", await pg.getByText("Chưa có trường tuỳ chỉnh nào").isVisible());
+  for (const l of ["Lớp ở trường", "Sở thích", "Mục tiêu điểm"]) { await pg.getByLabel("Tên trường mới").fill(l); await pg.getByRole("button", { name: "Thêm trường" }).click(); await pg.locator("[data-field]", { hasText: l }).waitFor({ timeout: 30000 }); }
+  check("thêm đủ 3 trường (mặc định tối đa) → ô thêm biến mất, có lời nói đã đủ", await pg.locator("[data-field]").count() === 3 && await pg.getByLabel("Tên trường mới").count() === 0 && await pg.getByText(/Đã đủ 3 trường/).isVisible());
+  await pg.getByRole("button", { name: "Xoá trường Sở thích" }).click();
+  await pg.getByRole("dialog").getByRole("button", { name: "Xoá trường" }).click();
+  await pg.locator("[data-field]", { hasText: "Sở thích" }).waitFor({ state: "detached", timeout: 30000 });
+  check("xoá một trường → ô thêm hiện lại", await pg.locator("[data-field]").count() === 2 && await pg.getByLabel("Tên trường mới").isVisible());
+
+  section("Nhập dán danh sách (LO-06): xem trước, lỗi từng dòng, hộp xác nhận hàng loạt");
+  await go("/lop-cua-toi/hoc-sinh/nhap", "Dán từ Excel hoặc Google Sheets");
+  await pg.getByLabel("Danh sách", { exact: true }).fill("Bé Một, 0911111111\n0900000000\nBé Hai\tx");
+  await pg.getByRole("button", { name: "Xem trước" }).click();
+  await pg.locator("[data-preview]").waitFor({ timeout: 30000 });
+  check("xem trước: 2 hợp lệ trên 3, 1 dòng lỗi nêu đúng 'Dòng 2: Thiếu tên em'", (await pg.locator("[data-preview-count]").innerText()).includes("2 dòng hợp lệ trên 3") && await pg.locator("[data-errors]").getByText(/Dòng 2:.*Thiếu tên em/).isVisible());
+  check("CHƯA lưu gì sau xem trước", await prisma.studentProfile.count() === 0);
+  const commit = pg.locator("[data-commit]");
+  check("nút nhập khoá: chưa tích xác nhận, còn dòng lỗi", await commit.isDisabled());
+  await pg.locator("[data-consent-bulk]").check();
+  check("tích hộp xác nhận mà còn dòng lỗi (chưa chọn bỏ qua) → vẫn khoá", await commit.isDisabled());
+  await pg.locator("[data-skip-errors]").check();
+  check("hộp hàng loạt nói rõ 'có quyền cung cấp và đã có đồng ý'", await pg.getByText(/Tôi có quyền cung cấp danh sách này và đã có đồng ý/).isVisible());
+  await commit.click();
+  await pg.locator("[data-import-done]").waitFor({ timeout: 30000 });
+  const batch = await prisma.studentProfile.findMany({ where: { source: "paste" } });
+  const bid = batch[0]?.batchId;
+  check("nhập xong: 2 hồ sơ, cùng batchId; mỗi em có 2 dòng đồng ý (phụ huynh + em, nhóm 7-15) ghi theo lần nhập", batch.length === 2 && !!bid && batch.every(b => b.batchId === bid) && (await prisma.consentRecord.count({ where: { batchId: bid!, givenByRole: "tutor", method: "tutor_attestation" } })) === 4);
+  check("nhật ký lần nhập ghi số lượng + 'rights', không ghi tên", await (async () => { const l = await prisma.auditLog.findFirst({ where: { action: "student_profile.import" } }); const t = JSON.stringify(l?.metadata); return !!l && t.includes('"count":2') && t.includes('"rights":true') && !t.includes("Bé Một"); })());
+
+  section("Nhập tệp CSV / Excel / lịch (LO-17)");
+  await go("/lop-cua-toi/hoc-sinh/nhap", "Dán từ Excel hoặc Google Sheets");
+  await pg.getByRole("tab", { name: "Tệp CSV / Excel" }).click();
+  const csv = "﻿Họ tên,SĐT phụ huynh,Ngày sinh,Lớp,Cột lạ\nChị Em Csv A,0922222222,01/01/2012,Toán 9,x\nEm Lớp Sai,0933333333,,Lớp không có,x\n";
+  await pg.locator("#nhap-file").setInputFiles({ name: "ds.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await pg.getByRole("button", { name: "Xem trước" }).click();
+  await pg.locator("[data-preview]").waitFor({ timeout: 30000 });
+  check("CSV: 1 hợp lệ + 1 dòng lỗi 'Lớp … không phải lớp của bạn'; cột lạ được nêu là bị bỏ qua", (await pg.locator("[data-preview-count]").innerText()).includes("1 dòng hợp lệ trên 2") && await pg.locator("[data-errors]").getByText(/Dòng 3:.*không phải lớp của bạn/).isVisible() && await pg.getByText(/Cột bị bỏ qua: Cột lạ/).isVisible());
+  check("lớp trong tệp khớp lớp của gia sư (Toán 9) hiện ở bảng xem trước", await pg.locator("[data-preview-table]").getByText("Toán 9").isVisible());
+  check("nhóm đồng ý: có ngày sinh 2012 (14 tuổi) → cần phụ huynh + em", await pg.locator("[data-consent-bulk]").count() === 1 && (await pg.locator("[data-consent-box]").innerText()).includes("từng em từ 7 tuổi"));
+  const exMod = await import("exceljs");
+  const ExcelJS = ((exMod as any).default ?? exMod) as typeof exMod; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet("DS");
+  ws.addRow(["Họ tên", "SĐT phụ huynh", "Ghi chú"]); ws.addRow(["Em Excel Một", "0944444444", "=HYPERLINK(\"http://x\",\"a\")"]); ws.addRow(["Em Excel Hai", "0955555555", "ok"]);
+  const xbuf = Buffer.from(await wb.xlsx.writeBuffer());
+  await pg.locator("#nhap-file").setInputFiles({ name: "ds.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: xbuf });
+  await pg.getByRole("button", { name: "Xem trước" }).click();
+  await pg.locator("[data-preview-count]").getByText(/2 dòng hợp lệ trên 2/).waitFor({ timeout: 30000 });
+  check("Excel .xlsx: đọc đúng 2 dòng", true);
+  await pg.locator("[data-consent-bulk]").check();
+  await pg.locator("[data-commit]").click();
+  await pg.locator("[data-import-done]").waitFor({ timeout: 30000 });
+  const xl = await prisma.studentProfile.findMany({ where: { name: { startsWith: "Em Excel" } } });
+  check("xlsx đã lưu 2 em (source csv), công thức trong ô ghi chú được lưu như CHỮ, không chạy", xl.length === 2 && xl.every(x => x.source === "csv") && xl.some(x => x.notes === '=HYPERLINK("http://x","a")'));
+  await pg.getByRole("tab", { name: "Lịch học hàng tuần" }).click();
+  await pg.locator("#nhap-text2").fill("Lớp,Thứ,Bắt đầu,Kết thúc\nToán 9,2,19:00,21:00\nToán 9,T5,19h,20h30\nToán 9,9,19:00,20:00");
+  await pg.getByRole("button", { name: "Xem trước" }).click();
+  await pg.locator("[data-preview]").waitFor({ timeout: 30000 });
+  check("lịch: 2 hợp lệ + 1 lỗi dòng 4 (thứ 9 không đọc được); KHÔNG có hộp đồng ý trẻ", (await pg.locator("[data-preview-count]").innerText()).includes("2 dòng hợp lệ trên 3") && await pg.locator("[data-errors]").getByText(/Dòng 4:.*Thứ/).isVisible() && await pg.locator("[data-consent-box]").count() === 0);
+  await pg.locator("[data-skip-errors]").check();
+  await pg.locator("[data-commit]").click();
+  await pg.locator("[data-import-done]").waitFor({ timeout: 30000 });
+  const sch = await prisma.classSchedule.findMany({ where: { courseId: c1.id }, orderBy: { dayOfWeek: "asc" } });
+  check("lịch đã thêm: thứ Hai 19:00-21:00 và thứ Năm 19:00-20:30", sch.length === 2 && sch[0].dayOfWeek === 1 && sch[0].startTime === "19:00" && sch[1].dayOfWeek === 4 && sch[1].endTime === "20:30");
+
+  section("Danh sách học sinh: tab Hồ sơ, Chờ xếp lớp, hồ sơ riêng của em có tài khoản");
+  await prisma.studentProfile.updateMany({ where: { name: "Em Excel Hai" }, data: { status: "waitlist", waitlistedAt: new Date() } });
+  await go("/lop-cua-toi/hoc-sinh", "Em Có Tài Khoản");
+  check("tab Hồ sơ đếm 3 (Một, Excel Một, Csv… không có) — mọi hồ sơ không tài khoản trừ chờ", await pg.getByRole("tab", { name: /^Hồ sơ · \d+$/ }).isVisible() && await pg.getByRole("tab", { name: "Chờ xếp lớp · 1" }).isVisible());
+  await pg.getByRole("tab", { name: "Chờ xếp lớp · 1" }).click();
+  check("tab Chờ xếp lớp: đúng em chờ, có chữ trạng thái", await pg.locator("[data-ho-so]").count() === 1 && await pg.locator("[data-ho-so]").getByText("Em Excel Hai").isVisible() && await pg.locator("[data-ho-so]").getByText("Đang chờ xếp lớp").isVisible());
+  await pg.getByRole("tab", { name: "Đang học · 1" }).click();
+  const href = await pg.getByRole("link", { name: "Hồ sơ riêng của Em Có Tài Khoản" }).getAttribute("href");
+  check("em có tài khoản: 'Hồ sơ riêng' dẫn tới wizard với ?userId=", href === `/lop-cua-toi/hoc-sinh/them?userId=${S.id}`, href);
+  await pg.getByRole("link", { name: "Hồ sơ riêng của Em Có Tài Khoản" }).click();
+  await pg.getByText("Hồ sơ riêng về em đã có tài khoản").waitFor({ timeout: 60000 });
+  check("wizard cho em có tài khoản nói rõ không đổi tài khoản của em", true);
+  await pg.getByLabel("Người lớn (từ 16 tuổi)").check();
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  await pg.getByText("Bước 2 trên 4").waitFor();
+  check("tên em được điền sẵn từ lớp của gia sư", await pg.getByLabel("Tên em").inputValue() === "Em Có Tài Khoản");
+  check("người lớn: không hỏi phụ huynh; người thanh toán là chính người học", await pg.getByLabel("Tên phụ huynh").count() === 0 && await pg.getByText("Người thanh toán: Chính người học.").isVisible());
+  await pg.getByRole("button", { name: "Tiếp tục" }).click(); await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  await pg.getByText("Bước 4 trên 4").waitFor();
+  check("người lớn 16+: hộp đồng ý chỉ có MỘT bên (chính người học)", await pg.locator("[data-consent-party]").count() === 1 && await pg.locator("[data-consent-party=self]").count() === 1);
+  await pg.locator("[data-consent-party=self]").check();
+  await pg.getByRole("button", { name: "Lưu hồ sơ" }).click();
+  await pg.waitForURL(/\/lop-cua-toi\/hoc-sinh\/c[0-9a-f]{24}$/, { timeout: 60000 });
+  const linked = await prisma.studentProfile.findFirst({ where: { userId: S.id } });
+  check("hồ sơ riêng gắn userId; tài khoản của em không bị đổi", !!linked && (await prisma.user.findUnique({ where: { id: S.id } }))?.name === "Em Có Tài Khoản");
+  await pg.getByRole("heading", { name: "Em Có Tài Khoản", level: 1 }).waitFor();
+  check("người lớn: hồ sơ ghi 'Người lớn' và người thanh toán 'Chính người học'", await pg.locator("[data-profile-kind]").innerText() === "Người lớn" && await pg.getByText("Người thanh toán: Chính người học").isVisible());
+
+  section("Quyền trên giao diện");
+  const po = await (await ctxFor(O, { width: 1280, height: 800 })).newPage(); watch(po);
+  await po.goto(`${BASE}/lop-cua-toi/hoc-sinh/${linked!.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await po.getByText("Hồ sơ này không thuộc lớp của bạn").first().waitFor({ timeout: 60000 });
+  check("gia sư khác: báo không thuộc lớp của bạn, KHÔNG lộ tên em", !(await po.locator("body").innerText()).includes("Em Có Tài Khoản"));
+  await po.goto(`${BASE}/lop-cua-toi/hoc-sinh/khong-co-id`, { waitUntil: "networkidle", timeout: 120000 });
+  check("hồ sơ không tồn tại: nói rõ 'Không tìm thấy hồ sơ' + liên kết về danh sách", await po.getByText("Không tìm thấy hồ sơ").first().isVisible() && await po.getByRole("link", { name: /Học sinh/ }).first().isVisible());
+  const pstu = await (await ctxFor(S, { width: 1280, height: 800 })).newPage();
+  await pstu.goto(`${BASE}/lop-cua-toi/hoc-sinh/them`, { waitUntil: "networkidle", timeout: 120000 });
+  check("học sinh mở wizard của gia sư → bị đưa đi, không thấy form", new URL(pstu.url()).pathname !== "/lop-cua-toi/hoc-sinh/them");
+
+  section("Em tự đồng ý ở /student/ho-so (selfConsentAt)");
+  await pstu.goto(`${BASE}/student/ho-so`, { waitUntil: "networkidle", timeout: 120000 });
+  const card = pstu.locator("[data-self-consent]");
+  await card.waitFor({ timeout: 90000 });
+  const btn = card.getByRole("button", { name: "Ghi đồng ý của em" });
+  check("chưa tích sẵn; nút khoá", await btn.isDisabled() && !(await card.getByRole("checkbox").isChecked()));
+  check("chữ nói thật: KiN không kiểm tra tuổi hay người bấm", /KiN không kiểm tra tuổi hay người bấm/.test(await card.innerText()));
+  await card.getByRole("checkbox").check(); await btn.click();
+  await card.getByText(/Em đã đồng ý ngày/).waitFor({ timeout: 30000 });
+  check("ghi đồng ý → User.selfConsentAt có giá trị", !!(await prisma.user.findUnique({ where: { id: S.id }, select: { selfConsentAt: true } }))?.selfConsentAt);
+  await card.getByRole("button", { name: "Thu hồi đồng ý" }).click();
+  await pstu.getByRole("dialog").getByRole("button", { name: "Thu hồi" }).click();
+  await card.getByRole("button", { name: "Ghi đồng ý của em" }).waitFor({ timeout: 30000 });
+  check("thu hồi → selfConsentAt về null", (await prisma.user.findUnique({ where: { id: S.id }, select: { selfConsentAt: true } }))?.selfConsentAt === null);
+
+  section("Điện thoại 390px");
+  const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage(); watch(mp);
+  for (const path of ["/lop-cua-toi/hoc-sinh", "/lop-cua-toi/hoc-sinh/them", "/lop-cua-toi/hoc-sinh/nhap", "/lop-cua-toi/hoc-sinh/truong", `/lop-cua-toi/hoc-sinh/${linked!.id}`]) {
+    await mp.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
+    await mp.locator("h1").first().waitFor({ timeout: 90000 });
+    await mp.waitForTimeout(600);
+    const over = await mp.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean;
+    const small = await mp.evaluate(`[...document.querySelectorAll('main a, main button, main select, main input:not([type=checkbox]):not([type=radio]), [role=tab]')].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5 && !e.closest('nav') && !e.closest('[data-hoc-sinh] a[href^="tel:"]')).map(e => (e.textContent||e.getAttribute('aria-label')||'').trim().slice(0,30) + ':' + Math.round(e.getBoundingClientRect().height))`) as string[];
+    check(`390px ${path.replace(linked!.id, ":id")}: không tràn ngang, nút / ô cao ≥ 44px`, over && small.length === 0, small);
+  }
+  await shot(mp, "ho-so-mobile");
+  check("không lỗi trang / console", errors.length === 0, errors.slice(0, 4));
+  await closeAll();
+  done();
+})().catch(async e => { console.error("TEST CRASH", e); await closeAll().catch(() => {}); process.exit(1); });
