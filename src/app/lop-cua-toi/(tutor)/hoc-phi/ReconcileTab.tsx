@@ -3,6 +3,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
+import Link from "next/link";
+import { KinEmptyState } from "@/components/kin/EmptyState";
+import { kinButtonClass } from "@/components/kin/Button";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 
 interface InvView { id: string; code: string; yearMonth: string; studentName: string; amountDue: number; paidAmount: number; remaining: number; status: string }
@@ -60,9 +63,9 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>
+        <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>
           KiN chỉ tự gạch phiếu khi đúng mã và đúng số tiền còn lại. Các khoản dưới đây cần bạn quyết.
         </p>
         <label className="flex items-center gap-2 text-sm min-h-[44px]" style={{ color: "var(--kin-chu-chinh)" }}>
@@ -71,24 +74,26 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
       </div>
 
       {loading ? (
-        <div className="space-y-2" aria-busy="true">{[0, 1].map(i => <div key={i} className="h-24 rounded-xl animate-pulse" style={CARD_STYLE} />)}</div>
+        <div className="space-y-3" aria-busy="true" aria-label="Đang tải hàng chờ">{[0, 1].map(i => <div key={i} className="h-[96px] rounded kin-skel kin-skel--soft" />)}</div>
       ) : failed ? (
-        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={CARD_STYLE}>
-          Không tải được hàng chờ. <button className="underline font-semibold" onClick={() => load(showAll)}>Thử lại</button>
+        <div role="alert" className="py-8 text-center text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+          Không tải được hàng chờ.{" "}
+          <button className="underline font-medium text-[var(--kin-nhan-link)] min-h-11 px-2" onClick={() => load(showAll)}>Thử lại</button>
         </div>
       ) : items.length === 0 ? (
-        <div role="status" className="rounded-xl p-8 text-center text-sm" style={{ ...CARD_STYLE, borderStyle: "dashed", color: "var(--kin-chu-phu)" }}>
-          {showAll ? "Chưa có khoản tiền nào." : "Không có khoản nào cần đối soát."}
-        </div>
+        <KinEmptyState title={showAll ? "Chưa có khoản tiền nào." : "Không có khoản nào cần đối soát."}
+          action={<Link href="/lop-cua-toi/hoc-phi" className={kinButtonClass("secondary")}>Xem phiếu học phí</Link>}>
+          Khoản tiền vào tài khoản nhận học phí sẽ hiện ở đây khi cần bạn quyết.
+        </KinEmptyState>
       ) : (
-        <ul className="space-y-2">
+        <ul className="border-t border-[var(--kin-vien-nhat)]">
           {items.map(tx => {
             const pending = tx.status === "pending";
             return (
-              <li key={tx.id} className="rounded-xl p-4" style={CARD_STYLE}>
+              <li key={tx.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <p className="text-xl font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(tx.amount)}</p>
+                    <p className="text-[22px] leading-7 font-medium tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(tx.amount)}</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>{fmtTime(tx.occurredAt)}{tx.provider === "manual" ? " · ghi tay" : ""}</p>
                   </div>
                   <div className="text-right">
