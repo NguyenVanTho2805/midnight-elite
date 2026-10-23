@@ -71,7 +71,7 @@ export default function StudentShell({ children }: { children: ReactNode }) {
     { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", icon: "viec", badge },
     { key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" },
     { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/lop-cua-toi"], icon: "lop" },
-    { key: "bai-tap", label: "Bài tập", href: "/student/thi-thu", icon: "bai-kt" },
+    { key: "bai-tap", label: "Bài tập", href: "/student/bai-tap", also: ["/student/thi-thu"], icon: "bai-kt" },
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 

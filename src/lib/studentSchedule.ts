@@ -15,6 +15,10 @@ export interface ScheduleEvent {
   time: string;
   isoDate: string;
   link?: string;
+  /** Giờ kết thúc (chỉ buổi học). */
+  endTime?: string;
+  /** Mô tả ngắn của đề (chỉ buổi thi), vd "10 câu · 15 phút"; thiếu dữ liệu thì bỏ. */
+  meta?: string;
 }
 
 function toISO(raw: string): string | null {
@@ -39,7 +43,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
   // ── Exam events ──────────────────────────────────────────────────────────────
   const exams = await prisma.exam.findMany({
     where: { active: true, status: { not: "completed" } },
-    select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true },
+    select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true, duration: true, questions: true },
   });
 
   for (const exam of exams) {
@@ -53,6 +57,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
       time: exam.time,
       isoDate: iso,
       link: exam.azotaUrl || undefined,
+      meta: [exam.questions > 0 ? `${exam.questions} câu` : "", (/^\d+$/.test(exam.duration?.trim() ?? "") ? `${exam.duration.trim()} phút` : exam.duration?.trim()) || ""].filter(Boolean).join(" · ") || undefined,
     });
   }
 
@@ -138,6 +143,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
           subject: sched.course.category,
           topic: `${prefix}${base}`,
           time: slot ? hmOf(vnMinutesOfDay(slot.startAt)) : sched.startTime,
+          endTime: slot ? hmOf(vnMinutesOfDay(slot.endAt)) : sched.endTime,
           isoDate,
           link: `/student/hoc-tap?course=${sched.course.id}`,
         });
