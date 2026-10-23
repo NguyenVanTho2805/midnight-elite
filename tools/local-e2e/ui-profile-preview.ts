@@ -48,7 +48,7 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   check("hồ sơ công khai: cùng nhãn và cùng số buổi (không lệch với xem trước)", (await pub.getByTestId("recently-active").isVisible()) && /4\s*Buổi đã dạy/.test((await pub.locator("body").innerText()).replace(/\s+/g, " ")));
   const lst = await (await ctxFor(null)).newPage(); watch(lst);
   await lst.goto(`${BASE}/giang-vien`, { waitUntil: "networkidle", timeout: 120000 });
-  const card = lst.locator("h3", { hasText: "Cô Lan" }).locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
+  const card = lst.locator("article", { has: lst.locator("h3", { hasText: "Cô Lan" }) });
   await card.waitFor({ timeout: 60000 });
   check("danh sách /giang-vien: thẻ ghi '4 buổi đã dạy' và 'Có dạy trong 30 ngày qua'; mặc định sắp 'Hoạt động gần đây'", /4 buổi đã dạy/.test(await lst.getByTestId("tutor-activity").first().innerText()) && /Có dạy trong 30 ngày qua/.test(await lst.getByTestId("tutor-activity").first().innerText()) && (await lst.locator("#tutor-sort").inputValue()) === "active");
 
