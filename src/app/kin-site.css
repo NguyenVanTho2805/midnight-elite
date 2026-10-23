@@ -21,6 +21,10 @@
 }
 
 :root {
+  /* Cỡ chữ theo Figma (23/10/2026): chữ gốc 14, chữ phụ 12, tiêu đề mục 18. Dùng trong src/components/kin/ (Stat, ListRow, SectionHead…). */
+  --kin-co-goc: 14px;
+  --kin-co-phu: 12px;
+  --kin-co-tieu-de: 18px;
   --kin-co-caption: 11.1px;
   --kin-co-small: 13.3px;
   --kin-co-body: 16px;

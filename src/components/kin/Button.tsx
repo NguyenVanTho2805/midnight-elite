@@ -44,7 +44,7 @@ const VARIANT: Record<KinButtonVariant, string> = {
 };
 
 const SIZE: Record<Size, string> = {
-  md: "px-[var(--kin-kc-6)] py-[var(--kin-kc-5)] text-[length:var(--kin-co-small)]",
+  md: "px-[var(--kin-kc-6)] py-[var(--kin-kc-5)] text-[length:var(--kin-co-goc)]", // 14px theo Figma
   lg: "px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] text-[length:var(--kin-co-body)]",
 };
 

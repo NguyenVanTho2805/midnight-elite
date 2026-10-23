@@ -7,19 +7,22 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 export interface AccountLink { label: string; href: string }
 
-export function AccountMenu({ name, email, initial, links, onLogout }: {
+export function AccountMenu({ name, email, links, onLogout, onOpenMore }: {
   name: string;
   email?: string;
-  initial: string;
+  /** Không còn dùng (Figma: chỉ tên + mũi tên, không vòng chữ cái). Giữ để nơi gọi cũ không vỡ. */
+  initial?: string;
   links: AccountLink[];
   onLogout: () => void;
+  /** Điện thoại: thanh dưới chỉ có 4 tab theo Figma nên các mục còn lại ("Khác") mở từ đây. Có prop này thì hiện mục "Tất cả mục" (chỉ điện thoại). */
+  onOpenMore?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const id = useId();
 
-  const items = useCallback(() => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []), []);
+  const items = useCallback(() => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []).filter(e => e.offsetParent !== null) /* bỏ mục đang ẩn (vd. "Tất cả mục" trên máy tính) */, []);
   const close = useCallback((restoreFocus: boolean) => {
     setOpen(false);
     if (restoreFocus) requestAnimationFrame(() => btnRef.current?.focus());
@@ -63,10 +66,10 @@ export function AccountMenu({ name, email, initial, links, onLogout }: {
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center justify-center gap-2 min-h-11 min-w-11 pl-1 pr-1 md:pr-3 rounded-full hover:bg-[var(--kin-nen-re-chuot)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]"
+        className="inline-flex items-center justify-center gap-1.5 min-h-11 min-w-11 px-2 rounded-[var(--kin-bo-sm)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]"
       >
-        <span aria-hidden className="w-8 h-8 rounded-full inline-flex items-center justify-center text-[length:var(--kin-co-small)] font-semibold bg-[var(--kin-nhan-nen)] text-[var(--kin-nhan-chu-tren-nen)]">{initial}</span>
-        <span className="hidden md:block max-w-[160px] truncate text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">{name}</span>
+        <span className="max-w-[140px] md:max-w-[160px] truncate text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-phu)]">{name}</span>
+        <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--kin-chu-mo)]"><path d="M6 9l6 6 6-6" /></svg>
       </button>
 
       {open && (
@@ -85,6 +88,9 @@ export function AccountMenu({ name, email, initial, links, onLogout }: {
           {links.map(l => (
             <Link key={l.href} href={l.href} role="menuitem" tabIndex={-1} onClick={() => close(false)} className={`${row} text-[var(--kin-chu-phu)]`}>{l.label}</Link>
           ))}
+          {onOpenMore && (
+            <button type="button" role="menuitem" tabIndex={-1} data-account-more onClick={() => { close(false); onOpenMore(); }} className={`${row} md:hidden text-[var(--kin-chu-phu)]`}>Tất cả mục</button>
+          )}
           <div className="pt-1 mt-1 border-t border-[var(--kin-vien-nhat)]">
             <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(false); onLogout(); }} className={`${row} text-[var(--kin-tt-chu-loi)]`}>Đăng xuất</button>
           </div>

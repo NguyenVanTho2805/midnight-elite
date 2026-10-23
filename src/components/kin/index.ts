@@ -16,3 +16,9 @@ export { KinBookmark } from "./Bookmark";
 export { KinSubmitButton } from "./SubmitButton";
 export { LockCountdown } from "./LockCountdown";
 export { CodeBoxes, type CodeBoxesProps } from "./CodeBoxes";
+// 23/10/2026 — đợt dựng nền theo Figma (xem docs/kin/thiet-ke/COMPONENTS.md).
+export { KinStat, KinStatRow } from "./Stat";
+export { KinSectionHead } from "./SectionHead";
+export { KinListRow, type KinListRowProps } from "./ListRow";
+export { KinCallout } from "./Callout";
+export { KinEmptyState } from "./EmptyState";

@@ -6,7 +6,7 @@
 // mới qua AccountThemeSync — localStorage chỉ là bản nháp để khỏi nháy màu.
 //
 // 5 chủ đề: navy, co-vit, man, ca-phe, muc.
-// 3 chế độ: sang, toi, auto (auto = theo máy, bỏ data-che-do).
+// 3 chế độ: sang (mặc định), toi, auto (auto = theo máy, bỏ data-che-do).
 "use client";
 import { useEffect } from "react";
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
@@ -17,7 +17,8 @@ export type { KinTheme, KinMode };
 const KEY_THEME = "kin.chu-de";
 const KEY_MODE  = "kin.che-do";
 const DEFAULT_THEME: KinTheme = "navy";
-const DEFAULT_MODE:  KinMode  = "auto";
+// 23/10/2026 (đợt dựng nền): Figma là NỀN SÁNG, nên người chưa chọn gì thì SÁNG, không theo máy. "Theo máy" vẫn chọn được (ở /cai-dat/chu-de).
+const DEFAULT_MODE:  KinMode  = "sang";
 
 export function readSavedTheme(): { theme: KinTheme; mode: KinMode } {
   if (typeof window === "undefined") return { theme: DEFAULT_THEME, mode: DEFAULT_MODE };

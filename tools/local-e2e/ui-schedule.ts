@@ -41,7 +41,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   const nav = page.getByRole("navigation", { name: "Module của gia sư" });
   await nav.waitFor();
   const links = (await nav.getByRole("link").allInnerTexts()).map(t => t.replace(/\s+/g, " ").trim());
-  check("thanh module chỉ có Lịch + Học phí (+ nút Khác)", links.some(l => l.startsWith("Lịch")) && links.some(l => l.startsWith("Học phí")) && !links.some(l => l.startsWith("Hộp việc") || l.startsWith("Lớp") || l.startsWith("Bài KT") || l.startsWith("Thư viện")) && (await nav.getByRole("button", { name: "Khác" }).count()) === 1, links);
+  check("thanh module chỉ có Lịch + Học phí (+ nút Khác)", links.some(l => l.startsWith("Lịch")) && links.some(l => l.startsWith("Học phí")) && !links.some(l => l.startsWith("Hộp việc") || l.startsWith("Lớp") || l.startsWith("Bài tập") || l.startsWith("Thư viện")) && (await nav.getByRole("button", { name: "Khác" }).count()) === 1, links);
   await nav.getByRole("button", { name: "Khác" }).click();
   const khac = page.getByRole("dialog", { name: "Các mục khác" });
   await khac.waitFor();
@@ -110,7 +110,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Cài đặt", exact: true }).click();
   await page.getByRole("heading", { name: "Module hiển thị" }).waitFor({ timeout: 30000 });
   check("Lịch và Học phí: luôn bật, không tắt được", await page.getByRole("switch", { name: /Lịch/ }).isDisabled() && await page.getByRole("switch", { name: /Học phí/ }).isDisabled() && await page.getByRole("switch", { name: /Lịch/ }).isChecked());
-  check("4 module còn lại đang tắt", (await Promise.all(["Hộp việc", "Lớp", "Bài KT", "Thư viện"].map(n => page.getByRole("switch", { name: new RegExp(`^${n}`) }).isChecked()))).every(v => v === false));
+  check("4 module còn lại đang tắt", (await Promise.all(["Hộp việc", "Lớp", "Bài tập", "Thư viện"].map(n => page.getByRole("switch", { name: new RegExp(`^${n}`) }).isChecked()))).every(v => v === false));
   await page.getByRole("switch", { name: /^Hộp việc/ }).check();
   await page.getByText("Đã bật module — xem ở thanh bên.").waitFor({ timeout: 10000 });
   await page.getByRole("switch", { name: /^Lớp/ }).check();

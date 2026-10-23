@@ -87,7 +87,8 @@ const luminanceOf = (rgb: string) => { const m = rgb.match(/\d+(\.\d+)?/g)?.map(
   const p = await ctx.newPage(); watch(p);
   await p.goto(`${BASE}/cai-dat/chu-de`, { waitUntil: "networkidle", timeout: 120000 });
   await p.getByRole("heading", { name: "Chủ đề giao diện" }).waitFor({ timeout: 90000 });
-  check("mặc định: Navy + Theo máy đang được chọn", (await p.getByRole("button", { name: /Navy/ }).getAttribute("aria-pressed")) === "true" && (await p.getByRole("button", { name: "Theo máy" }).getAttribute("aria-pressed")) === "true");
+  // 23/10/2026 (đợt dựng nền): Figma là nền sáng, nên mặc định là Sáng (không còn "Theo máy"); "Theo máy" vẫn chọn được ở dưới.
+  check("mặc định: Navy + Sáng đang được chọn", (await p.getByRole("button", { name: /Navy/ }).getAttribute("aria-pressed")) === "true" && (await p.getByRole("button", { name: "Sáng", exact: true }).getAttribute("aria-pressed")) === "true" && (await p.getByRole("button", { name: "Theo máy" }).getAttribute("aria-pressed")) === "false");
   check("có đủ 5 thẻ chủ đề và 3 nút chế độ", (await p.locator("[data-chu-de-xem]").count()) === 5 && (await p.getByRole("button", { name: /^(Theo máy|Sáng|Tối)$/ }).count()) === 3);
 
   const swatch = async (t: string) => p.evaluate(`getComputedStyle(document.querySelector('[data-chu-de-xem="${t}"] > div')).backgroundColor`) as Promise<string>;
