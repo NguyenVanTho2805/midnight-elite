@@ -201,7 +201,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   section("G2b. Lịch → 'Xem các lớp của tôi' → 'Tạo lớp đầu tiên' → drawer");
   await click(p.getByRole("link", { name: "Xem các lớp của tôi" }));
   await eventually("tới /lop-cua-toi/lop", () => at().pathname === "/lop-cua-toi/lop", 90000);
-  await p.getByText("Bạn chưa mở lớp nào").waitFor({ timeout: 60000 });
+  await p.getByText("Cô chưa mở lớp nào").waitFor({ timeout: 60000 });
   await click(p.getByRole("link", { name: "Tạo lớp đầu tiên" }));
   sub("drawer 'Tạo khoá học mới' (trượt ra trên trang danh sách khoá)");
   await eventually("tới /admin/khoa-hoc?tao=1 (drawer)", () => at().pathname === "/admin/khoa-hoc", 120000);
@@ -256,7 +256,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await click(moLop);
   console.log("    (đường tới trang lớp: nút 'Mở lớp' ở trang quản khoá)");
   await eventually("tới /lop-cua-toi/<lớp>", () => at().pathname === `/lop-cua-toi/${course.id}`, 120000);
-  await click(p.getByRole("button", { name: "Mã mời", exact: true }));
+  await click(p.getByRole("tab", { name: "Mã mời", exact: true }));
   sub("tab 'Mã mời' (có sẵn khối 'Mời cả lớp một lần')");
   const box = p.getByLabel("Danh sách em và số phụ huynh");
   await box.waitFor({ timeout: 90000 });

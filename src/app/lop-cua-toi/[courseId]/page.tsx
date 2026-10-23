@@ -14,13 +14,18 @@ import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import OutlookShell from "./OutlookShell";
+import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
+import { formatScheduleRules } from "@/lib/tutorClassTable";
+import { vnDateKeyOf } from "@/lib/classSessions";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ courseId: string }> };
+type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string }> };
+const TABS: LopTab[] = ["diem-danh", "hoc-sinh", "ma-moi", "hoc-phi", "cong-dong"];
 
-export default async function LopPage({ params }: Props) {
+export default async function LopPage({ params, searchParams }: Props) {
   const { courseId } = await params;
+  const sp = await searchParams;
   const session = await getSession();
   if (!session) redirect(`/dang-nhap?redirect=/lop-cua-toi/${courseId}`);
 
@@ -54,6 +59,27 @@ export default async function LopPage({ params }: Props) {
   const viewerName = roleView === "tutor"
     ? (await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true } }))?.name ?? null
     : null;
+
+  // Gia sư (chủ lớp hoặc quản trị): trang chi tiết lớp theo Figma 299:112581. Học sinh giữ vỏ cũ.
+  if (roleView === "tutor") {
+    const now = new Date();
+    const [students, rules, sessions, taught, invites] = await Promise.all([
+      prisma.enrollment.findMany({ where: { courseId, status: "active" }, select: { userId: true, user: { select: { name: true } } }, orderBy: { createdAt: "asc" } }),
+      prisma.classSchedule.findMany({ where: { courseId, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
+      prisma.attendanceSession.findMany({ where: { courseId }, orderBy: { date: "desc" }, take: 5, select: { id: true, date: true, note: true, _count: { select: { records: true } } } }),
+      prisma.attendanceSession.count({ where: { courseId } }),
+      prisma.classInvite.findMany({ where: { courseId, revoked: false }, orderBy: { createdAt: "desc" }, take: 10, select: { code: true, maxUses: true, usedCount: true, expiresAt: true } }),
+    ]);
+    const usable = invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
+    return <LopChiTiet d={{
+      courseId: course.id, courseName: course.name, category: course.category, viewerName,
+      schedule: formatScheduleRules(rules),
+      students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })),
+      history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
+      sessionsTaught: taught, inviteCode: usable?.code ?? null,
+      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi",
+    }} />;
+  }
 
   return <OutlookShell courseId={course.id} courseName={course.name} category={course.category} role={roleView} viewerName={viewerName} />;
 }
