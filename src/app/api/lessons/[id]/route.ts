@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { isCourseManager } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -12,12 +13,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const lesson = await prisma.lesson.findUnique({
     where: { id },
-    include: { chapter: { select: { section: { select: { courseId: true } } } } },
+    include: { chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
-  // Admin: full access
-  if (session.role === "admin") return NextResponse.json(lesson);
+  // MD-03: quản trị toàn quyền; gia sư chỉ bài của LỚP MÌNH — lớp người khác trả 403 (trước đây mọi tài khoản admin đều đọc được).
+  if (session.role === "admin") {
+    const ownerId = lesson.chapter.section.course.ownerId;
+    if (!isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+    return NextResponse.json(lesson);
+  }
 
   // Student: chỉ access nếu đang enroll active khoá của bài học này.
   // "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua

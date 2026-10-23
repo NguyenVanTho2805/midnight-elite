@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
 import { toSlug } from "@/lib/slug";
+import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
 
 // Sinh mã đề duy nhất ở server (không tin mã client tự tính) — client chỉ thấy
 // đề của mình (ownerScopeWhere), nên đếm số đề theo prefix ở phía client dễ bị
@@ -76,10 +77,9 @@ export async function GET(req: NextRequest) {
 
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     return NextResponse.json(
-      exams.map(({ _count, password, course, ...e }) => ({
-        ...e,
+      exams.map(({ _count, course, ...e }) => ({
+        ...withoutExamSecrets(e),
         hasQuestions: _count.examQuestions > 0,
-        hasPassword: !!password,
         courseName: course?.name ?? null,
       }))
     );
@@ -109,7 +109,8 @@ export async function POST(req: NextRequest) {
     data.id = await generateUniqueExamId(typeof data.id === "string" && data.id
       ? data.id
       : (typeof data.title === "string" ? data.title : ""));
-    if (typeof data.password === "string") data.password = data.password.trim() || null;
+    // QZ-14: không lưu mật khẩu thô — băm rồi ghi vào passwordHash.
+    if ("password" in data) Object.assign(data, await examPasswordPatch(data.password));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exam = await prisma.exam.create({ data: data as any });
@@ -130,8 +131,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
-    const { password, ...rest } = exam;
-    return NextResponse.json({ ...rest, hasPassword: !!password }, { status: 201 });
+    return NextResponse.json(withoutExamSecrets(exam), { status: 201 });
   } catch (e) {
     console.error("[POST /api/exams]", e);
     return NextResponse.json({ error: "Tạo đề thi thất bại" }, { status: 400 });

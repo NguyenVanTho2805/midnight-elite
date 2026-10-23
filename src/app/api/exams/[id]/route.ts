@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
+import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -16,8 +17,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
-    const { _count, password, ...rest } = exam;
-    return NextResponse.json({ ...rest, hasQuestions: _count.examQuestions > 0, hasPassword: !!password });
+    const { _count, ...rest } = exam;
+    return NextResponse.json({ ...withoutExamSecrets(rest), hasQuestions: _count.examQuestions > 0 });
   } catch (e) {
     console.error("[GET /api/exams/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -64,12 +65,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         && !["never", "after_submit", "after_exam_ends"].includes(data.answerVisibility as string)) {
       return NextResponse.json({ error: "answerVisibility không hợp lệ" }, { status: 400 });
     }
-    if (typeof data.password === "string") data.password = data.password.trim() || null;
+    // QZ-14: không lưu mật khẩu thô — băm rồi ghi vào passwordHash (gửi chuỗi rỗng/null = bỏ mật khẩu; không gửi = giữ nguyên).
+    if ("password" in data) Object.assign(data, await examPasswordPatch(data.password));
 
     const exam = await prisma.exam.update({ where: { id }, data });
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
-    const { password, ...rest } = exam;
-    return NextResponse.json({ ...rest, hasPassword: !!password });
+    return NextResponse.json(withoutExamSecrets(exam));
   } catch (e) {
     console.error("[PUT /api/exams/[id]]", e);
     if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025") {

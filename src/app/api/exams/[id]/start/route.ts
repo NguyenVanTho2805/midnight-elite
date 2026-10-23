@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { examPasswordPatch, hasExamPassword, verifyExamPassword } from "@/lib/examPassword";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -82,10 +83,15 @@ export async function POST(
 
     // Mật khẩu đề thi: chỉ kiểm tra lúc bắt đầu lượt MỚI (không hỏi lại khi
     // resume/refresh trang giữa chừng — đã vào phòng thi rồi thì không hỏi nữa).
-    if (exam.password && !attempt) {
+    if (hasExamPassword(exam) && !attempt) {
       const { password } = await req.json().catch(() => ({})) as { password?: string };
-      if (password !== exam.password) {
+      const check = await verifyExamPassword(exam, password);
+      if (!check.ok) {
         return NextResponse.json({ error: "Sai mật khẩu đề thi" }, { status: 403 });
+      }
+      if (check.needsUpgrade && typeof password === "string") {
+        // Đề cũ còn mật khẩu thô: nâng lên băm ngay lần nhập đúng đầu tiên (lỗi ở đây không được làm hỏng việc vào thi).
+        await prisma.exam.update({ where: { id: examId }, data: await examPasswordPatch(password) }).catch(e => console.error("[exams start] nâng băm mật khẩu", e));
       }
     }
 
