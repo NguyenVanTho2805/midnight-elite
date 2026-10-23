@@ -2,9 +2,14 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
+import Link from "next/link";
+import { KinStat, KinStatRow } from "@/components/kin/Stat";
+import { KinCallout } from "@/components/kin/Callout";
+import { KinEmptyState } from "@/components/kin/EmptyState";
+import { kinButtonClass } from "@/components/kin/Button";
 import { openZalo } from "@/lib/zaloShare";
 import { groupInvoiceMessage, invoiceLinkDaysLeft, privateInvoiceMessage } from "@/lib/invoiceZalo";
-import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
+import { Badge, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 import { vnMonthKey } from "@/lib/revenue";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 
@@ -115,9 +120,9 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
   const drafts = items.filter(i => i.status === "draft").length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-end gap-3 flex-wrap">
-        <label className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Tháng
+        <label className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Tháng
           <select value={yearMonth} onChange={e => setYearMonth(e.target.value)}
             className="block mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
             {months.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
@@ -128,17 +133,19 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
       </div>
 
       {!hasAccount && !loading && (
-        <div role="alert" className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-          Bạn chưa lưu tài khoản nhận tiền nên phiếu chưa có mã QR.{" "}
-          <button className="underline font-semibold" onClick={onGoPayout}>Cài đặt nhận tiền →</button>
+        <div role="alert">
+          <KinCallout title="Chưa có tài khoản nhận tiền">
+            Bạn chưa lưu tài khoản nhận tiền nên phiếu chưa có mã QR.{" "}
+            <button className="underline font-medium text-[var(--kin-nhan-link)]" onClick={onGoPayout}>Cài đặt nhận tiền →</button>
+          </KinCallout>
         </div>
       )}
 
       {skipped.length > 0 && (
-        <div className="rounded-xl p-4 text-sm" style={CARD_STYLE}>
+        <div className="text-sm px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-vien-thuong)]">
           <div className="flex items-start justify-between gap-3">
-            <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Chưa lập được cho {skipped.length} em</p>
-            <button onClick={() => setSkipped([])} className="text-xs underline" style={{ color: "var(--kin-chu-phu)" }} aria-label="Ẩn danh sách bỏ qua">Ẩn</button>
+            <p className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Chưa lập được cho {skipped.length} em</p>
+            <button onClick={() => setSkipped([])} className="text-xs underline min-h-11 px-2" style={{ color: "var(--kin-chu-mo)" }} aria-label="Ẩn danh sách bỏ qua">Ẩn</button>
           </div>
           <ul className="mt-2 space-y-1" style={{ color: "var(--kin-chu-phu)" }}>
             {skipped.map(s => <li key={s.studentId}><b>{s.studentName}</b>: {s.reason}</li>)}
@@ -147,44 +154,44 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
       )}
 
       {summary && !failed && (
-        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {([["Số phiếu", String(summary.count)], ["Phải thu", vnd(summary.totalDue)], ["Đã thu", vnd(summary.totalPaid)], ["Còn lại", vnd(summary.totalRemaining)]] as const).map(([k, v]) => (
-            <div key={k} className="rounded-xl p-3" style={CARD_STYLE}>
-              <dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{k}</dt>
-              <dd className="text-lg font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{v}</dd>
-            </div>
-          ))}
-        </dl>
+        <KinStatRow>
+          <KinStat label="Số phiếu" value={String(summary.count)} />
+          <KinStat label="Phải thu" value={vnd(summary.totalDue)} />
+          <KinStat label="Đã thu" value={vnd(summary.totalPaid)} />
+          <KinStat label="Còn lại" value={vnd(summary.totalRemaining)} />
+        </KinStatRow>
       )}
 
       {loading ? (
-        <div className="space-y-2" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} />)}</div>
+        <div className="space-y-3" aria-busy="true" aria-label="Đang tải danh sách phiếu">{[0, 1, 2].map(i => <div key={i} className="h-[76px] rounded kin-skel kin-skel--soft" />)}</div>
       ) : failed ? (
-        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={CARD_STYLE}>
-          Không tải được danh sách phiếu. <button className="underline font-semibold" onClick={() => load(yearMonth)}>Thử lại</button>
+        <div role="alert" className="py-8 text-center text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+          Không tải được danh sách phiếu.{" "}
+          <button className="underline font-medium text-[var(--kin-nhan-link)] min-h-11 px-2" onClick={() => load(yearMonth)}>Thử lại</button>
         </div>
       ) : items.length === 0 ? (
-        <div role="status" className="rounded-xl p-8 text-center text-sm" style={{ ...CARD_STYLE, borderStyle: "dashed", color: "var(--kin-chu-phu)" }}>
-          Chưa có phiếu nào cho {monthLabel(yearMonth)}. Nhập số buổi của lớp (ở trang quản khoá) rồi bấm “Lập phiếu cả lớp”.
-        </div>
+        <KinEmptyState title={`Chưa có phiếu nào cho ${monthLabel(yearMonth)}`}
+          action={<Link href="/lop-cua-toi/lop" className={kinButtonClass("secondary")}>Mở Lớp</Link>}>
+          Nhập số buổi của lớp (ở trang quản khoá) rồi bấm “Lập phiếu cả lớp”.
+        </KinEmptyState>
       ) : (
-        <ul className="space-y-2">
+        <ul className="border-t border-[var(--kin-vien-nhat)]">
           {items.map(i => (
-            <li key={i.id} className="rounded-xl p-4" style={CARD_STYLE}>
+            <li key={i.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
-                  <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{i.studentName}</p>
-                  <p className="text-xs font-mono mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>{i.code}</p>
+                  <p className="text-[length:var(--kin-co-tieu-de)] font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{i.studentName}</p>
+                  <p className="text-[length:var(--kin-co-small)] font-mono mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{i.code}</p>
                 </div>
                 <div className="text-right">
                   <Badge tone={invoiceTone(i.status)}>{i.statusLabel}</Badge>
                   {i.needsBankCheck && <p className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>Quá 24 giờ chưa thấy tiền — kiểm sao kê</p>}
                 </div>
               </div>
-              <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Phải đóng</dt><dd className="font-bold tabular-nums">{vnd(i.amountDue)}</dd></div>
-                <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Đã nhận</dt><dd className="font-bold tabular-nums">{vnd(i.paidAmount)}</dd></div>
-                <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại</dt><dd className="font-bold tabular-nums">{vnd(i.remaining)}</dd></div>
+              <dl className="mt-4 grid grid-cols-3 gap-4 text-[length:var(--kin-co-goc)]">
+                <div><dt className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Phải đóng</dt><dd className="font-medium tabular-nums">{vnd(i.amountDue)}</dd></div>
+                <div><dt className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Đã nhận</dt><dd className="font-medium tabular-nums">{vnd(i.paidAmount)}</dd></div>
+                <div><dt className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Còn lại</dt><dd className="font-medium tabular-nums">{vnd(i.remaining)}</dd></div>
               </dl>
               {(i.zaloOpenedAt || i.parentViewedAt) && (
                 <p className="text-xs mt-2 flex gap-x-4 gap-y-1 flex-wrap" style={{ color: "var(--kin-chu-phu)" }}>
@@ -194,7 +201,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
               )}
               {i.creditApplied > 0 && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Đã trừ {vnd(i.creditApplied)} tiền đóng dư từ tháng trước.</p>}
               {i.status === "cancelled" && i.cancelReason && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Lý do huỷ: {i.cancelReason}</p>}
-              <div className="mt-3 flex gap-2 flex-wrap">
+              <div className="mt-4 flex gap-2 flex-wrap">
                 {i.status === "draft" && <KinButton size="md" loading={busy === i.id} onClick={() => act(i, { action: "send" }, "Đã gửi phiếu.")}>Gửi phiếu</KinButton>}
                 {(i.status === "sent" || i.status === "parent_reported" || i.status === "partial") && (<>
                   <KinButton variant="secondary" onClick={() => setDialog({ kind: "pay", inv: i })}>Đã nhận tiền</KinButton>
