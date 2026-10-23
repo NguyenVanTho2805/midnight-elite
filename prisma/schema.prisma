@@ -690,6 +690,19 @@ model ExamCorrection {
 //   approvedItems    — bản gia sư đã bấm "Duyệt": phụ huynh trên "Sổ của con" CHỈ thấy bản này
 //   approvedSnapshot — số liệu từng môn đóng băng lúc duyệt, để phiếu phụ huynh không đổi sau đó
 //   zaloOpenedAt     — gia sư đã MỞ Zalo với tin soạn sẵn (KiN không biết tin có đi thật hay không)
+// KiN Pro F3 "Giấy tờ có thương hiệu": cài đặt của gia sư (tên hiển thị, màu nhấn từ danh sách token, chữ ký chữ). Chưa có logo tải lên.
+model TutorDocBrand {
+  userId      String   @id
+  displayName String
+  accent      String // khoá trong src/lib/docBrand.ts (ACCENTS), KHÔNG phải mã màu
+  signature   String   @default("")
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tutor_doc_brands")
+}
+
 model MonthlyReport {
   id               String    @id @default(cuid())
   tutorId          String
@@ -700,6 +713,9 @@ model MonthlyReport {
   approvedSnapshot Json?
   approvedAt       DateTime?
   zaloOpenedAt     DateTime?
+  // KiN Pro F3: lúc gia sư tạo bản IN có thương hiệu + ảnh chụp thương hiệu lúc đó (bản đã tạo xem lại được dù hết hạn Pro).
+  brandedAt        DateTime?
+  brandSnapshot    Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -861,6 +877,7 @@ model User {
   proOrders           ProOrder[]
   monthlyReportsAsTutor   MonthlyReport[] @relation("ReportTutor")
   monthlyReportsAsStudent MonthlyReport[] @relation("ReportStudent")
+  docBrand             TutorDocBrand?
   absencesAsStudent    ClassAbsence[]      @relation("AbsenceStudent")
   makeupCredits        MakeupCredit[]      @relation("MakeupStudent")
   reminderLogsStudent  ClassReminderLog[]  @relation("ReminderStudent")
