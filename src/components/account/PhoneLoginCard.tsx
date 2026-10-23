@@ -6,6 +6,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin/Button";
+import { KinSectionHead } from "@/components/kin/SectionHead";
 import { CodeBoxes } from "@/components/kin/CodeBoxes";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
@@ -15,7 +16,7 @@ type Msg = { kind: "ok" | "error"; text: string };
 
 const FIELD = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] outline-none focus:border-[var(--kin-nhan-link)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)]";
 
-export default function PhoneLoginCard({ profilePhone, className = "", compact = false }: { profilePhone?: string | null; className?: string; compact?: boolean }) {
+export default function PhoneLoginCard({ profilePhone, className = "", compact = false, plain = false }: { profilePhone?: string | null; className?: string; compact?: boolean; /** Không khung: đầu mục theo KinSectionHead (trang Cài đặt gia sư). */ plain?: boolean }) {
   const { ask, dialog } = useKinConfirm();
   const [enabled, setEnabled] = useState(false);
   const [view, setView] = useState<View | null>(null);
@@ -89,9 +90,11 @@ export default function PhoneLoginCard({ profilePhone, className = "", compact =
   }
 
   return (
-    <section aria-labelledby="h-dn-sdt" className={`rounded-xl ${compact ? "p-5" : "p-4"} ${className}`} style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+    <section aria-labelledby="h-dn-sdt" className={plain ? className : `rounded-xl ${compact ? "p-5" : "p-4"} ${className}`} style={plain ? undefined : { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       {dialog}
-      <h2 id="h-dn-sdt" className={`font-bold ${compact ? "text-sm" : ""}`} style={{ color: compact ? "var(--kin-chu-phu)" : "var(--kin-chu-chinh)" }}>Đăng nhập bằng số điện thoại</h2>
+      {plain
+        ? <KinSectionHead id="h-dn-sdt" title="Đăng nhập bằng số điện thoại" />
+        : <h2 id="h-dn-sdt" className={`font-bold ${compact ? "text-sm" : ""}`} style={{ color: compact ? "var(--kin-chu-phu)" : "var(--kin-chu-chinh)" }}>Đăng nhập bằng số điện thoại</h2>}
       {view.verified ? (
         <div className="mt-2 flex flex-col gap-3">
           <p className={compact ? "text-xs" : "text-sm"} style={{ color: "var(--kin-chu-phu)" }}>

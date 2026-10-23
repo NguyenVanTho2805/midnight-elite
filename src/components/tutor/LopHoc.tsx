@@ -12,18 +12,13 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TWO_COL, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
 
-const FIELD = "w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]";
+const FIELD = KIN_FIELD;
 const COLS = "md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-x-4";
 
 function Skeleton() {
-  const sk = "kin-skel kin-skel--soft";
-  return (
-    <div aria-busy="true" aria-label="Đang tải danh sách lớp" className="mt-6 space-y-3">
-      <div className={`h-11 rounded ${sk}`} />
-      {[0, 1, 2, 3].map(i => <div key={i} className={`h-[62px] rounded ${sk}`} />)}
-    </div>
-  );
+  return <KinTableSkeleton label="Đang tải danh sách lớp" />;
 }
 
 export default function LopHoc() {
@@ -55,16 +50,10 @@ export default function LopHoc() {
   const noStudents = all.find(r => r.students === 0);
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Lớp học</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-            {rows ? `${all.length} lớp · ${totalStudents} học sinh đang học. ` : ""}Một nơi để theo dõi lịch, buổi dạy và học sinh của từng lớp.
-          </p>
-        </div>
-        <Link href="/lop-cua-toi/lop/tao" className={`${kinButtonClass("primary")} self-start flex-shrink-0`}>Tạo lớp</Link>
-      </header>
+    <KinPage>
+      <KinPageHeader title="Lớp học"
+        sub={<>{rows ? `${all.length} lớp · ${totalStudents} học sinh đang học. ` : <span aria-hidden className="invisible">00 lớp · 00 học sinh đang học. </span>}Một nơi để theo dõi lịch, buổi dạy và học sinh của từng lớp.</>}
+        actions={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp</Link>} />
 
       {error && <ErrorStrip message="Không tải được danh sách lớp." onRetry={load} />}
       {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 ? (
@@ -73,7 +62,7 @@ export default function LopHoc() {
         </KinEmptyState>
       ) : (
         <>
-          <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,440px)_230px_230px]" role="search" aria-label="Tìm và lọc lớp">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,440px)_230px_230px]" role="search" aria-label="Tìm và lọc lớp">
             <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tìm lớp
               <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Tên lớp, môn học…" className={`${FIELD} mt-2`} />
             </label>
@@ -92,7 +81,7 @@ export default function LopHoc() {
           </div>
 
           <div className="mt-6">
-            <div aria-hidden className={`hidden ${COLS} px-[var(--kin-kc-6)] h-11 items-center bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]`}>
+            <div aria-hidden className={`hidden ${COLS} ${KIN_TABLE_HEAD}`}>
               <span>Lớp</span><span>Học sinh</span><span>Lịch cố định</span><span>Tiến độ</span><span>Thao tác</span>
             </div>
             {shown.length === 0 ? (
@@ -104,11 +93,11 @@ export default function LopHoc() {
                 {shown.map(c => {
                   const empty = c.students === 0;
                   return (
-                    <li key={c.id} className={`${COLS} flex flex-col gap-1 px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] md:items-center border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]`}>
+                    <li key={c.id} className={`${COLS} flex flex-col gap-1 ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>
                       <div className="min-w-0">
                         <Link href={`/lop-cua-toi/${c.id}`} className="inline-flex items-center min-h-11 md:min-h-0 font-medium break-words hover:underline">{c.name}</Link>
                         {(c.classStatus !== "open" || c.hidden) && (
-                          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">{CLASS_STATUS_LABEL[c.classStatus] ?? c.classStatus}{c.hidden ? " · đang ẩn" : ""}</p>
+                          <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{CLASS_STATUS_LABEL[c.classStatus] ?? c.classStatus}{c.hidden ? " · đang ẩn" : ""}</p>
                         )}
                       </div>
                       <p className="tabular-nums"><span className="md:hidden text-[var(--kin-chu-mo)]">Học sinh: </span>{c.students}{c.capacity != null ? `/${c.capacity}` : ""}</p>
@@ -126,7 +115,7 @@ export default function LopHoc() {
             )}
           </div>
 
-          <div className="mt-8 grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-8 items-start">
+          <div className={`mt-8 ${KIN_TWO_COL}`}>
             <KinCallout title="Điểm danh và học phí đi cùng nhau">
               Điểm danh được lưu riêng cho từng buổi. Mở một lớp để điểm danh, xem học sinh và mã mời của lớp đó; học phí theo dõi ở mục Học phí.
             </KinCallout>
@@ -141,6 +130,6 @@ export default function LopHoc() {
           <p className="mt-8 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hiển thị {shown.length}/{all.length} lớp{filtering ? " theo bộ lọc" : ""}.</p>
         </>
       )}
-    </div>
+    </KinPage>
   );
 }

@@ -4,7 +4,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
-import { Badge, CARD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
+import { KinSectionHead } from "@/components/kin/SectionHead";
+import { Badge, callApi, useNotify } from "@/components/tutor/shared";
 import { PUSH_DEFS, PUSH_TYPES, endpointFingerprint, type PushType, type PushTypes } from "@/lib/pushRules";
 import { isIosDevice, pushUiState, serverOffText, urlBase64ToUint8Array, type PushUiState } from "@/lib/pushClient";
 
@@ -139,34 +140,34 @@ export default function PushSettings() {
   }
 
   return (
-    <section id="thong-bao-day" aria-labelledby="h-push" className="rounded-xl p-4" style={CARD_STYLE}>
-      <h2 id="h-push" className="font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Thông báo đẩy</h2>
-      <p className="text-xs mt-1 mb-3" style={MUTED}>Nhận báo ngay trên điện thoại khi có việc cần xử lý, kể cả khi KiN đang đóng.</p>
+    <section id="thong-bao-day" aria-labelledby="h-push">
+      <KinSectionHead id="h-push" title="Thông báo đẩy" />
+      <p className="text-[length:var(--kin-co-goc)] mt-4 mb-4" style={MUTED}>Nhận báo ngay trên điện thoại khi có việc cần xử lý, kể cả khi KiN đang đóng.</p>
 
       {failed && !cfg ? (
-        <div role="alert" className="text-sm">Không tải được cài đặt thông báo đẩy. <button className="underline font-semibold" onClick={() => void refresh()}>Thử lại</button></div>
+        <div role="alert" className="text-sm">Không tải được cài đặt thông báo đẩy. <button className="underline font-medium" onClick={() => void refresh()}>Thử lại</button></div>
       ) : !state || !cfg || !env ? (
-        <div className="h-16 rounded-lg animate-pulse" style={CARD_STYLE} aria-busy="true" />
+        <div className="h-[140px] rounded kin-skel kin-skel--soft" aria-busy="true" />
       ) : (
         <div className="space-y-4">
           <div className="rounded-lg p-3" style={{ border: "1px solid var(--kin-vien-thuong)" }} data-testid="push-here" data-state={state}>
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Thông báo đẩy trên máy này</p>
+              <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Thông báo đẩy trên máy này</p>
               {state === "on" && <Badge tone="ok">Đã bật</Badge>}
               {state === "off" && <Badge tone="neutral">Chưa bật</Badge>}
               {state === "blocked" && <Badge tone="bad">Bị trình duyệt chặn</Badge>}
             </div>
-            {state === "on" && <p className="text-xs mt-1" style={MUTED}>Tắt thì KiN vẫn báo trong ứng dụng, chỉ không đẩy ra ngoài.</p>}
-            {state === "off" && <p className="text-xs mt-1" style={MUTED}>Bật để nhận báo nghỉ sát giờ và khoản tiền cần đối soát ngay trên máy này.</p>}
+            {state === "on" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>Tắt thì KiN vẫn báo trong ứng dụng, chỉ không đẩy ra ngoài.</p>}
+            {state === "off" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>Bật để nhận báo nghỉ sát giờ và khoản tiền cần đối soát ngay trên máy này.</p>}
             {state === "blocked" && (
-              <p className="text-xs mt-1" style={MUTED}>
+              <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>
                 Trình duyệt đang chặn thông báo của KiN. Bấm biểu tượng ổ khoá cạnh địa chỉ trang → Thông báo → Cho phép, rồi quay lại đây bấm Thử lại. KiN không thể tự bật lại quyền này.
                 Trong lúc chờ, mọi việc vẫn hiện trong Hộp việc và thanh số đỏ như bình thường.
               </p>
             )}
-            {state === "server-off" && <p className="text-xs mt-1" style={MUTED}>{serverOffText(cfg.reason)}</p>}
-            {state === "unsupported" && <p className="text-xs mt-1" style={MUTED}>Trình duyệt này không hỗ trợ thông báo đẩy. Hãy dùng Chrome, Edge, Firefox hoặc Safari bản mới.</p>}
-            {state === "ios-install" && <p className="text-xs mt-1" style={MUTED}>iPhone chỉ nhận thông báo đẩy khi KiN đã được thêm vào Màn hình chính. Làm theo hướng dẫn “Dùng iPhone?” bên dưới rồi mở KiN từ biểu tượng mới.</p>}
+            {state === "server-off" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>{serverOffText(cfg.reason)}</p>}
+            {state === "unsupported" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>Trình duyệt này không hỗ trợ thông báo đẩy. Hãy dùng Chrome, Edge, Firefox hoặc Safari bản mới.</p>}
+            {state === "ios-install" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>iPhone chỉ nhận thông báo đẩy khi KiN đã được thêm vào Màn hình chính. Làm theo hướng dẫn “Dùng iPhone?” bên dưới rồi mở KiN từ biểu tượng mới.</p>}
             <div className="mt-3 flex gap-2 flex-wrap">
               {state === "off" && <KinButton onClick={() => void enable()} loading={busy === "enable"}>Bật trên máy này</KinButton>}
               {state === "on" && <KinButton variant="secondary" onClick={() => void disableHere()} loading={busy === "disable"}>Tắt máy này</KinButton>}
@@ -176,30 +177,30 @@ export default function PushSettings() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Việc được báo</h3>
+            <h3 className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Việc được báo</h3>
             <div className="divide-y" style={{ borderColor: "var(--kin-vien-thuong)" }}>
               {PUSH_TYPES.map(t => (
                 <label key={t} htmlFor={`push-${t}`} className="flex items-start gap-3 py-3 min-h-[44px] cursor-pointer">
                   <input id={`push-${t}`} type="checkbox" role="switch" checked={cfg.types[t]} disabled={busy === `t:${t}`} onChange={e => void toggle(t, e.target.checked)}
                     className="mt-1 w-5 h-5 flex-shrink-0" style={{ accentColor: "var(--kin-nhan-nen)" }} />
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{PUSH_DEFS[t].label}</span>
-                    <span className="block text-xs mt-0.5" style={MUTED}>{PUSH_DEFS[t].hint}</span>
+                    <span className="block text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{PUSH_DEFS[t].label}</span>
+                    <span className="block text-[length:var(--kin-co-goc)] mt-0.5" style={MUTED}>{PUSH_DEFS[t].hint}</span>
                   </span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="rounded-lg px-3 py-2 text-xs" style={{ ...MUTED, background: "var(--kin-nen-trang)" }}>
-            <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Giờ yên lặng 22:00–07:00</p>
+          <div className="rounded-lg px-3 py-2 text-[length:var(--kin-co-goc)]" style={{ ...MUTED, background: "var(--kin-nen-trang)" }}>
+            <p className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Giờ yên lặng 22:00–07:00</p>
             <p className="mt-0.5">Trong giờ này KiN chỉ tạo thông báo trong ứng dụng, không đẩy. Ngoại lệ: báo nghỉ còn dưới 2 giờ là đến giờ học.</p>
             <p className="mt-1">Chữ trên màn hình khoá không có tên học sinh hay số tiền.</p>
           </div>
 
           {cfg.devices.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Thiết bị đã bật ({cfg.devices.length}/{cfg.maxDevices})</h3>
+              <h3 className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Thiết bị đã bật ({cfg.devices.length}/{cfg.maxDevices})</h3>
               <ul className="mt-2 space-y-2">
                 {cfg.devices.map(d => (
                   <li key={d.id} className="rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
@@ -214,8 +215,8 @@ export default function PushSettings() {
             </div>
           )}
 
-          <div className="rounded-lg px-3 py-2 text-xs" style={{ ...MUTED, background: "var(--kin-nen-trang)" }}>
-            <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Dùng iPhone?</p>
+          <div className="rounded-lg px-3 py-2 text-[length:var(--kin-co-goc)]" style={{ ...MUTED, background: "var(--kin-nen-trang)" }}>
+            <p className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Dùng iPhone?</p>
             <p className="mt-0.5">Cần iOS 16.4 trở lên. Mở KiN bằng Safari → Chia sẻ → Thêm vào Màn hình chính. Sau đó mở KiN từ biểu tượng mới trên màn hình rồi bật thông báo ở đây. Không làm bước này thì iPhone không nhận được.</p>
           </div>
         </div>

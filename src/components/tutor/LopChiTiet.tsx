@@ -12,6 +12,7 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinStatus } from "@/components/kin/Status";
 import { KinCopyButton } from "@/components/kin/CopyButton";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
 
@@ -51,18 +52,12 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const sub = [`${n} học sinh`, d.schedule ?? "Chưa xếp lịch", d.category].filter(Boolean).join(" · ");
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <Link href="/lop-cua-toi/lop" className="inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] hover:underline">← Lớp học</Link>
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)] break-words">{d.courseName}</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{sub}</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap self-start flex-shrink-0">
+    <KinPage>
+      <KinPageHeader title={d.courseName} titleClassName="break-words" sub={sub} back={{ href: "/lop-cua-toi/lop", label: "← Lớp học" }}
+        actions={<>
           <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
           <Link href={`/admin/khoa-hoc/${d.courseId}`} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
-        </div>
-      </header>
+        </>} />
 
       {d.justCreated && <KinCallout title="Đã tạo lớp" className="mb-6">Gửi mã mời ở tab Mã mời để học sinh tự vào lớp.</KinCallout>}
       {d.scheduleFailed && (
@@ -76,11 +71,11 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
 
       <div role="tabpanel" id={`lop-panel-${tab}`} aria-labelledby={`lop-tab-${tab}`} className="pt-6">
         {tab === "diem-danh" && (
-          <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-12 gap-y-10 items-start">
+          <div className={KIN_TWO_COL}>
             <div className="min-w-0">
               <Suspense fallback={null}><DiemDanhPanel courseId={d.courseId} embedded /></Suspense>
             </div>
-            <aside className="min-w-0 space-y-8">
+            <aside className="min-w-0 space-y-[var(--kin-cach-muc)]">
               <section aria-labelledby="lop-hs">
                 <KinSectionHead id="lop-hs" title="Học sinh" aside={<Link href={`/admin/khoa-hoc/${d.courseId}/hoc-vien`} className="text-[var(--kin-nhan-link)] hover:underline">Danh bạ lớp →</Link>} />
                 {n === 0 ? (
@@ -90,7 +85,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                 ) : (
                   <ul aria-label="Học sinh của lớp">
                     {d.students.map(s => (
-                      <li key={s.id} className="px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">{s.name}</li>
+                      <li key={s.id} className={`flex ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>{s.name}</li>
                     ))}
                   </ul>
                 )}
@@ -110,7 +105,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                     {d.history.map(h => {
                       const full = n > 0 && h.marked >= n;
                       return (
-                        <li key={h.id} className="flex items-baseline justify-between gap-3 px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
+                        <li key={h.id} className={`flex justify-between gap-3 ${KIN_TABLE_ROW}`}>
                           <span className="min-w-0 break-words text-[var(--kin-chu-chinh)]">{dm(h.dateKey)}{h.note ? ` · ${h.note}` : ""}</span>
                           <KinStatus tone={full ? "xong" : "cho"} className="flex-shrink-0">{full ? "Đã điểm danh đủ" : `Mới ${h.marked}/${n} em`}</KinStatus>
                         </li>
@@ -134,7 +129,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
             ) : (
               <>
                 <ul aria-label="Học sinh của lớp">
-                  {d.students.map(s => <li key={s.id} className="px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">{s.name}</li>)}
+                  {d.students.map(s => <li key={s.id} className={`flex ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>{s.name}</li>)}
                 </ul>
                 <Link href={`/admin/khoa-hoc/${d.courseId}/hoc-vien`} className={`${kinButtonClass("secondary")} mt-4`}>Mở danh bạ lớp (gọi, Zalo phụ huynh)</Link>
               </>
@@ -160,6 +155,6 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
             note="Xem báo cáo bài viết trong các lớp của cô, xoá bài vi phạm hoặc bỏ qua." />
         )}
       </div>
-    </div>
+    </KinPage>
   );
 }

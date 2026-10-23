@@ -112,7 +112,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
 
                 {pending && (tx.kind === "no_code" || tx.kind === "unknown_code") && tx.suggestions.length > 0 && (
                   <div className="mt-3 rounded-lg p-3" style={{ border: "1px dashed var(--kin-vien-thuong)" }}>
-                    <p className="text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Gợi ý: phiếu chưa đóng có cùng số tiền (KiN không tự ghép)</p>
+                    <p className="text-xs font-medium mb-1" style={{ color: "var(--kin-chu-phu)" }}>Gợi ý: phiếu chưa đóng có cùng số tiền (KiN không tự ghép)</p>
                     <ul className="space-y-1">
                       {tx.suggestions.map(s => (
                         <li key={s.id} className="flex items-center justify-between gap-2 flex-wrap text-sm">
@@ -185,7 +185,7 @@ function PickInvoice({ tx, onClose, onPick }: { tx: Tx; onClose: () => void; onP
               {shown.map(i => (
                 <li key={i.id}>
                   <button className="w-full text-left px-3 py-2 rounded-lg min-h-[44px]" style={CARD_STYLE} onClick={() => setChosen(i)}>
-                    <span className="font-semibold">{i.studentName}</span> · {monthLabel(i.yearMonth)} · <span className="font-mono text-xs">{i.code}</span>
+                    <span className="font-medium">{i.studentName}</span> · {monthLabel(i.yearMonth)} · <span className="font-mono text-xs">{i.code}</span>
                     <span className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại {vnd(i.remaining)}</span>
                   </button>
                 </li>
@@ -196,7 +196,7 @@ function PickInvoice({ tx, onClose, onPick }: { tx: Tx; onClose: () => void; onP
         <p className="text-sm mb-3"><b>{chosen.studentName}</b> · {monthLabel(chosen.yearMonth)} · còn lại {vnd(chosen.remaining)}</p>
         {over > 0 && (
           <fieldset className="mb-3 text-sm">
-            <legend className="font-semibold mb-1">Khoản này dư {vnd(over)} so với phần còn lại — xử lý thế nào?</legend>
+            <legend className="font-medium mb-1">Khoản này dư {vnd(over)} so với phần còn lại — xử lý thế nào?</legend>
             {([["credit", "Trừ vào tháng sau"], ["refunded", "Đã trả lại phụ huynh"]] as const).map(([v, l]) => (
               <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="pick-excess" checked={excess === v} onChange={() => setExcess(v)} /> {l}</label>
             ))}

@@ -9,6 +9,7 @@ import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { KinButton } from "@/components/kin";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
+import { KinPage, KinPageHeader, KIN_TWO_COL } from "@/components/kin/PageLayout";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import PhoneLoginCard from "@/components/account/PhoneLoginCard";
 import PushSettings from "@/components/tutor/PushSettings";
@@ -91,19 +92,16 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
   };
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10" style={{ background: "var(--kin-nen-trang)" }}>
-      <header className="pb-6">
-        <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em]" style={{ color: "var(--kin-chu-chinh)" }}>Cài đặt</h1>
-        <p className="mt-1 text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Lưu theo tài khoản của bạn, đăng nhập ở máy nào cũng giống nhau. Bật hoặc tắt là lưu ngay, không cần nút lưu chung.</p>
-      </header>
+    <KinPage>
+      <KinPageHeader title="Cài đặt" sub="Lưu theo tài khoản của bạn, đăng nhập ở máy nào cũng giống nhau. Bật hoặc tắt là lưu ngay, không cần nút lưu chung." />
       <nav aria-label="Các mục cài đặt" className="flex gap-2 overflow-x-auto border-b border-[var(--kin-vien-thuong)]">
         {[["#module", "Module và nhắc lịch"], ["#thong-bao", "Thông báo"], ["#ket-noi", "Kết nối"], ["#tai-khoan", "Tài khoản và giao diện"]].map(([href, label], i) => (
           <a key={href} href={href} className={`${KIN_TAB_BOX} -mb-px`}><KinTabInner active={i === 0}>{label}</KinTabInner></a>
         ))}
       </nav>
 
-      <div className="mt-8 grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-10 items-start">
-      <div className="space-y-10 min-w-0">
+      <div className={`mt-8 ${KIN_TWO_COL}`}>
+      <div className="space-y-[var(--kin-cach-muc)] min-w-0">
       <section id="module" aria-labelledby="h-module" className="scroll-mt-4">
         <KinSectionHead id="h-module" title="Module hiển thị" />
         <p className="text-[length:var(--kin-co-goc)] mt-4 mb-2" style={{ color: "var(--kin-chu-mo)" }}>
@@ -137,7 +135,7 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
         </p>
 
         <div className="rounded-lg p-3 mb-3" style={NOTE}>
-          <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Đăng nhập bằng Zalo <span className="ml-1 text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>(chưa mở)</span></p>
+          <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Đăng nhập bằng Zalo <span className="ml-1 text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>(chưa mở)</span></p>
           <p className="text-[length:var(--kin-co-goc)] mt-1" style={{ color: "var(--kin-chu-phu)" }}>Cần ứng dụng Zalo đã đăng ký cho KiN. Đăng nhập Zalo không trả về số điện thoại, nên số vẫn xác minh bằng mã OTP riêng. Hiện bạn vẫn gửi tin bằng Zalo trên máy như bình thường.</p>
         </div>
 
@@ -185,16 +183,16 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
         </div>
 
         <div className="rounded-lg p-3 mt-3" style={NOTE}>
-          <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Zalo OA <span className="ml-1 text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>(đang khoá)</span></p>
+          <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Zalo OA <span className="ml-1 text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>(đang khoá)</span></p>
           <p className="text-[length:var(--kin-co-goc)] mt-1" style={{ color: "var(--kin-chu-phu)" }}>Gửi tin tự động cần Zalo OA đã xác thực, mở khi KiN có pháp nhân. Cho tới lúc đó KiN soạn sẵn tin và bạn tự bấm gửi.</p>
         </div>
       </section>
 
       </div>
 
-      <div className="space-y-10 min-w-0">
+      <div className="space-y-[var(--kin-cach-muc)] min-w-0">
         <div id="thong-bao" className="scroll-mt-4"><PushSettings /></div>
-        <PhoneLoginCard profilePhone={phone} />
+        <PhoneLoginCard profilePhone={phone} plain />
       <section id="tai-khoan" aria-labelledby="h-gd" className="scroll-mt-4">
         <KinSectionHead id="h-gd" title="Giao diện" />
         <p className="text-[length:var(--kin-co-goc)] mt-4 mb-3" style={{ color: "var(--kin-chu-mo)" }}>Chủ đề màu và chế độ sáng/tối cũng lưu theo tài khoản.</p>
@@ -202,6 +200,6 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
       </section>
       </div>
       </div>
-    </div>
+    </KinPage>
   );
 }

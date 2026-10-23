@@ -181,17 +181,17 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <p className="text-[length:var(--kin-co-tieu-de)] font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{i.studentName}</p>
-                  <p className="text-[length:var(--kin-co-small)] font-mono mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{i.code}</p>
+                  <p className="text-[length:var(--kin-co-goc)] font-mono mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{i.code}</p>
                 </div>
                 <div className="text-right">
                   <Badge tone={invoiceTone(i.status)}>{i.statusLabel}</Badge>
-                  {i.needsBankCheck && <p className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>Quá 24 giờ chưa thấy tiền — kiểm sao kê</p>}
+                  {i.needsBankCheck && <p className="text-xs mt-1 font-medium" style={{ color: "var(--kin-tt-chu-cho)" }}>Quá 24 giờ chưa thấy tiền — kiểm sao kê</p>}
                 </div>
               </div>
               <dl className="mt-4 grid grid-cols-3 gap-4 text-[length:var(--kin-co-goc)]">
-                <div><dt className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Phải đóng</dt><dd className="font-medium tabular-nums">{vnd(i.amountDue)}</dd></div>
-                <div><dt className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Đã nhận</dt><dd className="font-medium tabular-nums">{vnd(i.paidAmount)}</dd></div>
-                <div><dt className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Còn lại</dt><dd className="font-medium tabular-nums">{vnd(i.remaining)}</dd></div>
+                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Phải đóng</dt><dd className="font-medium tabular-nums">{vnd(i.amountDue)}</dd></div>
+                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Đã nhận</dt><dd className="font-medium tabular-nums">{vnd(i.paidAmount)}</dd></div>
+                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Còn lại</dt><dd className="font-medium tabular-nums">{vnd(i.remaining)}</dd></div>
               </dl>
               {(i.zaloOpenedAt || i.parentViewedAt) && (
                 <p className="text-xs mt-2 flex gap-x-4 gap-y-1 flex-wrap" style={{ color: "var(--kin-chu-phu)" }}>
@@ -317,7 +317,7 @@ function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () =
   return (
     <Modal title={`Gửi phiếu qua Zalo — ${inv.studentName}`} onClose={onClose}>
       <fieldset className="mb-3 text-sm">
-        <legend className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Gửi vào đâu?</legend>
+        <legend className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Gửi vào đâu?</legend>
         {([["private", "Chat riêng với phụ huynh"], ["group", "Nhóm Zalo lớp"]] as const).map(([v, l]) => (
           <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="zalo-target" checked={target === v} onChange={() => setTarget(v)} /> {l}</label>
         ))}
@@ -360,7 +360,7 @@ function PayDialog({ inv, onClose, onSubmit }: { inv: InvoiceRow; onClose: () =>
       <input id="payamt" inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value.replace(/[^\d]/g, ""))} className="w-full px-3 py-2 rounded-lg mb-3 min-h-[44px]" style={FIELD_STYLE} />
       {over > 0 && (
         <fieldset className="mb-3 text-sm">
-          <legend className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Dư {vnd(over)} — xử lý thế nào?</legend>
+          <legend className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Dư {vnd(over)} — xử lý thế nào?</legend>
           {([["credit", "Trừ vào tháng sau"], ["refunded", "Đã trả lại phụ huynh"]] as const).map(([v, l]) => (
             <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="excess" checked={excess === v} onChange={() => setExcess(v)} /> {l}</label>
           ))}

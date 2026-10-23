@@ -13,10 +13,11 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinTabs } from "@/components/kin/Tabs";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import { KinPage, KinPageHeader, KIN_FIELD, KIN_TABLE_HEAD, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
 
 interface Row { key: string; classId: string; className: string; subject: string; name: string; lesson: string; kind: string; view: string | null; edit: string }
 
-const FIELD = "w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)]";
+const FIELD = KIN_FIELD;
 const ACT = "inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] hover:underline";
 const COLS = "md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] md:gap-4";
 
@@ -57,17 +58,12 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
 
   const uploadHref = classes.length === 1 ? `/admin/khoa-hoc/${classes[0].id}?tab=chuong-bai` : "/lop-cua-toi/lop";
   const pickSubject = (s: string | null) => { setSubject(s); setClassId("all"); };
-  const subjectBtn = (active: boolean) => `w-full text-left min-h-11 flex items-center justify-between gap-2 text-[length:var(--kin-co-goc)] ${active ? "text-[var(--kin-nhan-link)] font-semibold" : "text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]"}`;
+  const subjectBtn = (active: boolean) => `w-full text-left min-h-11 flex items-center justify-between gap-2 text-[length:var(--kin-co-goc)] ${active ? "text-[var(--kin-nhan-link)] font-medium" : "text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]"}`;
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Thư viện</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tài liệu của cô, sắp xếp theo nhóm lớp và chia sẻ đúng lớp. Bản ghi và tài liệu của các lớp bạn dạy.</p>
-        </div>
-        <Link href={uploadHref} className={`${kinButtonClass("primary")} self-start flex-shrink-0`}>↑ Tải tài liệu</Link>
-      </header>
+    <KinPage>
+      <KinPageHeader title="Thư viện" sub="Tài liệu của cô, sắp xếp theo nhóm lớp và chia sẻ đúng lớp. Bản ghi và tài liệu của các lớp bạn dạy."
+        actions={<Link href={uploadHref} className={kinButtonClass("primary")}>↑ Tải tài liệu</Link>} />
 
       {classes.length === 0 ? (
         <KinEmptyState title="Bạn chưa mở lớp nào" action={<Link href="/admin/khoa-hoc?tao=1" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
@@ -78,7 +74,7 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
           Tài liệu và bản ghi được thêm trong từng bài học của lớp, rồi hiện ở đây theo nhóm lớp và theo lớp.
         </KinEmptyState>
       ) : (
-        <div className="grid lg:grid-cols-[220px_minmax(0,1fr)] gap-x-8 gap-y-8 items-start">
+        <div className="grid lg:grid-cols-[220px_minmax(0,1fr)] gap-x-[var(--kin-cach-cot)] gap-y-[var(--kin-cach-muc)] items-start">
           <nav aria-label="Nhóm lớp" className="min-w-0">
             <KinSectionHead title="Nhóm lớp" as="h2" />
             <ul className="mt-2 mb-8">
@@ -107,15 +103,15 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
               </KinEmptyState>
             ) : (
               <>
-                <div aria-hidden className={`hidden ${COLS} mt-5 px-[var(--kin-kc-6)] h-11 items-center bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]`}>
+                <div aria-hidden className={`hidden ${COLS} mt-5 ${KIN_TABLE_HEAD}`}>
                   <span>Tên tài liệu</span><span>Loại</span><span>Đã chia sẻ</span><span>Thao tác</span>
                 </div>
                 <ul aria-label="Tài liệu" className="mt-2 md:mt-0">
                   {shown.map(r => (
-                    <li key={r.key} className={`${COLS} items-center px-[var(--kin-kc-6)] py-3 min-h-[62px] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]`}>
+                    <li key={r.key} className={`${COLS} ${KIN_TABLE_ROW}`}>
                       <div className="min-w-0">
                         <p className="text-[var(--kin-chu-chinh)] break-words">{r.name}</p>
-                        <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] break-words">{r.lesson}</p>
+                        <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] break-words">{r.lesson}</p>
                       </div>
                       <p className="mt-1 md:mt-0 text-[var(--kin-chu-mo)]"><span className="md:hidden">Loại: </span>{r.kind}</p>
                       <p className="text-[var(--kin-chu-mo)] break-words"><span className="md:hidden">Đã chia sẻ: </span>{r.className}</p>
@@ -134,6 +130,6 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
           </div>
         </div>
       )}
-    </div>
+    </KinPage>
   );
 }

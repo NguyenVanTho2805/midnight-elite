@@ -14,9 +14,10 @@ import { vnDateKeyOf } from "@/lib/classSessions";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
+import { KinPageHeader, KIN_PAGE, KIN_TWO_COL, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 
-const FIELD = "w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]";
-const LABEL = "block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]";
+const FIELD = KIN_FIELD;
+const LABEL = KIN_LABEL;
 const WEEKDAYS = [["1", "Thứ Hai"], ["2", "Thứ Ba"], ["3", "Thứ Tư"], ["4", "Thứ Năm"], ["5", "Thứ Sáu"], ["6", "Thứ Bảy"], ["0", "Chủ nhật"]] as const;
 
 export default function TaoLop() {
@@ -73,17 +74,12 @@ export default function TaoLop() {
   }
 
   return (
-    <form onSubmit={e => void submit(e)} className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]" aria-label="Tạo lớp">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Tạo lớp học</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Thiết lập trong một trang. Cô có thể xếp lịch và mời học sinh sau.</p>
-        </div>
-        <Link href="/lop-cua-toi/lop" className={`${kinButtonClass("ghost")} self-start flex-shrink-0`}>Thoát</Link>
-      </header>
+    <form onSubmit={e => void submit(e)} className={KIN_PAGE} aria-label="Tạo lớp">
+      <KinPageHeader title="Tạo lớp học" sub="Thiết lập trong một trang. Cô có thể xếp lịch và mời học sinh sau."
+        actions={<Link href="/lop-cua-toi/lop" className={kinButtonClass("ghost")}>Thoát</Link>} />
 
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_316px] gap-x-12 gap-y-10 items-start">
-        <div className="min-w-0 space-y-10">
+      <div className={KIN_TWO_COL}>
+        <div className="min-w-0 space-y-[var(--kin-cach-muc)]">
           <section aria-labelledby="tl-info">
             <KinSectionHead id="tl-info" title="Thông tin lớp" aside="Bắt buộc" />
             <div className="pt-5 grid sm:grid-cols-2 gap-5">
@@ -132,7 +128,7 @@ export default function TaoLop() {
           </div>
         </div>
 
-        <aside className="min-w-0 space-y-8">
+        <aside className="min-w-0 space-y-[var(--kin-cach-muc)]">
           <KinCallout title="Sổ dạy học, theo nhịp của cô">
             Tạo lớp, lên buổi, điểm danh, rồi mời học sinh vào lớp bằng mã.
           </KinCallout>

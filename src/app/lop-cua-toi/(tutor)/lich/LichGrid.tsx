@@ -39,7 +39,7 @@ export default function LichGrid({ days, occurrences, todayKey, openKey, onPick,
   return (
     <div role="group" aria-label="Lịch tuần theo giờ" className={`border border-[var(--kin-vien-thuong)] ${dimmed ? "opacity-70" : ""}`}>
       <div className="grid bg-[var(--kin-nen-bang)]" style={{ gridTemplateColumns: cols, height: HEAD_H }}>
-        <div className="flex items-center px-2 text-[length:var(--kin-co-small)] font-mono text-[var(--kin-chu-mo)]">GMT+7</div>
+        <div className="flex items-center px-2 text-[length:var(--kin-co-goc)] font-mono text-[var(--kin-chu-mo)]">GMT+7</div>
         {days.map(k => {
           const today = k === todayKey;
           return (
@@ -55,7 +55,7 @@ export default function LichGrid({ days, occurrences, todayKey, openKey, onPick,
       <div className="grid relative" style={{ gridTemplateColumns: cols, height: bodyH }}>
         <div className="relative" aria-hidden>
           {hours.slice(0, -1).map(h => (
-            <span key={h} className="absolute left-2 -mt-0 text-[length:var(--kin-co-small)] font-mono text-[var(--kin-chu-mo)]" style={{ top: (h - startH) * PX_PER_HOUR + 4 }}>
+            <span key={h} className="absolute left-2 -mt-0 text-[length:var(--kin-co-goc)] font-mono text-[var(--kin-chu-mo)]" style={{ top: (h - startH) * PX_PER_HOUR + 4 }}>
               {String(h).padStart(2, "0")}:00
             </span>
           ))}
@@ -78,7 +78,7 @@ export default function LichGrid({ days, occurrences, todayKey, openKey, onPick,
                 return (
                   <button key={o.key} type="button" onClick={() => onPick(o.key)} aria-expanded={sel} aria-controls={`chi-tiet-${o.key}`}
                     title={`${o.courseName} ${vnHm(o.startAt)}–${vnHm(o.endAt)}`}
-                    className={`absolute text-left py-1.5 overflow-hidden min-h-[44px] leading-5 focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] ${lanes > 1 ? "px-1.5 text-[length:var(--kin-co-small)]" : "px-2 text-[length:var(--kin-co-goc)]"}`}
+                    className={`absolute text-left py-1.5 overflow-hidden min-h-[44px] leading-5 focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] ${lanes > 1 ? "px-1.5 text-[length:var(--kin-co-goc)]" : "px-2 text-[length:var(--kin-co-goc)]"}`}
                     style={{
                       top, height: hasNote ? Math.max(height, 92) : height,
                       left: `calc(${(lane / lanes) * 100}% + 4px)`, width: `calc(${100 / lanes}% - 8px)`,
@@ -90,10 +90,10 @@ export default function LichGrid({ days, occurrences, todayKey, openKey, onPick,
                     }}>
                     <span className="block break-words" style={{ textDecoration: cancelled ? "line-through" : undefined }}>{o.courseName}</span>
                     <span className="block tabular-nums" style={{ textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(o.startAt)}–{vnHm(o.endAt)}</span>
-                    {cancelled && <span className="block text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo-tren-nen-nhan)]">Đã huỷ</span>}
-                    {o.status === "moved" && <span className="block text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo-tren-nen-nhan)]">Đã dời</span>}
-                    {o.pendingAbsences > 0 && <span className="block text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-tt-chu-loi)" }}>{o.pendingAbsences} báo nghỉ sát giờ</span>}
-                    {o.remindersDue > 0 && <span className="block text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-tt-chu-cho)" }}>{o.remindersDue} tin nhắc chờ gửi</span>}
+                    {cancelled && <span className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo-tren-nen-nhan)]">Đã huỷ</span>}
+                    {o.status === "moved" && <span className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo-tren-nen-nhan)]">Đã dời</span>}
+                    {o.pendingAbsences > 0 && <span className="block text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-tt-chu-loi)" }}>{o.pendingAbsences} báo nghỉ sát giờ</span>}
+                    {o.remindersDue > 0 && <span className="block text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-tt-chu-cho)" }}>{o.remindersDue} tin nhắc chờ gửi</span>}
                   </button>
                 );
               })}
