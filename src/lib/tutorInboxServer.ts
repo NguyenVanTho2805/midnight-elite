@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { loadTutorTodoCounts } from "@/lib/tutorDashboard";
 import { loadTutorSchedule } from "@/lib/reminderServer";
+import { loadReminderDue, type ReminderDueRow } from "@/lib/invoiceReminderServer";
 import { loadUnmarkedSessions } from "@/lib/unmarkedServer";
 import { unmarkedHref } from "@/lib/unmarkedSessions";
 import { addDaysKey, isMakeupExpiringSoon, MAKEUP_WARN_DAYS, vnDateKeyOf } from "@/lib/classSessions";
@@ -13,13 +14,28 @@ const mk = (count: number, rows: InboxRow[], at: Date | null | undefined): Inbox
 const monthText = (ym: string) => `tháng ${Number(ym.slice(5))}/${ym.slice(0, 4)}`;
 const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+/** F2: dòng "N phiếu đến lúc nhắc bước 2–3". Số đếm lấy từ c.invoiceReminders (cùng nguồn với số đỏ); hàng chi tiết từ cùng danh sách. */
+function invoiceRemindSource(count: number, due: ReminderDueRow[]): InboxSource {
+  const steps = [...new Set(due.map(d => d.step))].sort();
+  const maxOver = due.reduce((m, d) => Math.max(m, d.overdueDays), 0);
+  const stepText = steps.length === 1 ? `bước ${steps[0]}` : "bước 2–3";
+  const src = mk(count, due.slice(0, take).map(d => ({
+    title: d.studentName,
+    sub: `Phiếu ${monthText(d.yearMonth)} · còn ${inboxVnd(d.remaining)} · nhắc bước ${d.step}${d.overdueDays > 0 ? ` · quá hạn ${d.overdueDays} ngày` : ""}`,
+    href: "/lop-cua-toi/hoc-phi",
+  })), null);
+  src.tag = maxOver > 0 ? `${stepText} (quá hạn tới ${maxOver} ngày)` : stepText;
+  return src;
+}
+
 export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date()): Promise<InboxRaw> {
   const own = { ownerId: tutorId };
   const today = vnDateKeyOf(now);
   // Tải danh sách buổi chưa điểm danh MỘT lần, dùng cho cả bộ đếm lẫn chi tiết từng dòng.
   const unmarkedP = loadUnmarkedSessions(tutorId, now);
-  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week] = await Promise.all([
-    loadTutorTodoCounts(tutorId, now, { unmarked: unmarkedP }),
+  const remindP = loadReminderDue(tutorId, now);
+  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week, remindDue] = await Promise.all([
+    loadTutorTodoCounts(tutorId, now, { unmarked: unmarkedP, invoiceRemind: remindP }),
     unmarkedP,
     prisma.classAbsence.findMany({
       where: { status: "pending", course: own }, orderBy: { startAt: "asc" }, take,
@@ -63,6 +79,7 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       orderBy: { expiresAt: "asc" }, select: { expiresAt: true, student: { select: { name: true } }, course: { select: { name: true } } },
     }),
     loadTutorSchedule(tutorId, today, addDaysKey(today, 2), now),
+    remindP,
   ]);
 
   const expiring = makeups.filter(m => isMakeupExpiringSoon(m, now));
@@ -122,6 +139,7 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       sub: `buổi ${inboxDateTime(u.startAt)} · thiếu ${u.missing}/${u.total} em${u.missingNames.length ? `: ${u.missingNames.join(", ")}${u.missing > u.missingNames.length ? "…" : ""}` : ""}`,
       href: unmarkedHref(u.courseId, u.dateKey),
     })), unmarked[0]?.startAt),
+    invoiceRemind: invoiceRemindSource(c.invoiceReminders, remindDue),
     draft: mk(c.draftInvoices, drafts.map(i => ({
       title: i.student.name, sub: `Phiếu nháp ${monthText(i.yearMonth)} · ${inboxVnd(i.amountDue)}`, href: "/lop-cua-toi/hoc-phi",
     })), drafts[0]?.createdAt),
