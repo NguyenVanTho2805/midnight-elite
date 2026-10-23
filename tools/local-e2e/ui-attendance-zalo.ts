@@ -86,7 +86,8 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
   await rowA.getByRole("button", { name: /^Có phép/ }).click();
   await page.getByRole("button", { name: "Lưu điểm danh" }).click();
   await page.getByText(/Đã lưu 1 học viên/).waitFor({ timeout: 15000 });
-  check("Vắng → Có phép: mốc 'đã mở Zalo' bị xoá", (await prisma.attendanceRecord.findFirst({ where: { userId: A.id } }))?.zaloOpenedAt === null);
+  // Thông báo "Đã lưu 1 học viên" của lần lưu trước có thể còn trên màn hình, nên chờ DB đổi thay vì tin thông báo.
+  await eventually("Vắng → Có phép: mốc 'đã mở Zalo' bị xoá", async () => (await prisma.attendanceRecord.findFirst({ where: { userId: A.id } }))?.zaloOpenedAt === null, 15000);
   await eventually("giao diện không còn 'Đã mở Zalo lúc' ở Em An", async () => (await rowA.getByText(/Đã mở Zalo lúc/).count()) === 0);
   await rowA.getByRole("button", { name: /^Có phép/ }).click(); // bấm lại đúng trạng thái cũ → không đổi
   check("Em Bình không có SĐT: cảnh báo chép tin + chọn người nhận", true);
