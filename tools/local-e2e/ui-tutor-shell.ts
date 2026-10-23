@@ -54,7 +54,7 @@ import { prisma } from "@/lib/prisma";
   check("số đỏ trên Hộp việc = tổng việc (API) và có nhãn chữ", total === 4 && (await badge.innerText()) === String(total) && (await badge.getAttribute("aria-label")) === `${total} việc cần xử lý`, total);
   check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem").count() === 1);
   check("dải trên 48px: logo KiN dẫn về Hộp việc + tên người dùng", await pg.getByRole("link", { name: /KiN — Hộp việc/ }).getAttribute("href") === "/lop-cua-toi" && await pg.getByText("Cô Lan").first().isVisible());
-  check("Bài tập → /admin/thi-thu (chạy ngay trên tên miền chính, trong vỏ gia sư); Thư viện → /thu-vien; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/admin/thi-thu" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
+  check("Bài tập → /lop-cua-toi/bai-tap (23/10/2026: trang Bài tập và kiểm tra theo Figma 299:113312; đề thi vẫn ở /admin/thi-thu); Thư viện → /thu-vien; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/lop-cua-toi/bai-tap" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
 
   section("Trang dọc: dải số, Cần cô xử lý, Chờ phụ huynh, cột phải");
   // 23/10/2026: Figma 299:111821 bỏ kiểu hai khung (danh sách + khung đọc). Các ca chọn dòng / aria-selected / phím ↓ Home / bề rộng 330 / "trang không cuộn"

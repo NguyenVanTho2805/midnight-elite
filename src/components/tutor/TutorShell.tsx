@@ -65,7 +65,7 @@ export default function TutorShell({
     key: m.key, label: m.label, href: m.href, icon: ICON[m.key] ?? "viec", badge: badges[m.key],
     // Hộp việc nằm ở đúng /lop-cua-toi nên chỉ sáng khi đúng đường dẫn đó (isUnder sẽ làm nó sáng ở mọi trang con).
     active: m.key === "hop-viec" ? pathname === "/lop-cua-toi"
-      : m.key === "bai-kt" ? isUnder(pathname, "/admin/thi-thu")   // đề thi + ngân hàng câu hỏi + ngân hàng đề (cùng một họ "bài kiểm tra")
+      : m.key === "bai-kt" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/thi-thu")   // trang Bài tập + đề thi, ngân hàng câu hỏi, ngân hàng đề (cùng một họ "bài kiểm tra")
       : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/khoa-hoc")  // quản lớp / điểm danh / học viên của lớp
       : isUnder(pathname, m.href),
     desktopOnly: !MOBILE_KEYS.has(m.key),
