@@ -56,6 +56,25 @@ const DAY = 24 * 60 * 60 * 1000;
   check("vẫn thấy gói đang hiệu lực, trial đúng chế độ", tv.status === 200 && tv.json.subscription?.id === vipSub.id && tv.json.trial === on, tv.json);
   check("bản ghi gói và ví của gia sư có gói giữ nguyên", (await bal(TV.id)) === 1_000_000 && (await prisma.tutorSubscription.findUnique({ where: { id: vipSub.id } }))?.status === "active");
 
+  section("Nạp Coin của gia sư (PRO D2)");
+  const reqCount = (id: string) => prisma.coinTopupRequest.count({ where: { userId: id } });
+  const txBeforeTopup = await txCount(), balBeforeTopup = await bal(T.id);
+  const tt = await api("POST", "/api/wallet/topups", { as: T, body: { amountVnd: 100000, bankRef: "FTPROD2" } });
+  if (on) {
+    check("cờ BẬT: gia sư gửi yêu cầu nạp → 403 kèm thông điệp tiếng Việt và trial:true", tt.status === 403 && tt.json.error === "KiN đang miễn phí trong giai đoạn chạy thử, chưa cần nạp Coin." && tt.json.trial === true, tt.json);
+    check("không tạo yêu cầu nạp; ví và giao dịch Coin không đổi", (await reqCount(T.id)) === 0 && (await bal(T.id)) === balBeforeTopup && (await txCount()) === txBeforeTopup);
+    const bad = await api("POST", "/api/wallet/topups", { as: T, body: { amountVnd: "abc" } });
+    check("thân sai dạng cũng 403 (cờ chặn trước khi đọc thân), vẫn không ghi gì", bad.status === 403 && (await reqCount(T.id)) === 0);
+  } else {
+    check("cờ TẮT: gia sư gửi yêu cầu nạp → 201 như cũ, tạo 1 yêu cầu chờ duyệt", tt.status === 201 && tt.json.request?.status === "pending" && (await reqCount(T.id)) === 1, tt.json);
+    check("phản hồi KHÔNG chứa số tài khoản giả cũ", !JSON.stringify(tt.json).includes("CONG TY KIN EDUCATION") && !JSON.stringify(tt.json).includes("0123456789"), tt.json);
+    const b = tt.json.bank;
+    check("bank là null (chưa đặt KIN_TOPUP_*) hoặc đủ bốn trường chữ", b === null || ["bankName", "accountNo", "accountName", "memo"].every(k => typeof b[k] === "string" && b[k]), b);
+  }
+  check("chưa đăng nhập → 401 (cả hai chế độ)", (await api("POST", "/api/wallet/topups", { body: { amountVnd: 100000 } })).status === 401);
+  const lst = await api("GET", "/api/wallet/topups", { as: T });
+  check("gia sư xem danh sách yêu cầu nạp → 200 (cả hai chế độ), không lộ số tài khoản giả", lst.status === 200 && Array.isArray(lst.json.items) && !JSON.stringify(lst.json).includes("0123456789") && !JSON.stringify(lst.json).includes("CONG TY KIN EDUCATION"), lst.json);
+
   section("Phía học sinh / ví không đổi");
   const w = await api("GET", "/api/wallet", { as: S });
   check("học sinh xem ví → 200, đúng số dư", w.status === 200 && w.json.balance === 1_000_000, w.json);

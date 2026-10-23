@@ -9,5 +9,6 @@ export function isTrialMode(env: Record<string, string | undefined> = process.en
 }
 
 export const TRIAL_MODE_MESSAGE = "KiN đang miễn phí trong giai đoạn chạy thử, chưa cần mua gói.";
+export const TRIAL_MODE_TOPUP_MESSAGE = "KiN đang miễn phí trong giai đoạn chạy thử, chưa cần nạp Coin.";
 export const TRIAL_MODE_BANNER_TITLE = "KiN miễn phí trong giai đoạn chạy thử";
 export const TRIAL_MODE_BANNER_BODY = "Bạn chưa cần mua gói hay nạp Coin để dùng KiN.";

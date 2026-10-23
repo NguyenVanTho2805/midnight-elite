@@ -152,7 +152,7 @@ export default function CoinWalletPage() {
       {!hideTopup && <form onSubmit={submit} className="rounded-2xl p-5 space-y-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <h2 className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>Yêu cầu nạp Coin</h2>
 
-        {bank && (
+        {bank ? (
           <div className="rounded-xl p-4 text-sm space-y-1" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)", color: "var(--kin-chu-chinh)" }}>
             <p className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Bước 1: Chuyển khoản thủ công</p>
             <p>Ngân hàng: <b>{bank.bankName}</b></p>
@@ -160,6 +160,11 @@ export default function CoinWalletPage() {
             <p>Chủ TK: <b>{bank.accountName}</b></p>
             <p>Nội dung (quan trọng): <b className="font-mono">{bank.memo}</b></p>
             <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Sao chép đúng nội dung để admin đối chiếu nhanh.</p>
+          </div>
+        ) : !loading && (
+          <div role="status" className="rounded-xl p-4 text-sm space-y-1" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)", color: "var(--kin-chu-chinh)" }}>
+            <p className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>KiN chưa công bố tài khoản nhận Coin</p>
+            <p>Đừng chuyển khoản lúc này. Khi KiN mở nhận nạp, số tài khoản sẽ hiện ở đây.</p>
           </div>
         )}
 
@@ -193,7 +198,7 @@ export default function CoinWalletPage() {
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} />
         </div>
 
-        <button type="submit" disabled={submitting}
+        <button type="submit" disabled={submitting || (!loading && !bank)}
           className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-50"
           style={{ background: "var(--kin-nhan-nen)" }}>
           {submitting ? "Đang gửi..." : "Gửi yêu cầu nạp"}

@@ -43,6 +43,13 @@ async function buyEntries(p: Page) {
     await tp.getByRole("button", { name: /Gửi yêu cầu nạp/ }).waitFor({ timeout: 30000 });
     check("cờ TẮT: form nạp Coin hiện như cũ, không banner", await tp.getByPlaceholder("VD: 300000").isVisible() && (await tp.getByText("KiN miễn phí trong giai đoạn chạy thử").count()) === 0);
     check("dòng mô tả cũ vẫn còn", await tp.getByText(/Nạp Coin để mua gói VIP/).isVisible());
+    // PRO D8: chưa đặt tài khoản nhận thật (KIN_TOPUP_*) thì báo rõ và khoá nút gửi; đã đặt thì hiện hộp "Bước 1" và nút mở.
+    const notice = tp.getByText("KiN chưa công bố tài khoản nhận Coin"), step1 = tp.getByText("Bước 1: Chuyển khoản thủ công");
+    await notice.or(step1).first().waitFor({ timeout: 30000 });
+    const submitBtn = tp.getByRole("button", { name: /Gửi yêu cầu nạp/ }), hasNotice = await notice.isVisible();
+    check("chưa có tài khoản nhận → báo \"chưa công bố\", khoá nút gửi, không hiện Bước 1; đã có → hiện Bước 1 và nút mở",
+      hasNotice ? (await submitBtn.isDisabled()) && (await step1.count()) === 0 : (await submitBtn.isEnabled()), { hasNotice });
+    check("trang ví không hiện số tài khoản giả cũ", (await tp.getByText(/CONG TY KIN EDUCATION|0123456789/).count()) === 0);
   }
   check("không tràn ngang ở 390px", await tp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await shot(tp, on ? "trial-tutor-wallet-on" : "trial-tutor-wallet-off");

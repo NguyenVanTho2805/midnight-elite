@@ -12,5 +12,10 @@ export SMS_SINK_DIR=/tmp/kin-sms   # test đăng nhập bằng SMS đọc mã t�
 # export VAPID_PUBLIC_KEY=<publicKey>
 # export VAPID_PRIVATE_KEY=<privateKey>
 # export VAPID_SUBJECT=mailto:test@example.com
+# PRO D8 (nạp Coin): tài khoản nhận lấy từ ba biến KIN_TOPUP_*. KHÔNG đặt (mặc định) thì /student/vi báo "chưa công bố tài khoản nhận"
+# và khoá nút gửi; các bài test đúng với trạng thái này. Muốn thử nhánh có tài khoản: đặt ba biến ở MÁY CHỦ dev (số thử, KHÔNG dùng số thật).
+# export KIN_TOPUP_BANK_NAME=Vietcombank
+# export KIN_TOPUP_ACCOUNT_NO=9704220011
+# export KIN_TOPUP_ACCOUNT_NAME="NGUYEN VAN A"
 # Máy Mac (không có /opt/pw-browsers): dùng Chrome cài sẵn cho các bài ui-*.ts.
 # export CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
