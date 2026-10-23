@@ -7,14 +7,14 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--kin-nen-trang)" }}>
       <header style={{ borderBottom: "1px solid var(--kin-vien-thuong)", background: "var(--kin-nen-bang)" }}>
-        <div className="max-w-xl mx-auto px-4 h-12 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
           <KinLogo size={28} textSize="var(--kin-co-body)" color="var(--kin-chu-chinh)" />
           <span className="text-caption" style={{ color: "var(--kin-chu-mo)" }}>Trang riêng cho phụ huynh</span>
         </div>
       </header>
       <main className="flex-1">{children}</main>
       <footer style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
-        <p className="max-w-xl mx-auto px-4 py-4 text-caption text-center" style={{ color: "var(--kin-chu-mo)" }}>
+        <p className="max-w-5xl mx-auto px-4 sm:px-6 py-4 text-caption text-center sm:text-left" style={{ color: "var(--kin-chu-mo)" }}>
           Đường dẫn này dành riêng cho bạn và không cần tài khoản. Đừng chuyển tiếp cho người khác.
         </p>
       </footer>

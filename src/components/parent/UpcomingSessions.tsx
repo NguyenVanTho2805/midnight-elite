@@ -6,12 +6,14 @@
 import { useState } from "react";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey } from "@/lib/classSessions";
 import type { MakeupSummary, UpcomingSession } from "@/lib/absenceServer";
+import ParentSection from "./Section";
 
 const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
 const vnHm = (iso: string) => hmOf(vnMinutesOfDay(new Date(iso)));
 const vnDate = (iso: string) => ddmm(vnDateKeyOf(new Date(iso)));
-const card = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
+// Dải nền nhạt, không viền: dùng cho ghi chú và thông báo kết quả (Figma: khối xám nhạt thay cho thẻ có khung).
+const band = { background: "var(--kin-nen-bang)" } as const;
 
 const STATUS_TEXT: Record<string, { text: string; tone: string }> = {
   excused_auto: { text: "Đã báo nghỉ — con được giữ 1 buổi bù", tone: "var(--kin-tt-chu-xong)" },
@@ -56,10 +58,8 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
   }
 
   return (
-    <section className="mb-5" aria-labelledby="h-sap-toi">
-      <h2 id="h-sap-toi" className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Buổi học sắp tới</h2>
-
-      <div className="rounded-xl p-4 mb-3" style={card} aria-label="Buổi bù đang giữ">
+    <ParentSection id="h-sap-toi" title="Buổi học sắp tới">
+      <div className="rounded-lg p-3 mb-3" style={band} aria-label="Buổi bù đang giữ">
         {mk.count > 0 ? (
           <>
             <p className="text-sm" style={{ color: "var(--kin-chu-chinh)" }}>
@@ -73,19 +73,19 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
         )}
       </div>
 
-      {msg && <p role="status" className="text-sm mb-3 rounded-lg p-3" style={{ ...card, color: msg.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>{msg.text}</p>}
+      {msg && <p role="status" className="text-sm mb-3 rounded-lg p-3" style={{ ...band, color: msg.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>{msg.text}</p>}
 
       {items.length === 0 ? (
-        <p className="text-sm rounded-xl p-4" style={{ ...card, color: "var(--kin-chu-phu)" }}>14 ngày tới con chưa có buổi học nào theo lịch.</p>
+        <p className="text-sm rounded-lg p-3" style={{ ...band, color: "var(--kin-chu-phu)" }}>14 ngày tới con chưa có buổi học nào theo lịch.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-[color:var(--kin-vien-nhat)]">
           {items.map(s => {
             const k = keyOf(s);
             const st = s.absence ? STATUS_TEXT[s.absence.status] : null;
             const free = Date.parse(s.deadlineAt) > nowMs;
             const cancelled = s.status === "cancelled";
             return (
-              <li key={k} className="rounded-xl p-4" style={card}>
+              <li key={k} className="py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium truncate" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{s.courseName}</p>
@@ -142,6 +142,6 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
           })}
         </ul>
       )}
-    </section>
+    </ParentSection>
   );
 }
