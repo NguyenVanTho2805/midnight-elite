@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { api, check, done, mkCourse, mkTutor, mkUser, section, wipe } from "./h";
 
 let ipN = 0, phoneN = 0;
-const ip = () => ({ "x-forwarded-for": `10.20.${Math.floor(++ipN / 250)}.${ipN % 250}` });
+const RUN = 1 + Math.floor(Math.random() * 200); // IP giả đổi theo mỗi lần chạy: hạn 5 yêu cầu/giờ/IP nằm trong bộ nhớ máy chủ nên chạy lại cùng IP sẽ bị 429
+const ip = () => ({ "x-forwarded-for": `10.${RUN}.${Math.floor(++ipN / 250)}.${ipN % 250}` });
 const phone = () => `09${String(10_000_000 + ++phoneN)}`;
 const startedAt = () => Date.now() - 20_000; // đã mở trang 20 giây trước
 const body = (tutorId: string, o: Record<string, unknown> = {}) => ({
@@ -65,11 +66,11 @@ const send = (b: Record<string, unknown>, headers = ip()) => api("POST", "/api/y
   const PD = phone();
   const d1 = await send(body(T.id, { contactPhone: PD })), d2 = await send(body(T2.id, { contactPhone: PD })), d3 = await send(body(T3.id, { contactPhone: PD })), d4 = await send(body(T4.id, { contactPhone: PD }));
   check("một số: 3 yêu cầu/ngày tới 3 gia sư khác nhau được, yêu cầu thứ 4 → 429", d1.status === 201 && d2.status === 201 && d3.status === 201 && d4.status === 429, [d1.status, d2.status, d3.status, d4.status]);
-  const sameIp = { "x-forwarded-for": "172.16.9.9" };
+  const sameIp = { "x-forwarded-for": `172.${RUN}.9.9` };
   const codes: number[] = [];
   for (let i = 0; i < 7; i++) codes.push((await send(body(T.id, { contactPhone: phone(), subject: `Môn ${i}` }), sameIp)).status);
   check("cùng một IP: 5 yêu cầu/giờ, từ yêu cầu thứ 6 → 429", codes.slice(0, 5).every(c => c === 201) && codes[5] === 429 && codes[6] === 429, codes);
-  check("điền sai nhiều lần KHÔNG bị tính vào hạn 5/giờ của IP", await (async () => { const h = { "x-forwarded-for": "172.16.9.10" }; for (let i = 0; i < 8; i++) await send(body(T.id, { subject: "" }), h); return (await send(body(T.id), h)).status === 201; })());
+  check("điền sai nhiều lần KHÔNG bị tính vào hạn 5/giờ của IP", await (async () => { const h = { "x-forwarded-for": `172.${RUN}.9.10` }; for (let i = 0; i < 8; i++) await send(body(T.id, { subject: "" }), h); return (await send(body(T.id), h)).status === 201; })());
 
   section("Gia sư nhận phải đang công khai");
   const notFound = async (id: unknown) => (await send(body(T.id, { targetTutorId: id }))).status === 404;
