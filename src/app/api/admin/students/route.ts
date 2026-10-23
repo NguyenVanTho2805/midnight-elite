@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
             course: { select: { name: true, lessons: true } },
           },
         },
-        lessonProgress: { select: { lessonId: true } },
+        lessonProgress: { where: { completed: true }, select: { lessonId: true } },
         examResults: {
           select: { score: true, totalPoints: true },
           orderBy: { score: "desc" },

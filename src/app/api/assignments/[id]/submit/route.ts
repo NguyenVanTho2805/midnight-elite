@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { validateWorkLink } from "@/lib/mediaLink";
 
 // POST /api/assignments/[id]/submit — học viên nộp/nộp lại bài. Nộp lại GHI
 // ĐÈ bản cũ (unique [assignmentId, userId]) — nếu bài cũ đã được chấm, xoá
@@ -34,19 +35,25 @@ export async function POST(
       return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
     }
 
-    const { fileUrl, fileName } = await req.json() as { fileUrl?: string; fileName?: string };
-    if (!fileUrl?.trim()) {
-      return NextResponse.json({ error: "Thiếu file bài làm" }, { status: 400 });
+    const body = await req.json().catch(() => ({})) as { fileUrl?: string; fileName?: string; linkUrl?: string };
+
+    // MD-14: học sinh có thể nộp bằng LINK bài làm Azota thay vì tệp. Chỉ nhận link dạng chữ trên azota.vn; KHÔNG nhận ảnh bài làm
+    // (em dưới 16 tuổi, chưa có ý kiến pháp lý: HIEN-CO-VA-DINH-VI.md mục 6.2) nên không có đường nào đưa ảnh vào đây qua `linkUrl`.
+    let fileUrl: string, fileName: string | null, kind: "file" | "link";
+    if (typeof body.linkUrl === "string" && body.linkUrl.trim()) {
+      const w = validateWorkLink(body.linkUrl);
+      if (!w.ok || !w.url) return NextResponse.json({ error: w.error ?? "Link bài làm chưa đúng" }, { status: 400 });
+      fileUrl = w.url; fileName = null; kind = "link";
+    } else {
+      if (!body.fileUrl?.trim()) return NextResponse.json({ error: "Thiếu file bài làm" }, { status: 400 });
+      fileUrl = body.fileUrl.trim(); fileName = body.fileName?.trim() || null; kind = "file";
     }
 
     const submission = await prisma.assignmentSubmission.upsert({
       where: { assignmentId_userId: { assignmentId, userId: auth.userId } },
-      create: {
-        assignmentId, userId: auth.userId,
-        fileUrl: fileUrl.trim(), fileName: fileName?.trim() || null,
-      },
+      create: { assignmentId, userId: auth.userId, fileUrl, fileName, kind },
       update: {
-        fileUrl: fileUrl.trim(), fileName: fileName?.trim() || null,
+        fileUrl, fileName, kind,
         submittedAt: new Date(),
         score: null, comment: null, gradedAt: null, gradedBy: null,
       },

@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos } from "@/lib/lessonMediaServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -56,13 +57,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
+    // MD-01: báo lỗi sớm ở máy chủ (không chỉ ở trình duyệt) khi link video/Zoom/Azota sai hoặc dán nhầm ô. Chỉ kiểm ô ĐỔI so với bản đang lưu.
+    const linkErr = validateLessonLinks(data, existing);
+    if (linkErr) return NextResponse.json({ error: linkErr }, { status: 400 });
     if (typeof data.documents === "string") {
-      try {
-        const parsed = JSON.parse(data.documents);
-        if (!Array.isArray(parsed)) throw new Error("not an array");
-      } catch {
-        return NextResponse.json({ error: "documents phải là chuỗi JSON dạng mảng" }, { status: 400 });
-      }
+      const docErr = validateDocumentsJson(data.documents);
+      if (docErr) return NextResponse.json({ error: docErr }, { status: 400 });
+    }
+    if ("videoUrl" in data) {
+      const claimErr = await claimUploadedVideos({
+        videoUrl: data.videoUrl as string | null, lessonId: id, courseId: existing.chapter.section.courseId,
+        userId: auth.userId, isTeacher: auth.adminRole === "teacher",
+      });
+      if (claimErr) return NextResponse.json({ error: `Video bài giảng: ${claimErr}` }, { status: 400 });
     }
     const lesson = await prisma.lesson.update({ where: { id }, data });
     return NextResponse.json(lesson);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { redactLesson } from "@/lib/lessonGuard";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -63,14 +64,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // - enrolled/admin → all unlocked (regardless of DB value)
   // - not enrolled   → locked iff not free (regardless of DB value)
   // This prevents admins forgetting to set isLocked=true from leaking paid content.
+  // MD-03: người chưa ghi danh (chỉ xem được bài miễn phí này) KHÔNG nhận nội dung (video, tài liệu, Azota, Zoom, ghi chú) của các bài trả phí khác
+  // trong cùng khoá: trước đây route này trả nguyên cả khoá kèm mọi đường dẫn.
   course.sections = course.sections.map(s => ({
     ...s,
     chapters: s.chapters.map(c => ({
       ...c,
-      lessons: c.lessons.map(l => ({
-        ...l,
-        isLocked: fullAccess ? false : !l.isFree,
-      })),
+      lessons: c.lessons.map(l => {
+        const row = { ...l, isLocked: fullAccess ? false : !l.isFree };
+        return fullAccess || l.isFree ? row : redactLesson(row);
+      }),
     })),
   }));
 

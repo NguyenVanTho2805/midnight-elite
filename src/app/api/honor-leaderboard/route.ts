@@ -16,7 +16,7 @@ export async function GET() {
             course: { select: { lessons: true } },
           },
         },
-        lessonProgress: { select: { lessonId: true } },
+        lessonProgress: { where: { completed: true }, select: { lessonId: true } },
         examResults: {
           select: { score: true, totalPoints: true },
         },

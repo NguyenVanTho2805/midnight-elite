@@ -5,6 +5,7 @@ import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
+import { redactCourseTree } from "@/lib/lessonGuard";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -64,7 +65,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }));
     }
 
-    return NextResponse.json(course);
+    // MD-03: khách / người chưa ghi danh chỉ nhận MỤC LỤC (tên bài, thứ tự, cờ miễn phí), không nhận videoUrl, documents, azotaUrl, zoomUrl, adminNote
+    // của các bài trả phí. Bài miễn phí giữ nguyên để học thử.
+    return NextResponse.json(redactCourseTree(course, hasAccess));
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
