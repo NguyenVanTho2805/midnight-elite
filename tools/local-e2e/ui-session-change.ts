@@ -107,7 +107,7 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   const pp = await gctx.newPage();
   pp.on("pageerror", e => errors.push(String(e)));
   await pp.goto(`${BASE}/so-cua-con/${parentTok}`, { waitUntil: "networkidle", timeout: 120000 });
-  const item = pp.getByRole("listitem").filter({ hasText: "Toán 9" }).first();
+  const item = pp.getByRole("region", { name: "Buổi học sắp tới" }).getByRole("listitem").filter({ hasText: "Toán 9" }).first();
   await item.waitFor({ timeout: 90000 });
   check("buổi hiện kèm 'Gia sư đã huỷ buổi này — lý do: Cô ốm. Không cần báo nghỉ.'", await item.getByText(/Gia sư đã huỷ buổi này — lý do: Cô ốm\. Không cần báo nghỉ\./).isVisible());
   check("KHÔNG có nút 'Báo nghỉ' ở buổi đã huỷ", (await item.getByRole("button", { name: "Báo nghỉ" }).count()) === 0);
@@ -144,7 +144,7 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
 
   section("Phụ huynh thấy buổi đã dời, vẫn báo nghỉ được");
   await pp.reload({ waitUntil: "networkidle" });
-  const item2 = pp.getByRole("listitem").filter({ hasText: "Toán 9" }).first();
+  const item2 = pp.getByRole("region", { name: "Buổi học sắp tới" }).getByRole("listitem").filter({ hasText: "Toán 9" }).first();
   await item2.waitFor({ timeout: 90000 });
   check("'Gia sư đã dời buổi này (lịch cũ: … lúc 19:00) — lý do: Trùng lịch thi'", await item2.getByText(/Gia sư đã dời buổi này \(lịch cũ: .* lúc 19:00\) — lý do: Trùng lịch thi/).isVisible());
   check("giờ hiện là giờ MỚI 20:30–22:00; vẫn còn trạng thái báo nghỉ của em", /20:30–22:00/.test(await item2.innerText()) && await item2.getByText(/chờ gia sư xác nhận/).isVisible());

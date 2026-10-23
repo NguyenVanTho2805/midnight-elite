@@ -20,7 +20,9 @@ import { prisma } from "@/lib/prisma";
 
   await launch();
   const errors: string[] = [];
-  const watch = (p: any) => { p.on("pageerror", (e: unknown) => errors.push(String(e))); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of 5/i.test(m.text())) errors.push(m.text()); }); };
+  const watch = (p: any) => { // 'performance.measure … cannot have a negative time stamp': React CHẾ ĐỘ DEV tự ghi mốc thời gian render của trang máy chủ async (TongQuanPage) và lỗi khi mốc đó trước thời điểm mở trang; chỉ có ở `next dev`, không có ở bản chạy thật. Chỉ cho qua đúng câu này.
+  const devPerf = /negative time stamp/i;
+  p.on("pageerror", (e: unknown) => { if (!devPerf.test(String(e))) errors.push(String(e)); }); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of 5|cannot have a negative time stamp/i.test(m.text())) errors.push(m.text()); }); };
   const RAIL = "Module của gia sư";
 
   const ctx = await ctxFor(T, { width: 1280, height: 800 });

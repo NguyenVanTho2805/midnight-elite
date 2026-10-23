@@ -46,7 +46,8 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
 
   await launch();
   const errors: string[] = [];
-  const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|font|youtube|googlevideo|doubleclick|vimeo|ERR_/i.test(m.text())) errors.push(m.text()); }); };
+  // "Permissions policy violation: compute-pressure" là cảnh báo của trình duyệt phát ra từ khung YouTube nhúng (không phải mã KiN): cho qua, chỉ đúng loại này.
+  const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|Permissions policy violation: compute-pressure|favicon|font|youtube|googlevideo|doubleclick|vimeo|ERR_/i.test(m.text())) errors.push(m.text()); }); };
   const overflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   const open = async (p: Page, id: string) => { await p.goto(`${BASE}/student/bai-giang/${id}`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); };
 
@@ -143,7 +144,8 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     const az = p.getByRole("region", { name: "Bài Azota" });
     check("hai link Azota thành hai nút riêng với href đúng (không phải chuỗi JSON)", (await az.getByRole("link", { name: /Làm bài \d trên Azota/ }).count()) === 2 && (await az.getByRole("link", { name: /Làm bài 1/ }).getAttribute("href")) === "https://azota.vn/de-thi/p1" && (await az.getByRole("link", { name: /Làm bài 2/ }).getAttribute("href")) === "https://azota.vn/de-thi/p2");
     check("hiện hạn nộp theo giờ Việt Nam (30/10/2026 20:00)", /30\/10\/2026.*20:00/.test(await az.innerText()), await az.innerText());
-    check("trạng thái ban đầu: 'Chưa làm'", await az.getByText("Chưa làm", { exact: true }).isVisible());
+    // Bảng trạng thái ban đầu hiện "Đang tải…" cho tới khi GET azota-status xong (gọi bất đồng bộ): đợi tới khi hiện "Chưa làm" thay vì đọc ngay một lần.
+    await eventually("trạng thái ban đầu: 'Chưa làm'", async () => az.getByText("Chưa làm", { exact: true }).isVisible(), 15000);
     await az.getByRole("textbox").fill("https://azota.vn/bai-lam/anh.jpg");
     await az.getByRole("button", { name: "Em đã làm xong" }).click();
     await eventually("link ảnh bị chặn, báo 'KiN không nhận ảnh bài làm', chưa lưu", async () => /không nhận ảnh/.test(await az.innerText()) && (await prisma.lessonAzotaDone.count()) === 0);
