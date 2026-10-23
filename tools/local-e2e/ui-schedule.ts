@@ -122,11 +122,11 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   });
   await shot(page, "sched-settings");
   await nav.getByRole("link", { name: /^Hộp việc/ }).click();
-  await page.getByRole("listbox", { name: "Hộp việc" }).waitFor({ timeout: 60000 });
+  await page.getByRole("heading", { name: "Hộp việc", level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForURL(u => u.pathname === "/lop-cua-toi", { timeout: 60000 }).catch(() => {}); // NC2-004
-  check("Hộp việc bật: mở Hộp việc (danh sách + khung đọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
+  check("Hộp việc bật: mở Hộp việc (trang dọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
   check("badge của Hộp việc (không còn badge ở Lịch)", (await nav.locator("a", { hasText: "Hộp việc" }).locator(".kin-badge-dem").count()) === 1 && (await nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").count()) === 0);
-  check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("option", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("option", { name: new RegExp(`^${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("option").allInnerTexts());
+  check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("link", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("link", { name: new RegExp(`${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("list", { name: "Việc cần cô xử lý" }).allInnerTexts());
 
   section("Lưu theo tài khoản, không theo máy");
   const ctx2 = await ctxFor(tutor);

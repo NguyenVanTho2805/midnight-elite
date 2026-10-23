@@ -1,5 +1,6 @@
 // Hộp việc của gia sư — phần thuần (src/lib/tutorInbox.ts): thứ tự dòng, chữ, góc giờ, số việc còn lại.
 import { buildInboxItems, inboxTotal, inboxWhen, inboxDateTime, inboxVnd, INBOX_DETAIL_LIMIT, INBOX_KINDS, type InboxRaw, type InboxSource } from "@/lib/tutorInbox";
+import { buildHopViecOverview } from "@/lib/tutorOverview";
 import { check, section, done } from "./h";
 
 const none: InboxSource = { count: 0, rows: [], at: null };
@@ -58,4 +59,28 @@ check("ngày khác → 13/10", inboxWhen("2026-10-13T03:30:00Z", NOW) === "13/10
 check("không có mốc → rỗng; mốc hỏng → rỗng", inboxWhen(null, NOW) === "" && inboxWhen("không phải ngày", NOW) === "");
 check("inboxDateTime = 14/10 10:30", inboxDateTime(new Date("2026-10-14T03:30:00Z")) === "14/10 10:30", inboxDateTime(new Date("2026-10-14T03:30:00Z")));
 check("inboxVnd có dấu chấm nghìn + đ", /^1[., ]?250[., ]?000đ$/.test(inboxVnd(1250000)), inboxVnd(1250000));
+
+section("Hộp việc dạng trang dọc (23/10/2026): action, href, waiting + dải số");
+const all = buildInboxItems(raw(Object.fromEntries(INBOX_KINDS.map(k => [k, { count: 1, rows: [{ title: "x", sub: "y", href: "/admin/khoa-hoc/a" }], at: null }]))), NOW);
+check("mỗi dòng có nhãn hành động và đường dẫn nội bộ (không đường chết)", all.every(i => i.action.length > 3 && i.href.startsWith("/")), all.map(i => [i.id, i.href]));
+check("chỉ 'consent' là việc chờ phụ huynh (waiting)", all.filter(i => i.waiting).map(i => i.id).join() === "consent");
+check("đối soát → tab đối soát; báo cáo → kiểm duyệt; nháp → Học phí", all.find(i => i.id === "bank")!.href === "/lop-cua-toi/hoc-phi?tab=doi-soat" && all.find(i => i.id === "reports")!.href === "/lop-cua-toi/kiem-duyet" && all.find(i => i.id === "draft")!.href === "/lop-cua-toi/hoc-phi");
+const ov = buildHopViecOverview({
+  now: NOW,
+  invoices: [{ amountDue: 480000, paidAmount: 480000, status: "paid" }, { amountDue: 560000, paidAmount: 0, status: "draft" }, { amountDue: 999000, paidAmount: 0, status: "cancelled" }],
+  classes: [{ id: "a", name: "Văn 8", students: 1, classStatus: "open" }, { id: "b", name: "Toán 9", students: 2, classStatus: "open" }],
+  totalStudents: 3,
+  occurrences: [
+    { courseId: "b", courseName: "Toán 9", dateKey: "2026-10-14", startAt: "2026-10-14T12:00:00Z", endAt: "2026-10-14T13:30:00Z", status: "scheduled", studentCount: 2, pendingAbsences: 1 },
+    { courseId: "a", courseName: "Văn 8", dateKey: "2026-10-17", startAt: "2026-10-17T09:00:00Z", endAt: "2026-10-17T10:00:00Z", status: "scheduled", studentCount: 1, pendingAbsences: 0 },
+    { courseId: "a", courseName: "Văn 8", dateKey: "2026-10-14", startAt: "2026-10-14T05:00:00Z", endAt: "2026-10-14T06:00:00Z", status: "cancelled", studentCount: 1, pendingAbsences: 0 },
+  ],
+});
+check("đã xác nhận = tổng paidAmount (bỏ phiếu huỷ); đã lập = tổng amountDue (bỏ huỷ), gồm bản nháp", ov.stats.confirmed.value.startsWith("480.000") && ov.stats.invoices.value.startsWith("1.040.000") && /Gồm 560\.000đ bản nháp/.test(ov.stats.invoices.hint) && ov.stats.confirmed.hint === "1 phiếu đã thanh toán", ov.stats);
+check("lớp: 2 lớp / 3 học sinh; sắp theo sĩ số (Toán 9 trước)", ov.stats.classes.value === "2 lớp" && ov.stats.classes.hint === "3 học sinh đang học" && ov.classes.rows[0].name === "Toán 9", ov.classes);
+check("lịch hôm nay lấy buổi chưa kết thúc (19:00 giờ VN), bỏ buổi đã huỷ", ov.stats.today.value === "19:00" && /Toán 9 · 2 học sinh/.test(ov.stats.today.hint), ov.stats.today);
+check("buổi sắp tới: giờ, báo nghỉ chờ, buổi tiếp theo; link điểm danh theo ngày", ov.next?.time === "19:00 – 20:30" && !!ov.next.note && /Văn 8 · Thứ Bảy, 16:00/.test(ov.next.following ?? "") && ov.next.attendanceHref === "/admin/khoa-hoc/b/diem-danh?date=2026-10-14", ov.next);
+const none2 = buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [] });
+check("không có dữ liệu: không số bịa (0đ, 'Trống', next=null, không lớp)", none2.stats.confirmed.value === "0đ" && none2.stats.today.value === "Trống" && none2.next === null && none2.classes.rows.length === 0 && /Chưa có phiếu/.test(none2.stats.invoices.hint));
+check("dòng ngày: 'Thứ Tư, 14 tháng 10'", ov.dateLine === "Thứ Tư, 14 tháng 10", ov.dateLine);
 done();
