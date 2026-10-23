@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ownerScopeWhere } from "@/lib/auth-guard";
+import { calendarDaysLeft, parseAzotaDeadline } from "@/lib/azotaDeadline";
+import { firstHttpLink } from "@/lib/lessonLinks";
 
 export async function GET() {
   const session = await getSession();
@@ -52,28 +54,30 @@ export async function GET() {
 
     const now = new Date();
 
+    // MD-16: hạn đọc theo GIỜ VIỆT NAM (chuỗi "YYYY-MM-DDTHH:mm" không có múi giờ = giờ VN), không phụ thuộc múi giờ máy chủ.
+    // Hạn không đọc được thì bỏ khỏi danh sách (không đoán).
     const deadlines = lessons
-      .filter(l => l.azotaDeadline)
-      .map(l => {
-        const deadline = new Date(l.azotaDeadline!);
-        const diffMs   = deadline.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      .flatMap(l => {
+        const dl = parseAzotaDeadline(l.azotaDeadline);
+        if (!dl) return [];
+        const diffMs   = dl.instant.getTime() - now.getTime();
+        const diffDays = calendarDaysLeft(dl, now);
         const course   = l.chapter.section.course;
 
-        return {
+        return [{
           lessonId:     l.id,
           lessonTitle:  l.title,
           chapterTitle: l.chapter.title,
           courseName:   course.name,
           courseId:     course.id,
           category:     course.category,
-          azotaUrl:     l.azotaUrl,
+          azotaUrl:     firstHttpLink(l.azotaUrl),
           deadline:     l.azotaDeadline,
-          deadlineFormatted: deadline.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }),
+          deadlineFormatted: `${dl.time} ${dl.dateKey.slice(8, 10)}/${dl.dateKey.slice(5, 7)}`,
           daysLeft:     diffDays,
           isExpired:    diffMs < 0,
           isUrgent:     diffDays <= 1 && diffMs >= 0,
-        };
+        }];
       })
       .filter(d => !d.isExpired); // Chỉ hiện deadline chưa hết hạn
 

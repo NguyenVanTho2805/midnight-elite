@@ -18,6 +18,8 @@ import {
 import "plyr/dist/plyr.css";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
+import { firstHttpLink, httpLinks } from "@/lib/lessonLinks";
+import { formatAzotaDeadline } from "@/lib/azotaDeadline";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -331,7 +333,7 @@ function LiveContent({ zoomUrl }: { zoomUrl?: string | null }) {
   );
 }
 
-function QuizContent({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: string }) {
+function QuizContent({ azotaUrls, deadline }: { azotaUrls: string[]; deadline?: string }) {
   return (
     <div className="rounded-xl p-10 text-center"
       style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
@@ -346,18 +348,22 @@ function QuizContent({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: str
       {deadline && (
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4 mx-2"
           style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
-          <Alarm size={11} /> Deadline: {deadline}
+          <Alarm size={11} /> Deadline: {formatAzotaDeadline(deadline)}
         </div>
       )}
       <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>
         Bài kiểm tra sẽ mở trong tab mới trên nền tảng Azota. Đảm bảo nộp bài trước deadline.
       </p>
-      {azotaUrl ? (
-        <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-block px-8 py-3 font-bold text-[var(--kin-chu-tren-nut-chinh)] text-sm"
-          style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
-          Làm bài trên Azota →
-        </a>
+      {azotaUrls.length > 0 ? (
+        <div className="flex flex-col items-center gap-2">
+          {azotaUrls.map((u, i) => (
+            <a key={u} href={u} target="_blank" rel="noopener noreferrer"
+              className="inline-block px-8 py-3 font-bold text-[var(--kin-chu-tren-nut-chinh)] text-sm"
+              style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
+              {azotaUrls.length > 1 ? `Làm bài ${i + 1} trên Azota →` : "Làm bài trên Azota →"}
+            </a>
+          ))}
+        </div>
       ) : (
         <button disabled className="px-8 py-3 rounded-lg font-bold text-sm"
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
@@ -646,7 +652,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
   );
 }
 
-function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUrl?: string; deadline?: string }) {
+function TabBaiTap({ lessonId, azotaUrls, deadline }: { lessonId: string; azotaUrls: string[]; deadline?: string }) {
   const [assignments, setAssignments] = useState<AssignmentFull[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -655,24 +661,28 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
     api.assignments.listByLesson(lessonId).then(setAssignments).catch(() => setAssignments([])).finally(() => setLoading(false));
   }, [lessonId]);
 
-  if (!azotaUrl && !loading && assignments.length === 0) {
+  if (azotaUrls.length === 0 && !loading && assignments.length === 0) {
     return <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Bài học này không có bài kiểm tra.</p>;
   }
 
   return (
     <div className="space-y-3">
-      {azotaUrl && (
+      {azotaUrls.length > 0 && (
         <div className="rounded-xl p-4 flex items-center justify-between gap-4"
           style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
           <div>
             <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Quiz — Xử lý số liệu</p>
-            {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}><Alarm size={11} /> Deadline: {deadline}</p>}
+            {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}><Alarm size={11} /> Deadline: {formatAzotaDeadline(deadline)}</p>}
           </div>
-          <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-            className="flex-shrink-0 px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
-            style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
-            Làm bài →
-          </a>
+          <div className="flex flex-col gap-2 flex-shrink-0">
+            {azotaUrls.map((u, i) => (
+              <a key={u} href={u} target="_blank" rel="noopener noreferrer"
+                className="px-4 py-2 text-xs font-bold text-center text-[var(--kin-chu-tren-nut-chinh)]"
+                style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
+                {azotaUrls.length > 1 ? `Làm bài ${i + 1} →` : "Làm bài →"}
+              </a>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1092,9 +1102,10 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     teacherName:     dbCourse.instructor,
     views:           rawLesson.stats.views,
     materials:       (() => { try { return JSON.parse(dbLesson.documents ?? "[]") as Material[]; } catch { return [] as Material[]; } })(),
-    azotaUrl:        dbLesson.azotaUrl ?? null,
+    // Cột azotaUrl có thể là chuỗi JSON của MẢNG link (bài có 2 link): tách ra, chỉ giữ http/https.
+    azotaUrls:       httpLinks(dbLesson.azotaUrl),
     azotaDeadline:   dbLesson.azotaDeadline ?? "",
-    zoomUrl:         dbLesson.zoomUrl ?? null,
+    zoomUrl:         firstHttpLink(dbLesson.zoomUrl),
     note:            "",
     relatedSchedule: [] as Array<{ type: LessonType; subject: string; topic: string; time: string; date: string }>,
     prevLesson,
@@ -1156,8 +1167,8 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             />
           )}
           {lesson.type === "live"     && <LiveContent zoomUrl={lesson.zoomUrl ?? undefined} />}
-          {lesson.type === "quiz"     && <QuizContent azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
-          {lesson.type === "document" && <QuizContent />}
+          {lesson.type === "quiz"     && <QuizContent azotaUrls={lesson.azotaUrls} deadline={lesson.azotaDeadline} />}
+          {lesson.type === "document" && <QuizContent azotaUrls={[]} />}
 
           {/* Lesson info — không đóng khung, chỉ là phần mở rộng tự nhiên của video */}
           <div className="flex items-start justify-between gap-3 pt-1">
@@ -1212,7 +1223,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             </div>
             <div className="p-4">
               {activeTab === "tailieu" && <TabTaiLieu materials={lesson.materials} />}
-              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
+              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrls={lesson.azotaUrls} deadline={lesson.azotaDeadline} />}
               {activeTab === "ghichu"  && <TabGhiChu lessonId={params.lessonId} adminNote={dbLesson.adminNote} />}
             </div>
           </div>

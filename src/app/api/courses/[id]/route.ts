@@ -5,6 +5,7 @@ import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
+import { redactCourseTree, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -32,12 +33,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const session = await getSession();
     let hasAccess = false;
+    let enrolled: { status: string } | null = null;
 
     if (session) {
       if (session.role === "admin") {
         hasAccess = true;
       } else {
-        const enrolled = await prisma.enrollment.findUnique({
+        enrolled = await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.userId, courseId: id } },
         });
         // "pending_consent" chưa được học, "suspended" chỉ xem lại nhưng
@@ -64,7 +66,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }));
     }
 
-    return NextResponse.json(course);
+    // MD-03: link học liệu (videoUrl, zoomUrl, azotaUrl, documents) chỉ đi tới quản lý lớp, học viên đang học và bài miễn phí.
+    // Khách / chưa ghi danh vẫn thấy tên Phần, Chương, Bài để quyết định đăng ký, nhưng link bị bỏ trống.
+    const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
+    return NextResponse.json(redactCourseTree({ viewer, courseOwnerId: course.ownerId, enrollment: enrolled }, course));
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

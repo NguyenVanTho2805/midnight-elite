@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { hmOf, vnMinutesOfDay, vnDateKeyOf, addDaysKey, dayOfWeekOfKey } from "@/lib/classSessions";
 import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
+import { parseAzotaDeadline } from "@/lib/azotaDeadline";
+import { firstHttpLink } from "@/lib/lessonLinks";
 
 export interface ScheduleEvent {
   id: string;
@@ -86,16 +88,18 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
     });
 
     for (const lesson of lessons) {
-      const iso = toISO(lesson.azotaDeadline!);
-      if (!iso || iso < todayISO || iso > maxISO) continue;
+      // MD-16: hạn Azota là "YYYY-MM-DDTHH:mm" (ô datetime-local, giờ Việt Nam) — đọc bằng parseAzotaDeadline, không phải toISO.
+      const dl = parseAzotaDeadline(lesson.azotaDeadline);
+      if (!dl || dl.dateKey < todayISO || dl.dateKey > maxISO) continue;
       events.push({
         id: `deadline-${lesson.id}`,
         type: "deadline",
         subject: lesson.chapter.section.course.name,
         topic: lesson.title,
-        time: "23:59",
-        isoDate: iso,
-        link: lesson.azotaUrl || undefined,
+        time: dl.time,
+        isoDate: dl.dateKey,
+        // Bài có 2 link Azota lưu dạng chuỗi JSON: lấy link http đầu tiên, không đưa chuỗi JSON làm href.
+        link: firstHttpLink(lesson.azotaUrl) ?? undefined,
       });
     }
 

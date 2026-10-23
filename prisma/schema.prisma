@@ -359,6 +359,10 @@ model Exam {
   // `hasPassword: boolean` (xem exams/route.ts, exams/[id]/route.ts).
   password String?
 
+  // QZ-14: mật khẩu vào thi ở dạng BĂM (bcrypt của sha256, xem src/lib/examPassword.ts). Đề mới/đặt lại chỉ ghi cột này và để `password` null.
+  // Đề cũ còn `password` thô vẫn dùng được (đọc tương thích) và tự nâng lên băm. Không bao giờ trả qua API.
+  passwordHash String?
+
   // true = học viên xem được bảng xếp hạng Top 10 của đề này; false = ẩn
   // hoàn toàn (giáo viên không muốn học viên so điểm công khai).
   showLeaderboard Boolean @default(true)
