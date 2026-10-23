@@ -12,6 +12,8 @@ import ProfileTracker from "@/components/tutor/ProfileTracker";
 import TutorProfileHeader from "@/components/tutor/TutorProfileHeader";
 import ReportProfileButton from "@/components/tutor/ReportProfileButton";
 import { profileOg } from "@/lib/funnel";
+import { kinButtonClass } from "@/components/kin/Button";
+import { hasPublicArea, priceText } from "@/lib/tutorArea";
 import type { PublicArea } from "@/lib/tutorArea";
 
 type Rating = { avg: number | null; total: number };
@@ -81,86 +83,93 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
   }
 
   const { tutor, stats, classes } = data;
+  const firstName = tutor.name.split(" ").pop();
+  const area = hasPublicArea(tutor.area) ? tutor.area : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-      <Link href="/giang-vien" className="inline-flex items-center gap-2 text-sm font-semibold"
+    <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 py-8 lg:py-10 flex flex-col gap-7">
+      <Link href="/giang-vien" className="inline-flex items-center gap-2 self-start min-h-[44px] text-[length:var(--kin-co-small)] font-medium"
         style={{ color: "var(--kin-chu-mo)" }}>
         <ArrowLeft size={16} /> Quay lại danh sách
       </Link>
 
-      {/* FE-110: đầu hồ sơ — dùng chung (FE-158) */}
-      <TutorProfileHeader tutor={tutor} stats={stats} />
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-8">
+          {/* FE-110: đầu hồ sơ — dùng chung (FE-158) */}
+          <TutorProfileHeader tutor={tutor} stats={stats} />
 
-      {/* FE-113: lớp đang dạy */}
-      <div className="rounded-2xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-        <h2 className="font-extrabold text-sm mb-4" style={{ color: "var(--kin-chu-chinh)" }}>Lớp đang dạy</h2>
-        {classes.length === 0 ? (
-          <p className="text-sm py-4" style={{ color: "var(--kin-chu-mo)" }}>Gia sư chưa có lớp công khai.</p>
-        ) : (
-          <div className="space-y-3">
-            {classes.map(c => (
-              <Link key={c.id} href={`/khoa-hoc/${c.id}`}>
-                <div className="rounded-xl p-4 cursor-pointer hover:-translate-y-0.5 transition-transform"
-                  style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="font-semibold text-sm leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</p>
-                    {c.classStatus !== "open" && (
-                      <span className="text-[length:var(--kin-co-caption)] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
-                        {c.classStatus === "closed" ? "Đã đóng" : "Tạm ngừng"}
+          {/* FE-113: lớp đang dạy */}
+          <section className="flex flex-col gap-3">
+            <h2 className="text-[length:var(--kin-co-body)] font-semibold pb-2.5" style={{ color: "var(--kin-chu-chinh)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>Lớp đang dạy</h2>
+            {classes.length === 0 ? (
+              <p className="text-[length:var(--kin-co-small)] py-2" style={{ color: "var(--kin-chu-mo)" }}>Gia sư chưa có lớp công khai.</p>
+            ) : (
+              <ul className="m-0 p-0 list-none">
+                {classes.map(c => (
+                  <li key={c.id} style={{ borderBottom: "1px solid var(--kin-vien-nhat)" }}>
+                    <Link href={`/khoa-hoc/${c.id}`} className="flex items-center justify-between gap-3 py-3 min-h-[44px]">
+                      <span className="min-w-0">
+                        <span className="block font-medium text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</span>
+                        <span className="block text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>
+                          {c.rating.avg !== null && <>★ {c.rating.avg.toFixed(1)} · </>}
+                          {c.activeCount.toLocaleString()} học viên
+                          {c.seatsLeft !== null && <> · {c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : "Đã đủ chỗ"}</>}
+                        </span>
                       </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: "var(--kin-chu-mo)" }}>
-                    {c.rating.avg !== null && (
-                      <span style={{ color: "var(--kin-tt-chu-cho)" }}>★ {c.rating.avg.toFixed(1)}</span>
-                    )}
-                    <span>·</span>
-                    <span>{c.activeCount.toLocaleString()} học viên</span>
-                    {c.seatsLeft !== null && (
-                      <>
-                        <span>·</span>
-                        <span>{c.seatsLeft > 0 ? `Còn ${c.seatsLeft} chỗ` : "Đã đủ chỗ"}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* FE-114: CTA — hiện trỏ sang danh sách lớp. Khi flow mua gói/invite
-            có trong 1 chỗ UI chung sẽ chuyển sang trang đó. */}
-        <Link href={classes[0] ? `/khoa-hoc/${classes[0].id}` : "/khoa-hoc"}
-          className="mt-4 w-full block text-center py-3 rounded-xl font-bold text-sm text-white"
-          style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
-          Đăng ký học với {tutor.name.split(" ").pop()}
-        </Link>
-      </div>
-
-      {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
-      {(tutor.zalo || tutor.messenger) && (
-        <div className="rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>
-            {tutor.zalo ? <>Liên hệ qua Zalo: <b style={{ color: "var(--kin-chu-chinh)" }}>{tutor.zalo}</b></> : "Liên hệ gia sư"}
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className="px-4 py-2 rounded-lg text-sm font-semibold text-white min-h-[44px] inline-flex items-center" style={{ background: "var(--kin-nhan-nen)" }}>Nhắn Zalo</a>}
-            {tutor.messenger && (
-              <a href={`https://m.me/${tutor.messenger}?text=${encodeURIComponent(`Chào ${tutor.name}, mình xem hồ sơ trên KiN và muốn hỏi về lớp học.`)}`} rel="noopener noreferrer" target="_blank"
-                className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] inline-flex items-center" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Nhắn Messenger</a>
+                      {c.classStatus !== "open" && (
+                        <span className="text-[length:var(--kin-co-caption)] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
+                          {c.classStatus === "closed" ? "Đã đóng" : "Tạm ngừng"}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-        </div>
-      )}
+          </section>
 
-      {/* PH-212: chống lừa đảo làm lợi thế — nhìn thấy trên hồ sơ, kèm nút Báo cáo */}
-      <div role="note" className="rounded-2xl p-5" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-        <p className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>Không chuyển khoản trước buổi học thử.</p>
-        <p className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-cho)" }}>Nếu ai đòi anh/chị chuyển khoản trước buổi học thử, đừng chuyển và bấm Báo cáo.</p>
-        <div className="mt-1"><ReportProfileButton tutorId={tutor.id} /></div>
+          <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>
+            Chỉ số do hệ thống tổng hợp từ sổ lớp, chỉ đọc. Không hiển thị thông tin học sinh.
+          </p>
+        </div>
+
+        {/* Cột bên: MỘT nút chính (đăng ký học) + cách liên hệ + nhắc an toàn */}
+        <aside aria-label="Liên hệ gia sư" className="w-full lg:w-[340px] lg:flex-shrink-0 flex flex-col gap-5 lg:sticky lg:top-6">
+          <div className="flex flex-col gap-4 p-6" style={{ background: "var(--kin-nen-bang)" }}>
+            {area && area.price !== null && (
+              <div className="flex flex-col gap-1">
+                <p className="text-[length:var(--kin-co-h4)] font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{priceText(area.price)}</p>
+                <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Giá tham khảo do gia sư cung cấp. Thỏa thuận trực tiếp trước khi học.</p>
+              </div>
+            )}
+            {/* FE-114: CTA — trỏ sang lớp đầu tiên, hoặc danh sách lớp. */}
+            <Link href={classes[0] ? `/khoa-hoc/${classes[0].id}` : "/khoa-hoc"} className={kinButtonClass("primary")}>
+              Đăng ký học với {firstName}
+            </Link>
+            {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
+            {tutor.zalo && (
+              <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-phu)" }}>Liên hệ qua Zalo: <b style={{ color: "var(--kin-chu-chinh)" }}>{tutor.zalo}</b></p>
+            )}
+            {(tutor.zalo || tutor.messenger) && (
+              <div className="flex gap-2 flex-wrap">
+                {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className={kinButtonClass("secondary")}>Nhắn Zalo</a>}
+                {tutor.messenger && (
+                  <a href={`https://m.me/${tutor.messenger}?text=${encodeURIComponent(`Chào ${tutor.name}, mình xem hồ sơ trên KiN và muốn hỏi về lớp học.`)}`} rel="noopener noreferrer" target="_blank"
+                    className={kinButtonClass("secondary")}>Nhắn Messenger</a>
+                )}
+              </div>
+            )}
+            <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>Không cần tài khoản để xem hồ sơ. KiN không thu phí nhận lớp.</p>
+          </div>
+
+          {/* PH-212: chống lừa đảo làm lợi thế — nhìn thấy trên hồ sơ, kèm nút Báo cáo */}
+          <div role="note" className="p-4" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>Không chuyển khoản trước buổi học thử.</p>
+            <p className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-cho)" }}>Nếu ai đòi anh/chị chuyển khoản trước buổi học thử, đừng chuyển và bấm Báo cáo.</p>
+            <div className="mt-1"><ReportProfileButton tutorId={tutor.id} /></div>
+          </div>
+        </aside>
       </div>
 
       {/* PH-207: vòng kéo gia sư mới — huy hiệu "tạo bằng KiN" bật sẵn */}
@@ -183,7 +192,5 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
   );
 }
 
-// Nếu chưa có id khớp DB thì notFound() — thay vì render ở trên; dùng gián
-// tiếp qua branch trả null.
 export const dynamic = "force-dynamic";
 void notFound; // tránh TS "unused" nếu không gọi

@@ -1,5 +1,6 @@
 // FE-157 — thẻ gia sư dùng chung (lưới /giang-vien và các nơi liệt kê gia sư). Tách nguyên văn từ trang danh sách, không đổi giao diện.
 import Link from "next/link";
+import { kinButtonClass } from "@/components/kin/Button";
 import { MODE_LABEL, areaLine, hasPublicArea, priceText, type PublicArea } from "@/lib/tutorArea";
 
 export interface TutorListItem {
@@ -27,119 +28,86 @@ export function initials(name: string) {
 }
 
 export function TutorCard({ t }: { t: TutorListItem }) {
-  // FE-107: card gia sư với avatar, tên, badge xác minh, bio line-clamp,
-  // subject badges, stat (students + classes + rating), CTA xem hồ sơ.
+  // KH-02 (Figma 299:115283 / 299:116882): thẻ gọn trên nền sáng, không khung màu. Ảnh/chữ cái đầu, tên, môn · khu vực,
+  // trường + bằng cấp (tự khai), hình thức · giá tham khảo (chỉ khi gia sư bật), vài con số tự động, MỘT nút chính "Xem hồ sơ".
+  const area = hasPublicArea(t.area) ? t.area : null;
+  const where = area ? areaLine(area) : "";
+  const subjectLine = [t.subjects.join(", "), where].filter(Boolean).join(" · ");
+  const modeLine = area ? [area.mode ? MODE_LABEL[area.mode] : "", area.price !== null ? `giá tham khảo ${priceText(area.price)}` : ""].filter(Boolean).join(" · ") : "";
   return (
-    <div className="rounded-xl overflow-hidden flex flex-col"
-      style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-      <div className="px-6 py-5 flex items-center gap-4"
-        style={{ background: "var(--kin-nhan-nen)" }}>
-        <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.2)", border: "2px solid rgba(255,255,255,0.4)" }}>
+    <article className="flex flex-col gap-4 py-5" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+      <div className="flex items-start gap-4">
+        <div className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-xl font-medium flex-shrink-0 overflow-hidden"
+          style={{ background: "var(--kin-nen-dang-chon)", color: "var(--kin-th-navy)" }}>
           {t.avatarBase64
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={t.avatarBase64} alt={t.name} className="w-full h-full object-cover" />
             : initials(t.name)}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-lg font-bold text-white leading-tight truncate">{t.name}</h3>
+            <h3 className="text-[length:var(--kin-co-h4)] font-semibold leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>{t.name}</h3>
             {t.tutorVerified && (
-              <span className="text-[length:var(--kin-co-caption)] font-bold px-1.5 py-0.5 rounded-md"
-                style={{ background: "rgba(255,255,255,0.25)", color: "var(--kin-chu-tren-nut-chinh)" }}>Đã xác minh</span>
+              <span className="text-[length:var(--kin-co-caption)] font-medium px-2 py-0.5 rounded-full"
+                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>Đã xác minh</span>
             )}
           </div>
-          {t.subjects.length > 0 && (
-            <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
-              {t.subjects.join(" · ")}
-            </p>
+          {subjectLine && <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-chinh)" }}>{subjectLine}</p>}
+        </div>
+      </div>
+
+      {t.bio && <p className="text-[length:var(--kin-co-small)] leading-relaxed line-clamp-2" style={{ color: "var(--kin-chu-phu)" }}>{t.bio}</p>}
+
+      {/* ĐX-06: khu vực + hình thức là TỰ KHAI; giá chỉ khi gia sư tự bật */}
+      {area && (area.city || area.district || area.mode || area.price !== null || area.credential) && (
+        <div className="flex flex-col gap-1 text-[length:var(--kin-co-small)]" data-testid="tutor-area">
+          {area.credential && <p style={{ color: "var(--kin-chu-chinh)" }}>{area.credential} <span style={{ color: "var(--kin-chu-mo)" }}>(tự khai)</span></p>}
+          {modeLine && <p style={{ color: "var(--kin-chu-mo)" }}>{modeLine}</p>}
+        </div>
+      )}
+
+      <dl className="grid grid-cols-2 gap-4 m-0">
+        <div className="flex flex-col gap-1">
+          <dd className="text-lg m-0" style={{ color: "var(--kin-chu-chinh)" }}>{t.classCount}</dd>
+          <dt className="text-[length:var(--kin-co-caption)] font-medium" style={{ color: "var(--kin-chu-mo)" }}>Lớp đang dạy</dt>
+        </div>
+        <div className="flex flex-col gap-1">
+          <dd className="text-lg m-0" style={{ color: "var(--kin-chu-chinh)" }}>{t.studentCount}</dd>
+          <dt className="text-[length:var(--kin-co-caption)] font-medium" style={{ color: "var(--kin-chu-mo)" }}>Học viên</dt>
+        </div>
+      </dl>
+
+      {/* ĐX-05 (Q3): hai số tự động từ sổ lớp. Không có chữ "đã xác minh" vì gia sư tự ghi sổ. Số 0 thì không hiện để thẻ không nói điều tiêu cực về người mới. */}
+      {(t.sessionsTaught > 0 || t.recentlyActive) && (
+        <p className="text-[length:var(--kin-co-small)] flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--kin-chu-phu)" }} data-testid="tutor-activity">
+          {t.sessionsTaught > 0 && <span>{t.sessionsTaught.toLocaleString("vi-VN")} buổi đã dạy</span>}
+          {t.recentlyActive && (
+            <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--kin-tt-chu-xong)" }}>
+              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-xong)" }} />Có dạy trong 30 ngày qua
+            </span>
           )}
-        </div>
+        </p>
+      )}
+
+      <div>
+        <Link href={`/mentor/${t.id}`} className={kinButtonClass("primary")} aria-label={`Xem hồ sơ ${t.name}`}>Xem hồ sơ</Link>
       </div>
-
-      <div className="p-5 flex flex-col flex-1 gap-4">
-        {t.bio ? (
-          <p className="text-sm leading-relaxed line-clamp-3" style={{ color: "var(--kin-chu-phu)" }}>{t.bio}</p>
-        ) : (
-          <p className="text-sm italic" style={{ color: "var(--kin-chu-mo)" }}>Chưa có giới thiệu</p>
-        )}
-
-        {t.subjects.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {t.subjects.map(s => (
-              <span key={s} className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>{s}</span>
-            ))}
-          </div>
-        )}
-
-        {/* ĐX-06: khu vực + hình thức (tự khai); giá chỉ khi gia sư tự bật */}
-        {hasPublicArea(t.area) && (t.area.city || t.area.district || t.area.mode || t.area.price !== null) && (
-          <div className="flex flex-wrap items-center gap-1.5 text-xs" data-testid="tutor-area">
-            {(t.area.city || t.area.district) && <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>{areaLine(t.area)}</span>}
-            {t.area.mode && <span className="px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>{MODE_LABEL[t.area.mode]}</span>}
-            {t.area.price !== null && <span style={{ color: "var(--kin-chu-phu)" }}>{priceText(t.area.price)}</span>}
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div>
-            <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{t.classCount}</p>
-            <p style={{ color: "var(--kin-chu-mo)" }}>lớp đang dạy</p>
-          </div>
-          <div>
-            <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>{t.studentCount}</p>
-            <p style={{ color: "var(--kin-chu-mo)" }}>học viên</p>
-          </div>
-          <div>
-            <p className="font-bold text-base" style={{ color: "var(--kin-chu-chinh)" }}>
-              {t.rating.avg !== null ? t.rating.avg.toFixed(1) : "—"}
-            </p>
-            <p style={{ color: "var(--kin-chu-mo)" }}>
-              {t.rating.total > 0 ? `${t.rating.total} đánh giá` : "chưa có"}
-            </p>
-          </div>
-        </div>
-
-        {/* ĐX-05 (Q3): hai số tự động từ sổ lớp. Không có chữ "đã xác minh" vì gia sư tự ghi sổ. Số 0 thì không hiện để thẻ không nói điều tiêu cực về người mới. */}
-        {(t.sessionsTaught > 0 || t.recentlyActive) && (
-          <p className="text-xs flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: "var(--kin-chu-phu)" }} data-testid="tutor-activity">
-            {t.sessionsTaught > 0 && <span>{t.sessionsTaught.toLocaleString("vi-VN")} buổi đã dạy</span>}
-            {t.recentlyActive && (
-              <span className="inline-flex items-center gap-1 font-semibold" style={{ color: "var(--kin-tt-chu-xong)" }}>
-                <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-xong)" }} />Có dạy trong 30 ngày qua
-              </span>
-            )}
-          </p>
-        )}
-
-        <Link href={`/mentor/${t.id}`}
-          className="mt-auto flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-nhan-link)" }}>
-          Xem hồ sơ
-        </Link>
-      </div>
-    </div>
+    </article>
   );
 }
 
 export function TutorCardSkeleton() {
-  // FE-108: skeleton khi loading
+  // FE-108: khung chờ khi đang tải — cùng dáng với thẻ mới (hàng không khung)
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-      <div className="px-6 py-5 flex items-center gap-4" style={{ background: "var(--kin-vien-thuong)" }}>
-        <div className="w-16 h-16 rounded-xl bg-slate-300 animate-pulse" />
+    <div className="py-5 flex flex-col gap-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+      <div className="flex items-center gap-4">
+        <div className="w-[52px] h-[52px] rounded-full animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
         <div className="flex-1 space-y-2">
-          <div className="h-5 bg-slate-300 rounded animate-pulse w-2/3" />
-          <div className="h-3 bg-slate-300 rounded animate-pulse w-1/2" />
+          <div className="h-5 rounded animate-pulse w-1/3" style={{ background: "var(--kin-vien-thuong)" }} />
+          <div className="h-3 rounded animate-pulse w-1/2" style={{ background: "var(--kin-nen-bang)" }} />
         </div>
       </div>
-      <div className="p-5 space-y-3">
-        <div className="h-4 bg-slate-200 rounded animate-pulse" />
-        <div className="h-4 bg-slate-200 rounded animate-pulse w-4/5" />
-        <div className="h-9 bg-slate-200 rounded-lg animate-pulse" />
-      </div>
+      <div className="h-11 w-28 rounded-lg animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />
     </div>
   );
 }
-
