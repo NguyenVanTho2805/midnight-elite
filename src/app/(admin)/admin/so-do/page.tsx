@@ -3,6 +3,7 @@
 // Số tổng hợp để biết chỗ nào trong sản phẩm đang kẹt — không phải điểm của gia sư, không có tên người nào.
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { KinButton, KinCallout, KinSectionHead, KinSkeleton, KinStat, KinStateCard, KinStatRow, KinStatus } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { callApi } from "@/components/tutor/shared";
@@ -53,51 +54,61 @@ function SoDoContent() {
   }, [load, days]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Số đo sức khoẻ sản phẩm</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-          Số tổng hợp để biết chỗ nào trong sản phẩm đang kẹt. Không có tên học sinh hay gia sư, không xếp hạng. Mỗi số ghi rõ mẫu số;
-          dưới {MIN_SAMPLE} mẫu thì ghi “chưa đủ dữ liệu”, không hiện phần trăm.
-        </p>
-      </div>
-
-      <label className="text-xs inline-block" style={{ color: "var(--kin-chu-phu)" }}>Khoảng thời gian
-        <select value={days} onChange={e => setDays(Number(e.target.value))} className="block mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }}>
-          {[7, 30, 90].map(d => <option key={d} value={d}>{d} ngày gần nhất</option>)}
-        </select>
-      </label>
+    <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[28px] leading-9 font-medium text-[var(--kin-chu-chinh)]">Số đo sức khoẻ sản phẩm</h1>
+          <p className="mt-2 max-w-[68ch] text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+            Số tổng hợp để biết chỗ nào trong sản phẩm đang kẹt. Không có tên học sinh hay gia sư, không xếp hạng. Mỗi số ghi rõ mẫu số;
+            dưới {MIN_SAMPLE} mẫu thì ghi “chưa đủ dữ liệu”, không hiện phần trăm.
+          </p>
+        </div>
+        <label className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Khoảng thời gian
+          <select value={days} onChange={e => setDays(Number(e.target.value))}
+            className="block mt-1 px-3 min-h-[44px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)]">
+            {[7, 30, 90].map(d => <option key={d} value={d}>{d} ngày gần nhất</option>)}
+          </select>
+        </label>
+      </header>
 
       {loading && !data ? (
-        <div aria-busy="true" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {[...METRIC_ORDER, ...ACTIVATION_ORDER].map(k => <div key={k} className="h-44 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />)}
-        </div>
+        <KinStateCard busy kicker="Đang tải" title="Đang tính số đo" note="Giữ vị trí nội dung, không hiển thị số liệu tạm như dữ liệu thật.">
+          <p>Đang lấy số liệu {days} ngày gần nhất, vui lòng chờ một chút.</p>
+          <KinSkeleton className="mt-4" />
+        </KinStateCard>
       ) : failed || !data ? (
-        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          Không tải được số đo. <button className="underline font-semibold" onClick={() => void load(days)}>Thử lại</button>
-        </div>
+        <KinStateCard tone="loi" kicker="Lỗi · Có thể thử lại" title="Chưa tải được số đo"
+          status={<KinStatus tone="loi">Kết nối bị gián đoạn</KinStatus>}
+          actions={<KinButton variant="secondary" onClick={() => void load(days)}>Thử lại</KinButton>}>
+          <p>Không tải được số đo. Kiểm tra kết nối rồi thử lại; dữ liệu trên hệ thống không bị mất.</p>
+        </KinStateCard>
       ) : (
         <>
-          <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }} data-testid="khoang">
+          <KinStatRow>
+            <KinStat label="Gia sư có buổi đã dạy" value={data.tutors.teaching} hint={`Trên ${data.tutors.tutors} gia sư đang hiện công khai`} />
+            <KinStat label={`Gia sư đăng ký · ${data.days} ngày`} value={data.activation.registered} hint="Theo ngày tạo tài khoản" />
+            <KinStat label={`Phiếu học phí đã gửi · ${data.days} ngày`} value={data.invoices.zaloOpened.d} hint="Chỉ đếm phiếu, không đếm tiền" />
+            <KinStat label={`Khoản tiền về · ${data.days} ngày`} value={data.bank.total} hint={`Tự gạch ${data.bank.auto}, chờ gia sư ${data.bank.pending}`} />
+          </KinStatRow>
+          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]" data-testid="khoang">
             Khoảng {vnDm(data.since)} – {vnDm(data.generatedAt)} · tính lúc {vnWhen(data.generatedAt)}
           </p>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
             {METRIC_ORDER.map(k => <Card key={k} k={k} data={data} />)}
           </div>
           <div>
-            <h2 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }} data-testid="nhom-gia-su-moi">Gia sư mới vào</h2>
-            <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>
+            <KinSectionHead title={<span data-testid="nhom-gia-su-moi">Gia sư mới vào</span>} aside={`${data.activation.registered} gia sư đăng ký`} />
+            <p className="mt-3 max-w-[72ch] text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
               {data.activation.registered} gia sư đăng ký trong {data.days} ngày gần nhất. Mỗi thẻ chỉ tính gia sư đã đăng ký đủ lâu để có thể đạt mốc; gia sư mới vào hôm nay chưa bị tính là “bỏ”.
             </p>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
             {ACTIVATION_ORDER.map(k => <Card key={k} k={k} data={data} />)}
           </div>
-          <div className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
-            Đọc bảng: số đo dùng để chọn việc tiếp theo, không phải điểm của gia sư. Ví dụ nếu “Phiếu gia sư đã mở Zalo” thấp thì sửa bước gửi phiếu trước,
+          <KinCallout title="Đọc bảng">
+            Số đo dùng để chọn việc tiếp theo, không phải điểm của gia sư. Ví dụ nếu “Phiếu gia sư đã mở Zalo” thấp thì sửa bước gửi phiếu trước,
             chưa cần làm ảnh chuyển khoản.
-          </div>
+          </KinCallout>
         </>
       )}
     </div>
@@ -108,12 +119,12 @@ function SoDoContent() {
 function Shell({ k, big, children }: { k: MetricKey; big: string; children: React.ReactNode }) {
   const def = METRIC_DEFS[k];
   return (
-    <section aria-labelledby={`h-${k}`} data-metric={k} className="rounded-xl p-4 flex flex-col gap-1.5" style={{ background: "var(--kin-nen-bang)" }}>
-      <h2 id={`h-${k}`} className="text-sm font-medium" style={{ color: "var(--kin-chu-phu)" }}>{def.title}</h2>
-      <p className="text-4xl font-extrabold leading-tight" style={{ color: big === "—" ? "var(--kin-chu-mo)" : "var(--kin-chu-chinh)" }} data-testid={`so-${k}`}>{big}</p>
+    <section aria-labelledby={`h-${k}`} data-metric={k} className="flex flex-col gap-2 py-6 border-t border-[var(--kin-vien-nhat)]">
+      <h2 id={`h-${k}`} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{def.title}</h2>
+      <p className={`text-[22px] leading-7 font-medium tabular-nums ${big === "—" ? "text-[var(--kin-chu-mo)]" : "text-[var(--kin-chu-chinh)]"}`} data-testid={`so-${k}`}>{big}</p>
       {children}
-      <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }} data-testid={`dn-${k}`}>{def.definition}</p>
-      <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Mẫu số: {def.denominator}.</p>
+      <p className="text-[length:var(--kin-co-small)] leading-5 text-[var(--kin-chu-phu)]" data-testid={`dn-${k}`}>{def.definition}</p>
+      <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Mẫu số: {def.denominator}.</p>
     </section>
   );
 }
@@ -127,9 +138,7 @@ function Bar({ parts, label }: { parts: { w: number; color: string }[]; label: s
 function Insufficient({ r, noun }: { r: Ratio; noun: string }) {
   return (
     <>
-      <p className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
-        <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-cho)" }} />Chưa đủ dữ liệu
-      </p>
+      <KinStatus tone="cho">Chưa đủ dữ liệu</KinStatus>
       <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{insufficientText(r, noun)}</p>
     </>
   );
@@ -179,9 +188,7 @@ function Card({ k, data }: { k: MetricKey; data: Payload }) {
           ? <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Trung vị của {m.n} gia sư đã có lớp</p>
           : (
             <>
-              <p className="text-xs font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
-                <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--kin-tt-cham-cho)" }} />Chưa đủ dữ liệu
-              </p>
+              <KinStatus tone="cho">Chưa đủ dữ liệu</KinStatus>
               <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{m.n} gia sư đã có lớp · cần từ {MIN_SAMPLE} mới hiện con số</p>
             </>
           )}
