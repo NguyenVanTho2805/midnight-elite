@@ -28,9 +28,9 @@ import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
     section(`${w}px · bài kiểm tra Azota (type quiz) có 2 link`);
     await page.goto(`${BASE}/student/bai-giang/quiz2`, { waitUntil: "networkidle" });
     await page.getByText("Làm bài 1 trên Azota").waitFor({ timeout: 30000 });
-    const hrefs = await page.locator('a:has-text("Azota →")').evaluateAll(as => as.map(a => (a as HTMLAnchorElement).href));
+    const hrefs = await page.locator('a:has-text("trên Azota")').evaluateAll(as => as.map(a => (a as HTMLAnchorElement).href));
     check("2 nút, href đúng từng link (không phải chuỗi JSON)", hrefs.join("|") === "https://azota.vn/a1|https://azota.vn/a2", hrefs);
-    check("hạn hiện '20:00 dd/mm/yyyy' giờ VN", (await page.content()).includes(`20:00 ${d}/${m}/${y}`));
+    check("hạn hiện 'Hạn nộp: dd/mm/yyyy 20:00' đúng giờ VN", (await page.locator("body").innerText()).includes(`Hạn nộp: ${d}/${m}/${y} 20:00`));
     check("không có chữ thô 'T20:00' của chuỗi datetime-local", !(await page.locator("body").innerText()).includes(`${day}T20:00`));
     check(`${w}px: không tràn ngang`, await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
     await shot(page, `baomat-quiz-${w}`);
@@ -38,18 +38,18 @@ import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
     section(`${w}px · tab Bài tập của bài video có 2 link`);
     await page.goto(`${BASE}/student/bai-giang/rec2`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: /Bài tập/ }).first().click({ timeout: 30000 });
-    await page.getByText("Làm bài 2 →").waitFor({ timeout: 30000 });
+    await page.getByText("Làm bài 2 trên Azota").waitFor({ timeout: 30000 });
     const h2 = await page.locator('a:has-text("Làm bài")').evaluateAll(as => as.map(a => (a as HTMLAnchorElement).href));
     check("tab Bài tập: 2 nút đúng href", h2.join("|") === "https://azota.vn/b1|https://azota.vn/b2", h2);
     await shot(page, `baomat-baitap-${w}`);
 
     section(`${w}px · 1 link và link độc`);
     await page.goto(`${BASE}/student/bai-giang/quiz1`, { waitUntil: "networkidle" });
-    await page.getByText("Làm bài trên Azota →").waitFor({ timeout: 30000 });
-    check("1 link: một nút, chữ không đánh số", (await page.locator('a:has-text("Azota →")').count()) === 1);
+    await page.getByText("Làm bài trên Azota", { exact: true }).waitFor({ timeout: 30000 });
+    check("1 link: một nút, chữ không đánh số", (await page.locator('a:has-text("trên Azota")').count()) === 1);
     await page.goto(`${BASE}/student/bai-giang/quizbad`, { waitUntil: "networkidle" });
-    await page.getByText("Chưa có link bài").waitFor({ timeout: 30000 });
-    check("CA PHÁ: link javascript: không thành nút; hiện 'Chưa có link bài'", (await page.locator('a[href^="javascript:"]').count()) === 0);
+    await page.getByRole("heading", { name: "Bài quizbad" }).waitFor({ timeout: 30000 }); await page.waitForTimeout(1500); // bảng Azota không có link hợp lệ thì không dựng gì (không còn dòng "Chưa có link bài")
+    check("CA PHÁ: link javascript: không thành nút (không có nút 'Làm bài…' nào, không bảng Azota, không thẻ a nào mang href javascript:)", (await page.locator('a[href^="javascript:"]').count()) === 0 && (await page.getByRole("region", { name: "Bài Azota" }).count()) === 0 && (await page.locator('a:has-text("trên Azota")').count()) === 0);
 
     section(`${w}px · /xem-tai-lieu`);
     await page.goto(`${BASE}/xem-tai-lieu?url=${encodeURIComponent("javascript:alert(1)")}&name=x`, { waitUntil: "networkidle" });

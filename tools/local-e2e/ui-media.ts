@@ -1,5 +1,6 @@
 // Giao diện VIDEO + TÀI LIỆU + AZOTA (Figma 464:8628 học sinh, 504:6046 gia sư) — trình duyệt thật, 390px và 1280px.
 // Chạy với máy chủ thử có KIN_VIDEO_MAX_MB=1 (bài tải video lên dùng tệp nhỏ). Ảnh chụp ra scratchpad/shots/media-*.png.
+// Ca 'PDF/ảnh/Word Cloudinary của KiN' cần máy chủ thử chạy với NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=kin (chưa đặt thì bảo mật đóng, từ chối mọi Cloudinary).
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, closeAll, shot, type Page } from "./ui";
@@ -167,12 +168,12 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     const p = await ctx.newPage(); watch(p);
     const view = async (url: string) => { await p.goto(`${BASE}/xem-tai-lieu?url=${encodeURIComponent(url)}&name=Thu`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.waitForTimeout(800); };
     await view("javascript:alert(1)//x.pdf");
-    check("javascript:…pdf → KHÔNG có iframe, báo không xem trước được", (await p.locator("iframe").count()) === 0 && /Không xem trước được/.test(await p.locator("body").innerText()));
+    check("javascript:…pdf → bị từ chối hẳn: KHÔNG iframe, báo 'Không mở được tài liệu' + 'Địa chỉ tài liệu không hợp lệ'", (await p.locator("iframe").count()) === 0 && /Không mở được tài liệu/.test(await p.locator("body").innerText()) && /Địa chỉ tài liệu không hợp lệ/.test(await p.locator("body").innerText()));
     check("javascript: → không có nút/liên kết nào mang href javascript:", (await p.locator('a[href^="javascript:"]').count()) === 0);
     await view("data:text/html,<script>alert(1)</script>");
     check("data: → không iframe", (await p.locator("iframe").count()) === 0);
     await view("https://evil.example/x.pdf");
-    check("PDF ở máy chủ lạ → không iframe, chỉ cho mở tab mới (rel noopener)", (await p.locator("iframe").count()) === 0 && (await p.getByRole("link", { name: "Mở tài liệu" }).getAttribute("rel"))?.includes("noopener") === true);
+    check("PDF ở máy chủ lạ → bị từ chối hẳn: báo 'Không mở được tài liệu' + 'Địa chỉ tài liệu không hợp lệ', KHÔNG iframe, KHÔNG nút/liên kết mở", (await p.locator("iframe").count()) === 0 && (await p.getByRole("link", { name: "Mở tài liệu" }).count()) === 0 && (await p.locator('a[href*="evil.example"]').count()) === 0 && /Không mở được tài liệu/.test(await p.locator("body").innerText()) && /Địa chỉ tài liệu không hợp lệ/.test(await p.locator("body").innerText()));
     await view("http://res.cloudinary.com/kin/raw/upload/a.pdf");
     check("http (không https) → không iframe", (await p.locator("iframe").count()) === 0);
     await view("https://res.cloudinary.com/kin/raw/upload/a.pdf");
