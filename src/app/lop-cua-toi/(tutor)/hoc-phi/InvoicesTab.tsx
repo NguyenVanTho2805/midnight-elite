@@ -12,6 +12,7 @@ import { groupInvoiceMessage, invoiceLinkDaysLeft, privateInvoiceMessage } from 
 import { Badge, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 import { vnMonthKey } from "@/lib/revenue";
 import { PaymentsDialog } from "./PaymentTools";
+import { AttachDialog, DiscountDialog } from "./LooseAndDiscount";
 import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/lib/tuitionPayment";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 
@@ -25,6 +26,7 @@ export interface InvoiceRow {
   status: string; statusLabel: string; cancelReason: string | null; needsBankCheck: boolean; creditApplied: number;
   transferContent: string; qrUrl: string | null;
   zaloOpenedAt: string | null; parentViewedAt: string | null;
+  looseCount: number; looseTotal: number; // HP-24: khoản phí rời có thể gộp vào phiếu nháp
 }
 interface Summary { count: number; totalDue: number; totalPaid: number; totalRemaining: number }
 type Dialog =
@@ -32,6 +34,8 @@ type Dialog =
   | { kind: "cancel"; inv: InvoiceRow }
   | { kind: "pay"; inv: InvoiceRow }
   | { kind: "payments"; inv: InvoiceRow }
+  | { kind: "attach"; inv: InvoiceRow }
+  | { kind: "discount" }
   | { kind: "zalo"; inv: InvoiceRow };
 
 function lastMonths(now = new Date()): string[] {
@@ -132,6 +136,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
           </select>
         </label>
         <KinButton onClick={issue} loading={busy === "issue"}>Lập phiếu cả lớp</KinButton>
+        <KinButton variant="ghost" onClick={() => setDialog({ kind: "discount" })}>Giảm giá %</KinButton>
         {drafts > 0 && <KinButton variant="secondary" onClick={sendAllDrafts} loading={busy === "send-all"}>Gửi {drafts} phiếu nháp</KinButton>}
       </div>
 
@@ -213,6 +218,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 </>)}
                 {i.status === "draft" && <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>}
                 {i.paidAmount > 0 && <KinButton variant="ghost" onClick={() => setDialog({ kind: "payments", inv: i })}>Khoản đã thu</KinButton>}
+                {i.status === "draft" && i.looseCount > 0 && <KinButton variant="secondary" onClick={() => setDialog({ kind: "attach", inv: i })}>Gộp {i.looseCount} khoản rời ({vnd(i.looseTotal)})</KinButton>}
                 {i.status !== "paid" && i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "amount", inv: i })}>Sửa số tiền</KinButton>}
                 {i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "cancel", inv: i })}>Huỷ phiếu</KinButton>}
                 {i.status === "cancelled" && <KinButton variant="secondary" loading={busy === i.id} onClick={() => act(i, { action: "restore" }, "Đã khôi phục phiếu về nháp.")}>Khôi phục</KinButton>}
@@ -229,6 +235,8 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
       {dialog?.kind === "zalo" && <ZaloDialog inv={dialog.inv} onClose={() => setDialog(null)} onOpened={() => load(yearMonth)} />}
       {dialog?.kind === "pay" && <PayDialog inv={dialog.inv} onClose={() => setDialog(null)}
         onSubmit={async (amount, excess, paidOn, method) => { if (await act(dialog.inv, { action: "record_payment", amount, paidOn, method, ...(excess ? { excess } : {}) }, "Đã ghi nhận tiền.")) setDialog(null); }} />}
+      {dialog?.kind === "attach" && <AttachDialog invoiceId={dialog.inv.id} code={dialog.inv.code} studentName={dialog.inv.studentName} onClose={() => setDialog(null)} onDone={() => load(yearMonth)} />}
+      {dialog?.kind === "discount" && <DiscountDialog onClose={() => setDialog(null)} />}
       {dialog?.kind === "payments" && <PaymentsDialog invoiceId={dialog.inv.id} code={dialog.inv.code} studentName={dialog.inv.studentName} onClose={() => setDialog(null)} onChanged={() => load(yearMonth)} />}
     </div>
   );

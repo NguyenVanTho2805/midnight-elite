@@ -244,3 +244,52 @@ export async function loadUninvoicedCharges(tx: Tx, a: { tutorId: string; studen
   });
   return rows.map(r => ({ id: r.id, courseId: r.courseId, courseName: r.course.name, kind: r.kind, label: r.label, amount: r.amount, units: r.units, rate: r.rate, mode: r.mode, dateKey: r.dateKey }));
 }
+
+// ─── HP-18/HP-19: phí khác áp chung cả lớp ───────────────────────────────────
+export type ExtraFeeResult =
+  | { ok: true; created: number; skippedDuplicate: number; total: number }
+  | { ok: false; status: number; error: string };
+
+/**
+ * Thêm một khoản phí (tài liệu, quỹ lớp, phí thi…) cho mọi em đang học lớp (hoặc danh sách `studentIds`). Mỗi em một dòng FeeCharge
+ * kind="extra"; vào phiếu của tháng chứa `dateKey` khi lập phiếu, hoặc gộp vào phiếu nháp bằng "gộp khoản rời" (HP-24).
+ * Chống bấm đúp: dòng GIỐNG HỆT (lớp, em, tên, ngày, số tiền) chưa vào phiếu thì bỏ qua, không tạo lần hai.
+ * Dùng được cho cả lớp cách cũ: chỉ thêm một dòng phí mà gia sư chủ động thêm, không đổi cách tính nào.
+ */
+export async function addExtraFee(a: { courseId: string; by: string; label: string; amount: number; dateKey: string; studentIds?: string[] | null }): Promise<ExtraFeeResult> {
+  if (moneyPathsBlocked()) return { ok: false, status: 503, error: PREVIEW_BLOCKED_MESSAGE };
+  return prisma.$transaction(async tx => {
+    // Khoá theo (lớp, tên, ngày): hai lần bấm cùng lúc xếp hàng, lần sau thấy dòng của lần trước và bỏ qua (không tạo trùng).
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`extra-fee:${a.courseId}:${a.label}:${a.dateKey}`}))`;
+    const course = await tx.course.findUnique({ where: { id: a.courseId }, select: { ownerId: true } });
+    if (!course) return { ok: false, status: 404, error: "Không tìm thấy lớp" } as ExtraFeeResult;
+    const enrolled = await tx.enrollment.findMany({ where: { courseId: a.courseId, status: "active" }, select: { userId: true } });
+    const active = new Set(enrolled.map(e => e.userId));
+    let targets = [...active];
+    if (a.studentIds) {
+      const want = [...new Set(a.studentIds)];
+      if (want.length === 0 || want.some(id => !active.has(id))) return { ok: false, status: 400, error: "Có học sinh không học lớp này" } as ExtraFeeResult;
+      targets = want;
+    }
+    if (targets.length === 0) return { ok: false, status: 409, error: "Lớp chưa có học sinh nào" } as ExtraFeeResult;
+    if (targets.length > 300) return { ok: false, status: 400, error: "Mỗi lần tối đa 300 học sinh" } as ExtraFeeResult;
+    const tutorId = course.ownerId ?? a.by;
+    const dup = await tx.feeCharge.findMany({
+      where: { courseId: a.courseId, kind: "extra", label: a.label, dateKey: a.dateKey, amount: a.amount, studentId: { in: targets } },
+      select: { studentId: true },
+    });
+    const dupSet = new Set(dup.map(d => d.studentId));
+    const fresh = targets.filter(id => !dupSet.has(id));
+    for (const studentId of fresh) {
+      await tx.feeCharge.create({ data: { tutorId, courseId: a.courseId, studentId, kind: "extra", dateKey: a.dateKey, yearMonth: a.dateKey.slice(0, 7), amount: a.amount, rateSource: "class", mode: "extra", label: a.label } });
+    }
+    return { ok: true, created: fresh.length, skippedDuplicate: dupSet.size, total: fresh.length * a.amount } as ExtraFeeResult;
+  });
+}
+
+/** Gỡ một khoản phí khác CHƯA vào phiếu (đã vào phiếu thì đóng băng, không gỡ). */
+export async function removeExtraFee(courseId: string, chargeId: string): Promise<boolean> {
+  if (moneyPathsBlocked()) return false;
+  const r = await prisma.feeCharge.deleteMany({ where: { id: chargeId, courseId, kind: "extra", invoiceId: null } });
+  return r.count === 1;
+}

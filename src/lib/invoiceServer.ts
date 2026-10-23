@@ -13,7 +13,7 @@ import type { SessionPayload } from "@/lib/session";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { notify } from "@/lib/notify";
 import { computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
-import { FEE_MODE_LEGACY, composeFinalAmount, groupChargeLines, normalizeFeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_LEGACY, composeFinalAmount, groupChargeLines, normalizeFeeMode, percentAmount } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, ensureCourseCharges, loadUninvoicedCharges, moneyPathsBlocked } from "@/lib/feeChargeServer";
 import {
   INVOICE_STATUS, INVOICE_STATUS_LABEL, PARENT_VISIBLE_STATUSES, OPEN_STATUSES, buildInvoiceQrUrl, buildTransferContent,
@@ -136,8 +136,12 @@ export async function issueInvoice(opts: {
 
       const b = computeMonthlyFee({ subjects, override: override?.pricePerSession ?? null, scholarship: opts.scholarship, discount: opts.discount });
       const chargesTotal = chargeRows.reduce((sum, r) => sum + r.amount, 0);
-      // chargesTotal = 0 (mọi lớp cũ) → composeFinalAmount trả đúng b.finalAmount: phiếu cũ không lệch một đồng.
-      const finalAmount = composeFinalAmount(b, chargesTotal);
+      // HP-32: giảm giá % gia sư đặt cho em (nếu có). Không có dòng nào → percent 0 → đường cũ.
+      const discountRow = await tx.studentDiscount.findUnique({ where: { tutorId_studentId: { tutorId, studentId } }, select: { percent: true } });
+      const percent = discountRow?.percent ?? 0;
+      if (percent > 0 && moneyPathsBlocked()) return { ok: false, reason: PREVIEW_BLOCKED_MESSAGE } as IssueResult;
+      // chargesTotal = 0 và percent = 0 (mọi lớp cũ chưa đặt giảm giá) → composeFinalAmount trả đúng b.finalAmount: phiếu cũ không lệch một đồng.
+      const finalAmount = composeFinalAmount(b, chargesTotal, percent);
       if (finalAmount <= 0) return { ok: false, reason: "Số phải đóng bằng 0đ" } as IssueResult;
 
       const credit = await consumeCredits(tx, tutorId, studentId, finalAmount);
@@ -154,9 +158,12 @@ export async function issueInvoice(opts: {
             paidAmount: 0,
             status: paidByCredit ? INVOICE_STATUS.PAID : INVOICE_STATUS.DRAFT,
             paidAt: paidByCredit ? new Date() : null,
-            breakdown: (chargeRows.length === 0
+            breakdown: (chargeRows.length === 0 && percent === 0
               ? { ...b, creditApplied: credit.used, creditParts: credit.parts, grossDue: b.finalAmount } // lớp cũ: đúng hình dạng và số như trước
-              : { ...b, finalAmount, chargeLines: groupChargeLines(chargeRows), chargesTotal, creditApplied: credit.used, creditParts: credit.parts, grossDue: finalAmount }
+              : {
+                  ...b, finalAmount, chargeLines: groupChargeLines(chargeRows), chargesTotal, creditApplied: credit.used, creditParts: credit.parts, grossDue: finalAmount,
+                  ...(percent > 0 ? { percentOff: percent, percentAmount: percentAmount(b.gross + chargesTotal, percent) } : {}),
+                }
             ) as unknown as Prisma.InputJsonValue,
           },
         });

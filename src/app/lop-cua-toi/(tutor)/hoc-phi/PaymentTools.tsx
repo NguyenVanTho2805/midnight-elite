@@ -40,7 +40,7 @@ export function ReverseDialog({ txId, onClose, onDone }: { txId: string; onClose
     return () => { alive = false; };
   }, [txId, tick]);
 
-  async function confirm() {
+  async function submitReversal() {
     setBusy(true);
     const r = await callApi<{ error?: string; outcome?: string }>(`/api/tutor/bank-transactions/${txId}/reverse`, { method: "POST", body: JSON.stringify({ reason: reason.trim(), confirm: true }) });
     setBusy(false);
@@ -100,7 +100,7 @@ export function ReverseDialog({ txId, onClose, onDone }: { txId: string; onClose
           <div className="flex justify-end gap-2 flex-wrap">
             <KinButton variant="ghost" onClick={onClose}>Giữ nguyên</KinButton>
             {plan?.ok && (
-              <KinButton disabled={!reason.trim()} loading={busy} onClick={() => void confirm()}
+              <KinButton disabled={!reason.trim()} loading={busy} onClick={() => void submitReversal()}
                 style={{ background: "var(--kin-tt-chu-loi)", borderColor: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Xác nhận hoàn tác</KinButton>
             )}
           </div>

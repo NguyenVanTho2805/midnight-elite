@@ -215,11 +215,38 @@ export function groupChargeLines(rows: readonly ChargeRowForInvoice[]): ChargeLi
   return out.sort((a, b) => (a.courseName < b.courseName ? -1 : a.courseName > b.courseName ? 1 : a.description < b.description ? -1 : 1));
 }
 
+/** Số tiền giảm = subtotal × percent / 100, làm tròn nửa lên, bằng số nguyên. */
+export function percentAmount(subtotal: number, percent: number): number {
+  return Math.floor((subtotal * percent * 2 + 100) / 200);
+}
+
 /**
- * Số phải đóng khi phiếu có cả cách cũ lẫn dòng phí mới.
- * chargesTotal = 0 (mọi phiếu của lớp cũ) → TRẢ ĐÚNG finalAmount của computeMonthlyFee, không tính lại — đảm bảo 0 đồng sai lệch.
+ * Số phải đóng khi phiếu có cả cách cũ lẫn dòng phí mới và/hoặc giảm giá phần trăm (HP-32).
+ * chargesTotal = 0 VÀ percent = 0 (mọi phiếu của lớp cũ chưa đặt giảm giá) → TRẢ ĐÚNG finalAmount của computeMonthlyFee, không tính lại
+ * — đảm bảo 0 đồng sai lệch. Ngược lại: (gốc cũ + dòng phí mới) − giảm % − học bổng − giảm trừ, sàn 0.
  */
-export function composeFinalAmount(legacy: { gross: number; scholarship: number; discount: number; finalAmount: number }, chargesTotal: number): number {
-  if (chargesTotal === 0) return legacy.finalAmount;
-  return Math.max(0, legacy.gross + chargesTotal - legacy.scholarship - legacy.discount);
+export function composeFinalAmount(legacy: { gross: number; scholarship: number; discount: number; finalAmount: number }, chargesTotal: number, percent = 0): number {
+  if (chargesTotal === 0 && percent === 0) return legacy.finalAmount;
+  const subtotal = legacy.gross + chargesTotal;
+  return Math.max(0, subtotal - percentAmount(subtotal, percent) - legacy.scholarship - legacy.discount);
+}
+
+// ─── HP-32 giảm giá phần trăm, HP-18/19 phí khác ─────────────────────────────
+export function validateDiscountPercent(v: unknown): { ok: true; percent: number } | { ok: false; error: string } {
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > 100) return { ok: false, error: "Giảm giá là số nguyên phần trăm từ 0 đến 100 (0 = bỏ giảm giá)" };
+  return { ok: true, percent: v };
+}
+
+export const EXTRA_LABEL_MAX = 60;
+export const EXTRA_AMOUNT_MIN = 1_000;
+export const EXTRA_AMOUNT_MAX = 50_000_000;
+export function validateExtraFee(i: { label: unknown; amount: unknown }): { ok: true; label: string; amount: number } | { ok: false; error: string } {
+  const label = typeof i.label === "string" ? i.label.trim().replace(/\s+/g, " ") : "";
+  if (!label) return { ok: false, error: "Vui lòng ghi tên khoản phí (ví dụ: tài liệu, quỹ lớp, phí thi)" };
+  if (label.length > EXTRA_LABEL_MAX) return { ok: false, error: `Tên khoản phí tối đa ${EXTRA_LABEL_MAX} ký tự` };
+  const a = i.amount;
+  if (typeof a !== "number" || !Number.isInteger(a) || a < EXTRA_AMOUNT_MIN || a > EXTRA_AMOUNT_MAX) {
+    return { ok: false, error: `Số tiền phải là số nguyên đồng từ ${EXTRA_AMOUNT_MIN.toLocaleString("vi-VN")} đến ${EXTRA_AMOUNT_MAX.toLocaleString("vi-VN")}` };
+  }
+  return { ok: true, label, amount: a };
 }

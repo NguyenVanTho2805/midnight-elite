@@ -5,6 +5,7 @@
 //     cancel { reason }        huỷ (lưu lý do), bất kỳ lúc nào trừ khi đã huỷ
 //     restore                  huỷ → nháp
 //     set_amount { amountDue, reason }  sửa số tiền; MÃ PHIẾU KHÔNG ĐỔI (GD-19)
+//     attach_charges { preview?, chargeIds? }  HP-24: gộp khoản phí rời (chưa vào phiếu nào) vào PHIẾU NHÁP; preview:true chỉ tính
 //     record_payment { amount, excess?, paidOn?, method? } ghi tiền mặt / tiền không qua SePay
 //                              — cùng luật đủ/thiếu/dư; dư phải chọn
 //                              excess: "credit" (trừ tháng sau) | "refunded"
@@ -18,6 +19,7 @@ import { logAction } from "@/lib/auditLog";
 import { addCredit, applyToInvoice, lockInvoice, requireTutor } from "@/lib/invoiceServer";
 import { INVOICE_STATUS_LABEL, remainingOf, statusAfterPayment, type InvoiceStatus } from "@/lib/tuitionInvoice";
 import { isPaymentMethod, manualPaymentContent, resolvePaidOn } from "@/lib/tuitionPayment";
+import { attachLooseCharges, listLooseCharges, linesForAttach } from "@/lib/looseChargeServer";
 
 const MAX_VND = 1_000_000_000;
 
@@ -33,8 +35,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const inv = await loadOwned(id, auth.userId);
   if (!inv) return NextResponse.json({ error: "Không tìm thấy phiếu" }, { status: 404 });
   const txs = await prisma.bankTransaction.findMany({ where: { invoiceId: id }, orderBy: { occurredAt: "desc" }, take: 50 });
+  const loose = inv.status === "draft" ? await listLooseCharges(auth.userId, inv.studentId, inv.yearMonth) : [];
   return NextResponse.json({
     invoice: { ...inv, remaining: remainingOf(inv), statusLabel: INVOICE_STATUS_LABEL[inv.status as InvoiceStatus] },
+    looseCharges: loose.map(l => ({ id: l.id, courseName: l.courseName, kind: l.kind, label: l.label, amount: l.amount, dateKey: l.dateKey })),
+    looseLines: linesForAttach(loose, inv.yearMonth),
     transactions: txs.map(t => ({ id: t.id, provider: t.provider, method: t.method, amount: t.amount, appliedAmount: t.appliedAmount, status: t.status, resolution: t.resolution, occurredAt: t.occurredAt.toISOString() })),
   });
 }
@@ -100,6 +105,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (h.http) return NextResponse.json({ error: h.msg }, { status: h.http });
         throw e;
       }
+    }
+
+    case "attach_charges": {
+      const ids = body?.chargeIds;
+      if (ids !== undefined && (!Array.isArray(ids) || ids.length === 0 || ids.some(x => typeof x !== "string"))) return NextResponse.json({ error: "chargeIds không hợp lệ" }, { status: 400 });
+      const preview = body?.preview === true;
+      const out = await attachLooseCharges({ invoiceId: id, tutorId: auth.userId, chargeIds: (ids as string[] | undefined) ?? null, preview });
+      if (!out.ok) return NextResponse.json({ error: out.error }, { status: out.status });
+      if (!preview) await logAction(auth.userId, "invoice.attach_charges", "TuitionInvoice", id, { code: inv.code, count: out.count, total: out.total, net: out.net, from: out.amountDueFrom, to: out.amountDueTo });
+      return NextResponse.json(out);
     }
 
     case "record_payment": {

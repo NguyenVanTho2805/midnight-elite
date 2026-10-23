@@ -16,6 +16,7 @@ import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_ROW } from "@/components
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
 import LopHocPhi from "@/components/tutor/LopHocPhi";
+import LopPhiKhac from "@/components/tutor/LopPhiKhac";
 import type { FeeMode } from "@/lib/tuitionFee";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "ma-moi" | "hoc-phi" | "cong-dong";
@@ -149,7 +150,12 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           </section>
         )}
 
-        {tab === "hoc-phi" && <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />}
+        {tab === "hoc-phi" && (
+          <div className="space-y-[var(--kin-cach-muc)]">
+            <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />
+            <LopPhiKhac courseId={d.courseId} />
+          </div>
+        )}
 
         {tab === "cong-dong" && (
           <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"

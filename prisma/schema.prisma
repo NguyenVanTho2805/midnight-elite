@@ -1371,6 +1371,23 @@ model FeeCharge {
   @@map("fee_charges")
 }
 
+// HP-32 (23/10/2026): giảm giá PHẦN TRĂM của gia sư cho một học sinh, áp tự động khi LẬP PHIẾU MỚI (phiếu đã lập không đổi).
+// Một dòng cho mỗi cặp (gia sư, học sinh): đặt lại thì ghi đè, xoá = đặt 0%. Lịch sử đổi nằm ở nhật ký hệ thống. Bảng MỚI.
+model StudentDiscount {
+  id        String   @id @default(cuid())
+  tutorId   String
+  studentId String
+  percent   Int // 1..100
+  note      String?  @db.Text
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tutorId, studentId])
+  @@index([tutorId])
+  @@map("student_discounts")
+}
+
 // ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────
 // User yêu cầu nạp Coin (chủ yếu gia sư nạp để mua VIP, D01 chốt). Chuyển
 // khoản ngân hàng thủ công — admin đối chiếu rồi approve, hệ thống cộng

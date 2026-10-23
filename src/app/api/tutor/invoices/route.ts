@@ -33,7 +33,14 @@ export async function GET(req: NextRequest) {
     take: 500,
   });
   const now = Date.now();
+  // HP-24: phiếu NHÁP còn khoản phí rời (chưa vào phiếu nào) có thể gộp thêm.
+  const draftRows = rows.filter(r => r.status === "draft");
+  const looseAll = draftRows.length
+    ? await prisma.feeCharge.findMany({ where: { tutorId: auth.userId, invoiceId: null, studentId: { in: draftRows.map(r => r.studentId) } }, select: { studentId: true, yearMonth: true, amount: true } })
+    : [];
+  const looseOf = (r: { status: string; studentId: string; yearMonth: string }) => (r.status === "draft" ? looseAll.filter(l => l.studentId === r.studentId && l.yearMonth <= r.yearMonth) : []);
   const items = rows.map(r => ({
+    looseCount: looseOf(r).length, looseTotal: looseOf(r).reduce((s, l) => s + l.amount, 0),
     id: r.id, code: r.code, yearMonth: r.yearMonth, studentId: r.student.id, studentName: r.student.name,
     amountDue: r.amountDue, paidAmount: r.paidAmount, remaining: remainingOf(r),
     status: r.status as InvoiceStatus, statusLabel: INVOICE_STATUS_LABEL[r.status as InvoiceStatus] ?? r.status,
