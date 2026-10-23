@@ -37,8 +37,5 @@ export function bankMemo(userId: string): string {
   return `KIN ${userId.slice(0, 8).toUpperCase()}`;
 }
 
-export const BANK_INFO = {
-  bankName:   "Vietcombank",
-  accountNo:  "0123456789",
-  accountName: "CONG TY KIN EDUCATION",
-};
+// KHÔNG còn số tài khoản viết cứng ở đây (23/10/2026, KiN Pro giai đoạn 0): bản cũ hiển thị Vietcombank 0123456789 / "CONG TY KIN EDUCATION" là GIẢ,
+// và KiN chưa có pháp nhân. Thông tin nhận tiền lấy từ biến môi trường ở src/lib/coinTopup.ts (getTopupBankInfo); thiếu thì không hiện.

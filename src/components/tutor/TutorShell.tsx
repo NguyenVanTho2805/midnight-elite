@@ -55,6 +55,7 @@ export default function TutorShell({
   const groups: MoreGroup[] = [
     ...MORE_BASE,
     { title: "Tài khoản", links: [
+      { label: "Gói của tôi", href: "/lop-cua-toi/goi" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat" },
       ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module" }] : []),
     ] },
