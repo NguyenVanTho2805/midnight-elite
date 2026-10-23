@@ -22,7 +22,7 @@ function walk(dir: string, out: string[] = []): string[] {
   const tTile = files.filter(f => /font-black text-white">T<\/span>/.test(readFileSync(f, "utf8"))).map(f => f.slice(root.length + 1));
   check("không còn ô chữ 'T' nào", tTile.length === 0, tTile);
   const users = files.filter(f => /<KinLoader\b/.test(readFileSync(f, "utf8"))).map(f => f.slice(root.length + 1));
-  check("KinLoader được dùng ở màn chờ toàn trang (AuthGuard) và 5 trang có chỗ chờ", users.length === 6 && users.some(f => f.endsWith("AuthGuard.tsx")), users);
+  check("KinLoader được dùng ở màn chờ toàn trang (AuthGuard) và 4 trang có chỗ chờ (/giang-vien đã bỏ khối Top học viên khi dựng lại theo Figma KH-02)", users.length === 5 && users.some(f => f.endsWith("AuthGuard.tsx")), users);
   const loaderSrc = readFileSync(join(root, "src/components/kin/KinLoader.tsx"), "utf8");
   check("KinLoader dùng chính KinMark (đổi logo một chỗ thì màn chờ đổi theo)", /import \{ KinMark \} from "\.\/KinLogo"/.test(loaderSrc) && /<KinMark\b/.test(loaderSrc));
 

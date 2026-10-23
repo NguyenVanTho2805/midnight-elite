@@ -12,7 +12,7 @@ import ProfileTracker from "@/components/tutor/ProfileTracker";
 import TutorProfileHeader from "@/components/tutor/TutorProfileHeader";
 import ReportProfileButton from "@/components/tutor/ReportProfileButton";
 import { profileOg } from "@/lib/funnel";
-import { kinButtonClass } from "@/components/kin/Button";
+import KinLinkButton from "@/components/tutor/KinLinkButton";
 import { hasPublicArea, priceText } from "@/lib/tutorArea";
 import type { PublicArea } from "@/lib/tutorArea";
 
@@ -144,19 +144,18 @@ export default async function MentorProfilePage({ params }: { params: Promise<{ 
               </div>
             )}
             {/* FE-114: CTA — trỏ sang lớp đầu tiên, hoặc danh sách lớp. */}
-            <Link href={classes[0] ? `/khoa-hoc/${classes[0].id}` : "/khoa-hoc"} className={kinButtonClass("primary")}>
+            <KinLinkButton href={classes[0] ? `/khoa-hoc/${classes[0].id}` : "/khoa-hoc"}>
               Đăng ký học với {firstName}
-            </Link>
+            </KinLinkButton>
             {/* PH-215: số Zalo chỉ hiện khi gia sư bật "Hiện số Zalo trên hồ sơ" (tắt sẵn); Messenger khi gia sư đã nhập tên trang. */}
             {tutor.zalo && (
               <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-phu)" }}>Liên hệ qua Zalo: <b style={{ color: "var(--kin-chu-chinh)" }}>{tutor.zalo}</b></p>
             )}
             {(tutor.zalo || tutor.messenger) && (
               <div className="flex gap-2 flex-wrap">
-                {tutor.zalo && <a href={`https://zalo.me/${tutor.zalo}`} rel="noopener noreferrer" target="_blank" className={kinButtonClass("secondary")}>Nhắn Zalo</a>}
+                {tutor.zalo && <KinLinkButton external variant="secondary" href={`https://zalo.me/${tutor.zalo}`}>Nhắn Zalo</KinLinkButton>}
                 {tutor.messenger && (
-                  <a href={`https://m.me/${tutor.messenger}?text=${encodeURIComponent(`Chào ${tutor.name}, mình xem hồ sơ trên KiN và muốn hỏi về lớp học.`)}`} rel="noopener noreferrer" target="_blank"
-                    className={kinButtonClass("secondary")}>Nhắn Messenger</a>
+                  <KinLinkButton external variant="secondary" href={`https://m.me/${tutor.messenger}?text=${encodeURIComponent(`Chào ${tutor.name}, mình xem hồ sơ trên KiN và muốn hỏi về lớp học.`)}`}>Nhắn Messenger</KinLinkButton>
                 )}
               </div>
             )}

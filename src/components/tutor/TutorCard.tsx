@@ -52,7 +52,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
                 style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>Đã xác minh</span>
             )}
           </div>
-          {subjectLine && <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-chinh)" }}>{subjectLine}</p>}
+          {subjectLine && <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-chinh)" }} data-testid={where ? "tutor-area" : undefined}>{subjectLine}</p>}
         </div>
       </div>
 
@@ -60,7 +60,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
 
       {/* ĐX-06: khu vực + hình thức là TỰ KHAI; giá chỉ khi gia sư tự bật */}
       {area && (area.city || area.district || area.mode || area.price !== null || area.credential) && (
-        <div className="flex flex-col gap-1 text-[length:var(--kin-co-small)]" data-testid="tutor-area">
+        <div className="flex flex-col gap-1 text-[length:var(--kin-co-small)]" data-testid="tutor-area-detail">
           {area.credential && <p style={{ color: "var(--kin-chu-chinh)" }}>{area.credential} <span style={{ color: "var(--kin-chu-mo)" }}>(tự khai)</span></p>}
           {modeLine && <p style={{ color: "var(--kin-chu-mo)" }}>{modeLine}</p>}
         </div>
