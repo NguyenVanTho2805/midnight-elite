@@ -70,10 +70,13 @@ export default function TutorShell({
       : isUnder(pathname, m.href),
     desktopOnly: !MOBILE_KEYS.has(m.key),
   }));
-  // Figma có mục "Học sinh" (sau Lớp) nhưng chưa có trang riêng cho gia sư: /admin/hoc-sinh là trang quản trị và chuyển gia sư về /lop-cua-toi.
-  // Không dựng mục trỏ vào đường chết; danh sách học viên hiện nằm trong từng lớp (mục Lớp). Ghi trong báo cáo: "CHƯA CÓ TÍNH NĂNG".
+  // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp và đi cùng module Lớp: Lớp bật thì Học sinh hiện. Trang riêng của gia sư
+  // (/lop-cua-toi/hoc-sinh), chỉ học sinh thuộc lớp của mình; không dùng /admin/hoc-sinh (trang quản trị).
+  const withStudents = mods.flatMap<ModuleItem>(m => m.key === "lop"
+    ? [m, { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", desktopOnly: true }]
+    : [m]);
   const items: ModuleItem[] = [
-    ...mods,
+    ...withStudents,
     { key: "cai-dat", label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat", desktopOnly: true },
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
