@@ -26,6 +26,14 @@ import { planDocumentPreview, fileExtOf } from "@/lib/mediaLink";
 // MD-09: địa chỉ tài liệu đi qua planDocumentPreview (src/lib/mediaLink.ts). CHỈ nhúng nguồn tin cậy (Cloudinary của KiN, Google Docs/Drive,
 // đường dẫn nội bộ /api/media); javascript:, data:, http: và máy chủ lạ KHÔNG bao giờ vào iframe, chỉ cho "mở ở tab mới".
 
+function googlePreviewUrl(url: string): string | null {
+  const docs = url.match(/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([^/?#]+)/);
+  if (docs) return `https://docs.google.com/${docs[1]}/d/${docs[2]}/preview`;
+  const drive = url.match(/^https:\/\/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if (drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
+  return null;
+}
+
 function downloadFilename(name: string, url: string): string {
   const ext = fileExtOf(url);
   return ext && !name.toLowerCase().endsWith(`.${ext}`) ? `${name}.${ext}` : name;
@@ -49,9 +57,20 @@ function ViewerContent() {
       </div>
     );
   }
-  // Lớp 1 (bảo mật, ở trên): checkViewerUrl loại mọi địa chỉ ngoài allowlist. Lớp 2: planDocumentPreview chỉ quyết định cách xem trước.
-  const plan = planDocumentPreview(check.url);
-  // Chỉ có địa chỉ đã qua kiểm mới được đặt vào href: plan.src là địa chỉ chuẩn hoá https hoặc đường dẫn /api/media.
+  // Lớp 1 (bảo mật, ở trên): checkViewerUrl loại mọi địa chỉ ngoài allowlist; từ đây trở xuống chỉ có địa chỉ đã qua kiểm (check.url).
+  // Lớp 2: quyết định cách xem trước. Google Docs/Drive đổi sang bản /preview; PDF đường dẫn nội bộ nhúng thẳng; Cloudinary của KiN dùng
+  // planDocumentPreview (PDF, ảnh, txt, Office qua Microsoft Office Viewer). Còn lại chỉ cho "mở ở tab mới", không bao giờ nhúng.
+  const safeUrl = check.url;
+  const googleSrc = googlePreviewUrl(safeUrl);
+  const planned = planDocumentPreview(safeUrl);
+  const internalPdf = check.kind === "internal" && fileExtOf(safeUrl) === "pdf";
+  const plan = googleSrc
+    ? { mode: "iframe" as const, src: googleSrc, downloadHref: null, sandbox: true, reason: null }
+    : internalPdf
+      ? { mode: "iframe" as const, src: safeUrl, downloadHref: safeUrl, sandbox: false, reason: null }
+      : planned.mode === "none" && check.kind === "internal"
+        ? { mode: "external" as const, src: safeUrl, downloadHref: safeUrl, sandbox: true, reason: "Loại tệp này không xem trước được. Bạn có thể tải về." }
+        : planned;
   const openHref = plan.mode === "none" ? null : plan.src;
   const btn = "flex-shrink-0 inline-flex items-center justify-center px-4 rounded-lg text-xs font-bold";
   const btnStyle = { minHeight: 44, background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" } as const;
@@ -61,8 +80,10 @@ function ViewerContent() {
       <header className="flex items-center justify-between gap-3 px-4 py-3 flex-shrink-0"
         style={{ background: "var(--kin-nen-trang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
         <p className="text-sm font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }}>{name}</p>
-        {plan.downloadHref ? (
-          <a href={plan.downloadHref} download={downloadFilename(name, check.url)} rel="noopener noreferrer" className={btn} style={btnStyle}>Tải xuống</a>
+        {googleSrc ? (
+          <a href={safeUrl} target="_blank" rel="noopener noreferrer" className={btn} style={btnStyle}>Mở trong Google Docs</a>
+        ) : plan.downloadHref ? (
+          <a href={plan.downloadHref} download={downloadFilename(name, safeUrl)} rel="noopener noreferrer" className={btn} style={btnStyle}>Tải xuống</a>
         ) : openHref ? (
           <a href={openHref} target="_blank" rel="noopener noreferrer" className={btn} style={btnStyle}>Mở ở tab mới</a>
         ) : null}
