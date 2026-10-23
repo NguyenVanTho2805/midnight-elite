@@ -23,9 +23,9 @@ export async function POST(
   try {
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
-      select: { lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
+      select: { mode: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
     });
-    if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
+    if (!assignment || assignment.mode === "azota" || assignmentId.startsWith("azota-")) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
     const courseId = assignment.lesson.chapter.section.courseId;
     const enrolled = await prisma.enrollment.findUnique({

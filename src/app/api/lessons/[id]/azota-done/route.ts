@@ -6,7 +6,7 @@ import { firstSafeHttpsLink, validateWorkLink } from "@/lib/mediaLink";
 
 // POST /api/lessons/[id]/azota-done — học sinh bấm "Em đã làm xong" cho bài Azota của bài giảng, kèm (không bắt buộc) LINK bài làm.
 // KiN không biết em đã làm trên Azota chưa nên đây là lời khai của em; gia sư thấy "đã làm / chưa làm" ở màn soạn bài.
-// Lưu vào AssignmentSubmission của một Assignment mode "azota" (tạo một lần, id cố định theo bài) nên dùng lại bảng nộp bài sẵn có và chấm điểm sẵn có.
+// Lưu vào bảng riêng LessonAzotaDone (KHÔNG tạo Assignment ảo: Assignment ảo lọt vào danh sách bài tập, hàng đợi chấm và số "chưa chấm" của gia sư).
 // CHỈ lưu link dạng chữ (azota.vn). KHÔNG có đường nhận ảnh bài làm: học sinh dưới 16 tuổi.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSession();
@@ -33,31 +33,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     fileUrl = w.url; kind = "link";
   }
 
-  const assignmentId = `azota-${lessonId}`;
-  await prisma.assignment.upsert({
-    where: { id: assignmentId },
-    create: { id: assignmentId, lessonId, title: `Bài Azota: ${lesson.title}`.slice(0, 200), mode: "azota", maxPoints: 10, ownerId: lesson.chapter.section.course.ownerId },
-    update: {},
+  const row = await prisma.lessonAzotaDone.upsert({
+    where: { lessonId_userId: { lessonId, userId: auth.userId } },
+    create: { lessonId, userId: auth.userId, kind, linkUrl: fileUrl || null },
+    update: { kind, linkUrl: fileUrl || null, doneAt: new Date() },
+    select: { kind: true, linkUrl: true, doneAt: true },
   });
-  const sub = await prisma.assignmentSubmission.upsert({
-    where: { assignmentId_userId: { assignmentId, userId: auth.userId } },
-    create: { assignmentId, userId: auth.userId, fileUrl, fileName: null, kind },
-    update: { fileUrl, kind, submittedAt: new Date() },
-    select: { id: true, kind: true, fileUrl: true, submittedAt: true },
-  });
-  return NextResponse.json({ done: true, kind: sub.kind, link: sub.fileUrl || null, submittedAt: sub.submittedAt });
+  return NextResponse.json({ done: true, kind: row.kind, link: row.linkUrl, submittedAt: row.doneAt });
 }
 
-// DELETE — em bấm nhầm, bỏ đánh dấu. Không xoá bài đã được chấm điểm.
+// DELETE — em bấm nhầm, bỏ đánh dấu.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSession();
   if (isNextResponse(auth)) return auth;
   if (auth.role !== "student") return NextResponse.json({ error: "Chỉ học viên" }, { status: 403 });
   const { id: lessonId } = await params;
-  const assignmentId = `azota-${lessonId}`;
-  const sub = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_userId: { assignmentId, userId: auth.userId } }, select: { gradedAt: true } });
-  if (!sub) return NextResponse.json({ done: false });
-  if (sub.gradedAt) return NextResponse.json({ error: "Bài này đã được chấm điểm, không bỏ đánh dấu được" }, { status: 409 });
-  await prisma.assignmentSubmission.delete({ where: { assignmentId_userId: { assignmentId, userId: auth.userId } } });
+  await prisma.lessonAzotaDone.deleteMany({ where: { lessonId, userId: auth.userId } });
   return NextResponse.json({ done: false });
+}
+
+// GET — trạng thái của chính em (để hiện "Em đã làm xong" đúng khi mở lại trang). Chỉ học viên đã ghi danh lớp chứa bài.
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireSession();
+  if (isNextResponse(auth)) return auth;
+  if (auth.role !== "student") return NextResponse.json({ error: "Chỉ học viên" }, { status: 403 });
+  const { id: lessonId } = await params;
+  const row = await prisma.lessonAzotaDone.findUnique({ where: { lessonId_userId: { lessonId, userId: auth.userId } }, select: { kind: true, linkUrl: true, doneAt: true } });
+  return NextResponse.json({ done: !!row, kind: row?.kind ?? null, link: row?.linkUrl ?? null, submittedAt: row?.doneAt ?? null }, { headers: { "Cache-Control": "no-store" } });
 }

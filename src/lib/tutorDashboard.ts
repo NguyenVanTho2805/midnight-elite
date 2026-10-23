@@ -17,7 +17,7 @@ export async function loadTutorTodoCounts(tutorId: string, now: Date = new Date(
     prisma.tuitionInvoice.count({ where: { tutorId, status: "draft" } }),
     prisma.enrollment.count({ where: { status: "pending_consent", course: own } }),
     prisma.threadReport.count({ where: { status: "pending", thread: { deletedAt: null, course: own } } }),
-    prisma.assignmentSubmission.count({ where: { score: null, assignment: { lesson: { chapter: { section: { course: own } } } } } }),
+    prisma.assignmentSubmission.count({ where: { score: null, assignment: { mode: { not: "azota" }, lesson: { chapter: { section: { course: own } } } } } }),
     prisma.assignmentAnswer.count({
       where: { pointsAwarded: null, textAnswer: { not: null }, question: { type: "ESSAY", assignment: { lesson: { chapter: { section: { course: own } } } } } },
     }),

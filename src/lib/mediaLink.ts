@@ -109,7 +109,7 @@ function startSeconds(u: URL): number | null {
 function driveFileId(u: URL): string | null {
   if (!hostMatches(u.hostname, "drive.google.com")) return null;
   const m = /^\/file\/d\/([^/]+)/.exec(u.pathname);
-  const id = m ? m[1] : (u.pathname === "/open" || u.pathname === "/uc") ? u.searchParams.get("id") : null;
+  const id = m ? m[1] : (["open", "uc"].includes(u.pathname.split("/")[1] ?? "") && u.pathname.split("/").length === 2) ? u.searchParams.get("id") : null;
   return id && DRIVE_ID.test(id) ? id : null;
 }
 
@@ -166,7 +166,7 @@ export function classifyMediaLink(raw: string | null | undefined): MediaLinkInfo
     if (fid) return { ok: true, kind: "drive", label: "Google Drive", url, embedUrl: `https://drive.google.com/file/d/${fid}/preview`, id: fid, vimeoHash: null,
       suggestedType: "record", error: null,
       warning: "Trên Drive, hãy chia sẻ \"Bất kỳ ai có liên kết\" hoặc thêm email học sinh. Drive có thể giới hạn lượt xem khi nhiều em mở cùng lúc." };
-    if (/^\/drive\/(u\/\d+\/)?folders\//.test(u.pathname) || u.pathname.startsWith("/folders/"))
+    if (/^\/drive\/(u\/\d+\/)?folders\//.test(u.pathname) || u.pathname.split("/")[1] === "folders")
       return { ok: true, kind: "drive_folder", label: "Thư mục Google Drive", url, embedUrl: null, id: null, vimeoHash: null, suggestedType: "document", error: null,
         warning: "Đây là thư mục, không phải một video hay một tệp. Học sinh sẽ mở thư mục ở tab mới." };
     return invalid("Link Google Drive này chưa trỏ tới một tệp cụ thể. Mở tệp trên Drive, bấm Chia sẻ rồi sao chép link.", url);

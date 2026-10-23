@@ -14,6 +14,9 @@ import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
+import { checkLinkForSlot, type MediaSlot } from "@/lib/mediaLink";
+import { validateDocumentFile, DOCUMENT_ACCEPT, DOCUMENT_MAX_MB, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -103,6 +106,15 @@ function serializeUrls(urls: string[]): string | null {
   return JSON.stringify(filtered);
 }
 
+/** Câu lỗi đầu tiên nếu có link sai ô (máy chủ cũng kiểm lại lúc lưu: đây chỉ để báo sớm, trước khi tải tài liệu lên). */
+function firstBadLink(ls: LsForm): string | null {
+  const slots: [string[], MediaSlot, string][] = [[ls.videoUrls, "video", "Video bài giảng"], [ls.zoomUrls, "live", "Phòng Zoom"], [ls.azotaUrls, "azota", "Bài Azota"]];
+  for (const [urls, slot, name] of slots) {
+    for (const u of urls) { if (!u.trim()) continue; const r = checkLinkForSlot(u, slot); if (!r.ok) return `${name}: ${r.error}`; }
+  }
+  return null;
+}
+
 function parseTypes(raw: string | null | undefined): LessonDB["type"][] {
   if (!raw) return ["document"];
   try {
@@ -123,36 +135,6 @@ function deriveTypes(vUrls: string[], zUrls: string[], aUrls: string[]): LessonD
 function serializeTypes(types: LessonDB["type"][]): string {
   if (types.length === 1) return types[0];
   return JSON.stringify(types);
-}
-
-function UrlListEditor({ label, placeholder, urls, onChange }: {
-  label: string; placeholder: string; urls: string[]; onChange: (urls: string[]) => void;
-}) {
-  function update(idx: number, val: string) { const n = [...urls]; n[idx] = val; onChange(n); }
-  function add() { onChange([...urls, ""]); }
-  function remove(idx: number) { const n = urls.filter((_, i) => i !== idx); onChange(n.length ? n : [""]); }
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1.5">{label}</label>
-      <div className="space-y-2">
-        {urls.map((url, idx) => (
-          <div key={idx} className="flex gap-2">
-            <input
-              className="flex-1 px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-              value={url}
-              onChange={e => update(idx, e.target.value)}
-              placeholder={placeholder}
-            />
-            {urls.length > 1 && (
-              <button type="button" onClick={() => remove(idx)}
-                className="px-2.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-sm flex-shrink-0">✕</button>
-            )}
-          </div>
-        ))}
-      </div>
-      <button type="button" onClick={add} className="mt-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700">+ Thêm link</button>
-    </div>
-  );
 }
 
 // Nhãn "quiz" cố tình KHÔNG ghi "Bài Tập" — dễ hiểu nhầm là tính năng "Bài tập
@@ -586,17 +568,33 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
 
   function save(list: DocItem[]) { onChange(JSON.stringify(list)); }
 
+  const [problem, setProblem] = useState<string | null>(null);
+
   function add() {
     if (!newName.trim() || !newUrl.trim()) return;
-    const type = detectType(newUrl.trim(), newName.trim());
-    save([...docs, { name: newName.trim(), url: newUrl.trim(), type }]);
+    if (docs.length + pending.length >= MAX_DOCUMENTS_PER_LESSON) { setProblem(`Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.`); return; }
+    const chk = checkLinkForSlot(newUrl, "document");
+    if (!chk.ok) { setProblem(chk.error); return; }
+    setProblem(null);
+    const url = chk.info?.url ?? newUrl.trim();
+    save([...docs, { name: newName.trim(), url, type: detectType(url, newName.trim()) }]);
     setNewName(""); setNewUrl("");
   }
 
   function addPendingFile(file: File) {
+    // Báo TRƯỚC khi tải: sai loại hoặc quá nặng thì chặn ngay, kèm lý do, không đợi tới lúc bấm Lưu.
+    const chk = validateDocumentFile({ name: file.name, size: file.size, type: file.type });
+    if (!chk.ok) { setProblem(chk.error); return; }
+    if (docs.length + pending.length >= MAX_DOCUMENTS_PER_LESSON) { setProblem(`Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.`); return; }
+    setProblem(null);
     const name = newName.trim() || file.name.replace(/\.[^.]+$/, "");
     onPendingChange([...pending, { name, file }]);
     setNewName("");
+  }
+  function move(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= docs.length) return;
+    const n = [...docs]; [n[i], n[j]] = [n[j], n[i]]; save(n);
   }
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -623,10 +621,12 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
                 <p className="text-xs font-semibold text-gray-800 truncate">{d.name}</p>
                 <p className="text-xs text-gray-400 truncate">{d.url}</p>
               </div>
-              <a href={d.url} target="_blank" rel="noopener noreferrer"
-                className="text-xs px-2 py-1 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">↗</a>
-              <button onClick={() => remove(i)}
-                className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Đưa "${d.name}" lên trên`}
+                className="text-xs px-2 rounded flex-shrink-0 disabled:opacity-30" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-chu-mo)" }}>▲</button>
+              <button type="button" onClick={() => move(i, 1)} disabled={i === docs.length - 1} aria-label={`Đưa "${d.name}" xuống dưới`}
+                className="text-xs px-2 rounded flex-shrink-0 disabled:opacity-30" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-chu-mo)" }}>▼</button>
+              <button type="button" onClick={() => remove(i)} aria-label={`Bỏ "${d.name}"`}
+                className="text-xs px-2 rounded flex-shrink-0" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-tt-chu-loi)" }}>✕</button>
             </div>
           ))}
           {pending.map((p, i) => (
@@ -665,7 +665,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
         </div>
 
         <input ref={fileRef} type="file"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+          accept={DOCUMENT_ACCEPT}
           className="hidden" onChange={handleFileSelect} />
 
         {cloudinaryConfigured ? (
@@ -683,6 +683,10 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
         )}
       </div>
 
+      <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
+        Nhận PDF, Word, Excel, PowerPoint, TXT, ảnh · mỗi tệp tối đa {DOCUMENT_MAX_MB} MB · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài. Học sinh xem thử được rồi mới tải về.
+      </p>
+      {problem && <p role="alert" className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && pending.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}
@@ -1599,6 +1603,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
 
       } else if (panel.type === "add-lesson") {
         if (!ls.title.trim()) return;
+        { const bad = firstBadLink(ls); if (bad) { alert(bad); return; } }
         const documents = await resolvePendingDocuments();
         const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
           title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)),
@@ -1613,6 +1618,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         flash(`Đã thêm bài "${lesson.title}"`);
 
       } else if (panel.type === "edit-lesson") {
+        { const bad = firstBadLink(ls); if (bad) { alert(bad); return; } }
         const vUrl = serializeUrls(ls.videoUrls);
         const zUrl = serializeUrls(ls.zoomUrls);
         const aUrl = serializeUrls(ls.azotaUrls);
@@ -1690,6 +1696,18 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     void l;
   }
 
+  // Gia sư dán nhầm ô: lấy link khỏi ô hiện tại, đưa sang ô đúng (cùng một thao tác, không gõ lại).
+  function moveLink(from: MediaSlot, index: number, to: MediaSlot) {
+    const keyOf = (sl: MediaSlot) => (sl === "video" ? "videoUrls" : sl === "live" ? "zoomUrls" : sl === "azota" ? "azotaUrls" : null);
+    const fk = keyOf(from), tk = keyOf(to);
+    if (!fk || !tk) { flash("Link tài liệu hãy thêm ở mục Tài liệu đính kèm bên dưới."); return; }
+    setLs(f => {
+      const src = [...f[fk]]; const [link] = src.splice(index, 1);
+      const dst = [...f[tk].filter(u => u.trim()), link];
+      return { ...f, [fk]: src.length ? src : [""], [tk]: dst };
+    });
+  }
+
   const panelIsOpen = panel.type !== "none";
   const isTitlePanel = panel.type.includes("section") || panel.type.includes("chapter");
   const isLsPanel    = panel.type.includes("lesson");
@@ -1734,23 +1752,30 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Video & Links</p>
               <div className="space-y-4">
-                <UrlListEditor
-                  label="YouTube URL (cho bài Video)"
+                <SlotLinkEditor
+                  label="Link video bài giảng (YouTube, Vimeo, Google Drive)"
+                  slot="video"
                   placeholder="https://youtube.com/watch?v=..."
                   urls={ls.videoUrls}
                   onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
+                  onMove={moveLink}
+                  extra={<VideoUploadBox courseId={courseSlug} onUploaded={link => setLs(f => ({ ...f, videoUrls: [...f.videoUrls.filter(u => u.trim()), link] }))} />}
                 />
-                <UrlListEditor
-                  label="Zoom URL (cho bài Live)"
+                <SlotLinkEditor
+                  label="Link phòng Zoom (cho bài trực tiếp)"
+                  slot="live"
                   placeholder="https://zoom.us/j/..."
                   urls={ls.zoomUrls}
                   onChange={urls => setLs(f => ({ ...f, zoomUrls: urls }))}
+                  onMove={moveLink}
                 />
-                <UrlListEditor
-                  label="Azota URL (bài tập ngoài Azota, không bắt buộc)"
+                <SlotLinkEditor
+                  label="Link bài Azota (không bắt buộc)"
+                  slot="azota"
                   placeholder="https://azota.vn/..."
                   urls={ls.azotaUrls}
                   onChange={urls => setLs(f => ({ ...f, azotaUrls: urls }))}
+                  onMove={moveLink}
                 />
                 <div className="flex items-center gap-2 flex-wrap pt-1">
                   <span className="text-xs text-gray-400">Loại bài:</span>
@@ -1775,6 +1800,9 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
               pending={ls.pendingDocuments}
               onPendingChange={p => setLs(f => ({ ...f, pendingDocuments: p }))}
             />
+            {panel.type === "edit-lesson" && ls.azotaUrls.some(u => u.trim()) && (
+              <AzotaStatusTable lessonId={panel.lessonId} />
+            )}
             {panel.type === "edit-lesson" && (
               <AssignmentEditor lessonId={panel.lessonId} />
             )}

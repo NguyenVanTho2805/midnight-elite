@@ -19,12 +19,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const courseId = lesson.chapter.section.courseId;
   const [students, subs] = await Promise.all([
     prisma.enrollment.findMany({ where: { courseId, status: "active" }, select: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 200 }),
-    prisma.assignmentSubmission.findMany({ where: { assignmentId: `azota-${lessonId}` }, select: { userId: true, kind: true, fileUrl: true, submittedAt: true } }),
+    prisma.lessonAzotaDone.findMany({ where: { lessonId }, select: { userId: true, kind: true, linkUrl: true, doneAt: true } }),
   ]);
   const byUser = new Map(subs.map(s => [s.userId, s]));
   const rows = students.map(e => {
     const s = byUser.get(e.user.id);
-    return { userId: e.user.id, name: e.user.name, done: !!s, kind: s?.kind ?? null, link: s?.fileUrl || null, submittedAt: s?.submittedAt ?? null };
+    return { userId: e.user.id, name: e.user.name, done: !!s, kind: s?.kind ?? null, link: s?.linkUrl || null, submittedAt: s?.doneAt ?? null };
   });
   return NextResponse.json({ total: rows.length, done: rows.filter(r => r.done).length, rows }, { headers: { "Cache-Control": "no-store" } });
 }
