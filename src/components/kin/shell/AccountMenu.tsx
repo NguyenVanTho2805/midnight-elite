@@ -22,7 +22,7 @@ export function AccountMenu({ name, email, links, onLogout, onOpenMore }: {
   const menuRef = useRef<HTMLDivElement>(null);
   const id = useId();
 
-  const items = useCallback(() => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []).filter(e => e.offsetParent !== null) /* bỏ mục đang ẩn (vd. "Tất cả mục" trên máy tính) */, []);
+  const items = useCallback(() => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []).filter(e => e.getClientRects().length > 0) /* bỏ mục đang ẩn (vd. "Tất cả mục" trên máy tính) */, []);
   const close = useCallback((restoreFocus: boolean) => {
     setOpen(false);
     if (restoreFocus) requestAnimationFrame(() => btnRef.current?.focus());

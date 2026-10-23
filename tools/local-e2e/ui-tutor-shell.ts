@@ -36,10 +36,10 @@ import { prisma } from "@/lib/prisma";
 
   section("Thanh module");
   check("nhãn vai trò 'GIA SƯ'", await rail().getByText("GIA SƯ").isVisible());
-  for (const m of ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí", "Cài đặt"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  for (const m of ["Hộp việc", "Lịch", "Lớp", "Bài tập", "Thư viện", "Học phí", "Cài đặt"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
   const order = await rail().getByRole("link").allInnerTexts();
-  const idx = ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí", "Cài đặt"].map(l => order.findIndex(t => t.startsWith(l)));
-  check("đúng thứ tự Figma 299:111821: Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện, Học phí, Cài đặt (đợt dựng nền 23/10/2026: thêm Học sinh + Cài đặt, đổi nhãn Bài KT thành Bài tập)", idx.every((v, i) => v >= 0 && (i === 0 || v > idx[i - 1])), order);
+  const idx = ["Hộp việc", "Lịch", "Lớp", "Bài tập", "Thư viện", "Học phí", "Cài đặt"].map(l => order.findIndex(t => t.startsWith(l)));
+  check("đúng thứ tự Figma 299:111821: Hộp việc, Lịch, Lớp, Bài tập, Thư viện, Học phí, Cài đặt theo Figma 299:111821 (đợt dựng nền 23/10/2026: thêm Cài đặt, đổi nhãn Bài KT thành Bài tập; mục Học sinh của Figma chưa có trang cho gia sư nên chưa hiện — /admin/hoc-sinh chuyển gia sư về /lop-cua-toi)", idx.every((v, i) => v >= 0 && (i === 0 || v > idx[i - 1])), order);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
   check("Hộp việc là mục đang ở (aria-current), chỉ một nút", await mod("Hộp việc").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
   const clipped = await pg.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a span.truncate, nav[aria-label="${RAIL}"] button span.truncate')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth).map(e => e.textContent)`) as string[];
@@ -54,7 +54,7 @@ import { prisma } from "@/lib/prisma";
   check("số đỏ trên Hộp việc = tổng việc (API) và có nhãn chữ", total === 4 && (await badge.innerText()) === String(total) && (await badge.getAttribute("aria-label")) === `${total} việc cần xử lý`, total);
   check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem").count() === 1);
   check("dải trên 48px: logo KiN dẫn về Hộp việc + tên người dùng", await pg.getByRole("link", { name: /KiN — Hộp việc/ }).getAttribute("href") === "/lop-cua-toi" && await pg.getByText("Cô Lan").first().isVisible());
-  check("Bài tập → /admin/thi-thu (chạy ngay trên tên miền chính, trong vỏ gia sư); Thư viện → /thu-vien; Học sinh → /admin/hoc-sinh; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/admin/thi-thu" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Học sinh").getAttribute("href") === "/admin/hoc-sinh" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
+  check("Bài tập → /admin/thi-thu (chạy ngay trên tên miền chính, trong vỏ gia sư); Thư viện → /thu-vien; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/admin/thi-thu" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
 
   section("Danh sách + khung đọc");
   const opts = lb.getByRole("option");

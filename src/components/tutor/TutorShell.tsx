@@ -16,7 +16,7 @@ import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
-const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "hoc-sinh": "nguoi", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
+const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
 /** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
 const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
 // Các trang /admin/* mà gia sư dùng (đề thi, ngân hàng đề, quản lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ này (src/lib/hostRouting.ts,
@@ -70,9 +70,8 @@ export default function TutorShell({
       : isUnder(pathname, m.href),
     desktopOnly: !MOBILE_KEYS.has(m.key),
   }));
-  // Học sinh: ngay sau Lớp (nếu Lớp đang bật). Chỉ máy tính (Figma điện thoại không có).
-  const lopAt = mods.findIndex(m => m.key === "lop");
-  if (lopAt >= 0) mods.splice(lopAt + 1, 0, { key: "hoc-sinh", label: "Học sinh", href: "/admin/hoc-sinh", icon: "nguoi", desktopOnly: true });
+  // Figma có mục "Học sinh" (sau Lớp) nhưng chưa có trang riêng cho gia sư: /admin/hoc-sinh là trang quản trị và chuyển gia sư về /lop-cua-toi.
+  // Không dựng mục trỏ vào đường chết; danh sách học viên hiện nằm trong từng lớp (mục Lớp). Ghi trong báo cáo: "CHƯA CÓ TÍNH NĂNG".
   const items: ModuleItem[] = [
     ...mods,
     { key: "cai-dat", label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat", desktopOnly: true },
