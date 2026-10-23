@@ -22,6 +22,8 @@ import { loadPartyReports } from "@/lib/monthlyReportServer";
 import { prevYearMonth } from "@/lib/monthlyReport";
 import { vnDateKeyOf, vnMinutesOfDay, hmOf } from "@/lib/classSessions";
 import ParentSection from "@/components/parent/Section";
+import SessionScores from "@/components/parent/SessionScores";
+import { loadPartyScores } from "@/lib/sessionScoreServer";
 
 export const dynamic = "force-dynamic"; // link cá nhân, không cache
 
@@ -136,6 +138,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
   ];
 
   const hasFeeBlock = invoices.length > 0 || !!feeBreakdown;
+  // BU-11: điểm từng buổi của ĐÚNG em này, chỉ khi đồng ý ghi điểm còn hiệu lực.
+  const sessionScores = await loadPartyScores(studentId);
 
   return (
     <div style={{ background: "var(--kin-nen-trang)" }}>
@@ -210,6 +214,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 </ParentSection>
 
                 <UpcomingSessions token={token} upcoming={sessions.upcoming} makeup={sessions.makeup} nowIso={now.toISOString()} />
+
+                <SessionScores items={sessionScores} />
               </div>
 
               <aside className="rounded-xl p-5 space-y-6 lg:sticky lg:top-4" style={{ background: "var(--kin-nen-bang)" }} aria-label="Học phí">

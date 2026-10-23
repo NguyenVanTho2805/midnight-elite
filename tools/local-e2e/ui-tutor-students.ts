@@ -41,7 +41,7 @@ import { prisma } from "@/lib/prisma";
   check("tab Đang học: 3 dòng (Bảo; Hà × 2 lớp); không có em đã nghỉ / chờ / của cô khác", await rows.count() === 3 && await pg.getByText("Em Đã Nghỉ").count() === 0 && await pg.getByText("Em Chờ Phụ Huynh").count() === 0 && await pg.getByText("Em Của Cô Khác").count() === 0);
   check("dòng Bảo: lớp Toán 9, trường, SĐT là liên kết tel:", await rows.filter({ hasText: "Trần Gia Bảo" }).getByText("Toán 9").isVisible() && await rows.filter({ hasText: "Trần Gia Bảo" }).getByText("THCS Thử Nghiệm").isVisible() && await pg.getByRole("link", { name: "0900000482" }).getAttribute("href") === "tel:0900000482");
   check("'Mở lớp' dẫn tới trang lớp của chính cô", await rows.filter({ hasText: "Trần Gia Bảo" }).getByRole("link", { name: /Mở lớp/ }).getAttribute("href") === `/lop-cua-toi/${c1.id}`);
-  check("'Thêm học sinh' → /lop-cua-toi/lop (nơi có mã mời của từng lớp)", await pg.getByRole("link", { name: "Thêm học sinh" }).getAttribute("href") === "/lop-cua-toi/lop");
+  check("'Thêm học sinh' → wizard /lop-cua-toi/hoc-sinh/them (23/10: tạo hồ sơ có hộp đồng ý; lối mã mời vẫn ở trang Lớp), 'Nhập danh sách' → /lop-cua-toi/hoc-sinh/nhap", await pg.getByRole("link", { name: "Thêm học sinh" }).getAttribute("href") === "/lop-cua-toi/hoc-sinh/them" && await pg.getByRole("link", { name: "Nhập danh sách" }).getAttribute("href") === "/lop-cua-toi/hoc-sinh/nhap");
   await shot(pg, "tutor-students");
   await pg.getByRole("combobox", { name: "Lớp" }).selectOption(c2.id);
   check("lọc lớp Văn 8: còn đúng 1 dòng (Hà)", await rows.count() === 1 && await rows.first().getByText("Đỗ Hà").isVisible());
