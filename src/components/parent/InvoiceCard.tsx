@@ -8,6 +8,7 @@ import { KinCopyButton } from "@/components/kin/CopyButton";
 import { KinFold, KinChevron } from "@/components/kin/Fold";
 
 const vnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
+const dueLabel = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
 const monthLabel = (ym: string) => { const [y, m] = ym.split("-"); return `Tháng ${Number(m)}/${y}`; };
 
 // plain: không khung/nền riêng (trang phụ huynh tự đặt khối nền chung); mặc định vẫn có khung như cũ cho trang học viên.
@@ -53,6 +54,7 @@ export default function InvoiceCard({ invoice, reportUrl, plain = false }: { inv
 
       <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{monthLabel(invoice.yearMonth)} · {invoice.tutorName}</p>
       <p className="text-xs font-mono mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>Mã phiếu {invoice.code}</p>
+      {invoice.dueDate && !paid && <p className="text-sm mt-1" style={{ color: "var(--kin-chu-chinh)" }}>Hạn đóng: <b>{dueLabel(invoice.dueDate)}</b></p>}
 
       {open && (
         <>

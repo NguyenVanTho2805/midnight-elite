@@ -9,6 +9,7 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { kinButtonClass } from "@/components/kin/Button";
 import { openZalo } from "@/lib/zaloShare";
 import { groupInvoiceMessage, invoiceLinkDaysLeft, privateInvoiceMessage } from "@/lib/invoiceZalo";
+import { HISTORY_LABEL, dueDateLabel, reminderMessage, type HistoryEvent, type ReminderStep } from "@/lib/invoiceReminder";
 import { Badge, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 import { vnMonthKey } from "@/lib/revenue";
 import { PaymentsDialog } from "./PaymentTools";
@@ -27,8 +28,10 @@ export interface InvoiceRow {
   transferContent: string; qrUrl: string | null;
   zaloOpenedAt: string | null; parentViewedAt: string | null;
   looseCount: number; looseTotal: number; // HP-24: khoản phí rời có thể gộp vào phiếu nháp
+  // F2: hạn đóng ("YYYY-MM-DD"), số ngày quá hạn, bước nhắc đã tới lúc (2|3|null), bước cao nhất đã mở Zalo, số lần nhắc bước 2–3 đã ghi.
+  dueDate: string | null; overdueDays: number; nextStep: 2 | 3 | null; lastStep: number; proStepsLogged: number;
 }
-interface Summary { count: number; totalDue: number; totalPaid: number; totalRemaining: number }
+interface Summary { count: number; totalDue: number; totalPaid: number; totalRemaining: number; overdueCount?: number; overdueRemaining?: number }
 type Dialog =
   | { kind: "amount"; inv: InvoiceRow }
   | { kind: "cancel"; inv: InvoiceRow }
@@ -36,7 +39,9 @@ type Dialog =
   | { kind: "payments"; inv: InvoiceRow }
   | { kind: "attach"; inv: InvoiceRow }
   | { kind: "discount" }
-  | { kind: "zalo"; inv: InvoiceRow };
+  | { kind: "zalo"; inv: InvoiceRow; step: ReminderStep }
+  | { kind: "due"; inv: InvoiceRow }
+  | { kind: "history"; inv: InvoiceRow };
 
 function lastMonths(now = new Date()): string[] {
   const base = new Date(now.getTime() + 7 * 3600_000); // giờ VN
@@ -55,6 +60,9 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
   const [items, setItems] = useState<InvoiceRow[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [hasAccount, setHasAccount] = useState(true);
+  const [reminderPro, setReminderPro] = useState(true); // F2: cổng tắt → true cho mọi người
+  const [defaultDue, setDefaultDue] = useState("");
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -66,10 +74,10 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
     await Promise.resolve();
     const my = ++seq.current;
     setLoading(true); setFailed(false);
-    const r = await callApi<{ items: InvoiceRow[]; summary: Summary; hasPayoutAccount: boolean }>(`/api/tutor/invoices?yearMonth=${ym}`);
+    const r = await callApi<{ items: InvoiceRow[]; summary: Summary; hasPayoutAccount: boolean; reminderPro: boolean; defaultDueDate: string }>(`/api/tutor/invoices?yearMonth=${ym}`);
     if (my !== seq.current) return; // bỏ kết quả cũ khi đổi tháng nhanh
     if (!r.ok) setFailed(true);
-    else { setItems(r.data.items); setSummary(r.data.summary); setHasAccount(r.data.hasPayoutAccount); }
+    else { setItems(r.data.items); setSummary(r.data.summary); setHasAccount(r.data.hasPayoutAccount); setReminderPro(r.data.reminderPro !== false); setDefaultDue(r.data.defaultDueDate ?? ""); }
     setLoading(false);
   }, []);
 
@@ -125,6 +133,9 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
   }
 
   const drafts = items.filter(i => i.status === "draft").length;
+  const isOverdue = (i: InvoiceRow) => i.overdueDays > 0 && i.remaining > 0 && i.status !== "cancelled" && i.status !== "paid";
+  const shown = onlyOverdue ? items.filter(isOverdue) : items;
+  const lockedHint = !reminderPro && items.some(i => i.status === "sent" || i.status === "partial");
 
   return (
     <div className="space-y-6">
@@ -167,7 +178,21 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
           <KinStat label="Phải thu" value={vnd(summary.totalDue)} />
           <KinStat label="Đã thu" value={vnd(summary.totalPaid)} />
           <KinStat label="Còn lại" value={vnd(summary.totalRemaining)} />
+          {(summary.overdueCount ?? 0) > 0 && <KinStat label="Quá hạn" value={`${summary.overdueCount} phiếu`} hint={`Còn ${vnd(summary.overdueRemaining ?? 0)}`} />}
         </KinStatRow>
+      )}
+
+      {(summary?.overdueCount ?? 0) > 0 && !failed && (
+        <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] min-h-[44px]" style={{ color: "var(--kin-chu-phu)" }}>
+          <input type="checkbox" checked={onlyOverdue} onChange={e => setOnlyOverdue(e.target.checked)} /> Chỉ xem phiếu quá hạn đóng ({summary?.overdueCount})
+        </label>
+      )}
+
+      {lockedHint && !loading && !failed && (
+        <p className="text-[length:var(--kin-co-goc)] px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-vien-thuong)]" style={{ color: "var(--kin-chu-phu)" }}>
+          Công nợ, phiếu quá hạn và bước 1 (tin soạn sẵn, mở Zalo) luôn miễn phí. Đặt hạn đóng từng phiếu, nhắc bước 2–3 và lịch sử nhắc có trong KiN Pro.{" "}
+          <Link href="/lop-cua-toi/goi" className="underline font-medium text-[var(--kin-nhan-link)]">Xem gói</Link>
+        </p>
       )}
 
       {loading ? (
@@ -184,7 +209,8 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
         </KinEmptyState>
       ) : (
         <ul className="border-t border-[var(--kin-vien-nhat)]">
-          {items.map(i => (
+          {shown.length === 0 && <li className="py-6 text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>Không có phiếu nào quá hạn đóng trong tháng này.</li>}
+          {shown.map(i => (
             <li key={i.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
@@ -201,6 +227,11 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Đã nhận</dt><dd className="font-medium tabular-nums">{vnd(i.paidAmount)}</dd></div>
                 <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Còn lại</dt><dd className="font-medium tabular-nums">{vnd(i.remaining)}</dd></div>
               </dl>
+              {i.dueDate && i.status !== "cancelled" && (
+                <p className="text-xs mt-2" style={{ color: isOverdue(i) ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-phu)" }}>
+                  Hạn đóng {dueDateLabel(i.dueDate)}{isOverdue(i) ? ` · quá hạn ${i.overdueDays} ngày` : ""}
+                </p>
+              )}
               {(i.zaloOpenedAt || i.parentViewedAt) && (
                 <p className="text-xs mt-2 flex gap-x-4 gap-y-1 flex-wrap" style={{ color: "var(--kin-chu-phu)" }}>
                   {i.zaloOpenedAt && <span>Đã mở Zalo lúc {vnWhen(i.zaloOpenedAt)}</span>}
@@ -213,9 +244,20 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 {i.status === "draft" && <KinButton size="md" loading={busy === i.id} onClick={() => act(i, { action: "send" }, "Đã gửi phiếu.")}>Gửi phiếu</KinButton>}
                 {(i.status === "sent" || i.status === "parent_reported" || i.status === "partial") && (<>
                   <KinButton variant="secondary" onClick={() => setDialog({ kind: "pay", inv: i })}>Đã nhận tiền</KinButton>
-                  <KinButton onClick={() => setDialog({ kind: "zalo", inv: i })}>{i.zaloOpenedAt ? "Gửi lại qua Zalo" : "Gửi phiếu qua Zalo"}</KinButton>
+                  <KinButton onClick={() => setDialog({ kind: "zalo", inv: i, step: 1 })}>{i.zaloOpenedAt ? "Gửi lại qua Zalo" : "Gửi phiếu qua Zalo"}</KinButton>
                   <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>
+                  {reminderPro && (i.status === "sent" || i.status === "partial") && i.lastStep >= 1 && i.lastStep < 3 && (
+                    <KinButton variant={i.nextStep === i.lastStep + 1 ? "primary" : "secondary"} onClick={() => setDialog({ kind: "zalo", inv: i, step: (i.lastStep + 1) as ReminderStep })}>
+                      Nhắc bước {i.lastStep + 1}{i.nextStep === i.lastStep + 1 ? " (đến lúc)" : ""}
+                    </KinButton>
+                  )}
                 </>)}
+                {reminderPro && i.status !== "paid" && i.status !== "cancelled" && (
+                  <KinButton variant="ghost" onClick={() => setDialog({ kind: "due", inv: i })}>{i.dueDate ? "Đổi hạn đóng" : "Đặt hạn đóng"}</KinButton>
+                )}
+                {(reminderPro || i.proStepsLogged > 0) && (i.zaloOpenedAt || i.proStepsLogged > 0) && (
+                  <KinButton variant="ghost" onClick={() => setDialog({ kind: "history", inv: i })}>Lịch sử nhắc</KinButton>
+                )}
                 {i.status === "draft" && <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>}
                 {i.paidAmount > 0 && <KinButton variant="ghost" onClick={() => setDialog({ kind: "payments", inv: i })}>Khoản đã thu</KinButton>}
                 {i.status === "draft" && i.looseCount > 0 && <KinButton variant="secondary" onClick={() => setDialog({ kind: "attach", inv: i })}>Gộp {i.looseCount} khoản rời ({vnd(i.looseTotal)})</KinButton>}
@@ -223,6 +265,13 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 {i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "cancel", inv: i })}>Huỷ phiếu</KinButton>}
                 {i.status === "cancelled" && <KinButton variant="secondary" loading={busy === i.id} onClick={() => act(i, { action: "restore" }, "Đã khôi phục phiếu về nháp.")}>Khôi phục</KinButton>}
               </div>
+              {!reminderPro && (i.status === "sent" || i.status === "partial") && i.lastStep >= 1 && (
+                <div className="mt-3 flex items-center gap-3 flex-wrap text-xs" style={{ color: "var(--kin-chu-mo)" }}>
+                  <span aria-hidden className="select-none opacity-50 blur-[1.5px]">Nhắc bước 2 · Nhắc bước 3 · Hạn đóng · Lịch sử nhắc</span>
+                  <span>Có trong KiN Pro</span>
+                  <Link href="/lop-cua-toi/goi" className={kinButtonClass("secondary")}>Xem gói</Link>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -232,7 +281,10 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
         onSubmit={async (amountDue, reason) => { if (await act(dialog.inv, { action: "set_amount", amountDue, reason }, "Đã cập nhật số tiền. Mã phiếu giữ nguyên.")) setDialog(null); }} />}
       {dialog?.kind === "cancel" && <ReasonDialog title={`Huỷ phiếu ${dialog.inv.code}`} label="Lý do huỷ (bắt buộc)" cta="Huỷ phiếu" danger onClose={() => setDialog(null)}
         onSubmit={async reason => { if (await act(dialog.inv, { action: "cancel", reason }, "Đã huỷ phiếu.")) setDialog(null); }} />}
-      {dialog?.kind === "zalo" && <ZaloDialog inv={dialog.inv} onClose={() => setDialog(null)} onOpened={() => load(yearMonth)} />}
+      {dialog?.kind === "zalo" && <ZaloDialog inv={dialog.inv} step={dialog.step} onClose={() => setDialog(null)} onOpened={() => load(yearMonth)} />}
+      {dialog?.kind === "due" && <DueDialog inv={dialog.inv} suggested={defaultDue} onClose={() => setDialog(null)}
+        onSubmit={async dueDate => { if (await act(dialog.inv, { action: "set_due_date", dueDate }, dueDate ? "Đã đặt hạn đóng." : "Đã xoá hạn đóng.")) setDialog(null); }} />}
+      {dialog?.kind === "history" && <HistoryDialog inv={dialog.inv} onClose={() => setDialog(null)} />}
       {dialog?.kind === "pay" && <PayDialog inv={dialog.inv} onClose={() => setDialog(null)}
         onSubmit={async (amount, excess, paidOn, method) => { if (await act(dialog.inv, { action: "record_payment", amount, paidOn, method, ...(excess ? { excess } : {}) }, "Đã ghi nhận tiền.")) setDialog(null); }} />}
       {dialog?.kind === "attach" && <AttachDialog invoiceId={dialog.inv.id} code={dialog.inv.code} studentName={dialog.inv.studentName} onClose={() => setDialog(null)} onDone={() => load(yearMonth)} />}
@@ -279,10 +331,10 @@ export function ReasonDialog({ title, label, cta, danger, onClose, onSubmit }: {
   );
 }
 
-interface ZaloPrepared { target: "private" | "group"; yearMonth: string; studentName: string; parentName: string | null; amount: number; path: string | null; expiresAt: string | null; phone: string | null }
+interface ZaloPrepared { target: "private" | "group"; yearMonth: string; studentName: string; parentName: string | null; amount: number; path: string | null; expiresAt: string | null; phone: string | null; dueDate: string | null; step: ReminderStep }
 
 // TT-199 giai đoạn 1: soạn tin sẵn, gia sư sửa được, rồi tự bấm gửi trong Zalo. KiN không gửi giúp.
-function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () => void; onOpened: () => Promise<void> | void }) {
+function ZaloDialog({ inv, step, onClose, onOpened }: { inv: InvoiceRow; step: ReminderStep; onClose: () => void; onOpened: () => Promise<void> | void }) {
   const notify = useNotify();
   const [target, setTarget] = useState<"private" | "group">("private");
   const [prep, setPrep] = useState<ZaloPrepared | null>(null);
@@ -296,15 +348,18 @@ function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () =
     await Promise.resolve();
     const my = ++seq.current;
     setState("loading"); setErr("");
-    const r = await callApi<ZaloPrepared>(`/api/tutor/invoices/${inv.id}/zalo`, { method: "POST", body: JSON.stringify({ action: "prepare", target: t }) });
+    const r = await callApi<ZaloPrepared>(`/api/tutor/invoices/${inv.id}/zalo`, { method: "POST", body: JSON.stringify({ action: "prepare", target: t, step }) });
     if (my !== seq.current) return; // bỏ kết quả cũ khi đổi lựa chọn nhanh
     if (!r.ok) { setErr(r.data.error ?? "Không chuẩn bị được tin nhắn"); setState("error"); return; }
     setPrep(r.data);
+    const url = `${window.location.origin}${r.data.path}`;
     setText(t === "group"
-      ? groupInvoiceMessage({ yearMonth: r.data.yearMonth })
-      : privateInvoiceMessage({ studentName: r.data.studentName, yearMonth: r.data.yearMonth, amount: r.data.amount, url: `${window.location.origin}${r.data.path}` }));
+      ? groupInvoiceMessage({ yearMonth: r.data.yearMonth, dueDate: r.data.dueDate })
+      : step === 1
+        ? privateInvoiceMessage({ studentName: r.data.studentName, yearMonth: r.data.yearMonth, amount: r.data.amount, url, dueDate: r.data.dueDate })
+        : reminderMessage(step, { studentName: r.data.studentName, yearMonth: r.data.yearMonth, amount: r.data.amount, url, dueDate: r.data.dueDate }));
     setState("ready");
-  }, [inv.id]);
+  }, [inv.id, step]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -317,7 +372,7 @@ function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () =
     const res = await openZalo({ text, phone: target === "private" ? prep.phone : null });
     if (!res.opened) { setBusy(false); if (res.reason === "failed") notify.err("Không mở được Zalo. Hãy chép tin và gửi tay."); return; }
     if (target === "private") {
-      const log = await callApi(`/api/tutor/invoices/${inv.id}/zalo`, { method: "POST", body: JSON.stringify({ action: "opened" }) });
+      const log = await callApi(`/api/tutor/invoices/${inv.id}/zalo`, { method: "POST", body: JSON.stringify({ action: "opened", step }) });
       if (!log.ok) notify.err(log.data.error ?? "Đã mở Zalo nhưng chưa ghi lại được.");
     }
     notify.info(res.method === "share" ? "Chọn Zalo trong bảng chia sẻ rồi bấm gửi." : "Đã chép tin và mở Zalo — dán vào cuộc trò chuyện rồi bấm gửi.");
@@ -328,13 +383,13 @@ function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () =
 
   const daysLeft = prep?.expiresAt ? invoiceLinkDaysLeft(new Date(prep.expiresAt), new Date()) : null;
   return (
-    <Modal title={`Gửi phiếu qua Zalo — ${inv.studentName}`} onClose={onClose}>
-      <fieldset className="mb-3 text-sm">
+    <Modal title={step === 1 ? `Gửi phiếu qua Zalo — ${inv.studentName}` : `Nhắc bước ${step} qua Zalo — ${inv.studentName}`} onClose={onClose}>
+      {step === 1 ? <fieldset className="mb-3 text-sm">
         <legend className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Gửi vào đâu?</legend>
         {([["private", "Chat riêng với phụ huynh"], ["group", "Nhóm Zalo lớp"]] as const).map(([v, l]) => (
           <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="zalo-target" checked={target === v} onChange={() => setTarget(v)} /> {l}</label>
         ))}
-      </fieldset>
+      </fieldset> : <p className="mb-3 text-sm" style={{ color: "var(--kin-chu-phu)" }}>Tin nhắc nhẹ nhàng, chỉ gửi riêng cho phụ huynh. Bạn sửa tin rồi tự bấm gửi trong Zalo.</p>}
       {state === "loading" && <p role="status" className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Đang chuẩn bị tin nhắn…</p>}
       {state === "error" && <p role="alert" className="text-sm" style={{ color: "var(--kin-tt-chu-loi)" }}>{err}</p>}
       {state === "ready" && prep && (<>
@@ -394,6 +449,78 @@ function PayDialog({ inv, onClose, onSubmit }: { inv: InvoiceRow; onClose: () =>
         <KinButton variant="ghost" onClick={onClose}>Đóng</KinButton>
         <KinButton disabled={!valid} loading={busy} onClick={async () => { setBusy(true); await onSubmit(n, over > 0 ? excess : undefined, paidOn, method); setBusy(false); }}>Ghi nhận</KinButton>
       </div>
+    </Modal>
+  );
+}
+
+// F2 (KiN Pro): hạn đóng của một phiếu. Chỉ để nhắc và hiện cho phụ huynh; không đổi số tiền hay trạng thái phiếu.
+function DueDialog({ inv, suggested, onClose, onSubmit }: { inv: InvoiceRow; suggested: string; onClose: () => void; onSubmit: (dueDate: string | null) => Promise<void> }) {
+  const [value, setValue] = useState(inv.dueDate ?? suggested);
+  const [busy, setBusy] = useState(false);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return (
+    <Modal title={`Hạn đóng — ${inv.studentName}`} onClose={onClose}>
+      <p className="text-sm mb-3" style={{ color: "var(--kin-chu-phu)" }}>
+        Phụ huynh thấy hạn này trên phiếu, và tin Zalo ghi đúng hạn này. Hạn chỉ để nhắc: KiN không tự tính phí trễ hay đổi số tiền. Chưa đặt thì tin vẫn ghi “hạn trước ngày 20”.
+      </p>
+      <label className="block text-sm mb-1" htmlFor="due-date">Hạn đóng</label>
+      <input id="due-date" type="date" value={value} onChange={e => setValue(e.target.value)} className="w-full px-3 py-2 rounded-lg mb-4 min-h-[44px]" style={FIELD_STYLE} />
+      <div className="flex justify-end gap-2 flex-wrap">
+        <KinButton variant="ghost" onClick={onClose}>Đóng</KinButton>
+        {inv.dueDate && <KinButton variant="secondary" loading={busy} onClick={async () => { setBusy(true); await onSubmit(null); setBusy(false); }}>Xoá hạn</KinButton>}
+        <KinButton disabled={!valid} loading={busy} onClick={async () => { setBusy(true); await onSubmit(value); setBusy(false); }}>Lưu hạn</KinButton>
+      </div>
+    </Modal>
+  );
+}
+
+interface HistoryData { code: string; dueDate: string | null; overdueDays: number; matched: boolean; events: HistoryEvent[] }
+// F2 (KiN Pro): lịch sử nhắc của một phiếu. Chỉ ghi những gì KiN biết: bạn bấm mở Zalo lúc nào, phụ huynh bấm “Tôi đã chuyển” lúc nào, tiền đã ghi vào phiếu chưa.
+function HistoryDialog({ inv, onClose }: { inv: InvoiceRow; onClose: () => void }) {
+  const [data, setData] = useState<HistoryData | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [err, setErr] = useState("");
+  const load = useCallback(async () => {
+    await Promise.resolve();
+    setState("loading");
+    const r = await callApi<HistoryData>(`/api/tutor/invoices/${inv.id}/reminders`);
+    if (!r.ok) { setErr(r.data.error ?? "Không tải được lịch sử nhắc"); setState("error"); return; }
+    setData(r.data); setState("ready");
+  }, [inv.id]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+  return (
+    <Modal title={`Lịch sử nhắc — ${inv.studentName}`} onClose={onClose}>
+      {state === "loading" && <p role="status" className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Đang tải lịch sử nhắc…</p>}
+      {state === "error" && (
+        <div role="alert" className="text-sm" style={{ color: "var(--kin-tt-chu-loi)" }}>
+          {err} <button className="underline font-medium text-[var(--kin-nhan-link)] min-h-11 px-2" onClick={() => void load()}>Thử lại</button>
+        </div>
+      )}
+      {state === "ready" && data && (<>
+        <p className="text-sm mb-3" style={{ color: "var(--kin-chu-phu)" }}>
+          Phiếu {data.code}. “Đã mở Zalo” nghĩa là bạn đã bấm mở Zalo; KiN không biết tin có đi thật hay không.
+          {data.dueDate && <> Hạn đóng {dueDateLabel(data.dueDate)}{data.overdueDays > 0 ? `, quá hạn ${data.overdueDays} ngày` : ""}.</>}
+        </p>
+        {data.events.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Chưa có lần nhắc nào được ghi cho phiếu này.</p>
+        ) : (
+          <ol className="text-sm space-y-2">
+            {data.events.map((e, idx) => (
+              <li key={`${e.kind}-${e.at}-${idx}`} className="flex gap-3 justify-between flex-wrap">
+                <span style={{ color: "var(--kin-chu-chinh)" }}>{HISTORY_LABEL[e.kind]}{e.step ? ` · bước ${e.step}` : ""}{e.kind === "matched" && e.amount ? ` · ${vnd(e.amount)}` : ""}</span>
+                <span className="tabular-nums" style={{ color: "var(--kin-chu-phu)" }}>{vnWhen(e.at)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="text-sm mt-3 font-medium" style={{ color: data.matched ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-phu)" }}>
+          {data.matched ? "Đã có tiền ghi vào phiếu." : "Chưa có tiền ghi vào phiếu."}
+        </p>
+      </>)}
+      <div className="flex justify-end mt-4"><KinButton variant="ghost" onClick={onClose}>Đóng</KinButton></div>
     </Modal>
   );
 }

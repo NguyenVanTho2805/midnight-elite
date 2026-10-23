@@ -6,6 +6,8 @@
 //     restore                  huỷ → nháp
 //     set_amount { amountDue, reason }  sửa số tiền; MÃ PHIẾU KHÔNG ĐỔI (GD-19)
 //     attach_charges { preview?, chargeIds? }  HP-24: gộp khoản phí rời (chưa vào phiếu nào) vào PHIẾU NHÁP; preview:true chỉ tính
+//     set_due_date { dueDate }  F2: đặt HẠN ĐÓNG ("YYYY-MM-DD" giờ VN) hoặc dueDate:null để xoá. Đặt hạn là KiN Pro (canUse 'reminder_steps');
+//                              xoá hạn luôn được. Chỉ để trình bày và nhắc: KHÔNG đổi số tiền hay trạng thái phiếu. Phiếu đã đóng/đã huỷ không đặt hạn.
 //     record_payment { amount, excess?, paidOn?, method? } ghi tiền mặt / tiền không qua SePay
 //                              — cùng luật đủ/thiếu/dư; dư phải chọn
 //                              excess: "credit" (trừ tháng sau) | "refunded"
@@ -19,6 +21,9 @@ import { logAction } from "@/lib/auditLog";
 import { addCredit, applyToInvoice, lockInvoice, requireTutor } from "@/lib/invoiceServer";
 import { INVOICE_STATUS_LABEL, remainingOf, statusAfterPayment, type InvoiceStatus } from "@/lib/tuitionInvoice";
 import { isPaymentMethod, manualPaymentContent, resolvePaidOn } from "@/lib/tuitionPayment";
+import { validateDueDate, PRO_REQUIRED_CODE } from "@/lib/invoiceReminder";
+import { canUse } from "@/lib/planServer";
+import { moneyPathsBlocked, PREVIEW_BLOCKED_MESSAGE } from "@/lib/feeChargeServer";
 import { attachLooseCharges, listLooseCharges, linesForAttach } from "@/lib/looseChargeServer";
 
 const MAX_VND = 1_000_000_000;
@@ -155,6 +160,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (h.http) return NextResponse.json({ error: h.msg, ...(h.needExcess ? { needExcess: true, excess: h.excess } : {}) }, { status: h.http });
         throw e;
       }
+    }
+
+    case "set_due_date": {
+      if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
+      if (inv.status === "paid" || inv.status === "cancelled") return NextResponse.json({ error: "Phiếu đã đóng đủ hoặc đã huỷ nên không đặt hạn" }, { status: 409 });
+      let dueDate: string | null = null;
+      if (body?.dueDate !== null) {
+        const v = validateDueDate(body?.dueDate, new Date());
+        if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+        if (!(await canUse(auth.userId, "reminder_steps"))) {
+          return NextResponse.json({ error: "Đặt hạn đóng cho từng phiếu có trong KiN Pro. Tin Zalo vẫn ghi “hạn trước ngày 20”.", code: PRO_REQUIRED_CODE }, { status: 403 });
+        }
+        dueDate = v.dueDate;
+      }
+      await prisma.tuitionInvoice.update({ where: { id }, data: { dueDate } });
+      await logAction(auth.userId, "invoice.set_due_date", "TuitionInvoice", id, { code: inv.code, dueDate });
+      return NextResponse.json({ ok: true, dueDate });
     }
 
     default:

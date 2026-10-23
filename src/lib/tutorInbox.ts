@@ -4,7 +4,7 @@
 //
 // Chỉ hiện việc có thật và cần gia sư ra tay (bo-cuc-outlook.md: số đỏ chỉ đếm việc cần ra tay). Không có dòng "đã xong"
 // giả; không có loại việc nào không có nguồn dữ liệu thật.
-export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "draft";
+export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "invoiceRemind" | "draft";
 export type InboxTone = "xong" | "cho" | "loi" | "mo";
 
 export interface InboxRow { title: string; sub: string; href?: string }
@@ -13,6 +13,8 @@ export interface InboxSource {
   /** Số việc thật (đếm đủ). `rows` chỉ là vài việc đầu để hiện chi tiết. */
   count: number;
   rows: InboxRow[];
+  /** Chữ phụ chen vào tiêu đề của loại có nhiều dạng (vd. "bước 2", "bước 2–3", kèm “quá hạn tới 5 ngày”). Bỏ trống = tiêu đề mặc định. */
+  tag?: string;
   /** Thời điểm của việc cũ nhất (ISO) — hiện ở góc dòng. */
   at: string | null;
 }
@@ -38,7 +40,7 @@ export const INBOX_DETAIL_LIMIT = 10;
 
 interface Meta {
   urgent: boolean;
-  title: (n: number) => string;
+  title: (n: number, src?: InboxSource) => string;
   status: { label: string; tone: InboxTone };
   hint: string;
   commands: InboxCommand[];
@@ -102,6 +104,12 @@ const META: Record<InboxKind, Meta> = {
     commands: [],
     action: "Mở trang điểm danh",
   },
+  invoiceRemind: {
+    urgent: false, title: (n, src) => `${n} phiếu đến lúc nhắc ${src?.tag ?? "bước 2–3"}`, status: { label: "Đến lúc nhắc", tone: "cho" },
+    hint: "Bạn đã nhắc phiếu này và vài ngày sau phiếu vẫn còn nợ. Mở Học phí, bấm “Nhắc bước kế”, KiN soạn sẵn tin nhẹ nhàng; bạn tự bấm gửi trong Zalo. KiN không gửi giúp. Có trong KiN Pro.",
+    commands: [{ label: "Mở Học phí", href: "/lop-cua-toi/hoc-phi", kind: "primary" }],
+    action: "Mở Học phí để nhắc",
+  },
   draft: {
     urgent: false, title: n => `${n} phiếu học phí nháp chưa gửi`, status: { label: "Chưa gửi", tone: "mo" },
     hint: "Phiếu đã soạn nhưng chưa gửi cho phụ huynh. Mở Học phí để xem lại và gửi.",
@@ -145,7 +153,7 @@ export function buildInboxItems(raw: InboxRaw, now: Date): InboxItem[] {
     items.push({
       id: kind,
       urgent: m.urgent,
-      title: m.title(src.count),
+      title: m.title(src.count, src),
       when: inboxWhen(src.at, now),
       subtitle: first ? `${first.title} · ${first.sub}` : m.hint,
       status: m.status,
@@ -153,7 +161,7 @@ export function buildInboxItems(raw: InboxRaw, now: Date): InboxItem[] {
       href: m.commands.find(c => c.kind === "primary")?.href ?? first?.href ?? "/lop-cua-toi/lich",
       waiting: !!m.waiting,
       detail: {
-        heading: m.title(src.count),
+        heading: m.title(src.count, src),
         meta: m.hint,
         rows,
         more: Math.max(0, src.count - rows.length),

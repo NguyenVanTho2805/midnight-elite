@@ -5,6 +5,8 @@
 //  • KiN chỉ ghi "đã mở Zalo", không bao giờ ghi "đã gửi".
 // Hàm thuần — dùng được ở cả máy chủ và trình duyệt.
 
+import { dueClause } from "@/lib/invoiceReminder";
+
 export const INVOICE_LINK_DAYS = 30;
 const DAY_MS = 24 * 3600_000;
 
@@ -32,14 +34,15 @@ const monthNumber = (ym: string) => Number(ym.split("-")[1]);
 const money = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 
 /** Tin vào CHAT RIÊNG với phụ huynh — mẫu của spec, gia sư sửa được trước khi gửi. */
-export function privateInvoiceMessage(o: { studentName: string; yearMonth: string; amount: number; url: string }): string {
-  return `Dạ em gửi anh/chị phiếu học phí tháng ${monthNumber(o.yearMonth)} của con ${o.studentName}: ${money(o.amount)}, hạn trước ngày 20. ` +
+export function privateInvoiceMessage(o: { studentName: string; yearMonth: string; amount: number; url: string; dueDate?: string | null }): string {
+  // F2: có hạn đóng thật thì ghi hạn đó; chưa có (null/bỏ trống) thì giữ ĐÚNG chữ cũ "hạn trước ngày 20".
+  return `Dạ em gửi anh/chị phiếu học phí tháng ${monthNumber(o.yearMonth)} của con ${o.studentName}: ${money(o.amount)}, ${dueClause(o.dueDate)}. ` +
     `Anh/chị bấm vào đây để xem phiếu và quét mã chuyển khoản: ${o.url}`;
 }
 
 /** Tin vào NHÓM Zalo lớp — không số tiền, không link, không tên con. */
-export function groupInvoiceMessage(o: { yearMonth: string }): string {
-  return `Phiếu học phí tháng ${monthNumber(o.yearMonth)} đã gửi riêng cho từng anh/chị, hạn trước ngày 20. Anh/chị xem tin nhắn riêng giúp em nhé.`;
+export function groupInvoiceMessage(o: { yearMonth: string; dueDate?: string | null }): string {
+  return `Phiếu học phí tháng ${monthNumber(o.yearMonth)} đã gửi riêng cho từng anh/chị, ${dueClause(o.dueDate)}. Anh/chị xem tin nhắn riêng giúp em nhé.`;
 }
 
 /** Tin điểm danh một buổi (spec mục 1). Link chỉ kèm khi có — câu mời xem lại chỉ hiện khi con vắng. */

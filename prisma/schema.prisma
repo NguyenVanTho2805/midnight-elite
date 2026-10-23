@@ -1203,18 +1203,39 @@ model TuitionInvoice {
   viewTokenExpiresAt DateTime?
   zaloOpenedAt       DateTime? // gia sư ĐÃ MỞ Zalo — KiN không biết tin có đi thật hay không
   parentViewedAt     DateTime? // phụ huynh mở link (ghi từ trình duyệt, không phải khi bot xem trước link)
+  // F2 (23/10/2026): HẠN ĐÓNG do gia sư đặt, "YYYY-MM-DD" theo giờ VN. null = chưa đặt (tin Zalo giữ chữ cũ "hạn trước ngày 20").
+  // Chỉ để trình bày và nhắc; KHÔNG đổi số tiền, KHÔNG đổi trạng thái phiếu.
+  dueDate            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   tutor   User @relation("InvoiceTutor", fields: [tutorId], references: [id], onDelete: Cascade)
   student User @relation("InvoiceStudent", fields: [studentId], references: [id], onDelete: Cascade)
   transactions BankTransaction[]
+  reminders    InvoiceReminder[]
 
   @@unique([tutorId, studentId, yearMonth])
   @@index([tutorId, yearMonth])
   @@index([studentId])
   @@index([viewToken])
   @@map("tuition_invoices")
+}
+
+// F2 (23/10/2026) — lịch sử nhắc học phí theo phiếu: mỗi lần gia sư BẤM MỞ ZALO là một dòng (step 1–3).
+// KiN không biết tin có đi thật hay không nên đây chỉ là "đã mở Zalo lúc …", không bao giờ là "đã gửi". Không tự gạch nợ.
+model InvoiceReminder {
+  id        String   @id @default(cuid())
+  invoiceId String
+  tutorId   String
+  step      Int // 1 | 2 | 3
+  openedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  invoice TuitionInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, step])
+  @@index([tutorId, openedAt])
+  @@map("invoice_reminders")
 }
 
 // Mỗi khoản tiền vào (SePay hoặc gia sư tự ghi tiền mặt) là 1 dòng — có dấu vết

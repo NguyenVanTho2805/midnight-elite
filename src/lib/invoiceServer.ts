@@ -191,10 +191,12 @@ export interface PartyInvoiceView {
   bank: { name: string; accountNo: string; accountName: string } | null;
   canReport: boolean; // nút "Tôi đã chuyển"
   paidAt: string | null;
+  /** F2: hạn đóng gia sư đặt ("YYYY-MM-DD"), chỉ để phụ huynh xem. null = chưa đặt. */
+  dueDate: string | null;
 }
 
 export function presentInvoiceForParty(
-  inv: { id: string; code: string; yearMonth: string; amountDue: number; paidAmount: number; status: string; paidAt: Date | null },
+  inv: { id: string; code: string; yearMonth: string; amountDue: number; paidAmount: number; status: string; paidAt: Date | null; dueDate?: string | null },
   ctx: { tutorName: string; studentName: string; account: { bankBin: string; accountNo: string; accountName: string } | null },
 ): PartyInvoiceView {
   const remaining = remainingOf(inv);
@@ -211,6 +213,7 @@ export function presentInvoiceForParty(
     bank: ctx.account ? { name: bankName(ctx.account.bankBin), accountNo: ctx.account.accountNo, accountName: ctx.account.accountName } : null,
     canReport: inv.status === "sent" || inv.status === "partial",
     paidAt: inv.paidAt?.toISOString() ?? null,
+    dueDate: inv.dueDate ?? null,
   };
 }
 
