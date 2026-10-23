@@ -87,6 +87,8 @@ const OLD: [string, Permission | null][] = [
   ["/admin/cong-dong", PERMISSIONS.MANAGE_COMMUNITY], ["/admin/cong-dong/bao-cao", PERMISSIONS.MANAGE_COMMUNITY],
   ["/admin/hoc-sinh", PERMISSIONS.MANAGE_STUDENTS], ["/admin/ho-so-gia-su", PERMISSIONS.MANAGE_TUTORS], ["/admin/pheu", PERMISSIONS.MANAGE_TUTORS], ["/admin/so-do", PERMISSIONS.MANAGE_TUTORS],
   ["/admin/diem-chuan", PERMISSIONS.MANAGE_NEWS], ["/admin/doanh-thu", PERMISSIONS.VIEW_REVENUE], ["/admin/quan-tri-vien", PERMISSIONS.MANAGE_ADMINS],
+  // 23/10/2026 (KiN Pro, nền gói): trang cấu hình gói thêm MỚI sau thanh bên cũ, cùng quyền với các trang tiền khác (chỉ admin_super).
+  ["/admin/goi-pro", PERMISSIONS.MANAGE_REVENUE],
 ];
 for (const r of roles) {
   const now = new Set(hrefsOf(r));

@@ -858,6 +858,7 @@ model User {
   answerReports       AnswerReport[]
   threadReports       ThreadReport[]
   tutorSubscriptions  TutorSubscription[]
+  proOrders           ProOrder[]
   monthlyReportsAsTutor   MonthlyReport[] @relation("ReportTutor")
   monthlyReportsAsStudent MonthlyReport[] @relation("ReportStudent")
   absencesAsStudent    ClassAbsence[]      @relation("AbsenceStudent")
@@ -1900,4 +1901,79 @@ model LoginCode {
   updatedAt   DateTime  @updatedAt
 
   @@map("login_codes")
+}
+
+// ─── KiN PRO — NỀN GÓI (23/10/2026; docs/kin/rd/pro/tinh-nang-pro-tra-phi.md mục 8.4) ─────────────────────────
+// "Đo trước, thu sau": chỉ THÊM bảng mới, không @unique trên bảng cũ. Không dùng Coin, không tự động trừ tiền.
+// Cổng hạn mức TẮT mặc định (biến môi trường KIN_PLAN_ENFORCE); bảng cấu hình sửa từ admin, không viết cứng trong mã.
+
+// Một dòng cho mỗi gói ("free" | "pro"). Thiếu dòng thì lấy mặc định ở src/lib/planLimits.ts (PLAN_DEFAULTS).
+model PlanConfig {
+  id                String   @id @default(cuid())
+  code              String   @unique // "free" | "pro"
+  name              String
+  studentLimit      Int // trần học viên đang học (Pro: trần chống lạm dụng, không phải "vô hạn")
+  aiExtractPerMonth Int // số lượt AI trích đề mỗi tháng (giờ VN)
+  priceMonthVnd     Int // giá gói tháng (0 với Free)
+  priceQuarterVnd   Int
+  priceYearVnd      Int
+  updatedBy         String? // userId admin sửa lần cuối
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  @@map("plan_configs")
+}
+
+// Cài đặt chung kiểu khoá-giá trị (số nguyên dạng chữ): ngày Pro tặng người dùng cũ, giảm giá sáng lập, số suất, số tháng khoá giá…
+model SettingKV {
+  key       String   @id
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("setting_kv")
+}
+
+// Một yêu cầu mua / một kỳ Pro. Thu theo kỳ bằng QR chuyển khoản; admin đối chiếu sao kê rồi bấm kích hoạt (cộng dồn hạn).
+// Giá được CHỤP lại lúc tạo yêu cầu (như priceCoinPaid): admin đổi giá sau không làm đổi yêu cầu đã tạo.
+model ProOrder {
+  id                  String    @id @default(cuid())
+  userId              String // gia sư mua
+  period              String // "month" | "quarter" | "year" | "grant" (tặng)
+  durationDays        Int // snapshot thời hạn
+  priceVnd            Int // snapshot số tiền phải chuyển (đã trừ giảm giá sáng lập); 0 với suất tặng
+  listPriceVnd        Int // snapshot giá niêm yết lúc tạo
+  foundingDiscountPct Int       @default(0) // snapshot % giảm giá sáng lập đã áp (0 = không)
+  source              String    @default("purchase") // "purchase" | "legacy_grant" | "admin_grant"
+  memoCode            String    @unique // nội dung chuyển khoản, vd "KINPRO-7K2Q9XMD"
+  status              String    @default("pending") // "pending" | "active" | "cancelled"
+  startDate           DateTime? // đặt lúc kích hoạt
+  endDate             DateTime?
+  activatedBy         String? // userId admin kích hoạt
+  activatedAt         DateTime?
+  bankRef             String? // mã giao dịch ngân hàng admin đối chiếu (tuỳ chọn)
+  createdAt           DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, endDate])
+  @@index([status, createdAt])
+  @@map("pro_orders")
+}
+
+// Nhật ký lượt dùng để ĐO (chế độ "đếm bóng") và để đếm hạn mức theo tháng. Không FK: là sổ đo, không phải dữ liệu nghiệp vụ.
+//   kind: "ai_extract" (một lượt trích đề) | "gate_would_block" (cổng TẮT nhưng nếu bật sẽ chặn) | "gate_blocked" (cổng BẬT và đã chặn)
+model UsageEvent {
+  id        String   @id @default(cuid())
+  userId    String // gia sư (chủ gói)
+  kind      String
+  quantity  Int      @default(1)
+  refType   String?
+  refId     String?
+  meta      Json? // không tên học sinh, không số tiền
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+  @@index([kind, createdAt])
+  @@map("usage_events")
 }

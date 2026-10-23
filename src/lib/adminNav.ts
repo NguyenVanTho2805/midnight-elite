@@ -47,6 +47,12 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Số đo sản phẩm", href: "/admin/so-do", permission: PERMISSIONS.MANAGE_TUTORS },
     ],
   },
+  {
+    key: "cai-dat", label: "Cài đặt", icon: "cai-dat",
+    subs: [
+      { label: "Gói KiN Pro", href: "/admin/goi-pro", permission: PERMISSIONS.MANAGE_REVENUE },
+    ],
+  },
 ];
 
 const allowed = (role: AdminRole | undefined | null, s: AdminSub) => !s.permission || checkPermission(role, s.permission);
