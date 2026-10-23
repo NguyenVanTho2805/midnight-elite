@@ -93,7 +93,11 @@ export function AzotaPanel({ lessonId, azotaUrl, deadline, canSubmit }: { lesson
   const hasLinks = links.length > 0;
   useEffect(() => { if (hasLinks) fetchState(); }, [hasLinks, fetchState]);
 
-  if (!links.length) return null;
+  if (!links.length) {
+    // Có điền link nhưng không hợp lệ (ví dụ javascript:): nói thật cho em biết, KHÔNG dựng nút/link. Rỗng hẳn thì để trang cha tự báo.
+    if (!(azotaUrl ?? "").trim()) return null;
+    return <p className="text-sm text-center py-8 rounded-xl" role="status" data-testid="azota-invalid" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Link bài Azota không hợp lệ, hãy báo gia sư.</p>;
+  }
 
   async function markDone() {
     setMsg(null);

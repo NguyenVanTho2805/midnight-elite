@@ -11,8 +11,8 @@ import { KinButton } from "@/components/kin/Button";
 type SortKey = "active" | "rating" | "students" | "classes";
 
 // Ô chọn: cao ≥ 44px, viền đủ rõ. Trên điện thoại là chip tròn, từ lg là ô vuông bo nhẹ trong cột lọc.
-const SELECT_CLS = "min-h-[44px] w-full text-[length:var(--kin-co-small)] px-3 rounded-full lg:rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] border border-[var(--kin-vien-o-nhap)]";
-const LABEL_CLS = "sr-only lg:not-sr-only text-[length:var(--kin-co-small)] mb-1.5";
+const SELECT_CLS = "min-h-[44px] w-full text-[length:var(--kin-co-small)] px-3 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] border border-[var(--kin-vien-o-nhap)]";
+const LABEL_CLS = "block text-[length:var(--kin-co-small)] mb-1.5";
 
 export default function GiangVienPage() {
   const [tutors, setTutors]   = useState<TutorListItem[] | null>(null);
@@ -70,7 +70,7 @@ export default function GiangVienPage() {
   return (
     <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 py-8 lg:py-10 flex flex-col gap-7">
       <header className="flex flex-col gap-2">
-        <h1 className="text-[length:var(--kin-co-h3)] lg:text-[length:var(--kin-co-h2)] font-semibold leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>Tìm gia sư phù hợp</h1>
+        <h1 className="text-[length:var(--kin-co-h3)] lg:text-[length:var(--kin-co-h2)] font-semibold leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>Tìm gia sư</h1>
         <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>
           Hồ sơ công khai do gia sư tự lựa chọn. Không cần tài khoản để xem.
         </p>
@@ -85,8 +85,8 @@ export default function GiangVienPage() {
             <input id="tutor-q" type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm theo tên hoặc môn"
               className={SELECT_CLS + " placeholder:text-[var(--kin-chu-mo)]"} />
           </div>
-          <div className="flex flex-wrap lg:flex-col gap-2 lg:gap-4">
-            <div className="flex-1 min-w-[140px] lg:flex-none">
+          <div className="grid grid-cols-2 lg:flex lg:flex-col gap-x-3 gap-y-4 lg:gap-4">
+            <div className="min-w-0">
               <label htmlFor="tutor-subject" className={LABEL_CLS} style={{ color: "var(--kin-chu-phu)" }}>Môn</label>
               <select id="tutor-subject" value={subject} onChange={e => setSubject(e.target.value)} className={SELECT_CLS}>
                 <option value="">Tất cả môn</option>
@@ -95,15 +95,15 @@ export default function GiangVienPage() {
             </div>
             {/* ĐX-06: chỉ hiện khi đã có gia sư khai khu vực; chọn rồi mà danh sách tỉnh trống (do đổi môn) vẫn giữ lựa chọn để bỏ chọn được */}
             {(cityOptions.length > 0 || city) && (
-              <div className="flex-1 min-w-[140px] lg:flex-none">
-                <label htmlFor="tutor-city" className={LABEL_CLS} style={{ color: "var(--kin-chu-phu)" }}>Tỉnh/Thành</label>
+              <div className="min-w-0 col-span-2 lg:col-span-1">
+                <label htmlFor="tutor-city" className={LABEL_CLS} style={{ color: "var(--kin-chu-phu)" }}>Khu vực</label>
                 <select id="tutor-city" value={city} onChange={e => setCity(e.target.value)} className={SELECT_CLS}>
                   <option value="">Tất cả tỉnh/thành</option>
                   {(city && !cityOptions.includes(city) ? [city, ...cityOptions] : cityOptions).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             )}
-            <div className="flex-1 min-w-[140px] lg:flex-none">
+            <div className="min-w-0">
               <label htmlFor="tutor-mode" className={LABEL_CLS} style={{ color: "var(--kin-chu-phu)" }}>Hình thức</label>
               <select id="tutor-mode" value={mode} onChange={e => setMode(e.target.value as "" | "online" | "offline")} className={SELECT_CLS}>
                 <option value="">Mọi hình thức</option>
@@ -120,7 +120,7 @@ export default function GiangVienPage() {
 
         {/* Kết quả */}
         <section aria-label="Kết quả" className="flex-1 min-w-0 w-full flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-3 pb-2.5" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-2.5" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
             <p className="text-[length:var(--kin-co-body)] font-semibold" style={{ color: "var(--kin-chu-chinh)" }} role="status">
               {shown && !loading && !error ? `${shown.length} gia sư phù hợp` : "Gia sư"}
             </p>
@@ -135,6 +135,11 @@ export default function GiangVienPage() {
               </select>
             </div>
           </div>
+
+          {/* Điện thoại: dòng lưu ý hiện ngay dưới số kết quả (cột lọc bên trái chỉ có từ lg) */}
+          <p className="lg:hidden text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>
+            Bằng cấp, khu vực do gia sư tự khai; KiN chưa xác minh. KiN không thu phí nhận lớp.
+          </p>
 
           {loading ? (
             <div aria-busy="true">{[0, 1, 2].map(i => <TutorCardSkeleton key={i} />)}</div>
@@ -156,6 +161,7 @@ export default function GiangVienPage() {
               Đã hiển thị {shown.length} kết quả · Không công khai danh tính học sinh của gia sư.
             </p>
           )}
+          <p className="text-[length:var(--kin-co-small)] pt-2" style={{ color: "var(--kin-chu-mo)" }}>KiN · Thông tin học tập được chia sẻ riêng tư.</p>
         </section>
       </div>
     </div>

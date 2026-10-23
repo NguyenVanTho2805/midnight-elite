@@ -89,8 +89,8 @@ export function TutorCard({ t }: { t: TutorListItem }) {
         </p>
       )}
 
-      <div>
-        <Link href={`/mentor/${t.id}`} className={kinButtonClass("primary")} aria-label={`Xem hồ sơ ${t.name}`}>Xem hồ sơ</Link>
+      <div className="flex">
+        <Link href={`/mentor/${t.id}`} className={kinButtonClass("primary") + " flex-1 sm:flex-none"} aria-label={`Xem hồ sơ ${t.name}`}>Xem hồ sơ</Link>
       </div>
     </article>
   );

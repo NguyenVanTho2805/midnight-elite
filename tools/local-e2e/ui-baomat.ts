@@ -48,8 +48,9 @@ import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
     await page.getByText("Làm bài trên Azota", { exact: true }).waitFor({ timeout: 30000 });
     check("1 link: một nút, chữ không đánh số", (await page.locator('a:has-text("trên Azota")').count()) === 1);
     await page.goto(`${BASE}/student/bai-giang/quizbad`, { waitUntil: "networkidle" });
-    await page.getByRole("heading", { name: "Bài quizbad" }).waitFor({ timeout: 30000 }); await page.waitForTimeout(1500); // bảng Azota không có link hợp lệ thì không dựng gì (không còn dòng "Chưa có link bài")
+    await page.getByRole("heading", { name: "Bài quizbad" }).waitFor({ timeout: 30000 }); await page.waitForTimeout(1500); // link không hợp lệ: không dựng bảng/nút Azota, chỉ hiện câu giải thích
     check("CA PHÁ: link javascript: không thành nút (không có nút 'Làm bài…' nào, không bảng Azota, không thẻ a nào mang href javascript:)", (await page.locator('a[href^="javascript:"]').count()) === 0 && (await page.getByRole("region", { name: "Bài Azota" }).count()) === 0 && (await page.locator('a:has-text("trên Azota")').count()) === 0);
+    check("link không hợp lệ: CÓ câu giải thích trung thực \"Link bài Azota không hợp lệ, hãy báo gia sư.\" (không để trang trống)", (await page.getByText("Link bài Azota không hợp lệ, hãy báo gia sư.").count()) === 1);
 
     section(`${w}px · /xem-tai-lieu`);
     await page.goto(`${BASE}/xem-tai-lieu?url=${encodeURIComponent("javascript:alert(1)")}&name=x`, { waitUntil: "networkidle" });
