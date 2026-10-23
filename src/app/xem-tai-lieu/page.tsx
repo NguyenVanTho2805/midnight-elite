@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { checkViewerUrl } from "@/lib/viewerUrl";
 
 // Trang xem trước tài liệu — mở ở tab riêng (target="_blank") thay vì link
 // thẳng vào file, để học viên xem nội dung trước khi quyết định tải về, thay
@@ -47,18 +48,26 @@ function ViewerContent() {
   const url  = params.get("url") ?? "";
   const name = params.get("name") ?? "Tài liệu";
 
-  if (!url) {
+  // MD-09: chỉ nhận đường dẫn nội bộ, Cloudinary của KiN và link Google Docs/Drive. Địa chỉ lạ, `javascript:`, `data:` bị từ chối
+  // TRƯỚC khi nhúng vào iframe, Office Viewer hay nút "Tải xuống".
+  const check = checkViewerUrl(url, { cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME });
+  if (!check.ok) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--kin-nen-bang)" }}>
-        <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Thiếu đường dẫn tài liệu.</p>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--kin-nen-bang)" }}>
+        <div className="text-center max-w-sm" role="alert">
+          <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>Địa chỉ tài liệu không hợp lệ</p>
+          <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>{check.error}</p>
+        </div>
       </div>
     );
   }
+  const kind = check.kind;
 
   const googleSrc = googlePreviewUrl(url);
   const ext = detectExt(url);
-  const isPdf    = ext === "pdf";
-  const isOffice = ext !== null && OFFICE_EXTS.has(ext);
+  const isPdf    = ext === "pdf" && kind !== "google";
+  // Office Viewer (Microsoft) chỉ được nhận địa chỉ Cloudinary của KiN; địa chỉ nội bộ không công khai nên Microsoft không đọc được.
+  const isOffice = kind === "cloudinary" && ext !== null && OFFICE_EXTS.has(ext);
   const canEmbed = !!googleSrc || isPdf || isOffice;
   const embedSrc = googleSrc ?? (isPdf ? url : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`);
 
