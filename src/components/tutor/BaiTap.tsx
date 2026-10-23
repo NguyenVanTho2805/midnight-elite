@@ -177,7 +177,8 @@ export default function BaiTap() {
   const counts = countGroups(inCourse);
   const shown = inCourse.filter(i => tab === "all" || i.group === tab);
   const keyOf = (i: BaiTapItem) => `${i.kind}:${i.id}`;
-  const selected = shown.find(i => keyOf(i) === selKey) ?? null;
+  // Bài đã chọn tìm trong cả lớp đang lọc (không chỉ tab đang xem): chấm xong bài rời tab "Chờ chấm" mà khung chấm vẫn phải ở lại để cô thấy lời xác nhận.
+  const selected = (selKey === null ? null : inCourse.find(i => keyOf(i) === selKey)) ?? null;
   // Mặc định (máy tính): bài đầu tiên đang chờ chấm, để cột phải không trống khi có việc.
   const active = selected ?? (selKey === null ? shown.find(i => i.group === "cho") ?? null : null);
 
@@ -259,7 +260,7 @@ export default function BaiTap() {
               ))}
             </div>
             <div id="bt-detail" className="min-w-0 scroll-mt-20">
-              {active ? <Detail key={keyOf(active)} item={active} onGraded={load} /> : shown.length > 0 && (
+              {active ? <Detail key={keyOf(active)} item={active} onGraded={() => { setSelKey(keyOf(active)); load(); }} /> : shown.length > 0 && (
                 <KinCallout>Chọn một bài ở danh sách để xem bài nộp và chấm điểm.</KinCallout>
               )}
             </div>
