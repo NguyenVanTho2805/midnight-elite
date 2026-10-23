@@ -29,6 +29,8 @@ Tên file: `t-*.ts` = logic thuần + API; `ui-*.ts` = trình duyệt. Mỗi fil
 - Bộ giới hạn tốc độ nhớ theo token trong bộ nhớ server: test cổng phụ huynh dùng token ngẫu nhiên mỗi lần chạy.
 - `ctx.on("page")` phải đăng ký SAU khi tạo trang chính, nếu không trang chính bị coi là cửa sổ bật lên.
 - `getByRole("alert")` dính cả bộ thông báo tuyến của Next; dùng locator theo chữ.
+- 23/10: toast của khu quản trị chỉ sống 3 giây (`useAdminToast`) mà trang nặng còn gọi mạng lâu hơn: KHÔNG `goto(..., networkidle)` rồi mới tìm toast (cùng mã, lần 1 xanh 7/7, lần 2 đỏ 6/7). Dùng `waitUntil: "domcontentloaded"` rồi `waitFor` ngay; và để kiểm "KHÔNG báo lại" thì chờ đủ lâu (vài giây) chứ đừng nhìn một lần. Làm nóng trang (một lần `goto` không kèm tham số) trước khi đo, vì lần mở đầu của `next dev` biên dịch rồi có thể tải lại trang.
+- 23/10: bài liên quan ngày/giờ chạy dưới UTC có thể xanh dù mã lệch ngày. `t-session-change` với `studentSchedule.ts` bản cũ: UTC 67/0, nhưng `TZ=Asia/Ho_Chi_Minh` (đặt cho CẢ máy chủ dev lẫn bài test: `TZ=Asia/Ho_Chi_Minh bash tools/local-e2e/dev-start.sh` rồi `TZ=Asia/Ho_Chi_Minh npx tsx …`) đỏ đúng 2 ca. Bài mới về ngày giờ nên chạy ở cả hai múi giờ.
 
 ## Danh sách test (số kiểm tra, 12/10/2026)
 - Lib thuần (`t-*-lib.ts`, `t-todo-lib`, `t-class-sessions`...): `t-correction-lib`, `t-monthly-lib`, `t-invoice-zalo-lib`, `t-funnel-lib`, `t-plan-lib`, `t-invoice-lib`, `t-revenue-lib`, `t-score-lib`, `t-session-change-lib`.
