@@ -82,10 +82,15 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await pg.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
   await rail(pg).waitFor({ timeout: 90000 });
   await rail(pg).getByRole("link", { name: /^Bài tập/ }).click();
+  await pg.waitForURL(/\/lop-cua-toi\/bai-tap/, { timeout: 90000 });
+  await rail(pg).waitFor({ timeout: 90000 });
+  // 23/10/2026: Figma 299:113312 — "Bài tập" mở trang Bài tập và kiểm tra của gia sư (/lop-cua-toi/bai-tap); quản lý đề thi vẫn ở /admin/thi-thu (nút "Quản lý đề thi").
+  check("bấm 'Bài tập' → /lop-cua-toi/bai-tap, 'Bài tập' đang chọn", new URL(pg.url()).pathname === "/lop-cua-toi/bai-tap" && (await cur(pg, "Bài tập")) === "page", pg.url());
+  await pg.getByRole("link", { name: "Quản lý đề thi" }).click();
   await pg.waitForURL(/\/admin\/thi-thu/, { timeout: 90000 });
   await rail(pg).waitFor({ timeout: 90000 });
   const u = new URL(pg.url());
-  check("bấm 'Bài tập' → mở /admin/thi-thu NGAY TRÊN tên miền chính (không sang admin.…)", u.hostname === "localhost" && u.pathname === "/admin/thi-thu", pg.url());
+  check("'Quản lý đề thi' → mở /admin/thi-thu NGAY TRÊN tên miền chính (không sang admin.…)", u.hostname === "localhost" && u.pathname === "/admin/thi-thu", pg.url());
   check("vẫn thấy thanh bên của GIA SƯ; không có thanh bên quản trị", await rail(pg).isVisible() && (await adminRail(pg).count()) === 0);
   check("'Bài tập' đang chọn (aria-current=page), 'Thư viện' không", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page");
   check("có dải tab 'Trang của Nội dung' với tab 'Đề thi' đang chọn", await pg.getByRole("navigation", { name: "Trang của Nội dung" }).getByRole("link", { name: "Đề thi" }).getAttribute("aria-current") === "page");

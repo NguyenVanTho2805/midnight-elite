@@ -17,12 +17,12 @@ export interface LibLesson {
   docs: LibDoc[];
   assignments: LibAssignment[];
 }
-export interface LibClass { id: string; name: string; lessons: LibLesson[]; emptyLessons: number }
+export interface LibClass { id: string; name: string; category?: string | null; lessons: LibLesson[]; emptyLessons: number }
 
 const MAX_CLASSES = 50, MAX_LESSONS = 300;
 
 const courseSelect = {
-  id: true, name: true,
+  id: true, name: true, category: true,
   sections: {
     orderBy: { order: "asc" as const },
     select: {
@@ -76,7 +76,7 @@ export async function loadStudentLibrary(userId: string, now: Date): Promise<Lib
         assignments: l.assignments.map(a => ({ id: a.id, title: a.title, due: a.dueDate ? shortDate(a.dueDate) : null, status: assignmentStatus(a, sub.get(a.id) ?? null, now) })),
       });
     }
-    return { id: c.id, name: c.name, lessons, emptyLessons: items.length - lessons.length };
+    return { id: c.id, name: c.name, category: c.category, lessons, emptyLessons: items.length - lessons.length };
   });
 }
 
@@ -101,6 +101,6 @@ export async function loadTutorLibrary(userId: string): Promise<LibClass[]> {
         assignments: l.assignments.map(a => ({ id: a.id, title: a.title, due: a.dueDate ? shortDate(a.dueDate) : null, status: tutorAssignmentSummary(nAll.get(a.id) ?? 0, nUn.get(a.id) ?? 0) })),
       });
     }
-    return { id: c.id, name: c.name, lessons, emptyLessons: items.length - lessons.length };
+    return { id: c.id, name: c.name, category: c.category, lessons, emptyLessons: items.length - lessons.length };
   });
 }
