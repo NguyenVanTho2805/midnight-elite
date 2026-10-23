@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
 import { checkLinkForSlot, type MediaSlot } from "@/lib/mediaLink";
+import { AiQuotaNote } from "@/components/AiQuotaNote";
 import { validateDocumentFile, DOCUMENT_ACCEPT, DOCUMENT_MAX_MB, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -981,6 +982,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
               {aiLoading ? "Đang trích xuất bằng AI..." : "🤖 Tải file đề bài để AI trích câu hỏi (PDF/ảnh/Word)"}
             </button>
           </DropZone>
+          <AiQuotaNote busy={aiLoading} />
           {aiErr && <p className="text-xs" style={{ color: "var(--kin-tt-chu-loi)" }}>{aiErr}</p>}
           {skippedCount > 0 && (
             <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>

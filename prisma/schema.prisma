@@ -859,6 +859,7 @@ model User {
   threadReports       ThreadReport[]
   tutorSubscriptions  TutorSubscription[]
   proOrders           ProOrder[]
+  supportRequests     SupportRequest[]
   monthlyReportsAsTutor   MonthlyReport[] @relation("ReportTutor")
   monthlyReportsAsStudent MonthlyReport[] @relation("ReportStudent")
   absencesAsStudent    ClassAbsence[]      @relation("AbsenceStudent")
@@ -1976,4 +1977,28 @@ model UsageEvent {
   @@index([userId, kind, createdAt])
   @@index([kind, createdAt])
   @@map("usage_events")
+}
+
+// KiN Pro F6 — yêu cầu hỗ trợ của gia sư. Một hàng đợi chung; gói Pro được xếp trước (chụp lại gói LÚC GỬI), hứa "trong giờ hành chính", không hứa 24/7.
+// Lỗi nghiêm trọng và vấn đề riêng tư (kind = "serious") KHÔNG phân tầng: Free và Pro cùng vào làn khẩn, không phải đặc quyền Pro.
+// Không có trường học sinh/phụ huynh: nội dung là chữ gia sư tự viết, form dặn không ghi tên/số điện thoại/ảnh của học sinh.
+model SupportRequest {
+  id          String    @id @default(cuid())
+  userId      String // gia sư gửi
+  kind        String // "setup" | "payment" | "other" | "serious"
+  subject     String    @db.VarChar(120)
+  message     String    @db.Text
+  planAtSend  String // "free" | "pro" (chụp lúc gửi)
+  status      String    @default("open") // "open" | "answered" | "closed"
+  reply       String?   @db.Text // câu trả lời của quản trị, gia sư xem được
+  repliedBy   String? // userId quản trị
+  repliedAt   DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("support_requests")
 }

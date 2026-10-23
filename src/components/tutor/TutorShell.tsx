@@ -56,6 +56,7 @@ export default function TutorShell({
     ...MORE_BASE,
     { title: "Tài khoản", links: [
       { label: "Gói của tôi", href: "/lop-cua-toi/goi" },
+      { label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat" },
       ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module" }] : []),
     ] },

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { api, type ExamFileFull, type ExamQuestionInput, type QuestionBankItemFull, type QuestionCategoryFull, type Difficulty } from "@/lib/api";
 import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { MathText } from "@/components/MathText";
+import { AiQuotaNote } from "@/components/AiQuotaNote";
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "NB",  label: "Nhận biết" },
@@ -238,6 +239,7 @@ export function ExtractReviewModal({ examFile, fixedBankId, onClose, onSaved, sh
             <p className="text-xs text-gray-500 mt-0.5">
               {loading ? "AI đang đọc file, có thể mất 20-40 giây..." : `${questions.length} câu — gán Đầu mục rồi lưu vào Ngân hàng câu hỏi`}
             </p>
+            <AiQuotaNote busy={loading} className="mt-1" />
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 text-xl font-light">×</button>
         </div>
