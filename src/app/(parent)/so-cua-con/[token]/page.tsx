@@ -106,12 +106,16 @@ export default async function SoCuaConPage({ params }: PageProps) {
   const owed = openInvoices.reduce((a, i) => a + i.remaining, 0);
   const thisMonthInvoices = invoices.filter(i => i.yearMonth === ym);
   const feeTile = openInvoices.length > 0
-    ? { value: formatVnd(owed), sub: `${openInvoices.length} phiếu chưa đóng xong` }
+    ? {
+        label: "Học phí còn phải đóng",
+        value: formatVnd(owed),
+        sub: `${openInvoices.length} phiếu chưa đóng xong${openInvoices.some(i => i.yearMonth !== ym) ? ", gồm cả các tháng trước" : ""}`,
+      }
     : thisMonthInvoices.length > 0
-      ? { value: "Đã đóng", sub: "Phiếu tháng này đã được gia sư ghi nhận" }
+      ? { label: `Học phí tháng ${m}`, value: "Đã đóng", sub: "Phiếu tháng này đã được gia sư ghi nhận" }
       : feeBreakdown
-        ? { value: formatVnd(feeBreakdown.finalAmount), sub: "Tạm tính theo số buổi đã học" }
-        : { value: "Chưa có", sub: "Gia sư chưa gửi phiếu" };
+        ? { label: `Học phí tháng ${m}`, value: formatVnd(feeBreakdown.finalAmount), sub: "Tạm tính theo số buổi đã học" }
+        : { label: `Học phí tháng ${m}`, value: "Chưa có", sub: "Gia sư chưa gửi phiếu" };
   const stats: { label: string; value: string; sub: string }[] = [
     {
       label: "Chuyên cần",
@@ -128,7 +132,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
       value: reports.length > 0 ? "Đã có" : "Chưa có",
       sub: reports.length > 0 ? `Mới nhất: tháng ${Number(reports[0].yearMonth.slice(5, 7))}/${reports[0].yearMonth.slice(0, 4)}` : "Gia sư chưa gửi báo cáo",
     },
-    { label: `Học phí tháng ${m}`, ...feeTile },
+    feeTile,
   ];
 
   const hasFeeBlock = invoices.length > 0 || !!feeBreakdown;
