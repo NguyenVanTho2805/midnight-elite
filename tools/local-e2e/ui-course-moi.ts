@@ -13,26 +13,31 @@ import { launch, ctxFor, closeAll } from "./ui";
   pg.on("pageerror", e => errors.push(String(e)));
   const TOAST = "Đã tạo khoá học mới";
   const url = `${BASE}/admin/khoa-hoc/${c.id}?tab=lich-hoc&moi=1`;
+  // Toast chỉ sống 3 giây (useAdminToast) mà trang quản khoá còn gọi mạng lâu hơn thế: đừng chờ networkidle TRƯỚC khi tìm toast
+  // (lần chạy 23/10: 7/7 rồi 6/7 trên cùng mã). Tìm toast ngay từ lúc DOM tải xong, chờ tối đa `ms`.
+  const toastShown = (ms: number) => pg.getByText(TOAST).first().waitFor({ timeout: ms }).then(() => true, () => false);
+
+  // Làm nóng trang (chưa có moi=1): lần mở đầu của `next dev` biên dịch rồi có thể tải lại trang đang mở, làm toast biến mất.
+  await pg.goto(`${BASE}/admin/khoa-hoc/${c.id}?tab=lich-hoc`, { waitUntil: "networkidle", timeout: 150000 });
 
   section("Vừa tạo lớp: toast hiện một lần, tham số bị xoá khỏi URL");
-  await pg.goto(url, { waitUntil: "networkidle", timeout: 120000 });
-  await pg.getByText(TOAST).first().waitFor({ timeout: 20000 }).catch(() => {});
-  check("toast hiện", (await pg.getByText(TOAST).count()) >= 1);
+  await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+  check("toast hiện", await toastShown(30000));
   await pg.waitForFunction(() => !location.search.includes("moi="), null, { timeout: 15000 }).catch(() => {});
   const u1 = new URL(pg.url());
   check("URL không còn moi=1", !u1.searchParams.has("moi"), pg.url());
   check("vẫn giữ nguyên trang lớp và tab Lịch học", u1.pathname === `/admin/khoa-hoc/${c.id}` && u1.searchParams.get("tab") === "lich-hoc", pg.url());
 
   section("F5: không báo lại");
-  await pg.reload({ waitUntil: "networkidle", timeout: 120000 });
-  await pg.waitForTimeout(700); // toast chỉ sống vài giây — kiểm sớm để bản lỗi (báo lại sau F5) bị bắt
-  check("sau F5: không toast", (await pg.getByText(TOAST).count()) === 0);
+  await pg.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
+  // Bản lỗi (báo lại sau F5) sẽ hiện toast ngay sau khi trang gắn kết, trong vài giây: chờ 6 giây, không thấy mới tính là "không báo lại".
+  check("sau F5: không toast (chờ 6 giây)", !(await toastShown(6000)));
+  await pg.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
   check("sau F5: URL vẫn sạch", !new URL(pg.url()).searchParams.has("moi"), pg.url());
 
   section("Đối chứng: mở lại ?moi=1 lần nữa (vừa tạo lớp khác) vẫn báo");
-  await pg.goto(url, { waitUntil: "networkidle", timeout: 120000 });
-  await pg.getByText(TOAST).first().waitFor({ timeout: 20000 }).catch(() => {});
-  check("lần mở mới có moi=1 → toast hiện lại", (await pg.getByText(TOAST).count()) >= 1);
+  await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
+  check("lần mở mới có moi=1 → toast hiện lại", await toastShown(30000));
   check("không lỗi script trang", errors.length === 0, errors);
   await closeAll();
   done();
