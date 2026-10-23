@@ -51,6 +51,7 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
     key: "cai-dat", label: "Cài đặt", icon: "cai-dat",
     subs: [
       { label: "Gói KiN Pro", href: "/admin/goi-pro", permission: PERMISSIONS.MANAGE_REVENUE },
+      { label: "Hỗ trợ gia sư", href: "/admin/ho-tro", permission: PERMISSIONS.MANAGE_TUTORS },
     ],
   },
 ];

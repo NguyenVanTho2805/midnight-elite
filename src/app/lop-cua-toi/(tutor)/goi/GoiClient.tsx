@@ -2,6 +2,7 @@
 // Chưa cấu hình nhận tiền / đang chạy thử / bản xem trước → "Chưa mở bán", không bao giờ hiện số tài khoản. Thu bằng QR theo kỳ, KiN đối chiếu và mở Pro bằng tay.
 // Trạng thái luôn có CHỮ (màu không nói một mình). Đang tải: khung xương. Lỗi: dải lỗi có "Thử lại".
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { KinButton, KinCallout, KinSectionHead, KinStat, KinStatRow, KinStateCard, KinStatus, KinCopyButton } from "@/components/kin";
 import { KinPage, KinPageHeader, KinPageSkeleton } from "@/components/kin/PageLayout";
@@ -147,7 +148,7 @@ export default function GoiClient() {
             ))}
           </div>
           <p className="mt-3 text-[length:var(--kin-co-small)] leading-5 text-[var(--kin-chu-mo)]">
-            Mục ghi “đang dựng” chưa dùng được trên KiN; KiN không bán cái chưa có.
+            Mục ghi “đang dựng” chưa dùng được trên KiN; KiN không bán cái chưa có. Cần hỗ trợ? <Link href="/lop-cua-toi/ho-tro" className="underline">Liên hệ hỗ trợ</Link>.
           </p>
         </section>
 
@@ -241,9 +242,9 @@ function COMPARE(free: PlanConfigRow, pro: PlanConfigRow): { k: string; free: st
     { k: "Nhắc học phí", free: "Bước 1: tin soạn sẵn, mở Zalo; công nợ và phiếu quá hạn luôn hiện", pro: "Thêm bước 2–3, lịch sử nhắc theo phiếu, gợi ý thời điểm nhắc", building: true },
     { k: "Báo cáo tháng và phiếu", free: "Tạo, duyệt, gửi bằng link; mẫu mặc định KiN", pro: "Logo, tên, màu, chữ ký; bản in/PDF; nhiều mẫu phiếu", building: true },
     { k: "Xuất dữ liệu", free: "CSV doanh thu, điểm danh, toàn bộ dữ liệu của bạn", pro: "Như Free, thêm mẫu PDF có thương hiệu", building: true },
-    { k: "Thống kê", free: "Sáu chỉ số cơ bản, doanh thu theo lớp và tháng", pro: "Xu hướng chuyên cần, cảnh báo vắng liên tiếp, so sánh lớp", building: true },
+    { k: "Thống kê", free: "Sáu chỉ số cơ bản, doanh thu theo lớp và tháng", pro: "Xu hướng chuyên cần, cảnh báo vắng liên tiếp, so sánh lớp (ở trang Doanh thu)" },
     { k: "Thông báo đẩy", free: "Báo nghỉ sát giờ; khoản tiền chưa khớp", pro: "Thêm phiếu quá hạn, chưa điểm danh", building: true },
     { k: "AI trích đề", free: `${free.aiExtractPerMonth} lượt mỗi tháng`, pro: `${pro.aiExtractPerMonth} lượt mỗi tháng` },
-    { k: "Hỗ trợ", free: "Nhóm Zalo / email", pro: "Hàng đợi ưu tiên", building: true },
+    { k: "Hỗ trợ", free: "Nhóm Zalo / email, hoặc gửi ở Liên hệ hỗ trợ", pro: "Hàng đợi ưu tiên, trả lời trong giờ hành chính" },
   ];
 }

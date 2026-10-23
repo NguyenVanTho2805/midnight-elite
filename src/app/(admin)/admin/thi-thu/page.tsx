@@ -19,6 +19,7 @@ import { CategoryPicker, categoryPath } from "@/components/CategoryPicker";
 import { serializeQuestionsToMarkup, parseMarkupToQuestions } from "@/lib/examMarkup";
 import { DropZone } from "@/components/DropZone";
 import { useKinConfirm } from "@/components/kin/useConfirm";
+import { AiQuotaNote } from "@/components/AiQuotaNote";
 
 type ExamRow = ExamFull & { status: ExamStatus };
 
@@ -916,6 +917,7 @@ Câu 4: Câu tự luận không có đáp án nào cả.`}</pre>
                     + Từ ngân hàng
                   </button>
                 </div>
+                <AiQuotaNote busy={aiLoading} />
                 {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
               </div>
             ) : (

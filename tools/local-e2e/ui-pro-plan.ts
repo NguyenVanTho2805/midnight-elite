@@ -53,7 +53,7 @@ const PAY = flag("EXPECT_PAY"), ENFORCE = flag("EXPECT_ENFORCE");
   const tbl = pg.getByTestId("so-sanh");
   check("có đủ hàng: học viên, nhắc học phí, báo cáo, xuất dữ liệu, thống kê, thông báo đẩy, AI, hỗ trợ", await Promise.all(["Học viên đang học", "Nhắc học phí", "Báo cáo tháng và phiếu", "Xuất dữ liệu", "Thống kê", "Thông báo đẩy", "AI trích đề", "Hỗ trợ", "Sổ của con"].map(t => tbl.getByText(t).first().isVisible())).then(r => r.every(Boolean)));
   check("con số lấy từ cấu hình: Free 'Tối đa 10', AI '3 lượt' / '20 lượt mỗi tháng'", await tbl.getByText("Tối đa 10").isVisible() && await tbl.getByText("3 lượt mỗi tháng").isVisible() && await tbl.getByText("20 lượt mỗi tháng").isVisible());
-  check("tính năng chưa dựng ghi rõ 'đang dựng' (KiN không bán cái chưa có)", (await tbl.getByText("đang dựng").count()) >= 5 && await pg.getByText(/không bán cái chưa có/).isVisible());
+  check("tính năng chưa dựng ghi rõ 'đang dựng' (KiN không bán cái chưa có)", (await tbl.getByText("đang dựng").count()) >= 3 && await pg.getByText(/không bán cái chưa có/).isVisible());
   check("lõi và Sổ của con ghi 'Luôn mở'", await tbl.getByText("Luôn mở").first().isVisible());
   check("có câu 'Khi hết hạn Pro' nói giữ nguyên dữ liệu và chữ trung tính cho học viên", await pg.getByText(/giữ nguyên 100%, không ẩn, không xoá/).isVisible() && await pg.getByText(/“Lớp tạm chưa nhận thêm”/).isVisible());
 
