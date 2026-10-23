@@ -11,6 +11,8 @@ import { openZalo } from "@/lib/zaloShare";
 import { groupInvoiceMessage, invoiceLinkDaysLeft, privateInvoiceMessage } from "@/lib/invoiceZalo";
 import { Badge, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 import { vnMonthKey } from "@/lib/revenue";
+import { PaymentsDialog } from "./PaymentTools";
+import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/lib/tuitionPayment";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 
 const vnHm = (iso: string) => hmOf(vnMinutesOfDay(new Date(iso)));
@@ -29,6 +31,7 @@ type Dialog =
   | { kind: "amount"; inv: InvoiceRow }
   | { kind: "cancel"; inv: InvoiceRow }
   | { kind: "pay"; inv: InvoiceRow }
+  | { kind: "payments"; inv: InvoiceRow }
   | { kind: "zalo"; inv: InvoiceRow };
 
 function lastMonths(now = new Date()): string[] {
@@ -209,6 +212,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                   <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>
                 </>)}
                 {i.status === "draft" && <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>}
+                {i.paidAmount > 0 && <KinButton variant="ghost" onClick={() => setDialog({ kind: "payments", inv: i })}>Khoản đã thu</KinButton>}
                 {i.status !== "paid" && i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "amount", inv: i })}>Sửa số tiền</KinButton>}
                 {i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "cancel", inv: i })}>Huỷ phiếu</KinButton>}
                 {i.status === "cancelled" && <KinButton variant="secondary" loading={busy === i.id} onClick={() => act(i, { action: "restore" }, "Đã khôi phục phiếu về nháp.")}>Khôi phục</KinButton>}
@@ -224,7 +228,8 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
         onSubmit={async reason => { if (await act(dialog.inv, { action: "cancel", reason }, "Đã huỷ phiếu.")) setDialog(null); }} />}
       {dialog?.kind === "zalo" && <ZaloDialog inv={dialog.inv} onClose={() => setDialog(null)} onOpened={() => load(yearMonth)} />}
       {dialog?.kind === "pay" && <PayDialog inv={dialog.inv} onClose={() => setDialog(null)}
-        onSubmit={async (amount, excess) => { if (await act(dialog.inv, { action: "record_payment", amount, ...(excess ? { excess } : {}) }, "Đã ghi nhận tiền.")) setDialog(null); }} />}
+        onSubmit={async (amount, excess, paidOn, method) => { if (await act(dialog.inv, { action: "record_payment", amount, paidOn, method, ...(excess ? { excess } : {}) }, "Đã ghi nhận tiền.")) setDialog(null); }} />}
+      {dialog?.kind === "payments" && <PaymentsDialog invoiceId={dialog.inv.id} code={dialog.inv.code} studentName={dialog.inv.studentName} onClose={() => setDialog(null)} onChanged={() => load(yearMonth)} />}
     </div>
   );
 }
@@ -346,18 +351,29 @@ function ZaloDialog({ inv, onClose, onOpened }: { inv: InvoiceRow; onClose: () =
   );
 }
 
-function PayDialog({ inv, onClose, onSubmit }: { inv: InvoiceRow; onClose: () => void; onSubmit: (amount: number, excess?: "credit" | "refunded") => Promise<void> }) {
+function PayDialog({ inv, onClose, onSubmit }: { inv: InvoiceRow; onClose: () => void; onSubmit: (amount: number, excess: "credit" | "refunded" | undefined, paidOn: string, method: PaymentMethod) => Promise<void> }) {
+  const today = vnDateKeyOf(new Date());
   const [amount, setAmount] = useState(String(inv.remaining));
   const [excess, setExcess] = useState<"credit" | "refunded">("credit");
+  const [paidOn, setPaidOn] = useState(today); // HP-20: ngày thu (mặc định hôm nay, giờ VN)
+  const [method, setMethod] = useState<PaymentMethod>("cash");
   const [busy, setBusy] = useState(false);
   const n = Number(amount);
   const over = Number.isInteger(n) && n > inv.remaining ? n - inv.remaining : 0;
-  const valid = Number.isInteger(n) && n > 0;
+  const valid = Number.isInteger(n) && n > 0 && /^\d{4}-\d{2}-\d{2}$/.test(paidOn) && paidOn <= today;
   return (
     <Modal title={`Ghi nhận tiền — ${inv.studentName}`} onClose={onClose}>
       <p className="text-sm mb-3" style={{ color: "var(--kin-chu-phu)" }}>Dùng khi nhận tiền mặt hoặc chuyển khoản không qua SePay. Còn lại {vnd(inv.remaining)}.</p>
       <label className="block text-sm mb-1" htmlFor="payamt">Số tiền đã nhận (đ)</label>
       <input id="payamt" inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value.replace(/[^\d]/g, ""))} className="w-full px-3 py-2 rounded-lg mb-3 min-h-[44px]" style={FIELD_STYLE} />
+      <label className="block text-sm mb-1" htmlFor="paidon">Ngày thu</label>
+      <input id="paidon" type="date" value={paidOn} max={today} onChange={e => setPaidOn(e.target.value)} className="w-full px-3 py-2 rounded-lg mb-3 min-h-[44px]" style={FIELD_STYLE} />
+      <fieldset className="mb-3 text-sm">
+        <legend className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Hình thức</legend>
+        {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map(v => (
+          <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="pay-method" checked={method === v} onChange={() => setMethod(v)} /> {PAYMENT_METHOD_LABEL[v]}</label>
+        ))}
+      </fieldset>
       {over > 0 && (
         <fieldset className="mb-3 text-sm">
           <legend className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Dư {vnd(over)} — xử lý thế nào?</legend>
@@ -368,7 +384,7 @@ function PayDialog({ inv, onClose, onSubmit }: { inv: InvoiceRow; onClose: () =>
       )}
       <div className="flex justify-end gap-2">
         <KinButton variant="ghost" onClick={onClose}>Đóng</KinButton>
-        <KinButton disabled={!valid} loading={busy} onClick={async () => { setBusy(true); await onSubmit(n, over > 0 ? excess : undefined); setBusy(false); }}>Ghi nhận</KinButton>
+        <KinButton disabled={!valid} loading={busy} onClick={async () => { setBusy(true); await onSubmit(n, over > 0 ? excess : undefined, paidOn, method); setBusy(false); }}>Ghi nhận</KinButton>
       </div>
     </Modal>
   );

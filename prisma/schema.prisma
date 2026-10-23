@@ -1232,6 +1232,9 @@ model BankTransaction {
   resolvedBy          String?
   resolvedAt          DateTime?
   suggestedInvoiceIds String[]  @default([]) // gợi ý cùng số tiền — KHÔNG tự ghép
+  // HP-20 (23/10/2026): hình thức khi gia sư tự ghi tay: "cash" | "bank_transfer". null = bản ghi cũ (coi là tiền mặt) hoặc
+  // tiền vào qua SePay. Ngày thu của khoản ghi tay chính là `occurredAt` (báo cáo doanh thu đã tính theo cột này).
+  method              String?
   createdAt           DateTime  @default(now())
 
   tutor   User            @relation("BankTxTutor", fields: [tutorId], references: [id], onDelete: Cascade)
@@ -1259,6 +1262,31 @@ model TuitionCredit {
 
   @@index([tutorId, studentId])
   @@map("tuition_credits")
+}
+
+// HP-21 (23/10/2026): nhật ký hoàn tác một khoản đã thu. BẢNG MỚI, chỉ thêm dòng, không sửa/xoá dòng cũ. Một khoản tiền có thể
+// bị hoàn tác nhiều lần (ghép sai → hoàn tác → ghép lại → hoàn tác) nên không đặt cột hoàn tác trên BankTransaction.
+// Không khoá ngoại tới người dùng (tránh đụng model User); tutorId/bankTransactionId/invoiceId chỉ để tra cứu.
+//   outcome: "requeued" (khoản tiền thật đã vào TK gia sư → quay lại hàng chờ đối soát)
+//            "voided"   (khoản gia sư tự ghi tay → coi như ghi nhầm, loại khỏi doanh thu)
+model PaymentReversal {
+  id                String   @id @default(cuid())
+  tutorId           String
+  bankTransactionId String
+  invoiceId         String
+  reversedAmount    Int // phần đã cộng vào phiếu nay được trừ ra
+  reason            String   @db.Text
+  outcome           String
+  invoiceStatusFrom String
+  invoiceStatusTo   String
+  creditsVoided     Int      @default(0) // tổng tiền dư (tín dụng tháng sau) được thu hồi
+  reversedBy        String
+  createdAt         DateTime @default(now())
+
+  @@index([tutorId, createdAt])
+  @@index([bankTransactionId])
+  @@index([invoiceId])
+  @@map("payment_reversals")
 }
 
 // ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────

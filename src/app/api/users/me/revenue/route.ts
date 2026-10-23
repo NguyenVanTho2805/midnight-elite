@@ -13,12 +13,13 @@ import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { OPEN_STATUSES } from "@/lib/tuitionInvoice";
+import { manualMethodLabel } from "@/lib/tuitionPayment";
 import { allocateByWeights, parseDateRange, rangeWhere, toCsv, vnDateKey, vnMonthKey } from "@/lib/revenue";
 
 type Subject = { courseId?: string; courseName?: string; subtotal?: number };
 
-function methodOf(provider: string, resolution: string | null): string {
-  if (provider === "manual") return "Tiền mặt / ghi tay";
+function methodOf(provider: string, resolution: string | null, method: string | null): string {
+  if (provider === "manual") return manualMethodLabel(method); // HP-20: bản ghi cũ method=null → chữ cũ
   return resolution === "matched_manual" ? "Chuyển khoản (gia sư ghép tay)" : "Chuyển khoản (SePay)";
 }
 
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
   const transactions = rows.map(r => ({
     id: r.id, date: r.occurredAt.toISOString(), studentName: r.invoice?.student.name ?? "—",
     code: r.invoice?.code ?? r.matchedCode ?? "", yearMonth: r.invoice?.yearMonth ?? "",
-    method: methodOf(r.provider, r.resolution), amount: r.appliedAmount,
+    method: methodOf(r.provider, r.resolution, r.method), amount: r.appliedAmount,
   }));
 
   if (sp.get("format") === "csv") {
