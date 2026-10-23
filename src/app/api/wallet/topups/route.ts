@@ -4,7 +4,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
-import { validateTopupInput, vndToCoin, countPendingByUser, MAX_PENDING_PER_USER, bankMemo, BANK_INFO } from "@/lib/coinTopup";
+import { validateTopupInput, vndToCoin, countPendingByUser, MAX_PENDING_PER_USER, bankMemo, getTopupBank } from "@/lib/coinTopup";
+import { isTrialMode, TRIAL_MODE_TOPUP_MESSAGE } from "@/lib/trialMode";
 import { logAction } from "@/lib/auditLog";
 
 type TopupDelegate = {
@@ -15,6 +16,12 @@ function topups(): TopupDelegate {
   return (prisma as unknown as { coinTopupRequest: TopupDelegate }).coinTopupRequest;
 }
 
+// Tài khoản nhận + nội dung chuyển khoản. null khi chủ dự án chưa đặt tài khoản thật (xem src/lib/topupBank.ts): không bịa số.
+function bankFor(userId: string) {
+  const b = getTopupBank();
+  return b ? { ...b, memo: bankMemo(userId) } : null;
+}
+
 export async function POST(req: NextRequest) {
   const auth = await requireSession();
   if (isNextResponse(auth)) return auth;
@@ -23,6 +30,12 @@ export async function POST(req: NextRequest) {
   // đi đường riêng (phiếu học phí + webhook SePay), không qua Coin.
   if (auth.role === "student") {
     return NextResponse.json({ error: "Coin của học sinh nhận từ làm bài, không nạp bằng tiền. Học phí chuyển khoản theo phiếu của gia sư." }, { status: 403 });
+  }
+
+  // PRO D2 — đang chạy thử miễn phí thì không nhận yêu cầu nạp: giao diện đã ẩn form nhưng API vẫn gọi trực tiếp được,
+  // và tiền thật chuyển vào lúc này sẽ thành số dư Coin không có đường hoàn. Chặn TRƯỚC khi đọc thân yêu cầu hay ghi DB.
+  if (isTrialMode()) {
+    return NextResponse.json({ error: TRIAL_MODE_TOPUP_MESSAGE, trial: true }, { status: 403 });
   }
 
   let body: unknown = null;
@@ -58,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     request: created,
-    bank:    { ...BANK_INFO, memo: bankMemo(auth.userId) },
+    bank:    bankFor(auth.userId),
   }, { status: 201 });
 }
 
@@ -72,5 +85,5 @@ export async function GET() {
     take:    30,
   });
 
-  return NextResponse.json({ items, bank: { ...BANK_INFO, memo: bankMemo(auth.userId) } });
+  return NextResponse.json({ items, bank: bankFor(auth.userId) });
 }

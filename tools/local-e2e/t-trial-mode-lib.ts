@@ -1,5 +1,5 @@
 // NC2-023 — bài thuần: cách đọc cờ KIN_TRIAL_MODE. Không cần máy chủ.
-import { isTrialMode, TRIAL_MODE_MESSAGE } from "@/lib/trialMode";
+import { isTrialMode, TRIAL_MODE_MESSAGE, TRIAL_MODE_TOPUP_MESSAGE } from "@/lib/trialMode";
 import { check, section, done } from "./h";
 
 (async () => {
@@ -20,6 +20,7 @@ import { check, section, done } from "./h";
 
   section("Chữ");
   check("thông điệp tiếng Việt đúng, không bịa số", TRIAL_MODE_MESSAGE === "KiN đang miễn phí trong giai đoạn chạy thử, chưa cần mua gói." && !/\d/.test(TRIAL_MODE_MESSAGE));
+  check("thông điệp chặn nạp Coin tiếng Việt, không bịa số", TRIAL_MODE_TOPUP_MESSAGE === "KiN đang miễn phí trong giai đoạn chạy thử, chưa cần nạp Coin." && !/\d/.test(TRIAL_MODE_TOPUP_MESSAGE));
   section("Quét tĩnh: mọi điểm vào mua/nạp trong mã đều đã được kiểm");
   const { readdirSync, readFileSync, statSync } = await import("node:fs");
   const { join, relative } = await import("node:path");
@@ -39,6 +40,11 @@ import { check, section, done } from "./h";
   const purchase = files.find(f => f.rel === "src/app/api/subscriptions/[code]/purchase/route.ts")!.txt;
   const iGate = purchase.indexOf("isTrialMode()"), iDb = purchase.indexOf("await prisma.$transaction");
   check("API mua gói chặn bằng isTrialMode() TRƯỚC prisma.$transaction", iGate > 0 && iDb > iGate && /status:\s*403/.test(purchase.slice(iGate, iDb)));
+  const topups = files.find(f => f.rel === "src/app/api/wallet/topups/route.ts")!.txt;
+  const iPost = topups.indexOf("export async function POST");
+  const iTrial = topups.indexOf("isTrialMode()", iPost), iBody = topups.indexOf("await req.json()", iPost), iCreate = topups.indexOf("topups().create", iPost);
+  check("API nạp Coin (POST) chặn bằng isTrialMode() TRƯỚC khi đọc thân yêu cầu và TRƯỚC khi ghi DB, trả 403", iPost >= 0 && iTrial > iPost && iBody > iTrial && iCreate > iTrial && /status:\s*403/.test(topups.slice(iTrial, iBody)));
+  check("cờ chỉ chặn POST: GET xem lịch sử yêu cầu nạp không gọi isTrialMode()", topups.split("isTrialMode()").length - 1 === 1);
   const readers = files.filter(f => /KIN_TRIAL_MODE/.test(f.txt)).map(f => f.rel).sort();
   check("chỉ MỘT chỗ đọc biến KIN_TRIAL_MODE: src/lib/trialMode.ts", readers.length === 1 && readers[0] === "src/lib/trialMode.ts", readers);
 

@@ -10,8 +10,9 @@ import { prisma } from "@/lib/prisma";
 
 export {
   MIN_TOPUP_VND, MAX_TOPUP_VND, MAX_PENDING_PER_USER,
-  vndToCoin, validateTopupInput, bankMemo, BANK_INFO,
+  vndToCoin, validateTopupInput, bankMemo,
 } from "@/lib/coinTopup-constants";
+export { getTopupBank } from "@/lib/topupBank";
 
 export async function countPendingByUser(userId: string): Promise<number> {
   const client = prisma as unknown as { coinTopupRequest: { count(args: unknown): Promise<number> } };

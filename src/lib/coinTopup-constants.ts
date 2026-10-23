@@ -36,9 +36,3 @@ export const MAX_PENDING_PER_USER = 3;
 export function bankMemo(userId: string): string {
   return `KIN ${userId.slice(0, 8).toUpperCase()}`;
 }
-
-export const BANK_INFO = {
-  bankName:   "Vietcombank",
-  accountNo:  "0123456789",
-  accountName: "CONG TY KIN EDUCATION",
-};
