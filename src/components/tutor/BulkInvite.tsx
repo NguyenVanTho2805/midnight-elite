@@ -68,8 +68,8 @@ export default function BulkInvite({ courseId, courseName, tutorName, onCreated 
     return (
       <section className="rounded-xl p-4 space-y-3" style={CARD_STYLE} aria-label="Kết quả mời cả lớp">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Đã tạo mã cho {batch.rows.length} em</p>
-          <span className="text-lg font-mono font-bold tracking-wider" style={{ color: "var(--kin-chu-chinh)" }} data-testid="bulk-code">{batch.code}</span>
+          <p className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Đã tạo mã cho {batch.rows.length} em</p>
+          <span className="text-lg font-mono font-medium tracking-wider" style={{ color: "var(--kin-chu-chinh)" }} data-testid="bulk-code">{batch.code}</span>
         </div>
         <p className="text-xs" style={MUTED}>
           Dùng được {batch.maxUses ?? batch.rows.length} lượt{batch.expiresAt ? `, hết hạn ${new Date(batch.expiresAt).toLocaleDateString("vi-VN")}` : ""}.
@@ -111,7 +111,7 @@ export default function BulkInvite({ courseId, courseName, tutorName, onCreated 
 
   return (
     <form onSubmit={e => { e.preventDefault(); void create(); }} className="rounded-xl p-4" style={CARD_STYLE} aria-label="Mời cả lớp một lần">
-      <p className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Mời cả lớp một lần</p>
+      <p className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Mời cả lớp một lần</p>
       <p className="text-xs mb-3" style={MUTED}>
         Dán danh sách, mỗi dòng một em: tên em rồi số Zalo của phụ huynh (dán thẳng từ Excel cũng được). Tối đa {BULK_MAX_ROWS} em.
         KiN tạo một mã cho cả lớp, hiệu lực {BULK_INVITE_DAYS} ngày, và soạn sẵn tin cho từng phụ huynh để bạn bấm gửi.

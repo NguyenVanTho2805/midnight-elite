@@ -16,15 +16,16 @@ import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinListRow } from "@/components/kin/ListRow";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_HEAD } from "@/components/kin/PageLayout";
 
 function Skeleton() {
   const sk = "kin-skel kin-skel--soft";
   return (
-    <div aria-busy="true" aria-label="Đang tải Hộp việc" className="mt-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-5 py-6 border-y border-[var(--kin-vien-nhat)]">
-        {[0, 1, 2, 3].map(i => <div key={i} className={`h-[72px] rounded ${sk}`} />)}
+    <div aria-busy="true" aria-label="Đang tải Hộp việc">
+      <div className="hidden md:grid grid-cols-4 gap-x-8 gap-y-5 py-6 border-y border-[var(--kin-vien-nhat)]">
+        {[0, 1, 2, 3].map(i => <div key={i} className={`h-[86px] rounded ${sk}`} />)}
       </div>
-      <div className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-6">
+      <div className={`md:mt-8 ${KIN_TWO_COL}`}>
         <div className="space-y-3">{[0, 1, 2].map(i => <div key={i} className={`h-[76px] rounded ${sk}`} />)}</div>
         <div className={`h-[220px] rounded ${sk}`} />
       </div>
@@ -57,16 +58,10 @@ export default function HopViec() {
   const o = overview;
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Hộp việc</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-            {o ? `${o.dateLine} · ` : ""}<span className="md:hidden">Sổ dạy học</span><span className="hidden md:inline">Việc cần cô xử lý trước, việc chờ phụ huynh để riêng.</span>
-          </p>
-        </div>
-        <Link href="/admin/khoa-hoc?tao=1" className={`${kinButtonClass("secondary")} self-start flex-shrink-0 max-md:hidden`}>Tạo lớp</Link>
-      </header>
+    <KinPage>
+      <KinPageHeader title="Hộp việc"
+        sub={<>{o ? `${o.dateLine} · ` : ""}<span className="md:hidden">Sổ dạy học</span><span className="hidden md:inline">Việc cần cô xử lý trước, việc chờ phụ huynh để riêng.</span></>}
+        actions={<Link href="/admin/khoa-hoc?tao=1" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link>} />
 
       {error && <ErrorStrip message="Không tải được Hộp việc." onRetry={load} />}
       {items === null || !o ? (!error ? <Skeleton /> : null) : (
@@ -78,13 +73,13 @@ export default function HopViec() {
             <KinStat label="Lịch hôm nay" value={o.stats.today.value} hint={o.stats.today.hint} />
           </KinStatRow>
 
-          <div className="mt-8 grid lg:grid-cols-[minmax(0,1fr)_354px] lg:grid-rows-[auto_1fr] gap-x-8 gap-y-8 items-start">
+          <div className={`md:mt-8 ${KIN_TWO_COL} lg:grid-rows-[auto_1fr]`}>
             {/* Buổi học sắp tới: trên điện thoại đứng trước danh sách việc; máy tính: cột phải, hàng trên. */}
             <section aria-labelledby="hv-next" className="lg:col-start-2 lg:row-start-1">
               <KinSectionHead id="hv-next" className="max-md:hidden"
                 title={<><span className="md:hidden">{o.next?.meta.startsWith("Hôm nay") ? "Buổi học hôm nay" : "Buổi học sắp tới"}</span><span className="hidden md:inline">Buổi học sắp tới</span></>} />
               {o.next ? (
-                <div className="pt-5 max-md:px-[var(--kin-kc-7)] max-md:pb-6 max-md:rounded-[var(--kin-bo-sm)] max-md:bg-[var(--kin-nen-nhan)]">
+                <div className="md:pt-5 max-md:px-[var(--kin-kc-7)] max-md:py-5 max-md:rounded-[var(--kin-bo-sm)] max-md:bg-[var(--kin-nen-nhan)]">
                   <p className="md:hidden text-[length:var(--kin-co-goc)] uppercase tracking-[0.02em] text-[var(--kin-chu-mo)]">{o.next.meta.startsWith("Hôm nay") ? "Buổi học hôm nay" : "Buổi học sắp tới"}</p>
                   <p className="max-md:mt-3 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.next.time}</p>
                   <p className="mt-4 text-[length:var(--kin-co-tieu-de)] leading-6 text-[var(--kin-chu-chinh)]">{o.next.courseName}</p>
@@ -165,14 +160,14 @@ export default function HopViec() {
                     <Link href="/lop-cua-toi/lop" className="inline-flex items-center min-h-11 px-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tất cả</Link>
                   </div>
                   <div className="mt-4 hidden md:block">
-                    <div aria-hidden className="grid grid-cols-2 px-[var(--kin-kc-6)] h-11 items-center bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+                    <div aria-hidden className={`grid grid-cols-2 ${KIN_TABLE_HEAD}`}>
                       <span>Lớp</span><span>Học sinh</span>
                     </div>
                     <ul aria-label="Lớp thường dùng">
                       {o.classes.rows.map(c => (
                         <li key={c.id}>
                           <Link href={c.href} aria-label={`${c.name}: ${c.students} học sinh`}
-                            className="grid grid-cols-2 items-center px-[var(--kin-kc-6)] min-h-[62px] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">
+                            className="grid grid-cols-2 px-[var(--kin-kc-6)] min-h-[var(--kin-hang-bang)] items-center border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">
                             <span className="min-w-0 truncate">{c.name}</span>
                             <span className="text-[var(--kin-nhan-link)] tabular-nums">{c.students} →</span>
                           </Link>
@@ -191,6 +186,6 @@ export default function HopViec() {
           </div>
         </>
       )}
-    </div>
+    </KinPage>
   );
 }

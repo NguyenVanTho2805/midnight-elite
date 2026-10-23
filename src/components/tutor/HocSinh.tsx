@@ -12,19 +12,14 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinTabs } from "@/components/kin/Tabs";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinCallout } from "@/components/kin/Callout";
+import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
 
 type TabKey = "active" | "suspended";
 const COLS = "md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_auto]";
-const FIELD = "w-full min-h-11 px-3 rounded-lg text-[length:var(--kin-co-goc)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] border border-[var(--kin-vien-o-nhap)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
+const FIELD = KIN_FIELD;
 
 function Skeleton() {
-  const sk = "kin-skel kin-skel--soft";
-  return (
-    <div aria-busy="true" aria-label="Đang tải danh sách học sinh" className="mt-6 space-y-3">
-      <div className={`h-11 rounded ${sk}`} />
-      {[0, 1, 2, 3].map(i => <div key={i} className={`h-[62px] rounded ${sk}`} />)}
-    </div>
-  );
+  return <KinTableSkeleton label="Đang tải danh sách học sinh" tabs />;
 }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -53,16 +48,10 @@ export default function HocSinh() {
   const nActive = countOf("active");
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Học sinh</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-            {rows ? `${nActive} học sinh đang học · ` : ""}Chỉ gồm học sinh trong các lớp của bạn.
-          </p>
-        </div>
-        <Link href="/lop-cua-toi/lop" className={`${kinButtonClass("primary")} self-start flex-shrink-0`}>Thêm học sinh</Link>
-      </header>
+    <KinPage>
+      <KinPageHeader title="Học sinh"
+        sub={<>{rows ? `${nActive} học sinh đang học · ` : <span aria-hidden className="invisible">00 học sinh đang học · </span>}Chỉ gồm học sinh trong các lớp của bạn.</>}
+        actions={<Link href="/lop-cua-toi/lop" className={kinButtonClass("primary")}>Thêm học sinh</Link>} />
 
       {error && <ErrorStrip message="Không tải được danh sách học sinh." onRetry={load} />}
       {rows === null ? (!error ? <Skeleton /> : null) : rows.length === 0 ? (
@@ -72,13 +61,13 @@ export default function HocSinh() {
         </KinEmptyState>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,440px)_230px]">
             <label className="block min-w-0">
-              <span className="block mb-1.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tìm học sinh</span>
+              <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tìm học sinh</span>
               <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Nhập tên, email, số liên hệ…" className={FIELD} />
             </label>
             <label className="block min-w-0">
-              <span className="block mb-1.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Lớp</span>
+              <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Lớp</span>
               <select value={courseId} onChange={e => setCourseId(e.target.value)} className={FIELD}>
                 <option value="">Tất cả lớp</option>
                 {courses.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
@@ -96,12 +85,12 @@ export default function HocSinh() {
             </KinEmptyState>
           ) : (
             <div className="mt-4">
-              <div aria-hidden className={`hidden md:grid ${COLS} gap-4 px-3 py-3 bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]`}>
+              <div aria-hidden className={`hidden md:grid ${COLS} gap-x-4 ${KIN_TABLE_HEAD}`}>
                 <span>Học sinh</span><span>Lớp</span><span>Liên hệ</span><span>Ghi danh</span><span className="w-20" />
               </div>
               <ul aria-label="Danh sách học sinh">
                 {shown.map(r => (
-                  <li key={r.key} data-hoc-sinh className={`grid ${COLS} gap-x-4 gap-y-1 px-3 py-4 items-center border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] leading-5`}>
+                  <li key={r.key} data-hoc-sinh className={`grid ${COLS} gap-x-4 gap-y-1 ${KIN_TABLE_ROW}`}>
                     <div className="min-w-0">
                       <p className="text-[var(--kin-chu-chinh)] break-words">{r.name}</p>
                       {r.school && <p className="text-[var(--kin-chu-mo)] break-words">{r.school}</p>}
@@ -125,6 +114,6 @@ export default function HocSinh() {
           </KinCallout>
         </>
       )}
-    </div>
+    </KinPage>
   );
 }

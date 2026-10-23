@@ -31,6 +31,18 @@
   --kin-co-h4: 19.2px;
   --kin-co-h2: 27.6px;
   --kin-co-display: 39.8px;
+  /* Căn chỉnh trang gia sư (rà soát 23/10/2026): MỘT bộ số đo cho mọi màn, lấy từ Hộp việc đã duyệt (Figma 299:111821).
+     Dùng qua src/components/kin/PageLayout.tsx; đừng viết lại các số này trong từng trang. */
+  --kin-co-h1: var(--kin-co-h2);      /* H1 trang: 27.6px, dòng 36px, đậm vừa */
+  --kin-dong-h1: 36px;
+  --kin-co-so: 22px;                  /* số lớn nhất được phép (KinStat) */
+  --kin-dong-so: 28px;
+  --kin-dong-goc: 20px;               /* dòng của chữ gốc 14px */
+  --kin-cot-phai: 354px;              /* cột phải của trang hai cột */
+  --kin-cach-cot: 32px;               /* khoảng giữa hai cột */
+  --kin-cach-muc: 32px;               /* khoảng giữa các mục dọc */
+  --kin-hang-bang: 62px;              /* chiều cao tối thiểu một hàng bảng/danh sách dạng bảng */
+  --kin-dau-bang: 44px;               /* chiều cao hàng tiêu đề bảng */
   /* Viền/nền nhạt theo màu nhấn của chủ đề (thay các mã #bfdbfe / #93c5fd viết cứng của giao diện cũ). */
   --kin-nhan-vien: color-mix(in srgb, var(--kin-nhan-nen) 28%, var(--kin-nen-trang));
 }

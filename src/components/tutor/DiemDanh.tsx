@@ -24,6 +24,7 @@ import Link from "next/link";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinStatus } from "@/components/kin/Status";
+import { KinPageHeader, KIN_PAGE } from "@/components/kin/PageLayout";
 import { ATTENDANCE_STATUS, ATTENDANCE_LABEL, ATTENDANCE_COEFFICIENT, type AttendanceStatus } from "@/lib/attendance";
 import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
@@ -217,8 +218,9 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
       </div>
   );
 
+  // Trang riêng: lề và H1 theo KinPage/KinPageHeader như mọi trang gia sư; -m-* huỷ lề của khung <main> (p-4 sm:p-6) để lề trái thẳng hàng với các trang khác.
   return (
-    <div className={embedded ? "space-y-5" : "max-w-4xl mx-auto px-4 py-6 space-y-5"}>
+    <div className={embedded ? "space-y-5" : `${KIN_PAGE} -m-4 sm:-m-6 space-y-5`}>
       {/* Đầu trang: nhúng trong trang lớp thì chỉ còn "Buổi đang xem" + "Điểm danh" (Figma 299:112581). */}
       {embedded ? (
         <div className="flex items-end gap-3 flex-wrap">
@@ -232,12 +234,7 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
       ) : (
         <>
           {/* Điện thoại (Figma 299:116181): tiêu đề "<Lớp> · Điểm danh", nhãn "Chọn buổi học", ô ngày đầy bề ngang. */}
-          <div>
-            <h1 className="text-h4" style={{ color: "var(--kin-chu-chinh)" }}>{courseName ? `${courseName} · ` : ""}Điểm danh</h1>
-            <p className="text-body-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-              Vắng không trừ tiền. Hệ số dùng cho chuyên cần.
-            </p>
-          </div>
+          <KinPageHeader title={`${courseName ? `${courseName} · ` : ""}Điểm danh`} sub="Vắng không trừ tiền. Hệ số dùng cho chuyên cần." />
           <div>
             <label htmlFor="dd-date" className="block text-body-sm mb-2" style={{ color: "var(--kin-chu-mo)" }}>Chọn buổi học</label>
             <input id="dd-date" type="date" value={date}
@@ -265,17 +262,16 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
           {[0, 1, 2].map(i => <div key={i} className="h-[76px] rounded kin-skel kin-skel--soft" />)}
         </div>
       ) : loadError ? (
-        <div role="alert" className="flex items-center gap-2 px-[14px] py-2 text-[length:var(--kin-co-small)] border-b border-[var(--kin-tt-chu-loi)] bg-[var(--kin-nhan-nen-nhat)]">
-          <span className="flex-1 text-[var(--kin-tt-chu-loi)] font-semibold">Không tải được điểm danh.</span>
-          <button type="button" onClick={() => void load()} className="min-h-11 px-3 font-semibold text-[var(--kin-nhan-link)] hover:underline">Thử lại</button>
+        <div role="alert" className="flex items-center gap-2 px-[14px] py-2 text-[length:var(--kin-co-goc)] border-b border-[var(--kin-tt-chu-loi)] bg-[var(--kin-nhan-nen-nhat)]">
+          <span className="flex-1 text-[var(--kin-tt-chu-loi)] font-medium">Không tải được điểm danh.</span>
+          <button type="button" onClick={() => void load()} className="min-h-11 px-3 font-medium text-[var(--kin-nhan-link)] hover:underline">Thử lại</button>
         </div>
       ) : !session ? (
         <div className="rounded-xl p-10 text-center space-y-3"
           style={{ background: "var(--kin-nen-bang)", border: "1px dashed var(--kin-vien-thuong)" }}>
-          <p className="text-body" style={{ color: "var(--kin-chu-phu)" }}>Chưa có buổi điểm danh cho ngày này.</p>
+          <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>Chưa có buổi điểm danh cho ngày này.</p>
           <button type="button" onClick={createSession} disabled={saving}
-            className="px-5 py-2.5 rounded-lg text-body-sm font-semibold disabled:opacity-50"
-            style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>
+            className={`${kinButtonClass("primary")} disabled:opacity-50`}>
             {saving ? "Đang tạo..." : "Tạo buổi điểm danh"}
           </button>
         </div>
@@ -294,12 +290,12 @@ export default function DiemDanhPanel({ courseId, embedded = false }: { courseId
 
           {/* PH-216: tin điểm danh CHUNG vào nhóm Zalo lớp — không nêu em nào vắng */}
           <div className="flex items-center justify-between gap-3 flex-wrap px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-vien-thuong)]">
-            <p className="text-caption" style={{ color: "var(--kin-chu-phu)" }}>
+            <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>
               {allMarked ? "Tin chung cho nhóm Zalo lớp (không nêu tên em nào)." : "Điểm danh và lưu đủ các em rồi mới nhắn nhóm."}
               {" "}{zaloGroupUrl ? "Đã gắn nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo (Cài đặt → Kết nối)."}
             </p>
             <button type="button" onClick={startGroupCompose} disabled={!allMarked}
-              className="px-3 py-2 rounded-lg text-body-sm font-semibold min-h-[44px] disabled:opacity-50"
+              className="px-3 py-2 rounded-lg text-body-sm font-medium min-h-[44px] disabled:opacity-50"
               style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>Nhắn nhóm Zalo lớp</button>
           </div>
 
@@ -386,14 +382,14 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo }: {
               title={`${ATTENDANCE_LABEL[s]} (hệ số ×${ATTENDANCE_COEFFICIENT[s]})`}
               aria-label={`${ATTENDANCE_LABEL[s]} hệ số ${ATTENDANCE_COEFFICIENT[s]}`}
               className={`min-h-11 px-1 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] whitespace-nowrap transition-colors ${picked
-                ? "bg-[var(--kin-nen-nhan)] border-[var(--kin-nhan-diem)] font-semibold text-[var(--kin-chu-chinh)]"
+                ? "bg-[var(--kin-nen-nhan)] border-[var(--kin-nhan-diem)] font-medium text-[var(--kin-chu-chinh)]"
                 : "bg-[var(--kin-nen-trang)] border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
               {ATTENDANCE_LABEL[s]}
             </button>
           );
         })}
       </div>
-      {r.studentId !== null && <p className="basis-full text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Mã HS {r.studentId}</p>}
+      {r.studentId !== null && <p className="basis-full text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Mã HS {r.studentId}</p>}
       {hasMakeup && (
         <label className="basis-full flex items-center gap-2 text-[length:var(--kin-co-goc)] min-h-11" style={{ color: present ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
           <input type="checkbox" checked={!!r.useMakeup && present} disabled={!present}

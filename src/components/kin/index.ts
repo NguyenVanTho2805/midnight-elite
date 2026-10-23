@@ -22,3 +22,5 @@ export { KinSectionHead } from "./SectionHead";
 export { KinListRow, type KinListRowProps } from "./ListRow";
 export { KinCallout } from "./Callout";
 export { KinEmptyState } from "./EmptyState";
+// 23/10/2026 — rà soát căn chỉnh trang gia sư: một bộ số đo chung.
+export { KinPage, KinPageHeader, KinTwoCol, KinPageSkeleton, KinTableSkeleton, KIN_PAGE, KIN_TWO_COL, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD, KIN_LABEL } from "./PageLayout";

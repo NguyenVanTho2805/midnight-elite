@@ -45,7 +45,7 @@ export function ClassInviteForm({ courseId, onCreated }: { courseId: string; onC
 
   return (
     <form onSubmit={e => { e.preventDefault(); void create(); }} className="rounded-xl p-4" style={CARD_STYLE} aria-label="Tạo mã mời mới">
-      <p className="font-semibold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Tạo mã mời mới</p>
+      <p className="font-medium mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Tạo mã mời mới</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">Số lượt dùng tối đa <span style={{ color: "var(--kin-chu-phu)" }}>(bỏ trống = không giới hạn)</span>
           <input inputMode="numeric" value={maxUses} onChange={e => setMaxUses(e.target.value.replace(/\D/g, ""))} className="block w-full mt-1 px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE} />
@@ -85,7 +85,7 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
           return (
             <li key={i.id} className="rounded-xl p-4" style={CARD_STYLE}>
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <span className="text-lg font-mono font-bold tracking-wider" style={{ color: "var(--kin-chu-chinh)" }}>{i.code}</span>
+                <span className="text-lg font-mono font-medium tracking-wider" style={{ color: "var(--kin-chu-chinh)" }}>{i.code}</span>
                 <Badge tone={st.tone}>{st.label}</Badge>
               </div>
               <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>
@@ -146,7 +146,7 @@ export default function ClassInvitesPanel({ courseId, courseName, tutorName }: {
       <ClassInviteForm courseId={courseId} onCreated={() => load()} />
       {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => load()} /> : null}
       {loading ? <div className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />
-        : failed ? <div role="alert" className="rounded-xl p-5 text-center text-sm" style={CARD_STYLE}>Không tải được danh sách mã mời. <button className="underline font-semibold" onClick={load}>Thử lại</button></div>
+        : failed ? <div role="alert" className="rounded-xl p-5 text-center text-sm" style={CARD_STYLE}>Không tải được danh sách mã mời. <button className="underline font-medium" onClick={load}>Thử lại</button></div>
         : <ClassInviteList items={items} onChanged={load} />}
     </div>
   );

@@ -11,6 +11,7 @@ import { KinButton } from "@/components/kin";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import { KinPage, KinPageHeader, KIN_TWO_COL } from "@/components/kin/PageLayout";
 import { KinStatus } from "@/components/kin/Status";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import LichGrid from "./LichGrid";
@@ -286,19 +287,15 @@ export default function LichClient() {
   );
 
   return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Lịch dạy</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" aria-live="polite">Tuần {ddmm(from)} – {ddmm(addDaysKey(from, 6))}/{addDaysKey(from, 6).slice(0, 4)} · Giờ Việt Nam (GMT+7)</p>
-        </div>
-        <div className="flex gap-3 flex-wrap flex-shrink-0">
+    <KinPage>
+      <KinPageHeader title="Lịch dạy" live
+        sub={<>Tuần {ddmm(from)} – {ddmm(addDaysKey(from, 6))}/{addDaysKey(from, 6).slice(0, 4)} · Giờ Việt Nam (GMT+7)</>}
+        actions={<>
           <KinButton variant="secondary" onClick={() => setFrom(thisWeek)}>Hôm nay</KinButton>
           <Link href="/lop-cua-toi/lop" className={kinButtonClass("primary")}>+ Thêm buổi</Link>
-        </div>
-      </header>
+        </>} />
 
-      <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1 sm:gap-2" role="group" aria-label="Chuyển tuần">
           <KinButton variant="ghost" className="px-2 sm:px-4" onClick={() => setFrom(addDaysKey(from, -7))}>‹ Tuần trước</KinButton>
           <span className="inline-flex items-center justify-center min-h-[44px] px-3 sm:px-5 whitespace-nowrap rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] text-[length:var(--kin-co-goc)] font-medium tabular-nums text-[var(--kin-chu-chinh)]">
@@ -327,8 +324,8 @@ export default function LichClient() {
             ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", border: "1px solid var(--kin-nhan-nen)" }
             : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" };
           const inner = (<>
-            <span className="text-[length:var(--kin-co-small)]">{WEEKDAY_SHORT[dayOfWeekOfKey(k)]}</span>
-            <span className="text-sm font-semibold tabular-nums">{k.slice(8, 10)}</span>
+            <span className="text-[length:var(--kin-co-goc)]">{WEEKDAY_SHORT[dayOfWeekOfKey(k)]}</span>
+            <span className="text-sm font-medium tabular-nums">{k.slice(8, 10)}</span>
             <span aria-hidden className="w-1.5 h-1.5 rounded-full" style={{ background: n > 0 ? (isToday ? "var(--kin-nhan-chu-tren-nen)" : "var(--kin-tt-cham-xong)") : "transparent" }} />
           </>);
           const c = "rounded-lg py-1 flex flex-col items-center min-h-[48px]";
@@ -353,7 +350,7 @@ export default function LichClient() {
           Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> của trang quản khoá (mở lớp → Quản khoá).
         </KinEmptyState>
       ) : wide ? (
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-6 items-start">
+        <div className={KIN_TWO_COL}>
           <div className="min-w-0">
             <LichGrid days={days} occurrences={occs} todayKey={todayKey} openKey={open} onPick={k => setOpen(open === k ? null : k)} dimmed={loading} />
             <p className="mt-4 flex items-center gap-8 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
@@ -376,7 +373,7 @@ export default function LichClient() {
               <section key={k} aria-labelledby={`d-${k}`} className="mb-5">
                 <h2 id={`d-${k}`} className="text-[length:var(--kin-co-goc)] font-medium mb-2 flex items-center gap-2" style={{ color: "var(--kin-chu-chinh)" }}>
                   {WEEKDAY[dayOfWeekOfKey(k)]} {ddmm(k)}
-                  {k === todayKey && <span className="text-[length:var(--kin-co-small)] font-medium px-2 py-0.5 rounded-full" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-chu-tren-nhat)" }}>Hôm nay</span>}
+                  {k === todayKey && <span className="text-[length:var(--kin-co-goc)] font-medium px-2 py-0.5 rounded-full" style={{ background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-chu-tren-nhat)" }}>Hôm nay</span>}
                 </h2>
                 <ul className="space-y-2">
                   {dayOccs.map(o => (
@@ -433,7 +430,7 @@ export default function LichClient() {
           <div role="radiogroup" aria-label="Cách đổi lịch" className="flex gap-2 mb-3">
             {(["move", "cancel"] as const).map(k => (
               <button key={k} type="button" role="radio" aria-checked={changing.kind === k} onClick={() => setChanging(c => (c ? { ...c, kind: k, error: "" } : c))}
-                className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px]"
+                className="px-4 py-2 rounded-lg text-sm font-medium min-h-[44px]"
                 style={changing.kind === k
                   ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                   : { background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
@@ -465,7 +462,7 @@ export default function LichClient() {
               Báo nghỉ sát giờ đang chờ của buổi này sẽ tự đóng (không tính phí, không buổi bù). Báo nghỉ đã xử lý giữ nguyên.
             </p>
           )}
-          {changing.error && <p role="alert" className="text-sm font-semibold mt-3" style={{ color: "var(--kin-tt-chu-loi)" }}>{changing.error}</p>}
+          {changing.error && <p role="alert" className="text-sm font-medium mt-3" style={{ color: "var(--kin-tt-chu-loi)" }}>{changing.error}</p>}
           <div className="flex gap-2 flex-wrap mt-4 justify-end">
             <KinButton variant="secondary" disabled={changing.busy} onClick={() => setChanging(null)}>Không đổi nữa</KinButton>
             <KinButton loading={changing.busy} onClick={() => void submitChange()}>{changing.kind === "cancel" ? "Huỷ buổi này" : "Dời buổi"}</KinButton>
@@ -507,7 +504,7 @@ export default function LichClient() {
           </div>
         </Modal>
       )}
-    </div>
+    </KinPage>
   );
 }
 
@@ -532,7 +529,7 @@ function OccurrenceCard(p: CardProps & { expanded: boolean; onToggle: () => void
     <div className="rounded-lg overflow-hidden" style={{ ...CARD_STYLE, borderLeft: `3px solid ${cancelled ? "var(--kin-tt-cham-trung-tinh)" : classAccent(occ.courseId)}` }}>
       <button type="button" onClick={p.onToggle} aria-expanded={p.expanded} aria-controls={detailId}
         className="w-full text-left px-3 py-2 flex items-center gap-3 min-h-[44px]">
-        <span className="font-semibold tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
+        <span className="font-medium tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-medium break-words" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{occ.courseName}</span>
           <span className="block text-xs flex items-center gap-1.5" style={{ color: "var(--kin-chu-phu)" }}>
@@ -569,7 +566,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
           <p className="text-[length:var(--kin-co-goc)]">
             {occ.pendingAbsences > 0 ? <KinStatus tone="cho">Xin nghỉ sát giờ · cần quyết định</KinStatus> : <KinStatus tone={cancelled ? "mo" : "xong"}>{stateText}</KinStatus>}
           </p>
-          <h2 className="mt-3 text-[length:var(--kin-co-h4)] leading-7 font-medium text-[var(--kin-chu-chinh)]">{occ.courseName} · {ddmm(dk)}</h2>
+          <h2 className="mt-3 text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">{occ.courseName} · {ddmm(dk)}</h2>
           <p className="mt-3 text-[length:var(--kin-co-tieu-de)] leading-6 tabular-nums text-[var(--kin-chu-chinh)]">{vnHm(occ.startAt)}–{vnHm(occ.endAt)} · {occ.students.length} học viên</p>
           {occ.status === "moved" && occ.movedFrom && <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã dời từ {WEEKDAY[dayOfWeekOfKey(occ.movedFrom.dateKey)]} {ddmm(occ.movedFrom.dateKey)} {vnHm(occ.movedFrom.startAt)}</p>}
         </div>
@@ -582,13 +579,13 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
           </p>
 
           <p className="text-sm">
-            <Link href={`/lop-cua-toi/ke-hoach-buoi?courseId=${encodeURIComponent(occ.courseId)}&date=${occ.dateKey}`} className="underline font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Soạn kế hoạch buổi này</Link>
+            <Link href={`/lop-cua-toi/ke-hoach-buoi?courseId=${encodeURIComponent(occ.courseId)}&date=${occ.dateKey}`} className="underline font-medium" style={{ color: "var(--kin-nhan-link)" }}>Soạn kế hoạch buổi này</Link>
             <span className="text-xs ml-2" style={{ color: "var(--kin-chu-phu)" }}>4 hoạt động, ra bản gia sư và phiếu học sinh.</span>
           </p>
 
           {occ.students.some(s => s.absence) && (
             <div>
-              <h3 className="text-sm font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Báo nghỉ</h3>
+              <h3 className="text-sm font-medium mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Báo nghỉ</h3>
               <ul className="space-y-2">
                 {occ.students.filter(s => s.absence).map(s => {
                   const a = s.absence!;
@@ -597,7 +594,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
                   return (
                     <li key={s.id} className="rounded-lg p-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</span>
+                        <span className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</span>
                         <Badge tone={label.tone}>{label.text}</Badge>
                       </div>
                       <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>
@@ -624,7 +621,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
 
           {!occ.started && (
             <div aria-label="Đổi lịch buổi này">
-              <h3 className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Đổi lịch buổi này</h3>
+              <h3 className="text-sm font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Đổi lịch buổi này</h3>
               {occ.status === "scheduled" ? (
                 <>
                   <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>
@@ -657,7 +654,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
 
           {!cancelled && (
           <div>
-            <h3 className="text-sm font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Nhắc lịch</h3>
+            <h3 className="text-sm font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Nhắc lịch</h3>
             <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>
               Nhắc 24 giờ: {vnDayHm(occ.plan.h24DueAt)}{occ.plan.h24Shifted ? " (dời về tối trước giờ yên lặng)" : ""} ·{" "}
               {occ.plan.h1DueAt ? `Nhắc 1 giờ: ${vnDayHm(occ.plan.h1DueAt)}` : `Nhắc 1 giờ: bỏ (${occ.plan.h1SkipReason === "sang-som" ? "buổi trước 08:00" : "rơi vào giờ yên lặng"})`} ·{" "}
@@ -677,7 +674,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
               <ul className="space-y-2">
                 {occ.students.filter(s => s.reminders.length > 0).map(s => (
                   <li key={s.id} className="rounded-lg p-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                    <p className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</p>
+                    <p className="text-sm font-medium mb-2" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</p>
                     <ul className="space-y-2">
                       {s.reminders.map(r => (
                         <li key={`${r.recipient}-${r.kind}`} className="flex items-center justify-between gap-2 flex-wrap">
