@@ -21,7 +21,7 @@ export async function GET(
 
   try {
     const assignments = await prisma.assignment.findMany({
-      where: { lessonId },
+      where: { lessonId, mode: { not: "azota" } }, // bài Azota không còn là Assignment (LessonAzotaDone); lọc phòng dữ liệu cũ
       orderBy: { createdAt: "asc" },
       include: {
         submissions: auth.role === "student" ? { where: { userId: auth.userId } } : false,

@@ -70,7 +70,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
       select: { status: true, session: { select: { courseId: true } } },
     }),
     prisma.assignment.findMany({
-      where: { dueDate: { gte: start, lt: end }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
+      where: { mode: { not: "azota" }, dueDate: { gte: start, lt: end }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
       select: { id: true, dueDate: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
     }),
     prisma.examResult.findMany({

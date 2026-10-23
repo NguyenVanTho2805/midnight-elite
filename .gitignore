@@ -77,3 +77,6 @@ cookies*.txt
 # Rác phát triển (từng bị commit nhầm)
 /__dev.log
 /__screenshots/
+
+# video tải lên cục bộ (ghi trên đĩa máy dev, KHÔNG commit)
+/.kin-media/

@@ -175,6 +175,7 @@ model Lesson {
   chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress       LessonProgress[]
   notes          LessonNote[]
+  azotaDone      LessonAzotaDone[]
   assignments    Assignment[]
 
   @@map("lessons")
@@ -231,6 +232,9 @@ model AssignmentSubmission {
   user         User       @relation("AssignmentSubmissions", fields: [userId], references: [id], onDelete: Cascade)
   fileUrl      String
   fileName     String?
+  // "file" (tệp tải lên, mặc định: hành vi cũ) | "link" (học sinh dán LINK bài làm Azota; fileUrl giữ link đó) | "done" (chỉ bấm "Em đã làm xong", fileUrl rỗng).
+  // KHÔNG có loại ảnh: KiN không nhận ảnh bài làm của học sinh dưới 16 tuổi (xem src/lib/mediaLink.ts validateWorkLink).
+  kind         String     @default("file")
   submittedAt  DateTime   @default(now())
 
   // null = chưa chấm. Cả 2 field dưới null nếu chưa chấm.
@@ -834,6 +838,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   lessonProgress      LessonProgress[]
   lessonNotes         LessonNote[]
+  lessonAzotaDone     LessonAzotaDone[]
   cartItems           CartItem[]
   courseReviews       CourseReview[]
   notifications       Notification[]
@@ -1441,12 +1446,58 @@ model LessonProgress {
   lessonId       String
   completedAt    DateTime @default(now())
   watchedSeconds Int      @default(0)
+  // true = đã xong; false = đang xem dở (chỉ lưu giây xem). Hàng cũ mặc định true (trước đây hàng nào có mặt cũng bị coi là "xong").
+  completed      Boolean  @default(true)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
   @@map("lesson_progress")
+}
+
+// ─── FILE ASSETS ──────────────────────────────────────────────────────────────
+// Tệp gia sư tải lên KiN (hiện là VIDEO bài giảng; tài liệu sẽ ghi bytes ở đây khi cần, MD-08). Chỉ THÊM.
+// Không có địa chỉ công khai: phát qua /api/media/[id]/stream sau khi kiểm quyền (src/lib/lessonGuard.ts canWatchStoredMedia).
+// Bài giảng tham chiếu bằng "kin-media:<id>" trong Lesson.videoUrl.
+model FileAsset {
+  id           String   @id @default(cuid())
+  ownerId      String // gia sư tải lên
+  courseId     String // lớp chứa bài
+  lessonId     String? // gắn khi lưu bài
+  kind         String   @default("video") // "video" | "document"
+  driver       String // "local" | "cloudinary"
+  storageKey   String // đường dẫn trong kho (local: tên tệp; cloudinary: public_id)
+  mimeType     String
+  bytes        Int? // null khi chưa tải xong
+  originalName String
+  status       String   @default("pending") // "pending" | "ready"
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId])
+  @@index([courseId])
+  @@index([lessonId])
+  @@map("file_assets")
+}
+
+// ─── AZOTA: HỌC SINH BÁO "ĐÃ LÀM" ─────────────────────────────────────────────
+// Lời khai của học sinh rằng đã làm bài Azota của một bài giảng (KiN không biết thật), kèm LINK bài làm (không bắt buộc).
+// Bảng riêng, KHÔNG dùng Assignment: tránh bài "ảo" lọt vào danh sách bài tập, hàng đợi chấm và số "chưa chấm" của gia sư.
+// Không có trường ảnh: KiN không nhận ảnh bài làm của học sinh dưới 16 tuổi. Chỉ THÊM.
+model LessonAzotaDone {
+  id       String   @id @default(cuid())
+  lessonId String
+  userId   String
+  kind     String   @default("done") // "done" (chỉ bấm Em đã làm xong) | "link" (kèm link bài làm trên azota.vn)
+  linkUrl  String?
+  doneAt   DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, userId])
+  @@index([lessonId])
+  @@map("lesson_azota_done")
 }
 
 // ─── LESSON NOTES ─────────────────────────────────────────────────────────────

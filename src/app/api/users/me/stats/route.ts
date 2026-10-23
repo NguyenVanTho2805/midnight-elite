@@ -12,7 +12,7 @@ export async function GET() {
       orderBy: { completedAt: "asc" },
     }),
     prisma.lessonProgress.findMany({
-      where: { userId: session.userId },
+      where: { userId: session.userId, completed: true },
       select: { completedAt: true },
       orderBy: { completedAt: "desc" },
     }),

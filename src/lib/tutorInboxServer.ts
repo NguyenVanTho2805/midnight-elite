@@ -44,7 +44,7 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       select: { reason: true, createdAt: true, thread: { select: { content: true, course: { select: { name: true } } } } },
     }),
     prisma.assignmentSubmission.findMany({
-      where: { score: null, assignment: { lesson: { chapter: { section: { course: own } } } } }, orderBy: { submittedAt: "asc" }, take,
+      where: { score: null, assignment: { mode: { not: "azota" }, lesson: { chapter: { section: { course: own } } } } }, orderBy: { submittedAt: "asc" }, take,
       select: {
         submittedAt: true, user: { select: { name: true } },
         assignment: { select: { title: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } } },

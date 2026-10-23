@@ -33,7 +33,7 @@ const courseSelect = {
           title: true,
           lessons: {
             orderBy: { order: "asc" as const },
-            select: { id: true, title: true, type: true, duration: true, videoUrl: true, documents: true, assignments: { select: { id: true, title: true, dueDate: true, maxPoints: true }, orderBy: { createdAt: "asc" as const } } },
+            select: { id: true, title: true, type: true, duration: true, videoUrl: true, documents: true, assignments: { where: { mode: { not: "azota" } }, select: { id: true, title: true, dueDate: true, maxPoints: true }, orderBy: { createdAt: "asc" as const } } },
           },
         },
       },
