@@ -1709,6 +1709,24 @@ model FileAsset {
   @@map("file_assets")
 }
 
+// ─── BẢN GHI CỦA LỚP (MD-02) ──────────────────────────────────────────────────
+// Link CHỮ gia sư dán sau buổi học (YouTube / Drive / Vimeo / Zoom cloud; đã qua src/lib/mediaLink.ts). KiN không lưu tệp video.
+// sessionId = AttendanceSession.id (buổi học) — cố ý KHÔNG khai báo quan hệ để không đụng model buổi; null = chưa gắn buổi nào. Chỉ THÊM.
+model ClassRecording {
+  id        String   @id @default(cuid())
+  courseId  String
+  sessionId String?
+  title     String
+  url       String
+  kind      String // "youtube" | "vimeo" | "drive" | "zoom_record"
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+  @@index([sessionId])
+  @@map("class_recordings")
+}
+
 // ─── AZOTA: HỌC SINH BÁO "ĐÃ LÀM" ─────────────────────────────────────────────
 // Lời khai của học sinh rằng đã làm bài Azota của một bài giảng (KiN không biết thật), kèm LINK bài làm (không bắt buộc).
 // Bảng riêng, KHÔNG dùng Assignment: tránh bài "ảo" lọt vào danh sách bài tập, hàng đợi chấm và số "chưa chấm" của gia sư.
