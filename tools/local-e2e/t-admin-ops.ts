@@ -19,7 +19,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   check("không cookie → 401", (await api("GET", "/api/admin/trien-khai")).status === 401);
   check("quản trị nội dung → 403; gia sư → 403; học sinh → 403", (await api("GET", "/api/admin/trien-khai", { as: CA })).status === 403 && (await api("GET", "/api/admin/trien-khai", { as: T })).status === 403 && (await api("GET", "/api/admin/trien-khai", { as: kid })).status === 403);
   let r = await api("GET", "/api/admin/trien-khai", { as: SA });
-  check("cấp 1 → 200, có cờ, cron, hạn mức, số đo", r.status === 200 && r.json.flags.length === 4 && r.json.crons.length === 3 && r.json.limits.free.studentLimit > 0 && typeof r.json.measure.tutors === "number", r.json);
+  check("cấp 1 → 200, có cờ, cron, hạn mức, số đo", r.status === 200 && r.json.flags.length === 4 && r.json.crons.length === 4 && r.json.limits.free.studentLimit > 0 && typeof r.json.measure.tutors === "number", r.json);
   check("KHÔNG lộ giá trị CRON_SECRET / DATABASE_URL / SESSION_SECRET / VAPID_PRIVATE_KEY", ![SECRET, process.env.DATABASE_URL, process.env.SESSION_SECRET, process.env.VAPID_PRIVATE_KEY].some(v => v && r.text.includes(v)));
   const fl = (k: string) => r.json.flags.find((f: any) => f.key === k);
   check("CRON_SECRET hiện 'Đã đặt' (máy chủ thử có đặt), chỉ là chữ", fl("CRON_SECRET").on === true && fl("CRON_SECRET").state === "Đã đặt");
@@ -27,7 +27,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   check("số đo khớp dữ liệu: 1 gia sư", r.json.measure.tutors === 1, r.json.measure);
 
   section("Lần gọi cron gần nhất");
-  check("trước khi gọi: cả ba 'Chưa ghi nhận'", r.json.crons.every((c: any) => c.status === "Chưa ghi nhận"));
+  check("trước khi gọi: cả bốn 'Chưa ghi nhận'", r.json.crons.every((c: any) => c.status === "Chưa ghi nhận"));
   const bad = await fetch(`${BASE}/api/cron/remind-exam`);
   check("gọi KHÔNG khoá → 401 và KHÔNG được ghi nhận", bad.status === 401 && (await api("GET", "/api/admin/trien-khai", { as: SA })).json.crons.find((c: any) => c.key === "remind-exam").status === "Chưa ghi nhận");
   const wrong = await fetch(`${BASE}/api/cron/remind-exam`, { headers: { authorization: "Bearer sai-khoa" } });

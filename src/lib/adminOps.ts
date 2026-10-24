@@ -49,11 +49,12 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: cả ba chạy mỗi ngày (0:00 và 1:00 UTC). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: cả bốn chạy mỗi ngày (0:00, 0:30 và 1:00 UTC). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "expire-tutor-subscriptions", label: "Hết hạn gói VIP gia sư", path: "/api/cron/expire-tutor-subscriptions", schedule: "Mỗi ngày 08:00 giờ VN", maxGapHours: 36 },
+  { key: "pro-renewal-reminders", label: "Nhắc gia hạn gói KiN Pro", path: "/api/cron/pro-renewal-reminders", schedule: "Mỗi ngày 07:30 giờ VN", maxGapHours: 36 },
 ];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 

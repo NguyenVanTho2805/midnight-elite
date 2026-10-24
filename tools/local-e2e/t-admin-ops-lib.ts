@@ -32,7 +32,7 @@ check("cờ CRON_SECRET thiếu ở production nói rõ 'bị từ chối (503)'
 
 section("Lần gọi cron gần nhất");
 const job = CRON_JOBS[0];
-check("khớp vercel.json: đủ ba tác vụ, khoá cài đặt riêng từng cái", CRON_JOBS.length === 3 && new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === 3 && CRON_JOBS.map(j => j.path).sort().join() === "/api/cron/expire-tutor-subscriptions,/api/cron/remind-class,/api/cron/remind-exam");
+check("khớp vercel.json: đủ bốn tác vụ (thêm nhắc gia hạn Pro), khoá cài đặt riêng từng cái", CRON_JOBS.length === 4 && new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === 4 && CRON_JOBS.map(j => j.path).sort().join() === "/api/cron/expire-tutor-subscriptions,/api/cron/pro-renewal-reminders,/api/cron/remind-class,/api/cron/remind-exam");
 check("chưa có lần nào / giá trị hỏng → 'Chưa ghi nhận' (không đoán)", cronView(job, null, NOW).status === "Chưa ghi nhận" && cronView(job, "rác", NOW).status === "Chưa ghi nhận" && cronView(job, "", NOW).tone === "mo");
 check("gọi 5 giờ trước → Đúng lịch, hiện 'hôm nay 07:00'", cronView(job, "2026-10-24T00:00:00Z", NOW).status === "Đúng lịch" && cronView(job, "2026-10-24T00:00:00Z", NOW).lastText === "Gọi gần nhất hôm nay 07:00", cronView(job, "2026-10-24T00:00:00Z", NOW).lastText);
 check("gọi 3 ngày trước (quá 36 giờ) → Chậm so với lịch, tone cho", cronView(job, "2026-10-21T00:00:00Z", NOW).status === "Chậm so với lịch" && cronView(job, "2026-10-21T00:00:00Z", NOW).tone === "cho");

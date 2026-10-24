@@ -208,7 +208,7 @@ export function aiLimitMessage(plan: PlanCode, q: Quota): string {
 }
 
 // ── Yêu cầu mua Pro, kích hoạt (thủ công bởi admin) ─────────────────────────────────────────────
-const proLock = (tx: Prisma.TransactionClient, userId: string) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pro_order:${userId}`}))`;
+export const proLock = (tx: Prisma.TransactionClient, userId: string) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pro_order:${userId}`}))`;
 
 export type CreateOrderResult =
   | { ok: true; created: boolean; order: Prisma.ProOrderGetPayload<object> }
@@ -252,6 +252,16 @@ export async function createProOrder(userId: string, period: BillingPeriod, now:
   return { ok: false, status: 503, error: "Không sinh được mã chuyển khoản, thử lại sau" };
 }
 
+/** Cộng dồn một kỳ vào hạn Pro hiện có và chuyển yêu cầu sang "active". Gọi trong giao dịch ĐÃ giữ khoá `proLock` của gia sư và đã kiểm yêu cầu đang "pending". Dùng chung cho admin bấm tay và webhook SePay. */
+export async function applyProActivation(tx: Prisma.TransactionClient, order: { id: string; userId: string; durationDays: number }, activatedBy: string | null, bankRef: string | null | undefined, now: Date) {
+  const latest = await tx.proOrder.findFirst({ where: { userId: order.userId, status: "active", endDate: { gt: now } }, orderBy: { endDate: "desc" }, select: { endDate: true } });
+  const { startDate, endDate } = nextProPeriod(latest?.endDate ?? null, order.durationDays, now);
+  return tx.proOrder.update({
+    where: { id: order.id },
+    data: { status: "active", startDate, endDate, activatedBy, activatedAt: now, bankRef: bankRef?.trim().slice(0, 100) || null },
+  });
+}
+
 export type ActivateResult = { ok: true; order: Prisma.ProOrderGetPayload<object> } | { ok: false; status: number; error: string };
 
 /** Admin đối chiếu sao kê rồi kích hoạt: cộng dồn vào hạn Pro hiện có. Chỉ kích hoạt được yêu cầu đang chờ; bấm lần hai → 409, không cộng hai lần. */
@@ -265,13 +275,7 @@ export async function activateProOrder(orderId: string, adminId: string, o: { ba
     const order = await tx.proOrder.findUnique({ where: { id: orderId } });
     if (!order) return { ok: false as const, status: 404, error: "Không tìm thấy yêu cầu" };
     if (order.status !== "pending") return { ok: false as const, status: 409, error: order.status === "active" ? "Yêu cầu này đã kích hoạt rồi" : "Yêu cầu này đã huỷ" };
-    const latest = await tx.proOrder.findFirst({ where: { userId: order.userId, status: "active", endDate: { gt: now } }, orderBy: { endDate: "desc" }, select: { endDate: true } });
-    const { startDate, endDate } = nextProPeriod(latest?.endDate ?? null, order.durationDays, now);
-    const upd = await tx.proOrder.update({
-      where: { id: orderId },
-      data: { status: "active", startDate, endDate, activatedBy: adminId, activatedAt: now, bankRef: o.bankRef?.trim().slice(0, 100) || null },
-    });
-    return { ok: true as const, order: upd };
+    return { ok: true as const, order: await applyProActivation(tx, order, adminId, o.bankRef, now) };
   });
   if (res.ok) await logAction(adminId, "pro_order.activate", "ProOrder", orderId, { userId: res.order.userId, period: res.order.period, priceVnd: res.order.priceVnd, startDate: res.order.startDate?.toISOString() ?? null, endDate: res.order.endDate?.toISOString() ?? null });
   return res;
