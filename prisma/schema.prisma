@@ -723,7 +723,7 @@ model ExamChangeLog {
   examId     String
   rootExamId String?
   actorId    String?
-  kind       String // "create" | "publish" | "edit" | "new_version" | "import" | "version_published"
+  kind       String // "create" | "publish" | "edit" | "new_version" | "import" | "version_published" | "discard"
   note       String?  @db.Text
   createdAt  DateTime @default(now())
 
