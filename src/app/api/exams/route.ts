@@ -51,12 +51,13 @@ export async function GET(req: NextRequest) {
   // activeGuest=true là public endpoint — không cần auth
   // Các query khác (active=true, category, status) yêu cầu session
   let scopeWhere: { ownerId?: string } = {};
+  let sessionIsAdmin = false;
   if (!activeGuestOnly) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     // Danh sách quản trị (admin panel) — giáo viên chỉ thấy đề của mình.
     // Học viên xem danh sách đề (không phải panel admin) không bị scope này.
-    if (session.role === "admin") scopeWhere = ownerScopeWhere(session);
+    if (session.role === "admin") { scopeWhere = ownerScopeWhere(session); sessionIsAdmin = true; }
   }
 
   try {
@@ -66,6 +67,9 @@ export async function GET(req: NextRequest) {
         ...(status          ? { status }               : {}),
         ...(activeOnly      ? { active: true }         : {}),
         ...(activeGuestOnly ? { activeGuest: true }    : {}),
+        // QZ-07: phiên bản cũ (đã bị thay) không hiện ở danh sách. QZ-04: bản nháp chỉ chủ đề thấy ở trang quản lý — danh sách cho học sinh / khách luôn ẩn.
+        supersededById: null,
+        ...(activeGuestOnly || !sessionIsAdmin ? { isDraft: false } : {}),
         ...scopeWhere,
       },
       orderBy: { createdAt: "desc" },

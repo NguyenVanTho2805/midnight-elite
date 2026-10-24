@@ -16,6 +16,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       include: { _count: { select: { examQuestions: true } } },
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // QZ-04: bản nháp chưa phát hành chỉ quản trị / gia sư thấy; học sinh gõ đúng địa chỉ cũng nhận 404 (không lộ tên bản nháp).
+    if (exam.isDraft && session.role !== "admin") return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     const { _count, ...rest } = exam;
     return NextResponse.json({ ...withoutExamSecrets(rest), hasQuestions: _count.examQuestions > 0 });

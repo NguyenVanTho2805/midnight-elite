@@ -186,6 +186,7 @@ function ExamEntryInner() {
   function isQuestionAnswered(q: ExamQuestionPublic): boolean {
     if (q.type === "ESSAY" || q.type === "SHORT_ANSWER") return !!essayText[q.id]?.trim();
     if (q.type === "TRUE_FALSE_CLUSTER") return q.options.every(o => clusterAnswers[o.id] !== null && clusterAnswers[o.id] !== undefined);
+    if (q.type === "MC_MULTI") return q.options.some(o => clusterAnswers[o.id] === true); // QZ-03: tích ít nhất một ô
     return !!selected[q.id];
   }
 
@@ -438,6 +439,23 @@ function ExamEntryInner() {
                       {q.correctionPending && (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                           Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — gợi ý sẽ hiện nếu chưa đúng, đáp án hiện sau khi bạn thử.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {q.type === "MC_MULTI" && (
+                    <div className="space-y-1.5">
+                      {q.options.map(o => (
+                        <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect === true ? "var(--kin-tt-chu-xong)" : o.picked && o.isCorrect === false ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)" }}>
+                          <strong>{o.picked ? "☑" : "☐"}</strong> <MathText text={o.text} />
+                          {o.picked && " — bạn chọn"}
+                          {o.isCorrect === true && " ✓ đáp án đúng"}
+                        </div>
+                      ))}
+                      {q.explanation && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
+                          <strong>Giải thích:</strong> <MathText text={q.explanation} />
                         </p>
                       )}
                     </div>

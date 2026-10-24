@@ -391,6 +391,20 @@ model Exam {
   // đã cho phép xem đáp án. Câu trả lời ĐÚNG vẫn luôn hiện đáp án bình thường.
   hideAnswerForWrong Boolean @default(false)
 
+  // QZ-04 / QZ-07 (gia sư soạn quiz, phiên bản). Toàn bộ cột THÊM, nullable hoặc có mặc định — đề cũ không đổi gì.
+  //   isDraft        — bản nháp chưa phát hành: học sinh không thấy, không vào thi được (route start chặn). Mặc định false = đề cũ vẫn như cũ.
+  //   rootExamId     — id của phiên bản đầu tiên trong chuỗi phiên bản (null = đề này là gốc, hoặc đề cũ chưa từng có phiên bản).
+  //   versionNo      — số phiên bản trong chuỗi (1 = bản đầu).
+  //   supersededById — phiên bản mới đã THAY bản này (null = bản đang dùng). Bản bị thay vẫn giữ nguyên câu hỏi/đáp án/bài làm/điểm.
+  //   supersededAt   — lúc bản mới được phát hành.
+  //   versionNote    — lý do tạo phiên bản (gia sư ghi).
+  isDraft        Boolean   @default(false)
+  rootExamId     String?
+  versionNo      Int       @default(1)
+  supersededById String?
+  supersededAt   DateTime?
+  versionNote    String?   @db.Text
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]
@@ -398,6 +412,7 @@ model Exam {
 
   @@index([ownerId])
   @@index([courseId])
+  @@index([rootExamId])
   @@map("exams")
 }
 
@@ -528,7 +543,8 @@ model ExamQuestion {
   hint        String?  @db.Text
   createdAt   DateTime @default(now())
 
-  // "MC" (trắc nghiệm 1 đáp án, mặc định) | "ESSAY" (tự luận, chấm tay) |
+  // "MC" (trắc nghiệm 1 đáp án, mặc định) | "MC_MULTI" (nhiều đáp án đúng, QZ-03: chấm đủ-hoặc-không, câu trả lời lưu ở ExamAnswerBoolean
+  // — mỗi ô học sinh tích là một dòng answerTrue=true) | "ESSAY" (tự luận, chấm tay) |
   // "TRUE_FALSE_CLUSTER" (1 đoạn dẫn + 4 mệnh đề con, mỗi ý tự đúng/sai độc
   // lập — không phải chọn 1 trong 4, xem ExamOption.subLabel/ExamAnswerBoolean) |
   // "SHORT_ANSWER" (điền đáp án ngắn, chấm tự động so khớp text — đáp án đúng
@@ -554,6 +570,14 @@ model ExamQuestion {
   // QuestionBankItem về nguyên tắc không share row).
   sourceBankItemId String?
   sourceBankItem   QuestionBankItem? @relation(fields: [sourceBankItemId], references: [id], onDelete: SetNull)
+
+  // QZ-03 — thêm cho câu tự luận (cột nullable, câu cũ để trống):
+  //   studentGuide — "Hướng dẫn cho học sinh" (học sinh thấy lúc làm bài).
+  //   graderGuide  — "Hướng dẫn chấm": CHỈ gia sư thấy, không bao giờ gửi cho học sinh (kiểm ở applyAttemptOrder + route review).
+  //   rubric       — tiêu chí chấm [{ name, requirement, points }]; tổng điểm các tiêu chí phải bằng `points` của câu (kiểm ở src/lib/quizQuestion.ts).
+  studentGuide String? @db.Text
+  graderGuide  String? @db.Text
+  rubric       Json?
 
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]
@@ -690,6 +714,22 @@ model ExamCorrection {
 
   @@unique([attemptId, questionId])
   @@map("exam_corrections")
+}
+
+// QZ-07 — Nhật ký thay đổi của một quiz/đề (tạo, phát hành, tạo phiên bản mới, sửa trực tiếp khi chưa ai làm…). Bảng MỚI, chỉ thêm dòng, không sửa/xoá dòng.
+// Không có quan hệ cứng tới Exam để nhật ký còn nguyên cả khi xoá một bản nháp. actorId = gia sư thực hiện.
+model ExamChangeLog {
+  id         String   @id @default(cuid())
+  examId     String
+  rootExamId String?
+  actorId    String?
+  kind       String // "create" | "publish" | "edit" | "new_version" | "import" | "version_published" | "discard"
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([examId, createdAt])
+  @@index([rootExamId, createdAt])
+  @@map("exam_change_logs")
 }
 
 // ─── BÁO CÁO THÁNG GỬI PHỤ HUYNH (NV-185/186/189) ─────────────────────────────

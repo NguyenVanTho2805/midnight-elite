@@ -20,8 +20,8 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
       orderBy: { createdAt: "desc" }, take: MAX_ASSIGNMENTS,
     }),
     prisma.exam.findMany({
-      where: { ownerId: tutorId },
-      select: { id: true, title: true, date: true, time: true, questions: true, active: true, courseId: true, course: { select: { name: true } } },
+      where: { ownerId: tutorId, supersededById: null }, // QZ-07: phiên bản cũ mở từ trang phiên bản, không hiện thành dòng riêng
+      select: { id: true, title: true, date: true, time: true, questions: true, active: true, isDraft: true, versionNo: true, courseId: true, course: { select: { name: true } } },
       orderBy: { createdAt: "desc" }, take: MAX_EXAMS,
     }),
   ]);
@@ -51,11 +51,11 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
     };
   });
   for (const e of exams) {
-    const cls = classifyExam(computeExamStatus(e.date, e.time, e.active));
+    const cls = classifyExam(e.isDraft ? "draft" : computeExamStatus(e.date, e.time, e.active));
     items.push({
       id: e.id, kind: "exam", courseId: e.courseId, courseName: e.course?.name ?? "Đề dùng chung", title: e.title, mode: "exam", maxPoints: 0,
       submitted: 0, ungraded: 0, group: cls.group, statusLabel: cls.label, statusTone: cls.tone,
-      sub: `${e.questions} câu · thi ${e.date} lúc ${e.time}`, href: `/admin/thi-thu/${e.id}`,
+      sub: `${e.questions} câu${e.versionNo > 1 ? ` · v${e.versionNo}` : ""}${e.isDraft ? "" : ` · thi ${e.date} lúc ${e.time}`}`, href: `/lop-cua-toi/bai-tap/quiz/${e.id}`, // QZ-04: trình soạn quiz của gia sư
     });
   }
   // Ổn định: nhóm trước, cùng nhóm giữ thứ tự mới → cũ đã lấy từ DB.

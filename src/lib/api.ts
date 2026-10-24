@@ -373,6 +373,7 @@ export interface ExamReviewOptionCluster {
 }
 export type ExamReviewQuestion =
   | { id: string; type: "MC"; text: string; points: number; sectionLabel: string | null; studentOptionId: string | null; options: ExamReviewOptionMC[]; explanation: string | null; correctionPending?: boolean }
+  | { id: string; type: "MC_MULTI"; text: string; points: number; sectionLabel: string | null; options: { id: string; text: string; picked: boolean; isCorrect: boolean | null }[]; explanation: string | null }
   | { id: string; type: "TRUE_FALSE_CLUSTER"; text: string; points: number; sectionLabel: string | null; options: ExamReviewOptionCluster[] }
   | { id: string; type: "ESSAY"; text: string; points: number; sectionLabel: string | null; textAnswer: string | null; pointsAwarded: number | null; teacherComment: string | null }
   | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null; correctionPending?: boolean };
@@ -580,8 +581,9 @@ export interface ExamOptionPublic {
   subLabel?: "a" | "b" | "c" | "d" | null;
 }
 export interface ExamQuestionPublic {
-  id: string; order: number; type: QuestionType; text: string;
+  id: string; order: number; type: QuestionType | "MC_MULTI"; text: string; // "MC_MULTI" (QZ-03) không nằm trong QuestionType để khỏi lan sang các trang cũ
   imageUrl?: string | null; points: number;
+  studentGuide?: string | null; // QZ-03: hướng dẫn cho học sinh (tự luận); KHÔNG có hướng dẫn chấm / tiêu chí — chỉ gia sư thấy
   sectionLabel?: string | null;
   options: ExamOptionPublic[];
 }
