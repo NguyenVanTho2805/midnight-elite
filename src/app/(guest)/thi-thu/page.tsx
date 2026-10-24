@@ -9,7 +9,7 @@ import { useEnrollments } from "@/hooks/useEnrollments";
 import { computeExamStatus, type ExamStatus } from "@/lib/examData";
 
 interface MyResult {
-  examId: string; score: number; totalPoints: number; rank: number;
+  examId: string; score: number | null; totalPoints: number; rank: number | null;
 }
 
 const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
@@ -133,9 +133,9 @@ export default function ThiThuPage() {
                   {hasDone && (
                     <div className="flex items-center gap-3 mt-1.5">
                       <span className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>
-                        {result.score}/{result.totalPoints}
+                        {result.score === null ? "Chờ gia sư công bố" : `${result.score}/${result.totalPoints}`}
                       </span>
-                      {result.rank > 0 && (
+                      {result.rank !== null && result.rank > 0 && (
                         <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Hạng #{result.rank}</span>
                       )}
                     </div>
