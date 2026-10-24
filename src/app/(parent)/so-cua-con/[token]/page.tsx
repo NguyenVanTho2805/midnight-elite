@@ -24,6 +24,8 @@ import { prevYearMonth } from "@/lib/monthlyReport";
 import { vnDateKeyOf, vnMinutesOfDay, hmOf } from "@/lib/classSessions";
 import ParentSection from "@/components/parent/Section";
 import SessionScores from "@/components/parent/SessionScores";
+import PartySessions from "@/components/parent/PartySessions";
+import { loadPartySessions } from "@/lib/partySessionsServer";
 import { loadPartyScores } from "@/lib/sessionScoreServer";
 
 export const dynamic = "force-dynamic"; // link cá nhân, không cache
@@ -141,6 +143,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
   const hasFeeBlock = invoices.length > 0 || !!feeBreakdown;
   // BU-11: điểm từng buổi của ĐÚNG em này, chỉ khi đồng ý ghi điểm còn hiệu lực.
   const sessionScores = await loadPartyScores(studentId);
+  // BC-02: chi tiết từng buổi (điểm danh gia sư đã ghi) của ĐÚNG em này, ở các lớp em đang học.
+  const partySessions = await loadPartySessions(studentId, courseIds, now);
 
   return (
     <div style={{ background: "var(--kin-nen-trang)" }}>
@@ -214,6 +218,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 </ParentSection>
 
                 <UpcomingSessions token={token} upcoming={sessions.upcoming} makeup={sessions.makeup} nowIso={now.toISOString()} />
+
+                <PartySessions items={partySessions} />
 
                 <SessionScores items={sessionScores} />
               </div>
