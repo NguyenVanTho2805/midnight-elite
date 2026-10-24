@@ -15,6 +15,7 @@ import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
 import { readPreferences } from "@/lib/userPreferences";
 import { isProfileHidden } from "@/lib/tutorVisibility";
+import { TUTOR_CTA, TUTOR_FAQ, TUTOR_PAINS, TUTOR_STEPS } from "@/lib/landingCopy";
 
 const HERO_CATEGORIES = [
   { label: "ĐGNL HSA",        desc: "ĐH Quốc gia Hà Nội" },
@@ -130,6 +131,59 @@ export default async function HomePage() {
                   <p className="text-[length:var(--kin-co-small)] leading-[1.55] text-[var(--kin-chu-phu)]">{desc}</p>
                 </article>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── KH-01: Dành cho gia sư dạy thêm (chữ ở src/lib/landingCopy.ts, chỉ nói điều KiN làm được hôm nay) ── */}
+        <section aria-labelledby="h-gia-su" className="py-14 sm:py-[72px]">
+          <div className="mx-auto max-w-[984px] px-4 sm:px-8 flex flex-col gap-14">
+            <div className="flex flex-col gap-8">
+              <div className="text-center flex flex-col gap-2">
+                <p className="text-[length:var(--kin-co-caption)] font-semibold tracking-[0.09em] text-[var(--kin-chu-mo)]">DÀNH CHO GIA SƯ DẠY THÊM</p>
+                <h2 id="h-gia-su" className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h2)] leading-tight text-[var(--kin-chu-chinh)]">Việc giấy tờ tăng theo số lớp</h2>
+                <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Sáu việc gia sư hay mất công nhất, và KiN đỡ phần nào.</p>
+              </div>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
+                {TUTOR_PAINS.map(p => (
+                  <li key={p.title} className="flex flex-col gap-2 rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] p-[22px]">
+                    <h3 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]">{p.title}</h3>
+                    <p className="text-[length:var(--kin-co-small)] leading-[1.55] text-[var(--kin-chu-phu)]">{p.desc}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-col gap-8">
+              <h2 className="kin-chu-tieu-de text-center font-semibold text-[length:var(--kin-co-h2)] leading-tight text-[var(--kin-chu-chinh)]">Cách hoạt động</h2>
+              <ol className="grid grid-cols-1 md:grid-cols-3 gap-[14px]">
+                {TUTOR_STEPS.map((st, i) => (
+                  <li key={st.title} className="flex flex-col gap-2 rounded-[var(--kin-bo-the)] bg-[var(--kin-nen-bang)] p-[22px]">
+                    <span className="text-[length:var(--kin-co-caption)] font-semibold text-[var(--kin-nhan-link)]">Bước {i + 1}</span>
+                    <h3 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]">{st.title}</h3>
+                    <p className="text-[length:var(--kin-co-small)] leading-[1.55] text-[var(--kin-chu-phu)]">{st.desc}</p>
+                  </li>
+                ))}
+              </ol>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link href={TUTOR_CTA.signup} className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-[var(--kin-bo-md)] bg-[var(--kin-nhan-nen)] text-[var(--kin-nhan-chu-tren-nen)] font-semibold text-[length:var(--kin-co-small)] hover:opacity-90">Tạo tài khoản gia sư</Link>
+                <Link href={TUTOR_CTA.login} className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)] font-semibold text-[length:var(--kin-co-small)] hover:bg-[var(--kin-nen-bang)]">Đăng nhập</Link>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6" id="cau-hoi">
+              <h2 className="kin-chu-tieu-de text-center font-semibold text-[length:var(--kin-co-h2)] leading-tight text-[var(--kin-chu-chinh)]">Câu hỏi thường gặp</h2>
+              <div className="rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] divide-y divide-[var(--kin-vien-nhat)]">
+                {TUTOR_FAQ.map(f => (
+                  <details key={f.q} className="group px-5">
+                    <summary className="flex items-center justify-between gap-4 min-h-[56px] cursor-pointer list-none text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] [&::-webkit-details-marker]:hidden">
+                      {f.q}
+                      <span aria-hidden="true" className="text-[var(--kin-chu-mo)] transition-transform group-open:rotate-45">+</span>
+                    </summary>
+                    <p className="pb-4 text-[length:var(--kin-co-small)] leading-[1.6] text-[var(--kin-chu-phu)]">{f.a}</p>
+                  </details>
+                ))}
+              </div>
             </div>
           </div>
         </section>
