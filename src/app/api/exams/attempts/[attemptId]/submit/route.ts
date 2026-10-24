@@ -5,6 +5,8 @@ import { finalizeAttempt } from "@/lib/examGrading";
 import { computeQuizReward } from "@/lib/quizReward";
 import { addQuizRewardCoins } from "@/lib/wallet";
 import { MAX_QUIZ_REWARDS_PER_DAY } from "@/lib/wallet-constants";
+import { loadPublishState } from "@/lib/quizPublication";
+import { receiptCode, resultVisibility } from "@/lib/quizRoom";
 
 // POST /api/exams/attempts/[attemptId]/submit — chấm điểm hoàn toàn ở server.
 // Idempotent: nếu attempt đã submitted/expired trước đó, trả lại kết quả đã có thay vì lỗi.
@@ -62,11 +64,18 @@ export async function POST(
       where: { examId: attempt.examId, score: { gt: rankBase } },
     });
 
+    // QZ-11: bài có tự luận mà gia sư chưa công bố → chỉ trả biên nhận ("đã ghi nhận"), KHÔNG điểm/hạng dở dang (phần tự luận mới tính 0 vì chưa chấm).
+    const vis = resultVisibility(await loadPublishState(attempt.examId, attempt.userId), true);
     return NextResponse.json({
-      score: finalized.score,
+      score: vis.showScore ? finalized.score : null,
       totalPoints: exam?.totalPoints ?? 150,
-      rank: above + 1,
+      rank: vis.showScore ? above + 1 : null,
       coinsEarned,
+      pendingManual: vis.pendingManual,
+      status: finalized.status,
+      submittedAt: finalized.submittedAt,
+      expired: finalized.status === "expired" || lateSubmit,
+      receipt: receiptCode(attempt.id),
     });
   } catch (e) {
     console.error("[POST /api/exams/attempts/[attemptId]/submit]", e);

@@ -7,6 +7,8 @@
 //  • Không bao giờ ghi vào ExamAttempt.score / ExamAnswer: chữa bài chỉ để học.
 //  • Mọi thao tác trên một (lượt × câu) khoá bằng advisory lock; hai lần bấm cùng lúc không đếm đôi lượt nộp.
 import { prisma } from "@/lib/prisma";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 import { hasExamWindowEnded, loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
 import {
   EMPTY_CORRECTION, REFLECTION_MAX, SHORT_ANSWER_MAX, afterReveal, afterSubmit, canReveal, correctionState, hintVisible,
@@ -92,6 +94,10 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
 
   if (!correctionAllowedByExam(exam)) {
     return { ok: true, ctx: { attemptId, available: false, reason: "Đề này chưa cho xem đáp án nên chưa có chế độ chữa bài.", questions: [], rows: new Map() } };
+  }
+  // QZ-11: quiz có tự luận mà gia sư chưa công bố → chữa bài (sẽ lộ đáp án trắc nghiệm) cũng khoá, y như màn xem lại.
+  if (!resultVisibility(await loadPublishState(exam.id, userId), true).showAnswers) {
+    return { ok: true, ctx: { attemptId, available: false, reason: "Gia sư chưa công bố kết quả bài này nên chưa chữa bài được.", questions: [], rows: new Map() } };
   }
   const [ordered, state, rows] = await Promise.all([
     loadOrdered(exam.id, attempt),

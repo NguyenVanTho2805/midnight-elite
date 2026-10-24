@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { finalizeAttempt, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 
 // GET /api/exams/attempts/[attemptId] — trạng thái attempt hiện tại (phục vụ resume)
 export async function GET(
@@ -27,10 +29,15 @@ export async function GET(
 
     if (attempt.status !== "in_progress") {
       const examMeta = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } });
+      // QZ-11: bài có tự luận chưa được gia sư công bố → không trả điểm dở dang; chỉ báo "đã ghi nhận, chờ chấm".
+      const vis = resultVisibility(await loadPublishState(attempt.examId, session.userId), true);
       return NextResponse.json({
         attemptId: attempt.id,
         status: attempt.status,
-        score: attempt.score,
+        serverNow: new Date().toISOString(),
+        submittedAt: attempt.submittedAt,
+        score: vis.showScore ? attempt.score : null,
+        pendingManual: vis.pendingManual,
         totalPoints: examMeta?.totalPoints ?? 150,
       });
     }
@@ -52,6 +59,7 @@ export async function GET(
     return NextResponse.json({
       attemptId: attempt.id,
       status: attempt.status,
+      serverNow: new Date().toISOString(),
       expiresAt: attempt.expiresAt,
       sectionWindows: attempt.sectionWindows,
       questions,
