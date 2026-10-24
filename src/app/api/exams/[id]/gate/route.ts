@@ -6,10 +6,12 @@ import { parseDurationMinutes } from "@/lib/examGrading";
 import { hasExamPassword } from "@/lib/examPassword";
 import { getMaxAttempts } from "@/lib/quizPublication";
 import { attemptCounterLabel, attemptsGate } from "@/lib/quizRoom";
+import { canStartByDeadline, deadlineState } from "@/lib/quizDeadline";
+import { getOwnDeadline } from "@/lib/quizDeadlineServer";
 
 // GET /api/exams/[id]/gate — "cổng vào đề" (QZ-11): thông tin để học sinh biết mình vào được không TRƯỚC khi bấm bắt đầu.
 // KHÔNG trả câu hỏi, đáp án, mật khẩu hay băm. Quy tắc vào đề giống hệt POST /api/exams/[id]/start (máy chủ vẫn kiểm lại ở đó).
-// blockReason: not_enrolled (đề gắn lớp, em chưa vào lớp → dẫn tới "nhập mã lớp"), payment_required, attempts_exhausted, no_questions.
+// blockReason: not_enrolled (đề gắn lớp, em chưa vào lớp → dẫn tới "nhập mã lớp"), payment_required, attempts_exhausted, no_questions, past_deadline (hạn nộp riêng của em đã qua).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
@@ -21,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    let blockReason: "not_enrolled" | "payment_required" | "attempts_exhausted" | "no_questions" | null = null;
+    let blockReason: "not_enrolled" | "payment_required" | "attempts_exhausted" | "no_questions" | "past_deadline" | null = null;
     let enrolled: boolean | null = null;
     if (exam.courseId) {
       enrolled = isEnrollmentActive(await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } } }));
@@ -45,7 +47,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (exam._count.examQuestions === 0) blockReason = blockReason ?? "no_questions";
     else if (!gate.canStart) blockReason = blockReason ?? "attempts_exhausted";
 
+    // Hạn nộp riêng của chính học sinh này (gia sư đặt). Quá hạn và chưa có lượt dở → không vào được. Không trả hạn của ai khác.
+    const ownDue = await getOwnDeadline(examId, session.userId);
+    if (!canStartByDeadline(ownDue, new Date(), resumable)) blockReason = blockReason ?? "past_deadline";
+
     return NextResponse.json({
+      deadline: ownDue ? { dueAt: ownDue.toISOString(), state: deadlineState(ownDue, new Date()) } : null,
       exam: {
         id: exam.id, title: exam.title, category: exam.category, date: exam.date, time: exam.time,
         durationMinutes: parseDurationMinutes(exam.duration), questionCount: exam._count.examQuestions,
