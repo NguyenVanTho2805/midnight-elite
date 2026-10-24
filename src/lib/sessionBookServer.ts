@@ -84,6 +84,8 @@ export interface SessionDetail {
   rosterCount: number;
   /** Chỉ khi buổi đã chốt: cảnh báo trước khi mở lại. */
   reopenWarning: string | null;
+  /** Buổi gần nhất TRƯỚC ngày này của cùng lớp có ghi chép CHUNG (đã dạy / nhận xét chung). Không có ghi chép riêng từng em. */
+  previous: null | { dateKey: string; taught: string | null; summary: string | null };
 }
 
 export async function loadSessionDetail(course: CourseLite, dateKey: string): Promise<SessionDetail> {
@@ -107,6 +109,12 @@ export async function loadSessionDetail(course: CourseLite, dateKey: string): Pr
   if (primary) time = { start: hmOf(vnMinutesOfDay(primary.startAt)), end: hmOf(vnMinutesOfDay(primary.endAt)) };
   else if (session?.startTime && session.endTime) time = { start: session.startTime, end: session.endTime };
 
+  const prev = await prisma.attendanceSession.findFirst({
+    where: { courseId: course.id, date: { lt: date }, OR: [{ taught: { not: null } }, { summary: { not: null } }] },
+    orderBy: { date: "desc" }, select: { date: true, taught: true, summary: true },
+  });
+  const previous = prev && ((prev.taught ?? "").trim() || (prev.summary ?? "").trim())
+    ? { dateKey: prev.date.toISOString().slice(0, 10), taught: prev.taught?.trim() || null, summary: prev.summary?.trim() || null } : null;
   const impact = session && isClosed(session.state) ? await reopenImpact(prisma, session, course.ownerId) : null;
   return {
     course: { id: course.id, name: course.name, calendarColor: course.calendarColor, zaloGroupUrl: course.zaloGroupUrl, classJoinUrl: course.classJoinUrl },
@@ -123,6 +131,7 @@ export async function loadSessionDetail(course: CourseLite, dateKey: string): Pr
     tally: tallyAttendance(records),
     rosterCount,
     reopenWarning: impact?.warning ?? null,
+    previous,
   };
 }
 

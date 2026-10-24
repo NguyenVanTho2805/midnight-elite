@@ -3,7 +3,7 @@
 // Chỉ GOM dữ liệu đã có (GET /api/tutor/hoc-sinh/[userId]); thông tin riêng của em đã đi qua maskProfile ở máy chủ: thiếu đồng ý thì không có trong dữ liệu,
 // giao diện chỉ nói "chưa có đồng ý", không đoán và không hiện chỗ trống giả. Tiền: chỉ hiện số trên phiếu đã lưu, không tính lại.
 // Ô Figma CHƯA có nguồn dữ liệu nên không dựng: đơn giá và "đổi cách tính phí" theo em (đơn giá nằm ở tab Học phí của lớp), PIN 4 số của báo cáo,
-// "Lần xem / Kênh" của báo cáo riêng, "Lưu trữ khác với xoá" (ẩn/lưu trữ riêng chưa có; Đã nghỉ giữ nguyên dữ liệu thay thế).
+// "Lần xem / Kênh" của báo cáo riêng, (đã có khối "Lưu trữ khác với xoá" + "Xem ảnh hưởng khi xoá" chỉ đọc; lưu trữ riêng chưa có, Đã nghỉ giữ nguyên dữ liệu thay thế).
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -39,6 +39,7 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
   const [err, setErr] = useState<"load" | "forbidden" | null>(null);
   const [tab, setTab] = useState<TabKey>(TAB_KEYS.includes(initialTab as TabKey) ? (initialTab as TabKey) : "tong-quan");
   const [busy, setBusy] = useState(false);
+  const [showImpact, setShowImpact] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const { ask, dialog } = useKinConfirm();
 
@@ -174,9 +175,27 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
                 </section>
               </aside>
             </KinTwoCol>
-            <KinCallout title="Đã nghỉ khác với xoá">
-              Đánh dấu Đã nghỉ giữ lại điểm danh, điểm, phiếu và hồ sơ riêng; em không còn hoạt động mới trong lớp. KiN chưa có chức năng lưu trữ riêng cho học sinh. Muốn xoá hẳn hồ sơ riêng thì làm ở trang Hồ sơ riêng, có xác nhận.
-            </KinCallout>
+            <section aria-labelledby="em-luutru" data-em-luu-tru>
+              <KinSectionHead id="em-luutru" title="Lưu trữ khác với xoá" />
+              <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+                Đánh dấu Đã nghỉ giữ lại điểm danh, điểm, phiếu và hồ sơ riêng; em không còn hoạt động mới trong lớp. KiN chưa có chức năng lưu trữ riêng cho học sinh. Muốn xoá hẳn hồ sơ riêng thì làm ở trang Hồ sơ riêng, có xác nhận.
+              </p>
+              <div className="mt-4">
+                <KinButton variant="secondary" aria-expanded={showImpact} aria-controls="em-anh-huong" onClick={() => setShowImpact(v => !v)}>{showImpact ? "Ẩn ảnh hưởng khi xoá" : "Xem ảnh hưởng khi xoá"}</KinButton>
+              </div>
+              {showImpact && (
+                <div id="em-anh-huong" data-em-anh-huong className="mt-4">
+                  <KinCallout title="Nếu xoá hồ sơ riêng của em, cô cần rà soát những dữ liệu này">
+                    <ul className="list-disc pl-5 space-y-1 tabular-nums">
+                      <li>{d.impact.sessions} buổi có ghi điểm danh của em</li>
+                      <li>{d.impact.invoices} phiếu học phí</li>
+                      <li>{d.impact.scores === null ? "Điểm từng buổi: chưa có đồng ý ghi điểm nên KiN không đếm" : `${d.impact.scores} buổi có điểm`}</li>
+                    </ul>
+                    <p className="mt-2">Đây chỉ là số đếm để cô xem trước. KiN không xoá gì ở đây, và không xoá phiếu hay giao dịch đã thu.</p>
+                  </KinCallout>
+                </div>
+              )}
+            </section>
           </div>
         )}
 

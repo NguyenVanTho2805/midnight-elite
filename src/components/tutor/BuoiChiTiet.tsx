@@ -3,6 +3,7 @@
 // Nút "Đã dạy xong" gọi POST /api/courses/[id]/sessions/[dateKey]/close: ghi trạng thái + thời điểm chốt; với lớp kiểu mới (theo buổi / theo giờ)
 // máy chủ đồng thời sinh dòng học phí cho em có mặt hoặc đi muộn (chủ chốt 24/10/2026: chốt buổi là điều kiện sinh phí). Lớp cũ: không ghi gì ở bảng phí.
 // KHÔNG đổi cách tính phiếu, không đụng dòng đã vào phiếu.
+// "Ghi chú buổi trước": chỉ ghi chép CHUNG (đã dạy, nhận xét chung) của buổi gần nhất cùng lớp; nhận xét riêng từng em không hiện ở đây.
 // Ô Figma chưa làm vì cần dữ liệu/tiền chưa có: "Phí dự kiến khi chốt", "Chính sách cho em", "Xem trước PNG/PDF", ảnh bài làm của em (BU-10), điểm buổi (đã ở khối riêng).
 "use client";
 import { useCallback, useEffect, useState } from "react";
@@ -231,6 +232,17 @@ export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; d
             {!past && !closed && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Buổi này chưa tới ngày nên chưa chốt được.</p>}
             <KinCallout title="Chốt buổi và học phí">Lớp tính học phí theo buổi hoặc theo giờ chỉ có khoản học phí khi buổi đã dạy xong: bấm Đã dạy xong thì KiN tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi thì chưa tính. Mở lại buổi sẽ gỡ khoản chưa vào phiếu, khoản đã vào phiếu giữ nguyên. Lớp tính theo số buổi trong tháng (cách cũ) không đổi.</KinCallout>
           </KinPanel>
+
+          <section aria-labelledby="bu-truoc" className="space-y-2" data-bu-previous>
+            <h2 id="bu-truoc" className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">Ghi chú buổi trước</h2>
+            {detail.previous ? (
+              <>
+                <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] tabular-nums">{dmy(detail.previous.dateKey)}{detail.previous.taught ? ` · ${detail.previous.taught}` : ""}</p>
+                {detail.previous.summary && <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)] whitespace-pre-line break-words">{detail.previous.summary}</p>}
+                <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Chỉ ghi chép chung của lớp. Nhận xét riêng từng em xem ở hồ sơ em.</p>
+              </>
+            ) : <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp chưa có ghi chép chung của buổi nào trước ngày này.</p>}
+          </section>
 
           <div className="space-y-3">
             <h2 className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">Liên quan</h2>
