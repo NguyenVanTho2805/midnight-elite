@@ -72,10 +72,11 @@ model Course {
   feeRates           CourseFeeRate[]
   studentFeeRates    CourseStudentRate[]
   feeCharges         FeeCharge[]
+  sessionPackages    SessionPackage[] // HP-31 gói buổi trả trước (bảng mới)
 
   // HP-15 (23/10/2026): cách tính học phí của lớp, CHỌN LÚC TẠO LỚP và chỉ lớp tạo sau mới khác mặc định.
   //   "monthly_sessions" (mặc định, MỌI lớp cũ) : gia sư nhập số buổi tháng (MonthlyCourseFee) — cách tính hiện tại, KHÔNG đổi.
-  //   "per_session" | "per_hour" | "per_course" : học phí sinh ra từ buổi đã điểm danh (FeeCharge), đơn giá ở CourseFeeRate.
+  //   "per_session" | "per_hour" | "per_course" : học phí sinh ra từ buổi ĐÃ CHỐT (FeeCharge; chủ chốt 24/10/2026), đơn giá ở CourseFeeRate.
   feeMode String @default("monthly_sessions")
   // BUỔI/LỊCH (LI-02, LI-17): màu lớp trên Lịch (khoá trong src/lib/classColor.ts, KHÔNG phải mã hex; null = suy từ mã lớp như cũ)
   // và link học online CHUNG của lớp (ưu tiên thấp nhất: riêng buổi > theo khung giờ > chung lớp).
@@ -1496,6 +1497,50 @@ model FeeCharge {
   @@index([courseId, dateKey])
   @@index([invoiceId])
   @@map("fee_charges")
+}
+
+// HP-31 (24/10/2026): gói buổi trả trước và sổ sử dụng. SỔ BUỔI, không phải sổ tiền: KiN không thu, không chuyển, không gạch nợ.
+// Chỉ lớp kiểu mới theo buổi / theo giờ. Một gói = N buổi cho MỘT em trong MỘT lớp; mỗi buổi ĐÃ CHỐT em có mặt/muộn (không dùng buổi bù) trừ 1 buổi.
+// unitPrice / totalPrice CHỤP lúc lập theo đơn giá lớp (hoặc giá riêng của em) để ghi lại thôi; đổi đơn giá sau không đổi gói. Bảng MỚI, không đụng phiếu / dòng phí.
+// CẦN KẾ TOÁN DUYỆT cách ghi nhận (có trừ khỏi phiếu hay không) trước khi dùng thật: hiện sổ buổi KHÔNG tự bớt khoản nào trên phiếu.
+model SessionPackage {
+  id          String    @id @default(cuid())
+  tutorId     String
+  courseId    String
+  studentId   String
+  sessions    Int // số buổi trong gói
+  unitPrice   Int // đồng / buổi, chụp lúc lập
+  totalPrice  Int // sessions × unitPrice, chụp lúc lập
+  status      String    @default("active") // "active" | "used_up" | "cancelled"
+  note        String?
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  course Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uses   SessionPackageUse[]
+
+  @@index([courseId, studentId, status])
+  @@index([tutorId])
+  @@map("session_packages")
+}
+
+// Một lần trừ buổi của gói. Mỗi bản ghi điểm danh trừ tối đa MỘT buổi (unique recordId). Trả buổi = đặt reversedAt (giữ lịch sử), không xoá.
+model SessionPackageUse {
+  id         String    @id @default(cuid())
+  packageId  String
+  recordId   String // AttendanceRecord.id
+  sessionId  String
+  dateKey    String // ngày VN của buổi
+  usedAt     DateTime  @default(now())
+  reversedAt DateTime?
+
+  package SessionPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([recordId])
+  @@index([packageId])
+  @@index([sessionId])
+  @@map("session_package_uses")
 }
 
 // HP-32 (23/10/2026): giảm giá PHẦN TRĂM của gia sư cho một học sinh, áp tự động khi LẬP PHIẾU MỚI (phiếu đã lập không đổi).

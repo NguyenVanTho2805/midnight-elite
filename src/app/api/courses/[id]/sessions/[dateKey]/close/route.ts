@@ -12,6 +12,7 @@ import { isValidDateKey } from "@/lib/classSessions";
 import { closeCheck, isClosed } from "@/lib/sessionBook";
 import { authorizeCourse, dayDate, ensureSession, loadSessionDetail, reopenImpact } from "@/lib/sessionBookServer";
 import { logAction } from "@/lib/auditLog";
+import { reversePackageUsesForSession, syncPackageUsesForSession } from "@/lib/sessionPackageServer";
 import { lockAttendanceSession, removeChargesOnReopen, syncChargesOnClose, type SyncResult } from "@/lib/feeChargeServer";
 
 export const dynamic = "force-dynamic";
@@ -33,16 +34,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const c = closeCheck({ dateKey, state: session.state, now });
     if (!c.ok) return NextResponse.json({ error: c.error }, { status: 400 });
     let charges: SyncResult | null = null;
+    let packageUses = 0;
     if (!c.already) {
       // updateMany có điều kiện: hai lần bấm cùng lúc chỉ một lần ghi thời điểm chốt (và chỉ lần đó sinh phí).
-      charges = await prisma.$transaction(async tx => {
+      const res = await prisma.$transaction(async tx => {
         await lockAttendanceSession(tx, session.id);
         const u = await tx.attendanceSession.updateMany({ where: { id: session.id, OR: [{ state: null }, { state: { not: "closed" } }] }, data: { state: "closed", closedAt: now, closedBy: r.auth.userId } });
-        return u.count === 1 ? syncChargesOnClose(tx, session.id, r.auth.userId) : null;
+        if (u.count !== 1) return { ch: null, used: 0 };
+        const ch = await syncChargesOnClose(tx, session.id, r.auth.userId);
+        const pk = await syncPackageUsesForSession(tx, session.id, { now }); // HP-31: sổ buổi của gói trả trước
+        return { ch, used: pk.used };
       });
-      await logAction(r.auth.userId, "attendance_session.close", "AttendanceSession", session.id, { courseId: id, dateKey, chargesCreated: charges?.created ?? 0 });
+      charges = res.ch; packageUses = res.used;
+      await logAction(r.auth.userId, "attendance_session.close", "AttendanceSession", session.id, { courseId: id, dateKey, chargesCreated: charges?.created ?? 0, packageUses });
     }
-    return NextResponse.json({ ok: true, already: c.already, charges, detail: await loadSessionDetail(r.course, dateKey) }, { headers: NO_STORE });
+    return NextResponse.json({ ok: true, already: c.already, charges, packageUses, detail: await loadSessionDetail(r.course, dateKey) }, { headers: NO_STORE });
   }
 
   if (body?.action === "reopen") {
@@ -55,7 +61,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const removal = await prisma.$transaction(async tx => {
       await lockAttendanceSession(tx, session.id);
       const u = await tx.attendanceSession.updateMany({ where: { id: session.id, state: "closed" }, data: { state: "open", reopenedAt: now, closedAt: null, closedBy: null } });
-      return u.count === 1 ? removeChargesOnReopen(tx, session.id) : null;
+      if (u.count !== 1) return null;
+      const rm = await removeChargesOnReopen(tx, session.id);
+      const returned = await reversePackageUsesForSession(tx, session.id); // HP-31: trả buổi đã trừ của gói (giữ lịch sử)
+      return { ...rm, packageReturned: returned };
     });
     await logAction(r.auth.userId, "attendance_session.reopen", "AttendanceSession", session.id, { courseId: id, dateKey, hadInvoice: !!impact.warning, chargesRemoved: removal?.removed ?? 0 });
     return NextResponse.json({ ok: true, charges: removal, detail: await loadSessionDetail(r.course, dateKey) }, { headers: NO_STORE });

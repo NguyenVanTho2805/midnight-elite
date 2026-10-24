@@ -26,6 +26,7 @@ import { loadPartyReports } from "@/lib/monthlyReportServer";
 import { loadPartyScores } from "@/lib/sessionScoreServer";
 import { loadPartySessions } from "@/lib/partySessionsServer";
 import { loadPartyNotes } from "@/lib/sessionNoteServer";
+import { loadPartyPackages } from "@/lib/sessionPackageServer";
 import { prevYearMonth } from "@/lib/monthlyReport";
 import { vnMonthKey } from "@/lib/revenue";
 import { parseYearMonth, pricePerSessionVnd, computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
@@ -113,6 +114,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       scores,
       sessions: [],
       notes,
+      packages: await loadPartyPackages(studentId), // HP-31: sổ buổi trả trước của ĐÚNG em này (chỉ trình bày)
     });
   }
 
@@ -218,6 +220,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     // BC-02: chi tiết từng buổi (ngày, lớp, trạng thái điểm danh) của ĐÚNG em này ở lớp đang học; không điểm, không ghi chú.
     sessions: await loadPartySessions(studentId, courseIds, new Date()),
     notes,
+    packages: await loadPartyPackages(studentId), // HP-31: sổ buổi trả trước của ĐÚNG em này (chỉ trình bày, không giá)
     total: feeBreakdown
       ? { gross: feeBreakdown.gross, finalAmount: feeBreakdown.finalAmount, pricePerSession: feeBreakdown.pricePerSession, subjectCount: feeBreakdown.subjectCount }
       : null,

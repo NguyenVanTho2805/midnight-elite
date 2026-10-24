@@ -38,6 +38,15 @@ export async function createInitialFeeRate(tx: Tx, courseId: string, setup: FeeS
   });
 }
 
+/** Đơn giá MỘT buổi của em tại `dateKey` (theo đơn giá lớp hoặc giá riêng của em; theo giờ thì đã làm tròn theo thời lượng). null = lớp cũ / theo khoá / chưa có đơn giá. Chỉ ĐỌC. */
+export async function unitSessionPrice(db: Db, courseId: string, studentId: string, dateKey: string): Promise<number | null> {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { feeMode: true } });
+  const mode = normalizeFeeMode(course?.feeMode);
+  if (mode !== "per_session" && mode !== "per_hour") return null;
+  const [classRates, stu] = await Promise.all([ratesOf(db, courseId), studentRatesOf(db, courseId, [studentId])]);
+  return sessionFee({ mode, dateKey, classRates, studentRates: stu.get(studentId) ?? [] })?.amount ?? null;
+}
+
 // ─── Chốt buổi → dòng phí theo buổi (HP-14; chủ chốt 24/10/2026: CHỐT BUỔI là điều kiện sinh phí) ─────────────────────────
 export interface SyncResult {
   skipped?: "preview" | "mode" | "open"; created: number; updated: number; removed: number;

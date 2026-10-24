@@ -19,6 +19,7 @@ import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
 import LopHocPhi from "@/components/tutor/LopHocPhi";
 import LopPhiKhac from "@/components/tutor/LopPhiKhac";
+import LopGoiBuoi from "@/components/tutor/LopGoiBuoi";
 import LopBaoCao from "@/components/tutor/LopBaoCao";
 import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
@@ -201,6 +202,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           <div className="space-y-[var(--kin-cach-muc)]">
             <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />
             <LopPhiKhac courseId={d.courseId} />
+            <LopGoiBuoi courseId={d.courseId} feeMode={d.feeMode} />
           </div>
         )}
 

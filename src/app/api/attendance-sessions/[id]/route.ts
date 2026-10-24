@@ -23,6 +23,7 @@ import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
 import { lockAttendanceSession, removeUninvoicedChargesForSession, syncSessionCharges, type SyncResult } from "@/lib/feeChargeServer";
+import { reversePackageUsesForSession, syncPackageUsesForSession, type PackageSyncResult } from "@/lib/sessionPackageServer";
 import { noteShareAllowed } from "@/lib/sessionNoteServer";
 
 type SessionRow = { id: string; courseId: string; date: Date; note: string | null; createdBy: string; createdAt: Date };
@@ -169,8 +170,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const prevStatus = new Map((await asRecords().findMany({ where: { sessionId: id, userId: { in: items.map(i => i.userId) } } })).map(r => [r.userId, r.status]));
   class MakeupError extends Error {}
   let charges: SyncResult | null = null;
+  let packages: PackageSyncResult | null = null;
   try {
-    charges = await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       await lockAttendanceSession(tx, id); // xếp hàng với chốt/mở lại buổi: dòng phí luôn khớp trạng thái buổi
       const txRecords = asRecords(tx);
       for (const i of items) {
@@ -202,11 +204,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // HP-14 (chủ chốt 24/10/2026): lớp tạo sau theo buổi/giờ → dòng học phí CHỈ sinh/đồng bộ khi buổi ĐÃ CHỐT ("Đã dạy xong").
       // Buổi chưa chốt: lưu điểm danh thuần, không sinh phí. Sửa điểm danh sau khi chốt: đồng bộ lại dòng CHƯA vào phiếu, TRONG CÙNG transaction.
       // Lớp cách cũ (mặc định): trả sớm, không ghi gì.
-      return syncSessionCharges(tx, {
+      const ch = await syncSessionCharges(tx, {
         sessionId: id, courseId: session.courseId, sessionDate: session.date, by: auth.userId,
         items: items.map(i => ({ userId: i.userId, status: i.status, makeupUsed: !!i.makeupCreditId })),
       });
+      // HP-31: sổ buổi của gói trả trước (cùng điều kiện: buổi đã chốt, lớp kiểu mới). Chỉ các em vừa lưu.
+      const pk = await syncPackageUsesForSession(tx, id, { userIds: items.map(i => i.userId) });
+      return { ch, pk };
     });
+    charges = res.ch; packages = res.pk;
   } catch (e) {
     if (e instanceof MakeupError) return NextResponse.json({ error: e.message }, { status: 400 });
     throw e;
@@ -220,7 +226,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const warning = charges && charges.lockedDiffers > 0
     ? `${charges.lockedDiffers} dòng học phí của buổi này đã nằm trong phiếu nên KiN không đổi theo điểm danh vừa lưu. Nếu cần, chỉnh trên phiếu.`
     : null;
-  return NextResponse.json({ ok: true, count: items.length, charges, warning });
+  return NextResponse.json({ ok: true, count: items.length, charges, packages, warning });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -232,6 +238,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   // Xoá buổi thì trả lại các buổi bù đã gắn vào buổi này.
   await prisma.makeupCredit.updateMany({ where: { usedSessionId: id }, data: { status: "active", usedAt: null, usedSessionId: null } });
+  await prisma.$transaction(tx => reversePackageUsesForSession(tx, id)); // HP-31: trả buổi đã trừ của gói (giữ lịch sử)
   await removeUninvoicedChargesForSession(prisma, id); // HP-14: dòng phí CHƯA vào phiếu của buổi này bỏ theo; dòng đã vào phiếu giữ nguyên
   await asSessions().delete({ where: { id } });
   await logAction(auth.userId, "attendance_session.delete", "AttendanceSession", id, {
