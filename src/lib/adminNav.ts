@@ -16,6 +16,8 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Bài viết cộng đồng", href: "/admin/cong-dong", permission: PERMISSIONS.MANAGE_COMMUNITY },
       { label: "Báo cáo trả lời", href: "/admin/cong-dong/bao-cao", permission: PERMISSIONS.MANAGE_COMMUNITY },
       { label: "Đánh giá khoá học", href: "/admin/danh-gia", permission: PERMISSIONS.MANAGE_COURSES },
+      // QT-02 (24/10/2026): trang ĐỌC nhật ký kiểm toán; chỉ quản trị cấp 1 (MANAGE_ADMINS), vì nhật ký ghi việc đổi vai, đồng ý, tiền.
+      { label: "Nhật ký", href: "/admin/nhat-ky", permission: PERMISSIONS.MANAGE_ADMINS },
     ],
   },
   {
@@ -52,6 +54,10 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
     subs: [
       { label: "Gói KiN Pro", href: "/admin/goi-pro", permission: PERMISSIONS.MANAGE_REVENUE },
       { label: "Hỗ trợ gia sư", href: "/admin/ho-tro", permission: PERMISSIONS.MANAGE_TUTORS },
+      // QT-03 (24/10/2026): màn xem cờ triển khai + hạn mức (chỉ đọc), cùng quyền với Gói KiN Pro.
+      { label: "Triển khai và hạn mức", href: "/admin/trien-khai", permission: PERMISSIONS.MANAGE_REVENUE },
+      // QT-06 (24/10/2026): lối vào duyệt nạp Coin (trang đã có từ FE-128, trước đây không có trong menu). Chỉ quản trị cấp 1, như API duyệt.
+      { label: "Duyệt nạp Coin", href: "/admin/topups", permission: PERMISSIONS.MANAGE_REVENUE },
     ],
   },
 ];
