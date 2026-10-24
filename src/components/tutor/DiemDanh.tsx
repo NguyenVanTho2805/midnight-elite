@@ -176,7 +176,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
       const d = await r.json();
       if (!r.ok) { toast.err(d.error ?? "Lưu thất bại"); return; }
       toast.ok(`Đã lưu ${d.count} học viên`);
-      if (typeof d.warning === "string") toast.warn(d.warning);
+      if (typeof d.warning === "string") toast.info(d.warning);
       await load(); // làm mới danh sách buổi bù (đã dùng / được trả lại)
       onChanged?.();
     } finally { setSaving(false); }

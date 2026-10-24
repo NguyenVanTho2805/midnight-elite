@@ -97,7 +97,7 @@ export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; d
     const detail = !c || c.skipped === "mode" ? undefined
       : c.skipped === "preview" ? "Bản xem trước không tính học phí."
       : c.created + c.updated > 0 ? `Đã tính học phí cho ${c.created + c.updated} em.` : "Chưa có em nào có mặt hoặc đi muộn nên chưa có khoản học phí.";
-    notify.ok("Đã ghi: buổi đã dạy xong.", detail ? { detail } : undefined);
+    notify.ok(detail ? `Đã ghi: buổi đã dạy xong. ${detail}` : "Đã ghi: buổi đã dạy xong.");
   }
 
   async function reopen() {
@@ -113,7 +113,7 @@ export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; d
     if (!r.ok) { notify.err(r.data.error ?? "Chưa mở lại được buổi."); return; }
     setDetail(r.data.detail);
     const rm = r.data.charges?.removed ?? 0;
-    notify.ok("Đã mở lại buổi.", { detail: rm > 0 ? `Đã gỡ ${rm} khoản học phí chưa vào phiếu. Phiếu đã lập không thay đổi.` : "Phiếu đã lập không thay đổi." });
+    notify.ok(rm > 0 ? `Đã mở lại buổi. Đã gỡ ${rm} khoản học phí chưa vào phiếu; phiếu đã lập không thay đổi.` : "Đã mở lại buổi. Phiếu đã lập không thay đổi.");
   }
 
   async function openShare() {

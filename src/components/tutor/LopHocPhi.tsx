@@ -85,7 +85,7 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
         <p className="pt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
           {feeMode === "per_course"
             ? "Tính một lần cho mỗi em, vào phiếu đầu tiên sau khi em vào lớp."
-            : "Tự sinh khi cô điểm danh em có mặt hoặc đi muộn. Buổi có phép, vắng hoặc dùng buổi bù không sinh thêm tiền."}
+            : "Tự sinh khi cô bấm Đã dạy xong cho buổi đó, cho em có mặt hoặc đi muộn. Lưu điểm danh thôi thì chưa sinh. Buổi có phép, vắng hoặc dùng buổi bù không sinh thêm tiền."}
           {" "}Phiếu đã chốt không đổi khi cô đổi đơn giá.
         </p>
         <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí và đối soát</Link>
