@@ -272,7 +272,7 @@ export default function QuizEditor({ id }: { id: string }) {
                           {q.inBank ? <KinStatus tone="xong" className="self-center">Đã lưu vào ngân hàng</KinStatus>
                             : <KinButton variant="ghost" aria-label={`Lưu câu ${i + 1} vào ngân hàng câu hỏi`} aria-expanded={bankFor === q.id} onClick={() => setBankFor(bankFor === q.id ? null : q.id)}>Lưu vào ngân hàng</KinButton>}
                         </div>
-                        {bankFor === q.id && !q.inBank && <SaveToBank examId={id} questionId={q.id} type={q.type} onCancel={() => setBankFor(null)} onDone={msg => { setBankFor(null); setToast({ tone: "xong", title: msg }); void load(); }} />}
+                        {bankFor === q.id && !q.inBank && <SaveToBank examId={id} questionId={q.id} type={q.type} onCancel={() => setBankFor(null)} onDone={async msg => { setBankFor(null); await load(); setToast({ tone: "xong", title: msg }); /* nạp lại trước rồi mới báo, để nhãn "Đã lưu vào ngân hàng" đã hiện cùng lúc với lời báo */ }} />}
                       </li>
                     );
                   })}

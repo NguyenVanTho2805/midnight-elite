@@ -48,8 +48,9 @@ export default function QuizDeadlines({ examId, onChanged }: { examId: string; o
     const r = await qfetch<{ count: number }>("POST", base, { action: "set", userIds: [...picked], dateKey, time, note });
     setBusy(null);
     if (!r.ok || !r.data) { setMsg({ ok: false, text: r.error ?? "Chưa lưu được." }); return; }
-    setMsg({ ok: true, text: `Đã đặt hạn riêng cho ${r.data.count} học sinh. Lịch chung của đề không đổi.` });
+    // Nạp lại danh sách TRƯỚC khi báo "Đã đặt": nếu báo trước, người dùng thấy lời báo kèm danh sách cũ (chưa có "Hạn riêng: …").
     setPicked(new Set()); await load(); onChanged?.();
+    setMsg({ ok: true, text: `Đã đặt hạn riêng cho ${r.data.count} học sinh. Lịch chung của đề không đổi.` });
   }
   async function clear() {
     const ids = [...picked].filter(id => data?.students.find(s => s.userId === id)?.dueAt);
@@ -59,8 +60,8 @@ export default function QuizDeadlines({ examId, onChanged }: { examId: string; o
     const r = await qfetch<{ count: number }>("POST", base, { action: "clear", userIds: ids });
     setBusy(null);
     if (!r.ok || !r.data) { setMsg({ ok: false, text: r.error ?? "Chưa bỏ được." }); return; }
+    setPicked(new Set()); await load(); onChanged?.(); // nạp lại trước rồi mới báo, cùng lý do như trên
     setMsg({ ok: true, text: `Đã bỏ hạn riêng của ${r.data.count} học sinh.` });
-    setPicked(new Set()); await load(); onChanged?.();
   }
 
   if (err && !data) return <div className="mt-6"><ErrorStrip message={err} onRetry={() => void load()} /></div>;
