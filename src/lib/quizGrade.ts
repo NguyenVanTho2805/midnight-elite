@@ -25,6 +25,44 @@ export function isHeld(policy: { holdUntilPublish: boolean } | null | undefined,
   return !!policy?.holdUntilPublish && !published;
 }
 
+/**
+ * Mốc áp dụng quy tắc "đề có tự luận mặc định GIỮ điểm": đề tạo từ 00:00 ngày 24/10/2026 (giờ VN). Đề tạo trước mốc là đề cũ → hành vi cũ
+ * (hiện điểm ngay) trừ khi gia sư tự bật chính sách. Một hằng số duy nhất, dùng ở examHold.ts.
+ */
+export const HOLD_DEFAULT_SINCE = new Date("2026-10-23T17:00:00.000Z");
+
+/**
+ * Exam.createdAt là CHUỖI do nhiều nơi ghi theo nhiều dạng ("2026-10-24", ISO đầy đủ, "24/10/2026", đề cũ chỉ "2020").
+ * Đọc về mốc thời gian; không đọc được → null (coi là đề cũ, không bao giờ tự giữ điểm).
+ */
+export function parseExamCreatedAt(raw: string | null | undefined): Date | null {
+  const t = (raw ?? "").trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (m) return new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00+07:00`);
+  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(t)) { const d = new Date(t); return Number.isNaN(d.getTime()) ? null : d; }
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(t);
+  if (m) {
+    const [dd, mm] = [m[1].padStart(2, "0"), m[2].padStart(2, "0")];
+    const d = new Date(`${m[3]}-${mm}-${dd}T00:00:00+07:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+/**
+ * MỘT nguồn sự thật cho "đề này có giữ điểm tới khi gia sư công bố không" (chưa xét lượt cụ thể):
+ *  - có dòng chính sách → theo dòng đó (gia sư bật/tắt rõ ràng, thắng mọi mặc định);
+ *  - chưa có dòng → đề CÓ tự luận và tạo từ mốc HOLD_DEFAULT_SINCE thì GIỮ; đề cũ / không tự luận / không đọc được ngày tạo thì KHÔNG giữ.
+ */
+export function examHoldsResults(
+  policy: { holdUntilPublish: boolean } | null | undefined,
+  exam: { hasEssay: boolean; createdAt: string | null | undefined },
+): boolean {
+  if (policy) return policy.holdUntilPublish;
+  const made = parseExamCreatedAt(exam.createdAt);
+  return exam.hasEssay && !!made && made.getTime() >= HOLD_DEFAULT_SINCE.getTime();
+}
+
 export type PointsCheck = { ok: true; value: number } | { ok: false; error: string };
 /** Điểm một câu tự luận: số hữu hạn, 0 ≤ điểm ≤ điểm tối đa của câu; làm tròn 0,01. Chuỗi "1,5" cũng nhận. */
 export function validateEssayPoints(raw: unknown, max: number): PointsCheck {

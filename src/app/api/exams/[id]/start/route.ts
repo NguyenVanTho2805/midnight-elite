@@ -5,6 +5,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { examPasswordPatch, hasExamPassword, verifyExamPassword } from "@/lib/examPassword";
+import { getMaxAttempts } from "@/lib/quizPublication";
+import { attemptsGate } from "@/lib/quizRoom";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -113,7 +115,7 @@ export async function POST(
     if (!attempt) {
       const totalPoints = exam.examQuestions.reduce((sum, q) => sum + q.points, 0);
       const minutes = parseDurationMinutes(exam.duration);
-      const startedAt = new Date();
+      const maxAttempts = await getMaxAttempts(examId);
 
       // Xáo thứ tự câu hỏi + đáp án riêng cho lượt này, cố định suốt attempt
       // (chống chép bài — học sinh ngồi cạnh nhau thấy thứ tự khác nhau).
@@ -124,25 +126,39 @@ export async function POST(
         optionOrderByQuestion[q.id] = shuffleArray(q.options.map(o => o.id));
       }
 
-      // Giờ riêng từng Phần (vd đề ĐGNL HSA) — chỉ bật khi mọi Phần trong đề
-      // đều có sectionMinutes, ngược lại null và dùng lại đồng hồ chung như cũ.
-      const sectionWindows = computeSectionWindows(exam.examQuestions, startedAt);
-      const expiresAt = sectionWindows
-        ? new Date(sectionWindows[sectionWindows.length - 1].endsAt)
-        : new Date(startedAt.getTime() + minutes * 60_000);
-
-      attempt = await prisma.examAttempt.create({
-        data: {
-          userId: session.userId,
-          examId,
-          startedAt,
-          expiresAt,
-          totalPoints,
-          questionOrder,
-          optionOrderByQuestion,
-          sectionWindows: (sectionWindows ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
+      // QZ-11: kiểm số lượt + tạo lượt trong MỘT giao dịch có khoá theo (học sinh, đề), để hai yêu cầu đồng thời không cùng lọt qua
+      // (vượt số lượt, hoặc sinh hai lượt đang làm). Lượt đang làm dở (do yêu cầu kia vừa tạo) được dùng lại, không tạo thêm.
+      const outcome = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${session.userId + ":" + examId}))`;
+        const existing = await tx.examAttempt.findFirst({ where: { userId: session.userId, examId, status: "in_progress" }, orderBy: { startedAt: "desc" } });
+        if (existing) return { attempt: existing, blocked: false as const };
+        const used = await tx.examAttempt.count({ where: { userId: session.userId, examId } });
+        if (!attemptsGate({ used, max: maxAttempts, hasInProgress: false }).canStart) return { attempt: null, blocked: true as const };
+        const startedAt = new Date();
+        // Giờ riêng từng Phần (vd đề ĐGNL HSA) — chỉ bật khi mọi Phần trong đề
+        // đều có sectionMinutes, ngược lại null và dùng lại đồng hồ chung như cũ.
+        const sectionWindows = computeSectionWindows(exam.examQuestions, startedAt);
+        const expiresAt = sectionWindows
+          ? new Date(sectionWindows[sectionWindows.length - 1].endsAt)
+          : new Date(startedAt.getTime() + minutes * 60_000);
+        const created = await tx.examAttempt.create({
+          data: {
+            userId: session.userId,
+            examId,
+            startedAt,
+            expiresAt,
+            totalPoints,
+            questionOrder,
+            optionOrderByQuestion,
+            sectionWindows: (sectionWindows ?? undefined) as Prisma.InputJsonValue | undefined,
+          },
+        });
+        return { attempt: created, blocked: false as const };
       });
+      if (outcome.blocked || !outcome.attempt) {
+        return NextResponse.json({ error: `Em đã dùng hết ${maxAttempts} lượt làm bài của đề này.`, code: "attempts_exhausted" }, { status: 409 });
+      }
+      attempt = outcome.attempt;
     }
 
     const { answers, textAnswers, boolAnswersByOption } = await loadAnswerState(attempt.id);
@@ -150,6 +166,8 @@ export async function POST(
 
     return NextResponse.json({
       attemptId: attempt.id,
+      // QZ-11: giờ máy chủ để trình duyệt tính đồng hồ theo máy chủ (không tin đồng hồ máy học sinh).
+      serverNow: new Date().toISOString(),
       expiresAt: attempt.expiresAt,
       sectionWindows: attempt.sectionWindows,
       questions,

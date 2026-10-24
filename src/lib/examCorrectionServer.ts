@@ -7,7 +7,8 @@
 //  • Không bao giờ ghi vào ExamAttempt.score / ExamAnswer: chữa bài chỉ để học.
 //  • Mọi thao tác trên một (lượt × câu) khoá bằng advisory lock; hai lần bấm cùng lúc không đếm đôi lượt nộp.
 import { prisma } from "@/lib/prisma";
-import { isAttemptHeld } from "@/lib/examHold";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 import { hasExamWindowEnded, loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
 import {
   EMPTY_CORRECTION, REFLECTION_MAX, SHORT_ANSWER_MAX, afterReveal, afterSubmit, canReveal, correctionState, hintVisible,
@@ -91,8 +92,9 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
   const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
   if (!exam) return fail(404, "Không tìm thấy đề thi");
 
-  // QZ-08: chưa công bố thì chưa chữa bài (chữa bài lộ đáp án câu sai).
-  if (await isAttemptHeld(prisma, attempt)) {
+  // QZ-08: đề giữ điểm (examHold — một nguồn) mà lượt này chưa công bố thì chưa chữa bài (chữa bài lộ đáp án câu sai).
+  const vis = resultVisibility(await loadPublishState(exam.id, userId, attempt.id), true);
+  if (vis.pendingManual) {
     return { ok: true, ctx: { attemptId, available: false, reason: "Cô chưa công bố điểm bài này nên chưa chữa bài được.", questions: [], rows: new Map() } };
   }
   if (!correctionAllowedByExam(exam)) {

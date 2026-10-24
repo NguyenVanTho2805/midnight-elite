@@ -4,7 +4,8 @@ import { getSession } from "@/lib/session";
 import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
 import { correctionSummary } from "@/lib/examCorrectionServer";
 import { scoreMultiSelect } from "@/lib/quizQuestion";
-import { isAttemptHeld } from "@/lib/examHold";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -32,12 +33,15 @@ export async function GET(
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    // QZ-08: đề giữ điểm đến khi gia sư công bố → chưa có điểm tổng, chưa có điểm/nhận xét tự luận, chưa có đáp án.
-    const held = await isAttemptHeld(prisma, attempt);
-    const canSeeAnswers = held ? false :
+    const canSeeByExam =
       exam.answerVisibility === "after_submit" ? true :
       exam.answerVisibility === "after_exam_ends" ? hasExamWindowEnded(exam) :
       false; // "never"
+    // QZ-08/11/12: đề đang GIỮ điểm (examHold — một nguồn) và lượt này chưa được gia sư công bố → không điểm, không điểm/nhận xét tự luận,
+    // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng cài đặt của đề).
+    const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), canSeeByExam);
+    const held = vis.pendingManual;
+    const canSeeAnswers = vis.showAnswers;
 
     const examQuestions = await prisma.examQuestion.findMany({
       where: { examId: exam.id },
@@ -62,8 +66,8 @@ export async function GET(
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           textAnswer: textAnswers[q.id] ?? null,
-          pointsAwarded: held ? null : graded?.pointsAwarded ?? null,
-          teacherComment: held ? null : graded?.teacherComment ?? null,
+          pointsAwarded: vis.showEssayPoints ? (graded?.pointsAwarded ?? null) : null,
+          teacherComment: vis.showEssayPoints ? (graded?.teacherComment ?? null) : null,
         };
       }
 
@@ -129,8 +133,9 @@ export async function GET(
 
     return NextResponse.json({
       attemptId: attempt.id,
-      score: held ? null : attempt.score,
+      score: vis.showScore ? attempt.score : null,
       held,
+      pendingManual: vis.pendingManual,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
       // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).

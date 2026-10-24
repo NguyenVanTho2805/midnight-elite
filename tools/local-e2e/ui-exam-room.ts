@@ -157,7 +157,7 @@ import { prisma } from "@/lib/prisma";
   await p2.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
   const dlg = p2.getByRole("dialog", { name: "Nộp bài ngay?" });
   await dlg.waitFor({ timeout: 15000 });
-  check("hộp ghi rõ số câu chưa trả lời của CẢ đề (2 trên 3, kể cả Phần chưa hiện)", (await dlg.innerText()).includes("Bạn còn 2 câu chưa trả lời. Sau khi nộp không sửa lại được."), await dlg.innerText());
+  check("hộp ghi rõ số câu chưa trả lời của CẢ đề (2 trên 3, kể cả Phần chưa hiện)", (await dlg.innerText()).includes("Em còn 2 câu chưa làm: Câu 2 và 1 câu ở Phần chưa mở.") && (await dlg.innerText()).includes("Nộp rồi thì không sửa lại được."), await dlg.innerText());
   check("tiêu điểm rơi vào nút an toàn 'Làm tiếp' (Enter nhầm không nộp bài)", await dlg.getByRole("button", { name: "Làm tiếp" }).evaluate(e => e === document.activeElement));
   await dlg.getByRole("button", { name: "Làm tiếp" }).click();
   check("'Làm tiếp' đóng hộp, bài vẫn đang làm (DB in_progress)", await dlg.count() === 0 && (await prisma.examAttempt.findFirst({ where: { examId: ex2.id } }))?.status === "in_progress");

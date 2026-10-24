@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { dropHeldResults } from "@/lib/examHold";
 import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/gpa";
 
 export async function GET() {
@@ -18,7 +19,7 @@ export async function GET() {
         },
         lessonProgress: { where: { completed: true }, select: { lessonId: true } },
         examResults: {
-          select: { score: true, totalPoints: true },
+          select: { score: true, totalPoints: true, examId: true, userId: true },
         },
         assignmentSubmissions: {
           where: { score: { not: null } },
@@ -49,7 +50,11 @@ export async function GET() {
       userBadgeMap.get(b.userId)!.push(b.badgeId);
     }
 
-    const ranked = students.map(s => {
+    // Điểm đề đang giữ (tự luận chưa công bố) không vào bảng vinh danh/GPA — cùng hàm examHold với mọi nơi khác.
+    const visibleResults = new Set(await dropHeldResults(students.flatMap(s => s.examResults)));
+
+    const ranked = students.map(s0 => {
+      const s = { ...s0, examResults: s0.examResults.filter(r => visibleResults.has(r)) };
       const enrolledCourseIds = new Set(s.enrollments.map(e => e.courseId));
 
       // Chỉ đếm lesson progress của khoá ĐANG enroll — tránh sai khi thu hồi khoá

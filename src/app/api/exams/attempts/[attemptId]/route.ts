@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { finalizeAttempt, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
-import { isAttemptHeld } from "@/lib/examHold";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 
 // GET /api/exams/attempts/[attemptId] — trạng thái attempt hiện tại (phục vụ resume)
 export async function GET(
@@ -28,13 +29,16 @@ export async function GET(
 
     if (attempt.status !== "in_progress") {
       const examMeta = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } });
-      // QZ-08: đề giữ điểm đến khi gia sư công bố → chưa trả điểm (null) và nói rõ là đang chờ chấm.
-      const held = await isAttemptHeld(prisma, attempt);
+      // QZ-08/11: đề giữ điểm tới khi gia sư công bố (examHold — một nguồn) và lượt này chưa công bố → không trả điểm dở dang; chỉ báo "đã ghi nhận, chờ chấm".
+      const vis = resultVisibility(await loadPublishState(attempt.examId, session.userId, attempt.id), true);
       return NextResponse.json({
         attemptId: attempt.id,
         status: attempt.status,
-        score: held ? null : attempt.score,
-        held,
+        serverNow: new Date().toISOString(),
+        submittedAt: attempt.submittedAt,
+        score: vis.showScore ? attempt.score : null,
+        held: vis.pendingManual,
+        pendingManual: vis.pendingManual,
         totalPoints: examMeta?.totalPoints ?? 150,
       });
     }
@@ -56,6 +60,7 @@ export async function GET(
     return NextResponse.json({
       attemptId: attempt.id,
       status: attempt.status,
+      serverNow: new Date().toISOString(),
       expiresAt: attempt.expiresAt,
       sectionWindows: attempt.sectionWindows,
       questions,

@@ -94,6 +94,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
     }
 
+    // Đề đã có người làm: xoá sẽ kéo theo mất lượt làm, điểm và bảng xếp hạng của học sinh. Không cho xoá (cùng tinh thần "không sửa đè" của quiz).
+    if ((await prisma.examAttempt.count({ where: { examId: id } })) > 0) {
+      return NextResponse.json({ error: "Đề này đã có lượt làm nên không xoá được. Hãy tắt đề (không cho thi nữa) thay vì xoá.", code: "HAS_ATTEMPTS" }, { status: 409 });
+    }
+
     await prisma.exam.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (e) {

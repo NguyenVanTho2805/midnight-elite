@@ -691,6 +691,17 @@ model ExamAnswerBoolean {
   @@map("exam_answer_booleans")
 }
 
+// QZ-11: số lượt làm tối đa của một đề/quiz, ở BẢNG RIÊNG, KHÔNG có khoá ngoại tới Exam, để không đụng model Exam (đề bị xoá thì dòng này mồ côi, vô hại). Không có dòng = không giới hạn (hành vi cũ).
+// Máy chủ kiểm lúc bắt đầu lượt mới (exams/[id]/start); lượt đang làm dở luôn được tiếp tục. Chưa có màn soạn: gia sư đặt qua mã sau.
+model QuizAttemptLimit {
+  examId      String   @id
+  maxAttempts Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("quiz_attempt_limits")
+}
+
 // NV-188 — Chữa bài: gợi ý trước, đáp án sau, nhưng có điểm dừng. Một dòng cho mỗi (lượt thi × câu sai).
 // Chỉ để HỌC: không bao giờ đụng ExamAttempt.score / ExamAnswer (điểm tính theo lần nộp đầu, lúc nộp bài).
 //   tries    — số lần nộp ở màn chữa bài (tối đa 2 có ý nghĩa; lần 2 sai thì hiện đáp án)

@@ -7,6 +7,7 @@
 //   Năng lực   — ExamResult của em ở các đề gắn với lớp (Exam.courseId), điểm quy về thang 10
 //   Buổi gia sư dời/huỷ — ClassSessionChange của các lớp em đang học, buổi có NGÀY GỐC (theo lịch tuần) trong tháng; gia sư bấm Dời/Huỷ ở trang Lịch.
 import { prisma } from "@/lib/prisma";
+import { dropHeldResults } from "@/lib/examHold";
 import { computeAttendanceStats } from "@/lib/attendance";
 import { vnMonthKey } from "@/lib/revenue";
 import { attendanceDateWindow } from "@/lib/taughtSessions";
@@ -64,7 +65,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
   const courseIds = courses.map(c => c.id);
   const { start, end, attStart, attEnd } = monthBounds(yearMonth);
 
-  const [records, assignments, results, changes] = await Promise.all([
+  const [records, assignments, rawResults, changes] = await Promise.all([
     prisma.attendanceRecord.findMany({
       where: { userId: studentId, session: { courseId: { in: courseIds }, date: attendanceDateWindow(attStart, attEnd) } },
       select: { status: true, session: { select: { courseId: true } } },
@@ -75,13 +76,15 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
     }),
     prisma.examResult.findMany({
       where: { userId: studentId, exam: { courseId: { in: courseIds } } },
-      select: { score: true, totalPoints: true, completedAt: true, exam: { select: { courseId: true } } },
+      select: { userId: true, examId: true, score: true, totalPoints: true, completedAt: true, exam: { select: { courseId: true } } },
     }),
     prisma.classSessionChange.findMany({
       where: { courseId: { in: courseIds }, dateKey: { gte: `${yearMonth}-01`, lt: `${nextYearMonth(yearMonth)}-01` } },
       select: { dateKey: true, kind: true, courseId: true },
     }),
   ]);
+  // Điểm quiz đang giữ (tự luận chưa công bố) không vào GPA tháng / báo cáo phụ huynh (examHold — một nguồn).
+  const results = await dropHeldResults(rawResults);
   const subs = assignments.length
     ? await prisma.assignmentSubmission.findMany({ where: { userId: studentId, assignmentId: { in: assignments.map(a => a.id) } }, select: { assignmentId: true, submittedAt: true } })
     : [];
