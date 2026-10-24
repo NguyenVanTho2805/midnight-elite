@@ -664,7 +664,7 @@ function PageInner() {
                     {DIFFICULTIES.find(d => d.value === item.difficulty)?.label ?? item.difficulty}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[item.type]}</td>
+                <td className="px-4 py-3 text-gray-600">{TYPE_LABEL[item.type] ?? "Nhiều đáp án"}</td>
                 <td className="px-4 py-3">
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={STATUS_COLOR[item.status]}>
                     {STATUS_LABEL[item.status]}

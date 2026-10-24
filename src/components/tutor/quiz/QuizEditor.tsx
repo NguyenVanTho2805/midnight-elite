@@ -19,6 +19,7 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { MathText } from "@/components/MathText";
 import { describeValidity, fmtPoints, QUIZ_TYPE_LABEL, type QuizQuestionInput } from "@/lib/quizQuestion";
 import QuestionForm from "./QuestionForm";
+import SaveToBank from "./SaveToBank";
 import { qfetch, quizHref, versionsHref, IMPORT_HREF, type QuizDetail, type QuizQ } from "./quizClient";
 
 type Tab = "noi-dung" | "dap-an";
@@ -56,6 +57,7 @@ export default function QuizEditor({ id }: { id: string }) {
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [toast, setToast] = useState<{ tone: "xong" | "loi" | "tin"; title: string; detail?: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [bankFor, setBankFor] = useState<string | null>(null); // câu đang mở hộp "Lưu vào ngân hàng"
   const [versionNote, setVersionNote] = useState("");
   const [form, setForm] = useState({ title: "", courseId: "", dateKey: "", time: "19:00", durationMin: "15", answerVisibility: "after_submit", hideAnswerForWrong: false, showLeaderboard: true, password: "", clearPassword: false });
 
@@ -260,14 +262,17 @@ export default function QuizEditor({ id }: { id: string }) {
                           <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{QUIZ_TYPE_LABEL[q.type]} · {fmtPoints(q.points)} điểm · Đáp án: {answerText(q)}</p>
                           <KinStatus tone={v.ok ? "xong" : "loi"} className="mt-1">{v.message}</KinStatus>
                         </div>
-                        {!locked && (
-                          <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 sm:justify-end">
+                          {!locked && <>
                             <KinButton variant="secondary" aria-label={`Sửa câu ${i + 1}`} onClick={() => setEditing(q.id)}>Sửa</KinButton>
                             <KinButton variant="ghost" aria-label={`Đưa câu ${i + 1} lên`} disabled={i === 0 || busy === "reorder"} onClick={() => void move(i, -1)}>↑</KinButton>
                             <KinButton variant="ghost" aria-label={`Đưa câu ${i + 1} xuống`} disabled={i === questions.length - 1 || busy === "reorder"} onClick={() => void move(i, 1)}>↓</KinButton>
                             <KinButton variant="danger" aria-label={`Bỏ câu ${i + 1}`} loading={busy === `del-${q.id}`} loadingLabel="Đang bỏ…" onClick={() => void removeQuestion(q, i)}>Bỏ</KinButton>
-                          </div>
-                        )}
+                          </>}
+                          {q.inBank ? <KinStatus tone="xong" className="self-center">Đã lưu vào ngân hàng</KinStatus>
+                            : <KinButton variant="ghost" aria-label={`Lưu câu ${i + 1} vào ngân hàng câu hỏi`} aria-expanded={bankFor === q.id} onClick={() => setBankFor(bankFor === q.id ? null : q.id)}>Lưu vào ngân hàng</KinButton>}
+                        </div>
+                        {bankFor === q.id && !q.inBank && <SaveToBank examId={id} questionId={q.id} type={q.type} onCancel={() => setBankFor(null)} onDone={msg => { setBankFor(null); setToast({ tone: "xong", title: msg }); void load(); }} />}
                       </li>
                     );
                   })}

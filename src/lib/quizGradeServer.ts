@@ -234,11 +234,15 @@ export async function loadHistory(exam: OwnedExam) {
   const attempts = await prisma.examAttempt.findMany({ where: { id: { in: attemptIds }, examId: exam.id }, select: { id: true, user: { select: { name: true } } } });
   const nameOf = new Map(attempts.map(a => [a.id, a.user?.name ?? "Học viên"]));
   const orderOf = new Map(questions.map((q, i) => [q.id, i + 1]));
+  // Tên người thực hiện (gia sư công bố / sửa điểm) — cho tệp CSV nhật ký; chỉ là tên hiển thị của chính các gia sư đã thao tác trên đề này.
+  const actorIds = [...new Set([...pubs.map(p => p.publishedById), ...edits.map(e => e.editedById)])];
+  const actors = actorIds.length ? await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } }) : [];
+  const actorName = new Map(actors.map(u => [u.id, u.name]));
   return {
-    publishes: pubs.filter(p => nameOf.has(p.attemptId)).map(p => ({ attemptId: p.attemptId, studentName: nameOf.get(p.attemptId)!, at: p.publishedAt.toISOString() })),
+    publishes: pubs.filter(p => nameOf.has(p.attemptId)).map(p => ({ attemptId: p.attemptId, studentName: nameOf.get(p.attemptId)!, at: p.publishedAt.toISOString(), byName: actorName.get(p.publishedById) ?? "" })),
     edits: edits.filter(e => nameOf.has(e.attemptId)).map(e => ({
       id: e.id, attemptId: e.attemptId, studentName: nameOf.get(e.attemptId)!, questionOrder: orderOf.get(e.questionId) ?? null,
-      prevPoints: e.prevPoints, newPoints: e.newPoints, prevComment: e.prevComment, newComment: e.newComment, at: e.createdAt.toISOString(),
+      prevPoints: e.prevPoints, newPoints: e.newPoints, prevComment: e.prevComment, newComment: e.newComment, at: e.createdAt.toISOString(), byName: actorName.get(e.editedById) ?? "",
     })),
   };
 }

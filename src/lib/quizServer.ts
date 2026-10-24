@@ -116,6 +116,7 @@ export function shapeQuestionForTutor(q: DbQuestion) {
   return {
     id: q.id, order: q.order, type: q.type, text: q.text, points: q.points, imageUrl: q.imageUrl, explanation: q.explanation, hint: q.hint,
     studentGuide: q.studentGuide, graderGuide: q.graderGuide, rubric: Array.isArray(q.rubric) ? q.rubric : null, sectionLabel: q.sectionLabel,
+    inBank: !!q.sourceBankItemId, // đã lưu vào Ngân hàng câu hỏi (nút "Lưu vào ngân hàng" ở trình soạn)
     options: [...q.options].sort((a, b) => a.order - b.order).map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect, subLabel: o.subLabel })),
   };
 }

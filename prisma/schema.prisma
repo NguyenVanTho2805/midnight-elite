@@ -724,6 +724,7 @@ model ExamCorrection {
   revealed   Boolean  @default(false)
   lastOptionId String? // MC: lựa chọn của lần nộp gần nhất
   lastText     String? @db.Text // SHORT_ANSWER: câu trả lời của lần nộp gần nhất
+  lastOptionIds String[] @default([]) // MC_MULTI: các ô đã chọn ở lần nộp gần nhất (cột THÊM, mặc định rỗng; câu MC / điền ngắn không dùng)
   reflection   String? @db.Text // ô không bắt buộc: "gợi ý ở trên giúp bạn ở chỗ nào?"
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -2534,6 +2535,24 @@ model ExamAttemptPublish {
 
   @@index([examId])
   @@map("exam_attempt_publishes")
+}
+
+// QZ — hạn nộp RIÊNG cho từng học sinh của một quiz/đề (bảng MỚI, không đụng Exam). Không có dòng = học sinh theo lịch chung của đề (date/time/duration, cột active).
+// Có dòng = học sinh KHÔNG được bắt đầu lượt mới sau `dueAt` (lượt đang làm dở vẫn tới hết giờ làm bài của lượt đó). Gia sư chủ đề đặt/xoá; mỗi lần đặt ghi ExamChangeLog.
+// Không có khoá ngoại để xoá đề / xoá học sinh không bị chặn (dòng mồ côi vô hại). Một học sinh một dòng cho mỗi đề.
+model QuizStudentDeadline {
+  id        String   @id @default(cuid())
+  examId    String
+  userId    String
+  dueAt     DateTime
+  note      String?  @db.Text
+  setById   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, userId])
+  @@index([userId])
+  @@map("quiz_student_deadlines")
 }
 
 model ExamGradeEdit {

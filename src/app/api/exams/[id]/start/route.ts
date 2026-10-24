@@ -7,6 +7,8 @@ import { isEnrollmentActive } from "@/lib/enrollment";
 import { examPasswordPatch, hasExamPassword, verifyExamPassword } from "@/lib/examPassword";
 import { getMaxAttempts } from "@/lib/quizPublication";
 import { attemptsGate } from "@/lib/quizRoom";
+import { DEADLINE_PASSED_MESSAGE, canStartByDeadline } from "@/lib/quizDeadline";
+import { getOwnDeadline } from "@/lib/quizDeadlineServer";
 
 // POST /api/exams/[id]/start — tạo attempt mới hoặc resume attempt in_progress đang có.
 // Idempotent: gọi lại nhiều lần (vd sau khi refresh trang) sẽ trả về cùng 1 attempt
@@ -92,6 +94,12 @@ export async function POST(
       return NextResponse.json({ error: "Quiz này đã có phiên bản mới. Vào danh sách bài để mở bản mới nhất.", code: "SUPERSEDED", supersededById: exam.supersededById }, { status: 409 });
     }
 
+    // Hạn nộp RIÊNG của học sinh này (gia sư đặt, không đổi lịch chung của đề): quá hạn thì không mở lượt MỚI; lượt đang làm dở không bị cắt.
+    // Kiểm trước mật khẩu để em quá hạn không phải nhập mật khẩu rồi mới biết.
+    if (!attempt && !canStartByDeadline(await getOwnDeadline(examId, session.userId), new Date(), false)) {
+      return NextResponse.json({ error: DEADLINE_PASSED_MESSAGE, code: "past_deadline" }, { status: 409 });
+    }
+
     // Mật khẩu đề thi: chỉ kiểm tra lúc bắt đầu lượt MỚI (không hỏi lại khi
     // resume/refresh trang giữa chừng — đã vào phòng thi rồi thì không hỏi nữa).
     if (hasExamPassword(exam) && !attempt) {
@@ -113,6 +121,10 @@ export async function POST(
     }
 
     if (!attempt) {
+      // Lượt cũ vừa bị chấm hết giờ ở trên rồi mới tạo lượt mới: kiểm hạn riêng lần nữa (lần kiểm đầu chỉ chạy khi chưa có lượt dở).
+      if (!canStartByDeadline(await getOwnDeadline(examId, session.userId), new Date(), false)) {
+        return NextResponse.json({ error: DEADLINE_PASSED_MESSAGE, code: "past_deadline" }, { status: 409 });
+      }
       const totalPoints = exam.examQuestions.reduce((sum, q) => sum + q.points, 0);
       const minutes = parseDurationMinutes(exam.duration);
       const maxAttempts = await getMaxAttempts(examId);

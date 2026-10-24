@@ -55,7 +55,7 @@ import { prisma } from "@/lib/prisma";
   await eventually("sau ~1,2 giây: 'Bản nháp đã lưu trên máy chủ' + DB có chữ", async () => (await pg.locator("[data-trang-thai-nhap]").innerText()).includes("đã lưu trên máy chủ") && (await prisma.examAnswer.findFirst({ where: { questionId: q3.id } }))?.textAnswer?.includes("x=2") === true, 20000);
   // Thanh công thức (24/10/2026): chèn CHỮ THUẦN vào đúng ô tự luận, vẫn đi qua đường lưu nháp sẵn có.
   const bar = pg.getByRole("toolbar", { name: /Chèn ký hiệu/ });
-  check("thanh công thức có 4 nút, mỗi nút cao ≥ 44px", await bar.getByRole("button").count() === 4 && (await bar.getByRole("button").evaluateAll(bs => bs.every(b => b.getBoundingClientRect().height >= 43.5))));
+  check("thanh công thức có 3 nút (không còn nút B in đậm), mỗi nút cao ≥ 44px", await bar.getByRole("button").count() === 3 && await bar.getByRole("button", { name: /đậm/ }).count() === 0 && (await bar.getByRole("button").evaluateAll(bs => bs.every(b => b.getBoundingClientRect().height >= 43.5))));
   await area.focus(); await pg.keyboard.press("End");
   await bar.getByRole("button", { name: /căn bậc hai/ }).click();
   check("bấm √x → chèn chữ thuần 'sqrt()' vào ô (không HTML), ô vẫn giữ chữ cũ", (await area.inputValue()).endsWith("x=3sqrt()") && (await area.inputValue()).includes("x=2"), await area.inputValue());

@@ -1,6 +1,6 @@
 // QZ-07 — "Chỉnh sửa và phiên bản quiz" (Figma 521:5150): so sánh phiên bản đang dùng với bản đề xuất, cách áp dụng an toàn, nhật ký thay đổi.
 // Nguyên tắc hiện rõ trên màn hình: quiz đã có người làm thì KHÔNG sửa đè — lưu phiên bản mới; bài làm cũ vẫn thuộc phiên bản cũ, điểm cũ không đổi.
-// Figma có nhưng CHƯA làm (chưa có dữ liệu / tính năng): tab "Điều chỉnh thời hạn riêng" (hạn riêng cho từng học sinh — chưa có bảng lưu hạn riêng).
+// Tab "Hạn riêng" (Figma: "Điều chỉnh thời hạn riêng"): hạn nộp riêng cho từng học sinh, bảng quiz_student_deadlines, không đổi lịch chung của đề (QuizDeadlines.tsx).
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -17,14 +17,15 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { dayAt } from "@/lib/baiTap";
 import type { QuizDiff } from "@/lib/quizVersion";
 import { qfetch, quizHref, type QuizDetail } from "./quizClient";
+import QuizDeadlines from "./QuizDeadlines";
 
 interface Version { id: string; versionNo: number; status: "draft" | "superseded" | "current"; attemptCount: number; submittedCount: number; date: string; time: string; duration: string; questionCount: number; versionNote: string | null; supersededAt: string | null; title: string }
 interface VersionsData { rootId: string; currentId: string | null; draftId: string | null; thisId: string; chain: Version[]; diff: { summary: string; data: QuizDiff } | null; log: { id: string; kind: string; note: string | null; at: string; actorName: string }[] }
-type Tab = "so-sanh" | "nhat-ky";
+type Tab = "so-sanh" | "han-rieng" | "nhat-ky";
 
 const KIND_LABEL: Record<string, string> = {
   create: "Tạo quiz nháp", publish: "Phát hành", edit: "Sửa khi chưa có lượt làm", new_version: "Soạn đề xuất phiên bản mới", import: "Nhập đề từ tệp",
-  version_published: "Phát hành phiên bản mới", discard: "Bỏ bản nháp",
+  version_published: "Phát hành phiên bản mới", discard: "Bỏ bản nháp", deadline: "Hạn nộp riêng",
 };
 const STATUS: Record<Version["status"], { tone: StatusTone; text: string }> = {
   current: { tone: "xong", text: "Đang dùng · không sửa trực tiếp nếu đã có lượt làm" }, superseded: { tone: "mo", text: "Đã được thay bằng bản mới · chỉ để xem" }, draft: { tone: "cho", text: "Chưa phát hành" },
@@ -112,7 +113,7 @@ export default function QuizVersions({ id }: { id: string }) {
       <KinPageHeader title="Chỉnh sửa và phiên bản quiz" back={{ href: quizHref(cur?.id ?? dr?.id ?? id), label: "Về quiz" }}
         sub={<>{title} · {cur ? `v${cur.versionNo} đang dùng` : "chưa có phiên bản nào được phát hành"}</>} />
       {err && <ErrorStrip message={err} onRetry={() => void load()} />}
-      <KinTabs<Tab> label="Phiên bản và nhật ký" value={tab} onChange={setTab} tabs={[{ key: "so-sanh", label: "So sánh phiên bản" }, { key: "nhat-ky", label: "Nhật ký thay đổi" }]} />
+      <KinTabs<Tab> label="Phiên bản và nhật ký" value={tab} onChange={setTab} tabs={[{ key: "so-sanh", label: "So sánh phiên bản" }, { key: "han-rieng", label: "Hạn riêng" }, { key: "nhat-ky", label: "Nhật ký thay đổi" }]} />
 
       {tab === "so-sanh" && (
         <div className="mt-6 space-y-8">
@@ -169,6 +170,8 @@ export default function QuizVersions({ id }: { id: string }) {
           </section>
         </div>
       )}
+
+      {tab === "han-rieng" && (cur ? <QuizDeadlines examId={cur.id} onChanged={() => void load()} /> : <KinEmptyState title="Chưa có phiên bản đang dùng">Hạn riêng áp dụng cho phiên bản đã phát hành. Phát hành quiz trước, rồi quay lại đây.</KinEmptyState>)}
 
       {tab === "nhat-ky" && (
         <section className="mt-6" aria-labelledby="qv-nk">

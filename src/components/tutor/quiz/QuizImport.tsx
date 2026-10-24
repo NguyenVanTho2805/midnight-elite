@@ -4,7 +4,8 @@
 // Nội dung tệp là dữ liệu, không phải lệnh (chỉ dẫn hệ thống ở máy chủ; ở đây chữ trong tệp chỉ được hiện qua MathText, đã escape).
 // Quyết định của chủ: chỉ nhận đề gốc của gia sư; KHÔNG nhận bài làm / ảnh bài làm / tên học sinh — màn hình nói rõ điều này trước khi chọn tệp.
 // Figma có nhưng CHƯA làm (không có dữ liệu thật): độ tin cậy từng ô nhận diện; "Gần giống ngân hàng"; lưu tệp nguồn để mở lại sau (tệp chỉ nằm trên máy cô trong lúc rà soát);
-// tuỳ chọn "Giữ đề gốc + phiếu trả lời" (học sinh làm trên tệp — chưa có tính năng); "Tải mẫu Excel".
+// tuỳ chọn "Giữ đề gốc + phiếu trả lời" (học sinh làm trên tệp — chưa có tính năng).
+// "Tải mẫu Excel" CÓ làm: bảng mẫu (/api/tutor/quiz/mau-excel) + nhập lại ngay trên máy cô (quizSheetImport.ts), không AI, vẫn qua bước rà soát từng câu.
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,6 +25,7 @@ import { duplicateGroups, fmtPoints, QUIZ_TYPE_LABEL, validateQuizQuestion, type
 import QuestionForm from "./QuestionForm";
 import { answerText } from "./QuizEditor";
 import { fileProblem, IMPORT_ACCEPT, qfetch, quizHref, sizeText, type QuizQ } from "./quizClient";
+import { cellText, parseQuizSheet, SHEET_MAX_BYTES, type SheetRowError } from "@/lib/quizSheetImport";
 
 type Step = "chon-tep" | "ra-soat";
 interface Cand { key: string; q: QuizQuestionInput; confirmed: boolean }
@@ -59,6 +61,9 @@ export default function QuizImport() {
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [sheetName, setSheetName] = useState<string | null>(null); // tên bảng Excel/CSV đang rà soát (nhập không qua AI)
+  const [sheetErrors, setSheetErrors] = useState<SheetRowError[]>([]);
+  const [sheetBusy, setSheetBusy] = useState(false);
   const runRef = useRef(0);
 
   // Lớp và quiz nháp có sẵn để chọn nơi lưu — lỗi tải không chặn việc nhập (chỉ mất phần chọn).
@@ -96,7 +101,7 @@ export default function QuizImport() {
           options: q.type === "ESSAY" ? [] : q.options.map(o => ({ text: o.text, isCorrect: o.isCorrect, subLabel: o.subLabel ?? null })),
         },
       })));
-      setAiErrors(r.errors ?? []);
+      setAiErrors(r.errors ?? []); setSheetName(null); setSheetErrors([]);
       setSelected(null); setEditing(null); setStep("ra-soat");
     } catch (e) {
       if (run !== runRef.current) return;
@@ -104,6 +109,40 @@ export default function QuizImport() {
     } finally { if (run === runRef.current) setExtracting(false); }
   }
   function cancelExtract() { runRef.current++; setExtracting(false); }
+
+  /** Đọc bảng Excel/CSV theo mẫu ngay trên máy: không gửi tệp đi đâu, không dùng AI. */
+  async function pickSheet(f: File | null) {
+    if (!f) return;
+    setExtractErr(null); setSheetErrors([]);
+    const lower = f.name.toLowerCase();
+    if (!/\.(xlsx|csv)$/.test(lower)) { setFileErr(`Tệp "${f.name}" chưa đúng định dạng. Bảng mẫu là .xlsx (hoặc .csv).`); return; }
+    if (f.size === 0) { setFileErr(`Tệp "${f.name}" trống.`); return; }
+    if (f.size > SHEET_MAX_BYTES) { setFileErr(`Tệp "${f.name}" nặng hơn 1 MB. Cô tách thành các tệp nhỏ hơn.`); return; }
+    setFileErr(null); setSheetBusy(true);
+    try {
+      let rows: unknown[][] = [];
+      if (lower.endsWith(".csv")) {
+        const Papa = (await import("papaparse")).default;
+        rows = Papa.parse<string[]>(await f.text(), { skipEmptyLines: true }).data;
+      } else {
+        const mod = await import("exceljs");
+        const { Workbook } = (mod as unknown as { default?: typeof mod }).default ?? mod;
+        const wb = new Workbook();
+        await wb.xlsx.load(await f.arrayBuffer());
+        const ws = wb.worksheets[0];
+        ws?.eachRow({ includeEmpty: true }, row => { const v = row.values as unknown[]; rows.push(v.slice(1).map(cellText)); });
+      }
+      const r = parseQuizSheet(rows);
+      if (r.fatal) { setFileErr(r.fatal); return; }
+      if (r.questions.length === 0) { setFileErr(r.errors.length ? `Chưa nhập được câu nào: ${r.errors.slice(0, 3).map(e => `hàng ${e.row}: ${e.message}`).join(" · ")}` : "Bảng chưa có câu hỏi nào. Cô nhập câu vào bảng mẫu rồi chọn lại."); return; }
+      setCands(r.questions.map(q => ({ key: nextKey(), confirmed: false, q })));
+      setSheetErrors(r.errors); setSheetName(f.name); setFile(null); setKeyFile(null); setAiErrors([]);
+      if (!title.trim()) setTitle(f.name.replace(/\.[^.]+$/, ""));
+      setSelected(null); setEditing(null); setStep("ra-soat");
+    } catch {
+      setFileErr(`Không đọc được "${f.name}". Cô kiểm tra tệp đúng là bảng mẫu của KiN (.xlsx hoặc .csv).`);
+    } finally { setSheetBusy(false); }
+  }
 
   const dups = useMemo(() => duplicateGroups(cands.map(c => c.q.text)), [cands]);
   const dupIdx = useMemo(() => new Set(dups.flat()), [dups]);
@@ -134,7 +173,7 @@ export default function QuizImport() {
   async function save() {
     setSaving(true); setSaveErr(null);
     const r = await qfetch<{ id: string }>("POST", "/api/tutor/quiz/import-save", {
-      title, courseId: courseId || null, targetExamId: targetId || null, fileName: file?.name ?? "", questions: cands.map(c => c.q),
+      title, courseId: courseId || null, targetExamId: targetId || null, fileName: file?.name ?? sheetName ?? "", questions: cands.map(c => c.q),
     });
     if (!r.ok || !r.data) { setSaving(false); setSaveErr(r.error); return; }
     router.push(quizHref(r.data.id));
@@ -145,7 +184,8 @@ export default function QuizImport() {
 
   const sourcePreview = (height: string) => (
     <div className={`rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden ${height}`}>
-      {!file || !previewUrl ? <p className="p-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chưa có tệp.</p>
+      {sheetName ? <p className="p-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] break-words">Câu hỏi lấy từ bảng “{sheetName}” trên máy cô. Cô đối chiếu từng câu với bảng đó (mở bảng ở cửa sổ khác) rồi xác nhận.</p>
+        : !file || !previewUrl ? <p className="p-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chưa có tệp.</p>
         : previewIsPdf ? <iframe title="Tệp gốc" src={previewUrl} className="w-full h-full" />
         // eslint-disable-next-line @next/next/no-img-element
         : previewIsImage ? <img src={previewUrl} alt="Ảnh đề gốc" className="w-full h-full object-contain" />
@@ -181,6 +221,18 @@ export default function QuizImport() {
                 </label>
               </div>
               {fileErr && <p role="alert" className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{fileErr}</p>}
+            </section>
+
+            <section aria-labelledby="qi-sheet" className="rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] p-5">
+              <h2 id="qi-sheet" className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">Hoặc nhập từ bảng Excel</h2>
+              <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Tải bảng mẫu, nhập câu trắc nghiệm vào đúng cột rồi chọn lại ở đây. Đọc ngay trên máy cô, không gửi tệp đi đâu và không tốn lượt AI; cô vẫn rà từng câu trước khi lưu.</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a href="/api/tutor/quiz/mau-excel" download className={kinButtonClass("secondary")} data-tai-mau-excel>Tải bảng mẫu Excel</a>
+                <label className={`${kinButtonClass("secondary")} cursor-pointer`}>
+                  {sheetBusy ? "Đang đọc bảng…" : "Chọn bảng đã nhập (.xlsx, .csv)"}
+                  <input type="file" accept=".xlsx,.csv" className="sr-only" aria-label="Chọn bảng Excel đã nhập" disabled={sheetBusy} onChange={e => { void pickSheet(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                </label>
+              </div>
             </section>
 
             {file && (
@@ -255,6 +307,13 @@ export default function QuizImport() {
             {firstIssue >= 0 && <KinStatus tone="loi">Câu {String(firstIssue + 1).padStart(2, "0")}: {issues[firstIssue]}</KinStatus>}
           </div>
 
+          {sheetErrors.length > 0 && (
+            <KinCallout title={`${sheetErrors.length} hàng trong bảng chưa nhập được`} tone="nhan">
+              <ul className="list-disc pl-5">{sheetErrors.slice(0, 8).map((e, i) => <li key={i}>Hàng {e.row}: {e.message}</li>)}</ul>
+              {sheetErrors.length > 8 && <p className="mt-2">Và {sheetErrors.length - 8} hàng nữa. Cô sửa trong bảng rồi chọn lại, hoặc thêm câu bằng tay ở nút “Thêm câu thủ công”.</p>}
+            </KinCallout>
+          )}
+
           {aiErrors.length > 0 && (
             <KinCallout title={`${aiErrors.length} phần AI đọc chưa trọn vẹn`} tone="nhan">
               <ul className="list-disc pl-5">{aiErrors.slice(0, 6).map((e, i) => <li key={i}>{e.message}</li>)}</ul>
@@ -264,7 +323,7 @@ export default function QuizImport() {
           {dups.length > 0 && <KinCallout title="Có câu lặp lại trong tệp">{dups.map(g => `Câu ${g.map(i => i + 1).join(", ")}`).join(" · ")} có nội dung giống nhau. Cô đối chiếu trước khi lưu; KiN không tự gộp hay xoá câu nào.</KinCallout>}
 
           {cands.length === 0 && !editing ? (
-            <KinEmptyState title="AI chưa tách được câu nào" action={<div className="flex flex-wrap gap-3 justify-center"><KinButton onClick={() => { setEditing("new"); setCompared(false); }}>Thêm câu thủ công</KinButton><KinButton variant="secondary" onClick={() => setStep("chon-tep")}>Chọn tệp khác</KinButton></div>}>
+            <KinEmptyState title={sheetName ? "Bảng chưa có câu nào" : "AI chưa tách được câu nào"} action={<div className="flex flex-wrap gap-3 justify-center"><KinButton onClick={() => { setEditing("new"); setCompared(false); }}>Thêm câu thủ công</KinButton><KinButton variant="secondary" onClick={() => setStep("chon-tep")}>Chọn tệp khác</KinButton></div>}>
               Tệp có thể là ảnh mờ hoặc không có câu hỏi dạng đề. Cô thử tệp khác, hoặc nhập tay.
             </KinEmptyState>
           ) : (

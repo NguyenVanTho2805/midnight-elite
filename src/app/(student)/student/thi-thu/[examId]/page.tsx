@@ -92,6 +92,7 @@ function ExamEntryInner() {
   const clockOffsetRef = useRef(0);
   const [submitInfo, setSubmitInfo] = useState<{ expired: boolean; receipt: string; submittedAt: string | null } | null>(null);
   const [timeUp, setTimeUp] = useState<"sending" | "unconfirmed">("sending");
+  const [timeUpAt, setTimeUpAt] = useState<string | null>(null); // giờ máy chủ lúc hết giờ (màn "Hết giờ")
 
   // Load exam + student's existing result
   useEffect(() => {
@@ -397,6 +398,7 @@ function ExamEntryInner() {
     if (phase === "taking" && attempt?.expiresAt && isLastSection && remainingSec <= 0 && !autoSubmitted.current) {
       autoSubmitted.current = true;
       setTimeUp("sending");
+      setTimeUpAt(nowLabel());
       setPhase("timeup");
       submitAttempt();
     }
@@ -428,7 +430,9 @@ function ExamEntryInner() {
   if (phase === "timeup" && attempt) {
     return (
       <div className="px-4 py-6">
-        <QuizTimeUp examTitle={exam.title} attemptId={attempt.attemptId} state={timeUp} retrying={submitting} onRetry={retryTimeUp} />
+        <QuizTimeUp examTitle={exam.title} attemptId={attempt.attemptId} state={timeUp} retrying={submitting} onRetry={retryTimeUp}
+          klass={gate?.klass ?? null} sentAt={timeUpAt}
+          lastServerSaveAt={Object.values(draftStatus).flatMap(d => (d.kind === "saved" ? [d.at] : [])).sort().at(-1) ?? null} />
       </div>
     );
   }
@@ -606,6 +610,11 @@ function ExamEntryInner() {
                       {q.explanation && (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
                           <strong>Giải thích:</strong> <MathText text={q.explanation} />
+                        </p>
+                      )}
+                      {q.correctionPending && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
+                          Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — gợi ý sẽ hiện nếu chưa đúng, đáp án hiện sau khi bạn thử.
                         </p>
                       )}
                     </div>
