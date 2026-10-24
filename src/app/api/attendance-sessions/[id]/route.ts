@@ -8,6 +8,8 @@
 //        Dùng upsert cho mỗi record trong 1 transaction.
 // DELETE — xoá buổi + mọi record (dùng khi gia sư nhập nhầm ngày).
 //
+// HỌC PHÍ KIỂU MỚI (theo buổi/giờ; chủ chốt 24/10/2026): PUT chỉ sinh/đồng bộ dòng phí khi buổi ĐÃ CHỐT (xem route .../sessions/[dateKey]/close).
+//
 // TT-202 buổi bù: mỗi record có thể kèm `makeupCreditId` — "dùng buổi bù cho buổi này". Buổi bù phải
 // của đúng học sinh + đúng lớp, còn hạn, chưa dùng, và học sinh phải có mặt (present/late). Buổi
 // được điểm danh bằng buổi bù không phải đóng thêm (tiền học phí vẫn do gia sư lập ở trang Học
@@ -20,7 +22,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
-import { removeUninvoicedChargesForSession, syncSessionCharges } from "@/lib/feeChargeServer";
+import { lockAttendanceSession, removeUninvoicedChargesForSession, syncSessionCharges, type SyncResult } from "@/lib/feeChargeServer";
 import { noteShareAllowed } from "@/lib/sessionNoteServer";
 
 type SessionRow = { id: string; courseId: string; date: Date; note: string | null; createdBy: string; createdAt: Date };
@@ -166,8 +168,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Trạng thái đổi → xoá mốc "đã mở Zalo" (tin trước nói về trạng thái cũ).
   const prevStatus = new Map((await asRecords().findMany({ where: { sessionId: id, userId: { in: items.map(i => i.userId) } } })).map(r => [r.userId, r.status]));
   class MakeupError extends Error {}
+  let charges: SyncResult | null = null;
   try {
-    await prisma.$transaction(async (tx) => {
+    charges = await prisma.$transaction(async (tx) => {
+      await lockAttendanceSession(tx, id); // xếp hàng với chốt/mở lại buổi: dòng phí luôn khớp trạng thái buổi
       const txRecords = asRecords(tx);
       for (const i of items) {
         const changed = prevStatus.has(i.userId) && prevStatus.get(i.userId) !== i.status;
@@ -195,9 +199,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           });
         }
       }
-      // HP-14: lớp tạo sau theo buổi/giờ → sinh/sửa dòng học phí của buổi này TRONG CÙNG transaction (điểm danh và phí không lệch nhau).
+      // HP-14 (chủ chốt 24/10/2026): lớp tạo sau theo buổi/giờ → dòng học phí CHỈ sinh/đồng bộ khi buổi ĐÃ CHỐT ("Đã dạy xong").
+      // Buổi chưa chốt: lưu điểm danh thuần, không sinh phí. Sửa điểm danh sau khi chốt: đồng bộ lại dòng CHƯA vào phiếu, TRONG CÙNG transaction.
       // Lớp cách cũ (mặc định): trả sớm, không ghi gì.
-      await syncSessionCharges(tx, {
+      return syncSessionCharges(tx, {
         sessionId: id, courseId: session.courseId, sessionDate: session.date, by: auth.userId,
         items: items.map(i => ({ userId: i.userId, status: i.status, makeupUsed: !!i.makeupCreditId })),
       });
@@ -211,7 +216,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     courseId: session.courseId, count: items.length,
   });
 
-  return NextResponse.json({ ok: true, count: items.length });
+  // Dòng đã nằm trong phiếu không tự đổi: nếu điểm danh vừa lưu làm số khác đi thì nói thật để gia sư xử lý tay (KiN không tự sửa phiếu).
+  const warning = charges && charges.lockedDiffers > 0
+    ? `${charges.lockedDiffers} dòng học phí của buổi này đã nằm trong phiếu nên KiN không đổi theo điểm danh vừa lưu. Nếu cần, chỉnh trên phiếu.`
+    : null;
+  return NextResponse.json({ ok: true, count: items.length, charges, warning });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

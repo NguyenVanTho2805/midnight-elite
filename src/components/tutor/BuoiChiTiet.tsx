@@ -1,7 +1,8 @@
 // BU-01..BU-04, BU-14, LI-16, LI-17 — trang chi tiết một buổi học của gia sư (Figma 464:5816 "Buổi học · Ghi chép và chốt buổi").
 //
-// Nút "Đã dạy xong" chỉ gọi POST /api/courses/[id]/sessions/[dateKey]/close: ghi trạng thái + thời điểm chốt. KHÔNG tạo / sửa học phí,
-// KHÔNG đổi cách tính phiếu. Điểm danh (và học phí theo cách tính của lớp) vẫn đi đường điểm danh sẵn có ở khối "Điểm danh" bên dưới.
+// Nút "Đã dạy xong" gọi POST /api/courses/[id]/sessions/[dateKey]/close: ghi trạng thái + thời điểm chốt; với lớp kiểu mới (theo buổi / theo giờ)
+// máy chủ đồng thời sinh dòng học phí cho em có mặt hoặc đi muộn (chủ chốt 24/10/2026: chốt buổi là điều kiện sinh phí). Lớp cũ: không ghi gì ở bảng phí.
+// KHÔNG đổi cách tính phiếu, không đụng dòng đã vào phiếu.
 // Ô Figma chưa làm vì cần dữ liệu/tiền chưa có: "Phí dự kiến khi chốt", "Chính sách cho em", "Xem trước PNG/PDF", ảnh bài làm của em (BU-10), điểm buổi (đã ở khối riêng).
 "use client";
 import { useCallback, useEffect, useState } from "react";
@@ -25,6 +26,7 @@ const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ N�
 const dmy = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
 const vnWhen = (iso: string) => `${hmOf(vnMinutesOfDay(new Date(iso)))} ngày ${vnDateKeyOf(new Date(iso)).slice(8, 10)}/${vnDateKeyOf(new Date(iso)).slice(5, 7)}`;
 
+interface ChargeInfo { skipped?: string; created: number; updated: number; removed: number; locked: number }
 interface Form { taught: string; homework: string; summary: string; mode: "" | "online" | "offline"; location: string; joinUrl: string }
 const toForm = (d: SessionDetail): Form => ({
   taught: d.session?.taught ?? "", homework: d.session?.homework ?? "", summary: d.session?.summary ?? "",
@@ -86,26 +88,32 @@ export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; d
   async function close() {
     if (closing) return;
     setClosing(true);
-    const r = await callApi<{ already: boolean; detail: SessionDetail }>(`${url}/close`, { method: "POST", body: JSON.stringify({ action: "close" }) });
+    const r = await callApi<{ already: boolean; detail: SessionDetail; charges?: ChargeInfo | null }>(`${url}/close`, { method: "POST", body: JSON.stringify({ action: "close" }) });
     setClosing(false);
     if (!r.ok) { notify.err(r.data.error ?? "Chưa chốt được buổi."); return; }
     setDetail(r.data.detail);
-    notify.ok(r.data.already ? "Buổi này đã chốt từ trước." : "Đã ghi: buổi đã dạy xong. Chốt buổi không tạo hay sửa học phí.");
+    if (r.data.already) { notify.ok("Buổi này đã chốt từ trước."); return; }
+    const c = r.data.charges;
+    const detail = !c || c.skipped === "mode" ? undefined
+      : c.skipped === "preview" ? "Bản xem trước không tính học phí."
+      : c.created + c.updated > 0 ? `Đã tính học phí cho ${c.created + c.updated} em.` : "Chưa có em nào có mặt hoặc đi muộn nên chưa có khoản học phí.";
+    notify.ok("Đã ghi: buổi đã dạy xong.", detail ? { detail } : undefined);
   }
 
   async function reopen() {
     if (closing) return;
     setClosing(true);
-    let r = await callApi<{ detail: SessionDetail; needsConfirm?: boolean; warning?: string }>(`${url}/close`, { method: "POST", body: JSON.stringify({ action: "reopen" }) });
+    let r = await callApi<{ detail: SessionDetail; needsConfirm?: boolean; warning?: string; charges?: ChargeInfo | null }>(`${url}/close`, { method: "POST", body: JSON.stringify({ action: "reopen" }) });
     if (!r.ok && r.status === 409 && r.data.needsConfirm) {
       const yes = await ask({ title: "Mở lại buổi đã chốt?", message: r.data.warning ?? r.data.error, confirmLabel: "Vẫn mở lại", cancelLabel: "Giữ nguyên", tone: "thuong" });
       if (!yes) { setClosing(false); return; }
-      r = await callApi<{ detail: SessionDetail }>(`${url}/close`, { method: "POST", body: JSON.stringify({ action: "reopen", confirm: true }) });
+      r = await callApi<{ detail: SessionDetail; charges?: ChargeInfo | null }>(`${url}/close`, { method: "POST", body: JSON.stringify({ action: "reopen", confirm: true }) });
     }
     setClosing(false);
     if (!r.ok) { notify.err(r.data.error ?? "Chưa mở lại được buổi."); return; }
     setDetail(r.data.detail);
-    notify.ok("Đã mở lại buổi. Số tiền và phiếu đã lập không thay đổi.");
+    const rm = r.data.charges?.removed ?? 0;
+    notify.ok("Đã mở lại buổi.", { detail: rm > 0 ? `Đã gỡ ${rm} khoản học phí chưa vào phiếu. Phiếu đã lập không thay đổi.` : "Phiếu đã lập không thay đổi." });
   }
 
   async function openShare() {
@@ -221,7 +229,7 @@ export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; d
               ? <KinButton variant="secondary" onClick={() => void reopen()} loading={closing} loadingLabel="Đang mở lại...">Mở lại buổi</KinButton>
               : <KinButton onClick={() => void close()} loading={closing} loadingLabel="Đang chốt..." disabled={!past || detail.cancelled}>Đã dạy xong</KinButton>}
             {!past && !closed && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Buổi này chưa tới ngày nên chưa chốt được.</p>}
-            <KinCallout title="Chốt buổi không tính tiền">Nút này chỉ ghi trạng thái và thời điểm chốt. Học phí vẫn theo cách tính của lớp và trạng thái điểm danh từng em; chốt hay mở lại buổi không tạo, sửa hay xoá khoản nào.</KinCallout>
+            <KinCallout title="Chốt buổi và học phí">Lớp tính học phí theo buổi hoặc theo giờ chỉ có khoản học phí khi buổi đã dạy xong: bấm Đã dạy xong thì KiN tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi thì chưa tính. Mở lại buổi sẽ gỡ khoản chưa vào phiếu, khoản đã vào phiếu giữ nguyên. Lớp tính theo số buổi trong tháng (cách cũ) không đổi.</KinCallout>
           </KinPanel>
 
           <div className="space-y-3">

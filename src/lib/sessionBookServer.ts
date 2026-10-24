@@ -1,8 +1,7 @@
 // BU-01..BU-07, LI-10, LI-11, LI-16, LI-17 — phần chạm DB của trang buổi học. Quy tắc thuần ở sessionBook.ts.
 //
-// BẤT BIẾN TIỀN (quy tắc kho mục 5: "tiền chốt vào sự kiện; chỉ buổi đã chốt mới tính tiền"): tệp này KHÔNG import feeChargeServer, KHÔNG đụng
-// FeeCharge / TuitionInvoice ngoài việc ĐẾM để cảnh báo khi mở lại buổi. Chốt/mở lại buổi chỉ ghi attendance_sessions.state/closedAt/reopenedAt.
-// Học phí tiếp tục chỉ sinh ở PUT /api/attendance-sessions/[id] (syncSessionCharges) theo trạng thái điểm danh từng em, như trước.
+// TIỀN (quy tắc kho mục 5: "tiền chốt vào sự kiện; chỉ buổi đã chốt mới tính tiền"): tệp này KHÔNG import feeChargeServer, KHÔNG ghi FeeCharge /
+// TuitionInvoice (chỉ ĐẾM để cảnh báo khi mở lại buổi). Việc sinh/gỡ dòng phí khi chốt/mở lại nằm ở route close (feeChargeServer).
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";

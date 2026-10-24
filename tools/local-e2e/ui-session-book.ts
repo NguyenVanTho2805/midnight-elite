@@ -98,8 +98,9 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   await page.getByRole("button", { name: "Mở lại buổi" }).waitFor({ timeout: 15000 });
   const closedRow = await prisma.attendanceSession.findFirstOrThrow({ where: { id: sessionRow.id } });
   check("DB: state 'closed' + closedAt; trang hiện 'Đã dạy xong' và 'Đã chốt lúc'", closedRow.state === "closed" && !!closedRow.closedAt && (await page.getByText("Đã chốt lúc").count()) === 1 && (await page.locator("[data-bu-close]").getByText("Đã dạy xong").count()) >= 1);
-  check("chốt buổi KHÔNG tạo dòng phí (lớp cũ, số dòng không đổi)", (await prisma.feeCharge.count()) === feeBefore);
-  check("khung chốt nói thẳng: chốt buổi không tính tiền", (await page.getByText("Chốt buổi không tính tiền").count()) === 1);
+  check("chốt buổi lớp CŨ không tạo dòng phí (số dòng không đổi)", (await prisma.feeCharge.count()) === feeBefore);
+  // Sửa 24/10/2026: chữ khung đổi theo sự thật mới (lớp kiểu mới có học phí khi chốt; lớp cũ không đổi). Lớp trong bài này là lớp CŨ nên số dòng phí vẫn không đổi.
+  check("khung chốt nói thật: chốt buổi và học phí (kiểu mới tính khi chốt, cách cũ không đổi)", (await page.getByText("Chốt buổi và học phí").count()) === 1 && (await page.getByText(/cách cũ\) không đổi/).count()) === 1);
   await page.getByRole("button", { name: "Chia sẻ báo cáo buổi" }).click();
   const shareText = await page.locator("#tin-bao-cao-buoi").inputValue();
   check("tin chia sẻ: có ba phần, KHÔNG tên em, KHÔNG tiền", shareText.includes("Đã dạy: Phương trình bậc hai") && shareText.includes("Bài tập về nhà: Bài 1-6") && shareText.includes("Nhận xét chung: Cả lớp theo kịp") && !/Em An|Em Bình|học phí|đồng/.test(shareText), shareText);

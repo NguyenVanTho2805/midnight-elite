@@ -1,11 +1,14 @@
+// Ghi chú sửa 24/10/2026 (chủ chốt: CHỐT BUỔI là điều kiện sinh phí lớp kiểu mới): các mục A–L bên dưới kiểm số tiền/đơn giá/phiếu như cũ, nên helper `mark`
+// đánh dấu buổi "đã chốt" trước khi lưu điểm danh (trước đây lưu điểm danh là sinh phí). Hành vi MỚI (chưa chốt → 0 dòng, chốt → đủ dòng, sửa sau chốt, mở lại)
+// kiểm riêng ở mục M qua đúng route chốt buổi. Không ca nào bị xoá; mọi so khớp số cũ (mục I: 12 phiếu lớp cũ lệch 0 đồng) giữ nguyên.
 // HP-14..HP-17 — API: chọn hình thức học phí khi TẠO lớp, học phí tự sinh khi điểm danh (theo buổi / giờ / khoá), lập phiếu có dòng phí,
 // đổi đơn giá có hiệu lực từ ngày + xem trước, đơn giá riêng từng em, và BẰNG CHỨNG số cũ không đổi (lớp cũ lệch 0 đồng).
 // Cần máy chủ dev đang chạy (BASE). Phần chặn Preview chạy trong tiến trình test (gọi thẳng hàm), vì máy chủ dev không phải Preview.
 import { api, mkUser, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
-import { vnDateKeyOf } from "@/lib/classSessions";
+import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
 import { computeMonthlyFee } from "@/lib/tuition";
-import { changeRate, moneyPathsBlocked, syncSessionCharges } from "@/lib/feeChargeServer";
+import { changeRate, moneyPathsBlocked, removeChargesOnReopen, syncChargesOnClose, syncSessionCharges } from "@/lib/feeChargeServer";
 import { issueInvoice } from "@/lib/invoiceServer";
 
 const day = (k: string) => new Date(`${k}T00:00:00Z`);
@@ -63,7 +66,12 @@ const charges = (where: object) => prisma.feeCharge.findMany({ where, orderBy: [
   await enroll(B, cL.id);
 
   const mkSess = async (courseId: string, dateKey: string) => (await api("POST", `/api/courses/${courseId}/attendance-sessions`, { as: T1, body: { date: dateKey } })).json.id as string;
-  const mark = (sid: string, rows: Array<{ userId: string; status: string; makeupCreditId?: string }>, as = T1) => api("PUT", `/api/attendance-sessions/${sid}`, { as, body: { records: rows } });
+  // Buổi đã chốt rồi mới lưu điểm danh (xem ghi chú đầu tệp). Ngày tương lai không chốt được qua route nên ghi state thẳng vào DB, đúng thứ route để lại.
+  const markClosed = (sid: string) => prisma.attendanceSession.update({ where: { id: sid }, data: { state: "closed", closedAt: new Date(), closedBy: T1.id } });
+  const mark = async (sid: string, rows: Array<{ userId: string; status: string; makeupCreditId?: string }>, as = T1) => {
+    await markClosed(sid);
+    return api("PUT", `/api/attendance-sessions/${sid}`, { as, body: { records: rows } });
+  };
 
   section("B. HP-14 · điểm danh sinh học phí theo buổi");
   const s1 = await mkSess(cS.id, "2026-10-05");
@@ -243,6 +251,89 @@ const charges = (where: object) => prisma.feeCharge.findMany({ where, orderBy: [
     const legacyOk = await issueInvoice({ tutorId: T3.id, studentId: (await prisma.enrollment.findFirstOrThrow({ where: { courseId: legacyCourses[0].id, NOT: { userId: { in: (await prisma.tuitionInvoice.findMany({ where: { tutorId: T3.id }, select: { studentId: true } })).map(x => x.studentId) } } } }).catch(() => null))?.userId ?? "none", yearMonth: "2026-10" });
     check("Preview: phiếu lớp CŨ không bị ảnh hưởng (đường cũ vẫn chạy)", legacyOk.ok || /Đã có phiếu|chưa học lớp/.test((legacyOk as any).reason));
   } finally { if (saved === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = saved; }
+
+  section("M. Chốt buổi là ĐIỀU KIỆN sinh phí (chủ chốt 24/10/2026)");
+  const G = await mkUser({ name: "Em Giang" }), H = await mkUser({ name: "Em Hà" });
+  const cM = await createCourse(T1, { feeMode: "per_session", feeRate: 100_000 });
+  for (const u of [G, H]) await enroll(u, cM.id);
+  const dM = addDaysKey(today, -1);
+  const closeUrl = (courseId: string, dk: string) => `/api/courses/${courseId}/sessions/${dk}/close`;
+  const putAtt = (sid: string, rows: Array<{ userId: string; status: string; makeupCreditId?: string }>, as = T1) => api("PUT", `/api/attendance-sessions/${sid}`, { as, body: { records: rows } });
+  const sM = await mkSess(cM.id, dM);
+  const pOpen = await putAtt(sM, [{ userId: G.id, status: "present" }, { userId: H.id, status: "late" }]);
+  check("[chưa chốt] lưu điểm danh có mặt + muộn → 0 dòng phí, phản hồi nói 'open'", pOpen.status === 200 && pOpen.json.charges?.skipped === "open" && (await charges({ courseId: cM.id })).length === 0, pOpen.json);
+  const pOpen2 = await putAtt(sM, [{ userId: G.id, status: "absent" }, { userId: H.id, status: "present" }]);
+  check("[chưa chốt] sửa điểm danh nhiều lần vẫn 0 dòng phí", pOpen2.status === 200 && (await charges({ courseId: cM.id })).length === 0);
+  await putAtt(sM, [{ userId: G.id, status: "present" }, { userId: H.id, status: "late" }]);
+  const cl = await api("POST", closeUrl(cM.id, dM), { as: T1, body: { action: "close" } });
+  const chM = await charges({ courseId: cM.id });
+  check("[chốt] bấm Đã dạy xong → đủ 2 dòng (có mặt + muộn) × 100.000, gắn đúng bản ghi điểm danh, đúng ngày", cl.status === 200 && cl.json.charges?.created === 2 && chM.length === 2 && chM.every(c => c.amount === 100_000 && c.recordId && c.dateKey === dM && c.invoiceId === null && c.kind === "session"), cl.json);
+  const cl2 = await api("POST", closeUrl(cM.id, dM), { as: T1, body: { action: "close" } });
+  check("[chốt lần hai] bỏ qua: vẫn 2 dòng, cùng id", cl2.json.already === true && (await charges({ courseId: cM.id })).map(c => c.id).sort().join() === chM.map(c => c.id).sort().join());
+  const race = await Promise.all([1, 2, 3].map(() => api("POST", closeUrl(cM.id, addDaysKey(today, -2)), { as: T1, body: { action: "close" } })));
+  check("3 lần bấm chốt đồng thời một buổi chưa có điểm danh: đều 200, không lỗi, không dòng phí nào", race.every(r => r.status === 200) && (await charges({ courseId: cM.id })).length === 2);
+  await putAtt(sM, [{ userId: H.id, status: "absent" }]);
+  check("[sửa sau chốt] Hà đổi sang vắng (chưa vào phiếu) → dòng của Hà bị gỡ, của Giang còn", (await charges({ courseId: cM.id, studentId: H.id })).length === 0 && (await charges({ courseId: cM.id, studentId: G.id })).length === 1);
+  await putAtt(sM, [{ userId: H.id, status: "present" }]);
+  check("[sửa sau chốt] Hà đổi lại có mặt → sinh lại đúng 1 dòng", (await charges({ courseId: cM.id, studentId: H.id })).length === 1);
+  // Phiếu cho Giang → dòng của Giang đóng băng; sửa điểm danh sau đó phải CẢNH BÁO, không đổi dòng/phiếu.
+  const issG = await api("POST", "/api/tutor/invoices", { as: T1, body: { yearMonth: dM.slice(0, 7), studentIds: [G.id] } });
+  const invG = issG.json.created?.[0];
+  const gLine = (await charges({ courseId: cM.id, studentId: G.id }))[0];
+  check("(chuẩn bị) phiếu của Giang = 100.000, dòng đã vào phiếu", issG.status === 201 && invG?.amountDue === 100_000 && gLine?.invoiceId === invG.id, issG.json);
+  const pInv = await putAtt(sM, [{ userId: G.id, status: "absent" }]);
+  const gAfter = (await charges({ courseId: cM.id, studentId: G.id }))[0];
+  check("[sửa sau chốt] dòng ĐÃ vào phiếu: không đổi (100.000), phiếu không đổi, phản hồi có CẢNH BÁO", pInv.status === 200 && pInv.json.charges?.lockedDiffers === 1 && /đã nằm trong phiếu/.test(pInv.json.warning ?? "") && gAfter.id === gLine.id && gAfter.amount === 100_000 && (await prisma.tuitionInvoice.findUniqueOrThrow({ where: { id: invG.id } })).amountDue === 100_000, pInv.json);
+  const rn = await api("POST", closeUrl(cM.id, dM), { as: T1, body: { action: "reopen" } });
+  check("[mở lại] phiếu tháng đã lập → 409 cần xác nhận; buổi vẫn chốt; chưa gỡ dòng nào", rn.status === 409 && rn.json.needsConfirm === true && (await charges({ courseId: cM.id })).length === 2);
+  const ro = await api("POST", closeUrl(cM.id, dM), { as: T1, body: { action: "reopen", confirm: true } });
+  check("[mở lại] xác nhận → dòng CHƯA vào phiếu của Hà bị gỡ (1), dòng đã vào phiếu của Giang giữ nguyên (1), phiếu không đổi", ro.status === 200 && ro.json.charges?.removed === 1 && ro.json.charges?.locked === 1 && (await charges({ courseId: cM.id })).length === 1 && (await charges({ courseId: cM.id }))[0].id === gLine.id && (await prisma.tuitionInvoice.findUniqueOrThrow({ where: { id: invG.id } })).amountDue === 100_000, ro.json);
+  await putAtt(sM, [{ userId: H.id, status: "present" }]);
+  check("[sau khi mở lại] lưu điểm danh Hà có mặt → vẫn chưa có dòng của Hà", (await charges({ courseId: cM.id, studentId: H.id })).length === 0);
+  await api("POST", closeUrl(cM.id, dM), { as: T1, body: { action: "close" } });
+  check("[chốt lại] dòng của Hà sinh lại; dòng đã vào phiếu của Giang vẫn đúng một dòng, cùng id", (await charges({ courseId: cM.id, studentId: H.id })).length === 1 && (await charges({ courseId: cM.id, studentId: G.id })).length === 1 && (await charges({ courseId: cM.id, studentId: G.id }))[0].id === gLine.id);
+  check("nhật ký chốt có số khoản đã sinh, KHÔNG chứa tên em", !!(await prisma.auditLog.findFirst({ where: { action: "attendance_session.close", resourceId: sM } })) && !(await prisma.auditLog.findMany({ where: { action: "attendance_session.close" } })).some(a => JSON.stringify(a).includes("Em Giang")));
+
+  // Theo giờ
+  const cMh = await createCourse(T1, { feeMode: "per_hour", feeRate: 200_000, feeSessionMinutes: 90 });
+  await enroll(G, cMh.id);
+  const sMh = await mkSess(cMh.id, dM);
+  await putAtt(sMh, [{ userId: G.id, status: "present" }]);
+  const beforeHour = (await charges({ courseId: cMh.id })).length;
+  await api("POST", closeUrl(cMh.id, dM), { as: T1, body: { action: "close" } });
+  const hM = await charges({ courseId: cMh.id });
+  check("[theo giờ] chưa chốt 0 dòng; chốt → 1 dòng 300.000 (200.000/giờ × 90 phút)", beforeHour === 0 && hM.length === 1 && hM[0].amount === 300_000 && hM[0].units === 90 && hM[0].mode === "per_hour", hM);
+  // Buổi bù
+  const mkAbs2 = await prisma.classAbsence.create({ data: { courseId: cM.id, scheduleId: "s", dateKey: "2026-09-21", startAt: new Date(), studentId: H.id, reportedBy: "parent", leadMinutes: 600, status: "excused_auto" } });
+  const credH = await prisma.makeupCredit.create({ data: { studentId: H.id, courseId: cM.id, absenceId: mkAbs2.id, expiresAt: new Date(Date.now() + 10 * 86400_000) } });
+  const dM3 = addDaysKey(today, -3);
+  const sM3 = await mkSess(cM.id, dM3);
+  await putAtt(sM3, [{ userId: H.id, status: "present", makeupCreditId: credH.id }]);
+  await api("POST", closeUrl(cM.id, dM3), { as: T1, body: { action: "close" } });
+  check("[buổi bù] chốt buổi em dùng buổi bù: có mặt nhưng KHÔNG sinh thêm tiền", (await charges({ courseId: cM.id, dateKey: dM3 })).length === 0);
+  // Theo khoá + lớp cũ: chốt không ghi dòng buổi nào
+  const sMc = await mkSess(cC.id, dM);
+  await prisma.attendanceRecord.create({ data: { sessionId: sMc, userId: C.id, status: "present" } });
+  const clC = await api("POST", closeUrl(cC.id, dM), { as: T1, body: { action: "close" } });
+  const sMl = await prisma.attendanceSession.create({ data: { courseId: cL.id, date: day(dM), createdBy: T1.id } });
+  await prisma.attendanceRecord.create({ data: { sessionId: sMl.id, userId: B.id, status: "present" } });
+  const totalBefore = await prisma.feeCharge.count();
+  const clL = await api("POST", closeUrl(cL.id, dM), { as: T1, body: { action: "close" } });
+  const roL = await api("POST", closeUrl(cL.id, dM), { as: T1, body: { action: "reopen", confirm: true } }); // Bình đã có phiếu tháng này → cần xác nhận (BU-03)
+  check("[theo khoá + lớp cũ] chốt/mở lại: 0 dòng phí buổi, tổng dòng phí không đổi, phản hồi 'mode'", clC.json.charges?.skipped === "mode" && clL.json.charges?.skipped === "mode" && roL.status === 200 && (await prisma.feeCharge.count({ where: { courseId: { in: [cC.id, cL.id] }, kind: "session" } })) === 0 && (await prisma.feeCharge.count()) === totalBefore, { clC: clC.json.charges, clLs: clL.status, clL: clL.json.charges ?? clL.json, roL: roL.status, totalBefore, now: await prisma.feeCharge.count() });
+  const mt = await api("POST", closeUrl(cM.id, dM), { as: T2, body: { action: "close" } });
+  check("[quyền] gia sư khác chốt lớp này → 403, không đổi gì", mt.status === 403);
+  // Preview: gọi thẳng hàm
+  const savedEnv = process.env.VERCEL_ENV; process.env.VERCEL_ENV = "preview";
+  try {
+    const sPrev = await mkSess(cM.id, addDaysKey(today, -4));
+    await putAtt(sPrev, [{ userId: G.id, status: "present" }]);
+    await prisma.attendanceSession.update({ where: { id: sPrev }, data: { state: "closed" } });
+    const n0 = await prisma.feeCharge.count();
+    const pc = await prisma.$transaction(tx => syncChargesOnClose(tx, sPrev, T1.id));
+    const pr = await prisma.$transaction(tx => removeChargesOnReopen(tx, sM));
+    check("[Preview] chốt/mở lại không sinh, không gỡ dòng phí (skipped=preview)", pc.skipped === "preview" && pr.skipped === "preview" && (await prisma.feeCharge.count()) === n0);
+  } finally { if (savedEnv === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = savedEnv; }
 
   section("L. Bất biến tiền");
   const allInv = await prisma.tuitionInvoice.findMany({ where: { tutorId: T1.id } });

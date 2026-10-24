@@ -1,8 +1,8 @@
 // BU-01..BU-07, LI-10, LI-11, LI-16, LI-17, DD-03 — quy tắc THUẦN của "trang buổi học" (không Prisma, không đọc đồng hồ ngầm).
 // Test: tools/local-e2e/t-session-book-lib.ts. Phần chạm DB ở sessionBookServer.ts.
 //
-// BẤT BIẾN TIỀN: chốt buổi / mở lại buổi chỉ ghi TRẠNG THÁI của buổi (state/closedAt). Không hàm nào ở đây sinh, sửa hay xoá dòng học phí;
-// học phí vẫn do đường điểm danh sẵn có (PUT /api/attendance-sessions/[id] → syncSessionCharges) quyết định, theo trạng thái điểm danh từng em.
+// TIỀN: không hàm nào ở đây sinh, sửa hay xoá dòng học phí (phần thuần). Từ 24/10/2026 CHỐT BUỔI là điều kiện sinh phí của lớp kiểu mới:
+// route close gọi feeChargeServer (syncChargesOnClose / removeChargesOnReopen); PUT điểm danh chỉ đồng bộ khi buổi ĐÃ chốt.
 import { addDaysKey, hmOf, isValidDateKey, normalizeJoinUrl, parseHm, vnDateKeyOf } from "@/lib/classSessions";
 
 // ── Hình thức, loại buổi ─────────────────────────────────────────────────────────

@@ -178,7 +178,7 @@ export default function TaoLop() {
                       {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0
                         ? `Mỗi buổi ${Number(feeMinutes)} phút tính ${hourlyAmount(Number(feeRate), Number(feeMinutes)).toLocaleString("vi-VN")}đ (làm tròn từng buổi). `
                         : ""}
-                      Học phí chỉ tính khi cô điểm danh em có mặt hoặc đi muộn. Phiếu đã chốt không bao giờ đổi khi cô đổi đơn giá sau này.
+                      Học phí kiểu mới chỉ có khi cô bấm Đã dạy xong cho buổi đó, và chỉ tính em có mặt hoặc đi muộn. Phiếu đã chốt không bao giờ đổi khi cô đổi đơn giá sau này.
                     </p>
                   </div>
                 )}

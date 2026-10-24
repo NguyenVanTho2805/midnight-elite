@@ -3,7 +3,7 @@
 //
 // Chủ chốt (QUYET-DINH-CHU mục 1): "Thêm cả kiểu tính mới" — nhưng
 //   - chỉ áp cho lớp tạo SAU; lớp cũ giữ cách tính hiện tại (MonthlyCourseFee: gia sư nhập số buổi tháng) làm MẶC ĐỊNH;
-//   - KHÔNG đụng phiếu đã chốt: số tiền chốt vào dòng FeeCharge lúc điểm danh, vào phiếu thì đóng băng;
+//   - KHÔNG đụng phiếu đã chốt: số tiền chốt vào dòng FeeCharge lúc CHỐT BUỔI (24/10/2026; trước đó là lúc lưu điểm danh), vào phiếu thì đóng băng;
 //   - tiền là số nguyên đồng; làm tròn TỪNG BUỔI (nửa đồng làm tròn lên), không dồn sai số.
 //
 // Giả định cần kế toán/chủ xác nhận (ghi cả trong báo cáo): buổi tính phí = điểm danh "có mặt" hoặc "muộn" (cùng định nghĩa
@@ -26,8 +26,8 @@ export const FEE_MODE_LABEL: Record<FeeMode, string> = {
 };
 export const FEE_MODE_HINT: Record<FeeMode, string> = {
   monthly_sessions: "Cô tự nhập số buổi của từng tháng, như đang dùng. Phiếu cũ và lớp cũ không đổi.",
-  per_session: "Mỗi buổi em có mặt hoặc đi muộn được tính một khoản bằng đơn giá một buổi, tự sinh khi cô điểm danh.",
-  per_hour: "Mỗi buổi tính theo thời lượng buổi (phút) × đơn giá một giờ, tự sinh khi cô điểm danh. Làm tròn từng buổi đến đồng.",
+  per_session: "Mỗi buổi em có mặt hoặc đi muộn được tính một khoản bằng đơn giá một buổi, tự sinh khi cô bấm Đã dạy xong cho buổi đó.",
+  per_hour: "Mỗi buổi tính theo thời lượng buổi (phút) × đơn giá một giờ, tự sinh khi cô bấm Đã dạy xong cho buổi đó. Làm tròn từng buổi đến đồng.",
   per_course: "Một khoản cho cả khoá, tính một lần cho mỗi em vào phiếu đầu tiên sau khi em vào lớp.",
 };
 export const FEE_RATE_UNIT: Record<NewFeeMode, string> = { per_session: "đ / buổi", per_hour: "đ / giờ", per_course: "đ / khoá" };
