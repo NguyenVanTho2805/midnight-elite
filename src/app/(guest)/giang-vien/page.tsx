@@ -142,7 +142,7 @@ export default function GiangVienPage() {
           </p>
 
           {loading ? (
-            <div aria-busy="true">{[0, 1, 2].map(i => <TutorCardSkeleton key={i} />)}</div>
+            <div aria-busy="true" className="space-y-4">{[0, 1, 2].map(i => <TutorCardSkeleton key={i} />)}</div>
           ) : error ? (
             <div role="alert" className="py-10 flex flex-col items-start gap-3">
               <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-tt-chu-loi)" }}>Không tải được danh sách gia sư. Thử lại sau.</p>
@@ -153,7 +153,7 @@ export default function GiangVienPage() {
               description={q.trim() ? `Không có gia sư khớp "${q.trim()}". Thử từ khoá khác hoặc xóa bộ lọc.` : subject ? `Thử bỏ bộ lọc môn "${subject}" hoặc chọn môn khác.` : (city || mode) ? "Thử bỏ bộ lọc tỉnh/thành hoặc hình thức dạy. Gia sư chưa khai khu vực sẽ không hiện khi đang lọc." : "Hiện chưa có gia sư nào được duyệt."}
             />
           ) : (
-            <div>{shown!.map(t => <TutorCard key={t.id} t={t} />)}</div>
+            <div className="space-y-4">{shown!.map(t => <TutorCard key={t.id} t={t} />)}</div>
           )}
 
           {!loading && !error && shown && shown.length > 0 && (

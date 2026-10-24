@@ -59,6 +59,31 @@ Luôn có câu giải thích vì sao trống; `action?` là một nút/liên k�
 </KinEmptyState>
 ```
 
+## Khung dùng chung — `KinPanel` (Panel.tsx, kiểu dáng `.kin-khung` trong `src/app/kin-site.css`)
+Thêm 24/10/2026 theo yêu cầu "một số cái quan trọng đóng thêm khung cho dễ nhìn": màn dựng phẳng (chỉ đường kẻ) khiến khối quan trọng khó tách khỏi nền. MỘT kiểu khung cho cả KiN, dùng CHỌN LỌC.
+Kiểu: nền mặt `--kin-khung-nen` (= `--kin-nen-bang`) + viền 1px `--kin-khung-vien` (chữ mờ pha 24% vào nền trang: đủ thấy ở sáng lẫn tối, nhạt hơn viền ô nhập) + bo `--kin-bo-the` (14px) + đệm 18px (điện thoại) / 20px (từ md). Token khai ở `kin-site.css`, không mã hex; đổi chủ đề / sáng-tối tự theo.
+| `variant` | Hình | Dùng cho |
+|---|---|---|
+| `mac-dinh` | viền nhạt, nền mặt | ô tóm tắt, thẻ đề thi, lưu ý pháp lý, thẻ gia sư |
+| `nhan` | viền + nền màu nhấn nhạt của chủ đề | khối CHÍNH của màn: "Buổi học sắp tới", khối chấm đang chọn, ô cách tính học phí, cổng QR |
+| `canh-bao` | nền + viền cam nhạt | việc đang chờ (vd. hồ sơ gia sư chờ duyệt); luôn kèm chữ |
+| `loi` | nền + viền đỏ nhạt | lỗi cần chú ý (kèm chữ) |
+| `khoa-pro` | viền nét đứt, nền trong | tính năng Pro chưa mở ("Chưa mở bán"); chữ KHÔNG bị làm mờ |
+Props: `variant`, `flush` (không đệm, cắt góc bo: dùng khi bọc CẢ danh sách/bảng — hàng cuối tự bỏ kẻ đáy), `as` (`div` mặc định, `section`/`aside`/`article`), `className` (chỉ margin/layout; đệm đặt bằng `flush` hay `!p-4`), mọi thuộc tính khác (aria-*, data-*) chuyển xuống thẻ.
+Dải số: `<KinStatRow boxed>` = mỗi số một ô khung (không kẻ trên/dưới); không `boxed` vẫn là dải phẳng cũ.
+Quy tắc dùng:
+- Mỗi màn vài khối: dải số, khối chính, ô tóm tắt, thẻ trạng thái quan trọng, lưu ý pháp lý. KHÔNG bọc từng hàng.
+- Danh sách dài (hàng việc, bảng, lịch) giữ đường kẻ mảnh; chỉ bọc cả danh sách bằng `flush` khi hợp lý. Đầu mục (`KinSectionHead`) để ngoài khung, cách khung 16px (`mt-4`).
+- Không khung lồng khung; khoảng cách giữa các khung dùng nhịp của trang (gap 12–16px trong dải, 32px giữa các mục).
+- Không làm thu hẹp chữ/độ rộng nội dung: hàng bên trong `flush` giữ đệm ngang riêng của chúng.
+```tsx
+<KinStatRow boxed><KinStat label="Số phiếu" value="9" /> … </KinStatRow>
+<KinSectionHead title="Cần cô xử lý" aside="13 việc" />
+<KinPanel flush className="mt-4"><ul>{rows.map(r => <li key={r.id}><KinListRow … /></li>)}</ul></KinPanel>
+<KinPanel variant="nhan"><p>16:00 – 17:30</p> … <Link className={kinButtonClass("primary")}>Mở buổi học</Link></KinPanel>
+```
+Đã áp: Hộp việc (dải 4 số, hàng việc, buổi sắp tới, ô học phí điện thoại, lưu ý), Gói của tôi (dải số, thanh x/N, bảng so sánh, thẻ kỳ, "Chưa mở bán", khối hết hạn), Học phí (dải số), Lớp (cả bảng), Chi tiết lớp (Học sinh, Lịch sử buổi, ô cách tính học phí), Bài tập (từng nhóm lớp, khối đang chọn), Chấm quiz (dải số, hộp giữ/công bố điểm, khối điểm đang chọn), học sinh (Cần làm, Đã nộp, Kết quả, Buổi học tiếp theo, đề thi sắp mở, danh sách đề), phụ huynh (4 ô tóm tắt Sổ của con, thẻ phiếu học phí, trang phiếu), khách (thẻ gia sư), quản trị (dải số của Số đo). Thẻ cũ dùng `CARD_STYLE` (tutor/shared.tsx) cũng đổi viền sang `--kin-khung-vien` cho cùng một độ đậm.
+
 ## Đã có từ trước (cùng thư mục)
 `KinInput`, `KinTabs`, `KinToast`, `KinConfirm` + `useKinConfirm` (thay `window.confirm`), `KinLoader`, `KinFold`, `KinLogo`, `KinCopyButton`, `KinSubmitButton`, `CodeBoxes`, `ProgressRing`.
 

@@ -9,6 +9,7 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinTabs } from "@/components/kin/Tabs";
 import { KinSectionHead } from "@/components/kin/SectionHead";
+import { KinPanel } from "@/components/kin/Panel";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
@@ -20,17 +21,19 @@ type Tab = "can-lam" | "cho-cham" | "ket-qua" | "de-thi";
 
 function Waiting({ list }: { list: StudentTodoItem[] }) {
   return (
+    <KinPanel flush className="mt-4">
     <ul aria-label="Chờ chấm">
       {list.map(i => i.task && (
         <TaskRow key={i.id} title={i.task.name} sub={`${i.task.courseLine} · ${i.task.sentText ?? ""}`} status={choCham} href={i.task.href} action="Xem bài nộp" />
       ))}
     </ul>
+    </KinPanel>
   );
 }
 
 function ResultTable({ list }: { list: StudentTodoItem[] }) {
   return (
-    <div>
+    <KinPanel flush className="mt-4">
       <div aria-hidden className="hidden md:grid grid-cols-[1.4fr_1fr_1.4fr] px-[var(--kin-kc-6)] h-11 items-center bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
         <span>Bài tập</span><span>Điểm</span><span>Phản hồi</span>
       </div>
@@ -46,7 +49,7 @@ function ResultTable({ list }: { list: StudentTodoItem[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </KinPanel>
   );
 }
 
@@ -57,12 +60,12 @@ function ExamBlock({ e, highlight }: { e: ScheduleEvent; highlight?: boolean }) 
     : <Link href={t.href} className={highlight ? kinButtonClass("secondary") : "inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline"}>Xem thông tin đề</Link>;
   if (highlight) {
     return (
-      <div data-exam-card className="rounded-[var(--kin-bo-sm)] bg-[var(--kin-nen-nhan)] px-[var(--kin-kc-8)] py-[var(--kin-kc-8)]">
+      <KinPanel variant="nhan" data-exam-card>
         <p className="text-[length:var(--kin-co-goc)]"><KinStatus tone="mo">Mở {dmOfKey(e.isoDate)} · {e.time}</KinStatus></p>
         <p className="mt-3 text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">{e.topic}</p>
         {e.meta && <p className="mt-3 text-[length:var(--kin-co-body)] text-[var(--kin-chu-chinh)]">{e.meta}</p>}
         <div className="mt-4">{link}</div>
-      </div>
+      </KinPanel>
     );
   }
   return (
@@ -100,6 +103,7 @@ export default function BaiTapDeThi() {
           Bài mới thầy cô giao sẽ hiện ở đây, mỗi trạng thái một khu riêng.
         </KinEmptyState>
       ) : (
+        <KinPanel flush className="mt-4">
         <ul aria-label="Cần làm">
           {todo.map(i => i.task ? (
             <TaskRow key={i.id} title={i.task.name} sub={`${i.task.courseLine} · ${i.task.dueText}`}
@@ -110,6 +114,7 @@ export default function BaiTapDeThi() {
               href={i.detail.commands[0]?.href ?? "/student/lich-hoc"} external={i.detail.commands[0]?.external} action={i.detail.commands[0]?.label ?? "Xem lịch"} />
           ))}
         </ul>
+        </KinPanel>
       )}
     </section>
   );
@@ -147,7 +152,7 @@ export default function BaiTapDeThi() {
               {exams.length > 1 && (
                 <section aria-labelledby="bt-next-exam" className="mt-8">
                   <KinSectionHead id="bt-next-exam" title="Thi thử sắp tới" />
-                  <ul>{exams.slice(1, 4).map(e => <ExamBlock key={e.id} e={e} />)}</ul>
+                  <KinPanel flush className="mt-4"><ul>{exams.slice(1, 4).map(e => <ExamBlock key={e.id} e={e} />)}</ul></KinPanel>
                 </section>
               )}
               <KinCallout title="Trước khi làm bài" className="mt-8">Chuẩn bị giấy nháp và kết nối ổn định.</KinCallout>
@@ -170,7 +175,7 @@ export default function BaiTapDeThi() {
         ) : (
           <section aria-labelledby="bt-exams">
             <KinSectionHead id="bt-exams" title="Đề thi" aside={<Link href="/thi-thu" className="text-[var(--kin-nhan-link)] underline">Tất cả đề thi thử</Link>} />
-            {exams.length === 0 ? noExams : <ul>{exams.map(e => <ExamBlock key={e.id} e={e} />)}</ul>}
+            {exams.length === 0 ? noExams : <KinPanel flush className="mt-4"><ul>{exams.map(e => <ExamBlock key={e.id} e={e} />)}</ul></KinPanel>}
           </section>
         )}
       </div>

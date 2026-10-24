@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
-import { KinCallout } from "@/components/kin/Callout";
+import { KinPanel } from "@/components/kin/Panel";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
 import { choCham, chuaNop, examTarget, nextExam, NextSession, TaskRow, todayLine, useStudentWork, WorkSkeleton } from "@/components/student/shared";
@@ -34,12 +34,13 @@ export default function ViecCuaToi() {
 
   const sessionBlock = next && <NextSession item={next} />;
   const examBlock = exam && (
-    <KinCallout title="Kiểm tra sắp mở">
-      <p>{exam.topic}{exam.meta ? ` · ${exam.meta}` : ""} · mở {dmOfKey(exam.isoDate)} lúc {exam.time}.</p>
+    <KinPanel>
+      <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Kiểm tra sắp mở</p>
+      <p className="mt-1.5 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-phu)]">{exam.topic}{exam.meta ? ` · ${exam.meta}` : ""} · mở {dmOfKey(exam.isoDate)} lúc {exam.time}.</p>
       {examTarget(exam).external
         ? <a href={examTarget(exam).href} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Xem thông tin đề</a>
         : <Link href={examTarget(exam).href} className="mt-1 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Xem thông tin đề</Link>}
-    </KinCallout>
+    </KinPanel>
   );
 
   return (
@@ -56,7 +57,7 @@ export default function ViecCuaToi() {
 
       {tutorPending && (
         <div role="status" data-tutor-pending className="mb-6">
-          <KinCallout title="Hồ sơ gia sư của bạn đang chờ quản trị duyệt.">KiN sẽ báo khi xong.</KinCallout>
+          <KinPanel variant="canh-bao"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Hồ sơ gia sư của bạn đang chờ quản trị duyệt.</p><p className="mt-1.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">KiN sẽ báo khi xong.</p></KinPanel>
         </div>
       )}
       {error && <ErrorStrip message="Không tải được danh sách." onRetry={load} />}
@@ -86,6 +87,7 @@ export default function ViecCuaToi() {
                   Bài mới thầy cô giao và hạn nộp sắp tới sẽ hiện ở đây.
                 </KinEmptyState>
               ) : (
+                <KinPanel flush className="mt-4">
                 <ul aria-label="Cần làm">
                   {todo.map(i => i.task ? (
                     <TaskRow key={i.id} title={i.task.name} sub={`${i.task.courseLine} · ${i.task.dueText}`}
@@ -96,17 +98,20 @@ export default function ViecCuaToi() {
                       href={i.detail.commands[0]?.href ?? "/student/lich-hoc"} external={i.detail.commands[0]?.external} action={i.detail.commands[0]?.label ?? "Xem lịch"} />
                   ))}
                 </ul>
+                </KinPanel>
               )}
             </section>
 
             {waiting.length > 0 && (
               <section aria-labelledby="vc-wait" className="mt-8">
                 <KinSectionHead id="vc-wait" title="Đã nộp · đang chờ chấm" />
+                <KinPanel flush className="mt-4">
                 <ul aria-label="Đã nộp, đang chờ chấm">
                   {waiting.map(i => i.task && (
                     <TaskRow key={i.id} title={i.task.name} sub={`${i.task.courseLine} · ${i.task.sentText ?? ""}`} status={choCham} href={i.task.href} action="Xem bài nộp" />
                   ))}
                 </ul>
+                </KinPanel>
                 <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bài đã nộp không nằm trong danh sách cần làm.</p>
               </section>
             )}
@@ -114,6 +119,7 @@ export default function ViecCuaToi() {
             {graded.length > 0 && (
               <section aria-labelledby="vc-done" className="mt-8">
                 <KinSectionHead id="vc-done" title="Kết quả gần đây" />
+                <KinPanel flush className="mt-4">
                 <ul aria-label="Kết quả gần đây">
                   {graded.map(i => i.task && (
                     <li key={i.id} data-student-task className="py-[var(--kin-kc-7)] px-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] flex items-start justify-between gap-4">
@@ -126,6 +132,7 @@ export default function ViecCuaToi() {
                     </li>
                   ))}
                 </ul>
+                </KinPanel>
               </section>
             )}
           </div>

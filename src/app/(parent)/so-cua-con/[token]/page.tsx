@@ -5,6 +5,7 @@
 //
 // Server component — không bắt client load thêm, PH mở mạng chậm cũng
 // thấy ngay.
+import { KinPanel } from "@/components/kin/Panel";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
@@ -165,14 +166,13 @@ export default async function SoCuaConPage({ params }: PageProps) {
           </div>
         ) : (
           <>
-            <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5 py-5 mb-6"
-              style={{ borderTop: "1px solid var(--kin-vien-nhat)", borderBottom: "1px solid var(--kin-vien-nhat)" }} aria-label="Tóm tắt tháng này">
+            <dl className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8" aria-label="Tóm tắt tháng này">
               {stats.map(st => (
-                <div key={st.label} className="min-w-0">
+                <KinPanel key={st.label} className="!p-4">
                   <dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{st.label}</dt>
                   <dd className="mt-1 text-[20px] leading-7 font-semibold tabular-nums break-words" style={{ color: "var(--kin-chu-chinh)" }}>{st.value}</dd>
                   <dd className="mt-0.5 text-xs" style={{ color: "var(--kin-chu-mo)" }}>{st.sub}</dd>
-                </div>
+                </KinPanel>
               ))}
             </dl>
 
@@ -218,7 +218,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 <SessionScores items={sessionScores} />
               </div>
 
-              <aside className="rounded-xl p-5 space-y-6 lg:sticky lg:top-4" style={{ background: "var(--kin-nen-bang)" }} aria-label="Học phí">
+              <KinPanel as="aside" className="space-y-6 lg:sticky lg:top-4" aria-label="Học phí">
                 {invoices.length > 0 && (
                   <section aria-labelledby="h-phieu">
                     <h2 id="h-phieu" className="text-sm font-semibold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Phiếu học phí</h2>
@@ -269,7 +269,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                     <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Gia sư chưa gửi phiếu học phí. Khi có phiếu, anh/chị sẽ thấy số tiền và cách chuyển khoản ở đây.</p>
                   </section>
                 )}
-              </aside>
+              </KinPanel>
             </div>
           </>
         )}

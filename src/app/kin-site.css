@@ -233,5 +233,6 @@ html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
 .kin-khung[data-kin-panel="loi"] { background: var(--kin-khung-loi-nen); border-color: var(--kin-khung-loi-vien); }
 .kin-khung[data-kin-panel="khoa-pro"] { background: transparent; border-style: dashed; border-color: var(--kin-vien-o-nhap); }
 /* Bọc cả danh sách/bảng: hàng cuối không kẻ đáy (khung đã có viền). */
+.kin-khung[data-flush] li:last-child,
 .kin-khung[data-flush] li:last-child > *,
 .kin-khung[data-flush] > [data-kin-list-row]:last-child { border-bottom-width: 0; }

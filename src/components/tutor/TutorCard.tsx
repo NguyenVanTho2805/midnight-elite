@@ -1,4 +1,5 @@
 // FE-157 — thẻ gia sư dùng chung (lưới /giang-vien và các nơi liệt kê gia sư). Tách nguyên văn từ trang danh sách, không đổi giao diện.
+import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
 import { kinButtonClass } from "@/components/kin/Button";
 import { MODE_LABEL, areaLine, hasPublicArea, priceText, type PublicArea } from "@/lib/tutorArea";
@@ -35,7 +36,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
   const subjectLine = [t.subjects.join(", "), where].filter(Boolean).join(" · ");
   const modeLine = area ? [area.mode ? MODE_LABEL[area.mode] : "", area.price !== null ? `giá tham khảo ${priceText(area.price)}` : ""].filter(Boolean).join(" · ") : "";
   return (
-    <article className="flex flex-col gap-4 py-5" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+    <KinPanel as="article" className="flex flex-col gap-4">
       <div className="flex items-start gap-4">
         <div className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-xl font-medium flex-shrink-0 overflow-hidden"
           style={{ background: "var(--kin-nen-dang-chon)", color: "var(--kin-th-navy)" }}>
@@ -92,14 +93,14 @@ export function TutorCard({ t }: { t: TutorListItem }) {
       <div className="flex">
         <Link href={`/mentor/${t.id}`} className={kinButtonClass("primary") + " flex-1 sm:flex-none"} aria-label={`Xem hồ sơ ${t.name}`}>Xem hồ sơ</Link>
       </div>
-    </article>
+    </KinPanel>
   );
 }
 
 export function TutorCardSkeleton() {
-  // FE-108: khung chờ khi đang tải — cùng dáng với thẻ mới (hàng không khung)
+  // FE-108: khung chờ khi đang tải — cùng dáng với thẻ mới (có khung KinPanel)
   return (
-    <div className="py-5 flex flex-col gap-4" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+    <div className="kin-khung flex flex-col gap-4">
       <div className="flex items-center gap-4">
         <div className="w-[52px] h-[52px] rounded-full animate-pulse" style={{ background: "var(--kin-vien-thuong)" }} />
         <div className="flex-1 space-y-2">

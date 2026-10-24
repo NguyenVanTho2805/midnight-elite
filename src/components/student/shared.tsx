@@ -1,6 +1,7 @@
 // Mảnh dùng chung của các màn học sinh dựng theo Figma (Việc của tôi 299:114360, Bài tập & đề thi 299:114951, Lịch học 299:114537):
 // dòng bài tập, khung buổi học tiếp theo, hàm tải việc + lịch, câu ngày. Chỉ có dữ liệu học sinh vốn thấy về chính mình.
 "use client";
+import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { StudentTodoItem } from "@/lib/studentTodo";
@@ -82,13 +83,13 @@ export function NextSession({ item, className = "" }: { item: StudentTodoItem; c
   const s = item.session;
   if (!s) return null;
   return (
-    <div data-next-session className={`rounded-[var(--kin-bo-sm)] bg-[var(--kin-nen-nhan)] px-[var(--kin-kc-8)] pt-[var(--kin-kc-8)] pb-[var(--kin-kc-8)] ${className}`}>
+    <KinPanel variant="nhan" data-next-session className={className}>
       <p className="text-[length:var(--kin-co-goc)] uppercase tracking-[0.02em] text-[var(--kin-chu-mo)]">Buổi học tiếp theo · {s.dayText}</p>
       <p className="mt-3 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{s.range}</p>
       <p className="mt-4 text-[length:var(--kin-co-tieu-de)] leading-6 text-[var(--kin-chu-chinh)]">{s.courseLine}</p>
       {s.topic && <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{s.topic}</p>}
       <Link href={s.href} className={`${kinButtonClass("primary")} mt-5`}>Vào lớp học</Link>
-    </div>
+    </KinPanel>
   );
 }
 

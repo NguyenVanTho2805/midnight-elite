@@ -84,7 +84,7 @@ function SoDoContent() {
         </KinStateCard>
       ) : (
         <>
-          <KinStatRow>
+          <KinStatRow boxed>
             <KinStat label="Gia sư có buổi đã dạy" value={data.tutors.teaching} hint={`Trên ${data.tutors.tutors} gia sư đang hiện công khai`} />
             <KinStat label={`Gia sư đăng ký · ${data.days} ngày`} value={data.activation.registered} hint="Theo ngày tạo tài khoản" />
             <KinStat label={`Phiếu học phí đã gửi · ${data.days} ngày`} value={data.invoices.zaloOpened.d} hint="Chỉ đếm phiếu, không đếm tiền" />

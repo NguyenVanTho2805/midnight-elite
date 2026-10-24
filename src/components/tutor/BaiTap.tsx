@@ -255,7 +255,7 @@ export default function BaiTap() {
                       return (
                         <li key={keyOf(i)}>
                           <button type="button" onClick={() => choose(i)} aria-pressed={on} data-bai-tap-row
-                            className={`w-full text-left px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] min-h-[var(--kin-cham-toi-thieu)] border-b border-[var(--kin-vien-nhat)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors ${on ? "bg-[var(--kin-nen-bang)]" : ""}`}>
+                            className={`w-full text-left px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] min-h-[var(--kin-cham-toi-thieu)] border-b border-[var(--kin-vien-nhat)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors ${on ? "bg-[var(--kin-nen-dang-chon)]" : ""}`}>
                             <span className="block text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] break-words">{i.title}</span>
                             <span className="mt-1 block text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{i.sub}</span>
                             <KinStatus tone={i.statusTone} className="mt-1.5">{i.statusLabel}</KinStatus>
