@@ -90,6 +90,9 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   check("bản học sinh có hướng dẫn cho học sinh nhưng KHÔNG có hướng dẫn chấm", (await prev.innerText()).includes("Viết lời giải rõ ràng") && !(await prev.innerText()).includes("GUI-CHAM-RIENG-UI"));
   await pg.getByRole("button", { name: "Lưu câu hỏi" }).click();
   await pg.getByText("Đã thêm câu hỏi").waitFor({ timeout: 30000 });
+  // Toast "Đã thêm câu hỏi" của câu 1 có thể còn trên màn → chờ theo DB và danh sách, không theo toast (sửa lỗi bài: đua với toast cũ).
+  await eventually("câu thứ 2 đã vào DB", async () => (await prisma.examQuestion.count({ where: { examId: qid } })) === 2);
+  await eventually("danh sách hiện 2 câu", async () => (await pg.getByRole("list", { name: "Danh sách câu hỏi" }).locator("li").count()) === 2);
 
   // Đáp án và phát hành
   await pg.getByRole("tab", { name: "Đáp án và phát hành" }).click();
@@ -98,12 +101,14 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   check("đã chọn lớp từ bước tạo: 'Đủ điều kiện phát hành'", await pg.getByText("Đủ điều kiện phát hành.").isVisible());
   await pg.getByLabel("Lớp", { exact: true }).selectOption({ value: "" });
   await pg.getByRole("button", { name: "Lưu cài đặt" }).click();
+  await eventually("đã gỡ lớp trong DB", async () => (await prisma.exam.findUnique({ where: { id: qid } }))?.courseId === null);
   await pg.getByText("Đã lưu cài đặt").waitFor({ timeout: 30000 });
   check("gỡ lớp: nút Phát hành khoá và nêu lý do bằng chữ", await pg.getByRole("button", { name: "Phát hành quiz" }).isDisabled() && await pg.getByText(/Chọn lớp sẽ làm quiz này/).isVisible());
   await pg.getByLabel("Lớp", { exact: true }).selectOption({ label: "Toán 9 (soạn quiz)" });
   await pg.getByLabel("Ngày mở").fill("2026-11-05");
   await pg.getByLabel("Thời lượng (phút)").fill("20");
   await pg.getByRole("button", { name: "Lưu cài đặt" }).click();
+  await eventually("đã lưu ngày/lớp trong DB", async () => (await prisma.exam.findUnique({ where: { id: qid } }))?.date === "05/11/2026");
   await pg.getByText("Đã lưu cài đặt").waitFor({ timeout: 30000 });
   check("DB: ngày 05/11/2026, 20 phút", await (async () => { const e = await prisma.exam.findUnique({ where: { id: qid } }); return e?.date === "05/11/2026" && e.duration === "20 phút" && e.courseId === course.id; })());
   await pg.getByRole("button", { name: "Phát hành quiz" }).click();
@@ -213,7 +218,8 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     const log = await prisma.examChangeLog.findFirst({ where: { examId: impId, kind: "import" } });
     return !!e && e.isDraft && e.examQuestions.length === 2 && !!log?.note?.includes("On-tap-phuong-trinh.png");
   });
-  check("trình soạn mở ra bản nháp vừa lưu với 2 câu; học sinh chưa thấy", await ip.getByText("Bản nháp · chưa phát hành").first().isVisible() && (await ip.getByRole("list", { name: "Danh sách câu hỏi" }).locator("li").count()) === 2);
+  // Trang trình soạn tải dữ liệu sau khi chuyển trang → chờ (sửa lỗi bài: kiểm ngay lúc chuyển trang, chưa tải xong).
+  await eventually("trình soạn mở ra bản nháp vừa lưu với 2 câu; học sinh chưa thấy", async () => await ip.getByText("Bản nháp · chưa phát hành").first().isVisible() && (await ip.getByRole("list", { name: "Danh sách câu hỏi" }).locator("li").count()) === 2);
 
   section("Điện thoại 390px");
   const mctx = await ctxFor(T, { width: 390, height: 844 });

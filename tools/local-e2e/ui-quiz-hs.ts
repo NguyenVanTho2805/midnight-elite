@@ -61,7 +61,7 @@ import { prisma } from "@/lib/prisma";
   const dlg = pg.getByRole("dialog", { name: "Nộp bài ngay?" });
   await dlg.waitFor({ timeout: 15000 });
   const dt = (await dlg.innerText()).replace(/\s+/g, " ");
-  check("ghi 'Em còn 1 câu chưa làm: Câu 2.' + tự luận chờ chấm + không sửa lại được", dt.includes("Em còn 1 câu chưa làm: Câu 2.") && dt.includes("chờ gia sư chấm") && dt.includes("không sửa lại được"), dt);
+  check("ghi 'Em còn 1 câu chưa làm: Câu N.' + tự luận chờ chấm + không sửa lại được", /Em còn 1 câu chưa làm: Câu \d+\./.test(dt) /* thứ tự câu được xáo mỗi lượt → số câu thay đổi, chỉ kiểm có nêu số */ && dt.includes("chờ gia sư chấm") && dt.includes("không sửa lại được"), dt);
   await dlg.getByRole("button", { name: "Làm tiếp" }).click();
   check("'Làm tiếp': lượt vẫn đang làm (DB)", (await prisma.examAttempt.findFirst({ where: { examId: ex.id } }))?.status === "in_progress");
 
@@ -73,7 +73,7 @@ import { prisma } from "@/lib/prisma";
   const doneText = (await pg.locator("body").innerText()).replace(/\s+/g, " ");
   check("'Máy chủ KiN đã nhận bài của em' + mã lượt KN-…", doneText.includes("Máy chủ KiN đã nhận bài của em") && /KN-[A-Z0-9]{8}/.test(doneText), doneText.slice(0, 400));
   check("nói rõ chờ gia sư chấm, điểm/đáp án chưa hiển thị", doneText.includes("chờ gia sư chấm") && doneText.includes("chưa hiển thị"));
-  check("KHÔNG có điểm dạng 'n/10' và KHÔNG có 'Hạng #'", !/\b\d+(\.\d+)?\s*\/\s*10\b/.test(doneText) && !doneText.includes("Hạng #"), doneText.slice(0, 300));
+  check("KHÔNG có điểm dạng 'n/10' (không tính ngày dd/10/yyyy) và KHÔNG có 'Hạng #'", !/(?<![\d\/])\d+(\.\d+)?\s*\/\s*10(?![\d\/])/.test(doneText) && !doneText.includes("Hạng #"), doneText.slice(0, 300));
   check("hết 1 lượt → không còn nút 'Thi lại đề này'", await pg.getByRole("button", { name: "Thi lại đề này" }).count() === 0);
   await shot(pg, "quiz-hs-da-nop");
   await pg.getByRole("button", { name: /Xem lại câu trả lời của em/ }).click();

@@ -76,9 +76,10 @@ import { regradeAttempt } from "@/lib/examGrading";
   const mp = await m.newPage(); watch(mp);
   await mp.goto(url, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByText("Danh sách bài nộp").waitFor({ timeout: 90000 });
+  await mp.addStyleTag({ content: "[data-agentation-root]{display:none!important}" }); // thanh công cụ dev (agentation) không phải của trang — nút của nó thấp là bình thường
   const over = async () => mp.evaluate(`document.documentElement.scrollWidth - window.innerWidth`) as Promise<number>;
   check("bài nộp: không tràn ngang", (await over()) <= 0, await over());
-  const small = await mp.locator("button:visible, a:visible").evaluateAll(els => els.filter(e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.height < 44 && !e.closest("nav") && !e.closest("[role=tablist]"); }).map(e => `${(e.textContent ?? "").trim().slice(0, 30)}:${Math.round(e.getBoundingClientRect().height)}`));
+  const small = await mp.locator("button:visible, a:visible").evaluateAll(els => els.filter(e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.height < 44 && !e.closest("nav") && !e.closest("[role=tablist]") && !e.hasAttribute("data-nextjs-dev-tools-button") && !(e.getAttribute("aria-label") ?? "").startsWith("KiN —"); }) /* bỏ nút công cụ dev của Next và logo vỏ gia sư: không thuộc trang chấm */.map(e => `${(e.textContent ?? "").trim().slice(0, 30)}:${Math.round(e.getBoundingClientRect().height)}`));
   check("mọi nút/liên kết trong trang cao ≥ 44px", small.length === 0, small);
   await mp.getByRole("button", { name: "Chấm bài" }).first().click();
   await mp.getByLabel(/^Điểm \/ 2/).waitFor({ timeout: 30000 });

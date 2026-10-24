@@ -283,9 +283,10 @@ function ExamEntryInner() {
       // Chỉ tới đây — máy chủ đã trả biên nhận — mới được coi là đã nộp.
       Object.values(draftTimers.current).forEach(clearTimeout);
       clearLocalDrafts(attempt.attemptId);
-      setSubmitInfo({ expired: !!result.expired, receipt: result.receipt ?? "", submittedAt: result.submittedAt ?? null });
+      setSubmitInfo({ expired: !!result.expired || autoSubmitted.current, /* tự nộp vì hết giờ thì luôn nói "Hết giờ", dù máy chủ nhận đúng sát hạn */ receipt: result.receipt ?? "", submittedAt: result.submittedAt ?? null });
       setMyResult({ score: result.score, totalPoints: result.totalPoints, rank: result.rank, pendingManual: !!result.pendingManual });
       setPhase("done");
+      setGate(null); loadGate(); // số lượt đã đổi: bỏ cổng cũ (còn nói "thi lại được") rồi tải lại, tránh nút "Thi lại đề này" sai
       refreshLeaderboardAndHistory();
     } catch {
       // Hết giờ mà chưa có xác nhận: ở lại màn "chưa xác nhận" (có nút thử lại), không giả vờ đã nộp.
