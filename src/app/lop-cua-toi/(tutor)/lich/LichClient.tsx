@@ -4,7 +4,7 @@
 //  • DỜI hoặc HUỶ một buổi chưa bắt đầu (hoàn thiện NV-189): học viên được báo trong ứng dụng, gia sư tự mở Zalo báo lớp.
 // Khi Hộp việc đang tắt, việc cần xử lý hiện thành chấm kèm chữ ngay trên đúng buổi (TT-203).
 "use client";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KinButton } from "@/components/kin";
@@ -18,7 +18,10 @@ import LichGrid from "./LichGrid";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { addDaysKey, buildGroupReminderMessage, dayOfWeekOfKey, describeLead, hmOf, vnDateKeyOf, vnMinutesOfDay, weekRangeOf } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
-import { classAccent } from "@/lib/classColor";
+import { classAccentFor } from "@/lib/classColor";
+import DiemDanhPanel from "@/components/tutor/DiemDanh";
+import ThemBuoiNhanh, { type QuickAddCourse, type QuickAddDefaults } from "@/components/tutor/ThemBuoiNhanh";
+import { KIND_LABEL, MODE_LABEL, JOIN_SOURCE_LABEL } from "@/lib/sessionBook";
 import { buildWeeklyScheduleMessage, coursesInWeek, occurrencesOfCourse } from "@/lib/weeklyScheduleMessage";
 import { sessionChangeMessage, CHANGE_REASON_MAX } from "@/lib/sessionChange";
 import type { ReminderItem, ScheduleOccurrence, ScheduleStudent } from "@/lib/reminderServer";
@@ -44,7 +47,7 @@ const ABSENCE_LABEL: Record<string, { tone: "ok" | "wait" | "neutral"; text: str
   voided:       { tone: "neutral", text: "Buổi đã huỷ — không tính phí, không buổi bù" },
 };
 
-interface ChangeDraft { occ: ScheduleOccurrence; kind: "cancel" | "move"; newDate: string; start: string; end: string; reason: string; error: string; busy: boolean }
+interface ChangeDraft { occ: ScheduleOccurrence; kind: "cancel" | "move"; newDate: string; start: string; end: string; reason: string; error: string; busy: boolean; conflicts: string[] | null }
 interface ChangeNotice { title: string; changeId: string | null; text: string; groupUrl: string | null; lines: string[] }
 
 // Màn rộng (≥ 1024px) dùng lưới tuần + cột chi tiết; hẹp hơn dùng danh sách theo ngày. Chỉ dựng MỘT trong hai (tránh nút/chữ trùng).
@@ -77,6 +80,10 @@ export default function LichClient() {
   const [weekCompose, setWeekCompose] = useState<{ courseId: string; courseName: string; from: string; text: string; groupUrl: string | null } | null>(null);
   const [weekOpened, setWeekOpened] = useState<Record<string, string>>({}); // "lớp|đầu tuần" → "HH:mm" đã mở Zalo (chỉ trong phiên)
   const seq = useRef(0);
+  const [hideCancelled, setHideCancelled] = useState(false);          // LI-03: lưu ở tài khoản
+  const [quickAdd, setQuickAdd] = useState<{ courses: QuickAddCourse[]; defaults?: QuickAddDefaults } | null>(null); // LI-11: ngăn kéo thêm buổi nhanh
+  const [attend, setAttend] = useState<ScheduleOccurrence | null>(null); // LI-05: điểm danh ngay từ Lịch
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (f: string, quiet = false) => {
     await Promise.resolve();
@@ -94,6 +101,33 @@ export default function LichClient() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load(from);
   }, [load, from]);
+
+  // LI-03: đọc bộ lọc đã lưu (ẩn buổi huỷ, lớp đang lọc). Lỗi mạng thì dùng mặc định, không chặn lịch.
+  useEffect(() => {
+    let alive = true;
+    void callApi<{ preferences: { calendar?: { hideCancelled?: boolean; courseId?: string | null } } }>("/api/users/me/preferences").then(r => {
+      if (!alive || !r.ok) return;
+      const c = r.data.preferences?.calendar;
+      if (c?.hideCancelled) setHideCancelled(true);
+      if (c?.courseId) setCls(c.courseId);
+    });
+    return () => { alive = false; };
+  }, []);
+  function savePrefs(patch: { hideCancelled?: boolean; courseId?: string | null }) {
+    void callApi("/api/users/me/preferences", { method: "PUT", body: JSON.stringify({ calendar: patch }) }).then(r => { if (!r.ok) notify.err("Chưa lưu được cách hiển thị lịch."); });
+  }
+  async function refresh() { setRefreshing(true); await load(from, true); setRefreshing(false); }
+
+  // LI-11: mở ngăn kéo thêm buổi; lấy danh sách lớp của gia sư lần đầu cần dùng.
+  async function openQuickAdd(defaults?: QuickAddDefaults) {
+    const r = await callApi<{ rows: { id: string; name: string }[] }>("/api/tutor/lop");
+    if (!r.ok) { notify.err("Chưa tải được danh sách lớp."); return; }
+    setQuickAdd({ courses: r.data.rows.map(x => ({ id: x.id, name: x.name })), defaults });
+  }
+  // LI-06: nhân bản = mở ngăn kéo với cùng lớp, cùng giờ, ngày +7 (gia sư đổi được).
+  function duplicate(o: ScheduleOccurrence) {
+    void openQuickAdd({ courseId: o.courseId, dateKey: addDaysKey(o.dateKey, 7), startTime: vnHm(o.startAt), endTime: vnHm(o.endAt), kind: "extra" });
+  }
 
   const todayKey = vnDateKeyOf(new Date());
   const days = Array.from({ length: 7 }, (_, i) => addDaysKey(from, i));
@@ -170,7 +204,7 @@ export default function LichClient() {
   function startChange(occ: ScheduleOccurrence, kind: "cancel" | "move") {
     setChanging({
       occ, kind, newDate: occ.dateKey, start: vnHm(occ.startAt), end: vnHm(occ.endAt),
-      reason: occ.change?.reason ?? "", error: "", busy: false,
+      reason: occ.change?.reason ?? "", error: "", busy: false, conflicts: null,
     });
   }
 
@@ -185,10 +219,15 @@ export default function LichClient() {
       method: "POST",
       body: JSON.stringify({
         scheduleId: c.occ.scheduleId, dateKey: c.occ.originalDateKey, kind: c.kind, reason: c.reason.trim() || undefined,
-        ...(c.kind === "move" ? { newDateKey: c.newDate, newStartTime: c.start, newEndTime: c.end || undefined } : {}),
+        ...(c.kind === "move" ? { newDateKey: c.newDate, newStartTime: c.start, newEndTime: c.end || undefined, checkConflicts: true, force: c.conflicts !== null } : {}),
       }),
     });
-    if (!r.ok) { setChanging({ ...c, busy: false, error: r.data.error ?? "Không lưu được, thử lại sau" }); return; }
+    if (!r.ok) {
+      // LI-10: giờ mới trùng lịch → hiện danh sách, nút đổi thành "Vẫn dời buổi" (gửi lại với force).
+      const cf = (r.data as { conflicts?: { text: string }[] }).conflicts;
+      if (r.status === 409 && (r.data as { needsConfirm?: boolean }).needsConfirm && cf) { setChanging({ ...c, busy: false, error: "", conflicts: cf.map(x => x.text) }); return; }
+      setChanging({ ...c, busy: false, error: r.data.error ?? "Không lưu được, thử lại sau" }); return;
+    }
     setChanging(null);
     const d = r.data;
     const lines = [
@@ -244,7 +283,7 @@ export default function LichClient() {
   }
 
   const allOccs = data?.occurrences ?? [];
-  const occs = cls ? allOccs.filter(o => o.courseId === cls) : allOccs;
+  const occs = allOccs.filter(o => (!cls || o.courseId === cls) && !(hideCancelled && o.status === "cancelled"));
   const occByDay = (k: string) => occs.filter(o => o.dateKey === k);
   const openOcc = occs.find(o => o.key === open) ?? null;
   const weekMsg = data && weekCourseId ? buildWeeklyScheduleMessage({ subject: weekCourses.find(c => c.id === weekCourseId)?.name ?? "", from, occurrences: occurrencesOfCourse(data.occurrences, weekCourseId) }) : "";
@@ -255,6 +294,7 @@ export default function LichClient() {
     occ: o, nowMs, busy, resolved, onResolve: resolve, onSendResolved: sendResolved,
     onCompose: (student: ScheduleStudent, item: ReminderItem) => setCompose({ occ: o, student, item, text: item.message }),
     onChange: (kind: "cancel" | "move") => startChange(o, kind), onRestore: () => void restore(o), onNotice: () => reopenNotice(o),
+    onAttend: () => setAttend(o), onDuplicate: () => duplicate(o),
     onGroup: () => setGroupCompose({ occ: o, text: buildGroupReminderMessage({ subject: o.courseName, startAt: new Date(o.startAt), joinUrl: o.joinUrl, now: new Date(data?.now ?? Date.now()) }) }),
   });
   /* eslint-enable react-hooks/refs */
@@ -292,7 +332,7 @@ export default function LichClient() {
         sub={<>Tuần {ddmm(from)} – {ddmm(addDaysKey(from, 6))}/{addDaysKey(from, 6).slice(0, 4)} · Giờ Việt Nam (GMT+7)</>}
         actions={<>
           <KinButton variant="secondary" onClick={() => setFrom(thisWeek)}>Hôm nay</KinButton>
-          <Link href="/lop-cua-toi/lop" className={kinButtonClass("primary")}>+ Thêm buổi</Link>
+          <KinButton onClick={() => void openQuickAdd({ dateKey: todayKey })}>+ Thêm buổi</KinButton>
         </>} />
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -303,15 +343,22 @@ export default function LichClient() {
           </span>
           <KinButton variant="ghost" className="px-2 sm:px-4" onClick={() => setFrom(addDaysKey(from, 7))}>Tuần sau ›</KinButton>
         </div>
-        {weekCourses.length > 1 && (
-          <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-            <span className="sr-only">Lọc theo lớp</span>
-            <select value={cls} onChange={e => { setCls(e.target.value); setOpen(null); }} aria-label="Lọc theo lớp" className="w-auto max-w-[240px] px-3 py-2 rounded-lg text-sm min-h-[44px] min-w-0 max-w-full" style={FIELD_STYLE}>
-              <option value="">Tất cả lớp</option>
-              {weekCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+        <div className="flex items-center gap-3 flex-wrap" role="group" aria-label="Bộ lọc lịch">
+          {weekCourses.length > 1 && (
+            <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+              <span className="sr-only">Lọc theo lớp</span>
+              <select value={cls} onChange={e => { setCls(e.target.value); setOpen(null); savePrefs({ courseId: e.target.value || null }); }} aria-label="Lọc theo lớp" className="w-auto max-w-[240px] px-3 py-2 rounded-lg text-sm min-h-[44px] min-w-0 max-w-full" style={FIELD_STYLE}>
+                <option value="">Tất cả lớp</option>
+                {weekCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="flex items-center gap-2 min-h-[44px] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+            <input type="checkbox" checked={hideCancelled} onChange={e => { setHideCancelled(e.target.checked); setOpen(null); savePrefs({ hideCancelled: e.target.checked }); }} />
+            Ẩn buổi đã huỷ
           </label>
-        )}
+          <KinButton variant="ghost" onClick={() => void refresh()} loading={refreshing} loadingLabel="Đang làm mới...">Làm mới</KinButton>
+        </div>
       </div>
 
       {/* Điện thoại: dải 7 ngày, bấm để nhảy tới ngày đó (lưới 7 cột không đọc được ở 390px) */}
@@ -441,15 +488,15 @@ export default function LichClient() {
           {changing.kind === "move" && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Ngày mới
-                <input type="date" value={changing.newDate} min={todayKey} onChange={e => setChanging(c => (c ? { ...c, newDate: e.target.value } : c))}
+                <input type="date" value={changing.newDate} min={todayKey} onChange={e => setChanging(c => (c ? { ...c, newDate: e.target.value, conflicts: null } : c))}
                   className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
               </label>
               <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Giờ bắt đầu mới
-                <input type="time" value={changing.start} onChange={e => setChanging(c => (c ? { ...c, start: e.target.value } : c))}
+                <input type="time" value={changing.start} onChange={e => setChanging(c => (c ? { ...c, start: e.target.value, conflicts: null } : c))}
                   className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
               </label>
               <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Giờ kết thúc mới
-                <input type="time" value={changing.end} onChange={e => setChanging(c => (c ? { ...c, end: e.target.value } : c))}
+                <input type="time" value={changing.end} onChange={e => setChanging(c => (c ? { ...c, end: e.target.value, conflicts: null } : c))}
                   className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
               </label>
             </div>
@@ -462,10 +509,17 @@ export default function LichClient() {
               Báo nghỉ sát giờ đang chờ của buổi này sẽ tự đóng (không tính phí, không buổi bù). Báo nghỉ đã xử lý giữ nguyên.
             </p>
           )}
+          {changing.conflicts && changing.conflicts.length > 0 && changing.kind === "move" && (
+            <div role="alert" data-conflicts className="mt-3 border-l-2 border-[var(--kin-tt-chu-loi)] bg-[var(--kin-nen-bang)] px-4 py-3 space-y-1">
+              <p className="font-medium text-[var(--kin-tt-chu-loi)]">Giờ mới trùng lịch</p>
+              <ul className="list-disc pl-5 text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{changing.conflicts.map((t, i) => <li key={i}>{t}</li>)}</ul>
+              <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Đổi ngày/giờ khác cho khỏi trùng, hoặc vẫn dời nếu bạn chắc chắn.</p>
+            </div>
+          )}
           {changing.error && <p role="alert" className="text-sm font-medium mt-3" style={{ color: "var(--kin-tt-chu-loi)" }}>{changing.error}</p>}
           <div className="flex gap-2 flex-wrap mt-4 justify-end">
             <KinButton variant="secondary" disabled={changing.busy} onClick={() => setChanging(null)}>Không đổi nữa</KinButton>
-            <KinButton loading={changing.busy} onClick={() => void submitChange()}>{changing.kind === "cancel" ? "Huỷ buổi này" : "Dời buổi"}</KinButton>
+            <KinButton variant={changing.conflicts && changing.kind === "move" ? "danger" : "primary"} loading={changing.busy} onClick={() => void submitChange()}>{changing.kind === "cancel" ? "Huỷ buổi này" : changing.conflicts ? "Vẫn dời buổi" : "Dời buổi"}</KinButton>
           </div>
         </Modal>
       )}
@@ -504,6 +558,22 @@ export default function LichClient() {
           </div>
         </Modal>
       )}
+      {attend && (
+        <Modal title={`Điểm danh — ${attend.courseName} · ${ddmm(attend.dateKey)}`} onClose={() => setAttend(null)} labelledBy="lich-diem-danh">
+          <Suspense fallback={<p aria-busy="true">Đang tải điểm danh…</p>}>
+            <DiemDanhPanel courseId={attend.courseId} embedded fixedDate={attend.dateKey} onChanged={() => void load(from, true)} />
+          </Suspense>
+          <div className="flex gap-2 flex-wrap mt-4 justify-end">
+            <Link href={`/lop-cua-toi/buoi/${encodeURIComponent(attend.courseId)}/${attend.dateKey}`} className={kinButtonClass("secondary")}>Mở trang buổi học</Link>
+            <KinButton variant="secondary" onClick={() => setAttend(null)}>Đóng</KinButton>
+          </div>
+        </Modal>
+      )}
+
+      {quickAdd && (
+        <ThemBuoiNhanh courses={quickAdd.courses} defaults={quickAdd.defaults} onClose={() => setQuickAdd(null)}
+          onCreated={({ dateKey }) => { setQuickAdd(null); notify.ok("Đã thêm buổi vào Lịch. Thêm buổi không tạo học phí."); setFrom(weekRangeOf(dateKey).from); void load(weekRangeOf(dateKey).from, true); }} />
+      )}
     </KinPage>
   );
 }
@@ -518,6 +588,8 @@ interface CardProps {
   onChange: (kind: "cancel" | "move") => void;
   onRestore: () => void;
   onNotice: () => void;
+  onAttend: () => void;
+  onDuplicate: () => void;
 }
 
 function OccurrenceCard(p: CardProps & { expanded: boolean; onToggle: () => void }) {
@@ -526,7 +598,7 @@ function OccurrenceCard(p: CardProps & { expanded: boolean; onToggle: () => void
   const cancelled = occ.status === "cancelled";
   const detailId = `chi-tiet-${occ.key}`;
   return (
-    <div className="rounded-lg overflow-hidden" style={{ ...CARD_STYLE, borderLeft: `3px solid ${cancelled ? "var(--kin-tt-cham-trung-tinh)" : classAccent(occ.courseId)}` }}>
+    <div className="rounded-lg overflow-hidden" style={{ ...CARD_STYLE, borderLeft: `3px solid ${cancelled ? "var(--kin-tt-cham-trung-tinh)" : classAccentFor(occ.courseId, occ.color)}` }}>
       <button type="button" onClick={p.onToggle} aria-expanded={p.expanded} aria-controls={detailId}
         className="w-full text-left px-3 py-2 flex items-center gap-3 min-h-[44px]">
         <span className="font-medium tabular-nums flex-shrink-0 text-sm" style={{ color: "var(--kin-chu-chinh)", textDecoration: cancelled ? "line-through" : undefined }}>{vnHm(occ.startAt)}–{vnHm(occ.endAt)}</span>
@@ -541,6 +613,9 @@ function OccurrenceCard(p: CardProps & { expanded: boolean; onToggle: () => void
         <span className="flex flex-col items-end gap-1 flex-shrink-0">
           {cancelled && <Badge tone="neutral">Đã huỷ</Badge>}
           {occ.status === "moved" && <Badge tone="neutral">Đã dời</Badge>}
+          {occ.mode && <Badge tone="neutral">{MODE_LABEL[occ.mode]}</Badge>}
+          {occ.kind !== "regular" && <Badge tone="neutral">{KIND_LABEL[occ.kind]}</Badge>}
+          {occ.sessionState === "closed" && <Badge tone="ok">Đã dạy xong</Badge>}
           {occ.pendingAbsences > 0 && <Badge tone="bad">{occ.pendingAbsences} báo nghỉ sát giờ</Badge>}
           {occ.remindersDue > 0 && <Badge tone="wait">{occ.remindersDue} tin nhắc chờ gửi</Badge>}
         </span>
@@ -571,11 +646,24 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
           {occ.status === "moved" && occ.movedFrom && <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã dời từ {WEEKDAY[dayOfWeekOfKey(occ.movedFrom.dateKey)]} {ddmm(occ.movedFrom.dateKey)} {vnHm(occ.movedFrom.startAt)}</p>}
         </div>
       )}
-        
-          <p className="text-sm pt-3" style={{ color: "var(--kin-chu-phu)" }}>
+
+          {/* LI-06: 5 thao tác nhanh. LI-05: bấm buổi → mở chi tiết, điểm danh ngay từ Lịch. */}
+          <div role="group" aria-label="Thao tác nhanh" data-quick-actions className="flex flex-wrap gap-2 pt-3">
+            <Link href={`/lop-cua-toi/buoi/${encodeURIComponent(occ.courseId)}/${dk}`} className={kinButtonClass("primary")}>Mở buổi</Link>
+            <KinButton variant="secondary" onClick={p.onAttend}>Điểm danh</KinButton>
+            {occ.kind === "regular" && !occ.started && occ.status === "scheduled" && <KinButton variant="secondary" onClick={() => p.onChange("move")}>Dời</KinButton>}
+            {occ.kind === "regular" && !occ.started && occ.status === "scheduled" && <KinButton variant="secondary" onClick={() => p.onChange("cancel")}>Báo nghỉ</KinButton>}
+            <KinButton variant="secondary" onClick={p.onDuplicate}>Nhân bản</KinButton>
+            {occ.kind === "regular" && <Link href={`/lop-cua-toi/lich/doi-buoi?scheduleId=${encodeURIComponent(occ.scheduleId)}&dateKey=${occ.originalDateKey}`} className={kinButtonClass("ghost")}>Dời và học bù</Link>}
+          </div>
+
+          <p className="text-sm pt-1" style={{ color: "var(--kin-chu-phu)" }}>
+            {occ.mode ? <>{MODE_LABEL[occ.mode]}{occ.mode === "offline" && occ.location ? ` · ${occ.location}` : ""}{" · "}</> : null}
             {occ.joinUrl
-              ? <>Link vào lớp: <a href={occ.joinUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--kin-nhan-link)" }}>{occ.joinUrl}</a></>
-              : <>Chưa có link vào lớp. Thêm ở tab <Link href={`/admin/khoa-hoc/${occ.courseId}?tab=lich-hoc`} className="underline" style={{ color: "var(--kin-nhan-link)" }}>Lịch học</Link> để tin nhắc có link.</>}
+              ? <>Link vào lớp ({occ.joinSource ? JOIN_SOURCE_LABEL[occ.joinSource] : "đã đặt"}): <a href={occ.joinUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--kin-nhan-link)" }}>{occ.joinUrl}</a></>
+              : occ.mode === "offline"
+                ? <>Học trực tiếp.</>
+                : <>Chưa có link vào lớp. Thêm ở tab <Link href={`/admin/khoa-hoc/${occ.courseId}?tab=lich-hoc`} className="underline" style={{ color: "var(--kin-nhan-link)" }}>Lịch học</Link> hoặc mở buổi để đặt link riêng.</>}
           </p>
 
           <p className="text-sm">
@@ -619,7 +707,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
             </div>
           )}
 
-          {!occ.started && (
+          {!occ.started && occ.kind === "regular" && (
             <div aria-label="Đổi lịch buổi này">
               <h3 className="text-sm font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Đổi lịch buổi này</h3>
               {occ.status === "scheduled" ? (
@@ -652,7 +740,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
             </div>
           )}
 
-          {!cancelled && (
+          {!cancelled && occ.kind === "regular" && (
           <div>
             <h3 className="text-sm font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Nhắc lịch</h3>
             <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>

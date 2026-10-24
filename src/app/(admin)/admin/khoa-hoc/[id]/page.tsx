@@ -2145,7 +2145,54 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
 
 // ─── TAB: LỊCH HỌC ─────────────────────────────────────────────────────────────
 const DAY_LABELS = DAY_LABELS_VI;
-const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "" };
+const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "", mode: "", location: "" };
+
+// LI-02 / LI-17: màu lớp trên Lịch (bảng 25 màu token) và link học online chung của lớp (ưu tiên thấp nhất: riêng buổi > khung giờ > chung lớp).
+function LopLichCaiDat({ courseSlug }: { courseSlug: string }) {
+  const [color, setColor] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/courses/${courseSlug}/calendar`, { credentials: "same-origin" }).then(r => r.ok ? r.json() : null).then(d => {
+      if (!alive) return;
+      if (d) { setColor(d.calendarColor ?? null); setUrl(d.classJoinUrl ?? ""); }
+      setLoaded(true);
+    }).catch(() => { if (alive) setLoaded(true); });
+    return () => { alive = false; };
+  }, [courseSlug]);
+  async function save() {
+    setSaving(true); setMsg(null);
+    const r = await fetch(`/api/courses/${courseSlug}/calendar`, { method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ calendarColor: color, classJoinUrl: url.trim() || null }) });
+    const d = await r.json().catch(() => ({}));
+    setSaving(false);
+    setMsg(r.ok ? { ok: true, text: "Đã lưu màu và link chung của lớp." } : { ok: false, text: d.error ?? "Chưa lưu được." });
+  }
+  return (
+    <div className="mb-6 p-4 rounded-xl border border-gray-200 space-y-3" data-lop-lich-cai-dat>
+      <p className="text-sm font-bold text-gray-800">Màu lớp và link học online chung</p>
+      <div role="radiogroup" aria-label="Màu lớp trên Lịch" className="flex flex-wrap gap-2">
+        {Array.from({ length: 25 }, (_, i) => `lop-${String(i + 1).padStart(2, "0")}`).map((k, i) => (
+          <button key={k} type="button" role="radio" aria-checked={color === k} aria-label={`Màu ${i + 1}`} onClick={() => setColor(color === k ? null : k)}
+            className="w-11 h-11 rounded-full" style={{ background: `var(--kin-${k})`, outline: color === k ? "3px solid var(--kin-chu-chinh)" : "none", outlineOffset: 2 }} />
+        ))}
+      </div>
+      <p className="text-xs text-gray-400">{color ? `Đã chọn màu ${Number(color.slice(4))}. Bấm lại để bỏ chọn (về màu tự động).` : "Chưa chọn: Lịch dùng màu tự động theo lớp."}</p>
+      <div>
+        <label htmlFor="lop-link-chung" className="block text-xs font-medium text-gray-500 mb-1">Link học online chung của lớp (tuỳ chọn)</label>
+        <input id="lop-link-chung" type="url" placeholder="https://meet.google.com/..." value={url} onChange={e => setUrl(e.target.value)} disabled={!loaded}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+        <p className="text-xs text-gray-400 mt-1">Dùng khi buổi không có link riêng và khung giờ không có link. Thứ tự: riêng buổi, rồi khung giờ, rồi chung của lớp.</p>
+      </div>
+      {msg && <p role="status" className={`text-xs ${msg.ok ? "text-gray-600" : "text-red-500"}`}>{msg.text}</p>}
+      <button onClick={() => void save()} disabled={saving || !loaded} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
+        {saving ? "Đang lưu..." : "Lưu màu và link"}
+      </button>
+    </div>
+  );
+}
 
 function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
@@ -2155,6 +2202,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [form, setForm]           = useState(SCHEDULE_FORM_INIT);
   const [saving, setSaving]       = useState(false);
   const [err, setErr]             = useState("");
+  const [clash, setClash]         = useState<string[] | null>(null); // LI-10: xung đột lịch khi lưu khung giờ
 
   const load = useCallback(() => {
     setLoading(true);
@@ -2167,8 +2215,16 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
     setErr("");
     setSaving(true);
     try {
-      await api.classSchedules.create(courseSlug, form);
+      // LI-10: xin máy chủ kiểm xung đột trước khi lưu; có xung đột thì hiện danh sách và cho chọn "Vẫn lưu" (gửi lại với force).
+      const res = await fetch(`/api/courses/${courseSlug}/class-schedules`, {
+        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...form, mode: form.mode || null, location: form.mode === "offline" ? form.location : null, checkConflicts: true, force: clash !== null }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.status === 409 && d.needsConfirm) { setClash((d.conflicts as { text: string }[]).map(c => c.text)); return; }
+      if (!res.ok) throw new Error(d.error ?? "Thêm khung giờ thất bại");
       setForm(SCHEDULE_FORM_INIT);
+      setClash(null);
       setAdding(false);
       load();
     } catch (e) {
@@ -2202,6 +2258,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   return (
     <div>
       {dialog}
+      <LopLichCaiDat courseSlug={courseSlug} />
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <p className="text-sm font-bold text-gray-800">Khung giờ học cố định hàng tuần</p>
@@ -2221,19 +2278,19 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Thứ</label>
-              <select value={form.dayOfWeek} onChange={e => setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) }))}
+              <select value={form.dayOfWeek} onChange={e => { setClash(null); setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) })); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
                 {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Giờ bắt đầu</label>
-              <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
+              <input type="time" value={form.startTime} onChange={e => { setClash(null); setForm(f => ({ ...f, startTime: e.target.value })); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Giờ kết thúc</label>
-              <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
+              <input type="time" value={form.endTime} onChange={e => { setClash(null); setForm(f => ({ ...f, endTime: e.target.value })); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
             </div>
           </div>
@@ -2242,17 +2299,38 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
             <input type="text" placeholder="VD: Học live qua Zoom" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="lich-mode" className="block text-xs font-medium text-gray-500 mb-1">Hình thức (tuỳ chọn)</label>
+              <select id="lich-mode" value={form.mode} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
+                <option value="">Chưa chọn</option><option value="online">Online</option><option value="offline">Offline</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="lich-loc" className="block text-xs font-medium text-gray-500 mb-1">Địa chỉ học offline</label>
+              <input id="lich-loc" type="text" disabled={form.mode !== "offline"} placeholder={form.mode === "offline" ? "Số nhà, đường, quận" : "Chỉ dùng khi học offline"} value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none disabled:opacity-60" />
+            </div>
+          </div>
           <div>
             <label htmlFor="lich-join-url" className="block text-xs font-medium text-gray-500 mb-1">Link vào lớp (Meet/Zoom, tuỳ chọn)</label>
             <input id="lich-join-url" type="url" placeholder="https://meet.google.com/..." value={form.joinUrl} onChange={e => setForm(f => ({ ...f, joinUrl: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
             <p className="text-xs text-gray-400 mt-1">In vào tin nhắc lịch gửi phụ huynh và học sinh. Để trống thì tin bỏ dòng link.</p>
           </div>
+          {clash && clash.length > 0 && (
+            <div role="alert" data-conflicts className="p-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700 space-y-1">
+              <p className="font-semibold">Khung giờ này trùng lịch</p>
+              <ul className="list-disc pl-5">{clash.map((t, i) => <li key={i}>{t}</li>)}</ul>
+              <p>Đổi thứ/giờ cho khỏi trùng, hoặc vẫn lưu nếu bạn chắc chắn.</p>
+            </div>
+          )}
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
-            <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
+            <button onClick={() => { setAdding(false); setErr(""); setClash(null); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
             <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
-              {saving ? "Đang lưu..." : "Lưu khung giờ"}
+              {saving ? "Đang lưu..." : clash ? "Vẫn lưu khung giờ" : "Lưu khung giờ"}
             </button>
           </div>
         </div>
@@ -2272,6 +2350,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
                 {DAY_LABELS[s.dayOfWeek]}
               </span>
               <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
+              {s.mode && <span className="text-xs text-gray-500 flex-shrink-0">{s.mode === "offline" ? `Offline${s.location ? ` · ${s.location}` : ""}` : "Online"}</span>}
               {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
               {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "var(--kin-nhan-link)" }}>Link vào lớp</a>}
               {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
