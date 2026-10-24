@@ -173,6 +173,16 @@ export default function DoiBuoiHocBu() {
                 <textarea id="db-lydo" rows={2} maxLength={300} value={reason} onChange={e => setReason(e.target.value)} className={`${KIN_FIELD} mt-2 py-2`} /></div>
             )}
 
+            <section aria-labelledby="db-lienket" data-db-lienket>
+              <KinSectionHead id="db-lienket" title="Liên kết và người bị ảnh hưởng" />
+              <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                {choice === "makeup" ? `Buổi bù → ${o.courseName} / buổi gốc ${wd(o.originalDateKey)}.` : choice === "move" ? `Buổi dời → ${o.courseName} / buổi gốc ${wd(o.originalDateKey)}.` : `Huỷ → ${o.courseName} / buổi gốc ${wd(o.originalDateKey)}.`}
+              </p>
+              <p className="pt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+                {o.students.length} học sinh của lớp thuộc buổi này. Chưa bấm nút xác nhận thì lịch hiện có và số buổi của lớp chưa đổi.
+              </p>
+            </section>
+
             {error && <p role="alert" className="text-sm font-medium" style={{ color: "var(--kin-tt-chu-loi)" }}>{error}</p>}
             <div className="flex gap-2 flex-wrap">
               <Link href="/lop-cua-toi/lich" className={kinButtonClass("secondary")}>Không đổi nữa</Link>

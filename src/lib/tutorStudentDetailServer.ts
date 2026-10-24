@@ -40,6 +40,8 @@ export interface StudentDetail {
   makeupLeft: number;
   assignments: AssignmentRow[];
   report: { state: ReportLinkState; links: ReportLinkRow[] };
+  /** Số đếm CHỈ ĐỌC cho màn "Xem ảnh hưởng khi xoá": buổi có ghi điểm danh, phiếu, buổi có điểm (null = chưa có đồng ý ghi điểm nên không đếm). */
+  impact: { sessions: number; invoices: number; scores: number | null };
 }
 
 export async function loadStudentDetail(tutorId: string, user: { id: string; name: string; email: string; phone: string | null; school: string | null }, now: Date = new Date()): Promise<StudentDetail> {
@@ -91,6 +93,11 @@ export async function loadStudentDetail(tutorId: string, user: { id: string; nam
     scoreItems = raw.map(r => ({ dateKey: r.session.date.toISOString().slice(0, 10), courseName: courseName.get(r.session.courseId) ?? "Lớp", score: r.score, homeworkPct: r.homeworkPct }));
   }
 
+  const [impactSessions, impactInvoices, impactScores] = await Promise.all([
+    prisma.attendanceRecord.count({ where: { userId: user.id, session: { courseId: { in: courseIds } } } }),
+    prisma.tuitionInvoice.count({ where: { tutorId, studentId: user.id } }),
+    gate?.ok ? prisma.sessionStudentScore.count({ where: { userId: user.id, tutorId } }) : Promise.resolve(null),
+  ]);
   const state = reportLinkOf(links);
   return {
     student: { userId: user.id, name: user.name, email: user.email, phone: user.phone, school: user.school },
@@ -111,6 +118,7 @@ export async function loadStudentDetail(tutorId: string, user: { id: string; nam
         state: !sub ? "not_submitted" : sub.gradedAt ? "graded" : "waiting", score: sub?.gradedAt ? sub.score : null,
       } satisfies AssignmentRow;
     }),
+    impact: { sessions: impactSessions, invoices: impactInvoices, scores: impactScores },
     report: { state, links: links.map(l => ({ linkId: l.id, state: l.portalToken ? "on" : "off", url: l.portalToken ? reportPath(l.portalToken) : null }) as ReportLinkRow) },
   };
 }
