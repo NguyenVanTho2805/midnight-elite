@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cronSecretMissingIsFatal } from "@/lib/adminOps";
+import { recordCronRun } from "@/lib/adminOpsServer";
 import { prisma } from "@/lib/prisma";
 import { sendClassReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
@@ -24,7 +26,11 @@ export async function GET(req: NextRequest) {
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
     }
+  } else if (cronSecretMissingIsFatal()) {
+    // QT-03: bản chạy thật thiếu CRON_SECRET thì ĐÓNG (trước đây thiếu khoá là mở công khai); máy thử vẫn chạy được.
+    return NextResponse.json({ error: "Chưa cấu hình CRON_SECRET" }, { status: 503 });
   }
+  await recordCronRun("remind-class"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
 
   // NC2-011: tin "Hôm qua có N buổi chưa điểm danh" (gia sư). Chạy SAU phần nhắc học viên để nếu nó chậm / hết giờ thì nhắc lịch học viên ngày mai
   // (việc cũ, quan trọng hơn) đã đi rồi; nhưng phải gọi ở CẢ hai nhánh trả về, vì phần nhắc học viên thoát sớm khi ngày mai không có buổi nào.

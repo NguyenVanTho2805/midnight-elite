@@ -14,6 +14,8 @@ import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import PhoneLoginCard from "@/components/account/PhoneLoginCard";
 import PushSettings from "@/components/tutor/PushSettings";
 import { FIELD_STYLE } from "@/components/tutor/shared";
+import { KinPanel, KinStatus } from "@/components/kin";
+import type { QuotaCard } from "@/lib/tutorQuota";
 
 const ROWS = "divide-y divide-[var(--kin-vien-nhat)]";
 const NOTE = { background: "var(--kin-nen-trang)", border: "1px dashed var(--kin-vien-thuong)" } as const;
@@ -35,7 +37,7 @@ function Switch({ id, checked, disabled, busy, onChange, label, hint }: { id: st
 
 export interface ClassLink { id: string; name: string; zaloGroupUrl: string | null }
 
-export default function CaiDatClient({ initial, classes, phone }: { initial: UserPreferences; classes: ClassLink[]; phone: string | null }) {
+export default function CaiDatClient({ initial, classes, phone, quota = null }: { initial: UserPreferences; classes: ClassLink[]; phone: string | null; quota?: QuotaCard[] | null }) {
   const router = useRouter();
   const notify = useNotify();
   const [prefs, setPrefs] = useState<UserPreferences>(initial);
@@ -186,6 +188,45 @@ export default function CaiDatClient({ initial, classes, phone }: { initial: Use
           <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Zalo OA <span className="ml-1 text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>(đang khoá)</span></p>
           <p className="text-[length:var(--kin-co-goc)] mt-1" style={{ color: "var(--kin-chu-phu)" }}>Gửi tin tự động cần Zalo OA đã xác thực, mở khi KiN có pháp nhân. Cho tới lúc đó KiN soạn sẵn tin và bạn tự bấm gửi.</p>
         </div>
+
+        <h3 className="text-[length:var(--kin-co-tieu-de)] font-medium mt-8" style={{ color: "var(--kin-chu-chinh)" }}>Google và lưu trữ</h3>
+        <p className="text-[length:var(--kin-co-goc)] mt-1 mb-2" style={{ color: "var(--kin-chu-phu)" }}>KiN chưa kết nối với tài khoản Google nào và không xin quyền truy cập Google. Dưới đây là những gì đang có thật.</p>
+        <ul className="space-y-3" data-testid="ket-noi-google">
+          <li className="rounded-lg p-3" style={NOTE} data-conn="calendar">
+            <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Google Calendar <KinStatus tone="mo" className="ml-2">Chưa có</KinStatus></p>
+            <p className="text-[length:var(--kin-co-goc)] mt-1" style={{ color: "var(--kin-chu-phu)" }}>Chưa có đồng bộ lịch. Lịch lớp xem ngay trên KiN, ở trang Lịch.</p>
+          </li>
+          <li className="rounded-lg p-3" style={NOTE} data-conn="meet">
+            <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Google Meet <KinStatus tone="mo" className="ml-2">Chưa có tích hợp</KinStatus></p>
+            <p className="text-[length:var(--kin-co-goc)] mt-1" style={{ color: "var(--kin-chu-phu)" }}>KiN không tạo phòng họp. Bạn dán link Meet hoặc Zoom của riêng bạn vào từng lớp; link đó được in vào tin nhắc lịch.</p>
+          </li>
+          <li className="rounded-lg p-3" style={NOTE} data-conn="drive">
+            <p className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Google Drive <KinStatus tone="mo" className="ml-2">Chưa có tích hợp</KinStatus></p>
+            <p className="text-[length:var(--kin-co-goc)] mt-1" style={{ color: "var(--kin-chu-phu)" }}>Bạn dán link chia sẻ Drive vào bài giảng hoặc tài liệu; KiN chỉ mở link đó, không đọc Drive của bạn.</p>
+          </li>
+        </ul>
+
+        {quota && (
+          <div className="mt-8" data-testid="the-han-muc">
+            <h3 className="text-[length:var(--kin-co-tieu-de)] font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Hạn mức và dung lượng</h3>
+            <p className="text-[length:var(--kin-co-goc)] mt-1 mb-3" style={{ color: "var(--kin-chu-phu)" }}>Chỉ để xem số đang dùng. Mục nào chưa có hạn mức thì ghi rõ là chưa có.</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {quota.map(c => (
+                <KinPanel key={c.key} data-quota={c.key}>
+                  <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>{c.label}</p>
+                  <p className="mt-1 text-[22px] leading-7 font-medium tabular-nums break-words" style={{ color: "var(--kin-chu-chinh)" }}>{c.value}</p>
+                  {c.pct !== null && (
+                    <div className="mt-2 h-2 rounded-full" style={{ background: "var(--kin-vien-nhat)" }} role="progressbar" aria-label={`${c.label}: ${c.pct}%`} aria-valuenow={c.pct} aria-valuemin={0} aria-valuemax={100}>
+                      <div className="h-2 rounded-full" style={{ width: `${c.pct}%`, background: c.tone === "loi" ? "var(--kin-tt-chu-loi)" : c.tone === "cho" ? "var(--kin-tt-cham-cho)" : "var(--kin-tt-cham-xong)" }} />
+                    </div>
+                  )}
+                  <div className="mt-2"><KinStatus tone={c.tone}>{c.stateText}</KinStatus></div>
+                  <p className="mt-1 text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>{c.hint}</p>
+                </KinPanel>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       </div>

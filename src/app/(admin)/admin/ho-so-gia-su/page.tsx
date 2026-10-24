@@ -1,6 +1,7 @@
 // FE-138 — trang duyệt hồ sơ gia sư. Quản lý trung tâm (admin_super,
 // admin_content) mới vào được; gia sư (teacher) không tự duyệt nhau.
 "use client";
+import Link from "next/link";
 import { KinCallout } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import TutorApplicationsPanel from "@/components/admin/TutorApplicationsPanel";
@@ -16,6 +17,9 @@ export default function HoSoGiaSuPage() {
             Xem giới thiệu và môn dạy của người nộp đơn rồi duyệt hoặc từ chối. Duyệt xong người đó đăng nhập lại để bắt đầu tạo lớp.
           </p>
         </div>
+        <KinCallout title="Cửa duyệt chính là hàng chờ kiểm duyệt">
+          Hồ sơ mới cũng hiện ở <Link href="/admin/kiem-duyet" className="font-medium underline text-[var(--kin-nhan-link)]">Hàng chờ</Link>, cùng chỗ với các báo cáo. Trang này giữ lại để xem cả hồ sơ đã duyệt hoặc đã từ chối.
+        </KinCallout>
         <TutorApplicationsPanel />
         <KinCallout title="Duyệt hồ sơ không phải xác minh chuyên môn">
           Trường học, bằng cấp và chứng chỉ vẫn mang nhãn “Tự khai” sau khi được duyệt. KiN chỉ kiểm nội dung công khai.

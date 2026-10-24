@@ -38,12 +38,14 @@ import { prisma } from "@/lib/prisma";
   section("Thanh module và hàng chờ");
   await pg.goto(`${ADMIN}/admin/kiem-duyet`, { waitUntil: "networkidle", timeout: 120000 });
   await lb().waitFor({ timeout: 90000 });
-  check("nhãn 'QUẢN TRỊ' + 4 module (Kiểm duyệt, Người dùng, Nội dung, Báo cáo)", await rail().getByText("QUẢN TRỊ").isVisible() && (await rail().getByRole("link").count()) === 4);
+  // Lỗi thời từ 23/10/2026: module "Cài đặt" (Gói KiN Pro, Hỗ trợ gia sư) đã thêm module thứ 5; số cũ 4 chưa được cập nhật.
+  check("nhãn 'QUẢN TRỊ' + 5 module (Kiểm duyệt, Người dùng, Nội dung, Báo cáo, Cài đặt)", await rail().getByText("QUẢN TRỊ").isVisible() && (await rail().getByRole("link").count()) === 5);
   check("'Kiểm duyệt' đang ở (aria-current=page, đúng một nút)", await mod("Kiểm duyệt").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
   check(`badge '${TOTAL}' có nhãn chữ '${TOTAL} việc cần xử lý'`, (await badge().innerText()) === String(TOTAL) && (await badge().getAttribute("aria-label")) === `${TOTAL} việc cần xử lý`);
   check("badge CHỈ nằm trên Kiểm duyệt", await rail().locator(".kin-badge-dem").count() === 1 && (await mod("Kiểm duyệt").locator(".kin-badge-dem").count()) === 1);
   const tabs = pg.getByRole("navigation", { name: "Trang của Kiểm duyệt" });
-  check("dải tab 5 trang con, 'Hàng chờ' đang ở", (await tabs.getByRole("link").count()) === 5 && await tabs.getByRole("link", { name: "Hàng chờ" }).getAttribute("aria-current") === "page");
+  // 24/10/2026 (QT-02): thêm tab "Nhật ký" cho cấp 1 → 6 trang con.
+  check("dải tab 6 trang con (có 'Nhật ký'), 'Hàng chờ' đang ở", (await tabs.getByRole("link").count()) === 6 && await tabs.getByRole("link", { name: "Nhật ký" }).isVisible() && await tabs.getByRole("link", { name: "Hàng chờ" }).getAttribute("aria-current") === "page");
   check("thanh bên cũ (neumorphic) và dòng 'Hệ thống hoạt động bình thường' giả không còn", await pg.getByLabel("Menu quản trị").count() === 0 && await pg.getByText("Hệ thống hoạt động bình thường").count() === 0);
   const opts = lb().getByRole("option");
   check(`${TOTAL} dòng; dòng đầu đang chọn; chờ lâu nhất đứng đầu (hồ sơ gia sư)`, await opts.count() === TOTAL && await opts.nth(0).getAttribute("aria-selected") === "true" && /Gia sư chờ duyệt/.test(await opts.nth(0).innerText()), await opts.count());
@@ -129,7 +131,8 @@ import { prisma } from "@/lib/prisma";
   const railC = pc.getByRole("navigation", { name: railName });
   await railC.waitFor({ timeout: 90000 });
   const namesC = await railC.getByRole("link").allInnerTexts();
-  check("3 module: Kiểm duyệt, Nội dung, Báo cáo", namesC.length === 3 && !namesC.some(n => /Người dùng/.test(n)), namesC);
+  // Lỗi thời từ 23/10/2026: quản trị nội dung có MANAGE_TUTORS nên thấy module Cài đặt (Hỗ trợ gia sư) → 4 module; điều test thật sự giữ là KHÔNG có 'Người dùng'.
+  check("4 module: Kiểm duyệt, Nội dung, Báo cáo, Cài đặt (không có Người dùng)", namesC.length === 4 && !namesC.some(n => /Người dùng/.test(n)), namesC);
   await cc.close();
 
   section("Giáo viên: chỉ thấy phần của mình (14/10: ở LẠI tên miền chính, trong vỏ gia sư — không sang tên miền quản trị)");
@@ -175,7 +178,7 @@ import { prisma } from "@/lib/prisma";
   const bb = await bar.boundingBox();
   check("thanh module thành thanh dưới cao 60px, dính đáy; chỉ một thanh module hiện", !!bb && Math.round(bb.height) === 60 && Math.round(bb.y + bb.height) === 800 && await pm.getByRole("navigation", { name: railName }).count() === 1, bb);
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  check("4 nút thanh dưới, mỗi nút cao ≥ 44px", hit.length === 4 && hit.every(h => h >= 44), hit);
+  check("5 nút thanh dưới (5 module), mỗi nút cao ≥ 44px", hit.length === 5 && hit.every(h => h >= 44), hit);
   check("không tràn ngang; dải tab cuộn ngang được trong khung của nó", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   check("điện thoại: thấy danh sách, chưa thấy khung đọc", await lbm.isVisible() && await pm.getByRole("heading", { level: 1 }).count() === 0);
   await shot(pm, "admin-shell-kiem-duyet-mobile");

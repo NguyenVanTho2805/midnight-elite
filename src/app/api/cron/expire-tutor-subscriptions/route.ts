@@ -15,6 +15,8 @@
 // Bearer CRON_SECRET nếu env có — chống gọi ngoài.
 
 import { NextRequest, NextResponse } from "next/server";
+import { cronSecretMissingIsFatal } from "@/lib/adminOps";
+import { recordCronRun } from "@/lib/adminOpsServer";
 import { prisma } from "@/lib/prisma";
 import { logAction } from "@/lib/auditLog";
 
@@ -27,7 +29,11 @@ export async function GET(req: NextRequest) {
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
     }
+  } else if (cronSecretMissingIsFatal()) {
+    // QT-03: bản chạy thật thiếu CRON_SECRET thì ĐÓNG (trước đây thiếu khoá là mở công khai); máy thử vẫn chạy được.
+    return NextResponse.json({ error: "Chưa cấu hình CRON_SECRET" }, { status: 503 });
   }
+  await recordCronRun("expire-tutor-subscriptions"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
 
   const now = new Date();
   const expired: { id: string; userId: string; planCode: string }[] = [];
