@@ -141,8 +141,9 @@ function Detail({ item, onGraded }: { item: BaiTapItem; onGraded: () => void }) 
       <div className="mt-6">
         {item.kind === "exam" ? (
           <KinCallout title="Đề thi">
-            <p>Soạn câu hỏi, xem đáp án, phát hành và các phiên bản của đề này ở trang quiz.</p>
+            <p>{item.ungraded > 0 ? `${item.ungraded} bài đang chờ cô chấm tự luận. ` : ""}Chấm tự luận, công bố điểm, xem lượt làm và phân tích kết quả của đề này; soạn câu hỏi và phiên bản ở trang quiz.</p>
             <div className="mt-3 flex flex-wrap gap-3">
+              <Link href={`/lop-cua-toi/bai-tap/de/${item.id}`} className={kinButtonClass("primary")}>Chấm và theo dõi</Link>
               <Link href={item.href} className={kinButtonClass("secondary")}>Mở đề thi</Link>
               <Link href={`${item.href}/phien-ban`} className={kinButtonClass("secondary")}>Phiên bản</Link>
             </div>
