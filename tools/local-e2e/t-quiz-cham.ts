@@ -99,7 +99,7 @@ async function mkAttempt(e: E, userId: string, o: { q1: boolean; q2: boolean; es
   check("review: điểm và nhận xét tự luận null", essayQ.pointsAwarded === null && essayQ.teacherComment === null, essayQ);
   check("review: không câu MC nào lộ isCorrect", r2.json.questions.filter((q: any) => q.type === "MC").every((q: any) => q.options.every((o: any) => o.isCorrect === null) && q.explanation === null));
   check("lịch sử lượt của học sinh: score null", r3.json.every((a: any) => a.score === null && a.held === true), r3.json);
-  check("nộp lại (idempotent): không trả điểm/hạng", r4.status === 200 && r4.json.score === null && r4.json.held === true && r4.json.rank === 0, r4.json);
+  check("nộp lại (idempotent): không trả điểm/hạng", r4.status === 200 && r4.json.score === null && r4.json.held === true && r4.json.rank === null, r4.json); // hợp nhất với phòng thi (QZ-11): chưa có hạng = null (không phải 0)
   check("chữa bài chưa mở trong lúc giữ điểm", r5.status === 200 && r5.json.available === false && r5.json.items.length === 0, r5.json);
   check("NGUYÊN VĂN mọi phản hồi phía học sinh không chứa nhận xét bí mật, không chứa '8.75'", bodies.every(t => !t.includes(SECRET) && !t.includes("8.75") && !t.includes("ĐÁP-ÁN-THAM-KHẢO")), bodies.map(t => t.slice(0, 120)));
   check("bảng xếp hạng (ExamResult) chưa có B trong lúc giữ điểm", (await prisma.examResult.count({ where: { examId: E1.exam.id, userId: s2.id } })) === 0);

@@ -141,6 +141,11 @@ const listIds = async (as: TUser): Promise<string[]> => {
   for (const o of [...correct, wrong[0]]) await api("PATCH", `/api/exams/attempts/${att3}/answer-bool`, { as: S2, body: { optionId: o, answerTrue: true } });
   await api("POST", `/api/exams/attempts/${att3}/submit`, { as: S2 });
   check("PHÁ: tích đủ đáp án đúng nhưng thêm một ô sai → 0 điểm câu đó (không trừ điểm âm)", (await prisma.examAttempt.findUnique({ where: { id: att3 } }))!.score === 0);
+  // Hợp nhất công bố: quiz CÓ tự luận tạo mới mặc định GIỮ điểm → chưa công bố thì xem lại không lộ đáp án đúng/điểm; gia sư công bố (dòng exam_attempt_publishes) rồi mới thấy.
+  const rvHeld = await api("GET", `/api/exams/attempts/${att}/review`, { as: S });
+  check("quiz có tự luận mới (chưa công bố): xem lại không điểm, không đáp án đúng, báo chờ gia sư", rvHeld.status === 200 && rvHeld.json.score === null && rvHeld.json.pendingManual === true && rvHeld.json.canSeeAnswers === false
+    && !JSON.stringify(rvHeld.json).includes('"isCorrect":true'), rvHeld.json);
+  await prisma.examAttemptPublish.create({ data: { attemptId: att, examId: id, publishedById: T.id } });
   const rv = await api("GET", `/api/exams/attempts/${att}/review`, { as: S });
   const rq = rv.json.questions.find((q: { type: string }) => q.type === "MC_MULTI");
   check("xem lại: câu nhiều đáp án có ô đã chọn và đáp án đúng (đề cho xem đáp án)", rv.status === 200 && rq?.options.filter((o: { picked: boolean }) => o.picked).length === 2 && rq.options.filter((o: { isCorrect: boolean }) => o.isCorrect).length === 2, rq);

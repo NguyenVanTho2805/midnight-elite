@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
   const X = await mkUser({ name: "Em Xa" });
   const C = await mkCourse(T.id, { name: "Toán 9" });
   await prisma.enrollment.create({ data: { userId: S.id, courseId: C.id, status: "active" } });
-  const ex = await prisma.exam.create({ data: { id: "uq-mix", code: "uq-mix", title: "Ôn tập tổng hợp", category: "Toán", date: "01/01/2030", time: "08:00", duration: "15 phút", questions: 3, status: "available", createdAt: "2020", ownerId: T.id, courseId: C.id, totalPoints: 10 } });
+  const ex = await prisma.exam.create({ data: { id: "uq-mix", code: "uq-mix", title: "Ôn tập tổng hợp", category: "Toán", date: "01/01/2030", time: "08:00", duration: "15 phút", questions: 3, status: "available", createdAt: "2026-10-24", ownerId: T.id, courseId: C.id, totalPoints: 10 } });
   const q1 = await prisma.examQuestion.create({ data: { id: "uq-1", examId: ex.id, order: 1, text: "Hai nghiệm có tổng bằng?", type: "MC", points: 1 } });
   for (const [i, t] of ["5", "6"].entries()) await prisma.examOption.create({ data: { id: `uq-1-${i}`, questionId: q1.id, order: i, text: t, isCorrect: i === 0 } });
   const q2 = await prisma.examQuestion.create({ data: { id: "uq-2", examId: ex.id, order: 2, text: "Câu trắc nghiệm thứ hai", type: "MC", points: 1 } });

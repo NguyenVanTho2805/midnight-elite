@@ -1,6 +1,6 @@
 // QZ-08 / QZ-06 — quy tắc THUẦN (src/lib/quizGrade.ts). Không DB, không mạng. Có ca phá cố ý: đầu vào xấu, biên, và "nếu ai bỏ kiểm tra này thì bài đỏ".
 import {
-  essayNeedsGrading, gradeState, isHeld, validateEssayPoints, normalizeComment, publishEligibility, planPublishBatch, fmtPoints,
+  essayNeedsGrading, gradeState, isHeld, examHoldsResults, parseExamCreatedAt, HOLD_DEFAULT_SINCE, validateEssayPoints, normalizeComment, publishEligibility, planPublishBatch, fmtPoints,
   buildQuizAnalytics, percentOf, COMMENT_MAX, type QzQuestion, type QzAttempt, type QzAnswer,
 } from "@/lib/quizGrade";
 import { check, section, done } from "./h";
@@ -22,6 +22,16 @@ check("đề KHÔNG có chính sách (đề cũ) → không bao giờ giữ", !i
 check("chính sách tắt → không giữ", !isHeld({ holdUntilPublish: false }, false));
 check("chính sách bật, chưa công bố → GIỮ", isHeld({ holdUntilPublish: true }, false));
 check("chính sách bật, đã công bố → không giữ", !isHeld({ holdUntilPublish: true }, true));
+
+section("Một nguồn sự thật: đề nào giữ điểm (examHoldsResults)");
+const NEW = "2026-10-24", OLD = "2026-10-23", T = (hasEssay: boolean, createdAt: string) => ({ hasEssay, createdAt });
+check("đề CÓ tự luận tạo mới, chưa có chính sách → mặc định GIỮ", examHoldsResults(null, T(true, NEW)) && examHoldsResults(undefined, T(true, "24/10/2026")) && examHoldsResults(null, T(true, "2026-11-02T08:00:00.000Z")));
+check("đề KHÔNG tự luận (mới) → không giữ", !examHoldsResults(null, T(false, NEW)));
+check("đề cũ có tự luận (tạo trước mốc, hoặc ngày tạo không đọc được) → hành vi cũ, không giữ", !examHoldsResults(null, T(true, OLD)) && !examHoldsResults(null, T(true, "23/10/2026")) && !examHoldsResults(null, T(true, "2020")) && !examHoldsResults(null, T(true, "")) && !examHoldsResults(null, T(true, "tuần trước")));
+check("chính sách tắt thắng mặc định: gia sư tắt giữ điểm cho đề mới có tự luận → không giữ", !examHoldsResults({ holdUntilPublish: false }, T(true, NEW)));
+check("chính sách bật thắng mặc định: đề cũ gia sư bật giữ → giữ", examHoldsResults({ holdUntilPublish: true }, T(false, OLD)));
+check("PHÁ: ngày tạo rác không làm đề tự động bị giữ (không NaN lọt qua)", parseExamCreatedAt("31/02/9999x") === null || !Number.isNaN((parseExamCreatedAt("31/02/9999x") as Date).getTime()));
+check("mốc áp dụng là 00:00 ngày 24/10/2026 giờ VN", HOLD_DEFAULT_SINCE.toISOString() === "2026-10-23T17:00:00.000Z" && parseExamCreatedAt("2026-10-24")!.getTime() === HOLD_DEFAULT_SINCE.getTime());
 
 section("Điểm một câu tự luận: biên và đầu vào xấu");
 const ok = (r: ReturnType<typeof validateEssayPoints>) => r.ok;

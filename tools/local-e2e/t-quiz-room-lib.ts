@@ -64,6 +64,8 @@ check("có tự luận + chưa công bố → không điểm, không điểm t�
 const pub = resultVisibility({ hasEssay: true, published: true }, true);
 check("có tự luận + đã công bố + đề cho xem đáp án → thấy hết", pub.showScore && pub.showEssayPoints && pub.showAnswers && !pub.pendingManual);
 check("PHÁ: công bố KHÔNG mở rộng cài đặt đề — đề 'never' vẫn không lộ đáp án dù đã công bố", !resultVisibility({ hasEssay: true, published: true }, false).showAnswers && resultVisibility({ hasEssay: true, published: true }, false).showScore);
+check("hold=true (examHold) khoá dù đề không có tự luận; hold=false mở dù có tự luận (nguồn duy nhất là examHold)", resultVisibility({ hasEssay: false, published: false, hold: true }, true).pendingManual && !resultVisibility({ hasEssay: true, published: false, hold: false }, true).pendingManual);
+check("đã công bố lượt → mở điểm dù hold=true; vẫn KHÔNG mở rộng cài đặt đáp án của đề", resultVisibility({ hasEssay: true, published: true, hold: true }, true).showScore && !resultVisibility({ hasEssay: true, published: true, hold: true }, false).showAnswers);
 const mc = resultVisibility({ hasEssay: false, published: true }, true);
 check("chỉ trắc nghiệm → điểm hiện ngay, không chờ chấm", mc.showScore && !mc.pendingManual);
 check("chỉ trắc nghiệm mà đề không cho xem đáp án → có điểm, không đáp án", (() => { const v = resultVisibility({ hasEssay: false, published: true }, false); return v.showScore && !v.showAnswers; })());

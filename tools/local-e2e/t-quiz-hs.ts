@@ -12,8 +12,9 @@ import { prisma } from "@/lib/prisma";
   const C = await mkCourse(T.id, { name: "Toán 9" });
   for (const u of [A, B]) await prisma.enrollment.create({ data: { userId: u.id, courseId: C.id, status: "active" } });
 
+  // createdAt >= 24/10/2026 + có tự luận = quiz MỚI → mặc định GIỮ điểm tới khi gia sư công bố (examHold). Đề cũ (createdAt "2020") giữ hành vi cũ.
   // Quiz hỗn hợp: 1 MC + 1 tự luận, 15 phút, tối đa 1 lượt, thuộc lớp C.
-  const ex = await prisma.exam.create({ data: { id: "qz-mix", code: "qz-mix", title: "Ôn tập tổng hợp", category: "Toán", date: "01/01/2030", time: "08:00", duration: "15 phút", questions: 2, status: "available", createdAt: "2020", ownerId: T.id, courseId: C.id, totalPoints: 10, answerVisibility: "after_submit" } });
+  const ex = await prisma.exam.create({ data: { id: "qz-mix", code: "qz-mix", title: "Ôn tập tổng hợp", category: "Toán", date: "01/01/2030", time: "08:00", duration: "15 phút", questions: 2, status: "available", createdAt: "2026-10-24", ownerId: T.id, courseId: C.id, totalPoints: 10, answerVisibility: "after_submit" } });
   const qMc = await prisma.examQuestion.create({ data: { id: "qz-mc", examId: ex.id, order: 1, text: "2 + 2 = ?", type: "MC", points: 1, explanation: "LỜI-GIẢI-BÍ-MẬT" } });
   await prisma.examOption.create({ data: { id: "qz-o-ok", questionId: qMc.id, order: 0, text: "4", isCorrect: true } });
   await prisma.examOption.create({ data: { id: "qz-o-no", questionId: qMc.id, order: 1, text: "5", isCorrect: false } });
@@ -130,6 +131,32 @@ import { prisma } from "@/lib/prisma";
   check("review: thấy đáp án đúng và lời giải như trước", rv2.json.canSeeAnswers === true && rv2.text.includes('"isCorrect":true') && rv2.text.includes("Hà Nội"));
   const g2 = await api("GET", `/api/exams/${ex2.id}/gate`, { as: A });
   check("đề không gắn lớp: cổng cho vào, không đòi mã lớp, không giới hạn lượt", g2.json.canStart === true && g2.json.klass === null && g2.json.attempts.max === null, g2.json);
+
+  section("Một nguồn sự thật với phía gia sư: công bố mở điểm; đề cũ có tự luận giữ hành vi cũ");
+  const aAtt = await prisma.examAttempt.findFirst({ where: { examId: "qz-mix", userId: A.id } });
+  await prisma.examAttemptPublish.create({ data: { attemptId: aAtt!.id, examId: "qz-mix", publishedById: T.id } });
+  const rvPub = await api("GET", `/api/exams/attempts/${aAtt!.id}/review`, { as: A });
+  check("lượt A đã có dòng công bố → xem lại có điểm, không chờ chấm", rvPub.status === 200 && typeof rvPub.json.score === "number" && rvPub.json.pendingManual === false && rvPub.json.canSeeAnswers === true, rvPub.json);
+  const histPub = await api("GET", `/api/exams/qz-mix/attempts?mine=true`, { as: A });
+  check("lịch sử của A: có điểm thật", histPub.json.every((h: { score: number | null }) => typeof h.score === "number"), histPub.json);
+  const rvB = await api("GET", `/api/exams/attempts/${(await prisma.examAttempt.findFirst({ where: { examId: "qz-mix", userId: B.id } }))!.id}/review`, { as: B });
+  check("PHÁ: công bố lượt của A KHÔNG mở lượt của B (mỗi lượt một dòng)", rvB.status === 200 && rvB.json.score === null && rvB.json.pendingManual === true && rvB.json.canSeeAnswers === false, rvB.json);
+  const cross = await api("GET", `/api/exams/attempts/${aAtt!.id}/review`, { as: B });
+  check("PHÁ: B xem lượt của A → 404", cross.status === 404);
+
+  const oldEx = await prisma.exam.create({ data: { id: "qz-old-essay", code: "qz-old-essay", title: "Đề cũ có tự luận", category: "Toán", date: "01/01/2030", time: "08:00", duration: "15 phút", questions: 2, status: "available", createdAt: "2020", ownerId: T.id, totalPoints: 10 } });
+  const oq = await prisma.examQuestion.create({ data: { id: "qo-mc", examId: oldEx.id, order: 1, text: "1+1?", type: "MC", points: 1 } });
+  await prisma.examOption.create({ data: { id: "qo-ok", questionId: oq.id, order: 0, text: "2", isCorrect: true } });
+  await prisma.examQuestion.create({ data: { id: "qo-es", examId: oldEx.id, order: 2, text: "Trình bày", type: "ESSAY", points: 2 } });
+  const so = await api("POST", `/api/exams/${oldEx.id}/start`, { as: A, body: {} });
+  await api("PATCH", `/api/exams/attempts/${so.json.attemptId}/answer`, { as: A, body: { questionId: oq.id, optionId: "qo-ok" } });
+  const sbo = await api("POST", `/api/exams/attempts/${so.json.attemptId}/submit`, { as: A });
+  check("đề CŨ có tự luận (chưa có chính sách): hiện điểm ngay như trước, không bị giữ", typeof sbo.json.score === "number" && sbo.json.pendingManual === false && sbo.json.held === false, sbo.json);
+  await prisma.examPublishPolicy.create({ data: { examId: oldEx.id, holdUntilPublish: true } });
+  const so2 = await api("POST", `/api/exams/${oldEx.id}/start`, { as: B, body: {} });
+  await api("PATCH", `/api/exams/attempts/${so2.json.attemptId}/answer`, { as: B, body: { questionId: oq.id, optionId: "qo-ok" } });
+  const sbo2 = await api("POST", `/api/exams/attempts/${so2.json.attemptId}/submit`, { as: B });
+  check("gia sư bật giữ điểm cho đề cũ → lượt mới bị giữ", sbo2.json.score === null && sbo2.json.pendingManual === true, sbo2.json);
 
   await done();
 })();

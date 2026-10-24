@@ -3,7 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { loadPublishState, loadPublishStates } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
-import { dropHeldResults } from "@/lib/examHold";
+import { dropHeldResults, heldAttemptIdsAmong } from "@/lib/examHold";
 
 /** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
 async function rankOf(examId: string, score: number): Promise<number> {
@@ -39,7 +39,22 @@ export async function GET(req: Request) {
       })
     );
 
-    return NextResponse.json(withRank);
+    // Lượt đã nộp mà đang bị giữ điểm thì CHƯA có dòng ExamResult (finalizeAttempt không ghi khi giữ): trả một dòng "chờ gia sư chấm" cho đề đó
+    // để học sinh thấy bài đã được ghi nhận (không thấy như chưa làm), không có điểm, không có hạng.
+    const haveResult = new Set(results.map(r => r.examId));
+    const submitted = await prisma.examAttempt.findMany({
+      where: { userId: session.userId, status: { not: "in_progress" }, examId: { notIn: [...haveResult] } },
+      orderBy: { submittedAt: "desc" },
+      select: { id: true, examId: true, submittedAt: true, exam: { select: { title: true, code: true, totalPoints: true } } },
+    });
+    const held = await heldAttemptIdsAmong(submitted);
+    const seen = new Set<string>();
+    const pending = submitted.filter(a => held.has(a.id) && !seen.has(a.examId) && !!seen.add(a.examId)).map(a => ({
+      id: `cho-${a.id}`, userId: session.userId, examId: a.examId, score: null, totalPoints: a.exam.totalPoints,
+      completedAt: a.submittedAt, exam: { title: a.exam.title, code: a.exam.code }, rank: null, pendingManual: true,
+    }));
+
+    return NextResponse.json([...withRank, ...pending]);
   }
 
   if (examId) {
