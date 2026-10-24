@@ -128,3 +128,69 @@ export function multiRuleText(points: number): string {
 }
 
 export { fmt as fmtPoints };
+
+// ── Đọc dữ liệu không tin cậy (thân yêu cầu của API) ─────────────────────────────────────────────
+function str(v: unknown): string | null { return typeof v === "string" ? v : null; }
+function optStr(v: unknown): string | null { const s = str(v); return s && s.trim() ? s.trim() : null; }
+
+/** Biến thân yêu cầu thành QuizQuestionInput (chưa kiểm hợp lệ — gọi validateQuizQuestion / validateForDraft sau). Trường lạ bị bỏ. */
+export function coerceQuestionInput(raw: unknown): QuizQuestionInput | { error: string } {
+  if (!raw || typeof raw !== "object") return { error: "Dữ liệu câu hỏi không đọc được" };
+  const r = raw as Record<string, unknown>;
+  if (!isQuizType(r.type)) return { error: "Loại câu hỏi không hợp lệ" };
+  const pts = typeof r.points === "number" ? r.points : Number(String(r.points ?? "").replace(",", "."));
+  const rawOptions = Array.isArray(r.options) ? r.options : [];
+  const options: QuizOptionInput[] = [];
+  for (const o of rawOptions) {
+    if (!o || typeof o !== "object") return { error: "Có lựa chọn không đọc được" };
+    const oo = o as Record<string, unknown>;
+    const sub = typeof oo.subLabel === "string" && ["a", "b", "c", "d"].includes(oo.subLabel) ? oo.subLabel : null;
+    options.push({ text: typeof oo.text === "string" ? oo.text : "", isCorrect: oo.isCorrect === true, subLabel: sub });
+  }
+  let rubric: RubricRow[] | null = null;
+  if (r.type === "ESSAY" && r.rubric != null) {
+    const n = normalizeRubric(r.rubric);
+    if (!n.ok) return { error: n.error };
+    rubric = n.rows.length ? n.rows : null;
+  }
+  return {
+    type: r.type,
+    text: typeof r.text === "string" ? r.text.trim() : "",
+    points: Number.isFinite(pts) ? round2(pts) : NaN,
+    imageUrl: ((u) => (u && /^https:\/\/[^\s]+$/.test(u) ? u : null))(optStr(r.imageUrl)), // chỉ nhận địa chỉ https (ảnh đề cắt từ tệp được tải lên Cloudinary)
+    explanation: optStr(r.explanation),
+    hint: optStr(r.hint),
+    // Hướng dẫn chỉ có nghĩa với tự luận: dạng khác thì bỏ, để khỏi lưu dữ liệu mồ côi.
+    studentGuide: r.type === "ESSAY" ? optStr(r.studentGuide) : null,
+    graderGuide: r.type === "ESSAY" ? optStr(r.graderGuide) : null,
+    rubric,
+    sectionLabel: optStr(r.sectionLabel),
+    options: r.type === "ESSAY" ? [] : options,
+  };
+}
+
+/**
+ * Luật LỎNG cho BẢN NHÁP (nhập từ tệp, lưu dở): chỉ cần có chữ đề và loại hợp lệ — thiếu đáp án thì vẫn lưu để làm tiếp sau.
+ * Khi PHÁT HÀNH vẫn bắt validateQuizQuestion cho từng câu, nên câu thiếu đáp án không bao giờ tới học sinh.
+ */
+export function validateForDraft(q: QuizQuestionInput): string | null {
+  if (!isQuizType(q.type)) return "Loại câu hỏi không hợp lệ";
+  if (!q.text.trim()) return "Thiếu nội dung câu hỏi";
+  if (q.text.length > LIMITS.text) return `Nội dung câu hỏi quá dài (tối đa ${LIMITS.text} ký tự)`;
+  if (!Number.isFinite(q.points) || q.points <= 0 || q.points > LIMITS.points) return "Điểm của câu phải là số lớn hơn 0";
+  if (q.options.length > LIMITS.maxOptions) return `Tối đa ${LIMITS.maxOptions} lựa chọn`;
+  if (q.options.some(o => o.text.length > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
+  return null;
+}
+
+// ── Trùng trong cùng một tệp (bước rà soát nhập đề) ─────────────────────────────────────────────
+/** Chuẩn hoá để so trùng: bỏ hoa/thường, khoảng trắng thừa, dấu câu rời; giữ chữ, số và ký hiệu toán. 300 ký tự đầu là đủ để nhận ra câu lặp. */
+export function dupKey(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ").replace(/[^\p{L}\p{N} $^_=+\-*/<>()]/gu, "").trim().slice(0, 300);
+}
+/** Nhóm các vị trí có nội dung trùng nhau (mỗi nhóm ≥ 2 phần tử). Nội dung rỗng không bao giờ coi là trùng. Chỉ để NHẮC gia sư — không tự gộp hay xoá câu nào. */
+export function duplicateGroups(texts: readonly string[]): number[][] {
+  const by = new Map<string, number[]>();
+  texts.forEach((t, i) => { const k = dupKey(t); if (!k) return; by.set(k, [...(by.get(k) ?? []), i]); });
+  return [...by.values()].filter(g => g.length > 1);
+}

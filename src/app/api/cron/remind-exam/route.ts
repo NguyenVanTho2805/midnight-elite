@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   // Tìm kỳ thi diễn ra vào ngày mai
   const exams = await prisma.exam.findMany({
-    where: { date: dateStr, active: true },
+    where: { date: dateStr, active: true, isDraft: false, supersededById: null }, // QZ-04/07: không nhắc bản nháp hay phiên bản cũ
     select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true },
   });
 

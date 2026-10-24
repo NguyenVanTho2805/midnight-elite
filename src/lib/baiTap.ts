@@ -57,8 +57,9 @@ export function assignmentSub(a: { submitted: number; enrolled: number; dueAt: D
   return parts.join(" · ");
 }
 
-/** Đề thi: gia sư chỉ cần biết sắp tới, đang mở hay đã đóng. Trạng thái tính từ computeExamStatus (không đọc cột status đứng yên trong DB). */
-export function classifyExam(status: "upcoming" | "available" | "completed"): { group: BaiTapGroup; label: string; tone: BaiTapTone } {
+/** Đề thi: gia sư chỉ cần biết sắp tới, đang mở hay đã đóng. Trạng thái tính từ computeExamStatus (không đọc cột status đứng yên trong DB). "draft" (QZ-04) = bản nháp chưa phát hành. */
+export function classifyExam(status: "upcoming" | "available" | "completed" | "draft"): { group: BaiTapGroup; label: string; tone: BaiTapTone } {
+  if (status === "draft") return { group: "giao", label: "Bản nháp · chưa phát hành", tone: "cho" };
   if (status === "completed") return { group: "xong", label: "Đã đóng", tone: "xong" };
   if (status === "available") return { group: "giao", label: "Đang mở", tone: "mo" };
   return { group: "giao", label: "Đã lên lịch", tone: "mo" };

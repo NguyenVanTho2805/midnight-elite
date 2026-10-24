@@ -35,6 +35,10 @@ export async function POST(
       },
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // QZ-04: bản nháp chưa phát hành — học sinh không vào thi được dù biết địa chỉ. (Đề cũ có isDraft = false nên không đổi gì.)
+    if (exam.isDraft) {
+      return NextResponse.json({ error: "Quiz này chưa được phát hành." }, { status: 409 });
+    }
     if (exam.examQuestions.length === 0) {
       return NextResponse.json(
         { error: "Đề thi này chưa có câu hỏi trong platform" },
@@ -80,6 +84,11 @@ export async function POST(
       where: { userId: session.userId, examId, status: "in_progress" },
       orderBy: { startedAt: "desc" },
     });
+
+    // QZ-07: phiên bản cũ đã bị bản mới thay — không mở lượt MỚI nữa (học sinh đang làm dở vẫn tiếp tục và nộp vào đúng bản này).
+    if (!attempt && exam.supersededById) {
+      return NextResponse.json({ error: "Quiz này đã có phiên bản mới. Vào danh sách bài để mở bản mới nhất.", code: "SUPERSEDED", supersededById: exam.supersededById }, { status: 409 });
+    }
 
     // Mật khẩu đề thi: chỉ kiểm tra lúc bắt đầu lượt MỚI (không hỏi lại khi
     // resume/refresh trang giữa chừng — đã vào phòng thi rồi thì không hỏi nữa).

@@ -1,7 +1,7 @@
 // QZ-03 — luật soạn câu hỏi của gia sư (src/lib/quizQuestion.ts). Thuần, không DB, không máy chủ. Mỗi mục có ca phá cố ý (đầu vào xấu / sát biên).
 import { check, section, done } from "./h";
 import {
-  describeValidity, multiRuleText, normalizeRubric, rubricTotal, scoreMultiSelect, validateQuizQuestion, round2, LIMITS,
+  coerceQuestionInput, validateForDraft, duplicateGroups, dupKey, describeValidity, multiRuleText, normalizeRubric, rubricTotal, scoreMultiSelect, validateQuizQuestion, round2, LIMITS,
   type QuizQuestionInput,
 } from "@/lib/quizQuestion";
 
@@ -71,6 +71,34 @@ check("Đúng-Sai: đủ 4 nhãn a-d", validateQuizQuestion({ type: "TRUE_FALSE_
 check("Đúng-Sai: thiếu nhãn → lỗi", validateQuizQuestion({ type: "TRUE_FALSE_CLUSTER", text: "q", points: 1, options: ["a", "a", "c", "d"].map(l => ({ text: "ý", isCorrect: true, subLabel: l })) }) !== null);
 check("Trả lời ngắn: đúng 1 đáp án, không trống", validateQuizQuestion({ type: "SHORT_ANSWER", text: "q", points: 1, options: [{ text: "12", isCorrect: true }] }) === null
   && validateQuizQuestion({ type: "SHORT_ANSWER", text: "q", points: 1, options: [{ text: " ", isCorrect: true }] }) !== null);
+
+section("Đọc dữ liệu không tin cậy từ API");
+check("câu nhiều đáp án đọc đúng, trường lạ bị bỏ", (() => { const r = coerceQuestionInput({ type: "MC_MULTI", text: " Đề ", points: "2,5", options: [{ text: "a", isCorrect: true, evil: 1 }, { text: "b" }], isAdmin: true }); return !("error" in r) && r.text === "Đề" && r.points === 2.5 && r.options[1].isCorrect === false && !("isAdmin" in r) && !("evil" in r.options[0]); })());
+check("PHÁ: isCorrect dạng chuỗi 'true' KHÔNG được tính là đúng", (() => { const r = coerceQuestionInput({ type: "MC_MULTI", text: "q", points: 1, options: [{ text: "a", isCorrect: "true" }] }); return !("error" in r) && r.options[0].isCorrect === false; })());
+check("PHÁ: loại lạ / null / chuỗi / mảng → lỗi, không ném", ["x", null, 5, [], { type: "HACK" }].every(v => "error" in coerceQuestionInput(v)));
+check("PHÁ: options không phải mảng → rỗng; phần tử rác → lỗi", (() => { const a = coerceQuestionInput({ type: "MC", text: "q", points: 1, options: "x" }); const b = coerceQuestionInput({ type: "MC", text: "q", points: 1, options: [null] }); return !("error" in a) && a.options.length === 0 && "error" in b; })());
+check("tự luận: bỏ lựa chọn; hướng dẫn chỉ giữ ở tự luận", (() => {
+  const e = coerceQuestionInput({ type: "ESSAY", text: "q", points: 10, options: [{ text: "a", isCorrect: true }], studentGuide: "hd", graderGuide: "cham" });
+  const m = coerceQuestionInput({ type: "MC_MULTI", text: "q", points: 1, studentGuide: "hd", graderGuide: "cham", options: [] });
+  return !("error" in e) && e.options.length === 0 && e.graderGuide === "cham" && !("error" in m) && m.graderGuide === null && m.studentGuide === null; })());
+check("rubric hỏng làm cả câu báo lỗi (không im lặng bỏ tiêu chí)", "error" in coerceQuestionInput({ type: "ESSAY", text: "q", points: 1, rubric: [{ name: "", points: 1 }] }));
+check("điểm chữ / thiếu → NaN → bị bắt khi kiểm", (() => { const r = coerceQuestionInput({ type: "MC", text: "q", points: "abc", options: [] }); return !("error" in r) && Number.isNaN(r.points) && validateForDraft(r) !== null; })());
+check("bản nháp: câu thiếu đáp án VẪN lưu được, nhưng phát hành thì bị chặn", (() => {
+  const r = coerceQuestionInput({ type: "MC", text: "Câu 8", points: 1, options: [{ text: "A", isCorrect: false }, { text: "B", isCorrect: false }] });
+  return !("error" in r) && validateForDraft(r) === null && validateQuizQuestion(r) !== null; })());
+check("bản nháp: vẫn chặn chữ đề rỗng, điểm xấu, quá nhiều lựa chọn", (() => {
+  const base = { type: "MC" as const, text: "q", points: 1, options: [] };
+  return validateForDraft({ ...base, text: "" }) !== null && validateForDraft({ ...base, points: 0 }) !== null
+    && validateForDraft({ ...base, options: Array.from({ length: 11 }, () => ({ text: "x", isCorrect: false })) }) !== null; })());
+check("PHÁ: ảnh chỉ nhận https — javascript:, data:, http thường, có khoảng trắng đều bị bỏ", ["javascript:alert(1)", "data:image/png;base64,AAAA", "http://x.com/a.png", "https://x.com/a b.png", "//x.com/a.png"].every(u => { const r = coerceQuestionInput({ type: "MC", text: "q", points: 1, imageUrl: u, options: [] }); return !("error" in r) && r.imageUrl === null; })
+  && (() => { const r = coerceQuestionInput({ type: "MC", text: "q", points: 1, imageUrl: "https://res.cloudinary.com/kin/a.png", options: [] }); return !("error" in r) && r.imageUrl === "https://res.cloudinary.com/kin/a.png"; })());
+
+section("Trùng trong cùng một tệp");
+check("hai câu giống chữ (khác hoa thường / khoảng trắng / dấu chấm cuối) → một nhóm", JSON.stringify(duplicateGroups(["Giải x² − 5x + 6 = 0.", "q khác", "giải  X² − 5X + 6 = 0"])) === JSON.stringify([[0, 2]]), duplicateGroups(["Giải x² − 5x + 6 = 0.", "q khác", "giải  X² − 5X + 6 = 0"]));
+check("khác một số trong công thức thì KHÔNG trùng", duplicateGroups(["Tính 2 + 3", "Tính 2 + 4"]).length === 0);
+check("PHÁ: nội dung rỗng / chỉ dấu câu không bao giờ bị coi là trùng", duplicateGroups(["", "   ", "...", "!!"]).length === 0 && dupKey("...") === "");
+check("PHÁ: ba bản giống nhau → một nhóm ba; danh sách rỗng → không nhóm", duplicateGroups(["a b", "A  B", "a b."]).length === 1 && duplicateGroups(["a b", "A  B", "a b."])[0].length === 3 && duplicateGroups([]).length === 0);
+check("PHÁ: chỉ khác sau 300 ký tự đầu thì coi là trùng (đủ để nhận ra câu lặp), khác trong 300 ký tự đầu thì không", (() => { const base = "x".repeat(300); return duplicateGroups([base + "A", base + "B"]).length === 1 && duplicateGroups(["x".repeat(299) + "A", "x".repeat(299) + "B"]).length === 0; })());
 
 await done();
 })();

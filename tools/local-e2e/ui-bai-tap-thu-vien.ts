@@ -78,7 +78,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   await pg.locator("[data-bai-tap-row]", { hasText: "Bài làm trực tiếp" }).click();
   check("bài làm trực tiếp: chuyển sang chấm ở trang lớp (không chấm điểm tổng ở đây)", await pg.getByRole("link", { name: "Chấm ở trang lớp" }).isVisible());
   await pg.locator("[data-bai-tap-row]", { hasText: "Kiểm tra 15 phút" }).click();
-  check("đề thi: có 'Đã lên lịch' và nút 'Mở đề thi' dẫn sang trang đề", await pg.getByRole("link", { name: "Mở đề thi" }).isVisible() && (await pg.getByRole("link", { name: "Mở đề thi" }).getAttribute("href"))!.startsWith("/admin/thi-thu/"));
+  check("đề thi: có 'Đã lên lịch' và nút 'Mở đề thi' dẫn sang trang đề", await pg.getByRole("link", { name: "Mở đề thi" }).isVisible() && (await pg.getByRole("link", { name: "Mở đề thi" }).getAttribute("href"))!.startsWith("/lop-cua-toi/bai-tap/quiz/"));
 
   section("Bài tập và kiểm tra — điện thoại 390px");
   const mctx = await ctxFor(T, { width: 390, height: 800 });

@@ -42,7 +42,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
 
   // ── Exam events ──────────────────────────────────────────────────────────────
   const exams = await prisma.exam.findMany({
-    where: { active: true, status: { not: "completed" } },
+    where: { active: true, isDraft: false, supersededById: null, status: { not: "completed" } }, // QZ-04/07: không hiện bản nháp hay phiên bản cũ
     select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true, duration: true, questions: true },
   });
 
