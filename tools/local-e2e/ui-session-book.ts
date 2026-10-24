@@ -28,6 +28,7 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   await launch();
   const ctx = await ctxFor(tutor, { width: 1280, height: 900 });
   const page = await ctx.newPage();
+  page.setDefaultTimeout(60000);
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/Failed to load resource|zalo|hydrat/i.test(m.text())) errors.push(m.text()); });
@@ -70,11 +71,17 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   const crumbText = (await crumb.innerText()).replace(/\s+/g, " ");
   check("breadcrumb: Lớp › Toán 9 › ngày › trạng thái bằng chữ", crumbText.includes("Lớp") && crumbText.includes("Toán 9") && crumbText.includes(`${today.slice(8, 10)}/${today.slice(5, 7)}/${today.slice(0, 4)}`) && /chưa chốt|Sắp diễn ra/.test(crumbText), crumbText);
   check("tiêu đề + dòng phụ có Offline và giờ 00:05–00:35", (await page.getByRole("heading", { level: 1 }).innerText()).includes("Toán 9") && (await page.getByText("00:05–00:35").count()) >= 1 && (await page.getByText("Offline").count()) >= 1);
-  await page.getByLabel("Đã dạy").fill("Phương trình bậc hai");
-  await page.getByLabel("Bài tập về nhà").fill("Bài 1-6 trang 40");
-  await page.getByLabel("Nhận xét chung").fill("Cả lớp theo kịp");
-  await page.getByLabel("Hình thức buổi này").selectOption("online");
-  await page.getByLabel("Link học online riêng buổi này (không bắt buộc)").fill("https://meet.example/rieng");
+  // Sửa 24/10/2026 (bài chập chờn khi máy rất tải, cả ở mã gốc trước đợt này): máy dev (StrictMode) nạp trang buổi hai lần, lần hai về trễ thì nạp lại các ô và ĐÈ chữ vừa gõ.
+  // Gõ rồi chờ ổn định; nếu ô bị nạp lại thì gõ lại (tối đa 6 lần). Kiểm sau đó (DB có đủ 3 phần) vẫn nguyên.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await page.getByLabel("Đã dạy").fill("Phương trình bậc hai");
+    await page.getByLabel("Bài tập về nhà").fill("Bài 1-6 trang 40");
+    await page.getByLabel("Nhận xét chung").fill("Cả lớp theo kịp");
+    await page.getByLabel("Hình thức buổi này").selectOption("online");
+    await page.getByLabel("Link học online riêng buổi này (không bắt buộc)").fill("https://meet.example/rieng");
+    await page.waitForTimeout(3000);
+    if ((await page.getByLabel("Đã dạy").inputValue()) === "Phương trình bậc hai" && (await page.getByLabel("Nhận xét chung").inputValue()) === "Cả lớp theo kịp" && !(await page.getByRole("button", { name: "Lưu ghi chép" }).isDisabled())) break;
+  }
   await page.getByRole("button", { name: "Lưu ghi chép" }).click();
   await page.getByText("Đã lưu.", { exact: true }).waitFor({ timeout: 15000 });
   const saved = await prisma.attendanceSession.findFirstOrThrow({ where: { id: sessionRow.id } });

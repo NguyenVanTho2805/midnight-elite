@@ -25,7 +25,10 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   await page.getByLabel(/Đơn giá \(đ \/ giờ\)/).fill("200000");
   await page.getByLabel(/Một buổi dài/).fill("90");
   check("theo giờ nhắc lại số buổi 90 phút = 300.000đ (hàm lib, làm tròn từng buổi)", await page.getByText(/Mỗi buổi 90 phút tính 300\.000đ/).isVisible());
-  await page.getByRole("button", { name: "Tạo lớp học" }).click();
+  // Sửa 24/10/2026: màn Tạo lớp giờ là 3 bước (Thông tin → Học sinh → Lịch), nút tạo lớp chỉ ở bước 3; bỏ qua học sinh và lịch để làm sau. Cách tính học phí vẫn ở bước 1.
+  await page.getByRole("button", { name: "Tiếp tục" }).click();
+  await page.getByRole("button", { name: "Tiếp tục" }).click();
+  await page.getByRole("button", { name: "Tạo lớp", exact: true }).click();
   await page.waitForURL(/\/lop-cua-toi\/ly-lop-moi/, { timeout: 60000 });
   const created = await prisma.course.findFirstOrThrow({ where: { name: "Lý lớp mới" } });
   check("DB: lớp theo giờ + 1 dòng đơn giá 200.000/giờ × 90 phút", created.feeMode === "per_hour" && (await prisma.courseFeeRate.findFirstOrThrow({ where: { courseId: created.id } })).sessionMinutes === 90);

@@ -38,9 +38,9 @@ const COURSE_BASE = {
   await page.getByRole("heading", { name: "Gói buổi trả trước" }).waitFor({ timeout: 90000 });
   await page.getByText("Chưa có gói buổi nào").waitFor();
   check("trạng thái rỗng có lời giải thích; khung nói thật 'Sổ buổi, không phải thu tiền'", (await page.getByText("Sổ buổi, không phải thu tiền").count()) === 1 && (await page.getByText(/kế toán duyệt trước khi dùng thật/).count()) >= 1);
-  await page.getByLabel("Học sinh").last().selectOption({ label: "Trần Gia Bảo" });
+  await page.getByLabel("Em lập gói").selectOption({ label: "Trần Gia Bảo" });
   await page.getByLabel(/Số buổi \(1–200\)/).fill("5");
-  await page.getByLabel("Ghi chú (tuỳ chọn)").last().fill("gói tháng 11");
+  await page.getByLabel("Ghi chú gói (tuỳ chọn)").fill("gói tháng 11");
   await page.getByRole("button", { name: "Lập gói…" }).click();
   const dlg = page.getByRole("alertdialog").or(page.getByRole("dialog"));
   await dlg.first().waitFor({ timeout: 15000 });

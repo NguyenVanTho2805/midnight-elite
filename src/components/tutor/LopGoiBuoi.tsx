@@ -121,7 +121,7 @@ export default function LopGoiBuoi({ courseId, feeMode }: { courseId: string; fe
         <div className="pt-5">
           <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Lập gói cho một em</p>
           <div className="pt-3 grid sm:grid-cols-3 gap-5">
-            <label className={KIN_LABEL}>Học sinh
+            <label className={KIN_LABEL}>Em lập gói
               <select value={studentId} onChange={e => { setStudentId(e.target.value); setErr(null); }} className={`${KIN_FIELD} mt-2`}>
                 <option value="">Chọn em…</option>
                 {data.students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -130,7 +130,7 @@ export default function LopGoiBuoi({ courseId, feeMode }: { courseId: string; fe
             <label className={KIN_LABEL}>Số buổi (1–{PACKAGE_MAX_SESSIONS})
               <input inputMode="numeric" value={sessions} onChange={e => { setSessions(e.target.value.replace(/[^\d]/g, "")); setErr(null); }} className={`${KIN_FIELD} mt-2`} />
             </label>
-            <label className={KIN_LABEL}>Ghi chú (tuỳ chọn)
+            <label className={KIN_LABEL}>Ghi chú gói (tuỳ chọn)
               <input value={note} maxLength={PACKAGE_NOTE_MAX} onChange={e => setNote(e.target.value)} placeholder="Ví dụ: gói tháng 11" className={`${KIN_FIELD} mt-2`} />
             </label>
           </div>
