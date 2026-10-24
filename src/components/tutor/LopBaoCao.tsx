@@ -29,6 +29,7 @@ export default function LopBaoCao({ courseId, students }: { courseId: string; st
     const r = await jfetch(`/api/tutor/lop/${courseId}/bao-cao-link`);
     if (r.ok) { setItems(r.json.items as Item[]); setErr(false); } else setErr(true);
   }, [courseId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu lần đầu, cùng cách các trang gia sư khác
   useEffect(() => { void load(); }, [load]);
 
   const by = new Map((items ?? []).map(i => [i.userId, i]));

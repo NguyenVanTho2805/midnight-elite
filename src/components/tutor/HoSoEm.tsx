@@ -47,6 +47,7 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
     if (r.ok) { setD(r.json as StudentDetail); setErr(null); }
     else setErr(r.status === 403 || r.status === 404 ? "forbidden" : "load");
   }, [userId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu lần đầu, cùng cách các trang gia sư khác
   useEffect(() => { void load(); }, [load]);
 
   async function setStatus(to: "active" | "suspended") {
