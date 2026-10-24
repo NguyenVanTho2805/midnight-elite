@@ -376,7 +376,8 @@ export default function DangKyPage() {
                   </div>
                   <div>
                     <p id="dk-subj-label" className="block text-sm font-medium mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>Môn dạy *</p>
-                    <div role="group" aria-labelledby="dk-subj-label" tabIndex={-1} className="flex flex-wrap gap-1.5 outline-none"
+                    <div role="group" aria-labelledby="dk-subj-label">
+                    <div tabIndex={-1} className="flex flex-wrap gap-1.5 outline-none"
                       aria-invalid={fv1.bind("subjects", sv).error ? true : undefined} aria-describedby={fv1.bind("subjects", sv).error ? "dk-subj-err" : undefined}>
                       {TUTOR_SUBJECTS.map(s => {
                         const picked = s1.subjects.includes(s);
@@ -390,6 +391,7 @@ export default function DangKyPage() {
                           </button>
                         );
                       })}
+                    </div>
                     </div>
                     <FieldError id="dk-subj-err" msg={fv1.bind("subjects", sv).error} />
                   </div>
