@@ -90,8 +90,10 @@ export function TutorCard({ t }: { t: TutorListItem }) {
         </p>
       )}
 
-      <div className="flex">
-        <Link href={`/mentor/${t.id}`} className={kinButtonClass("primary") + " flex-1 sm:flex-none"} aria-label={`Xem hồ sơ ${t.name}`}>Xem hồ sơ</Link>
+      {/* KH-02 (Figma 299:116882): hai nút ngang hàng. "Gửi yêu cầu" mở biểu mẫu khách (không cần tài khoản); gia sư tự quyết định có nhận hay không. */}
+      <div className="flex gap-3">
+        <Link href={`/mentor/${t.id}`} className={kinButtonClass("secondary") + " flex-1 sm:flex-none"} aria-label={`Xem hồ sơ ${t.name}`}>Xem hồ sơ</Link>
+        <Link href={`/mentor/${t.id}/yeu-cau`} className={kinButtonClass("primary") + " flex-1 sm:flex-none"} aria-label={`Gửi yêu cầu cho ${t.name}`}>Gửi yêu cầu</Link>
       </div>
     </KinPanel>
   );
