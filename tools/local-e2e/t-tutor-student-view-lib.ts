@@ -5,6 +5,7 @@ import {
   ATTENDANCE_WINDOW_DAYS, absenceStreakOf, alertsOf, attendanceWindow, checkStatusChange, createButtonLabel, filterStudents, learnedSessions, previewSessionCount,
   reportLinkOf, reportPath, validateSlots, type StudentSignals,
 } from "@/lib/tutorStudentView";
+import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { check, done, section } from "./h";
 
 const TOKEN = "0123456789abcdef0123456789abcdef";
@@ -87,7 +88,8 @@ check("khung trùng → lỗi; ngày ngoài 0..6 → lỗi", validateSlots([T2, 
 
 section("Mã nguồn: không kéo thư viện máy chủ vào gói trình duyệt, không dùng giờ thô");
 const src = readFileSync("src/lib/tutorStudentView.ts", "utf8");
-check("tutorStudentView.ts không import node:crypto / prisma / parentPortal", !/from "(node:|@\/lib\/prisma|@\/lib\/parentPortal)/.test(src));
+check("tutorStudentView.ts không import node:crypto / prisma / parentPortal / enrollment (kéo prisma vào gói trình duyệt)", !/from "(node:|@\/lib\/prisma|@\/lib\/parentPortal|@\/lib\/enrollment)/.test(src));
+check("chuỗi trạng thái ghi danh khớp enrollment.ts", ENROLLMENT_STATUS.PENDING_CONSENT === "pending_consent" && ENROLLMENT_STATUS.ACTIVE === "active" && ENROLLMENT_STATUS.SUSPENDED === "suspended");
 check("tutorStudentView.ts không dùng new Date() thô", !/new Date\(\)/.test(src));
 
 done();

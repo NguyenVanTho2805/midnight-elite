@@ -6,7 +6,6 @@
 import { addDaysKey, dayOfWeekOfKey, expandOccurrences, isValidDateKey } from "@/lib/classSessions";
 import { STREAK_MIN, rateOf } from "@/lib/attendanceInsights";
 import { isAttendanceStatus } from "@/lib/attendance";
-import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 
 /** Số ngày nhìn lại cho tỷ lệ tham dự trong hồ sơ (DD-07). */
 export const ATTENDANCE_WINDOW_DAYS = 90;
@@ -67,6 +66,8 @@ export function filterStudents<R extends FilterableRow>(rows: readonly R[], sign
 }
 
 // ─── Đổi trạng thái học (HS-06) ──────────────────────────────────────────────────
+// Chuỗi trạng thái ghi danh (khớp ENROLLMENT_STATUS ở enrollment.ts; không import vì tệp đó kéo prisma vào gói trình duyệt, t-tutor-student-view-lib kiểm khớp).
+const ENROLLMENT_STATUS = { PENDING_CONSENT: "pending_consent", ACTIVE: "active", SUSPENDED: "suspended" } as const;
 export type SettableStatus = "active" | "suspended";
 export const isSettableStatus = (v: unknown): v is SettableStatus => v === "active" || v === "suspended";
 /**
