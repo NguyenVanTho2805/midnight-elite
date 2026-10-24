@@ -54,6 +54,8 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   await pg.getByText(/Đã đặt hạn riêng cho 2 học sinh/).waitFor({ timeout: 30000 });
   const rows = await prisma.quizStudentDeadline.findMany({ where: { examId: exam.id } });
   check("DB: 2 dòng, đúng giờ VN 20:30 (13:30 UTC), có ghi chú", rows.length === 2 && rows.every(r => r.dueAt.getUTCHours() === 13 && r.dueAt.getUTCMinutes() === 30 && r.note === "Em ốm"), rows);
+  // Component đã sửa: nạp lại danh sách rồi mới báo "Đã đặt", nên danh sách đã mới ngay khi lời báo hiện; bài vẫn chờ rõ điều kiện danh sách (không đọc ngay một lần).
+  await eventually("danh sách đã làm mới: 2 dòng 'Hạn riêng: …20:30'", async () => ((await pg.locator("[data-kin-page]").innerText()).match(/Hạn riêng: \d{2}\/\d{2}\/\d{4} 20:30/g) ?? []).length === 2, 20000);
   const t1 = (await pg.locator("[data-kin-page]").innerText()).replace(/\s+/g, " ");
   check("danh sách: Em Một + Em Hai có 'Hạn riêng: …20:30', Em Ba vẫn 'Theo lịch chung'; lịch chung của đề không đổi", (t1.match(/Hạn riêng: \d{2}\/\d{2}\/\d{4} 20:30/g) ?? []).length === 2 && (t1.match(/Theo lịch chung/g) ?? []).length === 1 && (await prisma.exam.findUnique({ where: { id: exam.id } }))!.date === "01/01/2030");
   check("ô chọn đã được bỏ sau khi lưu", await pg.getByLabel("Em Một").isChecked() === false);
@@ -131,7 +133,9 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   await box.getByLabel("Đầu mục").selectOption({ label: "Toán 9 (UI)" });
   await box.getByLabel("Độ khó").selectOption("VD");
   await box.getByRole("button", { name: "Lưu vào ngân hàng" }).click();
-  await pg.getByText("Đã lưu vào ngân hàng").first().waitFor({ timeout: 30000 });
+  // Sửa 2026-10: component cũ hiện toast TRƯỚC khi nạp lại danh sách (QuizEditor onDone) nên đọc ngay sau toast còn thấy nút cũ — đã sửa ở component (nạp rồi mới báo).
+  // Bài vẫn chờ điều kiện cụ thể (nhãn "Đã lưu vào ngân hàng" của câu 1 xuất hiện), không dựa vào toast.
+  await pg.locator("[data-quiz-q]").first().getByText("Đã lưu vào ngân hàng", { exact: true }).waitFor({ timeout: 30000 });
   const item = await prisma.questionBankItem.findFirst({ include: { options: true } });
   check("DB: ngân hàng có 1 câu MC_MULTI, 2 ô đúng, độ khó VD, của gia sư, nháp", !!item && item.type === "MC_MULTI" && item.options.filter(o => o.isCorrect).length === 2 && item.difficulty === "VD" && item.ownerId === T.id && item.status === "draft", item);
   check("sau khi lưu: nút đổi thành nhãn 'Đã lưu vào ngân hàng' (không lưu đôi)", (await pg.getByRole("button", { name: "Lưu câu 1 vào ngân hàng câu hỏi" }).count()) === 0);

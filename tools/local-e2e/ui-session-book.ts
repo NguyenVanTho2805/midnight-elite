@@ -2,7 +2,7 @@
 // Đã dạy xong / mở lại, chia sẻ, nhận xét riêng từng em) → ngăn kéo Thêm buổi nhanh có kiểm xung đột → lọc buổi huỷ → màn Dời buổi và học bù; 390px không tràn ngang.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-session-book.ts
 import { prisma } from "@/lib/prisma";
-import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
+import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf, weekRangeOf } from "@/lib/classSessions";
 import { check, mkCourse, mkTutor, mkUser, section, wipe, done } from "./h";
 import { closeAll, ctxFor, launch } from "./ui";
 
@@ -143,8 +143,15 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   check("thanh bộ đếm dính (position sticky) và còn thấy khi ở đầu trang", stick.pos === "sticky" && stick.inView, stick);
   await mctx.close();
 
+  // Sửa 2026-10: Lịch luôn mở tuần T2–CN chứa HÔM NAY (không phải 7 ngày tới). Chủ nhật thì "ngày mai" là thứ Hai tuần sau, khối buổi (huỷ, dạy bù) nằm ở tuần sau
+  // nên bài đỏ ở "Đã huỷ". Đây là cách Lịch chọn tuần đúng, không phải lỗi Lịch: bài phải sang tuần chứa ngày mình đặt buổi.
+  const gotoLichOfDay = async (key: string) => {
+    await goto("/lop-cua-toi/lich");
+    const weeks = Math.round((day(weekRangeOf(key).from).getTime() - day(weekRangeOf(today).from).getTime()) / (7 * 86400_000));
+    for (let i = 0; i < weeks; i++) { await page.getByRole("button", { name: /Tuần sau/ }).click(); await page.waitForTimeout(300); }
+  };
   section("Thêm buổi nhanh bằng ngăn kéo, kiểm xung đột (LI-11, LI-10)");
-  await goto("/lop-cua-toi/lich");
+  await gotoLichOfDay(tomorrow);
   await page.getByRole("button", { name: "+ Thêm buổi" }).click();
   const drawer = page.getByRole("dialog", { name: "Thêm buổi nhanh" });
   await drawer.waitFor();
@@ -169,7 +176,7 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
 
   section("Ẩn buổi đã huỷ — nhớ ở tài khoản (LI-03)");
   await prisma.classSessionChange.create({ data: { courseId: ly.id, scheduleId: schLy.id, dateKey: tomorrow, kind: "cancel", changedBy: tutor.id } });
-  await goto("/lop-cua-toi/lich");
+  await gotoLichOfDay(tomorrow);
   const cancelledBlock = page.locator("[data-lich-block]", { hasText: "Đã huỷ" });
   await cancelledBlock.first().waitFor({ timeout: 20000 });
   await page.getByLabel("Ẩn buổi đã huỷ").check();

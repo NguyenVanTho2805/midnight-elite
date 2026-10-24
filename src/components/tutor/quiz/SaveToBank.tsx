@@ -10,7 +10,7 @@ import { BANK_DIFFICULTIES, categoryPath, type BankCategory as Cat } from "@/lib
 import { qfetch } from "./quizClient";
 
 export default function SaveToBank({ examId, questionId, type, onDone, onCancel }: {
-  examId: string; questionId: string; type: string; onDone: (msg: string) => void; onCancel: () => void;
+  examId: string; questionId: string; type: string; onDone: (msg: string) => void | Promise<void>; onCancel: () => void;
 }) {
   const [cats, setCats] = useState<Cat[] | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
