@@ -13,6 +13,7 @@ interface AdminOrder {
   id: string; userName: string; userEmail: string; period: string; status: string; source: string; priceVnd: number; listPriceVnd: number;
   foundingDiscountPct: number; memoCode: string; durationDays: number; startDate: string | null; endDate: string | null; createdAt: string; bankRef: string | null;
 }
+interface AdminPayment { id: string; amount: number; content: string; matchedCode: string | null; orderId: string | null; providerTxId: string; reason: string | null; reasonText: string; occurredAt: string; createdAt: string }
 interface Payload {
   configs: { free: PlanConfigRow; pro: PlanConfigRow };
   settings: PlanSettings;
@@ -20,6 +21,8 @@ interface Payload {
   enforced: boolean;
   sale: { open: boolean; reason: string | null; prefix: string; configured: boolean };
   measure: { freeLimit: number; tutors: number; byState: Record<QuotaState, number>; maxStudents: number; shadowWouldBlock30d: number; enforcedBlocked30d: number; aiExtractThisMonth: number; proNow: number };
+  webhook: { enabled: boolean; reason: string | null };
+  payments: AdminPayment[];
   orders: AdminOrder[];
 }
 
@@ -27,6 +30,12 @@ const SALE_REASON: Record<string, string> = {
   "no-config": "Chưa đặt tài khoản nhận tiền (KINPRO_BANK_BIN, KINPRO_ACCOUNT_NO, KINPRO_ACCOUNT_NAME)",
   preview: "Đang là bản xem trước: không bán gói ở đây",
   trial: "Cờ chạy thử đang bật: KiN miễn phí giai đoạn chạy thử",
+};
+const HOOK_REASON: Record<string, string> = {
+  "no-key": "Chưa đặt khoá KINPRO_SEPAY_API_KEY (từ 16 ký tự)",
+  "no-config": "Chưa đặt tài khoản nhận tiền KINPRO_*",
+  preview: "Bản xem trước: webhook tắt",
+  "prefix-clash": "Tiền tố mã dễ nhầm với mã phiếu học phí (KIN + 5 ký tự), hãy đổi KINPRO_CODE_PREFIX",
 };
 const PERIOD_TEXT: Record<string, string> = { month: "1 tháng", quarter: "3 tháng", year: "12 tháng", grant: "Tặng" };
 const STATUS: Record<string, { tone: "xong" | "cho" | "mo"; text: string }> = {
@@ -101,6 +110,15 @@ function GoiProContent() {
     setMsg(r.ok ? (action === "activate" ? "Đã kích hoạt và cộng dồn hạn." : "Đã huỷ yêu cầu.") : (r.data.error ?? "Không thực hiện được"));
     void load();
   }
+  async function resolvePayment(p: AdminPayment) {
+    const ok = await ask({ title: "Đánh dấu đã xử lý khoản này?", message: `${vnd(p.amount)} · giao dịch ${p.providerTxId}. Việc này chỉ đổi nhãn trong sổ: KiN không hoàn tiền và không kích hoạt gì. Chỉ bấm khi bạn đã xử lý xong ở ngân hàng hoặc đã kích hoạt tay.`, confirmLabel: "Đã xử lý", tone: "thuong" });
+    if (!ok) return;
+    setBusy(p.id); setMsg(null);
+    const r = await callApi(`/api/admin/pro/payments/${p.id}/resolve`, { method: "POST" });
+    setBusy(null);
+    setMsg(r.ok ? "Đã đánh dấu đã xử lý." : (r.data.error ?? "Không thực hiện được"));
+    void load();
+  }
   async function grant() {
     const ok = await ask({ title: "Tặng Pro cho mọi gia sư hiện có?", message: `Mỗi gia sư được tặng ${data?.settings.legacyTrialDays ?? 0} ngày Pro, một lần. Không có tiền đi qua. Quyền đang có của họ không thay đổi.`, confirmLabel: "Tặng Pro", tone: "thuong" });
     if (!ok) return;
@@ -135,13 +153,15 @@ function GoiProContent() {
               hint={data.enforced ? "Chỉ chặn tạo mới" : "Không ai bị chặn, chỉ đếm bóng để đo"} />
             <KinStat label="Bán gói" value={<span data-testid="ban">{data.sale.open ? "Đang mở" : "Chưa mở bán"}</span>}
               hint={data.sale.open ? `Tiền tố mã ${data.sale.prefix}` : (data.sale.reason ? SALE_REASON[data.sale.reason] : undefined)} />
+            <KinStat label="Tự kích hoạt (SePay)" value={<span data-testid="hook">{data.webhook.enabled ? "Đang bật" : "Đang tắt"}</span>}
+              hint={data.webhook.enabled ? "Đúng mã và đúng số tiền thì tự cộng hạn" : (data.webhook.reason ? HOOK_REASON[data.webhook.reason] : undefined)} />
             <KinStat label="Gia sư đang Pro" value={data.measure.proNow} hint={`Trên ${data.measure.tutors} gia sư`} />
             <KinStat label="Lượt AI trích đề tháng này" value={data.measure.aiExtractThisMonth} hint="Tổng, không có tên người" />
           </KinStatRow>
 
           <KinCallout title="Cách bật cưỡng chế">
             Đặt biến môi trường <b>KIN_PLAN_ENFORCE=1</b> trên máy chủ rồi triển khai lại. Để trống hoặc khác “1” là TẮT. Bản xem trước luôn tắt. Đặt tài khoản nhận tiền bằng
-            KINPRO_BANK_BIN, KINPRO_ACCOUNT_NO, KINPRO_ACCOUNT_NAME (và tuỳ chọn KINPRO_CODE_PREFIX). Thiếu thì màn Gói ghi “Chưa mở bán”.
+            KINPRO_BANK_BIN, KINPRO_ACCOUNT_NO, KINPRO_ACCOUNT_NAME (và tuỳ chọn KINPRO_CODE_PREFIX). Thiếu thì màn Gói ghi “Chưa mở bán”. Muốn tự kích hoạt khi tiền về, đặt thêm KINPRO_SEPAY_API_KEY (khoá API ở SePay, từ 16 ký tự) và trỏ webhook SePay tới /api/webhooks/sepay-pro.
           </KinCallout>
 
           <section aria-label="Số đo">
@@ -188,6 +208,29 @@ function GoiProContent() {
           </section>
 
           <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]" data-testid="thong-bao">{msg}</p>
+
+          <section aria-label="Khoản tiền cần duyệt tay">
+            <KinSectionHead title="Khoản tiền cần duyệt tay" aside={`${data.payments.length} khoản`} />
+            {data.payments.length === 0 ? (
+              <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" data-testid="tien-rong">Không có khoản nào. Tiền về đúng mã và đúng số thì tự kích hoạt; sai số tiền, sai mã hoặc đã kích hoạt rồi thì hiện ở đây để bạn đối chiếu. KiN không tự hoàn tiền.</p>
+            ) : (
+              <ul className="divide-y divide-[var(--kin-vien-nhat)]" data-testid="tien-cho-duyet">
+                {data.payments.map(p => (
+                  <li key={p.id} data-payment={p.id} data-reason={p.reason ?? ""} className="py-4 grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center text-[length:var(--kin-co-goc)]">
+                    <div className="min-w-0">
+                      <p className="font-medium text-[var(--kin-chu-chinh)] tabular-nums">{vnd(p.amount)} <span className="font-normal text-[var(--kin-chu-mo)]">· về lúc {fmt(p.occurredAt)}</span></p>
+                      <p className="text-[var(--kin-chu-mo)] break-words">{p.content || "Không có nội dung"}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <KinStatus tone="cho">{p.reasonText}</KinStatus>
+                      <p className="mt-1 font-mono text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)] break-all">{p.matchedCode ?? "Không có mã"}</p>
+                    </div>
+                    <KinButton variant="secondary" disabled={busy === p.id} onClick={() => void resolvePayment(p)} data-testid={`da-xu-ly-${p.providerTxId}`}>Đã xử lý</KinButton>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
           <section aria-label="Yêu cầu mua">
             <KinSectionHead title="Yêu cầu mua Pro" aside={`${data.orders.filter(o => o.status === "pending").length} đang chờ`} />

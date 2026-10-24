@@ -2277,6 +2277,47 @@ model ProOrder {
   @@map("pro_orders")
 }
 
+// KiN Pro — khoản tiền SePay báo về tài khoản nhận tiền của KiN Pro (webhook riêng /api/webhooks/sepay-pro, KHÔNG phải webhook học phí của gia sư).
+// Một giao dịch SePay = đúng một dòng ((provider, providerTxId) duy nhất): gọi lại cùng giao dịch không kích hoạt lần hai.
+//   status "activated": đúng mã + đúng số tiền + yêu cầu đang chờ → đã kích hoạt (orderId có giá trị).
+//   status "review":    mọi trường hợp còn lại (sai số tiền, mã lạ, yêu cầu đã huỷ / đã kích hoạt, không có mã…) → admin duyệt tay; KHÔNG tự hoàn tiền.
+//   status "resolved":  admin đã xử lý xong ở ngoài (hoàn tiền thủ công hoặc kích hoạt tay) và bấm đánh dấu.
+// Không FK: là sổ đối soát, không phải dữ liệu nghiệp vụ; không lưu số dư tài khoản (accumulated).
+model ProPayment {
+  id           String    @id @default(cuid())
+  provider     String    @default("sepay")
+  providerTxId String
+  amount       Int
+  content      String    @default("") @db.VarChar(500)
+  occurredAt   DateTime
+  matchedCode  String? // mã đơn Pro tìm thấy trong nội dung (nếu có)
+  orderId      String? // yêu cầu Pro khớp mã (nếu có)
+  status       String // "activated" | "review" | "resolved"
+  reason       String? // với "review": no_code | unknown_code | amount_mismatch | order_not_pending | order_not_purchase
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([provider, providerTxId])
+  @@index([status, createdAt])
+  @@map("pro_payments")
+}
+
+// KiN Pro — nhắc gia hạn T-7/T-3/T-0: mỗi (gia sư, hạn của chu kỳ, mốc) đúng một dòng, nên một mốc gửi tối đa một lần cho mỗi chu kỳ.
+// "Chu kỳ" = hạn Pro hiện tại của gia sư (cuối chuỗi các kỳ nối liền nhau); gia hạn xong hạn dời đi → chu kỳ mới, nhắc lại được.
+// Dòng này chỉ được tạo CÙNG MỘT giao dịch với thông báo trong app, nên có dòng ⇔ thông báo thật sự đã được tạo.
+model ProRenewalReminder {
+  id        String   @id @default(cuid())
+  userId    String
+  cycleEnd  DateTime
+  milestone Int // 7 | 3 | 0
+  createdAt DateTime @default(now())
+
+  @@unique([userId, cycleEnd, milestone])
+  @@index([createdAt])
+  @@map("pro_renewal_reminders")
+}
+
 // Nhật ký lượt dùng để ĐO (chế độ "đếm bóng") và để đếm hạn mức theo tháng. Không FK: là sổ đo, không phải dữ liệu nghiệp vụ.
 //   kind: "ai_extract" (một lượt trích đề) | "gate_would_block" (cổng TẮT nhưng nếu bật sẽ chặn) | "gate_blocked" (cổng BẬT và đã chặn)
 model UsageEvent {
