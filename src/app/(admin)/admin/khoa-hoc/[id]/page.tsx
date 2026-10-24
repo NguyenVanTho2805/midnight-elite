@@ -1,5 +1,6 @@
 "use client";
 
+import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
@@ -687,6 +688,8 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
       <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
         Nhận PDF, Word, Excel, PowerPoint, TXT, ảnh · mỗi tệp tối đa {DOCUMENT_MAX_MB} MB · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài. Học sinh xem thử được rồi mới tải về.
       </p>
+      {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
+      <p data-copyright-notice className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
       {problem && <p role="alert" className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && pending.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>

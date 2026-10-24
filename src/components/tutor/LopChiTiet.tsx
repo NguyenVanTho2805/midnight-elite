@@ -84,6 +84,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         actions={<>
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
+          <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={`/admin/khoa-hoc/${d.courseId}`} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </>} />
 
