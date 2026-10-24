@@ -15,6 +15,7 @@ import { KinStat, KinStatRow } from "@/components/kin/Stat";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinListRow } from "@/components/kin/ListRow";
 import { KinCallout } from "@/components/kin/Callout";
+import { KinPanel } from "@/components/kin/Panel";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_HEAD } from "@/components/kin/PageLayout";
 
@@ -66,7 +67,7 @@ export default function HopViec() {
       {error && <ErrorStrip message="Không tải được Hộp việc." onRetry={load} />}
       {items === null || !o ? (!error ? <Skeleton /> : null) : (
         <>
-          <KinStatRow className="hidden md:grid">
+          <KinStatRow boxed className="hidden md:grid">
             <KinStat label={`Học phí tháng ${o.monthNumber} đã xác nhận`} value={o.stats.confirmed.value} hint={o.stats.confirmed.hint} />
             <KinStat label="Phiếu đã lập" value={o.stats.invoices.value} hint={o.stats.invoices.hint} />
             <KinStat label="Lớp đang quản lý" value={o.stats.classes.value} hint={o.stats.classes.hint} />
@@ -79,7 +80,7 @@ export default function HopViec() {
               <KinSectionHead id="hv-next" className="max-md:hidden"
                 title={<><span className="md:hidden">{o.next?.meta.startsWith("Hôm nay") ? "Buổi học hôm nay" : "Buổi học sắp tới"}</span><span className="hidden md:inline">Buổi học sắp tới</span></>} />
               {o.next ? (
-                <div className="md:pt-5 max-md:px-[var(--kin-kc-7)] max-md:py-5 max-md:rounded-[var(--kin-bo-sm)] max-md:bg-[var(--kin-nen-nhan)]">
+                <KinPanel variant="nhan" className="mt-4 max-md:mt-0">
                   <p className="md:hidden text-[length:var(--kin-co-goc)] uppercase tracking-[0.02em] text-[var(--kin-chu-mo)]">{o.next.meta.startsWith("Hôm nay") ? "Buổi học hôm nay" : "Buổi học sắp tới"}</p>
                   <p className="max-md:mt-3 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.next.time}</p>
                   <p className="mt-4 text-[length:var(--kin-co-tieu-de)] leading-6 text-[var(--kin-chu-chinh)]">{o.next.courseName}</p>
@@ -87,7 +88,7 @@ export default function HopViec() {
                   {o.next.note && <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{o.next.note}</p>}
                   <Link href={o.next.attendanceHref} className={`${kinButtonClass("primary")} mt-4`}>Mở buổi học</Link>
                   {o.next.following && <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tiếp theo: {o.next.following}</p>}
-                </div>
+                </KinPanel>
               ) : (
                 <KinEmptyState title="7 ngày tới chưa có buổi nào" action={<Link href="/lop-cua-toi/lich" className={kinButtonClass("secondary")}>Mở Lịch</Link>}>
                   Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
@@ -103,6 +104,7 @@ export default function HopViec() {
                     Báo nghỉ sát giờ, tiền cần đối soát, bài chưa chấm và các việc cần cô ra tay sẽ hiện ở đây.
                   </KinEmptyState>
                 ) : (
+                  <KinPanel flush className="mt-4">
                   <ul aria-label="Việc cần cô xử lý">
                     {todo.map(i => (
                       <li key={i.id}>
@@ -111,6 +113,7 @@ export default function HopViec() {
                       </li>
                     ))}
                   </ul>
+                  </KinPanel>
                 )}
               </section>
 
@@ -132,14 +135,14 @@ export default function HopViec() {
 
               <section aria-labelledby="hv-fee" className="mt-8 md:hidden">
                 <KinSectionHead id="hv-fee" title={`Học phí tháng ${o.monthNumber}`} />
-                <div className="pt-4">
+                <KinPanel className="mt-4">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Đã xác nhận</span>
                     <span className="text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.stats.confirmed.value}</span>
                   </div>
                   <p className="mt-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{o.stats.invoices.value} đã lập · {o.stats.invoices.hint}. {o.stats.confirmed.hint}.</p>
                   <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở sổ học phí</Link>
-                </div>
+                </KinPanel>
               </section>
             </div>
 
@@ -181,7 +184,7 @@ export default function HopViec() {
                   </>
                 )}
               </section>
-              <KinCallout className="mt-8">Chỉ chốt buổi đã dạy mới tạo học phí. Lưu điểm danh không tự tính tiền.</KinCallout>
+              <KinPanel className="mt-8 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-phu)]">Chỉ chốt buổi đã dạy mới tạo học phí. Lưu điểm danh không tự tính tiền.</KinPanel>
             </div>
           </div>
         </>

@@ -13,9 +13,10 @@ export function KinStat({ label, value, hint, className = "" }: { label: ReactNo
 }
 
 /** Hàng số liệu: 4 ô ngang trên máy tính, 2 cột trên điện thoại, kẻ mảnh phía trên và dưới. */
-export function KinStatRow({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function KinStatRow({ children, className = "", boxed = false }: { children: ReactNode; className?: string; /** mỗi số một ô khung (kiểu KinPanel), thay cho kẻ mảnh trên/dưới */ boxed?: boolean }) {
   return (
-    <div data-kin-stat-row className={`grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-5 py-6 border-y border-[var(--kin-vien-nhat)] ${className}`}>
+    <div data-kin-stat-row data-boxed={boxed ? "" : undefined}
+      className={`grid grid-cols-2 md:grid-cols-4 ${boxed ? "gap-3 md:gap-4 py-2" : "gap-x-8 gap-y-5 py-6 border-y border-[var(--kin-vien-nhat)]"} ${className}`}>
       {children}
     </div>
   );

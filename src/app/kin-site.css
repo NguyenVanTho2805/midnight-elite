@@ -121,6 +121,17 @@
   --kin-tt-vien-cho:  color-mix(in srgb, var(--kin-tt-cham-cho) 36%, var(--kin-nen-trang));
   --kin-tt-vien-loi:  color-mix(in srgb, var(--kin-tt-chu-loi) 30%, var(--kin-nen-trang));
 
+  /* Khung dùng chung (KinPanel, src/components/kin/Panel.tsx): nền mặt + viền nhạt đủ thấy ở cả sáng và tối.
+     Viền = chữ mờ pha 24% vào nền trang (sáng ≈ #dcdee3, tối ≈ #2c313b) — đậm hơn đường kẻ --kin-vien-nhat để khối tách khỏi nền, vẫn nhẹ hơn viền ô nhập. */
+  --kin-khung-nen: var(--kin-nen-bang);
+  --kin-khung-vien: color-mix(in srgb, var(--kin-chu-mo) 24%, var(--kin-nen-trang));
+  --kin-khung-nhan-nen: var(--kin-nhan-nen-nhat);
+  --kin-khung-nhan-vien: color-mix(in srgb, var(--kin-nhan-link) 42%, var(--kin-nen-trang));
+  --kin-khung-cb-nen: var(--kin-tt-nen-cho);
+  --kin-khung-cb-vien: var(--kin-tt-vien-cho);
+  --kin-khung-loi-nen: var(--kin-tt-nen-loi);
+  --kin-khung-loi-vien: var(--kin-tt-vien-loi);
+
   /* Bóng: phẳng, viền mảnh — thay các bóng nổi/chìm kiểu neumorphism (#C5D0EA hai phía). */
   --kin-bong-the:  0 0 0 1px var(--kin-vien-thuong), 0 1px 2px rgba(17, 24, 39, 0.06);
   --kin-bong-chim: inset 0 1px 2px rgba(17, 24, 39, 0.08), 0 0 0 1px var(--kin-vien-thuong);
@@ -202,3 +213,25 @@
 html[data-kin-host="admin"] [data-guest-chrome],
 html[data-kin-host="admin"] [data-chi-khach] { display: none !important; }
 html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
+
+/* ── Khung dùng chung (KinPanel) ─────────────────────────────────────────────
+   Cũng áp cho từng ô của dải số khi <KinStatRow boxed> ("mỗi số một ô"). */
+.kin-khung,
+[data-kin-stat-row][data-boxed] > [data-kin-stat] {
+  background: var(--kin-khung-nen);
+  border: 1px solid var(--kin-khung-vien);
+  border-radius: var(--kin-bo-the);
+  padding: var(--kin-kc-7);
+}
+@media (min-width: 768px) {
+  .kin-khung,
+  [data-kin-stat-row][data-boxed] > [data-kin-stat] { padding: 20px; }
+}
+.kin-khung[data-flush] { padding: 0; overflow: hidden; }
+.kin-khung[data-kin-panel="nhan"] { background: var(--kin-khung-nhan-nen); border-color: var(--kin-khung-nhan-vien); }
+.kin-khung[data-kin-panel="canh-bao"] { background: var(--kin-khung-cb-nen); border-color: var(--kin-khung-cb-vien); }
+.kin-khung[data-kin-panel="loi"] { background: var(--kin-khung-loi-nen); border-color: var(--kin-khung-loi-vien); }
+.kin-khung[data-kin-panel="khoa-pro"] { background: transparent; border-style: dashed; border-color: var(--kin-vien-o-nhap); }
+/* Bọc cả danh sách/bảng: hàng cuối không kẻ đáy (khung đã có viền). */
+.kin-khung[data-flush] li:last-child > *,
+.kin-khung[data-flush] > [data-kin-list-row]:last-child { border-bottom-width: 0; }
