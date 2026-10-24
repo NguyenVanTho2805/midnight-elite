@@ -36,7 +36,7 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   const q2 = await mkMC(exam.id, 2, "Câu 2 làm đúng", { hint: "GỢI-Ý-2", correct: "đúng 2", wrong: ["sai 2a"] });
   const q3 = await mkMC(exam.id, 3, "Câu 3 không gợi ý", { explanation: "LỜI-GIẢI-3", correct: "ĐÁP-ÁN-ĐÚNG-3", wrong: ["sai 3a", "sai 3b"] });
   const q4 = await mkShort(exam.id, 4, "Câu 4 điền ngắn", "ĐÁP-ÁN-3.5", "GỢI-Ý-4");
-  const q5 = await prisma.examQuestion.create({ data: { id: id("q"), examId: exam.id, order: 5, text: "Câu 5 tự luận", type: "ESSAY" } });
+  // QZ-11: đề có câu tự luận mà gia sư chưa công bố thì chữa bài bị khoá cả đề (xem t-quiz-hs.ts) — nên đề thử ở đây không có tự luận.
   const q6 = await mkMC(exam.id, 6, "Câu 6 bỏ trống", { hint: "GỢI-Ý-6", explanation: "LỜI-GIẢI-6", correct: "ĐÁP-ÁN-ĐÚNG-6", wrong: ["sai 6a"] });
   const q8 = await mkMC(exam.id, 8, "Câu 8 đúng ngay lần 1 ở chữa bài", { hint: "GỢI-Ý-8", explanation: "LỜI-GIẢI-8", correct: "ĐÁP-ÁN-ĐÚNG-8", wrong: ["sai 8a"] });
   const q9 = await mkMC(exam.id, 9, "Câu 9 để thử song song", { hint: "GỢI-Ý-9", explanation: "LỜI-GIẢI-9", correct: "ĐÁP-ÁN-ĐÚNG-9", wrong: ["sai 9a"] });
@@ -48,7 +48,6 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   await ans(q2.q.id, q2.correctId);                   // đúng
   await ans(q3.q.id, q3.wrongIds[1]);                 // sai
   await ans(q4.id, null, "4");                         // sai
-  await ans(q5.id, null, "bài văn");                  // tự luận
   /* q6: bỏ trống */
   await ans(q8.q.id, q8.wrongIds[0]);                 // sai
   await ans(q9.q.id, q9.wrongIds[0]);                 // sai
@@ -147,7 +146,7 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   check("câu điền: >200 ký tự → 400", (await post(q4d.id, { action: "submit", text: "x".repeat(201) })).status === 400);
   check("action lạ / body hỏng → 400", (await post(q9.q.id, { action: "xoa" } as any)).status === 400 && (await api("POST", `/api/exams/attempts/${attempt.id}/correction/${q9.q.id}`, { as: stu, raw: "{hỏng", headers: { "content-type": "application/json" } })).status === 400);
   check("câu đã làm đúng trong bài thi (q2) → 404", (await post(q2.q.id, { action: "submit", optionId: q2.correctId })).status === 404);
-  check("tự luận / đúng-sai → 404", (await post(q5.id, { action: "submit", text: "a" })).status === 404 && (await post(q7.id, { action: "reveal" })).status === 404);
+  check("đúng-sai → 404", (await post(q7.id, { action: "reveal" })).status === 404);
   const exam2 = await mkExam(tutor.id);
   const o2 = await mkMC(exam2.id, 1, "Câu đề khác", { correct: "a", wrong: ["b"] });
   check("câu của đề khác → 404", (await post(o2.q.id, { action: "submit", optionId: o2.correctId })).status === 404);

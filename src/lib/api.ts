@@ -149,10 +149,12 @@ export const api = {
         method: "PATCH", body: JSON.stringify({ optionId, answerTrue }),
       }),
     submit: (attemptId: string) =>
-      apiFetch<{ score: number; totalPoints: number; rank: number }>(
+      apiFetch<ExamSubmitResult>(
         `/api/exams/attempts/${attemptId}/submit`,
         { method: "POST" }
       ),
+    /** QZ-11: cổng vào đề — biết vào được không, còn mấy lượt, em đã vào lớp chưa. Không có câu hỏi/đáp án. */
+    gate: (examId: string) => apiFetch<ExamGate>(`/api/exams/${examId}/gate`),
     history: (examId: string) =>
       apiFetch<ExamAttemptHistoryItem[]>(`/api/exams/${examId}/attempts?mine=true`),
     tabEvent: (attemptId: string) =>
@@ -378,6 +380,8 @@ export type ExamReviewQuestion =
   | { id: string; type: "SHORT_ANSWER"; text: string; points: number; sectionLabel: string | null; studentAnswer: string | null; correctAnswer: string | null; isCorrect: boolean | null; correctionPending?: boolean };
 export interface ExamAttemptReview {
   attemptId: string; score: number | null; totalPoints: number;
+  /** QZ-11: true = quiz có tự luận, gia sư chưa công bố → không có điểm/đáp án. */
+  pendingManual?: boolean;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];
   correctableCount?: number; // NV-188: số câu làm sai có thể chữa bài (0 = đề không cho xem đáp án)
 }
@@ -589,8 +593,25 @@ export interface ExamSectionWindow {
   label: string | null;
   endsAt: string; // ISO
 }
+/** QZ-11: kết quả nộp. `score`/`rank` = null khi quiz có tự luận mà gia sư chưa công bố (pendingManual) — KHÔNG phải 0 điểm. */
+export interface ExamSubmitResult {
+  score: number | null; totalPoints: number; rank: number | null; coinsEarned?: number;
+  pendingManual?: boolean; status?: string; submittedAt?: string | null; expired?: boolean; receipt?: string;
+}
+export interface ExamGate {
+  exam: { id: string; title: string; category: string; date: string; time: string; durationMinutes: number; questionCount: number; hasPassword: boolean; hasEssay: boolean; hasQuestions: boolean };
+  klass: { id: string; name: string; tutorName: string | null } | null;
+  enrolled: boolean | null;
+  attempts: { used: number; max: number | null; remaining: number | null; resumable: boolean; label: string };
+  canStart: boolean;
+  blockReason: "not_enrolled" | "payment_required" | "attempts_exhausted" | "no_questions" | null;
+  serverNow: string;
+}
+
 export interface ExamAttemptState {
   attemptId: string;
+  /** QZ-11: giờ máy chủ lúc trả lời — để tính đồng hồ theo máy chủ, không tin đồng hồ trình duyệt. */
+  serverNow?: string;
   status?: string;
   expiresAt?: string;
   sectionWindows?: ExamSectionWindow[] | null;

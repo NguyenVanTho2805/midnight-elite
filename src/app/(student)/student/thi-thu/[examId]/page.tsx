@@ -5,18 +5,25 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClipboardList, AlertTriangle, Pin } from "griddy-icons";
-import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic, type ExamAttemptReview } from "@/lib/api";
+import { api, type ExamFull, type ExamAttemptState, type ExamAttemptHistoryItem, type ExamQuestionPublic, type ExamAttemptReview, type ExamGate } from "@/lib/api";
 import { MathText } from "@/components/MathText";
 import CorrectionPanel from "@/components/exam/CorrectionPanel";
 import ExamRoomView from "@/components/exam/ExamRoomView";
 import { KinLoader } from "@/components/kin/KinLoader";
+import { KinCopyButton } from "@/components/kin";
+import QuizEntryGate from "@/components/exam/QuizEntryGate";
+import QuizTimeUp from "@/components/exam/QuizTimeUp";
+import { clockOffsetMs, pickDraft, remainingSecFrom, submittedNotice, type DraftState } from "@/lib/quizRoom";
+import { clearLocalDrafts, readLocalDraft, writeLocalDraft } from "@/lib/quizDraftStore";
 
-type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "done" | "review";
+type Phase = "loading" | "error" | "ready" | "entering" | "submit" | "taking" | "timeup" | "done" | "review";
 
 interface MyResult {
-  score: number;
+  /** null = quiz có tự luận, gia sư chưa công bố (KHÔNG phải 0 điểm). */
+  score: number | null;
   totalPoints: number;
-  rank: number;
+  rank: number | null;
+  pendingManual?: boolean;
 }
 
 interface LeaderboardRow {
@@ -74,6 +81,18 @@ function ExamEntryInner() {
   const [showCorrection, setShowCorrection] = useState(false); // NV-188: màn Chữa bài
   const [tabLeaves, setTabLeaves] = useState(0); // số lần rời tab trong lượt thi này (server đếm)
 
+  // QZ-11: giờ máy chủ, cổng vào đề, bản nháp, biên nhận, màn hết giờ.
+  const [clockOffset, setClockOffset] = useState(0); // ms: giờ máy chủ − giờ trình duyệt
+  const [gate, setGate] = useState<ExamGate | null>(null);
+  const [gateErr, setGateErr] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<Record<string, DraftState>>({});
+  const draftTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const attemptIdRef = useRef<string | null>(null);
+  const clockOffsetRef = useRef(0);
+  const [submitInfo, setSubmitInfo] = useState<{ expired: boolean; receipt: string; submittedAt: string | null } | null>(null);
+  const [timeUp, setTimeUp] = useState<"sending" | "unconfirmed">("sending");
+
   // Load exam + student's existing result
   useEffect(() => {
     if (!examId) return;
@@ -108,6 +127,17 @@ function ExamEntryInner() {
     refreshLeaderboardAndHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam?.hasQuestions, examId]);
+
+  // QZ-11: cổng vào đề — tải khi ở màn chuẩn bị (đề làm trong KiN) và khi ở màn kết quả (để biết còn được làm lại không).
+  function loadGate() {
+    if (!examId) return;
+    api.examAttempts.gate(examId).then(g => { setGate(g); setGateErr(false); }).catch(() => setGateErr(true));
+  }
+  useEffect(() => {
+    if (!exam?.hasQuestions || (phase !== "ready" && phase !== "done")) return;
+    loadGate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam?.hasQuestions, phase === "ready" || phase === "done"]);
 
   // Countdown khi đang chuyển hướng
   useEffect(() => {
@@ -144,18 +174,42 @@ function ExamEntryInner() {
     }
   }
 
+  // Đổ trạng thái lượt (bắt đầu / tiếp tục) vào màn làm bài: đồng hồ theo máy chủ, bản nháp trộn với bản dự phòng trên máy này.
+  function hydrateAttempt(state: ExamAttemptState) {
+    const off = clockOffsetMs(state.serverNow, Date.now());
+    clockOffsetRef.current = off; setClockOffset(off);
+    attemptIdRef.current = state.attemptId;
+    const server = state.textAnswers ?? {};
+    const merged: Record<string, string> = { ...server };
+    const toPush: [string, string][] = [];
+    for (const q of state.questions ?? []) {
+      if (q.type !== "ESSAY" && q.type !== "SHORT_ANSWER") continue;
+      const d = pickDraft(server[q.id], readLocalDraft(state.attemptId, q.id));
+      if (d.text || server[q.id] !== undefined) merged[q.id] = d.text;
+      if (d.fromLocal) toPush.push([q.id, d.text]);
+    }
+    setAttempt(state);
+    setSelected((state.answers ?? {}) as Record<string, string>);
+    setEssayText(merged);
+    setClusterAnswers(state.boolAnswers ?? {});
+    setTabLeaves(state.tabSwitchCount ?? 0);
+    setDraftStatus({});
+    autoSubmitted.current = false;
+    toPush.forEach(([qid, text]) => saveDraftNow(qid, text, state.attemptId));
+  }
+
   async function startAttempt() {
     setStartErr("");
+    setStarting(true);
     try {
       const state = await api.examAttempts.start(examId, examPassword || undefined);
-      setAttempt(state);
-      setSelected((state.answers ?? {}) as Record<string, string>);
-      setEssayText(state.textAnswers ?? {});
-      setClusterAnswers(state.boolAnswers ?? {});
-      setTabLeaves(state.tabSwitchCount ?? 0);
+      hydrateAttempt(state);
       setPhase("taking");
     } catch (e) {
       setStartErr(e instanceof Error ? e.message : "Không thể bắt đầu bài thi");
+      loadGate(); // số lượt/quyền có thể đã đổi — cập nhật lại cổng
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -166,13 +220,36 @@ function ExamEntryInner() {
     }
   }
 
+  // QZ-11: tự lưu nháp lên máy chủ khi em ngừng gõ (1,2 giây), kèm bản dự phòng trên máy. Báo trạng thái thật: chỉ "đã lưu trên máy chủ" khi máy chủ đã nhận.
+  function nowLabel() { return new Date(Date.now() + clockOffsetRef.current).toLocaleTimeString("vi-VN", { hour12: false }); }
+  async function saveDraftNow(questionId: string, text: string, attemptId?: string) {
+    const aid = attemptId ?? attemptIdRef.current;
+    if (!aid) return;
+    clearTimeout(draftTimers.current[questionId]);
+    setDraftStatus(prev => ({ ...prev, [questionId]: { kind: "saving" } }));
+    try {
+      await api.examAttempts.answerEssay(aid, questionId, text);
+      const local = readLocalDraft(aid, questionId);
+      if (!local || local.text === text) writeLocalDraft(aid, questionId, { text, synced: true });
+      setDraftStatus(prev => ({ ...prev, [questionId]: { kind: "saved", at: nowLabel() } }));
+    } catch (e) {
+      setDraftStatus(prev => ({ ...prev, [questionId]: { kind: "failed" } }));
+      const permanent = e instanceof Error && /hết giờ|kết thúc|Phần này/.test(e.message);
+      if (!permanent && attemptIdRef.current === aid) draftTimers.current[questionId] = setTimeout(() => { const t = readLocalDraft(aid, questionId); if (t && !t.synced) saveDraftNow(questionId, t.text, aid); }, 5000);
+    }
+  }
   function updateEssayAnswer(questionId: string, text: string) {
     setEssayText(prev => ({ ...prev, [questionId]: text }));
+    const aid = attemptIdRef.current;
+    if (!aid) return;
+    writeLocalDraft(aid, questionId, { text, synced: false });
+    clearTimeout(draftTimers.current[questionId]);
+    draftTimers.current[questionId] = setTimeout(() => saveDraftNow(questionId, text, aid), 1200);
   }
-  // Lưu câu tự luận khi rời khỏi ô nhập (không autosave từng ký tự — tránh spam request)
+  // Rời khỏi ô nhập → lưu ngay, không chờ hết nhịp.
   function saveEssayAnswer(questionId: string) {
     if (!attempt) return;
-    api.examAttempts.answerEssay(attempt.attemptId, questionId, essayText[questionId] ?? "").catch(() => {});
+    saveDraftNow(questionId, essayText[questionId] ?? "");
   }
 
   function selectClusterAnswer(optionId: string, answerTrue: boolean) {
@@ -193,11 +270,8 @@ function ExamEntryInner() {
     if (!attempt || submitting) return;
     setSubmitting(true);
     try {
-      // saveEssayAnswer chỉ lưu lúc rời ô nhập (blur) — nếu học viên gõ xong
-      // câu tự luận/trả lời ngắn (dùng chung state essayText, cùng cơ chế lưu)
-      // rồi bấm "Kết thúc bài thi" ngay mà chưa từng blur, câu trả lời chỉ tồn
-      // tại trong state cục bộ, chưa từng gửi lên server. Flush lại toàn bộ
-      // trước khi nộp để không mất bài làm.
+      // Gửi lại mọi chữ còn chưa chắc đã lên máy chủ (gõ xong mà chưa rời ô / mạng chập chờn) rồi mới nộp.
+      // Sau hạn máy chủ sẽ từ chối các lần gửi này — không sao, bản nháp đã tự lưu trước đó vẫn là bài.
       const essayEntries = Object.entries(essayText).filter(([, text]) => text.trim());
       await Promise.all(
         essayEntries.map(([questionId, text]) =>
@@ -205,15 +279,24 @@ function ExamEntryInner() {
         )
       );
       const result = await api.examAttempts.submit(attempt.attemptId);
-      setMyResult({ score: result.score, totalPoints: result.totalPoints, rank: result.rank });
+      // Chỉ tới đây — máy chủ đã trả biên nhận — mới được coi là đã nộp.
+      Object.values(draftTimers.current).forEach(clearTimeout);
+      clearLocalDrafts(attempt.attemptId);
+      setSubmitInfo({ expired: !!result.expired, receipt: result.receipt ?? "", submittedAt: result.submittedAt ?? null });
+      setMyResult({ score: result.score, totalPoints: result.totalPoints, rank: result.rank, pendingManual: !!result.pendingManual });
       setPhase("done");
       refreshLeaderboardAndHistory();
     } catch {
-      setStartErr("Nộp bài thất bại, thử lại");
+      // Hết giờ mà chưa có xác nhận: ở lại màn "chưa xác nhận" (có nút thử lại), không giả vờ đã nộp.
+      if (autoSubmitted.current) setTimeUp("unconfirmed");
+      else setStartErr("Nộp bài thất bại, thử lại");
     } finally {
       setSubmitting(false);
     }
   }
+
+  // QZ-11: hết giờ → màn "đang xác nhận bài nộp"; nút thử lại gọi lại nộp (nộp lặp an toàn: máy chủ trả lại kết quả đã có).
+  function retryTimeUp() { setTimeUp("sending"); submitAttempt(); }
 
   // Lượt thi để xem lại: ưu tiên attempt vừa làm trong phiên này, nếu không
   // có (vd vào thẳng trang đã có kết quả từ trước) thì dùng lượt gần nhất trong lịch sử.
@@ -248,6 +331,27 @@ function ExamEntryInner() {
     return () => clearInterval(t);
   }, [phase, attempt?.expiresAt]);
 
+  // Dọn hẹn giờ lưu nháp khi rời trang.
+  useEffect(() => () => { Object.values(draftTimers.current).forEach(clearTimeout); }, []);
+
+  // Em chuyển tab / khoá màn hình: đẩy ngay mọi chữ chưa đồng bộ lên máy chủ.
+  useEffect(() => {
+    if (phase !== "taking" || !attempt?.attemptId) return;
+    const aid = attempt.attemptId;
+    const qs = attempt.questions ?? [];
+    function flush() {
+      if (document.visibilityState !== "hidden") return;
+      for (const q of qs) {
+        if (q.type !== "ESSAY" && q.type !== "SHORT_ANSWER") continue;
+        const d = readLocalDraft(aid, q.id);
+        if (d && !d.synced) saveDraftNow(q.id, d.text, aid);
+      }
+    }
+    document.addEventListener("visibilitychange", flush);
+    return () => document.removeEventListener("visibilitychange", flush);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, attempt?.attemptId]);
+
   // Giám sát rời màn hình/chuyển tab lúc đang thi — chỉ đếm sự kiện gửi lên
   // server, không quay màn hình/webcam, không làm gián đoạn bài thi.
   // Chỉ dùng visibilitychange (không thêm window blur) để tránh đếm trùng —
@@ -267,19 +371,21 @@ function ExamEntryInner() {
   // Giờ riêng từng Phần (vd đề ĐGNL HSA) — null nếu đề không dùng (hành vi cũ,
   // chỉ 1 đồng hồ chung). currentSectionIndex = Phần đang hiển thị: Phần đầu
   // tiên còn endsAt ở tương lai, hoặc Phần cuối nếu tất cả đã qua (sắp tự nộp).
+  // QZ-11: mọi phép tính giờ dùng giờ MÁY CHỦ (giờ trình duyệt + chênh lệch lấy lúc mở lượt), không tin đồng hồ máy em.
   const sectionWindows = attempt?.sectionWindows ?? null;
+  const serverNowMs = Date.now() + clockOffset;
   const currentSectionIndex = sectionWindows && sectionWindows.length > 0
     ? (() => {
-        const idx = sectionWindows.findIndex(w => new Date(w.endsAt).getTime() > Date.now());
+        const idx = sectionWindows.findIndex(w => new Date(w.endsAt).getTime() > serverNowMs);
         return idx === -1 ? sectionWindows.length - 1 : idx;
       })()
     : -1;
   const isLastSection = !sectionWindows || currentSectionIndex === sectionWindows.length - 1;
 
   const remainingSec = sectionWindows && currentSectionIndex >= 0
-    ? Math.max(0, Math.floor((new Date(sectionWindows[currentSectionIndex].endsAt).getTime() - Date.now()) / 1000))
+    ? remainingSecFrom(sectionWindows[currentSectionIndex].endsAt, clockOffset, Date.now())
     : attempt?.expiresAt
-    ? Math.max(0, Math.floor((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000))
+    ? remainingSecFrom(attempt.expiresAt, clockOffset, Date.now())
     : 0;
 
   // Chỉ tự nộp TOÀN đề khi Phần đang hiển thị là Phần CUỐI (hoặc đề không
@@ -288,6 +394,8 @@ function ExamEntryInner() {
   useEffect(() => {
     if (phase === "taking" && attempt?.expiresAt && isLastSection && remainingSec <= 0 && !autoSubmitted.current) {
       autoSubmitted.current = true;
+      setTimeUp("sending");
+      setPhase("timeup");
       submitAttempt();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -314,23 +422,54 @@ function ExamEntryInner() {
     );
   }
 
+  // ── Hết giờ: đang xác nhận bài nộp (QZ-11) ───────────────────────────────────
+  if (phase === "timeup" && attempt) {
+    return (
+      <div className="px-4 py-6">
+        <QuizTimeUp examTitle={exam.title} attemptId={attempt.attemptId} state={timeUp} retrying={submitting} onRetry={retryTimeUp} />
+      </div>
+    );
+  }
+
   // ── Done: show result ────────────────────────────────────────────────────────
   if (phase === "done" && myResult) {
+    // Điểm chỉ hiện khi máy chủ trả điểm thật. Quiz có tự luận chưa công bố: màn "đã ghi nhận", không có điểm/hạng (không phải 0 điểm).
+    const pending = !!myResult.pendingManual || myResult.score === null;
+    const notice = submittedNotice({ hasEssay: pending, published: !pending }, !!submitInfo?.expired);
+    const receiptTime = submitInfo?.submittedAt ? new Date(submitInfo.submittedAt).toLocaleString("vi-VN", { hour12: false }) : null;
+    const canRetake = !exam.hasQuestions || gate?.canStart === true;
     return (
       <div className="max-w-lg mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Kết quả của bạn</h1>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>{pending ? notice.heading : "Kết quả của bạn"}</h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{exam.title}</p>
         </div>
 
         <div className="rounded-xl p-8 text-center"
           style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <div className="text-5xl font-bold mb-1" style={{ color: "var(--kin-nhan-link)" }}>
-            {myResult.score}
-            <span className="text-2xl" style={{ color: "var(--kin-chu-mo)" }}>/{myResult.totalPoints}</span>
-          </div>
-          {myResult.rank > 0 && (
-            <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Hạng #{myResult.rank} trong bảng xếp hạng</p>
+          {pending ? (
+            <div role="status" data-cho-cham className="text-left space-y-3">
+              <p className="text-base font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Máy chủ KiN đã nhận bài của em</p>
+              <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>{notice.body}</p>
+              {(submitInfo?.receipt || receiptTime) && (
+                <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
+                  {submitInfo?.receipt && <>Mã lượt: <strong>{submitInfo.receipt}</strong></>}
+                  {submitInfo?.receipt && receiptTime && " · "}
+                  {receiptTime && <>Nhận lúc {receiptTime}</>}
+                </p>
+              )}
+              {submitInfo?.receipt && <KinCopyButton text={submitInfo.receipt} label="Sao chép mã lượt" appearance="button" buttonVariant="secondary">Sao chép mã lượt</KinCopyButton>}
+            </div>
+          ) : (
+            <>
+              <div className="text-5xl font-bold mb-1" style={{ color: "var(--kin-nhan-link)" }}>
+                {myResult.score}
+                <span className="text-2xl" style={{ color: "var(--kin-chu-mo)" }}>/{myResult.totalPoints}</span>
+              </div>
+              {myResult.rank !== null && myResult.rank > 0 && (
+                <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Hạng #{myResult.rank} trong bảng xếp hạng</p>
+              )}
+            </>
           )}
           <div className="grid grid-cols-2 gap-3 mt-6 text-left">
             {[
@@ -351,18 +490,22 @@ function ExamEntryInner() {
         {exam.hasQuestions && reviewableAttemptId && (
           <button
             onClick={openReview}
-            className="w-full py-3 rounded-lg text-sm font-semibold text-white"
+            className="w-full py-3 min-h-11 rounded-lg text-sm font-semibold text-white"
             style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
-            Xem lại bài làm
+            {pending ? "Xem lại câu trả lời của em" : "Xem lại bài làm"}
           </button>
         )}
 
-        <button
-          onClick={() => { setMyResult(null); setPhase("ready"); setCountdown(5); setScore(""); }}
-          className="w-full py-3 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--kin-nen-bang)]"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
-          Thi lại đề này
-        </button>
+        {canRetake ? (
+          <button
+            onClick={() => { setMyResult(null); setSubmitInfo(null); setPhase("ready"); setCountdown(5); setScore(""); }}
+            className="w-full py-3 min-h-11 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--kin-nen-bang)]"
+            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
+            Thi lại đề này
+          </button>
+        ) : gate && (
+          <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>Em đã dùng hết số lượt làm bài của đề này ({gate.attempts.label.replace("Lượt ", "")} lượt).</p>
+        )}
         <ExamExitLink />
       </div>
     );
@@ -401,7 +544,12 @@ function ExamEntryInner() {
                 </button>
               </div>
             )}
-            {!reviewData.canSeeAnswers && (
+            {reviewData.pendingManual && (
+              <div role="status" data-cho-cong-bo className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
+                Gia sư chưa chấm xong và công bố kết quả bài này. Em chỉ xem được câu trả lời của chính mình; điểm, đáp án và lời giải sẽ hiện khi gia sư công bố.
+              </div>
+            )}
+            {!reviewData.canSeeAnswers && !reviewData.pendingManual && (
               <div className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
                 Đề thi này chưa cho phép xem đáp án lúc này — chỉ hiện câu trả lời của bạn.
               </div>
@@ -472,7 +620,7 @@ function ExamEntryInner() {
                           {q.teacherComment && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Nhận xét: {q.teacherComment}</p>}
                         </div>
                       ) : (
-                        <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Chưa chấm</p>
+                        <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{reviewData.pendingManual ? "Chờ gia sư chấm và công bố" : "Chưa chấm"}</p>
                       )}
                     </div>
                   )}
@@ -588,6 +736,7 @@ function ExamEntryInner() {
         onSelect={selectAnswer}
         onEssayChange={updateEssayAnswer}
         onEssaySave={saveEssayAnswer}
+        draftStatus={draftStatus}
         onCluster={selectClusterAnswer}
         onSubmit={submitAttempt}
         submitting={submitting}
@@ -663,25 +812,8 @@ function ExamEntryInner() {
         {/* Redirect button / Countdown */}
         {phase === "ready" ? (
           exam.hasQuestions ? (
-            <>
-              {exam.hasPassword && (
-                <input
-                  type="text"
-                  placeholder="Nhập mật khẩu đề thi (hỏi giáo viên)"
-                  className="w-full px-4 py-3 rounded-lg text-sm border-2 outline-none mb-3"
-                  style={{ borderColor: "var(--kin-vien-thuong)" }}
-                  value={examPassword}
-                  onChange={e => setExamPassword(e.target.value)}
-                />
-              )}
-              <button
-                onClick={startAttempt}
-                className="w-full py-4 rounded-lg text-base font-bold text-white"
-                style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
-                ▶ Bắt đầu làm bài
-              </button>
-              {startErr && <p className="text-xs mt-2 text-center" style={{ color: "var(--kin-tt-chu-loi)" }}>{startErr}</p>}
-            </>
+            <QuizEntryGate gate={gate} loading={!gate && !gateErr} loadError={gateErr && !gate} onRetry={() => { setGateErr(false); loadGate(); }}
+              password={examPassword} onPassword={setExamPassword} startError={startErr} starting={starting} onStart={startAttempt} />
           ) : !exam.azotaUrl ? (
             <div className="p-4 rounded-2xl text-center" style={{ background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
               <p className="text-sm text-red-600 font-semibold">Đề thi chưa có link Azota</p>
@@ -759,7 +891,9 @@ function ExamEntryInner() {
                   {h.submittedAt ? new Date(h.submittedAt).toLocaleString("vi-VN") : "—"}
                   {h.status === "expired" && " (hết giờ)"}
                 </span>
-                <span className="font-bold" style={{ color: "var(--kin-nhan-link)" }}>{h.score ?? 0}/{exam.totalPoints}</span>
+                {h.score === null
+                  ? <span className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Chờ gia sư công bố</span>
+                  : <span className="font-bold" style={{ color: "var(--kin-nhan-link)" }}>{h.score}/{exam.totalPoints}</span>}
               </div>
             ))}
           </div>

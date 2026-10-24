@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 import type { PublishState } from "@/lib/quizRoom";
 
 /** NỐI VÀO ĐÂY khi có bảng công bố: trả true nếu gia sư đã công bố kết quả `examId` cho học sinh `userId`. Hiện luôn false (chưa có bảng). */
-async function readPublishedFlag(_examId: string, _userId: string): Promise<boolean> {
+async function readPublishedFlag(examId: string, userId: string): Promise<boolean> {
+  void examId; void userId; // chưa có bảng công bố → luôn "chưa công bố"
   return false;
 }
 

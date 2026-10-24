@@ -42,6 +42,9 @@ check("danh sách dài rút gọn 'và N câu nữa'", unansweredLabel(many) ===
 check("nhãn rỗng khi không còn câu", unansweredLabel([]) === "");
 const msg = submitConfirmMessage(left, true);
 check("hộp xác nhận: có số câu + liệt kê + nhắc tự luận chờ chấm + nộp rồi không sửa", msg.includes("3 câu chưa làm") && msg.includes("Câu 2, 3, 5") && msg.includes("chờ gia sư chấm") && msg.includes("không sửa lại được"), msg);
+check("hộp xác nhận: tính cả câu ở Phần chưa mở vào tổng, nói rõ", submitConfirmMessage([{ index: 2, id: "q", essay: false }], false, 1).startsWith("Em còn 2 câu chưa làm: Câu 2 và 1 câu ở Phần chưa mở."), submitConfirmMessage([{ index: 2, id: "q", essay: false }], false, 1));
+check("hộp xác nhận: chỉ còn câu ở Phần chưa mở (em đã làm hết câu đang thấy)", submitConfirmMessage([], false, 3).startsWith("Em còn 3 câu chưa làm: 3 câu ở Phần chưa mở."));
+check("hộp xác nhận: hiddenUnopened âm/NaN bị bỏ qua", submitConfirmMessage([], false, -4).includes("trả lời hết") && submitConfirmMessage([], false, NaN).includes("trả lời hết"));
 check("hộp xác nhận: làm hết và không có tự luận → không nhắc tự luận", !submitConfirmMessage([], false).includes("tự luận") && submitConfirmMessage([], false).includes("trả lời hết"));
 
 section("Cổng số lượt (không làm lại vượt số lần cho phép)");

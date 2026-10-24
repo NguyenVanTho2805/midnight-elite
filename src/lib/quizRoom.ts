@@ -48,10 +48,21 @@ export function unansweredLabel(items: UnansweredItem[], maxShown = 8): string {
   return rest > 0 ? `Câu ${shown} và ${rest} câu nữa` : `Câu ${shown}`;
 }
 
-/** Lời trong hộp xác nhận nộp: liệt kê câu chưa làm, nhắc phần tự luận chờ chấm, và nói thẳng là nộp rồi không sửa. */
-export function submitConfirmMessage(items: UnansweredItem[], hasEssay: boolean): string {
+/**
+ * Lời trong hộp xác nhận nộp: số câu chưa làm của CẢ đề (kể cả `hiddenUnopened` câu ở Phần chưa mở), liệt kê câu em đang thấy,
+ * nhắc phần tự luận chờ chấm, và nói thẳng là nộp rồi không sửa.
+ */
+export function submitConfirmMessage(items: UnansweredItem[], hasEssay: boolean, hiddenUnopened = 0): string {
+  const hidden = Math.max(0, Math.floor(hiddenUnopened) || 0);
+  const total = items.length + hidden;
   const lines: string[] = [];
-  lines.push(items.length > 0 ? `Em còn ${items.length} câu chưa làm: ${unansweredLabel(items)}.` : "Em đã trả lời hết các câu.");
+  if (total === 0) lines.push("Em đã trả lời hết các câu.");
+  else {
+    let s = `Em còn ${total} câu chưa làm`;
+    if (items.length > 0) s += `: ${unansweredLabel(items)}`;
+    if (hidden > 0) s += `${items.length > 0 ? " và" : ":"} ${hidden} câu ở Phần chưa mở`;
+    lines.push(s + ".");
+  }
   if (hasEssay) lines.push("Phần tự luận sẽ chờ gia sư chấm; điểm tổng chưa hiện ngay.");
   lines.push("Nộp rồi thì không sửa lại được.");
   return lines.join(" ");
