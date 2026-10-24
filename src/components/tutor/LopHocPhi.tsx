@@ -2,6 +2,7 @@
 // ĐỔI ĐƠN GIÁ CÓ NGÀY HIỆU LỰC kèm XEM TRƯỚC tác động, và đơn giá riêng từng em. Số tiền do máy chủ tính (planReprice); ở đây chỉ hiển thị.
 // Lớp cách cũ (mặc định) không dùng màn này: giữ nguyên lối vào Học phí và đối soát.
 "use client";
+import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { KinButton } from "@/components/kin";
@@ -76,7 +77,8 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
     <div className="space-y-[var(--kin-cach-muc)] max-w-3xl">
       <section aria-labelledby="hp-hien-hanh">
         <KinSectionHead id="hp-hien-hanh" title="Cách tính hiện tại" aside={FEE_MODE_LABEL[feeMode]} />
-        <p className="pt-4 text-[length:var(--kin-co-tieu-de)] font-medium tabular-nums text-[var(--kin-chu-chinh)]">
+        <KinPanel variant="nhan" className="mt-4">
+        <p className="text-[length:var(--kin-co-tieu-de)] font-medium tabular-nums text-[var(--kin-chu-chinh)]">
           {cur ? `${vnd(cur.rate)} ${unit.replace("đ ", "")}` : "Chưa có đơn giá"}
           {cur?.sessionMinutes ? <span className="text-[length:var(--kin-co-goc)] font-normal text-[var(--kin-chu-mo)]"> · mỗi buổi {cur.sessionMinutes} phút</span> : null}
         </p>
@@ -87,6 +89,7 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
           {" "}Phiếu đã chốt không đổi khi cô đổi đơn giá.
         </p>
         <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí và đối soát</Link>
+        </KinPanel>
       </section>
 
       <RateForm title="Đổi đơn giá cả lớp" idp="hp-lop" feeMode={feeMode} today={ov.today}

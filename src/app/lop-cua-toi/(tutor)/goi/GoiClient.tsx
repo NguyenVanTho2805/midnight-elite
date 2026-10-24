@@ -4,7 +4,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { KinButton, KinCallout, KinSectionHead, KinStat, KinStatRow, KinStateCard, KinStatus, KinCopyButton } from "@/components/kin";
+import { KinButton, KinCallout, KinSectionHead, KinStat, KinStatRow, KinStateCard, KinStatus, KinCopyButton, KinPanel } from "@/components/kin";
 import { KinPage, KinPageHeader, KinPageSkeleton } from "@/components/kin/PageLayout";
 import { callApi, vnd } from "@/components/tutor/shared";
 import type { QuotaState, PlanConfigRow, BillingPeriod } from "@/lib/planLimits";
@@ -117,7 +117,7 @@ export default function GoiClient() {
           </KinCallout>
         )}
 
-        <KinStatRow>
+        <KinStatRow boxed>
           <KinStat label="Gói hiện tại" value={<span data-testid="goi-hien-tai">{planName}</span>}
             hint={plan.isPro && plan.proUntil ? `Còn hiệu lực tới ${fmtDate(plan.proUntil)}` : "Không bao giờ hết hạn"} />
           <KinStat label="Học viên đang học" value={<span data-testid="hoc-vien">{plan.quota.students.used}/{plan.quota.students.limit}</span>} hint="Tính số em khác nhau đang học ở các lớp của bạn" />
@@ -126,8 +126,10 @@ export default function GoiClient() {
 
         <section aria-label="Mức đã dùng">
           <KinSectionHead title="Mức bạn đã dùng" />
-          <UsageBar title="Học viên đang học" q={plan.quota.students} unit="học viên" name="hoc-vien" />
-          <UsageBar title="Lượt AI trích đề trong tháng" q={plan.quota.aiExtract} unit="lượt" name="ai" />
+          <KinPanel className="mt-4 [&>div:last-of-type]:border-b-0 [&>div:last-of-type]:pb-0 [&>div:first-child]:pt-0">
+            <UsageBar title="Học viên đang học" q={plan.quota.students} unit="học viên" name="hoc-vien" />
+            <UsageBar title="Lượt AI trích đề trong tháng" q={plan.quota.aiExtract} unit="lượt" name="ai" />
+          </KinPanel>
           <p className="mt-3 text-[length:var(--kin-co-small)] leading-5 text-[var(--kin-chu-mo)]">
             Hạn mức chỉ chặn việc <b>thêm mới</b>. Lớp, điểm danh, phiếu, lịch sử, xuất dữ liệu và Sổ của con luôn mở, kể cả khi vượt hạn mức hay hết hạn Pro.
           </p>
@@ -135,18 +137,18 @@ export default function GoiClient() {
 
         <section aria-label="So sánh Free và Pro">
           <KinSectionHead title="Free và KiN Pro" />
-          <div role="table" aria-label="So sánh Free và KiN Pro" data-testid="so-sanh" className="text-[length:var(--kin-co-goc)]">
-            <div role="row" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] gap-3 py-3 border-b border-[var(--kin-vien-nhat)] text-[var(--kin-chu-mo)]">
+          <KinPanel flush className="mt-4"><div role="table" aria-label="So sánh Free và KiN Pro" data-testid="so-sanh" className="text-[length:var(--kin-co-goc)] [&>div:last-child]:border-b-0">
+            <div role="row" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] gap-3 py-3 px-[var(--kin-kc-7)] border-b border-[var(--kin-vien-nhat)] text-[var(--kin-chu-mo)]">
               <span role="columnheader">Hạng mục</span><span role="columnheader">{free.name}</span><span role="columnheader">{pro.name}</span>
             </div>
             {COMPARE(free, pro).map(r => (
-              <div role="row" key={r.k} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] gap-3 py-3 border-b border-[var(--kin-vien-nhat)] leading-5">
+              <div role="row" key={r.k} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] gap-3 py-3 px-[var(--kin-kc-7)] border-b border-[var(--kin-vien-nhat)] leading-5">
                 <span role="rowheader" className="font-medium text-[var(--kin-chu-chinh)]">{r.k}</span>
                 <span role="cell" className="text-[var(--kin-chu-phu)]">{r.free}</span>
                 <span role="cell" className="text-[var(--kin-chu-phu)]">{r.pro}{r.building && <> <KinStatus tone="mo" className="!whitespace-normal">đang dựng</KinStatus></>}</span>
               </div>
             ))}
-          </div>
+          </div></KinPanel>
           <p className="mt-3 text-[length:var(--kin-co-small)] leading-5 text-[var(--kin-chu-mo)]">
             Mục ghi “đang dựng” chưa dùng được trên KiN; KiN không bán cái chưa có. Cần hỗ trợ? <Link href="/lop-cua-toi/ho-tro" className="underline">Liên hệ hỗ trợ</Link>.
           </p>
@@ -156,9 +158,10 @@ export default function GoiClient() {
           <KinSectionHead title={plan.isPro ? "Gia hạn KiN Pro" : "Mở KiN Pro"} />
           {!sale.open ? (
             <div className="mt-4">
-              <KinCallout title={<span data-testid="chua-mo-ban">Chưa mở bán</span>}>
-                KiN chưa nhận thanh toán gói. Khi mở bán, bạn sẽ thấy giá và mã chuyển khoản ngay tại đây. Hiện bạn dùng KiN như bình thường.
-              </KinCallout>
+              <KinPanel variant="khoa-pro">
+                <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]"><span data-testid="chua-mo-ban">Chưa mở bán</span></p>
+                <p className="mt-1.5 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-phu)]">KiN chưa nhận thanh toán gói. Khi mở bán, bạn sẽ thấy giá và mã chuyển khoản ngay tại đây. Hiện bạn dùng KiN như bình thường.</p>
+              </KinPanel>
             </div>
           ) : (
             <>
@@ -167,7 +170,7 @@ export default function GoiClient() {
                   const list = pro[p.priceKey];
                   const price = view.foundingPct > 0 ? Math.round(list * (100 - view.foundingPct) / 100) : list;
                   return (
-                    <div key={p.key} data-testid={`ky-${p.key}`} className="flex flex-col gap-2 p-4 rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-nhat)]">
+                    <KinPanel key={p.key} data-testid={`ky-${p.key}`} className="flex flex-col gap-2">
                       <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{p.label}</p>
                       <p className="text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{vnd(price)}</p>
                       {view.foundingPct > 0 && <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Giá sáng lập −{view.foundingPct}%, giá thường {vnd(list)}</p>}
@@ -175,7 +178,7 @@ export default function GoiClient() {
                       <KinButton variant={pending?.period === p.key ? "secondary" : "primary"} loading={busy === p.key} loadingLabel="Đang tạo…" disabled={!!busy} onClick={() => void buy(p.key)}>
                         {pending?.period === p.key ? "Xem lại mã chuyển khoản" : plan.isPro ? "Gia hạn kỳ này" : "Chọn kỳ này"}
                       </KinButton>
-                    </div>
+                    </KinPanel>
                   );
                 })}
               </div>
@@ -188,7 +191,7 @@ export default function GoiClient() {
           <p role="status" className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]" data-testid="thong-bao">{msg}</p>
 
           {sale.open && pending && (
-            <div className="mt-6 grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] p-4 rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-thuong)]" data-testid="khung-qr">
+            <KinPanel variant="nhan" className="mt-6 grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]" data-testid="khung-qr">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={pending.qrUrl} alt={`Mã QR chuyển ${vnd(pending.priceVnd)} với nội dung ${pending.memoCode}`} width={220} height={220} className="w-[220px] h-auto max-w-full" />
               <dl className="space-y-3 text-[length:var(--kin-co-goc)]">
@@ -202,7 +205,7 @@ export default function GoiClient() {
                   Sau khi chuyển, người của KiN đối chiếu sao kê rồi mở Pro cho bạn. Việc này làm bằng tay nên chưa tự động; hạn Pro tính từ lúc được mở.
                 </p>
               </dl>
-            </div>
+            </KinPanel>
           )}
         </section>
 
@@ -224,10 +227,13 @@ export default function GoiClient() {
           </section>
         )}
 
-        <KinCallout title="Khi hết hạn Pro">
+        <KinPanel>
+          <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Khi hết hạn Pro</p>
+          <p className="mt-1.5 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-phu)]">
           Bạn về gói Free. Lớp, phiếu, điểm danh và lịch sử giữ nguyên 100%, không ẩn, không xoá. Học viên đang có vẫn học bình thường (kể cả vượt hạn mức Free); chỉ chưa
           thêm được học viên mới. Sổ của con, phiếu cho phụ huynh và xuất dữ liệu luôn mở. Học viên bấm mã mời khi lớp tạm chưa nhận thêm chỉ thấy “Lớp tạm chưa nhận thêm”.
-        </KinCallout>
+          </p>
+        </KinPanel>
       </div>
     </KinPage>
   );

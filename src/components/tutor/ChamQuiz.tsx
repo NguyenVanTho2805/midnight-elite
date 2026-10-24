@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL, KIN_TABLE_HEAD, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
+import { KinPanel } from "@/components/kin/Panel";
 import { KinStatus, type StatusTone } from "@/components/kin/Status";
 import { KinTabs } from "@/components/kin/Tabs";
 import { KinStat, KinStatRow } from "@/components/kin/Stat";
@@ -131,21 +132,24 @@ export default function ChamQuiz({ examId }: { examId: string }) {
 
       {tab === "bai-nop" && (
         <>
-          <KinStatRow className="mt-4">
+          <KinStatRow boxed className="mt-4">
             <KinStat label="Cấu trúc đề" value={`${s.objectiveQuestions} + ${s.essayQuestions} câu`} hint={`${fmtPoints(s.objectiveMax)} điểm khách quan + ${fmtPoints(s.essayMax)} điểm tự luận`} />
             <KinStat label="Chờ chấm" value={ov.counts.cho} hint="bài còn tự luận chưa chấm" />
             <KinStat label="Đã chấm" value={ov.counts.da_cham} hint="chưa công bố" />
             <KinStat label="Đã công bố" value={ov.counts.cong_bo} hint="học sinh đã thấy điểm" />
           </KinStatRow>
 
-          <KinCallout title={ov.hold ? "Đang giữ điểm đến khi cô công bố" : "Chưa giữ điểm"} className="mt-6">
+          <KinPanel variant="nhan" className="mt-6">
+            <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{ov.hold ? "Đang giữ điểm đến khi cô công bố" : "Chưa giữ điểm"}</p>
+            <div className="mt-1.5 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-phu)]">
             {!ov.hasEssay
               ? <p>Đề này không có câu tự luận, nên học sinh thấy điểm ngay khi nộp.</p>
               : ov.hold
                 ? <p>Trước khi công bố, học sinh chỉ thấy xác nhận nộp bài và “Chờ cô chấm”: không có điểm tổng, điểm tự luận hay đáp án.</p>
                 : <p>Học sinh thấy điểm ngay khi cô lưu điểm tự luận. Bật giữ điểm để cô chấm xong cả lô rồi mới công bố.</p>}
             {ov.hasEssay && <KinButton variant="secondary" className="mt-3" loading={busy} loadingLabel="Đang lưu…" onClick={() => void setHold(!ov.hold)}>{ov.hold ? "Tắt giữ điểm" : "Bật giữ điểm"}</KinButton>}
-          </KinCallout>
+            </div>
+          </KinPanel>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
             <KinSectionHead id="cn-ds" title={`Danh sách bài nộp · ${rows.length} lượt`} />
@@ -285,7 +289,7 @@ function GradeTab({ base, ov, rows, cur, onPick, onChanged, onPublish, busy }: {
           )}
       </div>
 
-      <aside className="min-w-0 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] p-6" aria-label="Điểm và công bố">
+      <KinPanel as="aside" variant="nhan" aria-label="Điểm và công bố">
         <h2 className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">Điểm và phản hồi</h2>
         {row && <KinStatus tone={TONE[row.state]} className="mt-2">{GRADE_STATE_LABEL[row.state]}</KinStatus>}
         {row && d && (
@@ -307,7 +311,7 @@ function GradeTab({ base, ov, rows, cur, onPick, onChanged, onPublish, busy }: {
           {msg ? msg.text : ov.hold ? "Lưu điểm không gửi điểm cho học sinh. Học sinh chỉ thấy sau khi cô công bố." : "Đề này không giữ điểm: học sinh thấy điểm ngay khi cô lưu."}
         </p>
         {d && d.editCount > 0 && <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bài này đã sửa điểm {d.editCount} lần (xem ở Lịch sử công bố).</p>}
-      </aside>
+      </KinPanel>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Suspense, useState } from "react";
 import { KinTabs, type KinTabItem } from "@/components/kin/Tabs";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
+import { KinPanel } from "@/components/kin/Panel";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinStatus } from "@/components/kin/Status";
 import { KinCopyButton } from "@/components/kin/CopyButton";
@@ -88,11 +89,13 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                     Gửi mã mời để học sinh tự vào lớp.
                   </KinEmptyState>
                 ) : (
+                  <KinPanel flush className="mt-4">
                   <ul aria-label="Học sinh của lớp">
                     {d.students.map(s => (
                       <li key={s.id} className={`flex ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>{s.name}</li>
                     ))}
                   </ul>
+                  </KinPanel>
                 )}
                 <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] flex items-center gap-2 flex-wrap">
                   {d.inviteCode ? (<>Mã mời lớp: <b className="font-medium text-[var(--kin-chu-chinh)] tabular-nums">{d.inviteCode}</b>
@@ -106,6 +109,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                 {d.history.length === 0 ? (
                   <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Chưa có buổi nào được điểm danh. Chọn ngày ở cột trái rồi tạo buổi điểm danh đầu tiên.</p>
                 ) : (
+                  <KinPanel flush className="mt-4">
                   <ul aria-label="Các buổi đã điểm danh gần đây">
                     {d.history.map(h => {
                       const full = n > 0 && h.marked >= n;
@@ -117,6 +121,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                       );
                     })}
                   </ul>
+                  </KinPanel>
                 )}
                 <p className="mt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{d.sessionsTaught} buổi đã điểm danh từ đầu đến nay.</p>
               </section>
@@ -133,9 +138,11 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
               </KinEmptyState>
             ) : (
               <>
+                <KinPanel flush className="mt-4">
                 <ul aria-label="Học sinh của lớp">
                   {d.students.map(s => <li key={s.id} className={`flex ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>{s.name}</li>)}
                 </ul>
+                </KinPanel>
                 <Link href={`/admin/khoa-hoc/${d.courseId}/hoc-vien`} className={`${kinButtonClass("secondary")} mt-4`}>Mở danh bạ lớp (gọi, Zalo phụ huynh)</Link>
               </>
             )}

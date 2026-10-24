@@ -3,6 +3,7 @@
 // Điện thoại: mỗi lớp là một khối một cột, nút ≥ 44px. Đang tải: khung xương. Lỗi: dải báo + "Thử lại". Rỗng: giải thích + đi tiếp.
 // Dữ liệu: /api/tutor/lop ({ rows, totalStudents }). KHÔNG có cột "Cách tính phí": KiN chưa lưu cách tính phí theo lớp (xem tutorClassTable.ts).
 "use client";
+import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filterClassRows, type TutorClassRow } from "@/lib/tutorClassTable";
@@ -80,7 +81,7 @@ export default function LopHoc() {
             </label>
           </div>
 
-          <div className="mt-6">
+          <KinPanel flush className="mt-6">
             <div aria-hidden className={`hidden ${COLS} ${KIN_TABLE_HEAD}`}>
               <span>Lớp</span><span>Học sinh</span><span>Lịch cố định</span><span>Tiến độ</span><span>Thao tác</span>
             </div>
@@ -113,7 +114,7 @@ export default function LopHoc() {
                 })}
               </ul>
             )}
-          </div>
+          </KinPanel>
 
           <div className={`mt-8 ${KIN_TWO_COL}`}>
             <KinCallout title="Điểm danh và học phí đi cùng nhau">

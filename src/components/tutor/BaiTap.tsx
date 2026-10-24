@@ -5,6 +5,7 @@
 // Figma có nhưng chưa có dữ liệu thật (không bịa): ảnh xem trước từng trang bài nộp, ô "Nhận xét nhanh" tách khỏi "Phản hồi" (DB chỉ có một cột comment),
 // "Lưu nháp" (chưa có bản nháp điểm), tên gia sư ở đầu từng lớp.
 "use client";
+import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BaiTapItem, BaiTapGroup } from "@/lib/baiTap";
@@ -103,7 +104,7 @@ function GradePanel({ item, onGraded }: { item: BaiTapItem; onGraded: () => void
       )}
       {cur && (
         <>
-          <div className="rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] p-5">
+          <div>
             <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] break-words">{cur.fileName || "Bài nộp"}</p>
             <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{cur.user?.name ?? "Học viên"} · nộp {dayAt(new Date(cur.submittedAt))}</p>
             <a href={cur.fileUrl} target="_blank" rel="noopener noreferrer" className={`${kinButtonClass("secondary")} mt-4`}>Mở bài nộp gốc ↗</a>
@@ -132,7 +133,7 @@ function GradePanel({ item, onGraded }: { item: BaiTapItem; onGraded: () => void
 
 function Detail({ item, onGraded }: { item: BaiTapItem; onGraded: () => void }) {
   return (
-    <section aria-labelledby="bt-detail-h" className="rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] p-6 min-w-0">
+    <KinPanel as="section" variant="nhan" aria-labelledby="bt-detail-h">
       <div className="flex items-start justify-between gap-4">
         <h2 id="bt-detail-h" className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)] min-w-0 break-words">{item.title}</h2>
         <KinStatus tone={item.statusTone} className="flex-shrink-0 mt-1">{item.statusLabel}</KinStatus>
@@ -157,7 +158,7 @@ function Detail({ item, onGraded }: { item: BaiTapItem; onGraded: () => void }) 
           <GradePanel key={item.id} item={item} onGraded={onGraded} />
         )}
       </div>
-    </section>
+    </KinPanel>
   );
 }
 
@@ -247,6 +248,7 @@ export default function BaiTap() {
               ) : groups.map(([name, list], gi) => (
                 <section key={name} aria-labelledby={`bt-g-${gi}`} className="mt-8">
                   <KinSectionHead id={`bt-g-${gi}`} title={name} aside={`${list.length} mục`} />
+                  <KinPanel flush className="mt-4">
                   <ul aria-label={`Bài của ${name}`}>
                     {list.map(i => {
                       const on = !!active && keyOf(i) === keyOf(active);
@@ -262,6 +264,7 @@ export default function BaiTap() {
                       );
                     })}
                   </ul>
+                  </KinPanel>
                 </section>
               ))}
             </div>
