@@ -1,7 +1,8 @@
 // Học sinh của gia sư (Figma "Gia sư · Học sinh" 299:113083): tiêu đề + "Thêm học sinh"; ô tìm và lọc theo lớp; tab Đang học / Đã nghỉ;
 // danh sách (máy tính: các cột Học sinh · Lớp · Liên hệ · Ghi danh; điện thoại: mỗi em một dòng xếp dọc, không cuộn ngang).
-// Chỉ học sinh trong lớp của chính gia sư, chỉ các trường trang lớp đã hiện. Cột "Phụ huynh · Zalo" và "Báo cáo gần nhất" của Figma
-// CHƯA có nguồn dữ liệu ở trang lớp nên không dựng (không bịa số liệu, không thu thêm dữ liệu trẻ em).
+// Chỉ học sinh trong lớp của chính gia sư, chỉ các trường trang lớp đã hiện. HS-01 (24/10): lọc thêm theo CẢNH BÁO (còn phiếu chưa đóng đủ, vắng liên tiếp, còn buổi bù)
+// và cột "Báo cáo · Cảnh báo" (trạng thái link báo cáo riêng) — chỉ là số đếm đã có, không tên phụ huynh, không số tiền. "Hồ sơ" mở trang nhiều tab (hoc-sinh/em/[userId]).
+// Cột "Phụ huynh · Zalo" và "Báo cáo gần nhất" của Figma vẫn CHƯA có nguồn dữ liệu nên không dựng (không bịa số liệu, không thu thêm dữ liệu trẻ em).
 // Lỗi tải: dải lỗi có "Thử lại". Đang tải: khung xương. Rỗng: có lời giải thích + nút đi tiếp.
 "use client";
 import Link from "next/link";
@@ -15,6 +16,7 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinStatus } from "@/components/kin/Status";
 import { STATUS_LABEL, type ProfileStatus } from "@/lib/studentProfile";
 import { payerLabel } from "@/lib/consentPolicy";
+import { ALERT_LABEL, REPORT_LINK_LABEL, alertsOf, filterStudents, type StudentAlert, type StudentSignals } from "@/lib/tutorStudentView";
 import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
 
 type TabKey = "active" | "suspended" | "profiles" | "waitlist";
@@ -23,12 +25,27 @@ interface ProfileRowUi {
   id: string; name: string; userId: string | null; courseId: string | null; status: ProfileStatus; guardianName?: string | null; waitlistedAt?: string | null; consentLevel: "full" | "basic_only" | "locked";
   consent: { kind: "child" | "adult" };
 }
-const COLS = "md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_auto]";
+const COLS = "md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.2fr)_auto]";
 const PCOLS = "md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_auto]";
 const FIELD = KIN_FIELD;
 
 function Skeleton() {
   return <KinTableSkeleton label="Đang tải danh sách học sinh" tabs />;
+}
+
+function RowSignals({ s, userId }: { s: StudentSignals | undefined; userId: string }) {
+  const alerts = s ? alertsOf(s) : [];
+  return (
+    <div className="min-w-0 space-y-1 text-[length:var(--kin-co-goc)]">
+      <p className="text-[var(--kin-chu-mo)]">
+        {s ? <Link href={`/lop-cua-toi/hoc-sinh/em/${userId}?tab=bao-cao`} className="inline-flex items-center min-h-11 md:min-h-6 text-[var(--kin-nhan-link)] underline">Báo cáo: {REPORT_LINK_LABEL[s.reportLink]}</Link> : "Báo cáo: chưa có số liệu"}
+      </p>
+      {alerts.length === 0 ? <p className="text-[var(--kin-chu-mo)]">{s ? "Không có cảnh báo" : ""}</p>
+        : alerts.map(a => (
+          <p key={a}><KinStatus tone="cho">{a === "unpaid" ? `${ALERT_LABEL.unpaid} (${s!.unpaidCount})` : a === "absent_streak" ? `${ALERT_LABEL.absent_streak} ${s!.absentStreak} buổi` : `${ALERT_LABEL.makeup} (${s!.makeupLeft})`}</KinStatus></p>
+        ))}
+    </div>
+  );
 }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -41,12 +58,17 @@ export default function HocSinh() {
   const [error, setError] = useState(false);
   const [q, setQ] = useState("");
   const [courseId, setCourseId] = useState("");
+  const [alertF, setAlert] = useState<StudentAlert | "">("");
+  const [signals, setSignals] = useState<Map<string, StudentSignals>>(new Map());
   const [tab, setTab] = useState<TabKey>("active");
 
   const load = useCallback(() => {
     fetch("/api/tutor/hoc-sinh", { credentials: "same-origin", cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setRows(Array.isArray(d.students) ? d.students : []); setError(false); })
+      .then(d => {
+        setRows(Array.isArray(d.students) ? d.students : []); setError(false);
+        setSignals(new Map<string, StudentSignals>((Array.isArray(d.signals) ? d.signals : []).map((x: StudentSignals) => [x.userId, x])));
+      })
       .catch(() => setError(true));
     // Hồ sơ riêng (không tài khoản, hoặc ghi chú riêng về em có tài khoản). Lỗi ở đây không chặn danh sách học sinh cũ.
     fetch("/api/tutor/ho-so", { credentials: "same-origin", cache: "no-store" })
@@ -71,8 +93,8 @@ export default function HocSinh() {
   const shownProfiles = standalone.filter(p => (tab === "waitlist" ? p.status === "waitlist" : p.status !== "waitlist")
     && (!courseId || p.courseId === courseId) && (!needle || p.name.toLowerCase().includes(needle)))
     .sort((x, y) => (tab === "waitlist" ? (x.waitlistedAt ?? "").localeCompare(y.waitlistedAt ?? "") : 0));
-  const shown = all.filter(r => r.status === tab && (!courseId || r.courseId === courseId)
-    && (!needle || [r.name, r.email, r.phone ?? "", r.school ?? ""].some(v => v.toLowerCase().includes(needle))));
+  const shown = tab === "active" || tab === "suspended" ? filterStudents(all, signals, { status: tab, courseId, alert: alertF, q }) : [];
+  const filtering = !!(needle || courseId || alertF);
   const nActive = countOf("active");
 
   return (
@@ -93,7 +115,7 @@ export default function HocSinh() {
         </KinEmptyState>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,440px)_230px]">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,440px)_230px_230px]">
             <label className="block min-w-0">
               <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tìm học sinh</span>
               <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Nhập tên, email, số liên hệ…" className={FIELD} />
@@ -105,6 +127,15 @@ export default function HocSinh() {
                 {courses.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
               </select>
             </label>
+            {(tab === "active" || tab === "suspended") && (
+              <label className="block min-w-0">
+                <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Cảnh báo</span>
+                <select value={alertF} onChange={e => setAlert(e.target.value as StudentAlert | "")} className={FIELD}>
+                  <option value="">Tất cả</option>
+                  {(Object.keys(ALERT_LABEL) as StudentAlert[]).map(k => <option key={k} value={k}>{ALERT_LABEL[k]}</option>)}
+                </select>
+              </label>
+            )}
           </div>
 
           <KinTabs className="mt-6" label="Trạng thái học" value={tab} onChange={setTab}
@@ -134,14 +165,14 @@ export default function HocSinh() {
               </div>
             )
           ) : shown.length === 0 ? (
-            <KinEmptyState title={needle || courseId ? "Không có em nào khớp" : tab === "active" ? "Chưa có em nào đang học" : "Chưa có em nào đã nghỉ"}
-              action={needle || courseId ? <button type="button" className={kinButtonClass("secondary")} onClick={() => { setQ(""); setCourseId(""); }}>Bỏ lọc</button> : undefined}>
-              {needle || courseId ? "Thử đổi từ khoá hoặc chọn lại lớp." : tab === "active" ? "Học sinh đang học trong lớp của bạn sẽ hiện ở đây." : "Em tạm dừng hoặc hết hạn gói sẽ chuyển sang mục này."}
+            <KinEmptyState title={filtering ? "Không có em nào khớp" : tab === "active" ? "Chưa có em nào đang học" : "Chưa có em nào đã nghỉ"}
+              action={filtering ? <button type="button" className={kinButtonClass("secondary")} onClick={() => { setQ(""); setCourseId(""); setAlert(""); }}>Bỏ lọc</button> : undefined}>
+              {filtering ? "Thử đổi từ khoá, lớp hoặc cảnh báo." : tab === "active" ? "Học sinh đang học trong lớp của bạn sẽ hiện ở đây." : "Em tạm dừng hoặc hết hạn gói sẽ chuyển sang mục này."}
             </KinEmptyState>
           ) : (
             <div className="mt-4">
               <div aria-hidden className={`hidden md:grid ${COLS} gap-x-4 ${KIN_TABLE_HEAD}`}>
-                <span>Học sinh</span><span>Lớp</span><span>Liên hệ</span><span>Ghi danh</span><span className="w-20" />
+                <span>Học sinh</span><span>Lớp</span><span>Liên hệ</span><span>Ghi danh</span><span>Báo cáo · Cảnh báo</span><span className="w-20" />
               </div>
               <ul aria-label="Danh sách học sinh">
                 {shown.map(r => (
@@ -156,9 +187,12 @@ export default function HocSinh() {
                       <p className="break-all">{r.email}</p>
                     </div>
                     <p className="text-[var(--kin-chu-mo)] tabular-nums">Ghi danh {fmtDate(r.enrolledAt)}<span className="block">{r.status === "active" ? "Hoạt động" : "Không hoạt động"}</span></p>
+                    <RowSignals s={signals.get(r.userId)} userId={r.userId} />
                     <div className="flex md:flex-col gap-x-4 md:w-24">
                       <Link href={`/lop-cua-toi/${r.courseId}`} aria-label={`Mở lớp ${r.courseName} của ${r.name}`}
                         className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Mở lớp</Link>
+                      <Link href={`/lop-cua-toi/hoc-sinh/em/${r.userId}`} aria-label={`Hồ sơ của ${r.name}`}
+                        className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Hồ sơ</Link>
                       <Link href={profileByUser.has(r.userId) ? `/lop-cua-toi/hoc-sinh/${profileByUser.get(r.userId)}` : `/lop-cua-toi/hoc-sinh/them?userId=${r.userId}`} aria-label={`Hồ sơ riêng của ${r.name}`}
                         className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Hồ sơ riêng</Link>
                     </div>

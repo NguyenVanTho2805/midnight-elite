@@ -49,11 +49,15 @@ import { BASE } from "./h";
   check("gia sư chưa có lớp: rỗng có giải thích + 'Tạo lớp đầu tiên' + nút 'Tạo lớp'", await q.getByRole("link", { name: "Tạo lớp đầu tiên" }).isVisible() && await q.getByRole("link", { name: "Tạo lớp", exact: true }).isVisible());
   await q.getByRole("link", { name: "Tạo lớp", exact: true }).click();
   await q.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
-  await q.getByRole("button", { name: "Tạo lớp học" }).click();
-  check("bỏ trống tên → lỗi, không tạo lớp", await q.getByRole("alert").isVisible() || await q.getByLabel(/Tên lớp/).evaluate((e: HTMLInputElement) => !e.validity.valid));
+  // 24/10 (LO-03): trang tạo lớp là wizard 3 bước (Thông tin → Học sinh → Lịch học); nút cuối "Tạo lớp + N buổi". Cập nhật theo bước, không bỏ ca nào.
+  await q.getByRole("button", { name: "Tiếp tục" }).click();
+  check("bỏ trống tên → lỗi, không tạo lớp, còn ở bước 1", await q.locator("p[role=alert]").isVisible() || await q.getByLabel(/Tên lớp/).evaluate((e: HTMLInputElement) => !e.validity.valid));
   await q.getByLabel(/Tên lớp/).fill("Toán 9 thử");
+  await q.getByRole("button", { name: "Tiếp tục" }).click();
+  await q.getByRole("button", { name: "Tiếp tục" }).click(); // bước Học sinh: bỏ qua
+  await q.getByRole("button", { name: "Thêm khung giờ" }).click();
   await q.getByLabel("Ngày trong tuần").selectOption("2");
-  await q.getByRole("button", { name: "Tạo lớp học" }).click();
+  await q.getByRole("button", { name: /^Tạo lớp \+ \d+ buổi$/ }).click();
   await q.waitForURL(/\/lop-cua-toi\/toan-9-thu/, { timeout: 90000 });
   const made = await prisma.course.findFirstOrThrow({ where: { name: "Toán 9 thử", ownerId: T3.id } });
   check("DB: lớp thuộc gia sư, giá 0", made.ownerId === T3.id && made.price === 0);

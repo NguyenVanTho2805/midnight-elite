@@ -4,9 +4,10 @@
 // báo cáo "Chia sẻ" từng học sinh, "Đơn giá hiện tại", tab Bài tập / Tài liệu theo lớp, "x/y buổi" (chưa có tổng số buổi dự kiến). Đã ghi trong báo cáo.
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { KinTabs, type KinTabItem } from "@/components/kin/Tabs";
-import { kinButtonClass } from "@/components/kin/Button";
+import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinPanel } from "@/components/kin/Panel";
 import { KinCallout } from "@/components/kin/Callout";
@@ -18,6 +19,10 @@ import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
 import LopHocPhi from "@/components/tutor/LopHocPhi";
 import LopPhiKhac from "@/components/tutor/LopPhiKhac";
+import LopBaoCao from "@/components/tutor/LopBaoCao";
+import StudentPicker from "@/components/tutor/StudentPicker";
+import { jfetch } from "@/components/tutor/studentUi";
+import { ADD_STUDENTS_MAX } from "@/lib/tutorStudentView";
 import type { FeeMode } from "@/lib/tuitionFee";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "ma-moi" | "hoc-phi" | "cong-dong";
@@ -29,6 +34,8 @@ export interface LopChiTietData {
   sessionsTaught: number;
   inviteCode: string | null;
   initialTab: LopTab; justCreated: boolean; scheduleFailed: boolean;
+  /** Wizard tạo lớp: số em đã thêm cùng lúc ("them=N") hoặc việc thêm em bị lỗi ("them=loi"). */
+  addedStudents?: number | null; addFailed?: boolean;
   /** HP-15: hình thức học phí của lớp. Lớp cũ = "monthly_sessions". */
   feeMode: FeeMode;
 }
@@ -46,7 +53,21 @@ function OpenPage({ title, href, note, action }: { title: string; href: string; 
 }
 
 export default function LopChiTiet({ d }: { d: LopChiTietData }) {
+  const router = useRouter();
   const [tab, setTab] = useState<LopTab>(d.initialTab);
+  const [adding, setAdding] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addNote, setAddNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  function openAdd() { setTab("hoc-sinh"); setAdding(true); setAddNote(null); }
+  async function addSelected() {
+    if (!picked.length || addBusy) return;
+    setAddBusy(true); setAddNote(null);
+    const r = await jfetch(`/api/tutor/lop/${d.courseId}/hoc-sinh`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userIds: picked }) });
+    setAddBusy(false);
+    if (r.ok) { setAddNote({ tone: "ok", text: r.json.added > 0 ? `Đã thêm ${r.json.added} em vào lớp.` : "Các em đã chọn đã ở trong lớp." }); setPicked([]); setAdding(false); router.refresh(); }
+    else setAddNote({ tone: "err", text: r.json?.error ?? "Chưa thêm được, thử lại sau." });
+  }
   const n = d.students.length;
   const tabs: KinTabItem<LopTab>[] = [
     { key: "diem-danh", label: "Buổi học & điểm danh" },
@@ -61,11 +82,14 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
     <KinPage>
       <KinPageHeader title={d.courseName} titleClassName="break-words" sub={sub} back={{ href: "/lop-cua-toi/lop", label: "← Lớp học" }}
         actions={<>
+          <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
           <Link href={`/admin/khoa-hoc/${d.courseId}`} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </>} />
 
       {d.justCreated && <KinCallout title="Đã tạo lớp" className="mb-6">Gửi mã mời ở tab Mã mời để học sinh tự vào lớp.</KinCallout>}
+      {d.addedStudents != null && d.addedStudents > 0 && <KinCallout title={`Đã thêm ${d.addedStudents} học sinh vào lớp`} className="mb-6">Em vào lớp từ danh sách học sinh của cô. Em mới thì gửi mã mời ở tab Mã mời.</KinCallout>}
+      {d.addFailed && <KinCallout title="Lớp đã tạo, nhưng chưa thêm được học sinh" className="mb-6">Cô thêm lại ở nút Thêm học sinh phía trên.</KinCallout>}
       {d.scheduleFailed && (
         <KinCallout title="Lớp đã tạo, nhưng khung giờ chưa lưu" className="mb-6">
           Cô thêm lại khung giờ ở <Link href={`/admin/khoa-hoc/${d.courseId}?tab=lich-hoc`} className="underline text-[var(--kin-nhan-link)]">trang cài đặt lớp</Link>.
@@ -131,7 +155,16 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
 
         {tab === "hoc-sinh" && (
           <section className="max-w-2xl">
-            <KinSectionHead title="Học sinh của lớp" aside={`${n} em`} />
+            <KinSectionHead title="Học sinh của lớp" aside={<button type="button" onClick={() => { setAdding(a => !a); setAddNote(null); }} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">{adding ? "Đóng" : "Thêm học sinh"}</button>} />
+            {addNote && <p role={addNote.tone === "err" ? "alert" : "status"} className={`pt-3 text-[length:var(--kin-co-goc)] ${addNote.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{addNote.text}</p>}
+            {adding && (
+              <div data-lop-them className="pt-4">
+                <p className="pb-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Chọn em đã học lớp khác của cô để thêm vào lớp này. Em mới thì{" "}
+                  <button type="button" onClick={() => setTab("ma-moi")} className="min-h-11 text-[var(--kin-nhan-link)] underline">gửi mã mời</button>.</p>
+                <StudentPicker excludeCourseId={d.courseId} selected={picked} onChange={setPicked} max={ADD_STUDENTS_MAX} />
+                <div className="mt-4"><KinButton loading={addBusy} loadingLabel="Đang thêm…" disabled={picked.length === 0} onClick={() => void addSelected()}>Thêm {picked.length} em vào lớp</KinButton></div>
+              </div>
+            )}
             {n === 0 ? (
               <KinEmptyState title="Lớp chưa có học sinh" action={<button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("primary")}>Mời học sinh</button>}>
                 Gửi mã mời để học sinh tự vào lớp. Học sinh vào xong sẽ hiện ở đây.
@@ -140,12 +173,18 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
               <>
                 <KinPanel flush className="mt-4">
                 <ul aria-label="Học sinh của lớp">
-                  {d.students.map(s => <li key={s.id} className={`flex ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>{s.name}</li>)}
+                  {d.students.map(s => (
+                    <li key={s.id} className={`flex items-center justify-between gap-3 ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>
+                      <span className="min-w-0 break-words">{s.name}</span>
+                      <Link href={`/lop-cua-toi/hoc-sinh/em/${s.id}`} aria-label={`Hồ sơ của ${s.name}`} className="inline-flex items-center min-h-11 flex-shrink-0 text-[var(--kin-nhan-link)] underline">Hồ sơ</Link>
+                    </li>
+                  ))}
                 </ul>
                 </KinPanel>
                 <Link href={`/admin/khoa-hoc/${d.courseId}/hoc-vien`} className={`${kinButtonClass("secondary")} mt-4`}>Mở danh bạ lớp (gọi, Zalo phụ huynh)</Link>
               </>
             )}
+            {n > 0 && <LopBaoCao courseId={d.courseId} students={d.students} />}
           </section>
         )}
 

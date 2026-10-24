@@ -21,7 +21,7 @@ import { normalizeFeeMode } from "@/lib/tuitionFee";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string }> };
+type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string; them?: string }> };
 const TABS: LopTab[] = ["diem-danh", "hoc-sinh", "ma-moi", "hoc-phi", "cong-dong"];
 
 export default async function LopPage({ params, searchParams }: Props) {
@@ -78,7 +78,7 @@ export default async function LopPage({ params, searchParams }: Props) {
       students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })),
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
-      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", feeMode: normalizeFeeMode(course.feeMode),
+      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi", feeMode: normalizeFeeMode(course.feeMode),
     }} />;
   }
 
