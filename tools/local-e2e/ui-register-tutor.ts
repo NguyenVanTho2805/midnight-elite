@@ -27,7 +27,8 @@ import { prisma } from "@/lib/prisma";
     return c;
   };
   const stamp = Date.now().toString(36);
-  const label = (p: Page, t: string | RegExp) => p.locator("label").filter({ hasText: t });
+  // 24/10/2026 (HT-02): form đăng ký dùng KinInput; "Môn dạy" là NHÓM nút chọn nên nhãn là <p id="dk-subj-label"> nối role=group (đúng ngữ nghĩa hơn <label> không gắn ô nào).
+  const label = (p: Page, t: string | RegExp) => p.locator("label, #dk-subj-label").filter({ hasText: t });
 
   const c1 = await guest();
   const p = await c1.newPage(); watch(p);

@@ -4,12 +4,14 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { KinPage, KinPageHeader, KinPageSkeleton } from "@/components/kin/PageLayout";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinStatus } from "@/components/kin/Status";
 import { useKinConfirm } from "@/components/kin/useConfirm";
+import { useFieldValidation } from "@/components/kin/useFieldValidation";
+import { STUDENT_FIELD_RULES } from "@/lib/studentFieldRules";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { AGE_GROUP_LABEL, PARTY_LABEL, REVOKE_NOTE, SCOPE_LABEL, payerLabel, type ConsentParty, type ConsentScope } from "@/lib/consentPolicy";
 import { FIELD_LABEL, STATUS_LABEL, type ProfileStatus } from "@/lib/studentProfile";
@@ -46,6 +48,10 @@ export default function HoSoHocSinh({ id }: { id: string }) {
   const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: string) => setF(p => ({ ...p, [k]: v }));
+  // HT-02: kiểm tại chỗ (lỗi hiện khi rời ô; bấm Lưu thì nhảy tới ô lỗi đầu tiên). Lỗi do máy chủ trả về vẫn ưu tiên hiện.
+  const formRef = useRef<HTMLFormElement>(null);
+  const fv = useFieldValidation(STUDENT_FIELD_RULES);
+  const ev = (k: string) => { const b = fv.bind(k, f[k] ?? ""); return { error: errors[k] ?? b.error, onBlur: b.onBlur }; };
 
   const fill = useCallback((p: any) => {
     setF({
@@ -82,6 +88,7 @@ export default function HoSoHocSinh({ id }: { id: string }) {
 
   async function save() {
     if (busy) return;
+    if (!fv.validateAll(f)) { setErrors({}); setMsg({ tone: "err", text: "Còn ô chưa đúng, cô xem các dòng báo đỏ rồi lưu lại nhé." }); fv.focusFirst(formRef.current); return; }
     setBusy(true); setMsg(null); setErrors({});
     const body: Record<string, unknown> = {
       name: f.name, ageGroup: f.ageGroup, status: f.status, courseId: f.courseId || null, guardianName: f.guardianName, guardianPhone: f.guardianPhone,
@@ -182,10 +189,10 @@ export default function HoSoHocSinh({ id }: { id: string }) {
             </div>
           </section>
         ) : (
-          <form onSubmit={e => { e.preventDefault(); void save(); }} className="space-y-5" aria-label="Sửa hồ sơ học sinh">
+          <form ref={formRef} noValidate onSubmit={e => { e.preventDefault(); void save(); }} className="space-y-5" aria-label="Sửa hồ sơ học sinh">
             <h2 className="text-[length:var(--kin-co-tieu-de)] font-medium">Thông tin cơ bản</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Tên em" required value={f.name} onChange={set("name")} error={errors.name} maxLength={60} />
+              <TextField label="Tên em" required value={f.name} onChange={set("name")} {...ev("name")} maxLength={60} />
               <SelectField label="Trạng thái" value={f.status} onChange={set("status")}>
                 <option value="active">Hoạt động</option><option value="inactive">Không hoạt động</option><option value="waitlist">Đang chờ xếp lớp</option>
               </SelectField>
@@ -196,7 +203,7 @@ export default function HoSoHocSinh({ id }: { id: string }) {
                 {(["u7", "7to15", "16plus"] as const).map(g => <option key={g} value={g}>{AGE_GROUP_LABEL[g]}</option>)}
               </SelectField>
               <TextField label={kind === "adult" ? "Tên liên hệ" : "Tên phụ huynh"} value={f.guardianName} onChange={set("guardianName")} error={errors.guardianName} maxLength={60} />
-              <TextField label={kind === "adult" ? "Số Zalo / điện thoại liên hệ" : "Số Zalo / điện thoại phụ huynh"} type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} error={errors.guardianPhone} />
+              <TextField label={kind === "adult" ? "Số Zalo / điện thoại liên hệ" : "Số Zalo / điện thoại phụ huynh"} type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} {...ev("guardianPhone")} />
             </div>
 
             {p.status === "waitlist" && (
@@ -239,12 +246,12 @@ export default function HoSoHocSinh({ id }: { id: string }) {
               <KinCallout title="Chưa có đồng ý cho thông tin mở rộng">Bạn chưa xem hay ghi được ngày sinh, địa chỉ, số điện thoại, ghi chú. Điền vào đây rồi lưu, KiN sẽ hỏi xác nhận thêm.</KinCallout>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Ngày sinh" placeholder="15/03/2014" inputMode="numeric" value={f.birthDate} onChange={set("birthDate")} error={errors.birthDate} />
-              <TextField label="Ngày bắt đầu học" placeholder="01/11/2026" inputMode="numeric" value={f.startDate} onChange={set("startDate")} error={errors.startDate} />
-              <TextField label="Số điện thoại của em" type="tel" inputMode="tel" value={f.phone} onChange={set("phone")} error={errors.phone} />
-              <TextField label="Số điện thoại thứ ba" type="tel" inputMode="tel" value={f.phoneExtra} onChange={set("phoneExtra")} error={errors.phoneExtra} />
-              <TextField label="Email" type="email" inputMode="email" value={f.email} onChange={set("email")} error={errors.email} />
-              <TextField label="Email bổ sung" type="email" inputMode="email" value={f.emailExtra} onChange={set("emailExtra")} error={errors.emailExtra} />
+              <TextField label="Ngày sinh" placeholder="15/03/2014" inputMode="numeric" value={f.birthDate} onChange={set("birthDate")} {...ev("birthDate")} />
+              <TextField label="Ngày bắt đầu học" placeholder="01/11/2026" inputMode="numeric" value={f.startDate} onChange={set("startDate")} {...ev("startDate")} />
+              <TextField label="Số điện thoại của em" type="tel" inputMode="tel" value={f.phone} onChange={set("phone")} {...ev("phone")} />
+              <TextField label="Số điện thoại thứ ba" type="tel" inputMode="tel" value={f.phoneExtra} onChange={set("phoneExtra")} {...ev("phoneExtra")} />
+              <TextField label="Email" type="email" inputMode="email" value={f.email} onChange={set("email")} {...ev("email")} />
+              <TextField label="Email bổ sung" type="email" inputMode="email" value={f.emailExtra} onChange={set("emailExtra")} {...ev("emailExtra")} />
             </div>
             <TextField label="Địa chỉ" value={f.address} onChange={set("address")} error={errors.address} maxLength={200} />
             <TextField label="Môn học" value={f.subjects} onChange={set("subjects")} error={errors.subjects} hint="Cách nhau bằng dấu phẩy, tối đa 5 môn." />

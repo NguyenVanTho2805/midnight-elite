@@ -50,7 +50,7 @@ export function TutorCard({ t }: { t: TutorListItem }) {
             <h3 className="text-[length:var(--kin-co-h4)] font-semibold leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>{t.name}</h3>
             {t.tutorVerified && (
               <span className="text-[length:var(--kin-co-caption)] font-medium px-2 py-0.5 rounded-full"
-                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>Đã xác minh</span>
+                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>Đã duyệt hồ sơ</span>
             )}
           </div>
           {subjectLine && <p className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-chinh)" }} data-testid={where ? "tutor-area" : undefined}>{subjectLine}</p>}

@@ -14,7 +14,11 @@ const MONEY = /\d[\d.,]*\s?đ(?![\p{L}])/u; // số + "đ" đứng riêng; khôn
   for (const u of [s1, s2]) await prisma.enrollment.create({ data: { userId: u.id, courseId: c1.id, status: "active" } });
   const tomorrowDow = (new Date(Date.now() + 7 * 3600_000 + 86_400_000)).getUTCDay();
   await prisma.classSchedule.create({ data: { courseId: c1.id, dayOfWeek: tomorrowDow, startTime: "19:00", endTime: "20:30" } });
-  await mkAttendanceSession(c1.id, T.id, new Date(Date.now() - 2 * 86_400_000), ["present"]);
+  const past = await mkAttendanceSession(c1.id, T.id, new Date(Date.now() - 2 * 86_400_000), ["present"]);
+  await prisma.attendanceSession.update({ where: { id: past.id }, data: { state: "closed", closedAt: new Date(), closedBy: T.id } }); // HV-04: một buổi ĐÃ CHỐT
+  for (const k of ["a", "b"]) await prisma.tutorRequest.create({ data: { trackToken: `tok-hv05-${k}`, targetTutorId: T.id, level: "thcs", subject: "Toán", contactPhone: "0901234567", phoneKey: `pk-${k}`, status: "new" } }); // HV-05: 2 yêu cầu mới
+  await prisma.tutorRequest.create({ data: { trackToken: "tok-hv05-c", targetTutorId: T.id, level: "thcs", subject: "Lý", contactPhone: "", phoneKey: "pk-c", status: "declined" } }); // đã từ chối: KHÔNG đếm
+  await prisma.tutorRequest.create({ data: { trackToken: "tok-hv05-d", targetTutorId: T0.id, level: "thcs", subject: "Hoá", contactPhone: "0907654321", phoneKey: "pk-d", status: "new" } }); // yêu cầu của gia sư khác: KHÔNG lọt sang
   const YM = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 7);
   await prisma.monthlyCourseFee.create({ data: { courseId: c1.id, yearMonth: YM, sessionCount: 8, updatedBy: T.id } });
   await api("PUT", "/api/tutor/payout-account", { as: T, body: { bankBin: "970436", accountNo: "0123456789", accountName: "Lan" } });
@@ -52,6 +56,19 @@ const MONEY = /\d[\d.,]*\s?đ(?![\p{L}])/u; // số + "đ" đứng riêng; khôn
       check("thẻ 'Chưa thu' = phần còn lại phiếu đã gửi trong DB, đặt cạnh 'Đã thu'", rest > 0 && (await fee.locator('[data-fee-card="chua-thu"]').innerText()).includes(due(rest)), [rest, await fee.innerText()]);
       const a = await fee.locator('[data-fee-card="da-thu"]').boundingBox(), b = await fee.locator('[data-fee-card="chua-thu"]').boundingBox();
       check("hai thẻ nằm cạnh nhau (cùng hàng)", !!a && !!b && Math.abs(a.y - b.y) < 2 && b.x > a.x, [a, b]);
+      // HV-04: số buổi trong tháng (đối chiếu với DB và lịch lặp, không con số bịa)
+      const ses = pg.locator("[data-hv-sessions]");
+      await ses.waitFor({ timeout: 15000 });
+      const vnNow = new Date(Date.now() + 7 * 3600_000), y0 = vnNow.getUTCFullYear(), m0 = vnNow.getUTCMonth();
+      const closedDb = await prisma.attendanceSession.count({ where: { course: { ownerId: T.id }, state: "closed", date: { gte: new Date(Date.UTC(y0, m0, 1)), lte: new Date(Date.UTC(y0, m0 + 1, 0)) } } });
+      let ruleDays = 0; for (let d = 1; d <= new Date(Date.UTC(y0, m0 + 1, 0)).getUTCDate(); d++) if (new Date(Date.UTC(y0, m0, d)).getUTCDay() === tomorrowDow) ruleDays++;
+      const num = async (k: string) => Number((await ses.locator(`[data-session-card="${k}"] p`).nth(1).innerText()).trim());
+      check(`'Hoàn thành' = số buổi ĐÃ CHỐT trong tháng ở DB (${closedDb})`, closedDb >= 1 && (await num("hoan-thanh")) === closedDb, [closedDb, await ses.innerText()]);
+      check(`'Đã lên lịch' = số ngày ${ruleDays} của lịch lặp trong tháng (không huỷ, chưa chốt)`, (await num("da-len-lich")) === ruleDays, [ruleDays, await ses.innerText()]);
+      check("'Đã nghỉ' = 0 (chưa huỷ buổi nào), cả ba thẻ có chữ nhãn", (await num("da-nghi")) === 0 && /Đã lên lịch/.test(await ses.innerText()) && /Hoàn thành/.test(await ses.innerText()) && /Đã nghỉ/.test(await ses.innerText()));
+      const reqBox = pg.locator("[data-hv-requests]");
+      check("HV-05: thẻ yêu cầu đếm đúng 2 yêu cầu MỚI (không đếm đã từ chối, không đếm của gia sư khác)", /2 yêu cầu mới đang chờ/.test(await reqBox.innerText()), await reqBox.innerText());
+      check("HV-05: thẻ có liên kết tới /lop-cua-toi/yeu-cau", (await reqBox.getByRole("link", { name: /Xem và trả lời yêu cầu/ }).getAttribute("href")) === "/lop-cua-toi/yeu-cau");
       const up = pg.locator("[data-hv-upcoming]");
       check("'Lịch dạy gần nhất' liệt kê buổi mai 19:00 – 20:30 của Toán 9", /19:00 – 20:30/.test(await up.innerText()) && /Toán 9/.test(await up.innerText()), await up.innerText());
       check("không tràn ngang", await noOverflow(pg));

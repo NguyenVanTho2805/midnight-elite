@@ -28,7 +28,7 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   await sec.getByRole("heading", { name: "Cô Lan", level: 2 }).waitFor({ timeout: 30000 });
   check("chỉ MỘT h1 trên trang (phần xem trước dùng h2)", (await page.getByRole("heading", { level: 1 }).count()) === 1);
   const txt = (await sec.innerText()).replace(/\s+/g, " ");
-  check("đúng thứ khách thấy: 'Đã xác minh', 'Không thu phí nhận lớp', môn, giới thiệu", txt.includes("Đã xác minh") && txt.includes("Không thu phí nhận lớp") && txt.includes("Toán 9") && txt.includes("Gia sư Toán 9 nhiều năm."), txt);
+  check("đúng thứ khách thấy: 'Đã duyệt hồ sơ', 'Không thu phí nhận lớp', môn, giới thiệu", txt.includes("Đã duyệt hồ sơ") && txt.includes("Không thu phí nhận lớp") && txt.includes("Toán 9") && txt.includes("Gia sư Toán 9 nhiều năm."), txt);
   check("bốn con số lấy từ sổ lớp: 1 lớp, 2 học viên, 3 buổi đã dạy", /2\s*Học viên/.test(txt) && /1\s*Lớp đang dạy/.test(txt) && /3\s*Buổi đã dạy/.test(txt), txt);
   check("ĐX-05: chưa có buổi nào trong 30 ngày qua → CHƯA có nhãn 'Có dạy trong 30 ngày qua'", (await sec.getByTestId("recently-active").count()) === 0, txt); // không dò theo chữ: dòng giải thích của phần xem trước cũng nhắc tới nhãn này
   check("ĐX-05 (Q3): không có 'đúng hạn %' và không có vế 'phụ huynh xác nhận' trong bản xem trước", !/đúng hạn|phụ huynh xác nhận|%/.test(txt), txt);

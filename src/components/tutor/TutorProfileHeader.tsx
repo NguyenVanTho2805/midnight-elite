@@ -31,7 +31,7 @@ export default function TutorProfileHeader({ tutor, stats, as: Heading = "h1" }:
             <Heading className="text-[length:var(--kin-co-h3)] sm:text-[length:var(--kin-co-h2)] font-semibold leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>{tutor.name}</Heading>
             {tutor.tutorVerified && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full"
-                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>Đã xác minh</span>
+                style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>Đã duyệt hồ sơ</span>
             )}
             {/* PH-207/212: lời hứa của KiN với gia sư, nhìn thấy được trên hồ sơ chứ không chỉ nằm trong điều khoản */}
             <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>Không thu phí nhận lớp</span>

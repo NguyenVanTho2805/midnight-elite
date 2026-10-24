@@ -28,6 +28,7 @@ const MORE_BASE: MoreGroup[] = [
     { label: "Tổng quan", href: "/lop-cua-toi/tong-quan" },
     { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi" },
     { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang" },
+    { label: "Sổ điểm", href: "/lop-cua-toi/so-diem" },
     { label: "Kiểm duyệt cộng đồng", href: "/lop-cua-toi/kiem-duyet" },
   ] },
   { title: "Tiền", links: [{ label: "Doanh thu", href: "/lop-cua-toi/doanh-thu" }] },
