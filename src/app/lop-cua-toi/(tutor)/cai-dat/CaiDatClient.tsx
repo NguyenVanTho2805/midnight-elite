@@ -13,6 +13,7 @@ import { KinPage, KinPageHeader, KIN_TWO_COL } from "@/components/kin/PageLayout
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import PhoneLoginCard from "@/components/account/PhoneLoginCard";
 import PushSettings from "@/components/tutor/PushSettings";
+import PwaGuide from "@/components/tutor/PwaGuide";
 import { FIELD_STYLE } from "@/components/tutor/shared";
 import { KinPanel, KinStatus } from "@/components/kin";
 import type { QuotaCard } from "@/lib/tutorQuota";
@@ -233,6 +234,7 @@ export default function CaiDatClient({ initial, classes, phone, quota = null }: 
 
       <div className="space-y-[var(--kin-cach-muc)] min-w-0">
         <div id="thong-bao" className="scroll-mt-4"><PushSettings /></div>
+        <PwaGuide />
         <PhoneLoginCard profilePhone={phone} plain />
       <section id="tai-khoan" aria-labelledby="h-gd" className="scroll-mt-4">
         <KinSectionHead id="h-gd" title="Giao diện" />

@@ -2,7 +2,7 @@
 // trường hợp khác nằm ở đây để gia sư bấm quyết. Gợi ý theo số tiền chỉ là gợi ý.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
+import { KinButton, KinMoney } from "@/components/kin";
 import Link from "next/link";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { kinButtonClass } from "@/components/kin/Button";
@@ -95,7 +95,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
               <li key={tx.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <p className="text-[22px] leading-7 font-medium tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(tx.amount)}</p>
+                    <p className="text-[22px] leading-7 font-medium tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}><KinMoney>{vnd(tx.amount)}</KinMoney></p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>{fmtTime(tx.occurredAt)}{tx.provider === "manual" ? " · ghi tay" : ""}</p>
                   </div>
                   <div className="text-right">
@@ -109,7 +109,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
 
                 {tx.invoice && (
                   <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }}>
-                    Phiếu <b>{tx.invoice.code}</b> · {tx.invoice.studentName} · {monthLabel(tx.invoice.yearMonth)} · còn lại <b>{vnd(tx.invoice.remaining)}</b> / {vnd(tx.invoice.amountDue)}
+                    Phiếu <b>{tx.invoice.code}</b> · {tx.invoice.studentName} · {monthLabel(tx.invoice.yearMonth)} · còn lại <b><KinMoney>{vnd(tx.invoice.remaining)}</KinMoney></b> / <KinMoney>{vnd(tx.invoice.amountDue)}</KinMoney>
                   </p>
                 )}
 

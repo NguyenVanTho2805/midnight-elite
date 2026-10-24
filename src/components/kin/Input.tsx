@@ -8,7 +8,7 @@
 //   <KinInput label="Email" value={v} onChange={e => setV(e.target.value)} />
 //   <KinInput label="Mật khẩu" type="password" error="Sai mật khẩu" />
 "use client";
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 type Size = "sm" | "md" | "lg";
 
@@ -31,7 +31,9 @@ export const KinInput = forwardRef<HTMLInputElement, KinInputProps>(function Kin
   { label, error, hint, size = "md", prefix, suffix, className = "", id, ...rest },
   ref,
 ) {
-  const inputId = id ?? (label && typeof label === "string" ? `kin-input-${label.replace(/\s+/g, "-")}` : undefined);
+  // HT-02: id luôn có (nhãn/báo lỗi/gợi ý nối bằng id); trước đây nhãn không phải chuỗi thì mất id và aria-describedby hỏng.
+  const autoId = useId();
+  const inputId = id ?? (label && typeof label === "string" ? `kin-input-${label.replace(/\s+/g, "-")}` : `kin-input-${autoId}`);
   // Viền đỏ khi error — dùng --kin-tt-chu-loi (3 màu nghĩa TK-169).
   const borderColor = error ? "var(--kin-tt-chu-loi)" : "var(--kin-vien-o-nhap)";
 
@@ -44,8 +46,8 @@ export const KinInput = forwardRef<HTMLInputElement, KinInputProps>(function Kin
           {label}
         </label>
       )}
-      <div className="relative flex items-stretch rounded-lg"
-        style={{ background: "var(--kin-nen-trang)", border: `1px solid ${borderColor}` }}>
+      <div className="relative flex items-stretch rounded-lg min-h-[var(--kin-cham-toi-thieu)]" data-kin-input-wrap data-invalid={error ? "" : undefined}
+        style={{ background: "var(--kin-nen-trang)", border: `${error ? 2 : 1}px solid ${borderColor}` }}>
         {prefix && (
           <span className="flex items-center px-3 text-sm"
             style={{ color: "var(--kin-chu-phu)", borderRight: "1px solid var(--kin-vien-nhat)" }}>
@@ -69,7 +71,7 @@ export const KinInput = forwardRef<HTMLInputElement, KinInputProps>(function Kin
         )}
       </div>
       {error ? (
-        <p id={`${inputId}-err`} className="text-caption mt-1"
+        <p id={`${inputId}-err`} data-kin-input-error className="text-caption mt-1"
           style={{ color: "var(--kin-tt-chu-loi)" }}>
           {error}
         </p>

@@ -18,6 +18,8 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinPanel } from "@/components/kin/Panel";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_HEAD } from "@/components/kin/PageLayout";
+import { KinMoney, KinMoneyEye } from "@/components/kin/MoneyVisibility";
+import SetupChecklist from "@/components/tutor/SetupChecklist";
 
 function Skeleton() {
   const sk = "kin-skel kin-skel--soft";
@@ -62,14 +64,15 @@ export default function HopViec() {
     <KinPage>
       <KinPageHeader title="Hộp việc"
         sub={<>{o ? `${o.dateLine} · ` : ""}<span className="md:hidden">Sổ dạy học</span><span className="hidden md:inline">Việc cần cô xử lý trước, việc chờ phụ huynh để riêng.</span></>}
-        actions={<Link href="/admin/khoa-hoc?tao=1" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link>} />
+        actions={<><KinMoneyEye /><Link href="/admin/khoa-hoc?tao=1" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link></>} />
 
       {error && <ErrorStrip message="Không tải được Hộp việc." onRetry={load} />}
       {items === null || !o ? (!error ? <Skeleton /> : null) : (
         <>
+          {o.setup && <SetupChecklist setup={o.setup} />}
           <KinStatRow boxed className="hidden md:grid">
-            <KinStat label={`Học phí tháng ${o.monthNumber} đã xác nhận`} value={o.stats.confirmed.value} hint={o.stats.confirmed.hint} />
-            <KinStat label="Phiếu đã lập" value={o.stats.invoices.value} hint={o.stats.invoices.hint} />
+            <KinStat label={`Học phí tháng ${o.monthNumber} đã xác nhận`} value={<KinMoney>{o.stats.confirmed.value}</KinMoney>} hint={o.stats.confirmed.hint} />
+            <KinStat label="Phiếu đã lập" value={<KinMoney>{o.stats.invoices.value}</KinMoney>} hint={<KinMoney>{o.stats.invoices.hint}</KinMoney>} />
             <KinStat label="Lớp đang quản lý" value={o.stats.classes.value} hint={o.stats.classes.hint} />
             <KinStat label="Lịch hôm nay" value={o.stats.today.value} hint={o.stats.today.hint} />
           </KinStatRow>
@@ -133,20 +136,38 @@ export default function HopViec() {
                 </div>
               </section>
 
-              <section aria-labelledby="hv-fee" className="mt-8 md:hidden">
-                <KinSectionHead id="hv-fee" title={`Học phí tháng ${o.monthNumber}`} />
-                <KinPanel className="mt-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Đã xác nhận</span>
-                    <span className="text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.stats.confirmed.value}</span>
-                  </div>
-                  <p className="mt-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{o.stats.invoices.value} đã lập · {o.stats.invoices.hint}. {o.stats.confirmed.hint}.</p>
-                  <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở sổ học phí</Link>
-                </KinPanel>
+              <section aria-labelledby="hv-fee" className="mt-8" data-hv-fee>
+                <KinSectionHead id="hv-fee" title={`Học phí tháng ${o.monthNumber}`} aside={<Link href="/lop-cua-toi/hoc-phi" className="inline-flex items-center min-h-11 hover:underline">Mở sổ học phí</Link>} />
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <KinPanel data-fee-card="da-thu">
+                    <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã thu</p>
+                    <p className="mt-1 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)] break-words"><KinMoney>{o.month.collected}</KinMoney></p>
+                    <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{o.stats.confirmed.hint}</p>
+                  </KinPanel>
+                  <KinPanel data-fee-card="chua-thu">
+                    <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chưa thu</p>
+                    <p className="mt-1 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)] break-words"><KinMoney>{o.month.receivable}</KinMoney></p>
+                    <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{o.month.receivableHint}</p>
+                  </KinPanel>
+                </div>
               </section>
             </div>
 
             <div className="lg:col-start-2 lg:row-start-2 min-w-0">
+              <section aria-labelledby="hv-soon" className="mb-8" data-hv-upcoming>
+                <KinSectionHead id="hv-soon" title="Lịch dạy gần nhất" aside={<Link href="/lop-cua-toi/lich" className="inline-flex items-center min-h-11 hover:underline">Mở Lịch</Link>} />
+                {o.upcoming.length === 0 ? (
+                  <KinCallout>Chưa có buổi nào trong 7 ngày tới.</KinCallout>
+                ) : (
+                  <KinPanel flush className="mt-4">
+                    <ul aria-label="Các buổi dạy gần nhất">
+                      {o.upcoming.map((u, i) => (
+                        <li key={i}><KinListRow href={u.href} title={`${u.time} · ${u.courseName}`} sub={`${u.when} · ${u.meta}`} /></li>
+                      ))}
+                    </ul>
+                  </KinPanel>
+                )}
+              </section>
               <section aria-labelledby="hv-classes">
                 <KinSectionHead id="hv-classes" title={<><span className="md:hidden">Lớp của cô</span><span className="hidden md:inline">Lớp thường dùng</span></>}
                   aside={<span className="md:hidden">{o.classes.total} lớp · {o.stats.classes.hint.replace(" đang học", "")}</span>} />

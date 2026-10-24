@@ -6,7 +6,8 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { KinLogo } from "@/components/kin/KinLogo";
+import { AuthFrame, AuthAsideBlock, AUTH_CARD } from "@/components/guest/AuthFrame";
+import { KinCallout } from "@/components/kin/Callout";
 import { KinSubmitButton } from "@/components/kin/SubmitButton";
 import { MAX_PASSWORD_LEN, MIN_PASSWORD_LEN, validateNewPassword } from "@/lib/passwordPolicy";
 
@@ -27,15 +28,19 @@ type Phase = "checking" | "invalid" | "form" | "done";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="kin-chu-than min-h-[calc(100vh-60px)] flex items-start sm:items-center justify-center px-4 py-8 sm:py-12 bg-[var(--kin-nen-bang)]">
-      <div className="w-full max-w-[420px] rounded-2xl border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
-        <div className="px-5 pt-7 pb-5 flex flex-col gap-[6px]">
-          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex w-fit"><KinLogo size={32} textSize="var(--kin-co-h3, 23px)" /></Link>
-          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Lớp học của bạn, gọn trong một chỗ</p>
-        </div>
-        {children}
-      </div>
-    </div>
+    <AuthFrame title="Đặt lại mật khẩu" sub="Tạo mật khẩu mới cho tài khoản KiN của bạn."
+      aside={(
+        <>
+          <AuthAsideBlock title="Mật khẩu mới">
+            Tối thiểu {MIN_PASSWORD_LEN} ký tự. Nên chọn mật khẩu không dùng ở nơi khác.
+          </AuthAsideBlock>
+          <KinCallout title="Liên kết hết hạn">
+            Nếu liên kết đã hết hạn hoặc đã dùng, hãy yêu cầu gửi lại. Đặt xong, bạn được đăng nhập luôn.
+          </KinCallout>
+        </>
+      )}>
+      <div className={AUTH_CARD}>{children}</div>
+    </AuthFrame>
   );
 }
 
@@ -111,7 +116,7 @@ function DatLaiForm() {
     return (
       <Shell>
         <div className="px-5 pt-2 pb-6 flex flex-col gap-4">
-          <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Link không dùng được</h1>
+          <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Link không dùng được</h2>
           <div role="alert" className="rounded-[var(--kin-bo-sm)] px-[14px] py-3 border text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]"
             style={{ background: "var(--kin-tt-nen-cho)", borderColor: "var(--kin-tt-vien-cho)" }}>{reason}</div>
           <Link href="/quen-mat-khau" className={`${primaryBtn} inline-flex items-center justify-center`}>Yêu cầu link mới</Link>
@@ -125,7 +130,7 @@ function DatLaiForm() {
     return (
       <Shell>
         <div className="px-5 pt-2 pb-8 flex flex-col gap-2">
-          <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đã đổi mật khẩu</h1>
+          <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đã đổi mật khẩu</h2>
           <p role="status" className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Bạn đã được đăng nhập. Đang chuyển vào KiN…</p>
         </div>
       </Shell>
@@ -136,7 +141,7 @@ function DatLaiForm() {
     <Shell>
       <form onSubmit={submit} noValidate className="px-5 pt-2 pb-6 flex flex-col gap-4">
         <div className="flex flex-col gap-[6px]">
-          <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Tạo mật khẩu mới</h1>
+          <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Tạo mật khẩu mới</h2>
           <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Đặt xong là bạn đăng nhập luôn.</p>
         </div>
 

@@ -7,6 +7,7 @@ import { buildTodoItems } from "@/lib/tutorTodo";
 import { loadTutorSchedule, type ScheduleOccurrence } from "@/lib/reminderServer";
 import { addDaysKey, dayOfWeekOfKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { classAccent, greetingForHour } from "@/lib/classColor";
+import { KinMoney, KinMoneyEye } from "@/components/kin/MoneyVisibility";
 import TutorClassList from "./TutorClassList";
 
 const CARD = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
@@ -68,18 +69,21 @@ export default async function TutorDashboard({ tutorId, name }: { tutorId: strin
   const hour = Math.floor(vnMinutesOfDay(now) / 60);
 
   const stats = [
-    { label: "Học viên đang học", value: String(d.totalStudents), sub: null as string | null, accent: "var(--kin-th-xanh-troi)", color: "var(--kin-chu-chinh)", href: null as string | null },
-    { label: "Lớp đang dạy", value: `${d.openClasses}/${d.classes.length}`, sub: "đang nhận học viên / tổng số lớp", accent: "var(--kin-th-xanh-link)", color: "var(--kin-chu-chinh)", href: null },
-    { label: "Đã thu tháng này", value: vnd(d.collectedThisMonth), sub: "học phí vào tài khoản của bạn", accent: "var(--kin-tt-cham-xong)", color: "var(--kin-tt-chu-xong)", href: "/lop-cua-toi/doanh-thu" },
-    { label: "Việc cần làm", value: todoTotal === 0 ? "Ổn" : String(todoTotal), sub: todoTotal === 0 ? "không có việc nào chờ" : anyUrgent ? "có việc gấp" : "đang chờ bạn xử lý", accent: todoTotal === 0 ? "var(--kin-tt-cham-xong)" : anyUrgent ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-cham-cho)", color: todoTotal === 0 ? "var(--kin-tt-chu-xong)" : anyUrgent ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-chu-cho)", href: "/lop-cua-toi" },
+    { label: "Học viên đang học", value: <>{String(d.totalStudents)}</>, sub: null as string | null, accent: "var(--kin-th-xanh-troi)", color: "var(--kin-chu-chinh)", href: null as string | null },
+    { label: "Lớp đang dạy", value: <>{`${d.openClasses}/${d.classes.length}`}</>, sub: "đang nhận học viên / tổng số lớp", accent: "var(--kin-th-xanh-link)", color: "var(--kin-chu-chinh)", href: null },
+    { label: "Đã thu tháng này", value: <KinMoney>{vnd(d.collectedThisMonth)}</KinMoney>, sub: "học phí vào tài khoản của bạn", accent: "var(--kin-tt-cham-xong)", color: "var(--kin-tt-chu-xong)", href: "/lop-cua-toi/doanh-thu" },
+    { label: "Việc cần làm", value: <>{todoTotal === 0 ? "Ổn" : String(todoTotal)}</>, sub: todoTotal === 0 ? "không có việc nào chờ" : anyUrgent ? "có việc gấp" : "đang chờ bạn xử lý", accent: todoTotal === 0 ? "var(--kin-tt-cham-xong)" : anyUrgent ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-cham-cho)", color: todoTotal === 0 ? "var(--kin-tt-chu-xong)" : anyUrgent ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-chu-cho)", href: "/lop-cua-toi" },
   ];
 
   return (
     <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
       <div className="max-w-4xl mx-auto px-4 py-5">
-        <header className="mb-4">
-          <h1 className="text-lg font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Lớp của tôi</h1>
-          <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>{greetingForHour(hour)}, {name} · {WEEKDAY[dayOfWeekOfKey(todayKey)]} {ddmm(todayKey)}/{todayKey.slice(0, 4)}</p>
+        <header className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Lớp của tôi</h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>{greetingForHour(hour)}, {name} · {WEEKDAY[dayOfWeekOfKey(todayKey)]} {ddmm(todayKey)}/{todayKey.slice(0, 4)}</p>
+          </div>
+          <KinMoneyEye />
         </header>
 
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">

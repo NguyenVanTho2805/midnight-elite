@@ -27,3 +27,7 @@ export { KinStateCard, KinSkeleton, type KinStateCardProps } from "./StateCard";
 export { KinPage, KinPageHeader, KinTwoCol, KinPageSkeleton, KinTableSkeleton, KIN_PAGE, KIN_TWO_COL, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD, KIN_LABEL } from "./PageLayout";
 // 24/10/2026 — khung dùng chung cho khối quan trọng (xem COMPONENTS.md).
 export { KinPanel, type KinPanelVariant } from "./Panel";
+// 24/10/2026 — HV-07 ẩn/hiện số tiền.
+export { KinMoney, KinMoneyEye, useMoneyHidden, MONEY_HIDDEN_KEY } from "./MoneyVisibility";
+// 24/10/2026 — HT-02 kiểm tra tại chỗ khi nhập (luật thuần ở src/lib/fieldRules.ts).
+export { useFieldValidation } from "./useFieldValidation";

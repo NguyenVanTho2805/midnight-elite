@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import HocPhiClient from "./HocPhiClient";
 import { KinPage, KinPageHeader } from "@/components/kin/PageLayout";
+import { KinMoneyEye } from "@/components/kin/MoneyVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,8 @@ export default async function HocPhiGiaSuPage({ searchParams }: { searchParams: 
   return (
     <KinPage>
       <KinPageHeader title="Học phí"
-        sub="Phiếu có mã riêng, tiền chuyển thẳng vào tài khoản của bạn. KiN chỉ đọc tiền vào để gạch phiếu, không giữ tiền." />
+        sub="Phiếu có mã riêng, tiền chuyển thẳng vào tài khoản của bạn. KiN chỉ đọc tiền vào để gạch phiếu, không giữ tiền."
+        actions={<KinMoneyEye />} />
       <HocPhiClient initialTab={initialTab} pending={pending} />
     </KinPage>
   );

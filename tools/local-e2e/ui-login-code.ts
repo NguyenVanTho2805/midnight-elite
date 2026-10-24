@@ -40,7 +40,8 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   section("Màn nhập email (Figma 32:2)");
   const p0 = await open("/dang-nhap?cach=ma");
   await p0.getByRole("heading", { name: "Đăng nhập", exact: true }).waitFor({ timeout: 90000 });
-  check("có logo K + câu 'Lớp học của bạn, gọn trong một chỗ'", await p0.locator("main svg").first().isVisible() && await p0.getByText("Lớp học của bạn, gọn trong một chỗ").isVisible());
+  // 24/10/2026 (TK-02, Figma 464:9828): logo nằm ở thanh trên của trang khách; trong trang là tiêu đề "Đăng nhập KiN" + dòng phụ, không lặp logo/câu giới thiệu trong thẻ.
+  check("có tiêu đề 'Đăng nhập KiN' + dòng phụ 'Dành cho gia sư và học sinh' (logo ở thanh trên)", await p0.getByRole("heading", { name: "Đăng nhập KiN", level: 1 }).isVisible() && await p0.getByText("Dành cho gia sư và học sinh").isVisible() && await p0.locator("header svg, nav svg").first().isVisible());
   check("một ô Email + nút 'Gửi mã đăng nhập'", await p0.getByLabel("Email").isVisible() && await p0.getByRole("button", { name: "Gửi mã đăng nhập" }).isVisible());
   check("không còn ô mật khẩu ở màn đầu", await p0.getByLabel("Mật khẩu").count() === 0);
   const send0 = p0.getByRole("button", { name: "Gửi mã đăng nhập" });
