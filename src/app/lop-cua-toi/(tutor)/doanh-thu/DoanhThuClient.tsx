@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
+import Link from "next/link";
+import { KinButton, kinButtonClass } from "@/components/kin";
 import AdvancedAttendanceStats from "@/components/tutor/AdvancedAttendanceStats";
 import RevenueByClassTable, { type ClassRevenueRow } from "@/components/tutor/RevenueByClassTable";
 import { CARD_STYLE, FIELD_STYLE, callApi, vnd } from "@/components/tutor/shared";
@@ -120,6 +121,8 @@ export default function DoanhThuClient() {
               </ul>}
         </section>
       </>)}
+
+      <Link href="/lop-cua-toi/so-diem" className={kinButtonClass("secondary")}>Mở sổ điểm và tiến bộ</Link>
 
       <AdvancedAttendanceStats />
     </div>
