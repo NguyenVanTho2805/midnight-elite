@@ -46,7 +46,7 @@ const mock: MockFn = async ({ prisma, tutor, tw }) => {
   await prisma.exam.update({ where: { id: "quiz-mock-nhap" }, data: { totalPoints: 15 } });
 
   // (B) Quiz đã phát hành v1 + hai bài nộp
-  await prisma.exam.create({ data: { ...base, id: "quiz-mock-v1", code: "QZ.MOCK-B", title: "Quiz thử · Kiểm tra 15 phút (đã có người làm)", active: true, isDraft: false, versionNo: 1, date: dmy(now - 24 * HOUR), status: "available" } });
+  await prisma.exam.create({ data: { ...base, id: "quiz-mock-v1", code: "QZ.MOCK-B", title: "Quiz thử · Kiểm tra 15 phút (đã có người làm)", active: true, isDraft: false, versionNo: 1, date: dmy(now - 24 * HOUR), status: "available", questions: 0 } });
   await mkQuestions("quiz-mock-v1", [mc("Câu 1. $x^2 - 5x + 6 = 0$ có hai nghiệm là:", 1), mc("Câu 2. Biệt thức $\\Delta$ của $x^2 + 2x - 3 = 0$ bằng:", 2)]);
   await prisma.exam.update({ where: { id: "quiz-mock-v1" }, data: { totalPoints: 2 } });
   for (const [u, correctN] of [[tw.s1, 2], [tw.s2, 1]] as const) {
@@ -61,7 +61,7 @@ const mock: MockFn = async ({ prisma, tutor, tw }) => {
   await prisma.exam.update({ where: { id: "quiz-mock-v1" }, data: { participants: 2 } });
 
   // v2 đề xuất: giữ câu 1, đổi đáp án đúng của câu 2, thêm câu 3
-  await prisma.exam.create({ data: { ...base, id: "quiz-mock-v2", code: "QZ.MOCK-B-v2", title: "Quiz thử · Kiểm tra 15 phút (đã có người làm)", active: false, isDraft: true, rootExamId: "quiz-mock-v1", versionNo: 2, versionNote: "Câu 2 sai đáp án gốc", date: dmy(now + 24 * HOUR) } });
+  await prisma.exam.create({ data: { ...base, id: "quiz-mock-v2", code: "QZ.MOCK-B-v2", title: "Quiz thử · Kiểm tra 15 phút (đã có người làm)", active: false, isDraft: true, rootExamId: "quiz-mock-v1", versionNo: 2, versionNote: "Câu 2 sai đáp án gốc", date: dmy(now + 24 * HOUR), questions: 0 } });
   await mkQuestions("quiz-mock-v2", [mc("Câu 1. $x^2 - 5x + 6 = 0$ có hai nghiệm là:", 1), mc("Câu 2. Biệt thức $\\Delta$ của $x^2 + 2x - 3 = 0$ bằng:", 3), mc("Câu 3. Tích hai nghiệm của $x^2 - 5x + 6 = 0$ bằng:", 0)]);
   await prisma.examChangeLog.createMany({ data: [
     { examId: "quiz-mock-v1", rootExamId: null, actorId: tutor.id, kind: "publish", note: "Phát hành quiz", createdAt: new Date(now - 26 * HOUR) },
