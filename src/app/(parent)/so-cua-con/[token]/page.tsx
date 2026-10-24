@@ -28,6 +28,8 @@ import SessionScores from "@/components/parent/SessionScores";
 import PartySessions from "@/components/parent/PartySessions";
 import { loadPartySessions } from "@/lib/partySessionsServer";
 import { loadPartyScores } from "@/lib/sessionScoreServer";
+import SessionNotes from "@/components/parent/SessionNotes";
+import { loadPartyNotes } from "@/lib/sessionNoteServer";
 
 export const dynamic = "force-dynamic"; // link cá nhân, không cache
 
@@ -146,6 +148,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
   const sessionScores = await loadPartyScores(studentId);
   // BC-02: chi tiết từng buổi (điểm danh gia sư đã ghi) của ĐÚNG em này, ở các lớp em đang học.
   const partySessions = await loadPartySessions(studentId, courseIds, now);
+  // BU-07: nhận xét riêng của ĐÚNG em này mà gia sư đã tick cho phụ huynh xem.
+  const sessionNotes = await loadPartyNotes(studentId);
 
   return (
     <div style={{ background: "var(--kin-nen-trang)" }}>
@@ -226,6 +230,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 <PartySessions items={partySessions} />
 
                 <SessionScores items={sessionScores} />
+
+                <SessionNotes items={sessionNotes} />
               </div>
 
               <KinPanel as="aside" className="space-y-6 lg:sticky lg:top-4" aria-label="Học phí">

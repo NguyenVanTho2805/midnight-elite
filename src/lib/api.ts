@@ -540,9 +540,12 @@ export interface ClassScheduleFull {
   id: string; courseId: string;
   dayOfWeek: number; startTime: string; endTime: string;
   note: string | null; joinUrl: string | null; active: boolean; createdAt: string;
+  /** LI-16: hình thức "online" | "offline" (null = chưa chọn) và địa chỉ khi học offline. */
+  mode?: string | null; location?: string | null;
 }
 export interface ClassScheduleInput {
   dayOfWeek: number; startTime: string; endTime: string; note?: string; joinUrl?: string | null;
+  mode?: string | null; location?: string | null;
 }
 
 export interface AssignmentSubmissionFull {

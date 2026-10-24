@@ -21,6 +21,7 @@ import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
 import { removeUninvoicedChargesForSession, syncSessionCharges } from "@/lib/feeChargeServer";
+import { noteShareAllowed } from "@/lib/sessionNoteServer";
 
 type SessionRow = { id: string; courseId: string; date: Date; note: string | null; createdBy: string; createdAt: Date };
 type SessionDelegate = {
@@ -28,7 +29,7 @@ type SessionDelegate = {
   delete(args: unknown): Promise<unknown>;
 };
 type RecordDelegate = {
-  findMany(args: unknown): Promise<{ userId: string; status: string; note: string | null; zaloOpenedAt: Date | null }[]>;
+  findMany(args: unknown): Promise<{ userId: string; status: string; note: string | null; zaloOpenedAt: Date | null; parentVisible: boolean }[]>;
   upsert(args: unknown): Promise<unknown>;
 };
 
@@ -90,6 +91,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     avatar:    e.user.avatarBase64,
     status:    byUserId.get(e.user.id)?.status ?? null, // null = chưa điểm danh
     note:      byUserId.get(e.user.id)?.note ?? null,
+    // BU-07: gia sư đã tick cho phụ huynh của đúng em này xem nhận xét.
+    parentVisible: byUserId.get(e.user.id)?.parentVisible ?? false,
     // TT-199: để gia sư nhắn phụ huynh qua Zalo ngay từ màn điểm danh.
     parentName:   e.user.parentName,
     parentPhone:  e.user.parentPhone,
@@ -115,7 +118,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Mỗi lần tối đa 500 records" }, { status: 400 });
   }
 
-  const items: { userId: string; status: string; note: string | null; makeupCreditId: string | null }[] = [];
+  const items: { userId: string; status: string; note: string | null; makeupCreditId: string | null; parentVisible?: boolean }[] = [];
   for (const row of body.records) {
     if (!row || typeof row !== "object") continue;
     const r2 = row as Record<string, unknown>;
@@ -128,7 +131,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (mk && r2.status !== "present" && r2.status !== "late") {
       return NextResponse.json({ error: "Chỉ dùng buổi bù cho học viên có mặt hoặc đi muộn" }, { status: 400 });
     }
-    items.push({ userId: r2.userId, status: r2.status, note: note || null, makeupCreditId: mk });
+    if (r2.parentVisible !== undefined && typeof r2.parentVisible !== "boolean") return NextResponse.json({ error: "parentVisible phải là true hoặc false" }, { status: 400 });
+    items.push({ userId: r2.userId, status: r2.status, note: note || null, makeupCreditId: mk, ...(r2.parentVisible !== undefined ? { parentVisible: r2.parentVisible } : {}) });
   }
 
   // Kiểm mọi userId có trong Enrollment active của lớp — chống gia sư gửi
@@ -146,6 +150,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 
+  // BU-07: chia sẻ nhận xét cho phụ huynh chỉ khi hồ sơ của em (nếu có) còn đồng ý phạm vi cơ bản; thiếu thì từ chối cả lô, không lưu dở.
+  const sharing = items.filter(i => i.parentVisible === true).map(i => i.userId);
+  if (sharing.length) {
+    const owner = (await prisma.course.findUnique({ where: { id: session.courseId }, select: { ownerId: true } }))?.ownerId;
+    const allowed = owner ? await noteShareAllowed(owner, sharing) : new Map<string, boolean>();
+    const blocked = sharing.filter(u => allowed.get(u) !== true);
+    if (blocked.length) return NextResponse.json({ error: "Có em chưa có đồng ý (hoặc đã thu hồi) nên chưa chia sẻ nhận xét cho phụ huynh được. Mở hồ sơ của em để xác nhận đồng ý trước.", needsConsent: true, blocked }, { status: 422 });
+  }
+
   // Upsert trong 1 transaction — không có xung đột race vì key unique
   // (sessionId, userId). 2 gia sư đồng thời set record cùng 1 em thì
   // người sau đè được, có updatedBy để biết ai làm cuối.
@@ -160,8 +173,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         const changed = prevStatus.has(i.userId) && prevStatus.get(i.userId) !== i.status;
         await txRecords.upsert({
           where:  { sessionId_userId: { sessionId: id, userId: i.userId } },
-          create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId },
-          update: { status: i.status, note: i.note, updatedBy: auth.userId, ...(changed ? { zaloOpenedAt: null } : {}) },
+          create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId, ...(i.parentVisible !== undefined ? { parentVisible: i.parentVisible } : {}) },
+          update: { status: i.status, note: i.note, updatedBy: auth.userId, ...(changed ? { zaloOpenedAt: null } : {}), ...(i.parentVisible !== undefined ? { parentVisible: i.parentVisible } : {}) },
         });
         if (i.makeupCreditId) {
           // Điều kiện nằm trong WHERE của updateMany nên hai gia sư/hai lần bấm cùng lúc không dùng chung 1 buổi bù.

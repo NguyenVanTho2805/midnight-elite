@@ -3,8 +3,9 @@
 "use client";
 import { useState } from "react";
 import { dayOfWeekOfKey, hmOf, vnMinutesOfDay } from "@/lib/classSessions";
-import { classAccent } from "@/lib/classColor";
+import { classAccentFor } from "@/lib/classColor";
 import type { ScheduleOccurrence } from "@/lib/reminderServer";
+import { MODE_LABEL } from "@/lib/sessionBook";
 
 const PX_PER_HOUR = 64;
 const HEAD_H = 50;
@@ -33,9 +34,12 @@ function wrapLines(text: string, laneW: number) {
   return lines;
 }
 
+/** LI-02: buổi đã bắt đầu mà chưa bấm "Đã dạy xong" → hiện chữ "Chưa chốt" (luôn có chữ, không chỉ màu). */
+const unclosed = (o: ScheduleOccurrence) => o.started && o.status !== "cancelled" && o.sessionState !== "closed";
+
 /** Chiều cao cần để đủ chữ: tên lớp (nhiều dòng) + giờ + dòng ghi chú; tối thiểu 3 dòng. */
 function neededHeight(o: ScheduleOccurrence) {
-  const notes = (o.status === "cancelled" || o.status === "moved" ? 1 : 0) + (o.pendingAbsences > 0 ? 1 : 0) + (o.remindersDue > 0 ? 1 : 0);
+  const notes = (o.status === "cancelled" || o.status === "moved" ? 1 : 0) + (o.pendingAbsences > 0 ? 1 : 0) + (o.remindersDue > 0 ? 1 : 0) + (o.mode ? 1 : 0) + (unclosed(o) ? 1 : 0);
   const lines = Math.max(3, wrapLines(o.courseName, LANE_MIN) + 1 + notes);
   return BLOCK_PAD + lines * LINE_H;
 }
@@ -85,7 +89,7 @@ export default function LichGrid({ days, occurrences, todayKey, openKey, onPick,
       background: sel ? "var(--kin-nen-dang-chon)" : "var(--kin-nen-nhan)",
       color: "var(--kin-nhan-chu-tren-nhat)",
       borderStyle: "solid", borderWidth: "1px 1px 1px 3px",
-      borderColor: `${edge} ${edge} ${edge} ${cancelled ? "var(--kin-tt-cham-trung-tinh)" : classAccent(o.courseId)}`,
+      borderColor: `${edge} ${edge} ${edge} ${cancelled ? "var(--kin-tt-cham-trung-tinh)" : classAccentFor(o.courseId, o.color)}`,
       boxShadow: today ? "0 0 0 1px var(--kin-nen-trang)" : undefined,
     } as const;
   };
@@ -98,12 +102,14 @@ export default function LichGrid({ days, occurrences, todayKey, openKey, onPick,
         <span className="block tabular-nums" style={strike}>{vnHm(o.startAt)}–{vnHm(o.endAt)}</span>
         {cancelled && <span className="block text-[var(--kin-chu-mo-tren-nen-nhan)]">Đã huỷ</span>}
         {o.status === "moved" && <span className="block text-[var(--kin-chu-mo-tren-nen-nhan)]">Đã dời</span>}
+        {o.mode && <span className="block text-[var(--kin-chu-mo-tren-nen-nhan)]">{MODE_LABEL[o.mode]}</span>}
+        {unclosed(o) && <span className="block" style={{ color: "var(--kin-tt-chu-cho)" }} data-unclosed>Chưa chốt</span>}
         {o.pendingAbsences > 0 && <span className="block" style={{ color: "var(--kin-tt-chu-loi)" }}>{o.pendingAbsences} báo nghỉ sát giờ</span>}
         {o.remindersDue > 0 && <span className="block" style={{ color: "var(--kin-tt-chu-cho)" }}>{o.remindersDue} tin nhắc chờ gửi</span>}
       </>
     );
   };
-  const label = (o: ScheduleOccurrence) => `${o.courseName} ${vnHm(o.startAt)}–${vnHm(o.endAt)}${o.status === "cancelled" ? ", đã huỷ" : o.status === "moved" ? ", đã dời" : ""}`;
+  const label = (o: ScheduleOccurrence) => `${o.courseName} ${vnHm(o.startAt)}–${vnHm(o.endAt)}${o.status === "cancelled" ? ", đã huỷ" : o.status === "moved" ? ", đã dời" : ""}${o.mode ? `, ${MODE_LABEL[o.mode]}` : ""}${unclosed(o) ? ", chưa chốt" : ""}`;
 
   return (
     <div role="group" aria-label="Lịch tuần theo giờ" data-lich-scroll className={`border border-[var(--kin-vien-thuong)] overflow-x-auto ${dimmed ? "opacity-70" : ""}`}>

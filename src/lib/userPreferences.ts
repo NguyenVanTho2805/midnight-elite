@@ -6,6 +6,7 @@ import { parseRail, type RailState } from "@/lib/railState";
 import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
 import { readPushPrefs, type PushTypes } from "@/lib/pushRules";
 import { readProfilePrefs, type TutorProfilePrefs } from "@/lib/tutorVisibility";
+import { patchCalendarPrefs, readCalendarPrefs, type CalendarPrefs } from "@/lib/sessionBook";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -59,6 +60,8 @@ export interface UserPreferences {
    * (khoá giao dịch `prefsLockKey`); API giao diện từ chối khoá "profile" nhưng giữ nguyên giá trị đang có.
    */
   profile?: TutorProfilePrefs;
+  /** LI-03: bộ lọc hiển thị Lịch dạy — ẩn buổi đã huỷ, và lớp đang lọc (vắng = tất cả lớp, hiện cả buổi huỷ). */
+  calendar?: CalendarPrefs;
 }
 
 /** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
@@ -129,6 +132,7 @@ export function readPreferences(raw: unknown): UserPreferences {
   if (push) out.push = push;
   const profile = readProfilePrefs(raw.profile);
   if (profile) out.profile = profile;
+  if (isObj(raw.calendar)) { const c = readCalendarPrefs(raw.calendar); if (c.hideCancelled || c.courseId) out.calendar = c; }
   return out;
 }
 
@@ -199,6 +203,13 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
           } else return { ok: false, error: `connections không có "${ck.slice(0, 40)}"` };
         }
         if (Object.keys(c).length) next.connections = c; else delete next.connections;
+        break;
+      }
+      case "calendar": {
+        if (v === null) { delete next.calendar; break; }
+        const c = patchCalendarPrefs(next.calendar ?? { hideCancelled: false, courseId: null }, v);
+        if (!c.ok) return c;
+        if (c.value.hideCancelled || c.value.courseId) next.calendar = c.value; else delete next.calendar;
         break;
       }
       default:
