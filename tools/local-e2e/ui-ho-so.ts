@@ -36,6 +36,11 @@ import { prisma } from "@/lib/prisma";
   await pg.getByLabel("Tên phụ huynh").fill("Chị Hoa");
   await pg.getByLabel(/Số Zalo/).fill("0912");
   check("người thanh toán hiện theo loại: phụ huynh + tên", await pg.getByText("Người thanh toán: Phụ huynh Chị Hoa.").isVisible());
+  // Cập nhật (HT-02): ô Zalo nay được kiểm ngay trên trình duyệt cùng luật với máy chủ, nên "0912" bị chặn ở bước 2 (trước đây lọt tới máy chủ).
+  // Giữ ca cũ: ở đây kiểm chặn tại chỗ; ca "máy chủ báo lỗi" bên dưới dùng page.route để giả một trình duyệt bỏ qua kiểm tại chỗ.
+  await pg.getByRole("button", { name: "Tiếp tục" }).click();
+  check("HT-02: Zalo 4 số bị chặn ngay ở bước 2, báo 'phải đủ 10 chữ số', chưa sang bước 3", await pg.getByText("Số điện thoại phụ huynh phải đủ 10 chữ số").first().isVisible() && await pg.getByText("Bước 2 trên 4").isVisible());
+  await pg.getByLabel(/Số Zalo/).fill("0912345678");
   await pg.getByRole("button", { name: "Tiếp tục" }).click();
   await pg.getByText("Bước 3 trên 4").waitFor();
   await pg.getByLabel("Địa chỉ").fill("Số 9 phố Thử");
@@ -51,6 +56,14 @@ import { prisma } from "@/lib/prisma";
   await pg.locator("[data-consent-party=child]").check();
   check("tích đủ → mở khoá", await save.isEnabled());
   await shot(pg, "ho-so-wizard-b4");
+  // Giả trình duyệt bỏ qua kiểm tại chỗ: đổi SĐT phụ huynh thành "0912" trong yêu cầu lưu đầu tiên để máy chủ từ chối.
+  let tampered = false;
+  await pg.route("**/api/tutor/ho-so", async (route, req) => {
+    if (req.method() !== "POST" || tampered) return route.continue();
+    tampered = true;
+    const b = JSON.parse(req.postData() ?? "{}"); b.guardianPhone = "0912";
+    await route.continue({ postData: JSON.stringify(b) });
+  });
   await save.click();
   await pg.getByText("Bước 2 trên 4").waitFor({ timeout: 30000 });
   check("số phụ huynh sai → máy chủ báo lỗi và đưa về bước 2 kèm lời nêu ô sai; chưa có hồ sơ nào", await pg.getByText("Số điện thoại phụ huynh phải đủ 10 chữ số").first().isVisible() && await prisma.studentProfile.count() === 0);
@@ -187,10 +200,16 @@ import { prisma } from "@/lib/prisma";
   await pg.getByLabel("Người lớn (từ 16 tuổi)").check();
   await pg.getByRole("button", { name: "Tiếp tục" }).click();
   await pg.getByText("Bước 2 trên 4").waitFor();
+  // Cập nhật: tên được điền sau khi /api/tutor/hoc-sinh trả về (~200ms sau khi mở wizard; wizard chạy tải này lúc mở trang, không phải lúc sang bước 2).
+  // Đọc ngay lúc vừa sang bước 2 thì thấy ô trống, và bấm Tiếp tục sớm hơn nữa sẽ bị chặn "Nhập tên em": lỗi do bài chạy nhanh hơn mạng, không phải cú bấm bị nuốt
+  // (đã tái hiện: bấm đôi đồng bộ / song song vẫn đi đủ 2 bước). Nên CHỜ ô được điền rồi mới kiểm.
+  await pg.waitForFunction(() => (document.querySelector('input[autocomplete="off"]') as HTMLInputElement | null)?.value === "Em Có Tài Khoản", null, { timeout: 30000 });
   check("tên em được điền sẵn từ lớp của gia sư", await pg.getByLabel("Tên em").inputValue() === "Em Có Tài Khoản");
   check("người lớn: không hỏi phụ huynh; người thanh toán là chính người học", await pg.getByLabel("Tên phụ huynh").count() === 0 && await pg.getByText("Người thanh toán: Chính người học.").isVisible());
-  await pg.getByRole("button", { name: "Tiếp tục" }).click(); await pg.getByRole("button", { name: "Tiếp tục" }).click();
-  await pg.getByText("Bước 4 trên 4").waitFor();
+  // Ca mới: hai cú bấm "Tiếp tục" liên tiếp KHÔNG chờ nhau (bấm nhanh) phải đi đủ 2 bước, không cú nào bị nuốt.
+  await pg.getByRole("button", { name: "Tiếp tục" }).evaluate(el => { (el as HTMLElement).click(); (el as HTMLElement).click(); });
+  await pg.getByText("Bước 4 trên 4").waitFor({ timeout: 15000 });
+  check("bấm nhanh 2 lần Tiếp tục ở bước 2 (đủ dữ liệu) → tới thẳng bước 4, không dừng ở bước 3", true);
   check("người lớn 16+: hộp đồng ý chỉ có MỘT bên (chính người học)", await pg.locator("[data-consent-party]").count() === 1 && await pg.locator("[data-consent-party=self]").count() === 1);
   await pg.locator("[data-consent-party=self]").check();
   await pg.getByRole("button", { name: "Lưu hồ sơ" }).click();

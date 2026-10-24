@@ -135,7 +135,8 @@ const rep = (status: string, n: number) => Array.from({ length: n }, () => ({ st
   const fe = read("src/components/tutor/AdvancedAttendanceStats.tsx");
   check("khối Free mờ: có 'Có trong KiN Pro' + nút tới /lop-cua-toi/goi, và hình mờ KHÔNG chứa chữ số", /Có trong KiN Pro/.test(fe) && /href="\/lop-cua-toi\/goi"/.test(fe) && /aria-hidden/.test(fe.slice(fe.indexOf("function LockedPreview"), fe.indexOf("export default")).split("Có trong KiN Pro")[0]));
   const dt = read("src/app/lop-cua-toi/(tutor)/doanh-thu/DoanhThuClient.tsx");
-  check("trang Doanh thu: khối nâng cao nằm SAU phần cơ bản, không bọc/che số cơ bản", /<\/>\)\}\s*\n\s*\n\s*<AdvancedAttendanceStats \/>/.test(dt));
+  // Cập nhật: sau khối cơ bản nay có thêm liên kết "Mở sổ điểm và tiến bộ" (DoanhThuClient.tsx) trước khối nâng cao; regex cho phép đúng liên kết đó, không nới thêm.
+  check("trang Doanh thu: khối nâng cao nằm SAU phần cơ bản, không bọc/che số cơ bản", /<\/>\)\}\s*\n\s*\n\s*(<Link href="\/lop-cua-toi\/so-diem"[^\n]*<\/Link>\s*\n\s*\n\s*)?<AdvancedAttendanceStats \/>/.test(dt));
   for (const f of ["src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/[id]/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx", "src/components/ExtractReviewModal.tsx"])
     check(`ô 'còn N lượt' có mặt ở ${f}`, /<AiQuotaNote busy=\{/.test(read(f)));
   const note = read("src/components/AiQuotaNote.tsx");

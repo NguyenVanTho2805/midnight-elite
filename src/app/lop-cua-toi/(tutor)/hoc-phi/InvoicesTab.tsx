@@ -276,7 +276,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 )}
                 {i.status === "draft" && <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>}
                 {i.paidAmount > 0 && <KinButton variant="ghost" onClick={() => setDialog({ kind: "payments", inv: i })}>Khoản đã thu</KinButton>}
-                {i.status === "draft" && i.looseCount > 0 && <KinButton variant="secondary" onClick={() => setDialog({ kind: "attach", inv: i })}>Gộp {i.looseCount} khoản rời (<KinMoney>{vnd(i.looseTotal)}</KinMoney>)</KinButton>}
+                {i.status === "draft" && i.looseCount > 0 && <KinButton variant="secondary" onClick={() => setDialog({ kind: "attach", inv: i })}><span>Gộp {i.looseCount} khoản rời (<KinMoney>{vnd(i.looseTotal)}</KinMoney>)</span></KinButton>}
                 {i.status !== "paid" && i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "amount", inv: i })}>Sửa số tiền</KinButton>}
                 {i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "cancel", inv: i })}>Huỷ phiếu</KinButton>}
                 {i.status === "cancelled" && <KinButton variant="secondary" loading={busy === i.id} onClick={() => act(i, { action: "restore" }, "Đã khôi phục phiếu về nháp.")}>Khôi phục</KinButton>}

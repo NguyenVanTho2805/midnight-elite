@@ -39,8 +39,13 @@ import { check, section, done } from "./h";
   const purchase = files.find(f => f.rel === "src/app/api/subscriptions/[code]/purchase/route.ts")!.txt;
   const iGate = purchase.indexOf("isTrialMode()"), iDb = purchase.indexOf("await prisma.$transaction");
   check("API mua gói chặn bằng isTrialMode() TRƯỚC prisma.$transaction", iGate > 0 && iDb > iGate && /status:\s*403/.test(purchase.slice(iGate, iDb)));
-  const readers = files.filter(f => /KIN_TRIAL_MODE/.test(f.txt)).map(f => f.rel).sort();
+  // Cập nhật: adminOps.ts và admin/trien-khai/page.tsx chỉ dùng tên khoá "KIN_TRIAL_MODE" làm nhãn/khoá hiển thị, không đọc process.env.
+  // Nới đúng hai chỗ đó; mọi tệp khác còn nhắc tên biến vẫn phải bị bắt, và không tệp nào ngoài trialMode.ts được đọc env.
+  const LABEL_ONLY = new Set(["src/lib/adminOps.ts", "src/app/(admin)/admin/trien-khai/page.tsx"]);
+  const readers = files.filter(f => /KIN_TRIAL_MODE/.test(f.txt) && !LABEL_ONLY.has(f.rel)).map(f => f.rel).sort();
   check("chỉ MỘT chỗ đọc biến KIN_TRIAL_MODE: src/lib/trialMode.ts", readers.length === 1 && readers[0] === "src/lib/trialMode.ts", readers);
+  const labelFiles = files.filter(f => LABEL_ONLY.has(f.rel));
+  check("adminOps.ts và trang triển khai chỉ dùng tên khoá làm nhãn, không đọc process.env.KIN_TRIAL_MODE", labelFiles.length === 2 && labelFiles.every(f => !/process\.env\.KIN_TRIAL_MODE|process\.env\[["']KIN_TRIAL_MODE/.test(f.txt)));
 
   await done();
 })();
