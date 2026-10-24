@@ -4,15 +4,15 @@
 import { useId, type ReactNode } from "react";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 
-export function TextField({ label, value, onChange, error, hint, type = "text", inputMode, placeholder, maxLength, required, autoComplete = "off", name }: {
+export function TextField({ label, value, onChange, error, hint, type = "text", inputMode, placeholder, maxLength, required, autoComplete = "off", name, onBlur }: {
   label: string; value: string; onChange: (v: string) => void; error?: string; hint?: string; type?: string; inputMode?: "text" | "tel" | "email" | "numeric";
-  placeholder?: string; maxLength?: number; required?: boolean; autoComplete?: string; name?: string;
+  placeholder?: string; maxLength?: number; required?: boolean; autoComplete?: string; name?: string; onBlur?: () => void;
 }) {
   const id = useId();
   return (
     <div className="min-w-0">
       <label htmlFor={id} className={`${KIN_LABEL} mb-2`}>{label}{required ? " *" : ""}</label>
-      <input id={id} name={name} type={type} inputMode={inputMode} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} maxLength={maxLength}
+      <input id={id} name={name} type={type} inputMode={inputMode} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} maxLength={maxLength} onBlur={onBlur}
         aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-e` : hint ? `${id}-h` : undefined} autoComplete={autoComplete} className={KIN_FIELD} />
       {error ? <p id={`${id}-e`} role="alert" className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{error}</p>
         : hint ? <p id={`${id}-h`} className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{hint}</p> : null}
@@ -20,12 +20,12 @@ export function TextField({ label, value, onChange, error, hint, type = "text", 
   );
 }
 
-export function TextArea({ label, value, onChange, error, hint, maxLength, rows = 3 }: { label: string; value: string; onChange: (v: string) => void; error?: string; hint?: string; maxLength?: number; rows?: number }) {
+export function TextArea({ label, value, onChange, error, hint, maxLength, rows = 3, onBlur }: { label: string; value: string; onChange: (v: string) => void; error?: string; hint?: string; maxLength?: number; rows?: number; onBlur?: () => void }) {
   const id = useId();
   return (
     <div className="min-w-0">
       <label htmlFor={id} className={`${KIN_LABEL} mb-2`}>{label}</label>
-      <textarea id={id} value={value} rows={rows} maxLength={maxLength} onChange={e => onChange(e.target.value)} aria-invalid={error ? true : undefined}
+      <textarea id={id} value={value} rows={rows} maxLength={maxLength} onChange={e => onChange(e.target.value)} onBlur={onBlur} aria-invalid={error ? true : undefined}
         className={`${KIN_FIELD} py-2 leading-5`} />
       {error ? <p role="alert" className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{error}</p>
         : hint ? <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{hint}</p> : null}

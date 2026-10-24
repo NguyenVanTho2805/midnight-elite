@@ -136,6 +136,39 @@ export default function HopViec() {
                 </div>
               </section>
 
+              {/* HV-04: số buổi trong tháng — chỉ đếm buổi, không tiền. Hoàn thành = buổi đã chốt "Đã dạy xong". */}
+              <section aria-labelledby="hv-sess" className="mt-8" data-hv-sessions>
+                <KinSectionHead id="hv-sess" title={`Buổi học tháng ${o.monthNumber}`} aside={<Link href="/lop-cua-toi/lich" className="inline-flex items-center min-h-11 hover:underline">Mở Lịch</Link>} />
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <KinPanel data-session-card="da-len-lich">
+                    <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã lên lịch</p>
+                    <p className="mt-1 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.sessions.scheduled}</p>
+                    <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Chưa chốt, chưa huỷ</p>
+                  </KinPanel>
+                  <KinPanel data-session-card="hoan-thanh">
+                    <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hoàn thành</p>
+                    <p className="mt-1 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.sessions.completed}</p>
+                    <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Đã chốt “Đã dạy xong”</p>
+                  </KinPanel>
+                  <KinPanel data-session-card="da-nghi">
+                    <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã nghỉ</p>
+                    <p className="mt-1 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{o.sessions.cancelled}</p>
+                    <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Buổi huỷ hoặc báo nghỉ</p>
+                  </KinPanel>
+                </div>
+              </section>
+
+              {/* HV-05: yêu cầu tìm gia sư gửi tới cô và đang chờ cô duyệt. */}
+              <section aria-labelledby="hv-req" className="mt-8" data-hv-requests>
+                <KinSectionHead id="hv-req" title="Yêu cầu tìm gia sư" aside={<Link href={o.requests.href} className="inline-flex items-center min-h-11 hover:underline">Mở danh sách</Link>} />
+                <div className="pt-4">
+                  <KinCallout title={o.requests.newCount > 0 ? `${o.requests.newCount} yêu cầu mới đang chờ cô` : "Chưa có yêu cầu mới"}>
+                    <p>{o.requests.newCount > 0 ? "Phụ huynh gửi tới hồ sơ công khai của cô. Cô xem rồi tiếp nhận hoặc từ chối." : "Khi phụ huynh gửi yêu cầu từ hồ sơ công khai, yêu cầu sẽ hiện ở đây."}</p>
+                    <Link href={o.requests.href} className="mt-1 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">{o.requests.newCount > 0 ? "Xem và trả lời yêu cầu" : "Mở trang yêu cầu"}</Link>
+                  </KinCallout>
+                </div>
+              </section>
+
               <section aria-labelledby="hv-fee" className="mt-8" data-hv-fee>
                 <KinSectionHead id="hv-fee" title={`Học phí tháng ${o.monthNumber}`} aside={<Link href="/lop-cua-toi/hoc-phi" className="inline-flex items-center min-h-11 hover:underline">Mở sổ học phí</Link>} />
                 <div className="mt-4 grid grid-cols-2 gap-3">

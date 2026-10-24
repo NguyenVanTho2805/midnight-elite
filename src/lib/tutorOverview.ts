@@ -45,6 +45,24 @@ export function buildSetupChecklist(c: SetupCounts): SetupChecklist {
   return { steps, doneCount, total: steps.length, allDone: doneCount === steps.length };
 }
 
+/** HV-04 — số buổi trong tháng. Chỉ ĐẾM buổi, không tính tiền. */
+export interface MonthOccurrence { status: string; sessionState: "open" | "closed" | null }
+export interface MonthSessionCounts { scheduled: number; completed: number; cancelled: number }
+/**
+ * Hoàn thành = buổi ĐÃ CHỐT ("Đã dạy xong"); Đã nghỉ = buổi bị huỷ; Đã lên lịch = phần còn lại trong tháng (chưa chốt, chưa huỷ).
+ * Mỗi buổi rơi vào đúng một ô nên ba số cộng lại bằng tổng buổi của tháng. Buổi huỷ không bao giờ tính là hoàn thành dù có bản ghi chốt.
+ */
+export function countMonthSessions(occ: readonly MonthOccurrence[], extraClosed = 0): MonthSessionCounts {
+  // extraClosed: buổi đã chốt trong tháng mà KHÔNG khớp buổi nào của lịch (ví dụ lịch tuần đã đổi sau khi dạy) — vẫn là buổi đã dạy xong.
+  let scheduled = 0, completed = Math.max(0, Math.floor(extraClosed)), cancelled = 0;
+  for (const o of occ) {
+    if (o.status === "cancelled") cancelled++;
+    else if (o.sessionState === "closed") completed++;
+    else scheduled++;
+  }
+  return { scheduled, completed, cancelled };
+}
+
 export interface UpcomingRow { time: string; when: string; courseName: string; meta: string; href: string }
 
 export interface HopViecOverview {
@@ -61,6 +79,10 @@ export interface HopViecOverview {
   month: { collected: string; receivable: string; receivableHint: string };
   /** HV-08 — tối đa 3 buổi gần nhất sắp diễn ra (trong 7 ngày tới), bỏ buổi đã huỷ. */
   upcoming: UpcomingRow[];
+  /** HV-04 — số buổi trong tháng này. */
+  sessions: MonthSessionCounts;
+  /** HV-05 — số yêu cầu tìm gia sư mới (chờ gia sư duyệt) gửi tới gia sư này. */
+  requests: { newCount: number; href: string };
   /** HV-10 — checklist thiết lập; null khi chưa nạp số đếm. */
   setup: SetupChecklist | null;
   next: null | {
@@ -71,6 +93,7 @@ export interface HopViecOverview {
 
 export function buildHopViecOverview(input: {
   now: Date; invoices: OverviewInvoice[]; classes: OverviewClass[]; totalStudents: number; occurrences: OverviewOccurrence[]; setup?: SetupCounts;
+  monthOccurrences?: MonthOccurrence[]; extraClosedSessions?: number; newRequests?: number;
 }): HopViecOverview {
   const { now } = input;
   const todayKey = vnDateKeyOf(now);
@@ -112,6 +135,8 @@ export function buildHopViecOverview(input: {
       meta: `${o.studentCount} học sinh`,
       href: "/lop-cua-toi/lich",
     })),
+    sessions: countMonthSessions(input.monthOccurrences ?? [], input.extraClosedSessions ?? 0),
+    requests: { newCount: Math.max(0, Math.floor(input.newRequests ?? 0)), href: "/lop-cua-toi/yeu-cau" },
     setup: input.setup ? buildSetupChecklist(input.setup) : null,
     stats: {
       confirmed: { value: vnd(confirmed), hint: live.length === 0 ? "Tháng này chưa lập phiếu nào" : paidCount > 0 ? `${paidCount} phiếu đã thanh toán` : "Chưa có phiếu nào thanh toán đủ" },

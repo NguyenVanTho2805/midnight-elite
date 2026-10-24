@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFieldValidation } from "@/components/kin/useFieldValidation";
+import { required, type FieldRule } from "@/lib/fieldRules";
 import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 import { CITY_MAX, CREDENTIAL_MAX, DISTRICT_MAX, MODE_LABEL, TEACHING_MODES, priceText as fmtPrice, type TeachingMode, type TutorTeaching } from "@/lib/tutorArea";
@@ -38,6 +40,15 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // HT-02: báo lỗi ngay dưới ô (thay vì chỉ hiện thông báo nổi), viền đỏ + aria-invalid, nhảy tới ô lỗi đầu tiên khi bấm Lưu. Câu báo không chứa nội dung cô đã gõ.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const rules = useMemo<Record<string, readonly FieldRule[]>>(() => ({
+    subjects: [required("Chọn ít nhất 1 môn dạy")], // giá trị = các môn nối bằng dấu phẩy
+    price: showPrice ? [required("Bật hiện giá thì hãy nhập giá tham khảo mỗi buổi"), v => (Number(v) > 0 ? null : "Giá tham khảo phải lớn hơn 0")] : [],
+  }), [showPrice]);
+  const fv = useFieldValidation(rules);
+  const subjectsBind = fv.bind("subjects", subjects.join(","));
+  const priceBind = fv.bind("price", price);
 
   useEffect(() => {
     let alive = true;
@@ -55,11 +66,10 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
   }
 
   async function save() {
-    if (subjects.length === 0) { notify.err("Chọn ít nhất 1 môn dạy"); return; }
+    if (!fv.validateAll({ subjects: subjects.join(","), price })) { fv.focusFirst(rootRef.current); return; }
     // ĐX-06: Tỉnh/Thành + khu vực / hình thức / trường + bằng cấp / giá tham khảo đi cùng một lần lưu. Để trống hết thì GỠ cả mục (hồ sơ công khai
     // không còn hiện khu vực). Giá chỉ hiện khi gia sư bật công tắc; tắt công tắc thì giá không ra công khai dù vẫn nhớ trong ô.
     const priceNum = price ? Number(price) : null;
-    if (showPrice && !priceNum) { notify.err("Bật hiện giá thì hãy nhập giá tham khảo mỗi buổi"); return; }
     const empty = !city.trim() && !district.trim() && !mode && !credential.trim() && !price && !showPrice;
     const teaching = empty ? null : { district: district.trim() || null, mode: mode || null, credential: credential.trim() || null, price: priceNum, showPrice };
     setSaving(true);
@@ -81,7 +91,7 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
   }
 
   return (
-    <div className="space-y-5">
+    <div ref={rootRef} className="space-y-5">
       <section className="rounded-xl p-5 flex items-center gap-4" style={CARD_STYLE} aria-labelledby="h-avatar">
         {avatar
           // eslint-disable-next-line @next/next/no-img-element
@@ -116,10 +126,12 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
           {subjects.length === 0 && <li className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Chưa chọn môn nào.</li>}
         </ul>
         <label htmlFor="subject-input" className="sr-only">Thêm môn dạy</label>
-        <input id="subject-input" value={draft} maxLength={SUBJECT_LEN} placeholder="Ví dụ: Toán" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE}
+        <input id="subject-input" value={draft} maxLength={SUBJECT_LEN} placeholder="Ví dụ: Toán" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={{ ...FIELD_STYLE, ...(subjectsBind.error ? { border: "2px solid var(--kin-tt-chu-loi)" } : {}) }}
+          aria-invalid={subjectsBind.error ? true : undefined} aria-describedby={subjectsBind.error ? "subject-err" : undefined}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSubject(draft); } }}
-          onBlur={() => addSubject(draft)} />
+          onBlur={() => { addSubject(draft); subjectsBind.onBlur(); }} />
+        {subjectsBind.error && <p id="subject-err" className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{subjectsBind.error}</p>}
         <div className="flex flex-wrap gap-2 mt-3" aria-label="Gợi ý môn">
           {SUGGEST.filter(s => !subjects.some(x => x.toLocaleLowerCase("vi") === s.toLocaleLowerCase("vi"))).map(s => (
             <button key={s} type="button" onClick={() => addSubject(s)} className="px-3 py-1.5 rounded-full text-sm min-h-[44px]" style={{ border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>+ {s}</button>
@@ -176,7 +188,9 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
             </button>
           </div>
           <label htmlFor="khuvuc-price" className="block text-xs mt-2 mb-1" style={{ color: "var(--kin-chu-phu)" }}>Giá tham khảo mỗi buổi (đồng)</label>
-          <input id="khuvuc-price" inputMode="numeric" value={price} maxLength={8} onChange={e => setPrice(e.target.value.replace(/\D/g, ""))} placeholder="Ví dụ: 150000" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE} autoComplete="off" />
+          <input id="khuvuc-price" inputMode="numeric" value={price} maxLength={8} onChange={e => setPrice(e.target.value.replace(/\D/g, ""))} placeholder="Ví dụ: 150000" className="w-full px-3 py-2 rounded-lg min-h-[44px]" style={{ ...FIELD_STYLE, ...(priceBind.error ? { border: "2px solid var(--kin-tt-chu-loi)" } : {}) }} autoComplete="off"
+            aria-invalid={priceBind.error ? true : undefined} aria-describedby={priceBind.error ? "khuvuc-price-err" : undefined} onBlur={priceBind.onBlur} />
+          {priceBind.error && <p id="khuvuc-price-err" className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{priceBind.error}</p>}
           {price && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }} data-testid="gia-xem-truoc">{fmtPrice(Number(price))}</p>}
           <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>Tắt thì hồ sơ không hiện giá (phụ huynh hỏi qua Zalo). Đây chỉ là giá tham khảo: KiN không thu hộ và không dùng số này để tính tiền.</p>
         </div>

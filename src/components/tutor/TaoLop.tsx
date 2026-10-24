@@ -7,17 +7,20 @@
 // đưa tới trang lớp và nói rõ phần nào chưa lưu. "Buổi đầu" mặc định là hôm nay giờ VN.
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { toSlug } from "@/lib/slug";
 import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { FEE_MODES, FEE_MODE_HINT, FEE_MODE_LABEL, FEE_MODE_LEGACY, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type FeeMode } from "@/lib/tuitionFee";
+import { FEE_MODES, FEE_MODE_HINT, FEE_RATE_MIN, FEE_MODE_LABEL, FEE_MODE_LEGACY, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type FeeMode } from "@/lib/tuitionFee";
 import {
   ADD_STUDENTS_MAX, WEEKDAY_LABEL, WIZARD_WEEKS_MAX, WIZARD_WEEKS_MIN, createButtonLabel, previewSessionCount, validateSlots, type WizardSlot,
 } from "@/lib/tutorStudentView";
 import { KinButton, kinButtonClass } from "@/components/kin";
+import { KinInput } from "@/components/kin/Input";
+import { useFieldValidation } from "@/components/kin/useFieldValidation";
+import { required, type FieldRule } from "@/lib/fieldRules";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinPageHeader, KIN_PAGE, KIN_TWO_COL, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
@@ -53,6 +56,18 @@ export default function TaoLop() {
       .catch(() => {});
   }, []);
 
+  // HT-02: kiểm tại chỗ ở bước 1. Câu báo không chứa nội dung cô đã gõ; đơn giá/phút dùng đúng luật máy chủ (validateFeeSetup).
+  const formRef = useRef<HTMLFormElement>(null);
+  const rules = useMemo<Record<string, readonly FieldRule[]>>(() => {
+    const r: Record<string, readonly FieldRule[]> = { name: [required("Cô nhập tên lớp trước nhé.")] };
+    if (isNewFeeMode(feeMode)) {
+      r.feeRate = [v => { const x = validateFeeSetup({ mode: feeMode, rate: Number(v), sessionMinutes: 90 }); return x.ok ? null : x.error; }];
+      if (feeMode === "per_hour") r.feeMinutes = [v => { const x = validateFeeSetup({ mode: feeMode, rate: FEE_RATE_MIN, sessionMinutes: Number(v) }); return x.ok ? null : x.error; }];
+    }
+    return r;
+  }, [feeMode]);
+  const fv = useFieldValidation(rules);
+
   const openKey = firstDate || todayKey;
   const sessionCount = previewSessionCount(slots, openKey, weeks);
 
@@ -62,7 +77,7 @@ export default function TaoLop() {
     return null;
   }
   function next() {
-    if (step === 1) { const e = checkInfo(); if (e) { setError(e); return; } }
+    if (step === 1 && !fv.validateAll({ name, feeRate, feeMinutes })) { setError(checkInfo()); fv.focusFirst(formRef.current); return; }
     setError(null); setStep(s => (s < 3 ? ((s + 1) as Step) : s));
   }
   function back() { setError(null); setStep(s => (s > 1 ? ((s - 1) as Step) : s)); }
@@ -74,7 +89,7 @@ export default function TaoLop() {
     if (step < 3) { next(); return; } // Enter ở bước đầu = sang bước tiếp, không tạo lớp
     const clean = name.trim();
     const infoErr = checkInfo();
-    if (infoErr) { setError(infoErr); setStep(1); return; }
+    if (infoErr) { setError(infoErr); setStep(1); fv.validateAll({ name, feeRate, feeMinutes }); fv.focusFirst(formRef.current); return; }
     const slotErr = validateSlots(slots);
     if (slotErr) { setError(slotErr); return; }
     let fee: Record<string, unknown> = {};
@@ -118,7 +133,7 @@ export default function TaoLop() {
   }
 
   return (
-    <form onSubmit={e => void submit(e)} className={KIN_PAGE} aria-label="Tạo lớp">
+    <form ref={formRef} noValidate onSubmit={e => void submit(e)} className={KIN_PAGE} aria-label="Tạo lớp">
       <KinPageHeader title="Tạo lớp học" sub="Ba bước, cô có thể bỏ qua học sinh và lịch để làm sau."
         actions={<Link href="/lop-cua-toi/lop" className={kinButtonClass("ghost")}>Thoát</Link>} />
 
@@ -139,9 +154,8 @@ export default function TaoLop() {
               <section aria-labelledby="tl-info">
                 <KinSectionHead id="tl-info" title="Thông tin lớp" aside="Bắt buộc" />
                 <div className="pt-5 grid sm:grid-cols-2 gap-5">
-                  <label className={LABEL}>Tên lớp *
-                    <input value={name} onChange={e => { setName(e.target.value); setError(null); }} required placeholder="Ví dụ: Toán 9" className={`${FIELD} mt-2`} />
-                  </label>
+                  <KinInput label="Tên lớp *" value={name} onChange={e => { setName(e.target.value); setError(null); }} placeholder="Ví dụ: Toán 9" autoComplete="off"
+                    aria-required {...fv.bind("name", name)} />
                   <label className={LABEL}>Môn · khối
                     <input list="tl-mon" value={category} onChange={e => setCategory(e.target.value)} placeholder="Ví dụ: Toán · Lớp 9" className={`${FIELD} mt-2`} />
                     <datalist id="tl-mon">{options.map(o => <option key={o} value={o} />)}</datalist>
@@ -165,14 +179,11 @@ export default function TaoLop() {
                 </fieldset>
                 {isNewFeeMode(feeMode) && (
                   <div className="pt-4 grid sm:grid-cols-2 gap-5">
-                    <label className={LABEL}>Đơn giá ({FEE_RATE_UNIT[feeMode]}) *
-                      <input inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
-                        placeholder="Ví dụ: 150000" className={`${FIELD} mt-2`} />
-                    </label>
+                    <KinInput label={`Đơn giá (${FEE_RATE_UNIT[feeMode]}) *`} inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
+                      placeholder="Ví dụ: 150000" aria-required {...fv.bind("feeRate", feeRate)} />
                     {feeMode === "per_hour" && (
-                      <label className={LABEL}>Một buổi dài (phút) *
-                        <input inputMode="numeric" value={feeMinutes} onChange={e => { setFeeMinutes(e.target.value.replace(/[^\d]/g, "")); setError(null); }} className={`${FIELD} mt-2`} />
-                      </label>
+                      <KinInput label="Một buổi dài (phút) *" inputMode="numeric" value={feeMinutes} onChange={e => { setFeeMinutes(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
+                        aria-required {...fv.bind("feeMinutes", feeMinutes)} />
                     )}
                     <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
                       {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0

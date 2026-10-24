@@ -1,8 +1,9 @@
 // Trang chủ gia sư (24/10/2026): checklist thiết lập HV-10, Đã thu / Chưa thu HV-06, lịch gần nhất HV-08, luật kiểm tra tại chỗ HT-02.
 // Bài thuần (không máy chủ, không DB).
 import { check, section, done } from "./h";
-import { buildHopViecOverview, buildSetupChecklist, type SetupCounts } from "@/lib/tutorOverview";
+import { buildHopViecOverview, buildSetupChecklist, countMonthSessions, type SetupCounts } from "@/lib/tutorOverview";
 import { OPEN_STATUSES } from "@/lib/tuitionInvoice";
+import { STUDENT_FIELD_RULES } from "@/lib/studentFieldRules";
 import { email, firstError, matches, maxLength, minLength, phoneVn, required, validateAll } from "@/lib/fieldRules";
 
 const NOW = new Date("2026-10-14T03:30:00Z"); // 10:30 giờ VN, thứ Tư 14/10/2026
@@ -63,4 +64,25 @@ check("minLength/maxLength/matches", minLength(8)("1234567") !== null && minLeng
 check("firstError lấy luật đầu tiên báo lỗi", firstError("", [required("A"), email("B")]) === "A" && firstError("x", [required("A"), email("B")]) === "B" && firstError("a@b.vn", [required("A"), email("B")]) === null);
 check("validateAll chỉ trả ô có lỗi", JSON.stringify(validateAll({ e: "", p: "123" }, { e: [required("thiếu")], p: [phoneVn("sai")], z: [required("thiếu z")] })) === JSON.stringify({ e: "thiếu", p: "sai", z: "thiếu z" }));
 check("câu báo lỗi không chứa nội dung người dùng nhập (không lộ mật khẩu/SĐT)", !String(phoneVn()("0999999999x")).includes("0999999999x") && !String(minLength(8)("matkhau1")).includes("matkhau1"));
+section("HV-04 số buổi trong tháng + HV-05 yêu cầu mới");
+const mo = [
+  { status: "scheduled", sessionState: "closed" as const }, { status: "scheduled", sessionState: "closed" as const },
+  { status: "scheduled", sessionState: "open" as const }, { status: "scheduled", sessionState: null },
+  { status: "moved", sessionState: null }, { status: "cancelled", sessionState: null },
+  { status: "cancelled", sessionState: "closed" as const }, // huỷ thì không bao giờ là hoàn thành
+];
+const mc = countMonthSessions(mo);
+check("2 đã chốt → hoàn thành 2; 2 huỷ → đã nghỉ 2; còn lại 3 → đã lên lịch 3", mc.completed === 2 && mc.cancelled === 2 && mc.scheduled === 3, mc);
+check("ba ô cộng lại = tổng buổi (mỗi buổi đúng một ô)", mc.completed + mc.cancelled + mc.scheduled === mo.length);
+check("[phá cố ý] buổi huỷ có bản ghi chốt KHÔNG được tính hoàn thành", countMonthSessions([{ status: "cancelled", sessionState: "closed" }]).completed === 0);
+check("buổi đã chốt không khớp lịch (extraClosed) vẫn tính hoàn thành, số âm/lẻ bị chặn", countMonthSessions([], 2).completed === 2 && countMonthSessions([{ status: "scheduled", sessionState: null }], 1).completed === 1 && countMonthSessions([], -3).completed === 0 && countMonthSessions([], 2.9).completed === 2);
+check("tháng trống → 0/0/0", JSON.stringify(countMonthSessions([])) === JSON.stringify({ scheduled: 0, completed: 0, cancelled: 0 }));
+const ovM = buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [], monthOccurrences: mo, newRequests: 3 });
+check("overview mang đủ sessions + requests (đếm, có liên kết trang yêu cầu)", ovM.sessions.completed === 2 && ovM.requests.newCount === 3 && ovM.requests.href === "/lop-cua-toi/yeu-cau", [ovM.sessions, ovM.requests]);
+check("không truyền số → 0, không bịa; số âm/lẻ bị chặn", ovNoSetup.requests.newCount === 0 && ovNoSetup.sessions.scheduled === 0 && buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [], newRequests: -4 }).requests.newCount === 0);
+section("HT-02 luật hồ sơ học sinh (thêm học sinh / sửa hồ sơ)");
+const sv = validateAll({ name: "  ", guardianPhone: "12345", phone: "+84 901 234 567", phoneExtra: "", email: "khong-hop-le", emailExtra: "a@b.vn", birthDate: "31/02/2014", startDate: "01/11/2026" }, STUDENT_FIELD_RULES);
+check("tên trống, SĐT 5 số, email sai, ngày 31/02 → báo đúng 4 ô; +84 và ngày thật thì ổn", Object.keys(sv).sort().join() === "birthDate,email,guardianPhone,name", sv);
+check("[phá cố ý] mọi câu báo KHÔNG chứa nội dung đã nhập", Object.values(validateAll({ name: "", guardianPhone: "0999SDT-LA", email: "bi-mat@@x", birthDate: "NGAY-SINH-LA" }, STUDENT_FIELD_RULES)).every(m => !/SDT-LA|bi-mat|NGAY-SINH-LA/.test(m)));
+check("ô trống (không bắt buộc) thì bỏ qua; chỉ 'tên em' là bắt buộc", Object.keys(validateAll({ name: "Minh" }, STUDENT_FIELD_RULES)).length === 0 && validateAll({}, STUDENT_FIELD_RULES).name === "Nhập tên em");
 done();

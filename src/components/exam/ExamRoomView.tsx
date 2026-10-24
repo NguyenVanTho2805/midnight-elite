@@ -11,6 +11,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ExamQuestionPublic } from "@/lib/api";
 import { MathText } from "@/components/MathText";
+import { FormulaBar } from "@/components/exam/FormulaBar";
 import { KinButton, KinConfirm } from "@/components/kin";
 import { draftStatusLabel, submitConfirmMessage, type DraftState, type UnansweredItem } from "@/lib/quizRoom";
 import {
@@ -170,7 +171,8 @@ export default function ExamRoomView(p: ExamRoomViewProps) {
                   {q.type === "ESSAY" ? (
                     <div>
                       {q.studentGuide && <p className="mb-2 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] whitespace-pre-line">{q.studentGuide}</p>}
-                      <textarea aria-labelledby={`q-${q.id}-de`} aria-describedby={`q-${q.id}-nhap`} rows={6} disabled={isLocked} placeholder="Nhập câu trả lời của em..."
+                      <FormulaBar areaId={`q-${q.id}-area`} value={p.essayText[q.id] ?? ""} onChange={v => p.onEssayChange(q.id, v)} disabled={isLocked} />
+                      <textarea id={`q-${q.id}-area`} aria-labelledby={`q-${q.id}-de`} aria-describedby={`q-${q.id}-nhap`} rows={6} disabled={isLocked} placeholder="Nhập câu trả lời của em..."
                         className="w-full px-3 py-2.5 text-[length:var(--kin-co-small)] rounded-[var(--kin-bo-md)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed"
                         style={{ border: BORDER }}
                         value={p.essayText[q.id] ?? ""} onChange={e => p.onEssayChange(q.id, e.target.value)} onBlur={() => p.onEssaySave(q.id)} />

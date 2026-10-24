@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff, CheckCircle, CloseCircle } from "griddy-icons";
+import { Eye, EyeOff, CloseCircle } from "griddy-icons";
 import { AuthFrame, AuthAsideBlock } from "@/components/guest/AuthFrame";
 import { KinCallout } from "@/components/kin/Callout";
 import { kinButtonClass } from "@/components/kin/Button";
+import { KinInput } from "@/components/kin/Input";
+import { useFieldValidation } from "@/components/kin/useFieldValidation";
+import { email as emailRule, matches, minLength, phoneVn, required, type FieldRule } from "@/lib/fieldRules";
 
 // Danh sách 34 tỉnh/thành sau sáp nhập (2025)
 const PROVINCES = [
@@ -39,48 +42,28 @@ interface Step1Fields {
 interface Step2Fields {
   email: string; password: string; confirmPassword: string;
 }
-interface Step1Errors {
-  name?: string; phone?: string; parentPhone?: string; city?: string; school?: string;
-  bio?: string; subjects?: string;
-}
-interface Step2Errors {
-  email?: string; password?: string; confirmPassword?: string;
-}
-
-function validatePhone(p: string) { return /^(0[3|5|7|8|9])[0-9]{8}$/.test(p.replace(/\s/g, "")); }
-function validateEmail(e: string)  { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()); }
-
-function validateStep1(f: Step1Fields, role: Role): Step1Errors {
-  const e: Step1Errors = {};
-  if (!f.name.trim())        e.name = "Vui lòng nhập họ và tên";
-  if (!f.phone.trim())       e.phone = "Vui lòng nhập số điện thoại có Zalo";
-  else if (!validatePhone(f.phone)) e.phone = "Số điện thoại không hợp lệ";
-  // Gia sư chỉ nhập những gì quản trị cần để duyệt hồ sơ (họ tên, số điện thoại Zalo để liên hệ, giới thiệu, môn dạy) — 15/10/2026 bỏ SĐT phụ huynh,
-  // trường và tỉnh/thành: máy chủ không lưu hai ô đầu (bị bỏ lặng lẽ), tỉnh/thành không nơi nào dùng. Học viên giữ đủ như cũ.
-  if (role === "student") {
-    if (f.parentPhone.trim() && !validatePhone(f.parentPhone)) e.parentPhone = "Số điện thoại không hợp lệ";
-    if (!f.city)               e.city = "Vui lòng chọn tỉnh / thành phố";
-    if (!f.school.trim())      e.school = "Vui lòng nhập tên trường";
-  }
-  // Field riêng gia sư
-  if (role === "tutor") {
-    if (!f.bio.trim())                e.bio = "Vui lòng viết vài dòng giới thiệu";
-    else if (f.bio.trim().length < 30) e.bio = "Giới thiệu cần ít nhất 30 ký tự";
-    if (!f.subjects.length)           e.subjects = "Chọn ít nhất 1 môn dạy";
-  }
-  return e;
-}
-
-function validateStep2(f: Step2Fields): Step2Errors {
-  const e: Step2Errors = {};
-  if (!f.email.trim())          e.email = "Vui lòng nhập email";
-  else if (!validateEmail(f.email)) e.email = "Email không đúng định dạng";
-  if (!f.password)              e.password = "Vui lòng nhập mật khẩu";
-  else if (f.password.length < 8) e.password = "Mật khẩu cần ít nhất 8 ký tự";
-  if (!f.confirmPassword)       e.confirmPassword = "Vui lòng xác nhận mật khẩu";
-  else if (f.confirmPassword !== f.password) e.confirmPassword = "Mật khẩu xác nhận không khớp";
-  return e;
-}
+// HT-02 (24/10/2026): luật kiểm tra tại chỗ dùng chung (src/lib/fieldRules.ts) + KinInput. Câu báo lỗi KHÔNG chứa nội dung đã nhập.
+// Gia sư chỉ nhập những gì quản trị cần để duyệt hồ sơ (họ tên, số điện thoại Zalo để liên hệ, giới thiệu, môn dạy) — 15/10/2026 bỏ SĐT phụ huynh,
+// trường và tỉnh/thành: máy chủ không lưu hai ô đầu (bị bỏ lặng lẽ), tỉnh/thành không nơi nào dùng. Học viên giữ đủ như cũ.
+const PHONE_BAD = "Số điện thoại không hợp lệ";
+const COMMON1: Record<string, readonly FieldRule[]> = {
+  name: [required("Vui lòng nhập họ và tên")],
+  phone: [required("Vui lòng nhập số điện thoại có Zalo"), phoneVn(PHONE_BAD)],
+};
+const RULES1: Record<Role, Record<string, readonly FieldRule[]>> = {
+  student: {
+    ...COMMON1,
+    parentPhone: [phoneVn(PHONE_BAD)],
+    city: [required("Vui lòng chọn tỉnh / thành phố")],
+    school: [required("Vui lòng nhập tên trường")],
+  },
+  tutor: {
+    ...COMMON1,
+    bio: [required("Vui lòng viết vài dòng giới thiệu"), minLength(30, "Giới thiệu cần ít nhất 30 ký tự")],
+    subjects: [required("Chọn ít nhất 1 môn dạy")], // giá trị = các môn nối bằng dấu phẩy
+  },
+};
+const PASS_MIN: FieldRule = v => (v === "" || v.length >= 8 ? null : "Mật khẩu cần ít nhất 8 ký tự");
 
 function getPasswordStrength(p: string) {
   if (!p) return { level: 0, label: "", color: "" };
@@ -93,20 +76,13 @@ function getPasswordStrength(p: string) {
   return             { level: 3, label: "Trung bình",         color: "var(--kin-tt-chu-cho)" };
 }
 
-function FieldError({ msg }: { msg?: string }) {
+function FieldError({ msg, id }: { msg?: string; id?: string }) {
   if (!msg) return null;
   return (
-    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}>
+    <p id={id} className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}>
       <CloseCircle size={11} /> {msg}
     </p>
   );
-}
-
-function FieldIcon({ touched, hasError, hasValue }: { touched: boolean; hasError: boolean; hasValue: boolean }) {
-  if (!touched) return null;
-  if (hasError)  return <CloseCircle size={14} style={{ color: "var(--kin-tt-chu-loi)" }} />;
-  if (hasValue)  return <CheckCircle size={14} style={{ color: "var(--kin-tt-chu-xong)" }} />;
-  return null;
 }
 
 export default function DangKyPage() {
@@ -131,17 +107,22 @@ export default function DangKyPage() {
 
   const [s1, setS1] = useState<Step1Fields>({ name: "", phone: "", parentPhone: "", city: "", school: "", bio: "", subjects: [] });
   const [s2, setS2] = useState<Step2Fields>({ email: "", password: "", confirmPassword: "" });
-  const [t1, setT1] = useState<Partial<Record<keyof Step1Fields, boolean>>>({});
-  const [t2, setT2] = useState<Partial<Record<keyof Step2Fields, boolean>>>({});
-
-  const e1 = validateStep1(s1, role);
-  const e2 = validateStep2(s2);
+  const form1Ref = useRef<HTMLFormElement>(null);
+  const form2Ref = useRef<HTMLFormElement>(null);
+  const fv1 = useFieldValidation(RULES1[role]);
+  const rules2 = useMemo<Record<string, readonly FieldRule[]>>(() => ({
+    email: [required("Vui lòng nhập email"), emailRule("Email không đúng định dạng")],
+    password: [required("Vui lòng nhập mật khẩu"), PASS_MIN],
+    confirmPassword: [required("Vui lòng xác nhận mật khẩu"), matches(() => s2.password, "Mật khẩu xác nhận không khớp")],
+  }), [s2.password]);
+  const fv2 = useFieldValidation(rules2);
   const strength = getPasswordStrength(s2.password);
-
-  function blurAll1() {
-    setT1({ name: true, phone: true, city: true, school: true, bio: true, subjects: true });
-  }
-  function blurAll2() { setT2({ email: true, password: true, confirmPassword: true }); }
+  const sv = s1.subjects.join(",");
+  /** aria-invalid + onBlur cho ô không phải KinInput (select, textarea): cùng luật, cùng thời điểm hiện lỗi. */
+  const selectBind = (name: string, value: string) => {
+    const b = fv1.bind(name, value);
+    return { onBlur: b.onBlur, "aria-invalid": b.error ? (true as const) : undefined, "aria-describedby": b.error ? `dk-${name === "city" ? "city" : "bio"}-err` : undefined };
+  };
 
   function toggleSubject(s: string) {
     setS1(p => ({
@@ -152,14 +133,15 @@ export default function DangKyPage() {
 
   function goNext(ev: React.FormEvent) {
     ev.preventDefault();
-    blurAll1();
-    if (Object.keys(e1).length === 0) setStep(2);
+    const vals: Record<string, string> = { name: s1.name, phone: s1.phone, parentPhone: s1.parentPhone, city: s1.city, school: s1.school, bio: s1.bio, subjects: sv };
+    if (!fv1.validateAll(vals)) { fv1.focusFirst(form1Ref.current); return; }
+    setStep(2);
   }
 
   async function handleSubmit(ev: React.FormEvent) {
     ev.preventDefault();
-    blurAll2();
-    if (Object.keys(e2).length > 0 || !agreed) return;
+    if (!fv2.validateAll({ email: s2.email, password: s2.password, confirmPassword: s2.confirmPassword })) { fv2.focusFirst(form2Ref.current); return; }
+    if (!agreed) return;
     setSubmitting(true);
     setServerError("");
     try {
@@ -301,7 +283,7 @@ export default function DangKyPage() {
 
           {/* ── BƯỚC 1 ── */}
           {step === 1 && (
-            <form onSubmit={goNext} noValidate className="space-y-4">
+            <form ref={form1Ref} onSubmit={goNext} noValidate className="space-y-4">
               {/* FE-100: chọn vai trò — 2 card bấm trước khi nhập thông tin.
                   Mặc định là Học viên vì luồng chính; Gia sư là nhánh phụ dẫn
                   sang /api/auth/register-tutor để tạo đơn pending. */}
@@ -335,36 +317,14 @@ export default function DangKyPage() {
               </p>
 
               {/* Họ và tên */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Họ và tên *</label>
-                <div className="relative">
-                  <input type="text" placeholder="Nguyễn Văn A" value={s1.name}
-                    onChange={e => setS1(p => ({ ...p, name: e.target.value }))}
-                    onBlur={() => setT1(p => ({ ...p, name: true }))}
-                    className="notion-input w-full text-sm pr-10" style={{ color: "var(--kin-chu-chinh)",
-                      borderColor: t1.name && e1.name ? "var(--kin-tt-chu-loi)" : t1.name && !e1.name ? "var(--kin-tt-cham-xong)" : undefined }} />
-                  <span className="absolute right-3 top-3">
-                    <FieldIcon touched={!!t1.name} hasError={!!e1.name} hasValue={!!s1.name.trim()} />
-                  </span>
-                </div>
-                <FieldError msg={t1.name ? e1.name : undefined} />
-              </div>
+              <KinInput type="text" label="Họ và tên *" placeholder="Nguyễn Văn A" autoComplete="name" value={s1.name}
+                onChange={e => setS1(p => ({ ...p, name: e.target.value }))} {...fv1.bind("name", s1.name)} />
 
               {/* SĐT học sinh + SĐT phụ huynh */}
-              <div className={role === "tutor" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
+              <div className={role === "tutor" ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 sm:grid-cols-2 gap-3"}>
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>{role === "tutor" ? "Số điện thoại (Zalo) *" : "SĐT học sinh (Zalo) *"}</label>
-                  <div className="relative">
-                    <input type="tel" placeholder="0901 234 567" value={s1.phone}
-                      onChange={e => setS1(p => ({ ...p, phone: e.target.value }))}
-                      onBlur={() => setT1(p => ({ ...p, phone: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--kin-chu-chinh)",
-                        borderColor: t1.phone && e1.phone ? "var(--kin-tt-chu-loi)" : t1.phone && !e1.phone ? "var(--kin-tt-cham-xong)" : undefined }} />
-                    <span className="absolute right-3 top-3">
-                      <FieldIcon touched={!!t1.phone} hasError={!!e1.phone} hasValue={validatePhone(s1.phone)} />
-                    </span>
-                  </div>
-                  <FieldError msg={t1.phone ? e1.phone : undefined} />
+                  <KinInput type="tel" inputMode="tel" autoComplete="tel" label={role === "tutor" ? "Số điện thoại (Zalo) *" : "SĐT học sinh (Zalo) *"} placeholder="0901 234 567" value={s1.phone}
+                    onChange={e => setS1(p => ({ ...p, phone: e.target.value }))} {...fv1.bind("phone", s1.phone)} />
                   {role === "tutor" && (
                     <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
                       Quản trị KiN dùng số này để liên hệ xác minh hồ sơ. Số không hiện công khai (bạn tự bật nếu muốn hiện Zalo trên hồ sơ).
@@ -372,59 +332,29 @@ export default function DangKyPage() {
                   )}
                 </div>
                 {role === "student" && (
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
-                    SĐT phụ huynh
-                    <span className="ml-1 font-normal" style={{ color: "var(--kin-chu-mo)" }}>(tuỳ chọn)</span>
-                  </label>
-                  <div className="relative">
-                    <input type="tel" placeholder="0901 234 567" value={s1.parentPhone}
-                      onChange={e => setS1(p => ({ ...p, parentPhone: e.target.value }))}
-                      onBlur={() => setT1(p => ({ ...p, parentPhone: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--kin-chu-chinh)",
-                        borderColor: t1.parentPhone && e1.parentPhone ? "var(--kin-tt-chu-loi)"
-                          : t1.parentPhone && s1.parentPhone && !e1.parentPhone ? "var(--kin-tt-cham-xong)" : undefined }} />
-                    <span className="absolute right-3 top-3">
-                      <FieldIcon touched={!!t1.parentPhone && !!s1.parentPhone} hasError={!!e1.parentPhone} hasValue={validatePhone(s1.parentPhone)} />
-                    </span>
-                  </div>
-                  <FieldError msg={t1.parentPhone ? e1.parentPhone : undefined} />
-                </div>
+                  <KinInput type="tel" inputMode="tel" label={<>SĐT phụ huynh<span className="ml-1 font-normal" style={{ color: "var(--kin-chu-mo)" }}>(tuỳ chọn)</span></>}
+                    placeholder="0901 234 567" value={s1.parentPhone}
+                    onChange={e => setS1(p => ({ ...p, parentPhone: e.target.value }))} {...fv1.bind("parentPhone", s1.parentPhone)} />
                 )}
               </div>
 
               {/* Tỉnh + Trường */}
               {role === "student" && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Tỉnh / Thành phố *</label>
-                  <select value={s1.city}
+                  <label htmlFor="dk-city" className="block text-sm font-medium mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>Tỉnh / Thành phố *</label>
+                  <select id="dk-city" value={s1.city}
                     onChange={e => setS1(p => ({ ...p, city: e.target.value }))}
-                    onBlur={() => setT1(p => ({ ...p, city: true }))}
-                    className="notion-input w-full text-sm"
-                    style={{ color: s1.city ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)",
-                      borderColor: t1.city && e1.city ? "var(--kin-tt-chu-loi)" : t1.city && !e1.city ? "var(--kin-tt-cham-xong)" : undefined }}>
+                    {...selectBind("city", s1.city)}
+                    className="notion-input w-full text-sm min-h-[var(--kin-cham-toi-thieu)]"
+                    style={{ color: s1.city ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
                     <option value="">Chọn tỉnh / thành phố</option>
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
-                  <FieldError msg={t1.city ? e1.city : undefined} />
+                  <FieldError id="dk-city-err" msg={fv1.bind("city", s1.city).error} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
-                    Tên trường *
-                  </label>
-                  <div className="relative">
-                    <input type="text" placeholder="THPT Chu Văn An" value={s1.school}
-                      onChange={e => setS1(p => ({ ...p, school: e.target.value }))}
-                      onBlur={() => setT1(p => ({ ...p, school: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--kin-chu-chinh)",
-                        borderColor: t1.school && e1.school ? "var(--kin-tt-chu-loi)" : t1.school && !e1.school ? "var(--kin-tt-cham-xong)" : undefined }} />
-                    <span className="absolute right-3 top-3">
-                      <FieldIcon touched={!!t1.school} hasError={!!e1.school} hasValue={!!s1.school.trim()} />
-                    </span>
-                  </div>
-                  <FieldError msg={t1.school ? e1.school : undefined} />
-                </div>
+                <KinInput type="text" label="Tên trường *" placeholder="THPT Chu Văn An" value={s1.school}
+                  onChange={e => setS1(p => ({ ...p, school: e.target.value }))} {...fv1.bind("school", s1.school)} />
               </div>
               )}
 
@@ -433,26 +363,26 @@ export default function DangKyPage() {
               {role === "tutor" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
+                    <label htmlFor="dk-bio" className="block text-sm font-medium mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>
                       Giới thiệu bản thân *
                       <span className="ml-1 font-normal" style={{ color: "var(--kin-chu-mo)" }}>(ít nhất 30 ký tự)</span>
                     </label>
-                    <textarea rows={3} value={s1.bio}
+                    <textarea id="dk-bio" rows={3} value={s1.bio}
                       onChange={e => setS1(p => ({ ...p, bio: e.target.value }))}
-                      onBlur={() => setT1(p => ({ ...p, bio: true }))}
+                      {...selectBind("bio", s1.bio)}
                       placeholder="VD: Mình là sinh viên năm 3 ĐHSP, kinh nghiệm 2 năm dạy Toán 12 ôn ĐGNL..."
-                      className="notion-input w-full text-sm" style={{ color: "var(--kin-chu-chinh)",
-                        borderColor: t1.bio && e1.bio ? "var(--kin-tt-chu-loi)" : t1.bio && !e1.bio ? "var(--kin-tt-cham-xong)" : undefined }} />
-                    <FieldError msg={t1.bio ? e1.bio : undefined} />
+                      className="notion-input w-full text-sm" style={{ color: "var(--kin-chu-chinh)" }} />
+                    <FieldError id="dk-bio-err" msg={fv1.bind("bio", s1.bio).error} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Môn dạy *</label>
-                    <div className="flex flex-wrap gap-1.5">
+                    <p id="dk-subj-label" className="block text-sm font-medium mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>Môn dạy *</p>
+                    <div role="group" aria-labelledby="dk-subj-label" tabIndex={-1} className="flex flex-wrap gap-1.5 outline-none"
+                      aria-invalid={fv1.bind("subjects", sv).error ? true : undefined} aria-describedby={fv1.bind("subjects", sv).error ? "dk-subj-err" : undefined}>
                       {TUTOR_SUBJECTS.map(s => {
                         const picked = s1.subjects.includes(s);
                         return (
-                          <button key={s} type="button" onClick={() => toggleSubject(s)}
-                            className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                          <button key={s} type="button" onClick={() => toggleSubject(s)} aria-pressed={picked}
+                            className="px-3 py-1.5 min-h-11 rounded-full text-xs font-semibold transition-all"
                             style={picked
                               ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
                               : { background: "var(--kin-nen-trang)", color: "var(--kin-chu-phu)", border: "1px solid var(--kin-vien-thuong)" }}>
@@ -461,7 +391,7 @@ export default function DangKyPage() {
                         );
                       })}
                     </div>
-                    <FieldError msg={t1.subjects ? e1.subjects : undefined} />
+                    <FieldError id="dk-subj-err" msg={fv1.bind("subjects", sv).error} />
                   </div>
                 </>
               )}
@@ -476,41 +406,22 @@ export default function DangKyPage() {
 
           {/* ── BƯỚC 2 ── */}
           {step === 2 && (
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <form ref={form2Ref} onSubmit={handleSubmit} noValidate className="space-y-4">
               <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Thông tin tài khoản</p>
 
               {/* Email */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Email *</label>
-                <div className="relative">
-                  <input type="email" placeholder="ten@gmail.com" value={s2.email}
-                    onChange={e => setS2(p => ({ ...p, email: e.target.value }))}
-                    onBlur={() => setT2(p => ({ ...p, email: true }))}
-                    className="notion-input w-full text-sm pr-10" style={{ color: "var(--kin-chu-chinh)",
-                      borderColor: t2.email && e2.email ? "var(--kin-tt-chu-loi)" : t2.email && !e2.email ? "var(--kin-tt-cham-xong)" : undefined }} />
-                  <span className="absolute right-3 top-3">
-                    <FieldIcon touched={!!t2.email} hasError={!!e2.email} hasValue={validateEmail(s2.email)} />
-                  </span>
-                </div>
-                <FieldError msg={t2.email ? e2.email : undefined} />
-              </div>
+              <KinInput type="email" inputMode="email" autoComplete="email" label="Email *" placeholder="ten@gmail.com" value={s2.email}
+                onChange={e => setS2(p => ({ ...p, email: e.target.value }))} {...fv2.bind("email", s2.email)} />
 
               {/* Mật khẩu + Xác nhận */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Mật khẩu *</label>
-                  <div className="relative">
-                    <input type={showPass ? "text" : "password"} placeholder="Tối thiểu 8 ký tự"
-                      value={s2.password}
-                      onChange={e => setS2(p => ({ ...p, password: e.target.value }))}
-                      onBlur={() => setT2(p => ({ ...p, password: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--kin-chu-chinh)",
-                        borderColor: t2.password && e2.password ? "var(--kin-tt-chu-loi)" : undefined }} />
-                    <button type="button" className="absolute right-3 top-3" style={{ color: "var(--kin-chu-mo)" }}
-                      onClick={() => setShowPass(!showPass)}>
+                  <KinInput type={showPass ? "text" : "password"} autoComplete="new-password" label="Mật khẩu *" placeholder="Tối thiểu 8 ký tự" value={s2.password}
+                    onChange={e => setS2(p => ({ ...p, password: e.target.value }))} {...fv2.bind("password", s2.password)}
+                    suffix={<button type="button" className="min-w-11 min-h-11 -mx-3 px-3 flex items-center justify-center" style={{ color: "var(--kin-chu-mo)" }}
+                      aria-label={showPass ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowPass(!showPass)}>
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
+                    </button>} />
                   {s2.password.length > 0 && (
                     <div className="mt-1.5">
                       <div className="flex gap-0.5 mb-0.5">
@@ -522,25 +433,13 @@ export default function DangKyPage() {
                       {strength.label && <p className="text-xs font-semibold" style={{ color: strength.color }}>{strength.label}</p>}
                     </div>
                   )}
-                  <FieldError msg={t2.password ? e2.password : undefined} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Xác nhận mật khẩu *</label>
-                  <div className="relative">
-                    <input type={showConfirm ? "text" : "password"} placeholder="Nhập lại mật khẩu"
-                      value={s2.confirmPassword}
-                      onChange={e => setS2(p => ({ ...p, confirmPassword: e.target.value }))}
-                      onBlur={() => setT2(p => ({ ...p, confirmPassword: true }))}
-                      className="notion-input w-full text-sm pr-9" style={{ color: "var(--kin-chu-chinh)",
-                        borderColor: t2.confirmPassword && e2.confirmPassword ? "var(--kin-tt-chu-loi)"
-                          : t2.confirmPassword && !e2.confirmPassword ? "var(--kin-tt-cham-xong)" : undefined }} />
-                    <button type="button" className="absolute right-3 top-3" style={{ color: "var(--kin-chu-mo)" }}
-                      onClick={() => setShowConfirm(!showConfirm)}>
-                      {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                  <FieldError msg={t2.confirmPassword ? e2.confirmPassword : undefined} />
-                </div>
+                <KinInput type={showConfirm ? "text" : "password"} autoComplete="new-password" label="Xác nhận mật khẩu *" placeholder="Nhập lại mật khẩu" value={s2.confirmPassword}
+                  onChange={e => setS2(p => ({ ...p, confirmPassword: e.target.value }))} {...fv2.bind("confirmPassword", s2.confirmPassword)}
+                  suffix={<button type="button" className="min-w-11 min-h-11 -mx-3 px-3 flex items-center justify-center" style={{ color: "var(--kin-chu-mo)" }}
+                    aria-label={showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowConfirm(!showConfirm)}>
+                    {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>} />
               </div>
 
               {serverError && (

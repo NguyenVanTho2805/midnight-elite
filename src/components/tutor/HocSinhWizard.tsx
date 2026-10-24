@@ -4,7 +4,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { KinPage, KinPageHeader } from "@/components/kin/PageLayout";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
@@ -12,6 +12,8 @@ import { requiredConsent, type AgeGroup, type ConsentScope } from "@/lib/consent
 import { payerLabel } from "@/lib/consentPolicy";
 import { parseDateInput } from "@/lib/studentProfile";
 import ConsentBox, { EMPTY_CONSENT, consentBody, type ConsentValue } from "@/components/tutor/ConsentBox";
+import { useFieldValidation } from "@/components/kin/useFieldValidation";
+import { STUDENT_FIELD_RULES } from "@/lib/studentFieldRules";
 import { RadioCards, SelectField, TextArea, TextField, jfetch } from "@/components/tutor/studentUi";
 
 interface Meta { courses: { id: string; name: string }[]; fieldDefs: { id: string; label: string }[] }
@@ -35,6 +37,10 @@ export default function HocSinhWizard() {
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const set = (k: string) => (v: string) => setF(p => ({ ...p, [k]: v }));
+  // HT-02: kiểm tại chỗ (lỗi hiện khi rời ô, bấm Tiếp tục thì nhảy tới ô lỗi đầu tiên). Lỗi do máy chủ trả về vẫn ưu tiên hiện.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const fv = useFieldValidation(STUDENT_FIELD_RULES);
+  const ev = (k: string) => { const b = fv.bind(k, f[k] ?? ""); return { error: errors[k] ?? b.error, onBlur: b.onBlur }; };
 
   useEffect(() => {
     let alive = true;
@@ -59,7 +65,7 @@ export default function HocSinhWizard() {
   const next = () => {
     setMsg("");
     if (step === 0 && !group) { setErrors({ ageGroup: "Chọn nhóm tuổi của em" }); return; }
-    if (step === 1 && !f.name.trim()) { setErrors({ name: "Nhập tên em" }); return; }
+    if (step >= 1 && !fv.validateAll(f)) { setErrors({}); fv.focusFirst(boxRef.current); return; }
     setErrors({}); setStep(s => Math.min(3, s + 1));
   };
 
@@ -92,7 +98,7 @@ export default function HocSinhWizard() {
         {STEPS.map((s, i) => <li key={s} aria-current={i === step ? "step" : undefined} className={i === step ? "font-medium text-[var(--kin-chu-chinh)]" : "text-[var(--kin-chu-mo)]"}>{i + 1}. {s}{i < step ? " (xong)" : ""}</li>)}
       </ol>
 
-      <div className="max-w-[640px] space-y-5">
+      <div ref={boxRef} className="max-w-[640px] space-y-5">
         {step === 0 && (
           <>
             {userId && <KinCallout title="Hồ sơ riêng về em đã có tài khoản">Em đã học lớp của bạn bằng tài khoản. Đây là hồ sơ riêng của bạn về em, KiN không đổi thông tin tài khoản của em.</KinCallout>}
@@ -109,14 +115,14 @@ export default function HocSinhWizard() {
 
         {step === 1 && (
           <div className="grid gap-4">
-            <TextField label="Tên em" required value={f.name} onChange={set("name")} error={errors.name} maxLength={60} autoComplete="off" />
+            <TextField label="Tên em" required value={f.name} onChange={set("name")} {...ev("name")} maxLength={60} autoComplete="off" />
             <SelectField label="Lớp" value={f.courseId} onChange={set("courseId")} hint={meta && meta.courses.length === 0 ? "Bạn chưa có lớp. Có thể thêm lớp sau." : undefined}>
               <option value="">Chưa xếp lớp</option>
               {(meta?.courses ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </SelectField>
             {kind === "child" && <>
               <TextField label="Tên phụ huynh" value={f.guardianName} onChange={set("guardianName")} error={errors.guardianName} maxLength={60} />
-              <TextField label="Số Zalo / điện thoại phụ huynh" type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} error={errors.guardianPhone} hint="10 chữ số. Chỉ mình bạn thấy." />
+              <TextField label="Số Zalo / điện thoại phụ huynh" type="tel" inputMode="tel" value={f.guardianPhone} onChange={set("guardianPhone")} {...ev("guardianPhone")} hint="10 chữ số. Chỉ mình bạn thấy." />
             </>}
             <SelectField label="Trạng thái" value={f.status} onChange={set("status")}>
               <option value="active">Hoạt động</option><option value="inactive">Không hoạt động</option><option value="waitlist">Đang chờ xếp lớp</option>
@@ -129,12 +135,12 @@ export default function HocSinhWizard() {
           <div className="grid gap-4">
             <KinCallout title="Không bắt buộc">Chỉ điền những gì cần cho việc dạy. Điền ở bước này thì hộp xác nhận sau đó sẽ thêm phạm vi “Thông tin mở rộng”.</KinCallout>
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Ngày sinh" placeholder="15/03/2014" inputMode="numeric" value={f.birthDate} onChange={set("birthDate")} error={errors.birthDate} hint="Có ngày sinh thì KiN tính đúng ai phải đồng ý theo tuổi." />
-              <TextField label="Ngày bắt đầu học" placeholder="01/11/2026" inputMode="numeric" value={f.startDate} onChange={set("startDate")} error={errors.startDate} />
-              <TextField label="Số điện thoại của em" type="tel" inputMode="tel" value={f.phone} onChange={set("phone")} error={errors.phone} />
-              <TextField label="Số điện thoại thứ ba" type="tel" inputMode="tel" value={f.phoneExtra} onChange={set("phoneExtra")} error={errors.phoneExtra} />
-              <TextField label="Email" type="email" inputMode="email" value={f.email} onChange={set("email")} error={errors.email} />
-              <TextField label="Email bổ sung" type="email" inputMode="email" value={f.emailExtra} onChange={set("emailExtra")} error={errors.emailExtra} />
+              <TextField label="Ngày sinh" placeholder="15/03/2014" inputMode="numeric" value={f.birthDate} onChange={set("birthDate")} {...ev("birthDate")} hint="Có ngày sinh thì KiN tính đúng ai phải đồng ý theo tuổi." />
+              <TextField label="Ngày bắt đầu học" placeholder="01/11/2026" inputMode="numeric" value={f.startDate} onChange={set("startDate")} {...ev("startDate")} />
+              <TextField label="Số điện thoại của em" type="tel" inputMode="tel" value={f.phone} onChange={set("phone")} {...ev("phone")} />
+              <TextField label="Số điện thoại thứ ba" type="tel" inputMode="tel" value={f.phoneExtra} onChange={set("phoneExtra")} {...ev("phoneExtra")} />
+              <TextField label="Email" type="email" inputMode="email" value={f.email} onChange={set("email")} {...ev("email")} />
+              <TextField label="Email bổ sung" type="email" inputMode="email" value={f.emailExtra} onChange={set("emailExtra")} {...ev("emailExtra")} />
             </div>
             <TextField label="Địa chỉ" value={f.address} onChange={set("address")} error={errors.address} maxLength={200} />
             <TextField label="Môn học" value={f.subjects} onChange={set("subjects")} error={errors.subjects} hint="Cách nhau bằng dấu phẩy, tối đa 5 môn." />

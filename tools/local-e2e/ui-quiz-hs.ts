@@ -53,6 +53,20 @@ import { prisma } from "@/lib/prisma";
   check("trước khi gõ: dòng nháp nói tự lưu khi ngừng gõ", (await pg.locator("[data-trang-thai-nhap]").innerText()).includes("tự lưu"));
   await area.fill("(x−2)(x−3)=0 ⇒ x=2 hoặc x=3");
   await eventually("sau ~1,2 giây: 'Bản nháp đã lưu trên máy chủ' + DB có chữ", async () => (await pg.locator("[data-trang-thai-nhap]").innerText()).includes("đã lưu trên máy chủ") && (await prisma.examAnswer.findFirst({ where: { questionId: q3.id } }))?.textAnswer?.includes("x=2") === true, 20000);
+  // Thanh công thức (24/10/2026): chèn CHỮ THUẦN vào đúng ô tự luận, vẫn đi qua đường lưu nháp sẵn có.
+  const bar = pg.getByRole("toolbar", { name: /Chèn ký hiệu/ });
+  check("thanh công thức có 4 nút, mỗi nút cao ≥ 44px", await bar.getByRole("button").count() === 4 && (await bar.getByRole("button").evaluateAll(bs => bs.every(b => b.getBoundingClientRect().height >= 43.5))));
+  await area.focus(); await pg.keyboard.press("End");
+  await bar.getByRole("button", { name: /căn bậc hai/ }).click();
+  check("bấm √x → chèn chữ thuần 'sqrt()' vào ô (không HTML), ô vẫn giữ chữ cũ", (await area.inputValue()).endsWith("x=3sqrt()") && (await area.inputValue()).includes("x=2"), await area.inputValue());
+  await pg.keyboard.type("16");
+  check("con trỏ nằm GIỮA ngoặc: gõ tiếp thành sqrt(16)", (await area.inputValue()).endsWith("sqrt(16)"), await area.inputValue());
+  await pg.keyboard.press("End");
+  await bar.getByRole("button", { name: /phân số/ }).click();
+  await bar.getByRole("button", { name: /bình phương/ }).click();
+  check("phân số + bình phương chèn đúng mẫu '(a)/(b)' và 'x^2'", (await area.inputValue()).includes("(a)/(b)x^2"), await area.inputValue());
+  await eventually("chữ vừa chèn được tự lưu nháp lên máy chủ (không đường lưu riêng)", async () => (await prisma.examAnswer.findFirst({ where: { questionId: q3.id } }))?.textAnswer?.includes("sqrt(16)") === true, 20000);
+  check("không có HTML chèn vào: ô không chứa '<'", !(await area.inputValue()).includes("<"));
   check("không bao giờ hiện 'đã chấm' / điểm trong phòng làm", !(await pg.locator("body").innerText()).match(/đã chấm|Điểm tổng:/));
 
   section("Hộp xác nhận liệt kê câu chưa làm");
