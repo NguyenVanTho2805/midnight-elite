@@ -9,6 +9,7 @@ import { GlobalDropGuard } from "@/components/GlobalDropGuard";
 import { ToastProvider } from "@/components/ui";
 import { ThemeApplier } from "@/components/ThemeApplier";
 import AccountThemeSync from "@/components/AccountThemeSync";
+import { THEME_INIT_SCRIPT } from "@/lib/kinTheme";
 import { RAIL_INIT_SCRIPT } from "@/lib/railState";
 import { SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { HOST_INIT_SCRIPT } from "@/lib/hostChrome";
@@ -73,6 +74,11 @@ export default function RootLayout({
       data-che-do="sang"
       suppressHydrationWarning
     >
+      <head>
+        {/* Chủ đề + chế độ sáng/tối đã chọn áp từ khung hình đầu (src/lib/kinTheme.ts). Phải là <script> thường trong <head> (chạy đồng bộ khi đọc HTML),
+            KHÔNG dùng next/script beforeInteractive: loại đó chỉ chạy qua mã khởi động bất đồng bộ của Next nên khung hình đầu vẫn nháy nền sáng. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col antialiased">
           {/* Thanh bên đã thu thì ẩn ngay từ khung hình đầu (xem src/lib/railState.ts); không có dòng này thanh sẽ hiện ra rồi mới thụt vào. */}
           <Script id="kin-rail-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />

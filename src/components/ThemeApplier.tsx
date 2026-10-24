@@ -9,13 +9,13 @@
 // 3 chế độ: sang (mặc định), toi, auto (auto = theo máy, bỏ data-che-do).
 "use client";
 import { useEffect } from "react";
-import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
+import { KIN_THEMES, KIN_MODES, KIN_THEME_KEY, KIN_MODE_KEY, type KinTheme, type KinMode } from "@/lib/kinTheme";
 
 export { KIN_THEMES, KIN_MODES };
 export type { KinTheme, KinMode };
 
-const KEY_THEME = "kin.chu-de";
-const KEY_MODE  = "kin.che-do";
+const KEY_THEME = KIN_THEME_KEY;
+const KEY_MODE  = KIN_MODE_KEY;
 const DEFAULT_THEME: KinTheme = "navy";
 // 23/10/2026 (đợt dựng nền): Figma là NỀN SÁNG, nên người chưa chọn gì thì SÁNG, không theo máy. "Theo máy" vẫn chọn được (ở /cai-dat/chu-de).
 const DEFAULT_MODE:  KinMode  = "sang";

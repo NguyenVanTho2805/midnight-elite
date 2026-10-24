@@ -219,6 +219,8 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   ];
   for (const [label, who, paths] of groups) {
     const gc = await ctxFor(who, { width: 1280, height: 900 });
+    // Từ 23/10/2026 người chưa chọn gì thì SÁNG (mặc định "sang", không còn "theo máy"); ca này kiểm đúng chế độ "Theo máy" nên chọn nó rõ ràng như người dùng làm ở /cai-dat/chu-de.
+    await gc.addInitScript(`try{localStorage.setItem("kin.che-do","auto")}catch(e){}`);
     await gc.setExtraHTTPHeaders({ "x-forwarded-for": `10.66.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
     for (const path of paths) {
       const gp2 = await gc.newPage(); watch(gp2);
