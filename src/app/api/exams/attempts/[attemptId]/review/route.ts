@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
 import { correctionSummary } from "@/lib/examCorrectionServer";
+import { isAttemptHeld } from "@/lib/examHold";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -30,7 +31,9 @@ export async function GET(
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const canSeeAnswers =
+    // QZ-08: đề giữ điểm đến khi gia sư công bố → chưa có điểm tổng, chưa có điểm/nhận xét tự luận, chưa có đáp án.
+    const held = await isAttemptHeld(prisma, attempt);
+    const canSeeAnswers = held ? false :
       exam.answerVisibility === "after_submit" ? true :
       exam.answerVisibility === "after_exam_ends" ? hasExamWindowEnded(exam) :
       false; // "never"
@@ -58,8 +61,8 @@ export async function GET(
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           textAnswer: textAnswers[q.id] ?? null,
-          pointsAwarded: graded?.pointsAwarded ?? null,
-          teacherComment: graded?.teacherComment ?? null,
+          pointsAwarded: held ? null : graded?.pointsAwarded ?? null,
+          teacherComment: held ? null : graded?.teacherComment ?? null,
         };
       }
 
@@ -113,7 +116,8 @@ export async function GET(
 
     return NextResponse.json({
       attemptId: attempt.id,
-      score: attempt.score,
+      score: held ? null : attempt.score,
+      held,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
       // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).

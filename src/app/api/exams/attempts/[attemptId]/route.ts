@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { finalizeAttempt, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
+import { isAttemptHeld } from "@/lib/examHold";
 
 // GET /api/exams/attempts/[attemptId] — trạng thái attempt hiện tại (phục vụ resume)
 export async function GET(
@@ -27,10 +28,13 @@ export async function GET(
 
     if (attempt.status !== "in_progress") {
       const examMeta = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true } });
+      // QZ-08: đề giữ điểm đến khi gia sư công bố → chưa trả điểm (null) và nói rõ là đang chờ chấm.
+      const held = await isAttemptHeld(prisma, attempt);
       return NextResponse.json({
         attemptId: attempt.id,
         status: attempt.status,
-        score: attempt.score,
+        score: held ? null : attempt.score,
+        held,
         totalPoints: examMeta?.totalPoints ?? 150,
       });
     }

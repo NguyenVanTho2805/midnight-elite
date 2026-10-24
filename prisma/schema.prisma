@@ -2330,3 +2330,45 @@ model TutorRequest {
   @@index([phoneKey, createdAt])
   @@map("tutor_requests")
 }
+
+// ─── QZ-08: CHẤM QUIZ HỖN HỢP — CHỜ CHẤM VÀ CÔNG BỐ ──────────────────────────────────────────────
+// Ba bảng MỚI, chỉ thêm. Cố ý KHÔNG khai báo quan hệ Prisma tới Exam/ExamAttempt (tránh sửa model Exam*, mỗi nơi chỉ giữ id dạng chuỗi);
+// khi lượt thi bị xoá thì dòng ở đây thành mồ côi, vô hại: mọi truy vấn đều đi từ ExamAttempt / Exam trước.
+//   ExamPublishPolicy  — đề nào "giữ điểm đến khi gia sư công bố". KHÔNG có dòng = hành vi cũ (học sinh thấy điểm ngay), nên đề cũ không đổi.
+//   ExamAttemptPublish — lượt thi đã được công bố (có dòng = học sinh được thấy điểm tổng, điểm và nhận xét tự luận, đáp án theo cấu hình đề).
+//   ExamGradeEdit      — lịch sử mỗi lần gia sư lưu điểm/nhận xét một câu tự luận (điểm cũ → điểm mới); chỉ thêm, không sửa, không xoá.
+model ExamPublishPolicy {
+  examId           String   @id
+  holdUntilPublish Boolean  @default(true)
+  updatedById      String?
+  updatedAt        DateTime @updatedAt
+
+  @@map("exam_publish_policies")
+}
+
+model ExamAttemptPublish {
+  attemptId     String   @id
+  examId        String
+  publishedById String
+  publishedAt   DateTime @default(now())
+
+  @@index([examId])
+  @@map("exam_attempt_publishes")
+}
+
+model ExamGradeEdit {
+  id          String   @id @default(cuid())
+  examId      String
+  attemptId   String
+  questionId  String
+  editedById  String
+  prevPoints  Float?
+  newPoints   Float
+  prevComment String?  @db.Text
+  newComment  String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([attemptId, questionId])
+  @@index([examId, createdAt])
+  @@map("exam_grade_edits")
+}

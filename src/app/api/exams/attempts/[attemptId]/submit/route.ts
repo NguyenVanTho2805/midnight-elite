@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { finalizeAttempt } from "@/lib/examGrading";
+import { isAttemptHeld } from "@/lib/examHold";
 import { computeQuizReward } from "@/lib/quizReward";
 import { addQuizRewardCoins } from "@/lib/wallet";
 import { MAX_QUIZ_REWARDS_PER_DAY } from "@/lib/wallet-constants";
@@ -55,6 +56,11 @@ export async function POST(
       } catch (e) {
         console.error("[quiz reward]", e);
       }
+    }
+
+    // QZ-08: đề giữ điểm đến khi gia sư công bố → không trả điểm, không trả hạng (rank 0 = chưa có hạng).
+    if (await isAttemptHeld(prisma, attempt)) {
+      return NextResponse.json({ score: null, held: true, totalPoints: exam?.totalPoints ?? 150, rank: 0, coinsEarned });
     }
 
     const rankBase = bestResult?.score ?? finalized.score ?? 0;
