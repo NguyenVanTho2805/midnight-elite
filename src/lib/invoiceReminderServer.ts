@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { canUse } from "@/lib/planServer";
 import { moneyPathsBlocked } from "@/lib/feeChargeServer";
+import { lateFeeHintKey, parseLateFeeHintSetting } from "@/lib/lateFeeHint";
 import { DEFAULT_DUE_DAY, DEFAULT_DUE_DAY_KEY, REMINDABLE_STATUSES, reminderDue, type ReminderStep } from "@/lib/invoiceReminder";
 
 /** Hai lần ghi cùng bước của cùng một phiếu trong khoảng này coi là một lần bấm (bấm đúp). */
@@ -18,6 +19,20 @@ export async function loadDefaultDueDay(): Promise<number> {
   } catch {
     return DEFAULT_DUE_DAY;
   }
+}
+
+/** HP-28: gợi ý "phí trễ hạn" của gia sư có đang bật không (chưa cấu hình = bật). Chỉ là cờ hiển thị, không liên quan tiền. */
+export async function loadLateFeeHintEnabled(tutorId: string): Promise<boolean> {
+  try {
+    const row = await prisma.settingKV.findUnique({ where: { key: lateFeeHintKey(tutorId) } });
+    return parseLateFeeHintSetting(row?.value);
+  } catch {
+    return true;
+  }
+}
+export async function saveLateFeeHintEnabled(tutorId: string, enabled: boolean): Promise<void> {
+  const key = lateFeeHintKey(tutorId), value = enabled ? "1" : "0";
+  await prisma.settingKV.upsert({ where: { key }, create: { key, value, updatedBy: tutorId }, update: { value, updatedBy: tutorId } });
 }
 
 /** Ghi một lần mở Zalo (chống bấm đúp). Ở bản xem trước (VERCEL_ENV=preview) thì không ghi mới. Trả true nếu đã tạo dòng. */
