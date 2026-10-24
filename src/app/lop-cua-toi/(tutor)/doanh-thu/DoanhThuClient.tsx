@@ -7,7 +7,7 @@ import { CARD_STYLE, FIELD_STYLE, callApi, vnd } from "@/components/tutor/shared
 import { presetRange, vnDateKey } from "@/lib/revenue";
 
 interface Data {
-  totals: { collected: number; txCount: number; receivable: number; openInvoices: number };
+  totals: { collected: number; txCount: number; receivable: number; openInvoices: number; draftAmount: number; draftCount: number; sentDue: number; sentPaid: number; sentCount: number; collectionRatePct: number | null };
   byMonth: { month: string; collected: number; count: number }[];
   byClass: ClassRevenueRow[];
   transactions: { id: string; date: string; studentName: string; code: string; yearMonth: string; method: string; amount: number }[];
@@ -66,10 +66,12 @@ export default function DoanhThuClient() {
           Không tải được doanh thu. <button className="underline font-semibold" onClick={() => load(qs)}>Thử lại</button>
         </div>
       ) : (<>
-        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {([
             ["Đã thu", data ? vnd(data.totals.collected) : "—", data ? `${data.totals.txCount} khoản` : ""],
             ["Còn phải thu", data ? vnd(data.totals.receivable) : "—", data ? `${data.totals.openInvoices} phiếu đã gửi chưa đóng đủ` : ""],
+            ["Tiềm năng", data ? vnd(data.totals.draftAmount) : "—", data ? (data.totals.draftCount > 0 ? `${data.totals.draftCount} phiếu nháp chưa gửi · chưa phải khoản phải thu` : "Chưa có phiếu nháp") : ""],
+            ["Tỷ lệ thu", data ? (data.totals.collectionRatePct == null ? "Chưa có" : `${data.totals.collectionRatePct}%`) : "—", data ? (data.totals.sentCount > 0 ? `${vnd(data.totals.sentPaid)} / ${vnd(data.totals.sentDue)} trên ${data.totals.sentCount} phiếu đã gửi` : "Chưa có phiếu nào đã gửi") : ""],
           ] as const).map(([k, v, sub]) => (
             <div key={k} className="rounded-xl p-4" style={CARD_STYLE}>
               <dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{k}</dt>

@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { OPEN_STATUSES } from "@/lib/tuitionInvoice";
+import { invoiceKpi } from "@/lib/revenueKpi";
 import { manualMethodLabel } from "@/lib/tuitionPayment";
 import { allocateByWeights, parseDateRange, rangeWhere, toCsv, vnDateKey, vnMonthKey } from "@/lib/revenue";
 
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   if ("error" in range) return NextResponse.json({ error: range.error }, { status: 400 });
   const occurredAt = rangeWhere(range);
 
-  const [rows, open] = await Promise.all([
+  const [rows, open, allInv] = await Promise.all([
     prisma.bankTransaction.findMany({
       where: { tutorId: auth.userId, status: { in: ["matched", "resolved"] }, appliedAmount: { gt: 0 }, ...(occurredAt ? { occurredAt } : {}) },
       orderBy: { occurredAt: "desc" },
@@ -43,6 +44,8 @@ export async function GET(req: NextRequest) {
       where: { tutorId: auth.userId, status: { in: OPEN_STATUSES } },
       select: { amountDue: true, paidAmount: true },
     }),
+    // PT-01: chỉ để dựng thẻ "Tiềm năng" (phiếu nháp) và "Tỷ lệ thu" (đã đóng / phải thu trên phiếu đã gửi).
+    prisma.tuitionInvoice.findMany({ where: { tutorId: auth.userId, status: { not: "cancelled" } }, select: { status: true, amountDue: true, paidAmount: true } }),
   ]);
 
   const monthMap = new Map<string, { month: string; collected: number; count: number }>();
@@ -99,6 +102,7 @@ export async function GET(req: NextRequest) {
     totals: {
       collected, txCount: rows.length,
       receivable: open.reduce((s, i) => s + Math.max(0, i.amountDue - i.paidAmount), 0), openInvoices: open.length,
+      ...(() => { const k = invoiceKpi(allInv); return { draftAmount: k.draftAmount, draftCount: k.draftCount, sentDue: k.sentDue, sentPaid: k.sentPaid, sentCount: k.sentCount, collectionRatePct: k.collectionRatePct }; })(),
     },
     byMonth: [...monthMap.values()].sort((a, b) => a.month.localeCompare(b.month)),
     byClass: [...classMap.values()].sort((a, b) => b.collected - a.collected),
