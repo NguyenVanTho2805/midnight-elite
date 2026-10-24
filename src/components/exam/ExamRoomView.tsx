@@ -163,15 +163,34 @@ export default function ExamRoomView(p: ExamRoomViewProps) {
                   )}
 
                   {q.type === "ESSAY" ? (
+                    <>
+                    {q.studentGuide && <p className="mb-2 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] whitespace-pre-line">{q.studentGuide}</p>}
                     <textarea aria-labelledby={`q-${q.id}-de`} rows={5} disabled={isLocked} placeholder="Nhập câu trả lời của bạn..."
                       className="w-full px-3 py-2.5 text-[length:var(--kin-co-small)] rounded-[var(--kin-bo-md)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed"
                       style={{ border: BORDER }}
                       value={p.essayText[q.id] ?? ""} onChange={e => p.onEssayChange(q.id, e.target.value)} onBlur={() => p.onEssaySave(q.id)} />
+                    </>
                   ) : q.type === "SHORT_ANSWER" ? (
                     <input aria-labelledby={`q-${q.id}-de`} disabled={isLocked} placeholder="Nhập đáp án..."
                       className="w-full px-3 min-h-[var(--kin-cham-dap-an)] text-[length:var(--kin-co-small)] rounded-[var(--kin-bo-md)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed"
                       style={{ border: BORDER }}
                       value={p.essayText[q.id] ?? ""} onChange={e => p.onEssayChange(q.id, e.target.value)} onBlur={() => p.onEssaySave(q.id)} />
+                  ) : q.type === "MC_MULTI" ? (
+                    <div role="group" aria-labelledby={`q-${q.id}-de`} className="flex flex-col gap-[10px]">
+                      <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Chọn tất cả các đáp án đúng. Chọn đúng và đủ thì được trọn điểm; thiếu hoặc thừa thì 0 điểm.</p>
+                      {q.options.map((o, oi) => {
+                        const on = p.clusterAnswers[o.id] === true;
+                        return (
+                          <label key={o.id}
+                            className={`flex items-center gap-3 px-4 min-h-[var(--kin-cham-dap-an)] rounded-[var(--kin-bo-md)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--kin-nhan-link)] ${isLocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-[var(--kin-nen-bang)]"}`}
+                            style={{ border: `${on ? 2 : 1}px solid ${on ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`, background: on ? "var(--kin-nen-nhan)" : undefined }}>
+                            <input type="checkbox" className="sr-only" disabled={isLocked} checked={on} onChange={() => p.onCluster(o.id, !on)} />
+                            <span aria-hidden className="font-mono w-4 flex-shrink-0 text-[length:var(--kin-co-small)]" style={{ color: on ? "var(--kin-th-navy)" : "var(--kin-chu-mo)" }}>{on ? "☑" : "☐"}</span>
+                            <span className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]"><span className="font-mono mr-2 text-[var(--kin-chu-mo)]">{String.fromCharCode(65 + oi)}.</span><MathText text={o.text} /></span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   ) : q.type === "TRUE_FALSE_CLUSTER" ? (
                     <div className="flex flex-col gap-2">
                       {q.options.map(o => (

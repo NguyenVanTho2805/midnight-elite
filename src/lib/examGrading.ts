@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { scoreMultiSelect } from "@/lib/quizQuestion";
 
 type ExamQuestionWithOptions = Prisma.ExamQuestionGetPayload<{ include: { options: true } }>;
 
@@ -45,6 +46,8 @@ export function applyAttemptOrder(
     imageUrl: q.imageUrl,
     points: q.points,
     sectionLabel: q.sectionLabel,
+    // QZ-03: hướng dẫn cho học sinh (tự luận). KHÔNG BAO GIỜ thêm graderGuide / rubric vào đây — đó là phần chỉ gia sư xem.
+    studentGuide: q.studentGuide,
     // SHORT_ANSWER lưu đáp án đúng ngay trong ExamOption.text — tuyệt đối
     // không được lộ cho học viên trước khi nộp bài, nên trả options rỗng
     // (học viên gõ tự do, không chọn từ danh sách).
@@ -247,6 +250,22 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
       const correctCount = given.filter(a => a.answerTrue !== null && a.answerTrue === a.option.isCorrect).length;
       const pct = percentTable[Math.min(correctCount, 4)];
       rawEarned += q.points * pct;
+    }
+  }
+
+  // MC_MULTI (QZ-03): chấm đủ-hoặc-không. Ô học sinh tích lưu ở ExamAnswerBoolean (answerTrue=true), cùng bảng với Đúng-Sai.
+  const multiQuestions = await tx.examQuestion.findMany({
+    where: { examId: attempt.examId, type: "MC_MULTI" },
+    include: { options: true },
+  });
+  if (multiQuestions.length > 0) {
+    const ticks = await tx.examAnswerBoolean.findMany({
+      where: { attemptId: attempt.id, answerTrue: true },
+      include: { option: { select: { questionId: true } } },
+    });
+    for (const q of multiQuestions) {
+      const selected = ticks.filter(t => t.option.questionId === q.id).map(t => t.optionId);
+      rawEarned += scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), selected, q.points);
     }
   }
 

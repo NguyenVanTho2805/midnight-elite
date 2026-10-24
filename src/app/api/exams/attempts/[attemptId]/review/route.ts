@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
 import { correctionSummary } from "@/lib/examCorrectionServer";
+import { scoreMultiSelect } from "@/lib/quizQuestion";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -75,6 +76,18 @@ export async function GET(
           };
         });
         return { id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel, options };
+      }
+
+      if (q.type === "MC_MULTI") {
+        // QZ-03: đúng khi chọn đủ và chỉ chọn các ô đúng. Chưa nằm trong luồng Chữa bài (CORRECTABLE_TYPES chỉ có MC và Trả lời ngắn).
+        const picked = q.options.filter(o => boolAnswersByOption[o.id] === true).map(o => o.id);
+        const wasCorrect = scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), picked, q.points) > 0;
+        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+        return {
+          id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
+          options: q.options.map(o => ({ id: o.id, text: o.text, picked: picked.includes(o.id), isCorrect: reveal ? o.isCorrect : null })),
+          explanation: reveal ? q.explanation : null,
+        };
       }
 
       if (q.type === "SHORT_ANSWER") {
