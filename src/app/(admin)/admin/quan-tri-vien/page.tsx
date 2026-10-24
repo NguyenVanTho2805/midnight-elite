@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
-import TutorApplicationsPanel from "@/components/admin/TutorApplicationsPanel";
-import { KinTabs } from "@/components/kin";
+import Link from "next/link";
+import { KinCallout } from "@/components/kin";
+import { roleSummaries } from "@/lib/adminOps";
 import { useAuth, PERMISSIONS } from "@/contexts/AuthContext";
 
 interface UserRow {
@@ -49,9 +50,6 @@ export default function QuanTriVienPage() {
   const [confirmRevoke, setConfirm] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState(false);
   const [toast, setToast]           = useState<{ msg: string; ok: boolean } | null>(null);
-  // FE-138: tab "Hồ sơ gia sư chờ duyệt" thay cho nút "Thêm Giáo viên" (BE-054).
-  const [tab, setTab]                   = useState<"tai-khoan" | "gia-su">("tai-khoan");
-  const [pendingTutors, setPendingTutors] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/users", { credentials: "same-origin" })
@@ -59,14 +57,6 @@ export default function QuanTriVienPage() {
       .then(d => setUsers(Array.isArray(d) ? d : []))
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
-  }, []);
-
-  // Số hồ sơ gia sư đang chờ — hiện trên nhãn tab ngay cả khi chưa mở tab.
-  useEffect(() => {
-    fetch("/api/admin/tutor-applications?status=pending", { credentials: "same-origin" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && Array.isArray(d.applications)) setPendingTutors(d.applications.length); })
-      .catch(() => { /* chỉ là số phụ trên nhãn tab */ });
   }, []);
 
   function showToast(msg: string, ok = true) {
@@ -144,23 +134,24 @@ export default function QuanTriVienPage() {
           <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Phân quyền và quản lý tài khoản trong hệ thống</p>
         </div>
 
-        {/* Tab */}
-        <KinTabs
-          className="px-5 flex-shrink-0"
-          label="Nhóm quản trị"
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { key: "tai-khoan", label: "Tài khoản" },
-            { key: "gia-su", label: `Hồ sơ gia sư chờ duyệt${pendingTutors != null ? ` (${pendingTutors})` : ""}` },
-          ]}
-        />
+        {/* QT-01: bảng vai (đọc từ permissions.ts) + QT-02: duyệt gia sư chỉ còn MỘT cửa là hàng chờ kiểm duyệt */}
+        <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0 space-y-3">
+          <details>
+            <summary className="cursor-pointer min-h-11 flex items-center text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Mỗi vai làm được gì</summary>
+            <ul className="space-y-3 pt-2" data-testid="bang-vai">
+              {roleSummaries().map(r => (
+                <li key={r.role} data-role={r.role}>
+                  <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{r.label}</p>
+                  <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{r.who}</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>{r.can.join(" · ")}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs mt-3" style={{ color: "var(--kin-chu-mo)" }}>Chưa có vai trợ giảng riêng và chưa có nhiều giáo viên trong một tài khoản; việc này đang chờ chủ dự án quyết.</p>
+          </details>
+          <KinCallout>Hồ sơ gia sư xin duyệt nằm ở <Link href="/admin/kiem-duyet" className="font-medium underline" style={{ color: "var(--kin-nhan-link)" }}>hàng chờ kiểm duyệt</Link>, cùng chỗ với các báo cáo.</KinCallout>
+        </div>
 
-        {tab === "gia-su" ? (
-          <div className="flex-1 overflow-auto p-5">
-            <TutorApplicationsPanel onPendingCount={setPendingTutors} />
-          </div>
-        ) : (<>
         {/* Stats compact inline */}
         <div className="px-5 py-2.5 flex items-center gap-5 border-b border-gray-100 flex-shrink-0">
           {loading ? (
@@ -361,7 +352,6 @@ export default function QuanTriVienPage() {
         <div className="px-5 py-3 border-t border-gray-100 flex-shrink-0">
           <p className="text-xs text-gray-500">Hiển thị {filtered.length}/{users.length} người dùng</p>
         </div>
-        </>)}
       </div>
     </PermissionGuard>
   );

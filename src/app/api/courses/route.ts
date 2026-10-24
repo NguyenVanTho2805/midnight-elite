@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
+import { validateTutorCourseFields } from "@/lib/courseValidation";
+import { FEE_MODE_LEGACY, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
+import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
 
 export async function GET(req: NextRequest) {
   try {
@@ -73,6 +76,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Thiếu id hoặc name" }, { status: 400 });
     }
 
+    // NC2-035: gia sư chỉ được gửi giá/số bài/giờ/trạng thái hợp lý. Quản trị giữ hành vi cũ. Chỉ từ chối, không đổi cách tính phí.
+    if (auth.adminRole === "teacher") {
+      const bad = validateTutorCourseFields(data);
+      if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+    }
+
+    // HP-15: hình thức học phí chọn LÚC TẠO LỚP (theo buổi / giờ / khoá). Không gửi, hoặc gửi cách cũ → lớp mặc định, y như trước.
+    // Chỉ lớp tạo SAU mới có thể khác mặc định; không có đường nào đổi hình thức của lớp đã tạo.
+    let feeSetup: FeeSetup | null = null;
+    if (body.feeMode !== undefined && body.feeMode !== FEE_MODE_LEGACY) {
+      if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
+      const v = validateFeeSetup({ mode: body.feeMode, rate: body.feeRate, sessionMinutes: body.feeSessionMinutes });
+      if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+      feeSetup = v.value;
+    }
+
     // Mã trùng tên một trang cố định của KiN (vd "lich") thì trang lớp không bao giờ mở được — xem src/lib/courseIds.ts.
     if (isReservedCourseId(data.id)) {
       return NextResponse.json({ error: `Mã "${data.id}" trùng tên một trang của KiN. Hãy đặt tên lớp khác để tạo mã khác.` }, { status: 400 });
@@ -94,7 +113,10 @@ export async function POST(req: NextRequest) {
     const course = await prisma.$transaction(async (tx) => {
       const maxRow = await tx.course.findFirst({ orderBy: { adminId: "desc" }, select: { adminId: true } });
       data.adminId = (maxRow?.adminId ?? 0) + 1;
-      return tx.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
+      if (feeSetup) data.feeMode = feeSetup.mode;
+      const created = await tx.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
+      if (feeSetup) await createInitialFeeRate(tx, created.id, feeSetup, auth.userId);
+      return created;
     });
     return NextResponse.json(course, { status: 201 });
   } catch (e) {

@@ -31,6 +31,10 @@ export interface ModuleItem {
   active?: boolean;
   controls?: string;
   expanded?: boolean;
+  /** Chỉ hiện ở thanh bên (máy tính). Figma điện thoại chỉ có 4 tab; mục còn lại vào qua menu tài khoản ("Tất cả mục"). */
+  desktopOnly?: boolean;
+  /** Chỉ hiện ở thanh dưới (điện thoại). */
+  mobileOnly?: boolean;
 }
 
 const matches = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -45,7 +49,7 @@ function Badge({ n, mobile }: { n: number; mobile: boolean }) {
   );
 }
 
-export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse }: {
+export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse, home, footnote }: {
   roleLabel: string;
   modules: ModuleItem[];
   ariaLabel: string;
@@ -53,6 +57,10 @@ export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse
   children?: ReactNode;
   /** Gọi khi người dùng thu thanh (vd. để đóng bảng "Khác" đang neo vào thanh). */
   onCollapse?: () => void;
+  /** Logo KiN ở đầu thanh (Figma: logo đứng đầu cột trái), dẫn về trang đầu của vai. */
+  home?: { href: string; label: string };
+  /** Dòng chữ nhỏ cuối thanh (Figma: "Miễn phí ra mắt"). */
+  footnote?: string;
 }) {
   const pathname = usePathname();
   const [rail] = useRail();
@@ -112,10 +120,10 @@ export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse
   const renderItem = (m: ModuleItem, mobile: boolean, index = 0) => {
     const active = isModuleActive(pathname, m);
     const cls = mobile
-      ? "relative flex-1 min-w-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[length:var(--kin-co-caption)] tracking-[0.02em]"
-      : "kin-rail-it relative w-[66px] min-h-[44px] flex flex-col items-center justify-center gap-1 rounded-[var(--kin-bo-sm)] pt-2 pb-[6px] px-0 text-[length:var(--kin-co-caption)] tracking-[0.01em]";
+      ? "relative flex-1 min-w-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-caption)] tracking-[0.02em]"
+      : "kin-rail-it relative w-[66px] min-h-[44px] flex flex-col items-center justify-center gap-1 rounded-[var(--kin-bo-sm)] pt-2 pb-[6px] px-0 text-[length:var(--kin-co-caption)] tracking-[-0.01em]";
     const style = {
-      background: active ? "var(--kin-nen-nhan)" : "transparent",
+      background: active ? "var(--kin-nen-nhan)" : mobile ? "var(--kin-nen-re-chuot)" : "transparent",
       color: active ? "var(--kin-nhan-diem)" : "var(--kin-chu-mo)",
       fontWeight: 600,
       "--i": index,
@@ -142,19 +150,27 @@ export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse
       <div id="kin-rail" className="kin-rail-wrap hidden md:block flex-shrink-0">
         <nav aria-label={ariaLabel}
           className="kin-rail-nav kin-m flex flex-col items-center gap-[2px] w-[79px] px-[6px] py-[10px] sticky top-0 h-screen overflow-y-auto bg-[var(--kin-nen-bang)] border-r border-[var(--kin-vien-thuong)]">
+          {home && (
+            <Link href={home.href} aria-label={home.label} data-rail-home className="kin-rail-home flex items-center justify-center min-h-11 w-[66px] mt-1 mb-3 rounded-[var(--kin-bo-sm)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]">
+              <span className="kin-chu-logo leading-none" style={{ fontSize: "var(--kin-co-h4)", color: "var(--kin-nhan-chu-tren-nhat, var(--kin-th-navy))" }}>KiN</span>
+            </Link>
+          )}
+          {/* Vai trò: Figma không in nhãn này; giữ cho trình đọc màn hình và bài kiểm (sr-only). */}
+          <p className={home ? "kin-rail-role sr-only" : "kin-rail-role text-[length:var(--kin-co-caption)] font-semibold tracking-[0.02em] text-[var(--kin-chu-mo)] text-center mb-[10px]"}>{roleLabel}</p>
+          <div ref={itemsRef} className="kin-rail-items relative flex flex-col items-center gap-[2px] w-full">
+            <span ref={hlRef} aria-hidden className="kin-rail-hl" />
+            {modules.filter(m => !m.mobileOnly).map((m, i) => renderItem(m, false, i))}
+          </div>
           <button type="button" data-rail-close onClick={collapse}
             aria-label="Thu gọn thanh bên" aria-expanded={rail === "mo"} aria-controls="kin-rail" title="Thu gọn thanh bên (phím [)"
-            className="kin-rail-close self-center w-[66px] min-h-11 mb-1 flex items-center justify-center rounded-[var(--kin-bo-sm)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-re-chuot)] hover:text-[var(--kin-chu-chinh)] transition-colors">
+            className="kin-rail-close self-center w-[66px] min-h-11 mt-1 flex items-center justify-center rounded-[var(--kin-bo-sm)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-re-chuot)] hover:text-[var(--kin-chu-chinh)] transition-colors">
             <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><path d="M9.5 4.5v15" /><path d="M16 10l-2 2 2 2" />
             </svg>
           </button>
-          <p className="kin-rail-role text-[length:var(--kin-co-caption)] font-semibold tracking-[0.02em] text-[var(--kin-chu-mo)] text-center mb-[10px]">{roleLabel}</p>
-          <div ref={itemsRef} className="kin-rail-items relative flex flex-col items-center gap-[2px] w-full">
-            <span ref={hlRef} aria-hidden className="kin-rail-hl" />
-            {modules.map((m, i) => renderItem(m, false, i))}
-          </div>
           {children && <div className="mt-auto pt-3 flex flex-col items-center gap-1">{children}</div>}
+          {footnote && <p data-rail-footnote className={`${children ? "mt-3" : "mt-auto"} pt-3 w-[66px] border-t border-[var(--kin-vien-thuong)] text-center text-[length:var(--kin-co-caption)] leading-tight text-[var(--kin-chu-mo)]`}>{footnote}</p>}
+
           <button type="button" data-rail-widen onClick={widen} aria-pressed={rail === "rong"}
             aria-label={rail === "rong" ? "Thu hẹp thanh bên" : "Mở rộng thanh bên có nhãn chữ"} title={rail === "rong" ? "Thu hẹp thanh bên" : "Mở rộng thanh bên có nhãn chữ"}
             className="kin-rail-wide">
@@ -163,8 +179,8 @@ export function ModuleRail({ roleLabel, modules, ariaLabel, children, onCollapse
         </nav>
       </div>
       <nav aria-label={ariaLabel}
-        className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex z-30 bg-[var(--kin-nen-bang)] border-t border-[var(--kin-vien-thuong)]">
-        {modules.map((m, i) => renderItem(m, true, i))}
+        className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex items-center gap-2 px-2 z-30 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]">
+        {modules.filter(m => !m.desktopOnly).map((m, i) => renderItem(m, true, i))}
       </nav>
     </>
   );

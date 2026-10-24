@@ -5,6 +5,9 @@ export function useProgress() {
   const [completedIds,      setCompleted]      = useState<Set<string>>(new Set());
   const [courseCompletion,  setCourseCompletion] = useState<Record<string, number>>({});
   const [loading,           setLoading]         = useState(true);
+  // MD-06: "đang xem dở" tách khỏi "đã xong". positions = giây xem gần nhất của mọi bài đã từng xem (để xem tiếp).
+  const [watching,          setWatching]        = useState<Record<string, number>>({});
+  const [positions,         setPositions]       = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch("/api/progress", { credentials: "same-origin" })
@@ -12,6 +15,8 @@ export function useProgress() {
       .then(data => {
         setCompleted(new Set(data.completedIds ?? []));
         setCourseCompletion(data.byCourse ?? {});
+        setWatching(data.watching ?? {});
+        setPositions(data.positions ?? {});
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -21,6 +26,7 @@ export function useProgress() {
     const res  = await fetch(`/api/progress/${lessonId}`, { method: "POST", credentials: "same-origin" });
     const data = await res.json().catch(() => ({}));
     setCompleted(prev => new Set([...prev, lessonId]));
+    setWatching(prev => { if (!(lessonId in prev)) return prev; const n = { ...prev }; delete n[lessonId]; return n; });
     if (data.coinsEarned > 0) {
       window.dispatchEvent(new CustomEvent("coin:earned", { detail: { amount: data.coinsEarned } }));
     }
@@ -31,5 +37,5 @@ export function useProgress() {
     setCompleted(prev => { const n = new Set(prev); n.delete(lessonId); return n; });
   }, []);
 
-  return { completedIds, courseCompletion, loading, markComplete, unmarkComplete };
+  return { completedIds, courseCompletion, loading, watching, positions, markComplete, unmarkComplete };
 }

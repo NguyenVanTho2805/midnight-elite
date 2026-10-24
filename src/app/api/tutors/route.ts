@@ -2,8 +2,13 @@
 //
 // Query:
 //   subject — lọc theo môn (so khớp phần tử trong `User.subjects` string[])
-//   sort    — "rating" (mặc định, giảm dần) | "students" (số học viên giảm
-//              dần) | "classes" (số lớp đang dạy)
+//   sort    — "active" (mặc định: gia sư có dạy trong 30 ngày qua lên trước, ĐX-05) | "rating" (đánh giá giảm dần) |
+//              "students" (số học viên giảm dần) | "classes" (số lớp đang dạy). Giá trị lạ → mặc định.
+//   city    — ĐX-06: lọc theo Tỉnh/Thành (so khớp bỏ dấu, "TP.HCM" = "Hồ Chí Minh")
+//   mode    — ĐX-06: "online" | "offline" (dạy trực tiếp); gia sư dạy cả hai khớp cả hai bộ lọc
+//   NC2-022: gia sư chọn ẨN hồ sơ (User.preferences.profile.hidden) không có mặt ở đây (cả danh sách lẫn facets).
+//   Gia sư chưa lưu mục khu vực không khớp bộ lọc city/mode nào đang bật. Trả thêm `facets.cities` (các tỉnh có gia sư, tính SAU lọc môn
+//   nhưng TRƯỚC lọc tỉnh/hình thức để danh sách chọn không co lại khi đang chọn).
 //
 // Chỉ trả gia sư đã duyệt: `role = "admin" AND adminRole = "teacher" AND
 // tutorVerified = true`. Người đang chờ duyệt KHÔNG hiện ở public.
@@ -14,6 +19,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { taughtSessionWhere } from "@/lib/taughtSessions";
+import { parseTutorSort, recentTaughtSessionWhere, sortTutors } from "@/lib/tutorActivity";
+import { cityFacets, matchesArea, parseModeFilter, publicArea, type PublicArea } from "@/lib/tutorArea";
+import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
 
 export type TutorListItem = {
   id: string;
@@ -24,15 +34,23 @@ export type TutorListItem = {
   tutorVerified: boolean;
   classCount: number;
   studentCount: number;
+  /** ĐX-00: buổi ĐÃ DẠY theo sổ lớp (cùng số với hồ sơ chi tiết). Gia sư tự ghi, không phải bằng chứng đã xác minh. */
+  sessionsTaught: number;
+  /** ĐX-05: có ít nhất 1 buổi đã dạy trong 30 ngày qua. */
+  recentlyActive: boolean;
+  /** ĐX-06: khu vực / hình thức / trường + bằng cấp (tự khai) / giá tham khảo (chỉ khi gia sư bật). null = chưa lưu mục này. */
+  area: PublicArea | null;
   rating: { avg: number | null; total: number };
 };
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const subject = searchParams.get("subject")?.trim() || null;
-  const sort    = (searchParams.get("sort") ?? "rating") as "rating" | "students" | "classes";
+  const sort    = parseTutorSort(searchParams.get("sort"));
+  const city    = searchParams.get("city")?.trim() || null;
+  const mode    = parseModeFilter(searchParams.get("mode"));
 
-  const tutors = await prisma.user.findMany({
+  const foundAll = await prisma.user.findMany({
     where: {
       role: "admin",
       adminRole: "teacher",
@@ -42,11 +60,16 @@ export async function GET(req: NextRequest) {
       ...(subject ? { subjects: { has: subject } } : {}),
     },
     select: {
-      id: true, name: true, avatarBase64: true, bio: true, subjects: true, tutorVerified: true,
+      id: true, name: true, avatarBase64: true, bio: true, subjects: true, tutorVerified: true, city: true, preferences: true,
     },
   });
+  // NC2-022: lọc ở đây (không ở truy vấn) vì `preferences` là JSON và đã được đọc sẵn; "vắng khoá" phải nghĩa là HIỆN.
+  const found = foundAll.filter(t => !isProfileHidden(readPreferences(t.preferences)));
+  const areaOf = new Map(found.map(t => [t.id, publicArea(t.city, readPreferences(t.preferences).teaching)]));
+  const facets = { cities: cityFacets([...areaOf.values()]) };
+  const tutors = found.filter(t => matchesArea(areaOf.get(t.id) ?? null, { city, mode }));
 
-  if (tutors.length === 0) return NextResponse.json({ items: [] });
+  if (tutors.length === 0) return NextResponse.json({ items: [], facets });
 
   const ids = tutors.map(t => t.id);
 
@@ -79,6 +102,18 @@ export async function GET(req: NextRequest) {
     select: { id: true, ownerId: true },
   });
   for (const c of courses) if (c.ownerId) courseOwner.set(c.id, c.ownerId);
+
+  // ĐX-05: số buổi đã dạy và "có dạy trong 30 ngày qua" của từng gia sư. Chỉ tính lớp đang bật (status = true) như hồ sơ chi tiết
+  // (api/tutors/[id]) để số trên thẻ và số trên hồ sơ không bao giờ lệch nhau.
+  const ownedLive = { ownerId: { in: ids }, status: true };
+  const [taughtRows, recentRows] = await Promise.all([
+    prisma.attendanceSession.groupBy({ by: ["courseId"], where: { course: ownedLive, ...taughtSessionWhere() }, _count: { _all: true } }),
+    prisma.attendanceSession.findMany({ where: { course: ownedLive, ...recentTaughtSessionWhere() }, select: { courseId: true }, distinct: ["courseId"] }),
+  ]);
+  const sessionsTaught = new Map<string, number>();
+  for (const r of taughtRows) { const o = courseOwner.get(r.courseId); if (o) sessionsTaught.set(o, (sessionsTaught.get(o) ?? 0) + r._count._all); }
+  const recentOwners = new Set<string>();
+  for (const r of recentRows) { const o = courseOwner.get(r.courseId); if (o) recentOwners.add(o); }
 
   const classCount = new Map<string, number>();
   for (const r of classRows) if (r.ownerId) classCount.set(r.ownerId, r._count._all);
@@ -114,14 +149,13 @@ export async function GET(req: NextRequest) {
       tutorVerified: t.tutorVerified,
       classCount:    classCount.get(t.id) ?? 0,
       studentCount:  studentCount.get(t.id) ?? 0,
+      sessionsTaught: sessionsTaught.get(t.id) ?? 0,
+      recentlyActive: recentOwners.has(t.id),
+      area:          areaOf.get(t.id) ?? null,
       rating:        { avg, total: n },
     };
   });
 
-  // Sort client-friendly — không dùng DB vì rating/students đã tính ở memory.
-  if (sort === "students") items.sort((a, b) => b.studentCount - a.studentCount);
-  else if (sort === "classes") items.sort((a, b) => b.classCount - a.classCount);
-  else items.sort((a, b) => (b.rating.avg ?? -1) - (a.rating.avg ?? -1));
-
-  return NextResponse.json({ items });
+  // Thứ tự xác định (hoà thì theo tên) và nằm ở hàm thuần có test: src/lib/tutorActivity.ts.
+  return NextResponse.json({ items: sortTutors(items, sort), facets });
 }

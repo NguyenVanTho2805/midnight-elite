@@ -547,6 +547,7 @@ export default function HocSinhPage() {
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "safe" | "warn" | "danger">("all");
   const [roleFilter,   setRoleFilter]   = useState<"all" | "hoc-vien" | "chua-kich-hoat">("all");
+  const [classFilter,  setClassFilter]  = useState<string>("all"); // QT-07: xem học sinh theo từng lớp
   const [detailTarget, setDetailTarget] = useState<Student | null>(null);
   const [showAdd, setShowAdd]           = useState(false);
   const [toast, setToast]               = useState<{ msg: string; ok: boolean } | null>(null);
@@ -585,15 +586,23 @@ export default function HocSinhPage() {
     return students.filter(s => {
       const matchStatus = statusFilter === "all" || s.status === statusFilter;
       const matchRole   = roleFilter   === "all" || s.role   === roleFilter;
+      const matchClass  = classFilter  === "all" || s.enrolledCourseIds.includes(classFilter);
       const q = search.toLowerCase();
       const matchSearch = q === "" || s.name.toLowerCase().includes(q) || s.phone.includes(q)
         || s.email.toLowerCase().includes(q) || s.id.toLowerCase().includes(q)
         || s.sbd.toLowerCase().includes(q)
         || s.course.toLowerCase().includes(q)
         || ROLE_CONFIG[s.role].labelFull.toLowerCase().includes(q);
-      return matchStatus && matchRole && matchSearch;
+      return matchStatus && matchRole && matchClass && matchSearch;
     });
-  }, [search, statusFilter, roleFilter, students]);
+  }, [search, statusFilter, roleFilter, classFilter, students]);
+
+  // QT-07: các lớp có học sinh kèm số học sinh (đếm từ chính danh sách đang xem).
+  const classOptions = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const s of students) for (const id of s.enrolledCourseIds) n.set(id, (n.get(id) ?? 0) + 1);
+    return dbCourses.filter(c => n.has(c.id)).map(c => ({ id: c.id, name: c.name, n: n.get(c.id) ?? 0 }));
+  }, [students, dbCourses]);
 
   const counts = useMemo(() => ({
     safe:    students.filter(s => s.status === "safe").length,
@@ -709,6 +718,13 @@ export default function HocSinhPage() {
             ))}
           </div>
 
+          <select aria-label="Lọc theo lớp" value={classFilter} onChange={e => setClassFilter(e.target.value)} data-testid="loc-lop"
+            className="px-3 min-h-11 rounded-xl text-sm"
+            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
+            <option value="all">Mọi lớp</option>
+            {classOptions.map(c => <option key={c.id} value={c.id}>{c.name} · {c.n} học sinh</option>)}
+          </select>
+
           <div className="flex-1 relative min-w-[200px]">
             <input type="text" placeholder="Tìm theo tên, SĐT, email, SBD..."
               value={search} onChange={e => setSearch(e.target.value)}
@@ -753,7 +769,7 @@ export default function HocSinhPage() {
             {!loading && filtered.length === 0 && (
               <div className="px-5 py-12 text-center">
                 <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-mo)" }}>Không tìm thấy học sinh</p>
-                <button onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); }}
+                <button onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); setClassFilter("all"); }}
                   className="text-xs mt-2 cursor-pointer" style={{ color: "var(--kin-nhan-link)" }}>
                   Xóa bộ lọc
                 </button>

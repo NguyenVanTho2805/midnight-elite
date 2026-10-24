@@ -7,7 +7,8 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { KinLogo } from "@/components/kin/KinLogo";
+import { AuthFrame, AuthAsideBlock, AUTH_CARD } from "@/components/guest/AuthFrame";
+import { KinCallout } from "@/components/kin/Callout";
 import { KinSubmitButton } from "@/components/kin/SubmitButton";
 
 const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus:border-2 focus:px-[13px]";
@@ -63,17 +64,26 @@ function QuenMatKhauForm() {
   }
 
   return (
-    <div className="kin-chu-than min-h-[calc(100vh-60px)] flex items-start sm:items-center justify-center px-4 py-8 sm:py-12 bg-[var(--kin-nen-bang)]">
-      <div className="w-full max-w-[420px] rounded-2xl border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
-        <div className="px-5 pt-7 pb-5 flex flex-col gap-[6px]">
-          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex w-fit"><KinLogo size={32} textSize="var(--kin-co-h3, 23px)" /></Link>
-          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Lớp học của bạn, gọn trong một chỗ</p>
-        </div>
-
+    <AuthFrame title="Khôi phục mật khẩu" sub="Đặt lại mật khẩu bằng liên kết gửi qua email."
+      aside={(
+        <>
+          <AuthAsideBlock title="Cách khôi phục">
+            Nhập email đã đăng ký. KiN gửi một liên kết để tạo mật khẩu mới; mở liên kết trong thư là đặt lại được.
+          </AuthAsideBlock>
+          <KinCallout title="Sau khi gửi">
+            Nếu email có trong hệ thống, bạn sẽ nhận liên kết khôi phục có thời hạn. KiN không cho biết email nào đã có tài khoản.
+          </KinCallout>
+          <KinCallout title="Liên kết hết hạn">
+            Liên kết có thời hạn và chỉ dùng được một lần. Hết hạn thì yêu cầu gửi lại.
+          </KinCallout>
+        </>
+      )}
+    >
+      <div className={AUTH_CARD}>
         {phase === "form" ? (
           <form onSubmit={send} noValidate className="px-5 pt-2 pb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-[6px]">
-              <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Quên mật khẩu?</h1>
+              <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Quên mật khẩu?</h2>
               <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Nhập email đăng ký tài khoản. KiN gửi cho bạn một link để tạo mật khẩu mới.</p>
             </div>
             <div className="flex flex-col gap-[6px]">
@@ -96,7 +106,7 @@ function QuenMatKhauForm() {
         ) : (
           <div className="px-5 pt-2 pb-6 flex flex-col gap-4">
             <div className="flex flex-col gap-[6px]">
-              <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Kiểm tra hộp thư</h1>
+              <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Kiểm tra hộp thư</h2>
               <p role="status" className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">
                 Nếu <strong className="text-[var(--kin-chu-chinh)] break-all">{sentTo}</strong> đã đăng ký KiN, bạn sẽ nhận được thư có link đặt lại mật khẩu trong ít phút.
               </p>
@@ -117,7 +127,7 @@ function QuenMatKhauForm() {
           </div>
         )}
       </div>
-    </div>
+    </AuthFrame>
   );
 }
 

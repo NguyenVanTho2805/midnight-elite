@@ -37,17 +37,20 @@ const isAdminPath = (p: string) => p === "/admin" || p.startsWith("/admin/");
 const AUTH_PAGES = ["/dang-nhap", "/dang-ky"];
 /** Tệp tĩnh trong /public (/plyr.svg, /og-kin.png, /robots.txt…): luôn phục vụ nguyên trạng ở cả hai tên miền. */
 const isStaticFile = (p: string) => /\.[a-z0-9]{2,5}$/i.test(p);
+/** ĐX-02: tệp PWA phục vụ nguyên trạng ở cả hai tên miền. ".webmanifest" dài hơn 5 ký tự nên `isStaticFile` không nhận ra; nếu để rơi xuống nhánh "đường lạ" thì
+ *  trên tên miền admin trình duyệt bị chuyển hướng (307) khi tải manifest. /sw.js đã khớp `isStaticFile` nhưng vẫn ghi ra đây cho rõ. */
+export const isPwaFile = (p: string) => p === "/sw.js" || p === "/manifest.webmanifest";
 
 /** Có cần giải mã phiên để quyết định không? Chỉ vài đường dẫn cần, các đường còn lại (trang khách, API, tệp tĩnh) không tốn gì. */
 export function needsSession(host: string, pathname: string): boolean {
-  if (isAdminHost(host)) return !(pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname));
+  if (isAdminHost(host)) return !(pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname) || isPwaFile(pathname));
   return pathname === "/" || isAdminPath(pathname) || AUTH_PAGES.includes(pathname);
 }
 
 export function decideRoute({ host, pathname, search, session }: RouteInput): RouteDecision {
   if (isAdminHost(host)) {
     // API, tài nguyên tĩnh Next, tệp trong /public, trang đăng nhập dùng chung — giữ nguyên.
-    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname)) return { kind: "next" };
+    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname) || isPwaFile(pathname)) return { kind: "next" };
     // Gia sư không thuộc về tên miền quản trị: đưa về tên miền chính (cùng đường dẫn).
     if (isTeacher(session)) return { kind: "redirect", status: 307, host: "main", pathname, search };
     // Học viên có phiên ở tên miền admin (phiên cũ, từ trước khi cửa này từ chối học viên): đưa về dashboard học viên ở tên miền chính NGAY Ở MÁY CHỦ. Để AuthGuard

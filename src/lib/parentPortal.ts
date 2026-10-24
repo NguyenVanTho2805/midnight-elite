@@ -19,3 +19,13 @@ export function generatePortalToken(): string {
 export function isValidPortalToken(s: unknown): s is string {
   return typeof s === "string" && /^[0-9a-f]{32}$/.test(s);
 }
+
+/**
+ * Câu hiện trên "Sổ của con" khi em KHÔNG có lớp nào đang học (active). Chỉ nhận trạng thái ghi danh, không nhận tên lớp/tiền.
+ * pending_consent ưu tiên trước suspended vì phụ huynh còn việc phải làm.
+ */
+export function emptyEnrollmentNotice(statuses: readonly string[]): string {
+  if (statuses.includes("pending_consent")) return "Lớp của con đang chờ anh/chị đồng ý theo quy định. Anh/chị liên hệ gia sư để hoàn tất.";
+  if (statuses.includes("suspended")) return "Lớp của con đang tạm dừng. Anh/chị liên hệ gia sư để biết thêm.";
+  return "Em chưa ghi danh lớp nào.";
+}

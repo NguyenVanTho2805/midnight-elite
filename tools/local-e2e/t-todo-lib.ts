@@ -1,14 +1,16 @@
 import { buildTodoItems } from "@/lib/tutorTodo";
 import { check, section, done } from "./h";
-const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0 };
+const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0 };
 section("buildTodoItems");
 check("không việc nào → rỗng", buildTodoItems(zero).length === 0);
 const items = buildTodoItems({ ...zero, draftInvoices: 9, classReports: 3, bankPending: 1, ungraded: 5, needBankCheck: 2 });
-check("chỉ hiện việc có thật (5 trong 9)", items.length === 5, items.map(i => i.key));
+check("chỉ hiện việc có thật (5 trong 10)", items.length === 5, items.map(i => i.key));
 check("việc khẩn (bank, check) đứng trước dù số nhỏ hơn", items.slice(0, 2).every(i => i.urgent) && items[0].key === "check" && items[1].key === "bank", items.map(i => i.key));
 check("cùng nhóm: nhiều trước (ungraded 5 > reports 3 > draft 9? không — sắp theo count giảm)", items.slice(2).map(i => i.count).join() === "9,5,3", items.slice(2).map(i => i.count));
 const sch = buildTodoItems({ ...zero, lateAbsences: 2, remindersDue: 7, makeupExpiring: 1 });
 check("báo nghỉ sát giờ là việc khẩn, đứng đầu", sch[0].key === "absence" && sch[0].urgent && sch[0].href === "/lop-cua-toi/lich", sch.map(i => i.key));
 check("tin nhắc + buổi bù sắp hết hạn là việc thường, nhiều trước", sch.slice(1).map(i => i.key).join() === "reminders,makeup", sch.map(i => i.key));
 check("mỗi việc có đường dẫn", items.every(i => i.href.startsWith("/lop-cua-toi")));
+const un = buildTodoItems({ ...zero, unmarkedSessions: 4, draftInvoices: 2 });
+check("ĐX-01: buổi chưa điểm danh là việc thường, nhiều trước phiếu nháp, dẫn tới danh sách lớp", un.length === 2 && un[0].key === "unmarked" && !un[0].urgent && un[0].count === 4 && un[0].href === "/lop-cua-toi/lop" && un[1].key === "draft", un.map(i => i.key));
 done();

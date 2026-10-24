@@ -3,8 +3,12 @@
 // KiN chỉ gợi ý; gia sư là người quyết định từng dòng. Không bao giờ ghi "đã gửi" (KiN không biết tin có đi thật hay không).
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { KinButton, kinButtonClass } from "@/components/kin";
+import BrandCard from "./BrandCard";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, useNotify } from "@/components/tutor/shared";
+import { mediaProgressLine } from "@/lib/classRecordings";
 import { EMPTY_UNMET_TEXT, MAX_UNMET_ITEMS, UNMET_TEXT_MAX, fmtScore, renderReportText, type SubjectMonthMetrics, type UnmetItem } from "@/lib/monthlyReport";
 import { addDaysKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
@@ -16,7 +20,8 @@ interface Detail {
   yearMonth: string;
   student: { id: string; name: string; parentName: string | null; parentPhone: string | null };
   subjects: SubjectMonthMetrics[]; suggested: UnmetItem[]; items: UnmetItem[]; hasDraft: boolean;
-  report: { approved: boolean; approvedAt: string | null; zaloOpenedAt: string | null; approvedItems: UnmetItem[] | null };
+  report: { approved: boolean; approvedAt: string | null; zaloOpenedAt: string | null; approvedItems: UnmetItem[] | null; brandedAt: string | null };
+  canBrand: boolean; hasBrand: boolean;
   text: string;
 }
 
@@ -28,6 +33,7 @@ const TONE: Record<string, "ok" | "wait" | "neutral"> = { xong: "ok", cho: "wait
 
 export default function BaoCaoClient() {
   const notify = useNotify();
+  const router = useRouter();
   const [ym, setYm] = useState(() => vnDateKeyOf(new Date()).slice(0, 7));
   const [list, setList] = useState<List | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +43,7 @@ export default function BaoCaoClient() {
   const [items, setItems] = useState<UnmetItem[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [brandSaved, setBrandSaved] = useState(false); // vừa cài thương hiệu: báo cáo đang mở không cần tải lại (giữ phần gia sư đang sửa dở)
   const [zalo, setZalo] = useState<string | null>(null);
   // PH-213/216: gửi vào chat riêng (có điểm, có điều chưa đạt) hoặc nhóm Zalo lớp (chỉ báo "đã gửi riêng", không điểm, không tên em).
   const [zaloTarget, setZaloTarget] = useState<"private" | "group">("private");
@@ -103,6 +110,15 @@ export default function BaoCaoClient() {
     notify.ok("Đã gỡ khỏi Sổ của con.");
     void loadDetail(detail.student.id, ym); void loadList(ym);
   }
+  // KiN Pro F3: tạo bản in có thương hiệu (đóng băng thương hiệu vào báo cáo) rồi mở trang in. Free khi cổng bật không thấy nút này.
+  async function makeBranded() {
+    if (!detail) return;
+    setBusy("branded");
+    const r = await callApi(`/api/tutor/monthly-reports/${detail.student.id}/branded?yearMonth=${ym}`, { method: "POST" });
+    setBusy(null);
+    if (!r.ok) { notify.err(r.data.error ?? "Không tạo được bản in có thương hiệu"); return; }
+    router.push(`/lop-cua-toi/bao-cao-thang/in/${detail.student.id}?yearMonth=${ym}`);
+  }
   async function openZaloNow() {
     if (!detail || zalo === null) return;
     const res = await openZalo({ text: zalo, phone: zaloTarget === "private" ? detail.student.parentPhone : null });
@@ -137,6 +153,8 @@ export default function BaoCaoClient() {
           <KinButton variant="secondary" disabled={ym >= currentYm} onClick={() => changeMonth(shiftMonth(ym, 1))}>Tháng sau →</KinButton>
         </div>
       </header>
+
+      <BrandCard onSaved={() => setBrandSaved(true)} />
 
       <p className="text-sm mb-4 rounded-xl p-3" style={{ ...CARD_STYLE, color: "var(--kin-chu-phu)" }}>
         Nỗ lực và Năng lực luôn là <b>hai con số riêng</b>, không gộp, không xếp hạng. Mục <b>Điều chưa đạt tháng này</b> luôn có trong báo cáo gửi phụ huynh — KiN gợi ý sẵn, bạn đọc và sửa trước khi duyệt.
@@ -192,7 +210,7 @@ export default function BaoCaoClient() {
                             <tbody>
                               {detail.subjects.map(s => (
                                 <tr key={s.courseId} style={{ borderTop: "1px solid var(--kin-vien-nhat)", color: "var(--kin-chu-chinh)" }}>
-                                  <th scope="row" className="text-left font-semibold py-2 pr-3">{s.courseName}</th>
+                                  <th scope="row" className="text-left font-semibold py-2 pr-3">{s.courseName}{mediaProgressLine(s.media) && <span className="block text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>Học liệu trên KiN: {mediaProgressLine(s.media)}</span>}</th>
                                   <td className="py-2 pr-3">{s.attendance.ratio === null ? "chưa có buổi điểm danh" : `${Math.round(s.attendance.ratio * 100)}% (${s.attendance.sessions} buổi)`}</td>
                                   <td className="py-2 pr-3">{s.homework.assigned === 0 ? "không giao bài" : `${s.homework.onTime}/${s.homework.assigned}`}</td>
                                   <td className="py-2 pr-3">{s.effort === null ? "chưa đo được" : `${s.effort}/10`}</td>
@@ -244,6 +262,20 @@ export default function BaoCaoClient() {
                           )}
                           {approved && <KinButton variant="secondary" loading={busy === "unapprove"} onClick={() => void unapprove()}>Gỡ khỏi Sổ của con</KinButton>}
                         </div>
+                        {approved && (
+                          <div className="flex gap-2 flex-wrap items-center" role="group" aria-label="Bản in">
+                            <Link href={`/lop-cua-toi/bao-cao-thang/in/${detail.student.id}?yearMonth=${ym}&mau=kin`} className={kinButtonClass("secondary")}>In / PDF (mẫu KiN)</Link>
+                            {detail.report.brandedAt ? (
+                              <Link href={`/lop-cua-toi/bao-cao-thang/in/${detail.student.id}?yearMonth=${ym}`} className={kinButtonClass("secondary")}>In bản có thương hiệu</Link>
+                            ) : detail.canBrand && !detail.hasBrand && !brandSaved ? (
+                              <span className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Cài tên và màu ở thẻ “Thương hiệu giấy tờ” phía trên để tạo bản in có thương hiệu.</span>
+                            ) : detail.canBrand ? (
+                              <KinButton variant="secondary" loading={busy === "branded"} onClick={() => void makeBranded()}>Tạo bản in có thương hiệu</KinButton>
+                            ) : (
+                              <span className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Bản in có thương hiệu: có trong <Link href="/lop-cua-toi/goi" className="underline" style={{ color: "var(--kin-nhan-link)" }}>KiN Pro</Link>. Mẫu KiN vẫn in miễn phí.</span>
+                            )}
+                          </div>
+                        )}
                         {approved && (
                           <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>
                             Đã duyệt lúc {vnHm(detail.report.approvedAt!)} {vnDm(detail.report.approvedAt!)}.

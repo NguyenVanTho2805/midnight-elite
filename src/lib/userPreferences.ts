@@ -3,6 +3,10 @@
 // bao giờ ném lỗi làm hỏng trang), ghi thì nghiêm (khoá lạ hay sai kiểu → từ chối).
 import { KIN_THEMES, KIN_MODES, type KinTheme, type KinMode } from "@/lib/kinTheme";
 import { parseRail, type RailState } from "@/lib/railState";
+import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
+import { readPushPrefs, type PushTypes } from "@/lib/pushRules";
+import { readProfilePrefs, type TutorProfilePrefs } from "@/lib/tutorVisibility";
+import { patchCalendarPrefs, readCalendarPrefs, type CalendarPrefs } from "@/lib/sessionBook";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -23,7 +27,7 @@ export const TUTOR_MODULES: readonly TutorModuleDef[] = [
   { key: "hop-viec", label: "Hộp việc",  href: "/lop-cua-toi",                          always: false, hint: "Việc cần xử lý: đối soát, báo cáo, bài chưa chấm…" },
   { key: "lich",     label: "Lịch",      href: "/lop-cua-toi/lich",                     always: true,  hint: "Lịch tuần, nhắc lịch, báo nghỉ sát giờ" },
   { key: "lop",      label: "Lớp",       href: "/lop-cua-toi/lop",                      always: false, hint: "Danh sách lớp, học viên, mã mời" },
-  { key: "bai-kt",   label: "Bài KT",    href: "/admin/thi-thu",                        always: false, hint: "Đề thi và bài kiểm tra" },
+  { key: "bai-kt",   label: "Bài tập",   href: "/lop-cua-toi/bai-tap",                  always: false, hint: "Bài tập, đề thi và bài kiểm tra" },
   { key: "thu-vien", label: "Thư viện",  href: "/thu-vien",                             always: false, hint: "Bản ghi và tài liệu của các lớp bạn dạy" },
   { key: "hoc-phi",  label: "Học phí",   href: "/lop-cua-toi/hoc-phi",                  always: true,  hint: "Phiếu học phí và đối soát chuyển khoản" },
 ];
@@ -39,7 +43,29 @@ export interface UserPreferences {
   reminders?: { parent: boolean; student: boolean };
   /** PH-215 Kết nối: `showZalo` hiện số Zalo trên hồ sơ công khai (TẮT sẵn vì zalo.me/<số> để lộ số); `messenger` là tên trang m.me. */
   connections?: { showZalo?: boolean; messenger?: string; groups?: string[] };
+  /**
+   * ĐX-06: khu vực / hình thức / trường + bằng cấp / giá tham khảo của gia sư (tự khai). CHỈ ghi được qua PUT /api/users/me/tutor-profile
+   * (có kiểm dữ liệu riêng), KHÔNG qua API giao diện này: `applyPreferencesPatch` từ chối khoá "teaching" nhưng GIỮ nguyên giá trị đang có,
+   * nên đổi chủ đề hay module không làm mất khu vực đã khai.
+   */
+  teaching?: TutorTeaching;
+  /**
+   * ĐX-02: công tắc từng LOẠI thông báo đẩy của gia sư (vắng = dùng mặc định của loại đó). Như `teaching`, chỉ ghi qua API riêng
+   * (PUT /api/push/settings, có kiểm dữ liệu và khoá giao dịch `prefsLockKey`); API giao diện từ chối khoá "push" nhưng giữ nguyên giá trị đang có.
+   * Danh sách thiết bị đã bật nằm ở bảng push_subscriptions, không nằm ở đây.
+   */
+  push?: { types: Partial<PushTypes> };
+  /**
+   * NC2-022: công tắc Hiện / Ẩn hồ sơ công khai (`profile.hidden`). Vắng = HIỆN. Như `teaching`, chỉ ghi qua PUT /api/users/me/tutor-profile
+   * (khoá giao dịch `prefsLockKey`); API giao diện từ chối khoá "profile" nhưng giữ nguyên giá trị đang có.
+   */
+  profile?: TutorProfilePrefs;
+  /** LI-03: bộ lọc hiển thị Lịch dạy — ẩn buổi đã huỷ, và lớp đang lọc (vắng = tất cả lớp, hiện cả buổi huỷ). */
+  calendar?: CalendarPrefs;
 }
+
+/** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
+export const prefsLockKey = (userId: string) => `prefs:${userId}`;
 
 export const MAX_GROUPS = 20;
 export const GROUP_NAME_MAX = 60;
@@ -100,6 +126,13 @@ export function readPreferences(raw: unknown): UserPreferences {
     if (gs && gs.length) c.groups = gs;
     if (Object.keys(c).length) out.connections = c;
   }
+  const teaching = readTeaching(raw.teaching);
+  if (teaching) out.teaching = teaching;
+  const push = readPushPrefs(raw.push);
+  if (push) out.push = push;
+  const profile = readProfilePrefs(raw.profile);
+  if (profile) out.profile = profile;
+  if (isObj(raw.calendar)) { const c = readCalendarPrefs(raw.calendar); if (c.hideCancelled || c.courseId) out.calendar = c; }
   return out;
 }
 
@@ -170,6 +203,13 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
           } else return { ok: false, error: `connections không có "${ck.slice(0, 40)}"` };
         }
         if (Object.keys(c).length) next.connections = c; else delete next.connections;
+        break;
+      }
+      case "calendar": {
+        if (v === null) { delete next.calendar; break; }
+        const c = patchCalendarPrefs(next.calendar ?? { hideCancelled: false, courseId: null }, v);
+        if (!c.ok) return c;
+        if (c.value.hideCancelled || c.value.courseId) next.calendar = c.value; else delete next.calendar;
         break;
       }
       default:

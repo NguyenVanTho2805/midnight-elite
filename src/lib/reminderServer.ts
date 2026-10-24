@@ -8,11 +8,12 @@
 import { prisma } from "@/lib/prisma";
 import {
   absenceDeadline, buildReminderMessage, dueReminderKinds, isMakeupExpiringSoon, MAKEUP_WARN_DAYS,
-  reminderPlan, tutorTitle, vnDateKeyOf, addDaysKey, type ReminderKind, type ReminderRecipient,
+  reminderPlan, tutorTitle, vnDateKeyOf, addDaysKey, instantOf, parseHm, type ReminderKind, type ReminderRecipient,
 } from "@/lib/classSessions";
 import { applyChanges } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 import { readPreferences, reminderChannels } from "@/lib/userPreferences";
+import { effectiveLocation, effectiveMode, isOffScheduleKind, resolveJoinUrl, type JoinSource, type SessionKind, type SessionMode } from "@/lib/sessionBook";
 
 export interface ReminderItem {
   recipient: ReminderRecipient;
@@ -48,7 +49,19 @@ export interface ScheduleOccurrence {
   startAt: string;
   endAt: string;
   started: boolean;
+  /** Link vào lớp HIỆU LỰC: riêng buổi > theo khung giờ > chung lớp (LI-17). */
   joinUrl: string | null;
+  joinSource: JoinSource | null;
+  /** LI-16: Online/Offline hiệu lực (riêng buổi thắng khung giờ) và địa chỉ khi offline. null = chưa chọn. */
+  mode: SessionMode | null;
+  location: string | null;
+  /** LI-02: màu gia sư chọn cho lớp (khoá "lop-NN"); null = suy từ mã lớp như cũ. */
+  color: string | null;
+  /** "regular" = theo lịch tuần; "extra"/"makeup"/"adhoc" = buổi lẻ/bù/phát sinh thêm nhanh (LI-11). */
+  kind: SessionKind;
+  /** BU-02: buổi đã được bấm "Đã dạy xong". `hasSession` = đã có bản ghi buổi (điểm danh/ghi chép). */
+  sessionState: "open" | "closed" | null;
+  hasSession: boolean;
   note: string | null;
   /** PH-216: link nhóm Zalo của lớp (nếu gia sư đã gắn ở Cài đặt → Kết nối). */
   zaloGroupUrl: string | null;
@@ -58,12 +71,15 @@ export interface ScheduleOccurrence {
   remindersDue: number;
 }
 
+/** AttendanceSession.date = 00:00 UTC của ngày VN. */
+const dayDate = (dateKey: string) => new Date(`${dateKey}T00:00:00Z`);
+
 export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey: string, now: Date) {
   const [me, courses] = await Promise.all([
     prisma.user.findUnique({ where: { id: tutorId }, select: { name: true, preferences: true } }),
     prisma.course.findMany({
       where: { ownerId: tutorId },
-      select: { id: true, name: true, zaloGroupUrl: true, classSchedules: { where: { active: true }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, note: true, joinUrl: true } } },
+      select: { id: true, name: true, zaloGroupUrl: true, calendarColor: true, classJoinUrl: true, classSchedules: { where: { active: true }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, note: true, joinUrl: true, mode: true, location: true } } },
     }),
   ]);
   const channels = reminderChannels(readPreferences(me?.preferences));
@@ -75,11 +91,21 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
   const ruleById = new Map(rules.map(r => [r.id, r]));
   const courseIds = courses.map(c => c.id);
 
+  // Bản ghi buổi trong cửa sổ: trạng thái chốt, hình thức/link riêng buổi (BU-02, LI-16, LI-17) và buổi lẻ/bù/phát sinh (LI-11).
+  const sessions = await prisma.attendanceSession.findMany({
+    where: { courseId: { in: courseIds }, date: { gte: dayDate(fromKey), lte: dayDate(toKey) } },
+    select: { id: true, courseId: true, date: true, state: true, mode: true, location: true, joinUrl: true, kind: true, startTime: true, endTime: true },
+  });
+  const sessionOf = new Map(sessions.map(x => [`${x.courseId}|${x.date.toISOString().slice(0, 10)}`, x]));
+  const colorOf = new Map(courses.map(c => [c.id, c.calendarColor]));
+  const classUrlOf = new Map(courses.map(c => [c.id, c.classJoinUrl]));
+
+  const needStudents = occs.length > 0 || sessions.some(x => isOffScheduleKind(x.kind));
   const ruleIds = occs.length === 0 ? [] : rules.map(r => r.id); // `in: []` → không truy vấn thừa dữ liệu
   const originalKeys = [...new Set(occs.map(o => o.originalDateKey))];
   const [enrollments, absences, logs] = await Promise.all([
     prisma.enrollment.findMany({
-      where: { courseId: { in: ruleIds.length ? courseIds : [] }, status: "active" },
+      where: { courseId: { in: needStudents ? courseIds : [] }, status: "active" },
       select: { courseId: true, user: { select: { id: true, name: true, phone: true, parentPhone: true } } },
     }),
     // Báo nghỉ / nhắc lịch khoá theo ngày GỐC; buổi dời có thể có ngày gốc ngoài cửa sổ nên tra theo tập ngày gốc của các buổi đang hiện.
@@ -105,6 +131,9 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
     const cName = courseName.get(o.courseId) ?? "";
     const plan = reminderPlan(o.startAt);
     const kinds = dueReminderKinds(o.startAt, now);
+    const sess = sessionOf.get(`${o.courseId}|${o.dateKey}`) ?? null;
+    const join = resolveJoinUrl({ sessionUrl: sess?.joinUrl, scheduleUrl: rule.joinUrl, classUrl: classUrlOf.get(o.courseId) });
+    const mode = effectiveMode({ sessionMode: sess?.mode, scheduleMode: rule.mode });
     const students: ScheduleStudent[] = (studentsOf.get(o.courseId) ?? [])
       .map(e => e.user)
       .sort((a, b) => a.name.localeCompare(b.name, "vi"))
@@ -122,7 +151,7 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
               reminders.push({
                 recipient, kind, due, openedAt: openedAt ? openedAt.toISOString() : null,
                 phone: recipient === "parent" ? u.parentPhone : u.phone,
-                message: buildReminderMessage({ kind, recipient, studentName: u.name, subject: cName, startAt: o.startAt, tutorName, joinUrl: rule.joinUrl, now }),
+                message: buildReminderMessage({ kind, recipient, studentName: u.name, subject: cName, startAt: o.startAt, tutorName, joinUrl: join?.url ?? null, now }),
               });
             }
           }
@@ -135,7 +164,10 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
       movedFrom: o.movedFrom ? { dateKey: o.movedFrom.dateKey, startAt: o.movedFrom.startAt.toISOString(), endAt: o.movedFrom.endAt.toISOString() } : null,
       change: o.change && o.change.id ? { id: o.change.id, kind: o.change.kind, reason: o.change.reason, zaloOpenedAt: o.change.zaloOpenedAt ? o.change.zaloOpenedAt.toISOString() : null } : null,
       startAt: o.startAt.toISOString(), endAt: o.endAt.toISOString(), started: o.startAt.getTime() <= now.getTime(),
-      joinUrl: rule.joinUrl, note: rule.note, zaloGroupUrl: groupUrlOf.get(o.courseId) ?? null,
+      joinUrl: join?.url ?? null, joinSource: join?.source ?? null,
+      mode, location: effectiveLocation({ mode, sessionLocation: sess?.location, scheduleLocation: rule.location }),
+      color: colorOf.get(o.courseId) ?? null, kind: "regular", sessionState: sess ? (sess.state === "closed" ? "closed" : "open") : null, hasSession: !!sess,
+      note: rule.note, zaloGroupUrl: groupUrlOf.get(o.courseId) ?? null,
       plan: {
         h24DueAt: plan.h24.dueAt.toISOString(), h24Shifted: plan.h24.shifted,
         h1DueAt: plan.h1 ? plan.h1.dueAt.toISOString() : null, h1SkipReason: plan.h1SkipReason,
@@ -146,6 +178,30 @@ export async function loadTutorSchedule(tutorId: string, fromKey: string, toKey:
       remindersDue: students.reduce((n, s) => n + s.reminders.filter(r => r.due && !r.openedAt).length, 0),
     };
   });
+  // LI-11: buổi lẻ / dạy bù / phát sinh (không có khung giờ tuần). Chỉ có nhắc lịch/báo nghỉ theo khung giờ nên các buổi này không có.
+  for (const x of sessions) {
+    if (!isOffScheduleKind(x.kind) || !x.startTime) continue;
+    const dk = x.date.toISOString().slice(0, 10);
+    const s = parseHm(x.startTime), e = parseHm(x.endTime);
+    if (s === null) continue;
+    const startAt = instantOf(dk, s), endAt = instantOf(dk, e !== null && e > s ? e : s);
+    const join = resolveJoinUrl({ sessionUrl: x.joinUrl, classUrl: classUrlOf.get(x.courseId) });
+    const mode = effectiveMode({ sessionMode: x.mode });
+    const plan = reminderPlan(startAt);
+    occurrences.push({
+      key: `extra:${x.id}`, scheduleId: `extra:${x.id}`, courseId: x.courseId, courseName: courseName.get(x.courseId) ?? "",
+      dateKey: dk, originalDateKey: dk, status: "scheduled", movedFrom: null, change: null,
+      startAt: startAt.toISOString(), endAt: endAt.toISOString(), started: startAt.getTime() <= now.getTime(),
+      joinUrl: join?.url ?? null, joinSource: join?.source ?? null,
+      mode, location: effectiveLocation({ mode, sessionLocation: x.location }),
+      color: colorOf.get(x.courseId) ?? null, kind: x.kind as SessionKind, sessionState: x.state === "closed" ? "closed" : "open", hasSession: true,
+      note: null, zaloGroupUrl: groupUrlOf.get(x.courseId) ?? null,
+      plan: { h24DueAt: plan.h24.dueAt.toISOString(), h24Shifted: plan.h24.shifted, h1DueAt: plan.h1 ? plan.h1.dueAt.toISOString() : null, h1SkipReason: plan.h1SkipReason, absenceDeadlineAt: absenceDeadline(startAt).toISOString() },
+      students: (studentsOf.get(x.courseId) ?? []).map(e => e.user).sort((a, b) => a.name.localeCompare(b.name, "vi")).map(u => ({ id: u.id, name: u.name, absence: null, reminders: [] })),
+      pendingAbsences: 0, remindersDue: 0,
+    });
+  }
+  occurrences.sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt) || a.key.localeCompare(b.key));
   return { occurrences, channels };
 }
 

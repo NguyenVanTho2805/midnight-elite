@@ -7,7 +7,7 @@ import TutorProfileHeader, { type ProfileHeaderStats, type ProfileHeaderTutor } 
 
 type State = { kind: "loading" } | { kind: "ready"; tutor: ProfileHeaderTutor; stats: ProfileHeaderStats } | { kind: "hidden" } | { kind: "error" };
 
-export default function PublicProfilePreview({ tutorId, reason }: { tutorId: string; /** lý do chưa công khai (do máy chủ biết): "chua-duyet" | "bi-khoa" | null = đang công khai */ reason: "chua-duyet" | "bi-khoa" | null }) {
+export default function PublicProfilePreview({ tutorId, reason, hidden = false }: { tutorId: string; /** NC2-022: gia sư đang chọn Ẩn — vẫn xem trước được (chỉ chính chủ), kèm dòng "Hồ sơ đang ẩn" */ hidden?: boolean; /** lý do chưa công khai (do máy chủ biết): "chua-duyet" | "bi-khoa" | null = đang công khai */ reason: "chua-duyet" | "bi-khoa" | null }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   useEffect(() => {
     if (reason) return;
@@ -15,7 +15,7 @@ export default function PublicProfilePreview({ tutorId, reason }: { tutorId: str
     (async () => {
       await Promise.resolve();
       try {
-        const r = await fetch(`/api/tutors/${tutorId}`, { credentials: "same-origin", cache: "no-store" });
+        const r = await fetch(`/api/tutors/${tutorId}?preview=1`, { credentials: "same-origin", cache: "no-store" });
         if (off) return;
         if (r.status === 404) { setState({ kind: "hidden" }); return; }
         if (!r.ok) { setState({ kind: "error" }); return; }
@@ -24,7 +24,7 @@ export default function PublicProfilePreview({ tutorId, reason }: { tutorId: str
       } catch { if (!off) setState({ kind: "error" }); }
     })();
     return () => { off = true; };
-  }, [tutorId, reason]);
+  }, [tutorId, reason, hidden]);
 
   const head = <h2 className="text-sm font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Hồ sơ công khai của bạn trông thế này</h2>;
   if (reason) {
@@ -45,9 +45,10 @@ export default function PublicProfilePreview({ tutorId, reason }: { tutorId: str
       {state.kind === "hidden" && <p role="status" className="rounded-xl p-4 text-sm" style={{ background: "var(--kin-nen-bang)", border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>Hồ sơ của bạn hiện chưa công khai.</p>}
       {state.kind === "ready" && (
         <>
+          {hidden && <p role="status" data-testid="xem-truoc-dang-an" className="rounded-xl p-3 mb-2 text-sm font-semibold" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>Hồ sơ đang ẩn — khách không thấy trang này. Đây là bản xem trước của riêng bạn.</p>}
           <TutorProfileHeader tutor={state.tutor} stats={state.stats} as="h2" />
           <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
-            Giới thiệu và môn dạy sửa ở form bên dưới. Số buổi, số lớp lấy từ sổ lớp nên bạn không tự sửa được. <Link href={`/mentor/${tutorId}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Mở trang công khai</Link>.
+            Giới thiệu và môn dạy sửa ở form bên dưới. Số buổi, số lớp lấy từ sổ lớp (không có ô nhập tay); một buổi chỉ được tính khi đã diễn ra và có ít nhất 1 em có mặt. Nhãn “Có dạy trong 30 ngày qua” hiện khi có ít nhất 1 buổi như vậy trong 30 ngày gần nhất. {hidden ? "Trang công khai đang báo không tìm thấy vì hồ sơ đang ẩn." : <Link href={`/mentor/${tutorId}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Mở trang công khai</Link>}
           </p>
         </>
       )}

@@ -5,6 +5,7 @@ let seq = 100;
 async function setup(T: any, yearMonth: string, s: any, courses: any[], sessions: number[]) {
   for (let i = 0; i < courses.length; i++) await prisma.monthlyCourseFee.upsert({ where: { courseId_yearMonth: { courseId: courses[i].id, yearMonth } }, create: { courseId: courses[i].id, yearMonth, sessionCount: sessions[i], updatedBy: T.id }, update: {} });
 }
+function r2ratio(r: any) { return r.json.totals.sentDue !== undefined && r.json.totals.sentDue < 1_000_000; }
 (async () => {
   await wipe();
   const T = await mkTutor("Cô Lan"), T2 = await mkTutor("Thầy Khác"), sup = await mkSuper("Admin");
@@ -83,5 +84,18 @@ async function setup(T: any, yearMonth: string, s: any, courses: any[], sessions
 
   const r2 = await api("GET", "/api/users/me/revenue", { as: T2 });
   check("T2 chỉ thấy 350.000 của mình", r2.json.totals.collected === 350_000, r2.json.totals);
+
+  section("PT-01 — 4 thẻ KPI khớp truy vấn gốc, 0 sai lệch");
+  const rawInv = await prisma.tuitionInvoice.findMany({ where: { tutorId: T.id, status: { not: "cancelled" } } });
+  const rawDraft = rawInv.filter(i => i.status === "draft").reduce((a, i) => a + i.amountDue, 0);
+  const rawSent = rawInv.filter(i => ["sent", "parent_reported", "partial", "paid"].includes(i.status));
+  const rawDue = rawSent.reduce((a, i) => a + i.amountDue, 0), rawPaid = rawSent.reduce((a, i) => a + Math.min(i.paidAmount, i.amountDue), 0);
+  const rawOpen = rawInv.filter(i => ["sent", "parent_reported", "partial"].includes(i.status)).reduce((a, i) => a + Math.max(0, i.amountDue - i.paidAmount), 0);
+  const rawColl = (await prisma.bankTransaction.aggregate({ where: { tutorId: T.id, status: { in: ["matched", "resolved"] }, appliedAmount: { gt: 0 } }, _sum: { appliedAmount: true } }))._sum.appliedAmount ?? 0;
+  check("Đã thu = tổng appliedAmount gốc", t.collected === rawColl, { api: t.collected, raw: rawColl });
+  check("Chưa thu = phần còn lại phiếu mở gốc", t.receivable === rawOpen, { api: t.receivable, raw: rawOpen });
+  check("Tiềm năng = tổng phiếu nháp gốc", t.draftAmount === rawDraft, { api: t.draftAmount, raw: rawDraft });
+  check("Tỷ lệ thu khớp đã đóng / phải thu gốc", t.sentDue === rawDue && t.sentPaid === rawPaid && t.collectionRatePct === (rawDue > 0 ? Math.round(rawPaid / rawDue * 100) : null), { t, rawDue, rawPaid });
+  check("tỷ lệ cho T2 chỉ tính phiếu của T2", r2ratio(await api("GET", "/api/users/me/revenue", { as: T2 })));
   await done();
 })().catch(e => { console.error("TEST CRASH", e); process.exit(1); });

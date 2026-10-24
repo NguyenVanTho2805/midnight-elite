@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
 import { correctionSummary } from "@/lib/examCorrectionServer";
+import { scoreMultiSelect } from "@/lib/quizQuestion";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -30,10 +33,15 @@ export async function GET(
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const canSeeAnswers =
+    const canSeeByExam =
       exam.answerVisibility === "after_submit" ? true :
       exam.answerVisibility === "after_exam_ends" ? hasExamWindowEnded(exam) :
       false; // "never"
+    // QZ-08/11/12: đề đang GIỮ điểm (examHold — một nguồn) và lượt này chưa được gia sư công bố → không điểm, không điểm/nhận xét tự luận,
+    // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng cài đặt của đề).
+    const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), canSeeByExam);
+    const held = vis.pendingManual;
+    const canSeeAnswers = vis.showAnswers;
 
     const examQuestions = await prisma.examQuestion.findMany({
       where: { examId: exam.id },
@@ -58,8 +66,8 @@ export async function GET(
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           textAnswer: textAnswers[q.id] ?? null,
-          pointsAwarded: graded?.pointsAwarded ?? null,
-          teacherComment: graded?.teacherComment ?? null,
+          pointsAwarded: vis.showEssayPoints ? (graded?.pointsAwarded ?? null) : null,
+          teacherComment: vis.showEssayPoints ? (graded?.teacherComment ?? null) : null,
         };
       }
 
@@ -75,6 +83,18 @@ export async function GET(
           };
         });
         return { id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel, options };
+      }
+
+      if (q.type === "MC_MULTI") {
+        // QZ-03: đúng khi chọn đủ và chỉ chọn các ô đúng. Chưa nằm trong luồng Chữa bài (CORRECTABLE_TYPES chỉ có MC và Trả lời ngắn).
+        const picked = q.options.filter(o => boolAnswersByOption[o.id] === true).map(o => o.id);
+        const wasCorrect = scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), picked, q.points) > 0;
+        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+        return {
+          id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
+          options: q.options.map(o => ({ id: o.id, text: o.text, picked: picked.includes(o.id), isCorrect: reveal ? o.isCorrect : null })),
+          explanation: reveal ? q.explanation : null,
+        };
       }
 
       if (q.type === "SHORT_ANSWER") {
@@ -113,7 +133,9 @@ export async function GET(
 
     return NextResponse.json({
       attemptId: attempt.id,
-      score: attempt.score,
+      score: vis.showScore ? attempt.score : null,
+      held,
+      pendingManual: vis.pendingManual,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
       // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).

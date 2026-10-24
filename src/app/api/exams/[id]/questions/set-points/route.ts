@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockOldEditIfLocked } from "@/lib/quizServer";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -22,6 +23,9 @@ export async function PUT(
     if (!ownsResource(auth, exam.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
     }
+    // QZ-07: đề đã có người làm (hoặc đã bị phiên bản mới thay) thì KHÔNG sửa đè — gia sư tạo phiên bản mới.
+    const locked = await blockOldEditIfLocked(examId);
+    if (locked) return locked;
 
     const { totalPoints } = await req.json() as { totalPoints?: number };
     if (typeof totalPoints !== "number" || !Number.isFinite(totalPoints) || totalPoints <= 0) {

@@ -7,6 +7,7 @@ import {
   Edit, Upload, NotificationAlert, ChartBar,
 } from "griddy-icons";
 import { useAuth, hasPermission, PERMISSIONS } from "@/contexts/AuthContext";
+import HomNay from "@/components/admin/HomNay";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 // Dạng rút gọn của GET /api/admin/analytics (BE-074): doanh thu = VIP gia sư.
@@ -203,6 +204,7 @@ export default function AdminDashboardPage() {
   const [callTarget,     setCallTarget]     = useState<ApiStudent | null>(null);
   const [showBulkRemind, setShowBulkRemind] = useState(false);
   const [bulkMsg,        setBulkMsg]        = useState("");
+  const [bulkCourse,     setBulkCourse]     = useState(""); // QT-07: nhắc hàng loạt theo MỘT lớp
   const [bulkSending,    setBulkSending]    = useState(false);
   const [bulkToast,      setBulkToast]      = useState<string | null>(null);
 
@@ -254,6 +256,14 @@ export default function AdminDashboardPage() {
     students.length === 0 ? 0 : students.reduce((s, u) => s + u.gpa, 0) / students.length,
   [students]);
 
+  // QT-07: các lớp có học sinh, kèm số học sinh, để chọn lớp trước khi nhắc hàng loạt.
+  const classOptions = useMemo(() => {
+    const m = new Map<string, { name: string; n: number }>();
+    for (const s of students) for (const e of s.enrollments) m.set(e.courseId, { name: e.courseName, n: (m.get(e.courseId)?.n ?? 0) + 1 });
+    return [...m.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [students]);
+  const bulkTarget = classOptions.find(c => c.id === bulkCourse) ?? null;
+
   const activatedCount = useMemo(() => students.filter(s => s.enrollments.length > 0).length, [students]);
   const inactiveCount  = useMemo(() => students.length - activatedCount, [students, activatedCount]);
   const lowGpaCount    = useMemo(() => students.filter(s => s.gpa < 7).length, [students]);
@@ -283,6 +293,7 @@ export default function AdminDashboardPage() {
 
 
   async function sendBulkRemind() {
+    if (!bulkCourse) { setBulkToast("✗ Chọn một lớp trước khi gửi"); setTimeout(() => setBulkToast(null), 3000); return; }
     const msg = bulkMsg.trim() || BULK_DEFAULT;
     setBulkSending(true);
     try {
@@ -290,7 +301,7 @@ export default function AdminDashboardPage() {
         method:      "POST",
         credentials: "same-origin",
         headers:     { "Content-Type": "application/json" },
-        body:        JSON.stringify({ message: msg }),
+        body:        JSON.stringify({ message: msg, courseId: bulkCourse }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -335,6 +346,9 @@ export default function AdminDashboardPage() {
           {isSuper ? "Cấp 1 - Super Admin" : isTeacher ? "Giáo viên" : "Cấp 2 - Content Admin"}
         </div>
       </div>
+
+      {/* ── QT-04: việc cần làm hôm nay (đếm theo quyền) ───────────────────── */}
+      <HomNay />
 
       {/* ── Health cards ────────────────────────────────────────────────────── */}
       <div className={`grid gap-4 ${canViewRevenue ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-2"}`}>
@@ -474,7 +488,7 @@ export default function AdminDashboardPage() {
               style={showBulkRemind
                 ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid color-mix(in srgb, var(--kin-tt-cham-cho) 40%, transparent)" }
                 : { background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-tren-nut-chinh)" }}>
-              Nhắc nhở tất cả
+              Nhắc nhở theo lớp
             </button>
             <Link href="/admin/hoc-sinh" className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
               Xem tất cả →
@@ -488,6 +502,13 @@ export default function AdminDashboardPage() {
             <p className="text-xs font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>
               Gửi tới <strong>toàn bộ {students.length} học sinh</strong> trong hệ thống (không chỉ nhóm GPA thấp)
             </p>
+            <label className="block text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Lớp nhận nhắc
+              <select value={bulkCourse} onChange={e => setBulkCourse(e.target.value)} data-testid="nhac-chon-lop"
+                className="block w-full mt-1 px-3 min-h-11 rounded-xl text-sm" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
+                <option value="">Chọn một lớp…</option>
+                {classOptions.map(c => <option key={c.id} value={c.id}>{c.name} · {c.n} học sinh</option>)}
+              </select>
+            </label>
             <textarea rows={3} value={bulkMsg} onChange={e => setBulkMsg(e.target.value)}
               placeholder={BULK_DEFAULT}
               className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none"
@@ -498,10 +519,10 @@ export default function AdminDashboardPage() {
                 style={{ background: "var(--kin-nen-bang)", boxShadow: "var(--kin-bong-the)", color: "var(--kin-chu-mo)" }}>
                 Hủy
               </button>
-              <button onClick={sendBulkRemind} disabled={bulkSending}
+              <button onClick={sendBulkRemind} disabled={bulkSending || !bulkCourse}
                 className="px-4 py-1.5 rounded-xl text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-60 cursor-pointer transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
                 style={{ background: "var(--kin-tt-cham-cho)" }}>
-                {bulkSending ? "Đang gửi..." : `Gửi tới tất cả (${students.length} học sinh)`}
+                {bulkSending ? "Đang gửi..." : bulkTarget ? `Gửi tới lớp này (${bulkTarget.n} học sinh)` : "Chọn lớp để gửi"}
               </button>
             </div>
           </div>

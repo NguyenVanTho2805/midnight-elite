@@ -1,4 +1,5 @@
 import { normalizeHint } from "@/lib/examCorrection";
+import { blockOldEditIfLocked } from "@/lib/quizServer";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
@@ -21,6 +22,9 @@ export async function PUT(
     if (!ownsResource(auth, exam.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
     }
+    // QZ-07: đề đã có người làm (hoặc đã bị phiên bản mới thay) thì KHÔNG sửa đè — gia sư tạo phiên bản mới.
+    const locked = await blockOldEditIfLocked(examId);
+    if (locked) return locked;
 
     const body = await req.json();
     const { text, type, imageUrl, points, explanation, hint, sectionLabel, sectionMinutes, options } = body as {
@@ -45,9 +49,9 @@ export async function PUT(
     if (!hintN.ok) return NextResponse.json({ error: "Gợi ý tối đa 1000 ký tự" }, { status: 400 });
 
     const question = await prisma.$transaction(async (tx) => {
-      await tx.examOption.deleteMany({ where: { questionId: qid } });
+      await tx.examOption.deleteMany({ where: { questionId: qid, question: { examId } } });
       return tx.examQuestion.update({
-        where: { id: qid },
+        where: { id: qid, examId }, // QZ-07: câu phải thuộc đúng đề trong đường dẫn
         data: {
           type: questionType,
           text: text.trim(),
@@ -97,8 +101,11 @@ export async function DELETE(
     if (!ownsResource(auth, exam.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
     }
+    // QZ-07: đề đã có người làm (hoặc đã bị phiên bản mới thay) thì KHÔNG sửa đè — gia sư tạo phiên bản mới.
+    const locked = await blockOldEditIfLocked(examId);
+    if (locked) return locked;
 
-    await prisma.examQuestion.delete({ where: { id: qid } });
+    await prisma.examQuestion.delete({ where: { id: qid, examId } }); // QZ-07: câu phải thuộc đúng đề trong đường dẫn
     return NextResponse.json({ success: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

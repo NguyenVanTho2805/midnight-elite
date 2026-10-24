@@ -2,7 +2,11 @@
 // trường hợp khác nằm ở đây để gia sư bấm quyết. Gợi ý theo số tiền chỉ là gợi ý.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
+import { KinButton, KinMoney } from "@/components/kin";
+import Link from "next/link";
+import { KinEmptyState } from "@/components/kin/EmptyState";
+import { kinButtonClass } from "@/components/kin/Button";
+import { ReverseDialog } from "./PaymentTools";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, copyText, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 
 interface InvView { id: string; code: string; yearMonth: string; studentName: string; amountDue: number; paidAmount: number; remaining: number; status: string }
@@ -25,6 +29,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [picker, setPicker] = useState<Tx | null>(null);
+  const [reverseId, setReverseId] = useState<string | null>(null); // HP-21
   const seq = useRef(0);
 
   const load = useCallback(async (all: boolean) => {
@@ -60,9 +65,9 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>
+        <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>
           KiN chỉ tự gạch phiếu khi đúng mã và đúng số tiền còn lại. Các khoản dưới đây cần bạn quyết.
         </p>
         <label className="flex items-center gap-2 text-sm min-h-[44px]" style={{ color: "var(--kin-chu-chinh)" }}>
@@ -71,29 +76,32 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
       </div>
 
       {loading ? (
-        <div className="space-y-2" aria-busy="true">{[0, 1].map(i => <div key={i} className="h-24 rounded-xl animate-pulse" style={CARD_STYLE} />)}</div>
+        <div className="space-y-3" aria-busy="true" aria-label="Đang tải hàng chờ">{[0, 1].map(i => <div key={i} className="h-[96px] rounded kin-skel kin-skel--soft" />)}</div>
       ) : failed ? (
-        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={CARD_STYLE}>
-          Không tải được hàng chờ. <button className="underline font-semibold" onClick={() => load(showAll)}>Thử lại</button>
+        <div role="alert" className="py-8 text-center text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+          Không tải được hàng chờ.{" "}
+          <button className="underline font-medium text-[var(--kin-nhan-link)] min-h-11 px-2" onClick={() => load(showAll)}>Thử lại</button>
         </div>
       ) : items.length === 0 ? (
-        <div role="status" className="rounded-xl p-8 text-center text-sm" style={{ ...CARD_STYLE, borderStyle: "dashed", color: "var(--kin-chu-phu)" }}>
-          {showAll ? "Chưa có khoản tiền nào." : "Không có khoản nào cần đối soát."}
-        </div>
+        <KinEmptyState title={showAll ? "Chưa có khoản tiền nào." : "Không có khoản nào cần đối soát."}
+          action={<Link href="/lop-cua-toi/hoc-phi" className={kinButtonClass("secondary")}>Xem phiếu học phí</Link>}>
+          Khoản tiền vào tài khoản nhận học phí sẽ hiện ở đây khi cần bạn quyết.
+        </KinEmptyState>
       ) : (
-        <ul className="space-y-2">
+        <ul className="border-t border-[var(--kin-vien-nhat)]">
           {items.map(tx => {
             const pending = tx.status === "pending";
             return (
-              <li key={tx.id} className="rounded-xl p-4" style={CARD_STYLE}>
+              <li key={tx.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <p className="text-xl font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(tx.amount)}</p>
+                    <p className="text-[22px] leading-7 font-medium tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}><KinMoney>{vnd(tx.amount)}</KinMoney></p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>{fmtTime(tx.occurredAt)}{tx.provider === "manual" ? " · ghi tay" : ""}</p>
                   </div>
                   <div className="text-right">
                     {pending
                       ? <Badge tone={tx.kind === "exact" ? "wait" : "bad"}>{tx.kindLabel}</Badge>
+                      : tx.status === "reversed" ? <Badge tone="neutral">Đã hoàn tác</Badge>
                       : <Badge tone="ok">{RESOLUTION[tx.resolution ?? ""] ?? "Đã xử lý"}</Badge>}
                   </div>
                 </div>
@@ -101,13 +109,17 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
 
                 {tx.invoice && (
                   <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }}>
-                    Phiếu <b>{tx.invoice.code}</b> · {tx.invoice.studentName} · {monthLabel(tx.invoice.yearMonth)} · còn lại <b>{vnd(tx.invoice.remaining)}</b> / {vnd(tx.invoice.amountDue)}
+                    Phiếu <b>{tx.invoice.code}</b> · {tx.invoice.studentName} · {monthLabel(tx.invoice.yearMonth)} · còn lại <b><KinMoney>{vnd(tx.invoice.remaining)}</KinMoney></b> / <KinMoney>{vnd(tx.invoice.amountDue)}</KinMoney>
                   </p>
+                )}
+
+                {(tx.status === "matched" || tx.status === "resolved") && tx.invoice && (
+                  <div className="mt-3"><KinButton variant="secondary" onClick={() => setReverseId(tx.id)}>Hoàn tác khoản này…</KinButton></div>
                 )}
 
                 {pending && (tx.kind === "no_code" || tx.kind === "unknown_code") && tx.suggestions.length > 0 && (
                   <div className="mt-3 rounded-lg p-3" style={{ border: "1px dashed var(--kin-vien-thuong)" }}>
-                    <p className="text-xs font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Gợi ý: phiếu chưa đóng có cùng số tiền (KiN không tự ghép)</p>
+                    <p className="text-xs font-medium mb-1" style={{ color: "var(--kin-chu-phu)" }}>Gợi ý: phiếu chưa đóng có cùng số tiền (KiN không tự ghép)</p>
                     <ul className="space-y-1">
                       {tx.suggestions.map(s => (
                         <li key={s.id} className="flex items-center justify-between gap-2 flex-wrap text-sm">
@@ -141,6 +153,7 @@ export default function ReconcileTab({ onCount }: { onCount: (n: number) => void
         </ul>
       )}
 
+      {reverseId && <ReverseDialog txId={reverseId} onClose={() => setReverseId(null)} onDone={() => load(showAll)} />}
       {picker && <PickInvoice tx={picker} onClose={() => setPicker(null)}
         onPick={async (inv, excess) => { if (await resolve(picker, { action: "match_invoice", invoiceId: inv.id, ...(excess ? { excess } : {}) }, "Đã ghép vào phiếu.")) setPicker(null); }} />}
     </div>
@@ -180,7 +193,7 @@ function PickInvoice({ tx, onClose, onPick }: { tx: Tx; onClose: () => void; onP
               {shown.map(i => (
                 <li key={i.id}>
                   <button className="w-full text-left px-3 py-2 rounded-lg min-h-[44px]" style={CARD_STYLE} onClick={() => setChosen(i)}>
-                    <span className="font-semibold">{i.studentName}</span> · {monthLabel(i.yearMonth)} · <span className="font-mono text-xs">{i.code}</span>
+                    <span className="font-medium">{i.studentName}</span> · {monthLabel(i.yearMonth)} · <span className="font-mono text-xs">{i.code}</span>
                     <span className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại {vnd(i.remaining)}</span>
                   </button>
                 </li>
@@ -191,7 +204,7 @@ function PickInvoice({ tx, onClose, onPick }: { tx: Tx; onClose: () => void; onP
         <p className="text-sm mb-3"><b>{chosen.studentName}</b> · {monthLabel(chosen.yearMonth)} · còn lại {vnd(chosen.remaining)}</p>
         {over > 0 && (
           <fieldset className="mb-3 text-sm">
-            <legend className="font-semibold mb-1">Khoản này dư {vnd(over)} so với phần còn lại — xử lý thế nào?</legend>
+            <legend className="font-medium mb-1">Khoản này dư {vnd(over)} so với phần còn lại — xử lý thế nào?</legend>
             {([["credit", "Trừ vào tháng sau"], ["refunded", "Đã trả lại phụ huynh"]] as const).map(([v, l]) => (
               <label key={v} className="flex items-center gap-2 py-1 min-h-[44px]"><input type="radio" name="pick-excess" checked={excess === v} onChange={() => setExcess(v)} /> {l}</label>
             ))}

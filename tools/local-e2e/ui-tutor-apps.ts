@@ -52,17 +52,13 @@ async function applicant(name: string, emailVerified: boolean) {
   await page.getByText("Lý do: Cần xác thực email và bổ sung bằng cấp").waitFor({ timeout: 15000 });
   check("tab 'Đã từ chối' hiện lý do", true);
 
-  section("Tab trong /admin/quan-tri-vien");
+  // 24/10/2026 (QT-02): tab "Hồ sơ gia sư chờ duyệt" trong /admin/quan-tri-vien đã bỏ (duyệt gia sư chỉ còn MỘT cửa: hàng chờ kiểm duyệt). Test cũ khẳng định tab đó nên đổi sang khẳng định hành vi mới.
+  section("/admin/quan-tri-vien: không còn tab duyệt gia sư, có liên kết sang hàng chờ");
   await page.goto(`${ADMIN}/admin/quan-tri-vien`, { waitUntil: "networkidle" });
-  const tab = page.getByRole("tab", { name: /Hồ sơ gia sư chờ duyệt/ });
-  await tab.waitFor({ timeout: 60000 });
-  check("nhãn tab có số chờ (0)", /\(0\)/.test(await tab.innerText()), await tab.innerText());
-  await tab.click();
-  await page.getByText("Không có hồ sơ nào đang chờ duyệt.").waitFor({ timeout: 15000 });
-  check("tab hiện trạng thái rỗng", true);
-  await page.getByRole("tab", { name: "Tài khoản" }).click();
-  await page.getByPlaceholder("Tìm theo tên, email hoặc SĐT...").waitFor();
-  check("quay lại tab Tài khoản vẫn đủ bảng", true);
+  await page.getByPlaceholder("Tìm theo tên, email hoặc SĐT...").waitFor({ timeout: 60000 });
+  check("không còn tab 'Hồ sơ gia sư chờ duyệt'", (await page.getByRole("tab", { name: /Hồ sơ gia sư chờ duyệt/ }).count()) === 0);
+  check("có liên kết sang hàng chờ kiểm duyệt", (await page.getByRole("link", { name: "hàng chờ kiểm duyệt" }).getAttribute("href")) === "/admin/kiem-duyet");
+  check("bảng tài khoản vẫn đủ", await page.getByPlaceholder("Tìm theo tên, email hoặc SĐT...").isVisible());
 
   section("Mobile 390px");
   const mctx = await ctxFor(sup, { width: 390, height: 800 });

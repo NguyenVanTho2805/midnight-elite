@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi" data-chu-de="navy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiN · Trạng thái các màn</title>
+<link rel="stylesheet" href="../kin-tokens.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<symbol id="i-viec" viewBox="0 0 24 24"><path d="M4 13l2-7h12l2 7v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/></symbol>
+<symbol id="i-lich" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+<symbol id="i-lop" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/></symbol>
+<symbol id="i-bai" viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"/><path d="M9.5 14l2 2 3.5-4"/></symbol>
+<symbol id="i-thuvien" viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="M16 6l4 1-3 13-4-1"/></symbol>
+<symbol id="i-tien" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-khac" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></symbol>
+<symbol id="i-nha" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/></symbol>
+<symbol id="i-mat" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+</svg>
+<main class="trang">
+<header class="dau">
+  <div><h1>Trạng thái các màn</h1><p class="phu">Rỗng, đang tải, không tải được và các trạng thái hiếm, gom về một chỗ để màn chính gọn.</p></div>
+</header>
+<div class="dieu-huong"><a class="lnk" href="index.html" style="padding-left:0">‹ Mục lục bản mẫu</a></div>
+<section class="khoi" style="margin-top:8px">
+  <div class="tieude"><h2>Mục lục</h2></div>
+  <div class="nhom">
+<a class="row" href="#tt-tong-quan"><span class="gt">Hộp việc (Tổng quan)</span></a>
+<a class="row" href="#tt-lich"><span class="gt">Lịch (gia sư)</span></a>
+<a class="row" href="#tt-lop"><span class="gt">Danh sách lớp (gia sư)</span></a>
+<a class="row" href="#tt-hoc-phi"><span class="gt">Học phí (gia sư)</span></a>
+<a class="row" href="#tt-hs-trang-chu"><span class="gt">Việc của tôi (học sinh)</span></a>
+<a class="row" href="#tt-hs-lich"><span class="gt">Lịch (học sinh)</span></a>
+<a class="row" href="#tt-hs-lop"><span class="gt">Lớp (học sinh)</span></a>
+<a class="row" href="#tt-hs-bai-tap"><span class="gt">Bài tập, đề thi (học sinh)</span></a>
+<a class="row" href="hs-bai-tap.html#cong-vao-de"><span class="gt">Cổng vào đề, phòng thi, kết quả (ở màn Bài tập)</span></a>
+  </div>
+</section>
+<section class="khoi" id="tt-tong-quan" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Hộp việc (Tổng quan)</h2><a class="lnk" href="tong-quan.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Không có việc nào</h3><p>Hiện không có việc nào cần xử lý.</p></div><div class="tt-mau"><h3>Gia sư mới, chưa có lớp</h3><p class="dam">Bạn chưa mở lớp nào</p><p class="phu" style="margin:4px 0 12px">Tạo lớp đầu tiên, rồi gửi mã mời cho học viên để vào lớp.</p><a class="btn rong" href="lop.html">Tạo lớp đầu tiên</a></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được Hộp việc.</span><button class="lnk" type="button">Thử lại</button></div><p class="phu" style="margin-top:6px">Danh sách việc cũ vẫn giữ nguyên ngay bên trên.</p></div>
+</section>
+<section class="khoi" id="tt-lich" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Lịch (gia sư)</h2><a class="lnk" href="lich.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Tuần rỗng</h3><p>Tuần này chưa có buổi học nào.</p><a class="lnk" href="lop.html">Xem các lớp của tôi</a></div><div class="tt-mau"><h3>Buổi đã huỷ</h3><div class="row khong-mui huy"><span class="buoi-gio">16:00–17:30</span><span class="gt"><b>Văn 8</b></span><span class="st mo-st">Đã huỷ</span></div><div class="hang"><button class="lnk" type="button">Báo lớp qua Zalo</button><button class="lnk" type="button">Khôi phục lịch cũ</button></div></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được lịch tuần này.</span><button class="lnk" type="button">Thử lại</button></div></div>
+</section>
+<section class="khoi" id="tt-lop" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Danh sách lớp (gia sư)</h2><a class="lnk" href="lop.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Chưa có lớp nào</h3><p class="dam">Bạn chưa mở lớp nào</p><p class="phu" style="margin:4px 0 12px">Tạo lớp đầu tiên, rồi gửi mã mời cho học viên để vào lớp.</p><a class="btn rong" href="#">Tạo lớp đầu tiên</a></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được danh sách lớp.</span><button class="lnk" type="button">Thử lại</button></div></div>
+</section>
+<section class="khoi" id="tt-hoc-phi" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Học phí (gia sư)</h2><a class="lnk" href="hoc-phi.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Tháng chưa có phiếu</h3><p>Tháng này chưa có phiếu nào.</p><button class="lnk" type="button">Lập phiếu cả lớp</button></div><div class="tt-mau"><h3>Không có khoản chờ đối soát</h3><p>Không có khoản tiền nào cần đối soát.</p></div><div class="tt-mau"><h3>Chưa lưu tài khoản nhận tiền</h3><p>Cần lưu tài khoản trước khi gửi phiếu.</p><button class="lnk" type="button">Cài đặt nhận tiền →</button></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được danh sách phiếu.</span><button class="lnk" type="button">Thử lại</button></div></div>
+</section>
+<section class="khoi" id="tt-hs-trang-chu" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Việc của tôi (học sinh)</h2><a class="lnk" href="hs-trang-chu.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Đã xong hết việc</h3><p class="st xong" style="font-size:14px">Bạn đã xong hết việc hôm nay.</p></div><div class="tt-mau"><h3>Chưa vào lớp nào</h3><p class="dam">Bạn chưa vào lớp nào</p><p class="phu">Nhập mã mời 5 ký tự của gia sư để vào lớp.</p><label class="truong"><span>Mã mời</span><input class="ma" maxlength="5" autocapitalize="characters" autocomplete="off" aria-label="Mã mời"></label><button class="btn rong" type="button" style="margin-top:12px">Vào lớp này</button></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được việc của bạn.</span><button class="lnk" type="button">Thử lại</button></div></div>
+</section>
+<section class="khoi" id="tt-hs-lich" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Lịch (học sinh)</h2><a class="lnk" href="hs-lich.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Buổi đã huỷ</h3><div class="row khong-mui huy"><span class="buoi-gio">19:00–20:30</span><span class="gt"><b>Toán 9</b><div class="phu" style="text-decoration:none">Cô Lan</div></span><span class="st loi">Đã huỷ</span></div><a class="btn vien" href="#" style="margin-top:8px">Xem lịch</a></div><div class="tt-mau"><h3>Ngày không có gì</h3><p>Không có buổi học hay hạn nộp nào trong ngày này.</p></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được lịch của bạn.</span><button class="lnk" type="button">Thử lại</button></div></div>
+</section>
+<section class="khoi" id="tt-hs-lop" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Lớp (học sinh)</h2><a class="lnk" href="hs-lop.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Chưa vào lớp nào</h3><p class="dam">Bạn chưa vào lớp nào</p><p class="phu">Nhập mã mời 5 ký tự của gia sư để vào lớp.</p><label class="truong"><span>Mã mời</span><input class="ma" maxlength="5" autocapitalize="characters" autocomplete="off" aria-label="Mã mời"></label><button class="btn rong" type="button" style="margin-top:12px">Vào lớp này</button><button class="lnk" type="button">Không phải lớp của tôi</button></div><div class="tt-mau"><h3>Lớp chưa có bài</h3><p class="dam">Toán 9</p><p class="phu">Chưa có bài trong lớp này.</p><a class="btn rong" href="#" style="margin-top:8px">Tiếp tục học</a></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được danh sách lớp.</span><button class="lnk" type="button">Thử lại</button></div></div>
+</section>
+<section class="khoi" id="tt-hs-bai-tap" style="scroll-margin-top:12px">
+<div class="tieude"><h2>Bài tập, đề thi (học sinh)</h2><a class="lnk" href="hs-bai-tap.html">Mở màn</a></div>
+<div class="tt-mau"><h3>Chưa có bài nào</h3><p>Chưa có việc nào cần làm.</p></div><div class="tt-mau"><h3>Chưa vào lớp nào</h3><p class="dam">Bạn chưa vào lớp nào</p><a class="btn rong" href="hs-lop.html" style="margin-top:8px">Nhập mã mời</a></div><div class="tt-mau"><h3>Đang tải</h3><div aria-busy="true" aria-label="Đang tải"><p class="phu">Đang tải…</p><div class="sk"></div><div class="sk"></div><div class="sk ngan"></div></div></div><div class="tt-mau"><h3>Không tải được</h3><div class="dai-loi" role="alert"><span>Không tải được bài tập.</span><button class="lnk" type="button">Thử lại</button></div><p class="phu" style="margin-top:6px">Danh sách cũ vẫn giữ nguyên ngay bên trên.</p></div>
+</section>
+</main>
+</body>
+</html>

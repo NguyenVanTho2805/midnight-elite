@@ -74,7 +74,7 @@ check("đủ các dòng theo thứ tự, link có ?n=, dòng an toàn cuối cù
   "• Lớp: Toán 9 (còn 3 chỗ); Toán 10; Lý 9",
   "• Giờ còn trống: T3, T5 19h–20h30",
   "• Học phí: 200.000đ/buổi",
-  "• Đã dạy 1.234 buổi (theo sổ lớp trên KiN, không tự sửa được)",
+  "• Đã dạy 1.234 buổi (ghi trên sổ lớp KiN)",
   "",
   "Xem hồ sơ và đăng ký học thử: https://kin.vn/mentor/u1?n=fb-hn9",
   "Cô không nhận chuyển khoản trước buổi học thử.",

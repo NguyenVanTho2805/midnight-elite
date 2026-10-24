@@ -6,9 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
+import { getSession } from "@/lib/session";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
+import { taughtSessionWhere } from "@/lib/taughtSessions";
+import { recentTaughtSessionWhere } from "@/lib/tutorActivity";
+import { publicArea } from "@/lib/tutorArea";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   const t = await prisma.user.findFirst({
@@ -22,10 +27,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
     select: {
       id: true, name: true, avatarBase64: true, bio: true, subjects: true,
-      tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true,
+      tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true, city: true,
     },
   });
+  // NC2-022: gia sư chọn ẨN hồ sơ → như chưa duyệt / bị khoá (404). /mentor/[id], thẻ og và xem trước của người khác đều đi qua đây.
   if (!t) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
+  // Ngoại lệ DUY NHẤT: chính gia sư xem trước hồ sơ của mình (?preview=1, có phiên đúng chủ) — để Hồ sơ gia sư vẫn cho xem và ghi "đang ẩn".
+  // Trang công khai /mentor/[id] gọi route này KHÔNG kèm cookie nên vẫn nhận 404.
+  const profileHidden = isProfileHidden(readPreferences(t.preferences));
+  if (profileHidden) {
+    const owner = new URL(req.url).searchParams.get("preview") === "1" && (await getSession())?.userId === id;
+    if (!owner) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
+  }
 
   const courses = await prisma.course.findMany({
     where:   { ownerId: id, status: true },
@@ -38,7 +51,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const courseIds = courses.map(c => c.id);
 
-  const [enrollCounts, reviewAggs, sessionsTaught] = await Promise.all([
+  const [enrollCounts, reviewAggs, sessionsTaught, recentSession] = await Promise.all([
     courseIds.length === 0 ? [] : prisma.enrollment.groupBy({
       by:     ["courseId"],
       where:  { courseId: { in: courseIds }, status: ENROLLMENT_STATUS.ACTIVE },
@@ -50,8 +63,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       _avg:   { rating: true },
       _count: { _all: true },
     }),
-    // PH-207: số buổi đã dạy lấy từ sổ lớp (buổi điểm danh), gia sư không tự sửa được.
-    courseIds.length === 0 ? 0 : prisma.attendanceSession.count({ where: { courseId: { in: courseIds } } }),
+    // PH-207 + ĐX-00: số buổi đã dạy lấy từ sổ lớp — chỉ phiên có ngày ≤ hôm nay (giờ VN) và ít nhất 1 em có mặt/muộn
+    // (src/lib/taughtSessions.ts). Đây là số gia sư tự ghi khi điểm danh, không phải bằng chứng đã xác minh.
+    courseIds.length === 0 ? 0 : prisma.attendanceSession.count({ where: { courseId: { in: courseIds }, ...taughtSessionWhere() } }),
+    // ĐX-05: "có dạy trong 30 ngày qua" = ít nhất 1 buổi ĐÃ DẠY (cùng định nghĩa với số trên) có ngày trong 30 ngày qua (src/lib/tutorActivity.ts).
+    courseIds.length === 0 ? null : prisma.attendanceSession.findFirst({ where: { courseId: { in: courseIds }, ...recentTaughtSessionWhere() }, select: { id: true } }),
   ]);
 
   const activeByCourse = new Map(enrollCounts.map(r => [r.courseId, r._count._all]));
@@ -87,6 +103,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const studentCount = classes.reduce((s, c) => s + c.activeCount, 0);
 
   return NextResponse.json({
+    // NC2-022: chỉ có thể true khi chính chủ xem trước (xem trên); người ngoài không bao giờ nhận được phản hồi này.
+    profileHidden,
     tutor: {
       id:              t.id,
       name:            t.name,
@@ -99,11 +117,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       zalo: readPreferences(t.preferences).connections?.showZalo ? normalizeZaloPhone(t.phone) : null,
       // PH-215: trang Messenger do gia sư chủ động nhập → hiện nút "Nhắn Messenger" (tin điền sẵn qua m.me/<tên>?text=).
       messenger: readPreferences(t.preferences).connections?.messenger ?? null,
+      // ĐX-06: khu vực / hình thức / trường + bằng cấp / giá tham khảo, TỰ KHAI. null khi gia sư chưa lưu mục này (không lộ users.city cũ).
+      // Chỉ quận/huyện, không địa chỉ nhà; giá chỉ có khi gia sư tự bật.
+      area: publicArea(t.city, readPreferences(t.preferences).teaching),
     },
     stats: {
       classCount:   classes.length,
       studentCount,
       sessionsTaught,
+      recentlyActive: recentSession !== null,
       rating:       { avg: ratingAvg, total: ratingCount },
     },
     classes,

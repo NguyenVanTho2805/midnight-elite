@@ -4,6 +4,15 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
+
+// MD-03: ownerId (định danh gia sư) chỉ dùng để kiểm quyền ở máy chủ, KHÔNG đi ra JSON. Trả bản chỉ còn chapter.section.courseId.
+type LessonWithOwner = { chapter: { section: { courseId: string; course: { ownerId: string | null } } } };
+function publicLesson<L extends LessonWithOwner>(lesson: L) {
+  const { chapter, ...rest } = lesson;
+  return { ...rest, chapter: { ...chapter, section: { courseId: chapter.section.courseId } } };
+}
+import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos } from "@/lib/lessonMediaServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -12,12 +21,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const lesson = await prisma.lesson.findUnique({
     where: { id },
-    include: { chapter: { select: { section: { select: { courseId: true } } } } },
+    include: { chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
-  // Admin: full access
-  if (session.role === "admin") return NextResponse.json(lesson);
+  // MD-03: quản trị toàn quyền; gia sư chỉ bài của LỚP MÌNH — lớp người khác trả 403 (trước đây mọi tài khoản admin đều đọc được).
+  if (session.role === "admin") {
+    const ownerId = lesson.chapter.section.course.ownerId;
+    if (!isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, ownerId)) {
+      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+    const ctx: MediaContext = { viewer: { userId: session.userId, role: "admin", adminRole: session.adminRole }, courseOwnerId: ownerId, enrollment: null };
+    return NextResponse.json(lessonFor(ctx, publicLesson(lesson)));
+  }
 
   // Student: chỉ access nếu đang enroll active khoá của bài học này.
   // "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua
@@ -29,7 +45,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
 
-  return NextResponse.json(lesson);
+  const ctx: MediaContext = { viewer: { userId: session.userId, role: "student" }, courseOwnerId: lesson.chapter.section.course.ownerId, enrollment: enrolled };
+  return NextResponse.json(lessonFor(ctx, publicLesson(lesson)));
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -56,13 +73,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
+    // MD-01: báo lỗi sớm ở máy chủ (không chỉ ở trình duyệt) khi link video/Zoom/Azota sai hoặc dán nhầm ô. Chỉ kiểm ô ĐỔI so với bản đang lưu.
+    const linkErr = validateLessonLinks(data, existing);
+    if (linkErr) return NextResponse.json({ error: linkErr }, { status: 400 });
     if (typeof data.documents === "string") {
-      try {
-        const parsed = JSON.parse(data.documents);
-        if (!Array.isArray(parsed)) throw new Error("not an array");
-      } catch {
-        return NextResponse.json({ error: "documents phải là chuỗi JSON dạng mảng" }, { status: 400 });
-      }
+      const docErr = validateDocumentsJson(data.documents);
+      if (docErr) return NextResponse.json({ error: docErr }, { status: 400 });
+    }
+    if ("videoUrl" in data) {
+      const claimErr = await claimUploadedVideos({
+        videoUrl: data.videoUrl as string | null, lessonId: id, courseId: existing.chapter.section.courseId,
+        userId: auth.userId, isTeacher: auth.adminRole === "teacher",
+      });
+      if (claimErr) return NextResponse.json({ error: `Video bài giảng: ${claimErr}` }, { status: 400 });
     }
     const lesson = await prisma.lesson.update({ where: { id }, data });
     return NextResponse.json(lesson);

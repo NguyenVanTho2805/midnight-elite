@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { isNewFeeMode, pickClassRate, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
+import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
+import { vnDateKeyOf } from "@/lib/classSessions";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
@@ -27,6 +30,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (!source) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     if (!ownsResource(auth, source.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
+    }
+
+    // HP-15: bản sao của lớp tính phí kiểu mới giữ hình thức + đơn giá hiện hành (lớp mới tạo ra SAU nên được phép); lớp cách cũ → bản sao mặc định như trước.
+    let feeSetup: FeeSetup | null = null;
+    if (isNewFeeMode(source.feeMode)) {
+      if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
+      const rates = await prisma.courseFeeRate.findMany({ where: { courseId: source.id } });
+      const cur = pickClassRate(rates, vnDateKeyOf(new Date()));
+      if (cur) {
+        const v = validateFeeSetup({ mode: source.feeMode, rate: cur.rate, sessionMinutes: cur.sessionMinutes });
+        if (v.ok) feeSetup = v.value;
+      }
     }
 
     // Tạo slug mới, tránh trùng
@@ -56,8 +71,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           price: source.price, originalPrice: source.originalPrice,
           lessons: 0, hours: source.hours, status: false, createdAt: today,
           ownerId: auth.userId,
+          ...(feeSetup ? { feeMode: feeSetup.mode } : {}),
         },
       });
+      if (feeSetup) await createInitialFeeRate(tx, course.id, feeSetup, auth.userId);
 
       for (const sec of source.sections) {
         const newSec = await tx.section.create({

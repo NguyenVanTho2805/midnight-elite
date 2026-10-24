@@ -7,6 +7,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import LibraryView from "@/components/library/LibraryView";
+import TutorLibrary from "@/components/library/TutorLibrary";
 import { loadStudentLibrary, loadTutorLibrary } from "@/lib/libraryServer";
 import { parseLessonDocuments, viewerHref, type LibDoc } from "@/lib/library";
 
@@ -78,6 +79,10 @@ async function PublicLibrary() {
 export default async function ThuVienPage() {
   const session = await getSession();
   if (session?.role === "student") return <LibraryView role="student" classes={await loadStudentLibrary(session.userId, new Date())} />;
-  if (session?.role === "admin" && session.adminRole === "teacher") return <LibraryView role="tutor" classes={await loadTutorLibrary(session.userId)} />;
+  if (session?.role === "admin" && session.adminRole === "teacher") {
+    // Thư viện của gia sư chỉ là bảng tài liệu; bài tập nằm ở module Bài tập nên không đẩy chúng sang trình duyệt.
+    const classes = (await loadTutorLibrary(session.userId)).map(c => ({ ...c, lessons: c.lessons.map(l => ({ ...l, assignments: [] })) }));
+    return <TutorLibrary classes={classes} />;
+  }
   return <PublicLibrary />;
 }

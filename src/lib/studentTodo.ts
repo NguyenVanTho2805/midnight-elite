@@ -41,11 +41,34 @@ export interface TodoEvent {
   time: string;
   isoDate: string;
   link?: string;
+  endTime?: string;
+  meta?: string;
 }
 
 export type TodoTone = "cho" | "loi" | "mo" | "xong";
 export interface TodoCommand { label: string; href: string; kind: "primary" | "secondary"; external?: boolean }
 export interface TodoSection { title: string; text: string }
+
+/** Bài tập (kind "bai-tap"): các mảnh chữ đã định dạng sẵn để màn hình dựng dòng Figma, chỉ gồm dữ liệu học sinh vốn thấy về chính bài của mình. */
+export interface TodoTask {
+  phase: "chua-nop" | "cho-cham" | "da-cham";
+  name: string;
+  /** "Toán 9 · Cô Lan" */
+  courseLine: string;
+  /** "hạn hôm nay, 23:59" */
+  dueText: string;
+  href: string;
+  interactive: boolean;
+  /** "Nộp 22/10 lúc 20:40" (đã nộp / đã làm). */
+  sentText?: string;
+  /** Đã chấm: "8,5/10", "Đã chấm 20/10", nhận xét (có thể rỗng). */
+  scoreText?: string;
+  gradedText?: string;
+  comment?: string | null;
+}
+
+/** Buổi học (kind "buoi-hoc"): giờ, tên lớp, ghi chú của lớp (có thể rỗng). */
+export interface TodoSession { courseLine: string; range: string; topic: string; dayText: string; href: string; cancelled: boolean }
 
 export interface StudentTodoItem {
   id: string;
@@ -62,6 +85,8 @@ export interface StudentTodoItem {
   /** Dòng đã xong / chỉ để biết. */
   done: boolean;
   detail: { heading: string; meta: string; commands: TodoCommand[]; sections: TodoSection[] };
+  task?: TodoTask;
+  session?: TodoSession;
 }
 
 const dm = (key: string) => `${key.slice(8, 10)}/${key.slice(5, 7)}`;
@@ -89,6 +114,12 @@ export function remainingText(due: Date, now: Date): string {
   return ms >= 0 ? `còn ${body}` : `quá hạn ${body}`;
 }
 
+/** "hạn hôm nay, 23:59" / "hạn Chủ nhật 25/10, 21:00" (dạng Figma Học sinh). */
+export function dueTextOf(due: Date, now: Date): string {
+  const w = whenLabel(due, now);
+  const day = w === "Hôm nay" ? "hôm nay" : w === "Ngày mai" ? "ngày mai" : /^\d/.test(w) ? w : `${w} ${dm(vnDateKeyOf(due))}`;
+  return `hạn ${day}, ${hmOf(vnMinutesOfDay(due))}`;
+}
 const timeOf = (t: Date) => hmOf(vnMinutesOfDay(t));
 const dueLabel = (due: Date, now: Date) => {
   const w = whenLabel(due, now);
@@ -103,6 +134,8 @@ function assignmentItem(a: TodoAssignment, now: Date): StudentTodoItem | null {
   const link = `/student/bai-giang/${a.lessonId}`;
   const teacherLine = `${a.courseName}${a.teacher ? ` · ${a.teacher}` : ""} giao ${dm(vnDateKeyOf(a.createdAt))}`;
   const doneAt = sub ? (sub.gradedAt ?? sub.submittedAt) : null;
+  const courseLine = `${a.courseName}${a.teacher ? ` · ${a.teacher}` : ""}`;
+  const baseTask = { name: a.title, courseLine, dueText: dueTextOf(due, now), href: link, interactive };
 
   // Đã chấm
   if (sub && sub.score !== null && sub.gradedAt) {
@@ -111,6 +144,7 @@ function assignmentItem(a: TodoAssignment, now: Date): StudentTodoItem | null {
     return {
       id: `bai-tap:${a.id}`, kind: "bai-tap", title: `Đã chấm ${a.title}`, subtitle: `${fmtScore(sub.score)}/${fmtScore(total)} · ${a.courseName}`,
       at: sub.gradedAt.toISOString(), when: whenLabel(sub.gradedAt, now), status: { label: "Đã chấm", tone: "xong" }, needsAction: false, done: true,
+      task: { ...baseTask, phase: "da-cham", scoreText: `${fmtScore(sub.score)}/${fmtScore(total)}`, gradedText: `Đã chấm ${dm(vnDateKeyOf(sub.gradedAt))}`, comment: sub.comment?.trim() || null },
       detail: {
         heading: a.title, meta: `${teacherLine} · đã chấm ${dm(vnDateKeyOf(sub.gradedAt))}`,
         commands: [{ label: "Xem bài", href: link, kind: "primary" }],
@@ -128,6 +162,7 @@ function assignmentItem(a: TodoAssignment, now: Date): StudentTodoItem | null {
     return {
       id: `bai-tap:${a.id}`, kind: "bai-tap", title: `Đã ${verb} ${a.title}`, subtitle: `${a.courseName} · chờ thầy/cô chấm`,
       at: at.toISOString(), when: whenLabel(at, now), status: { label: `Đã ${verb}`, tone: "mo" }, needsAction: false, done: true,
+      task: { ...baseTask, phase: "cho-cham", sentText: sub ? `Nộp ${dm(vnDateKeyOf(sub.submittedAt))} lúc ${timeOf(sub.submittedAt)}` : "Đã có câu trả lời" },
       detail: {
         heading: a.title, meta: `${teacherLine} · ${dueLabel(due, now)}`,
         commands: [{ label: interactive ? "Xem lại bài làm" : "Xem bài đã nộp", href: link, kind: "primary" }],
@@ -150,6 +185,7 @@ function assignmentItem(a: TodoAssignment, now: Date): StudentTodoItem | null {
   return {
     id: `bai-tap:${a.id}`, kind: "bai-tap", title: `${a.title} ${dueLabel(due, now)}`, subtitle: teacherLine,
     at: due.toISOString(), when: whenLabel(due, now), status, needsAction, done: false,
+    task: { ...baseTask, phase: "chua-nop" },
     detail: {
       heading: `${a.title} ${dueLabel(due, now)}`,
       meta: `${a.courseName}${a.teacher ? ` · ${a.teacher}` : ""} giao ${dm(vnDateKeyOf(a.createdAt))} · ${remainingText(due, now)}`,
@@ -183,6 +219,7 @@ function classItem(e: TodoEvent, now: Date): StudentTodoItem | null {
   return {
     id: `buoi-hoc:${e.id}`, kind: "buoi-hoc", title: `${prefix} ${e.subject} ${e.time}`, subtitle: topic,
     at: at.toISOString(), when: whenLabel(at, now), status, needsAction: false, done: cancelled,
+    session: { courseLine: topic.split(" — ")[0], range: e.endTime ? `${e.time}–${e.endTime}` : e.time, topic: topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "", dayText: whenLabel(at, now), href: link, cancelled },
     detail: {
       heading: `${prefix} ${topic} ${e.time} ${whenLabel(at, now).toLowerCase()}`,
       meta: `${DAY_LABELS_VI[dayOfWeekOfKey(e.isoDate)]}, ${dm(e.isoDate)}${at.getTime() > now.getTime() ? ` · ${remainingText(at, now)}` : " · đang diễn ra hoặc vừa bắt đầu"}`,

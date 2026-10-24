@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { dropHeldResults } from "@/lib/examHold";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
 
   try {
-    const results = await prisma.examResult.findMany({
+    // Chỉ tính điểm của lượt đã công bố / đề không giữ điểm (examHold): điểm tự luận dở dang không vào bảng xếp hạng.
+    const results = await dropHeldResults(await prisma.examResult.findMany({
       where: category ? { exam: { category } } : undefined,
       select: {
-        userId: true, score: true,
+        userId: true, examId: true, score: true,
         user: { select: { id: true, name: true, school: true } },
       },
-    });
+    }));
 
     const map = new Map<string, {
       userId: string; name: string; school: string | null;

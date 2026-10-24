@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
-import { applyPreferencesPatch, readPreferences, type UserPreferences } from "@/lib/userPreferences";
+import { applyPreferencesPatch, prefsLockKey, readPreferences, type UserPreferences } from "@/lib/userPreferences";
 import type { Prisma } from "@/generated/prisma/client";
 
 export async function GET() {
@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest) {
   try { patch = await req.json(); } catch { return NextResponse.json({ error: "Dữ liệu không hợp lệ" }, { status: 400 }); }
 
   const result = await prisma.$transaction(async (tx): Promise<{ value: UserPreferences } | { error: string } | null> => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`prefs:${auth.userId}`}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${prefsLockKey(auth.userId)}))`;
     const u = await tx.user.findUnique({ where: { id: auth.userId }, select: { preferences: true } });
     if (!u) return null;
     const merged = applyPreferencesPatch(readPreferences(u.preferences), patch);

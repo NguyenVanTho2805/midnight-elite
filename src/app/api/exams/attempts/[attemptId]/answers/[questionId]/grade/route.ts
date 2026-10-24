@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { PERMISSIONS } from "@/lib/permissions";
 import { regradeAttempt } from "@/lib/examGrading";
 import { logAction } from "@/lib/auditLog";
+import { recordGradeEdit } from "@/lib/quizGradeServer";
 
 // PATCH /api/exams/attempts/[attemptId]/answers/[questionId]/grade — giáo
 // viên: chấm điểm + nhận xét 1 câu tự luận, chấm lại điểm tổng attempt ngay
@@ -35,6 +36,12 @@ export async function PATCH(
       return NextResponse.json({ error: `Điểm phải từ 0 đến ${question.points}` }, { status: 400 });
     }
 
+    // QZ-08: lịch sử sửa điểm dùng chung với màn chấm quiz mới.
+    const prev = await prisma.examAnswer.findUnique({ where: { attemptId_questionId: { attemptId, questionId } }, select: { pointsAwarded: true, teacherComment: true } });
+    await recordGradeEdit({
+      examId: attempt.examId, attemptId, questionId, editedById: auth.userId,
+      prevPoints: prev?.pointsAwarded ?? null, newPoints: points, prevComment: prev?.teacherComment ?? null, newComment: comment?.trim() || null,
+    });
     await prisma.examAnswer.upsert({
       where: { attemptId_questionId: { attemptId, questionId } },
       create: { attemptId, questionId, pointsAwarded: points, teacherComment: comment?.trim() || null },

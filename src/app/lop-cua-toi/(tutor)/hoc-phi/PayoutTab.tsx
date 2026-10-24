@@ -62,14 +62,14 @@ export default function PayoutTab() {
     if (await copyText(text)) notify.ok(`Đã sao chép ${what}.`); else notify.err("Không sao chép được.");
   }
 
-  if (failed) return <div role="alert" className="rounded-xl p-6 text-center text-sm" style={CARD_STYLE}>Không tải được cài đặt. <button className="underline font-semibold" onClick={load}>Thử lại</button></div>;
+  if (failed) return <div role="alert" className="rounded-xl p-6 text-center text-sm" style={CARD_STYLE}>Không tải được cài đặt. <button className="underline font-medium" onClick={load}>Thử lại</button></div>;
   if (!info) return <div className="h-40 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />;
   const a = info.account;
 
   return (
     <div className="space-y-5">
       <section className="rounded-xl p-5" style={CARD_STYLE} aria-labelledby="h-acc">
-        <h2 id="h-acc" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Tài khoản nhận học phí</h2>
+        <h2 id="h-acc" className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Tài khoản nhận học phí</h2>
         <p className="text-sm mb-4" style={{ color: "var(--kin-chu-phu)" }}>
           Mã VietQR trên phiếu trỏ thẳng vào tài khoản này. KiN không giữ tiền, không thu hộ và không cắt phần trăm.
         </p>
@@ -96,7 +96,7 @@ export default function PayoutTab() {
       </section>
 
       <section className="rounded-xl p-5" style={CARD_STYLE} aria-labelledby="h-sepay">
-        <h2 id="h-sepay" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Tự gạch phiếu khi tiền vào (SePay)</h2>
+        <h2 id="h-sepay" className="font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Tự gạch phiếu khi tiền vào (SePay)</h2>
         {!a ? (
           <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Lưu tài khoản ở trên trước, sau đó lấy địa chỉ và khoá để nối SePay. Không nối cũng được — bạn vẫn ghi “Đã nhận tiền” bằng tay.</p>
         ) : (<>
@@ -115,11 +115,11 @@ export default function PayoutTab() {
           </label>
 
           <div className="mt-4">
-            <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Khoá API</p>
+            <p className="text-sm font-medium mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Khoá API</p>
             {a.hasKey && !newKey && <p className="text-sm mb-2" style={{ color: "var(--kin-chu-phu)" }}>Đã có khoá (đuôi …{a.keyHint}). Vì lý do an toàn KiN chỉ lưu bản băm nên không xem lại được. Cần khoá mới thì tạo lại — khoá cũ ngừng dùng được ngay.</p>}
             {newKey && (
               <div role="alert" className="rounded-lg p-3 mb-2" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-                <p className="text-sm font-semibold mb-1">Khoá mới — chỉ hiện một lần này. Hãy dán vào SePay ngay.</p>
+                <p className="text-sm font-medium mb-1">Khoá mới — chỉ hiện một lần này. Hãy dán vào SePay ngay.</p>
                 <div className="flex gap-2">
                   <input readOnly value={newKey} onFocus={e => e.currentTarget.select()} className="flex-1 min-w-0 px-3 py-2 rounded-lg font-mono text-xs min-h-[44px]" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }} aria-label="Khoá API mới" />
                   <KinButton variant="secondary" onClick={() => copy(newKey, "khoá API")}>Sao chép</KinButton>

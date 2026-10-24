@@ -114,7 +114,7 @@ export interface RecruitPostInput {
   /** Giờ còn trống / học phí do gia sư tự gõ; trống thì bỏ dòng. */
   slots?: string;
   fee?: string;
-  /** Lấy từ sổ lớp, gia sư không sửa được; 0 thì bỏ dòng (không khoe số 0). */
+  /** Lấy từ sổ lớp (buổi đã diễn ra có em có mặt/muộn, xem taughtSessions.ts), không có ô nhập tay; 0 thì bỏ dòng (không khoe số 0). */
   sessionsTaught: number;
   link: string;
 }
@@ -130,7 +130,7 @@ export function composeRecruitPost(i: RecruitPostInput): string {
   if (cls.length) lines.push(`• Lớp: ${cls.join("; ")}`);
   if (slots) lines.push(`• Giờ còn trống: ${slots}`);
   if (fee) lines.push(`• Học phí: ${fee}`);
-  if (i.sessionsTaught > 0) lines.push(`• Đã dạy ${i.sessionsTaught.toLocaleString("vi-VN")} buổi (theo sổ lớp trên KiN, không tự sửa được)`);
+  if (i.sessionsTaught > 0) lines.push(`• Đã dạy ${i.sessionsTaught.toLocaleString("vi-VN")} buổi (ghi trên sổ lớp KiN)`);
   lines.push("");
   lines.push(`Xem hồ sơ và đăng ký học thử: ${i.link}`);
   lines.push(noPrepaySafetyLine(i.pronoun));

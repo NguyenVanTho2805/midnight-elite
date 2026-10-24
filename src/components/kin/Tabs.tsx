@@ -1,4 +1,4 @@
-// Tab KiN (Figma "Tab" 106:30): chữ 13.3px, tab đang mở chữ đậm + gạch chân 2px màu nhấn,
+// Tab KiN (Figma "Tab" 106:30): chữ 14px (chữ gốc; ảnh Figma các màn gia sư vẽ 14px, trước đó 13.3px lệch với chữ quanh nó), tab đang mở chữ đậm + gạch chân 2px màu nhấn,
 // tab thường chữ xám + gạch chân trong suốt. Cao 44px (Figma vẽ 40px; brand book đòi chạm tối thiểu 44px
 // nên phần dư nằm giữa chữ và gạch chân, nhìn vẫn như bản vẽ).
 //
@@ -13,13 +13,13 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 
-export const KIN_TAB_BOX = "kin-tab group relative inline-flex flex-col justify-between gap-[10px] min-h-11 pt-3 px-4 whitespace-nowrap text-[length:var(--kin-co-small)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
+export const KIN_TAB_BOX = "kin-tab group relative inline-flex flex-col justify-between gap-[10px] min-h-11 pt-3 px-4 whitespace-nowrap text-[length:var(--kin-co-goc)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
 
 /** `bar={false}`: không vẽ gạch chân riêng — dùng trong KinTabs, nơi một gạch chân chung trượt giữa các tab. */
 export function KinTabInner({ active, children, bar = true }: { active: boolean; children: ReactNode; bar?: boolean }) {
   return (
     <>
-      <span className={active ? "font-semibold text-[var(--kin-chu-chinh)]" : "font-normal text-[var(--kin-chu-mo)] group-hover:text-[var(--kin-chu-chinh)]"}>{children}</span>
+      <span className={active ? "font-medium text-[var(--kin-chu-chinh)]" : "font-normal text-[var(--kin-chu-mo)] group-hover:text-[var(--kin-chu-chinh)]"}>{children}</span>
       <span aria-hidden className="block h-[2px] w-full" style={{ background: bar && active ? "var(--kin-nhan-nen)" : "transparent" }} />
     </>
   );

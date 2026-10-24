@@ -11,11 +11,12 @@ import {
 import { BADGE_RULES } from "@/lib/honorData";
 import { DropZone } from "@/components/DropZone";
 import ParentLinkWidget from "@/components/parent/ParentLinkWidget";
+import SelfConsentCard from "@/components/account/SelfConsentCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ExamResultItem {
-  id: string; score: number; totalPoints: number; completedAt: string;
+  id: string; score: number | null; totalPoints: number; completedAt: string;
   exam: { title: string; code: string };
 }
 
@@ -107,7 +108,9 @@ interface UserStats {
 // ─── GPA Sparkline ────────────────────────────────────────────────────────────
 function ScoreSparkline({ results }: { results: ExamResultItem[] }) {
   if (results.length < 2) return null;
-  const scores = results.map(r => r.score / r.totalPoints * 10);
+  // QZ-11: điểm null = quiz có tự luận chưa được gia sư công bố — không vẽ vào biểu đồ.
+  const scores = results.filter(r => r.score !== null).map(r => (r.score as number) / r.totalPoints * 10);
+  if (scores.length < 2) return null;
   const min = Math.min(...scores);
   const max = Math.max(...scores);
   const range = max - min || 1;
@@ -582,6 +585,9 @@ export default function HoSoPage() {
           {/* ── Liên kết phụ huynh (ParentLink có xác minh) ── */}
           <ParentLinkWidget onNotify={showToast} />
 
+          {/* ── Em tự đồng ý để gia sư ghi thông tin lớp học (User.selfConsentAt) ── */}
+          <SelfConsentCard onNotify={showToast} />
+
           {/* ── Mạng xã hội ── */}
           <Section title="Mạng xã hội"
             onEdit={() => setEditSection(editSection === "social" ? null : "social")}>
@@ -640,8 +646,10 @@ export default function HoSoPage() {
                       <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{new Date(entry.completedAt).toLocaleDateString("vi-VN")}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-xl font-bold" style={{ color: "var(--kin-nhan-link)" }}>{entry.score}</div>
-                      <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>/ {entry.totalPoints}</div>
+                      {entry.score === null
+                        ? <div className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Chờ gia sư chấm</div>
+                        : <><div className="text-xl font-bold" style={{ color: "var(--kin-nhan-link)" }}>{entry.score}</div>
+                          <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>/ {entry.totalPoints}</div></>}
                     </div>
                   </div>
                 ))}

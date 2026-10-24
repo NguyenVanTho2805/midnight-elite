@@ -6,7 +6,7 @@ import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { TX_KIND_LABEL, remainingOf, type TxKind } from "@/lib/tuitionInvoice";
 
-const STATUSES = ["pending", "matched", "resolved", "ignored"];
+const STATUSES = ["pending", "matched", "resolved", "ignored", "reversed"]; // reversed: HP-21, ghi tay đã hoàn tác
 
 export async function GET(req: NextRequest) {
   const auth = await requireTutor();
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     items: rows.map(r => ({
       id: r.id, provider: r.provider, occurredAt: r.occurredAt.toISOString(), amount: r.amount, content: r.content,
       matchedCode: r.matchedCode, kind: r.kind as TxKind, kindLabel: TX_KIND_LABEL[r.kind as TxKind] ?? r.kind,
-      status: r.status, resolution: r.resolution, appliedAmount: r.appliedAmount,
+      status: r.status, resolution: r.resolution, appliedAmount: r.appliedAmount, method: r.method,
       invoice: r.invoice ? view(r.invoice) : null,
       suggestions: r.suggestedInvoiceIds.map(id => sugById.get(id)).filter((x): x is NonNullable<typeof x> => !!x).map(view),
     })),

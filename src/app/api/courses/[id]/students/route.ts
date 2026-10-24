@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     totalLessons > 0
       ? prisma.lessonProgress.groupBy({
           by:    ["userId"],
-          where: { lessonId: { in: allLessonIds } },
+          where: { lessonId: { in: allLessonIds }, completed: true },
           _count: { _all: true },
         })
       : Promise.resolve([]),

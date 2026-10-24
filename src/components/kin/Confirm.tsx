@@ -18,6 +18,8 @@ export interface KinConfirmProps {
   tone?: "thuong" | "nguy-hiem";
   loading?: boolean;
   loadingLabel?: string;
+  /** Khoá nút xác nhận (vd. chưa nhập lý do bắt buộc trong `message`). */
+  confirmDisabled?: boolean;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
@@ -26,7 +28,7 @@ const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), select
 
 export function KinConfirm({
   open, title, message, confirmLabel = "Xác nhận", cancelLabel = "Huỷ", tone = "thuong",
-  loading, loadingLabel = "Đang xử lý…", onConfirm, onCancel,
+  loading, loadingLabel = "Đang xử lý…", confirmDisabled, onConfirm, onCancel,
 }: KinConfirmProps) {
   const uid = useId();
   const titleId = `${uid}-tieu-de`, descId = `${uid}-noi-dung`;
@@ -87,7 +89,7 @@ export function KinConfirm({
         </div>
         <div className="flex justify-end gap-[10px] pt-[14px] pb-5 px-6">
           <KinButton ref={cancelRef} variant="secondary" disabled={loading} onClick={onCancel} className="min-w-[100px] font-semibold">{cancelLabel}</KinButton>
-          <KinButton ref={confirmRef} variant={danger ? "danger-solid" : "primary"} loading={loading} loadingLabel={loadingLabel}
+          <KinButton ref={confirmRef} variant={danger ? "danger-solid" : "primary"} loading={loading} loadingLabel={loadingLabel} disabled={confirmDisabled}
             onClick={() => void onConfirm()} className="min-w-[100px] font-semibold">{confirmLabel}</KinButton>
         </div>
       </div>

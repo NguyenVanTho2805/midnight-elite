@@ -1,12 +1,14 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
+import Link from "next/link";
+import { KinButton, kinButtonClass, KinMoney, KinMoneyEye } from "@/components/kin";
+import AdvancedAttendanceStats from "@/components/tutor/AdvancedAttendanceStats";
 import RevenueByClassTable, { type ClassRevenueRow } from "@/components/tutor/RevenueByClassTable";
 import { CARD_STYLE, FIELD_STYLE, callApi, vnd } from "@/components/tutor/shared";
 import { presetRange, vnDateKey } from "@/lib/revenue";
 
 interface Data {
-  totals: { collected: number; txCount: number; receivable: number; openInvoices: number };
+  totals: { collected: number; txCount: number; receivable: number; openInvoices: number; draftAmount: number; draftCount: number; sentDue: number; sentPaid: number; sentCount: number; collectionRatePct: number | null };
   byMonth: { month: string; collected: number; count: number }[];
   byClass: ClassRevenueRow[];
   transactions: { id: string; date: string; studentName: string; code: string; yearMonth: string; method: string; amount: number }[];
@@ -57,6 +59,7 @@ export default function DoanhThuClient() {
         ))}
         <a href={csvHref} download className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium min-h-[44px]"
           style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>↓ Xuất CSV</a>
+        <KinMoneyEye className="ml-auto" />
       </div>
       {invalid && <p role="alert" className="text-sm font-medium" style={{ color: "var(--kin-tt-chu-loi)" }}>Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.</p>}
 
@@ -65,10 +68,12 @@ export default function DoanhThuClient() {
           Không tải được doanh thu. <button className="underline font-semibold" onClick={() => load(qs)}>Thử lại</button>
         </div>
       ) : (<>
-        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {([
-            ["Đã thu", data ? vnd(data.totals.collected) : "—", data ? `${data.totals.txCount} khoản` : ""],
-            ["Còn phải thu", data ? vnd(data.totals.receivable) : "—", data ? `${data.totals.openInvoices} phiếu đã gửi chưa đóng đủ` : ""],
+            ["Đã thu", data ? <KinMoney>{vnd(data.totals.collected)}</KinMoney> : "—", data ? `${data.totals.txCount} khoản` : ""],
+            ["Còn phải thu", data ? <KinMoney>{vnd(data.totals.receivable)}</KinMoney> : "—", data ? `${data.totals.openInvoices} phiếu đã gửi chưa đóng đủ` : ""],
+            ["Tiềm năng", data ? <KinMoney>{vnd(data.totals.draftAmount)}</KinMoney> : "—", data ? (data.totals.draftCount > 0 ? `${data.totals.draftCount} phiếu nháp chưa gửi · chưa phải khoản phải thu` : "Chưa có phiếu nháp") : ""],
+            ["Tỷ lệ thu", data ? (data.totals.collectionRatePct == null ? "Chưa có" : `${data.totals.collectionRatePct}%`) : "—", data ? (data.totals.sentCount > 0 ? <>{<KinMoney>{vnd(data.totals.sentPaid)}</KinMoney>} / {<KinMoney>{vnd(data.totals.sentDue)}</KinMoney>} trên {data.totals.sentCount} phiếu đã gửi</> : "Chưa có phiếu nào đã gửi") : ""],
           ] as const).map(([k, v, sub]) => (
             <div key={k} className="rounded-xl p-4" style={CARD_STYLE}>
               <dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{k}</dt>
@@ -89,7 +94,7 @@ export default function DoanhThuClient() {
                     <div className="flex-1 h-2 rounded-full" style={{ background: "var(--kin-nen-nhan)" }} aria-hidden>
                       <div className="h-2 rounded-full" style={{ width: `${(m.collected / monthMax * 100).toFixed(1)}%`, background: "var(--kin-tt-cham-xong)" }} />
                     </div>
-                    <span className="text-sm font-bold tabular-nums w-28 text-right" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(m.collected)}</span>
+                    <span className="text-sm font-bold tabular-nums w-28 text-right" style={{ color: "var(--kin-chu-chinh)" }}><KinMoney>{vnd(m.collected)}</KinMoney></span>
                   </li>
                 ))}
               </ul>}
@@ -111,12 +116,16 @@ export default function DoanhThuClient() {
                       <p className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{t.studentName}</p>
                       <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{vnDateKey(new Date(t.date))} · {t.method}{t.code ? ` · ${t.code}` : ""}</p>
                     </div>
-                    <span className="font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(t.amount)}</span>
+                    <span className="font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}><KinMoney>{vnd(t.amount)}</KinMoney></span>
                   </li>
                 ))}
               </ul>}
         </section>
       </>)}
+
+      <Link href="/lop-cua-toi/so-diem" className={kinButtonClass("secondary")}>Mở sổ điểm và tiến bộ</Link>
+
+      <AdvancedAttendanceStats />
     </div>
   );
 }

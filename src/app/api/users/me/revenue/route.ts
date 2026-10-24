@@ -13,12 +13,14 @@ import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { OPEN_STATUSES } from "@/lib/tuitionInvoice";
+import { invoiceKpi } from "@/lib/revenueKpi";
+import { manualMethodLabel } from "@/lib/tuitionPayment";
 import { allocateByWeights, parseDateRange, rangeWhere, toCsv, vnDateKey, vnMonthKey } from "@/lib/revenue";
 
 type Subject = { courseId?: string; courseName?: string; subtotal?: number };
 
-function methodOf(provider: string, resolution: string | null): string {
-  if (provider === "manual") return "Tiền mặt / ghi tay";
+function methodOf(provider: string, resolution: string | null, method: string | null): string {
+  if (provider === "manual") return manualMethodLabel(method); // HP-20: bản ghi cũ method=null → chữ cũ
   return resolution === "matched_manual" ? "Chuyển khoản (gia sư ghép tay)" : "Chuyển khoản (SePay)";
 }
 
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
   if ("error" in range) return NextResponse.json({ error: range.error }, { status: 400 });
   const occurredAt = rangeWhere(range);
 
-  const [rows, open] = await Promise.all([
+  const [rows, open, allInv] = await Promise.all([
     prisma.bankTransaction.findMany({
       where: { tutorId: auth.userId, status: { in: ["matched", "resolved"] }, appliedAmount: { gt: 0 }, ...(occurredAt ? { occurredAt } : {}) },
       orderBy: { occurredAt: "desc" },
@@ -42,6 +44,8 @@ export async function GET(req: NextRequest) {
       where: { tutorId: auth.userId, status: { in: OPEN_STATUSES } },
       select: { amountDue: true, paidAmount: true },
     }),
+    // PT-01: chỉ để dựng thẻ "Tiềm năng" (phiếu nháp) và "Tỷ lệ thu" (đã đóng / phải thu trên phiếu đã gửi).
+    prisma.tuitionInvoice.findMany({ where: { tutorId: auth.userId, status: { not: "cancelled" } }, select: { status: true, amountDue: true, paidAmount: true } }),
   ]);
 
   const monthMap = new Map<string, { month: string; collected: number; count: number }>();
@@ -55,7 +59,12 @@ export async function GET(req: NextRequest) {
     monthMap.set(mk, m);
 
     // Quy về lớp theo tỉ lệ tiền từng môn trên phiếu (chính xác từng đồng).
-    const subjects = ((r.invoice?.breakdown as { perSubject?: Subject[] } | null)?.perSubject ?? []).filter(s => s.courseId);
+    // HP-14: phiếu có dòng phí kiểu mới (chargeLines) thì tính cả vào tỉ lệ theo lớp. Phiếu cũ không có chargeLines → đúng như trước.
+    const bd = r.invoice?.breakdown as { perSubject?: Subject[]; chargeLines?: Array<{ courseId?: string; courseName?: string; amount?: number }> } | null;
+    const subjects = [
+      ...(bd?.perSubject ?? []),
+      ...(bd?.chargeLines ?? []).map(l => ({ courseId: l.courseId, courseName: l.courseName, subtotal: l.amount })),
+    ].filter(s => s.courseId);
     if (subjects.length === 0) {
       const c = classMap.get("?") ?? { courseId: "?", name: "Không rõ lớp", collected: 0 };
       c.collected += r.appliedAmount; classMap.set("?", c);
@@ -71,7 +80,7 @@ export async function GET(req: NextRequest) {
   const transactions = rows.map(r => ({
     id: r.id, date: r.occurredAt.toISOString(), studentName: r.invoice?.student.name ?? "—",
     code: r.invoice?.code ?? r.matchedCode ?? "", yearMonth: r.invoice?.yearMonth ?? "",
-    method: methodOf(r.provider, r.resolution), amount: r.appliedAmount,
+    method: methodOf(r.provider, r.resolution, r.method), amount: r.appliedAmount,
   }));
 
   if (sp.get("format") === "csv") {
@@ -93,6 +102,7 @@ export async function GET(req: NextRequest) {
     totals: {
       collected, txCount: rows.length,
       receivable: open.reduce((s, i) => s + Math.max(0, i.amountDue - i.paidAmount), 0), openInvoices: open.length,
+      ...(() => { const k = invoiceKpi(allInv); return { draftAmount: k.draftAmount, draftCount: k.draftCount, sentDue: k.sentDue, sentPaid: k.sentPaid, sentCount: k.sentCount, collectionRatePct: k.collectionRatePct }; })(),
     },
     byMonth: [...monthMap.values()].sort((a, b) => a.month.localeCompare(b.month)),
     byClass: [...classMap.values()].sort((a, b) => b.collected - a.collected),

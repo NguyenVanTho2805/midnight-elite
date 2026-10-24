@@ -112,3 +112,29 @@ export async function addDailyCappedCoins(
     return true;
   });
 }
+
+export type QuizRewardOutcome = "granted" | "already" | "cap";
+
+// Cộng Coin thưởng làm bài: MỖI (học sinh, đề) chỉ được thưởng MỘT lần (làm lại không thưởng
+// thêm), và tối đa `cap` lần thưởng mỗi ngày. Khoá advisory theo (userId, reason) để hai lần
+// nộp đồng thời không cùng qua kiểm tra.
+export async function addQuizRewardCoins(
+  userId: string, amount: number, examId: string, cap: number, opts?: CoinOpts,
+): Promise<QuizRewardOutcome> {
+  const reason     = COIN_REASONS.QUIZ_REWARD;
+  const sourceType = resolveSourceType(reason, opts);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${userId}:${reason}`}))`;
+    if (await tx.coinTransaction.findFirst({ where: { userId, reason, refId: examId }, select: { id: true } })) return "already";
+    if (await tx.coinTransaction.count({ where: { userId, reason, createdAt: { gte: todayStart } } }) >= cap) return "cap";
+    await tx.wallet.upsert({
+      where:  { userId },
+      create: { userId, balance: amount },
+      update: { balance: { increment: amount } },
+    });
+    await tx.coinTransaction.create({ data: { userId, amount, reason, refId: examId, sourceType, classId: opts?.classId ?? null } });
+    return "granted";
+  });
+}

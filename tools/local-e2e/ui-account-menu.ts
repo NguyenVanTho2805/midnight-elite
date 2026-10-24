@@ -53,6 +53,8 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   await pg.mouse.click(640, 500);
   await eventually("bấm ra ngoài → đóng", async () => (await menu(pg).count()) === 0);
   await b.click(); await menu(pg).waitFor({ timeout: 10000 });
+  // Chờ tiêu điểm vào mục đầu (rAF) rồi mới bấm Tab: máy dev chậm sau khi đổi vỏ làm Tab đến trước khi tiêu điểm vào menu.
+  await eventually("tiêu điểm đã vào menu", async () => (await active(pg)) === "Hồ sơ");
   await pg.keyboard.press("Tab");
   await eventually("Tab → đóng (không giữ tiêu điểm trong menu)", async () => (await menu(pg).count()) === 0);
 
@@ -103,7 +105,8 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   await btn(pm, "Minh Anh").waitFor({ timeout: 90000 });
   const bb = await btn(pm, "Minh Anh").boundingBox();
   check("nút avatar cao ≥44px, rộng ≥44px, nằm gọn trong màn hình", !!bb && bb.height >= 44 && bb.width >= 44 && bb.x + bb.width <= 390, bb);
-  check("trên điện thoại chỉ hiện chữ cái đầu (không chiếm chỗ bằng tên)", !(await btn(pm, "Minh Anh").innerText()).includes("Minh Anh"));
+  // Figma 299:116497: nút tài khoản là TÊN + mũi tên (không còn vòng chữ cái đầu); tên cắt bớt (truncate) nên không tràn.
+  check("trên điện thoại nút hiện tên + mũi tên, không còn vòng chữ cái đầu", (await btn(pm, "Minh Anh").innerText()).includes("Minh Anh") && (await btn(pm, "Minh Anh").locator("svg").count()) === 1);
   check("dải trên không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await btn(pm, "Minh Anh").click();
   await menu(pm).waitFor({ timeout: 10000 });

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi" data-chu-de="navy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trang chủ · KiN học sinh</title>
+<link rel="stylesheet" href="../kin-tokens.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="tabbar" aria-label="Module của học sinh"><div class="vai">HỌC SINH</div><a href="hs-trang-chu.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/></svg><span>Trang chủ</span></a><a href="hs-lich.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span>Lịch</span></a><a href="hs-lop.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="10" r="2"/><path d="M17 15c2.2 0 4 1.8 4 4"/></svg><span>Lớp</span></a><a href="hs-bai-tap.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg><span>Bài tập</span></a></nav>
+<main class="main">
+<header class="top"><div><h1>Chào buổi chiều, Gia Bảo</h1><p class="phu">Thứ Năm 22/10</p></div><span class="dam" aria-label="120 Coin">120 Coin</span></header>
+<div class="stack">
+  <section class="card lop l2" aria-label="Buổi sắp tới">
+    <p class="phu">Buổi sắp tới</p>
+    <p class="so" style="margin-top:4px">Thứ Sáu 19:00</p>
+    <p>Toán 9 · Cô Lan</p>
+    <a class="btn rong" href="hs-lop.html" style="margin-top:12px">Vào lớp</a>
+  </section>
+  <section class="card" aria-label="Việc cần làm">
+    <div class="hang"><span class="dong-so"><span class="so">3</span><span class="dam">việc cần làm</span></span></div>
+    <ul style="margin-top:8px">
+      <li><a class="dong-viec" href="hs-bai-tap.html"><span>Bài đọc hiểu "Chiếc lược ngà"</span><span class="chip loi">Quá hạn</span></a></li>
+      <li><a class="dong-viec" href="hs-bai-tap.html"><span>Bài tập Phương trình bậc hai</span><span class="chip cho">Sắp hết hạn</span></a></li>
+      <li><a class="dong-viec" href="hs-bai-tap.html"><span>Phiếu ôn tập Văn 8</span><span class="chip">Chưa làm</span></a></li>
+    </ul>
+  </section>
+</div><details class="tt"><summary>Trạng thái khác</summary><div class="khoi stack"><p class="phu">Chưa vào lớp nào</p><div class="card stack"><p class="dam">Bạn chưa vào lớp nào</p><p class="phu">Nhập mã mời gồm 5 ký tự do gia sư gửi.</p><div class="ma"><input type="text" maxlength="5" placeholder="Mã mời" aria-label="Mã mời lớp" autocapitalize="characters"><button class="btn" type="button">Vào lớp này</button></div></div><p class="phu">Không còn việc</p><div class="card rong-cau"><p class="mo"><span class="dam" style="color:var(--kin-tt-chu-xong)">Bạn đã xong hết việc cần làm.</span></p></div><p class="phu">Đang tải</p><div class="card" aria-busy="true" aria-label="Đang tải"><p class="phu" style="margin-bottom:10px">Đang tải…</p><div class="sk"></div><div class="sk n"></div></div><p class="phu">Lỗi tải</p><div class="dai-loi" role="alert"><span>Không tải được trang chủ.</span><button class="lk" type="button">Thử lại</button></div></div></details>
+</main>
+</body>
+</html>

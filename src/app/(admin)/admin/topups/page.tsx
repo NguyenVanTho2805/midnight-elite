@@ -4,6 +4,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui";
+import PermissionGuard from "@/components/PermissionGuard";
+import { PERMISSIONS } from "@/contexts/AuthContext";
 
 interface Row {
   id: string; amountVnd: number; coinAmount: number; status: string;
@@ -12,7 +14,12 @@ interface Row {
   user: { id: string; name: string; email: string; adminRole: string | null };
 }
 
+// QT-06: có trong menu quản trị (Cài đặt · Duyệt nạp Coin) nên trang tự chặn người không đủ quyền thay vì để API trả lỗi sau.
 export default function AdminTopupsPage() {
+  return <PermissionGuard required={PERMISSIONS.MANAGE_REVENUE}><TopupsContent /></PermissionGuard>;
+}
+
+function TopupsContent() {
   const toast = useToast();
   const [rows, setRows]       = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);

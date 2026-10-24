@@ -45,7 +45,7 @@ const noFonts = (ctx: { route: (u: RegExp, h: (r: { abort: () => Promise<void> }
     check("đang gửi: nút co thành VÒNG TRÒN 48×48, chữ mờ đi, logo K hiện (không phải spinner chung chung)", busy.state === "busy" && busy.w === 48 && busy.h === 48 && busy.radius >= 24 && busy.label === 0 && busy.spin === 1, busy);
     check("trợ năng: aria-busy, tên đọc của nút là 'Đang đăng nhập…', nút bị khoá không bấm đúp được", busy.busy === "true" && /Đang đăng nhập/.test(busy.name ?? "") && busy.disabled, busy);
     check("logo K trong vòng tròn chạy cùng chuyển động với KinLoader (ba lưỡi sáng lần lượt)", await p.locator(".kin-go-spin svg path").first().evaluate(el => getComputedStyle(el).animationName === "kin-loader-blade"));
-    const shook = await p.waitForFunction(() => getComputedStyle(document.querySelector(".max-w-\\[420px\\]")!).animationName === "kin-shake-card", null, { timeout: 4000 }).then(() => true).catch(() => false);
+    const shook = await p.waitForFunction(() => getComputedStyle(document.querySelector("[data-auth-card]")!).animationName === "kin-shake-card", null, { timeout: 4000 }).then(() => true).catch(() => false);
     check("phản hồi sai về: cả thẻ lắc đầu (kin-shake-card)", shook);
     await sleep(900);
     const back = await look(p);

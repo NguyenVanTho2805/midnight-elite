@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
+import { dropHeldResults } from "@/lib/examHold";
 
 export async function GET() {
   const session = await requireSession();
   if (isNextResponse(session)) return session;
 
-  const [examResults, lessonProgress] = await Promise.all([
+  const [rawResults, lessonProgress] = await Promise.all([
     prisma.examResult.findMany({
       where: { userId: session.userId },
       orderBy: { completedAt: "asc" },
     }),
     prisma.lessonProgress.findMany({
-      where: { userId: session.userId },
+      where: { userId: session.userId, completed: true },
       select: { completedAt: true },
       orderBy: { completedAt: "desc" },
     }),
   ]);
+
+  // Chỉ tính lượt đã công bố / đề không giữ điểm (examHold).
+  const examResults = await dropHeldResults(rawResults);
 
   // GPA: average (score / totalPoints * 10), arrondi 1 décimale
   const gpa = examResults.length
@@ -45,13 +49,13 @@ export async function GET() {
 
   // Rank: count users with best exam score higher than this user's best
   const myBest = examResults.length ? Math.max(...examResults.map(r => r.score)) : 0;
-  const betterCount = myBest > 0
-    ? await prisma.examResult.groupBy({
-        by: ["userId"],
-        _max: { score: true },
-        having: { score: { _max: { gt: myBest } } },
-      }).then(r => r.length)
-    : null;
+  let betterCount: number | null = null;
+  if (myBest > 0) {
+    const everyone = await dropHeldResults(await prisma.examResult.findMany({ select: { userId: true, examId: true, score: true } }));
+    const bestByUser = new Map<string, number>();
+    for (const r of everyone) bestByUser.set(r.userId, Math.max(bestByUser.get(r.userId) ?? 0, r.score));
+    betterCount = [...bestByUser.values()].filter(b => b > myBest).length;
+  }
   const rank = betterCount !== null ? betterCount + 1 : null;
   const totalStudents = await prisma.user.count({ where: { role: "student" } });
 

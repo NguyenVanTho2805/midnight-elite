@@ -13,6 +13,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS, checkPermission } from "@/lib/permissions";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { computeMonthlyFee, parseYearMonth, type SubjectFeeInput } from "@/lib/tuition";
+import { FEE_MODE_LEGACY, normalizeFeeMode } from "@/lib/tuitionFee";
 
 type FeeRow = { courseId: string; yearMonth: string; sessionCount: number; freeCount: number };
 type FeeDelegate = { findMany(args: unknown): Promise<FeeRow[]> };
@@ -51,10 +52,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!allowed) return NextResponse.json({ error: "Không có quyền xem" }, { status: 403 });
 
   // ── Lấy dữ liệu ──────────────────────────────────────────────────────────
-  const enrollments = await prisma.enrollment.findMany({
+  let enrollments = await prisma.enrollment.findMany({
     where:   { userId, status: ENROLLMENT_STATUS.ACTIVE },
-    include: { course: { select: { id: true, name: true } } },
+    include: { course: { select: { id: true, name: true, feeMode: true } } },
   });
+  // HP-14: lớp tính phí kiểu mới (theo buổi/giờ/khoá) không có MonthlyCourseFee và không tính vào bậc thang theo số môn của cách cũ.
+  enrollments = enrollments.filter(e => normalizeFeeMode(e.course.feeMode) === FEE_MODE_LEGACY);
   if (enrollments.length === 0) {
     return NextResponse.json({
       yearMonth: ym.yearMonth,

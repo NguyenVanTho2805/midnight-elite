@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
+import { reserveAiExtract, releaseAiExtract } from "@/lib/planServer";
+import { PLAN_LIMIT_CODE } from "@/lib/planLimits";
 import { extractQuestionsFromFiles, SUPPORTED_AI_MIME_TYPES, type AiInputFile } from "@/lib/aiExamImport";
 
 // Trích xuất bằng Gemini có thể mất >60s với đề nhiều câu/nhiều ảnh (đã đo thực tế
@@ -26,6 +28,7 @@ export async function POST(req: NextRequest) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
   if (isNextResponse(auth)) return auth;
 
+  let eventId: string | null = null; // lượt AI đã giữ (trả lại nếu trích thất bại)
   try {
     const formData = await req.formData();
     const examFile = formData.get("examFile");
@@ -49,6 +52,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // KiN Pro: hạn mức lượt AI mỗi tháng (cổng TẮT mặc định → chỉ ghi lượt để đo). Đặt SAU khi kiểm tệp hợp lệ để tệp sai không tốn lượt.
+    const hold = await reserveAiExtract(auth.userId);
+    if (!hold.ok) return NextResponse.json({ error: hold.message, code: PLAN_LIMIT_CODE, quota: hold.quota }, { status: 409 });
+    eventId = hold.eventId;
+
     const result = await extractQuestionsFromFiles(
       await toAiInputFile(examFile),
       answerKeyFile instanceof File ? await toAiInputFile(answerKeyFile) : undefined
@@ -56,6 +64,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (e) {
+    await releaseAiExtract(eventId);
     console.error("[POST /api/exams/ai-extract-questions]", e);
     const message = e instanceof Error && e.message === "GEMINI_API_KEY chưa được cấu hình"
       ? e.message

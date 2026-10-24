@@ -69,6 +69,20 @@ model Course {
   classInvites       ClassInvite[]
   monthlyFees        MonthlyCourseFee[]
   attendanceSessions AttendanceSession[]
+  feeRates           CourseFeeRate[]
+  studentFeeRates    CourseStudentRate[]
+  feeCharges         FeeCharge[]
+  sessionPackages    SessionPackage[] // HP-31 gói buổi trả trước (bảng mới)
+
+  // HP-15 (23/10/2026): cách tính học phí của lớp, CHỌN LÚC TẠO LỚP và chỉ lớp tạo sau mới khác mặc định.
+  //   "monthly_sessions" (mặc định, MỌI lớp cũ) : gia sư nhập số buổi tháng (MonthlyCourseFee) — cách tính hiện tại, KHÔNG đổi.
+  //   "per_session" | "per_hour" | "per_course" : học phí sinh ra từ buổi ĐÃ CHỐT (FeeCharge; chủ chốt 24/10/2026), đơn giá ở CourseFeeRate.
+  feeMode String @default("monthly_sessions")
+  // BUỔI/LỊCH (LI-02, LI-17): màu lớp trên Lịch (khoá trong src/lib/classColor.ts, KHÔNG phải mã hex; null = suy từ mã lớp như cũ)
+  // và link học online CHUNG của lớp (ưu tiên thấp nhất: riêng buổi > theo khung giờ > chung lớp).
+  calendarColor String?
+  classJoinUrl  String?
+  studentProfiles    StudentProfile[]
 
   @@index([ownerId])
   @@map("courses")
@@ -88,6 +102,9 @@ model ClassSchedule {
   endTime   String // "21:00"
   note      String? // vd "Học live qua Zoom" — hiện kèm trong lịch/email nhắc
   joinUrl   String? // link vào lớp (Meet/Zoom) — in vào tin nhắc lịch (TT-201); trống thì tin bỏ dòng này
+  // LI-16: hình thức của khung giờ ("online" | "offline"; null = chưa chọn, hiểu như cũ) và địa chỉ khi học offline.
+  mode      String?
+  location  String?
   active    Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -175,6 +192,7 @@ model Lesson {
   chapter        Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress       LessonProgress[]
   notes          LessonNote[]
+  azotaDone      LessonAzotaDone[]
   assignments    Assignment[]
 
   @@map("lessons")
@@ -231,6 +249,9 @@ model AssignmentSubmission {
   user         User       @relation("AssignmentSubmissions", fields: [userId], references: [id], onDelete: Cascade)
   fileUrl      String
   fileName     String?
+  // "file" (tệp tải lên, mặc định: hành vi cũ) | "link" (học sinh dán LINK bài làm Azota; fileUrl giữ link đó) | "done" (chỉ bấm "Em đã làm xong", fileUrl rỗng).
+  // KHÔNG có loại ảnh: KiN không nhận ảnh bài làm của học sinh dưới 16 tuổi (xem src/lib/mediaLink.ts validateWorkLink).
+  kind         String     @default("file")
   submittedAt  DateTime   @default(now())
 
   // null = chưa chấm. Cả 2 field dưới null nếu chưa chấm.
@@ -359,6 +380,10 @@ model Exam {
   // `hasPassword: boolean` (xem exams/route.ts, exams/[id]/route.ts).
   password String?
 
+  // QZ-14: mật khẩu vào thi ở dạng BĂM (bcrypt của sha256, xem src/lib/examPassword.ts). Đề mới/đặt lại chỉ ghi cột này và để `password` null.
+  // Đề cũ còn `password` thô vẫn dùng được (đọc tương thích) và tự nâng lên băm. Không bao giờ trả qua API.
+  passwordHash String?
+
   // true = học viên xem được bảng xếp hạng Top 10 của đề này; false = ẩn
   // hoàn toàn (giáo viên không muốn học viên so điểm công khai).
   showLeaderboard Boolean @default(true)
@@ -374,6 +399,20 @@ model Exam {
   // đã cho phép xem đáp án. Câu trả lời ĐÚNG vẫn luôn hiện đáp án bình thường.
   hideAnswerForWrong Boolean @default(false)
 
+  // QZ-04 / QZ-07 (gia sư soạn quiz, phiên bản). Toàn bộ cột THÊM, nullable hoặc có mặc định — đề cũ không đổi gì.
+  //   isDraft        — bản nháp chưa phát hành: học sinh không thấy, không vào thi được (route start chặn). Mặc định false = đề cũ vẫn như cũ.
+  //   rootExamId     — id của phiên bản đầu tiên trong chuỗi phiên bản (null = đề này là gốc, hoặc đề cũ chưa từng có phiên bản).
+  //   versionNo      — số phiên bản trong chuỗi (1 = bản đầu).
+  //   supersededById — phiên bản mới đã THAY bản này (null = bản đang dùng). Bản bị thay vẫn giữ nguyên câu hỏi/đáp án/bài làm/điểm.
+  //   supersededAt   — lúc bản mới được phát hành.
+  //   versionNote    — lý do tạo phiên bản (gia sư ghi).
+  isDraft        Boolean   @default(false)
+  rootExamId     String?
+  versionNo      Int       @default(1)
+  supersededById String?
+  supersededAt   DateTime?
+  versionNote    String?   @db.Text
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]
@@ -381,6 +420,7 @@ model Exam {
 
   @@index([ownerId])
   @@index([courseId])
+  @@index([rootExamId])
   @@map("exams")
 }
 
@@ -511,7 +551,8 @@ model ExamQuestion {
   hint        String?  @db.Text
   createdAt   DateTime @default(now())
 
-  // "MC" (trắc nghiệm 1 đáp án, mặc định) | "ESSAY" (tự luận, chấm tay) |
+  // "MC" (trắc nghiệm 1 đáp án, mặc định) | "MC_MULTI" (nhiều đáp án đúng, QZ-03: chấm đủ-hoặc-không, câu trả lời lưu ở ExamAnswerBoolean
+  // — mỗi ô học sinh tích là một dòng answerTrue=true) | "ESSAY" (tự luận, chấm tay) |
   // "TRUE_FALSE_CLUSTER" (1 đoạn dẫn + 4 mệnh đề con, mỗi ý tự đúng/sai độc
   // lập — không phải chọn 1 trong 4, xem ExamOption.subLabel/ExamAnswerBoolean) |
   // "SHORT_ANSWER" (điền đáp án ngắn, chấm tự động so khớp text — đáp án đúng
@@ -537,6 +578,14 @@ model ExamQuestion {
   // QuestionBankItem về nguyên tắc không share row).
   sourceBankItemId String?
   sourceBankItem   QuestionBankItem? @relation(fields: [sourceBankItemId], references: [id], onDelete: SetNull)
+
+  // QZ-03 — thêm cho câu tự luận (cột nullable, câu cũ để trống):
+  //   studentGuide — "Hướng dẫn cho học sinh" (học sinh thấy lúc làm bài).
+  //   graderGuide  — "Hướng dẫn chấm": CHỈ gia sư thấy, không bao giờ gửi cho học sinh (kiểm ở applyAttemptOrder + route review).
+  //   rubric       — tiêu chí chấm [{ name, requirement, points }]; tổng điểm các tiêu chí phải bằng `points` của câu (kiểm ở src/lib/quizQuestion.ts).
+  studentGuide String? @db.Text
+  graderGuide  String? @db.Text
+  rubric       Json?
 
   exam    Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
   options ExamOption[]
@@ -650,6 +699,17 @@ model ExamAnswerBoolean {
   @@map("exam_answer_booleans")
 }
 
+// QZ-11: số lượt làm tối đa của một đề/quiz, ở BẢNG RIÊNG, KHÔNG có khoá ngoại tới Exam, để không đụng model Exam (đề bị xoá thì dòng này mồ côi, vô hại). Không có dòng = không giới hạn (hành vi cũ).
+// Máy chủ kiểm lúc bắt đầu lượt mới (exams/[id]/start); lượt đang làm dở luôn được tiếp tục. Chưa có màn soạn: gia sư đặt qua mã sau.
+model QuizAttemptLimit {
+  examId      String   @id
+  maxAttempts Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("quiz_attempt_limits")
+}
+
 // NV-188 — Chữa bài: gợi ý trước, đáp án sau, nhưng có điểm dừng. Một dòng cho mỗi (lượt thi × câu sai).
 // Chỉ để HỌC: không bao giờ đụng ExamAttempt.score / ExamAnswer (điểm tính theo lần nộp đầu, lúc nộp bài).
 //   tries    — số lần nộp ở màn chữa bài (tối đa 2 có ý nghĩa; lần 2 sai thì hiện đáp án)
@@ -675,6 +735,22 @@ model ExamCorrection {
   @@map("exam_corrections")
 }
 
+// QZ-07 — Nhật ký thay đổi của một quiz/đề (tạo, phát hành, tạo phiên bản mới, sửa trực tiếp khi chưa ai làm…). Bảng MỚI, chỉ thêm dòng, không sửa/xoá dòng.
+// Không có quan hệ cứng tới Exam để nhật ký còn nguyên cả khi xoá một bản nháp. actorId = gia sư thực hiện.
+model ExamChangeLog {
+  id         String   @id @default(cuid())
+  examId     String
+  rootExamId String?
+  actorId    String?
+  kind       String // "create" | "publish" | "edit" | "new_version" | "import" | "version_published" | "discard"
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([examId, createdAt])
+  @@index([rootExamId, createdAt])
+  @@map("exam_change_logs")
+}
+
 // ─── BÁO CÁO THÁNG GỬI PHỤ HUYNH (NV-185/186/189) ─────────────────────────────
 // Một báo cáo = (gia sư × học sinh × tháng), chỉ gồm các môn/lớp của gia sư đó. Số liệu (chuyên cần, nỗ lực,
 // năng lực) luôn TÍNH LẠI từ dữ liệu thật khi gia sư mở; bảng này chỉ lưu phần gia sư soạn và phần đã duyệt:
@@ -682,6 +758,19 @@ model ExamCorrection {
 //   approvedItems    — bản gia sư đã bấm "Duyệt": phụ huynh trên "Sổ của con" CHỈ thấy bản này
 //   approvedSnapshot — số liệu từng môn đóng băng lúc duyệt, để phiếu phụ huynh không đổi sau đó
 //   zaloOpenedAt     — gia sư đã MỞ Zalo với tin soạn sẵn (KiN không biết tin có đi thật hay không)
+// KiN Pro F3 "Giấy tờ có thương hiệu": cài đặt của gia sư (tên hiển thị, màu nhấn từ danh sách token, chữ ký chữ). Chưa có logo tải lên.
+model TutorDocBrand {
+  userId      String   @id
+  displayName String
+  accent      String // khoá trong src/lib/docBrand.ts (ACCENTS), KHÔNG phải mã màu
+  signature   String   @default("")
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tutor_doc_brands")
+}
+
 model MonthlyReport {
   id               String    @id @default(cuid())
   tutorId          String
@@ -692,6 +781,9 @@ model MonthlyReport {
   approvedSnapshot Json?
   approvedAt       DateTime?
   zaloOpenedAt     DateTime?
+  // KiN Pro F3: lúc gia sư tạo bản IN có thương hiệu + ảnh chụp thương hiệu lúc đó (bản đã tạo xem lại được dù hết hạn Pro).
+  brandedAt        DateTime?
+  brandSnapshot    Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -777,6 +869,9 @@ model User {
   phoneE164       String?   @unique
   phoneVerifiedAt DateTime?
   dateOfBirth   DateTime? // dùng để tính tuổi tại backend cho ngưỡng xác nhận phụ huynh (D04) — không suy đoán từ input khác
+  // 23/10/2026 (D04): lúc CHÍNH học sinh tự bấm đồng ý để gia sư ghi thông tin lớp học của em (đồng ý kép từ 7 tuổi, tự đồng ý từ 16).
+  // null = em chưa bấm. Cột nullable nên không mất dữ liệu cũ. Về null khi em thu hồi.
+  selfConsentAt DateTime?
   parentPhone   String? // dữ liệu cũ, tự khai — KHÔNG dùng để cấp quyền; nguồn tin cậy là ParentLink đã verified
   parentName    String? // dữ liệu cũ, tự khai — xem ghi chú parentPhone
   school        String?
@@ -830,9 +925,11 @@ model User {
   passwordResetTokens PasswordResetToken[]
   lessonProgress      LessonProgress[]
   lessonNotes         LessonNote[]
+  lessonAzotaDone     LessonAzotaDone[]
   cartItems           CartItem[]
   courseReviews       CourseReview[]
   notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
   examResults         ExamResult[]
   examAttempts        ExamAttempt[]
   badges              UserBadge[]
@@ -848,8 +945,11 @@ model User {
   answerReports       AnswerReport[]
   threadReports       ThreadReport[]
   tutorSubscriptions  TutorSubscription[]
+  proOrders           ProOrder[]
+  supportRequests     SupportRequest[]
   monthlyReportsAsTutor   MonthlyReport[] @relation("ReportTutor")
   monthlyReportsAsStudent MonthlyReport[] @relation("ReportStudent")
+  docBrand             TutorDocBrand?
   absencesAsStudent    ClassAbsence[]      @relation("AbsenceStudent")
   makeupCredits        MakeupCredit[]      @relation("MakeupStudent")
   reminderLogsStudent  ClassReminderLog[]  @relation("ReminderStudent")
@@ -871,6 +971,12 @@ model User {
   bankTransactions     BankTransaction[]   @relation("BankTxTutor")
   tuitionCredits       TuitionCredit[]     @relation("CreditTutor")
   tuitionCreditsOwned  TuitionCredit[]     @relation("CreditStudent")
+  studentProfilesOwned StudentProfile[]    @relation("StudentProfileTutor")
+  studentProfilesAbout StudentProfile[]    @relation("StudentProfileUser")
+  studentFieldDefs     StudentFieldDef[]   @relation("StudentFieldDefTutor")
+  familyGroups         FamilyGroup[]       @relation("FamilyGroupTutor")
+  tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
+  sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
 
   @@map("users")
 }
@@ -1021,9 +1127,26 @@ model AttendanceSession {
   createdBy  String   // gia sư tạo (userId)
   createdAt  DateTime @default(now())
 
+  // BU-01..BU-04, LI-11, LI-16, LI-17 (24/10/2026): cột THÊM, đều nullable. Buổi chưa có bản ghi vẫn suy từ quy luật tuần như cũ.
+  // Chốt buổi chỉ GHI TRẠNG THÁI; không sinh/sửa/xoá FeeCharge hay phiếu (tiền vẫn do đường điểm danh sẵn có quyết định).
+  state      String?   // null | "open" | "closed" — "closed" = gia sư bấm "Đã dạy xong"
+  closedAt   DateTime?
+  closedBy   String?
+  reopenedAt DateTime? // lần mở lại gần nhất (để hiện "đã mở lại")
+  taught     String?   @db.Text // ghi chép 1: nội dung đã dạy
+  homework   String?   @db.Text // ghi chép 2: bài tập về nhà
+  summary    String?   @db.Text // ghi chép 3: nhận xét chung của buổi
+  mode       String?   // "online" | "offline"
+  location   String?   // địa chỉ khi học offline
+  joinUrl    String?   // link online RIÊNG buổi
+  kind       String?   // null/"regular" = buổi theo lịch tuần | "extra" buổi lẻ | "makeup" dạy bù | "adhoc" phát sinh
+  startTime  String?   // "HH:mm" — chỉ buổi lẻ/bù/phát sinh (buổi theo lịch lấy giờ từ ClassSchedule)
+  endTime    String?
+
   course   Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator  User                @relation("AttendanceSessionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   records  AttendanceRecord[]
+  scores   SessionStudentScore[]
 
   @@unique([courseId, date])
   @@index([courseId, date])
@@ -1040,6 +1163,8 @@ model AttendanceRecord {
   // TT-199: gia sư ĐÃ MỞ Zalo để nhắn phụ huynh về buổi này. Đổi trạng thái điểm danh thì xoá mốc
   // (tin cũ nói về trạng thái cũ). KiN không biết tin có đi thật hay không.
   zaloOpenedAt DateTime?
+  // BU-07: gia sư tick "cho phụ huynh của em này xem nhận xét". Mặc định KHÔNG. Chỉ hiện qua link Sổ của con của đúng em đó.
+  parentVisible Boolean @default(false)
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 
@@ -1184,18 +1309,39 @@ model TuitionInvoice {
   viewTokenExpiresAt DateTime?
   zaloOpenedAt       DateTime? // gia sư ĐÃ MỞ Zalo — KiN không biết tin có đi thật hay không
   parentViewedAt     DateTime? // phụ huynh mở link (ghi từ trình duyệt, không phải khi bot xem trước link)
+  // F2 (23/10/2026): HẠN ĐÓNG do gia sư đặt, "YYYY-MM-DD" theo giờ VN. null = chưa đặt (tin Zalo giữ chữ cũ "hạn trước ngày 20").
+  // Chỉ để trình bày và nhắc; KHÔNG đổi số tiền, KHÔNG đổi trạng thái phiếu.
+  dueDate            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   tutor   User @relation("InvoiceTutor", fields: [tutorId], references: [id], onDelete: Cascade)
   student User @relation("InvoiceStudent", fields: [studentId], references: [id], onDelete: Cascade)
   transactions BankTransaction[]
+  reminders    InvoiceReminder[]
 
   @@unique([tutorId, studentId, yearMonth])
   @@index([tutorId, yearMonth])
   @@index([studentId])
   @@index([viewToken])
   @@map("tuition_invoices")
+}
+
+// F2 (23/10/2026) — lịch sử nhắc học phí theo phiếu: mỗi lần gia sư BẤM MỞ ZALO là một dòng (step 1–3).
+// KiN không biết tin có đi thật hay không nên đây chỉ là "đã mở Zalo lúc …", không bao giờ là "đã gửi". Không tự gạch nợ.
+model InvoiceReminder {
+  id        String   @id @default(cuid())
+  invoiceId String
+  tutorId   String
+  step      Int // 1 | 2 | 3
+  openedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  invoice TuitionInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, step])
+  @@index([tutorId, openedAt])
+  @@map("invoice_reminders")
 }
 
 // Mỗi khoản tiền vào (SePay hoặc gia sư tự ghi tiền mặt) là 1 dòng — có dấu vết
@@ -1222,6 +1368,9 @@ model BankTransaction {
   resolvedBy          String?
   resolvedAt          DateTime?
   suggestedInvoiceIds String[]  @default([]) // gợi ý cùng số tiền — KHÔNG tự ghép
+  // HP-20 (23/10/2026): hình thức khi gia sư tự ghi tay: "cash" | "bank_transfer". null = bản ghi cũ (coi là tiền mặt) hoặc
+  // tiền vào qua SePay. Ngày thu của khoản ghi tay chính là `occurredAt` (báo cáo doanh thu đã tính theo cột này).
+  method              String?
   createdAt           DateTime  @default(now())
 
   tutor   User            @relation("BankTxTutor", fields: [tutorId], references: [id], onDelete: Cascade)
@@ -1249,6 +1398,166 @@ model TuitionCredit {
 
   @@index([tutorId, studentId])
   @@map("tuition_credits")
+}
+
+// HP-21 (23/10/2026): nhật ký hoàn tác một khoản đã thu. BẢNG MỚI, chỉ thêm dòng, không sửa/xoá dòng cũ. Một khoản tiền có thể
+// bị hoàn tác nhiều lần (ghép sai → hoàn tác → ghép lại → hoàn tác) nên không đặt cột hoàn tác trên BankTransaction.
+// Không khoá ngoại tới người dùng (tránh đụng model User); tutorId/bankTransactionId/invoiceId chỉ để tra cứu.
+//   outcome: "requeued" (khoản tiền thật đã vào TK gia sư → quay lại hàng chờ đối soát)
+//            "voided"   (khoản gia sư tự ghi tay → coi như ghi nhầm, loại khỏi doanh thu)
+model PaymentReversal {
+  id                String   @id @default(cuid())
+  tutorId           String
+  bankTransactionId String
+  invoiceId         String
+  reversedAmount    Int // phần đã cộng vào phiếu nay được trừ ra
+  reason            String   @db.Text
+  outcome           String
+  invoiceStatusFrom String
+  invoiceStatusTo   String
+  creditsVoided     Int      @default(0) // tổng tiền dư (tín dụng tháng sau) được thu hồi
+  reversedBy        String
+  createdAt         DateTime @default(now())
+
+  @@index([tutorId, createdAt])
+  @@index([bankTransactionId])
+  @@index([invoiceId])
+  @@map("payment_reversals")
+}
+
+// ─── HỌC PHÍ KIỂU MỚI (HP-14..HP-17, 23/10/2026) ──────────────────────────────────────────────────────────────
+// Chỉ lớp có Course.feeMode khác "monthly_sessions" dùng các bảng này. Lớp cũ không có dòng nào ở đây và phiếu của lớp cũ
+// KHÔNG đổi một đồng. Bảng MỚI; không khoá ngoại tới User (tránh đụng model User), chỉ khoá tới Course (xoá lớp thì xoá theo).
+// Quy tắc "tiền chốt vào sự kiện": FeeCharge lưu số tiền đã tính ngay lúc điểm danh; khi vào phiếu (invoiceId) thì ĐÓNG BĂNG.
+
+// Lịch sử đơn giá của lớp. Đơn giá áp cho buổi có ngày >= effectiveFrom (ngày VN, "YYYY-MM-DD"); buổi trước đơn giá đầu tiên dùng đơn giá đầu tiên.
+//   per_session: rate = đ / buổi ; per_hour: rate = đ / giờ + sessionMinutes ; per_course: rate = đ / khoá / học sinh.
+model CourseFeeRate {
+  id             String   @id @default(cuid())
+  courseId       String
+  mode           String
+  rate           Int
+  sessionMinutes Int? // chỉ per_hour: một buổi dài bao nhiêu phút
+  effectiveFrom  String
+  note           String?  @db.Text
+  createdBy      String
+  createdAt      DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, effectiveFrom])
+  @@index([courseId])
+  @@map("course_fee_rates")
+}
+
+// HP-17: đơn giá riêng cho một cặp (học sinh, lớp). Cùng đơn vị với đơn giá lớp (đ/buổi, đ/giờ hoặc đ/khoá). Có hiệu lực từ ngày.
+// Không dùng TuitionOverride (đó là giá theo em TOÀN CỤC của cách tính cũ, giữ nguyên).
+model CourseStudentRate {
+  id            String   @id @default(cuid())
+  courseId      String
+  studentId     String
+  rate          Int
+  effectiveFrom String
+  note          String?  @db.Text
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId, effectiveFrom])
+  @@index([courseId, studentId])
+  @@map("course_student_rates")
+}
+
+// Một dòng phí đã tính. kind: "session" (một buổi, gắn recordId) | "course" (cả khoá, một lần) | "extra" (phí khác, HP-18).
+// invoiceId null = chưa vào phiếu nào (còn sửa được: đổi đơn giá, đổi trạng thái điểm danh). Đã vào phiếu = đóng băng.
+model FeeCharge {
+  id         String   @id @default(cuid())
+  tutorId    String
+  courseId   String
+  studentId  String
+  kind       String
+  recordId   String? // AttendanceRecord.id cho kind=session. Nullable nên @unique cho phép nhiều dòng không có recordId.
+  dateKey    String // ngày VN của buổi / ngày phát sinh
+  yearMonth  String // tháng của dateKey — phiếu tháng đó gom dòng này
+  amount     Int // đồng, đã làm tròn từng dòng
+  units      Int? // per_hour: số phút của buổi
+  rate       Int? // đơn giá đã áp
+  rateSource String   @default("class") // "class" | "student"
+  mode       String
+  label      String? // kind=extra: tên khoản (tài liệu, quỹ lớp…)
+  invoiceId  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([recordId])
+  @@index([tutorId, studentId, yearMonth])
+  @@index([courseId, dateKey])
+  @@index([invoiceId])
+  @@map("fee_charges")
+}
+
+// HP-31 (24/10/2026): gói buổi trả trước và sổ sử dụng. SỔ BUỔI, không phải sổ tiền: KiN không thu, không chuyển, không gạch nợ.
+// Chỉ lớp kiểu mới theo buổi / theo giờ. Một gói = N buổi cho MỘT em trong MỘT lớp; mỗi buổi ĐÃ CHỐT em có mặt/muộn (không dùng buổi bù) trừ 1 buổi.
+// unitPrice / totalPrice CHỤP lúc lập theo đơn giá lớp (hoặc giá riêng của em) để ghi lại thôi; đổi đơn giá sau không đổi gói. Bảng MỚI, không đụng phiếu / dòng phí.
+// CẦN KẾ TOÁN DUYỆT cách ghi nhận (có trừ khỏi phiếu hay không) trước khi dùng thật: hiện sổ buổi KHÔNG tự bớt khoản nào trên phiếu.
+model SessionPackage {
+  id          String    @id @default(cuid())
+  tutorId     String
+  courseId    String
+  studentId   String
+  sessions    Int // số buổi trong gói
+  unitPrice   Int // đồng / buổi, chụp lúc lập
+  totalPrice  Int // sessions × unitPrice, chụp lúc lập
+  status      String    @default("active") // "active" | "used_up" | "cancelled"
+  note        String?
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  course Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uses   SessionPackageUse[]
+
+  @@index([courseId, studentId, status])
+  @@index([tutorId])
+  @@map("session_packages")
+}
+
+// Một lần trừ buổi của gói. Mỗi bản ghi điểm danh trừ tối đa MỘT buổi (unique recordId). Trả buổi = đặt reversedAt (giữ lịch sử), không xoá.
+model SessionPackageUse {
+  id         String    @id @default(cuid())
+  packageId  String
+  recordId   String // AttendanceRecord.id
+  sessionId  String
+  dateKey    String // ngày VN của buổi
+  usedAt     DateTime  @default(now())
+  reversedAt DateTime?
+
+  package SessionPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([recordId])
+  @@index([packageId])
+  @@index([sessionId])
+  @@map("session_package_uses")
+}
+
+// HP-32 (23/10/2026): giảm giá PHẦN TRĂM của gia sư cho một học sinh, áp tự động khi LẬP PHIẾU MỚI (phiếu đã lập không đổi).
+// Một dòng cho mỗi cặp (gia sư, học sinh): đặt lại thì ghi đè, xoá = đặt 0%. Lịch sử đổi nằm ở nhật ký hệ thống. Bảng MỚI.
+model StudentDiscount {
+  id        String   @id @default(cuid())
+  tutorId   String
+  studentId String
+  percent   Int // 1..100
+  note      String?  @db.Text
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tutorId, studentId])
+  @@index([tutorId])
+  @@map("student_discounts")
 }
 
 // ─── COIN TOPUP REQUEST (FE-128) ──────────────────────────────────────────────
@@ -1406,6 +1715,28 @@ model Notification {
   @@map("notifications")
 }
 
+// ─── THÔNG BÁO ĐẨY (ĐX-02) ────────────────────────────────────────────────────
+// Mỗi dòng là MỘT trình duyệt / thiết bị của gia sư đã bật "Thông báo đẩy". `endpoint` + `p256dh` + `auth` là thứ trình duyệt cấp
+// (khoá công khai của thiết bị, không phải bí mật của tài khoản). `endpoint` unique: một thiết bị đổi tài khoản thì dòng chuyển sang người mới.
+// `revokedAt` đặt khi dịch vụ đẩy trả 404/410 (thiết bị đã gỡ quyền) — không gửi nữa; người dùng bấm tắt / gỡ thì XOÁ hẳn dòng.
+// Chữ gửi đi dựng từ LOẠI thông báo (src/lib/pushRules.ts), không đọc từ bảng notifications.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("push_subscriptions")
+}
+
 // ─── LESSON PROGRESS ──────────────────────────────────────────────────────────
 
 model LessonProgress {
@@ -1414,12 +1745,76 @@ model LessonProgress {
   lessonId       String
   completedAt    DateTime @default(now())
   watchedSeconds Int      @default(0)
+  // true = đã xong; false = đang xem dở (chỉ lưu giây xem). Hàng cũ mặc định true (trước đây hàng nào có mặt cũng bị coi là "xong").
+  completed      Boolean  @default(true)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
   @@map("lesson_progress")
+}
+
+// ─── FILE ASSETS ──────────────────────────────────────────────────────────────
+// Tệp gia sư tải lên KiN (hiện là VIDEO bài giảng; tài liệu sẽ ghi bytes ở đây khi cần, MD-08). Chỉ THÊM.
+// Không có địa chỉ công khai: phát qua /api/media/[id]/stream sau khi kiểm quyền (src/lib/lessonGuard.ts canWatchStoredMedia).
+// Bài giảng tham chiếu bằng "kin-media:<id>" trong Lesson.videoUrl.
+model FileAsset {
+  id           String   @id @default(cuid())
+  ownerId      String // gia sư tải lên
+  courseId     String // lớp chứa bài
+  lessonId     String? // gắn khi lưu bài
+  kind         String   @default("video") // "video" | "document"
+  driver       String // "local" | "cloudinary"
+  storageKey   String // đường dẫn trong kho (local: tên tệp; cloudinary: public_id)
+  mimeType     String
+  bytes        Int? // null khi chưa tải xong
+  originalName String
+  status       String   @default("pending") // "pending" | "ready"
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId])
+  @@index([courseId])
+  @@index([lessonId])
+  @@map("file_assets")
+}
+
+// ─── BẢN GHI CỦA LỚP (MD-02) ──────────────────────────────────────────────────
+// Link CHỮ gia sư dán sau buổi học (YouTube / Drive / Vimeo / Zoom cloud; đã qua src/lib/mediaLink.ts). KiN không lưu tệp video.
+// sessionId = AttendanceSession.id (buổi học) — cố ý KHÔNG khai báo quan hệ để không đụng model buổi; null = chưa gắn buổi nào. Chỉ THÊM.
+model ClassRecording {
+  id        String   @id @default(cuid())
+  courseId  String
+  sessionId String?
+  title     String
+  url       String
+  kind      String // "youtube" | "vimeo" | "drive" | "zoom_record"
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+  @@index([sessionId])
+  @@map("class_recordings")
+}
+
+// ─── AZOTA: HỌC SINH BÁO "ĐÃ LÀM" ─────────────────────────────────────────────
+// Lời khai của học sinh rằng đã làm bài Azota của một bài giảng (KiN không biết thật), kèm LINK bài làm (không bắt buộc).
+// Bảng riêng, KHÔNG dùng Assignment: tránh bài "ảo" lọt vào danh sách bài tập, hàng đợi chấm và số "chưa chấm" của gia sư.
+// Không có trường ảnh: KiN không nhận ảnh bài làm của học sinh dưới 16 tuổi. Chỉ THÊM.
+model LessonAzotaDone {
+  id       String   @id @default(cuid())
+  lessonId String
+  userId   String
+  kind     String   @default("done") // "done" (chỉ bấm Em đã làm xong) | "link" (kèm link bài làm trên azota.vn)
+  linkUrl  String?
+  doneAt   DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, userId])
+  @@index([lessonId])
+  @@map("lesson_azota_done")
 }
 
 // ─── LESSON NOTES ─────────────────────────────────────────────────────────────
@@ -1822,4 +2217,297 @@ model LoginCode {
   updatedAt   DateTime  @updatedAt
 
   @@map("login_codes")
+}
+
+// ─── KiN PRO — NỀN GÓI (23/10/2026; docs/kin/rd/pro/tinh-nang-pro-tra-phi.md mục 8.4) ─────────────────────────
+// "Đo trước, thu sau": chỉ THÊM bảng mới, không @unique trên bảng cũ. Không dùng Coin, không tự động trừ tiền.
+// Cổng hạn mức TẮT mặc định (biến môi trường KIN_PLAN_ENFORCE); bảng cấu hình sửa từ admin, không viết cứng trong mã.
+
+// Một dòng cho mỗi gói ("free" | "pro"). Thiếu dòng thì lấy mặc định ở src/lib/planLimits.ts (PLAN_DEFAULTS).
+model PlanConfig {
+  id                String   @id @default(cuid())
+  code              String   @unique // "free" | "pro"
+  name              String
+  studentLimit      Int // trần học viên đang học (Pro: trần chống lạm dụng, không phải "vô hạn")
+  aiExtractPerMonth Int // số lượt AI trích đề mỗi tháng (giờ VN)
+  priceMonthVnd     Int // giá gói tháng (0 với Free)
+  priceQuarterVnd   Int
+  priceYearVnd      Int
+  updatedBy         String? // userId admin sửa lần cuối
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  @@map("plan_configs")
+}
+
+// Cài đặt chung kiểu khoá-giá trị (số nguyên dạng chữ): ngày Pro tặng người dùng cũ, giảm giá sáng lập, số suất, số tháng khoá giá…
+model SettingKV {
+  key       String   @id
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("setting_kv")
+}
+
+// Một yêu cầu mua / một kỳ Pro. Thu theo kỳ bằng QR chuyển khoản; admin đối chiếu sao kê rồi bấm kích hoạt (cộng dồn hạn).
+// Giá được CHỤP lại lúc tạo yêu cầu (như priceCoinPaid): admin đổi giá sau không làm đổi yêu cầu đã tạo.
+model ProOrder {
+  id                  String    @id @default(cuid())
+  userId              String // gia sư mua
+  period              String // "month" | "quarter" | "year" | "grant" (tặng)
+  durationDays        Int // snapshot thời hạn
+  priceVnd            Int // snapshot số tiền phải chuyển (đã trừ giảm giá sáng lập); 0 với suất tặng
+  listPriceVnd        Int // snapshot giá niêm yết lúc tạo
+  foundingDiscountPct Int       @default(0) // snapshot % giảm giá sáng lập đã áp (0 = không)
+  source              String    @default("purchase") // "purchase" | "legacy_grant" | "admin_grant"
+  memoCode            String    @unique // nội dung chuyển khoản, vd "KINPRO-7K2Q9XMD"
+  status              String    @default("pending") // "pending" | "active" | "cancelled"
+  startDate           DateTime? // đặt lúc kích hoạt
+  endDate             DateTime?
+  activatedBy         String? // userId admin kích hoạt
+  activatedAt         DateTime?
+  bankRef             String? // mã giao dịch ngân hàng admin đối chiếu (tuỳ chọn)
+  createdAt           DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, endDate])
+  @@index([status, createdAt])
+  @@map("pro_orders")
+}
+
+// Nhật ký lượt dùng để ĐO (chế độ "đếm bóng") và để đếm hạn mức theo tháng. Không FK: là sổ đo, không phải dữ liệu nghiệp vụ.
+//   kind: "ai_extract" (một lượt trích đề) | "gate_would_block" (cổng TẮT nhưng nếu bật sẽ chặn) | "gate_blocked" (cổng BẬT và đã chặn)
+model UsageEvent {
+  id        String   @id @default(cuid())
+  userId    String // gia sư (chủ gói)
+  kind      String
+  quantity  Int      @default(1)
+  refType   String?
+  refId     String?
+  meta      Json? // không tên học sinh, không số tiền
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+  @@index([kind, createdAt])
+  @@map("usage_events")
+}
+
+// KiN Pro F6 — yêu cầu hỗ trợ của gia sư. Một hàng đợi chung; gói Pro được xếp trước (chụp lại gói LÚC GỬI), hứa "trong giờ hành chính", không hứa 24/7.
+// Lỗi nghiêm trọng và vấn đề riêng tư (kind = "serious") KHÔNG phân tầng: Free và Pro cùng vào làn khẩn, không phải đặc quyền Pro.
+// Không có trường học sinh/phụ huynh: nội dung là chữ gia sư tự viết, form dặn không ghi tên/số điện thoại/ảnh của học sinh.
+model SupportRequest {
+  id          String    @id @default(cuid())
+  userId      String // gia sư gửi
+  kind        String // "setup" | "payment" | "other" | "serious"
+  subject     String    @db.VarChar(120)
+  message     String    @db.Text
+  planAtSend  String // "free" | "pro" (chụp lúc gửi)
+  status      String    @default("open") // "open" | "answered" | "closed"
+  reply       String?   @db.Text // câu trả lời của quản trị, gia sư xem được
+  repliedBy   String? // userId quản trị
+  repliedAt   DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("support_requests")
+}
+
+// ─── HỒ SƠ HỌC SINH CỦA GIA SƯ + ĐỒNG Ý DỮ LIỆU TRẺ (23/10/2026) ───────────────
+// Chủ dự án quyết 23/10: "Làm đầy đủ, có hộp đồng ý" cho dữ liệu trẻ dưới 16. CHƯA có ý kiến luật sư (Nghị định 13/2023,
+// Luật Trẻ em 2016, Luật 91/2025) — cần có trước khi mở cho người dùng thật. Quy tắc ở src/lib/consentPolicy.ts.
+// Mọi bảng dưới đây là bảng MỚI (chỉ thêm), không đổi bảng cũ ngoài hai cột/quan hệ nói ở trên.
+
+// Hồ sơ RIÊNG của một gia sư về một em: không có tài khoản (userId null) hoặc là ghi chú riêng của gia sư về em đã có tài khoản
+// (userId có giá trị — KHÔNG đụng dữ liệu tài khoản của em, gia sư khác không thấy). Chỉ chủ hồ sơ (tutorId) đọc/sửa được.
+// Chỉ lưu được khi đã có đồng ý đủ bên (ConsentRecord); thu hồi → các trường ngoài tên bị che (xem maskProfile).
+model StudentProfile {
+  id            String    @id @default(cuid())
+  tutorId       String
+  userId        String? // em đã có tài khoản và đang học lớp của chính gia sư này; null = hồ sơ không tài khoản
+  courseId      String? // lớp của gia sư (kiểm ở máy chủ); với status waitlist là lớp em đang chờ
+  name          String
+  // Nhóm tuổi gia sư khai khi chưa có ngày sinh: "u7" (dưới 7) | "7to15" | "16plus". Có ngày sinh thì ngày sinh quyết định.
+  ageGroup      String
+  status        String    @default("active") // "active" | "inactive" | "waitlist"
+  familyId      String?
+  guardianName  String?
+  guardianPhone String?
+  // ── Nhóm "mở rộng" (cần phạm vi đồng ý "extended")
+  birthDate     String? // "YYYY-MM-DD"
+  address       String?
+  phone         String?
+  phoneExtra    String?
+  email         String?
+  emailExtra    String?
+  startDate     String? // ngày bắt đầu học "YYYY-MM-DD"
+  subjects      String[]  @default([])
+  notes         String?   @db.Text
+  customData    Json? // { [StudentFieldDef.id]: "chữ" }
+  source        String    @default("manual") // "manual" | "wizard" | "paste" | "csv" | "request"
+  batchId       String? // lần nhập hàng loạt (ConsentRecord.batchId cùng giá trị)
+  requestId     String? // từ yêu cầu tìm gia sư (TutorRequest)
+  waitlistedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tutor  User         @relation("StudentProfileTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  user   User?        @relation("StudentProfileUser", fields: [userId], references: [id], onDelete: Cascade)
+  course Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  family FamilyGroup? @relation(fields: [familyId], references: [id], onDelete: SetNull)
+
+  @@index([tutorId, status])
+  @@index([userId])
+  @@index([courseId])
+  @@index([familyId])
+  @@map("student_profiles")
+}
+
+// Sổ ghi vết đồng ý. Mỗi dòng = một bên (party) đồng ý một nhóm phạm vi (scopes) bằng một phương thức, kèm phiên bản chữ đã hiện.
+// Thu hồi = đặt revokedAt (không xoá dòng — giữ vết). Đồng ý lại = dòng MỚI. Không chứa tên/số liên lạc của trẻ, chỉ id.
+// "tutor_attestation" nghĩa là GIA SƯ tự xác nhận đã có đồng ý của phụ huynh/em; KiN KHÔNG kiểm tra giấy tờ nên không phải "đã xác minh".
+model ConsentRecord {
+  id          String    @id @default(cuid())
+  subjectType String // "student_profile" | "tutor_request"
+  subjectId   String
+  party       String // "guardian" | "child" | "self"
+  scopes      String[] // "basic" | "extended" | "scores" | "family"
+  method      String // "tutor_attestation" | "guest_form"
+  textVersion String
+  givenById   String? // người bấm (gia sư); khách không đăng nhập = null
+  givenByRole String // "tutor" | "guest"
+  batchId     String?
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+  revokeCause String? // "guardian_request" | "child_request" | "tutor_decision" | "profile_deleted"
+
+  @@index([subjectType, subjectId])
+  @@index([batchId])
+  @@map("consent_records")
+}
+
+// Trường tuỳ chỉnh của gia sư (LO-18). Số trường tối đa cấu hình bằng KIN_CUSTOM_FIELDS_MAX (xem studentProfile.ts).
+model StudentFieldDef {
+  id        String   @id @default(cuid())
+  tutorId   String
+  label     String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tutor User @relation("StudentFieldDefTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@index([tutorId])
+  @@map("student_field_defs")
+}
+
+// Hồ sơ gia đình dùng chung liên hệ (HS-12). CHỈ chung liên hệ — KHÔNG gộp phiếu học phí theo gia đình.
+model FamilyGroup {
+  id            String   @id @default(cuid())
+  tutorId       String
+  label         String
+  guardianName  String?
+  guardianPhone String?
+  createdAt     DateTime @default(now())
+
+  tutor    User             @relation("FamilyGroupTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  profiles StudentProfile[]
+
+  @@index([tutorId])
+  @@map("family_groups")
+}
+
+// Điểm 0-10 và % hoàn thành BTVN của một em trong một buổi (BU-11). Chỉ gia sư của lớp và phụ huynh của đúng em đó (qua link Sổ của con) thấy.
+// Chỉ ghi được khi hồ sơ của em có đồng ý phạm vi "scores". Bảng riêng để KHÔNG đụng AttendanceRecord (điểm danh/học phí).
+model SessionStudentScore {
+  id          String   @id @default(cuid())
+  sessionId   String
+  userId      String
+  tutorId     String
+  score       Float? // 0..10, bước 0,25
+  homeworkPct Int? // 0..100
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User              @relation("SessionScoreStudent", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("session_student_scores")
+}
+
+// Yêu cầu tìm gia sư của khách (KH-04 / PH-07). Chỉ thu tối thiểu: cấp học, môn, khu vực, khung giờ, tên + số Zalo của PHỤ HUYNH.
+// KHÔNG thu tên hay ngày sinh của trẻ. Gửi kèm đồng ý của phụ huynh (ConsentRecord, method "guest_form"). Theo dõi bằng mã trackToken.
+model TutorRequest {
+  id            String    @id @default(cuid())
+  trackToken    String    @unique
+  targetTutorId String? // gửi tới đúng một gia sư (từ /mentor/<id>); null = yêu cầu chung (chưa có ai nhận)
+  level         String // "tieu-hoc" | "thcs" | "thpt" | "khac"
+  subject       String
+  city          String?
+  district      String?
+  mode          String? // "online" | "offline" | "both"
+  slots         String? // khung giờ muốn học (chữ tự do ngắn)
+  note          String?
+  contactName   String? // tên PHỤ HUYNH
+  contactPhone  String // SĐT Zalo PHỤ HUYNH, 10 số
+  phoneKey      String // băm một chiều của SĐT để chống spam (không dùng để hiện)
+  status        String    @default("new") // "new" | "accepted" | "declined" | "closed"
+  decidedAt     DateTime?
+  profileId     String? // hồ sơ gia sư tạo khi tiếp nhận
+  createdAt     DateTime  @default(now())
+
+  target User? @relation("TutorRequestTarget", fields: [targetTutorId], references: [id], onDelete: SetNull)
+
+  @@index([targetTutorId, status])
+  @@index([phoneKey, createdAt])
+  @@map("tutor_requests")
+}
+
+// ─── QZ-08: CHẤM QUIZ HỖN HỢP — CHỜ CHẤM VÀ CÔNG BỐ ──────────────────────────────────────────────
+// Ba bảng MỚI, chỉ thêm. Cố ý KHÔNG khai báo quan hệ Prisma tới Exam/ExamAttempt (tránh sửa model Exam*, mỗi nơi chỉ giữ id dạng chuỗi);
+// khi lượt thi bị xoá thì dòng ở đây thành mồ côi, vô hại: mọi truy vấn đều đi từ ExamAttempt / Exam trước.
+//   ExamPublishPolicy  — đề nào "giữ điểm đến khi gia sư công bố". KHÔNG có dòng = hành vi cũ (học sinh thấy điểm ngay), nên đề cũ không đổi.
+//   ExamAttemptPublish — lượt thi đã được công bố (có dòng = học sinh được thấy điểm tổng, điểm và nhận xét tự luận, đáp án theo cấu hình đề).
+//   ExamGradeEdit      — lịch sử mỗi lần gia sư lưu điểm/nhận xét một câu tự luận (điểm cũ → điểm mới); chỉ thêm, không sửa, không xoá.
+model ExamPublishPolicy {
+  examId           String   @id
+  holdUntilPublish Boolean  @default(true)
+  updatedById      String?
+  updatedAt        DateTime @updatedAt
+
+  @@map("exam_publish_policies")
+}
+
+model ExamAttemptPublish {
+  attemptId     String   @id
+  examId        String
+  publishedById String
+  publishedAt   DateTime @default(now())
+
+  @@index([examId])
+  @@map("exam_attempt_publishes")
+}
+
+model ExamGradeEdit {
+  id          String   @id @default(cuid())
+  examId      String
+  attemptId   String
+  questionId  String
+  editedById  String
+  prevPoints  Float?
+  newPoints   Float
+  prevComment String?  @db.Text
+  newComment  String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([attemptId, questionId])
+  @@index([examId, createdAt])
+  @@map("exam_grade_edits")
 }

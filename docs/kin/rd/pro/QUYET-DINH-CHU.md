@@ -1,0 +1,17 @@
+# Quyết định của chủ dự án (23/10/2026) và cách làm
+
+Chủ trả lời 4 câu (từ KE-HOACH-HOAN-THIEN.md mục 7):
+1. HỌC PHÍ: "Thêm cả kiểu tính mới" — làm cả kiểu tính theo giờ / theo khoá / gói buổi trả trước, phí khác cả lớp, ngày thu + hình thức, hoàn tác, hạn đóng + nhắc. Ràng buộc đã nêu trong kế hoạch: chỉ áp cho lớp tạo SAU, KHÔNG đụng phiếu đã chốt, giữ cách tính hiện tại làm mặc định, mọi con số hiển thị phải có test so khớp với truy vấn gốc.
+2. DỮ LIỆU TRẺ DƯỚI 16: "Làm đầy đủ, có hộp đồng ý" — dán danh sách, nhập Excel/CSV, trường mở rộng, hồ sơ không tài khoản, biểu mẫu khách tìm gia sư; mọi nơi thu dữ liệu trẻ phải có hộp đồng ý của phụ huynh/xác nhận của gia sư, ghi vết đồng ý (ParentConsent, đồng ý kép từ 7 tuổi, ngưỡng 16, cột selfConsentAt). Báo cáo phải ghi rõ: CHƯA có ý kiến luật sư; nên có trước khi mở cho người dùng thật.
+3. VIDEO/ẢNH/AI có học sinh: "Chỉ nhận link chữ" — KHÔNG làm tải video lên, KHÔNG nhận ảnh bài làm của trẻ, KHÔNG gửi dữ liệu học sinh cho AI ngoài.
+4. GÓI/COIN/TRUNG TÂM: chủ giao tài liệu docs/kin/rd/pro/tinh-nang-pro-tra-phi.md (gói KiN Pro). Làm theo đúng tinh thần tài liệu: "đo trước, thu sau". Mặc định áp dụng cho các quyết định D1–D18 (chủ chưa quyết riêng, dùng đề xuất mặc định của tài liệu): cổng hạn mức TẮT bằng biến môi trường (mặc định không chặn ai), cấu hình giá/hạn mức nằm bảng cấu hình admin (không viết cứng), KHÔNG dùng Coin trả Pro, KHÔNG tự động trừ tiền, thu theo kỳ bằng QR chuyển khoản; số tài khoản nhận tiền lấy từ biến môi trường (gỡ STK giả BANK_INFO), chưa cấu hình thì màn Gói ghi 'Chưa mở bán'; chặn POST /api/wallet/topups của gia sư khi KIN_TRIAL_MODE; chặn VERCEL_ENV=preview ở mọi đường tính tiền; giữ nguyên quyền cho người dùng hiện có, hết hạn chỉ chặn tạo mới. KHÔNG làm: gói Nhóm/Trung tâm, hồ sơ nổi bật/lead, ZNS tự gửi, AI nhận xét/chấm, cổng thẻ, điểm danh sinh trắc.
+Mọi thứ liên quan tiền vẫn: không đổi phiếu đã chốt, schema chỉ thêm, test chứng minh số cũ không đổi, không tạo đường chết.
+
+## Cập nhật 24/10/2026 — chủ giao toàn quyền hoàn thiện
+Chủ trả lời: (1) mục "Cố ý không làm" (tải video lên, ảnh bài làm của trẻ, gói Nhóm/Trung tâm, thẻ tín dụng, điểm danh sinh trắc) BỎ HẾT khỏi phạm vi, không làm; (2) mọi việc còn lại làm tới khi hoàn thiện, chủ giao quyền quyết định các điểm agent từng dừng để hỏi. Mặc định đã chốt thay chủ (đã ghi để kế toán/luật sư xem lại sau):
+- CHỐT BUỔI = điều kiện sinh phí cho lớp kiểu mới (theo buổi/giờ/khoá): dòng phí chỉ sinh khi buổi ĐÃ CHỐT ('Đã dạy xong') và có em có mặt/muộn; lưu điểm danh đơn thuần không sinh phí. Khớp quy tắc kho 'chỉ buổi đã chốt mới tính tiền'. Lớp cũ (monthly_sessions) không đổi. Không đụng dòng phí đã sinh/phiếu đã chốt.
+- Nhãn 'Đã xác minh' ở thẻ/hồ sơ gia sư đổi thành 'Đã duyệt hồ sơ' (KiN không xác minh chuyên môn) ở mọi nơi + bài test.
+- Thẻ 'Tiềm năng' giữ nghĩa phiếu nháp chưa gửi (không công thức tiền mới).
+- Phụ huynh thấy bài tập/Azota của con ở link không đăng nhập: KHÔNG (rủi ro dữ liệu trẻ). Học phí trong xem trước mã mời: giữ như cũ.
+- Phí trễ hạn: chỉ làm GỢI Ý hiển thị, KHÔNG tự cộng tiền. Gói buổi trả trước (HP-31): làm theo mô hình sổ buổi (số buổi, không chuyển tiền thật), chỉ áp lớp tạo sau, cần kế toán xem trước khi dùng thật.
+- Pro: kích hoạt tự động bằng webhook SePay (tiền tố mã khác 'KIN', khoá từ env, tắt khi chưa cấu hình) + nhắc gia hạn T-7/T-3/T-0; logo tải lên KHÔNG làm (chưa có cách tải ảnh an toàn).
