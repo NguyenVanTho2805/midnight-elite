@@ -61,7 +61,8 @@ const PW = "Passw0rd!";
   section("Lỗi: để trống, sai mật khẩu, tài khoản lạ");
   await acct(p0).fill(""); await pass(p0).fill("");
   await submit(p0).click();
-  check("để trống rồi bấm → 'Vui lòng nhập tài khoản và mật khẩu' (role=alert)", await A(p0).getByText("Vui lòng nhập tài khoản và mật khẩu").isVisible());
+  // 24/10/2026 (HT-02): ô trống nay báo ngay DƯỚI TỪNG Ô (aria-invalid + dòng báo nối aria-describedby) thay cho một hộp chung; không còn câu gộp.
+  check("để trống rồi bấm → báo dưới từng ô 'Chưa nhập tài khoản' / 'Chưa nhập mật khẩu', hai ô aria-invalid", await p0.getByText("Chưa nhập tài khoản").isVisible() && await p0.getByText("Chưa nhập mật khẩu").isVisible() && (await acct(p0).getAttribute("aria-invalid")) === "true" && (await pass(p0).getAttribute("aria-invalid")) === "true");
   await acct(p0).fill(U.email);
   await pass(p0).fill("sai-mat-khau");
   await submit(p0).click();

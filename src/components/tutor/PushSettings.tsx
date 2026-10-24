@@ -167,7 +167,7 @@ export default function PushSettings() {
             )}
             {state === "server-off" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>{serverOffText(cfg.reason)}</p>}
             {state === "unsupported" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>Trình duyệt này không hỗ trợ thông báo đẩy. Hãy dùng Chrome, Edge, Firefox hoặc Safari bản mới.</p>}
-            {state === "ios-install" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>iPhone chỉ nhận thông báo đẩy khi KiN đã được thêm vào Màn hình chính. Làm theo hướng dẫn “Dùng iPhone?” bên dưới rồi mở KiN từ biểu tượng mới.</p>}
+            {state === "ios-install" && <p className="text-[length:var(--kin-co-goc)] mt-1" style={MUTED}>iPhone chỉ nhận thông báo đẩy khi KiN đã được thêm vào Màn hình chính. Làm theo mục “Cài KiN lên Màn hình chính” bên dưới rồi mở KiN từ biểu tượng mới.</p>}
             <div className="mt-3 flex gap-2 flex-wrap">
               {state === "off" && <KinButton onClick={() => void enable()} loading={busy === "enable"}>Bật trên máy này</KinButton>}
               {state === "on" && <KinButton variant="secondary" onClick={() => void disableHere()} loading={busy === "disable"}>Tắt máy này</KinButton>}
@@ -215,10 +215,7 @@ export default function PushSettings() {
             </div>
           )}
 
-          <div className="rounded-lg px-3 py-2 text-[length:var(--kin-co-goc)]" style={{ ...MUTED, background: "var(--kin-nen-trang)" }}>
-            <p className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Dùng iPhone?</p>
-            <p className="mt-0.5">Cần iOS 16.4 trở lên. Mở KiN bằng Safari → Chia sẻ → Thêm vào Màn hình chính. Sau đó mở KiN từ biểu tượng mới trên màn hình rồi bật thông báo ở đây. Không làm bước này thì iPhone không nhận được.</p>
-          </div>
+          <p className="text-[length:var(--kin-co-goc)]" style={MUTED}>Dùng iPhone? Cần iOS 16.4 trở lên và phải cài KiN lên Màn hình chính trước. <a href="#cai-pwa" className="underline text-[var(--kin-nhan-link)]">Xem hướng dẫn từng bước</a>.</p>
         </div>
       )}
     </section>

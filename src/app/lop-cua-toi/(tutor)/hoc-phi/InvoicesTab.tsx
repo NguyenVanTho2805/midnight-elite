@@ -1,7 +1,7 @@
 // TT-200 — tab "Phiếu": lập phiếu cả lớp, gửi, sửa số tiền, ghi tiền mặt, huỷ.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KinButton } from "@/components/kin";
+import { KinButton, KinMoney } from "@/components/kin";
 import Link from "next/link";
 import { KinStat, KinStatRow } from "@/components/kin/Stat";
 import { KinCallout } from "@/components/kin/Callout";
@@ -175,10 +175,10 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
       {summary && !failed && (
         <KinStatRow>
           <KinStat label="Số phiếu" value={String(summary.count)} />
-          <KinStat label="Phải thu" value={vnd(summary.totalDue)} />
-          <KinStat label="Đã thu" value={vnd(summary.totalPaid)} />
-          <KinStat label="Còn lại" value={vnd(summary.totalRemaining)} />
-          {(summary.overdueCount ?? 0) > 0 && <KinStat label="Quá hạn" value={`${summary.overdueCount} phiếu`} hint={`Còn ${vnd(summary.overdueRemaining ?? 0)}`} />}
+          <KinStat label="Phải thu" value={<KinMoney>{vnd(summary.totalDue)}</KinMoney>} />
+          <KinStat label="Đã thu" value={<KinMoney>{vnd(summary.totalPaid)}</KinMoney>} />
+          <KinStat label="Còn lại" value={<KinMoney>{vnd(summary.totalRemaining)}</KinMoney>} />
+          {(summary.overdueCount ?? 0) > 0 && <KinStat label="Quá hạn" value={`${summary.overdueCount} phiếu`} hint={<>Còn <KinMoney>{vnd(summary.overdueRemaining ?? 0)}</KinMoney></>} />}
         </KinStatRow>
       )}
 
@@ -223,9 +223,9 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 </div>
               </div>
               <dl className="mt-4 grid grid-cols-3 gap-4 text-[length:var(--kin-co-goc)]">
-                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Phải đóng</dt><dd className="font-medium tabular-nums">{vnd(i.amountDue)}</dd></div>
-                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Đã nhận</dt><dd className="font-medium tabular-nums">{vnd(i.paidAmount)}</dd></div>
-                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Còn lại</dt><dd className="font-medium tabular-nums">{vnd(i.remaining)}</dd></div>
+                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Phải đóng</dt><dd className="font-medium tabular-nums"><KinMoney>{vnd(i.amountDue)}</KinMoney></dd></div>
+                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Đã nhận</dt><dd className="font-medium tabular-nums"><KinMoney>{vnd(i.paidAmount)}</KinMoney></dd></div>
+                <div><dt className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Còn lại</dt><dd className="font-medium tabular-nums"><KinMoney>{vnd(i.remaining)}</KinMoney></dd></div>
               </dl>
               {i.dueDate && i.status !== "cancelled" && (
                 <p className="text-xs mt-2" style={{ color: isOverdue(i) ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-phu)" }}>
@@ -238,7 +238,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                   {i.parentViewedAt && <span style={{ color: "var(--kin-tt-chu-xong)" }}>Phụ huynh đã xem lúc {vnWhen(i.parentViewedAt)}</span>}
                 </p>
               )}
-              {i.creditApplied > 0 && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Đã trừ {vnd(i.creditApplied)} tiền đóng dư từ tháng trước.</p>}
+              {i.creditApplied > 0 && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Đã trừ <KinMoney>{vnd(i.creditApplied)}</KinMoney> tiền đóng dư từ tháng trước.</p>}
               {i.status === "cancelled" && i.cancelReason && <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>Lý do huỷ: {i.cancelReason}</p>}
               <div className="mt-4 flex gap-2 flex-wrap">
                 {i.status === "draft" && <KinButton size="md" loading={busy === i.id} onClick={() => act(i, { action: "send" }, "Đã gửi phiếu.")}>Gửi phiếu</KinButton>}
@@ -260,7 +260,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                 )}
                 {i.status === "draft" && <KinButton variant="secondary" onClick={() => copyMessage(i)}>Sao chép tin nhắn</KinButton>}
                 {i.paidAmount > 0 && <KinButton variant="ghost" onClick={() => setDialog({ kind: "payments", inv: i })}>Khoản đã thu</KinButton>}
-                {i.status === "draft" && i.looseCount > 0 && <KinButton variant="secondary" onClick={() => setDialog({ kind: "attach", inv: i })}>Gộp {i.looseCount} khoản rời ({vnd(i.looseTotal)})</KinButton>}
+                {i.status === "draft" && i.looseCount > 0 && <KinButton variant="secondary" onClick={() => setDialog({ kind: "attach", inv: i })}>Gộp {i.looseCount} khoản rời (<KinMoney>{vnd(i.looseTotal)}</KinMoney>)</KinButton>}
                 {i.status !== "paid" && i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "amount", inv: i })}>Sửa số tiền</KinButton>}
                 {i.status !== "cancelled" && <KinButton variant="ghost" onClick={() => setDialog({ kind: "cancel", inv: i })}>Huỷ phiếu</KinButton>}
                 {i.status === "cancelled" && <KinButton variant="secondary" loading={busy === i.id} onClick={() => act(i, { action: "restore" }, "Đã khôi phục phiếu về nháp.")}>Khôi phục</KinButton>}

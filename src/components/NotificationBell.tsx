@@ -86,7 +86,7 @@ export default function NotificationBell() {
       <button
         ref={bellRef}
         onClick={() => setOpen(p => !p)}
-        className="kin-bell kin-m relative w-9 h-9 rounded-lg flex items-center justify-center hover:bg-[var(--kin-nen-bang)]"
+        className="kin-bell kin-m relative w-11 h-11 rounded-lg flex items-center justify-center hover:bg-[var(--kin-nen-bang)]"
         style={{ border: "1px solid var(--kin-vien-thuong)", background: open ? "var(--kin-nen-bang)" : "var(--kin-nen-trang)" }}
         aria-label={unreadCount > 0 ? `Thông báo, ${unreadCount} chưa đọc` : "Thông báo"}
         aria-expanded={open}>

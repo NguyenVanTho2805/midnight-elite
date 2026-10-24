@@ -11,7 +11,12 @@ import Link from "next/link";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KinLogo } from "@/components/kin/KinLogo";
+import { AuthFrame, AuthAsideBlock, AUTH_CARD } from "@/components/guest/AuthFrame";
+import { KinCallout } from "@/components/kin/Callout";
+import { kinButtonClass } from "@/components/kin/Button";
+import { KinInput } from "@/components/kin/Input";
+import { useFieldValidation } from "@/components/kin/useFieldValidation";
+import { email as emailRule, required } from "@/lib/fieldRules";
 import { CodeBoxes } from "@/components/kin/CodeBoxes";
 import { KinSubmitButton } from "@/components/kin/SubmitButton";
 import { LockCountdown } from "@/components/kin/LockCountdown";
@@ -31,6 +36,8 @@ const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nh
 const secondaryBtn = "w-full h-12 px-4 inline-flex items-center justify-center rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] transition-colors hover:bg-[var(--kin-nen-re-chuot)]";
 const linkBtn = "text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:underline";
 
+// HT-02: luật kiểm tại chỗ cho tab Mật khẩu (định nghĩa ngoài thành phần để tham chiếu ổn định).
+const PW_RULES = { id: [required("Chưa nhập tài khoản"), (v: string) => (v.includes("@") ? emailRule()(v) : null)], pass: [required("Chưa nhập mật khẩu")] };
 const MAIN_LOGIN_DEFAULT = "https://midnightelite-edu.com/dang-nhap";
 const noopSubscribe = () => () => {};
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -63,6 +70,8 @@ function DangNhapForm() {
   const [now, setNow]               = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [ok, setOk]                 = useState(false); // đăng nhập thành công, đang chờ chuyển trang (nút hiện dấu tích, sáu ô mã đổi màu xong)
+  const fv = useFieldValidation(PW_RULES);
+  const pwFormRef = useRef<HTMLFormElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);        // thẻ đăng nhập: lắc đầu khi sai mật khẩu
   const codeRef = useRef<HTMLDivElement>(null);
   // Tiêu điểm vào ô tài khoản đúng MỘT lần lúc mở trang. Không dùng autoFocus: mỗi lần đổi tab, vùng nội dung gắn lại và ô mới sẽ giành mất
@@ -162,7 +171,7 @@ function DangNhapForm() {
     e.preventDefault();
     if (submitting) return;
     setNotice(null);
-    if (!email.trim() || !password) { setNotice({ kind: "error", title: "Vui lòng nhập tài khoản và mật khẩu" }); return; }
+    if (!fv.validateAll({ id: email, pass: password })) { fv.focusFirst(pwFormRef.current); return; }
     setSubmitting(true);
     try {
       const result = await login(email, password);
@@ -211,17 +220,39 @@ function DangNhapForm() {
   const idPlaceholder = phoneOn ? "0901 234 567 hoặc ten@gmail.com" : "ten@gmail.com";
 
   return (
-    <div className="kin-chu-than min-h-[calc(100vh-60px)] flex items-start sm:items-center justify-center px-4 py-8 sm:py-12 bg-[var(--kin-nen-bang)]">
-      <div ref={cardRef} className="w-full max-w-[420px] rounded-2xl border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
-
-        <div className="px-5 pt-7 pb-5 flex flex-col gap-[6px]">
-          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex w-fit"><KinLogo size={32} textSize="var(--kin-co-h3, 23px)" /></Link>
-          <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">Lớp học của bạn, gọn trong một chỗ</p>
-        </div>
+    <AuthFrame
+      title={step === "code" ? "Nhập mã đăng nhập" : "Đăng nhập KiN"}
+      sub="Dành cho gia sư và học sinh. Phụ huynh không cần tài khoản."
+      aside={step === "email" && (
+        <>
+          <AuthAsideBlock title="Gia sư và học sinh">
+            Gia sư vào sổ dạy học của mình. Học sinh dùng tài khoản cá nhân và mã mời để tham gia đúng lớp.
+          </AuthAsideBlock>
+          <KinCallout title="An toàn tài khoản">
+            Không dùng chung mật khẩu. Chỉ chọn ghi nhớ đăng nhập trên thiết bị của riêng mình; đăng xuất sau khi dùng máy công cộng.
+          </KinCallout>
+          {/* Chỉ dành cho khách / học viên ở tên miền chính — ẩn ở cửa quản trị (data-chi-khach, xem src/lib/hostChrome.ts). */}
+          <div data-chi-khach className="space-y-4">
+            <AuthAsideBlock title="Không cần đăng nhập">
+              Phụ huynh mở báo cáo bằng đường dẫn riêng mà gia sư gửi. Khách tìm gia sư hoặc gửi nhu cầu cũng không cần tài khoản.
+            </AuthAsideBlock>
+            <div className="flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 bg-[var(--kin-nen-dang-chon)]">
+              <h3 className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">Phụ huynh thì không cần đăng nhập</h3>
+              <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo-tren-nen-nhan)]">
+                Gia sư gửi cho anh chị một đường dẫn riêng. Bấm vào là xem được buổi học và học phí của con — không tài khoản, không mật khẩu.{" "}
+                <Link href="/phu-huynh" className="font-semibold text-[var(--kin-nhan-link)] underline">Tìm hiểu thêm</Link>
+              </p>
+            </div>
+            <Link href="/giang-vien" className={kinButtonClass("secondary")}>Tìm gia sư</Link>
+          </div>
+        </>
+      )}
+    >
+      <div ref={cardRef} data-auth-card className={AUTH_CARD}>
 
         {step === "email" && (
           <div className="px-5 pt-2 pb-5 flex flex-col gap-4">
-            <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đăng nhập</h1>
+            <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đăng nhập</h2>
             <KinTabs
               label="Cách đăng nhập"
               tabs={[{ key: "mat-khau", label: "Mật khẩu" }, { key: "ma", label: "Mã một lần" }]}
@@ -232,23 +263,12 @@ function DangNhapForm() {
             />
 
             {method === "mat-khau" && (
-              <form id="dn-panel-mat-khau" role="tabpanel" aria-labelledby="dn-tab-mat-khau" onSubmit={submitPassword} noValidate className="flex flex-col gap-4">
-                <div className="flex flex-col gap-[6px]">
-                  <label htmlFor="dn-id-pw" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">{idLabel}</label>
-                  <input id="dn-id-pw" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete="username" ref={focusOnce} value={email}
-                    onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} className={field} />
-                </div>
-                <div className="flex flex-col gap-[6px]">
-                  <label htmlFor="dn-pass" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Mật khẩu</label>
-                  <div className="relative">
-                    <input id="dn-pass" type={showPass ? "text" : "password"} autoComplete="current-password" value={password}
-                      onChange={e => setPassword(e.target.value)} placeholder="••••••••" className={`${field} pr-16`} />
-                    <button type="button" onClick={() => setShowPass(!showPass)} aria-pressed={showPass}
-                      className="absolute right-0 top-[2px] h-11 min-w-11 px-3 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">
-                      {showPass ? "Ẩn" : "Hiện"}
-                    </button>
-                  </div>
-                </div>
+              <form ref={pwFormRef} id="dn-panel-mat-khau" role="tabpanel" aria-labelledby="dn-tab-mat-khau" onSubmit={submitPassword} noValidate className="flex flex-col gap-4">
+                <KinInput id="dn-id-pw" size="lg" label={idLabel} type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete="username"
+                  ref={focusOnce} value={email} onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} {...fv.bind("id", email)} />
+                <KinInput id="dn-pass" size="lg" label="Mật khẩu" type={showPass ? "text" : "password"} autoComplete="current-password"
+                  value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" {...fv.bind("pass", password)}
+                  suffix={<button type="button" onClick={() => setShowPass(!showPass)} aria-pressed={showPass} className="min-h-11 min-w-8 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">{showPass ? "Ẩn" : "Hiện"}</button>} />
                 {noticeBox}
                 <KinSubmitButton busy={submitting} ok={ok} busyLabel="Đang đăng nhập..." className={primaryBtn}>Đăng nhập</KinSubmitButton>
                 <Link href={email.includes("@") ? `/quen-mat-khau?email=${encodeURIComponent(email.trim())}` : "/quen-mat-khau"} className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Quên mật khẩu?</Link>
@@ -279,13 +299,6 @@ function DangNhapForm() {
                 <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
               </div>
               <Link href="/student/nhap-ma-lop" className={secondaryBtn}>Tôi có mã mời vào lớp</Link>
-              <div className="flex flex-col gap-1 rounded-[var(--kin-bo-sm)] px-[14px] py-3 bg-[var(--kin-nen-dang-chon)]">
-                <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">Phụ huynh thì không cần đăng nhập</p>
-                <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo-tren-nen-nhan)]">
-                  Gia sư gửi cho anh chị một đường dẫn riêng. Bấm vào là xem được buổi học và học phí của con — không tài khoản, không mật khẩu.{" "}
-                  <Link href="/phu-huynh" className="font-semibold text-[var(--kin-nhan-link)] underline">Tìm hiểu thêm</Link>
-                </p>
-              </div>
             </div>
             {/* Ngược lại, chỉ ở cửa quản trị: học viên / gia sư đăng nhập ở tên miền chính (cookie phiên không dùng chung giữa hai tên miền). */}
             <p data-chi-admin className="text-center text-[length:var(--kin-co-caption)] text-[var(--kin-chu-phu)]">
@@ -298,7 +311,7 @@ function DangNhapForm() {
         {step === "code" && (
           <form onSubmit={e => { e.preventDefault(); void submitCode(); }} noValidate className="px-5 pt-2 pb-5 flex flex-col gap-[14px]">
             <div className="flex flex-col gap-[6px]">
-              <h1 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Nhập mã 6 số</h1>
+              <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Nhập mã 6 số</h2>
               <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)] break-words">
                 Mã vừa gửi tới <strong className="font-semibold">{shown}</strong>{asPhone ? " qua SMS" : ""} · mã sống 10 phút
               </p>
@@ -331,7 +344,7 @@ function DangNhapForm() {
           </p>
         )}
       </div>
-    </div>
+    </AuthFrame>
   );
 }
 

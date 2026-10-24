@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, CheckCircle, CloseCircle } from "griddy-icons";
-import { KinLogo } from "@/components/kin/KinLogo";
+import { AuthFrame, AuthAsideBlock } from "@/components/guest/AuthFrame";
+import { KinCallout } from "@/components/kin/Callout";
+import { kinButtonClass } from "@/components/kin/Button";
 
 // Danh sách 34 tỉnh/thành sau sáp nhập (2025)
 const PROVINCES = [
@@ -254,18 +256,22 @@ export default function DangKyPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: "var(--kin-nen-bang)" }}>
-      <div className="w-full max-w-lg">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" aria-label="KiN — trang chủ" className="inline-flex flex-col items-center gap-2">
-            <KinLogo size={36} textSize="var(--kin-co-h2)" />
-            <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Lớp học của bạn, gọn trong một chỗ</span>
-          </Link>
-          <h1 className="text-xl font-bold mt-6 mb-1" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Tạo tài khoản miễn phí</h1>
-          <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Thi thử ĐGNL ngay sau khi đăng ký</p>
-        </div>
+    <AuthFrame title="Tạo tài khoản KiN" sub="Chọn đúng vai trò để bắt đầu. Miễn phí khi ra mắt."
+      aside={(
+        <>
+          <AuthAsideBlock title="Nếu chọn học sinh">
+            Dùng họ tên và email cá nhân. Có thể nhập mã mời từ cô hoặc tham gia lớp sau khi tạo tài khoản.
+          </AuthAsideBlock>
+          <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Tôi đã có mã mời vào lớp</Link>
+          <KinCallout title="Nếu chọn gia sư">
+            Hồ sơ gia sư chờ quản trị KiN duyệt trước khi mở lớp. Sau khi vào được, bạn sẽ thấy các bước bắt đầu ở Hộp việc.
+          </KinCallout>
+          <KinCallout title="Quyền riêng tư của gia đình">
+            Phụ huynh không cần đăng ký để xem báo cáo riêng của con. Khách gửi yêu cầu tìm gia sư cũng không cần tài khoản.
+          </KinCallout>
+        </>
+      )}>
+      <div className="w-full">
 
         {/* Progress steps */}
         <div className="flex items-center gap-0 mb-6 px-2">
@@ -581,6 +587,6 @@ export default function DangKyPage() {
           </p>
         </div>
       </div>
-    </div>
+    </AuthFrame>
   );
 }

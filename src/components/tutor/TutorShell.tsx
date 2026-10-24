@@ -12,6 +12,7 @@ import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
@@ -96,8 +97,16 @@ export default function TutorShell({
             <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
             {user && <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Sổ dạy học của {user.name}</p>}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <TopDate />
+            {/* HV-11: chuông thông báo (dùng lại thông báo có sẵn) + dấu hỏi trợ giúp dẫn tới trang Liên hệ hỗ trợ. */}
+            <NotificationBell />
+            <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
+              className="inline-flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-lg border border-[var(--kin-vien-thuong)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-bang)] hover:text-[var(--kin-chu-chinh)] transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
+              </svg>
+            </Link>
             {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()} onOpenMore={() => setMoreOpen(true)}
               links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }]} />}
           </div>

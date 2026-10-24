@@ -160,7 +160,8 @@ const tokenOf = (to: string) => mails(to).at(-1)?.text.match(/token=([0-9a-f]{64
   await g.getByRole("button", { name: "Đặt lại mật khẩu" }).click();
   await g.waitForURL(u => u.pathname.startsWith("/lop-cua-toi"), { timeout: 90000 });
   await g.locator("#kin-rail").waitFor({ timeout: 90000 });
-  check("gia sư vào /lop-cua-toi, thấy vỏ gia sư 'GIA SƯ'", new URL(g.url()).pathname.startsWith("/lop-cua-toi") && await g.getByText("GIA SƯ", { exact: true }).first().isVisible(), g.url());
+  // 24/10/2026: isVisible() không tự chờ; Hộp việc nay nạp thêm dữ liệu nên nhãn vai trò có lúc chưa kịp vẽ → chờ thay vì đọc ngay (lúc đỏ lúc xanh trước khi sửa).
+  await eventually("gia sư vào /lop-cua-toi, thấy vỏ gia sư 'GIA SƯ'", async () => new URL(g.url()).pathname.startsWith("/lop-cua-toi") && await g.getByText("GIA SƯ", { exact: true }).first().isVisible());
   await c3.close();
 
   // ───────────────────────────── Điện thoại
