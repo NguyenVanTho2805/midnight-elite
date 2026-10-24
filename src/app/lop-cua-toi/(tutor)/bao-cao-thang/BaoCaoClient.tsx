@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import BrandCard from "./BrandCard";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, useNotify } from "@/components/tutor/shared";
+import { mediaProgressLine } from "@/lib/classRecordings";
 import { EMPTY_UNMET_TEXT, MAX_UNMET_ITEMS, UNMET_TEXT_MAX, fmtScore, renderReportText, type SubjectMonthMetrics, type UnmetItem } from "@/lib/monthlyReport";
 import { addDaysKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { openZalo } from "@/lib/zaloShare";
@@ -209,7 +210,7 @@ export default function BaoCaoClient() {
                             <tbody>
                               {detail.subjects.map(s => (
                                 <tr key={s.courseId} style={{ borderTop: "1px solid var(--kin-vien-nhat)", color: "var(--kin-chu-chinh)" }}>
-                                  <th scope="row" className="text-left font-semibold py-2 pr-3">{s.courseName}</th>
+                                  <th scope="row" className="text-left font-semibold py-2 pr-3">{s.courseName}{mediaProgressLine(s.media) && <span className="block text-xs font-normal" style={{ color: "var(--kin-chu-phu)" }}>Học liệu trên KiN: {mediaProgressLine(s.media)}</span>}</th>
                                   <td className="py-2 pr-3">{s.attendance.ratio === null ? "chưa có buổi điểm danh" : `${Math.round(s.attendance.ratio * 100)}% (${s.attendance.sessions} buổi)`}</td>
                                   <td className="py-2 pr-3">{s.homework.assigned === 0 ? "không giao bài" : `${s.homework.onTime}/${s.homework.assigned}`}</td>
                                   <td className="py-2 pr-3">{s.effort === null ? "chưa đo được" : `${s.effort}/10`}</td>
