@@ -46,7 +46,7 @@ export default async function HoSoGiaSuPage() {
         {status === "approved" && (
           <p className="mb-5 text-sm inline-flex items-center gap-2" style={{ color: "var(--kin-tt-chu-xong)" }}>
             <span aria-hidden className="w-2 h-2 rounded-full inline-block" style={{ background: "var(--kin-tt-cham-xong)" }} />
-            <b>Đã xác minh</b>{u.tutorVerifiedAt && <span style={{ color: "var(--kin-chu-phu)" }}>từ {u.tutorVerifiedAt.toLocaleDateString("vi-VN")}</span>}
+            <b>Đã duyệt hồ sơ</b>{u.tutorVerifiedAt && <span style={{ color: "var(--kin-chu-phu)" }}>từ {u.tutorVerifiedAt.toLocaleDateString("vi-VN")}</span>}
             {" · "}{hidden ? <span data-testid="dang-an">Hồ sơ đang ẩn</span> : <Link href={`/mentor/${u.id}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Xem hồ sơ công khai</Link>}
           </p>
         )}

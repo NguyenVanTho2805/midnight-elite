@@ -20,7 +20,7 @@ import { prisma } from "@/lib/prisma";
   const page = await gctx.newPage(); watch(page);
   await page.goto(`${BASE}/mentor/${T.id}?n=FB-HN9`, { waitUntil: "networkidle", timeout: 120000 });
   await page.getByRole("heading", { name: "Cô Lan" }).waitFor({ timeout: 90000 });
-  check("nhãn 'Đã xác minh' + 'Không thu phí nhận lớp' nhìn thấy trên hồ sơ", await page.getByText("Đã xác minh", { exact: true }).isVisible() && await page.getByText("Không thu phí nhận lớp", { exact: true }).isVisible());
+  check("nhãn 'Đã duyệt hồ sơ' + 'Không thu phí nhận lớp' nhìn thấy trên hồ sơ", await page.getByText("Đã duyệt hồ sơ", { exact: true }).isVisible() && await page.getByText("Không thu phí nhận lớp", { exact: true }).isVisible());
   check("ô 'Buổi đã dạy (theo sổ lớp)' = 3 (từ sổ lớp: buổi đã diễn ra, có em có mặt)", await page.getByText("Buổi đã dạy (theo sổ lớp)").isVisible() && /3\s*Buổi đã dạy/.test((await page.locator("div", { hasText: /^3Buổi đã dạy/ }).first().innerText().catch(() => "3 Buổi đã dạy")).replace(/\s+/g, " ")) || (await page.getByText("3", { exact: true }).count()) > 0);
   check("khung cảnh báo: không chuyển khoản trước buổi học thử + dòng 'bấm Báo cáo'", await page.getByText("Không chuyển khoản trước buổi học thử.").isVisible() && await page.getByText(/đừng chuyển và bấm Báo cáo/).isVisible());
   check("số Zalo KHÔNG hiện (gia sư chưa bật)", (await page.getByText(/Liên hệ qua Zalo/).count()) === 0 && !(await page.content()).includes("0901234567"));
