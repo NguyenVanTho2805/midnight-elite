@@ -2,6 +2,7 @@
 // Gồm bài tập thuộc lớp mình sở hữu (Course.ownerId) hoặc do mình tạo (Assignment.ownerId) và đề thi do mình tạo (Exam.ownerId).
 import { prisma } from "@/lib/prisma";
 import { computeExamStatus } from "@/lib/examData";
+import { essayNeedsGrading } from "@/lib/quizGrade";
 import { assignmentSub, classifyAssignment, classifyExam, GROUP_ORDER, type BaiTapItem } from "@/lib/baiTap";
 
 const MAX_ASSIGNMENTS = 300, MAX_EXAMS = 100;
@@ -50,12 +51,26 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
       href: `/admin/khoa-hoc/${c.id}?tab=chuong-bai`,
     };
   });
+  // QZ-08: đề có bài nộp còn câu tự luận chưa chấm → "Chờ chấm" (số bài, không đếm câu). Bài bỏ trống không cần chấm.
+  const examIds = exams.map(e => e.id);
+  const essayRows = examIds.length === 0 ? [] : await prisma.examAnswer.findMany({
+    where: { attempt: { examId: { in: examIds }, status: { not: "in_progress" } }, question: { type: "ESSAY" }, pointsAwarded: null, textAnswer: { not: null } },
+    select: { attemptId: true, textAnswer: true, attempt: { select: { examId: true } } },
+  });
+  const pendingByExam = new Map<string, Set<string>>();
+  for (const r of essayRows) {
+    if (!essayNeedsGrading({ textAnswer: r.textAnswer, pointsAwarded: null })) continue;
+    const set = pendingByExam.get(r.attempt.examId) ?? new Set<string>();
+    set.add(r.attemptId); pendingByExam.set(r.attempt.examId, set);
+  }
   for (const e of exams) {
     const cls = classifyExam(computeExamStatus(e.date, e.time, e.active));
+    const waiting = pendingByExam.get(e.id)?.size ?? 0;
     items.push({
       id: e.id, kind: "exam", courseId: e.courseId, courseName: e.course?.name ?? "Đề dùng chung", title: e.title, mode: "exam", maxPoints: 0,
-      submitted: 0, ungraded: 0, group: cls.group, statusLabel: cls.label, statusTone: cls.tone,
-      sub: `${e.questions} câu · thi ${e.date} lúc ${e.time}`, href: `/admin/thi-thu/${e.id}`,
+      submitted: 0, ungraded: waiting,
+      group: waiting > 0 ? "cho" : cls.group, statusLabel: waiting > 0 ? "Chờ chấm" : cls.label, statusTone: waiting > 0 ? "cho" : cls.tone,
+      sub: `${e.questions} câu · thi ${e.date} lúc ${e.time}${waiting > 0 ? ` · ${waiting} bài chờ chấm` : ""}`, href: `/admin/thi-thu/${e.id}`,
     });
   }
   // Ổn định: nhóm trước, cùng nhóm giữ thứ tự mới → cũ đã lấy từ DB.
