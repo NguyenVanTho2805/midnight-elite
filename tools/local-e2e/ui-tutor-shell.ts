@@ -95,6 +95,7 @@ import { prisma } from "@/lib/prisma";
   check("mở bảng, aria-expanded=true", await dlg.isVisible() && await mod("Khác").getAttribute("aria-expanded") === "true");
   const want: Record<string, string> = {
     "Tổng quan": "/lop-cua-toi/tong-quan", "Kế hoạch buổi": "/lop-cua-toi/ke-hoach-buoi", "Báo cáo tháng": "/lop-cua-toi/bao-cao-thang",
+    "Sổ điểm": "/lop-cua-toi/so-diem", // 24/10: trang có sẵn (PT-05) nhưng trước đây không có đường vào từ menu
     "Kiểm duyệt cộng đồng": "/lop-cua-toi/kiem-duyet", "Doanh thu": "/lop-cua-toi/doanh-thu", "Hồ sơ gia sư": "/lop-cua-toi/ho-so",
     "Bài đăng tìm học sinh": "/lop-cua-toi/bai-dang", "Cài đặt": "/lop-cua-toi/cai-dat",
   };
