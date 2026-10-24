@@ -23,6 +23,7 @@ import { loadPartyReports } from "@/lib/monthlyReportServer";
 import { prevYearMonth } from "@/lib/monthlyReport";
 import { vnDateKeyOf, vnMinutesOfDay, hmOf } from "@/lib/classSessions";
 import ParentSection from "@/components/parent/Section";
+import ChildSwitcher from "@/components/parent/ChildSwitcher";
 import SessionScores from "@/components/parent/SessionScores";
 import { loadPartyScores } from "@/lib/sessionScoreServer";
 
@@ -158,6 +159,9 @@ export default async function SoCuaConPage({ params }: PageProps) {
             {" · Liên kết riêng, không cần tài khoản"}
           </p>
         </header>
+
+        {/* PH-05: chỉ trình bày — các liên kết phụ huynh đã mở trên máy này, không gộp dữ liệu giữa các em. */}
+        <ChildSwitcher token={token} name={link.student.name} />
 
         {enrollments.length === 0 ? (
           <div className="rounded-xl p-5 text-center" role="status"
