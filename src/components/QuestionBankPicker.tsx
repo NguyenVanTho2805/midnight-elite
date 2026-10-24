@@ -147,7 +147,7 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={DIFFICULTY_COLOR[item.difficulty]}>
                     {DIFFICULTIES.find(d => d.value === item.difficulty)?.label ?? item.difficulty}
                   </span>
-                  <span className="text-xs text-gray-400">{TYPE_LABEL[item.type]}</span>
+                  <span className="text-xs text-gray-400">{TYPE_LABEL[item.type] ?? "Nhiều đáp án"}</span>
                 </div>
               </div>
             </label>

@@ -86,14 +86,16 @@ export async function GET(
       }
 
       if (q.type === "MC_MULTI") {
-        // QZ-03: đúng khi chọn đủ và chỉ chọn các ô đúng. Chưa nằm trong luồng Chữa bài (CORRECTABLE_TYPES chỉ có MC và Trả lời ngắn).
+        // QZ-03: đúng khi chọn đủ và chỉ chọn các ô đúng. Câu làm sai nằm trong luồng Chữa bài như MC: chưa chữa thì giấu đáp án và lời giải.
         const picked = q.options.filter(o => boolAnswersByOption[o.id] === true).map(o => o.id);
         const wasCorrect = scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), picked, q.points) > 0;
-        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+        const pendingFix = pendingIds.has(q.id);
+        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           options: q.options.map(o => ({ id: o.id, text: o.text, picked: picked.includes(o.id), isCorrect: reveal ? o.isCorrect : null })),
           explanation: reveal ? q.explanation : null,
+          correctionPending: pendingFix,
         };
       }
 

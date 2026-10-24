@@ -608,6 +608,11 @@ function ExamEntryInner() {
                           <strong>Giải thích:</strong> <MathText text={q.explanation} />
                         </p>
                       )}
+                      {q.correctionPending && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
+                          Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> để thử trước — gợi ý sẽ hiện nếu chưa đúng, đáp án hiện sau khi bạn thử.
+                        </p>
+                      )}
                     </div>
                   )}
 

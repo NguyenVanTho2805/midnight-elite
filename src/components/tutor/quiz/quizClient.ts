@@ -12,7 +12,7 @@ export interface QuizMeta {
 export interface QuizOption { id?: string; text: string; isCorrect: boolean; subLabel: string | null }
 export interface QuizQ {
   id: string; order: number; type: QuizQuestionType; text: string; points: number; imageUrl: string | null; explanation: string | null; hint: string | null;
-  studentGuide: string | null; graderGuide: string | null; rubric: RubricRow[] | null; sectionLabel: string | null; options: QuizOption[];
+  studentGuide: string | null; graderGuide: string | null; rubric: RubricRow[] | null; sectionLabel: string | null; options: QuizOption[]; inBank?: boolean;
 }
 export interface QuizDetail { exam: QuizMeta; questions: QuizQ[]; courses: { id: string; name: string }[] }
 
