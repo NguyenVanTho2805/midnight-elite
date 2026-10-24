@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
+import { conflictText, parseSessionPatch } from "@/lib/sessionBook";
+import { conflictsForRule } from "@/lib/sessionBookServer";
 
 // GET /api/courses/[id]/class-schedules — danh sách khung giờ học cố định
 // hàng tuần của 1 khoá (dùng cho tab "Lịch học" trong trang sửa khoá học).
@@ -63,6 +65,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     const join = normalizeJoinUrl(joinUrl);
     if (!join.ok) return NextResponse.json({ error: "Link vào lớp phải là địa chỉ http(s) hợp lệ" }, { status: 400 });
+    // LI-16: hình thức + địa chỉ của khung giờ (không bắt buộc; vắng = như cũ).
+    const mp = parseSessionPatch({ mode: body.mode ?? null, location: body.location ?? null });
+    if (!mp.ok) return NextResponse.json({ error: mp.error }, { status: 400 });
+    // LI-10: kiểm xung đột trước khi lưu — chỉ khi gọi xin kiểm (checkConflicts) và chưa chọn "vẫn lưu" (force); gọi cũ không đổi hành vi.
+    if (body.checkConflicts === true && body.force !== true && course.ownerId) {
+      const conflicts = await conflictsForRule(course.ownerId, { courseId, dayOfWeek, startTime: start, endTime: end });
+      if (conflicts.length) return NextResponse.json({ error: "Khung giờ này trùng lịch.", needsConfirm: true, conflicts: conflicts.map(c => ({ kind: c.kind, text: conflictText(c), sharedStudents: c.sharedStudents })) }, { status: 409 });
+    }
 
     const schedule = await prisma.classSchedule.create({
       data: {
@@ -70,6 +80,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         startTime: start, endTime: end,
         note: note?.trim() || null,
         joinUrl: join.value,
+        mode: mp.value.mode ?? null,
+        location: mp.value.location ?? null,
       },
     });
 

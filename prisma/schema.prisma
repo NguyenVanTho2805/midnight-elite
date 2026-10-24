@@ -77,6 +77,10 @@ model Course {
   //   "monthly_sessions" (mặc định, MỌI lớp cũ) : gia sư nhập số buổi tháng (MonthlyCourseFee) — cách tính hiện tại, KHÔNG đổi.
   //   "per_session" | "per_hour" | "per_course" : học phí sinh ra từ buổi đã điểm danh (FeeCharge), đơn giá ở CourseFeeRate.
   feeMode String @default("monthly_sessions")
+  // BUỔI/LỊCH (LI-02, LI-17): màu lớp trên Lịch (khoá trong src/lib/classColor.ts, KHÔNG phải mã hex; null = suy từ mã lớp như cũ)
+  // và link học online CHUNG của lớp (ưu tiên thấp nhất: riêng buổi > theo khung giờ > chung lớp).
+  calendarColor String?
+  classJoinUrl  String?
   studentProfiles    StudentProfile[]
 
   @@index([ownerId])
@@ -97,6 +101,9 @@ model ClassSchedule {
   endTime   String // "21:00"
   note      String? // vd "Học live qua Zoom" — hiện kèm trong lịch/email nhắc
   joinUrl   String? // link vào lớp (Meet/Zoom) — in vào tin nhắc lịch (TT-201); trống thì tin bỏ dòng này
+  // LI-16: hình thức của khung giờ ("online" | "offline"; null = chưa chọn, hiểu như cũ) và địa chỉ khi học offline.
+  mode      String?
+  location  String?
   active    Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -1119,6 +1126,22 @@ model AttendanceSession {
   createdBy  String   // gia sư tạo (userId)
   createdAt  DateTime @default(now())
 
+  // BU-01..BU-04, LI-11, LI-16, LI-17 (24/10/2026): cột THÊM, đều nullable. Buổi chưa có bản ghi vẫn suy từ quy luật tuần như cũ.
+  // Chốt buổi chỉ GHI TRẠNG THÁI; không sinh/sửa/xoá FeeCharge hay phiếu (tiền vẫn do đường điểm danh sẵn có quyết định).
+  state      String?   // null | "open" | "closed" — "closed" = gia sư bấm "Đã dạy xong"
+  closedAt   DateTime?
+  closedBy   String?
+  reopenedAt DateTime? // lần mở lại gần nhất (để hiện "đã mở lại")
+  taught     String?   @db.Text // ghi chép 1: nội dung đã dạy
+  homework   String?   @db.Text // ghi chép 2: bài tập về nhà
+  summary    String?   @db.Text // ghi chép 3: nhận xét chung của buổi
+  mode       String?   // "online" | "offline"
+  location   String?   // địa chỉ khi học offline
+  joinUrl    String?   // link online RIÊNG buổi
+  kind       String?   // null/"regular" = buổi theo lịch tuần | "extra" buổi lẻ | "makeup" dạy bù | "adhoc" phát sinh
+  startTime  String?   // "HH:mm" — chỉ buổi lẻ/bù/phát sinh (buổi theo lịch lấy giờ từ ClassSchedule)
+  endTime    String?
+
   course   Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator  User                @relation("AttendanceSessionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   records  AttendanceRecord[]
@@ -1139,6 +1162,8 @@ model AttendanceRecord {
   // TT-199: gia sư ĐÃ MỞ Zalo để nhắn phụ huynh về buổi này. Đổi trạng thái điểm danh thì xoá mốc
   // (tin cũ nói về trạng thái cũ). KiN không biết tin có đi thật hay không.
   zaloOpenedAt DateTime?
+  // BU-07: gia sư tick "cho phụ huynh của em này xem nhận xét". Mặc định KHÔNG. Chỉ hiện qua link Sổ của con của đúng em đó.
+  parentVisible Boolean @default(false)
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 

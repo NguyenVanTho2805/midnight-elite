@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
+import { conflictText, parseSessionPatch } from "@/lib/sessionBook";
+import { conflictsForRule } from "@/lib/sessionBookServer";
 
 // PUT /api/class-schedules/[id] — sửa 1 khung giờ học cố định.
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +16,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const existing = await prisma.classSchedule.findUnique({
       where: { id },
-      select: { startTime: true, endTime: true, course: { select: { ownerId: true } } },
+      select: { startTime: true, endTime: true, dayOfWeek: true, courseId: true, course: { select: { ownerId: true } } },
     });
     if (!existing) return NextResponse.json({ error: "Không tìm thấy khung giờ học" }, { status: 404 });
     if (!ownsResource(auth, existing.course.ownerId)) {
@@ -59,6 +61,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data.joinUrl = j.value;
     }
     if (typeof active === "boolean") data.active = active;
+    // LI-16: hình thức + địa chỉ của khung giờ.
+    if ("mode" in body || "location" in body) {
+      const mp = parseSessionPatch({ ...("mode" in body ? { mode: (body as Record<string, unknown>).mode } : {}), ...("location" in body ? { location: (body as Record<string, unknown>).location } : {}) });
+      if (!mp.ok) return NextResponse.json({ error: mp.error }, { status: 400 });
+      if ("mode" in mp.value) data.mode = mp.value.mode ?? null;
+      if ("location" in mp.value) data.location = mp.value.location ?? null;
+    }
+    // LI-10: kiểm xung đột khi gọi xin kiểm (checkConflicts), trừ khi đã chọn "vẫn lưu" (force) hoặc đang tắt khung giờ.
+    if ((body as Record<string, unknown>).checkConflicts === true && (body as Record<string, unknown>).force !== true && active !== false && existing.course.ownerId) {
+      const conflicts = await conflictsForRule(existing.course.ownerId, {
+        courseId: existing.courseId, dayOfWeek: (data.dayOfWeek as number | undefined) ?? existing.dayOfWeek, startTime: nextStart, endTime: nextEnd, ignoreScheduleId: id,
+      });
+      if (conflicts.length) return NextResponse.json({ error: "Khung giờ này trùng lịch.", needsConfirm: true, conflicts: conflicts.map(c => ({ kind: c.kind, text: conflictText(c), sharedStudents: c.sharedStudents })) }, { status: 409 });
+    }
 
     const schedule = await prisma.classSchedule.update({ where: { id }, data });
     return NextResponse.json(schedule);

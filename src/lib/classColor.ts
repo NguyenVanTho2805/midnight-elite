@@ -14,6 +14,16 @@ export function classAccent(courseId: string): string {
   return CLASS_ACCENTS[h % CLASS_ACCENTS.length];
 }
 
+/** LI-02: bảng 25 màu để gia sư chọn cho lớp. Khoá lưu ở Course.calendarColor; màu thật là token --kin-lop-NN trong globals.css. */
+export const CLASS_PALETTE_KEYS = Array.from({ length: 25 }, (_, i) => `lop-${String(i + 1).padStart(2, "0")}`) as readonly string[];
+export const isClassColorKey = (v: unknown): v is string => typeof v === "string" && CLASS_PALETTE_KEYS.includes(v);
+export const classColorToken = (key: string) => `var(--kin-${key})`;
+
+/** Màu của lớp: ưu tiên màu gia sư đã chọn (khoá hợp lệ), không thì suy từ mã lớp như cũ. */
+export function classAccentFor(courseId: string, chosen?: string | null): string {
+  return isClassColorKey(chosen) ? classColorToken(chosen) : classAccent(courseId);
+}
+
 /** Lời chào theo giờ Việt Nam (0–23). */
 export function greetingForHour(hour: number): string {
   if (hour < 11) return "Chào buổi sáng";
