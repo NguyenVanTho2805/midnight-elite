@@ -158,5 +158,14 @@ import { prisma } from "@/lib/prisma";
   const sbo2 = await api("POST", `/api/exams/attempts/${so2.json.attemptId}/submit`, { as: B });
   check("gia sư bật giữ điểm cho đề cũ → lượt mới bị giữ", sbo2.json.score === null && sbo2.json.pendingManual === true, sbo2.json);
 
+  section("Xoá đề đã có lượt làm → 409");
+  const delBusy = await api("DELETE", `/api/exams/${ex.id}`, { as: T });
+  check("đề đã có lượt làm: DELETE /api/exams/[id] → 409 HAS_ATTEMPTS, đề và lượt vẫn còn", delBusy.status === 409 && delBusy.json.code === "HAS_ATTEMPTS" && !!(await prisma.exam.findUnique({ where: { id: ex.id } })) && (await prisma.examAttempt.count({ where: { examId: ex.id } })) > 0, delBusy.json);
+  const delOther = await api("DELETE", `/api/exams/${ex.id}`, { as: A });
+  check("PHÁ: học sinh xoá đề → bị từ chối (không phải 200)", delOther.status === 401 || delOther.status === 403, delOther.status);
+  await prisma.exam.create({ data: { id: "qz-trong", code: "qz-trong", title: "Đề chưa ai làm", category: "Toán", date: "01/01/2030", time: "08:00", duration: "10 phút", questions: 0, status: "available", createdAt: "2020", ownerId: T.id } });
+  const delFree = await api("DELETE", `/api/exams/qz-trong`, { as: T });
+  check("đề chưa có lượt làm: xoá được như cũ (200)", delFree.status === 200 && !(await prisma.exam.findUnique({ where: { id: "qz-trong" } })), delFree.json);
+
   await done();
 })();
