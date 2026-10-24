@@ -49,6 +49,9 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   await page.getByRole("tab", { name: "Phiếu" }).click();
   const row = page.locator("li", { hasText: "Trần Gia Bảo" });
   await row.getByRole("button", { name: /Gộp 1 khoản rời \(\s*150\.000đ\s*\)/ }).waitFor({ timeout: 60000 });
+  // Chữ hiển thị (DOM) của nút phải liền chữ "(150.000đ)", không có khoảng trắng thừa trong ngoặc; tên truy cập (a11y) có thể thêm khoảng trắng quanh <span> nên bộ chọn ở trên dùng \s*.
+  const gopText = await row.getByRole("button", { name: /Gộp 1 khoản rời/ }).evaluate(e => ({ text: e.textContent ?? "", inner: (e as HTMLElement).innerText }));
+  check("nút Gộp: chữ hiển thị liền '(150.000đ)', không có khoảng trắng trong ngoặc", gopText.text === "Gộp 1 khoản rời (150.000đ)" && gopText.inner === "Gộp 1 khoản rời (150.000đ)", gopText);
   await row.getByRole("button", { name: /Gộp 1 khoản rời/ }).click();
   const dlg = page.getByRole("dialog");
   await dlg.getByText(/560\.000đ → 710\.000đ/).waitFor({ timeout: 30000 });

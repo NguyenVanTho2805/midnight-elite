@@ -82,7 +82,8 @@ const H = 3_600_000, D = 24 * H;
   const hero = pg.locator("[data-course-hero]");
   check("khung đầu lớp: tên lớp, '0/3 bài đã hoàn thành', thanh tiến độ, 'Tiếp theo: …', nút 'Bắt đầu học'", (await hero.innerText()).includes("0/3 bài đã hoàn thành") && (await hero.innerText()).includes("Tiếp theo: ") && await hero.getByRole("progressbar").count() === 1 && /^\/student\/bai-giang\/l-sp-\d$/.test((await hero.getByRole("link", { name: "Bắt đầu học" }).getAttribute("href")) ?? ""));
   check("giữ lối 'Tài liệu & bản ghi của lớp này' → /thu-vien#c-<lớp>", (await pg.locator("[data-thu-vien-link]").getAttribute("href")) === `/thu-vien#c-${A.id}`);
-  check("tab: Tổng quan, Tài liệu · 2, Bài tập · 1", await pg.getByRole("tab", { name: "Tổng quan" }).isVisible() && await pg.getByRole("tab", { name: "Tài liệu · 2" }).isVisible() && await pg.getByRole("tab", { name: "Bài tập · 1" }).isVisible());
+  // Cập nhật: tab nay tên "Tài liệu & bản ghi · N" (N = tài liệu + bản ghi của lớp, MD-07/SV-03), không còn "Tài liệu · N".
+  check("tab: Tổng quan, Tài liệu & bản ghi · 2, Bài tập · 1", await pg.getByRole("tab", { name: "Tổng quan" }).isVisible() && await pg.getByRole("tab", { name: "Tài liệu & bản ghi · 2" }).isVisible() && await pg.getByRole("tab", { name: "Bài tập · 1" }).isVisible());
   check("tổng quan liệt kê 3 bài kèm trạng thái chữ ('Học tiếp', 'Chưa học')", await pg.locator("[data-lesson-row]").count() === 3 && await pg.getByText("Học tiếp").first().isVisible() && await pg.getByText("Chưa học").first().isVisible());
   await pg.getByRole("tab", { name: "Bài tập · 1" }).click();
   check("tab 'Bài tập' chỉ còn bài trắc nghiệm", await pg.locator("[data-lesson-row]").count() === 1 && await pg.locator("[data-lesson-row]").getByText("Trắc nghiệm bậc hai").isVisible());

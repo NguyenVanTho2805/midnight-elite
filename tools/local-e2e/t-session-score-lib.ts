@@ -45,8 +45,11 @@ const val = (r: { ok: true; value: number | null } | { ok: false }) => (r.ok ? r
   section("Quét tĩnh: điểm từng buổi KHÔNG lọt ra ngoài đường của gia sư / phụ huynh");
   const walk = (d: string, out: string[] = []) => { for (const n of readdirSync(join(process.cwd(), d))) { const p = join(d, n); if (statSync(join(process.cwd(), p)).isDirectory()) { if (n !== "generated") walk(p, out); } else if (/\.tsx?$/.test(p)) out.push(p); } return out; };
   const users = walk("src").filter(f => /sessionStudentScore|SessionStudentScore/.test(readFileSync(join(process.cwd(), f), "utf8")));
-  const ALLOWED = new Set(["src/lib/sessionScoreServer.ts", "src/app/api/attendance-sessions/[id]/diem/route.ts", "src/app/api/tutor/ho-so/[id]/route.ts"]);
-  check("chỉ 3 tệp được đụng bảng điểm: tải cho phụ huynh, API gia sư chủ lớp, xoá cùng hồ sơ", users.every(f => ALLOWED.has(f)) && users.length === ALLOWED.size, users);
+  const ALLOWED = new Set(["src/lib/sessionScoreServer.ts", "src/app/api/attendance-sessions/[id]/diem/route.ts", "src/app/api/tutor/ho-so/[id]/route.ts", "src/lib/tutorStudentDetailServer.ts"]);
+  // Cập nhật: tutorStudentDetailServer.ts (trang chi tiết học sinh của gia sư) đọc bảng điểm SAU scoreConsentFor và lọc tutorId — đã xác nhận.
+  check("chỉ 4 tệp được đụng bảng điểm: tải cho phụ huynh, API gia sư chủ lớp, xoá cùng hồ sơ, chi tiết học sinh của gia sư (sau cổng đồng ý)", users.every(f => ALLOWED.has(f)) && users.length === ALLOWED.size, users);
+  const detail = readFileSync(join(process.cwd(), "src/lib/tutorStudentDetailServer.ts"), "utf8");
+  check("chi tiết học sinh của gia sư: scoreConsentFor chạy TRƯỚC truy vấn điểm và lọc tutorId", detail.indexOf("scoreConsentFor(") > 0 && detail.indexOf("scoreConsentFor(") < detail.indexOf("sessionStudentScore.findMany") && /where: \{ userId: user\.id, tutorId \}/.test(detail));
   const pageSrc = readFileSync(join(process.cwd(), "src/lib/sessionScoreServer.ts"), "utf8");
   check("tải cho phụ huynh lọc theo đồng ý LÚC ĐỌC (scoreConsentFor) và theo đúng một em (userId: studentId)", /scoreConsentFor\(t, \[studentId\]\)/.test(pageSrc) && /userId: studentId/.test(pageSrc));
   const stuFiles = walk("src/app/(student)").concat(walk("src/app/api/student"), walk("src/app/api/users"));

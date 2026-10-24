@@ -75,7 +75,10 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   const rc = ratio(await colorOf(ctaP), navy); check(`đoạn mô tả khung CTA: ${rc.toFixed(2)}:1`, rc >= 4.5, rc);
 
   section("Mục 'Học ở đây thì được gì?', CTA, chân trang");
-  const why = await p.getByRole("heading", { level: 3 }).allInnerTexts();
+  // Cập nhật: trang chủ nay có thêm các mục dành cho gia sư (Việc giấy tờ, Cách hoạt động) cũng dùng h3, nên không còn đúng 4 h3 toàn trang.
+  // Giới hạn trong mục "Học ở đây thì được gì?" (h2 + khối kế tiếp); 4 thẻ và chữ Figma giữ nguyên, không bỏ ca nào.
+  const whySection = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Học ở đây thì được gì?" }) }).first();
+  const why = await whySection.getByRole("heading", { level: 3 }).allInnerTexts();
   check("4 thẻ lợi ích đúng chữ Figma", JSON.stringify(why) === JSON.stringify(["Học trực tiếp LIVE", "Theo dõi tiến độ realtime", "Trợ giảng riêng 1-1", "Hỏi bài không giới hạn"]), why);
   const grid = await p.locator("article").first().boundingBox();
   check("thẻ lợi ích đầu tiên cách mép trái 260px (lưới 920px, Figma 152:6)", !!grid && Math.abs(grid.x - 260) <= 1, grid?.x);
@@ -158,11 +161,20 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
     });
     return bad;
   });
+  // Cập nhật: trang đăng nhập/đăng ký theo Figma mới (commit 1b000f3): logo K nằm ở thanh trên chung (header), không còn trong main;
+  // câu giới thiệu "Lớp học của bạn, gọn trong một chỗ" chỉ còn trong email. Mỗi trang nay có tiêu đề + câu dẫn riêng.
+  const AUTH_COPY: Record<string, [string, string]> = {
+    "/dang-nhap": ["Đăng nhập KiN", "Dành cho gia sư và học sinh. Phụ huynh không cần tài khoản."],
+    "/dang-ky": ["Tạo tài khoản KiN", "Chọn đúng vai trò để bắt đầu."],
+    "/quen-mat-khau": ["Khôi phục mật khẩu", "Đặt lại mật khẩu bằng liên kết gửi qua email."],
+    "/dat-lai-mat-khau": ["Đặt lại mật khẩu", "Tạo mật khẩu mới cho tài khoản KiN của bạn."],
+  };
   for (const path of ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau"]) {
     const ap = await gctx.newPage(); watch(ap);
     await ap.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 240000 });
-    await ap.locator("main svg").first().waitFor({ timeout: 90000 });
-    check(`${path}: có logo K + câu giới thiệu của Figma`, await ap.locator("main svg").first().isVisible() && (await ap.locator("main").innerText()).includes("Lớp học của bạn, gọn trong một chỗ"));
+    await ap.locator("main h1").first().waitFor({ timeout: 90000 });
+    const [h1, intro] = AUTH_COPY[path];
+    check(`${path}: có logo K (thanh trên) + tiêu đề và câu dẫn của Figma`, await ap.locator("header svg").first().isVisible() && (await ap.locator("header").innerText()).includes("KiN") && (await ap.locator("main h1").first().innerText()) === h1 && (await ap.locator("main").innerText()).includes(intro));
     const bad = await legacyBlue(ap);
     check(`${path}: không còn xanh cũ #0068FF trong nội dung trang`, bad.length === 0, bad.slice(0, 4));
     check(`${path}: không tràn ngang ở 1440px`, await ap.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
@@ -179,10 +191,12 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   await rp.getByRole("button", { name: /Tiếp theo/ }).click();
   // viền đổi màu có transition 0,15s nên đợi tới khi ổn định
   const nameInput = rp.getByPlaceholder("Nguyễn Văn A");
-  const borderOf = () => nameInput.evaluate(e => getComputedStyle(e).borderTopColor);
+  // Cập nhật: viền nay nằm ở khung bọc của KiNInput ([data-kin-input-wrap], cha trực tiếp của ô), không còn trên chính thẻ input (viền input = 0).
+  const borderOf = () => nameInput.evaluate(e => getComputedStyle(e.closest("[data-kin-input-wrap]") ?? e).borderTopColor);
   await eventually("bỏ trống rồi bấm Tiếp theo: ô lỗi viền đỏ #dc2626", async () => (await borderOf()) === "rgb(220, 38, 38)");
   await nameInput.fill("Nguyễn Minh Anh");
-  await eventually("nhập đúng: viền xanh lá trạng thái #059669", async () => (await borderOf()) === "rgb(5, 150, 105)");
+  // Cập nhật: HT-02 bỏ viền xanh lá khi hợp lệ (chỉ báo lỗi, không thưởng màu); nhập đúng thì viền về xám ô nhập #8b95a5, lời báo lỗi biến mất. Giữ ca, đổi kỳ vọng.
+  await eventually("nhập đúng: viền về xám ô nhập #8b95a5, hết lời báo lỗi", async () => (await borderOf()) === "rgb(139, 149, 165)" && (await rp.getByText("Vui lòng nhập họ và tên").count()) === 0);
   const lp = await gctx.newPage(); watch(lp);
   await lp.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 240000 });
   // Đăng nhập có hai tab (Mật khẩu là mặc định, Mã một lần mở bằng ?cach=ma); test riêng: ui-login-password và ui-login-code. Ở đây chỉ giữ kiểm tra chung của khung web công khai.
@@ -194,7 +208,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   for (const path of ["/dang-nhap", "/dang-ky", "/quen-mat-khau"]) {
     const mp2 = await mctx2.newPage(); watch(mp2);
     await mp2.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 240000 });
-    await mp2.locator("main svg").first().waitFor({ timeout: 90000 });
+    await mp2.locator("main h1").first().waitFor({ timeout: 90000 });
     check(`${path}: điện thoại 390px không tràn ngang`, await mp2.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
     await mp2.close();
   }
