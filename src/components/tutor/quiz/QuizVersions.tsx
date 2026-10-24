@@ -171,7 +171,7 @@ export default function QuizVersions({ id }: { id: string }) {
         </div>
       )}
 
-      {tab === "han-rieng" && (cur ? <QuizDeadlines examId={cur.id} /> : <KinEmptyState title="Chưa có phiên bản đang dùng">Hạn riêng áp dụng cho phiên bản đã phát hành. Phát hành quiz trước, rồi quay lại đây.</KinEmptyState>)}
+      {tab === "han-rieng" && (cur ? <QuizDeadlines examId={cur.id} onChanged={() => void load()} /> : <KinEmptyState title="Chưa có phiên bản đang dùng">Hạn riêng áp dụng cho phiên bản đã phát hành. Phát hành quiz trước, rồi quay lại đây.</KinEmptyState>)}
 
       {tab === "nhat-ky" && (
         <section className="mt-6" aria-labelledby="qv-nk">

@@ -17,7 +17,7 @@ import { qfetch } from "./quizClient";
 interface Student { userId: string; name: string; dueAt: string | null; note: string | null }
 interface Data { enrolledKnown: boolean; shared: { date: string; time: string; duration: string }; students: Student[] }
 
-export default function QuizDeadlines({ examId }: { examId: string }) {
+export default function QuizDeadlines({ examId, onChanged }: { examId: string; onChanged?: () => void }) {
   const base = `/api/tutor/quiz-cham/${examId}/han-rieng`;
   const { ask, dialog } = useKinConfirm();
   const [data, setData] = useState<Data | null>(null);
@@ -49,7 +49,7 @@ export default function QuizDeadlines({ examId }: { examId: string }) {
     setBusy(null);
     if (!r.ok || !r.data) { setMsg({ ok: false, text: r.error ?? "Chưa lưu được." }); return; }
     setMsg({ ok: true, text: `Đã đặt hạn riêng cho ${r.data.count} học sinh. Lịch chung của đề không đổi.` });
-    setPicked(new Set()); await load();
+    setPicked(new Set()); await load(); onChanged?.();
   }
   async function clear() {
     const ids = [...picked].filter(id => data?.students.find(s => s.userId === id)?.dueAt);
@@ -60,7 +60,7 @@ export default function QuizDeadlines({ examId }: { examId: string }) {
     setBusy(null);
     if (!r.ok || !r.data) { setMsg({ ok: false, text: r.error ?? "Chưa bỏ được." }); return; }
     setMsg({ ok: true, text: `Đã bỏ hạn riêng của ${r.data.count} học sinh.` });
-    setPicked(new Set()); await load();
+    setPicked(new Set()); await load(); onChanged?.();
   }
 
   if (err && !data) return <div className="mt-6"><ErrorStrip message={err} onRetry={() => void load()} /></div>;

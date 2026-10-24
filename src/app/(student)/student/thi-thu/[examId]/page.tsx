@@ -92,6 +92,7 @@ function ExamEntryInner() {
   const clockOffsetRef = useRef(0);
   const [submitInfo, setSubmitInfo] = useState<{ expired: boolean; receipt: string; submittedAt: string | null } | null>(null);
   const [timeUp, setTimeUp] = useState<"sending" | "unconfirmed">("sending");
+  const [timeUpAt, setTimeUpAt] = useState<string | null>(null); // giờ máy chủ lúc hết giờ (màn "Hết giờ")
 
   // Load exam + student's existing result
   useEffect(() => {
@@ -397,6 +398,7 @@ function ExamEntryInner() {
     if (phase === "taking" && attempt?.expiresAt && isLastSection && remainingSec <= 0 && !autoSubmitted.current) {
       autoSubmitted.current = true;
       setTimeUp("sending");
+      setTimeUpAt(nowLabel());
       setPhase("timeup");
       submitAttempt();
     }
@@ -428,7 +430,9 @@ function ExamEntryInner() {
   if (phase === "timeup" && attempt) {
     return (
       <div className="px-4 py-6">
-        <QuizTimeUp examTitle={exam.title} attemptId={attempt.attemptId} state={timeUp} retrying={submitting} onRetry={retryTimeUp} />
+        <QuizTimeUp examTitle={exam.title} attemptId={attempt.attemptId} state={timeUp} retrying={submitting} onRetry={retryTimeUp}
+          klass={gate?.klass ?? null} sentAt={timeUpAt}
+          lastServerSaveAt={Object.values(draftStatus).flatMap(d => (d.kind === "saved" ? [d.at] : [])).sort().at(-1) ?? null} />
       </div>
     );
   }
