@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { vnDateKeyOf } from "@/lib/classSessions";
+import { isClosed } from "@/lib/sessionBook";
 import {
   FEE_RATE_FROM_START, courseFee, isChargeableStatus, isNewFeeMode, normalizeFeeMode, planReprice, sessionFee,
   type ChargeLite, type ClassRate, type FeeMode, type FeeSetup, type RepricePlan, type StudentRate,
@@ -37,21 +38,45 @@ export async function createInitialFeeRate(tx: Tx, courseId: string, setup: FeeS
   });
 }
 
-// ─── Điểm danh → dòng phí theo buổi (HP-14) ──────────────────────────────────
-export interface SyncResult { skipped?: "preview" | "mode"; created: number; updated: number; removed: number; locked: number }
+/** Đơn giá MỘT buổi của em tại `dateKey` (theo đơn giá lớp hoặc giá riêng của em; theo giờ thì đã làm tròn theo thời lượng). null = lớp cũ / theo khoá / chưa có đơn giá. Chỉ ĐỌC. */
+export async function unitSessionPrice(db: Db, courseId: string, studentId: string, dateKey: string): Promise<number | null> {
+  const course = await db.course.findUnique({ where: { id: courseId }, select: { feeMode: true } });
+  const mode = normalizeFeeMode(course?.feeMode);
+  if (mode !== "per_session" && mode !== "per_hour") return null;
+  const [classRates, stu] = await Promise.all([ratesOf(db, courseId), studentRatesOf(db, courseId, [studentId])]);
+  return sessionFee({ mode, dateKey, classRates, studentRates: stu.get(studentId) ?? [] })?.amount ?? null;
+}
+
+// ─── Chốt buổi → dòng phí theo buổi (HP-14; chủ chốt 24/10/2026: CHỐT BUỔI là điều kiện sinh phí) ─────────────────────────
+export interface SyncResult {
+  skipped?: "preview" | "mode" | "open"; created: number; updated: number; removed: number;
+  /** Số dòng đã nằm trong phiếu (đóng băng, không đổi). */
+  locked: number;
+  /** Trong số `locked`: dòng mà điểm danh hiện tại sẽ cho số khác (hoặc không còn tính) — gia sư cần biết để xử lý tay trên phiếu. */
+  lockedDiffers: number;
+}
+const NO_SYNC: SyncResult = { created: 0, updated: 0, removed: 0, locked: 0, lockedDiffers: 0 };
+
+/** Khoá theo buổi: lưu điểm danh và chốt/mở lại buổi xếp hàng với nhau, không để dòng phí lệch trạng thái buổi. */
+export async function lockAttendanceSession(tx: Tx, sessionId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`att-session:${sessionId}`}))`;
+}
 
 /**
- * Gọi TRONG transaction lưu điểm danh, SAU khi các bản ghi đã upsert. Lớp cách cũ / theo khoá: trả sớm, không ghi gì.
- * Dòng đã vào phiếu thì không đổi (locked). Buổi dùng buổi bù không tính thêm tiền (makeupUsed).
+ * Gọi TRONG transaction (đã khoá buổi), SAU khi bản ghi điểm danh đã upsert. Dòng phí chỉ sinh/đồng bộ khi buổi ĐÃ CHỐT
+ * (state="closed"); buổi chưa chốt: trả sớm `skipped:"open"`, KHÔNG sinh, KHÔNG xoá, KHÔNG sửa dòng nào.
+ * Lớp cách cũ / theo khoá: trả sớm, không ghi gì. Dòng đã vào phiếu thì không đổi (locked / lockedDiffers).
+ * Buổi dùng buổi bù không tính thêm tiền (makeupUsed).
  */
 export async function syncSessionCharges(tx: Tx, a: {
   sessionId: string; courseId: string; sessionDate: Date; by: string; items: ReadonlyArray<{ userId: string; status: string; makeupUsed: boolean }>;
 }): Promise<SyncResult> {
-  const none: SyncResult = { created: 0, updated: 0, removed: 0, locked: 0 };
   const course = await tx.course.findUnique({ where: { id: a.courseId }, select: { feeMode: true, ownerId: true } });
   const mode = normalizeFeeMode(course?.feeMode);
-  if (!course || (mode !== "per_session" && mode !== "per_hour")) return { ...none, skipped: "mode" };
-  if (moneyPathsBlocked()) return { ...none, skipped: "preview" };
+  if (!course || (mode !== "per_session" && mode !== "per_hour")) return { ...NO_SYNC, skipped: "mode" };
+  if (moneyPathsBlocked()) return { ...NO_SYNC, skipped: "preview" };
+  const ses = await tx.attendanceSession.findUnique({ where: { id: a.sessionId }, select: { state: true } });
+  if (!ses || !isClosed(ses.state)) return { ...NO_SYNC, skipped: "open" };
 
   const tutorId = course.ownerId ?? a.by;
   const dateKey = vnDateKeyOf(a.sessionDate);
@@ -66,15 +91,19 @@ export async function syncSessionCharges(tx: Tx, a: {
   const existing = await tx.feeCharge.findMany({ where: { recordId: { in: records.map(r => r.id) } } });
   const curOf = new Map(existing.map(c => [c.recordId!, c]));
 
-  const out = { ...none };
+  const out = { ...NO_SYNC };
   for (const it of a.items) {
     const recordId = recOf.get(it.userId);
     if (!recordId) continue;
     const cur = curOf.get(recordId);
-    if (cur?.invoiceId) { out.locked++; continue; }
     const fee = isChargeableStatus(it.status) && !it.makeupUsed
       ? sessionFee({ mode, dateKey, classRates, studentRates: stuRates.get(it.userId) ?? [] })
       : null;
+    if (cur?.invoiceId) {
+      out.locked++;
+      if (!fee || fee.amount !== cur.amount) out.lockedDiffers++;
+      continue;
+    }
     if (!fee) {
       if (cur) { const d = await tx.feeCharge.deleteMany({ where: { id: cur.id, invoiceId: null } }); if (d.count) out.removed++; else out.locked++; }
       continue;
@@ -90,6 +119,39 @@ export async function syncSessionCharges(tx: Tx, a: {
     }
   }
   return out;
+}
+
+/** Đọc điểm danh hiện có của buổi (kèm buổi bù đã dùng) rồi đồng bộ dòng phí. Dùng khi CHỐT buổi: điểm danh đã lưu từ trước. Gọi sau khi ghi state="closed". */
+export async function syncChargesOnClose(tx: Tx, sessionId: string, by: string): Promise<SyncResult> {
+  const ses = await tx.attendanceSession.findUnique({ where: { id: sessionId }, select: { courseId: true, date: true } });
+  if (!ses) return { ...NO_SYNC, skipped: "mode" };
+  const [records, credits] = await Promise.all([
+    tx.attendanceRecord.findMany({ where: { sessionId }, select: { userId: true, status: true } }),
+    tx.makeupCredit.findMany({ where: { usedSessionId: sessionId }, select: { studentId: true } }),
+  ]);
+  const usedMakeup = new Set(credits.map(c => c.studentId));
+  return syncSessionCharges(tx, {
+    sessionId, courseId: ses.courseId, sessionDate: ses.date, by,
+    items: records.map(r => ({ userId: r.userId, status: r.status, makeupUsed: usedMakeup.has(r.userId) })),
+  });
+}
+
+/**
+ * MỞ LẠI buổi đã chốt (lớp kiểu mới): gỡ dòng phí CHƯA vào phiếu của buổi (vì buổi không còn "đã dạy xong").
+ * Dòng ĐÃ vào phiếu giữ nguyên (đóng băng); số đó trả về để báo gia sư — phiếu không tự sửa.
+ */
+export async function removeChargesOnReopen(tx: Tx, sessionId: string): Promise<{ skipped?: "preview" | "mode"; removed: number; locked: number }> {
+  const ses = await tx.attendanceSession.findUnique({ where: { id: sessionId }, select: { courseId: true } });
+  const course = ses ? await tx.course.findUnique({ where: { id: ses.courseId }, select: { feeMode: true } }) : null;
+  const mode = normalizeFeeMode(course?.feeMode);
+  if (mode !== "per_session" && mode !== "per_hour") return { skipped: "mode", removed: 0, locked: 0 };
+  if (moneyPathsBlocked()) return { skipped: "preview", removed: 0, locked: 0 };
+  const recs = await tx.attendanceRecord.findMany({ where: { sessionId }, select: { id: true } });
+  if (recs.length === 0) return { removed: 0, locked: 0 };
+  const ids = recs.map(r => r.id);
+  const d = await tx.feeCharge.deleteMany({ where: { recordId: { in: ids }, invoiceId: null } });
+  const locked = await tx.feeCharge.count({ where: { recordId: { in: ids }, invoiceId: { not: null } } });
+  return { removed: d.count, locked };
 }
 
 /** Xoá buổi điểm danh: bỏ các dòng phí CHƯA vào phiếu của buổi đó (dòng đã vào phiếu giữ nguyên, đóng băng). Gọi TRƯỚC khi xoá buổi. */

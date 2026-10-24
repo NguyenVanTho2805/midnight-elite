@@ -27,7 +27,8 @@ export default async function mock(ctx: MockCtx): Promise<string[]> {
     for (const k of kids) await prisma.enrollment.create({ data: { userId: k.id, courseId: cS.id, status: "active" } });
     for (const [i, status] of [["present", "late"], ["present", "excused"], ["present", "present"]].entries()) {
       const date = new Date(`${addDaysKey(today, -(i + 1) * 2)}T00:00:00Z`);
-      const sess = await prisma.attendanceSession.create({ data: { courseId: cS.id, date, createdBy: tutor.id } });
+      // Từ 24/10/2026 dòng phí chỉ sinh khi buổi ĐÃ CHỐT: dữ liệu giả tạo buổi ở trạng thái đã chốt.
+      const sess = await prisma.attendanceSession.create({ data: { courseId: cS.id, date, createdBy: tutor.id, state: "closed", closedAt: new Date(), closedBy: tutor.id } });
       for (const [j, k] of kids.entries()) await prisma.attendanceRecord.create({ data: { sessionId: sess.id, userId: k.id, status: status[j] } });
       await prisma.$transaction(tx => syncSessionCharges(tx, { sessionId: sess.id, courseId: cS!.id, sessionDate: date, by: tutor.id, items: kids.map((k, j) => ({ userId: k.id, status: status[j], makeupUsed: false })) }));
     }

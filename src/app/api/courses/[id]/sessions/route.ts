@@ -3,7 +3,7 @@
 //   Có xung đột lịch (LI-10) mà chưa force → 409 { needsConfirm, conflicts } (không ghi gì).
 // Mở rộng AttendanceSession bằng cột nullable (KE-HOACH mục 6.2 hướng b). Mỗi lớp mỗi ngày một bản ghi buổi (ràng buộc sẵn có
 // @@unique([courseId, date])): ngày đã có bản ghi (đã điểm danh/ghi chép) thì báo rõ, KHÔNG ghi đè.
-// Không đụng điểm danh hay tiền: học phí chỉ sinh khi điểm danh, như mọi buổi khác.
+// Không đụng điểm danh hay tiền: thêm buổi không tạo học phí; học phí kiểu mới chỉ sinh khi chốt buổi (Đã dạy xong).
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { conflictText, parseExtraSession } from "@/lib/sessionBook";

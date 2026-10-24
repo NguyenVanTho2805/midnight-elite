@@ -1,6 +1,6 @@
 // LI-11 / LI-10 / LI-16 / LI-17 — ngăn kéo "Thêm buổi nhanh": buổi lẻ, dạy bù, phát sinh. Buổi hiện trên Lịch ngay sau khi lưu.
 // Kiểm xung đột lịch trước khi lưu: có xung đột thì hiện danh sách (chỉ SỐ em chung, không tên em) và cho chọn "Vẫn thêm".
-// Không đụng tiền: thêm buổi không tạo học phí; học phí chỉ sinh khi điểm danh, theo cách tính của lớp, như mọi buổi khác.
+// Không đụng tiền: thêm buổi không tạo học phí; học phí kiểu mới chỉ sinh khi chốt buổi, theo cách tính của lớp.
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
@@ -119,7 +119,7 @@ export default function ThemBuoiNhanh({ courses, defaults, onClose, onCreated }:
             </div>
           )}
           {error && <p role="alert" className="text-sm font-medium" style={{ color: "var(--kin-tt-chu-loi)" }}>{error}</p>}
-          <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Thêm buổi không tạo học phí. Học phí chỉ sinh khi điểm danh, theo cách tính của lớp.</p>
+          <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Thêm buổi không tạo học phí. Học phí kiểu mới chỉ sinh khi chốt buổi (Đã dạy xong), theo cách tính của lớp.</p>
           <div className="flex gap-2 flex-wrap justify-end">
             <KinButton variant="secondary" onClick={onClose} disabled={busy}>Không thêm nữa</KinButton>
             {conflicts && conflicts.length > 0

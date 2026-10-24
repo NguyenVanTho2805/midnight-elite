@@ -12,6 +12,7 @@ import { groupInvoiceMessage, invoiceLinkDaysLeft, privateInvoiceMessage } from 
 import { HISTORY_LABEL, dueDateLabel, reminderMessage, type HistoryEvent, type ReminderStep } from "@/lib/invoiceReminder";
 import { Badge, FIELD_STYLE, Modal, callApi, copyText, invoiceTone, monthLabel, useNotify, vnd } from "@/components/tutor/shared";
 import { vnMonthKey } from "@/lib/revenue";
+import { LATE_FEE_HINT_TEXT } from "@/lib/lateFeeHint";
 import { PaymentsDialog } from "./PaymentTools";
 import { AttachDialog, DiscountDialog } from "./LooseAndDiscount";
 import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/lib/tuitionPayment";
@@ -30,6 +31,7 @@ export interface InvoiceRow {
   looseCount: number; looseTotal: number; // HP-24: khoản phí rời có thể gộp vào phiếu nháp
   // F2: hạn đóng ("YYYY-MM-DD"), số ngày quá hạn, bước nhắc đã tới lúc (2|3|null), bước cao nhất đã mở Zalo, số lần nhắc bước 2–3 đã ghi.
   dueDate: string | null; overdueDays: number; nextStep: 2 | 3 | null; lastStep: number; proStepsLogged: number;
+  lateFeeHint?: boolean; // HP-28: chỉ gợi ý chữ trên phiếu quá hạn, KiN không tự cộng tiền
 }
 interface Summary { count: number; totalDue: number; totalPaid: number; totalRemaining: number; overdueCount?: number; overdueRemaining?: number }
 type Dialog =
@@ -63,6 +65,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
   const [reminderPro, setReminderPro] = useState(true); // F2: cổng tắt → true cho mọi người
   const [defaultDue, setDefaultDue] = useState("");
   const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [lateHintOn, setLateHintOn] = useState(true); // HP-28
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -74,10 +77,10 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
     await Promise.resolve();
     const my = ++seq.current;
     setLoading(true); setFailed(false);
-    const r = await callApi<{ items: InvoiceRow[]; summary: Summary; hasPayoutAccount: boolean; reminderPro: boolean; defaultDueDate: string }>(`/api/tutor/invoices?yearMonth=${ym}`);
+    const r = await callApi<{ items: InvoiceRow[]; summary: Summary; hasPayoutAccount: boolean; reminderPro: boolean; defaultDueDate: string; lateFeeHintEnabled?: boolean }>(`/api/tutor/invoices?yearMonth=${ym}`);
     if (my !== seq.current) return; // bỏ kết quả cũ khi đổi tháng nhanh
     if (!r.ok) setFailed(true);
-    else { setItems(r.data.items); setSummary(r.data.summary); setHasAccount(r.data.hasPayoutAccount); setReminderPro(r.data.reminderPro !== false); setDefaultDue(r.data.defaultDueDate ?? ""); }
+    else { setItems(r.data.items); setSummary(r.data.summary); setHasAccount(r.data.hasPayoutAccount); setReminderPro(r.data.reminderPro !== false); setDefaultDue(r.data.defaultDueDate ?? ""); setLateHintOn(r.data.lateFeeHintEnabled !== false); }
     setLoading(false);
   }, []);
 
@@ -105,6 +108,13 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
     notify.ok(okMsg);
     await load(yearMonth);
     return true;
+  }
+
+  async function toggleLateHint(next: boolean) {
+    setLateHintOn(next);
+    const r = await callApi<{ enabled?: boolean }>("/api/tutor/late-fee-hint", { method: "PUT", body: JSON.stringify({ enabled: next }) });
+    if (!r.ok) { setLateHintOn(!next); notify.err(r.data.error ?? "Chưa lưu được cài đặt."); return; }
+    await load(yearMonth);
   }
 
   async function sendAllDrafts() {
@@ -187,6 +197,11 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
           <input type="checkbox" checked={onlyOverdue} onChange={e => setOnlyOverdue(e.target.checked)} /> Chỉ xem phiếu quá hạn đóng ({summary?.overdueCount})
         </label>
       )}
+      {(summary?.overdueCount ?? 0) > 0 && !failed && (
+        <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] min-h-[44px]" style={{ color: "var(--kin-chu-phu)" }}>
+          <input type="checkbox" checked={lateHintOn} onChange={e => void toggleLateHint(e.target.checked)} /> Hiện gợi ý phí trễ hạn trên phiếu quá hạn (chỉ là gợi ý, KiN không tự cộng tiền)
+        </label>
+      )}
 
       {lockedHint && !loading && !failed && (
         <p className="text-[length:var(--kin-co-goc)] px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-vien-thuong)]" style={{ color: "var(--kin-chu-phu)" }}>
@@ -232,6 +247,7 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
                   Hạn đóng {dueDateLabel(i.dueDate)}{isOverdue(i) ? ` · quá hạn ${i.overdueDays} ngày` : ""}
                 </p>
               )}
+              {i.lateFeeHint && <p data-late-fee-hint className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>{LATE_FEE_HINT_TEXT}</p>}
               {(i.zaloOpenedAt || i.parentViewedAt) && (
                 <p className="text-xs mt-2 flex gap-x-4 gap-y-1 flex-wrap" style={{ color: "var(--kin-chu-phu)" }}>
                   {i.zaloOpenedAt && <span>Đã mở Zalo lúc {vnWhen(i.zaloOpenedAt)}</span>}

@@ -28,6 +28,7 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   await launch();
   const ctx = await ctxFor(tutor, { width: 1280, height: 900 });
   const page = await ctx.newPage();
+  page.setDefaultTimeout(60000);
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/Failed to load resource|zalo|hydrat/i.test(m.text())) errors.push(m.text()); });
@@ -70,11 +71,17 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   const crumbText = (await crumb.innerText()).replace(/\s+/g, " ");
   check("breadcrumb: Lớp › Toán 9 › ngày › trạng thái bằng chữ", crumbText.includes("Lớp") && crumbText.includes("Toán 9") && crumbText.includes(`${today.slice(8, 10)}/${today.slice(5, 7)}/${today.slice(0, 4)}`) && /chưa chốt|Sắp diễn ra/.test(crumbText), crumbText);
   check("tiêu đề + dòng phụ có Offline và giờ 00:05–00:35", (await page.getByRole("heading", { level: 1 }).innerText()).includes("Toán 9") && (await page.getByText("00:05–00:35").count()) >= 1 && (await page.getByText("Offline").count()) >= 1);
-  await page.getByLabel("Đã dạy").fill("Phương trình bậc hai");
-  await page.getByLabel("Bài tập về nhà").fill("Bài 1-6 trang 40");
-  await page.getByLabel("Nhận xét chung").fill("Cả lớp theo kịp");
-  await page.getByLabel("Hình thức buổi này").selectOption("online");
-  await page.getByLabel("Link học online riêng buổi này (không bắt buộc)").fill("https://meet.example/rieng");
+  // Sửa 24/10/2026 (bài chập chờn khi máy rất tải, cả ở mã gốc trước đợt này): máy dev (StrictMode) nạp trang buổi hai lần, lần hai về trễ thì nạp lại các ô và ĐÈ chữ vừa gõ.
+  // Gõ rồi chờ ổn định; nếu ô bị nạp lại thì gõ lại (tối đa 6 lần). Kiểm sau đó (DB có đủ 3 phần) vẫn nguyên.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await page.getByLabel("Đã dạy").fill("Phương trình bậc hai");
+    await page.getByLabel("Bài tập về nhà").fill("Bài 1-6 trang 40");
+    await page.getByLabel("Nhận xét chung").fill("Cả lớp theo kịp");
+    await page.getByLabel("Hình thức buổi này").selectOption("online");
+    await page.getByLabel("Link học online riêng buổi này (không bắt buộc)").fill("https://meet.example/rieng");
+    await page.waitForTimeout(3000);
+    if ((await page.getByLabel("Đã dạy").inputValue()) === "Phương trình bậc hai" && (await page.getByLabel("Nhận xét chung").inputValue()) === "Cả lớp theo kịp" && !(await page.getByRole("button", { name: "Lưu ghi chép" }).isDisabled())) break;
+  }
   await page.getByRole("button", { name: "Lưu ghi chép" }).click();
   await page.getByText("Đã lưu.", { exact: true }).waitFor({ timeout: 15000 });
   const saved = await prisma.attendanceSession.findFirstOrThrow({ where: { id: sessionRow.id } });
@@ -98,8 +105,9 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   await page.getByRole("button", { name: "Mở lại buổi" }).waitFor({ timeout: 15000 });
   const closedRow = await prisma.attendanceSession.findFirstOrThrow({ where: { id: sessionRow.id } });
   check("DB: state 'closed' + closedAt; trang hiện 'Đã dạy xong' và 'Đã chốt lúc'", closedRow.state === "closed" && !!closedRow.closedAt && (await page.getByText("Đã chốt lúc").count()) === 1 && (await page.locator("[data-bu-close]").getByText("Đã dạy xong").count()) >= 1);
-  check("chốt buổi KHÔNG tạo dòng phí (lớp cũ, số dòng không đổi)", (await prisma.feeCharge.count()) === feeBefore);
-  check("khung chốt nói thẳng: chốt buổi không tính tiền", (await page.getByText("Chốt buổi không tính tiền").count()) === 1);
+  check("chốt buổi lớp CŨ không tạo dòng phí (số dòng không đổi)", (await prisma.feeCharge.count()) === feeBefore);
+  // Sửa 24/10/2026: chữ khung đổi theo sự thật mới (lớp kiểu mới có học phí khi chốt; lớp cũ không đổi). Lớp trong bài này là lớp CŨ nên số dòng phí vẫn không đổi.
+  check("khung chốt nói thật: chốt buổi và học phí (kiểu mới tính khi chốt, cách cũ không đổi)", (await page.getByText("Chốt buổi và học phí").count()) === 1 && (await page.getByText(/cách cũ\) không đổi/).count()) === 1);
   await page.getByRole("button", { name: "Chia sẻ báo cáo buổi" }).click();
   const shareText = await page.locator("#tin-bao-cao-buoi").inputValue();
   check("tin chia sẻ: có ba phần, KHÔNG tên em, KHÔNG tiền", shareText.includes("Đã dạy: Phương trình bậc hai") && shareText.includes("Bài tập về nhà: Bài 1-6") && shareText.includes("Nhận xét chung: Cả lớp theo kịp") && !/Em An|Em Bình|học phí|đồng/.test(shareText), shareText);

@@ -12,7 +12,8 @@ import { parseYearMonth } from "@/lib/tuition";
 import { INVOICE_STATUS_LABEL, UNPAID_STATUSES, buildInvoiceQrUrl, buildTransferContent, remainingOf, type InvoiceStatus } from "@/lib/tuitionInvoice";
 import { issueInvoice, requireTutor } from "@/lib/invoiceServer";
 import { defaultDueDateKey, reminderDue } from "@/lib/invoiceReminder";
-import { loadDefaultDueDay } from "@/lib/invoiceReminderServer";
+import { loadDefaultDueDay, loadLateFeeHintEnabled } from "@/lib/invoiceReminderServer";
+import { showLateFeeHint } from "@/lib/lateFeeHint";
 import { canUse } from "@/lib/planServer";
 
 const REPORT_CHECK_MS = 24 * 60 * 60 * 1000; // GD-23: quá 24h chưa thấy tiền → nhắc kiểm sao kê
@@ -40,6 +41,8 @@ export async function GET(req: NextRequest) {
   // F2: bước 2–3 và đặt hạn đóng là KiN Pro. Cổng TẮT (mặc định) → canUse luôn true. Bước 1 và công nợ không phụ thuộc cờ này.
   const reminderPro = await canUse(auth.userId, "reminder_steps");
   const defaultDueDate = defaultDueDateKey(nowDate, await loadDefaultDueDay());
+  // HP-28: gợi ý phí trễ hạn (CHỈ chữ gợi ý; không cộng tiền, không dòng phí, không đổi phiếu).
+  const lateHintOn = await loadLateFeeHintEnabled(auth.userId);
   // HP-24: phiếu NHÁP còn khoản phí rời (chưa vào phiếu nào) có thể gộp thêm.
   const draftRows = rows.filter(r => r.status === "draft");
   const looseAll = draftRows.length
@@ -50,6 +53,7 @@ export async function GET(req: NextRequest) {
     looseCount: looseOf(r).length, looseTotal: looseOf(r).reduce((s, l) => s + l.amount, 0),
     dueDate: r.dueDate,
     ...(() => { const d = reminderDue(r, nowDate); return { overdueDays: d.overdueDays, nextStep: d.step, lastStep: d.lastStep, proStepsLogged: r.reminders.filter(x => x.step >= 2).length }; })(),
+    lateFeeHint: showLateFeeHint({ enabled: lateHintOn, status: r.status, remaining: remainingOf(r), overdueDays: reminderDue(r, nowDate).overdueDays }),
     id: r.id, code: r.code, yearMonth: r.yearMonth, studentId: r.student.id, studentName: r.student.name,
     amountDue: r.amountDue, paidAmount: r.paidAmount, remaining: remainingOf(r),
     status: r.status as InvoiceStatus, statusLabel: INVOICE_STATUS_LABEL[r.status as InvoiceStatus] ?? r.status,
@@ -68,7 +72,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     items,
     hasPayoutAccount: !!account,
-    reminderPro, defaultDueDate,
+    reminderPro, defaultDueDate, lateFeeHintEnabled: lateHintOn,
     summary: {
       count: live.length,
       totalDue: live.reduce((s, i) => s + i.amountDue, 0),

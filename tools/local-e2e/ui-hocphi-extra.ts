@@ -37,14 +37,18 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   await page.getByRole("button", { name: "Thêm cho cả lớp…" }).click();
   await page.getByRole("button", { name: "Xác nhận thêm" }).click();
   await page.getByText(/Đã thêm khoản phí cho 1 em, tổng 150\.000đ/).waitFor({ timeout: 30000 });
-  check("thêm xong: 1 dòng 'Chưa vào phiếu' trong danh sách", await page.getByText("Chưa vào phiếu").isVisible() && (await prisma.feeCharge.count({ where: { kind: "extra", invoiceId: null } })) === 1);
+  // Sửa 24/10/2026: danh sách nạp lại sau toast nên phải CHỜ dòng hiện (trước đây đọc ngay → đỏ giả khi máy chậm).
+  await page.getByText("Chưa vào phiếu").first().waitFor({ timeout: 30000 });
+  check("thêm xong: 1 dòng 'Chưa vào phiếu' trong danh sách", await page.getByText("Chưa vào phiếu").first().isVisible() && (await prisma.feeCharge.count({ where: { kind: "extra", invoiceId: null } })) === 1);
   check("390px: không tràn ngang", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await shot(page, "hocphi-phi-khac-390");
 
   section("Gộp khoản rời vào phiếu nháp");
   await page.goto(`${BASE}/lop-cua-toi/hoc-phi`, { waitUntil: "networkidle" });
+  // Sửa 24/10/2026: số tiền trên nút nằm trong <KinMoney> (thẻ riêng) nên tên nút có khoảng trắng quanh số: regex cho phép \s*. Trang Học phí chia tab; danh sách phiếu nằm ở tab "Phiếu" (ui-invoice-reminder làm đúng như vậy).
+  await page.getByRole("tab", { name: "Phiếu" }).click();
   const row = page.locator("li", { hasText: "Trần Gia Bảo" });
-  await row.getByRole("button", { name: /Gộp 1 khoản rời \(150\.000đ\)/ }).waitFor({ timeout: 60000 });
+  await row.getByRole("button", { name: /Gộp 1 khoản rời \(\s*150\.000đ\s*\)/ }).waitFor({ timeout: 60000 });
   await row.getByRole("button", { name: /Gộp 1 khoản rời/ }).click();
   const dlg = page.getByRole("dialog");
   await dlg.getByText(/560\.000đ → 710\.000đ/).waitFor({ timeout: 30000 });

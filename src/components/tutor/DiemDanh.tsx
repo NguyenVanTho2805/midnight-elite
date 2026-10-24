@@ -176,6 +176,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
       const d = await r.json();
       if (!r.ok) { toast.err(d.error ?? "Lưu thất bại"); return; }
       toast.ok(`Đã lưu ${d.count} học viên`);
+      if (typeof d.warning === "string") toast.info(d.warning);
       await load(); // làm mới danh sách buổi bù (đã dùng / được trả lại)
       onChanged?.();
     } finally { setSaving(false); }
@@ -333,7 +334,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
             <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
               <KinButton variant="secondary" onClick={saveAll} disabled={dirty.size === 0} loading={saving} loadingLabel="Đang lưu...">Lưu điểm danh</KinButton>
               <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" aria-live="polite">
-                {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Chưa điểm danh {tally.none}. Không tạo học phí khi lưu.
+                {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Chưa điểm danh {tally.none}. Lưu điểm danh không tính học phí; lớp kiểu mới chỉ có học phí khi bấm Đã dạy xong.
               </span>
             </div>
           </div>
