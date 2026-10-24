@@ -2,6 +2,8 @@
 
 **Khuyến nghị: đưa ra đúng một gói trả phí tên "KiN Pro", bán sức chứa, công sức và giấy tờ cho gia sư chứ không bán quyền dùng sổ lớp; thu theo kỳ (quý/năm) bằng chuyển khoản QR thẳng vào tài khoản của KiN, không trừ thẻ tự động, không đi qua Coin; và chưa thu đồng nào cho đến khi đo xong bốn việc rẻ** (đếm phân bố học viên thật, phỏng vấn khoảng 10 gia sư, cửa giả trong Cài đặt, bán trước cho nhóm đầu). Sau ba vòng loại, đối đầu và phản biện, phương án B ("cân bằng") thắng A (tối thiểu) và C (tham vọng): lõi Pro là hạn mức học viên mềm (Free đề xuất ≤10, chờ số đo), "vòng thu học phí" (nhắc nhiều bước + lịch sử), giấy tờ có thương hiệu (báo cáo tháng, phiếu, PDF), thống kê chuyên cần nâng cao, AI trích đề nhiều lượt và hỗ trợ ưu tiên; bộ công khai dạy thêm Mẫu 02 và sổ doanh thu vào giai đoạn 2 sau khi luật sư/kế toán xem. **Khung giá khởi điểm để kiểm chứng, không phải con số chắc: 79.000đ/tháng · 199.000đ/quý · 599.000đ/năm**, nằm giữa mốc 42–60 nghìn/tháng của Sổ Gia Sư (đọc từ tài khoản thật) và mốc 149 nghìn/tháng của Azota VIP và LopHoc Plus (đọc từ trang giá qua tóm tắt tìm kiếm). Điểm yếu nhất nằm đúng chỗ quan trọng nhất: **không nguồn nào cho tỉ lệ chuyển đổi hay mức sẵn lòng trả của gia sư Việt Nam**; theo tài liệu D02 của dự án 79% gia sư dạy 1–3 học sinh nên hạn mức số lượng một mình có thể không kích hoạt với đa số; AI nhận xét cuối tháng có giá trị cảm nhận cao nhất nhưng bị chặn bởi việc gửi dữ liệu học sinh ra nước ngoài. Quy mô thật hiện nay (vài chục gia sư, khoảng 25 học sinh) nghĩa là doanh thu ban đầu gần bằng không, nên Pro lúc này là công cụ để học và để chặn chi phí, nhưng vẫn phải thiết kế ngay để không gây cú sốc kiểu Evernote cho những người dùng đầu tiên. Độ tin cậy tổng thể: **trung bình–thấp**, vững ở cấu trúc và vạch đỏ (từ mã nguồn và quy tắc dự án), yếu ở mức giá và tính năng nào thật sự bán được.
 
+> **Cập nhật 24/10/2026:** xem **Phụ lục F**. Phương án B không đổi. Có thêm: điều khoản dữ liệu chính thức của Gemini (rủi ro cần xử lý trước khi bán hạn mức AI), Nghị định 13/2023 đã hết hiệu lực, hai quyết định mới D19–D20, ba câu hỏi pháp lý mới L11–L13.
+
 ## Mục lục
 
 1. Tóm tắt điều hành
@@ -17,7 +19,7 @@
 11. Kinh tế đơn vị và mô phỏng
 12. Thí nghiệm kiểm chứng trước khi bật thu tiền
 13. Lộ trình, quyết định cần Thọ/Thanh chốt, việc phải xong trước khi thu tiền, câu hỏi cho luật sư/kế toán (kèm Kết luận ngắn ngay sau mục này)
-14. Phụ lục: A. đối thủ · B. tài liệu cũ lệch mã · C. mâu thuẫn giữa nguồn · D. khoảng trống cần kiểm chứng · E. mục lục nguồn
+14. Phụ lục: A. đối thủ · B. tài liệu cũ lệch mã · C. mâu thuẫn giữa nguồn · D. khoảng trống cần kiểm chứng · E. mục lục nguồn · F. cập nhật 24/10
 
 ---
 
@@ -1085,5 +1087,67 @@ Từ `quyet_dinh_goi_va_nc2.md` §5 (M1, kèm đường dẫn và dòng trong gh
 | PH | `phu_huynh_hoc_sinh_tra_phi.md` | Edtech Việt Nam thu từ phụ huynh/học sinh, công cụ phụ huynh quốc tế, so sánh hai hướng thu | M2–M3 |
 | TT | `tang_truong_thi_truong_gia_su.md` | Hoa hồng/lead/Student Pass, hồ sơ nổi bật, phí nhận lớp Việt Nam, mâu thuẫn định vị, hiệu ứng mạng | M2–M3 |
 | TN | `trung_tam_nho_va_noi_dau.md` | Nỗi đau và khung ROI, nhắc nợ tự động, trung tâm nhỏ, gói Nhóm, chi phí đồng dạy, chuyển công cụ | M3 (số liệu hãng); kho code M1 |
+| CN | `cap_nhat_24_10.md` | Cập nhật 24/10: giá và điều khoản chính thức của Gemini, hiệu lực Luật 91/2025 và Nghị định 356/2025, Luật 19/2023 (gia hạn tự động), payOS/SePay/ZNS, mốc 31/10 của Sổ Gia Sư, ứng dụng nhỏ miễn phí, quy mô học thêm | M2–M3 (đoạn trích tìm kiếm trên tên miền chính thức) |
 
 
+### Phụ lục F. Cập nhật 24/10/2026: kết quả đợt nghiên cứu thứ hai
+
+Nguồn đầy đủ, URL và mức tin cậy từng điểm: `cap_nhat_24_10.md` (mã **CN**). **Giới hạn:** không mở được trang gốc nào (môi trường chặn tên miền ngoài danh sách); mọi số là đoạn trích do công cụ tìm kiếm trả về, giới hạn theo tên miền chính thức (M2) hoặc từ trang tư vấn (M3).
+
+**F.1 Kết luận.** Phương án B và ranh Free/Pro **không đổi**. Quá nửa dữ liệu giá đối thủ tìm lại đã có sẵn trong báo cáo (Azota, LopHoc, CenterPro, TutorBird, Teachworks): đợt này chủ yếu **xác nhận và nâng mức tin cậy**, giải một mâu thuẫn pháp lý, tìm một rủi ro cần xử lý ngay, và thêm hai quyết định.
+
+**F.2 Sáu điều thay đổi cách đọc báo cáo**
+
+| # | Phát hiện | Ảnh hưởng tới | Tin cậy |
+|---|---|---|---|
+| 1 | **Điều khoản dữ liệu Gemini API:** gói miễn phí ("Unpaid Services") được Google dùng để cải thiện sản phẩm và người đánh giá có thể đọc; gói trả phí thì không. Giá `gemini-2.5-flash` trả phí 0,30 / 2,50 USD mỗi triệu token (ra tính cả token suy nghĩ). Chuyển sang trả phí = gắn thanh toán và nạp trước ≥5 USD. | Mục 9 F5 "Rủi ro" (hết "chưa kiểm"); mục 11.1 giá Gemini M3 → **M2**; Phụ lục D #8 đóng; **thêm D19** | M2 |
+| 2 | **Nghị định 13/2023 hết hiệu lực 01/01/2026** (Nghị định 356/2025 Điều 42); Luật 91/2025 và Nghị định 356 cùng hiệu lực ngày đó. Chưa xác nhận được điều "từ đủ 7 tuổi cần đồng ý của cả trẻ". | Giải mâu thuẫn tài liệu kho (`CLAUDE-cho-kho-trien-khai.md` mục 8 lỗi thời, `pheu-gia-su.md` mục 7 đúng); Q-LS-01 thành "xác nhận"; Q-LS-02 vẫn mở | M2/M3 |
+| 3 | **ZNS (nay là ZBS Template Message):** 200đ/tin, xác thực 300đ, chưa VAT, chỉ tính khi gửi thành công. Phép tính: 20 học viên × 3 bước nhắc = 60 tin ≈ **12.000đ/tháng ≈ 15% giá Pro 79.000đ**. CenterPro bán gói 2.000 tin giá 499.000đ (≈250đ/tin). | Mục 11.2; vòng 1 hoãn P07: nếu làm thì **bán theo gói tin**, không đưa "không giới hạn" vào Pro | M2 giá · M4 phép tính |
+| 4 | **Thu tiền:** payOS ghi miễn phí cho cá nhân (CCCD, không cần giấy phép kinh doanh); SePay miễn phí 35 giao dịch/tháng. | Mục 13.3 #4: chi phí kỹ thuật thu thuê bao ≈ 0. **Không giải D7** (chủ thể nhận tiền là chuyện pháp lý) | M2 (trang quảng bá của hãng) |
+| 5 | **Sổ Gia Sư: tài khoản tạo trước 31/8/2026 dùng Pro miễn phí đến hết 31/10/2026.** Trong 7 ngày nữa đối thủ sát nhất bắt đầu thu tiền thật. | Mục 12: thêm **E8** (quan sát tự nhiên, chi phí 0); Phụ lục D #2, #3; **thêm D20** | M2 (bài blog của chính họ) |
+| 6 | **Luật 19/2023 Điều 25 khoản 13** cấm điều khoản gia hạn tự động không báo trước/không cho chọn; hợp đồng theo mẫu phải bằng tiếng Việt, chữ ≥12. | Củng cố **D11** (không tự động gia hạn, nhắc T-7/T-3/T-0). Chưa biết gia sư mua để kinh doanh có là "người tiêu dùng" không | M3 |
+
+Chi tiết nhỏ, cùng chiều với báo cáo: ứng dụng miễn phí trên kho ứng dụng (ClassFast 5,0★, Zenk Class, Check5s) và phản ứng "bị đòi tiền sau khi dùng quen" củng cố việc giữ lõi sổ lớp miễn phí và D10 (M3). Bằng chứng nhắc nợ tự động rút ngắn ngày thu tiền **vẫn chỉ là số liệu hãng**, không có nghiên cứu đối chứng: E5/E6 vẫn bắt buộc. Quy mô học thêm: học thêm là 21,4% chi giáo dục của hộ (Khảo sát mức sống 2024), cầu bền nhưng chưa cho biết cầu phần mềm của người dạy.
+
+**F.3 Hai quyết định mới (D19–D20) và một việc sửa tài liệu**
+
+| # | Quyết định | Đề xuất mặc định | Hệ quả nếu chọn khác hoặc không quyết |
+|---|---|---|---|
+| D19 | Khoá `GEMINI_API_KEY` ở Production có thuộc dự án Google **đã bật thanh toán** (Paid Services) chưa? | Kiểm ngay ở Google AI Studio; nếu chưa thì bật thanh toán trước khi bán bất kỳ hạn mức AI nào. Chi phí chỉ là nạp trước ≥5 USD; ước 490đ/tệp 4 trang (M4) | Nếu đang ở gói miễn phí: nội dung gửi (đề thi, và gì gia sư tải lên) có thể bị Google dùng để cải thiện sản phẩm và người đánh giá đọc được; dữ liệu đã gửi không thu hồi được. Cũng áp cho tra trùng bằng `gemini-embedding-001` |
+| D20 | Có theo dõi Sổ Gia Sư sau 31/10 (E8) không, và ai làm? | Có: người có tài khoản (Thọ/Thanh) chụp có ngày giao diện Free bị khoá, giá, thông báo hết hạn vào 31/10, 03/11, 10/11; ghi phản ứng người dùng. Chi phí 0 | Mất dịp hiếm thấy mức sẵn lòng trả thật; E2/E3 vẫn làm được nhưng chậm hơn |
+
+**Việc sửa tài liệu (không phải quyết định):** `docs/kin/CLAUDE-cho-kho-trien-khai.md` mục 8 (dòng 183, 187) còn viện Nghị định 13/2023. Nên sửa thành Luật 91/2025 + Nghị định 356/2025 và giữ ghi chú "điều khoản trẻ em 7 tuổi chưa xác nhận". Chưa sửa ở đây vì tệp bàn giao này do Thọ/Thanh quản lý và căn cứ mới mới ở mức M2/M3.
+
+**F.4 Ba câu hỏi mới cho luật sư/kế toán (bổ sung mục 13.4: L11–L13; tổng 19 câu)**
+
+| # | Câu hỏi | Nguồn |
+|---|---|---|
+| L11 | Gia sư mua gói Pro để kinh doanh có là "người tiêu dùng" theo Luật 19/2023 không (điều cấm gia hạn tự động, hợp đồng theo mẫu)? Thuê bao phần mềm có thuộc danh mục phải đăng ký hợp đồng theo mẫu từ 01/07/2025 không? | CN §1.3 · M3 |
+| L12 | Nghị định 356: nghĩa vụ chỉ định nhân sự/bộ phận bảo vệ dữ liệu có áp cho KiN khi chưa có pháp nhân; có miễn cho doanh nghiệp nhỏ/khởi nghiệp không? "Lịch sử giao dịch ngân hàng" là dữ liệu nhạy cảm thì ảnh chuyển khoản và đối soát SePay cần thêm gì (liên Q-LS-13, 15)? | CN §1.2 · M3 |
+| L13 | Thông tư 29/2024 (và 19/2026): có đúng "không dạy thêm học sinh tiểu học, trừ nghệ thuật, thể dục thể thao, kỹ năng sống" và "giáo viên trường không dạy thêm có thu tiền chính học sinh mình được phân công" áp cho gia sư dùng KiN không? KiN có nghĩa vụ kiểm hay cảnh báo không? | CN §2 · M3 |
+
+Ghi thêm vào **L7** (AI nước ngoài): nhà cung cấp AI dùng nội dung đề thi theo điều khoản gói miễn phí/trả phí; có cần thoả thuận xử lý dữ liệu không.
+
+**F.5 Trạng thái Phụ lục D sau 24/10**
+
+| # | Trạng thái | Ghi chú |
+|---|---|---|
+| 1 | Một phần | Azota, LopHoc, CenterPro, SePay, ZNS, Gemini đọc qua đoạn trích chính thức (M2). Chưa: Loppi, Klassi, diemdanh.app, Sổ tay GV, EDUCRM |
+| 2 | Một phần | Mốc 31/10 của Sổ Gia Sư; chưa thấy trang giá, FAQ, điều khoản của họ |
+| 3 | Mở | Chờ E2/E3 và phép thử tự nhiên 31/10 (E8) |
+| 4 | Mở | Cần đọc DB Production |
+| 5 | Một phần | Hiệu lực Luật 91 và Nghị định 356 xác nhận. Chưa toàn văn: khoản 13 Điều 4 Nghị định 181, điều trẻ em, Thông tư 29 gốc và 19/2026 |
+| 6 | Một phần | Luật 19/2023 Điều 25(13) đã thấy; chưa Nghị định 101/2012, 52/2024 |
+| 7 | Đóng phần lớn | ZNS 200/300đ, SePay 35 giao dịch miễn phí, payOS miễn phí cho cá nhân. Chưa: Casso, SMS brandname, Zalo Mini App |
+| 8 | **Đóng** | Giá và điều khoản chính thức. Còn: lịch ngừng 2.5 Flash; khoá của KiN thuộc gói nào (D19) |
+| 9 | Mở | Chất lượng tiếng Việt, số token thực |
+| 10 | Mở | Cần hoá đơn tháng gần nhất |
+| 11 | Một phần | Chỉ có vĩ mô (NSO/GSO); chưa có số người dạy, cách quản lý hiện tại, sức mua |
+| 12 | Một phần | CenterPro; không ưu tiên (đã loại gói Nhóm) |
+| 13 | Một phần | Quizlet, Kahoot, Photomath khoá AI sau gói trả phí (M3); Duolingo Max không xác minh được; Azota và LopHoc tách/đo lượt AI |
+| 14 | Mở | Không có nghiên cứu đối chứng; E5/E6 |
+| 15 | Một phần | Superprof thu chủ yếu từ học viên (Student Pass); nền tảng khác chỉ có thứ cấp |
+| 16 | Một phần | Đã kiểm 23/10: Production chưa có `KIN_TRIAL_MODE`; đã có `VAPID_*` và `PUSH_ENABLED`. Chưa đọc lại `/chinh-sach` |
+| 17 | Một phần | Luật 19/2023 đã thấy; thái độ người dùng với thuê bao chưa có số liệu |
+
+**F.6 Để đọc trang gốc.** Nếu Thọ nới "Network access" của môi trường (menu môi trường trên thanh tiêu đề phiên → Edit → mức truy cập rộng hơn, hoặc thêm vào Allowed domains), các trang sau cần mở: `azota.vn`, `docs.azota.vn`, `lophoc.app`, `centerpro.vn`, `sogiasu.com`, `sepay.vn`, `payos.vn`, `zalo.solutions`, `ai.google.dev`, `tutorbird.com`, `thuvienphapluat.vn`, `congbao.chinhphu.vn`, `vanban.chinhphu.vn`, `nso.gov.vn`. Khi đó có thể đọc đủ trang giá thay vì đoạn trích, và đóng thêm các dòng "một phần" ở F.5.
