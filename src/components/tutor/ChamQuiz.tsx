@@ -31,7 +31,7 @@ interface Overview {
 }
 interface Essay { questionId: string; order: number; text: string; points: number; textAnswer: string | null; blank: boolean; pointsAwarded: number | null; teacherComment: string | null; reference: string | null }
 interface Detail { attemptId: string; studentName: string; status: string; submittedAt: string | null; score: number | null; rawTotal: number | null; essays: Essay[]; pendingEssays: number; editCount: number; state: GradeState; publishedAt: string | null }
-interface History { publishes: { attemptId: string; studentName: string; at: string }[]; edits: { id: string; studentName: string; questionOrder: number | null; prevPoints: number | null; newPoints: number; prevComment: string | null; newComment: string | null; at: string }[] }
+interface History { publishes: { attemptId: string; studentName: string; at: string; byName?: string }[]; edits: { id: string; studentName: string; questionOrder: number | null; prevPoints: number | null; newPoints: number; prevComment: string | null; newComment: string | null; at: string }[] }
 interface Tracking { students: { userId: string; name: string; attemptCount: number; submittedCount: number; inProgress: boolean; lastAt: string; tabSwitches: number }[]; notStarted: { userId: string; name: string }[]; enrolledKnown: boolean }
 
 type Tab = "bai-nop" | "cham" | "theo-doi" | "phan-tich" | "lich-su";
@@ -403,6 +403,10 @@ function HistoryTab({ base }: { base: string }) {
   const q = (n: number | null) => (n === null ? "chưa chấm" : fmtPoints(n));
   return (
     <div className="mt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tệp CSV gồm cả lần công bố và lần chấm hoặc sửa điểm, có tên học sinh và người thực hiện. Chỉ cô tải được.</p>
+        <a href={`${base}/history/xuat-csv`} download className={kinButtonClass("secondary")} data-xuat-csv>Tải nhật ký (CSV)</a>
+      </div>
       <KinSectionHead id="cq-ls-cb" title={`Đã công bố · ${data.publishes.length}`} />
       {data.publishes.length === 0 ? <KinEmptyState title="Chưa công bố bài nào">Khi cô công bố điểm, từng lần hiện ở đây.</KinEmptyState> : (
         <ul className="mt-2">{data.publishes.map(p => <li key={p.attemptId} className={`flex flex-wrap justify-between gap-x-4 ${KIN_TABLE_ROW}`}><span className="break-words">{p.studentName}</span><span className="text-[var(--kin-chu-mo)]">{dayAt(new Date(p.at))}</span></li>)}</ul>
