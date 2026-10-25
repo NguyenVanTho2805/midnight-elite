@@ -1,6 +1,6 @@
 // Thanh bên trái thu/mở (14/10/2026) — phần THUẦN: src/lib/railState.ts (trạng thái, phím tắt, script chạy trước khi vẽ),
 // src/lib/signedInShell.ts (người nào, ở trang nào thì có thanh bên), và tuỳ chọn `rail` trong src/lib/userPreferences.ts.
-import { RAIL_KEY, RAIL_ATTR, RAIL_OPEN_KEY, RAIL_INIT_SCRIPT, parseRail, toggleRail, widenRail, reopenRail, isRailShortcut } from "@/lib/railState";
+import { RAIL_KEY, RAIL_ATTR, RAIL_OPEN_KEY, RAIL_INIT_SCRIPT, DEFAULT_RAIL, parseRail, toggleRail, widenRail, reopenRail, isRailShortcut } from "@/lib/railState";
 import { shellFor, NO_SHELL_PATHS, shellHintFor, parseShellHint, SHELL_HINT_KEY, SHELL_HINT_ATTR, SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { readPreferences, applyPreferencesPatch } from "@/lib/userPreferences";
 import { check, section, done } from "./h";
@@ -19,10 +19,13 @@ const run = (stored: string | null | "THROW") => {
   return set;
 };
 check("đã lưu 'thu' → đặt data-kin-rail=thu lên <html>", JSON.stringify(run("thu")) === JSON.stringify([[RAIL_ATTR, "thu"]]), run("thu"));
-check("đã lưu 'mo' / chưa lưu gì → không đặt gì (mặc định luôn hiện)", run("mo").length === 0 && run(null).length === 0);
-check("giá trị lạ → không đặt gì", run("lung tung").length === 0);
+// 25/10/2026 (Figma "Nền móng"): mặc định là thanh RỘNG; script luôn đặt đúng MỘT thuộc tính (đã lưu thì giá trị đó, chưa lưu / lạ thì "rong").
+check("đã lưu 'mo' → đặt data-kin-rail=mo (người dùng đã chọn thanh hẹp thì giữ)", JSON.stringify(run("mo")) === JSON.stringify([[RAIL_ATTR, "mo"]]), run("mo"));
+check("chưa lưu gì → đặt data-kin-rail=rong (mặc định: thanh rộng có nhóm)", JSON.stringify(run(null)) === JSON.stringify([[RAIL_ATTR, "rong"]]), run(null));
+check("giá trị lạ → quay về mặc định 'rong', không đoán", JSON.stringify(run("lung tung")) === JSON.stringify([[RAIL_ATTR, "rong"]]), run("lung tung"));
 let threw = false; try { run("THROW"); } catch { threw = true; }
-check("trình duyệt chặn localStorage (chế độ riêng tư) → script không ném lỗi, không làm hỏng trang", !threw);
+check("trình duyệt chặn localStorage (chế độ riêng tư) → script không ném lỗi, không làm hỏng trang, vẫn đặt mặc định 'rong'", !threw && JSON.stringify(run("THROW")) === JSON.stringify([[RAIL_ATTR, "rong"]]));
+check("mặc định khai báo trong mã là 'rong'; script đặt trong hàm bọc sẵn (không rò biến ra phạm vi toàn cục)", DEFAULT_RAIL === "rong" && RAIL_INIT_SCRIPT.startsWith("(function(){") && RAIL_INIT_SCRIPT.endsWith("})()"));
 check("script nằm trên một dòng, không chứa '</script' (không phá được HTML khi chèn thẳng vào trang)", !/[\r\n]/.test(RAIL_INIT_SCRIPT) && !/<\/script/i.test(RAIL_INIT_SCRIPT));
 check("khoá lưu và tên thuộc tính đúng như đã ghi trong tài liệu", RAIL_KEY === "kin.thanh-ben" && RAIL_ATTR === "data-kin-rail");
 
@@ -52,12 +55,12 @@ for (const p of NO_SHELL_PATHS) check(`${p} (đăng nhập / đăng ký / khôi 
 check("trang chỉ giống TIỀN TỐ ('/dang-nhap-gi-do') thì vẫn có thanh bên — so khớp theo đoạn đường dẫn, không theo chuỗi", shellFor(student, "/dang-nhap-gi-do") === "student" && shellFor(student, "/dang-ky-lop") === "student");
 check("danh sách loại trừ đủ 6 trang xác thực", NO_SHELL_PATHS.length === 6 && ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"].every(p => (NO_SHELL_PATHS as readonly string[]).includes(p)), NO_SHELL_PATHS);
 
-section("Trạng thái thứ ba 'rong' (220px, có nhãn) — Lucian No.040, 15/10/2026");
+section("Ba trạng thái: 'rong' (272px, có nhóm — MẶC ĐỊNH từ 25/10/2026) · 'mo' (79px) · 'thu' (0)");
 check("parseRail nhận 'rong' (ba giá trị hợp lệ: mo / rong / thu)", parseRail("rong") === "rong" && parseRail("mo") === "mo" && parseRail("thu") === "thu");
 check("giá trị gần giống vẫn bị từ chối ('RONG', 'wide', 'rộng')", ["RONG", "Rong", "wide", "rộng", " rong"].every(v => parseRail(v) === null));
 check("phím '[': đang mở (79px hoặc 220px) → thu; đang thu → mở", toggleRail("mo") === "thu" && toggleRail("rong") === "thu" && toggleRail("thu") === "mo");
 check("nút mở rộng: hẹp ⇄ rộng; đang thu thì KHÔNG đổi (không tự mở thanh bằng nút này)", widenRail("mo") === "rong" && widenRail("rong") === "mo" && widenRail("thu") === "thu");
-check("mở lại sau khi thu về đúng bề rộng đã dùng ('rong' → 'rong'); chưa có / giá trị lạ → 79px", reopenRail("rong") === "rong" && reopenRail("mo") === "mo" && [null, undefined, "", "thu", "x", 1].every(v => reopenRail(v) === "mo"));
+check("mở lại sau khi thu về đúng bề rộng đã dùng ('mo' → 'mo', 'rong' → 'rong'); chưa có / giá trị lạ → mặc định (rộng)", reopenRail("rong") === "rong" && reopenRail("mo") === "mo" && [null, undefined, "", "thu", "x", 1].every(v => reopenRail(v) === "rong"));
 check("khoá nhớ bề rộng mở khác khoá trạng thái hiện tại", (RAIL_OPEN_KEY as string) !== RAIL_KEY);
 {
   const run = (stored: string | null) => {
@@ -66,7 +69,7 @@ check("khoá nhớ bề rộng mở khác khoá trạng thái hiện tại", (RA
     return attrs.get(RAIL_ATTR) ?? null;
   };
   check("script trước khi vẽ: đã lưu 'rong' → data-kin-rail=rong ngay từ khung hình đầu (không nháy 79px rồi nở ra)", run("rong") === "rong");
-  check("…đã lưu 'thu' → thu như cũ; 'mo' / rỗng / lạ → không đặt gì (mặc định 79px)", run("thu") === "thu" && run("mo") === null && run(null) === null && run("") === null && run("RONG") === null);
+  check("…đã lưu 'thu' / 'mo' → đúng giá trị đó; rỗng / lạ / chưa lưu → 'rong' (mặc định thanh rộng)", run("thu") === "thu" && run("mo") === "mo" && run(null) === "rong" && run("") === "rong" && run("RONG") === "rong");
 }
 
 section("Gợi ý vỏ — không nháy khung khách khi tải cứng (src/lib/signedInShell.ts)");

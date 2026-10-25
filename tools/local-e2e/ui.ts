@@ -11,8 +11,15 @@ export async function launch() {
   browser = await chromium.launch({ headless: true, executablePath, args: ["--no-sandbox", "--no-proxy-server", "--host-resolver-rules=MAP admin.midnightelite-edu.com 127.0.0.1, MAP midnightelite-edu.com 127.0.0.1, MAP localhost 127.0.0.1"] });
   return browser;
 }
-export async function ctxFor(u: TUser | null, o: { width?: number; height?: number } = {}): Promise<BrowserContext> {
+/** Trạng thái thanh bên đặt sẵn cho ngữ cảnh: "mo" (hẹp 79px), "rong" (272px), "thu", hoặc "mac-dinh" = KHÔNG đặt gì (đúng như người dùng mới: sản phẩm mặc định thanh RỘNG). */
+export type TestRail = "mo" | "rong" | "thu" | "mac-dinh";
+export async function ctxFor(u: TUser | null, o: { width?: number; height?: number; rail?: TestRail } = {}): Promise<BrowserContext> {
   const ctx = await browser!.newContext({ viewport: { width: o.width ?? 1280, height: o.height ?? 900 }, locale: "vi-VN" });
+  // 25/10/2026: mặc định của sản phẩm nay là thanh bên RỘNG 272px có nhóm (Figma "Nền móng"). Phần lớn bài ui-* viết cho thanh HẸP 79px (nút "Khác", đo x=79…), nên
+  // ở đây mặc định vẫn đặt sẵn "mo" để chúng giữ nguyên ý nghĩa; bài nào kiểm thanh rộng / mặc định thì truyền rail: "mac-dinh" (hoặc "rong").
+  // Chỉ đặt khi máy chưa lưu gì: bài nào tự thu / mở rồi tải lại vẫn thấy lựa chọn của chính nó.
+  const rail = o.rail ?? "mo";
+  if (rail !== "mac-dinh") await ctx.addInitScript(`try{if(localStorage.getItem("kin.thanh-ben")===null)localStorage.setItem("kin.thanh-ben",${JSON.stringify(rail)})}catch(e){}`);
   if (u) {
     const [name, ...rest] = (await cookieFor(u)).split("=");
     const value = rest.join("=");

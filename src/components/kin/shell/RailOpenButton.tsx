@@ -11,7 +11,7 @@ export function RailOpenButton({ pending = 0 }: { pending?: number }) {
       type="button"
       data-rail-open
       aria-label={label}
-      aria-expanded={state === "mo"}
+      aria-expanded={state !== "thu"}
       aria-controls="kin-rail"
       title="Mở thanh bên (phím [)"
       onClick={() => {

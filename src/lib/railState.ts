@@ -1,7 +1,8 @@
 // Trạng thái THU / MỞ của thanh bên trái (14/10/2026). Thuần (không đụng DOM) để test từng quy tắc; phần chạm DOM + lưu trữ nằm ở
 // src/components/kin/shell/railStore.ts. Thiết kế đầy đủ: docs/kin/thiet-ke/thanh-ben-trai.md.
 //
-// Hai trạng thái, chỉ ở máy tính (≥768px): "mo" = hiện (mặc định, 79px đúng Figma), "thu" = thụt vào hẳn (0px, có nút mở ở dải trên).
+// Ba trạng thái, chỉ ở máy tính (≥768px): "rong" = thanh bên rộng 272px có nhóm và nhãn chữ (MẶC ĐỊNH từ 25/10/2026, Figma "Nền móng" khung "Điều hướng"),
+// "mo" = thanh hẹp 79px chỉ biểu tượng (trước đây là mặc định; người dùng chọn thu hẹp thì được nhớ), "thu" = thụt vào hẳn (0px, có nút mở ở dải trên).
 // Điện thoại luôn có thanh dưới, không thu được. Thanh KHÔNG bao giờ tự thu: chỉ thu khi người dùng chủ động.
 export const RAIL_KEY = "kin.thanh-ben";
 export const RAIL_ATTR = "data-kin-rail";
@@ -14,17 +15,19 @@ export type RailOpen = "mo" | "rong";
 export const parseRail = (v: unknown): RailState | null => (v === "mo" || v === "rong" || v === "thu" ? v : null);
 /** Phím "[": thu ⇄ mở. (Mở về đâu — 79px hay 220px — do reopenRail quyết.) */
 export const toggleRail = (s: RailState): RailState => (s === "thu" ? "mo" : "thu");
-/** Bề rộng để mở lại: đúng cái đã dùng lần trước; giá trị lạ / chưa có → 79px. */
-export const reopenRail = (last: unknown): RailOpen => (last === "rong" ? "rong" : "mo");
-/** Đổi giữa hẹp 79px ⇄ rộng 220px khi đang mở; đang thu thì không đổi. */
+/** Bề rộng mặc định khi người dùng chưa chọn gì (máy này và tài khoản này). */
+export const DEFAULT_RAIL: RailOpen = "rong";
+/** Bề rộng để mở lại: đúng cái đã dùng lần trước; giá trị lạ / chưa có → mặc định (rộng). */
+export const reopenRail = (last: unknown): RailOpen => (last === "mo" ? "mo" : DEFAULT_RAIL);
+/** Đổi giữa rộng 272px ⇄ hẹp 79px khi đang mở; đang thu thì không đổi. */
 export const widenRail = (s: RailState): RailState => (s === "mo" ? "rong" : s === "rong" ? "mo" : s);
 
 /**
- * Chạy TRƯỚC khi trình duyệt vẽ trang (chèn ở layout gốc): đã lưu "thu" / "rong" thì đặt data-kin-rail lên <html> ngay, CSS ẩn (hoặc nới) thanh luôn từ khung hình
- * đầu tiên. Không có nó, thanh bên sẽ hiện ra rồi mới thụt vào mỗi lần tải trang. Một dòng, không chứa "</script", không ném lỗi khi
- * trình duyệt chặn localStorage.
+ * Chạy TRƯỚC khi trình duyệt vẽ trang (chèn ở layout gốc): đặt data-kin-rail lên <html> ngay (đã lưu "thu" / "mo" / "rong" thì đúng giá trị đó, chưa lưu hoặc giá trị lạ thì
+ * mặc định "rong"), CSS dựng đúng bề rộng thanh từ khung hình đầu tiên. Không có nó, thanh bên sẽ hiện ra rồi mới đổi bề rộng mỗi lần tải trang. Một dòng, không chứa
+ * "</script", không ném lỗi khi trình duyệt chặn localStorage (khi đó vẫn đặt mặc định).
  */
-export const RAIL_INIT_SCRIPT = `try{var v=localStorage.getItem(${JSON.stringify(RAIL_KEY)});if(v==="thu"||v==="rong")document.documentElement.setAttribute(${JSON.stringify(RAIL_ATTR)},v)}catch(e){}`;
+export const RAIL_INIT_SCRIPT = `(function(){var v="rong";try{var s=localStorage.getItem(${JSON.stringify(RAIL_KEY)});if(s==="thu"||s==="mo"||s==="rong")v=s}catch(e){}document.documentElement.setAttribute(${JSON.stringify(RAIL_ATTR)},v)})()`;
 
 export interface KeyInfo {
   key: string;
