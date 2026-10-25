@@ -15,3 +15,7 @@ Chủ trả lời: (1) mục "Cố ý không làm" (tải video lên, ảnh bài
 - Phụ huynh thấy bài tập/Azota của con ở link không đăng nhập: KHÔNG (rủi ro dữ liệu trẻ). Học phí trong xem trước mã mời: giữ như cũ.
 - Phí trễ hạn: chỉ làm GỢI Ý hiển thị, KHÔNG tự cộng tiền. Gói buổi trả trước (HP-31): làm theo mô hình sổ buổi (số buổi, không chuyển tiền thật), chỉ áp lớp tạo sau, cần kế toán xem trước khi dùng thật.
 - Pro: kích hoạt tự động bằng webhook SePay (tiền tố mã khác 'KIN', khoá từ env, tắt khi chưa cấu hình) + nhắc gia hạn T-7/T-3/T-0; logo tải lên KHÔNG làm (chưa có cách tải ảnh an toàn).
+
+## Cập nhật 25/10/2026 — Thanh chốt thêm 2 điểm (ghi đè điểm trái nghĩa phía trên)
+1. KHÔNG có gói buổi trả trước. Học xong rồi mới thu học phí, theo số buổi gia sư báo cho học sinh hoặc phụ huynh. Gói buổi trả trước (HP-31) không còn cần: ẩn hoặc gỡ ở tab Học phí của gia sư và ở Sổ của con. Chi tiết việc cần làm: `docs/kin/rd/BAN-GIAO-CHO-CHU-KHO.md` mục 4.
+2. Người học đều từ 17 tuổi trở lên, không cần làm quá chặt phần dữ liệu trẻ em; có thể đơn giản hoá các luồng đồng ý của phụ huynh, nhưng giữ rào tuổi tối thiểu, thông báo thu thập dữ liệu ngắn và quyền "gia sư chỉ thấy học sinh của mình". Chưa có ý kiến luật sư. Chi tiết: cùng tệp bàn giao, mục 4.
