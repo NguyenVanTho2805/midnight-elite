@@ -89,10 +89,17 @@ export default function ThiThuPage() {
       <KinPage>
         <KinPageHeader title="Thi thử" sub="Đề luyện thi từ thư viện và từ lớp của em." />
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,440px)_auto] sm:items-end">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,440px)_minmax(0,200px)_auto] sm:items-end">
           <label className="block min-w-0">
             <span className="sr-only">Tìm đề thi</span>
             <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm đề thi" className={KIN_FIELD} />
+          </label>
+          {/* Kỳ thi (nhóm đề: ĐGNL HSA, Tốt nghiệp THPT…) là một ô chọn, không phải hàng nút thứ hai: hàng nút ấy cũng có "Tất cả" nên dễ nhầm với bộ lọc trạng thái bên cạnh. */}
+          <label className="block min-w-0">
+            <span className="sr-only">Kỳ thi</span>
+            <select value={cat} onChange={e => setCat(e.target.value)} className={KIN_FIELD}>
+              {COURSE_CATEGORIES.map(c => <option key={c} value={c}>{c === "Tất cả" ? "Tất cả kỳ thi" : c}</option>)}
+            </select>
           </label>
           <div role="group" aria-label="Lọc theo trạng thái làm bài" className="flex flex-wrap items-center gap-1">
             {TABS.map(t => (
@@ -106,25 +113,14 @@ export default function ThiThuPage() {
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Lọc theo môn">
-          {COURSE_CATEGORIES.map(c => (
-            <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)}
-              className={`min-h-11 px-3 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] transition-colors ${cat === c
-                ? "bg-[var(--kin-nen-dang-chon)] text-[var(--kin-th-navy)] font-semibold"
-                : "text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
-              {c}
-            </button>
-          ))}
-        </div>
-
         <div className="mt-6 rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] overflow-hidden">
           <div aria-hidden className={`hidden md:grid ${COLS} gap-x-4 ${KIN_TABLE_HEAD}`}>
-            <span>Đề</span><span>Môn</span><span>Thời gian</span><span>Số câu</span><span>Trạng thái</span><span />
+            <span>Đề</span><span>Kỳ thi</span><span>Thời gian</span><span>Số câu</span><span>Trạng thái</span><span />
           </div>
           {shown.length === 0 ? (
             <div className="p-6">
               <KinEmptyState title={needle || tab !== "tat-ca" || cat !== "Tất cả" ? "Không có đề thi nào khớp" : "Chưa có đề thi nào"}>
-                {needle || tab !== "tat-ca" || cat !== "Tất cả" ? "Thử đổi từ khoá, trạng thái hoặc môn." : "Khi có đề thi mới, đề sẽ hiện ở đây."}
+                {needle || tab !== "tat-ca" || cat !== "Tất cả" ? "Thử đổi từ khoá, trạng thái hoặc kỳ thi." : "Khi có đề thi mới, đề sẽ hiện ở đây."}
               </KinEmptyState>
             </div>
           ) : (
@@ -142,7 +138,7 @@ export default function ThiThuPage() {
                       <p className="text-[var(--kin-chu-chinh)]">{exam.title}</p>
                       <p className="text-[var(--kin-chu-mo)]">{exam.date} · {exam.time}{exam.participants > 0 ? ` · ${exam.participants} thí sinh` : ""}</p>
                     </div>
-                    <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Môn: </span>{exam.category}</span>
+                    <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Kỳ thi: </span>{exam.category}</span>
                     <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Thời gian: </span>{exam.duration}</span>
                     <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Số câu: </span>{exam.questions}</span>
                     <div className="min-w-0">
