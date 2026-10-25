@@ -50,7 +50,7 @@ Kết quả hồi quy cuối (bản `e5a4e8c`, 146 bài): 135 đạt ngay, `tsc`
    - Với người trưởng thành vẫn cần thông báo thu thập dữ liệu ngắn gọn (Nghị định 13/2023 áp dụng cho dữ liệu cá nhân nói chung, không chỉ trẻ em) và mỗi gia sư chỉ thấy dữ liệu học sinh của mình.
    - Chưa có ý kiến luật sư. Nên xin ý kiến trước khi bỏ hẳn các hộp đồng ý và trước khi mở cho người dùng thật.
    - Làm từng bước nhỏ, giữ test cũ, sửa test cho đúng quy tắc mới (không xoá ca).
-3. **Thanh bên mặc định hiện đủ mọi module.** Không giấu tính năng theo tuỳ chọn. Hiện trạng: `TUTOR_MODULES` trong `src/lib/userPreferences.ts` chỉ cho `Lịch` và `Học phí` luôn hiện (`always: true`); các module còn lại tuỳ chọn, và khi `preferences.modules` chưa có thì thanh bên ở "chế độ gọn" (chỉ Lịch và Học phí). `TutorShell.tsx` có dòng "Thêm module" khi còn module ẩn. Việc cần làm: khi `preferences.modules` chưa có, mặc định coi như đã bật đủ mọi module tuỳ chọn; ai đã chọn rõ thì giữ lựa chọn của họ. Cài đặt › Module hiển thị vẫn cho ẩn bớt. Tìm và sửa các bài kiểm có chữ "chế độ gọn", "TT-203", `modules` (ví dụ `ui-tutor-shell`, `ui-sidebar`, bài về `userPreferences`) cho đúng quy tắc mới, không xoá ca. Sơ đồ mới ở Figma, mục 8.
+3. **Thanh bên mặc định hiện đủ mọi module.** Không giấu tính năng theo tuỳ chọn. Hiện trạng: `TUTOR_MODULES` trong `src/lib/userPreferences.ts` chỉ cho `Lịch` và `Học phí` luôn hiện (`always: true`); các module còn lại tuỳ chọn, và khi `preferences.modules` chưa có thì thanh bên ở "chế độ gọn" (chỉ Lịch và Học phí). `TutorShell.tsx` có dòng "Thêm module" khi còn module ẩn. Việc cần làm: khi `preferences.modules` chưa có, mặc định coi như đã bật đủ mọi module tuỳ chọn; ai đã chọn rõ thì giữ lựa chọn của họ. Cài đặt › Module hiển thị vẫn cho ẩn bớt. Tìm và sửa các bài kiểm có chữ "chế độ gọn", "TT-203", `modules` (ví dụ `ui-tutor-shell`, `ui-sidebar`, bài về `userPreferences`) cho đúng quy tắc mới, không xoá ca. Sơ đồ mới ở Figma, mục 8 (thanh bên rộng, đủ mục, không còn nút Khác).
 
 **24/10/2026:** bỏ hết mục "Cố ý không làm" khỏi phạm vi (tải video lên, ảnh bài làm của trẻ, gói Nhóm/Trung tâm, thẻ tín dụng, điểm danh sinh trắc); chốt buổi là điều kiện sinh phí; nhãn "Đã xác minh" đổi thành "Đã duyệt hồ sơ"; phí trễ hạn chỉ gợi ý; Pro tự kích hoạt bằng webhook SePay. Chi tiết ở `pro/QUYET-DINH-CHU.md`.
 
@@ -114,14 +114,15 @@ File Figma: `https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-Syst
 **Đọc theo thứ tự:**
 1. Page `📖 Mục lục & liên kết`: cấu trúc file, mỗi mục thanh bên dẫn tới màn chủ, danh mục màn theo vai, khoảng trống còn lại.
 2. Page `✅ Bản final — thanh bên & tính năng` (id `578:2`): thanh bên mở rộng đủ mọi tính năng của gia sư (18 mục), học sinh (19 mục), quản trị (24 mục trang con), kèm bản đồ `tính năng → màn Figma → đường dẫn ứng dụng`. Đây là chuẩn để dựng web. Mục không có màn Figma ghi "chưa có màn".
-3. Page `📐 Nền móng`: 84 màn gốc và 4 Section `🆕 … màn bổ sung 25/10` (30 màn mới, dựng từ khung vỏ có sẵn, dùng biến màu, kiểu chữ và thành phần chung).
+3. Page `📐 Nền móng`: 84 màn gốc và 4 Section `🆕 … màn bổ sung 25/10` (28 màn mới, dựng từ khung vỏ có sẵn, dùng biến màu, kiểu chữ và thành phần chung).
 
-**Thanh bên chuẩn (Figma ↔ ứng dụng):**
-- Gia sư: Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện, Học phí, Cài đặt, Khác. Bảng "Khác" mở ra các nhóm Dạy học, Tiền, Giới thiệu, Tài khoản (màn `564:4489`).
-- Học sinh: Việc của tôi, Lịch học, Lớp của tôi, Bài tập, Khác (màn bảng Khác `564:4691`).
-- Quản trị: 5 module Kiểm duyệt, Người dùng, Nội dung, Báo cáo, Cài đặt; mỗi module có dải tab trang con.
+**Thanh bên chuẩn (một chuẩn duy nhất, đã áp cho mọi màn desktop trong `📐 Nền móng`):**
+- Thanh bên mở rộng, rộng 272px, chia nhóm, hiện đủ mọi mục. Khung màn rộng 1600px = thanh bên 272 + vùng làm việc 1328. Không còn thanh icon 112px và không còn nút "Khác" giấu mục. Đừng dựng bản thanh icon + bảng "Khác": đó là bản cũ.
+- Gia sư (18 mục): Làm việc hằng ngày (Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện), Dạy học (Tổng quan, Kế hoạch buổi, Báo cáo tháng, Sổ điểm, Kiểm duyệt cộng đồng), Tiền (Học phí, Doanh thu), Giới thiệu (Hồ sơ gia sư, Bài đăng tìm học sinh), Tài khoản (Gói của tôi, Liên hệ hỗ trợ, Cài đặt).
+- Học sinh (19 mục): Làm việc hằng ngày (Việc của tôi, Lịch học, Lớp của tôi, Bài tập), Học tập (Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Cộng đồng), Khám phá (Khoá học đang mở, Lớp đang theo dõi, Gia sư, Tin tức, Tra cứu điểm chuẩn), Tài khoản (Hồ sơ, Học phí, Ví và Coin, Chủ đề màu).
+- Quản trị (24 trang con): 5 nhóm Kiểm duyệt, Người dùng, Nội dung, Báo cáo, Cài đặt; mỗi trang con có mục riêng, trang đang mở được tô sáng. Trong màn Nội dung và Cài đặt còn dải tab trang con ở đầu trang.
 - Điện thoại: thanh dưới 4 mục, không có bảng Khác. Phụ huynh không có thanh bên.
-- Hai kiểu hiển thị đều hợp lệ: thanh icon 112px kèm bảng "Khác" (đúng với app hiện tại) hoặc thanh mở rộng nhóm sẵn ở page Bản final. Chọn một và áp thống nhất cho cả ba vai.
+- Mỗi màn chỉ tô sáng đúng một mục (đã kiểm: 80 màn, 0 màn thiếu hoặc thừa mục đang chọn). Page `🖥 Vỏ ứng dụng — 4 vai` là bản cũ, đã ghi chú không dùng để dựng.
 
 **Màn bổ sung (node id, đường dẫn app):**
 
@@ -135,7 +136,6 @@ File Figma: `https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-Syst
 | Gia sư | Báo cáo tháng | `574:5777` | `/lop-cua-toi/bao-cao-thang` |
 | Gia sư | Kiểm duyệt cộng đồng | `574:6082` | `/lop-cua-toi/kiem-duyet` |
 | Gia sư | Bài đăng tìm học sinh | `574:6351` | `/lop-cua-toi/bai-dang` |
-| Học sinh | Bảng Khác | `564:4691` | nút Khác |
 | Học sinh | Thi thử | `575:5571` | `/student/thi-thu` |
 | Học sinh | Bảng xếp hạng | `575:5805` | `/student/bang-xep-hang` |
 | Học sinh | Ví và Coin | `575:5999` | `/student/vi` |
