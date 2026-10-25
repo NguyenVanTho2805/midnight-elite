@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cronSecretMissingIsFatal } from "@/lib/adminOps";
 import { recordCronRun } from "@/lib/adminOpsServer";
 import { prisma } from "@/lib/prisma";
+import { checkCronAuth } from "@/lib/cronAuth";
 import { sendClassReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
@@ -20,16 +20,8 @@ function sleep(ms: number) {
 // remind-exam, xem vercel.json.
 // Authorization header: Bearer CRON_SECRET
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
-    }
-  } else if (cronSecretMissingIsFatal()) {
-    // QT-03: bản chạy thật thiếu CRON_SECRET thì ĐÓNG (trước đây thiếu khoá là mở công khai); máy thử vẫn chạy được.
-    return NextResponse.json({ error: "Chưa cấu hình CRON_SECRET" }, { status: 503 });
-  }
+  const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
+  if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
   await recordCronRun("remind-class"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
 
   // NC2-011: tin "Hôm qua có N buổi chưa điểm danh" (gia sư). Chạy SAU phần nhắc học viên để nếu nó chậm / hết giờ thì nhắc lịch học viên ngày mai
