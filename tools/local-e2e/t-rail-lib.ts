@@ -3,6 +3,7 @@
 import { RAIL_KEY, RAIL_ATTR, RAIL_OPEN_KEY, RAIL_INIT_SCRIPT, DEFAULT_RAIL, parseRail, toggleRail, widenRail, reopenRail, isRailShortcut } from "@/lib/railState";
 import { shellFor, NO_SHELL_PATHS, shellHintFor, parseShellHint, SHELL_HINT_KEY, SHELL_HINT_ATTR, SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { readPreferences, applyPreferencesPatch } from "@/lib/userPreferences";
+import { matchLen, activeIndex } from "@/lib/navActive";
 import { check, section, done } from "./h";
 
 section("parseRail / toggleRail");
@@ -105,5 +106,34 @@ check("tài khoản nhớ được 'rong': đọc và vá đều nhận (máy kh
 check("vá: null đưa về mặc định (xoá khoá)", (() => { const r = applyPreferencesPatch({ rail: "thu" }, { rail: null }); return r.ok && !("rail" in r.value); })());
 for (const bad of ["xxx", "THU", 1, true, [], {}]) check(`vá nghiêm: rail=${JSON.stringify(bad)} → từ chối cả bản vá`, !applyPreferencesPatch({}, { rail: bad }).ok);
 check("vá rail không làm mất khoá khác", (() => { const r = applyPreferencesPatch({ theme: "man", modules: ["lop"] }, { rail: "thu" }); return r.ok && r.value.theme === "man" && r.value.modules?.[0] === "lop" && r.value.rail === "thu"; })());
+
+section("Mục nào của thanh bên sáng (src/lib/navActive.ts): bí danh chuyển hướng + khớp dài nhất trong nhóm");
+// Đúng danh sách nhóm "Học tập" / "Khám phá" của vỏ học sinh (StudentShell.tsx): href là bí danh /student/…, `also` là trang đích sau khi chuyển.
+const HOC_TAP = [
+  { href: "/thu-vien" },
+  { href: "/student/tieng-anh" },
+  { href: "/student/thi-thu", also: ["/thi-thu"] },
+  { href: "/student/bang-xep-hang", also: ["/bang-xep-hang"] },
+  { href: "/student/hoi-dap", also: ["/cong-dong/hoi-dap"] },
+  { href: "/student/cong-dong", also: ["/cong-dong"] },
+];
+const KHAM_PHA = [{ href: "/khoa-hoc" }, { href: "/khoa-hoc-da-luu" }, { href: "/giang-vien" }, { href: "/student/tin-tuc", also: ["/tin-tuc"] }, { href: "/diem-chuan" }];
+const lit = (path: string, items: Parameters<typeof activeIndex>[1]) => items[activeIndex(path, items)]?.href ?? null;
+check("/thi-thu (trang đích sau khi bấm Thi thử) → sáng đúng 'Thi thử'", lit("/thi-thu", HOC_TAP) === "/student/thi-thu");
+check("/bang-xep-hang → sáng 'Bảng xếp hạng'", lit("/bang-xep-hang", HOC_TAP) === "/student/bang-xep-hang");
+check("/tin-tuc và /tin-tuc/<bài> → sáng 'Tin tức'", lit("/tin-tuc", KHAM_PHA) === "/student/tin-tuc" && lit("/tin-tuc/bai-viet-1", KHAM_PHA) === "/student/tin-tuc");
+check("/cong-dong (trang đích của Cộng đồng, cả ?tab=hoi-dap-qa) → sáng 'Cộng đồng'", lit("/cong-dong", HOC_TAP) === "/student/cong-dong" && lit("/cong-dong/123", HOC_TAP) === "/student/cong-dong");
+check("/cong-dong/hoi-dap/<id> → 'Hỏi đáp' thắng 'Cộng đồng' (khớp dài nhất), chỉ MỘT mục sáng", lit("/cong-dong/hoi-dap/abc", HOC_TAP) === "/student/hoi-dap");
+check("đứng ở chính href bí danh (/student/thi-thu) vẫn sáng mục đó", lit("/student/thi-thu", HOC_TAP) === "/student/thi-thu");
+check("khớp theo đoạn đường dẫn, không theo tiền tố chữ: /khoa-hoc-da-luu KHÔNG làm 'Khoá học đang mở' sáng, /khoa-hoc/abc thì có", lit("/khoa-hoc-da-luu", KHAM_PHA) === "/khoa-hoc-da-luu" && lit("/khoa-hoc/abc", KHAM_PHA) === "/khoa-hoc");
+check("không mục nào khớp → -1 (không sáng bậy mục đầu)", activeIndex("/student/ho-so", HOC_TAP) === -1 && activeIndex("/", []) === -1);
+check("href có #neo: bỏ phần neo khi so", matchLen("/lop-cua-toi/cai-dat", { href: "/lop-cua-toi/cai-dat#module" }) === "/lop-cua-toi/cai-dat".length);
+check("mục tự khai active:false (liên kết #neo như 'Thêm module') không bao giờ thắng mục cha cùng đường dẫn", (() => {
+  const items = [{ href: "/lop-cua-toi/cai-dat" }, { href: "/lop-cua-toi/cai-dat#module", active: false }];
+  return activeIndex("/lop-cua-toi/cai-dat", items) === 0;
+})());
+check("mục tự khai active:true / false không dự phần so đường dẫn: mục còn lại vẫn xét", activeIndex("/a", [{ href: "/a", active: false }, { href: "/a" }]) === 1 && activeIndex("/a", [{ href: "/a", active: true }, { href: "/a" }]) === 1);
+check("bằng nhau thì mục đứng trước thắng (ổn định, không nháy)", activeIndex("/x", [{ href: "/x" }, { href: "/x" }]) === 0);
+check("`also` rỗng hoặc không có không gây lỗi; đường dẫn đích rỗng bị bỏ qua", matchLen("/a", { href: "/b" }) === 0 && matchLen("/a", { href: "/b", also: [""] }) === 0);
 
 done();

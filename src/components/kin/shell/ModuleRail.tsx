@@ -18,6 +18,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, ty
 import { ShellIcon } from "./ShellIcon";
 import { chooseRail, lastOpenRail, readRail, useRail } from "./railStore";
 import { isRailShortcut, toggleRail, widenRail } from "@/lib/railState";
+import { activeIndex } from "@/lib/navActive";
 
 /** Mục của thanh rộng (nằm trong một nhóm). `active` để nơi gọi tự quyết; không có thì so đường dẫn như ModuleItem. */
 export interface NavItem {
@@ -163,8 +164,9 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
       : <Link key={m.key} href={m.href} {...common}>{inner}</Link>;
   };
 
-  const renderWide = (m: NavItem) => {
-    const active = m.active ?? (matches(pathname, m.href.split("#")[0]) || (m.also ?? []).some(p => matches(pathname, p)));
+  // `lit`: mục khớp đường dẫn DÀI NHẤT trong nhóm của nó (src/lib/navActive.ts); mục tự khai `active` thì theo đó.
+  const renderWide = (m: NavItem, lit: boolean) => {
+    const active = m.active ?? lit;
     const cls = "kin-rail-wi flex items-center gap-3 min-h-[37px] [@media(pointer:coarse)]:min-h-11 px-3 py-2 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-small)] leading-5 transition-colors hover:bg-[var(--kin-nen-re-chuot)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
     const style: CSSProperties = {
       background: active ? "var(--kin-nen-dang-chon)" : undefined,
@@ -204,12 +206,15 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
           </div>
           {groups && (
             <div className="kin-rail-groups kin-chu-than w-full flex-col gap-[6px]">
-              {groups.map(g => (
-                <div key={g.title} role="group" aria-label={g.title} className="flex flex-col gap-[2px] pt-[10px]">
-                  <p aria-hidden className="kin-rail-gh h-4 text-[length:var(--kin-co-caption)] leading-4 font-semibold uppercase text-[var(--kin-chu-mo)]">{g.title}</p>
-                  {g.items.map(renderWide)}
-                </div>
-              ))}
+              {groups.map(g => {
+                const lit = activeIndex(pathname, g.items);
+                return (
+                  <div key={g.title} role="group" aria-label={g.title} className="flex flex-col gap-[2px] pt-[10px]">
+                    <p aria-hidden className="kin-rail-gh h-4 text-[length:var(--kin-co-caption)] leading-4 font-semibold uppercase text-[var(--kin-chu-mo)]">{g.title}</p>
+                    {g.items.map((m, i) => renderWide(m, i === lit))}
+                  </div>
+                );
+              })}
             </div>
           )}
           <button type="button" data-rail-close onClick={collapse}
