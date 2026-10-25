@@ -979,6 +979,19 @@ model User {
   tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
   sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
 
+  // Tiếng Anh tự học (docs/tieng-anh/DAC-TA.md) — mọi bản ghi gắn với một người học, xoá tài khoản thì xoá theo.
+  engProfile      EngProfile?
+  engUserWords    EngUserWord[]
+  engCards        EngCard[]
+  engReviewLogs   EngReviewLog[]
+  engTexts        EngText[]
+  engBooks        EngBook[]
+  engAttempts     EngAttempt[]
+  engUnitProgress EngUnitProgress[]
+  engWritings     EngWriting[]
+  engStudyLogs    EngStudyLog[]
+  engMocks        EngMock[]
+
   @@map("users")
 }
 
@@ -2570,4 +2583,349 @@ model ExamGradeEdit {
   @@index([attemptId, questionId])
   @@index([examId, createdAt])
   @@map("exam_grade_edits")
+}
+
+// ─── TIẾNG ANH TỰ HỌC (IELTS 3.0 → 6.5) ─────────────────────────────────────
+// Đặc tả: docs/tieng-anh/DAC-TA.md. Toàn bộ là bảng MỚI, chỉ thêm (db push an toàn).
+// Quy tắc riêng tư: mọi thứ có ownerId/userId chỉ chủ sở hữu thấy. Sách người học tải lên (có bản quyền)
+// KHÔNG BAO GIỜ công khai — chỉ lưu chữ đã trích, không lưu file PDF.
+
+model EngProfile {
+  userId         String   @id
+  targetBand     Float    @default(6.5)
+  examDate       String? // "YYYY-MM-DD"
+  dailyNew       Int      @default(15) // số từ mới mỗi ngày
+  dailyReviewCap Int      @default(150) // quá ngưỡng này thì tạm dừng từ mới
+  dailyMinutes   Int      @default(120)
+  placementDone  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("eng_profiles")
+}
+
+// Kho từ chung: NGSL 1.01 + từ bổ sung + NAWL (CC BY-SA 4.0, Browne, Culligan & Phillips) và từ người học tự bắt.
+model EngWord {
+  id           String   @id @default(cuid())
+  lemma        String   @unique
+  list         String // "ngsl" | "sup" | "nawl" | "own"
+  listRank     Int? // thứ hạng trong danh sách của nó
+  freqRank     Int? // thứ hạng tần suất chung (1 = phổ biến nhất)
+  pos          String?
+  ipa          String?
+  meaningVi    String?
+  definitionEn String?
+  example      String?
+  createdAt    DateTime @default(now())
+
+  userWords EngUserWord[]
+  cards     EngCard[]
+
+  @@index([list, listRank])
+  @@map("eng_words")
+}
+
+model EngUserWord {
+  id        String   @id @default(cuid())
+  userId    String
+  wordId    String
+  status    String   @default("learning") // "known" | "learning" | "ignored"
+  source    String // "placement" | "reader" | "list" | "book" | "finish"
+  context   String? // câu gốc lúc bắt từ
+  contextVi String? // nghĩa tiếng Việt theo đúng câu đó
+  textId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word EngWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@index([userId, status])
+  @@map("eng_user_words")
+}
+
+// Thẻ ôn FSRS (ts-fsrs). key: "w:<wordId>:<cardType>" hoặc "x:<exerciseId>" — chống trùng ở tầng DB.
+model EngCard {
+  id            String    @id @default(cuid())
+  userId        String
+  key           String
+  kind          String // "word" | "exercise"
+  cardType      String // word: "recognize" | "listen" | "cloze" | "recall"; exercise: "redo"
+  wordId        String?
+  exerciseId    String?
+  due           DateTime  @default(now())
+  stability     Float     @default(0)
+  difficulty    Float     @default(0)
+  elapsedDays   Int       @default(0)
+  scheduledDays Int       @default(0)
+  learningSteps Int       @default(0)
+  reps          Int       @default(0)
+  lapses        Int       @default(0)
+  state         Int       @default(0) // 0 New, 1 Learning, 2 Review, 3 Relearning
+  lastReview    DateTime?
+  suspended     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word     EngWord?       @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  exercise EngExercise?   @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  logs     EngReviewLog[]
+
+  @@unique([userId, key])
+  @@index([userId, due])
+  @@map("eng_cards")
+}
+
+model EngReviewLog {
+  id            String   @id @default(cuid())
+  cardId        String
+  userId        String
+  rating        Int // 1 Again, 2 Hard, 3 Good, 4 Easy
+  state         Int
+  elapsedDays   Int
+  scheduledDays Int
+  durationMs    Int?
+  reviewedAt    DateTime @default(now())
+
+  card EngCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reviewedAt])
+  @@map("eng_review_logs")
+}
+
+// Bài đọc / nghe. ownerId = null: bài công khai (VOA Learning English — public domain).
+// ownerId có giá trị: bài người học tự dán hoặc trích từ sách — chỉ người đó thấy.
+model EngText {
+  id          String    @id @default(cuid())
+  ownerId     String?
+  source      String // "voa" | "paste" | "book"
+  sourceUrl   String?
+  title       String
+  body        String    @db.Text
+  audioUrl    String?
+  topic       String?
+  wordCount   Int
+  license     String // "public-domain" | "private"
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  owner     User?         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  exercises EngExercise[]
+
+  @@unique([source, sourceUrl])
+  @@index([ownerId, createdAt])
+  @@map("eng_texts")
+}
+
+model EngBook {
+  id         String   @id @default(cuid())
+  ownerId    String
+  title      String
+  kind       String // "grammar" | "skills" | "other"
+  fileName   String
+  pageCount  Int      @default(0)
+  status     String   @default("pages") // "pages" (đang nạp trang) | "splitting" | "processing" | "ready" | "error"
+  statusNote String?
+  unitsTotal Int      @default(0)
+  unitsDone  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner  User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  pages  EngBookPage[]
+  units  EngUnit[]
+  chunks EngChunk[]
+
+  @@index([ownerId])
+  @@map("eng_books")
+}
+
+model EngBookPage {
+  id     String @id @default(cuid())
+  bookId String
+  pageNo Int // 1-based như số trang PDF
+  text   String @db.Text
+
+  book EngBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, pageNo])
+  @@map("eng_book_pages")
+}
+
+model EngUnit {
+  id               String   @id @default(cuid())
+  bookId           String
+  ownerId          String
+  order            Int
+  unitNo           String?
+  title            String
+  group            String?
+  pageStart        Int
+  pageEnd          Int
+  summaryVi        String?  @db.Text
+  keyPoints        Json? // string[]
+  examples         Json? // string[] — câu ví dụ trích nguyên văn từ sách
+  mistakesVi       Json? // string[] — lỗi người Việt hay gặp
+  status           String   @default("raw") // "raw" | "ready" | "error"
+  statusNote       String?
+  createdAt        DateTime @default(now())
+
+  book      EngBook           @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  exercises EngExercise[]
+  progress  EngUnitProgress[]
+  chunks    EngChunk[]
+
+  @@unique([bookId, order])
+  @@index([ownerId])
+  @@map("eng_units")
+}
+
+// Đoạn văn của sách cho "Hỏi sách" (RAG). embedding: gemini-embedding-001, 768 chiều — đọc/ghi qua $queryRaw như question_bank_items.
+model EngChunk {
+  id        String                      @id @default(cuid())
+  bookId    String
+  unitId    String?
+  ownerId   String
+  pageNo    Int
+  text      String                      @db.Text
+  embedding Unsupported("vector(768)")?
+
+  book EngBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  unit EngUnit? @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, bookId])
+  @@map("eng_chunks")
+}
+
+model EngExercise {
+  id          String   @id @default(cuid())
+  ownerId     String? // null = câu hỏi của bài công khai
+  unitId      String?
+  textId      String?
+  type        String // "gap" | "choice" | "transform" | "tfng" | "error" | "order"
+  instruction String?
+  prompt      String   @db.Text
+  options     String[] @default([])
+  answers     String[] // mọi đáp án được chấp nhận
+  explanation String?  @db.Text
+  origin      String // "book" | "ai"
+  verified    Boolean  @default(false) // AI tự giải lại ra đúng đáp án
+  flagged     Boolean  @default(false) // người học báo sai → không dùng nữa
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  unit     EngUnit?     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  text     EngText?     @relation(fields: [textId], references: [id], onDelete: Cascade)
+  attempts EngAttempt[]
+  cards    EngCard[]
+
+  @@index([unitId, origin])
+  @@index([textId])
+  @@map("eng_exercises")
+}
+
+model EngAttempt {
+  id         String   @id @default(cuid())
+  userId     String
+  exerciseId String
+  answer     String
+  correct    Boolean
+  createdAt  DateTime @default(now())
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise EngExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([exerciseId])
+  @@map("eng_attempts")
+}
+
+model EngUnitProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  unitId        String
+  status        String   @default("learning") // "learning" | "done" | "review"
+  bestScore     Int      @default(0) // % đúng tốt nhất
+  lastScore     Int?
+  attempts      Int      @default(0)
+  lastStudiedAt DateTime @default(now())
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit EngUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, unitId])
+  @@map("eng_unit_progress")
+}
+
+model EngWriting {
+  id           String   @id @default(cuid())
+  userId       String
+  taskType     String // "task1" | "task2" | "paragraph"
+  prompt       String   @db.Text
+  body         String   @db.Text
+  wordCount    Int
+  feedback     Json?
+  bandLow      Float?
+  bandHigh     Float?
+  revisionOfId String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("eng_writings")
+}
+
+// Nhật ký học theo NGÀY GIỜ VIỆT NAM — nguồn của chuỗi ngày học và thống kê. Một dòng / người / ngày / module.
+model EngStudyLog {
+  id      String @id @default(cuid())
+  userId  String
+  day     String // "YYYY-MM-DD" theo giờ Việt Nam
+  module  String // "tu-vung" | "doc" | "nghe" | "lop-hoc" | "viet"
+  items   Int    @default(0)
+  correct Int    @default(0)
+  total   Int    @default(0)
+  seconds Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day, module])
+  @@map("eng_study_logs")
+}
+
+// Bộ nhớ đệm tra nghĩa theo ngữ cảnh (khoá = băm của từ + câu) — một câu chỉ hỏi AI một lần.
+model EngLookup {
+  key       String   @id
+  lemma     String
+  meaningVi String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@map("eng_lookups")
+}
+
+// Thi thử IELTS. Listening/Reading: phiếu 40 câu chấm theo đáp án người học dán từ sách (Cambridge IELTS…) → điểm thô → band
+// (bảng xấp xỉ trong lib/english/mock.ts). Writing/Speaking: band do người học tự nhập (giáo viên/người 7.0+ chấm).
+model EngMock {
+  id        String   @id @default(cuid())
+  userId    String
+  skill     String // "listening" | "reading" | "writing" | "speaking"
+  module    String   @default("academic") // Reading: "academic" | "general"
+  title     String // vd "Cambridge 18 — Test 2"
+  raw       Int? // số câu đúng / 40 (L/R)
+  band      Float
+  answers   String[] @default([])
+  answerKey String[] @default([])
+  seconds   Int      @default(0)
+  note      String?
+  takenAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, skill, takenAt])
+  @@map("eng_mocks")
 }

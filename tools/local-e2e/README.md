@@ -85,3 +85,25 @@ Máy làm việc của Claude có sẵn Postgres 16 (`/usr/lib/postgresql/16`, c
 4. `source tools/local-e2e/env.sh` (có mẫu thêm `PUSH_ENABLED=1` + `VAPID_*` cho `t-push` / `ui-push-settings`), `bash tools/local-e2e/dev-start.sh`, thêm `127.0.0.1 midnightelite-edu.com admin.midnightelite-edu.com` vào `/etc/hosts`.
 5. Đừng chạy `pkill -f <tên tệp>` trong cùng lệnh bash có chứa tên tệp đó — nó giết luôn shell (mã thoát 144); dùng `pgrep -f "^node tools/..."` neo đầu dòng.
 6. Bài `ui-media.ts` (ca Cloudinary ở /xem-tai-lieu) cần máy chủ thử khởi động với `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=kin`, vd `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=kin npx next dev -p <cổng>`; thiếu biến này bảo mật từ chối mọi địa chỉ Cloudinary (đúng thiết kế) và ca đó đỏ.
+
+## Dựng DB thử không cần engine (15/10/2026)
+Máy cloud chặn `binaries.prisma.sh` (403), nên `prisma db push` không chạy được. Cách đã dùng:
+```
+# 1. Postgres 16 cục bộ + DB thử; loopback nhận mật khẩu dạng password (driver Neon gửi mật khẩu ngay, không đợi SCRAM)
+pg_ctlcluster 16 main start
+su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'kintest';\"" && su postgres -c "psql -c 'CREATE DATABASE kin_test;'"
+sed -i 's/^host\s\+all\s\+all\s\+127.0.0.1\/32\s\+scram-sha-256/host all all 127.0.0.1\/32 password/' "$(su postgres -c "psql -tAc 'show hba_file'")"
+su postgres -c "psql -c 'select pg_reload_conf();'"
+# 2. Schema: sinh DDL từ DMMF (cột vector → domain "vector" trên text, vì máy test không có pgvector)
+npm i --prefix /tmp/prisma-internals @prisma/internals@7.8.0
+node tools/local-e2e/db/ddl.mjs prisma/schema.prisma /tmp/prisma-internals/node_modules > /tmp/schema.sql
+PGPASSWORD=kintest psql -h localhost -U postgres -d kin_test -v ON_ERROR_STOP=1 -q -f /tmp/schema.sql
+# 3. Client Prisma: PRISMA_SCHEMA_ENGINE_BINARY=/bin/true npx prisma generate
+# 4. Proxy WebSocket cho adapter Neon (wss://localhost/v2 → 127.0.0.1:5432), chứng chỉ tự ký để ngoài repo
+mkdir -p /tmp/kin-cert && openssl req -x509 -newkey rsa:2048 -nodes -keyout /tmp/kin-cert/key.pem -out /tmp/kin-cert/cert.pem -days 7 -subj "/CN=localhost"
+nohup node tools/local-e2e/db/wsproxy.mjs "$PWD/node_modules" /tmp/kin-cert > /tmp/wsproxy.log 2>&1 &
+# 5. env.sh: DATABASE_URL="postgresql://postgres:kintest@localhost/kin_test", NODE_TLS_REJECT_UNAUTHORIZED=0, ENGLISH_AI_FAKE=1
+bash tools/local-e2e/dev-start.sh
+```
+Phần Tiếng Anh (`docs/tieng-anh/DAC-TA.md`): `t-english-lib` (140, thuần), `t-english` (89, API), `ui-english` (39, trình duyệt).
+Máy chủ nhớ cờ "đã nạp kho từ" trong bộ nhớ, nên hai test API/UI tự nạp lại `eng_words` sau `wipe()`.
