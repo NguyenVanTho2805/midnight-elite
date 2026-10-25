@@ -1,5 +1,8 @@
-// HP-31 — giao diện: "Gói buổi trả trước" trong tab Học phí của lớp kiểu mới (lập gói có hộp xác nhận, số dư, lịch sử, huỷ), lớp cũ KHÔNG có mục này,
-// và "Sổ của con" của phụ huynh hiện đúng gói của đúng em (chỉ trình bày, không giá). 390px không tràn ngang, nút ≥ 44px.
+// HP-31 — giao diện: "Gói buổi trả trước" ĐÃ ẨN theo quyết định của chủ 25/10/2026 (học xong mới thu học phí, không có gói trả trước).
+// Mã (LopGoiBuoi, SessionPackages), API /api/courses/[id]/packages và hai bảng GIỮ NGUYÊN (t-session-package vẫn kiểm API), chỉ gỡ hai chỗ gắn vào trang:
+//   - tab Học phí của lớp (gia sư), - "Sổ của con" (phụ huynh).
+// Bài này trước kiểm giao diện lập gói / số dư / lịch sử / huỷ; nay giữ nguyên các bước dựng dữ liệu qua API (kể cả chốt buổi có gói còn dư, huỷ gói) và đổi kỳ vọng:
+// dù DB CÓ gói, hai trang vẫn mở bình thường mà KHÔNG hiện mục gói buổi, không lộ tên em khác, 390px không tràn ngang.
 import { randomBytes } from "node:crypto";
 import { api, mkUser, mkTutor, mkCourse, wipe, check, section, done, BASE } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
@@ -27,57 +30,36 @@ const COURSE_BASE = {
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/favicon|font|Failed to load resource|vietqr/i.test(m.text())) errors.push(m.text()); });
+  const noGoiBuoi = async (p: typeof page) => (await p.locator("[data-goi-buoi], [data-goi-buoi-row]").count()) === 0
+    && (await p.getByRole("heading", { name: "Gói buổi trả trước" }).count()) === 0 && (await p.getByRole("button", { name: "Lập gói…" }).count()) === 0;
 
-  section("Lớp cũ không có mục gói buổi");
+  section("Lớp cũ: không có mục gói buổi");
   await page.goto(`${BASE}/lop-cua-toi/${legacy.id}?tab=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
   await page.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
-  check("lớp tính theo số buổi trong tháng: KHÔNG có 'Gói buổi trả trước'", (await page.locator("[data-goi-buoi]").count()) === 0);
+  check("lớp tính theo số buổi trong tháng: KHÔNG có 'Gói buổi trả trước'", await noGoiBuoi(page));
 
-  section("Lớp theo buổi: trạng thái rỗng, lập gói");
+  section("Lớp theo buổi: mục gói buổi đã ẩn, phần học phí còn nguyên");
   await page.goto(`${BASE}/lop-cua-toi/${cid}?tab=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
-  await page.getByRole("heading", { name: "Gói buổi trả trước" }).waitFor({ timeout: 90000 });
-  await page.getByText("Chưa có gói buổi nào").waitFor();
-  check("trạng thái rỗng có lời giải thích; khung nói thật 'Sổ buổi, không phải thu tiền'", (await page.getByText("Sổ buổi, không phải thu tiền").count()) === 1 && (await page.getByText(/kế toán duyệt trước khi dùng thật/).count()) >= 1);
-  await page.getByLabel("Em lập gói").selectOption({ label: "Trần Gia Bảo" });
-  await page.getByLabel(/Số buổi \(1–200\)/).fill("5");
-  await page.getByLabel("Ghi chú gói (tuỳ chọn)").fill("gói tháng 11");
-  await page.getByRole("button", { name: "Lập gói…" }).click();
-  const dlg = page.getByRole("alertdialog").or(page.getByRole("dialog"));
-  await dlg.first().waitFor({ timeout: 15000 });
-  check("hộp xác nhận nói rõ chỉ là sổ theo dõi, KiN không thu tiền; chưa ghi gì", (await dlg.first().innerText()).includes("KiN không thu tiền") && (await prisma.sessionPackage.count()) === 0);
-  await dlg.first().getByRole("button", { name: "Giữ nguyên" }).click();
-  check("'Giữ nguyên' không ghi gì", (await prisma.sessionPackage.count()) === 0);
-  await page.getByRole("button", { name: "Lập gói…" }).click();
-  await dlg.first().getByRole("button", { name: "Lập gói", exact: true }).click();
-  await page.locator("[data-goi-buoi-row]").first().waitFor({ timeout: 30000 });
-  const row = page.locator("[data-goi-buoi-row]").first();
-  const rowText = await row.innerText();
-  check("gói hiện: tên em, 'Gói 5 buổi · đã dùng 0 · còn 5', 'Còn buổi', giá ghi lúc lập chỉ để ghi lại", rowText.includes("Trần Gia Bảo") && rowText.includes("Gói 5 buổi") && rowText.includes("đã dùng 0") && rowText.includes("còn 5") && rowText.includes("Còn buổi") && rowText.includes("750.000đ") && rowText.includes("KiN không thu"), rowText);
-  check("DB: đúng 1 gói, 150.000 × 5 = 750.000", (await prisma.sessionPackage.count()) === 1 && (await prisma.sessionPackage.findFirstOrThrow()).totalPrice === 750_000);
+  await page.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
+  check("tab Học phí của lớp theo buổi: KHÔNG có 'Gói buổi trả trước', không có nút 'Lập gói…', không có chữ 'Sổ buổi, không phải thu tiền'", await noGoiBuoi(page) && (await page.getByText("Sổ buổi, không phải thu tiền").count()) === 0);
 
-  section("Trừ buổi sau khi chốt, lịch sử, huỷ");
+  section("Dữ liệu gói vẫn dựng được qua API (API giữ nguyên) nhưng giao diện không hiện");
+  const g1 = await api("POST", `/api/courses/${cid}/packages`, { as: T, body: { studentId: G.id, sessions: 5, note: "gói tháng 11" } });
+  check("API lập gói vẫn chạy: 201, DB đúng 1 gói, 150.000 × 5 = 750.000", g1.status === 201 && (await prisma.sessionPackage.count()) === 1 && (await prisma.sessionPackage.findFirstOrThrow()).totalPrice === 750_000, g1.json);
   const d = addDaysKey(vnDateKeyOf(new Date()), -1);
   const sid = (await api("POST", `/api/courses/${cid}/attendance-sessions`, { as: T, body: { date: d } })).json.id as string;
   await api("PUT", `/api/attendance-sessions/${sid}`, { as: T, body: { records: [{ userId: G.id, status: "present" }, { userId: H.id, status: "present" }] } });
-  await page.reload({ waitUntil: "networkidle" });
-  await page.locator("[data-goi-buoi-row]").first().waitFor({ timeout: 60000 });
-  check("buổi CHƯA chốt: vẫn 'còn 5' (lưu điểm danh không trừ)", (await page.locator("[data-goi-buoi-row]").first().innerText()).includes("còn 5"));
   await api("POST", `/api/courses/${cid}/sessions/${d}/close`, { as: T, body: { action: "close" } });
+  check("chốt buổi vẫn trừ gói ở DB (đã dùng 1)", (await prisma.sessionPackageUse.count({ where: { reversedAt: null } })) === 1);
   await page.reload({ waitUntil: "networkidle" });
-  await page.locator("[data-goi-buoi-row]").first().waitFor({ timeout: 60000 });
-  check("sau khi chốt: 'đã dùng 1 · còn 4'", (await page.locator("[data-goi-buoi-row]").first().innerText()).includes("đã dùng 1") && (await page.locator("[data-goi-buoi-row]").first().innerText()).includes("còn 4"));
-  await page.getByRole("button", { name: /Xem lịch sử \(1\)/ }).click();
-  const hist = await page.locator("[data-goi-buoi-uses]").innerText();
-  check("lịch sử: ngày buổi và nhắc 'có khoản học phí cùng buổi, chưa vào phiếu' (nguy cơ tính hai lần được nói thẳng)", hist.includes(`${d.slice(8, 10)}/${d.slice(5, 7)}`) && hist.includes("Có khoản học phí cùng buổi, chưa vào phiếu"), hist);
-  const box = await page.getByRole("button", { name: "Huỷ gói" }).first().boundingBox();
+  await page.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
+  check("có gói và đã trừ buổi trong DB, tab Học phí VẪN không hiện mục gói buổi (không 'đã dùng 1 · còn 4', không 'Huỷ gói')", await noGoiBuoi(page) && (await page.getByText(/còn 4/).count()) === 0 && (await page.getByRole("button", { name: "Huỷ gói" }).count()) === 0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  check("390px: không tràn ngang; nút ≥ 44px", overflow <= 0 && !!box && box.height >= 44, { overflow, h: box?.height });
-  await page.getByRole("button", { name: "Huỷ gói" }).first().click();
-  await dlg.first().getByRole("button", { name: "Huỷ gói" }).click();
-  await page.getByText("Đã huỷ", { exact: true }).first().waitFor({ timeout: 30000 });
-  check("huỷ gói: trạng thái 'Đã huỷ' bằng chữ; DB 'cancelled'; buổi đã trừ vẫn còn trong sổ", (await prisma.sessionPackage.findFirstOrThrow()).status === "cancelled" && (await prisma.sessionPackageUse.count({ where: { reversedAt: null } })) === 1);
+  check("390px: tab Học phí không tràn ngang", overflow <= 0, overflow);
+  const cancel = await api("POST", `/api/courses/${cid}/packages/${g1.json.id}`, { as: T, body: { action: "cancel" } });
+  check("API huỷ gói vẫn chạy: 200, DB 'cancelled'; buổi đã trừ vẫn còn trong sổ", cancel.status === 200 && (await prisma.sessionPackage.findFirstOrThrow()).status === "cancelled" && (await prisma.sessionPackageUse.count({ where: { reversedAt: null } })) === 1, cancel.status);
 
-  section("Sổ của con: phụ huynh thấy đúng gói của đúng em");
+  section("Sổ của con: phụ huynh KHÔNG thấy mục gói buổi dù em có gói");
   const g2 = await api("POST", `/api/courses/${cid}/packages`, { as: T, body: { studentId: G.id, sessions: 3 } });
   const d2 = addDaysKey(vnDateKeyOf(new Date()), 0);
   const sid2 = (await api("POST", `/api/courses/${cid}/attendance-sessions`, { as: T, body: { date: d2 } })).json.id as string;
@@ -89,23 +71,22 @@ const COURSE_BASE = {
   const pctx = await ctxFor(null, { width: 390, height: 844 });
   const pp = await pctx.newPage();
   await pp.goto(`${BASE}/so-cua-con/${tG}`, { waitUntil: "networkidle", timeout: 120000 });
-  await pp.getByRole("heading", { name: "Gói buổi trả trước" }).waitFor({ timeout: 90000 });
-  const sec = await pp.locator("[data-session-packages]").innerText();
-  check("Sổ của con (Bảo): gói 3 buổi, đã dùng 1, còn 2; KHÔNG gói đã huỷ; KHÔNG giá", g2.status === 201 && sec.includes("Gói 3 buổi") && sec.includes("đã dùng 1") && sec.includes("còn 2") && !sec.includes("Gói 5 buổi") && !/\d\.\d{3}đ|đ\b/.test(sec), sec);
-  check("có dòng nói thật 'chỉ trình bày, không phải hoá đơn hay xác nhận thanh toán'", (await pp.getByText(/không phải hoá đơn hay xác nhận thanh toán/).count()) === 1);
+  await pp.getByText(/Sổ của con: Trần Gia Bảo/).first().waitFor({ timeout: 90000 });
+  check("Sổ của con (Bảo, có gói 3 buổi trong DB): trang mở bình thường, KHÔNG có mục 'Gói buổi trả trước', không có 'Gói 3 buổi'", g2.status === 201 && (await pp.locator("[data-session-packages]").count()) === 0 && (await pp.getByRole("heading", { name: "Gói buổi trả trước" }).count()) === 0 && (await pp.getByText(/Gói 3 buổi/).count()) === 0);
+  check("không còn dòng 'không phải hoá đơn hay xác nhận thanh toán' của mục gói buổi", (await pp.getByText(/không phải hoá đơn hay xác nhận thanh toán/).count()) === 0);
   const body = await pp.locator("body").innerText();
   check("không lộ tên em khác trong lớp", !body.includes("Lê Minh Khang"));
   check("390px không tràn ngang", (await pp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
   const pp2 = await pctx.newPage();
   await pp2.goto(`${BASE}/so-cua-con/${tH}`, { waitUntil: "networkidle", timeout: 120000 });
   await pp2.getByText(/Kính gửi/).first().waitFor({ timeout: 90000 });
-  check("phụ huynh em KHÁC (Khang, chưa có gói) không thấy mục gói buổi", (await pp2.locator("[data-session-packages]").count()) === 0);
+  check("phụ huynh em KHÁC (Khang, chưa có gói) cũng không thấy mục gói buổi", (await pp2.locator("[data-session-packages]").count()) === 0);
   section("1440px");
   const wctx = await ctxFor(T, { width: 1440, height: 900 });
   const wp = await wctx.newPage();
   await wp.goto(`${BASE}/lop-cua-toi/${cid}?tab=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
-  await wp.locator("[data-goi-buoi-row]").first().waitFor({ timeout: 90000 });
-  check("1440px: sổ gói buổi hiện đủ, không tràn ngang", (await wp.locator("[data-goi-buoi-row]").count()) === 2 && (await wp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
+  await wp.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
+  check("1440px: tab Học phí không có mục gói buổi, không tràn ngang", await noGoiBuoi(wp) && (await wp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
   check("không lỗi trình duyệt", errors.length === 0, errors);
   await closeAll();
   await done();
