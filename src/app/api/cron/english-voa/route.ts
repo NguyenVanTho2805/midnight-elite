@@ -5,13 +5,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchFeed, fetchArticle } from "@/lib/english/voa";
 import { countWords } from "@/lib/english/text";
+import { cronSecretMissingIsFatal } from "@/lib/adminOps";
 
 export const maxDuration = 60;
 const MAX_NEW = 6;
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
+  if (secret) {
+    if (req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
+  } else if (cronSecretMissingIsFatal()) {
+    // QT-03: bản chạy thật thiếu CRON_SECRET thì ĐÓNG (giống các cron khác); máy thử vẫn chạy được.
+    return NextResponse.json({ error: "Chưa cấu hình CRON_SECRET" }, { status: 503 });
+  }
   const feeds = (process.env.ENGLISH_VOA_FEEDS ?? "").split(",").map(s => s.trim()).filter(Boolean);
   if (!feeds.length) return NextResponse.json({ added: 0, message: "Chưa cấu hình ENGLISH_VOA_FEEDS" });
 
