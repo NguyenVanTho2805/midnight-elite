@@ -7,6 +7,7 @@ import { getSession } from "@/lib/session";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { FEE_MODE_LEGACY, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
+import { courseFor, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest) {
 
     const session = await getSession();
     const isAdmin = session?.role === "admin";
+    // Trạng thái ghi danh của học viên theo từng lớp: để quyết định ai được thấy link nhóm Zalo / link học online của lớp (xem courseFor).
+    const enrollmentOf = new Map<string, { status: string }>();
 
     let statusWhere: Record<string, unknown>;
 
@@ -34,8 +37,9 @@ export async function GET(req: NextRequest) {
       if (session?.role === "student") {
         const enrollments = await prisma.enrollment.findMany({
           where:  { userId: session.userId },
-          select: { courseId: true },
+          select: { courseId: true, status: true },
         });
+        for (const e of enrollments) enrollmentOf.set(e.courseId, { status: e.status });
         const enrolledIds = enrollments.map(e => e.courseId);
         statusWhere = enrolledIds.length > 0
           ? { OR: [{ status: true }, { id: { in: enrolledIds } }] }
@@ -50,7 +54,10 @@ export async function GET(req: NextRequest) {
       orderBy: { sortOrder: "asc" },
     });
 
-    return NextResponse.json(courses);
+    // Link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) chỉ đi tới quản lý lớp và học viên đang học: danh sách công khai
+    // (trang chủ, danh mục) trả cả dòng Course nên trước đây khách nào cũng lấy được qua DevTools.
+    const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
+    return NextResponse.json(courses.map(c => courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c)));
   } catch (e) {
     console.error("[GET /api/courses]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

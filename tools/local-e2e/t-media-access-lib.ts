@@ -1,6 +1,7 @@
 // MD-03 — ai thấy link học liệu (src/lib/mediaAccess.ts). Thuần, không DB. Có ca phá cố ý: quyền KHÔNG được nới.
 import { check, section, done } from "./h";
-import { canViewAllMaterials, canViewLessonMaterials, isCourseManager, lessonFor, redactCourseTree, redactLesson, PROTECTED_LESSON_FIELDS, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
+import { readFileSync } from "node:fs";
+import { canViewAllMaterials, canViewLessonMaterials, courseFor, isCourseManager, lessonFor, redactCourseLinks, redactCourseTree, redactLesson, PRIVATE_COURSE_FIELDS, PROTECTED_LESSON_FIELDS, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
 
 const OWNER = "tutor-chu", OTHER = "tutor-la", STU = "hs-1";
 const tutor = (id: string): MediaViewer => ({ userId: id, role: "admin", adminRole: "teacher" });
@@ -58,5 +59,36 @@ check("chuỗi JSON toàn cây của khách không chứa bất kỳ URL trả p
 
 section("Hàm tổng hợp");
 check("canViewAllMaterials / canViewLessonMaterials nhất quán", canViewAllMaterials(ctx(sup)) && !canViewAllMaterials(ctx(null)) && canViewLessonMaterials(ctx(null), free) && !canViewLessonMaterials(ctx(null), lesson));
+
+section("Link nhóm Zalo + link học online của lớp (cột Course) — chỉ người trong lớp");
+const ZG = "https://zalo.me/g/abc123", ZU = "https://zalo.me/g/xyz789", CJ = "https://meet.google.com/abc-defg-hij";
+const courseRow = { id: "c1", name: "Lớp Toán 9", price: 0, ownerId: OWNER, introVideo: "https://youtu.be/promo", zaloGroupLink: ZG, zaloGroupUrl: ZU, classJoinUrl: CJ };
+const linksHidden = (c: Record<string, unknown>) => c.zaloGroupLink === null && c.zaloGroupUrl === null && c.classJoinUrl === null;
+const linksShown = (c: Record<string, unknown>) => c.zaloGroupLink === ZG && c.zaloGroupUrl === ZU && c.classJoinUrl === CJ;
+for (const [ten, v, en] of [["quản trị cấp 1", sup, null], ["quản trị nội dung", content, null], ["gia sư CHỦ lớp", tutor(OWNER), null], ["học viên đang học (active)", stu, { status: "active" }]] as const) {
+  check(`${ten} → thấy đủ ba link`, linksShown(courseFor(ctx(v, en), courseRow) as never));
+}
+check("khách (chưa đăng nhập) → cả ba link = null", linksHidden(courseFor(ctx(null), courseRow) as never));
+check("học viên CHƯA ghi danh → null", linksHidden(courseFor(ctx(stu, null), courseRow) as never));
+for (const st of ["pending_consent", "suspended", "removed", "", "ACTIVE"]) {
+  check(`học viên ghi danh "${st}" → null (không phải đang học thì không cần link nhóm / link vào lớp)`, linksHidden(courseFor(ctx(stu, { status: st }), courseRow) as never));
+}
+check("gia sư LẠ (không phải chủ lớp) → null", linksHidden(courseFor(ctx(tutor(OTHER)), courseRow) as never));
+check("lớp cũ không có chủ (ownerId null): gia sư nào cũng KHÔNG được thấy", linksHidden(courseFor(ctx(tutor(OTHER), null, null), { ...courseRow, ownerId: null }) as never));
+const redacted = courseFor(ctx(null), courseRow) as Record<string, unknown>;
+check("các cột công khai giữ nguyên (tên, giá, video giới thiệu)", redacted.id === "c1" && redacted.name === "Lớp Toán 9" && redacted.price === 0 && redacted.introVideo === "https://youtu.be/promo");
+check("không sửa đối tượng gốc", courseRow.zaloGroupLink === ZG && courseRow.zaloGroupUrl === ZU && courseRow.classJoinUrl === CJ);
+check("JSON của khách không chứa bất kỳ link riêng tư nào", !/zalo\.me|meet\.google/.test(JSON.stringify(courseFor(ctx(null), courseRow))));
+check("đối tượng thiếu cột (select hẹp) không bị thêm cột lạ", JSON.stringify(redactCourseLinks({ id: "x", name: "n" })) === JSON.stringify({ id: "x", name: "n" }));
+check("redactCourseLinks gọi lại được nhiều lần (idempotent)", linksHidden(redactCourseLinks(redactCourseLinks(courseRow)) as never));
+
+section("Đối chiếu với schema: cột link mới của Course buộc phải được quyết định");
+const schema = readFileSync("prisma/schema.prisma", "utf8");
+const model = /model Course \{([\s\S]*?)\n\}/.exec(schema)?.[1] ?? "";
+const cols = [...model.matchAll(/^\s{2}([A-Za-z][A-Za-z0-9]*)\s+/gm)].map(m => m[1]);
+const linkish = cols.filter(c => /(url|link)$/i.test(c));
+check("đọc được model Course trong schema.prisma (không rỗng)", cols.length > 10 && cols.includes("zaloGroupUrl"), cols.length);
+check(`mọi cột có đuôi Url / Link của Course (${linkish.join(", ")}) đều nằm trong PRIVATE_COURSE_FIELDS — cột link mới mà không quyết định sẽ làm đỏ ca này`, linkish.every(c => (PRIVATE_COURSE_FIELDS as readonly string[]).includes(c)), linkish);
+check("mọi cột trong PRIVATE_COURSE_FIELDS có thật trong schema (đổi tên cột mà quên đổi ở đây thì đỏ)", PRIVATE_COURSE_FIELDS.every(c => cols.includes(c)), PRIVATE_COURSE_FIELDS);
 
 done();

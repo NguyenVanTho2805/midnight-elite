@@ -69,3 +69,22 @@ export function redactCourseTree<C extends CourseTreeLike>(ctx: MediaContext, co
     })),
   } as C;
 }
+
+/**
+ * Cột của Course chỉ dành cho NGƯỜI TRONG LỚP: hai link nhóm Zalo (`zaloGroupLink` do quản trị đặt ở trang sửa khoá, `zaloGroupUrl` do gia sư gắn ở Cài đặt → Kết nối)
+ * và link học online chung của lớp (`classJoinUrl`). Danh sách công khai và chi tiết khoá không được mang chúng cho khách / người ngoài lớp: có link nhóm là vào được nhóm
+ * của phụ huynh và học sinh, có link học online là vào được buổi đang dạy. Thêm cột link mới vào Course thì phải quyết định ở đây (t-media-access-lib đối chiếu với schema).
+ */
+export const PRIVATE_COURSE_FIELDS = ["zaloGroupLink", "zaloGroupUrl", "classJoinUrl"] as const;
+
+/** Bản sao của khoá với các cột riêng tư = null (không sửa đối tượng gốc). Cột không có mặt trong đối tượng thì bỏ qua. */
+export function redactCourseLinks<C extends object>(course: C): C {
+  const out: Record<string, unknown> = { ...(course as Record<string, unknown>) };
+  for (const f of PRIVATE_COURSE_FIELDS) if (f in out) out[f] = null;
+  return out as C;
+}
+
+/** Khoá trả cho người xem: quản lý lớp / học viên đang học → nguyên bản; người khác → bỏ link riêng tư. Cùng quyền với học liệu (canViewAllMaterials). */
+export function courseFor<C extends object>(ctx: MediaContext, course: C): C {
+  return canViewAllMaterials(ctx) ? course : redactCourseLinks(course);
+}

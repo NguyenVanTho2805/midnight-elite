@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
+import { isCourseManager, lessonFor, type MediaContext, canViewAllMaterials, redactCourseLinks } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -70,6 +70,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // MD-03: ngoài isLocked, mọi bài trong cây mà người xem chưa được mở thì bị bỏ link (trước đây người xem MỘT bài miễn phí nhận
   // luôn videoUrl/documents/azotaUrl của cả khoá). "suspended" vẫn được xem lại bài đã mở theo quy tắc R01 nên coi như có quyền ở đây.
   const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: fullAccess ? { status: "active" } : enrolled };
+  // Link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) của lớp chỉ dành cho quản lý lớp và học viên ĐANG HỌC (kể cả khi xem lại bài ở trạng thái
+  // tạm ngưng: được xem nội dung đã mở nhưng không cần link nhóm). `course` cũng chính là lesson.chapter.section.course (cùng một đối tượng) nên sửa tại chỗ.
+  if (!canViewAllMaterials({ viewer, courseOwnerId: course.ownerId, enrollment: enrolled })) Object.assign(course, redactCourseLinks(course));
   course.sections = course.sections.map(s => ({
     ...s,
     chapters: s.chapters.map(c => ({
