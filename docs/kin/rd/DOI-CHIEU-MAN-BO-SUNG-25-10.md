@@ -66,3 +66,20 @@ Mọi khung đều có khung con "Điều hướng" 272px: logo + nhãn vai, m�
 3. Gia sư: Liên hệ hỗ trợ, Báo cáo tháng, Bài đăng, Kế hoạch buổi, Tổng quan, Kiểm duyệt (nhóm S–M).
 4. Ví và Coin, Gói của tôi (nhóm L): làm riêng từng trang, mỗi trang một PR.
 5. Gói KiN Pro, Duyệt nạp Coin, Bảng vinh danh: sau khi Thọ xem.
+
+## 5. Rà lần 2 (25/10, sau khi bắt tay làm lô "S") — nhóm S không còn là S
+Đọc từng trang với Figma (ảnh khung + chữ) và với mã. Kết luận: ước lượng "S" ở mục 2 chỉ dựa trên độ phủ nhãn, **không** tính bố cục. Chỉ có Thi thử thật sự là việc nhỏ; các trang còn lại hoặc đã khớp, hoặc dính quyết định của chủ, hoặc là trang cũ phải dựng lại (M/L).
+
+| Trang | Kết quả | Vì sao |
+|---|---|---|
+| `/thi-thu` (học sinh) | **ĐÃ LÀM** | Dựng lại theo 575:5571: ô "Tìm đề thi" (không dấu cũng ra), Tất cả / Chưa làm / Đã làm, bảng Đề · Môn · Thời gian · Số câu · Trạng thái, "Làm bài" / "Xem lại", dòng chú thích. Giữ lọc theo môn, khoá đề của lớp chưa ghi danh, điểm / hạng, "Chờ gia sư chấm". Bỏ ba ô thống kê (Figma không vẽ). Khách vẫn thấy trang cũ. |
+| `/bang-xep-hang` | **DỪNG, cần Thọ** | Figma ghi "Em chỉ thấy tên hiển thị của các bạn, không thấy lớp hay thông tin liên hệ." Mã đang hiện **tên trường** (`/api/leaderboard` trả `school`) nên câu này sẽ sai. Quyết định: ẩn tên trường khỏi bảng xếp hạng (dữ liệu học sinh) hay sửa câu của Figma. Trang còn có tab Vinh danh, dùng chung với khách. |
+| `/student/tieng-anh` | **DỪNG, cần Thọ** | Figma "Luyện bốn kỹ năng" (Nghe, Nói, Đọc, Viết). Mã (IELTS, PR #60) có Nghe, Đọc, Viết, Từ vựng, **không có Nói**. Quyết định: bỏ "Nói" khỏi Figma hay dựng Nói. |
+| `/student/hoc-tap` (Lớp của tôi) | Chưa làm | Figma có trạng thái "Đã nhập mã lớp · chờ gia sư duyệt". Mã chưa có trạng thái chờ gia sư duyệt (chỉ có `pending_consent`, chờ phụ huynh). Cần quyết định có thêm bước gia sư duyệt không. Đầu trang đã có dòng phụ. |
+| `/student/bai-tap` | Đã khớp | Đã dựng theo Figma, đã có dòng phụ (chữ khác Figma nhưng đúng). |
+| `/cong-dong`, tab Hỏi đáp | Giữ nguyên | Dòng phụ hiện có ("Trao đổi, hỏi đáp và chia sẻ kinh nghiệm") đúng. Câu Figma "giữa các bạn học cùng lớp" **sai** với cộng đồng công khai (TK-175: ai cũng xem bài công khai). |
+| `/student/ho-so` | Chưa làm | Trang 771 dòng, tiêu đề là tên em + thẻ thông tin; Figma là tiêu đề "Hồ sơ" + khối đồng ý. Là việc M, nên làm riêng. |
+| Quản trị: Khoá học, Danh mục, Đề thi, Ngân hàng câu hỏi, Ngân hàng đề, Tin tức, Điểm chuẩn | Chưa làm | Đều là trang **cũ dạng thẻ** (`rounded-xl`, `border-gray-200`, `text-lg font-extrabold`), nhiều trang đã có dòng phụ và ô tìm riêng, một số **chi tiết hơn Figma** (Điểm chuẩn: "mỗi dòng bắt buộc có đường dẫn nguồn", "Đã đối chiếu"). Gắn chữ Figma lên bố cục cũ chỉ đổi câu chữ. Đưa về Figma = dựng lại từng trang (M/L, riêng `/admin/thi-thu` dài ~2000 dòng); chưa nên làm khi bài `ui-*` chưa chạy được. |
+| Quản trị: Hỗ trợ gia sư | Đã khớp | Đã dùng `KinPageHeader`. |
+
+**Bài học cho ước lượng:** đo độ phủ nhãn (mục 2) chỉ cho cận dưới về chữ; muốn ước lượng việc phải nhìn cả bố cục của trang hiện có (đã dùng `KinPage` / `KinPageHeader` hay còn dạng thẻ cũ).
