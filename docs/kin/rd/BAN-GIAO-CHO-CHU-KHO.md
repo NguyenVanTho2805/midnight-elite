@@ -128,7 +128,6 @@ File Figma: `https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-Syst
 
 | Vai | Màn | Id | Đường dẫn |
 |---|---|---|---|
-| Gia sư | Bảng Khác | `564:4489` | nút Khác |
 | Gia sư | Gói của tôi | `565:4641` | `/lop-cua-toi/goi` |
 | Gia sư | Liên hệ hỗ trợ | `565:4947` | `/lop-cua-toi/ho-tro` |
 | Gia sư | Tổng quan | `574:5188` | `/lop-cua-toi/tong-quan` |
@@ -163,4 +162,4 @@ File Figma: `https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-Syst
 - Ví và Coin của học sinh: Coin là điểm thưởng làm bài, học sinh không nạp bằng tiền. Duyệt nạp Coin của quản trị là cho yêu cầu nạp của gia sư.
 - Gói của tôi: gói Free hiện "Chưa mở bán" cho tới khi đặt đủ biến `KINPRO_*`; KiN không tự trừ tiền.
 - Chưa có màn Figma cho: Thư viện, Khoá học đang mở, Lớp đang theo dõi, Tin tức, Tra cứu điểm chuẩn, Học phí và Chủ đề màu của học sinh; Bài viết cộng đồng, Báo cáo trả lời, Đánh giá khoá học, Hồ sơ học sinh, Doanh thu, Phễu gia sư, Số đo sản phẩm của quản trị.
-- Liên kết prototype (nút thanh bên, dải tab, bảng Khác) đã nối giữa các màn trong `📐 Nền móng`; mới kiểm bằng ảnh chụp, chưa chạy thử chế độ Present.
+- Liên kết prototype (mục thanh bên, dải tab) đã nối giữa các màn trong `📐 Nền móng`; mới kiểm bằng ảnh chụp, chưa chạy thử chế độ Present.
