@@ -45,12 +45,13 @@ async function fillLogin(p: Page, email: string, password: string) {
     check("ở tên miền admin, trang đăng nhập mở được (200, vẫn là /dang-nhap)", u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/dang-nhap");
     check("KHÔNG thấy thanh trên của khách (Lớp học / Thi thử / Cộng đồng / Tin tức)", !(await visible(p, 'header nav[aria-label="Điều hướng chính"]')) && !(await p.getByRole("link", { name: "Lớp học", exact: true }).first().isVisible().catch(() => false)));
     check("KHÔNG thấy chân trang của khách (Bảng xếp hạng, Điểm chuẩn, Dành cho học sinh…)", !(await visible(p, "footer")) && !(await p.getByRole("link", { name: "Dành cho học sinh" }).first().isVisible().catch(() => false)));
-    check("KHÔNG có nút 'Đăng ký ngay' / 'Tôi có mã mời vào lớp' / 'Tìm hiểu thêm' (chỉ dành cho học viên ở tên miền chính)", !(await p.getByRole("link", { name: /Đăng ký ngay|Tôi có mã mời|Tìm hiểu thêm/ }).first().isVisible().catch(() => false)));
+    check("KHÔNG có nút 'Tạo tài khoản KiN' / 'Tôi có mã mời vào lớp' / 'Tìm hiểu thêm' (chỉ dành cho học viên ở tên miền chính)", !(await p.getByRole("link", { name: /Tạo tài khoản KiN|Tôi có mã mời|Tìm hiểu thêm/ }).first().isVisible().catch(() => false)));
+    check("KHÔNG thấy tab 'Gia sư | Học sinh' (cửa quản trị không có vai để chọn)", !(await p.getByRole("tab", { name: "Gia sư" }).first().isVisible().catch(() => false)) && !(await p.getByRole("tab", { name: "Học sinh" }).first().isVisible().catch(() => false)));
     check("còn đủ phần đăng nhập: ô tài khoản, ô mật khẩu, nút Đăng nhập, 'Quên mật khẩu?'", await visible(p, 'input[type="email"], input[autocomplete="username"]') && await visible(p, 'input[type="password"]') && await visible(p, 'form button[type="submit"]') && await p.getByRole("link", { name: "Quên mật khẩu?" }).first().isVisible().catch(() => false));
     check("có lối sang cửa học viên / gia sư (đăng nhập ở midnightelite-edu.com)", await p.getByRole("link", { name: /midnightelite-edu\.com|học viên|gia sư/i }).first().isVisible().catch(() => false));
     // cùng trang ở tên miền chính vẫn đầy đủ khung khách (không bị ảnh hưởng)
     await p.goto(MAIN + "/dang-nhap", { waitUntil: "domcontentloaded" }); await settle(p);
-    check("ở tên miền CHÍNH trang đăng nhập vẫn có thanh trên + chân trang + 'Đăng ký ngay' (không bị ẩn nhầm)", await visible(p, "header") && await visible(p, "footer") && await p.getByRole("link", { name: "Đăng ký ngay" }).first().isVisible().catch(() => false));
+    check("ở tên miền CHÍNH trang đăng nhập vẫn có thanh trên + chân trang + tab 'Gia sư | Học sinh' + 'Tạo tài khoản KiN' (không bị ẩn nhầm)", await visible(p, "header") && await visible(p, "footer") && await p.getByRole("tab", { name: "Gia sư" }).first().isVisible().catch(() => false) && await p.getByRole("link", { name: "Tạo tài khoản KiN" }).first().isVisible().catch(() => false));
     await ctx.close();
   }
 

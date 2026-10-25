@@ -1,5 +1,5 @@
 // Tên miền admin (admin.midnightelite-edu.com) chỉ phục vụ quản trị — nó KHÔNG phải trang công khai (xem src/lib/hostRouting.ts, src/lib/signedInShell.ts).
-// Nhưng trang đăng nhập dùng chung một mã với tên miền chính nên mang theo khung khách (thanh trên: Lớp học / Thi thử / Cộng đồng…, chân trang, "Đăng ký ngay",
+// Nhưng trang đăng nhập dùng chung một mã với tên miền chính nên mang theo khung khách (thanh trên: Lớp học / Thi thử / Cộng đồng…, chân trang, "Tạo tài khoản KiN",
 // "Tôi có mã mời vào lớp"): những nút ấy không có nghĩa ở cửa quản trị. 15/10/2026 (Thọ báo): ẩn chúng ở tên miền admin.
 //
 // HTML của trang được dựng sẵn và dùng chung cho cả hai tên miền nên máy chủ không biết đang ở tên miền nào lúc dựng. Cách làm giống thanh bên thu/mở và gợi ý vỏ

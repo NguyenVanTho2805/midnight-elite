@@ -199,7 +199,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   await eventually("nhập đúng: viền về xám ô nhập #8b95a5, hết lời báo lỗi", async () => (await borderOf()) === "rgb(139, 149, 165)" && (await rp.getByText("Vui lòng nhập họ và tên").count()) === 0);
   const lp = await gctx.newPage(); watch(lp);
   await lp.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "networkidle", timeout: 240000 });
-  // Đăng nhập có hai tab (Mật khẩu là mặc định, Mã một lần mở bằng ?cach=ma); test riêng: ui-login-password và ui-login-code. Ở đây chỉ giữ kiểm tra chung của khung web công khai.
+  // Đăng nhập: hai tab Gia sư | Học sinh (biểu mẫu mật khẩu), biểu mẫu mã là lối phụ mở bằng ?cach=ma; test riêng: ui-login-password và ui-login-code. Ở đây chỉ giữ kiểm tra chung của khung web công khai.
   await lp.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   check("đăng nhập bỏ trống: báo 'Vui lòng nhập số điện thoại hoặc email' (môi trường test có SMS)", await lp.getByText("Vui lòng nhập số điện thoại hoặc email").isVisible());
   await lp.getByLabel("Email").evaluate(e => (e as HTMLElement).blur());
