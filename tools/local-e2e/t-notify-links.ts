@@ -54,6 +54,14 @@ import { prisma } from "@/lib/prisma";
   check("đã gạch phiếu → /lop-cua-toi/hoc-phi", sepay.includes(`type: "invoice_paid"`) && sepay.includes(`link: "${tutorLinks.get("invoice_paid")}"`));
   check("cần đối soát → /lop-cua-toi/hoc-phi?tab=doi-soat", sepay.includes(`type: "bank_tx_pending"`) && sepay.includes(`link: "${tutorLinks.get("bank_tx_pending")}"`));
 
+  section("NC2-010/011: thông báo mới của gia sư trỏ đúng chỗ");
+  const inv = fs.readFileSync("src/lib/invoiceServer.ts", "utf8");
+  const udaily = fs.readFileSync("src/lib/unmarkedDailyServer.ts", "utf8");
+  check("phụ huynh báo đã chuyển → /lop-cua-toi/hoc-phi (kèm khoá phiếu ở tham số `phieu`, trang bỏ qua tham số này)", /type: "parent_reported"/.test(inv) && inv.includes("`/lop-cua-toi/hoc-phi?phieu=${invoiceId}`"));
+  check("cả ba route 'Tôi đã chuyển' đều đi qua markParentReported (nơi báo gia sư)", ["src/app/api/phieu/[token]/reported/route.ts", "src/app/api/parent-portal/[token]/invoices/[code]/reported/route.ts", "src/app/api/users/me/invoices/[code]/reported/route.ts"].every(f => fs.readFileSync(f, "utf8").includes("markParentReported(")) && /await notifyTutorParentReported\(inv\.tutorId, inv\.id\)/.test(inv));
+  check("hoc-phi của gia sư chỉ đọc `tab` (searchParams: { tab?: string }) nên tham số `phieu` lạ bị bỏ qua, trang không vỡ", /searchParams: Promise<\{ tab\?: string \}>/.test(fs.readFileSync("src/app/lop-cua-toi/(tutor)/hoc-phi/page.tsx", "utf8")));
+  check("tin hôm qua chưa điểm danh → /lop-cua-toi (Hộp việc)", /type: "unmarked_daily"[\s\S]{0,200}link: "\/lop-cua-toi"/.test(udaily));
+
   await prisma.$disconnect();
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

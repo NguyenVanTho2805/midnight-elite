@@ -7,30 +7,33 @@
 //  • Không bao giờ ghi vào ExamAttempt.score / ExamAnswer: chữa bài chỉ để học.
 //  • Mọi thao tác trên một (lượt × câu) khoá bằng advisory lock; hai lần bấm cùng lúc không đếm đôi lượt nộp.
 import { prisma } from "@/lib/prisma";
+import { loadPublishState } from "@/lib/quizPublication";
+import { resultVisibility } from "@/lib/quizRoom";
 import { hasExamWindowEnded, loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
 import {
   EMPTY_CORRECTION, REFLECTION_MAX, SHORT_ANSWER_MAX, afterReveal, afterSubmit, canReveal, correctionState, hintVisible,
-  isCorrectableType, isFinished, reflectionAllowed, shortAnswerCorrect, type CorrectionRow, type CorrectionState,
+  isCorrectableType, isFinished, multiAnswerCorrect, normalizePickedIds, reflectionAllowed, shortAnswerCorrect, type CorrectionRow, type CorrectionState,
 } from "@/lib/examCorrection";
 
 export interface CorrectionItem {
   questionId: string;
   index: number; // thứ tự câu trong bài thi (1-based)
-  type: "MC" | "SHORT_ANSWER";
+  type: "MC" | "MC_MULTI" | "SHORT_ANSWER";
   text: string;
   imageUrl: string | null;
   points: number;
   sectionLabel: string | null;
-  options: { id: string; text: string }[]; // MC; câu điền ngắn: rỗng (đáp án đúng nằm trong ExamOption nên không được lộ)
+  options: { id: string; text: string }[]; // MC / nhiều đáp án; câu điền ngắn: rỗng (đáp án đúng nằm trong ExamOption nên không được lộ)
   state: CorrectionState;
   tries: number;
   yourOptionId: string | null; // lần nộp gần nhất (MC)
+  yourOptionIds: string[];     // lần nộp gần nhất (nhiều đáp án); các dạng khác: []
   yourText: string | null;     // lần nộp gần nhất (điền ngắn)
   lastTryCorrect: boolean | null;
   hint: string | null;          // chỉ ở bước 2
   canReveal: boolean;
   /** Chỉ có khi câu đã xong. */
-  answer: { correctOptionId: string | null; correctText: string | null; explanation: string | null } | null;
+  answer: { correctOptionId: string | null; correctOptionIds: string[]; correctText: string | null; explanation: string | null } | null;
   reflection: string | null;
   canReflect: boolean;
 }
@@ -45,7 +48,7 @@ export interface CorrectionOverview {
 type Failure = { ok: false; status: number; error: string };
 const fail = (status: number, error: string): Failure => ({ ok: false, status, error });
 
-type Row = CorrectionRow & { lastOptionId: string | null; lastText: string | null; reflection: string | null };
+type Row = CorrectionRow & { lastOptionId: string | null; lastOptionIds: string[]; lastText: string | null; reflection: string | null };
 
 interface Ctx {
   attemptId: string;
@@ -69,11 +72,16 @@ export function correctionAllowedByExam(exam: { answerVisibility: string; hideAn
   return canSee && !exam.hideAnswerForWrong;
 }
 
-/** Học sinh làm sai/bỏ trống câu này trong bài thi? Chỉ xét MC và điền ngắn. */
+/** Học sinh làm sai/bỏ trống câu này trong bài thi? Chỉ xét MC, nhiều đáp án và điền ngắn. */
 export function wasWrongInExam(
   q: { id: string; type: string; options: { id: string; text: string; isCorrect: boolean }[] },
   answers: Record<string, string | null>, textAnswers: Record<string, string>,
+  boolAnswers: Record<string, boolean | null> = {}, // ô đã tích của câu nhiều đáp án: { [optionId]: true } (cùng bảng với Đúng-Sai)
 ): boolean {
+  if (q.type === "MC_MULTI") {
+    const picked = q.options.filter(o => boolAnswers[o.id] === true).map(o => o.id);
+    return !multiAnswerCorrect(q.options.filter(o => o.isCorrect).map(o => o.id), picked);
+  }
   if (q.type === "MC") {
     const chosen = q.options.find(o => o.id === answers[q.id]);
     return !chosen?.isCorrect;
@@ -90,6 +98,11 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
   const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
   if (!exam) return fail(404, "Không tìm thấy đề thi");
 
+  // QZ-08: đề giữ điểm (examHold — một nguồn) mà lượt này chưa công bố thì chưa chữa bài (chữa bài lộ đáp án câu sai).
+  const vis = resultVisibility(await loadPublishState(exam.id, userId, attempt.id), true);
+  if (vis.pendingManual) {
+    return { ok: true, ctx: { attemptId, available: false, reason: "Cô chưa công bố điểm bài này nên chưa chữa bài được.", questions: [], rows: new Map() } };
+  }
   if (!correctionAllowedByExam(exam)) {
     return { ok: true, ctx: { attemptId, available: false, reason: "Đề này chưa cho xem đáp án nên chưa có chế độ chữa bài.", questions: [], rows: new Map() } };
   }
@@ -100,12 +113,12 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
   ]);
   const questions = ordered
     .map((q, i) => ({ q, index: i + 1 }))
-    .filter(({ q }) => isCorrectableType(q.type) && wasWrongInExam(q, state.answers, state.textAnswers));
+    .filter(({ q }) => isCorrectableType(q.type) && wasWrongInExam(q, state.answers, state.textAnswers, state.boolAnswersByOption));
   return {
     ok: true,
     ctx: {
       attemptId, available: true, reason: null, questions,
-      rows: new Map(rows.map(r => [r.questionId, { tries: r.tries, solved: r.solved, revealed: r.revealed, lastOptionId: r.lastOptionId, lastText: r.lastText, reflection: r.reflection }])),
+      rows: new Map(rows.map(r => [r.questionId, { tries: r.tries, solved: r.solved, revealed: r.revealed, lastOptionId: r.lastOptionId, lastOptionIds: r.lastOptionIds, lastText: r.lastText, reflection: r.reflection }])),
     },
   };
 }
@@ -118,16 +131,16 @@ function toItem(entry: Ctx["questions"][number], row: Row | undefined): Correcti
   const correctOpt = q.options.find(o => o.isCorrect);
   const state = correctionState(c);
   return {
-    questionId: q.id, index, type: q.type as "MC" | "SHORT_ANSWER",
+    questionId: q.id, index, type: q.type as "MC" | "MC_MULTI" | "SHORT_ANSWER",
     text: q.text, imageUrl: q.imageUrl, points: q.points, sectionLabel: q.sectionLabel,
-    options: q.type === "MC" ? q.options.map(o => ({ id: o.id, text: o.text })) : [],
+    options: q.type === "MC" || q.type === "MC_MULTI" ? q.options.map(o => ({ id: o.id, text: o.text })) : [],
     state, tries: c.tries,
-    yourOptionId: row?.lastOptionId ?? null, yourText: row?.lastText ?? null,
+    yourOptionId: row?.lastOptionId ?? null, yourOptionIds: row?.lastOptionIds ?? [], yourText: row?.lastText ?? null,
     lastTryCorrect: c.solved ? true : c.tries >= 1 ? false : null,
     hint: hintVisible(c, q.hint) ? q.hint!.trim() : null,
     canReveal: canReveal(c),
     answer: finished
-      ? { correctOptionId: q.type === "MC" ? correctOpt?.id ?? null : null, correctText: q.type === "SHORT_ANSWER" ? correctOpt?.text ?? null : null, explanation: q.explanation }
+      ? { correctOptionId: q.type === "MC" ? correctOpt?.id ?? null : null, correctOptionIds: q.type === "MC_MULTI" ? q.options.filter(o => o.isCorrect).map(o => o.id) : [], correctText: q.type === "SHORT_ANSWER" ? correctOpt?.text ?? null : null, explanation: q.explanation }
       : null,
     reflection: row?.reflection ?? null,
     canReflect: reflectionAllowed(c, hasHint),
@@ -159,7 +172,7 @@ export async function correctionSummary(userId: string, attemptId: string): Prom
 }
 
 export type CorrectionAction =
-  | { action: "submit"; optionId?: unknown; text?: unknown }
+  | { action: "submit"; optionId?: unknown; optionIds?: unknown; text?: unknown }
   | { action: "reveal" }
   | { action: "reflect"; text?: unknown };
 
@@ -175,9 +188,14 @@ export async function actOnCorrection(userId: string, attemptId: string, questio
   const correctOpt = q.options.find(o => o.isCorrect);
 
   // Kiểm tra đầu vào trước khi vào transaction.
-  let optionId: string | null = null, text: string | null = null, correct = false;
+  let optionId: string | null = null, optionIds: string[] = [], text: string | null = null, correct = false;
   if (body.action === "submit") {
-    if (q.type === "MC") {
+    if (q.type === "MC_MULTI") {
+      const picked = normalizePickedIds(body.optionIds, q.options.map(o => o.id));
+      if (!picked) return fail(400, "Hãy chọn ít nhất một lựa chọn hợp lệ");
+      optionIds = picked;
+      correct = multiAnswerCorrect(q.options.filter(o => o.isCorrect).map(o => o.id), picked);
+    } else if (q.type === "MC") {
       if (typeof body.optionId !== "string" || !q.options.some(o => o.id === body.optionId)) return fail(400, "Lựa chọn không hợp lệ");
       optionId = body.optionId;
       correct = optionId === correctOpt?.id;
@@ -200,12 +218,12 @@ export async function actOnCorrection(userId: string, attemptId: string, questio
     const cur = await tx.examCorrection.findUnique({ where: { attemptId_questionId: { attemptId, questionId } } });
     const c: CorrectionRow = cur ? { tries: cur.tries, solved: cur.solved, revealed: cur.revealed } : EMPTY_CORRECTION;
     let next: CorrectionRow = c;
-    const data: { lastOptionId?: string | null; lastText?: string | null; reflection?: string | null } = {};
+    const data: { lastOptionId?: string | null; lastOptionIds?: string[]; lastText?: string | null; reflection?: string | null } = {};
 
     if (body.action === "submit") {
       if (isFinished(c)) return fail(409, "Câu này đã xong, bạn không cần nộp thêm");
       next = afterSubmit(c, correct, hasHint);
-      data.lastOptionId = optionId; data.lastText = text;
+      data.lastOptionId = optionId; data.lastOptionIds = optionIds; data.lastText = text;
     } else if (body.action === "reveal") {
       if (!canReveal(c)) return fail(409, "Bạn cần nộp câu này ít nhất một lần trước khi xem đáp án");
       next = afterReveal(c);
@@ -218,7 +236,7 @@ export async function actOnCorrection(userId: string, attemptId: string, questio
       create: { attemptId, questionId, tries: next.tries, solved: next.solved, revealed: next.revealed, ...data },
       update: { tries: next.tries, solved: next.solved, revealed: next.revealed, ...data },
     });
-    return { ok: true, row: { tries: saved.tries, solved: saved.solved, revealed: saved.revealed, lastOptionId: saved.lastOptionId, lastText: saved.lastText, reflection: saved.reflection } };
+    return { ok: true, row: { tries: saved.tries, solved: saved.solved, revealed: saved.revealed, lastOptionId: saved.lastOptionId, lastOptionIds: saved.lastOptionIds, lastText: saved.lastText, reflection: saved.reflection } };
   });
   if (!result.ok) return result;
 

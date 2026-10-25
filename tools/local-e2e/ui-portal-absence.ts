@@ -3,7 +3,7 @@ import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey, hmOf } from "@/lib/classSessions";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 const RUN = Date.now().toString(16).padStart(16, "0").slice(-16);
 const tok = (n: number) => (RUN + n.toString(16).padStart(16, "0")).slice(-32);
 
@@ -40,7 +40,7 @@ async function slot(courseId: string, min: number) {
   await shot(page, "portal-upcoming");
 
   section("Báo nghỉ trước ≥ 2 giờ: giữ buổi bù ngay");
-  const farItem = page.locator("li", { hasText: "Toán 9" }).first();
+  const farItem = page.locator("section[aria-labelledby=h-sap-toi] li", { hasText: "Toán 9" }).first();
   await farItem.getByRole("button", { name: "Báo nghỉ" }).click();
   check("giải thích rõ: báo trước hạn nên được giữ buổi bù, không tính phí", await farItem.getByText(/giữ 1 buổi bù, không tính phí/).isVisible());
   check("có ô lý do không bắt buộc", await farItem.getByLabel("Lý do (không bắt buộc)").isVisible());
@@ -59,7 +59,7 @@ async function slot(courseId: string, min: number) {
   });
 
   section("Báo nghỉ dưới 2 giờ: chờ gia sư");
-  const nearItem = page.locator("li", { hasText: "Văn 9" }).first();
+  const nearItem = page.locator("section[aria-labelledby=h-sap-toi] li", { hasText: "Văn 9" }).first();
   await nearItem.getByRole("button", { name: "Báo nghỉ" }).click();
   check("giải thích: dưới 2 giờ, gia sư sẽ quyết định", await nearItem.getByText(/Còn dưới 2 giờ nữa là tới buổi học/).isVisible());
   await nearItem.getByRole("button", { name: "Xác nhận báo nghỉ" }).click();

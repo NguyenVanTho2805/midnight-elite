@@ -1,12 +1,15 @@
 // PH-209 — dữ liệu để soạn bài đăng tìm học sinh: lấy từ hồ sơ + sổ lớp của chính gia sư.
-// Số buổi đã dạy lấy từ sổ lớp (gia sư không sửa được). KiN không tự đăng vào nhóm Facebook — chỉ soạn sẵn.
+// Số buổi đã dạy lấy từ sổ lớp: chỉ phiên đã diễn ra có em có mặt/muộn (src/lib/taughtSessions.ts), không có ô nhập tay.
+// KiN không tự đăng vào nhóm Facebook — chỉ soạn sẵn.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { readPreferences } from "@/lib/userPreferences";
+import { isProfileHidden } from "@/lib/tutorVisibility";
 import { guessPronoun } from "@/lib/funnel";
+import { taughtSessionWhere } from "@/lib/taughtSessions";
 
 export async function GET() {
   const auth = await requireTutor();
@@ -24,16 +27,19 @@ export async function GET() {
   const ids = courses.map(c => c.id);
   const [active, sessionsTaught] = await Promise.all([
     ids.length === 0 ? [] : prisma.enrollment.groupBy({ by: ["courseId"], where: { courseId: { in: ids }, status: ENROLLMENT_STATUS.ACTIVE }, _count: { _all: true } }),
-    prisma.attendanceSession.count({ where: { course: { ownerId: auth.userId } } }),
+    prisma.attendanceSession.count({ where: { course: { ownerId: auth.userId }, ...taughtSessionWhere() } }),
   ]);
   const activeBy = new Map(active.map(a => [a.courseId, a._count._all]));
+  const hidden = me.tutorVerified && !me.profileLockedAt && isProfileHidden(readPreferences(me.preferences)); // chỉ báo "ẩn" khi hồ sơ lẽ ra đang công khai
   return NextResponse.json({
     tutorId: me.id,
     name: me.name,
     pronoun: guessPronoun(me.name),
     subjects: me.subjects,
     // Hồ sơ công khai chỉ mở khi đã được duyệt và không bị khoá; nếu không thì link trong bài sẽ không mở được.
-    profilePublic: me.tutorVerified && !me.profileLockedAt,
+    // NC2-022: gia sư tự chọn Ẩn cũng làm link không mở được.
+    profilePublic: me.tutorVerified && !me.profileLockedAt && !hidden,
+    profileHidden: hidden,
     profileLocked: !!me.profileLockedAt,
     classes: courses.map(c => ({ id: c.id, name: c.name, seatsLeft: c.capacity === null ? null : Math.max(0, c.capacity - (activeBy.get(c.id) ?? 0)) })),
     sessionsTaught,

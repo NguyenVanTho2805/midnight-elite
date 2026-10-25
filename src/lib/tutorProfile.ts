@@ -1,4 +1,6 @@
 // Hồ sơ gia sư (1.4.4) — validate dùng chung cho đăng ký gia sư và sửa hồ sơ.
+import { parseAreaInput, type TutorTeaching } from "@/lib/tutorArea";
+import { parseProfileInput } from "@/lib/tutorVisibility";
 
 export const TUTOR_BIO_MAX      = 2000;
 export const TUTOR_SUBJECTS_MAX = 10;
@@ -6,9 +8,10 @@ export const TUTOR_SUBJECT_LEN  = 50;
 
 // Trả { bio, subjects } đã chuẩn hoá, hoặc { error } nếu dữ liệu sai.
 // Field không truyền → undefined (route PUT bỏ qua, không ghi đè).
-export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown }):
-  { bio?: string | null; subjects?: string[]; error?: string } {
-  const out: { bio?: string | null; subjects?: string[] } = {};
+// ĐX-06: thêm `city` (Tỉnh/Thành) và `teaching` (quận/huyện, hình thức, trường + bằng cấp, giá tham khảo) — xem src/lib/tutorArea.ts.
+export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown; city?: unknown; teaching?: unknown; profile?: unknown }):
+  { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; error?: string } {
+  const out: { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean } = {};
 
   if (body.bio !== undefined) {
     if (body.bio !== null && typeof body.bio !== "string") return { error: "bio phải là chuỗi" };
@@ -36,6 +39,16 @@ export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown
     if (subjects.length > TUTOR_SUBJECTS_MAX) return { error: `Tối đa ${TUTOR_SUBJECTS_MAX} môn` };
     out.subjects = subjects;
   }
+
+  const area = parseAreaInput(body);
+  if (area.error) return { error: area.error };
+  if (area.city !== undefined) out.city = area.city;
+  if (area.teaching !== undefined) out.teaching = area.teaching;
+
+  // NC2-022: công tắc Hiện / Ẩn hồ sơ công khai (User.preferences.profile.hidden).
+  const prof = parseProfileInput(body.profile);
+  if (prof.error) return { error: prof.error };
+  if (prof.hidden !== undefined) out.hidden = prof.hidden;
 
   return out;
 }

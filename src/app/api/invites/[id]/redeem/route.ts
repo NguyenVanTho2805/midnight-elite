@@ -19,6 +19,8 @@ import { getSession } from "@/lib/session";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { deriveStatusForNewEnrollment, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
+import { assertCanAddStudent } from "@/lib/planServer";
+import { CLASS_PAUSED_MESSAGE } from "@/lib/planLimits";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -47,7 +49,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const course = await prisma.course.findUnique({
     where:  { id: inv!.courseId },
-    select: { id: true, name: true, classStatus: true, capacity: true },
+    select: { id: true, name: true, classStatus: true, capacity: true, ownerId: true },
   });
   if (!course) return NextResponse.json({ error: "Lớp không còn tồn tại" }, { status: 404 });
   if (course.classStatus !== "open") {
@@ -69,6 +71,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         if (activeCount >= course.capacity) {
           throw Object.assign(new Error("CAPACITY_FULL"), { status: 409, body: "Lớp đã đầy" });
         }
+      }
+
+      // KiN Pro: hạn mức học viên đang học của gia sư (cổng TẮT mặc định). Chỉ chặn học viên MỚI vào; học viên thấy chữ trung tính, không lộ gói.
+      // Hiện trong cùng giao dịch, có khoá theo gia sư: hai em bấm cùng giây cuối không cùng vượt trần.
+      const gate = await assertCanAddStudent(course.ownerId, { feature: "redeem", studentId: session.userId, db: tx });
+      if (!gate.allow) {
+        throw Object.assign(new Error("CLASS_NOT_ACCEPTING"), { status: 409, body: CLASS_PAUSED_MESSAGE, code: "CLASS_NOT_ACCEPTING" });
       }
 
       // Atomic increment: KHÔNG tăng nếu đã đạt maxUses — tránh race ở giây cuối.
@@ -98,8 +107,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json({ ok: true, enrollmentId: result.id, courseId: course.id, status });
   } catch (e: unknown) {
-    const err = e as { status?: number; body?: string; message?: string };
-    if (err.status && err.body) return NextResponse.json({ error: err.body }, { status: err.status });
+    const err = e as { status?: number; body?: string; message?: string; code?: string };
+    if (err.status && err.body) return NextResponse.json(err.code === "CLASS_NOT_ACCEPTING" ? { error: err.body, code: err.code } : { error: err.body }, { status: err.status });
     console.error("[POST /api/invites/<code>/redeem]", e);
     return NextResponse.json({ error: "Redeem mã mời thất bại" }, { status: 500 });
   }

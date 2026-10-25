@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
 import { toSlug } from "@/lib/slug";
+import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
 
 // Sinh mã đề duy nhất ở server (không tin mã client tự tính) — client chỉ thấy
 // đề của mình (ownerScopeWhere), nên đếm số đề theo prefix ở phía client dễ bị
@@ -50,12 +51,13 @@ export async function GET(req: NextRequest) {
   // activeGuest=true là public endpoint — không cần auth
   // Các query khác (active=true, category, status) yêu cầu session
   let scopeWhere: { ownerId?: string } = {};
+  let sessionIsAdmin = false;
   if (!activeGuestOnly) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     // Danh sách quản trị (admin panel) — giáo viên chỉ thấy đề của mình.
     // Học viên xem danh sách đề (không phải panel admin) không bị scope này.
-    if (session.role === "admin") scopeWhere = ownerScopeWhere(session);
+    if (session.role === "admin") { scopeWhere = ownerScopeWhere(session); sessionIsAdmin = true; }
   }
 
   try {
@@ -65,6 +67,9 @@ export async function GET(req: NextRequest) {
         ...(status          ? { status }               : {}),
         ...(activeOnly      ? { active: true }         : {}),
         ...(activeGuestOnly ? { activeGuest: true }    : {}),
+        // QZ-07: phiên bản cũ (đã bị thay) không hiện ở danh sách. QZ-04: bản nháp chỉ chủ đề thấy ở trang quản lý — danh sách cho học sinh / khách luôn ẩn.
+        supersededById: null,
+        ...(activeGuestOnly || !sessionIsAdmin ? { isDraft: false } : {}),
         ...scopeWhere,
       },
       orderBy: { createdAt: "desc" },
@@ -76,10 +81,9 @@ export async function GET(req: NextRequest) {
 
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     return NextResponse.json(
-      exams.map(({ _count, password, course, ...e }) => ({
-        ...e,
+      exams.map(({ _count, course, ...e }) => ({
+        ...withoutExamSecrets(e),
         hasQuestions: _count.examQuestions > 0,
-        hasPassword: !!password,
         courseName: course?.name ?? null,
       }))
     );
@@ -109,7 +113,8 @@ export async function POST(req: NextRequest) {
     data.id = await generateUniqueExamId(typeof data.id === "string" && data.id
       ? data.id
       : (typeof data.title === "string" ? data.title : ""));
-    if (typeof data.password === "string") data.password = data.password.trim() || null;
+    // QZ-14: không lưu mật khẩu thô — băm rồi ghi vào passwordHash.
+    if ("password" in data) Object.assign(data, await examPasswordPatch(data.password));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exam = await prisma.exam.create({ data: data as any });
@@ -130,8 +135,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
-    const { password, ...rest } = exam;
-    return NextResponse.json({ ...rest, hasPassword: !!password }, { status: 201 });
+    return NextResponse.json(withoutExamSecrets(exam), { status: 201 });
   } catch (e) {
     console.error("[POST /api/exams]", e);
     return NextResponse.json({ error: "Tạo đề thi thất bại" }, { status: 400 });

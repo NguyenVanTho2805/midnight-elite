@@ -2,6 +2,7 @@
 // Quản lý trung tâm (admin_super, admin_content). Không đếm được bài đăng trong nhóm Facebook — chỉ đếm lượt bấm link.
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { KinButton, KinCallout, KinEmptyState, KinSectionHead, KinSkeleton, KinStateCard, KinStatus, kinButtonClass } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { Modal, callApi, useNotify } from "@/components/tutor/shared";
@@ -64,97 +65,104 @@ function PheuContent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Bảng phễu gia sư</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-          Lượt mở và lượt xem hết hồ sơ công khai, chia theo đuôi <code>?n=</code> của link. Chỉ đếm lượt bấm link — <b>không đếm được bài đăng trong nhóm Facebook</b>.
-        </p>
-      </div>
-
-      <label className="text-xs inline-block" style={{ color: "var(--kin-chu-phu)" }}>Khoảng thời gian
-        <select value={days} onChange={e => setDays(Number(e.target.value))} className="block mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }}>
-          {[7, 30, 90].map(d => <option key={d} value={d}>{d} ngày gần nhất</option>)}
-        </select>
-      </label>
+    <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[28px] leading-9 font-medium text-[var(--kin-chu-chinh)]">Bảng phễu gia sư</h1>
+          <p className="mt-2 max-w-[68ch] text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+            Lượt mở và lượt xem hết hồ sơ công khai, chia theo đuôi <code>?n=</code> của link. Chỉ đếm lượt bấm link — <b>không đếm được bài đăng trong nhóm Facebook</b>.
+          </p>
+        </div>
+        <label className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Khoảng thời gian
+          <select value={days} onChange={e => setDays(Number(e.target.value))}
+            className="block mt-1 px-3 min-h-[44px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)]">
+            {[7, 30, 90].map(d => <option key={d} value={d}>{d} ngày gần nhất</option>)}
+          </select>
+        </label>
+      </header>
 
       {loading && !data ? (
-        <div aria-busy="true" className="h-32 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)" }} />
+        <KinStateCard busy kicker="Đang tải" title="Đang tải bảng phễu" note="Giữ vị trí nội dung, không hiển thị số liệu tạm như dữ liệu thật.">
+          <p>Đang lấy lượt mở link và hàng chờ báo cáo, vui lòng chờ một chút.</p>
+          <KinSkeleton className="mt-4" />
+        </KinStateCard>
       ) : failed || !data ? (
-        <div role="alert" className="rounded-xl p-6 text-center text-sm" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          Không tải được số liệu. <button className="underline font-semibold" onClick={() => void load(days)}>Thử lại</button>
-        </div>
+        <KinStateCard tone="loi" kicker="Lỗi · Có thể thử lại" title="Chưa tải được số liệu"
+          status={<KinStatus tone="loi">Kết nối bị gián đoạn</KinStatus>}
+          actions={<KinButton variant="secondary" onClick={() => void load(days)}>Thử lại</KinButton>}>
+          <p>Không tải được số liệu. Kiểm tra kết nối rồi thử lại; dữ liệu trên hệ thống không bị mất.</p>
+        </KinStateCard>
       ) : (
         <>
-          <section aria-labelledby="h-kenh">
-            <h2 id="h-kenh" className="text-sm font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Theo kênh ({data.days} ngày)</h2>
+          <section aria-labelledby="h-kenh" className="space-y-4">
+            <KinSectionHead id="h-kenh" title={`Theo kênh (${data.days} ngày)`} />
             {data.rows.length === 0 ? (
-              <p role="status" className="rounded-xl p-5 text-sm text-center" style={{ background: "var(--kin-nen-bang)", border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>
-                Chưa có lượt mở link nào trong khoảng này. Gia sư đưa link hồ sơ kèm <code>?n=</code> vào bài đăng để đo.
-              </p>
+              <KinCallout title="Chưa có lượt mở link nào trong khoảng này.">
+                Gia sư đưa link hồ sơ kèm <code>?n=</code> vào bài đăng để đo.
+              </KinCallout>
             ) : (
-              <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
-                <table className="w-full text-sm" style={{ background: "var(--kin-nen-trang)" }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
                   <caption className="sr-only">Lượt mở và xem hết hồ sơ theo kênh</caption>
                   <thead>
-                    <tr style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)" }}>
-                      <th scope="col" className="text-left px-3 py-2">Kênh</th>
-                      <th scope="col" className="text-left px-3 py-2">Loại</th>
-                      <th scope="col" className="text-right px-3 py-2">Mở link</th>
-                      <th scope="col" className="text-right px-3 py-2">Xem hết hồ sơ</th>
-                      <th scope="col" className="text-right px-3 py-2">Tỉ lệ xem hết</th>
+                    <tr className="bg-[var(--kin-nen-bang)] text-[var(--kin-chu-mo)]">
+                      <th scope="col" className="text-left font-normal px-3 py-3">Kênh</th>
+                      <th scope="col" className="text-left font-normal px-3 py-3">Loại</th>
+                      <th scope="col" className="text-right font-normal px-3 py-3">Mở link</th>
+                      <th scope="col" className="text-right font-normal px-3 py-3">Xem hết hồ sơ</th>
+                      <th scope="col" className="text-right font-normal px-3 py-3">Tỉ lệ xem hết</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.rows.map(r => (
-                      <tr key={r.channel} style={{ borderTop: "1px solid var(--kin-vien-nhat)" }}>
-                        <th scope="row" className="text-left px-3 py-2 font-mono font-normal">{r.channel}</th>
-                        <td className="px-3 py-2">{r.groupLabel}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{r.opens}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{r.fulls}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{pct(r.fullRate)}</td>
+                      <tr key={r.channel} className="border-b border-[var(--kin-vien-nhat)]">
+                        <th scope="row" className="text-left px-3 py-3 font-mono font-normal">{r.channel}</th>
+                        <td className="px-3 py-3">{r.groupLabel}</td>
+                        <td className="px-3 py-3 text-right tabular-nums">{r.opens}</td>
+                        <td className="px-3 py-3 text-right tabular-nums">{r.fulls}</td>
+                        <td className="px-3 py-3 text-right tabular-nums">{pct(r.fullRate)}</td>
                       </tr>
                     ))}
-                    <tr style={{ borderTop: "2px solid var(--kin-vien-thuong)", fontWeight: 700 }}>
-                      <th scope="row" className="text-left px-3 py-2" colSpan={2}>Tổng</th>
-                      <td className="px-3 py-2 text-right tabular-nums">{data.totals.opens}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{data.totals.fulls}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{pct(data.totals.opens > 0 ? Math.min(1, data.totals.fulls / data.totals.opens) : null)}</td>
+                    <tr className="border-b border-[var(--kin-vien-thuong)] font-medium">
+                      <th scope="row" className="text-left font-medium px-3 py-3" colSpan={2}>Tổng</th>
+                      <td className="px-3 py-3 text-right tabular-nums">{data.totals.opens}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{data.totals.fulls}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{pct(data.totals.opens > 0 ? Math.min(1, data.totals.fulls / data.totals.opens) : null)}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             )}
-            <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
+            <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
               Các bước sau (đăng ký học thử, học thử xong, nhận lớp) chưa đo được vì chưa có form đăng ký học thử.
             </p>
           </section>
 
-          <section aria-labelledby="h-bc">
-            <h2 id="h-bc" className="text-sm font-bold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>
-              Báo cáo hồ sơ chờ xử lý ({data.reportsOpen}) · hồ sơ đang bị khoá: {data.lockedProfiles}
-            </h2>
+          <section aria-labelledby="h-bc" className="space-y-1">
+            <KinSectionHead id="h-bc" title={`Báo cáo hồ sơ chờ xử lý (${data.reportsOpen}) · hồ sơ đang bị khoá: ${data.lockedProfiles}`} />
             {data.reports.length === 0 ? (
-              <p role="status" className="rounded-xl p-5 text-sm text-center" style={{ background: "var(--kin-nen-bang)", border: "1px dashed var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>Không có báo cáo nào đang chờ.</p>
+              <KinEmptyState title="Không có báo cáo nào đang chờ.">
+                Khi phụ huynh bấm “Báo cáo hồ sơ này” trên trang công khai của gia sư, báo cáo sẽ hiện ở đây để xem xét.
+              </KinEmptyState>
             ) : (
-              <ul className="space-y-2">
+              <ul>
                 {data.reports.map(rep => (
-                  <li key={rep.id} className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div className="min-w-0">
-                        <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{rep.tutorName}</p>
-                        <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>{rep.reasonLabel}</p>
-                        {rep.detail && <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: "var(--kin-chu-phu)" }}>{rep.detail}</p>}
-                        <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
+                  <li key={rep.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0 flex-1 basis-[260px]">
+                        <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{rep.tutorName}</p>
+                        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">{rep.reasonLabel}</p>
+                        {rep.detail && <p className="mt-1 text-[length:var(--kin-co-goc)] whitespace-pre-wrap text-[var(--kin-chu-phu)]">{rep.detail}</p>}
+                        <div className="mt-1.5"><KinStatus tone="cho">Chờ xem xét</KinStatus></div>
+                        <p className="mt-1.5 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">
                           {new Date(rep.createdAt).toLocaleString("vi-VN")}{rep.channel ? ` · kênh ${rep.channel}` : ""}
                           {rep.openForTutor > 1 ? ` · gia sư này có ${rep.openForTutor} báo cáo đang chờ` : ""}
                         </p>
                       </div>
                       <div className="flex gap-2 flex-wrap">
-                        <a href={`/mentor/${rep.tutorId}`} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg text-sm underline min-h-[44px] inline-flex items-center" style={{ color: "var(--kin-th-xanh-link)" }}>Xem hồ sơ</a>
-                        <button type="button" disabled={busy === rep.id} onClick={() => void dismiss(rep)} className="px-3 py-2 rounded-lg text-sm min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>Bỏ qua</button>
-                        <button type="button" disabled={busy === rep.id} onClick={() => { setLocking(rep); setReason(""); }} className="px-3 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Khoá hồ sơ</button>
+                        <a href={`/mentor/${rep.tutorId}`} target="_blank" rel="noreferrer" className={kinButtonClass("secondary")}>Xem hồ sơ</a>
+                        <KinButton variant="secondary" disabled={busy === rep.id} onClick={() => void dismiss(rep)}>Bỏ qua</KinButton>
+                        <KinButton variant="danger-solid" disabled={busy === rep.id} onClick={() => { setLocking(rep); setReason(""); }}>Khoá hồ sơ</KinButton>
                       </div>
                     </div>
                   </li>
@@ -172,8 +180,8 @@ function PheuContent() {
           <textarea id="lock-reason" rows={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }} />
           <div className="flex gap-2 justify-end mt-4">
-            <button type="button" onClick={() => setLocking(null)} className="px-4 py-2 rounded-lg text-sm min-h-[44px]">Đóng</button>
-            <button type="button" disabled={!reason.trim() || busy === locking.id} onClick={() => void lock()} className="px-4 py-2 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-60" style={{ background: "var(--kin-tt-chu-loi)", color: "var(--kin-chu-tren-nut-chinh)" }}>Khoá hồ sơ</button>
+            <KinButton variant="secondary" onClick={() => setLocking(null)}>Đóng</KinButton>
+            <KinButton variant="danger-solid" disabled={!reason.trim()} loading={busy === locking.id} loadingLabel="Đang khoá…" onClick={() => void lock()}>Khoá hồ sơ</KinButton>
           </div>
         </Modal>
       )}

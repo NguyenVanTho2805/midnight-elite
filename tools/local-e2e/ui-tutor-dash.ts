@@ -99,7 +99,7 @@ let seq = 700;
   section("Hồ sơ gia sư");
   await page.goto(`${BASE}/lop-cua-toi/ho-so`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Hồ sơ gia sư" }).waitFor({ timeout: 60000 });
-  check("gia sư đã duyệt: 'Đã xác minh' + link hồ sơ công khai", await page.getByText("Đã xác minh").first().isVisible() && await page.getByRole("link", { name: "Xem hồ sơ công khai" }).isVisible());
+  check("gia sư đã duyệt: 'Đã duyệt hồ sơ' + link hồ sơ công khai", await page.getByText("Đã duyệt hồ sơ").first().isVisible() && await page.getByRole("link", { name: "Xem hồ sơ công khai" }).isVisible());
   await page.locator("#bio").fill("Dạy Toán 10 năm. Đỗ chuyên Toán.");
   await page.getByLabel("Thêm môn dạy").fill("Toán");
   await page.getByLabel("Thêm môn dạy").press("Enter");
@@ -154,12 +154,12 @@ let seq = 700;
 
   section("Hộp việc của lớp: Mã mời");
   await page.goto(`${BASE}/lop-cua-toi/${c1.id}`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /Mã mời/ }).first().click();
+  await page.getByRole("tab", { name: /Mã mời/ }).first().click();
   await page.getByText("Tạo mã mời mới").waitFor({ timeout: 60000 });
   await eventually("chưa có mã → thông báo", () => page.getByText("Chưa có mã mời nào.").isVisible());
   await page.getByLabel(/Số lượt dùng tối đa/).fill("2");
   await page.getByLabel(/Hiệu lực/).fill("7");
-  await page.getByRole("button", { name: "Tạo mã mời" }).click();
+  await page.getByRole("button", { name: "Tạo mã mời", exact: true }).click(); // exact: ĐX-07 thêm nút "Tạo mã mời và soạn tin" (NC2-004)
   await page.getByText(/Đã tạo mã/).waitFor({ timeout: 20000 });
   const inv = await prisma.classInvite.findFirst({ where: { courseId: c1.id } });
   check("DB: mã 8 ký tự, maxUses 2, hết hạn ~7 ngày", inv?.code.length === 8 && inv.maxUses === 2 && Math.abs((inv.expiresAt!.getTime() - Date.now()) - 7 * 86400000) < 3600000, inv);
@@ -180,7 +180,7 @@ let seq = 700;
   await page.getByText(/Đã thu hồi mã/).waitFor({ timeout: 20000 });
   await eventually("mã chuyển 'Đã thu hồi', hết nút", async () => (await page.getByText("Đã thu hồi", { exact: true }).isVisible()) && (await page.getByRole("button", { name: "Thu hồi" }).count()) === 0);
   check("DB: revoked", (await prisma.classInvite.findFirst({ where: { courseId: c1.id } }))?.revoked === true);
-  check("hộp việc có mục 'Cộng đồng lớp' dẫn tới kiểm duyệt", await page.getByRole("button", { name: /Cộng đồng lớp/ }).first().isVisible());
+  check("hộp việc có mục 'Cộng đồng lớp' dẫn tới kiểm duyệt", await page.getByRole("tab", { name: /Cộng đồng lớp/ }).first().isVisible());
 
   section("Mobile 390");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage();

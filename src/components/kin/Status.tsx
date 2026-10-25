@@ -1,4 +1,4 @@
-// Thẻ trạng thái KiN (Figma "Thẻ trạng thái" 8:139) — chấm 7px + chữ, cao 16px.
+// Thẻ trạng thái KiN (Figma "Thẻ trạng thái" 8:139) — chấm 7px + chữ 14px (chữ gốc, như dòng phụ cạnh nó), cao 20px.
 //
 // HAI BỘ MÃ MÀU, cố ý, đừng gộp: chấm là đồ hoạ nên chỉ cần tương phản 3:1; chữ cần 4,5:1.
 // Dùng chung một mã thì hoặc chấm quá nhạt, hoặc chữ trượt chuẩn.
@@ -22,7 +22,7 @@ export function KinStatus({ tone, children, className = "" }: { tone: StatusTone
   return (
     <span
       data-kin-status={tone}
-      className={`inline-flex items-center gap-[var(--kin-kc-1)] h-4 leading-4 whitespace-nowrap text-[length:var(--kin-co-small)] ${className}`}
+      className={`inline-flex items-center gap-[var(--kin-kc-1)] min-h-5 leading-5 whitespace-nowrap text-[length:var(--kin-co-goc)] ${className}`}
       style={{ color: STATUS_TEXT[tone] }}
     >
       <span aria-hidden className="inline-block w-[7px] h-[7px] rounded-full flex-shrink-0" style={{ background: STATUS_DOT[tone] }} />

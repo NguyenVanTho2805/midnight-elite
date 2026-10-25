@@ -18,6 +18,8 @@ export const QUIET_START_MIN = 22 * 60;      // GIỜ_YÊN_LẶNG 22:00 — đã
 export const QUIET_END_MIN = 7 * 60;         //                 07:00
 export const REMINDER_SHIFT_MIN = 21 * 60 + 30; // DỜI_TIN_24_GIỜ_VỀ 21:30 — đề xuất
 export const SKIP_H1_BEFORE_MIN = 8 * 60;    // BỎ_TIN_1_GIỜ_NẾU_BUỔI_TRƯỚC 08:00 — đề xuất
+export const UNMARKED_GRACE_MIN = 60;        // ĐX-01: chờ 60 phút sau giờ kết thúc mới coi là "chưa điểm danh" — đề xuất
+export const UNMARKED_WINDOW_DAYS = 14;      // ĐX-01: chỉ nhìn lại 14 ngày — đề xuất (chậm thì rút còn 7)
 
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WEEKDAY_VI = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];

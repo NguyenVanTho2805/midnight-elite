@@ -46,7 +46,7 @@ export interface ParseError {
 // Validate options theo đúng ràng buộc của từng loại câu hỏi — dùng chung
 // giữa API tạo/sửa câu hỏi từng cái (admin form) và bulk-create (từ review).
 export function validateQuestionOptions(
-  type: QuestionType,
+  type: QuestionType | "MC_MULTI", // "MC_MULTI" (QZ-03) cố ý KHÔNG nằm trong QuestionType: kiểu đó dùng khắp trang cũ, đổi là kéo theo cả trang học sinh
   options: { text: string; isCorrect: boolean; subLabel?: string | null }[]
 ): string | null {
   if (type === "ESSAY") return null; // không cần đáp án
@@ -64,6 +64,14 @@ export function validateQuestionOptions(
     if (!Array.isArray(options) || options.length !== 1) return "Câu Trả lời ngắn cần đúng 1 đáp án";
     if (!options[0].isCorrect) return "Đáp án phải được đánh dấu đúng";
     if (!options[0].text?.trim()) return "Đáp án không được để trống";
+    return null;
+  }
+  if (type === "MC_MULTI") {
+    // QZ-03: nhiều đáp án đúng (chấm đủ-hoặc-không). Luật đầy đủ + chữ lỗi cho gia sư ở src/lib/quizQuestion.ts.
+    if (!Array.isArray(options) || options.length < 2) return "Cần ít nhất 2 đáp án";
+    const n = options.filter(o => o.isCorrect).length;
+    if (n < 1) return "Phải có ít nhất 1 đáp án đúng";
+    if (n === options.length) return "Không thể đánh dấu đúng cả mọi đáp án";
     return null;
   }
   // MC

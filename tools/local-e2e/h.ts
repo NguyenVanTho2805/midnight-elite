@@ -44,6 +44,20 @@ export async function mkCourse(ownerId: string | null, o: { name?: string; capac
   });
 }
 
+/**
+ * ĐX-00: một phiên điểm danh kèm một bản ghi cho MỖI trạng thái trong `statuses` (mỗi bản ghi một học sinh mới).
+ * Mặc định ["present"] = buổi ĐÃ DẠY theo src/lib/taughtSessions.ts; `[]` = phiên rỗng; ["excused"] = chỉ có phép (không tính).
+ * Dùng thay cho `prisma.attendanceSession.create` ở những test kiểm số "buổi đã dạy", vì phiên trần không còn được đếm.
+ */
+export async function mkAttendanceSession(courseId: string, createdBy: string, date: Date, statuses: string[] = ["present"]) {
+  const s = await prisma.attendanceSession.create({ data: { courseId, date, createdBy } });
+  for (const status of statuses) {
+    const stu = await mkUser({ name: "Học sinh điểm danh" });
+    await prisma.attendanceRecord.create({ data: { sessionId: s.id, userId: stu.id, status } });
+  }
+  return s;
+}
+
 export async function cookieFor(u: TUser) {
   return `midnight_session=${await encrypt({ userId: u.id, role: u.role, adminRole: u.adminRole })}`;
 }

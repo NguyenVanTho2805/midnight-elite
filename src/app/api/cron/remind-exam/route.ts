@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordCronRun } from "@/lib/adminOpsServer";
 import { prisma } from "@/lib/prisma";
 import { checkCronAuth } from "@/lib/cronAuth";
 import { sendExamReminderEmail } from "@/lib/email";
@@ -16,6 +17,7 @@ function sleep(ms: number) {
 export async function GET(req: NextRequest) {
   const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
   if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
+  await recordCronRun("remind-exam"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
 
   // Ngày mai theo UTC+7 (Vietnam Standard Time)
   const now      = new Date();
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   // Tìm kỳ thi diễn ra vào ngày mai
   const exams = await prisma.exam.findMany({
-    where: { date: dateStr, active: true },
+    where: { date: dateStr, active: true, isDraft: false, supersededById: null }, // QZ-04/07: không nhắc bản nháp hay phiên bản cũ
     select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true },
   });
 

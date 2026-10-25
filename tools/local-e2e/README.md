@@ -62,3 +62,24 @@ Tên file: `t-*.ts` = logic thuần + API; `ui-*.ts` = trình duyệt. Mỗi fil
 - 16/10: `next dev` in cảnh báo React "Encountered a script tag while rendering React component" khi một trang trong nhóm `(parent)` (`/phieu/<mã sai>`, `/so-cua-con/<mã sai>`) trả 404 thật bằng `notFound()`; 404 gốc thì không. Là cảnh báo của React bản phát triển, giao diện vẫn đủ; bài rà ghi riêng, không tính lỗi, và chưa kiểm được ở bản dựng production.
 - Layout của `(guest)` có `loading.tsx` nên `notFound()` trả HTTP 200 kèm thân trang 404 (kiểm theo chuỗi `NEXT_HTTP_ERROR_FALLBACK;404`).
 - `getByLabel` trên `<label>` bọc `<select>` bị tính cả chữ các option vào tên → dùng `aria-label` hoặc `locator("label").locator("select")`.
+
+## Dựng môi trường thử trên Mac (Homebrew) — đã chạy thật 22/10/2026
+Không cần cách WASM / `gen-schema-sql.mjs` / `neon-ws-proxy.mjs` ở mục dưới (đó là cho hộp cát Linux chặn tải engine Prisma). Trên Mac:
+1. `brew install postgresql@17 pgvector` rồi `brew services start postgresql@17`. Tạo DB riêng cho test (bài test gọi `wipe()` xoá sạch mọi bảng — KHÔNG dùng DB đang có dữ liệu thật hay dữ liệu mẫu):
+   `createdb kin_test && psql -d kin_test -c "create extension if not exists vector; create extension if not exists pg_trgm;"`.
+2. Schema: `DATABASE_URL=postgresql://<user>:<mk>@localhost:5432/kin_test npx prisma db push` (không có cờ `--skip-generate` ở bản Prisma này) rồi `npx prisma generate`. Có pgvector thật nên giữ nguyên `vector(768)`, tầng "giống nghĩa" của kiểm tra trùng chạy được.
+3. Driver Neon của app nói chuyện qua WebSocket `wss://localhost/v2` (cổng 443): cần một cầu nối WebSocket → Postgres và một chứng chỉ tự ký (`NODE_TLS_REJECT_UNAUTHORIZED=0` ở `env.sh` cho tiến trình test; máy chủ dev dùng `NODE_EXTRA_CA_CERTS`). macOS cho tiến trình thường nghe cổng 443 chỉ trên `0.0.0.0` — cầu nối phải tự cắt mọi kết nối không đến từ 127.0.0.1. Driver Neon gửi mật khẩu ngay từ đầu nên `pg_hba.conf` phải đòi mật khẩu (`password`, không `trust`) cho 127.0.0.1/::1 và người dùng DB có mật khẩu.
+4. Trình duyệt cho `ui-*.ts`: đặt `CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"` (xem `env.example.sh`) — khỏi tải Chromium của Playwright.
+5. Bài trình duyệt tự ánh xạ `midnightelite-edu.com`, `admin.midnightelite-edu.com`, `localhost` về 127.0.0.1 trong Chrome (`ui.ts`); không cần sửa `/etc/hosts` trừ trang `/mentor/[id]` gọi lại chính nó theo tên miền (xem mục trên).
+6. Cổng máy chủ thử theo biến `BASE` (mặc định `http://localhost:3100`; `PORT` cho các bài rà liên kết): đặt `BASE` khác để chạy song song nhiều máy chủ, mỗi máy chủ một DB riêng.
+7. KHÔNG dùng `dev-start.sh` khi trên máy còn máy chủ Next khác đang chạy (kể cả cổng khác): nó dừng MỌI tiến trình `next`. Khởi động `npx next dev -p <cổng>` riêng sau khi `source env.sh`. Hai máy chủ dev cùng một thư mục dự án không chạy được (khoá `.next/dev/lock`) — dùng bản sao thư mục hoặc `git worktree` riêng cho mỗi máy chủ.
+8. Số nền đo trên Mac (nhánh `claude/nang-cap-2`, 22/10): `tsc --noEmit` 0 lỗi · eslint `src` 85 lỗi / 42 cảnh báo · `t-no-hex` 17/17 · `t-no-fabricated` 37/37 · `t-links` 10/10 · `t-db-push-guard` 28/28 · `t-push` 60/60 · `t-tutor-inbox` 34/34.
+
+## Dựng DB thử khi máy chặn tải engine Prisma (22/10/2026, đã chạy thật)
+Máy làm việc của Claude có sẵn Postgres 16 (`/usr/lib/postgresql/16`, cụm `main` đang tắt) nhưng `binaries.prisma.sh` bị chặn (403) nên `prisma db push` không chạy được. Cách đã dùng, chạy được đầu-cuối:
+1. `pg_ctlcluster 16 main start`; đặt mật khẩu, `createdb kin_test`, `CREATE EXTENSION pg_trgm`. **pgvector không có** → cột `embedding` đổi `vector(768)` thành `text` (chỉ tầng "giống nghĩa" cần).
+2. DDL: `tools/local-e2e/gen-schema-sql.mjs` (engine schema WASM, xem đầu tệp) → `sed 's/vector(768)/text/g' | psql`. `prisma generate` cần `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1`.
+3. `src/lib/prisma.ts` nối bằng driver Neon (WebSocket) nên cần `node tools/local-e2e/neon-ws-proxy.mjs &` (cổng 443, chứng chỉ tự ký → `NODE_TLS_REJECT_UNAUTHORIZED=0`) VÀ `host all all 127.0.0.1/32 trust` trong `pg_hba.conf` (driver Neon gửi mật khẩu "chạy trước"; proxy bỏ thông điệp đó). Chỉ dùng ở máy test.
+4. `source tools/local-e2e/env.sh` (có mẫu thêm `PUSH_ENABLED=1` + `VAPID_*` cho `t-push` / `ui-push-settings`), `bash tools/local-e2e/dev-start.sh`, thêm `127.0.0.1 midnightelite-edu.com admin.midnightelite-edu.com` vào `/etc/hosts`.
+5. Đừng chạy `pkill -f <tên tệp>` trong cùng lệnh bash có chứa tên tệp đó — nó giết luôn shell (mã thoát 144); dùng `pgrep -f "^node tools/..."` neo đầu dòng.
+6. Bài `ui-media.ts` (ca Cloudinary ở /xem-tai-lieu) cần máy chủ thử khởi động với `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=kin`, vd `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=kin npx next dev -p <cổng>`; thiếu biến này bảo mật từ chối mọi địa chỉ Cloudinary (đúng thiết kế) và ca đó đỏ.

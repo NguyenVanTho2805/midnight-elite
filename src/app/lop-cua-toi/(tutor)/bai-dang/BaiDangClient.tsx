@@ -9,7 +9,7 @@ import { PRONOUNS, RECRUIT_FIELD_MAX, composeRecruitPost, ensureSafetyLine, face
 import { openZalo } from "@/lib/zaloShare";
 
 interface Draft {
-  tutorId: string; name: string; pronoun: Pronoun; subjects: string[]; profilePublic: boolean; profileLocked: boolean;
+  tutorId: string; name: string; pronoun: Pronoun; subjects: string[]; profilePublic: boolean; profileLocked: boolean; profileHidden?: boolean;
   classes: { id: string; name: string; seatsLeft: number | null }[]; sessionsTaught: number; groups: string[];
 }
 interface ChannelRow { channel: string; groupLabel: string; opens: number; fulls: number; fullRate: number | null }
@@ -107,7 +107,7 @@ export default function BaiDangClient() {
         <>
           {!draft.profilePublic && (
             <div role="alert" className="rounded-xl p-4 mb-4 text-sm" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-chu-chinh)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-              {draft.profileLocked ? "Hồ sơ công khai của bạn đang bị khoá, nên link trong bài chưa mở được. Liên hệ quản trị viên để được xem xét." : "Hồ sơ của bạn chưa được duyệt nên link công khai chưa mở được. Bài đăng sẽ dùng được ngay khi hồ sơ được duyệt."}
+              {draft.profileLocked ? "Hồ sơ công khai của bạn đang bị khoá, nên link trong bài chưa mở được. Liên hệ quản trị viên để được xem xét." : draft.profileHidden ? "Hồ sơ của bạn đang ẩn nên link trong bài chưa mở được. Bật Hiện ở trang Hồ sơ gia sư là link mở lại ngay." : "Hồ sơ của bạn chưa được duyệt nên link công khai chưa mở được. Bài đăng sẽ dùng được ngay khi hồ sơ được duyệt."}
               {" "}<Link href="/lop-cua-toi/ho-so" className="underline font-semibold">Mở hồ sơ gia sư</Link>
             </div>
           )}
@@ -163,7 +163,7 @@ export default function BaiDangClient() {
               <label className="block text-sm" htmlFor="bai-dang-text">Bài đăng (sửa được; đổi nhóm, giờ, học phí hoặc lớp sẽ soạn lại)</label>
               <textarea id="bai-dang-text" rows={11} value={text} onChange={e => setText(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm" style={FIELD_STYLE} />
               <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>
-                Số buổi đã dạy lấy từ sổ lớp, bạn không tự sửa được. Dòng “{pronoun} không nhận chuyển khoản trước buổi học thử.” luôn được giữ ở cuối bài.
+                Số buổi đã dạy lấy từ sổ lớp (buổi đã diễn ra và có em có mặt), không có ô nhập tay. Dòng “{pronoun} không nhận chuyển khoản trước buổi học thử.” luôn được giữ ở cuối bài.
               </p>
             </div>
 

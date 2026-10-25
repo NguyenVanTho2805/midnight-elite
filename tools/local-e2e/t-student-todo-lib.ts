@@ -1,6 +1,6 @@
 // "Việc của tôi" của học sinh — quy tắc thuần (src/lib/studentTodo.ts).
 import { check, section, done } from "./h";
-import { buildStudentTodo, fmtScore, remainingText, whenLabel, MAX_ITEMS, type TodoAssignment, type TodoEvent } from "@/lib/studentTodo";
+import { buildStudentTodo, dueTextOf, fmtScore, remainingText, whenLabel, MAX_ITEMS, type TodoAssignment, type TodoEvent } from "@/lib/studentTodo";
 
 // Thứ Ba 13/10/2026 20:00 giờ VN
 const NOW = new Date("2026-10-13T13:00:00Z");
@@ -81,5 +81,19 @@ check("badge = số việc cần ra tay (2: bài trễ + bài hôm nay), không 
 check("không có việc → badge 0, danh sách rỗng", (() => { const r = run([]); return r.badge === 0 && r.items.length === 0; })());
 check(`tối đa ${MAX_ITEMS} dòng`, run(Array.from({ length: 80 }, (_, i) => base({ id: `x${i}`, dueDate: new Date(NOW.getTime() + (i + 1) * 3_600_000) }))).items.length === MAX_ITEMS);
 check("cùng giờ thì thứ tự ổn định theo id (không nhảy giữa các lần tải)", JSON.stringify(run([base({ id: "b" }), base({ id: "a" })]).items.map(i => i.id)) === JSON.stringify(["bai-tap:a", "bai-tap:b"]));
+
+section("Mảnh chữ cho màn Figma Học sinh (task / session)");
+check("hạn viết dạng Figma: 'hạn hôm nay, 23:59' / 'ngày mai' / 'Thứ 6 16/10' / '25/10'", dueTextOf(vn("2026-10-13", "23:59"), NOW) === "hạn hôm nay, 23:59" && dueTextOf(vn("2026-10-14", "21:00"), NOW) === "hạn ngày mai, 21:00"
+  && dueTextOf(vn("2026-10-16", "08:00"), NOW) === "hạn Thứ 6 16/10, 08:00" && dueTextOf(vn("2026-10-25", "08:00"), NOW) === "hạn 25/10, 08:00");
+const tk = run([base({})]).items[0].task!;
+check("bài chưa nộp: phase chua-nop, tên trần, dòng lớp 'Toán 9 · thầy Thanh', đường dẫn bài giảng", tk.phase === "chua-nop" && tk.name === "Bài tập Vi-ét" && tk.courseLine === "Toán 9 · thầy Thanh" && tk.href === "/student/bai-giang/l1" && tk.dueText === "hạn hôm nay, 23:59", tk);
+const tsub = run([base({ submission: { submittedAt: vn("2026-10-13", "19:10"), score: null, gradedAt: null, comment: null } })]).items[0].task!;
+check("bài đã nộp: phase cho-cham, 'Nộp 13/10 lúc 19:10'", tsub.phase === "cho-cham" && tsub.sentText === "Nộp 13/10 lúc 19:10", tsub);
+const tgr = run([base({ submission: { submittedAt: vn("2026-10-12", "10:00"), score: 18.4, gradedAt: vn("2026-10-12", "20:00"), comment: "Làm tốt." } })]).items[0].task!;
+check("bài đã chấm: phase da-cham, điểm '18,4/25', 'Đã chấm 12/10', nhận xét", tgr.phase === "da-cham" && tgr.scoreText === "18,4/25" && tgr.gradedText === "Đã chấm 12/10" && tgr.comment === "Làm tốt.", tgr);
+check("chấm xong không nhận xét → comment null (màn hình không bịa lời)", run([base({ submission: { submittedAt: vn("2026-10-12", "10:00"), score: 20, gradedAt: vn("2026-10-12", "20:00"), comment: "  " } })]).items[0].task!.comment === null);
+const ss = run([], [ev({ topic: "Toán 9 — Học live qua Zoom", endTime: "22:30" })]).items[0].session!;
+check("buổi học: giờ '21:00–22:30', tên lớp tách khỏi ghi chú, đường dẫn lớp", ss.range === "21:00–22:30" && ss.courseLine === "Toán 9" && ss.topic === "Học live qua Zoom" && ss.href === "/student/hoc-tap?course=c1" && !ss.cancelled, ss);
+check("buổi không có giờ kết thúc → chỉ giờ bắt đầu; buổi huỷ có cờ cancelled", run([], [ev({})]).items[0].session!.range === "21:00" && run([], [ev({ topic: "[ĐÃ HUỶ] Toán 9" })]).items[0].session!.cancelled === true);
 
 done();

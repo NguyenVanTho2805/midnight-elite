@@ -12,11 +12,12 @@ import type { Prisma } from "@/generated/prisma/client";
 import { notifyMany } from "@/lib/notify";
 import { logAction } from "@/lib/auditLog";
 import { instantOf, parseHm } from "@/lib/classSessions";
+import { conflictText } from "@/lib/sessionBook";
 import { describeChange, effectiveSlot, parseChangeInput, sessionChangeMessage, sessionRestoredMessage, whenText, type ChangeKind, type SessionChange } from "@/lib/sessionChange";
 
 type Tx = Prisma.TransactionClient;
 type Db = Pick<typeof prisma, "classSessionChange">;
-export type ChangeFail = { ok: false; status: number; error: string };
+export type ChangeFail = { ok: false; status: number; error: string; needsConfirm?: boolean; conflicts?: { kind: string; text: string; sharedStudents: number }[] };
 const fail = (status: number, error: string): ChangeFail => ({ ok: false, status, error });
 
 const toChange = (r: {
@@ -70,6 +71,16 @@ export async function changeSession(i: { tutorId: string; scheduleId: string; da
   const parsed = parseChangeInput(i.body, { rule: sched, dateKey: i.dateKey, now });
   if (!parsed.ok) return fail(400, parsed.error);
   const v = parsed.value;
+
+  // LI-10: kiểm xung đột khi DỜI — chỉ khi gọi xin kiểm (checkConflicts) và chưa chọn "vẫn dời" (force). Gọi cũ không đổi hành vi.
+  const asObj = (i.body ?? {}) as Record<string, unknown>;
+  if (v.kind === "move" && asObj.checkConflicts === true && asObj.force !== true && v.newDateKey && v.newStartTime && v.newEndTime) {
+    const { conflictsForSlot } = await import("@/lib/sessionBookServer"); // nạp muộn: sessionBookServer cũng đọc loadChanges của tệp này
+    const found = await conflictsForSlot(i.tutorId, { courseId: sched.courseId, dateKey: v.newDateKey, startTime: v.newStartTime, endTime: v.newEndTime, ignoreKey: `${i.scheduleId}:${i.dateKey}` });
+    if (found.length) {
+      return { ...fail(409, "Giờ mới trùng lịch. Kiểm tra lại hoặc chọn vẫn dời."), needsConfirm: true, conflicts: found.map(c => ({ kind: c.kind, text: conflictText(c), sharedStudents: c.sharedStudents })) };
+    }
+  }
 
   const res = await prisma.$transaction(async (tx): Promise<{ ok: true; id: string; voided: number; kept: number; wasCancel: boolean } | ChangeFail> => {
     await lockSchedule(tx, i.scheduleId);

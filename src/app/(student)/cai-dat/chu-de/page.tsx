@@ -29,7 +29,7 @@ const MODE_LABEL: Record<KinMode, string> = {
 
 export default function ChonChuDePage() {
   const [theme, setTheme] = useState<KinTheme>("navy");
-  const [mode,  setMode]  = useState<KinMode>("auto");
+  const [mode,  setMode]  = useState<KinMode>("sang");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {

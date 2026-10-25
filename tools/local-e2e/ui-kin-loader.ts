@@ -22,7 +22,7 @@ function walk(dir: string, out: string[] = []): string[] {
   const tTile = files.filter(f => /font-black text-white">T<\/span>/.test(readFileSync(f, "utf8"))).map(f => f.slice(root.length + 1));
   check("không còn ô chữ 'T' nào", tTile.length === 0, tTile);
   const users = files.filter(f => /<KinLoader\b/.test(readFileSync(f, "utf8"))).map(f => f.slice(root.length + 1));
-  check("KinLoader được dùng ở màn chờ toàn trang (AuthGuard) và 5 trang có chỗ chờ", users.length === 6 && users.some(f => f.endsWith("AuthGuard.tsx")), users);
+  check("KinLoader được dùng ở màn chờ toàn trang (AuthGuard) và 4 trang có chỗ chờ (/giang-vien đã bỏ khối Top học viên khi dựng lại theo Figma KH-02)", users.length === 5 && users.some(f => f.endsWith("AuthGuard.tsx")), users);
   const loaderSrc = readFileSync(join(root, "src/components/kin/KinLoader.tsx"), "utf8");
   check("KinLoader dùng chính KinMark (đổi logo một chỗ thì màn chờ đổi theo)", /import \{ KinMark \} from "\.\/KinLogo"/.test(loaderSrc) && /<KinMark\b/.test(loaderSrc));
 
@@ -76,18 +76,7 @@ function walk(dir: string, out: string[] = []): string[] {
     await ctx.close();
   }
 
-  section("Chỗ chờ trong trang (Top học viên ở /giang-vien): cùng một biểu tượng");
-  {
-    const ctx = await ctxFor(null, { width: 1280, height: 800 });
-    await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-    await ctx.route("**/api/leaderboard", async route => { await new Promise(r => setTimeout(r, 5000)); await route.continue(); });
-    const p = await ctx.newPage(); p.on("pageerror", e => errors.push(String(e)));
-    await p.goto(`${BASE}/giang-vien`, { waitUntil: "domcontentloaded", timeout: 150000 });
-    const loader = p.locator("[data-kin-loader]");
-    await loader.waitFor({ state: "visible", timeout: 90000 });
-    check("hiện logo KiN (36px) thay cho 3 chấm nhảy", Math.round((await loader.locator("svg").boundingBox())?.width ?? 0) === 36 && (await p.locator(".animate-bounce").count()) === 0);
-    await ctx.close();
-  }
+  // /giang-vien: khối "Top học viên" (chỗ chờ KinLoader) đã bỏ khi dựng lại trang khách theo Figma KH-02 (299:115283); trang dùng khung chờ thẻ gia sư. Bảng xếp hạng vẫn ở /bang-xep-hang.
 
   check("không có lỗi JavaScript trên trang nào", errors.length === 0, errors.slice(0, 3));
   await closeAll();

@@ -70,4 +70,4 @@ export function Modal({ title, onClose, children, labelledBy = "modal-title" }: 
 }
 
 export const FIELD_STYLE = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" } as const;
-export const CARD_STYLE = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
+export const CARD_STYLE = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-khung-vien)" } as const;

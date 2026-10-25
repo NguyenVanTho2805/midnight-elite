@@ -8,6 +8,8 @@
 //        Dùng upsert cho mỗi record trong 1 transaction.
 // DELETE — xoá buổi + mọi record (dùng khi gia sư nhập nhầm ngày).
 //
+// HỌC PHÍ KIỂU MỚI (theo buổi/giờ; chủ chốt 24/10/2026): PUT chỉ sinh/đồng bộ dòng phí khi buổi ĐÃ CHỐT (xem route .../sessions/[dateKey]/close).
+//
 // TT-202 buổi bù: mỗi record có thể kèm `makeupCreditId` — "dùng buổi bù cho buổi này". Buổi bù phải
 // của đúng học sinh + đúng lớp, còn hạn, chưa dùng, và học sinh phải có mặt (present/late). Buổi
 // được điểm danh bằng buổi bù không phải đóng thêm (tiền học phí vẫn do gia sư lập ở trang Học
@@ -20,6 +22,9 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
+import { lockAttendanceSession, removeUninvoicedChargesForSession, syncSessionCharges, type SyncResult } from "@/lib/feeChargeServer";
+import { reversePackageUsesForSession, syncPackageUsesForSession, type PackageSyncResult } from "@/lib/sessionPackageServer";
+import { noteShareAllowed } from "@/lib/sessionNoteServer";
 
 type SessionRow = { id: string; courseId: string; date: Date; note: string | null; createdBy: string; createdAt: Date };
 type SessionDelegate = {
@@ -27,7 +32,7 @@ type SessionDelegate = {
   delete(args: unknown): Promise<unknown>;
 };
 type RecordDelegate = {
-  findMany(args: unknown): Promise<{ userId: string; status: string; note: string | null; zaloOpenedAt: Date | null }[]>;
+  findMany(args: unknown): Promise<{ userId: string; status: string; note: string | null; zaloOpenedAt: Date | null; parentVisible: boolean }[]>;
   upsert(args: unknown): Promise<unknown>;
 };
 
@@ -89,6 +94,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     avatar:    e.user.avatarBase64,
     status:    byUserId.get(e.user.id)?.status ?? null, // null = chưa điểm danh
     note:      byUserId.get(e.user.id)?.note ?? null,
+    // BU-07: gia sư đã tick cho phụ huynh của đúng em này xem nhận xét.
+    parentVisible: byUserId.get(e.user.id)?.parentVisible ?? false,
     // TT-199: để gia sư nhắn phụ huynh qua Zalo ngay từ màn điểm danh.
     parentName:   e.user.parentName,
     parentPhone:  e.user.parentPhone,
@@ -114,7 +121,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Mỗi lần tối đa 500 records" }, { status: 400 });
   }
 
-  const items: { userId: string; status: string; note: string | null; makeupCreditId: string | null }[] = [];
+  const items: { userId: string; status: string; note: string | null; makeupCreditId: string | null; parentVisible?: boolean }[] = [];
   for (const row of body.records) {
     if (!row || typeof row !== "object") continue;
     const r2 = row as Record<string, unknown>;
@@ -127,7 +134,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (mk && r2.status !== "present" && r2.status !== "late") {
       return NextResponse.json({ error: "Chỉ dùng buổi bù cho học viên có mặt hoặc đi muộn" }, { status: 400 });
     }
-    items.push({ userId: r2.userId, status: r2.status, note: note || null, makeupCreditId: mk });
+    if (r2.parentVisible !== undefined && typeof r2.parentVisible !== "boolean") return NextResponse.json({ error: "parentVisible phải là true hoặc false" }, { status: 400 });
+    items.push({ userId: r2.userId, status: r2.status, note: note || null, makeupCreditId: mk, ...(r2.parentVisible !== undefined ? { parentVisible: r2.parentVisible } : {}) });
   }
 
   // Kiểm mọi userId có trong Enrollment active của lớp — chống gia sư gửi
@@ -145,6 +153,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 
+  // BU-07: chia sẻ nhận xét cho phụ huynh chỉ khi hồ sơ của em (nếu có) còn đồng ý phạm vi cơ bản; thiếu thì từ chối cả lô, không lưu dở.
+  const sharing = items.filter(i => i.parentVisible === true).map(i => i.userId);
+  if (sharing.length) {
+    const owner = (await prisma.course.findUnique({ where: { id: session.courseId }, select: { ownerId: true } }))?.ownerId;
+    const allowed = owner ? await noteShareAllowed(owner, sharing) : new Map<string, boolean>();
+    const blocked = sharing.filter(u => allowed.get(u) !== true);
+    if (blocked.length) return NextResponse.json({ error: "Có em chưa có đồng ý (hoặc đã thu hồi) nên chưa chia sẻ nhận xét cho phụ huynh được. Mở hồ sơ của em để xác nhận đồng ý trước.", needsConsent: true, blocked }, { status: 422 });
+  }
+
   // Upsert trong 1 transaction — không có xung đột race vì key unique
   // (sessionId, userId). 2 gia sư đồng thời set record cùng 1 em thì
   // người sau đè được, có updatedBy để biết ai làm cuối.
@@ -152,15 +169,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Trạng thái đổi → xoá mốc "đã mở Zalo" (tin trước nói về trạng thái cũ).
   const prevStatus = new Map((await asRecords().findMany({ where: { sessionId: id, userId: { in: items.map(i => i.userId) } } })).map(r => [r.userId, r.status]));
   class MakeupError extends Error {}
+  let charges: SyncResult | null = null;
+  let packages: PackageSyncResult | null = null;
   try {
-    await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
+      await lockAttendanceSession(tx, id); // xếp hàng với chốt/mở lại buổi: dòng phí luôn khớp trạng thái buổi
       const txRecords = asRecords(tx);
       for (const i of items) {
         const changed = prevStatus.has(i.userId) && prevStatus.get(i.userId) !== i.status;
         await txRecords.upsert({
           where:  { sessionId_userId: { sessionId: id, userId: i.userId } },
-          create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId },
-          update: { status: i.status, note: i.note, updatedBy: auth.userId, ...(changed ? { zaloOpenedAt: null } : {}) },
+          create: { sessionId: id, userId: i.userId, status: i.status, note: i.note, updatedBy: auth.userId, ...(i.parentVisible !== undefined ? { parentVisible: i.parentVisible } : {}) },
+          update: { status: i.status, note: i.note, updatedBy: auth.userId, ...(changed ? { zaloOpenedAt: null } : {}), ...(i.parentVisible !== undefined ? { parentVisible: i.parentVisible } : {}) },
         });
         if (i.makeupCreditId) {
           // Điều kiện nằm trong WHERE của updateMany nên hai gia sư/hai lần bấm cùng lúc không dùng chung 1 buổi bù.
@@ -181,7 +201,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           });
         }
       }
+      // HP-14 (chủ chốt 24/10/2026): lớp tạo sau theo buổi/giờ → dòng học phí CHỈ sinh/đồng bộ khi buổi ĐÃ CHỐT ("Đã dạy xong").
+      // Buổi chưa chốt: lưu điểm danh thuần, không sinh phí. Sửa điểm danh sau khi chốt: đồng bộ lại dòng CHƯA vào phiếu, TRONG CÙNG transaction.
+      // Lớp cách cũ (mặc định): trả sớm, không ghi gì.
+      const ch = await syncSessionCharges(tx, {
+        sessionId: id, courseId: session.courseId, sessionDate: session.date, by: auth.userId,
+        items: items.map(i => ({ userId: i.userId, status: i.status, makeupUsed: !!i.makeupCreditId })),
+      });
+      // HP-31: sổ buổi của gói trả trước (cùng điều kiện: buổi đã chốt, lớp kiểu mới). Chỉ các em vừa lưu.
+      const pk = await syncPackageUsesForSession(tx, id, { userIds: items.map(i => i.userId) });
+      return { ch, pk };
     });
+    charges = res.ch; packages = res.pk;
   } catch (e) {
     if (e instanceof MakeupError) return NextResponse.json({ error: e.message }, { status: 400 });
     throw e;
@@ -191,7 +222,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     courseId: session.courseId, count: items.length,
   });
 
-  return NextResponse.json({ ok: true, count: items.length });
+  // Dòng đã nằm trong phiếu không tự đổi: nếu điểm danh vừa lưu làm số khác đi thì nói thật để gia sư xử lý tay (KiN không tự sửa phiếu).
+  const warning = charges && charges.lockedDiffers > 0
+    ? `${charges.lockedDiffers} dòng học phí của buổi này đã nằm trong phiếu nên KiN không đổi theo điểm danh vừa lưu. Nếu cần, chỉnh trên phiếu.`
+    : null;
+  return NextResponse.json({ ok: true, count: items.length, charges, packages, warning });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -203,6 +238,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   // Xoá buổi thì trả lại các buổi bù đã gắn vào buổi này.
   await prisma.makeupCredit.updateMany({ where: { usedSessionId: id }, data: { status: "active", usedAt: null, usedSessionId: null } });
+  await prisma.$transaction(tx => reversePackageUsesForSession(tx, id)); // HP-31: trả buổi đã trừ của gói (giữ lịch sử)
+  await removeUninvoicedChargesForSession(prisma, id); // HP-14: dòng phí CHƯA vào phiếu của buổi này bỏ theo; dòng đã vào phiếu giữ nguyên
   await asSessions().delete({ where: { id } });
   await logAction(auth.userId, "attendance_session.delete", "AttendanceSession", id, {
     courseId: session.courseId, date: session.date.toISOString(),

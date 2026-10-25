@@ -33,7 +33,8 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   check("5 nút: Chính, Thường, Ghost, Nguy hiểm, Nguy hiểm (đặc)", await nut.count() === 5);
   const heights = await nut.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
   check("mọi nút cao ≥ 44px", heights.every(h => h >= 44), heights);
-  check("chữ 13,3px, bo 9px", (await css(nut.first(), "fontSize")) === "13.3px" && (await css(nut.first(), "borderTopLeftRadius")) === "9px");
+  const coGoc = await pg.evaluate(() => { const el = document.createElement("span"); el.style.fontSize = "var(--kin-co-goc)"; document.body.appendChild(el); const f = getComputedStyle(el).fontSize; el.remove(); return f; });
+  check("chữ = cỡ gốc --kin-co-goc (14px), bo 9px", coGoc === "14px" && (await css(nut.first(), "fontSize")) === coGoc && (await css(nut.first(), "borderTopLeftRadius")) === "9px");
   const [pri, sec, gho, dan, sol] = [0, 1, 2, 3, 4].map(i => nut.nth(i));
   const navy = await tok("--kin-nhan-nen"), oNhap = await tok("--kin-vien-o-nhap"), chinh = await tok("--kin-chu-chinh"), loi = await tok("--kin-tt-chu-loi"), mo = await tok("--kin-chu-mo");
   check("Chính: nền màu nhấn (Navy), chữ trắng", same(await css(pri, "backgroundColor"), navy) && same(await css(pri, "color"), "rgb(255,255,255)"), await css(pri, "backgroundColor"));
@@ -79,7 +80,8 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   section("Thẻ trạng thái (Figma 8:139): chấm 7px + chữ, hai bộ màu");
   const tt = pg.locator('[data-mau="tt"] [data-kin-status]');
   check("4 thẻ: xong / cho / loi / mo, mỗi thẻ có chữ", await tt.count() === 4 && (await tt.allInnerTexts()).join("|") === "Đã chấm|Cần nhắc|Cần xử lý|Chờ 1 ngày", (await tt.allInnerTexts()).join("|"));
-  check("cao 16px, chữ 13,3px", (await tt.evaluateAll(els => els.every(e => Math.round(e.getBoundingClientRect().height) === 16 && getComputedStyle(e).fontSize === "13.3px"))));
+  // 23/10/2026 (ac8b8e8): thẻ trạng thái theo chữ gốc 14px (--kin-co-goc, khớp chữ dòng phụ cạnh nó trong ảnh Figma gia sư), cao 20px (dòng 20). Đọc cỡ chữ từ token, không gán cứng.
+  check("cao 20px, chữ = --kin-co-goc (14px)", (await tt.evaluateAll((els, goc) => els.every(e => Math.round(e.getBoundingClientRect().height) === 20 && getComputedStyle(e).fontSize === goc), coGoc)));
   const dots = await tt.evaluateAll(els => els.map(e => { const d = e.firstElementChild as HTMLElement; const r = d.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), bg: getComputedStyle(d).backgroundColor, hidden: d.getAttribute("aria-hidden"), text: getComputedStyle(e).color }; }));
   check("chấm 7×7, aria-hidden (chấm chỉ để trang trí)", dots.every(d => d.w === 7 && d.h === 7 && d.hidden === "true"), dots);
   const want = [["rgb(5, 150, 105)", "rgb(4, 120, 87)"], ["rgb(217, 119, 6)", "rgb(180, 83, 9)"], ["rgb(220, 38, 38)", "rgb(220, 38, 38)"], ["rgb(118, 127, 142)", "rgb(107, 114, 128)"]];
@@ -97,7 +99,7 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   const t0 = await tabLook(0), t1 = await tabLook(1);
   // 15/10/2026 (Lucian No.039): gạch chân 2px màu nhấn là MỘT thanh chung trượt giữa các tab (.kin-tab-ink), không còn là gạch riêng của từng tab.
   const ink = await tabs.nth(0).evaluate(e => { const i = e.parentElement!.querySelector<HTMLElement>(".kin-tab-ink")!; const r = i.getBoundingClientRect(), t = e.getBoundingClientRect(); return { h: Math.round(r.height), bg: getComputedStyle(i).backgroundColor, dx: Math.abs(r.left - t.left), dw: Math.abs(r.width - t.width), dy: Math.abs(r.bottom - t.bottom) }; });
-  check("đang mở: chữ đậm 600, đen, cỡ 13.3px; gạch chân 2px màu nhấn là thanh chung nằm đúng dưới tab đó", t0.w === "600" && same(t0.c, chinh) && t0.fs === "13.3px" && ink.h === 2 && same(ink.bg, navy) && ink.dx < 1.5 && ink.dw < 1.5 && ink.dy < 3, { t0, ink });
+  check("đang mở: chữ đậm vừa 500 (chuẩn mới), đen, cỡ = --kin-co-goc (14px); gạch chân 2px màu nhấn là thanh chung nằm đúng dưới tab đó", t0.w === "500" && same(t0.c, chinh) && t0.fs === coGoc && ink.h === 2 && same(ink.bg, navy) && ink.dx < 1.5 && ink.dw < 1.5 && ink.dy < 3, { t0, ink });
   check("thường: chữ 400 xám, không có gạch chân riêng (trong suốt)", t1.w === "400" && same(t1.c, mo) && t1.ub.includes("0, 0, 0, 0") && t0.ub.includes("0, 0, 0, 0"), t1);
   await tabs.nth(0).focus();
   await pg.keyboard.press("ArrowRight");

@@ -1,5 +1,6 @@
 // TT-199 giai đoạn 1 — phiếu học phí riêng, mở bằng link gia sư gửi qua Zalo, không cần tài khoản.
 // Link hết hạn sau 30 ngày (Thọ chốt 12/10). Thẻ xem trước của link (Open Graph) CHỈ có chữ chung — không tên con, không số tiền.
+import { KinPanel } from "@/components/kin/Panel";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -50,12 +51,14 @@ export default async function PhieuPage({ params }: { params: Promise<{ token: s
   const view = presentInvoiceForParty(inv, { tutorName: inv.tutor.name, studentName: inv.student.name, account: inv.tutor.payoutAccount });
   return (
     <div style={{ background: "var(--kin-nen-trang)" }}>
-      <div className="max-w-xl mx-auto px-4 py-6">
+      <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <header className="mb-5">
           <p className="text-caption" style={{ color: "var(--kin-chu-phu)" }}>Kính gửi anh/chị,</p>
           <h1 className="mt-1 text-h3 font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Phiếu học phí của con: {inv.student.name}</h1>
         </header>
-        <InvoiceCard invoice={view} reportUrl={`/api/phieu/${token}/reported`} />
+        <KinPanel>
+          <InvoiceCard plain invoice={view} reportUrl={`/api/phieu/${token}/reported`} />
+        </KinPanel>
         <ViewedBeacon url={`/api/phieu/${token}/viewed`} />
       </div>
     </div>

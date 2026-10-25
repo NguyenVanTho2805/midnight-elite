@@ -14,7 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 // Figma 27:2) nên cũng không có lề; các trang còn lại giữ lề như trước.
 function Content({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const flush = pathname.startsWith("/student/viec-cua-toi") || isExamRoom(pathname);
+  // Bốn màn dựng theo Figma (Việc của tôi, Lịch học, Lớp của tôi, Bài tập) tự đặt lề trang.
+  const flush = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap", "/student/bai-tap"].some(p => pathname.startsWith(p)) || isExamRoom(pathname);
   return (
     <main className={flush ? "" : "px-4 md:px-8 py-6 max-w-screen-2xl mx-auto"}>
       <Suspense fallback={

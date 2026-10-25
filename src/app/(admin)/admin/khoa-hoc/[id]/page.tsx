@@ -1,5 +1,6 @@
 "use client";
 
+import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
@@ -13,6 +14,11 @@ import { DAY_LABELS_VI } from "@/lib/types";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
+import { checkLinkForSlot, type MediaSlot } from "@/lib/mediaLink";
+import { AiQuotaNote } from "@/components/AiQuotaNote";
+import { validateDocumentFile, DOCUMENT_ACCEPT, DOCUMENT_MAX_MB, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -102,6 +108,15 @@ function serializeUrls(urls: string[]): string | null {
   return JSON.stringify(filtered);
 }
 
+/** Câu lỗi đầu tiên nếu có link sai ô (máy chủ cũng kiểm lại lúc lưu: đây chỉ để báo sớm, trước khi tải tài liệu lên). */
+function firstBadLink(ls: LsForm): string | null {
+  const slots: [string[], MediaSlot, string][] = [[ls.videoUrls, "video", "Video bài giảng"], [ls.zoomUrls, "live", "Phòng Zoom"], [ls.azotaUrls, "azota", "Bài Azota"]];
+  for (const [urls, slot, name] of slots) {
+    for (const u of urls) { if (!u.trim()) continue; const r = checkLinkForSlot(u, slot); if (!r.ok) return `${name}: ${r.error}`; }
+  }
+  return null;
+}
+
 function parseTypes(raw: string | null | undefined): LessonDB["type"][] {
   if (!raw) return ["document"];
   try {
@@ -122,36 +137,6 @@ function deriveTypes(vUrls: string[], zUrls: string[], aUrls: string[]): LessonD
 function serializeTypes(types: LessonDB["type"][]): string {
   if (types.length === 1) return types[0];
   return JSON.stringify(types);
-}
-
-function UrlListEditor({ label, placeholder, urls, onChange }: {
-  label: string; placeholder: string; urls: string[]; onChange: (urls: string[]) => void;
-}) {
-  function update(idx: number, val: string) { const n = [...urls]; n[idx] = val; onChange(n); }
-  function add() { onChange([...urls, ""]); }
-  function remove(idx: number) { const n = urls.filter((_, i) => i !== idx); onChange(n.length ? n : [""]); }
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1.5">{label}</label>
-      <div className="space-y-2">
-        {urls.map((url, idx) => (
-          <div key={idx} className="flex gap-2">
-            <input
-              className="flex-1 px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-              value={url}
-              onChange={e => update(idx, e.target.value)}
-              placeholder={placeholder}
-            />
-            {urls.length > 1 && (
-              <button type="button" onClick={() => remove(idx)}
-                className="px-2.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-sm flex-shrink-0">✕</button>
-            )}
-          </div>
-        ))}
-      </div>
-      <button type="button" onClick={add} className="mt-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700">+ Thêm link</button>
-    </div>
-  );
 }
 
 // Nhãn "quiz" cố tình KHÔNG ghi "Bài Tập" — dễ hiểu nhầm là tính năng "Bài tập
@@ -585,17 +570,33 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
 
   function save(list: DocItem[]) { onChange(JSON.stringify(list)); }
 
+  const [problem, setProblem] = useState<string | null>(null);
+
   function add() {
     if (!newName.trim() || !newUrl.trim()) return;
-    const type = detectType(newUrl.trim(), newName.trim());
-    save([...docs, { name: newName.trim(), url: newUrl.trim(), type }]);
+    if (docs.length + pending.length >= MAX_DOCUMENTS_PER_LESSON) { setProblem(`Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.`); return; }
+    const chk = checkLinkForSlot(newUrl, "document");
+    if (!chk.ok) { setProblem(chk.error); return; }
+    setProblem(null);
+    const url = chk.info?.url ?? newUrl.trim();
+    save([...docs, { name: newName.trim(), url, type: detectType(url, newName.trim()) }]);
     setNewName(""); setNewUrl("");
   }
 
   function addPendingFile(file: File) {
+    // Báo TRƯỚC khi tải: sai loại hoặc quá nặng thì chặn ngay, kèm lý do, không đợi tới lúc bấm Lưu.
+    const chk = validateDocumentFile({ name: file.name, size: file.size, type: file.type });
+    if (!chk.ok) { setProblem(chk.error); return; }
+    if (docs.length + pending.length >= MAX_DOCUMENTS_PER_LESSON) { setProblem(`Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.`); return; }
+    setProblem(null);
     const name = newName.trim() || file.name.replace(/\.[^.]+$/, "");
     onPendingChange([...pending, { name, file }]);
     setNewName("");
+  }
+  function move(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= docs.length) return;
+    const n = [...docs]; [n[i], n[j]] = [n[j], n[i]]; save(n);
   }
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -622,10 +623,12 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
                 <p className="text-xs font-semibold text-gray-800 truncate">{d.name}</p>
                 <p className="text-xs text-gray-400 truncate">{d.url}</p>
               </div>
-              <a href={d.url} target="_blank" rel="noopener noreferrer"
-                className="text-xs px-2 py-1 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">↗</a>
-              <button onClick={() => remove(i)}
-                className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Đưa "${d.name}" lên trên`}
+                className="text-xs px-2 rounded flex-shrink-0 disabled:opacity-30" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-chu-mo)" }}>▲</button>
+              <button type="button" onClick={() => move(i, 1)} disabled={i === docs.length - 1} aria-label={`Đưa "${d.name}" xuống dưới`}
+                className="text-xs px-2 rounded flex-shrink-0 disabled:opacity-30" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-chu-mo)" }}>▼</button>
+              <button type="button" onClick={() => remove(i)} aria-label={`Bỏ "${d.name}"`}
+                className="text-xs px-2 rounded flex-shrink-0" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-tt-chu-loi)" }}>✕</button>
             </div>
           ))}
           {pending.map((p, i) => (
@@ -664,7 +667,7 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
         </div>
 
         <input ref={fileRef} type="file"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+          accept={DOCUMENT_ACCEPT}
           className="hidden" onChange={handleFileSelect} />
 
         {cloudinaryConfigured ? (
@@ -682,6 +685,12 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
         )}
       </div>
 
+      <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
+        Nhận PDF, Word, Excel, PowerPoint, TXT, ảnh · mỗi tệp tối đa {DOCUMENT_MAX_MB} MB · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài. Học sinh xem thử được rồi mới tải về.
+      </p>
+      {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
+      <p data-copyright-notice className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
+      {problem && <p role="alert" className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && pending.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}
@@ -976,6 +985,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
               {aiLoading ? "Đang trích xuất bằng AI..." : "🤖 Tải file đề bài để AI trích câu hỏi (PDF/ảnh/Word)"}
             </button>
           </DropZone>
+          <AiQuotaNote busy={aiLoading} />
           {aiErr && <p className="text-xs" style={{ color: "var(--kin-tt-chu-loi)" }}>{aiErr}</p>}
           {skippedCount > 0 && (
             <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>
@@ -1598,6 +1608,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
 
       } else if (panel.type === "add-lesson") {
         if (!ls.title.trim()) return;
+        { const bad = firstBadLink(ls); if (bad) { alert(bad); return; } }
         const documents = await resolvePendingDocuments();
         const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, {
           title: ls.title.trim(), type: serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)),
@@ -1612,6 +1623,7 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
         flash(`Đã thêm bài "${lesson.title}"`);
 
       } else if (panel.type === "edit-lesson") {
+        { const bad = firstBadLink(ls); if (bad) { alert(bad); return; } }
         const vUrl = serializeUrls(ls.videoUrls);
         const zUrl = serializeUrls(ls.zoomUrls);
         const aUrl = serializeUrls(ls.azotaUrls);
@@ -1689,6 +1701,18 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
     void l;
   }
 
+  // Gia sư dán nhầm ô: lấy link khỏi ô hiện tại, đưa sang ô đúng (cùng một thao tác, không gõ lại).
+  function moveLink(from: MediaSlot, index: number, to: MediaSlot) {
+    const keyOf = (sl: MediaSlot) => (sl === "video" ? "videoUrls" : sl === "live" ? "zoomUrls" : sl === "azota" ? "azotaUrls" : null);
+    const fk = keyOf(from), tk = keyOf(to);
+    if (!fk || !tk) { flash("Link tài liệu hãy thêm ở mục Tài liệu đính kèm bên dưới."); return; }
+    setLs(f => {
+      const src = [...f[fk]]; const [link] = src.splice(index, 1);
+      const dst = [...f[tk].filter(u => u.trim()), link];
+      return { ...f, [fk]: src.length ? src : [""], [tk]: dst };
+    });
+  }
+
   const panelIsOpen = panel.type !== "none";
   const isTitlePanel = panel.type.includes("section") || panel.type.includes("chapter");
   const isLsPanel    = panel.type.includes("lesson");
@@ -1733,23 +1757,30 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Video & Links</p>
               <div className="space-y-4">
-                <UrlListEditor
-                  label="YouTube URL (cho bài Video)"
+                <SlotLinkEditor
+                  label="Link video bài giảng (YouTube, Vimeo, Google Drive)"
+                  slot="video"
                   placeholder="https://youtube.com/watch?v=..."
                   urls={ls.videoUrls}
                   onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
+                  onMove={moveLink}
+                  extra={<VideoUploadBox courseId={courseSlug} onUploaded={link => setLs(f => ({ ...f, videoUrls: [...f.videoUrls.filter(u => u.trim()), link] }))} />}
                 />
-                <UrlListEditor
-                  label="Zoom URL (cho bài Live)"
+                <SlotLinkEditor
+                  label="Link phòng Zoom (cho bài trực tiếp)"
+                  slot="live"
                   placeholder="https://zoom.us/j/..."
                   urls={ls.zoomUrls}
                   onChange={urls => setLs(f => ({ ...f, zoomUrls: urls }))}
+                  onMove={moveLink}
                 />
-                <UrlListEditor
-                  label="Azota URL (bài tập ngoài Azota, không bắt buộc)"
+                <SlotLinkEditor
+                  label="Link bài Azota (không bắt buộc)"
+                  slot="azota"
                   placeholder="https://azota.vn/..."
                   urls={ls.azotaUrls}
                   onChange={urls => setLs(f => ({ ...f, azotaUrls: urls }))}
+                  onMove={moveLink}
                 />
                 <div className="flex items-center gap-2 flex-wrap pt-1">
                   <span className="text-xs text-gray-400">Loại bài:</span>
@@ -1774,6 +1805,9 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
               pending={ls.pendingDocuments}
               onPendingChange={p => setLs(f => ({ ...f, pendingDocuments: p }))}
             />
+            {panel.type === "edit-lesson" && ls.azotaUrls.some(u => u.trim()) && (
+              <AzotaStatusTable lessonId={panel.lessonId} />
+            )}
             {panel.type === "edit-lesson" && (
               <AssignmentEditor lessonId={panel.lessonId} />
             )}
@@ -2114,7 +2148,54 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
 
 // ─── TAB: LỊCH HỌC ─────────────────────────────────────────────────────────────
 const DAY_LABELS = DAY_LABELS_VI;
-const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "" };
+const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "", mode: "", location: "" };
+
+// LI-02 / LI-17: màu lớp trên Lịch (bảng 25 màu token) và link học online chung của lớp (ưu tiên thấp nhất: riêng buổi > khung giờ > chung lớp).
+function LopLichCaiDat({ courseSlug }: { courseSlug: string }) {
+  const [color, setColor] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/courses/${courseSlug}/calendar`, { credentials: "same-origin" }).then(r => r.ok ? r.json() : null).then(d => {
+      if (!alive) return;
+      if (d) { setColor(d.calendarColor ?? null); setUrl(d.classJoinUrl ?? ""); }
+      setLoaded(true);
+    }).catch(() => { if (alive) setLoaded(true); });
+    return () => { alive = false; };
+  }, [courseSlug]);
+  async function save() {
+    setSaving(true); setMsg(null);
+    const r = await fetch(`/api/courses/${courseSlug}/calendar`, { method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ calendarColor: color, classJoinUrl: url.trim() || null }) });
+    const d = await r.json().catch(() => ({}));
+    setSaving(false);
+    setMsg(r.ok ? { ok: true, text: "Đã lưu màu và link chung của lớp." } : { ok: false, text: d.error ?? "Chưa lưu được." });
+  }
+  return (
+    <div className="mb-6 p-4 rounded-xl border border-gray-200 space-y-3" data-lop-lich-cai-dat>
+      <p className="text-sm font-bold text-gray-800">Màu lớp và link học online chung</p>
+      <div role="radiogroup" aria-label="Màu lớp trên Lịch" className="flex flex-wrap gap-2">
+        {Array.from({ length: 25 }, (_, i) => `lop-${String(i + 1).padStart(2, "0")}`).map((k, i) => (
+          <button key={k} type="button" role="radio" aria-checked={color === k} aria-label={`Màu ${i + 1}`} onClick={() => setColor(color === k ? null : k)}
+            className="w-11 h-11 rounded-full" style={{ background: `var(--kin-${k})`, outline: color === k ? "3px solid var(--kin-chu-chinh)" : "none", outlineOffset: 2 }} />
+        ))}
+      </div>
+      <p className="text-xs text-gray-400">{color ? `Đã chọn màu ${Number(color.slice(4))}. Bấm lại để bỏ chọn (về màu tự động).` : "Chưa chọn: Lịch dùng màu tự động theo lớp."}</p>
+      <div>
+        <label htmlFor="lop-link-chung" className="block text-xs font-medium text-gray-500 mb-1">Link học online chung của lớp (tuỳ chọn)</label>
+        <input id="lop-link-chung" type="url" placeholder="https://meet.google.com/..." value={url} onChange={e => setUrl(e.target.value)} disabled={!loaded}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
+        <p className="text-xs text-gray-400 mt-1">Dùng khi buổi không có link riêng và khung giờ không có link. Thứ tự: riêng buổi, rồi khung giờ, rồi chung của lớp.</p>
+      </div>
+      {msg && <p role="status" className={`text-xs ${msg.ok ? "text-gray-600" : "text-red-500"}`}>{msg.text}</p>}
+      <button onClick={() => void save()} disabled={saving || !loaded} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
+        {saving ? "Đang lưu..." : "Lưu màu và link"}
+      </button>
+    </div>
+  );
+}
 
 function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
@@ -2124,6 +2205,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   const [form, setForm]           = useState(SCHEDULE_FORM_INIT);
   const [saving, setSaving]       = useState(false);
   const [err, setErr]             = useState("");
+  const [clash, setClash]         = useState<string[] | null>(null); // LI-10: xung đột lịch khi lưu khung giờ
 
   const load = useCallback(() => {
     setLoading(true);
@@ -2136,8 +2218,16 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
     setErr("");
     setSaving(true);
     try {
-      await api.classSchedules.create(courseSlug, form);
+      // LI-10: xin máy chủ kiểm xung đột trước khi lưu; có xung đột thì hiện danh sách và cho chọn "Vẫn lưu" (gửi lại với force).
+      const res = await fetch(`/api/courses/${courseSlug}/class-schedules`, {
+        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...form, mode: form.mode || null, location: form.mode === "offline" ? form.location : null, checkConflicts: true, force: clash !== null }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.status === 409 && d.needsConfirm) { setClash((d.conflicts as { text: string }[]).map(c => c.text)); return; }
+      if (!res.ok) throw new Error(d.error ?? "Thêm khung giờ thất bại");
       setForm(SCHEDULE_FORM_INIT);
+      setClash(null);
       setAdding(false);
       load();
     } catch (e) {
@@ -2171,6 +2261,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
   return (
     <div>
       {dialog}
+      <LopLichCaiDat courseSlug={courseSlug} />
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <p className="text-sm font-bold text-gray-800">Khung giờ học cố định hàng tuần</p>
@@ -2190,19 +2281,19 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Thứ</label>
-              <select value={form.dayOfWeek} onChange={e => setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) }))}
+              <select value={form.dayOfWeek} onChange={e => { setClash(null); setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) })); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
                 {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Giờ bắt đầu</label>
-              <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
+              <input type="time" value={form.startTime} onChange={e => { setClash(null); setForm(f => ({ ...f, startTime: e.target.value })); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Giờ kết thúc</label>
-              <input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
+              <input type="time" value={form.endTime} onChange={e => { setClash(null); setForm(f => ({ ...f, endTime: e.target.value })); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
             </div>
           </div>
@@ -2211,17 +2302,38 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
             <input type="text" placeholder="VD: Học live qua Zoom" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="lich-mode" className="block text-xs font-medium text-gray-500 mb-1">Hình thức (tuỳ chọn)</label>
+              <select id="lich-mode" value={form.mode} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
+                <option value="">Chưa chọn</option><option value="online">Online</option><option value="offline">Offline</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="lich-loc" className="block text-xs font-medium text-gray-500 mb-1">Địa chỉ học offline</label>
+              <input id="lich-loc" type="text" disabled={form.mode !== "offline"} placeholder={form.mode === "offline" ? "Số nhà, đường, quận" : "Chỉ dùng khi học offline"} value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none disabled:opacity-60" />
+            </div>
+          </div>
           <div>
             <label htmlFor="lich-join-url" className="block text-xs font-medium text-gray-500 mb-1">Link vào lớp (Meet/Zoom, tuỳ chọn)</label>
             <input id="lich-join-url" type="url" placeholder="https://meet.google.com/..." value={form.joinUrl} onChange={e => setForm(f => ({ ...f, joinUrl: e.target.value }))}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
             <p className="text-xs text-gray-400 mt-1">In vào tin nhắc lịch gửi phụ huynh và học sinh. Để trống thì tin bỏ dòng link.</p>
           </div>
+          {clash && clash.length > 0 && (
+            <div role="alert" data-conflicts className="p-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700 space-y-1">
+              <p className="font-semibold">Khung giờ này trùng lịch</p>
+              <ul className="list-disc pl-5">{clash.map((t, i) => <li key={i}>{t}</li>)}</ul>
+              <p>Đổi thứ/giờ cho khỏi trùng, hoặc vẫn lưu nếu bạn chắc chắn.</p>
+            </div>
+          )}
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
-            <button onClick={() => { setAdding(false); setErr(""); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
+            <button onClick={() => { setAdding(false); setErr(""); setClash(null); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
             <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
-              {saving ? "Đang lưu..." : "Lưu khung giờ"}
+              {saving ? "Đang lưu..." : clash ? "Vẫn lưu khung giờ" : "Lưu khung giờ"}
             </button>
           </div>
         </div>
@@ -2241,6 +2353,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
                 {DAY_LABELS[s.dayOfWeek]}
               </span>
               <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
+              {s.mode && <span className="text-xs text-gray-500 flex-shrink-0">{s.mode === "offline" ? `Offline${s.location ? ` · ${s.location}` : ""}` : "Online"}</span>}
               {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
               {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "var(--kin-nhan-link)" }}>Link vào lớp</a>}
               {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
@@ -2278,6 +2391,18 @@ export default function KhoaHocDetailPage() {
   function setTab(tab: TabId) { router.push(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`); }
 
   const { user } = useAuth();
+  // NC2-029: vừa tạo lớp xong (gia sư được chuyển thẳng tới đây với ?moi=1) → báo thành công như danh sách khoá vẫn báo.
+  const { toast, showToast } = useAdminToast();
+  const justCreated = searchParams.get("moi") === "1";
+  // NC2-035: hiện đúng một lần rồi xoá ?moi=1 khỏi URL (router.replace, không thêm mục lịch sử) để F5 không báo lại.
+  useEffect(() => {
+    if (!justCreated) return;
+    showToast("Đã tạo khoá học mới");
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete("moi");
+    const qs = rest.toString();
+    router.replace(`/admin/khoa-hoc/${courseSlug}${qs ? `?${qs}` : ""}`);
+  }, [justCreated]); // eslint-disable-line react-hooks/exhaustive-deps
   const [course, setCourse] = useState<CourseDB | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]    = useState("");
@@ -2316,6 +2441,7 @@ export default function KhoaHocDetailPage() {
 
   return (
     <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
+      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}
@@ -2334,6 +2460,14 @@ export default function KhoaHocDetailPage() {
               ID: {course.adminId} · Slug: {course.id} · {course.category}
             </p>
           </div>
+          {/* NC2-029: gia sư (đã qua kiểm "notMine" ở trên nên chắc chắn là chủ lớp) mở thẳng trang lớp — tab Mã mời, học viên… */}
+          {user?.adminRole === "teacher" && (
+            <Link href={`/lop-cua-toi/${course.id}`}
+              className="ml-auto flex-shrink-0 inline-flex items-center min-h-[44px] px-4 rounded-lg text-sm font-semibold"
+              style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-chu-tren-nut-chinh)", boxShadow: "var(--kin-bong-the)" }}>
+              Mở lớp
+            </Link>
+          )}
         </div>
       </div>
 

@@ -15,6 +15,7 @@
 // Bearer CRON_SECRET (bắt buộc — thiếu env thì từ chối, xem lib/cronAuth.ts).
 
 import { NextRequest, NextResponse } from "next/server";
+import { recordCronRun } from "@/lib/adminOpsServer";
 import { prisma } from "@/lib/prisma";
 import { checkCronAuth } from "@/lib/cronAuth";
 import { logAction } from "@/lib/auditLog";
@@ -24,6 +25,7 @@ const BATCH_SIZE = 100;
 export async function GET(req: NextRequest) {
   const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
   if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
+  await recordCronRun("expire-tutor-subscriptions"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
 
   const now = new Date();
   const expired: { id: string; userId: string; planCode: string }[] = [];

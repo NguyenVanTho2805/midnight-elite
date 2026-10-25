@@ -1,4 +1,5 @@
 import { normalizeHint } from "@/lib/examCorrection";
+import { blockOldEditIfLocked } from "@/lib/quizServer";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
@@ -72,6 +73,9 @@ export async function POST(
     if (!ownsResource(auth, exam.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
     }
+    // QZ-07: đề đã có người làm (hoặc đã bị phiên bản mới thay) thì KHÔNG sửa đè — gia sư tạo phiên bản mới.
+    const locked = await blockOldEditIfLocked(examId);
+    if (locked) return locked;
 
     const maxOrder = await prisma.examQuestion.aggregate({
       where: { examId },

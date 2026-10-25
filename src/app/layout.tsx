@@ -9,6 +9,7 @@ import { GlobalDropGuard } from "@/components/GlobalDropGuard";
 import { ToastProvider } from "@/components/ui";
 import { ThemeApplier } from "@/components/ThemeApplier";
 import AccountThemeSync from "@/components/AccountThemeSync";
+import { THEME_INIT_SCRIPT } from "@/lib/kinTheme";
 import { RAIL_INIT_SCRIPT } from "@/lib/railState";
 import { SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { HOST_INIT_SCRIPT } from "@/lib/hostChrome";
@@ -51,6 +52,9 @@ export const metadata: Metadata = {
     description: "Chinh phục ĐGNL & Tốt nghiệp THPT cùng KiN",
     type: "website",
   },
+  // ĐX-02: iPhone chỉ nhận thông báo đẩy khi KiN đã được "Thêm vào Màn hình chính" (iOS 16.4+); hai dòng dưới cho biểu tượng và tên đúng khi thêm.
+  appleWebApp: { capable: true, title: "KiN", statusBarStyle: "default" },
+  icons: { apple: "/icons/kin-180.png" },
 };
 
 export default function RootLayout({
@@ -65,11 +69,16 @@ export default function RootLayout({
       // TK-165 (06/10/2026): mặc định chủ đề Navy. 5 chủ đề: navy / co-vit
       // / man / ca-phe / muc. Khi hệ chủ đề theo tài khoản (TK-167) có,
       // JSX này được thay bằng giá trị user đã chọn (set client-side,
-      // suppressHydrationWarning). Không đặt data-che-do → tự theo máy.
+      // suppressHydrationWarning). Mặc định data-che-do="sang" (Figma là nền sáng; 23/10/2026); ThemeApplier đổi theo lựa chọn đã lưu của người dùng, "Theo máy" = bỏ thuộc tính.
       data-chu-de="navy"
+      data-che-do="sang"
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
+          {/* Chủ đề + chế độ sáng/tối đã chọn áp từ khung hình đầu (src/lib/kinTheme.ts). Phải là <script> thường ngay đầu <body> (chạy đồng bộ khi đọc HTML, trước khi vẽ nội dung),
+              KHÔNG dùng next/script beforeInteractive (chỉ chạy qua mã khởi động bất đồng bộ của Next → khung hình đầu vẫn nháy nền sáng) (đặt ở đầu <body>
+              thay vì thẻ <head> thủ công: lần thử bằng <head> thì ui-student-shell đỏ vì lỗi React dev "Performance.measure … negative time stamp"). */}
+          <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
           {/* Thanh bên đã thu thì ẩn ngay từ khung hình đầu (xem src/lib/railState.ts); không có dòng này thanh sẽ hiện ra rồi mới thụt vào. */}
           <Script id="kin-rail-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: RAIL_INIT_SCRIPT }} />
           {/* Máy này lần trước đăng nhập → ẩn khung khách (thanh trên + chân trang) từ khung hình đầu, khỏi nháy ra "trang chủ" rồi mới vào vỏ (src/lib/signedInShell.ts). */}

@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { tuitionPreview } from "@/lib/invitePreview";
+import { taughtSessionWhere } from "@/lib/taughtSessions";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const session = await getSession();
@@ -49,7 +50,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
   // Chỉ đọc. Học phí chỉ có khi lớp có gia sư phụ trách (học phí tính theo gia sư); lớp của trung tâm thì để null.
   const [slots, taught, otherSubjects, override] = await Promise.all([
     prisma.classSchedule.findMany({ where: { courseId: course.id, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
-    prisma.attendanceSession.count({ where: { courseId: course.id, date: { lte: new Date() } } }),
+    // ĐX-00: "đã học" = buổi đã diễn ra (ngày ≤ hôm nay giờ VN, có ít nhất 1 em có mặt/muộn), không đếm phiên rỗng.
+    prisma.attendanceSession.count({ where: { courseId: course.id, ...taughtSessionWhere() } }),
     course.owner
       ? prisma.enrollment.count({ where: { userId: session.userId, status: "active", courseId: { not: course.id }, course: { ownerId: course.owner.id } } })
       : Promise.resolve(0),

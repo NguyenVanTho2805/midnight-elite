@@ -93,9 +93,11 @@ const D = 24 * 3_600_000;
 
   section("Gia sư: thư viện các lớp MÌNH dạy");
   const th = await page(tc);
-  check("phụ đề nói đây là các lớp bạn dạy; hiện lớp của mình, KHÔNG hiện lớp của gia sư khác", th.includes("Bản ghi và tài liệu của các lớp bạn dạy") && th.includes("Toán 9 công khai") && !th.includes("Lý 10 lớp khác"));
+  check("phụ đề nói đây là các lớp bạn dạy; hiện lớp của mình, KHÔNG hiện lớp của gia sư khác", th.includes("Bản ghi và tài liệu của các lớp bạn dạy") && th.includes("Tài liệu của cô, sắp xếp theo nhóm lớp") && th.includes("Toán 9 công khai") && !th.includes("Lý 10 lớp khác"));
   check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /admin/khoa-hoc/<lớp>?tab=chuong-bai (đúng tab chương bài, không phải Cài đặt)", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/admin/khoa-hoc/${A.id}?tab=chuong-bai`));
-  check("bài tập: 'N bài nộp · M chờ chấm' (không phải trạng thái của một học viên)", th.includes("2 bài nộp · 0 chờ chấm".replace("0 chờ chấm", "đã chấm hết")) || th.includes("bài nộp"), th.match(/\d+ bài nộp[^<]*/g));
+  // 23/10/2026 (Figma 299:113561): Thư viện của gia sư là BẢNG tài liệu; bài tập và số bài nộp/chờ chấm đã chuyển sang module Bài tập (/lop-cua-toi/bai-tap).
+  check("bảng tài liệu: cột 'Đã chia sẻ' (tên lớp), loại PDF, lối 'Xem' mở trang xem trước", th.includes("Đã chia sẻ") && th.includes("PDF") && th.includes("/xem-tai-lieu?url="));
+  check("bài tập không còn nằm trong Thư viện của gia sư (đã sang Bài tập)", !th.includes("Phiếu bài tập Vi-ét") && !th.includes("bài nộp"));
   check("gia sư không thấy 'Đã xem' (không có tiến độ cá nhân)", !th.includes("Đã xem"));
   check("gia sư KHÔNG có lối 'Học tiếp trong lớp' (đó là của học viên)", !th.includes("Học tiếp trong lớp") && !th.includes("/student/hoc-tap"));
   const t2h = await page(t2c);

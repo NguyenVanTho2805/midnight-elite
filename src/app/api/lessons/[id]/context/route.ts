@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -41,12 +42,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const course   = lesson.chapter.section.course;
   const courseId = course.id;
 
-  let fullAccess = session.role === "admin";
+  const viewer = { userId: session.userId, role: session.role, adminRole: session.adminRole };
+  // MD-03: gia sư chỉ là "quản lý" với lớp của chính mình; lớp người khác đối xử như người ngoài (chỉ bài miễn phí).
+  let fullAccess = isCourseManager(viewer, course.ownerId);
+  let enrolled: { status: string } | null = null;
 
   if (!fullAccess) {
-    const enrolled = await prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId: session.userId, courseId } },
-    });
+    enrolled = session.role === "student"
+      ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } } })
+      : null;
     // "suspended" được xem lại nội dung đã mở (R01) nhưng không mark done/nộp
     // bài mới — route này chỉ trả metadata để render trang, nên cho đọc.
     // "pending_consent" chưa được học — rơi xuống nhánh isFree.
@@ -63,16 +67,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // - enrolled/admin → all unlocked (regardless of DB value)
   // - not enrolled   → locked iff not free (regardless of DB value)
   // This prevents admins forgetting to set isLocked=true from leaking paid content.
+  // MD-03: ngoài isLocked, mọi bài trong cây mà người xem chưa được mở thì bị bỏ link (trước đây người xem MỘT bài miễn phí nhận
+  // luôn videoUrl/documents/azotaUrl của cả khoá). "suspended" vẫn được xem lại bài đã mở theo quy tắc R01 nên coi như có quyền ở đây.
+  const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: fullAccess ? { status: "active" } : enrolled };
   course.sections = course.sections.map(s => ({
     ...s,
     chapters: s.chapters.map(c => ({
       ...c,
       lessons: c.lessons.map(l => ({
-        ...l,
+        ...lessonFor(ctx, l),
         isLocked: fullAccess ? false : !l.isFree,
       })),
     })),
   }));
 
-  return NextResponse.json({ lesson, course, enrolled: fullAccess });
+  return NextResponse.json({ lesson: lessonFor(ctx, lesson), course, enrolled: fullAccess });
 }

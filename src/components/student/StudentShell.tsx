@@ -1,5 +1,5 @@
 // Vỏ của học sinh (Figma "Vỏ — Học sinh" 11:98): thanh module bên trái (điện thoại: thanh dưới) với 4 module đúng Figma
-// — Việc của tôi, Lịch, Lớp, Thư viện — cộng "Khác" cho các trang còn lại (thi thử, xếp hạng, cộng đồng, học phí, hồ sơ…) để không
+// — (23/10/2026, Figma 299:114360 + 299:116497) Việc của tôi, Lịch học, Lớp của tôi, Bài tập — cộng "Khác" (Thư viện chuyển vào "Khác" vì Figma không có trên thanh) cho các trang còn lại (thi thử, xếp hạng, cộng đồng, học phí, hồ sơ…) để không
 // trang nào mất lối vào khi bỏ thanh trên cũ. Phòng thi (/student/thi-thu/<mã đề>) KHÔNG có vỏ: toàn màn hình, khoá cứng.
 "use client";
 import Link from "next/link";
@@ -11,12 +11,14 @@ import NotificationBell from "@/components/NotificationBell";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Học tập", links: [
+    { label: "Thư viện", href: "/thu-vien" },
     { label: "Thi thử", href: "/student/thi-thu" },
     { label: "Bảng xếp hạng", href: "/student/bang-xep-hang" },
     { label: "Hỏi đáp", href: "/student/hoi-dap" },
@@ -67,27 +69,30 @@ export default function StudentShell({ children }: { children: ReactNode }) {
   const moreActive = moreOpen || MORE_HREFS.some(h => isUnder(pathname, h));
   const modules: ModuleItem[] = [
     { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", icon: "viec", badge },
-    { key: "lich", label: "Lịch", href: "/student/lich-hoc", icon: "lich" },
-    { key: "lop", label: "Lớp", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/lop-cua-toi"], icon: "lop" },
-    { key: "thu-vien", label: "Thư viện", href: "/thu-vien", icon: "thu-vien" },
-    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen },
+    { key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" },
+    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/lop-cua-toi"], icon: "lop" },
+    { key: "bai-tap", label: "Bài tập", href: "/student/bai-tap", also: ["/student/thi-thu"], icon: "bai-kt" },
+    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 
   return (
-    <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: "48px" }}>
-      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} onCollapse={closeMore} />
+    <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} onCollapse={closeMore}
+        home={{ href: "/student/viec-cua-toi", label: "KiN — Việc của tôi" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
         <VerifyEmailBanner />
-        <div className="h-12 flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
+        <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={badge} />
-            <Link href="/student/viec-cua-toi" aria-label="KiN — Việc của tôi" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <Link href="/student/viec-cua-toi" aria-label="KiN — Việc của tôi" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <p data-top-title className="hidden md:block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Không gian học tập</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-3">
+            <TopDate />
             <CoinBalance />
             <NotificationBell />
-            {user && <AccountMenu name={user.name} email={user.email} initial={user.avatar} onLogout={() => void logout()}
+            {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()} onOpenMore={() => setMoreOpen(true)}
               links={[{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
           </div>
         </div>

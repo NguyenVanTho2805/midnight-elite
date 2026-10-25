@@ -90,7 +90,7 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
   check("/dang-nhap đọc ?redirect= (mọi nơi chuyển về đăng nhập dùng redirect=, không còn next=)", has("src/app/(guest)/dang-nhap/page.tsx", /searchParams\.get\("redirect"\)/) && files.every(f => !/dang-nhap\?next=/.test(read(f)) || f.startsWith("tools")));
   check("/lop-cua-toi/hoc-phi đọc ?tab= (đối soát)", has("src/app/lop-cua-toi/(tutor)/hoc-phi/page.tsx", /tab\?: string/));
   check("/admin/khoa-hoc/[id] đọc ?tab= (lich-hoc)", has("src/app/(admin)/admin/khoa-hoc/[id]/page.tsx", /searchParams\.get\("tab"\)/));
-  check("/student/hoc-tap đọc ?course=", has("src/app/(student)/student/hoc-tap/page.tsx", /searchParams\.get\("course"\)/));
+  check("/student/hoc-tap đọc ?course= (bố cục chuyển sang components/student/LopCuaToi, NC2 học sinh Figma 299:114766)", has("src/components/student/LopCuaToi.tsx", /searchParams\.get\("course"\)/));
   check("/cong-dong đọc ?tab= (hoi-dap-qa)", has("src/app/(guest)/cong-dong/page.tsx", /searchParams\.get\("tab"\)/));
   check("Cài đặt gia sư có mốc #module cho liên kết 'Thêm module'", has("src/app/lop-cua-toi/(tutor)/cai-dat/CaiDatClient.tsx", /id="module"/));
   done();

@@ -87,7 +87,8 @@ const luminanceOf = (rgb: string) => { const m = rgb.match(/\d+(\.\d+)?/g)?.map(
   const p = await ctx.newPage(); watch(p);
   await p.goto(`${BASE}/cai-dat/chu-de`, { waitUntil: "networkidle", timeout: 120000 });
   await p.getByRole("heading", { name: "Chủ đề giao diện" }).waitFor({ timeout: 90000 });
-  check("mặc định: Navy + Theo máy đang được chọn", (await p.getByRole("button", { name: /Navy/ }).getAttribute("aria-pressed")) === "true" && (await p.getByRole("button", { name: "Theo máy" }).getAttribute("aria-pressed")) === "true");
+  // 23/10/2026 (đợt dựng nền): Figma là nền sáng, nên mặc định là Sáng (không còn "Theo máy"); "Theo máy" vẫn chọn được ở dưới.
+  check("mặc định: Navy + Sáng đang được chọn", (await p.getByRole("button", { name: /Navy/ }).getAttribute("aria-pressed")) === "true" && (await p.getByRole("button", { name: "Sáng", exact: true }).getAttribute("aria-pressed")) === "true" && (await p.getByRole("button", { name: "Theo máy" }).getAttribute("aria-pressed")) === "false");
   check("có đủ 5 thẻ chủ đề và 3 nút chế độ", (await p.locator("[data-chu-de-xem]").count()) === 5 && (await p.getByRole("button", { name: /^(Theo máy|Sáng|Tối)$/ }).count()) === 3);
 
   const swatch = async (t: string) => p.evaluate(`getComputedStyle(document.querySelector('[data-chu-de-xem="${t}"] > div')).backgroundColor`) as Promise<string>;
@@ -212,6 +213,57 @@ const luminanceOf = (rgb: string) => { const m = rgb.match(/\d+(\.\d+)?/g)?.map(
   }
   check("9 trang quản trị (Cà phê · Tối) sạch: không chữ khó đọc, không mảng nền trắng", badA.length === 0, badA);
   await ca.close();
+
+  section("Sáng / Tối / Theo máy đúng ở MỌI vai + không nháy nền sáng khi đã chọn Tối (23/10/2026)");
+  // Vai × trang: học viên /student/hoc-tap, gia sư /lop-cua-toi, quản trị /admin. Mỗi vai thử 4 tổ hợp lựa chọn đã lưu × cài đặt máy.
+  // Dùng tài khoản MỚI: S/T/A ở trên đã lưu chủ đề lên tài khoản (mục trước), AccountThemeSync sẽ kéo về và đè lựa chọn của máy.
+  const S2 = await mkUser({ name: "Học viên thử chế độ" }), T2 = await mkTutor("Cô Thử Chế Độ"), A2 = await mkSuper("Quản trị thử chế độ");
+  const roles: [string, any, string, string][] = [
+    ["học viên", S2, "/student/hoc-tap", BASE],
+    ["gia sư", T2, "/lop-cua-toi", BASE],
+    ["quản trị", A2, "/admin", ADMIN],
+  ];
+  const cases: [string, string, "dark" | "light", "dark" | "light"][] = [
+    // [mode lưu, nhãn, máy, nền mong đợi]
+    ["sang", "Sáng", "dark", "light"],
+    ["toi", "Tối", "light", "dark"],
+    ["auto", "Theo máy (máy tối)", "dark", "dark"],
+    ["auto", "Theo máy (máy sáng)", "light", "light"],
+  ];
+  for (const [role, who, path, base] of roles) {
+    for (const [mode, label, machine, want] of cases) {
+      const c = await ctxFor(who, { width: 1280, height: 800 }); await noFonts(c);
+      await c.addInitScript(`try { localStorage.setItem("kin.che-do", ${JSON.stringify(mode)}); } catch (e) {}`);
+      const pg = await c.newPage(); watch(pg);
+      await pg.emulateMedia({ colorScheme: machine });
+      await pg.goto(`${base}${path}`, { waitUntil: "load", timeout: 240000 });
+      await pg.waitForTimeout(1500);
+      const lum = luminanceOf(await bodyBg(pg));
+      check(`${role} ${path}: ${label} → nền ${want === "dark" ? "tối" : "sáng"}`, want === "dark" ? lum < 0.1 : lum > 0.95, lum);
+      await pg.close(); await c.close();
+    }
+  }
+  // Chống nháy: chặn mã JS của trang (không hydrate được, ThemeApplier không chạy) — chỉ còn tập lệnh chèn sẵn trong HTML. Đã chọn Tối / Theo máy (tối)
+  // mà khung hình đầu vẫn sáng = nháy. Phải tối ngay từ HTML.
+  for (const [mode, label] of [["toi", "Tối"], ["auto", "Theo máy (máy tối)"]] as const) {
+    const c = await ctxFor(S2, { width: 1280, height: 800 }); await noFonts(c);
+    await c.route(/\/_next\/static\/.*\.js/, r => r.abort());
+    await c.addInitScript(`try { localStorage.setItem("kin.che-do", ${JSON.stringify(mode)}); } catch (e) {}`);
+    const pg = await c.newPage();
+    await pg.emulateMedia({ colorScheme: "dark" });
+    await pg.goto(`${BASE}/student/hoc-tap`, { waitUntil: "domcontentloaded", timeout: 240000 });
+    const early = await pg.evaluate(`document.documentElement.getAttribute("data-che-do")`) as string | null;
+    check(`chống nháy: đã chọn ${label}, chưa chạy mã trang vẫn ${mode === "toi" ? 'data-che-do="toi"' : "không còn data-che-do"} + nền tối`,
+      (mode === "toi" ? early === "toi" : early === null) && luminanceOf(await bodyBg(pg)) < 0.1, { early, bg: await bodyBg(pg) });
+    await pg.close(); await c.close();
+  }
+  { // người chưa chọn gì: vẫn SÁNG dù máy tối (mặc định Figma)
+    const c = await ctxFor(S2, { width: 1280, height: 800 }); await noFonts(c);
+    const pg = await c.newPage(); await pg.emulateMedia({ colorScheme: "dark" });
+    await pg.goto(`${BASE}/student/hoc-tap`, { waitUntil: "load", timeout: 240000 }); await pg.waitForTimeout(1200);
+    check("chưa chọn gì + máy tối → vẫn sáng (mặc định nền sáng)", luminanceOf(await bodyBg(pg)) > 0.95);
+    await pg.close(); await c.close();
+  }
 
   section("Khách chưa đăng nhập: vẫn sáng như thiết kế, chữ vẫn đọc được dù máy đã lưu chế độ tối");
   const cg = await ctxFor(null, { width: 1280, height: 800 }); await noFonts(cg);

@@ -78,7 +78,7 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   await pt.keyboard.type(codeOf(e164Of(5)));
   await pt.waitForURL(/\/lop-cua-toi$/, { timeout: 60000 });
   check("gia sư vào /lop-cua-toi (Hộp việc), không bị đưa sang /admin", new URL(pt.url()).pathname === "/lop-cua-toi", pt.url());
-  await pt.getByRole("listbox", { name: "Hộp việc" }).waitFor({ timeout: 60000 }).catch(() => {});
+  await pt.getByRole("heading", { name: "Hộp việc", level: 1 }).waitFor({ timeout: 60000 }).catch(() => {});
   check("thanh module của gia sư hiện ra (đang ở vỏ gia sư)", await pt.getByRole("navigation", { name: "Module của gia sư" }).isVisible());
   await gt.close();
 

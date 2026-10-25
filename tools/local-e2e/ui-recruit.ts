@@ -1,4 +1,4 @@
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, eventually, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
   await prisma.user.update({ where: { id: N.id }, data: { tutorVerified: false } });
   const c1 = await mkCourse(T.id, { name: "Toán 9", capacity: 5 });
   for (let i = 0; i < 2; i++) await prisma.enrollment.create({ data: { userId: (await mkUser({ name: `HS ${i}` })).id, courseId: c1.id, status: "active" } });
-  for (const d of ["2026-09-03", "2026-09-10"]) await prisma.attendanceSession.create({ data: { courseId: c1.id, date: new Date(`${d}T00:00:00Z`), createdBy: T.id } });
+  for (const d of ["2026-09-03", "2026-09-10"]) await mkAttendanceSession(c1.id, T.id, new Date(`${d}T00:00:00Z`));
   // một lượt mở link cũ để bảng "Link nào mang người về" có dữ liệu
   await prisma.profileVisit.createMany({ data: [{ tutorId: T.id, channel: "fb-gia-su-toan-ha-noi", kind: "open", visitorKey: "seed-visitor-1" }, { tutorId: T.id, channel: "fb-gia-su-toan-ha-noi", kind: "full", visitorKey: "seed-visitor-1" }, { tutorId: T.id, channel: "fb-gia-su-toan-ha-noi", kind: "open", visitorKey: "seed-visitor-2" }] });
 
@@ -31,7 +31,7 @@ import { prisma } from "@/lib/prisma";
   const ta = page.getByLabel(/^Bài đăng \(sửa được/);
   await eventually("bài soạn sẵn từ hồ sơ + sổ lớp", async () => (await ta.inputValue()).includes("TÌM HỌC SINH — Toán 9"));
   let t = await ta.inputValue();
-  check("tên, lớp còn 3 chỗ (5 − 2), 2 buổi đã dạy, link đuôi chung ?n=fb khi chưa đặt tên nhóm, dòng an toàn cuối bài", t.includes("Cô Lan đang nhận thêm học sinh.") && t.includes("• Lớp: Toán 9 (còn 3 chỗ)") && t.includes("• Đã dạy 2 buổi") && t.includes(`Xem hồ sơ và đăng ký học thử: http://localhost:3100/mentor/${T.id}?n=fb\n`) && t.trimEnd().endsWith("Cô không nhận chuyển khoản trước buổi học thử."), t);
+  check("tên, lớp còn 3 chỗ (5 − 2), 2 buổi đã dạy, link đuôi chung ?n=fb khi chưa đặt tên nhóm, dòng an toàn cuối bài", t.includes("Cô Lan đang nhận thêm học sinh.") && t.includes("• Lớp: Toán 9 (còn 3 chỗ)") && t.includes("• Đã dạy 2 buổi") && t.includes(`Xem hồ sơ và đăng ký học thử: ${BASE}/mentor/${T.id}?n=fb\n`) && t.trimEnd().endsWith("Cô không nhận chuyển khoản trước buổi học thử."), t);
   check("chưa đặt tên nhóm: có lời nhắc đặt tên", await page.getByText(/Chưa đặt tên nhóm nên link dùng đuôi chung/).isVisible());
   check("xưng hô mặc định 'Cô' theo tên", (await page.locator("label", { hasText: "Xưng hô" }).locator("select").inputValue()) === "Cô");
   check("bảng 'Link nào mang người về': fb-gia-su-toan-ha-noi 2 mở / 1 xem hết; ghi rõ không đếm được bài đăng", await page.getByRole("row", { name: /fb-gia-su-toan-ha-noi/ }).innerText().then(x => /2\s+1/.test(x.replace(/\s+/g, " "))) && await page.getByText(/không đếm được bài đăng trong nhóm/).isVisible());
@@ -90,6 +90,7 @@ import { prisma } from "@/lib/prisma";
   const S = await mkUser({ name: "Học sinh" });
   const sp = await (await ctxFor(S)).newPage();
   await sp.goto(`${BASE}/lop-cua-toi/bai-dang`, { waitUntil: "networkidle", timeout: 90000 });
+  await sp.waitForURL(u => !u.pathname.includes("/bai-dang"), { timeout: 60000 }).catch(() => {}); // NC2-004: đọc URL ngay sau goto là chập chờn
   check("học sinh vào /bai-dang bị chuyển đi", !sp.url().includes("/bai-dang"), sp.url());
 
   section("Điện thoại 390px");

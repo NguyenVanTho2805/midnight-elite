@@ -94,6 +94,33 @@
   --shadow-2: rgba(15,15,15,0.08) 0px 4px 12px 0px;
   --shadow-3: rgba(15,15,15,0.20) 0px 24px 48px -8px;
   --shadow-4: rgba(15,15,15,0.16) 0px 16px 48px -8px;
+
+  /* LI-02: bảng 25 màu lớp trên Lịch. Gia sư chọn một khoá (Course.calendarColor = "lop-01"…"lop-25"); không dùng mã hex. */
+  --kin-lop-01: oklch(0.62 0.14 0);
+  --kin-lop-02: oklch(0.62 0.14 15);
+  --kin-lop-03: oklch(0.62 0.14 30);
+  --kin-lop-04: oklch(0.62 0.14 45);
+  --kin-lop-05: oklch(0.62 0.14 60);
+  --kin-lop-06: oklch(0.62 0.14 75);
+  --kin-lop-07: oklch(0.62 0.14 90);
+  --kin-lop-08: oklch(0.62 0.14 105);
+  --kin-lop-09: oklch(0.62 0.14 120);
+  --kin-lop-10: oklch(0.62 0.14 135);
+  --kin-lop-11: oklch(0.62 0.14 150);
+  --kin-lop-12: oklch(0.62 0.14 165);
+  --kin-lop-13: oklch(0.62 0.14 180);
+  --kin-lop-14: oklch(0.62 0.14 195);
+  --kin-lop-15: oklch(0.62 0.14 210);
+  --kin-lop-16: oklch(0.62 0.14 225);
+  --kin-lop-17: oklch(0.62 0.14 240);
+  --kin-lop-18: oklch(0.62 0.14 255);
+  --kin-lop-19: oklch(0.62 0.14 270);
+  --kin-lop-20: oklch(0.62 0.14 285);
+  --kin-lop-21: oklch(0.62 0.14 300);
+  --kin-lop-22: oklch(0.62 0.14 315);
+  --kin-lop-23: oklch(0.62 0.14 330);
+  --kin-lop-24: oklch(0.62 0.14 345);
+  --kin-lop-25: oklch(0.6 0.02 250);
 }
 
 @theme inline {

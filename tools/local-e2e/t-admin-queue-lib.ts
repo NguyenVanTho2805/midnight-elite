@@ -85,8 +85,14 @@ const OLD: [string, Permission | null][] = [
   ["/admin/thi-thu", PERMISSIONS.MANAGE_CURRICULUM], ["/admin/thi-thu/ngan-hang-cau-hoi", PERMISSIONS.MANAGE_CURRICULUM], ["/admin/thi-thu/ngan-hang-de-thi", PERMISSIONS.MANAGE_CURRICULUM],
   ["/admin/danh-gia", PERMISSIONS.MANAGE_COURSES], ["/admin/vinh-danh", PERMISSIONS.MANAGE_HONOR], ["/admin/tin-tuc", PERMISSIONS.MANAGE_NEWS],
   ["/admin/cong-dong", PERMISSIONS.MANAGE_COMMUNITY], ["/admin/cong-dong/bao-cao", PERMISSIONS.MANAGE_COMMUNITY],
-  ["/admin/hoc-sinh", PERMISSIONS.MANAGE_STUDENTS], ["/admin/ho-so-gia-su", PERMISSIONS.MANAGE_TUTORS], ["/admin/pheu", PERMISSIONS.MANAGE_TUTORS],
+  ["/admin/hoc-sinh", PERMISSIONS.MANAGE_STUDENTS], ["/admin/ho-so-gia-su", PERMISSIONS.MANAGE_TUTORS], ["/admin/pheu", PERMISSIONS.MANAGE_TUTORS], ["/admin/so-do", PERMISSIONS.MANAGE_TUTORS],
   ["/admin/diem-chuan", PERMISSIONS.MANAGE_NEWS], ["/admin/doanh-thu", PERMISSIONS.VIEW_REVENUE], ["/admin/quan-tri-vien", PERMISSIONS.MANAGE_ADMINS],
+  // 23/10/2026 (KiN Pro, nền gói): trang cấu hình gói thêm MỚI sau thanh bên cũ, cùng quyền với các trang tiền khác (chỉ admin_super).
+  ["/admin/goi-pro", PERMISSIONS.MANAGE_REVENUE],
+  // 23/10/2026 (KiN Pro F6): hàng đợi hỗ trợ gia sư, mục menu MỚI có chủ ý, cùng quyền MANAGE_TUTORS.
+  ["/admin/ho-tro", PERMISSIONS.MANAGE_TUTORS],
+  // 24/10/2026 (QT-02/03/06): ba mục menu MỚI có chủ ý. Nhật ký chỉ cấp 1 (MANAGE_ADMINS); Triển khai và hạn mức + Duyệt nạp Coin cùng quyền MANAGE_REVENUE như Gói KiN Pro / API duyệt.
+  ["/admin/nhat-ky", PERMISSIONS.MANAGE_ADMINS], ["/admin/trien-khai", PERMISSIONS.MANAGE_REVENUE], ["/admin/topups", PERMISSIONS.MANAGE_REVENUE],
 ];
 for (const r of roles) {
   const now = new Set(hrefsOf(r));
@@ -97,7 +103,7 @@ for (const r of roles) {
 }
 check("'Hàng chờ' (/admin/kiem-duyet) hiện cho mọi vai quản trị", roles.every(r => hrefsOf(r).includes("/admin/kiem-duyet")));
 check("chưa biết vai (đang tải) → chỉ trang không đòi quyền", JSON.stringify(hrefsOf(null)) === JSON.stringify(["/admin/kiem-duyet", "/admin"]), hrefsOf(null));
-check("gia sư (teacher) không thấy: Người dùng, Doanh thu, Phễu, Duyệt gia sư, Quản trị viên", !["/admin/hoc-sinh", "/admin/doanh-thu", "/admin/pheu", "/admin/ho-so-gia-su", "/admin/quan-tri-vien"].some(h => hrefsOf("teacher").includes(h)));
+check("gia sư (teacher) không thấy: Người dùng, Doanh thu, Phễu, Số đo, Duyệt gia sư, Quản trị viên", !["/admin/hoc-sinh", "/admin/doanh-thu", "/admin/pheu", "/admin/so-do", "/admin/ho-so-gia-su", "/admin/quan-tri-vien"].some(h => hrefsOf("teacher").includes(h)));
 check("module không còn trang con nào thì ẩn cả module (content không có 'Người dùng')", !visibleModules("admin_content").some(m => m.key === "nguoi-dung") && visibleModules("admin_super").length === ADMIN_MODULES.length);
 check("đường vào module = trang con đầu tiên được phép (teacher → Nội dung mở 'Khoá học')", visibleModules("teacher").find(m => m.key === "noi-dung")!.href === "/admin/khoa-hoc" && visibleModules("admin_super").find(m => m.key === "nguoi-dung")!.href === "/admin/hoc-sinh");
 check("không có hai module cùng khoá; không có trang con nằm ở hai module", new Set(ADMIN_MODULES.map(m => m.key)).size === ADMIN_MODULES.length && new Set(ADMIN_MODULES.flatMap(m => m.subs.map(s => s.href))).size === ADMIN_MODULES.flatMap(m => m.subs).length);
@@ -109,7 +115,10 @@ check("/admin/kiem-duyet → Kiểm duyệt · Hàng chờ", at("/admin/kiem-duy
 check("khớp dài nhất thắng: /admin/cong-dong/bao-cao → 'Báo cáo trả lời', /admin/cong-dong → 'Bài viết cộng đồng'", at("/admin/cong-dong/bao-cao")?.sub.label === "Báo cáo trả lời" && at("/admin/cong-dong")?.sub.label === "Bài viết cộng đồng");
 check("trang sâu thuộc đúng trang con: /admin/khoa-hoc/abc/diem-danh → Khoá học; /admin/khoa-hoc/danh-muc → Danh mục; /admin/thi-thu/ngan-hang-cau-hoi/cau-hoi → Ngân hàng câu hỏi", at("/admin/khoa-hoc/abc/diem-danh")?.sub.label === "Khoá học" && at("/admin/khoa-hoc/danh-muc")?.sub.label === "Danh mục" && at("/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi")?.sub.label === "Ngân hàng câu hỏi");
 check("không khớp nhầm tiền tố chữ: /admin/khoa-hocxyz không phải Khoá học", at("/admin/khoa-hocxyz") === null);
-check("/admin/topups (không có trong thanh bên cũ) không thuộc module nào", at("/admin/topups") === null);
+// QT-06 (24/10/2026): trước đây /admin/topups không có trong menu (test cũ khẳng định "không thuộc module nào" = đúng hiện trạng lúc đó). Nay có lối vào ở Cài đặt.
+check("/admin/topups thuộc Cài đặt · Duyệt nạp Coin (QT-06)", at("/admin/topups")?.moduleKey === "cai-dat" && at("/admin/topups")?.sub.label === "Duyệt nạp Coin");
+check("/admin/nhat-ky thuộc Kiểm duyệt · Nhật ký; /admin/trien-khai thuộc Cài đặt (QT-02/03)", at("/admin/nhat-ky")?.moduleKey === "kiem-duyet" && at("/admin/trien-khai")?.moduleKey === "cai-dat");
+check("quyền: chỉ cấp 1 thấy Nhật ký, Triển khai và hạn mức, Duyệt nạp Coin; quản trị nội dung và gia sư KHÔNG", ["admin_content", "teacher"].every(r => !["/admin/nhat-ky", "/admin/trien-khai", "/admin/topups"].some(h => hrefsOf(r as AdminRole).includes(h))) && ["/admin/nhat-ky", "/admin/trien-khai", "/admin/topups"].every(h => hrefsOf("admin_super").includes(h)));
 
 section("Mọi trang quản trị đang có đều có chỗ đứng trong một module");
 const root = join(process.cwd(), "src/app/(admin)/admin");
@@ -122,7 +131,7 @@ const walk = (dir: string, url: string) => {
   }
 };
 walk(root, "/admin");
-const orphan = routes.filter(r => !r.includes("/_template") && r !== "/admin/topups" && !matchSub(r));
+const orphan = routes.filter(r => !r.includes("/_template") && !matchSub(r)); // /admin/topups không còn là ngoại lệ (QT-06)
 check(`${routes.length} trang quản trị tìm thấy; trang mới thêm mà quên đưa vào module sẽ làm test này đỏ`, routes.length >= 20 && orphan.length === 0, orphan);
 
 done();

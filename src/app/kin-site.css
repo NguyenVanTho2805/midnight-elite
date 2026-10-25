@@ -21,12 +21,28 @@
 }
 
 :root {
+  /* Cỡ chữ theo Figma (23/10/2026): chữ gốc 14, chữ phụ 12, tiêu đề mục 18. Dùng trong src/components/kin/ (Stat, ListRow, SectionHead…). */
+  --kin-co-goc: 14px;
+  --kin-co-phu: 12px;
+  --kin-co-tieu-de: 18px;
   --kin-co-caption: 11.1px;
   --kin-co-small: 13.3px;
   --kin-co-body: 16px;
   --kin-co-h4: 19.2px;
   --kin-co-h2: 27.6px;
   --kin-co-display: 39.8px;
+  /* Căn chỉnh trang gia sư (rà soát 23/10/2026): MỘT bộ số đo cho mọi màn, lấy từ Hộp việc đã duyệt (Figma 299:111821).
+     Dùng qua src/components/kin/PageLayout.tsx; đừng viết lại các số này trong từng trang. */
+  --kin-co-h1: var(--kin-co-h2);      /* H1 trang: 27.6px, dòng 36px, đậm vừa */
+  --kin-dong-h1: 36px;
+  --kin-co-so: 22px;                  /* số lớn nhất được phép (KinStat) */
+  --kin-dong-so: 28px;
+  --kin-dong-goc: 20px;               /* dòng của chữ gốc 14px */
+  --kin-cot-phai: 354px;              /* cột phải của trang hai cột */
+  --kin-cach-cot: 32px;               /* khoảng giữa hai cột */
+  --kin-cach-muc: 32px;               /* khoảng giữa các mục dọc */
+  --kin-hang-bang: 62px;              /* chiều cao tối thiểu một hàng bảng/danh sách dạng bảng */
+  --kin-dau-bang: 44px;               /* chiều cao hàng tiêu đề bảng */
   /* Viền/nền nhạt theo màu nhấn của chủ đề (thay các mã #bfdbfe / #93c5fd viết cứng của giao diện cũ). */
   --kin-nhan-vien: color-mix(in srgb, var(--kin-nhan-nen) 28%, var(--kin-nen-trang));
 }
@@ -104,6 +120,17 @@
   --kin-tt-vien-xong: color-mix(in srgb, var(--kin-tt-cham-xong) 32%, var(--kin-nen-trang));
   --kin-tt-vien-cho:  color-mix(in srgb, var(--kin-tt-cham-cho) 36%, var(--kin-nen-trang));
   --kin-tt-vien-loi:  color-mix(in srgb, var(--kin-tt-chu-loi) 30%, var(--kin-nen-trang));
+
+  /* Khung dùng chung (KinPanel, src/components/kin/Panel.tsx): nền mặt + viền nhạt đủ thấy ở cả sáng và tối.
+     Viền = chữ mờ pha 24% vào nền trang (sáng ≈ #dcdee3, tối ≈ #2c313b) — đậm hơn đường kẻ --kin-vien-nhat để khối tách khỏi nền, vẫn nhẹ hơn viền ô nhập. */
+  --kin-khung-nen: var(--kin-nen-bang);
+  --kin-khung-vien: color-mix(in srgb, var(--kin-chu-mo) 24%, var(--kin-nen-trang));
+  --kin-khung-nhan-nen: var(--kin-nhan-nen-nhat);
+  --kin-khung-nhan-vien: color-mix(in srgb, var(--kin-nhan-link) 42%, var(--kin-nen-trang));
+  --kin-khung-cb-nen: var(--kin-tt-nen-cho);
+  --kin-khung-cb-vien: var(--kin-tt-vien-cho);
+  --kin-khung-loi-nen: var(--kin-tt-nen-loi);
+  --kin-khung-loi-vien: var(--kin-tt-vien-loi);
 
   /* Bóng: phẳng, viền mảnh — thay các bóng nổi/chìm kiểu neumorphism (#C5D0EA hai phía). */
   --kin-bong-the:  0 0 0 1px var(--kin-vien-thuong), 0 1px 2px rgba(17, 24, 39, 0.06);
@@ -186,3 +213,26 @@
 html[data-kin-host="admin"] [data-guest-chrome],
 html[data-kin-host="admin"] [data-chi-khach] { display: none !important; }
 html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
+
+/* ── Khung dùng chung (KinPanel) ─────────────────────────────────────────────
+   Cũng áp cho từng ô của dải số khi <KinStatRow boxed> ("mỗi số một ô"). */
+.kin-khung,
+[data-kin-stat-row][data-boxed] > [data-kin-stat] {
+  background: var(--kin-khung-nen);
+  border: 1px solid var(--kin-khung-vien);
+  border-radius: var(--kin-bo-the);
+  padding: var(--kin-kc-7);
+}
+@media (min-width: 768px) {
+  .kin-khung,
+  [data-kin-stat-row][data-boxed] > [data-kin-stat] { padding: 20px; }
+}
+.kin-khung[data-flush] { padding: 0; overflow: hidden; }
+.kin-khung[data-kin-panel="nhan"] { background: var(--kin-khung-nhan-nen); border-color: var(--kin-khung-nhan-vien); }
+.kin-khung[data-kin-panel="canh-bao"] { background: var(--kin-khung-cb-nen); border-color: var(--kin-khung-cb-vien); }
+.kin-khung[data-kin-panel="loi"] { background: var(--kin-khung-loi-nen); border-color: var(--kin-khung-loi-vien); }
+.kin-khung[data-kin-panel="khoa-pro"] { background: transparent; border-style: dashed; border-color: var(--kin-vien-o-nhap); }
+/* Bọc cả danh sách/bảng: hàng cuối không kẻ đáy (khung đã có viền). */
+.kin-khung[data-flush] li:last-child,
+.kin-khung[data-flush] li:last-child > *,
+.kin-khung[data-flush] > [data-kin-list-row]:last-child { border-bottom-width: 0; }

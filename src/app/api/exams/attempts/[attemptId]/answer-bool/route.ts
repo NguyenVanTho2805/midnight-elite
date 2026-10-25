@@ -35,7 +35,7 @@ export async function PATCH(
     }
 
     const option = await prisma.examOption.findFirst({
-      where: { id: optionId, question: { type: "TRUE_FALSE_CLUSTER" } },
+      where: { id: optionId, question: { type: { in: ["TRUE_FALSE_CLUSTER", "MC_MULTI"] } } }, // MC_MULTI (QZ-03): mỗi ô tích là một dòng answerTrue
       include: { question: { select: { sectionLabel: true } } },
     });
     if (!option) return NextResponse.json({ error: "Ý trả lời không hợp lệ" }, { status: 400 });

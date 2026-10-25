@@ -2,7 +2,7 @@ import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } fro
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 const RUN = Date.now().toString(16).padStart(16, "0").slice(-16);
 const tok = (n: number) => (RUN + n.toString(16).padStart(16, "0")).slice(-32);
 let seq = 0;

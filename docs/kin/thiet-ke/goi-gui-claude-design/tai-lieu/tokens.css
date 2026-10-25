@@ -1,0 +1,115 @@
+/* ===========================================================================
+   KiN — design tokens
+   Trả lời FE-087, FE-088, FE-089, FE-090 trong backlog.
+
+   Mọi giá trị dưới đây đã được đo bằng công thức tương phản WCAG 2.1.
+   Bảy cặp màu trong bản cũ trượt chuẩn; bản này đã vá. Chi tiết và số đo
+   từng cặp: docs/thiet-ke/tuong-phan.md — đừng đổi màu mà không đo lại.
+
+   FE-090 hỏi "có làm dark mode không": CÓ, và phải làm ngay từ đầu.
+   Thêm sau nghĩa là phải dò lại từng cặp màu trong toàn bộ app.
+   =========================================================================== */
+
+:root{
+  color-scheme: light;
+
+  /* nền và viền */
+  --bg:        #FFFFFF;  /* nền trang và thẻ */
+  --panel:     #F7F8FA;  /* thanh bên, nền trang đăng nhập */
+  --hover:     #F1F3F6;  /* nền khi rê chuột lên dòng */
+  --sel:       #E8EDF7;  /* dòng đang chọn */
+  --line:      #E6E9EF;  /* gạch phân cách, viền thẻ */
+  --line-2:    #EEF0F4;  /* gạch giữa các dòng, nhạt hơn */
+  --line-in:   #8B95A5;  /* viền Ô NHẬP — phải đậm hơn, xem lưu ý 1 */
+
+  /* chữ */
+  --ink:       #111827;  /* chữ mặc định */
+  --ink-2:     #374151;  /* nhãn ô nhập, chữ trong khung gợi ý */
+  --muted:     #6B7280;  /* dòng phụ, nhãn cột */
+  --muted-sel: #5B6675;  /* chữ mờ khi nằm trên dòng đang chọn — lưu ý 2 */
+  --faint:     #767F8E;  /* chấm trạng thái trung tính */
+  --on-navy:   #FFFFFF;  /* chữ trên nút chính — lưu ý 3 */
+
+  /* thương hiệu */
+  --navy:      #1E3A8A;  /* nút chính, logo */
+  --navy-h:    #172554;  /* navy khi rê chuột */
+  --blue:      #2563EB;  /* link, viền khi focus */
+  --tint:      #EFF4FF;  /* nền khung gợi ý, ô đang chọn */
+
+  /* ngữ nghĩa — CHÚ Ý: chữ và chấm dùng mã KHÁC nhau, xem lưu ý 4 */
+  --green:     #047857;  /* CHỮ trạng thái xong */
+  --amber:     #B45309;  /* CHỮ trạng thái chờ */
+  --red:       #DC2626;  /* CHỮ trạng thái lỗi */
+  --dot-green: #059669;  /* CHẤM trạng thái xong */
+  --dot-amber: #D97706;  /* CHẤM trạng thái chờ */
+
+  /* chữ */
+  --f-h: "Be Vietnam Pro", system-ui, sans-serif;   /* tiêu đề, con số */
+  --f-b: "Inter", system-ui, sans-serif;            /* nội dung */
+  --f-m: "JetBrains Mono", ui-monospace, monospace; /* mã, hex */
+
+  /* thang chữ — lấy từ app đang chạy, không phải thang lý thuyết */
+  --fs-caption: 12.5px;  --fs-small: 13px;   --fs-body: 15px;
+  --fs-lead: 17px;       --fs-h3: 20px;      --fs-h2: 24px;  --fs-h1: 30px;
+  --lh-tight: 1.25;      --lh-body: 1.55;
+
+  /* khoảng cách — giá trị THẬT đang dùng, không phải thang 8px đều đặn */
+  --sp-1: 4px;  --sp-2: 6px;  --sp-3: 8px;  --sp-4: 10px;
+  --sp-5: 12px; --sp-6: 14px; --sp-7: 18px; --sp-8: 24px; --sp-9: 32px;
+
+  /* bo góc */
+  --r-sm: 8px;   /* mục điều hướng */
+  --r-md: 9px;   /* nút, ô nhập */
+  --r-lg: 10px;  /* dải thống kê, khung gợi ý */
+  --r-xl: 12px;  /* thẻ, phiếu */
+  --r-card: 14px;
+  --r-pill: 999px;
+
+  /* vùng chạm — brand book KiN bắt buộc */
+  --touch-min: 44px;   /* mọi nút trên điện thoại */
+  --touch-row: 50px;   /* chiều cao tối thiểu một dòng danh sách */
+  --touch-answer: 52px;/* ô đáp án trong phòng thi */
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0B0E14; --panel:#10141C; --hover:#171C26; --sel:#1B2534;
+    --line:#232A36; --line-2:#1B212C; --line-in:#565F70;
+    --ink:#F3F4F6; --ink-2:#D1D5DB; --muted:#9CA3AF; --muted-sel:#9CA3AF; --faint:#8A93A3;
+    --on-navy:#0B0E14;                 /* lưu ý 3 — KHÔNG phải trắng */
+    --navy:#3B82F6; --navy-h:#60A5FA; --blue:#60A5FA; --tint:#101A2C;
+    --green:#34D399; --amber:#FBBF24; --red:#F87171;
+    --dot-green:#34D399; --dot-amber:#FBBF24;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0B0E14; --panel:#10141C; --hover:#171C26; --sel:#1B2534;
+  --line:#232A36; --line-2:#1B212C; --line-in:#565F70;
+  --ink:#F3F4F6; --ink-2:#D1D5DB; --muted:#9CA3AF; --muted-sel:#9CA3AF; --faint:#8A93A3;
+  --on-navy:#0B0E14;
+  --navy:#3B82F6; --navy-h:#60A5FA; --blue:#60A5FA; --tint:#101A2C;
+  --green:#34D399; --amber:#FBBF24; --red:#F87171;
+  --dot-green:#34D399; --dot-amber:#FBBF24;
+}
+
+/* ---------------------------------------------------------------------------
+   BỐN LƯU Ý — mỗi cái là một lỗi đã đo được, đừng "dọn gọn" chúng đi
+
+   1. --line-in tách khỏi --line. Viền ô nhập cần tương phản 3:1 với nền
+      (WCAG 1.4.11) vì nó là biên của một control. Dùng --line cho ô nhập
+      thì chỉ đạt 1,22:1 — gần như vô hình, người dùng không biết bấm được.
+
+   2. --muted-sel tồn tại vì nền dòng đang chọn (--sel) đủ sẫm để đẩy
+      --muted xuống 4,12:1, dưới ngưỡng 4,5:1. Chỉ lệch ở nền sáng;
+      nền tối thì --muted vẫn đạt nên hai biến bằng nhau.
+
+   3. --on-navy KHÔNG phải lúc nào cũng trắng. Ở nền tối, chữ trắng trên
+      nút #3B82F6 chỉ đạt 3,68:1 — đây là nút bấm nhiều nhất trong app.
+      Đổi sang chữ gần đen đạt 5,25:1.
+
+   4. Màu ngữ nghĩa có HAI bộ mã. Đồ hoạ cần 3:1, chữ cần 4,5:1.
+      #059669 làm chấm thì đạt (3,77:1), làm chữ thì trượt.
+      Dùng --green/--amber cho CHỮ, --dot-green/--dot-amber cho CHẤM.
+   --------------------------------------------------------------------------- */

@@ -2,7 +2,7 @@ import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 (async () => {
@@ -21,7 +21,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
   await page.goto(`${BASE}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
+  await page.getByRole("heading", { name: "Điểm danh", level: 2 }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await page.getByText("Em An").waitFor({ timeout: 30000 });
   const rowA = page.locator("div.flex.items-center.gap-3", { hasText: "Em An" }).last();
