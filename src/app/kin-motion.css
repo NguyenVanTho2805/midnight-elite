@@ -221,22 +221,27 @@
 .kin-chars[data-over] .kin-chars-left { color: var(--kin-tt-chu-loi); }
 
 /* ───────── No.040 Thanh bên mở rộng có nhãn + vạch nổi bật trượt (src/components/kin/shell/ModuleRail.tsx) ───────── */
-/* Ba trạng thái theo data-kin-rail trên <html>: (không có) = "mo" 79px · "rong" = 220px · "thu" = 0 (kin-tokens.css). Chiều rộng khung ngoài đổi bằng ease 0,45 giây
-   (không dùng lò xo cho chiều rộng của cả cột: overshoot làm nội dung bên cạnh dựng lại bố cục dội qua dội lại); lò xo dùng cho vạch nổi bật và chữ. */
+/* Ba trạng thái theo data-kin-rail trên <html> (script đầu trang luôn đặt, src/lib/railState.ts): "rong" = 272px có nhóm (MẶC ĐỊNH) · "mo" = 79px chỉ biểu tượng · "thu" = 0 (kin-tokens.css).
+   Chiều rộng khung ngoài đổi bằng ease 0,45 giây (không dùng lò xo cho chiều rộng của cả cột: overshoot làm nội dung bên cạnh dựng lại bố cục dội qua dội lại); lò xo dùng cho vạch nổi bật. */
 .kin-rail-wrap { transition: width .45s var(--kin-ease); }
 @media (prefers-reduced-motion: reduce) { .kin-rail-wrap { transition-duration: 0s; transition-delay: 0s; } } /* sau quy tắc trên: giữ đúng "0s" như kin-tokens.css */
-html[data-kin-rail="rong"] .kin-rail-wrap { width: 220px; }
-html[data-kin-rail="rong"] .kin-rail-nav { width: 220px; align-items: stretch; padding-inline: 10px; }
-html[data-kin-rail="rong"] .kin-rail-items { align-items: stretch; }
-html[data-kin-rail="rong"] .kin-rail-close { align-self: flex-start; }
-html[data-kin-rail="rong"] .kin-rail-role { text-align: left; padding-left: 16px; align-self: stretch; }
-/* Mục: hàng ngang — biểu tượng bên trái, nhãn bên phải hiện lần lượt (trễ 0,12 giây + 35ms mỗi mục). */
-html[data-kin-rail="rong"] .kin-rail-it { width: 100%; flex-direction: row; justify-content: flex-start; gap: 14px; min-height: 48px; padding: 0 0 0 16px; font-size: var(--kin-co-small); }
-html[data-kin-rail="rong"] .kin-rail-it .kin-rail-lab { text-align: left; animation: kin-rail-lab-in .5s var(--kin-spring) both; animation-delay: calc(.12s + var(--i, 0) * 35ms); }
-@keyframes kin-rail-lab-in { from { opacity: 0; transform: translateX(-8px); } }
-html[data-kin-rail="rong"] .kin-rail-it .kin-badge-dem { left: auto; right: 14px; top: 50%; margin-top: -9px; }
-/* Bảng "Khác" neo cạnh thanh: dời theo bề rộng (chỉ máy tính). */
-@media (min-width: 768px) { html[data-kin-rail="rong"] #khac-bang { left: 228px; } }
+.kin-rail-groups, .kin-rail-tag { display: none; }
+/* Thanh RỘNG theo Figma "Nền móng" (khung "Điều hướng", 25/10/2026): 272px, đệm 24px trên dưới / 17px hai bên, logo + nhãn vai, các nhóm cách nhau 6px, chân "Miễn phí ra mắt".
+   Chỉ từ 1024px: ở 768–1023px thanh rộng chiếm hơn một phần ba màn hình nên vẫn dùng thanh hẹp 79px dù đã chọn "rộng" (lựa chọn của người dùng vẫn được nhớ). */
+@media (min-width: 1024px) {
+  html[data-kin-rail="rong"] .kin-rail-wrap { width: 272px; }
+  html[data-kin-rail="rong"] .kin-rail-nav { width: 272px; align-items: stretch; padding: 24px 17px; }
+  html[data-kin-rail="rong"] .kin-rail-items { display: none; }
+  html[data-kin-rail="rong"] .kin-rail-groups { display: flex; }
+  html[data-kin-rail="rong"] .kin-rail-home { --kin-rail-logo: var(--kin-co-h3); width: auto; justify-content: flex-start; gap: 10px; margin: 0; padding: 0 8px 12px; }
+  html[data-kin-rail="rong"] .kin-rail-tag { display: inline; font-size: var(--kin-co-caption); line-height: 16px; font-weight: 600; text-transform: uppercase; color: var(--kin-chu-mo); }
+  html[data-kin-rail="rong"] .kin-rail-role { text-align: left; padding-left: 16px; align-self: stretch; }
+  /* Nút thu thanh (điều khiển Thọ yêu cầu 14/10, Figma không vẽ): góc trên phải thanh, cùng hàng với logo, để chân thanh chỉ còn "Miễn phí ra mắt" như Figma. */
+  html[data-kin-rail="rong"] .kin-rail-close { position: absolute; top: 17px; right: 10px; width: 44px; margin: 0; }
+  html[data-kin-rail="rong"] .kin-rail-foot { width: auto; border-top: 0; text-align: left; padding: 14px 8px 0; font-size: var(--kin-co-small); line-height: 20px; }
+  /* Bảng "Khác" neo cạnh thanh hẹp; ở thanh rộng mọi mục đã nằm sẵn trong nhóm nên bảng chỉ còn mở được từ điện thoại. */
+  html[data-kin-rail="rong"] #khac-bang { left: 280px; }
+}
 /* Vạch nổi bật dùng chung: một khối nền trượt tới mục đang chọn. Chưa đo được (lần vẽ đầu của máy chủ) thì mục tự mang nền như cũ. */
 .kin-rail-hl { position: absolute; left: 0; top: 0; width: var(--w, 0px); height: var(--h, 0px); transform: translate(var(--x, 0px), var(--y, 0px)); border-radius: var(--kin-bo-sm); background: var(--kin-nen-nhan); opacity: 0; pointer-events: none; }
 .kin-rail-hl[data-on] { opacity: 1; }

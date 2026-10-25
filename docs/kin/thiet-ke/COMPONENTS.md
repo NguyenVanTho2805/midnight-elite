@@ -88,7 +88,7 @@ Quy tắc dùng:
 `KinInput`, `KinTabs`, `KinToast`, `KinConfirm` + `useKinConfirm` (thay `window.confirm`), `KinLoader`, `KinFold`, `KinLogo`, `KinCopyButton`, `KinSubmitButton`, `CodeBoxes`, `ProgressRing`.
 
 ## Vỏ (`src/components/kin/shell/`)
-- `ModuleRail`: thanh bên 79px (logo KiN đầu thanh, nhãn "Miễn phí ra mắt" chân thanh) + thanh dưới 60px trên điện thoại (các tab xám bo góc, mục đang chọn nền xanh nhạt, số đỏ có nhãn chữ). Cờ `desktopOnly` / `mobileOnly` trên `ModuleItem` chọn mục nào hiện ở đâu.
+- `ModuleRail`: thanh bên RỘNG 272px theo nhóm (mặc định từ 25/10/2026, Figma "Điều hướng"; chi tiết ở `thanh-ben-trai.md` mục 9) hoặc hẹp 79px (logo KiN đầu thanh, nhãn "Miễn phí ra mắt" chân thanh) + thanh dưới 60px trên điện thoại (các tab xám bo góc, mục đang chọn nền xanh nhạt, số đỏ có nhãn chữ). Cờ `desktopOnly` / `mobileOnly` trên `ModuleItem` chọn mục nào hiện ở đâu.
 - `AccountMenu`: "Tên ⌄" ở dải trên; prop `onOpenMore` thêm mục "Tất cả mục" (chỉ điện thoại) mở bảng "Khác" vì thanh dưới chỉ có 4 tab.
 - `TopDate`: "Thứ Sáu, 23/10/2026" theo giờ VN (`vnDateKeyOf`), chỉ máy tính.
 - Dải trên cao 68px máy tính / 48px điện thoại (`--kin-top` đặt ở vỏ).

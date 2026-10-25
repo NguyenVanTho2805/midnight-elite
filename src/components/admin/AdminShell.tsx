@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuth, getAdminRoleLabel } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
-import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { ModuleRail, type ModuleItem, type NavGroup } from "@/components/kin/shell/ModuleRail";
+import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { QUEUE_CHANGED } from "@/components/admin/KiemDuyet";
@@ -61,16 +62,25 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     ...(m.key === "kiem-duyet" ? { badge } : {}),
   }));
 
+  // Thanh RỘNG (Figma "Điều hướng" của quản trị, 25/10/2026): mỗi module là một NHÓM, các trang con là mục (biểu tượng của module); dải tab các trang con vẫn giữ ở đầu trang.
+  const wide: NavGroup[] = modules.map(m => ({
+    title: m.label,
+    items: m.subs.map(s => ({ key: s.href, label: s.label, href: s.href, icon: m.icon, active: hit?.sub.href === s.href, ...(s.href === "/admin/kiem-duyet" ? { badge } : {}) })),
+  }));
+
   return (
     <div className="md:flex h-screen overflow-hidden bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: `${top}px` }}>
-      <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} />
+      <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} groups={wide}
+        home={{ href: "/admin", label: "KiN — Tổng quan quản trị" }} footnote="Miễn phí ra mắt" />
       <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-60px)] md:h-screen">
         <div className="flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] flex-shrink-0" style={{ height: STRIP }}>
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={badge} />
-            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Quản trị KiN</p>
           </div>
           <div className="flex items-center gap-3 min-w-0">
+            <TopDate />
             {/* Trang học viên nằm ở tên miền riêng (midnightelite-edu.com): dùng <a>, không dùng <Link> (điều hướng khác nguồn). */}
             <a href="https://midnightelite-edu.com/student" target="_blank" rel="noopener noreferrer"
               className="hidden md:inline-flex items-center min-h-11 px-2 text-[length:var(--kin-co-small)] font-medium text-[var(--kin-nhan-link)] hover:underline">Trang học viên</a>

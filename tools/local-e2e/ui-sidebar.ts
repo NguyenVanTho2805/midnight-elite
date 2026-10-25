@@ -41,18 +41,19 @@ const H = 3_600_000;
   const focusIs = (p: any, sel: string) => p.evaluate(`document.activeElement?.matches(${JSON.stringify(sel)}) ?? false`) as Promise<boolean>;
 
   // ───────────────────────────── Học viên: thu / mở
-  const ctx = await ctxFor(S, { width: 1280, height: 800 });
+  // 25/10/2026: mặc định = thanh RỘNG 272px (Figma "Nền móng"); rail: "mac-dinh" để ngữ cảnh KHÔNG đặt sẵn gì như một người dùng mới (xem ui.ts).
+  const ctx = await ctxFor(S, { width: 1280, height: 800, rail: "mac-dinh" });
   const pg = await ctx.newPage(); watch(pg);
   await pg.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await ready(pg);
 
-  section("Mặc định: thanh bên LUÔN HIỆN");
-  check("thanh bên hiện, rộng 79px", await rail(pg, RAIL.student).isVisible() && (await rail(pg, RAIL.student).boundingBox())?.width === 79);
+  section("Mặc định: thanh bên LUÔN HIỆN (rộng 272px, có nhóm)");
+  check("thanh bên hiện, rộng 272px", await rail(pg, RAIL.student).isVisible() && (await rail(pg, RAIL.student).boundingBox())?.width === 272);
   check("có nút 'Thu gọn thanh bên' (aria-expanded=true, aria-controls=kin-rail), cao 44px", await closeBtn(pg).getAttribute("aria-expanded") === "true" && await closeBtn(pg).getAttribute("aria-controls") === "kin-rail" && (await closeBtn(pg).boundingBox())?.height === 44);
   check("nút 'Mở thanh bên' ở dải trên chưa hiện", !(await openBtn(pg).isVisible()));
   check("không có data-kin-rail=thu trên <html>, chưa lưu gì ở máy", (await attr(pg)) !== "thu" && (await stored(pg)) === null);
   const listX0 = (await pageBox(pg).boundingBox())?.x ?? -1;
-  check("khung nội dung của 'Việc của tôi' bắt đầu ngay sau thanh bên (x=79)", Math.round(listX0) === 79, listX0);
+  check("khung nội dung của 'Việc của tôi' bắt đầu ngay sau thanh bên (x=272)", Math.round(listX0) === 272, listX0);
   const readW0 = (await pageBox(pg).boundingBox())?.width ?? 0;
 
   section("Thu vào (thụt)");
@@ -63,7 +64,7 @@ const H = 3_600_000;
   check("tiêu điểm chuyển sang nút 'Mở thanh bên' (người dùng bàn phím không bị mất chỗ)", await focusIs(pg, "[data-rail-open]"));
   const listX1 = (await pageBox(pg).boundingBox())?.x ?? -1;
   const readW1 = (await pageBox(pg).boundingBox())?.width ?? 0;
-  check("khung nội dung dịch sang mép trái (x=0), rộng thêm 79px", Math.round(listX1) === 0 && Math.round(readW1 - readW0) === 79, { listX1, grow: readW1 - readW0 });
+  check("khung nội dung dịch sang mép trái (x=0), rộng thêm 272px", Math.round(listX1) === 0 && Math.round(readW1 - readW0) === 272, { listX1, grow: readW1 - readW0 });
   const trapped = await pg.evaluate(`(() => { const a = document.querySelector('#kin-rail a'); if (!a) return 'no-link'; a.focus(); return document.activeElement === a; })()`);
   check("khi thu, liên kết trong thanh KHÔNG nhận được tiêu điểm (Tab không rơi vào chỗ ẩn)", trapped === false, trapped);
   check("lưu theo TÀI KHOẢN: User.preferences.rail = 'thu'", await (async () => { for (let i = 0; i < 40; i++) { if ((await accountRail(S.id)) === "thu") return true; await new Promise(r => setTimeout(r, 200)); } return false; })());
@@ -81,11 +82,11 @@ const H = 3_600_000;
 
   section("Mở ra (thò)");
   await openBtn(pg).click();
-  await eventually("thanh bên hiện lại, rộng 79px", async () => await rail(pg, RAIL.student).isVisible() && (await wrapW(pg)) === 79);
-  check("<html> không còn data-kin-rail=thu, localStorage 'mo'", (await attr(pg)) !== "thu" && (await stored(pg)) === "mo");
+  await eventually("thanh bên hiện lại, rộng 272px (về đúng bề rộng mặc định)", async () => await rail(pg, RAIL.student).isVisible() && (await wrapW(pg)) === 272);
+  check("<html> không còn data-kin-rail=thu, localStorage 'rong'", (await attr(pg)) !== "thu" && (await stored(pg)) === "rong");
   check("tiêu điểm chuyển sang nút 'Thu gọn thanh bên'", await focusIs(pg, "[data-rail-close]"));
   check("nút 'Mở thanh bên' ẩn lại", !(await openBtn(pg).isVisible()));
-  check("tài khoản ghi 'mo'", await (async () => { for (let i = 0; i < 40; i++) { if ((await accountRail(S.id)) === "mo") return true; await new Promise(r => setTimeout(r, 200)); } return false; })());
+  check("tài khoản ghi 'rong'", await (async () => { for (let i = 0; i < 40; i++) { if ((await accountRail(S.id)) === "rong") return true; await new Promise(r => setTimeout(r, 200)); } return false; })());
 
   section("Bàn phím: phím '[' bật/tắt, trừ khi đang gõ chữ");
   await pg.locator("body").click({ position: { x: 700, y: 400 } });
@@ -102,6 +103,10 @@ const H = 3_600_000;
 
   section("Bảng 'Khác' đóng khi thu thanh");
   await pg.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
+  // Thanh RỘNG không có nút "Khác" (mọi mục nằm sẵn trong nhóm); bảng "Khác" thuộc thanh HẸP nên thu hẹp trước.
+  check("thanh rộng: KHÔNG có nút 'Khác' (mọi mục đã nằm trong nhóm)", (await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).count()) === 0 || !(await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).isVisible()));
+  await pg.locator("[data-rail-widen]").click();
+  await eventually("thu hẹp về 79px", async () => (await wrapW(pg)) === 79);
   await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).click();
   check("mở 'Khác' → hiện bảng", await pg.getByRole("dialog", { name: "Các mục khác" }).isVisible());
   await closeBtn(pg).click();
@@ -127,7 +132,7 @@ const H = 3_600_000;
 
   section("Máy khác (không có gì trong localStorage) lấy lựa chọn theo TÀI KHOẢN");
   await prisma.user.update({ where: { id: S.id }, data: { preferences: { rail: "thu" } } });
-  const ctxB = await ctxFor(S, { width: 1280, height: 800 });
+  const ctxB = await ctxFor(S, { width: 1280, height: 800, rail: "mac-dinh" }); // máy MỚI: không đặt sẵn gì trong localStorage
   const pb = await ctxB.newPage(); watch(pb);
   await pb.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await ready(pb);

@@ -10,33 +10,34 @@ import CoinBalance from "@/components/CoinBalance";
 import NotificationBell from "@/components/NotificationBell";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import { KinLogo } from "@/components/kin/KinLogo";
-import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { ModuleRail, type ModuleItem, type NavGroup } from "@/components/kin/shell/ModuleRail";
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
-import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
+import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
+// `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Học tập", links: [
-    { label: "Thư viện", href: "/thu-vien" },
-    { label: "Tiếng Anh tự học", href: "/student/tieng-anh" },
-    { label: "Thi thử", href: "/student/thi-thu" },
-    { label: "Bảng xếp hạng", href: "/student/bang-xep-hang" },
-    { label: "Hỏi đáp", href: "/student/hoi-dap" },
-    { label: "Cộng đồng", href: "/student/cong-dong" },
+    { label: "Thư viện", href: "/thu-vien", icon: "thu-vien" },
+    { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "bai-kt" },
+    { label: "Thi thử", href: "/student/thi-thu", icon: "bai-kt" },
+    { label: "Bảng xếp hạng", href: "/student/bang-xep-hang", icon: "bao-cao" },
+    { label: "Hỏi đáp", href: "/student/hoi-dap", icon: "khac" },
+    { label: "Cộng đồng", href: "/student/cong-dong", icon: "nguoi" },
   ] },
   { title: "Khám phá", links: [
-    { label: "Khoá học đang mở", href: "/khoa-hoc" },
-    { label: "Lớp đang theo dõi", href: "/khoa-hoc-da-luu" },
-    { label: "Gia sư", href: "/giang-vien" },
-    { label: "Tin tức", href: "/student/tin-tuc" },
-    { label: "Tra cứu điểm chuẩn", href: "/diem-chuan" },
+    { label: "Khoá học đang mở", href: "/khoa-hoc", icon: "lop" },
+    { label: "Lớp đang theo dõi", href: "/khoa-hoc-da-luu", icon: "lop" },
+    { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
+    { label: "Tin tức", href: "/student/tin-tuc", icon: "hop-thu" },
+    { label: "Tra cứu điểm chuẩn", href: "/diem-chuan", icon: "bao-cao" },
   ] },
   { title: "Tài khoản", links: [
-    { label: "Hồ sơ", href: "/student/ho-so" },
-    { label: "Học phí", href: "/student/hoc-phi" },
-    { label: "Ví và Coin", href: "/student/vi" },
-    { label: "Chủ đề màu", href: "/cai-dat/chu-de" },
+    { label: "Hồ sơ", href: "/student/ho-so", icon: "nguoi" },
+    { label: "Học phí", href: "/student/hoc-phi", icon: "hoc-phi" },
+    { label: "Ví và Coin", href: "/student/vi", icon: "hoc-phi" },
+    { label: "Chủ đề màu", href: "/cai-dat/chu-de", icon: "cai-dat" },
   ] },
 ];
 const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.map(l => l.href));
@@ -76,9 +77,15 @@ export default function StudentShell({ children }: { children: ReactNode }) {
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 
+  // Thanh RỘNG (Figma "Điều hướng"): nhóm đầu = bốn module, các nhóm còn lại là chính danh sách của bảng "Khác".
+  const wide: NavGroup[] = [
+    { title: "Làm việc hằng ngày", items: modules.filter(m => m.key !== "khac").map(m => ({ key: m.key, label: m.label, href: m.href ?? "/student/viec-cua-toi", icon: m.key === "viec" ? "hop-thu" : m.icon, also: m.also, badge: m.badge })) },
+    ...MORE_GROUPS.map(moreToNavGroup),
+  ];
+
   return (
     <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
-      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} onCollapse={closeMore}
+      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} groups={wide} onCollapse={closeMore}
         home={{ href: "/student/viec-cua-toi", label: "KiN — Việc của tôi" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">

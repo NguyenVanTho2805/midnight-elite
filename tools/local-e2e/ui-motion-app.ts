@@ -124,7 +124,10 @@ const mk = (id: string, kind: Item["kind"], title: string, o: { needs?: boolean;
   }
 
   // ───────── #040 thanh bên rộng ─────────
-  section("#040 Thanh bên MỞ RỘNG 220px có nhãn: nút ở cạnh dưới thanh, nhãn hiện lần lượt, vạch nổi bật trượt; nhớ theo máy + tài khoản");
+  // 25/10/2026 (Figma "Nền móng", khung "Điều hướng"): trạng thái RỘNG nay là 272px, mục xếp theo NHÓM (biểu tượng + chữ nằm cạnh nhau) và là MẶC ĐỊNH của sản phẩm;
+  // thanh hẹp 79px vẫn chọn được. Bài này chạy từ thanh hẹp (ctxFor mặc định đặt sẵn "mo", xem ui.ts) để kiểm cả hai chiều, nên các con số 220 cũ đổi thành 272.
+  // Hoạt hình nhãn "kin-rail-lab-in" không còn (thanh rộng không có nhãn hiện lần lượt); vạch nổi bật trượt chỉ còn ở thanh hẹp nên được kiểm TRƯỚC khi mở rộng.
+  section("#040 Thanh bên RỘNG 272px theo nhóm: nút ở cạnh dưới thanh; vạch nổi bật trượt (thanh hẹp); nhớ theo máy + tài khoản");
   {
     const ctx = await ctxFor(S, { width: 1280, height: 800 });
     await noFonts(ctx as never);
@@ -135,38 +138,24 @@ const mk = (id: string, kind: Item["kind"], title: string, o: { needs?: boolean;
     await sleep(600);
     const geo = () => p.evaluate(() => {
       const w = document.querySelector("#kin-rail")!.getBoundingClientRect().width;
-      const act = document.querySelector<HTMLElement>('#kin-rail [aria-current="page"]')!;
+      const wide = getComputedStyle(document.querySelector(".kin-rail-groups")!).display !== "none";
+      const act = document.querySelector<HTMLElement>(wide ? '#kin-rail .kin-rail-wi[aria-current="page"]' : '#kin-rail .kin-rail-it[aria-current="page"]')!;
       const hl = document.querySelector<HTMLElement>(".kin-rail-hl")!;
       const ab = act.getBoundingClientRect(), hb = hl.getBoundingClientRect();
-      const icon = act.querySelector("svg")!.getBoundingClientRect(), lab = act.querySelector(".kin-rail-lab")!.getBoundingClientRect();
-      return { w: Math.round(w), attr: document.documentElement.getAttribute("data-kin-rail"), hlOn: hl.dataset.on, hlAnim: hl.dataset.anim, dy: Math.abs(hb.top - ab.top), dh: Math.abs(hb.height - ab.height), dx: Math.abs(hb.left - ab.left), dw: Math.abs(hb.width - ab.width), labelBelow: lab.top > icon.bottom - 2, labelBeside: lab.left >= icon.right - 1 && Math.abs((lab.top + lab.height / 2) - (icon.top + icon.height / 2)) < 8, itemW: Math.round(ab.width) };
+      const icon = act.querySelector("svg")!.getBoundingClientRect(), lab = (act.querySelector(wide ? "span" : ".kin-rail-lab") as HTMLElement).getBoundingClientRect();
+      return { w: Math.round(w), wide, attr: document.documentElement.getAttribute("data-kin-rail"), hlOn: hl.dataset.on, hlAnim: hl.dataset.anim, dy: Math.abs(hb.top - ab.top), dh: Math.abs(hb.height - ab.height), dx: Math.abs(hb.left - ab.left), dw: Math.abs(hb.width - ab.width), labelBelow: lab.top > icon.bottom - 2, labelBeside: lab.left >= icon.right - 1 && Math.abs((lab.top + lab.height / 2) - (icon.top + icon.height / 2)) < 8, itemW: Math.round(ab.width) };
     });
     const g0 = await geo();
-    check("79px như Figma: nhãn nằm DƯỚI biểu tượng; vạch nổi bật trùng đúng mục đang chọn", g0.w === 79 && g0.attr === null && g0.labelBelow && g0.hlOn === "1" && g0.dy < 1.5 && g0.dh < 1.5 && g0.dx < 1.5 && g0.dw < 1.5, g0);
-    check("mục đang chọn không tự mang nền riêng nữa (vạch chung thay)", await p.locator('#kin-rail [aria-current="page"]').evaluate(el => getComputedStyle(el).backgroundColor === "rgba(0, 0, 0, 0)"));
+    check("79px như Figma 11:98: nhãn nằm DƯỚI biểu tượng; vạch nổi bật trùng đúng mục đang chọn (ctxFor đã đặt sẵn 'mo')", g0.w === 79 && g0.attr === "mo" && !g0.wide && g0.labelBelow && g0.hlOn === "1" && g0.dy < 1.5 && g0.dh < 1.5 && g0.dx < 1.5 && g0.dw < 1.5, g0);
+    check("mục đang chọn không tự mang nền riêng nữa (vạch chung thay)", await p.locator('#kin-rail .kin-rail-it[aria-current="page"]').evaluate(el => getComputedStyle(el).backgroundColor === "rgba(0, 0, 0, 0)"));
     const widen = p.locator("[data-rail-widen]");
     check("nút mở rộng có đủ nhãn + trạng thái cho trình đọc màn hình (aria-pressed=false)", (await widen.getAttribute("aria-label")) === "Mở rộng thanh bên có nhãn chữ" && (await widen.getAttribute("aria-pressed")) === "false");
     check("lúc chưa rê chuột vào thanh: nút ẩn (opacity 0)", (await widen.evaluate(el => getComputedStyle(el).opacity)) === "0");
     await wrap.hover({ position: { x: 30, y: 300 } });
     await sleep(350);
     check("rê chuột vào thanh: nút hiện (opacity 1)", (await widen.evaluate(el => getComputedStyle(el).opacity)) === "1");
-    await widen.click();
-    await sleep(120);
-    const lab = await p.evaluate(() => getComputedStyle(document.querySelector('#kin-rail .kin-rail-it .kin-rail-lab')!).animationName);
-    await sleep(900);
-    const g1 = await geo();
-    check("bấm: thanh nở ra 220px (đã nhớ trên <html> data-kin-rail=rong), nhãn chuyển sang NẰM CẠNH biểu tượng", g1.w === 220 && g1.attr === "rong" && g1.labelBeside && !g1.labelBelow, g1);
-    check("nhãn hiện lần lượt bằng hoạt hình kin-rail-lab-in", lab === "kin-rail-lab-in", lab);
-    check("vạch nổi bật dãn theo bề rộng mới, vẫn trùng mục đang chọn", g1.hlOn === "1" && g1.dw < 2 && g1.dy < 1.5 && g1.itemW > 190, g1);
-    check("nút giờ ghi 'Thu hẹp thanh bên', aria-pressed=true, luôn hiện", (await widen.getAttribute("aria-label")) === "Thu hẹp thanh bên" && (await widen.getAttribute("aria-pressed")) === "true" && (await widen.evaluate(el => getComputedStyle(el).opacity)) === "1");
-    check("đã nhớ theo máy (localStorage) và theo TÀI KHOẢN (cơ sở dữ liệu)", await (async () => {
-      const local = await p.evaluate(() => localStorage.getItem("kin.thanh-ben") + "|" + localStorage.getItem("kin.thanh-ben-truoc"));
-      await sleep(500);
-      const u = await prisma.user.findUnique({ where: { id: S.id }, select: { preferences: true } });
-      return local === "rong|rong" && (u?.preferences as { rail?: string } | null)?.rail === "rong";
-    })());
-    // vạch trượt khi đổi mục
-    const lich = p.locator('#kin-rail a', { hasText: "Lịch" });
+    // vạch trượt khi đổi mục (thanh hẹp)
+    const lich = p.locator('#kin-rail .kin-rail-it', { hasText: "Lịch" });
     const before = await p.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector(".kin-rail-hl")!).transform).m42);
     await lich.click();
     await sleep(110);
@@ -175,12 +164,25 @@ const mk = (id: string, kind: Item["kind"], title: string, o: { needs?: boolean;
     await sleep(900);
     const g2 = await geo();
     const after = await p.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector(".kin-rail-hl")!).transform).m42);
-    check("sang mục 'Lịch': vạch nổi bật TRƯỢT xuống (giữa chừng chưa tới nơi) rồi dừng đúng mục mới", after > before + 20 && mid < after - 1 && g2.dy < 1.5, { before, mid, after, dy: g2.dy });
-    // "Khác" neo theo bề rộng
+    check("thanh hẹp, sang mục 'Lịch': vạch nổi bật TRƯỢT xuống (giữa chừng chưa tới nơi) rồi dừng đúng mục mới", after > before + 20 && mid < after - 1 && g2.dy < 1.5, { before, mid, after, dy: g2.dy });
+    // "Khác" neo cạnh thanh hẹp
     await p.locator('#kin-rail [data-khac-nut]').click();
-    const kl = await p.evaluate(() => Math.round(document.querySelector("#khac-bang")!.getBoundingClientRect().left));
-    check("bảng 'Khác' nổi cạnh thanh RỘNG (không đè lên thanh): mép trái ≥ 220", kl >= 220 && kl <= 236, kl);
+    const kl0 = await p.evaluate(() => Math.round(document.querySelector("#khac-bang")!.getBoundingClientRect().left));
+    check("bảng 'Khác' nổi cạnh thanh HẸP (không đè lên thanh): mép trái ≈ 87", kl0 >= 79 && kl0 <= 95, kl0);
     await p.keyboard.press("Escape");
+    // mở rộng
+    await widen.click();
+    await sleep(900);
+    const g1 = await geo();
+    check("bấm: thanh nở ra 272px (đã nhớ trên <html> data-kin-rail=rong), thanh hiện NHÓM, nhãn NẰM CẠNH biểu tượng", g1.w === 272 && g1.attr === "rong" && g1.wide && g1.labelBeside && !g1.labelBelow, g1);
+    check("mục đang chọn ('Lịch học') là một hàng đầy bề rộng thanh, nền 'đang chọn'", g1.itemW > 220 && await p.locator('#kin-rail .kin-rail-wi[aria-current="page"]').evaluate(el => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)"), g1);
+    check("nút giờ ghi 'Thu hẹp thanh bên', aria-pressed=true, luôn hiện", (await widen.getAttribute("aria-label")) === "Thu hẹp thanh bên" && (await widen.getAttribute("aria-pressed")) === "true" && (await widen.evaluate(el => getComputedStyle(el).opacity)) === "1");
+    check("đã nhớ theo máy (localStorage) và theo TÀI KHOẢN (cơ sở dữ liệu)", await (async () => {
+      const local = await p.evaluate(() => localStorage.getItem("kin.thanh-ben") + "|" + localStorage.getItem("kin.thanh-ben-truoc"));
+      await sleep(500);
+      const u = await prisma.user.findUnique({ where: { id: S.id }, select: { preferences: true } });
+      return local === "rong|rong" && (u?.preferences as { rail?: string } | null)?.rail === "rong";
+    })());
     // tải lại: vẫn rộng, KHÔNG nháy (cùng cách quan sát với ui-sidebar: lấy mẫu bề rộng mỗi lần DOM đổi trong lúc dựng trang)
     await p.close();
     const p2 = await ctx.newPage(); watch(p2);
@@ -188,28 +190,28 @@ const mk = (id: string, kind: Item["kind"], title: string, o: { needs?: boolean;
     await p2.goto(`${BASE}/student/lich-hoc`, { waitUntil: "networkidle", timeout: 150000 });
     await p2.locator("#kin-rail").waitFor({ timeout: 90000 });
     const seen = await p2.evaluate(`window.__rw`) as number[];
-    check(`tải lại cứng: <html> data-kin-rail=rong và thanh đứng 220px`, (await p2.evaluate(() => document.documentElement.getAttribute("data-kin-rail"))) === "rong" && (await p2.evaluate(() => Math.round(document.querySelector("#kin-rail")!.getBoundingClientRect().width))) === 220);
-    check(`không có khoảnh khắc nào thanh bên hẹp hơn 220px trong lúc dựng trang (không nháy 79px rồi nở ra); đã quan sát ${seen.length} lần`, seen.length > 0 && Math.min(...seen) === 220, seen);
+    check(`tải lại cứng: <html> data-kin-rail=rong và thanh đứng 272px`, (await p2.evaluate(() => document.documentElement.getAttribute("data-kin-rail"))) === "rong" && (await p2.evaluate(() => Math.round(document.querySelector("#kin-rail")!.getBoundingClientRect().width))) === 272);
+    check(`không có khoảnh khắc nào thanh bên hẹp hơn 272px trong lúc dựng trang (không nháy 79px rồi nở ra); đã quan sát ${seen.length} lần`, seen.length > 0 && Math.min(...seen) === 272, seen);
     p = p2;
-    // thu → phím [ mở lại về 220
+    // thu → phím [ mở lại về 272
     await p.locator("[data-rail-close]").click();
     await sleep(600);
     check("thu: thanh về 0px, <html> data-kin-rail=thu", (await p.evaluate(() => document.querySelector("#kin-rail")!.getBoundingClientRect().width)) === 0 && (await p.evaluate(() => document.documentElement.getAttribute("data-kin-rail"))) === "thu");
     await p.keyboard.press("[");
     await sleep(900);
-    check("phím '[' mở lại về ĐÚNG bề rộng đã dùng (220px), không về 79px", (await geo()).w === 220);
+    check("phím '[' mở lại về ĐÚNG bề rộng đã dùng (272px), không về 79px", (await geo()).w === 272);
     await p.locator("[data-rail-close]").click();
     await sleep(500);
     await p.locator("[data-rail-open]").click();
     await sleep(900);
-    check("nút 'Mở thanh bên' ở dải trên cũng mở lại về 220px", (await geo()).w === 220);
+    check("nút 'Mở thanh bên' ở dải trên cũng mở lại về 272px", (await geo()).w === 272);
     // thu hẹp bằng bàn phím
     await p.locator("[data-rail-widen]").focus();
     check("nút mở rộng nhận tiêu điểm bàn phím và hiện ra khi có tiêu điểm", (await p.locator("[data-rail-widen]").evaluate(el => getComputedStyle(el).opacity)) === "1");
     await p.keyboard.press("Enter");
     await sleep(900);
     const g3 = await geo();
-    check("Enter: thu hẹp về 79px, nhãn lại nằm dưới biểu tượng, vạch trùng mục; <html> bỏ data-kin-rail", g3.w === 79 && g3.attr === null && g3.labelBelow && g3.dy < 1.5, g3);
+    check("Enter: thu hẹp về 79px, nhãn lại nằm dưới biểu tượng, vạch trùng mục; <html> data-kin-rail=mo", g3.w === 79 && g3.attr === "mo" && !g3.wide && g3.labelBelow && g3.dy < 1.5, g3);
     await ctx.close();
   }
 
@@ -226,11 +228,11 @@ const mk = (id: string, kind: Item["kind"], title: string, o: { needs?: boolean;
     await p.locator("[data-rail-widen]").click();
     await sleep(900);
     const r = await p.evaluate(() => {
-      const items = Array.from(document.querySelectorAll<HTMLElement>("#kin-rail .kin-rail-it"));
-      const rows = items.map(a => { const b = a.getBoundingClientRect(), l = a.querySelector(".kin-rail-lab")!.getBoundingClientRect(), bd = a.querySelector<HTMLElement>(".kin-badge-dem")?.getBoundingClientRect(); return { w: Math.round(b.width), overlap: bd ? !(bd.left >= l.right - 1 || bd.right <= l.left + 1) : false, h: Math.round(b.height) }; });
+      const items = Array.from(document.querySelectorAll<HTMLElement>("#kin-rail .kin-rail-wi"));
+      const rows = items.map(a => { const b = a.getBoundingClientRect(), l = (a.querySelector("span") as HTMLElement).getBoundingClientRect(), bd = a.querySelector<HTMLElement>(".kin-badge-dem")?.getBoundingClientRect(); return { w: Math.round(b.width), overlap: bd ? !(bd.left >= l.right - 1 || bd.right <= l.left + 1) : false, h: Math.round(b.height) }; });
       return { n: items.length, w: Math.round(document.querySelector("#kin-rail")!.getBoundingClientRect().width), rows };
     });
-    check("gia sư: thanh 220px, mọi mục đầy bề rộng và cao ≥ 44px, không huy hiệu nào đè lên nhãn", r.w === 220 && r.n >= 3 && r.rows.every(x => x.w > 190 && x.h >= 44 && !x.overlap), r);
+    check("gia sư: thanh 272px, mọi mục đầy bề rộng và cao ≥ 37px (Figma), không huy hiệu nào đè lên nhãn", r.w === 272 && r.n >= 8 && r.rows.every(x => x.w > 220 && x.h >= 37 && !x.overlap), r);
     await ctx.close();
   }
 

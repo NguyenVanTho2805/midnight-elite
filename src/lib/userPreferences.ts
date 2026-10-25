@@ -37,7 +37,7 @@ export interface UserPreferences {
   modules?: OptionalTutorModule[];
   theme?: KinTheme;
   mode?: KinMode;
-  /** Thanh bên trái: "thu" = thụt vào, "mo" = hiện. Vắng mặt = hiện (mặc định). Lưu theo tài khoản, máy khác lấy về khi đăng nhập. */
+  /** Thanh bên trái: "rong" = rộng 272px, "mo" = hẹp 79px, "thu" = thụt vào. Vắng mặt = chưa chọn = thanh RỘNG (mặc định từ 25/10/2026; trước đó là hẹp 79px). Lưu theo tài khoản, máy khác lấy về khi đăng nhập. */
   rail?: RailState;
   /** Gia sư tắt/bật tin nhắc lịch từng bên. Vắng mặt = bật cả hai. */
   reminders?: { parent: boolean; student: boolean };

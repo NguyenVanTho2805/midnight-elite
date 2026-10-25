@@ -9,12 +9,12 @@ import { usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
-import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { ModuleRail, type ModuleItem, type NavGroup, type NavItem } from "@/components/kin/shell/ModuleRail";
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
-import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
+import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
@@ -23,18 +23,19 @@ const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
 // Các trang /admin/* mà gia sư dùng (đề thi, ngân hàng đề, quản lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ này (src/lib/hostRouting.ts,
 // TutorAdminFrame) — nên Bài KT / Thư viện / Lớp là liên kết nội bộ chứ không còn nhảy sang tên miền quản trị.
 
+// `icon` theo Figma "Nền móng" (khung "Điều hướng" của gia sư, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 const MORE_BASE: MoreGroup[] = [
   { title: "Dạy học", links: [
-    { label: "Tổng quan", href: "/lop-cua-toi/tong-quan" },
-    { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi" },
-    { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang" },
-    { label: "Sổ điểm", href: "/lop-cua-toi/so-diem" },
-    { label: "Kiểm duyệt cộng đồng", href: "/lop-cua-toi/kiem-duyet" },
+    { label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" },
+    { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi", icon: "lich" },
+    { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang", icon: "bao-cao" },
+    { label: "Sổ điểm", href: "/lop-cua-toi/so-diem", icon: "bai-kt" },
+    { label: "Kiểm duyệt cộng đồng", href: "/lop-cua-toi/kiem-duyet", icon: "kiem-duyet" },
   ] },
-  { title: "Tiền", links: [{ label: "Doanh thu", href: "/lop-cua-toi/doanh-thu" }] },
+  { title: "Tiền", links: [{ label: "Doanh thu", href: "/lop-cua-toi/doanh-thu", icon: "hoc-phi" }] },
   { title: "Giới thiệu", links: [
-    { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" },
-    { label: "Bài đăng tìm học sinh", href: "/lop-cua-toi/bai-dang" },
+    { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so", icon: "nguoi" },
+    { label: "Bài đăng tìm học sinh", href: "/lop-cua-toi/bai-dang", icon: "hop-thu" },
   ] },
 ];
 
@@ -57,10 +58,10 @@ export default function TutorShell({
   const groups: MoreGroup[] = [
     ...MORE_BASE,
     { title: "Tài khoản", links: [
-      { label: "Gói của tôi", href: "/lop-cua-toi/goi" },
-      { label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro" },
-      { label: "Cài đặt", href: "/lop-cua-toi/cai-dat" },
-      ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module" }] : []),
+      { label: "Gói của tôi", href: "/lop-cua-toi/goi", icon: "hoc-phi" },
+      { label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro", icon: "khac" },
+      { label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat" },
+      ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module", icon: "cai-dat" }] : []),
     ] },
   ];
   const moreActive = moreOpen || groups.some(g => g.links.some(l => isUnder(pathname, l.href) && !isUnder(pathname, "/lop-cua-toi/cai-dat")));
@@ -79,6 +80,17 @@ export default function TutorShell({
   const withStudents = mods.flatMap<ModuleItem>(m => m.key === "lop"
     ? [m, { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", desktopOnly: true }]
     : [m]);
+  // Thanh RỘNG (Figma "Điều hướng"): "Làm việc hằng ngày" = các module đang bật (trừ Học phí); Học phí đứng chung nhóm "Tiền" với Doanh thu; các nhóm còn lại là chính
+  // danh sách của bảng "Khác". Module bị tắt vẫn chỉ ẩn khỏi thanh (dữ liệu giữ nguyên) nên nhóm đầu có thể ngắn hơn Figma.
+  const asNav = (m: ModuleItem): NavItem => ({ key: m.key, label: m.label, href: m.href ?? "/lop-cua-toi", icon: m.icon, active: m.active, badge: m.badge });
+  const [dayTeach, money, intro, account] = groups.map(moreToNavGroup);
+  const wide: NavGroup[] = [
+    { title: "Làm việc hằng ngày", items: withStudents.filter(m => m.key !== "hoc-phi").map(asNav) },
+    dayTeach,
+    { title: money.title, items: [...withStudents.filter(m => m.key === "hoc-phi").map(asNav), ...money.items] },
+    intro,
+    account,
+  ];
   const items: ModuleItem[] = [
     ...withStudents,
     { key: "cai-dat", label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat", desktopOnly: true },
@@ -88,7 +100,7 @@ export default function TutorShell({
   return (
     // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
     <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
-      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} onCollapse={closeMore}
+      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore}
         home={{ href: "/lop-cua-toi", label: "KiN — Hộp việc của gia sư" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">

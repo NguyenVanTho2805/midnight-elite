@@ -4,8 +4,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import type { NavGroup } from "./ModuleRail";
 
-export interface MoreGroup { title: string; links: { label: string; href: string }[] }
+/** `icon`: tên biểu tượng của thanh rộng (ShellIcon); bảng "Khác" không vẽ biểu tượng. */
+export interface MoreGroup { title: string; links: { label: string; href: string; icon?: string }[] }
+
+/** Cùng các mục của bảng "Khác" nhưng ở dạng NHÓM của thanh rộng (Figma "Điều hướng"). Liên kết có "#neo" không bao giờ được tô là đang chọn (nó cùng đường dẫn với mục cha). */
+export const moreToNavGroup = (g: MoreGroup): NavGroup => ({
+  title: g.title,
+  items: g.links.map(l => ({ key: l.href, label: l.label, href: l.href, icon: l.icon ?? "viec", ...(l.href.includes("#") ? { active: false } : {}) })),
+});
 
 export const isUnder = (pathname: string, href: string) => {
   const path = href.split("#")[0];
