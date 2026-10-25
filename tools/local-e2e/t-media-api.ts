@@ -63,6 +63,37 @@ async function mkTree(courseId: string, lessons: Record<string, unknown>[]) {
   check("context bài TRẢ PHÍ cho người chưa vào lớp → 403", ctxPaid.status === 403, ctxPaid.status);
   check("context bài trả phí cho học sinh chờ đồng ý → 403", (await api("GET", `/api/lessons/${L1.id}/context`, { as: S3 })).status === 403);
 
+  section("1b. Link nhóm Zalo + link học online của lớp: chỉ người trong lớp (cột Course: zaloGroupLink, zaloGroupUrl, classJoinUrl)");
+  const ZG = "https://zalo.me/g/abc123", ZU = "https://zalo.me/g/xyz789", CJ = "https://meet.google.com/abc-defg-hij";
+  await prisma.course.update({ where: { id: A.id }, data: { zaloGroupLink: ZG, zaloGroupUrl: ZU, classJoinUrl: CJ } });
+  const zleak = (j: unknown) => /zalo\.me\/g\/|meet\.google\.com/.test(JSON.stringify(j));
+  const zfull = (j: unknown) => { const t = JSON.stringify(j); return t.includes(ZG) && t.includes(ZU) && t.includes(CJ); };
+  const rowA = (r: { json: unknown }) => (Array.isArray(r.json) ? r.json : []).find((c: { id: string }) => c.id === A.id);
+  const outsiders = [["khách", undefined], ["học sinh chưa ghi danh", S2], ["học sinh chờ đồng ý", S3], ["học sinh lớp khác", S4], ["gia sư lớp khác", T2]] as const;
+  const members = [["học sinh đang học", S], ["gia sư chủ lớp", T], ["quản trị", SUP]] as const;
+  for (const [ten, who] of outsiders) {
+    const d = await api("GET", `/api/courses/${A.id}`, who ? { as: who } : undefined);
+    check(`${ten}: GET /api/courses/[id] KHÔNG lộ link nhóm Zalo / link học online`, d.status === 200 && !zleak(d.json), d.status);
+    const l = await api("GET", "/api/courses", who ? { as: who } : undefined);
+    check(`${ten}: GET /api/courses (danh sách công khai) có lớp A nhưng KHÔNG lộ ba link`, l.status === 200 && !!rowA(l) && !zleak(l.json), l.status);
+  }
+  for (const [ten, who] of members) {
+    const d = await api("GET", `/api/courses/${A.id}`, { as: who });
+    check(`${ten}: GET /api/courses/[id] vẫn nhận đủ ba link`, d.status === 200 && zfull(d.json), d.status);
+    const l = await api("GET", "/api/courses", { as: who });
+    check(`${ten}: GET /api/courses vẫn nhận đủ ba link của lớp A`, l.status === 200 && !!rowA(l) && zfull(rowA(l)), l.status);
+  }
+  for (const [ten, who] of [["gia sư chủ lớp", T], ["quản trị", SUP]] as const) {
+    const l = await api("GET", "/api/courses?all=1", { as: who });
+    check(`${ten}: bảng quản trị (?all=1) vẫn nhận đủ ba link`, l.status === 200 && !!rowA(l) && zfull(rowA(l)), l.status);
+  }
+  for (const [ten, who] of [["học sinh chưa ghi danh", S2], ["học sinh chờ đồng ý", S3], ["gia sư lớp khác", T2]] as const) {
+    const c = await api("GET", `/api/lessons/${L0.id}/context`, { as: who });
+    check(`${ten}: context bài miễn phí → 200 nhưng KHÔNG lộ ba link (cả course lẫn lesson.chapter.section.course)`, c.status === 200 && !zleak(c.json), c.status);
+  }
+  const cOk = await api("GET", `/api/lessons/${L0.id}/context`, { as: S });
+  check("học sinh đang học: context vẫn nhận đủ ba link", cOk.status === 200 && zfull(cOk.json), cOk.status);
+
   section("2. Tải video lên (init → PUT → chốt): báo trước, giới hạn, quyền");
   const initBody = (o: Record<string, unknown> = {}) => ({ courseId: A.id, fileName: "bai-1.mp4", size: 1000, mimeType: "video/mp4", confirmedNotice: true, ...o });
   check("học sinh xin tải video → bị chặn (403)", (await api("POST", "/api/media/video/init", { as: S, body: initBody() })).status === 403);
