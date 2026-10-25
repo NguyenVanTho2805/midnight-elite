@@ -72,7 +72,7 @@ Mọi khung đều có khung con "Điều hướng" 272px: logo + nhãn vai, m�
 
 | Trang | Kết quả | Vì sao |
 |---|---|---|
-| `/thi-thu` (học sinh) | **ĐÃ LÀM** | Dựng lại theo 575:5571: ô "Tìm đề thi" (không dấu cũng ra), Tất cả / Chưa làm / Đã làm, bảng Đề · Môn · Thời gian · Số câu · Trạng thái, "Làm bài" / "Xem lại", dòng chú thích. Giữ lọc theo môn, khoá đề của lớp chưa ghi danh, điểm / hạng, "Chờ gia sư chấm". Bỏ ba ô thống kê (Figma không vẽ). Khách vẫn thấy trang cũ. |
+| `/thi-thu` (học sinh) | **ĐÃ LÀM** | Dựng lại theo 575:5571: ô "Tìm đề thi" (không dấu cũng ra), Tất cả / Chưa làm / Đã làm, bảng Đề · Môn · Thời gian · Số câu · Trạng thái, "Làm bài" / "Xem lại", dòng chú thích. Giữ lọc theo kỳ thi (ô chọn; cột Figma "Môn" đổi tên "Kỳ thi" vì dữ liệu `category` là nhóm đề ĐGNL HSA / THPT / BCA…, không phải môn), khoá đề của lớp chưa ghi danh, điểm / hạng, "Chờ gia sư chấm". Bỏ ba ô thống kê (Figma không vẽ). Khách vẫn thấy trang cũ. |
 | `/bang-xep-hang` | **DỪNG, cần Thọ** | Figma ghi "Em chỉ thấy tên hiển thị của các bạn, không thấy lớp hay thông tin liên hệ." Mã đang hiện **tên trường** (`/api/leaderboard` trả `school`) nên câu này sẽ sai. Quyết định: ẩn tên trường khỏi bảng xếp hạng (dữ liệu học sinh) hay sửa câu của Figma. Trang còn có tab Vinh danh, dùng chung với khách. |
 | `/student/tieng-anh` | **DỪNG, cần Thọ** | Figma "Luyện bốn kỹ năng" (Nghe, Nói, Đọc, Viết). Mã (IELTS, PR #60) có Nghe, Đọc, Viết, Từ vựng, **không có Nói**. Quyết định: bỏ "Nói" khỏi Figma hay dựng Nói. |
 | `/student/hoc-tap` (Lớp của tôi) | Chưa làm | Figma có trạng thái "Đã nhập mã lớp · chờ gia sư duyệt". Mã chưa có trạng thái chờ gia sư duyệt (chỉ có `pending_consent`, chờ phụ huynh). Cần quyết định có thêm bước gia sư duyệt không. Đầu trang đã có dòng phụ. |
