@@ -19,6 +19,7 @@ import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MoreP
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Học tập", links: [
     { label: "Thư viện", href: "/thu-vien" },
+    { label: "Tiếng Anh tự học", href: "/student/tieng-anh" },
     { label: "Thi thử", href: "/student/thi-thu" },
     { label: "Bảng xếp hạng", href: "/student/bang-xep-hang" },
     { label: "Hỏi đáp", href: "/student/hoi-dap" },
