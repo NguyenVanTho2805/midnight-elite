@@ -7,6 +7,7 @@ import { useExams } from "@/hooks/useExams";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { computeExamStatus, type ExamStatus } from "@/lib/examData";
+import { KinPage, KinPageHeader, KinStatus, KinEmptyState, kinButtonClass, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD, type StatusTone } from "@/components/kin";
 
 interface MyResult {
   examId: string; score: number | null; totalPoints: number; rank: number | null;
@@ -18,9 +19,24 @@ const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string 
   completed: { label: "Đã kết thúc", color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)" },
 };
 
+type DoneTab = "tat-ca" | "chua-lam" | "da-lam";
+
+/** Bỏ dấu + hoa thường để ô tìm gõ không dấu vẫn ra đề. */
+const fold = (t: string) => t.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").trim();
+
+/** Nhãn trạng thái của đề CHƯA làm: đang mở thì là "Chưa làm" (việc em cần làm), còn lại theo thời gian của đề. */
+function examState(status: ExamStatus, hasDone: boolean): { label: string; tone: StatusTone } {
+  if (hasDone) return { label: "Đã làm", tone: "xong" };
+  if (status === "available") return { label: "Chưa làm", tone: "cho" };
+  if (status === "upcoming") return { label: "Sắp diễn ra", tone: "mo" };
+  return { label: "Đã kết thúc", tone: "mo" };
+}
+
 export default function ThiThuPage() {
   const { user } = useAuth();
   const [cat, setCat] = useState("Tất cả");
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState<DoneTab>("tat-ca");
   const [myResults, setMyResults] = useState<Record<string, MyResult>>({});
   const { enrolledIds } = useEnrollments();
 
@@ -57,135 +73,109 @@ export default function ThiThuPage() {
     );
   }
 
-  /* ── Logged-in view ─────────────────────────────────────────────────── */
+  /* ── Logged-in view (Figma "Học sinh · Thi thử" 575:5571: ô tìm + Tất cả / Chưa làm / Đã làm + bảng Đề · Môn · Thời gian · Số câu · Trạng thái) ───────────── */
   if (user) {
-    const done      = Object.keys(myResults).length;
-    const available = exams.filter(e => e.status === "available" && !myResults[e.id]).length;
-    const upcoming  = exams.filter(e => e.status === "upcoming").length;
+    const needle = fold(q);
+    const shown = filtered.filter(e => {
+      const done = !!e.myResult;
+      if (tab === "chua-lam" && done) return false;
+      if (tab === "da-lam" && !done) return false;
+      return !needle || fold(`${e.title} ${e.code}`).includes(needle);
+    });
+    const TABS: { key: DoneTab; label: string }[] = [{ key: "tat-ca", label: "Tất cả" }, { key: "chua-lam", label: "Chưa làm" }, { key: "da-lam", label: "Đã làm" }];
+    const COLS = "md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.6fr)_minmax(0,1.5fr)_minmax(0,1.1fr)]";
 
     return (
-      <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Thi thử</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Luyện tập với đề thi thử được cập nhật liên tục</p>
+      <KinPage>
+        <KinPageHeader title="Thi thử" sub="Đề luyện thi từ thư viện và từ lớp của em." />
+
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,440px)_auto] sm:items-end">
+          <label className="block min-w-0">
+            <span className="sr-only">Tìm đề thi</span>
+            <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Tìm đề thi" className={KIN_FIELD} />
+          </label>
+          <div role="group" aria-label="Lọc theo trạng thái làm bài" className="flex flex-wrap items-center gap-1">
+            {TABS.map(t => (
+              <button key={t.key} type="button" aria-pressed={tab === t.key} onClick={() => setTab(t.key)}
+                className={`min-h-11 px-4 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] transition-colors ${tab === t.key
+                  ? "border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)]"
+                  : "border-transparent text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Đã làm",      val: done,      color: "var(--kin-chu-mo)", bg: "var(--kin-nen-bang)", border: "var(--kin-vien-thuong)" },
-            { label: "Có thể thi",  val: available, color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-xong)" },
-            { label: "Sắp diễn ra", val: upcoming,  color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)" },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl p-4 text-center"
-              style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.val}</div>
-              <div className="text-xs font-medium mt-0.5" style={{ color: s.color }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Category filter */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Lọc theo môn">
           {COURSE_CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCat(c)}
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-              style={cat === c
-                ? { background: "var(--kin-nhan-nen)", color: "white", borderRadius: "8px" }
-                : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", borderRadius: "8px" }}>
+            <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)}
+              className={`min-h-11 px-3 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] transition-colors ${cat === c
+                ? "bg-[var(--kin-nen-dang-chon)] text-[var(--kin-th-navy)] font-semibold"
+                : "text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
               {c}
             </button>
           ))}
         </div>
 
-        {/* Exam list */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          {filtered.map((exam, idx) => {
-            const result   = exam.myResult;
-            const hasDone  = !!result;
-            const s        = STATUS_CFG[hasDone ? "completed" : exam.status];
-            const grad     = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
-            const isLast   = idx === filtered.length - 1;
-            // Đề gắn courseId mà học viên chưa ghi danh — vẫn hiện trong danh
-            // sách (không ẩn hẳn) nhưng khoá nút vào thi, ghi rõ lý do thay vì
-            // để học viên bấm vào rồi mới biết bị chặn ở bước sau.
-            const isLocked = !!exam.courseId && !enrolledIds.has(exam.courseId);
-            return (
-              <div key={exam.id} className="flex items-center gap-4 px-5 py-4"
-                style={{ borderBottom: isLast ? "none" : "1px solid var(--kin-vien-thuong)" }}>
-                <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                  style={{ background: grad }}>
-                  {exam.code.split(".")[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-                      style={{ background: s.bg, color: s.color }}>
-                      {hasDone ? "Đã làm" : s.label}
-                    </span>
-                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.date} · {exam.time}</span>
-                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.duration} · {exam.questions} câu</span>
-                    {exam.participants > 0 && (
-                      <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{exam.participants} thí sinh</span>
-                    )}
-                  </div>
-                  {hasDone && (
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-sm font-bold" style={{ color: "var(--kin-nhan-link)" }}>
-                        {result.score === null ? "Chờ gia sư chấm" : `${result.score}/${result.totalPoints}`}
-                      </span>
-                      {result.rank !== null && result.rank > 0 && (
-                        <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Hạng #{result.rank}</span>
+        <div className="mt-6 rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] overflow-hidden">
+          <div aria-hidden className={`hidden md:grid ${COLS} gap-x-4 ${KIN_TABLE_HEAD}`}>
+            <span>Đề</span><span>Môn</span><span>Thời gian</span><span>Số câu</span><span>Trạng thái</span><span />
+          </div>
+          {shown.length === 0 ? (
+            <div className="p-6">
+              <KinEmptyState title={needle || tab !== "tat-ca" || cat !== "Tất cả" ? "Không có đề thi nào khớp" : "Chưa có đề thi nào"}>
+                {needle || tab !== "tat-ca" || cat !== "Tất cả" ? "Thử đổi từ khoá, trạng thái hoặc môn." : "Khi có đề thi mới, đề sẽ hiện ở đây."}
+              </KinEmptyState>
+            </div>
+          ) : (
+            <ul>
+              {shown.map(exam => {
+                const result  = exam.myResult;
+                const hasDone = !!result;
+                // Đề gắn courseId mà học viên chưa ghi danh — vẫn hiện trong danh sách (không ẩn hẳn) nhưng khoá nút vào thi, ghi rõ lý do
+                // thay vì để học viên bấm vào rồi mới biết bị chặn ở bước sau.
+                const isLocked = !!exam.courseId && !enrolledIds.has(exam.courseId);
+                const state = examState(exam.status, hasDone);
+                return (
+                  <li key={exam.id} data-exam-row className={`grid ${COLS} gap-x-4 gap-y-1 ${KIN_TABLE_ROW} last:border-b-0`}>
+                    <div className="min-w-0">
+                      <p className="text-[var(--kin-chu-chinh)]">{exam.title}</p>
+                      <p className="text-[var(--kin-chu-mo)]">{exam.date} · {exam.time}{exam.participants > 0 ? ` · ${exam.participants} thí sinh` : ""}</p>
+                    </div>
+                    <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Môn: </span>{exam.category}</span>
+                    <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Thời gian: </span>{exam.duration}</span>
+                    <span className="text-[var(--kin-chu-chinh)]"><span className="md:hidden text-[var(--kin-chu-mo)]">Số câu: </span>{exam.questions}</span>
+                    <div className="min-w-0">
+                      <KinStatus tone={hasDone ? (result.score === null ? "cho" : "xong") : state.tone}>
+                        {hasDone ? (result.score === null ? "Chờ gia sư chấm" : `Đã làm · ${result.score}/${result.totalPoints}`) : state.label}
+                      </KinStatus>
+                      {hasDone && result.rank !== null && result.rank > 0 && <p className="text-[var(--kin-chu-mo)]">Hạng #{result.rank}</p>}
+                    </div>
+                    <div className="md:text-right">
+                      {hasDone ? (
+                        <Link href={`/student/thi-thu/${exam.id}`} className="inline-flex items-center min-h-11 px-2 text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)] underline">Xem lại</Link>
+                      ) : isLocked ? (
+                        <span className="text-[var(--kin-chu-mo)]">Thuộc khóa {exam.courseName ?? "khác"} — chưa ghi danh</span>
+                      ) : exam.status === "upcoming" ? (
+                        <span className="text-[var(--kin-chu-mo)]">Chờ mở</span>
+                      ) : exam.status === "available" ? (
+                        <Link href={`/student/thi-thu/${exam.id}`} className={kinButtonClass("primary")}>Làm bài</Link>
+                      ) : (
+                        <span className="text-[var(--kin-chu-mo)]">Đã kết thúc</span>
                       )}
                     </div>
-                  )}
-                </div>
-                <div className="flex-shrink-0">
-                  {hasDone ? (
-                    <Link href={`/student/thi-thu/${exam.id}`}
-                      className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
-                      Xem lại
-                    </Link>
-                  ) : isLocked ? (
-                    <span className="text-xs font-medium px-3 py-1.5 rounded-md text-right block"
-                      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
-                      Thuộc khóa {exam.courseName ?? "khác"} — chưa ghi danh
-                    </span>
-                  ) : exam.status === "upcoming" ? (
-                    <span className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Chờ mở</span>
-                  ) : exam.status === "available" ? (
-                    <Link href={`/student/thi-thu/${exam.id}`}
-                      className="text-xs font-semibold px-4 py-2 rounded-lg text-white"
-                      style={{ background: "var(--kin-nhan-nen)" }}>
-                      Vào thi
-                    </Link>
-                  ) : (
-                    <span className="text-xs font-medium px-3 py-1.5 rounded-md"
-                      style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>Đã kết thúc</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div className="py-16 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>
-              Không có đề thi nào trong danh mục này
-            </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
-        <div className="rounded-xl px-5 py-4 flex items-start gap-3"
-          style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
-          <span className="text-blue-600 text-lg flex-shrink-0">ℹ</span>
-          <p className="text-sm" style={{ color: "var(--kin-nhan-chu-tren-nhat)" }}>
-            Kết quả thi thử được ghi nhận và tính vào <strong>Bảng xếp hạng vinh danh</strong> hàng tháng.
-            Làm bài nghiêm túc để có điểm số chính xác nhất.
-          </p>
-        </div>
-      </div>
+        <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Điểm hiện sau khi gia sư công bố. Bài tự luận chờ gia sư chấm.</p>
+        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+          Kết quả thi thử được ghi nhận và tính vào Bảng xếp hạng vinh danh hàng tháng. Làm bài nghiêm túc để có điểm số chính xác nhất.
+        </p>
+      </KinPage>
     );
   }
 
