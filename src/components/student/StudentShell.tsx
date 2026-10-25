@@ -17,20 +17,21 @@ import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
+// `also`: href của Thi thử / Xếp hạng / Hỏi đáp / Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Học tập", links: [
     { label: "Thư viện", href: "/thu-vien", icon: "thu-vien" },
     { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "bai-kt" },
-    { label: "Thi thử", href: "/student/thi-thu", icon: "bai-kt" },
-    { label: "Bảng xếp hạng", href: "/student/bang-xep-hang", icon: "bao-cao" },
-    { label: "Hỏi đáp", href: "/student/hoi-dap", icon: "khac" },
-    { label: "Cộng đồng", href: "/student/cong-dong", icon: "nguoi" },
+    { label: "Thi thử", href: "/student/thi-thu", also: ["/thi-thu"], icon: "bai-kt" },
+    { label: "Bảng xếp hạng", href: "/student/bang-xep-hang", also: ["/bang-xep-hang"], icon: "bao-cao" },
+    { label: "Hỏi đáp", href: "/student/hoi-dap", also: ["/cong-dong/hoi-dap"], icon: "khac" },
+    { label: "Cộng đồng", href: "/student/cong-dong", also: ["/cong-dong"], icon: "nguoi" },
   ] },
   { title: "Khám phá", links: [
     { label: "Khoá học đang mở", href: "/khoa-hoc", icon: "lop" },
     { label: "Lớp đang theo dõi", href: "/khoa-hoc-da-luu", icon: "lop" },
     { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
-    { label: "Tin tức", href: "/student/tin-tuc", icon: "hop-thu" },
+    { label: "Tin tức", href: "/student/tin-tuc", also: ["/tin-tuc"], icon: "hop-thu" },
     { label: "Tra cứu điểm chuẩn", href: "/diem-chuan", icon: "bao-cao" },
   ] },
   { title: "Tài khoản", links: [
@@ -40,7 +41,7 @@ const MORE_GROUPS: MoreGroup[] = [
     { label: "Chủ đề màu", href: "/cai-dat/chu-de", icon: "cai-dat" },
   ] },
 ];
-const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.map(l => l.href));
+const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.flatMap(l => [l.href, ...(l.also ?? [])]));
 /** Phòng thi: /student/thi-thu/<mã đề> (không tính danh sách /student/thi-thu). */
 export const isExamRoom = (pathname: string) => /^\/student\/thi-thu\/[^/]+/.test(pathname);
 

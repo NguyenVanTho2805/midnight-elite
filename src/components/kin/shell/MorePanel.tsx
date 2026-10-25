@@ -5,14 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import type { NavGroup } from "./ModuleRail";
+import { activeIndex } from "@/lib/navActive";
 
 /** `icon`: tên biểu tượng của thanh rộng (ShellIcon); bảng "Khác" không vẽ biểu tượng. */
-export interface MoreGroup { title: string; links: { label: string; href: string; icon?: string }[] }
+/** `also`: đường dẫn đích khi `href` là bí danh chuyển hướng (vd. /student/thi-thu → /thi-thu), để mục vẫn sáng sau khi chuyển (src/lib/navActive.ts). */
+export interface MoreGroup { title: string; links: { label: string; href: string; icon?: string; also?: string[] }[] }
 
 /** Cùng các mục của bảng "Khác" nhưng ở dạng NHÓM của thanh rộng (Figma "Điều hướng"). Liên kết có "#neo" không bao giờ được tô là đang chọn (nó cùng đường dẫn với mục cha). */
 export const moreToNavGroup = (g: MoreGroup): NavGroup => ({
   title: g.title,
-  items: g.links.map(l => ({ key: l.href, label: l.label, href: l.href, icon: l.icon ?? "viec", ...(l.href.includes("#") ? { active: false } : {}) })),
+  items: g.links.map(l => ({ key: l.href, label: l.label, href: l.href, icon: l.icon ?? "viec", ...(l.also ? { also: l.also } : {}), ...(l.href.includes("#") ? { active: false } : {}) })),
 });
 
 export const isUnder = (pathname: string, href: string) => {
@@ -56,19 +58,22 @@ export function MorePanel({ id, groups, onClose, user, onLogout }: {
           {user.email && <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)] truncate">{user.email}</p>}
         </div>
       )}
-      {groups.map(g => (
-        <div key={g.title} className="py-1">
-          <p className="px-3 pt-1 pb-1 text-[length:var(--kin-co-caption)] font-semibold uppercase tracking-[0.09em] text-[var(--kin-chu-mo)]">{g.title}</p>
-          {g.links.map(l => (
-            <Link key={l.href} href={l.href} onClick={onClose}
-              aria-current={isUnder(pathname, l.href) ? "page" : undefined}
-              className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors"
-              style={isUnder(pathname, l.href) ? { background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)" } : undefined}>
-              {l.label}
-            </Link>
-          ))}
-        </div>
-      ))}
+      {groups.map(g => {
+        const lit = activeIndex(pathname, g.links.map(l => l.href.includes("#") ? { ...l, active: false } : l));
+        return (
+          <div key={g.title} className="py-1">
+            <p className="px-3 pt-1 pb-1 text-[length:var(--kin-co-caption)] font-semibold uppercase tracking-[0.09em] text-[var(--kin-chu-mo)]">{g.title}</p>
+            {g.links.map((l, i) => (
+              <Link key={l.href} href={l.href} onClick={onClose}
+                aria-current={i === lit ? "page" : undefined}
+                className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors"
+                style={i === lit ? { background: "var(--kin-nen-nhan)", color: "var(--kin-nhan-diem)" } : undefined}>
+                {l.label}
+              </Link>
+            ))}
+          </div>
+        );
+      })}
       <div className="pt-1 mt-1 border-t border-[var(--kin-vien-nhat)]">
         <button type="button" onClick={() => { onClose(); onLogout(); }}
           className="w-full flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-left text-[length:var(--kin-co-small)] font-medium text-[var(--kin-tt-chu-loi)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">
