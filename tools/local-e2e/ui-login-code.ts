@@ -49,9 +49,12 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   check("nút cao 48px, nền navy #1e3a8a, chữ trắng", b0?.height === 48 && await send0.evaluate((e: any) => { const s = getComputedStyle(e); return s.backgroundColor === "rgb(30, 58, 138)" && s.color === "rgb(255, 255, 255)"; }), b0);
   check("ô email cao 48px, viền #8b95a5 (đạt 3:1) khi chưa focus", await p0.getByLabel("Email").evaluate((e: any) => { (e as HTMLElement).blur(); return e.getBoundingClientRect().height === 48; }) && await eventually2(async () => await p0.getByLabel("Email").evaluate((e: any) => getComputedStyle(e).borderTopColor === "rgb(139, 149, 165)")));
   check("chữ giải thích: mã 6 số dùng một lần", await p0.getByText(/mã 6 số dùng một lần/).isVisible());
-  check("nút 'Tôi có mã mời vào lớp' → /student/nhap-ma-lop", (await p0.getByRole("link", { name: "Tôi có mã mời vào lớp" }).getAttribute("href")) === "/student/nhap-ma-lop");
+  // 25/10/2026 (Figma 464:9828): nút mã mời nằm ở tab Học sinh (tab Gia sư là mặc định, không hiện nút).
+  await p0.getByRole("tab", { name: "Học sinh" }).click();
+  check("tab 'Học sinh': nút 'Tôi có mã mời vào lớp' → /student/nhap-ma-lop", (await p0.getByRole("link", { name: "Tôi có mã mời vào lớp" }).getAttribute("href")) === "/student/nhap-ma-lop");
+  await p0.getByRole("tab", { name: "Gia sư" }).click();
   check("khung 'Phụ huynh thì không cần đăng nhập' + link tìm hiểu", await p0.getByText("Phụ huynh thì không cần đăng nhập").isVisible() && (await p0.getByRole("link", { name: "Tìm hiểu thêm" }).getAttribute("href")) === "/phu-huynh");
-  check("tab 'Mã một lần' đang mở (?cach=ma), tab 'Mật khẩu' ngay cạnh, và link 'Đăng ký ngay'", await p0.getByRole("tab", { name: "Mã một lần" }).getAttribute("aria-selected") === "true" && await p0.getByRole("tab", { name: "Mật khẩu" }).isVisible() && (await p0.getByRole("link", { name: "Đăng ký ngay" }).getAttribute("href")) === "/dang-ky");
+  check("?cach=ma mở thẳng biểu mẫu mã (lối phụ, KHÔNG còn tab 'Mã một lần'), có nút 'Đăng nhập bằng mật khẩu' để quay lại, và link 'Tạo tài khoản KiN'", await p0.getByRole("tab", { name: "Mã một lần" }).count() === 0 && await p0.getByRole("button", { name: "Đăng nhập bằng mật khẩu" }).isVisible() && (await p0.getByRole("link", { name: "Tạo tài khoản KiN" }).getAttribute("href")) === "/dang-ky?vai=gia-su");
   check("không tràn ngang", await p0.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await shot(p0, "login-code-1-email");
   await send0.click();
@@ -177,11 +180,13 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
 
   section("Chuyển giữa hai cách (đăng nhập bằng mật khẩu có bài test riêng: ui-login-password)");
   const p4 = await open("/dang-nhap");
-  check("không có ?cach= thì mở tab 'Mật khẩu' (đường chính)", await p4.getByRole("tab", { name: "Mật khẩu" }).getAttribute("aria-selected") === "true" && await p4.locator("#dn-pass").isVisible());
-  await p4.getByLabel("Email").fill("giu-lai@test.local");
-  await p4.getByRole("tab", { name: "Mã một lần" }).click();
-  check("sang tab 'Mã một lần': có nút 'Gửi mã đăng nhập', ô tài khoản giữ nguyên chữ đã gõ", await p4.getByRole("button", { name: "Gửi mã đăng nhập" }).isVisible() && await p4.getByLabel("Email").inputValue() === "giu-lai@test.local");
+  check("không có ?cach= thì mở biểu mẫu mật khẩu (đường chính), tab 'Gia sư' đang chọn", await p4.getByRole("tab", { name: "Gia sư" }).getAttribute("aria-selected") === "true" && await p4.locator("#dn-pass").isVisible());
   await p4.context().close();
+  const p4b = await open("/dang-nhap?cach=ma");
+  await p4b.getByLabel("Email").fill("giu-lai@test.local");
+  await p4b.getByRole("button", { name: "Đăng nhập bằng mật khẩu" }).click();
+  check("từ biểu mẫu mã quay về mật khẩu: có ô mật khẩu, ô tài khoản giữ nguyên chữ đã gõ", await p4b.locator("#dn-pass").isVisible() && await p4b.getByLabel("Email").inputValue() === "giu-lai@test.local");
+  await p4b.context().close();
 
   section("Tài khoản bị khoá");
   const B = await mkUser({ name: "Bị khoá" });
@@ -200,7 +205,7 @@ const eventually2 = async (fn: () => Promise<boolean>, ms = 5000) => { const end
   const p6 = await open("/student/lich-hoc");
   await p6.waitForURL(/\/dang-nhap\?redirect=/, { timeout: 60000 });
   check("vào trang cần đăng nhập → /dang-nhap kèm ?redirect=trang đang định vào", decodeURIComponent(new URL(p6.url()).searchParams.get("redirect") ?? "") === "/student/lich-hoc", p6.url());
-  await p6.getByRole("tab", { name: "Mã một lần" }).click();
+  await p6.goto(`${BASE}/dang-nhap?cach=ma&redirect=${encodeURIComponent("/student/lich-hoc")}`, { waitUntil: "networkidle", timeout: 240000 }); // biểu mẫu mã giờ là lối phụ: mở bằng ?cach=ma, giữ nguyên ?redirect=
   await p6.getByLabel("Email").fill(G.email);
   await p6.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
   await p6.getByRole("heading", { name: "Nhập mã 6 số" }).waitFor({ timeout: 30000 });

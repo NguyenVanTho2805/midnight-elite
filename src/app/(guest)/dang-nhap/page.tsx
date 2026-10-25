@@ -1,9 +1,11 @@
-// Đăng nhập (Figma 21:9: khung 32:2 màn đầu, 32:27 nhập mã 6 số).
-// 14/10/2026 (Thọ): đăng nhập bằng TÀI KHOẢN + MẬT KHẨU là đường chính, không chỉ gửi mã. Màn đầu có hai tab cùng một khung 420px:
-//   - "Mật khẩu" (mặc định): ô "Số điện thoại hoặc email" + ô Mật khẩu → /api/auth/login.
-//   - "Mã một lần": nhập email (hoặc số điện thoại) → KiN gửi mã 6 số (sống 10 phút, dùng một lần, sai 5 lần khoá 15 phút, gửi lại sau 60 giây)
-//     → nhập mã là vào. /dang-nhap?cach=ma mở thẳng tab này.
-// Figma 32:14 / 32:25 viết "KiN không dùng mật khẩu" — chữ đó KHÔNG đưa lên giao diện nữa vì trái với quyết định này; Figma cần được cập nhật.
+// Đăng nhập (Figma "Nền móng" 464:9828; màn nhập mã 6 số cũ: 32:27).
+// 25/10/2026 (Thọ chọn "Theo Figma"): màn đầu có hai tab "Gia sư | Học sinh" cùng một biểu mẫu tài khoản + mật khẩu → /api/auth/login. Tab chỉ đổi phần
+//   phụ (tab Học sinh có nút "Tôi có mã mời vào lớp") và vai mà link "Tạo tài khoản KiN" mang sang /dang-ky; KHÔNG giới hạn ai đăng nhập ở tab nào.
+//   "Quên mật khẩu?" và "Tạo tài khoản KiN" là nút viền như Figma. Chưa làm: nút Google, ô "Ghi nhớ trên thiết bị này" (chờ Thọ quyết).
+// Mã một lần (14/10, Thọ) KHÔNG còn là tab: Figma không vẽ. Giữ làm lối phụ, API nguyên vẹn: /dang-nhap?cach=ma mở thẳng, và nút "Đăng nhập bằng mã một lần"
+//   trong thông báo bị chặn tạm (sai mật khẩu nhiều lần). Nhập email (hoặc số điện thoại) → KiN gửi mã 6 số (sống 10 phút, dùng một lần, sai 5 lần khoá 15 phút,
+//   gửi lại sau 60 giây) → nhập mã là vào.
+// Figma 32:14 / 32:25 (bản cũ) viết "KiN không dùng mật khẩu" — chữ đó KHÔNG đưa lên giao diện vì trái với quyết định 14/10 (mật khẩu là đường chính).
 // Khi máy chủ đã cấu hình SMS (/api/auth/code/methods) ô nhận cả SỐ ĐIỆN THOẠI (Figma 33:2); số chỉ vào được nếu đã xác minh trong Hồ sơ.
 "use client";
 
@@ -29,11 +31,14 @@ import { isAdminHost, mainLoginUrl } from "@/lib/hostRouting";
 
 type Step = "email" | "code";
 type Method = "mat-khau" | "ma";
+type Vai = "gia-su" | "hoc-sinh";
+const VAI_TABS = [{ key: "gia-su", label: "Gia sư" }, { key: "hoc-sinh", label: "Học sinh" }] as const;
 type Notice = { kind: "wrong" | "locked" | "expired" | "error"; title: string; body?: string; offerCode?: boolean; retryAfterSec?: number };
 
 const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--kin-nhan-link)]";
 const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nhan-nen)] text-[var(--kin-chu-tren-nut-chinh)] text-[length:var(--kin-co-small)] font-semibold transition-colors hover:bg-[var(--kin-nhan-nen-re)] disabled:opacity-60 disabled:cursor-not-allowed";
-const secondaryBtn = "w-full h-12 px-4 inline-flex items-center justify-center rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] transition-colors hover:bg-[var(--kin-nen-re-chuot)]";
+// Nút viền của Figma 464:9828 = kiểu "Thường" của KiN (nền trắng, viền ô nhập 3:1), rộng hết thẻ và cao 48px như nút "Đăng nhập".
+const outlineBtn = `${kinButtonClass("secondary")} w-full h-12`;
 const linkBtn = "text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:underline";
 
 // HT-02: luật kiểm tại chỗ cho tab Mật khẩu (định nghĩa ngoài thành phần để tham chiếu ổn định).
@@ -58,6 +63,7 @@ function DangNhapForm() {
 
   const [phoneOn, setPhoneOn]       = useState(false); // máy chủ đã mở đăng nhập bằng SMS chưa
   const [method, setMethod]         = useState<Method>(searchParams.get("cach") === "ma" ? "ma" : "mat-khau");
+  const [vai, setVai]               = useState<Vai>(searchParams.get("vai") === "hoc-sinh" ? "hoc-sinh" : "gia-su");
   const [step, setStep]             = useState<Step>("email");
   const [email, setEmail]           = useState("");   // ô "tài khoản": dùng chung cho cả hai tab
   const [password, setPassword]     = useState("");
@@ -229,7 +235,7 @@ function DangNhapForm() {
             Gia sư vào sổ dạy học của mình. Học sinh dùng tài khoản cá nhân và mã mời để tham gia đúng lớp.
           </AuthAsideBlock>
           <KinCallout title="An toàn tài khoản">
-            Không dùng chung mật khẩu. Chỉ chọn ghi nhớ đăng nhập trên thiết bị của riêng mình; đăng xuất sau khi dùng máy công cộng.
+            Không dùng chung mật khẩu. Chỉ nhớ đăng nhập trên thiết bị riêng; đăng xuất sau khi dùng máy công cộng.
           </KinCallout>
           {/* Chỉ dành cho khách / học viên ở tên miền chính — ẩn ở cửa quản trị (data-chi-khach, xem src/lib/hostChrome.ts). */}
           <div data-chi-khach className="space-y-4">
@@ -253,17 +259,22 @@ function DangNhapForm() {
         {step === "email" && (
           <div className="px-5 pt-2 pb-5 flex flex-col gap-4">
             <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h4)] text-[var(--kin-chu-chinh)]">Đăng nhập</h2>
-            <KinTabs
-              label="Cách đăng nhập"
-              tabs={[{ key: "mat-khau", label: "Mật khẩu" }, { key: "ma", label: "Mã một lần" }]}
-              value={method}
-              onChange={chooseMethod}
-              tabId={k => `dn-tab-${k}`}
-              panelId={k => `dn-panel-${k}`}
-            />
+            {/* Ở cửa quản trị không có "vai" để chọn (data-chi-khach, xem src/lib/hostChrome.ts). onMouseDown: bấm tab bằng chuột không kéo tiêu điểm khỏi ô đang gõ,
+                nếu không ô tài khoản (tự lấy tiêu điểm lúc mở trang) bị coi là "đã rời ô" và báo "Chưa nhập tài khoản" ngay khi khách chỉ đổi tab. */}
+            <div data-chi-khach className="contents" onMouseDown={e => { if ((e.target as HTMLElement).closest("[role=tab]")) e.preventDefault(); }}>
+              <KinTabs
+                label="Vai trò"
+                tabs={VAI_TABS}
+                value={vai}
+                onChange={setVai}
+                tabId={k => `dn-tab-${k}`}
+                panelId={k => `dn-panel-${k}`}
+              />
+            </div>
 
+            <div role="tabpanel" id={`dn-panel-${vai}`} aria-labelledby={`dn-tab-${vai}`} className="flex flex-col gap-4">
             {method === "mat-khau" && (
-              <form ref={pwFormRef} id="dn-panel-mat-khau" role="tabpanel" aria-labelledby="dn-tab-mat-khau" onSubmit={submitPassword} noValidate className="flex flex-col gap-4">
+              <form ref={pwFormRef} onSubmit={submitPassword} noValidate className="flex flex-col gap-4">
                 <KinInput id="dn-id-pw" size="lg" label={idLabel} type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete="username"
                   ref={focusOnce} value={email} onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} {...fv.bind("id", email)} />
                 <KinInput id="dn-pass" size="lg" label="Mật khẩu" type={showPass ? "text" : "password"} autoComplete="current-password"
@@ -271,12 +282,12 @@ function DangNhapForm() {
                   suffix={<button type="button" onClick={() => setShowPass(!showPass)} aria-pressed={showPass} className="min-h-11 min-w-8 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">{showPass ? "Ẩn" : "Hiện"}</button>} />
                 {noticeBox}
                 <KinSubmitButton busy={submitting} ok={ok} busyLabel="Đang đăng nhập..." className={primaryBtn}>Đăng nhập</KinSubmitButton>
-                <Link href={email.includes("@") ? `/quen-mat-khau?email=${encodeURIComponent(email.trim())}` : "/quen-mat-khau"} className={`${linkBtn} self-center min-h-11 inline-flex items-center`}>Quên mật khẩu?</Link>
+                <Link href={email.includes("@") ? `/quen-mat-khau?email=${encodeURIComponent(email.trim())}` : "/quen-mat-khau"} className={outlineBtn}>Quên mật khẩu?</Link>
               </form>
             )}
 
             {method === "ma" && (
-              <form id="dn-panel-ma" role="tabpanel" aria-labelledby="dn-tab-ma" onSubmit={sendCode} noValidate className="flex flex-col gap-4">
+              <form onSubmit={sendCode} noValidate className="flex flex-col gap-4">
                 <div className="flex flex-col gap-[6px]">
                   <label htmlFor="dn-email" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">{idLabel}</label>
                   <input id="dn-email" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete={phoneOn ? "username" : "email"} ref={focusOnce} value={email}
@@ -288,17 +299,19 @@ function DangNhapForm() {
                   Không cần nhớ mật khẩu: bạn nhận một mã 6 số dùng một lần qua {phoneOn ? "SMS hoặc email" : "email"}.
                   {phoneOn && " Số điện thoại chỉ nhận được mã sau khi bạn đã xác minh số trong Hồ sơ; chưa xác minh thì dùng email."}
                 </p>
+                <button type="button" onClick={() => chooseMethod("mat-khau")} className={`${linkBtn} self-center min-h-11`}>Đăng nhập bằng mật khẩu</button>
               </form>
             )}
+            </div>
 
             {/* Chỉ dành cho khách / học viên ở tên miền chính — ẩn ở cửa quản trị (data-chi-khach, xem src/lib/hostChrome.ts). `contents`: khối bọc không tạo hộp, các phần tử vẫn xếp trong cột. */}
             <div data-chi-khach className="contents">
-              <div className="flex items-center gap-[10px] py-1" aria-hidden="true">
-                <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
-                <span className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">hoặc</span>
-                <span className="h-px flex-1 bg-[var(--kin-vien-nhat)]" />
+              {/* Figma 464:9828: mã mời là việc của học sinh, nên nằm ở tab Học sinh. */}
+              {vai === "hoc-sinh" && <Link href="/student/nhap-ma-lop" className={outlineBtn}>Tôi có mã mời vào lớp</Link>}
+              <div className="flex flex-col gap-3">
+                <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Chưa có tài khoản? Đăng ký gia sư hoặc học sinh.</p>
+                <Link href={`/dang-ky?vai=${vai}`} className={outlineBtn}>Tạo tài khoản KiN</Link>
               </div>
-              <Link href="/student/nhap-ma-lop" className={secondaryBtn}>Tôi có mã mời vào lớp</Link>
             </div>
             {/* Ngược lại, chỉ ở cửa quản trị: học viên / gia sư đăng nhập ở tên miền chính (cookie phiên không dùng chung giữa hai tên miền). */}
             <p data-chi-admin className="text-center text-[length:var(--kin-co-caption)] text-[var(--kin-chu-phu)]">
@@ -337,12 +350,6 @@ function DangNhapForm() {
           </form>
         )}
 
-        {step === "email" && (
-          <p data-chi-khach className="px-5 py-4 text-center text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)] bg-[var(--kin-nen-re-chuot)]">
-            Chưa có tài khoản?{" "}
-            <Link href="/dang-ky" className="font-semibold text-[var(--kin-nhan-link)] hover:underline">Đăng ký ngay</Link>
-          </p>
-        )}
       </div>
     </AuthFrame>
   );

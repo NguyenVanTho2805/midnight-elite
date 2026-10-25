@@ -19,7 +19,6 @@ import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
 import LopHocPhi from "@/components/tutor/LopHocPhi";
 import LopPhiKhac from "@/components/tutor/LopPhiKhac";
-import LopGoiBuoi from "@/components/tutor/LopGoiBuoi";
 import LopBaoCao from "@/components/tutor/LopBaoCao";
 import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
@@ -202,7 +201,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           <div className="space-y-[var(--kin-cach-muc)]">
             <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />
             <LopPhiKhac courseId={d.courseId} />
-            <LopGoiBuoi courseId={d.courseId} feeMode={d.feeMode} />
+            {/* HP-31: "Gói buổi trả trước" đã ẩn theo quyết định của chủ 25/10/2026 (học xong mới thu học phí). Mã (LopGoiBuoi, API /packages) và hai bảng giữ nguyên để có thể bật lại. */}
           </div>
         )}
 
