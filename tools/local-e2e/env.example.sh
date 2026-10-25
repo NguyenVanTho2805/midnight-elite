@@ -6,6 +6,7 @@ export NEXT_TELEMETRY_DISABLED=1
 export BASE=http://localhost:3100
 export EMAIL_SINK_DIR=/tmp/kin-mail   # test đăng nhập bằng mã email đọc mã từ các tệp JSON ở đây; server dev cũng phải có biến này
 export SMS_SINK_DIR=/tmp/kin-sms   # test đăng nhập bằng SMS đọc mã từ các tệp JSON ở đây; server dev cũng phải có biến này. Bản production BỎ QUA biến này.
+export CRON_SECRET="test-cron-secret-test-cron-secret"   # /api/cron/* bắt buộc khoá này (≥ 16 ký tự); server dev cũng phải có biến này
 # ĐX-02 (thông báo đẩy): t-push.ts và ui-push-settings.ts cần PUSH_ENABLED=1 + ba biến VAPID_* ở CẢ máy chủ dev LẪN bài test (khởi động dev SAU khi source).
 # Sinh khoá thử: npx web-push generate-vapid-keys --json   (KHÔNG dùng khoá Production). Không đặt PUSH_ENABLED thì thông báo đẩy luôn tắt và các bài khác không bị ảnh hưởng.
 # export PUSH_ENABLED=1
