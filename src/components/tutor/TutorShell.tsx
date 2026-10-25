@@ -10,12 +10,16 @@ import { useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem } from "@/components/kin/shell/ModuleRail";
+import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
+/** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
+const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
 // Các trang /admin/* mà gia sư dùng (đề thi, ngân hàng đề, quản lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ này (src/lib/hostRouting.ts,
 // TutorAdminFrame) — nên Bài KT / Thư viện / Lớp là liên kết nội bộ chứ không còn nhảy sang tên miền quản trị.
 
@@ -24,6 +28,7 @@ const MORE_BASE: MoreGroup[] = [
     { label: "Tổng quan", href: "/lop-cua-toi/tong-quan" },
     { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi" },
     { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang" },
+    { label: "Sổ điểm", href: "/lop-cua-toi/so-diem" },
     { label: "Kiểm duyệt cộng đồng", href: "/lop-cua-toi/kiem-duyet" },
   ] },
   { title: "Tiền", links: [{ label: "Doanh thu", href: "/lop-cua-toi/doanh-thu" }] },
@@ -52,36 +57,60 @@ export default function TutorShell({
   const groups: MoreGroup[] = [
     ...MORE_BASE,
     { title: "Tài khoản", links: [
+      { label: "Gói của tôi", href: "/lop-cua-toi/goi" },
+      { label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat" },
       ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module" }] : []),
     ] },
   ];
-  const moreActive = moreOpen || groups.some(g => g.links.some(l => isUnder(pathname, l.href)));
+  const moreActive = moreOpen || groups.some(g => g.links.some(l => isUnder(pathname, l.href) && !isUnder(pathname, "/lop-cua-toi/cai-dat")));
 
+  const mods = visible.map<ModuleItem>(m => ({
+    key: m.key, label: m.label, href: m.href, icon: ICON[m.key] ?? "viec", badge: badges[m.key],
+    // Hộp việc nằm ở đúng /lop-cua-toi nên chỉ sáng khi đúng đường dẫn đó (isUnder sẽ làm nó sáng ở mọi trang con).
+    active: m.key === "hop-viec" ? pathname === "/lop-cua-toi"
+      : m.key === "bai-kt" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/thi-thu")   // trang Bài tập + đề thi, ngân hàng câu hỏi, ngân hàng đề (cùng một họ "bài kiểm tra")
+      : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/khoa-hoc")  // quản lớp / điểm danh / học viên của lớp
+      : isUnder(pathname, m.href),
+    desktopOnly: !MOBILE_KEYS.has(m.key),
+  }));
+  // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp và đi cùng module Lớp: Lớp bật thì Học sinh hiện. Trang riêng của gia sư
+  // (/lop-cua-toi/hoc-sinh), chỉ học sinh thuộc lớp của mình; không dùng /admin/hoc-sinh (trang quản trị).
+  const withStudents = mods.flatMap<ModuleItem>(m => m.key === "lop"
+    ? [m, { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", desktopOnly: true }]
+    : [m]);
   const items: ModuleItem[] = [
-    ...visible.map<ModuleItem>(m => ({
-      key: m.key, label: m.label, href: m.href, icon: ICON[m.key] ?? "viec", badge: badges[m.key],
-      // Hộp việc nằm ở đúng /lop-cua-toi nên chỉ sáng khi đúng đường dẫn đó (isUnder sẽ làm nó sáng ở mọi trang con).
-      active: m.key === "hop-viec" ? pathname === "/lop-cua-toi"
-        : m.key === "bai-kt" ? isUnder(pathname, "/admin/thi-thu")   // đề thi + ngân hàng câu hỏi + ngân hàng đề (cùng một họ "bài kiểm tra")
-        : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/khoa-hoc")  // quản lớp / điểm danh / học viên của lớp
-        : isUnder(pathname, m.href),
-    })),
-    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen },
+    ...withStudents,
+    { key: "cai-dat", label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat", desktopOnly: true },
+    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 
   return (
-    <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: "48px" }}>
-      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} onCollapse={closeMore} />
+    // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
+    <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} onCollapse={closeMore}
+        home={{ href: "/lop-cua-toi", label: "KiN — Hộp việc của gia sư" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
-        <div className="h-12 flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
+        <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={Object.values(badges).reduce((a, n) => a + (n > 0 ? n : 0), 0)} />
-            <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            {user && <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Sổ dạy học của {user.name}</p>}
           </div>
-          {user && <AccountMenu name={user.name} email={user.email} initial={user.avatar} onLogout={() => void logout()}
-            links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }]} />}
+          <div className="flex items-center gap-2 md:gap-3">
+            <TopDate />
+            {/* HV-11: chuông thông báo (dùng lại thông báo có sẵn) + dấu hỏi trợ giúp dẫn tới trang Liên hệ hỗ trợ. */}
+            <NotificationBell />
+            <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
+              className="inline-flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-lg border border-[var(--kin-vien-thuong)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-bang)] hover:text-[var(--kin-chu-chinh)] transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
+              </svg>
+            </Link>
+            {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()} onOpenMore={() => setMoreOpen(true)}
+              links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }]} />}
+          </div>
         </div>
         {children}
       </div>

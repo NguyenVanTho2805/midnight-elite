@@ -10,7 +10,7 @@
 // Chữa bài chỉ để HỌC — không bao giờ đổi điểm bài thi (điểm tính theo lần nộp đầu, lúc nộp bài).
 
 export const MAX_TRIES = 2;
-export const CORRECTABLE_TYPES = ["MC", "SHORT_ANSWER"] as const;
+export const CORRECTABLE_TYPES = ["MC", "MC_MULTI", "SHORT_ANSWER"] as const;
 export type CorrectableType = (typeof CORRECTABLE_TYPES)[number];
 export const isCorrectableType = (t: string): t is CorrectableType => (CORRECTABLE_TYPES as readonly string[]).includes(t);
 
@@ -54,6 +54,27 @@ export const hintWasShown = (c: CorrectionRow, hadHint: boolean) =>
 
 /** Ô "tự giải thích" chỉ hợp lý khi học sinh THỰC SỰ đã được xem gợi ý và đã xong câu. */
 export const reflectionAllowed = (c: CorrectionRow, hadHint: boolean) => isFinished(c) && hintWasShown(c, hadHint);
+
+/**
+ * Câu NHIỀU ĐÁP ÁN (QZ-03): đúng khi chọn ĐỦ mọi ô đúng và KHÔNG chọn ô sai nào — cùng luật với scoreMultiSelect lúc chấm bài thi.
+ * `correctIds` rỗng (câu hỏng) → luôn sai, không bao giờ "đúng vì không chọn gì". Id lặp được gộp lại.
+ */
+export function multiAnswerCorrect(correctIds: readonly string[], selectedIds: readonly string[]): boolean {
+  if (correctIds.length === 0) return false;
+  const correct = new Set(correctIds), chosen = new Set(selectedIds);
+  if (chosen.size !== correct.size) return false;
+  for (const id of chosen) if (!correct.has(id)) return false;
+  return true;
+}
+
+/** Đọc danh sách ô đã chọn từ thân yêu cầu: phải là mảng id chuỗi, mỗi id thuộc `validIds`, ít nhất 1 ô; lặp id được gộp. Sai → null. */
+export function normalizePickedIds(raw: unknown, validIds: readonly string[]): string[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > validIds.length * 2) return null;
+  if (raw.some(x => typeof x !== "string")) return null;
+  const valid = new Set(validIds);
+  const out = [...new Set(raw as string[])];
+  return out.every(id => valid.has(id)) ? out : null;
+}
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/,/g, ".").replace(/\s+/g, " ");
 

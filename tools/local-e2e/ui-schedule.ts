@@ -1,9 +1,9 @@
 import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
-import { vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey, hmOf, instantOf, dueReminderKinds } from "@/lib/classSessions";
+import { vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey, hmOf, instantOf, dueReminderKinds, weekRangeOf, addDaysKey } from "@/lib/classSessions";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 
 async function slot(courseId: string, min: number, joinUrl: string | null = null) {
   const t = new Date(Date.now() + min * 60_000);
@@ -41,7 +41,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   const nav = page.getByRole("navigation", { name: "Module của gia sư" });
   await nav.waitFor();
   const links = (await nav.getByRole("link").allInnerTexts()).map(t => t.replace(/\s+/g, " ").trim());
-  check("thanh module chỉ có Lịch + Học phí (+ nút Khác)", links.some(l => l.startsWith("Lịch")) && links.some(l => l.startsWith("Học phí")) && !links.some(l => l.startsWith("Hộp việc") || l.startsWith("Lớp") || l.startsWith("Bài KT") || l.startsWith("Thư viện")) && (await nav.getByRole("button", { name: "Khác" }).count()) === 1, links);
+  check("thanh module chỉ có Lịch + Học phí (+ nút Khác)", links.some(l => l.startsWith("Lịch")) && links.some(l => l.startsWith("Học phí")) && !links.some(l => l.startsWith("Hộp việc") || l.startsWith("Lớp") || l.startsWith("Bài tập") || l.startsWith("Thư viện")) && (await nav.getByRole("button", { name: "Khác" }).count()) === 1, links);
   await nav.getByRole("button", { name: "Khác" }).click();
   const khac = page.getByRole("dialog", { name: "Các mục khác" });
   await khac.waitFor();
@@ -55,7 +55,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   check(`Hộp việc tắt: việc hiện thành số đỏ trên Lịch (= 1 báo nghỉ + ${nDue} tin nhắc)`, (await lichBadge.innerText()) === String(1 + nDue) && (await lichBadge.getAttribute("aria-label")) === `${1 + nDue} việc cần xử lý`, await lichBadge.innerText());
 
   section("Lịch: buổi + chấm báo nghỉ + nhắc lịch");
-  await page.getByRole("heading", { name: "Lịch", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Lịch dạy", exact: true }).waitFor();
   await page.getByText("Toán 9").first().waitFor({ timeout: 15000 });
   check("buổi hôm nay hiện kèm 'Hôm nay'", await page.getByText("Hôm nay", { exact: true }).first().isVisible());
   check("chấm kèm chữ: '1 báo nghỉ sát giờ' và tin nhắc chờ gửi", await page.getByText("1 báo nghỉ sát giờ").isVisible() && await page.getByText(`${nDue} tin nhắc chờ gửi`).isVisible());
@@ -110,7 +110,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Cài đặt", exact: true }).click();
   await page.getByRole("heading", { name: "Module hiển thị" }).waitFor({ timeout: 30000 });
   check("Lịch và Học phí: luôn bật, không tắt được", await page.getByRole("switch", { name: /Lịch/ }).isDisabled() && await page.getByRole("switch", { name: /Học phí/ }).isDisabled() && await page.getByRole("switch", { name: /Lịch/ }).isChecked());
-  check("4 module còn lại đang tắt", (await Promise.all(["Hộp việc", "Lớp", "Bài KT", "Thư viện"].map(n => page.getByRole("switch", { name: new RegExp(`^${n}`) }).isChecked()))).every(v => v === false));
+  check("4 module còn lại đang tắt", (await Promise.all(["Hộp việc", "Lớp", "Bài tập", "Thư viện"].map(n => page.getByRole("switch", { name: new RegExp(`^${n}`) }).isChecked()))).every(v => v === false));
   await page.getByRole("switch", { name: /^Hộp việc/ }).check();
   await page.getByText("Đã bật module — xem ở thanh bên.").waitFor({ timeout: 10000 });
   await page.getByRole("switch", { name: /^Lớp/ }).check();
@@ -122,10 +122,11 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   });
   await shot(page, "sched-settings");
   await nav.getByRole("link", { name: /^Hộp việc/ }).click();
-  await page.getByRole("listbox", { name: "Hộp việc" }).waitFor({ timeout: 60000 });
-  check("Hộp việc bật: mở Hộp việc (danh sách + khung đọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
+  await page.getByRole("heading", { name: "Hộp việc", level: 1 }).waitFor({ timeout: 60000 });
+  await page.waitForURL(u => u.pathname === "/lop-cua-toi", { timeout: 60000 }).catch(() => {}); // NC2-004
+  check("Hộp việc bật: mở Hộp việc (trang dọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
   check("badge của Hộp việc (không còn badge ở Lịch)", (await nav.locator("a", { hasText: "Hộp việc" }).locator(".kin-badge-dem").count()) === 1 && (await nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").count()) === 0);
-  check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("option", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("option", { name: new RegExp(`^${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("option").allInnerTexts());
+  check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("link", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("link", { name: new RegExp(`${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("list", { name: "Việc cần cô xử lý" }).allInnerTexts());
 
   section("Lưu theo tài khoản, không theo máy");
   const ctx2 = await ctxFor(tutor);
@@ -151,14 +152,100 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   check("không tràn ngang", await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await shot(mp, "sched-mobile");
 
+  section("NC2-024: Gửi lịch tuần qua Zalo");
+  const wk = weekRangeOf(vnDateKeyOf(new Date())).from, ddm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
+  const weekTitle = (f: string) => `${ddm(f)} – ${ddm(addDaysKey(f, 6))}`;
+  const mon = wk, wedK = addDaysKey(wk, 2), thuK = addDaysKey(wk, 3);
+  const slotCancel = await prisma.classSchedule.create({ data: { courseId: course.id, dayOfWeek: dayOfWeekOfKey(mon), startTime: "18:00", endTime: "19:00" } });
+  const slotMove = await prisma.classSchedule.create({ data: { courseId: course.id, dayOfWeek: dayOfWeekOfKey(wedK), startTime: "17:00", endTime: "18:00" } });
+  await prisma.classSessionChange.create({ data: { courseId: course.id, scheduleId: slotCancel.id, dateKey: mon, kind: "cancel", reason: "Bận", changedBy: tutor.id } });
+  await prisma.classSessionChange.create({ data: { courseId: course.id, scheduleId: slotMove.id, dateKey: wedK, kind: "move", newDateKey: thuK, newStartTime: "15:00", newEndTime: "16:00", changedBy: tutor.id } });
+  await prisma.course.update({ where: { id: course.id }, data: { zaloGroupUrl: "https://zalo.me/g/thu-nghiem" } });
+  const course2 = await mkCourse(tutor.id, { name: "Lý 9" });
+  await prisma.classSchedule.create({ data: { courseId: course2.id, dayOfWeek: dayOfWeekOfKey(addDaysKey(wk, 1)), startTime: "20:00", endTime: "21:00" } });
+  const logsBefore = await prisma.classReminderLog.count();
+  popups.length = 0;
+  await page.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  const bar2 = page.getByRole("group", { name: "Gửi lịch tuần qua Zalo" });
+  await bar2.waitFor({ timeout: 60000 });
+  const sendBtn = bar2.getByRole("button", { name: "Mở Zalo", exact: true });
+  await eventually("thanh có chọn lớp (2 lớp có buổi) và nút mở được", async () => (await bar2.getByLabel("Lớp").count()) === 1 && (await sendBtn.isEnabled()));
+  await bar2.getByLabel("Lớp").selectOption({ label: "Toán 9" });
+  await sendBtn.click();
+  const wdlg = page.getByRole("dialog");
+  await wdlg.waitFor();
+  const wta = wdlg.getByLabel("Tin lịch tuần (sửa được trước khi gửi)");
+  const wtext = await wta.inputValue();
+  check("tin ghi ngày bắt đầu–kết thúc tuần và tên lớp", wtext.startsWith(`Lịch học tuần ${weekTitle(wk)} của lớp Toán 9:`), wtext);
+  check("buổi huỷ ghi '(nghỉ)', buổi dời ghi ngày/giờ MỚI", wtext.includes(`${ddm(mon)}, 18:00–19:00 (nghỉ)`) && wtext.includes(`${ddm(thuK)}, 15:00–16:00 (dời từ`), wtext);
+  check("tin không có tên em, tiền, link", !/Em An|Em Bình|\d\s?đ(?![\p{L}])|https?:/iu.test(wtext), wtext);
+  check("nút gửi là 'Mở nhóm Zalo lớp' vì lớp có link nhóm; có 'Chép tin'", await wdlg.getByRole("button", { name: "Mở nhóm Zalo lớp" }).isVisible() && await wdlg.getByRole("button", { name: "Chép tin" }).isVisible());
+  await shot(page, "sched-week-zalo");
+  await wta.fill(wtext + "\nHẹn gặp các em.");
+  await wdlg.getByRole("button", { name: "Mở nhóm Zalo lớp" }).click();
+  await wdlg.waitFor({ state: "detached", timeout: 15000 });
+  await eventually("mở đúng nhóm Zalo của lớp", () => popups.some(u => u === "https://zalo.me/g/thu-nghiem"), 15000);
+  await eventually("đã chép tin ĐÃ SỬA vào bộ nhớ tạm", async () => (await page.evaluate(() => navigator.clipboard.readText()).catch(() => "")).endsWith("Hẹn gặp các em."));
+  await eventually("hiện 'Đã mở Zalo lúc HH:mm', không có chữ 'đã gửi'", async () => (await bar2.getByText(/Đã mở Zalo lúc \d\d:\d\d/).count()) === 1 && (await page.getByText(/đã gửi/i).count()) === 0);
+  check("không ghi dòng nhắc lịch nào vào DB (không đổi schema)", (await prisma.classReminderLog.count()) === logsBefore);
+  await bar2.getByLabel("Lớp").selectOption({ label: "Lý 9" });
+  check("chọn lớp khác: trạng thái 'đã mở' không dính sang lớp kia", (await bar2.getByText(/Đã mở Zalo lúc/).count()) === 0);
+  await sendBtn.click();
+  const ldlg = page.getByRole("dialog");
+  await ldlg.waitFor();
+  const ltext = await ldlg.getByLabel("Tin lịch tuần (sửa được trước khi gửi)").inputValue();
+  check("tin của Lý 9 không lẫn Toán 9; lớp chưa gắn nhóm → nút 'Mở Zalo' + lối sang Cài đặt", ltext.includes("của lớp Lý 9:") && !ltext.includes("Toán 9") && await ldlg.getByRole("button", { name: "Mở Zalo", exact: true }).isVisible() && await ldlg.getByRole("link", { name: "Cài đặt → Kết nối" }).isVisible(), ltext);
+  await page.keyboard.press("Escape");
+  await ldlg.waitFor({ state: "detached" });
+  await bar2.getByLabel("Lớp").selectOption({ label: "Toán 9" });
+  await page.getByRole("button", { name: "Tuần sau ›" }).click();
+  await eventually("đổi tuần → tiêu đề tuần đổi và trạng thái 'đã mở' không dính sang tuần khác", async () => (await page.getByText(`Tuần ${weekTitle(addDaysKey(wk, 7))}`).count()) >= 1 && (await bar2.getByText(/Đã mở Zalo lúc/).count()) === 0);
+  await eventually("nút mở lại được ở tuần sau", () => sendBtn.isEnabled());
+  await sendBtn.click();
+  const ndlg = page.getByRole("dialog");
+  await ndlg.waitFor();
+  const ntext = await ndlg.getByLabel("Tin lịch tuần (sửa được trước khi gửi)").inputValue();
+  check("tuần sau: tin đổi theo tuần đang xem, không còn '(nghỉ)'/'dời'", ntext.includes(`tuần ${weekTitle(addDaysKey(wk, 7))} của lớp Toán 9`) && !/\(nghỉ\)|dời/.test(ntext), ntext);
+  await page.keyboard.press("Escape");
+
+  section("NC2-024: tuần rỗng → nút khoá + lời giải thích");
+  const empty = await mkTutor("Cô Trống");
+  const ectx = await ctxFor(empty);
+  const ep = await ectx.newPage();
+  await ep.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  const ebar = ep.getByRole("group", { name: "Gửi lịch tuần qua Zalo" });
+  await ebar.waitFor({ timeout: 60000 });
+  check("không có buổi: nút bị khoá", await ebar.getByRole("button", { name: "Mở Zalo", exact: true }).isDisabled());
+  check("có lời giải thích, không có ô chọn lớp", await ebar.getByText(/chưa có buổi nào để gửi lịch/).isVisible() && (await ebar.getByLabel("Lớp").count()) === 0);
+
+  section("NC2-024: điện thoại 390px");
+  const wctx = await ctxFor(tutor, { width: 390, height: 800 });
+  const wp = await wctx.newPage();
+  await wp.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  const wbar = wp.getByRole("group", { name: "Gửi lịch tuần qua Zalo" });
+  await wbar.waitFor({ timeout: 60000 });
+  await eventually("nút mở được trên điện thoại", () => wbar.getByRole("button", { name: "Mở Zalo", exact: true }).isEnabled());
+  const bb = await wbar.getByRole("button", { name: "Mở Zalo", exact: true }).boundingBox();
+  const sb = await wbar.getByLabel("Lớp").boundingBox();
+  check("nút và ô chọn lớp cao ≥ 44px", !!bb && bb.height >= 44 && !!sb && sb.height >= 44, { bb, sb });
+  check("thanh không tràn ngang 390px", await wp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await wbar.getByRole("button", { name: "Mở Zalo", exact: true }).click();
+  const mdlg = wp.getByRole("dialog");
+  await mdlg.waitFor();
+  const mbtn = await mdlg.getByRole("button", { name: /Mở/ }).first().boundingBox();
+  check("hộp tin vừa 390px, nút ≥ 44px", (await wp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)) && !!mbtn && mbtn.height >= 44, mbtn);
+  await shot(wp, "sched-week-zalo-mobile");
+
   section("Quyền");
   const sctx = await ctxFor(stuA);
   const sp = await sctx.newPage();
   await sp.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  await sp.waitForURL(u => !u.pathname.includes("/lop-cua-toi/lich"), { timeout: 60000 }).catch(() => {}); // NC2-004
   check("học viên mở trang Lịch gia sư → bị chuyển đi", !sp.url().includes("/lop-cua-toi/lich"), sp.url());
   const gctx = await ctxFor(null);
   const gp = await gctx.newPage();
   await gp.goto(`${MAIN}/lop-cua-toi/lich`, { waitUntil: "networkidle" });
+  await gp.waitForURL(/\/dang-nhap/, { timeout: 60000 }).catch(() => {}); // NC2-004
   check("khách → trang đăng nhập", gp.url().includes("/dang-nhap"), gp.url());
 
   check("không lỗi trang", errors.length === 0, errors.slice(0, 3));

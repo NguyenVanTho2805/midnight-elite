@@ -43,6 +43,8 @@ export interface AuthUser {
   zaloPhone?:    string | null;
   adminRole?:    AdminRole;
   emailVerified: boolean;
+  /** NC2-029: đã nộp đơn gia sư, đang chờ quản trị duyệt (vẫn là học viên). */
+  tutorPending?: boolean;
 }
 
 interface AuthContextType {
@@ -68,9 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(r => r.json())
       .then(data => {
         if (data?.id) setUser(toAuthUser(data));
+        // Máy chủ vừa đồng bộ vai của phiên (vd. gia sư mới được duyệt): dựng lại phần máy chủ để vỏ khớp vai mới, không cần đăng nhập lại.
+        if (data?.sessionRefreshed) router.refresh();
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy một lần khi mở trang; router ổn định
   }, []);
 
   // Nhớ "máy này đang đăng nhập kiểu gì" để lần tải cứng sau không nháy khung khách (src/lib/signedInShell.ts). Chỉ ghi khi đã biết chắc (hết isLoading).
@@ -148,5 +153,6 @@ function toAuthUser(data: Record<string, unknown>): AuthUser {
     zaloPhone:     data.zaloPhone as string | null,
     adminRole:     data.adminRole as AdminRole | undefined,
     emailVerified: Boolean(data.emailVerified),
+    tutorPending:  data.tutorPending === true,
   };
 }

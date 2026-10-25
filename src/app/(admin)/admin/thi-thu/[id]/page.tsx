@@ -11,6 +11,7 @@ import { MathText } from "@/components/MathText";
 import { QuestionBankPicker } from "@/components/QuestionBankPicker";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { DropZone } from "@/components/DropZone";
+import { AiQuotaNote } from "@/components/AiQuotaNote";
 
 const EMPTY_OPTIONS = ["", "", "", ""];
 const CLUSTER_LABELS = ["a", "b", "c", "d"] as const;
@@ -564,6 +565,7 @@ Câu 3: Câu tự luận không có đáp án nào cả.`}</pre>
                 </DropZone>
                 <input ref={fileInputRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
                   className="hidden" onChange={handleAiFile} disabled={aiLoading} />
+                <AiQuotaNote busy={aiLoading} />
                 {aiFileErr && <p className="text-xs text-red-500">{aiFileErr}</p>}
               </div>
             ) : (

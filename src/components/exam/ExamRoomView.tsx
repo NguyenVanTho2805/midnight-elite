@@ -11,7 +11,9 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ExamQuestionPublic } from "@/lib/api";
 import { MathText } from "@/components/MathText";
+import { FormulaBar } from "@/components/exam/FormulaBar";
 import { KinButton, KinConfirm } from "@/components/kin";
+import { draftStatusLabel, submitConfirmMessage, type DraftState, type UnansweredItem } from "@/lib/quizRoom";
 import {
   currentQuestionIndex, formatClock, lowTimeAnnouncement, progressLine, questionCounter, roomHeading, shortSectionName, spokenClock, timeUpNote,
 } from "@/lib/examRoom";
@@ -37,6 +39,8 @@ export interface ExamRoomViewProps {
   onSelect: (questionId: string, optionId: string) => void;
   onEssayChange: (questionId: string, text: string) => void;
   onEssaySave: (questionId: string) => void;
+  /** QZ-11: trạng thái lưu nháp từng câu tự luận (máy chủ đã nhận chưa). Thiếu = chưa có thông tin. */
+  draftStatus?: Record<string, DraftState>;
   onCluster: (optionId: string, answerTrue: boolean) => void;
   onSubmit: () => void | Promise<void>;
   submitting: boolean;
@@ -80,8 +84,10 @@ export default function ExamRoomView(p: ExamRoomViewProps) {
   const label = sectioned ? sectionLabels![sectionIndex] ?? null : null;
   const inSection = sectioned ? questions.filter(q => (q.sectionLabel ?? null) === (label ?? null)) : questions;
   const answeredHere = inSection.filter(p.isAnswered).length;
-  const answeredAll = questions.filter(p.isAnswered).length;
-  const unanswered = p.totalQuestions - answeredAll;
+  // QZ-11: hộp "Xem lại trước khi nộp" liệt kê ĐÚNG những câu chưa làm (số câu theo thứ tự em thấy).
+  const unansweredItems: UnansweredItem[] = questions.flatMap((q, i) => (p.isAnswered(q) ? [] : [{ index: i + 1, id: q.id, essay: q.type === "ESSAY" }]));
+  const hiddenUnopened = Math.max(0, p.totalQuestions - questions.length);
+  const hasEssay = questions.some(q => q.type === "ESSAY");
   const short = sectioned ? shortSectionName(label, sectionIndex) : null;
   const next = sectioned && sectionIndex < sectionLabels!.length - 1 ? shortSectionName(sectionLabels![sectionIndex + 1], sectionIndex + 1) : null;
   const heading = roomHeading({ examTitle: p.examTitle, sectionLabel: label, sectionIndex });
@@ -163,15 +169,40 @@ export default function ExamRoomView(p: ExamRoomViewProps) {
                   )}
 
                   {q.type === "ESSAY" ? (
-                    <textarea aria-labelledby={`q-${q.id}-de`} rows={5} disabled={isLocked} placeholder="Nhập câu trả lời của bạn..."
-                      className="w-full px-3 py-2.5 text-[length:var(--kin-co-small)] rounded-[var(--kin-bo-md)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed"
-                      style={{ border: BORDER }}
-                      value={p.essayText[q.id] ?? ""} onChange={e => p.onEssayChange(q.id, e.target.value)} onBlur={() => p.onEssaySave(q.id)} />
+                    <div>
+                      {q.studentGuide && <p className="mb-2 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] whitespace-pre-line">{q.studentGuide}</p>}
+                      <FormulaBar areaId={`q-${q.id}-area`} value={p.essayText[q.id] ?? ""} onChange={v => p.onEssayChange(q.id, v)} disabled={isLocked} />
+                      <textarea id={`q-${q.id}-area`} aria-labelledby={`q-${q.id}-de`} aria-describedby={`q-${q.id}-nhap`} rows={6} disabled={isLocked} placeholder="Nhập câu trả lời của em..."
+                        className="w-full px-3 py-2.5 text-[length:var(--kin-co-small)] rounded-[var(--kin-bo-md)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed"
+                        style={{ border: BORDER }}
+                        value={p.essayText[q.id] ?? ""} onChange={e => p.onEssayChange(q.id, e.target.value)} onBlur={() => p.onEssaySave(q.id)} />
+                      <p id={`q-${q.id}-nhap`} role="status" data-trang-thai-nhap className="mt-1.5 text-[length:var(--kin-co-caption)]"
+                        style={{ color: p.draftStatus?.[q.id]?.kind === "failed" ? "var(--kin-tt-chu-loi)" : p.draftStatus?.[q.id]?.kind === "saved" ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)" }}>
+                        {draftStatusLabel(p.draftStatus?.[q.id] ?? { kind: "idle" })}
+                      </p>
+                      <p className="mt-0.5 text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Cần đính kèm? Dán đường link vào bài viết. Bản nháp không phải bài đã nộp.</p>
+                    </div>
                   ) : q.type === "SHORT_ANSWER" ? (
                     <input aria-labelledby={`q-${q.id}-de`} disabled={isLocked} placeholder="Nhập đáp án..."
                       className="w-full px-3 min-h-[var(--kin-cham-dap-an)] text-[length:var(--kin-co-small)] rounded-[var(--kin-bo-md)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed"
                       style={{ border: BORDER }}
                       value={p.essayText[q.id] ?? ""} onChange={e => p.onEssayChange(q.id, e.target.value)} onBlur={() => p.onEssaySave(q.id)} />
+                  ) : q.type === "MC_MULTI" ? (
+                    <div role="group" aria-labelledby={`q-${q.id}-de`} className="flex flex-col gap-[10px]">
+                      <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Chọn tất cả các đáp án đúng. Chọn đúng và đủ thì được trọn điểm; thiếu hoặc thừa thì 0 điểm.</p>
+                      {q.options.map((o, oi) => {
+                        const on = p.clusterAnswers[o.id] === true;
+                        return (
+                          <label key={o.id}
+                            className={`flex items-center gap-3 px-4 min-h-[var(--kin-cham-dap-an)] rounded-[var(--kin-bo-md)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--kin-nhan-link)] ${isLocked ? "cursor-not-allowed" : "cursor-pointer hover:bg-[var(--kin-nen-bang)]"}`}
+                            style={{ border: `${on ? 2 : 1}px solid ${on ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`, background: on ? "var(--kin-nen-nhan)" : undefined }}>
+                            <input type="checkbox" className="sr-only" disabled={isLocked} checked={on} onChange={() => p.onCluster(o.id, !on)} />
+                            <span aria-hidden className="font-mono w-4 flex-shrink-0 text-[length:var(--kin-co-small)]" style={{ color: on ? "var(--kin-th-navy)" : "var(--kin-chu-mo)" }}>{on ? "☑" : "☐"}</span>
+                            <span className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]"><span className="font-mono mr-2 text-[var(--kin-chu-mo)]">{String.fromCharCode(65 + oi)}.</span><MathText text={o.text} /></span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   ) : q.type === "TRUE_FALSE_CLUSTER" ? (
                     <div className="flex flex-col gap-2">
                       {q.options.map(o => (
@@ -231,7 +262,7 @@ export default function ExamRoomView(p: ExamRoomViewProps) {
       </footer>
 
       <KinConfirm open={confirmOpen} tone="nguy-hiem" title="Nộp bài ngay?"
-        message={unanswered > 0 ? `Bạn còn ${unanswered} câu chưa trả lời. Sau khi nộp không sửa lại được.` : "Bạn đã trả lời hết các câu. Sau khi nộp không sửa lại được."}
+        message={<span data-xac-nhan-nop>{submitConfirmMessage(unansweredItems, hasEssay, hiddenUnopened)}</span>}
         confirmLabel="Nộp bài" cancelLabel="Làm tiếp" loading={p.submitting} loadingLabel="Đang nộp…"
         onConfirm={async () => { await p.onSubmit(); setConfirmOpen(false); }} onCancel={() => setConfirmOpen(false)} />
     </div>

@@ -10,6 +10,7 @@ import { vnMonthKey } from "@/lib/revenue";
 import { isFutureMonth, isYearMonth, loadStudentMonth } from "@/lib/monthlyReportServer";
 import { renderReportText, sanitizeUnmetItems, suggestUnmetItems, type UnmetItem } from "@/lib/monthlyReport";
 import { tutorTitle } from "@/lib/classSessions";
+import { canUse } from "@/lib/planServer";
 import type { Prisma } from "@/generated/prisma/client";
 
 function parseYm(req: NextRequest): string | NextResponse {
@@ -29,16 +30,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ stud
   const data = await loadStudentMonth(auth.userId, studentId, ym);
   // 404 (không 403): không lộ học sinh của gia sư khác có tồn tại hay không.
   if (!data) return NextResponse.json({ error: "Không tìm thấy học sinh trong lớp của bạn" }, { status: 404 });
-  const [report, me] = await Promise.all([
+  const [report, me, canBrand, brandRow] = await Promise.all([
     prisma.monthlyReport.findUnique({ where: { tutorId_studentId_yearMonth: { tutorId: auth.userId, studentId, yearMonth: ym } } }),
     prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } }),
+    canUse(auth.userId, "branded_docs"), // KiN Pro F3: cổng tắt → true; chỉ để giao diện biết hiện nút nào
+    prisma.tutorDocBrand.findUnique({ where: { userId: auth.userId }, select: { userId: true } }),
   ]);
   const suggested = suggestUnmetItems(data.subjects, ym, data.changedSessions);
   const draft = (report?.draftItems ?? null) as UnmetItem[] | null;
   const items = draft ?? suggested;
   return NextResponse.json({
     yearMonth: ym, student: data.student, subjects: data.subjects, suggested, items, hasDraft: draft !== null,
-    report: { approved: !!report?.approvedAt, approvedAt: report?.approvedAt?.toISOString() ?? null, zaloOpenedAt: report?.zaloOpenedAt?.toISOString() ?? null, approvedItems: (report?.approvedItems ?? null) as UnmetItem[] | null },
+    report: { approved: !!report?.approvedAt, approvedAt: report?.approvedAt?.toISOString() ?? null, zaloOpenedAt: report?.zaloOpenedAt?.toISOString() ?? null, approvedItems: (report?.approvedItems ?? null) as UnmetItem[] | null, brandedAt: report?.brandedAt?.toISOString() ?? null },
+    canBrand, hasBrand: brandRow !== null,
     text: renderReportText({ studentName: data.student.name, parentName: data.student.parentName, yearMonth: ym, subjects: data.subjects, unmet: items, tutorName: tutorTitle(me?.name) }),
   });
 }

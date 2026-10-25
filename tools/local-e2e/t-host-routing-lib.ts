@@ -1,6 +1,6 @@
 // Quy tắc chuyển hướng theo tên miền + vai (src/lib/hostRouting.ts, phần thuần của src/proxy.ts). Không DB, không mạng.
 // 14/10/2026: gia sư ở lại tên miền chính; người đã đăng nhập không thấy trang giới thiệu của khách.
-import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, isAdminHost, type RouteSession, type RouteDecision } from "@/lib/hostRouting";
+import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, isAdminHost, isPwaFile, type RouteSession, type RouteDecision } from "@/lib/hostRouting";
 import { check, section, done } from "./h";
 
 const MAIN = "midnightelite-edu.com", ADM = ADMIN_HOST;
@@ -68,5 +68,16 @@ section("needsSession — chỉ giải mã phiên khi cần");
 check("tên miền chính: chỉ '/', /admin*, /dang-ky, /dang-nhap cần phiên", ["/", "/admin", "/admin/x", "/dang-ky", "/dang-nhap"].every(p => needsSession(MAIN, p)));
 check("tên miền chính: trang khách, API, học viên, gia sư KHÔNG tốn giải mã", ["/thu-vien", "/khoa-hoc", "/api/auth/me", "/student/x", "/lop-cua-toi", "/quen-mat-khau"].every(p => !needsSession(MAIN, p)));
 check("tên miền admin: mọi trang cần phiên (để nhận ra gia sư), trừ API / _next / đăng nhập", needsSession(ADM, "/") && needsSession(ADM, "/admin/x") && needsSession(ADM, "/khoa-hoc") && !needsSession(ADM, "/api/x") && !needsSession(ADM, "/_next/x") && !needsSession(ADM, "/dang-nhap") && !needsSession(ADM, "/plyr.svg"));
+
+section("PWA (ĐX-02): /sw.js, /manifest.webmanifest và biểu tượng đi qua nguyên trạng ở cả hai tên miền");
+const PWA = ["/sw.js", "/manifest.webmanifest", "/icons/kin-192.png", "/icons/kin-512.png", "/icons/kin-maskable-512.png", "/icons/kin-180.png"];
+const WHO: [string, RouteSession | null][] = [["gia sư", tutor], ["học viên", student], ["quản trị cấp 1", sup], ["quản trị nội dung", content], ["khách", null]];
+for (const host of [MAIN, ADM])
+  check(`${host === MAIN ? "tên miền chính" : "tên miền admin"}: mọi tệp PWA × mọi vai → 'next' (không chuyển hướng, không viết lại)`, PWA.every(p => WHO.every(([, s]) => eq(d(host, p, s), { kind: "next" }))), PWA.filter(p => WHO.some(([, s]) => !eq(d(host, p, s), { kind: "next" }))));
+check("tên miền admin: tải manifest / sw.js KHÔNG tốn giải mã phiên", !needsSession(ADM, "/manifest.webmanifest") && !needsSession(ADM, "/sw.js"));
+check("tên miền chính: manifest / sw.js không tốn giải mã phiên", !needsSession(MAIN, "/manifest.webmanifest") && !needsSession(MAIN, "/sw.js"));
+check("chỉ ĐÚNG hai đường dẫn được miễn: '/manifest.webmanifest/x', '/sw.js/x', '/manifest.webmanifestx' trên tên miền admin vẫn bị chuyển sang tên miền chính",
+  ["/manifest.webmanifest/x", "/sw.js/x", "/manifest.webmanifestx", "/sw.json/x"].every(p => d(ADM, p, sup).kind === "redirect"), ["/manifest.webmanifest/x", "/sw.js/x", "/manifest.webmanifestx"].map(p => d(ADM, p, sup)));
+check("isPwaFile chỉ nhận đúng hai đường dẫn", isPwaFile("/sw.js") && isPwaFile("/manifest.webmanifest") && !isPwaFile("/sw.js/") && !isPwaFile("/Sw.js") && !isPwaFile("/manifest.json") && !isPwaFile("/icons/kin-192.png"));
 
 done();

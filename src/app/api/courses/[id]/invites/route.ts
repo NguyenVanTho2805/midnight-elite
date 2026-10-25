@@ -10,6 +10,8 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { PERMISSIONS } from "@/lib/permissions";
 import { generateInviteCode, invites } from "@/lib/classInvite";
 import { logAction } from "@/lib/auditLog";
+import { assertCanAddStudent, tutorLimitMessage } from "@/lib/planServer";
+import { PLAN_LIMIT_CODE } from "@/lib/planLimits";
 
 async function authorize(id: string) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
@@ -19,7 +21,7 @@ async function authorize(id: string) {
   if (!ownsResource(auth, course.ownerId)) {
     return { res: NextResponse.json({ error: "Bạn không có quyền với lớp này" }, { status: 403 }) };
   }
-  return { auth };
+  return { auth, ownerId: course.ownerId };
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -51,6 +53,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "expiresAt phải ở tương lai" }, { status: 400 });
     }
     expiresAt = d;
+  }
+
+  // KiN Pro: hạn mức học viên đang học (cổng TẮT mặc định). Mã có giới hạn lượt N cần đủ N chỗ (đúng "Mời cả lớp": số lượt = số em đã dán);
+  // mã không giới hạn lượt cần ít nhất 1 chỗ. Chỉ chặn TẠO MỚI mã; mã cũ, lớp và học viên hiện có giữ nguyên.
+  // Chủ gói là gia sư sở hữu lớp, kể cả khi quản trị tạo hộ.
+  const add = maxUses ?? 1;
+  const gate = await assertCanAddStudent(r.ownerId ?? null, { feature: add > 1 ? "invite_many" : "invite", add });
+  if (!gate.allow) {
+    return NextResponse.json({ error: tutorLimitMessage(gate, add), code: PLAN_LIMIT_CODE, quota: gate.decision?.quota }, { status: 409 });
   }
 
   // Thử sinh code vài lần nếu đụng unique (xác suất tối thiểu nhưng không

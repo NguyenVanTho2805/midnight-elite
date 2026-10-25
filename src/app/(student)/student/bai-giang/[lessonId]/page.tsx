@@ -5,25 +5,26 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProgress } from "@/hooks/useProgress";
 import { parseLessonType } from "@/lib/types";
+import { formatStamp } from "@/lib/mediaLink";
+import { firstHttpLink } from "@/lib/lessonLinks";
 import { api, type AssignmentFull, type AssignmentAnswerData, type AssignmentAnswerView } from "@/lib/api";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
 import { MathText } from "@/components/MathText";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
-  FileDownload, Eye, Lock, CheckCircle,
+  FileDownload, Lock, CheckCircle,
   ChevronDown, ArrowLeft, ArrowRight,
   StickyNote,
 } from "griddy-icons";
-import "plyr/dist/plyr.css";
+import { LessonVideo, type PlayerControl } from "@/components/media/LessonVideo";
+import { DocumentRows, AzotaPanel, StampedNotes, parseMaterials } from "@/components/media/StudentLessonPanels";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
 type SidebarTabKey = "tailieu" | "baitap" | "ghichu";
-
-interface Material { name: string; url: string; type?: string }
 
 // Học viên bấm vào tài liệu → mở tab xem trước (/xem-tai-lieu) thay vì tải
 // thẳng file — trang đó tự xử lý xem trước (PDF/Office) + nút tải riêng giữ
@@ -118,184 +119,6 @@ function TypeBadge({ type, small }: { type: LessonType; small?: boolean }) {
 }
 
 // ─── Content area by type ─────────────────────────────────────────────────────
-function extractYouTubeId(url: string): string | null {
-  const patterns = [
-    /youtube\.com\/watch\?v=([^&]+)/,
-    /youtu\.be\/([^?]+)/,
-    /youtube\.com\/embed\/([^?]+)/,
-    /youtube\.com\/shorts\/([^?]+)/,
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
-  return null;
-}
-
-// Danh sách control giống hệt bản HSA dùng (rewind/fast-forward TRƯỚC play,
-// menu chỉ có tốc độ phát) — cùng thư viện Plyr, không tự viết tay control bar
-// nữa nên có sẵn: auto-hide mượt, progress bar mượt, seek không giật, click
-// vào video để play/pause, đầy đủ hành vi 1 player chuyên nghiệp thật sự.
-const PLYR_CONTROLS = [
-  "play-large", "rewind", "fast-forward", "play", "progress",
-  "current-time", "mute", "volume", "settings", "fullscreen",
-];
-
-// Plyr's built-in "captions" control chỉ hoạt động với HTML5 <track> — với
-// YouTube provider nó không bao giờ phát hiện được track nào (nút luôn ẩn),
-// và cc_load_policy chỉ là "gợi ý" — nếu tài khoản YouTube của người xem có
-// bật "luôn hiện phụ đề" thì YouTube vẫn tự bật bất kể cc_load_policy. Cách
-// duy nhất tắt được thật sự là gọi thẳng loadModule/unloadModule('captions')
-// trên YT.Player (lộ ra qua player.embed) — nên phải tự vẽ nút bật/tắt riêng.
-const SUBTITLES_STORAGE_KEY = "lessonSubtitlesOn";
-
-function VideoPlayer({ videoUrl, userEmail, duration, onAutoComplete, lessonId }: {
-  videoUrl?: string | null;
-  userEmail?: string;
-  duration?: string;
-  onAutoComplete?: () => void;
-  lessonId?: string;
-}) {
-  const ytId      = videoUrl ? extractYouTubeId(videoUrl) : null;
-  const elRef     = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const playerRef = useRef<any>(null);
-  const firedRef  = useRef(false);
-  const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // false lúc render đầu (khớp SSR) — đọc lại lựa chọn đã lưu ngay sau khi
-  // mount để tránh hydration mismatch (không tính vào lúc render như hàm
-  // khởi tạo useState).
-  const [subtitlesOn, setSubtitlesOn] = useState(false);
-  const subtitlesOnRef = useRef(subtitlesOn);
-  subtitlesOnRef.current = subtitlesOn;
-
-  useEffect(() => {
-    setSubtitlesOn(localStorage.getItem(SUBTITLES_STORAGE_KEY) === "1");
-  }, []);
-
-  function applyCaptions(on: boolean) {
-    const yt = playerRef.current?.embed;
-    if (!yt) return;
-    try {
-      if (on) yt.loadModule("captions");
-      else yt.unloadModule("captions");
-    } catch { /* module chưa sẵn sàng — bỏ qua, không phải lỗi nghiêm trọng */ }
-  }
-
-  function toggleSubtitles() {
-    const next = !subtitlesOn;
-    setSubtitlesOn(next);
-    localStorage.setItem(SUBTITLES_STORAGE_KEY, next ? "1" : "0");
-    applyCaptions(next);
-  }
-
-  useEffect(() => {
-    if (!ytId || !elRef.current) return;
-    firedRef.current = false;
-    let destroyed = false;
-
-    // Plyr tự lo việc nạp YouTube iframe API, dựng UI, auto-hide, progress
-    // bar mượt... — import động vì thư viện đụng tới window/document, không
-    // an toàn để import tĩnh trong 1 file chạy qua SSR.
-    import("plyr").then(({ default: PlyrCtor }) => {
-      if (destroyed || !elRef.current) return;
-      const player = new PlyrCtor(elRef.current, {
-        controls: PLYR_CONTROLS,
-        settings: ["speed"],
-        iconUrl: "/plyr.svg",
-        youtube: { rel: 0, modestbranding: 1, noCookie: true },
-      });
-      playerRef.current = player;
-
-      // Áp lựa chọn phụ đề đã lưu ngay khi YouTube player thật sự sẵn sàng
-      // (embed.loadModule/unloadModule chỉ dùng được từ lúc này).
-      player.on("ready", () => applyCaptions(subtitlesOnRef.current));
-
-      player.on("timeupdate", () => {
-        if (!onAutoComplete || firedRef.current) return;
-        if (!(player.duration > 0)) return;
-        if (player.currentTime / player.duration >= 0.8) {
-          firedRef.current = true;
-          onAutoComplete();
-        }
-      });
-
-      if (lessonId) {
-        saveTimerRef.current = setInterval(() => {
-          if (!player.playing) return;
-          const secs = Math.floor(player.currentTime);
-          fetch(`/api/progress/${lessonId}`, {
-            method:      "PATCH",
-            credentials: "same-origin",
-            headers:     { "Content-Type": "application/json" },
-            body:        JSON.stringify({ watchedSeconds: secs }),
-          }).catch(() => {});
-        }, 30_000);
-      }
-    });
-
-    return () => {
-      destroyed = true;
-      if (saveTimerRef.current) clearInterval(saveTimerRef.current);
-      playerRef.current?.destroy?.();
-      playerRef.current = null;
-    };
-    // onAutoComplete cố ý không nằm trong deps — đọc giá trị mới nhất qua
-    // closure, không cần huỷ/tạo lại player khi cờ isCompleted đổi (tránh
-    // reset video về đầu đúng lúc vừa đạt 80%).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ytId, lessonId]);
-
-  if (ytId) {
-    return (
-      <div className="rounded-xl overflow-hidden relative" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
-        <div ref={elRef} data-plyr-provider="youtube" data-plyr-embed-id={ytId} />
-        <button type="button" onClick={toggleSubtitles}
-          title={subtitlesOn ? "Tắt phụ đề" : "Bật phụ đề"}
-          className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors"
-          style={subtitlesOn
-            ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }
-            : { background: "rgba(0,0,0,0.55)", color: "var(--kin-nhan-chu-tren-nen)" }}>
-          CC
-        </button>
-        {userEmail && (
-          <div className="absolute bottom-14 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10"
-            style={{ color: "var(--kin-chu-tren-nut-chinh)" }}>
-            {userEmail}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-xl overflow-hidden"
-      style={{ background: "var(--kin-chu-chinh)", border: "1px solid var(--kin-vien-thuong)" }}>
-      <div className="relative" style={{ paddingBottom: "56.25%" }}>
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <div className="w-20 h-20 rounded-full flex items-center justify-center"
-            style={{ background: "color-mix(in srgb, var(--kin-chu-mo) 50%, transparent)" }}>
-            <span className="text-3xl text-white ml-1">▶</span>
-          </div>
-          <p className="text-white text-xs opacity-50">Video chưa được cập nhật</p>
-        </div>
-        {userEmail && (
-          <div className="absolute top-3 right-3 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg]"
-            style={{ color: "var(--kin-chu-tren-nut-chinh)" }}>
-            {userEmail}
-          </div>
-        )}
-      </div>
-      {duration && (
-        <div className="flex items-center gap-2 px-4 py-2" style={{ background: "var(--kin-chu-chinh)" }}>
-          <span className="text-xs text-gray-400">Thời lượng: {duration}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function LiveContent({ zoomUrl }: { zoomUrl?: string | null }) {
   return (
     <div className="rounded-xl p-10 text-center"
@@ -331,68 +154,7 @@ function LiveContent({ zoomUrl }: { zoomUrl?: string | null }) {
   );
 }
 
-function QuizContent({ azotaUrl, deadline }: { azotaUrl?: string; deadline?: string }) {
-  return (
-    <div className="rounded-xl p-10 text-center"
-      style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-      <div className="w-20 h-20 rounded-xl flex items-center justify-center mx-auto mb-4"
-        style={{ background: "var(--kin-tt-cham-cho)" }}>
-        <Edit size={36} style={{ color: "white" }} />
-      </div>
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
-        <Alarm size={12} /> Bài kiểm tra Azota
-      </div>
-      {deadline && (
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4 mx-2"
-          style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
-          <Alarm size={11} /> Deadline: {deadline}
-        </div>
-      )}
-      <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>
-        Bài kiểm tra sẽ mở trong tab mới trên nền tảng Azota. Đảm bảo nộp bài trước deadline.
-      </p>
-      {azotaUrl ? (
-        <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-block px-8 py-3 font-bold text-[var(--kin-chu-tren-nut-chinh)] text-sm"
-          style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
-          Làm bài trên Azota →
-        </a>
-      ) : (
-        <button disabled className="px-8 py-3 rounded-lg font-bold text-sm"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
-          Chưa có link bài
-        </button>
-      )}
-    </div>
-  );
-}
-
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-function TabTaiLieu({ materials }: { materials: Material[] }) {
-  if (!materials.length) return (
-    <div className="text-center py-8">
-      <FileDownload size={28} style={{ color: "var(--kin-vien-o-nhap)", margin: "0 auto 8px" }} />
-      <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Chưa có tài liệu đính kèm.</p>
-    </div>
-  );
-  return (
-    <div>
-      <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Tài liệu:</p>
-      <div className="space-y-1.5">
-        {materials.map((m, i) => (
-          <a key={i} href={viewerHref(m.name, m.url)} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:underline"
-            style={{ color: "var(--kin-tt-chu-xong)" }}>
-            <FileDownload size={16} style={{ flexShrink: 0 }} />
-            <span className="text-sm font-medium truncate">{m.name}</span>
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function fmtDue(d: string | null): string {
   if (!d) return "";
   const dt = new Date(d);
@@ -661,20 +423,7 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
 
   return (
     <div className="space-y-3">
-      {azotaUrl && (
-        <div className="rounded-xl p-4 flex items-center justify-between gap-4"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          <div>
-            <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>Quiz — Xử lý số liệu</p>
-            {deadline && <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--kin-tt-chu-loi)" }}><Alarm size={11} /> Deadline: {deadline}</p>}
-          </div>
-          <a href={azotaUrl} target="_blank" rel="noopener noreferrer"
-            className="flex-shrink-0 px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]"
-            style={{ background: "var(--kin-tt-cham-cho)", borderRadius: "8px" }}>
-            Làm bài →
-          </a>
-        </div>
-      )}
+      <AzotaPanel lessonId={lessonId} azotaUrl={azotaUrl} deadline={deadline} canSubmit />
 
       {assignments.map(a => a.mode === "interactive" ? (
         <InteractiveAssignmentCard key={a.id} assignment={a} />
@@ -682,86 +431,6 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
         <AssignmentCard key={a.id} assignment={a}
           onSubmitted={updated => setAssignments(prev => prev.map(x => x.id === updated.id ? updated : x))} />
       ))}
-    </div>
-  );
-}
-
-function TabGhiChu({ lessonId, adminNote }: { lessonId: string; adminNote?: string | null }) {
-  const [note,    setNote]    = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/lesson-notes/${lessonId}`)
-      .then(res => res.ok ? res.json() : { text: "" })
-      .then(data => { if (!cancelled) setNote(data.text ?? ""); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [lessonId]);
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await fetch(`/api/lesson-notes/${lessonId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: note }),
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleClear() {
-    setNote("");
-    await fetch(`/api/lesson-notes/${lessonId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "" }),
-    });
-  }
-
-  return (
-    <div className="space-y-4">
-      {adminNote && (
-        <div className="rounded-xl p-4" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm">📌</span>
-            <span className="text-xs font-bold" style={{ color: "var(--kin-tt-chu-cho)" }}>Lưu ý từ gia sư</span>
-          </div>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "var(--kin-tt-chu-cho)" }}>{adminNote}</p>
-        </div>
-      )}
-
-      <div>
-        <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-mo)" }}>Ghi chú cá nhân (chỉ bạn thấy)</p>
-        <textarea
-          value={note} onChange={(e) => { setNote(e.target.value); setSaved(false); }}
-          rows={5} placeholder={loading ? "Đang tải ghi chú..." : "Ghi chú của bạn về bài học này..."}
-          disabled={loading}
-          className="w-full p-4 rounded-xl text-sm resize-none outline-none"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}
-        />
-        <div className="flex items-center gap-3 mt-2">
-          <button onClick={handleSave} disabled={loading || saving}
-            className="px-5 py-2 text-sm font-bold transition-all"
-            style={{ background: saved ? "var(--kin-tt-chu-xong)" : "var(--kin-nhan-nen)", borderRadius: "8px", color: saved ? "var(--kin-chu-tren-nut-chinh)" : "var(--kin-nhan-chu-tren-nen)", opacity: saving ? 0.7 : 1 }}>
-            {saved ? "✓ Đã lưu" : saving ? "Đang lưu..." : "Lưu ghi chú"}
-          </button>
-          {note && (
-            <button onClick={handleClear}
-              className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>
-              Xoá
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -793,8 +462,9 @@ function TabLich({ items }: { items: ScheduleItem[] }) {
 }
 
 // ─── Left Sidebar (HSA-style) ────────────────────────────────────────────────
-function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, courseId, courseName, isOpen, onToggle, mobile = false }: {
+function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, watching, courseId, courseName, isOpen, onToggle, mobile = false }: {
   sections: Section[]; currentId: string;
+  watching: Record<string, number>;
   onSelect: (l: ChapterLesson) => void;
   completedIds: Set<string>;
   courseId: string; courseName: string;
@@ -917,10 +587,11 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, course
                                     </p>
                                     <div className="flex items-center gap-2 mt-1">
                                       <TypeBadge type={lesson.type} small />
-                                      {lesson.stats.views > 0 && (
-                                        <span className="text-xs flex items-center gap-0.5" style={{ color: "var(--kin-vien-o-nhap)" }}>
-                                          <Eye size={9} />{lesson.stats.views.toLocaleString()}
-                                        </span>
+                                      {!isDone && lesson.id in watching && (
+                                        <span className="text-xs font-bold px-1.5 rounded-full" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Đang xem</span>
+                                      )}
+                                      {isDone && (
+                                        <span className="text-xs font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã xong</span>
                                       )}
                                       {lesson.isFree && !lesson.isLocked && (
                                         <span className="text-xs font-bold px-1.5 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>FREE</span>
@@ -969,7 +640,13 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<SidebarTabKey>("tailieu");
-  const { completedIds, markComplete, unmarkComplete } = useProgress();
+  const { completedIds, watching, positions, markComplete, unmarkComplete } = useProgress();
+  const [player, setPlayer] = useState<PlayerControl | null>(null);
+  const [session, setSession] = useState<{ email?: string; role?: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => setSession(d?.user ?? d ?? null)).catch(() => {});
+  }, []);
 
   useEffect(() => { setActiveTab("tailieu"); }, [params.lessonId]);
 
@@ -1091,10 +768,11 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     ...rawLesson,
     teacherName:     dbCourse.instructor,
     views:           rawLesson.stats.views,
-    materials:       (() => { try { return JSON.parse(dbLesson.documents ?? "[]") as Material[]; } catch { return [] as Material[]; } })(),
+    materials:       parseMaterials(dbLesson.documents),
     azotaUrl:        dbLesson.azotaUrl ?? null,
     azotaDeadline:   dbLesson.azotaDeadline ?? "",
-    zoomUrl:         dbLesson.zoomUrl ?? null,
+    // Chỉ http/https mới vào href (loại javascript:, data:); cột có thể là chuỗi JSON của mảng.
+    zoomUrl:         firstHttpLink(dbLesson.zoomUrl),
     note:            "",
     relatedSchedule: [] as Array<{ type: LessonType; subject: string; topic: string; time: string; date: string }>,
     prevLesson,
@@ -1110,6 +788,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
   const completedCount = allLessons.filter(l => completedIds.has(l.id)).length;
   const isCompleted    = completedIds.has(params.lessonId);
+  const watchedHere    = watching[params.lessonId] ?? 0;
 
   const sidebarTabs: { key: SidebarTabKey; label: string; icon: React.ReactNode }[] = [
     { key: "tailieu", label: "Tài liệu", icon: <FileDownload size={14} /> },
@@ -1128,6 +807,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           currentId={lesson.id}
           onSelect={handleSelectLesson}
           completedIds={completedIds}
+          watching={watching}
           courseId={dbCourse.id}
           courseName={dbCourse.name}
           isOpen={sidebarOpen}
@@ -1148,16 +828,23 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
           {/* Content by type */}
           {lesson.type === "record" && (
-            <VideoPlayer
+            <LessonVideo
+              key={params.lessonId}
               videoUrl={videoUrl}
-              duration={lesson.duration}
               lessonId={params.lessonId}
+              userEmail={session?.email}
+              startAt={positions[params.lessonId] ?? null}
+              onControl={setPlayer}
               onAutoComplete={!isCompleted ? () => markComplete(params.lessonId) : undefined}
             />
           )}
           {lesson.type === "live"     && <LiveContent zoomUrl={lesson.zoomUrl ?? undefined} />}
-          {lesson.type === "quiz"     && <QuizContent azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
-          {lesson.type === "document" && <QuizContent />}
+          {lesson.type === "quiz" && (lesson.azotaUrl
+            ? <AzotaPanel lessonId={params.lessonId} azotaUrl={lesson.azotaUrl} deadline={lesson.azotaDeadline} canSubmit={enrolled && session?.role !== "admin"} />
+            : <p className="text-sm text-center py-8 rounded-xl" role="status" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Gia sư chưa gắn link bài Azota cho bài này.</p>)}
+          {lesson.type === "document" && (
+            <p className="text-sm text-center py-8 rounded-xl" role="status" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Bài này là tài liệu. Xem thử hoặc tải về ở tab Tài liệu bên dưới.</p>
+          )}
 
           {/* Lesson info — không đóng khung, chỉ là phần mở rộng tự nhiên của video */}
           <div className="flex items-start justify-between gap-3 pt-1">
@@ -1172,12 +859,8 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
               <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
                 {lesson.teacherName && <span>{lesson.teacherName}</span>}
                 {lesson.duration && <span className="flex items-center gap-1"><Play size={11} />{lesson.duration}</span>}
-                <span className="flex items-center gap-1"><Eye size={11} />{lesson.views?.toLocaleString()} lượt xem</span>
                 {lesson.materials.length > 0 && <span className="flex items-center gap-1"><FileDownload size={11} />{lesson.materials.length} tài liệu</span>}
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--kin-tt-chu-xong)" }} />
-                  Đang theo dõi phiên học · Thiết bị 1/2
-                </span>
+                {!isCompleted && watchedHere > 0 && <span className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Đang xem dở · từ {formatStamp(watchedHere)}</span>}
               </div>
             </div>
             <button
@@ -1211,9 +894,9 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
               ))}
             </div>
             <div className="p-4">
-              {activeTab === "tailieu" && <TabTaiLieu materials={lesson.materials} />}
+              {activeTab === "tailieu" && <DocumentRows materials={lesson.materials} />}
               {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
-              {activeTab === "ghichu"  && <TabGhiChu lessonId={params.lessonId} adminNote={dbLesson.adminNote} />}
+              {activeTab === "ghichu"  && <StampedNotes lessonId={params.lessonId} adminNote={dbLesson.adminNote} control={player} />}
             </div>
           </div>
 
@@ -1263,6 +946,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
                 sections={sections} currentId={lesson.id}
                 onSelect={(l) => { handleSelectLesson(l); setOutlineOpen(false); }}
                 completedIds={completedIds}
+                watching={watching}
                 courseId={dbCourse.id} courseName={dbCourse.name}
                 isOpen={true} onToggle={() => setOutlineOpen(false)}
                 mobile

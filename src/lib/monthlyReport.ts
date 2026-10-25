@@ -5,6 +5,7 @@
 // Nguyên tắc: không cộng Nỗ lực với Năng lực thành một con số, không xếp hạng trên phiếu phụ huynh,
 // không dùng màu đỏ cho năng lực của học sinh (đỏ để dành cho lỗi hệ thống và tiền).
 import { computeMastery, type TestScore } from "@/lib/mastery";
+import { mediaProgressLine, type MediaProgress } from "@/lib/classRecordings";
 
 export const MASTERY_THRESHOLD = 8.0;       // NGƯỠNG_ĐẠT — đề xuất
 export const HOMEWORK_UNMET_BELOW = 0.7;    // NGƯỠNG_BTVN_CHƯA_ĐẠT — đề xuất
@@ -98,6 +99,8 @@ export interface SubjectMonthInput {
 export interface SubjectMonthMetrics {
   courseId: string;
   courseName: string;
+  /** BC-03: tiến độ học liệu tính đến lúc lập báo cáo (không theo tháng). Tuỳ chọn: bản đã duyệt/đóng băng từ trước không có trường này và vẫn đọc được. */
+  media?: MediaProgress;
   attendance: { sessions: number; ratio: number | null };
   homework: { assigned: number; onTime: number; ratio: number | null };
   effort: number | null;
@@ -190,6 +193,8 @@ export function renderReportText(i: ReportTextInput): string {
     const m = s.mastery;
     const scores = m.scores.length ? ` (${m.scores.map(fmtScore).join(" · ")})` : "";
     lines.push(`- Năng lực: ${m.value === null ? "chưa có bài kiểm tra" : `${fmtScore(m.value)}/10${scores}`} — ${m.text}`);
+    const mp = mediaProgressLine(s.media);
+    if (mp) lines.push(`- Học liệu trên KiN (tính đến lúc lập báo cáo): ${mp}`);
   }
   lines.push("", "Điều chưa đạt tháng này:");
   if (i.unmet.length === 0) lines.push(EMPTY_UNMET_TEXT);

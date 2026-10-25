@@ -8,9 +8,11 @@ import { KinCopyButton } from "@/components/kin/CopyButton";
 import { KinFold, KinChevron } from "@/components/kin/Fold";
 
 const vnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
+const dueLabel = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
 const monthLabel = (ym: string) => { const [y, m] = ym.split("-"); return `Tháng ${Number(m)}/${y}`; };
 
-export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvoiceView; reportUrl: string }) {
+// plain: không khung/nền riêng (trang phụ huynh tự đặt khối nền chung); mặc định vẫn có khung như cũ cho trang học viên.
+export default function InvoiceCard({ invoice, reportUrl, plain = false }: { invoice: PartyInvoiceView; reportUrl: string; plain?: boolean }) {
   const [status, setStatus] = useState(invoice.status);
   // Khối QR + tài khoản gập/mở được (Lucian No.200): mặc định MỞ để luồng thanh toán không đổi; phụ huynh nhiều tháng chưa đóng gập bớt cho đỡ dài.
   const [showPay, setShowPay] = useState(true);
@@ -39,22 +41,20 @@ export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvo
   const open = invoice.qrUrl !== null && !paid && invoice.remaining > 0;
 
   return (
-    <article className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} aria-label={`Phiếu học phí ${monthLabel(invoice.yearMonth)}`}>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{monthLabel(invoice.yearMonth)} · {invoice.tutorName}</p>
-          <p className="text-xs font-mono mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>Mã phiếu {invoice.code}</p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: tone }}>
-          <span aria-hidden className="w-2 h-2 rounded-full inline-block" style={{ background: paid ? "var(--kin-tt-cham-xong)" : "var(--kin-tt-cham-cho)" }} />
-          {label}
-        </span>
-      </div>
+    <article className={plain ? undefined : "rounded-xl p-4"} style={plain ? undefined : { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }} aria-label={`Phiếu học phí ${monthLabel(invoice.yearMonth)}`}>
+      <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: tone }}>
+        <span aria-hidden className="w-2 h-2 rounded-full inline-block" style={{ background: paid ? "var(--kin-tt-cham-xong)" : "var(--kin-tt-cham-cho)" }} />
+        {label}
+      </span>
 
-      <dl className="mt-3 flex gap-6 text-sm">
-        <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Phải đóng</dt><dd className="font-bold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(invoice.amountDue)}</dd></div>
-        {!paid && <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại</dt><dd className="font-bold tabular-nums" style={{ color: "var(--kin-nhan-diem)" }}>{vnd(invoice.remaining)}</dd></div>}
+      <dl className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
+        <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Phải đóng</dt><dd className="text-[22px] leading-8 font-semibold tabular-nums" style={{ color: "var(--kin-chu-chinh)" }}>{vnd(invoice.amountDue)}</dd></div>
+        {!paid && <div><dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Còn lại</dt><dd className="text-[22px] leading-8 font-semibold tabular-nums" style={{ color: "var(--kin-nhan-diem)" }}>{vnd(invoice.remaining)}</dd></div>}
       </dl>
+
+      <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{monthLabel(invoice.yearMonth)} · {invoice.tutorName}</p>
+      <p className="text-xs font-mono mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>Mã phiếu {invoice.code}</p>
+      {invoice.dueDate && !paid && <p className="text-sm mt-1" style={{ color: "var(--kin-chu-chinh)" }}>Hạn đóng: <b>{dueLabel(invoice.dueDate)}</b></p>}
 
       {open && (
         <>
@@ -63,10 +63,10 @@ export default function InvoiceCard({ invoice, reportUrl }: { invoice: PartyInvo
             {showPay ? "Ẩn cách chuyển khoản" : "Xem cách chuyển khoản"} <KinChevron open={showPay} />
           </button>
           <KinFold open={showPay} id={payId}>
-            <div className="pt-1 flex flex-col sm:flex-row items-center gap-4">
+            <div className={`pt-1 flex flex-col sm:flex-row items-center gap-4${plain ? " lg:flex-col" : ""}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={invoice.qrUrl!} alt={`Mã VietQR chuyển ${vnd(invoice.remaining)} cho ${invoice.tutorName}`} className="w-44 h-44 sm:w-52 sm:h-52 flex-shrink-0 rounded-lg" style={{ border: "1px solid var(--kin-vien-nhat)", background: "var(--kin-nen-trang)" }} />
-              <div className="text-sm space-y-1 min-w-0" style={{ color: "var(--kin-chu-phu)" }}>
+              <div className="text-sm space-y-1 min-w-0 w-full sm:w-auto lg:w-full" style={{ color: "var(--kin-chu-phu)" }}>
                 {invoice.bank && <>
                   <p>Ngân hàng: <b style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.name}</b></p>
                   <p>Số tài khoản: <b className="font-mono" style={{ color: "var(--kin-chu-chinh)" }}>{invoice.bank.accountNo}</b>{" "}

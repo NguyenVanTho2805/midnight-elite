@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { KinButton, KinConfirm, KinStatus, KinTabs, KinToast, type KinButtonVariant, type StatusTone, type ToastTone } from "@/components/kin";
+import { KinButton, KinConfirm, KinSkeleton, KinStateCard, KinStatus, KinTabs, KinToast, type KinButtonVariant, type StatusTone, type ToastTone } from "@/components/kin";
 import { useToast } from "@/components/ui";
 
 const VARIANTS: { v: KinButtonVariant; label: string }[] = [
@@ -73,6 +73,21 @@ export default function MauClient() {
             <KinButton variant="secondary" onClick={() => toast.warn("Cần nhắc phụ huynh.")}>Bật toast chờ</KinButton>
             <KinButton variant="secondary" onClick={() => toast.err("Mất kết nối mạng.")}>Bật toast lỗi</KinButton>
             <KinButton variant="secondary" onClick={() => toast.info("Gia sư đã đổi mức học phí.", { timeout: 60000 })}>Bật toast tin</KinButton>
+          </div>
+        </section>
+
+        <section aria-labelledby="m-trang-thai" className="flex flex-col gap-3">
+          <h2 id="m-trang-thai" className="font-semibold">Thẻ trạng thái dùng chung (Figma 299:117032)</h2>
+          <div className="grid gap-4 sm:grid-cols-2" data-mau="the-trang-thai">
+            <KinStateCard kicker="Trống · Gia sư" title="Bắt đầu với lớp đầu tiên" actions={<KinButton>Tạo lớp đầu tiên</KinButton>}
+              note="Chưa cần thêm ngân hàng hay công khai hồ sơ.">Chưa có lớp nào. Tạo lớp để lên lịch, điểm danh và theo dõi học phí.</KinStateCard>
+            <KinStateCard kicker="Đang tải" busy title="Đang tải lịch học" note="Giữ vị trí nội dung, không hiển thị số liệu tạm như dữ liệu thật.">
+              <p>Đang lấy lịch tuần, vui lòng chờ một chút.</p><KinSkeleton className="mt-4" />
+            </KinStateCard>
+            <KinStateCard tone="loi" kicker="Lỗi · Có thể thử lại" title="Chưa tải được báo cáo" status={<KinStatus tone="loi">Kết nối bị gián đoạn</KinStatus>}
+              actions={<><KinButton variant="secondary">Thử lại</KinButton><KinButton variant="ghost">Liên hệ hỗ trợ</KinButton></>}>Kiểm tra kết nối và thử lại. Thông tin đã lưu không bị mất.</KinStateCard>
+            <KinStateCard kicker="Thành công" title="Đã lưu điểm danh" status={<KinStatus tone="xong">Điểm danh được lưu</KinStatus>}
+              actions={<KinButton variant="secondary">Quay lại buổi học</KinButton>}>Mẫu dữ liệu giả để đối chiếu hình thức.</KinStateCard>
           </div>
         </section>
 

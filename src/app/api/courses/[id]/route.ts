@@ -4,6 +4,8 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
+import { validateTutorCourseFields } from "@/lib/courseValidation";
+import { redactCourseTree, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -31,12 +33,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const session = await getSession();
     let hasAccess = false;
+    let enrolled: { status: string } | null = null;
 
     if (session) {
       if (session.role === "admin") {
         hasAccess = true;
       } else {
-        const enrolled = await prisma.enrollment.findUnique({
+        enrolled = await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.userId, courseId: id } },
         });
         // "pending_consent" chưa được học, "suspended" chỉ xem lại nhưng
@@ -63,7 +66,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }));
     }
 
-    return NextResponse.json(course);
+    // MD-03: link học liệu (videoUrl, zoomUrl, azotaUrl, documents) chỉ đi tới quản lý lớp, học viên đang học và bài miễn phí.
+    // Khách / chưa ghi danh vẫn thấy tên Phần, Chương, Bài để quyết định đăng ký, nhưng link bị bỏ trống.
+    const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
+    return NextResponse.json(redactCourseTree({ viewer, courseOwnerId: course.ownerId, enrollment: enrolled }, course));
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -72,7 +78,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnType<typeof requirePermission>>) {
   if (!("userId" in auth)) return auth;
-  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true } });
+  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, price: true, originalPrice: true, lessons: true, hours: true, status: true } });
   if (!existing) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
   if (!ownsResource(auth, existing.ownerId)) {
     return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
@@ -90,6 +96,14 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
   ];
   for (const key of allowed) {
     if (key in body) data[key] = body[key];
+  }
+
+  // NC2-035: như POST /api/courses — chỉ vai gia sư bị kiểm giá trị vô lý.
+  if (auth.adminRole === "teacher") {
+    // Giá trị KHÔNG đổi so với hiện có thì bỏ qua: lớp cũ (tạo trước khi có trần) vẫn sửa tên/trạng thái được.
+    const changed = Object.fromEntries(Object.entries(data).filter(([k, v]) => !(k in existing && (existing as Record<string, unknown>)[k] === v)));
+    const bad = validateTutorCourseFields(changed);
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 });
   }
 
   // capacity: null = không giới hạn; nếu đang giảm, phải lớn hơn hoặc bằng

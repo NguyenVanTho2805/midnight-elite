@@ -11,7 +11,10 @@ import type { Prisma } from "@/generated/prisma/client";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import type { SessionPayload } from "@/lib/session";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { notify } from "@/lib/notify";
 import { computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
+import { FEE_MODE_LEGACY, composeFinalAmount, groupChargeLines, normalizeFeeMode, percentAmount } from "@/lib/tuitionFee";
+import { PREVIEW_BLOCKED_MESSAGE, ensureCourseCharges, loadUninvoicedCharges, moneyPathsBlocked } from "@/lib/feeChargeServer";
 import {
   INVOICE_STATUS, INVOICE_STATUS_LABEL, PARENT_VISIBLE_STATUSES, OPEN_STATUSES, buildInvoiceQrUrl, buildTransferContent,
   bankName, generateInvoiceCode, remainingOf, statusAfterPayment, type InvoiceStatus,
@@ -104,27 +107,45 @@ export async function issueInvoice(opts: {
 
       const enrollments = await tx.enrollment.findMany({
         where: { userId: studentId, status: ENROLLMENT_STATUS.ACTIVE, course: { ownerId: tutorId } },
-        include: { course: { select: { id: true, name: true } } },
+        include: { course: { select: { id: true, name: true, feeMode: true } } },
       });
-      if (enrollments.length === 0) return { ok: false, reason: "Em chưa học lớp nào của bạn" } as IssueResult;
+
+      // HP-14: lớp tạo sau có thể tính theo buổi/giờ/khoá (Course.feeMode). Lớp cũ (mặc định) đi ĐÚNG đường cũ bên dưới.
+      const legacyEnrollments = enrollments.filter(e => normalizeFeeMode(e.course.feeMode) === FEE_MODE_LEGACY);
+      const hasNewMode = legacyEnrollments.length < enrollments.length;
+      if (hasNewMode && moneyPathsBlocked()) return { ok: false, reason: PREVIEW_BLOCKED_MESSAGE } as IssueResult;
+      if (hasNewMode) await ensureCourseCharges(tx, { tutorId, studentId, yearMonth, now: new Date(), courses: enrollments.map(e => e.course) });
+      const chargeRows = hasNewMode || !moneyPathsBlocked()
+        ? await loadUninvoicedCharges(tx, { tutorId, studentId, yearMonth, lock: true })
+        : [];
+      if (enrollments.length === 0 && chargeRows.length === 0) return { ok: false, reason: "Em chưa học lớp nào của bạn" } as IssueResult;
 
       const [fees, override] = await Promise.all([
-        tx.monthlyCourseFee.findMany({ where: { yearMonth, courseId: { in: enrollments.map(e => e.courseId) } } }),
+        tx.monthlyCourseFee.findMany({ where: { yearMonth, courseId: { in: legacyEnrollments.map(e => e.courseId) } } }),
         tx.tuitionOverride.findUnique({ where: { userId: studentId } }),
       ]);
       const feeByCourse = new Map(fees.map(f => [f.courseId, f]));
-      const subjects: SubjectFeeInput[] = enrollments.map(e => ({
+      const subjects: SubjectFeeInput[] = legacyEnrollments.map(e => ({
         courseId: e.course.id, courseName: e.course.name,
         sessionCount: feeByCourse.get(e.courseId)?.sessionCount ?? 0,
         freeCount: feeByCourse.get(e.courseId)?.freeCount ?? 0,
       }));
-      if (subjects.every(s => s.sessionCount === 0)) return { ok: false, reason: "Chưa nhập số buổi của tháng này" } as IssueResult;
+      if (subjects.every(s => s.sessionCount === 0) && chargeRows.length === 0) {
+        return { ok: false, reason: hasNewMode ? "Chưa có buổi nào được tính phí trong tháng này" : "Chưa nhập số buổi của tháng này" } as IssueResult;
+      }
 
       const b = computeMonthlyFee({ subjects, override: override?.pricePerSession ?? null, scholarship: opts.scholarship, discount: opts.discount });
-      if (b.finalAmount <= 0) return { ok: false, reason: "Số phải đóng bằng 0đ" } as IssueResult;
+      const chargesTotal = chargeRows.reduce((sum, r) => sum + r.amount, 0);
+      // HP-32: giảm giá % gia sư đặt cho em (nếu có). Không có dòng nào → percent 0 → đường cũ.
+      const discountRow = await tx.studentDiscount.findUnique({ where: { tutorId_studentId: { tutorId, studentId } }, select: { percent: true } });
+      const percent = discountRow?.percent ?? 0;
+      if (percent > 0 && moneyPathsBlocked()) return { ok: false, reason: PREVIEW_BLOCKED_MESSAGE } as IssueResult;
+      // chargesTotal = 0 và percent = 0 (mọi lớp cũ chưa đặt giảm giá) → composeFinalAmount trả đúng b.finalAmount: phiếu cũ không lệch một đồng.
+      const finalAmount = composeFinalAmount(b, chargesTotal, percent);
+      if (finalAmount <= 0) return { ok: false, reason: "Số phải đóng bằng 0đ" } as IssueResult;
 
-      const credit = await consumeCredits(tx, tutorId, studentId, b.finalAmount);
-      const amountDue = b.finalAmount - credit.used;
+      const credit = await consumeCredits(tx, tutorId, studentId, finalAmount);
+      const amountDue = finalAmount - credit.used;
       const paidByCredit = amountDue === 0;
 
       for (let attempt = 0; attempt < 6; attempt++) {
@@ -137,9 +158,20 @@ export async function issueInvoice(opts: {
             paidAmount: 0,
             status: paidByCredit ? INVOICE_STATUS.PAID : INVOICE_STATUS.DRAFT,
             paidAt: paidByCredit ? new Date() : null,
-            breakdown: { ...b, creditApplied: credit.used, creditParts: credit.parts, grossDue: b.finalAmount } as unknown as Prisma.InputJsonValue,
+            breakdown: (chargeRows.length === 0 && percent === 0
+              ? { ...b, creditApplied: credit.used, creditParts: credit.parts, grossDue: b.finalAmount } // lớp cũ: đúng hình dạng và số như trước
+              : {
+                  ...b, finalAmount, chargeLines: groupChargeLines(chargeRows), chargesTotal, creditApplied: credit.used, creditParts: credit.parts, grossDue: finalAmount,
+                  ...(percent > 0 ? { percentOff: percent, percentAmount: percentAmount(b.gross + chargesTotal, percent) } : {}),
+                }
+            ) as unknown as Prisma.InputJsonValue,
           },
         });
+        if (chargeRows.length > 0) {
+          // Đóng băng các dòng phí vào phiếu. Đã khoá FOR UPDATE ở trên nên không dòng nào bị đổi giữa lúc đọc và lúc gắn.
+          const frozen = await tx.feeCharge.updateMany({ where: { id: { in: chargeRows.map(r => r.id) }, invoiceId: null }, data: { invoiceId: inv.id } });
+          if (frozen.count !== chargeRows.length) throw new Error("Dòng phí đổi trong lúc lập phiếu");
+        }
         return { ok: true, invoice: { id: inv.id, code: inv.code, studentId, amountDue, status: inv.status, creditApplied: credit.used } } as IssueResult;
       }
       throw new Error("Không sinh được mã phiếu");
@@ -159,10 +191,12 @@ export interface PartyInvoiceView {
   bank: { name: string; accountNo: string; accountName: string } | null;
   canReport: boolean; // nút "Tôi đã chuyển"
   paidAt: string | null;
+  /** F2: hạn đóng gia sư đặt ("YYYY-MM-DD"), chỉ để phụ huynh xem. null = chưa đặt. */
+  dueDate: string | null;
 }
 
 export function presentInvoiceForParty(
-  inv: { id: string; code: string; yearMonth: string; amountDue: number; paidAmount: number; status: string; paidAt: Date | null },
+  inv: { id: string; code: string; yearMonth: string; amountDue: number; paidAmount: number; status: string; paidAt: Date | null; dueDate?: string | null },
   ctx: { tutorName: string; studentName: string; account: { bankBin: string; accountNo: string; accountName: string } | null },
 ): PartyInvoiceView {
   const remaining = remainingOf(inv);
@@ -179,6 +213,7 @@ export function presentInvoiceForParty(
     bank: ctx.account ? { name: bankName(ctx.account.bankBin), accountNo: ctx.account.accountNo, accountName: ctx.account.accountName } : null,
     canReport: inv.status === "sent" || inv.status === "partial",
     paidAt: inv.paidAt?.toISOString() ?? null,
+    dueDate: inv.dueDate ?? null,
   };
 }
 
@@ -198,7 +233,7 @@ export async function loadPartyInvoices(studentId: string, yearMonth?: string): 
 // "Tôi đã chuyển": chỉ ghi nhận phụ huynh BÁO đã chuyển — chưa phải đã nhận tiền.
 // Trả null nếu phiếu không thuộc em này / không ở trạng thái cho phép.
 export async function markParentReported(studentId: string, code: string): Promise<{ ok: true; alreadyReported: boolean } | { ok: false; status: number; error: string }> {
-  const inv = await prisma.tuitionInvoice.findUnique({ where: { code }, select: { id: true, studentId: true, status: true } });
+  const inv = await prisma.tuitionInvoice.findUnique({ where: { code }, select: { id: true, tutorId: true, studentId: true, status: true } });
   if (!inv || inv.studentId !== studentId) return { ok: false, status: 404, error: "Không tìm thấy phiếu" };
   if (inv.status === "parent_reported") return { ok: true, alreadyReported: true };
   if (inv.status !== "sent" && inv.status !== "partial") {
@@ -208,5 +243,33 @@ export async function markParentReported(studentId: string, code: string): Promi
     where: { id: inv.id, status: { in: ["sent", "partial"] } },
     data: { status: "parent_reported", parentReportedAt: new Date() },
   });
-  return r.count === 1 ? { ok: true, alreadyReported: false } : { ok: false, status: 409, error: "Phiếu vừa đổi trạng thái, tải lại trang" };
+  if (r.count !== 1) return { ok: false, status: 409, error: "Phiếu vừa đổi trạng thái, tải lại trang" };
+  await notifyTutorParentReported(inv.tutorId, inv.id); // NC2-010: chỉ báo tin, không đổi cách ghi nhận ở trên
+  return { ok: true, alreadyReported: false };
+}
+
+/** Khoảng chống dội của thông báo `parent_reported`: một phiếu tối đa một thông báo mỗi 24 giờ. */
+export const PARENT_REPORTED_DEDUPE_MS = 24 * 3600_000;
+/** Đích của thông báo: khoá phiếu (id nội bộ, không phải mã phiếu in cho phụ huynh) nằm ở tham số `phieu` để tra chống dội; trang bỏ qua tham số này. */
+export const parentReportedLink = (invoiceId: string) => `/lop-cua-toi/hoc-phi?phieu=${invoiceId}`;
+
+/**
+ * NC2-010 — báo GIA SƯ chủ phiếu rằng có phụ huynh bấm "Tôi đã chuyển". Chữ trong ứng dụng dựng từ LOẠI: không tên em / phụ huynh, không số tiền, không mã phiếu.
+ * Chống dội: đã có thông báo `parent_reported` cho đúng phiếu này trong 24 giờ qua thì không tạo thêm (tra bảng Notification, không thêm cột).
+ * Cố ý nuốt lỗi như notify(): báo tin không bao giờ làm hỏng việc ghi nhận chính.
+ */
+export async function notifyTutorParentReported(tutorId: string, invoiceId: string, now: Date = new Date()): Promise<boolean> {
+  try {
+    const link = parentReportedLink(invoiceId);
+    const recent = await prisma.notification.findFirst({
+      where: { userId: tutorId, type: "parent_reported", link, createdAt: { gt: new Date(now.getTime() - PARENT_REPORTED_DEDUPE_MS) } },
+      select: { id: true },
+    });
+    if (recent) return false;
+    await notify(tutorId, { type: "parent_reported", title: "Phụ huynh báo đã chuyển khoản", message: "Có phụ huynh báo đã chuyển khoản, cần đối soát. Mở phiếu học phí để xem.", link });
+    return true;
+  } catch (e) {
+    console.error("[parent_reported] Không báo được gia sư:", e);
+    return false;
+  }
 }

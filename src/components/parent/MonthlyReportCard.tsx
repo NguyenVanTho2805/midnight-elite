@@ -4,7 +4,6 @@
 import type { PartyReport } from "@/lib/monthlyReportServer";
 import { EMPTY_UNMET_TEXT, fmtScore } from "@/lib/monthlyReport";
 
-const card = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
 const TONE: Record<string, string> = { xong: "var(--kin-tt-chu-xong)", cho: "var(--kin-tt-chu-cho)", "trung-tinh": "var(--kin-chu-phu)" };
 const monthLabel = (ym: string) => `${Number(ym.slice(5, 7))}/${ym.slice(0, 4)}`;
 
@@ -25,7 +24,7 @@ function Bar({ label, value, max, text, color }: { label: string; value: number 
 
 export default function MonthlyReportCard({ report }: { report: PartyReport }) {
   return (
-    <article className="rounded-xl p-4" style={card} aria-label={`Báo cáo tháng ${monthLabel(report.yearMonth)}`}>
+    <article className="py-1" aria-label={`Báo cáo tháng ${monthLabel(report.yearMonth)}`}>
       <header className="mb-3">
         <h3 className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Báo cáo tháng {monthLabel(report.yearMonth)}</h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>Gia sư {report.tutorName} đã duyệt</p>

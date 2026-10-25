@@ -1,6 +1,6 @@
 // GET /api/invites/by-code/<mã>: phần xem trước theo Figma 32:54 — lịch, số buổi đã học, học phí theo bậc thang. Chỉ đọc, đúng người.
 import { prisma } from "@/lib/prisma";
-import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
+import { api, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, section, done } from "./h";
 
 const DAY = 86_400_000;
 
@@ -20,8 +20,11 @@ const DAY = 86_400_000;
     { courseId: toan.id, dayOfWeek: 4, startTime: "19:30", endTime: "21:30" },
     { courseId: toan.id, dayOfWeek: 6, startTime: "08:00", endTime: "10:00", active: false },
   ] });
-  for (const d of [20, 13]) await prisma.attendanceSession.create({ data: { courseId: toan.id, date: new Date(Date.now() - d * DAY), createdBy: T.id } });
-  await prisma.attendanceSession.create({ data: { courseId: toan.id, date: new Date(Date.now() + 5 * DAY), createdBy: T.id } });
+  for (const d of [20, 13]) await mkAttendanceSession(toan.id, T.id, new Date(Date.now() - d * DAY));
+  await mkAttendanceSession(toan.id, T.id, new Date(Date.now() + 5 * DAY)); // có em có mặt nhưng ở tương lai → không tính
+  // ĐX-00: phiên đã qua nhưng rỗng / chỉ có "có phép" cũng không tính là đã học
+  await mkAttendanceSession(toan.id, T.id, new Date(Date.now() - 6 * DAY), []);
+  await mkAttendanceSession(toan.id, T.id, new Date(Date.now() - 3 * DAY), ["excused"]);
 
   const mk = async (courseId: string, as = T) => (await api("POST", `/api/courses/${courseId}/invites`, { as, body: { maxUses: 5 } })).json.code as string;
   const cToan = await mk(toan.id), cTrung = await (async () => { const inv = await prisma.classInvite.create({ data: { courseId: trung.id, code: "TRUNG2345", createdBy: T.id } }); return inv.code; })();
@@ -34,7 +37,7 @@ const DAY = 86_400_000;
   let r = await pv(cToan, S);
   check("200, status ok, tên lớp + gia sư", r.status === 200 && r.json.status === "ok" && r.json.course.name === "Toán 9" && r.json.course.owner.name === "Cô Lan", r.json);
   check("lịch: chỉ 2 khung đang bật (Thứ 3, Thứ 5), khung đã tắt bị bỏ", r.json.schedule.length === 2 && r.json.schedule.every((s: any) => s.startTime === "19:30" && s.endTime === "21:30") && r.json.schedule.map((s: any) => s.dayOfWeek).sort().join() === "2,4", r.json.schedule);
-  check("đã học: chỉ đếm buổi đã qua (2), buổi tương lai không tính", r.json.taught === 2, r.json.taught);
+  check("đã học: chỉ đếm buổi đã qua có em có mặt (2); buổi tương lai, phiên rỗng, phiên chỉ có phép không tính", r.json.taught === 2, r.json.taught);
   check("học phí: 3 môn (2 môn cũ của cô Lan + môn này) → 55.000đ, không đếm môn của thầy khác", r.json.tuition?.subjectCount === 3 && r.json.tuition?.pricePerSession === 55_000 && r.json.tuition?.override === false, r.json.tuition);
   check("vẫn giữ các trường cũ (alreadyEnrolled=false, maxUses, usedCount)", r.json.alreadyEnrolled === false && r.json.maxUses === 5 && r.json.usedCount === 0);
 

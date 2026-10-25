@@ -10,7 +10,7 @@ export async function GET() {
   since.setDate(since.getDate() - 59);
 
   const progress = await prisma.lessonProgress.findMany({
-    where: { userId: session.userId, completedAt: { gte: since } },
+    where: { userId: session.userId, completed: true, completedAt: { gte: since } },
     select: { completedAt: true },
   });
 

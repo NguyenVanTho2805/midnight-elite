@@ -7,10 +7,14 @@
 //   Năng lực   — ExamResult của em ở các đề gắn với lớp (Exam.courseId), điểm quy về thang 10
 //   Buổi gia sư dời/huỷ — ClassSessionChange của các lớp em đang học, buổi có NGÀY GỐC (theo lịch tuần) trong tháng; gia sư bấm Dời/Huỷ ở trang Lịch.
 import { prisma } from "@/lib/prisma";
+import { dropHeldResults } from "@/lib/examHold";
 import { computeAttendanceStats } from "@/lib/attendance";
 import { vnMonthKey } from "@/lib/revenue";
+import { attendanceDateWindow } from "@/lib/taughtSessions";
 import { buildSubjectMetrics, type SubjectMonthMetrics, type TutorChangedSession } from "@/lib/monthlyReport";
 import { changesToTutorChanged } from "@/lib/sessionChange";
+import { summariseMediaProgress } from "@/lib/classRecordings";
+import { firstSafeHttpsLink, parseLinkList } from "@/lib/mediaLink";
 
 export const isYearMonth = (s: unknown): s is string => typeof s === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
@@ -63,24 +67,35 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
   const courseIds = courses.map(c => c.id);
   const { start, end, attStart, attEnd } = monthBounds(yearMonth);
 
-  const [records, assignments, results, changes] = await Promise.all([
+  const [records, assignments, rawResults, changes, mediaLessons, mediaDone, azotaDone] = await Promise.all([
     prisma.attendanceRecord.findMany({
-      where: { userId: studentId, session: { courseId: { in: courseIds }, date: { gte: attStart, lt: attEnd } } },
+      where: { userId: studentId, session: { courseId: { in: courseIds }, date: attendanceDateWindow(attStart, attEnd) } },
       select: { status: true, session: { select: { courseId: true } } },
     }),
     prisma.assignment.findMany({
-      where: { dueDate: { gte: start, lt: end }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
+      where: { mode: { not: "azota" }, dueDate: { gte: start, lt: end }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
       select: { id: true, dueDate: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
     }),
     prisma.examResult.findMany({
       where: { userId: studentId, exam: { courseId: { in: courseIds } } },
-      select: { score: true, totalPoints: true, completedAt: true, exam: { select: { courseId: true } } },
+      select: { userId: true, examId: true, score: true, totalPoints: true, completedAt: true, exam: { select: { courseId: true } } },
     }),
     prisma.classSessionChange.findMany({
       where: { courseId: { in: courseIds }, dateKey: { gte: `${yearMonth}-01`, lt: `${nextYearMonth(yearMonth)}-01` } },
       select: { dateKey: true, kind: true, courseId: true },
     }),
+    // BC-03: chỉ ĐẾM số có sẵn (LessonProgress, LessonAzotaDone) của chính em này, trong các lớp của gia sư này.
+    prisma.lesson.findMany({
+      where: { chapter: { section: { courseId: { in: courseIds } } }, OR: [{ videoUrl: { not: null } }, { azotaUrl: { not: null } }] },
+      select: { id: true, videoUrl: true, azotaUrl: true, chapter: { select: { section: { select: { courseId: true } } } } },
+    }),
+    prisma.lessonProgress.findMany({ where: { userId: studentId, completed: true, lesson: { chapter: { section: { courseId: { in: courseIds } } } } }, select: { lessonId: true } }),
+    prisma.lessonAzotaDone.findMany({ where: { userId: studentId, lesson: { chapter: { section: { courseId: { in: courseIds } } } } }, select: { lessonId: true } }),
   ]);
+  const watchedIds = new Set(mediaDone.map(r => r.lessonId));
+  const azotaDoneIds = new Set(azotaDone.map(r => r.lessonId));
+  // Điểm quiz đang giữ (tự luận chưa công bố) không vào GPA tháng / báo cáo phụ huynh (examHold — một nguồn).
+  const results = await dropHeldResults(rawResults);
   const subs = assignments.length
     ? await prisma.assignmentSubmission.findMany({ where: { userId: studentId, assignmentId: { in: assignments.map(a => a.id) } }, select: { assignmentId: true, submittedAt: true } })
     : [];
@@ -93,7 +108,10 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
     const scores = results
       .filter(r => r.exam.courseId === c.id && r.totalPoints > 0)
       .map(r => ({ score: Math.max(0, Math.min(10, (r.score / r.totalPoints) * 10)), takenAt: r.completedAt }));
-    return buildSubjectMetrics({ courseId: c.id, courseName: c.name, attendance: att, homework: { assigned: mine.length, onTime }, scores }, yearMonth, start, end);
+    const base = buildSubjectMetrics({ courseId: c.id, courseName: c.name, attendance: att, homework: { assigned: mine.length, onTime }, scores }, yearMonth, start, end);
+    const lessonsOfCourse = mediaLessons.filter(l => l.chapter.section.courseId === c.id)
+      .map(l => ({ id: l.id, hasVideo: parseLinkList(l.videoUrl).length > 0, hasAzota: firstSafeHttpsLink(l.azotaUrl) !== null }));
+    return { ...base, media: summariseMediaProgress(lessonsOfCourse, watchedIds, azotaDoneIds) };
   });
   const nameOf = new Map(courses.map(c => [c.id, c.name]));
   const changedSessions: TutorChangedSession[] = changesToTutorChanged(changes.map(c => ({ dateKey: c.dateKey, kind: c.kind, courseName: nameOf.get(c.courseId) ?? "" })));

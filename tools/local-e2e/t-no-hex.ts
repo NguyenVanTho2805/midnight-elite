@@ -19,6 +19,7 @@ const HEX = /(?<![\w&/#-])(?<!Prompt )#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA
 const ALLOW: { file: RegExp; why: string }[] = [
   { file: /^src\/app\/kin-(tokens|site)\.css$/, why: "nơi ĐỊNH NGHĨA token KiN (kin-tokens.css sinh từ Figma, không sửa tay)" },
   { file: /^src\/generated\//, why: "mã sinh tự động (Prisma)" },
+  { file: /^src\/app\/manifest\.ts$/, why: "manifest PWA (ĐX-02) không đọc được biến CSS: màu nền / màu chủ đề phải viết cứng (theme = --kin-th-navy sáng)" },
   { file: /^src\/lib\/email\.ts$/, why: "thư HTML: ứng dụng thư bỏ qua biến CSS nên bắt buộc màu viết cứng" },
   { file: /^src\/lib\/(courseData|honorData)\.ts$/, why: "DỮ LIỆU mẫu: màu nền khoá học / bảng vinh danh" },
   { file: /^src\/components\/kin\/KinLogo\.tsx$/, why: "màu logo thương hiệu (Figma: giữ 4 màu gốc, không đổi theo chủ đề)" },

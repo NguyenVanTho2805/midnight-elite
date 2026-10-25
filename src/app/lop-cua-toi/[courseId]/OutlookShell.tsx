@@ -17,7 +17,7 @@ interface Item {
   key:    string;
   label:  string;
   icon:   string;  // emoji đơn giản thay cho icon lib
-  render: (ctx: { courseId: string; courseName: string }) => React.ReactNode;
+  render: (ctx: { courseId: string; courseName: string; viewerName: string | null }) => React.ReactNode;
 }
 
 function OpenPageBlock({ title, href, note }: { title: string; href: string; note?: string }) {
@@ -64,11 +64,11 @@ function tutorItems(): Item[] {
       render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={`/admin/khoa-hoc/${courseId}`}
         note="Chương - bài - học phí - lịch học - học viên." /> },
     { key: "ma-moi", label: "Mã mời", icon: "🔗",
-      render: ({ courseId }) => (
+      render: ({ courseId, courseName, viewerName }) => (
         <div>
           <p className="font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Mã mời vào lớp</p>
           <p className="text-caption mb-3" style={{ color: "var(--kin-chu-phu)" }}>Gửi mã hoặc link cho học viên; các em tự vào lớp, không cần bạn thêm từng người.</p>
-          <ClassInvitesPanel courseId={courseId} />
+          <ClassInvitesPanel courseId={courseId} courseName={courseName} tutorName={viewerName} />
         </div>
       ) },
     { key: "kiem-duyet", label: "Cộng đồng lớp", icon: "🛡️",
@@ -96,9 +96,11 @@ function studentItems(): Item[] {
   ];
 }
 
-export default function OutlookShell({ courseId, courseName, category, role }: {
+export default function OutlookShell({ courseId, courseName, category, role, viewerName = null }: {
   courseId:   string;
   courseName: string;
+  /** Tên người đang xem (gia sư), dùng để tự giới thiệu trong tin mời phụ huynh. */
+  viewerName?: string | null;
   category:   string;
   role:       Role;
 }) {
@@ -168,7 +170,7 @@ export default function OutlookShell({ courseId, courseName, category, role }: {
 
           {/* Phải: content */}
           <section className="flex-1 min-w-0">
-            {activeItem.render({ courseId, courseName })}
+            {activeItem.render({ courseId, courseName, viewerName })}
           </section>
         </div>
       </div>

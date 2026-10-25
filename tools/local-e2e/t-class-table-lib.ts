@@ -1,0 +1,15 @@
+import { formatScheduleRules, filterClassRows, type TutorClassRow } from "@/lib/tutorClassTable";
+import { check, section, done } from "./h";
+section("formatScheduleRules");
+check("không khung nào → null", formatScheduleRules([]) === null);
+check("một khung: T6 · 19:00–20:30", formatScheduleRules([{ dayOfWeek: 5, startTime: "19:00", endTime: "20:30" }]) === "T6 · 19:00–20:30");
+check("nhiều khung: Thứ Hai trước, Chủ nhật cuối", formatScheduleRules([{ dayOfWeek: 0, startTime: "8:00", endTime: "9:00" }, { dayOfWeek: 2, startTime: "18:00", endTime: "19:30" }, { dayOfWeek: 1, startTime: "19:00", endTime: "20:00" }]) === "T2 · 19:00–20:00, T3 · 18:00–19:30, CN · 08:00–09:00");
+check("khung hỏng (giờ sai / thứ ngoài 0–6) bị bỏ, không bịa", formatScheduleRules([{ dayOfWeek: 9, startTime: "19:00", endTime: "20:00" }, { dayOfWeek: 1, startTime: "x", endTime: "20:00" }]) === null);
+section("filterClassRows");
+const r = (id: string, name: string, category: string, classStatus: string): TutorClassRow => ({ id, name, category, classStatus, hidden: false, students: 1, capacity: null, schedule: null, sessionsTaught: 0 });
+const rows = [r("a", "Toán 9", "Toán", "open"), r("b", "Lý 9", "Vật lý", "closed"), r("c", "Toán 8", "Toán", "open")];
+check("bộ lọc rỗng → đủ", filterClassRows(rows, { q: "", category: "", status: "" }).length === 3);
+check("tìm theo tên, không phân biệt hoa thường", filterClassRows(rows, { q: " TOÁN ", category: "", status: "" }).map(x => x.id).join() === "a,c");
+check("tìm theo môn", filterClassRows(rows, { q: "vật", category: "", status: "" }).map(x => x.id).join() === "b");
+check("lọc môn + trạng thái cùng lúc", filterClassRows(rows, { q: "", category: "Toán", status: "closed" }).length === 0 && filterClassRows(rows, { q: "", category: "Toán", status: "open" }).length === 2);
+done();

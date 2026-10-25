@@ -126,7 +126,8 @@ import { prisma } from "@/lib/prisma";
 
   section("Vào lại giữa chừng: dải vẫn nhớ số lần");
   await pg.goto(`${BASE}/student/thi-thu/${ex.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await pg.getByRole("button", { name: /Bắt đầu làm bài/ }).click();
+  // QZ-11: cổng vào đề đổi nhãn nút khi còn lượt dang dở thành "Tiếp tục làm bài" (không còn "Bắt đầu").
+  await pg.getByRole("button", { name: /Tiếp tục làm bài/ }).click();
   await pg.locator("[data-dai-roi-tab]").waitFor({ timeout: 30000 });
   check("tiếp tục lượt đang làm → dải ghi '2 lần' ngay, không về 0", (await pg.locator("[data-dai-roi-tab]").innerText()).includes("2 lần"));
   const same = await prisma.examAttempt.count({ where: { userId: S.id, examId: ex.id } });
@@ -157,7 +158,7 @@ import { prisma } from "@/lib/prisma";
   await p2.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
   const dlg = p2.getByRole("dialog", { name: "Nộp bài ngay?" });
   await dlg.waitFor({ timeout: 15000 });
-  check("hộp ghi rõ số câu chưa trả lời của CẢ đề (2 trên 3, kể cả Phần chưa hiện)", (await dlg.innerText()).includes("Bạn còn 2 câu chưa trả lời. Sau khi nộp không sửa lại được."), await dlg.innerText());
+  check("hộp ghi rõ số câu chưa trả lời của CẢ đề (2 trên 3, kể cả Phần chưa hiện)", (await dlg.innerText()).includes("Em còn 2 câu chưa làm: Câu 2 và 1 câu ở Phần chưa mở.") && (await dlg.innerText()).includes("Nộp rồi thì không sửa lại được."), await dlg.innerText());
   check("tiêu điểm rơi vào nút an toàn 'Làm tiếp' (Enter nhầm không nộp bài)", await dlg.getByRole("button", { name: "Làm tiếp" }).evaluate(e => e === document.activeElement));
   await dlg.getByRole("button", { name: "Làm tiếp" }).click();
   check("'Làm tiếp' đóng hộp, bài vẫn đang làm (DB in_progress)", await dlg.count() === 0 && (await prisma.examAttempt.findFirst({ where: { examId: ex2.id } }))?.status === "in_progress");
@@ -177,7 +178,7 @@ import { prisma } from "@/lib/prisma";
   const cm = await ctxFor(S, { width: 390, height: 800 });
   const pm = await cm.newPage(); watch(pm);
   await pm.goto(`${BASE}/student/thi-thu/${ex.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await pm.getByRole("button", { name: /Bắt đầu làm bài/ }).click();
+  await pm.getByRole("button", { name: /Tiếp tục làm bài/ }).click();
   await pm.locator("[data-dai-roi-tab]").waitFor({ timeout: 30000 });
   await hide(pm);
   check("không tràn ngang; dải rời tab nằm gọn trong màn hình", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean && ((await pm.locator("[data-dai-roi-tab]").boundingBox())?.width ?? 999) <= 390);

@@ -30,6 +30,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
   const [failed, setFailed] = useState<string | null>(null);
   const [pos, setPos] = useState(0);
   const [pickOpt, setPickOpt] = useState<string | null>(null);
+  const [pickIds, setPickIds] = useState<string[]>([]); // câu nhiều đáp án: các ô đang tích
   const [pickText, setPickText] = useState("");
   const [retrying, setRetrying] = useState(false); // đang ở bước 2 và bấm "Thử lại": hiện lại ô chọn
   const [reflect, setReflect] = useState("");
@@ -63,7 +64,7 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
   if (data.items.length === 0) {
     return (
       <div className="rounded-xl p-4 text-sm" style={{ ...CARD, color: INK }}>
-        Không có câu nào cần chữa — bạn đã làm đúng các câu trắc nghiệm và câu điền ngắn.
+        Không có câu nào cần chữa — bạn đã làm đúng các câu trắc nghiệm, nhiều đáp án và câu điền ngắn.
         <div className="mt-2"><button type="button" onClick={onClose} className="font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>Quay lại xem bài làm</button></div>
       </div>
     );
@@ -84,13 +85,13 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
     setBusy(false);
     if (!r.ok) { setErr(r.data.error ?? "Không thực hiện được"); if (r.status === 409) void load(); return; }
     patchItem(r.data.item, r.data.summary);
-    setRetrying(false); setPickOpt(null); setPickText("");
+    setRetrying(false); setPickOpt(null); setPickIds([]); setPickText("");
     if ((body as { action: string }).action === "reflect") setReflect("");
   }
-  const go = (n: number) => { setPos(n); setPickOpt(null); setPickText(""); setRetrying(false); setReflect(""); setErr(""); headRef.current?.focus(); };
+  const go = (n: number) => { setPos(n); setPickOpt(null); setPickIds([]); setPickText(""); setRetrying(false); setReflect(""); setErr(""); headRef.current?.focus(); };
 
   const inputOpen = item.state === "new" || (item.state === "hint" && retrying);
-  const canSubmit = item.type === "MC" ? !!pickOpt : pickText.trim().length > 0;
+  const canSubmit = item.type === "MC" ? !!pickOpt : item.type === "MC_MULTI" ? pickIds.length > 0 : pickText.trim().length > 0;
 
   return (
     <section aria-labelledby="chua-bai-title" className="space-y-4">
@@ -128,7 +129,31 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
           </div>
         )}
 
-        {item.type === "MC" ? (
+        {item.type === "MC_MULTI" ? (
+          <fieldset className="space-y-2 min-w-0" data-chua-nhieu-dap-an>
+            <legend className="text-xs mb-2" style={{ color: MUTED }}>Chọn tất cả các đáp án đúng. Phải chọn đủ và không chọn ô sai nào mới được tính là đúng.</legend>
+            {item.options.map(o => {
+              const correct = finished && !!item.answer?.correctOptionIds.includes(o.id);
+              const mine = !inputOpen && item.yourOptionIds.includes(o.id);
+              const wrongPick = mine && !correct && (item.lastTryCorrect === false);
+              const picked = inputOpen && pickIds.includes(o.id);
+              return (
+                <label key={o.id} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
+                  style={{
+                    border: `2px solid ${correct ? OK : wrongPick ? BAD : picked ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`,
+                    background: correct ? "var(--kin-tt-nen-xong)" : wrongPick ? "var(--kin-tt-nen-loi)" : "var(--kin-nen-trang)", color: INK, cursor: inputOpen ? "pointer" : "default",
+                  }}>
+                  <input type="checkbox" name={`q-${item.questionId}`} value={o.id} disabled={!inputOpen || busy} checked={inputOpen ? picked : mine}
+                    onChange={() => setPickIds(p => (p.includes(o.id) ? p.filter(x => x !== o.id) : [...p, o.id]))} />
+                  <span className="flex-1"><MathText text={o.text} /></span>
+                  {mine && !finished && <span className="text-xs" style={{ color: MUTED }}>Bạn đã chọn</span>}
+                  {correct && <strong style={{ color: OK }}>Đáp án đúng</strong>}
+                  {wrongPick && finished && <strong style={{ color: BAD }}>Không phải đáp án</strong>}
+                </label>
+              );
+            })}
+          </fieldset>
+        ) : item.type === "MC" ? (
           <div role="radiogroup" aria-label={`Lựa chọn cho câu ${item.index}`} className="space-y-2">
             {item.options.map(o => {
               const correct = finished && item.answer?.correctOptionId === o.id;
@@ -187,14 +212,14 @@ export default function CorrectionPanel({ attemptId, onClose }: { attemptId: str
 
         <div className="flex gap-2 flex-wrap mt-4">
           {inputOpen && (
-            <button type="button" disabled={!canSubmit || busy} onClick={() => void act(item.type === "MC" ? { action: "submit", optionId: pickOpt } : { action: "submit", text: pickText })}
+            <button type="button" disabled={!canSubmit || busy} onClick={() => void act(item.type === "MC" ? { action: "submit", optionId: pickOpt } : item.type === "MC_MULTI" ? { action: "submit", optionIds: pickIds } : { action: "submit", text: pickText })}
               className="px-5 rounded-lg text-sm font-bold text-white disabled:opacity-50 min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>
               {busy ? "Đang nộp…" : "Nộp câu này"}
             </button>
           )}
           {item.state === "hint" && !retrying && (
             <>
-              <button type="button" onClick={() => { setRetrying(true); setPickOpt(null); setPickText(""); }} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>Thử lại</button>
+              <button type="button" onClick={() => { setRetrying(true); setPickOpt(null); setPickIds([]); setPickText(""); }} className="px-5 rounded-lg text-sm font-bold text-white min-h-[44px]" style={{ background: "var(--kin-nhan-nen)" }}>Thử lại</button>
               {item.canReveal && <button type="button" disabled={busy} onClick={() => void act({ action: "reveal" })} className="px-5 rounded-lg text-sm font-semibold min-h-[44px] disabled:opacity-50" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: INK }}>Xem đáp án</button>}
             </>
           )}

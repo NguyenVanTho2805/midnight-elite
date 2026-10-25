@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCourses } from "@/hooks/useCourses";
 import { api } from "@/lib/api";
@@ -12,6 +12,8 @@ import { toSlug } from "@/lib/slug";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { DropZone } from "@/components/DropZone";
+import { useAuth } from "@/contexts/AuthContext";
+import { vnDateKeyOf } from "@/lib/classSessions";
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
 interface CreateForm {
@@ -35,8 +37,12 @@ const TAG_LABELS: Record<string, string> = {
 };
 
 function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
-  open: boolean; onClose: () => void; onCreated: () => void; showToast: (msg: string, ok?: boolean) => void;
+  open: boolean; onClose: () => void; onCreated: (slug: string) => void; showToast: (msg: string, ok?: boolean) => void;
 }) {
+  // NC2-029: gia sư (adminRole teacher) chỉ bắt buộc TÊN; ngày khai giảng / giá / số bài học để trống thì dùng mặc định (hôm nay giờ VN / 0 / 0).
+  // Quản trị trung tâm giữ nguyên: bắt buộc đủ 4 ô. Máy chủ (POST /api/courses) không đổi — nó vốn không kiểm các trường này.
+  const { user } = useAuth();
+  const isTeacher = user?.adminRole === "teacher";
   const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
   const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -102,11 +108,17 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
   function validate(): typeof errors {
     const e: typeof errors = {};
     if (!form.name.trim()) e.name     = "Tên khoá học không được để trống";
-    if (!form.openDate)    e.openDate = "Chọn ngày khai giảng";
-    if (!form.price || isNaN(+form.price) || +form.price <= 0)
-      e.price   = "Giá bán phải là số dương";
-    if (!form.lessons || isNaN(+form.lessons))
-      e.lessons = "Số bài học phải là số";
+    if (isTeacher) {
+      // Tuỳ chọn: trống thì thôi; có gõ thì phải là số hợp lệ (không âm).
+      if (form.price   && (isNaN(+form.price)   || +form.price   < 0)) e.price   = "Giá bán phải là số không âm";
+      if (form.lessons && (isNaN(+form.lessons) || +form.lessons < 0)) e.lessons = "Số bài học phải là số không âm";
+    } else {
+      if (!form.openDate)    e.openDate = "Chọn ngày khai giảng";
+      if (!form.price || isNaN(+form.price) || +form.price <= 0)
+        e.price   = "Giá bán phải là số dương";
+      if (!form.lessons || isNaN(+form.lessons))
+        e.lessons = "Số bài học phải là số";
+    }
     setErrors(e);
     return e;
   }
@@ -132,6 +144,8 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
       }
 
       const slug = form.slug.trim() || toSlug(form.name);
+      // Gia sư bỏ trống: ngày khai giảng = hôm nay (giờ VN), giá 0, số bài học 0.
+      const openDateKey = form.openDate || (isTeacher ? vnDateKeyOf(new Date()) : "");
       await api.courses.create({
         id:            slug,
         name:          form.name.trim(),
@@ -140,7 +154,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         category:      form.category,
         instructor:    form.instructor,
         teacherAvatar: form.instructor[0] ?? "?",
-        openDate:      form.openDate.split("-").reverse().join("/"),
+        openDate:      openDateKey.split("-").reverse().join("/"),
         types:         ["Video"],
         tag:           form.tag || null,
         tagColor:      form.tag ? form.tagColor : null,
@@ -148,13 +162,13 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
                          ? `url(${bgImage}) center/cover no-repeat`
                          : CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)",
         strip:         "var(--kin-tt-chu-cho)",
-        price:         +form.price,
+        price:         form.price ? +form.price : 0,
         originalPrice: form.originalPrice ? +form.originalPrice : null,
-        lessons:       +form.lessons,
+        lessons:       form.lessons ? +form.lessons : 0,
         hours:         form.hours ? +form.hours : 0,
         status:        form.status,
       });
-      onCreated();
+      onCreated(slug);
       onClose();
     } catch (e) {
       showToast(e instanceof Error && bgImageFile ? "Upload ảnh hoặc tạo khoá học thất bại: " + e.message : "Lỗi tạo khoá học: " + (e instanceof Error ? e.message : "Unknown"), false);
@@ -300,7 +314,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               </div>
               <div data-field="openDate">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Ngày khai giảng <span className="text-red-500">*</span>
+                  Ngày khai giảng {isTeacher ? <span className="text-gray-400 font-normal">(tuỳ chọn · mặc định hôm nay)</span> : <span className="text-red-500">*</span>}
                 </label>
                 <input type="date" className={inp} value={form.openDate} onChange={e => set("openDate", e.target.value)} />
                 {errors.openDate && <p className="text-xs text-red-500 mt-1">{errors.openDate}</p>}
@@ -314,7 +328,7 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="grid grid-cols-2 gap-4">
               <div data-field="price">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Giá bán (đ) <span className="text-red-500">*</span>
+                  Giá bán (đ) {isTeacher ? <span className="text-gray-400 font-normal">(tuỳ chọn · mặc định 0)</span> : <span className="text-red-500">*</span>}
                 </label>
                 <input type="number" min="0" className={inp} placeholder="2990000"
                   value={form.price} onChange={e => set("price", e.target.value)} />
@@ -335,9 +349,9 @@ function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="grid grid-cols-2 gap-4">
               <div data-field="lessons">
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Số bài học <span className="text-red-500">*</span>
+                  Số bài học {isTeacher ? <span className="text-gray-400 font-normal">(tuỳ chọn · mặc định 0)</span> : <span className="text-red-500">*</span>}
                 </label>
-                <input type="number" min="1" className={inp} placeholder="96"
+                <input type="number" min={isTeacher ? "0" : "1"} className={inp} placeholder="96"
                   value={form.lessons} onChange={e => set("lessons", e.target.value)} />
                 {errors.lessons && <p className="text-xs text-red-500 mt-1">{errors.lessons}</p>}
               </div>
@@ -425,7 +439,7 @@ interface Course {
 }
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
-function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onDelete: () => void; onDuplicate: () => Promise<void> }) {
+function ActionMenu({ courseId, isTeacher, onDelete, onDuplicate }: { courseId: string; isTeacher: boolean; onDelete: () => void; onDuplicate: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -461,6 +475,14 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
               {item.label}
             </Link>
           ))}
+          {/* NC2-029: lối thẳng tới trang lớp (tab Mã mời…) cho gia sư — khỏi đi vòng Khác → Cài đặt → bật module Lớp. */}
+          {isTeacher && (
+            <Link href={`/lop-cua-toi/${courseId}`} onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
+              style={{ color: "var(--kin-nhan-link)" }}>
+              Mở lớp (mã mời, học viên)
+            </Link>
+          )}
           <div className="border-t border-gray-100 my-1" />
           {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
           <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
@@ -507,6 +529,8 @@ function ActionMenu({ courseId, onDelete, onDuplicate }: { courseId: string; onD
 // ─── INNER PAGE (needs useSearchParams) ──────────────────────────────────────
 function KhoaHocListInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user } = useAuth();
   const { data: apiCourses, loading, refetch } = useCourses({ all: "1" });
   const courses: Course[] = apiCourses.map(c => ({
     id:         c.adminId,
@@ -646,6 +670,7 @@ function KhoaHocListInner() {
                 <td className="px-4 py-3 text-center">
                   <ActionMenu
                     courseId={course.slug}
+                    isTeacher={user?.adminRole === "teacher"}
                     onDelete={async () => {
                       try {
                         await api.courses.remove(course.slug);
@@ -683,7 +708,12 @@ function KhoaHocListInner() {
       <CreateCourseDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={() => { showToast("Đã tạo khoá học mới"); refetch(); }}
+        onCreated={slug => {
+          // Gia sư: sang thẳng trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học (bỏ bước tìm lớp trong danh sách + menu ···).
+          // Thông báo thành công hiện ở trang đó (?moi=1). Quản trị trung tâm: ở lại danh sách như cũ.
+          if (user?.adminRole === "teacher") { router.push(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`); return; }
+          showToast("Đã tạo khoá học mới"); refetch();
+        }}
         showToast={showToast}
       />
     </div>

@@ -11,7 +11,7 @@ export async function loadStudentTodo(userId: string, now: Date = new Date()): P
   // Chỉ cần bài có hạn trong khoảng còn có thể hiện: quá hạn chưa nộp ≤ 14 ngày, hoặc đã nộp/chấm ≤ 14 ngày (hạn có thể xa hơn lúc nộp sớm).
   const since = new Date(now.getTime() - Math.max(OVERDUE_KEEP_MS, DONE_KEEP_MS) - 14 * 86_400_000);
   const rows = await prisma.assignment.findMany({
-    where: { dueDate: { gte: since }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
+    where: { mode: { not: "azota" }, dueDate: { gte: since }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
     select: {
       id: true, title: true, instructions: true, fileUrl: true, maxPoints: true, dueDate: true, mode: true, createdAt: true, lessonId: true,
       lesson: { select: { chapter: { select: { section: { select: { course: { select: { name: true, instructor: true } } } } } } } },

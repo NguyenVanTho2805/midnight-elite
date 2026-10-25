@@ -2,7 +2,7 @@ import { BASE, api, mkUser, mkTutor, mkCourse, wipe, check, eventually, section,
 import { launch, ctxFor, shot, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 
-const MAIN = "http://localhost:3100";
+const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 (async () => {
@@ -40,7 +40,7 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 
   section("Chưa lưu thì chưa có nút Nhắn phụ huynh");
   await page.goto(`${BASE}/admin/khoa-hoc/${course.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
-  await page.getByRole("heading", { name: "Điểm danh" }).waitFor({ timeout: 90000 });
+  await page.getByRole("heading", { name: "Điểm danh", level: 2 }).waitFor({ timeout: 90000 });
   await page.getByRole("button", { name: "Tạo buổi điểm danh" }).click();
   await page.getByText("Em An").waitFor({ timeout: 30000 });
   const rowA = page.locator("div.flex.items-center.gap-3", { hasText: "Em An" }).last();
@@ -86,7 +86,8 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
   await rowA.getByRole("button", { name: /^Có phép/ }).click();
   await page.getByRole("button", { name: "Lưu điểm danh" }).click();
   await page.getByText(/Đã lưu 1 học viên/).waitFor({ timeout: 15000 });
-  check("Vắng → Có phép: mốc 'đã mở Zalo' bị xoá", (await prisma.attendanceRecord.findFirst({ where: { userId: A.id } }))?.zaloOpenedAt === null);
+  // Thông báo "Đã lưu 1 học viên" của lần lưu trước có thể còn trên màn hình, nên chờ DB đổi thay vì tin thông báo.
+  await eventually("Vắng → Có phép: mốc 'đã mở Zalo' bị xoá", async () => (await prisma.attendanceRecord.findFirst({ where: { userId: A.id } }))?.zaloOpenedAt === null, 15000);
   await eventually("giao diện không còn 'Đã mở Zalo lúc' ở Em An", async () => (await rowA.getByText(/Đã mở Zalo lúc/).count()) === 0);
   await rowA.getByRole("button", { name: /^Có phép/ }).click(); // bấm lại đúng trạng thái cũ → không đổi
   check("Em Bình không có SĐT: cảnh báo chép tin + chọn người nhận", true);

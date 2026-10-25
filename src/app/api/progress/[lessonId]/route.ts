@@ -6,6 +6,12 @@ import { isEnrollmentActive } from "@/lib/enrollment";
 
 const LESSON_REWARD_REASON = COIN_REASONS.LESSON_REWARD;
 
+// Giây xem hợp lệ: số hữu hạn, không âm, tối đa 24 giờ (một bài không dài hơn). Không phải số → null (không ghi).
+function clampSeconds(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return null;
+  return Math.min(Math.floor(v), 86_400);
+}
+
 // POST /api/progress/[lessonId] — đánh dấu bài học đã hoàn thành (kèm watchedSeconds tùy chọn)
 export async function POST(
   req: Request,
@@ -16,7 +22,8 @@ export async function POST(
 
   const { lessonId } = await params;
   const body = await req.json().catch(() => ({}));
-  const watchedSeconds: number = typeof body.watchedSeconds === "number" ? body.watchedSeconds : 0;
+  // MD-06: chỉ ghi giây xem khi client GỬI một số hợp lệ. Trước đây thiếu thì mặc định 0 và GHI ĐÈ vị trí xem dở về 0 mỗi lần bấm "Đánh dấu xong".
+  const sentSeconds = clampSeconds(body.watchedSeconds);
 
   // Verify lesson thuộc khoá học mà student đang enroll (hoặc bài học thử miễn phí)
   const lesson = await prisma.lesson.findUnique({
@@ -45,8 +52,8 @@ export async function POST(
 
     const row = await tx.lessonProgress.upsert({
       where:  { userId_lessonId: { userId: session.userId, lessonId } },
-      create: { userId: session.userId, lessonId, watchedSeconds },
-      update: { completedAt: new Date(), watchedSeconds },
+      create: { userId: session.userId, lessonId, watchedSeconds: sentSeconds ?? 0, completed: true },
+      update: { completedAt: new Date(), completed: true, ...(sentSeconds !== null ? { watchedSeconds: sentSeconds } : {}) },
     });
 
     let coinsEarned = 0;
@@ -86,28 +93,32 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
 
   const { lessonId } = await params;
-  const { watchedSeconds } = await req.json().catch(() => ({ watchedSeconds: 0 }));
-  if (typeof watchedSeconds !== "number" || watchedSeconds < 0) {
+  const body = await req.json().catch(() => ({}));
+  const watchedSeconds = clampSeconds((body as { watchedSeconds?: unknown }).watchedSeconds);
+  if (watchedSeconds === null) {
     return NextResponse.json({ error: "watchedSeconds không hợp lệ" }, { status: 400 });
   }
 
-  // Verify enrollment
+  // Verify enrollment (hoặc bài học thử miễn phí, nhất quán với POST/DELETE)
   const lesson = await prisma.lesson.findUnique({
     where:  { id: lessonId },
-    select: { chapter: { select: { section: { select: { courseId: true } } } } },
+    select: { isFree: true, chapter: { select: { section: { select: { courseId: true } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   const courseId = lesson.chapter.section.courseId;
-  const enrolled = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId: session.userId, courseId } },
-  });
-  if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  if (!lesson.isFree) {
+    const enrolled = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: session.userId, courseId } },
+    });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+  }
 
-  // Chỉ update watchedSeconds — KHÔNG đổi completedAt
+  // MD-06: "đang xem" tách khỏi "đã xong". Hàng MỚI do PATCH tạo là completed=false (trước đây hàng nào có mặt cũng bị đếm là đã xong,
+  // nên mới xem 30 giây đã thành "hoàn thành" + cộng vào EXP). Hàng ĐÃ xong thì giữ nguyên cờ và completedAt, chỉ cập nhật vị trí xem.
   const row = await prisma.lessonProgress.upsert({
     where:  { userId_lessonId: { userId: session.userId, lessonId } },
-    create: { userId: session.userId, lessonId, watchedSeconds },
+    create: { userId: session.userId, lessonId, watchedSeconds, completed: false },
     update: { watchedSeconds },
   });
 
@@ -139,8 +150,10 @@ export async function DELETE(
     if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
   }
 
-  await prisma.lessonProgress.deleteMany({
+  // "Bỏ đánh dấu xong": giữ lại vị trí xem dở để học sinh vẫn xem tiếp được (trước đây xoá hẳn hàng, mất luôn vị trí).
+  await prisma.lessonProgress.updateMany({
     where: { userId: session.userId, lessonId },
+    data:  { completed: false },
   });
 
   return NextResponse.json({ success: true });

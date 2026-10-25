@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { getActiveTutorSubscription } from "@/lib/tutorSubscription";
+import { isTrialMode } from "@/lib/trialMode";
 
 // GET /api/users/me/subscription — gia sư xem trạng thái VIP của chính
 // mình. Dùng cho dashboard của gia sư và trang settings. Trả null nếu chưa
@@ -10,5 +11,5 @@ export async function GET() {
   if (isNextResponse(auth)) return auth;
 
   const sub = await getActiveTutorSubscription(auth.userId);
-  return NextResponse.json({ subscription: sub });
+  return NextResponse.json({ subscription: sub, trial: isTrialMode() });
 }

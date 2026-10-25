@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { scoreMultiSelect } from "@/lib/quizQuestion";
+import { isAttemptHeld } from "@/lib/examHold";
 
 type ExamQuestionWithOptions = Prisma.ExamQuestionGetPayload<{ include: { options: true } }>;
 
@@ -45,6 +47,8 @@ export function applyAttemptOrder(
     imageUrl: q.imageUrl,
     points: q.points,
     sectionLabel: q.sectionLabel,
+    // QZ-03: hướng dẫn cho học sinh (tự luận). KHÔNG BAO GIỜ thêm graderGuide / rubric vào đây — đó là phần chỉ gia sư xem.
+    studentGuide: q.studentGuide,
     // SHORT_ANSWER lưu đáp án đúng ngay trong ExamOption.text — tuyệt đối
     // không được lộ cho học viên trước khi nộp bài, nên trả options rỗng
     // (học viên gõ tự do, không chọn từ danh sách).
@@ -203,7 +207,7 @@ export function normalizeShortAnswer(s: string): string {
 // 1 attempt — dùng chung cho lúc nộp bài lần đầu (finalizeAttempt) và lúc
 // chấm/sửa điểm tự luận sau đó (regradeAttempt). Tách riêng vì 2 nơi gọi có
 // vòng đời transaction khác nhau nhưng công thức tính điểm phải giống hệt.
-async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string }): Promise<number> {
+export async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string }): Promise<number> {
   // MC: cộng điểm nếu optionId đã chọn đúng là đáp án đúng. ESSAY dùng điểm
   // giáo viên đã chấm tay (pointsAwarded), null = chưa chấm = cộng 0.
   // TRUE_FALSE_CLUSTER không nằm trong bảng này (xem dưới, trả lời ở bảng khác).
@@ -250,6 +254,22 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
     }
   }
 
+  // MC_MULTI (QZ-03): chấm đủ-hoặc-không. Ô học sinh tích lưu ở ExamAnswerBoolean (answerTrue=true), cùng bảng với Đúng-Sai.
+  const multiQuestions = await tx.examQuestion.findMany({
+    where: { examId: attempt.examId, type: "MC_MULTI" },
+    include: { options: true },
+  });
+  if (multiQuestions.length > 0) {
+    const ticks = await tx.examAnswerBoolean.findMany({
+      where: { attemptId: attempt.id, answerTrue: true },
+      include: { option: { select: { questionId: true } } },
+    });
+    for (const q of multiQuestions) {
+      const selected = ticks.filter(t => t.option.questionId === q.id).map(t => t.optionId);
+      rawEarned += scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), selected, q.points);
+    }
+  }
+
   // SHORT_ANSWER: đáp án đúng lưu trong ExamOption duy nhất (isCorrect:true)
   // của câu — so khớp text đã chuẩn hoá với ExamAnswer.textAnswer (không
   // dùng optionId, học viên gõ tự do). Trả lời nằm ở `answers` đã fetch trên,
@@ -276,7 +296,9 @@ async function computeRawEarned(tx: Tx, attempt: { id: string; examId: string })
 // Cập nhật ExamResult (bảng xếp hạng) theo đúng quy tắc "giữ điểm tốt nhất
 // qua các lần làm lại" đã dùng xuyên suốt hệ thống — dùng chung cho nộp bài
 // lần đầu và cho chấm lại tự luận sau đó.
-async function upsertBestResult(tx: Tx, attempt: { userId: string; examId: string }, score: number, totalPoints: number, at: Date) {
+async function upsertBestResult(tx: Tx, attempt: { id: string; userId: string; examId: string }, score: number, totalPoints: number, at: Date) {
+  // QZ-08: lượt đang bị giữ chưa công bố thì CHƯA vào bảng xếp hạng/ExamResult (điểm lúc này thiếu phần tự luận). Công bố xong sẽ chấm lại và vào.
+  if (await isAttemptHeld(tx, attempt)) return;
   const existing = await tx.examResult.findUnique({
     where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { heldAttemptIds } from "@/lib/examHold";
 
 // GET /api/exams/[id]/attempts?mine=true — lịch sử các lần làm bài của học viên hiện tại
 export async function GET(
@@ -22,7 +23,9 @@ export async function GET(
       orderBy: { submittedAt: "desc" },
       select: { id: true, status: true, score: true, submittedAt: true, startedAt: true },
     });
-    return NextResponse.json(attempts);
+    // QZ-08/11: lượt đang bị giữ điểm (examHold — một nguồn; xét TỪNG lượt) thì chưa trả điểm, báo rõ "chờ gia sư".
+    const held = await heldAttemptIds(examId, attempts.map(a => a.id));
+    return NextResponse.json(attempts.map(a => (held.has(a.id) ? { ...a, score: null, held: true, pendingManual: true } : a)));
   } catch (e) {
     console.error("[GET /api/exams/[id]/attempts]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

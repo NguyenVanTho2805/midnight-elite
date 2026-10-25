@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cronSecretMissingIsFatal } from "@/lib/adminOps";
+import { recordCronRun } from "@/lib/adminOpsServer";
 import { prisma } from "@/lib/prisma";
 import { sendExamReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
@@ -19,7 +21,11 @@ export async function GET(req: NextRequest) {
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 401 });
     }
+  } else if (cronSecretMissingIsFatal()) {
+    // QT-03: bản chạy thật thiếu CRON_SECRET thì ĐÓNG (trước đây thiếu khoá là mở công khai); máy thử vẫn chạy được.
+    return NextResponse.json({ error: "Chưa cấu hình CRON_SECRET" }, { status: 503 });
   }
+  await recordCronRun("remind-exam"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
 
   // Ngày mai theo UTC+7 (Vietnam Standard Time)
   const now      = new Date();
@@ -29,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   // Tìm kỳ thi diễn ra vào ngày mai
   const exams = await prisma.exam.findMany({
-    where: { date: dateStr, active: true },
+    where: { date: dateStr, active: true, isDraft: false, supersededById: null }, // QZ-04/07: không nhắc bản nháp hay phiên bản cũ
     select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true },
   });
 

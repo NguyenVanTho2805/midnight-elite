@@ -11,6 +11,8 @@ function VerifyContent() {
 
   const [status, setStatus] = useState<"loading" | "success" | "already" | "error">("loading");
   const [name,   setName]   = useState("");
+  // NC2-029: gia sư vừa đăng ký, hồ sơ chưa được duyệt → họ vào khung học viên; chữ phải nói đúng như vậy.
+  const [tutorPending, setTutorPending] = useState(false);
   const [errMsg, setErrMsg] = useState("");
 
   useEffect(() => {
@@ -20,6 +22,7 @@ function VerifyContent() {
       .then(data => {
         if (data.success) {
           setName(data.name ?? "");
+          setTutorPending(data.tutorPending === true);
           setStatus("success");
           // Đã tự đăng nhập (máy chủ tạo phiên ở bước xác thực) → vào trang đầu của vai (học viên: "Việc của tôi", đúng như sau khi đăng nhập). Trước đây là /student/hoc-tap:
           // học viên mới thấy "Bạn chưa có khóa học nào" dù trang vừa ghi "Đang chuyển đến Dashboard".
@@ -63,7 +66,11 @@ function VerifyContent() {
               <p className="text-sm mb-1" style={{ color: "var(--kin-chu-mo)" }}>
                 Chào mừng <strong style={{ color: "var(--kin-nhan-link)" }}>{name}</strong> đến với KiN
               </p>
-              <p className="text-xs mb-5" style={{ color: "var(--kin-chu-mo)" }}>Đang chuyển đến Dashboard...</p>
+              {tutorPending ? (
+                <p className="text-xs mb-5" style={{ color: "var(--kin-chu-mo)" }}>Hồ sơ gia sư của bạn đang chờ quản trị duyệt. Trong lúc chờ, bạn vào KiN bằng tài khoản học viên…</p>
+              ) : (
+                <p className="text-xs mb-5" style={{ color: "var(--kin-chu-mo)" }}>Đang chuyển vào KiN…</p>
+              )}
               <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--kin-vien-thuong)" }}>
                 <div className="h-1 animate-pulse" style={{ background: "var(--kin-nhan-nen)", width: "100%" }} />
               </div>

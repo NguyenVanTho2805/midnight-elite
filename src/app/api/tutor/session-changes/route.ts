@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Thiếu hoặc sai scheduleId / dateKey" }, { status: 400 });
   }
   const r = await changeSession({ tutorId: auth.userId, scheduleId: body.scheduleId, dateKey: body.dateKey, body });
-  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
+  if (!r.ok) return NextResponse.json({ error: r.error, ...(r.needsConfirm ? { needsConfirm: true, conflicts: r.conflicts } : {}) }, { status: r.status });
   const { ok: _ok, ...rest } = r; void _ok;
   return NextResponse.json(rest);
 }

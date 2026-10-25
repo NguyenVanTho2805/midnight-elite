@@ -46,16 +46,19 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
     for (let i = 0; i < 6; i++) {
       if (await page.getByText(label).count()) return;
       const cur = weekRangeOf(today).from;
-      await page.getByRole("button", { name: want.from > cur ? "Tuần sau →" : "← Tuần trước" }).click();
+      await page.getByRole("button", { name: want.from > cur ? "Tuần sau ›" : "‹ Tuần trước" }).click();
       await page.waitForTimeout(400);
     }
   };
-  const card = () => page.locator("li").filter({ has: page.getByRole("button", { name: /Toán 9/ }) }).first();
+  // Lịch dạy (Figma 299:112052): màn rộng dùng lưới tuần + cột chi tiết thay cho danh sách thẻ → "thẻ" = khối trong lưới; chữ chi tiết ở cột phải.
+  const card = () => page.getByRole("group", { name: "Lịch tuần theo giờ" });
+  const side = () => page.getByRole("complementary", { name: "Chi tiết buổi" });
+  const cardText = async () => (await card().innerText().catch(() => "")) + "\n" + (await side().innerText().catch(() => ""));
   const toggle = () => page.getByRole("button", { name: /Toán 9/ }).first();
   const openCard = async () => { if ((await toggle().getAttribute("aria-expanded")) !== "true") await toggle().click(); };
 
   await page.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
-  await page.getByRole("heading", { name: "Lịch", exact: true }).waitFor({ timeout: 90000 });
+  await page.getByRole("heading", { name: "Lịch dạy", exact: true }).waitFor({ timeout: 90000 });
   await goToWeekOf(D3);
   await toggle().waitFor({ timeout: 60000 });
 
@@ -90,7 +93,7 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   await eventually("thẻ buổi: huy hiệu 'Đã huỷ', 'buổi đã huỷ', gạch ngang tên lớp", async () => {
     const c = card();
     const striked = await c.getByText("Toán 9", { exact: true }).first().evaluate(e => getComputedStyle(e).textDecorationLine.includes("line-through")).catch(() => false);
-    return (await c.getByText("Đã huỷ", { exact: true }).count()) >= 1 && /buổi đã huỷ/.test(await c.innerText()) && striked;
+    return (await c.getByText("Đã huỷ", { exact: true }).count()) >= 1 && /buổi đã huỷ/i.test(await side().innerText()) && striked;
   });
   // Sau khi ghi "đã mở Zalo", trang còn phải tải lại lịch (GET) mới hiện dòng "Đã mở Zalo báo lớp lúc …": chờ dòng đó thay vì giả định đã xong.
   await eventually("giao diện làm mới xong: dòng 'Đã mở Zalo báo lớp lúc …' hiện trong chi tiết", async () => { await openCard(); return page.getByText(/Đã mở Zalo báo lớp lúc \d{2}:\d{2}/).isVisible(); }, 15000);
@@ -104,7 +107,7 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   const pp = await gctx.newPage();
   pp.on("pageerror", e => errors.push(String(e)));
   await pp.goto(`${BASE}/so-cua-con/${parentTok}`, { waitUntil: "networkidle", timeout: 120000 });
-  const item = pp.getByRole("listitem").filter({ hasText: "Toán 9" }).first();
+  const item = pp.getByRole("region", { name: "Buổi học sắp tới" }).getByRole("listitem").filter({ hasText: "Toán 9" }).first();
   await item.waitFor({ timeout: 90000 });
   check("buổi hiện kèm 'Gia sư đã huỷ buổi này — lý do: Cô ốm. Không cần báo nghỉ.'", await item.getByText(/Gia sư đã huỷ buổi này — lý do: Cô ốm\. Không cần báo nghỉ\./).isVisible());
   check("KHÔNG có nút 'Báo nghỉ' ở buổi đã huỷ", (await item.getByRole("button", { name: "Báo nghỉ" }).count()) === 0);
@@ -134,14 +137,14 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   await eventually("DB: kind=move, ngày mới D4, 'đã mở Zalo' bị xoá (tin cũ không còn đúng)", async () => { const c = await prisma.classSessionChange.findFirst({ where: { scheduleId: sched.id, dateKey: D3 } }); return c?.kind === "move" && c.newDateKey === D4 && c.zaloOpenedAt === null; });
   await eventually("DB: báo nghỉ chờ được mở lại (pending)", async () => (await prisma.classAbsence.findUnique({ where: { id: abs.id } }))?.status === "pending");
   await goToWeekOf(D4);
-  await eventually("thẻ buổi hiện ở ngày MỚI với 'Đã dời' + 'dời từ …'", async () => { const t = await card().innerText().catch(() => ""); return t.includes("Đã dời") && t.includes("dời từ") && t.includes("20:30"); });
+  await eventually("thẻ buổi hiện ở ngày MỚI với 'Đã dời' + 'dời từ …'", async () => { const t = await cardText(); return t.includes("Đã dời") && t.includes("dời từ") && t.includes("20:30"); });
   const h4 = page.getByRole("heading", { level: 2 }).filter({ hasText: ddmm(D4) });
   check("thẻ nằm dưới đúng ngày mới (heading ngày D4)", await h4.count() >= 1);
   await shot(page, "session-change-moved-card");
 
   section("Phụ huynh thấy buổi đã dời, vẫn báo nghỉ được");
   await pp.reload({ waitUntil: "networkidle" });
-  const item2 = pp.getByRole("listitem").filter({ hasText: "Toán 9" }).first();
+  const item2 = pp.getByRole("region", { name: "Buổi học sắp tới" }).getByRole("listitem").filter({ hasText: "Toán 9" }).first();
   await item2.waitFor({ timeout: 90000 });
   check("'Gia sư đã dời buổi này (lịch cũ: … lúc 19:00) — lý do: Trùng lịch thi'", await item2.getByText(/Gia sư đã dời buổi này \(lịch cũ: .* lúc 19:00\) — lý do: Trùng lịch thi/).isVisible());
   check("giờ hiện là giờ MỚI 20:30–22:00; vẫn còn trạng thái báo nghỉ của em", /20:30–22:00/.test(await item2.innerText()) && await item2.getByText(/chờ gia sư xác nhận/).isVisible());
@@ -154,7 +157,7 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   await n3.getByRole("button", { name: "Để sau" }).click();
   await eventually("DB: dòng thay đổi bị xoá", async () => (await prisma.classSessionChange.count({ where: { scheduleId: sched.id } })) === 0);
   await goToWeekOf(D3);
-  await eventually("thẻ buổi trở về ngày gốc, hết huy hiệu 'Đã dời'/'Đã huỷ'", async () => { const t = await card().innerText().catch(() => ""); return t.length > 0 && !t.includes("Đã dời") && !t.includes("Đã huỷ") && !t.includes("dời từ"); });
+  await eventually("thẻ buổi trở về ngày gốc, hết huy hiệu 'Đã dời'/'Đã huỷ'", async () => { const t = await cardText(); return t.length > 0 && !t.includes("Đã dời") && !t.includes("Đã huỷ") && !t.includes("dời từ"); });
   await shot(page, "session-change-restored");
 
   section("Buổi đã bắt đầu: không đổi lịch được");
@@ -171,9 +174,9 @@ const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   const mp = await mctx.newPage();
   mp.on("pageerror", e => errors.push(String(e)));
   await mp.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
-  await mp.getByRole("heading", { name: "Lịch", exact: true }).waitFor({ timeout: 90000 });
+  await mp.getByRole("heading", { name: "Lịch dạy", exact: true }).waitFor({ timeout: 90000 });
   const want = weekRangeOf(D3);
-  for (let i = 0; i < 4 && !(await mp.getByText(`Tuần ${ddmm(want.from)} – ${ddmm(want.to)}`).count()); i++) { await mp.getByRole("button", { name: want.from > weekRangeOf(today).from ? "Tuần sau →" : "← Tuần trước" }).click(); await mp.waitForTimeout(400); }
+  for (let i = 0; i < 4 && !(await mp.getByText(`Tuần ${ddmm(want.from)} – ${ddmm(want.to)}`).count()); i++) { await mp.getByRole("button", { name: want.from > weekRangeOf(today).from ? "Tuần sau ›" : "‹ Tuần trước" }).click(); await mp.waitForTimeout(400); }
   await mp.getByRole("button", { name: /Toán 9/ }).first().click();
   await mp.getByRole("button", { name: "Dời buổi", exact: true }).click();
   const md = mp.getByRole("dialog", { name: /Dời buổi — Toán 9/ });

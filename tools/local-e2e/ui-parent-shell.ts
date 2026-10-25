@@ -70,6 +70,8 @@ const tok = (b: number) => b.toString(16).padStart(2, "0").repeat(16);
   const c3 = await chrome(sp);
   check("Sổ của con: KHÔNG có menu / nút miễn phí / chân trang quảng bá", clean(c3), c3);
   check("có thanh trên + chân trang của khung phụ huynh", await sp.getByRole("banner").getByText("Trang riêng cho phụ huynh").isVisible() && await sp.getByRole("contentinfo").isVisible());
+  const sumTxt = await sp.locator("body").innerText();
+  check("ô học phí tóm tắt: có phiếu tháng cũ chưa đóng → nhãn 'Học phí còn phải đóng' + ghi 'gồm cả các tháng trước', không gọi là 'tháng này'", /Học phí còn phải đóng/.test(sumTxt) && /gồm cả các tháng trước/.test(sumTxt) && /2\.400\.000/.test(sumTxt));
   await shot(sp, "parent-shell-so-cua-con");
 
   section("Phụ huynh đang đăng nhập bằng tài khoản học viên: vẫn không có thanh dưới của học viên");

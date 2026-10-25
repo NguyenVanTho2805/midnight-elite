@@ -36,6 +36,7 @@ async function mkShort(examId: string, order: number, text: string, correct: str
   const q2 = await mkMC(exam.id, 2, "Câu 2 làm đúng", { hint: "GỢI-Ý-2", correct: "đúng 2", wrong: ["sai 2a"] });
   const q3 = await mkMC(exam.id, 3, "Câu 3 không gợi ý", { explanation: "LỜI-GIẢI-3", correct: "ĐÁP-ÁN-ĐÚNG-3", wrong: ["sai 3a", "sai 3b"] });
   const q4 = await mkShort(exam.id, 4, "Câu 4 điền ngắn", "ĐÁP-ÁN-3.5", "GỢI-Ý-4");
+  // Đề thử cũ (createdAt 2020, chưa có chính sách giữ điểm) có cả câu tự luận: vẫn chữa bài bình thường (đề mới có tự luận mới bị giữ — xem t-quiz-hs.ts).
   const q5 = await prisma.examQuestion.create({ data: { id: id("q"), examId: exam.id, order: 5, text: "Câu 5 tự luận", type: "ESSAY" } });
   const q6 = await mkMC(exam.id, 6, "Câu 6 bỏ trống", { hint: "GỢI-Ý-6", explanation: "LỜI-GIẢI-6", correct: "ĐÁP-ÁN-ĐÚNG-6", wrong: ["sai 6a"] });
   const q8 = await mkMC(exam.id, 8, "Câu 8 đúng ngay lần 1 ở chữa bài", { hint: "GỢI-Ý-8", explanation: "LỜI-GIẢI-8", correct: "ĐÁP-ÁN-ĐÚNG-8", wrong: ["sai 8a"] });
