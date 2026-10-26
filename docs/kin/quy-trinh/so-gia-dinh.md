@@ -6,7 +6,7 @@ nào; đổi giá trị thì sửa ở tài liệu đặc tả được nêu, kh
 
 Trạng thái: **Đang dùng** (chưa ai chốt) · **Đã chốt** (anh đồng ý) · **Bác** (anh đổi, đã sửa đặc tả).
 
-Cập nhật 02/10/2026.
+Cập nhật 26/10/2026.
 
 | Mã | Giả định | Vì sao chọn | Nếu sai thì | Cách kiểm | Trạng thái | Đặc tả |
 |---|---|---|---|---|---|---|
@@ -33,6 +33,9 @@ Cập nhật 02/10/2026.
 | GD-21 | Đóng dư: gia sư chọn trừ vào tháng sau hoặc ghi đã trả lại; KiN không tự trừ | tiền dư là thoả thuận giữa gia sư và phụ huynh | thêm một bước cho gia sư | hỏi 3 gia sư | Đang dùng | `doi-soat-vietqr.md` |
 | GD-22 | Không lưu số dư tài khoản (`accumulated`) của gia sư từ webhook | không cần cho đối soát, là dữ liệu riêng | — | — | Đang dùng | `doi-soat-vietqr.md` |
 | GD-23 | Phụ huynh bấm "Tôi đã chuyển" mà 24 giờ chưa thấy tiền thì nhắc gia sư kiểm sao kê | chuyển khoản liên ngân hàng thường vào trong ngày | nhắc sớm hoặc muộn | theo dõi tháng đầu | Đang dùng | `doi-soat-vietqr.md` |
+| GD-29 | Nút "Vào lớp" sáng từ 15 phút trước giờ học tới hết giờ | đủ để vào sớm kiểm mic, không quá sớm để bấm nhầm buổi trước | học sinh vào sớm thấy nút chưa sáng | đếm lượt bấm trước giờ 1 tháng | Đang dùng | `nghiep-vu/lich-lop-va-vao-hoc.md` |
+| GD-30 | Vắng buổi có bài kiểm tra: mở làm bù 7 ngày; quá hạn mặc định Miễn, gia sư đổi được thành Tính 0 | khớp luật Năng lực "bài vắng thì bỏ qua" | em vắng nhiều vẫn giữ điểm TB cao | xem các em có ≥ 2 bài Miễn trong tháng | Đang dùng | `nghiep-vu/diem-danh-bai-kiem-tra-va-diem.md` |
+| GD-31 | Điểm TB môn = trung bình bài Kiểm tra và Đầu/Cuối kỳ trong tháng, mỗi bài hệ số 1, bài lớn hệ số 2 | bảng tính chỉ có một ô Điểm TB gõ tay, chưa có luật | xếp hạng lệch với cảm nhận của gia sư | anh so với 1 tháng điểm thật | Đang dùng | `diem-danh-bai-kiem-tra-va-diem.md` |
 
 ## Đã chốt
 
