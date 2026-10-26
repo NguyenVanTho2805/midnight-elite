@@ -1,5 +1,10 @@
 # Bàn giao màn hình cho anh Thọ (TK-165 đến TK-183)
 
+> **Cập nhật 26/10:** file Figma đã được sắp lại ngày 25/10 (bản gọn). Nhiều mã khung trong bảng dưới
+> (`22:2`, `24:2`, `107:3`…) không còn. Danh mục màn mới và mã khung mới nằm ở trang
+> *📖 Mục lục & liên kết* (`557:4488`) và *✅ Bản final — thanh bên & tính năng* (`578:2`). Đặc tả
+> nghiệp vụ trong bảng vẫn đúng; khi dựng, tra mã khung ở trang Mục lục.
+
 Bản 01/10/2026. Mỗi việc TK trong sheet ghi: khung Figma nào, đặc tả nào quyết định luật, và
 những điểm dễ làm sai. Khi Figma và đặc tả khác nhau thì **đặc tả thắng**; báo em để sửa Figma.
 
