@@ -1,6 +1,6 @@
 // Lịch tuần của học sinh — phần thuần (src/lib/studentWeek.ts): tuần thứ Hai → Chủ nhật, gộp buổi học / thi / hạn nộp / hạn bài tập.
 import { check, section, done } from "./h";
-import { buildWeekItems, gridHours, mondayOf, weekKeys } from "@/lib/studentWeek";
+import { buildWeekItems, gridHours, mergeWeekItems, mondayOf, personalWeekItems, KIND_LABEL, weekKeys } from "@/lib/studentWeek";
 import { buildStudentTodo, type TodoAssignment } from "@/lib/studentTodo";
 import type { ScheduleEvent } from "@/lib/studentSchedule";
 
@@ -37,4 +37,19 @@ check("thứ tự: buổi 19:00 trước hạn 23:59 cùng ngày", items.filter(
 section("Khoảng giờ của lưới");
 check("không có mục → 08:00–21:00", JSON.stringify(gridHours([])) === JSON.stringify({ from: 8, to: 21 }));
 check("hạn 23:59 nới lưới tới 24:00; buổi 06:30 nới từ 06:00", gridHours(items).to === 24 && gridHours([{ ...items[0], start: 390, end: 450 }]).from === 6);
+section("NC2-043 — việc RIÊNG của học sinh trong lịch tuần");
+const pe = (o: Partial<{ id: string; title: string; dateKey: string; startTime: string; endTime: string | null; note: string | null }> = {}) => ({ id: "p1", title: "Học thêm Toán", dateKey: "2026-10-23", startTime: "19:00", endTime: "20:30", note: "Mang máy tính", ...o });
+const pi = personalWeekItems([pe()]);
+check("một việc riêng → mục kind 'personal', giờ 19:00–20:30 (phút), id 'rieng:<id>', mang personalId + ghi chú, không có đường dẫn", pi.length === 1 && pi[0].kind === "personal" && pi[0].start === 1140 && pi[0].end === 1230 && pi[0].id === "rieng:p1" && pi[0].personalId === "p1" && pi[0].note === "Mang máy tính" && pi[0].href === "" && !pi[0].external);
+check("nhãn loại là 'Việc riêng'", KIND_LABEL.personal === "Việc riêng");
+check("không giờ kết thúc → end null; giờ kết thúc không sau giờ bắt đầu (dữ liệu hỏng) → end null, không ném lỗi", personalWeekItems([pe({ endTime: null })])[0].end === null && personalWeekItems([pe({ endTime: "18:00" })])[0].end === null);
+check("giờ bắt đầu hỏng → bỏ qua mục đó, các mục khác vẫn còn", personalWeekItems([pe({ id: "bad", startTime: "xx" }), pe({ id: "ok" })]).map(x => x.personalId).join() === "ok");
+check("danh sách rỗng → rỗng", personalWeekItems([]).length === 0);
+const merged = mergeWeekItems(items, personalWeekItems([pe({ id: "sang", startTime: "06:00", endTime: null, dateKey: "2026-10-23" }), pe({ id: "toi", startTime: "23:30", endTime: null, dateKey: "2026-10-23" })]));
+check("gộp với lịch lớp rồi xếp theo ngày, giờ (việc 06:00 đứng trước, 23:30 đứng sau mục cùng ngày)", merged.length === items.length + 2 && merged.every((m, i) => i === 0 || m.dateKey > merged[i - 1].dateKey || (m.dateKey === merged[i - 1].dateKey && m.start >= merged[i - 1].start)), merged.map(m => `${m.dateKey} ${m.start}`));
+const idsBefore = items.map(i => i.id).join();
+mergeWeekItems(items, personalWeekItems([pe({ id: "z", startTime: "01:00" })]));
+check("gộp không đổi (không xáo, không thêm) mảng đầu vào", items.map(i => i.id).join() === idsBefore && merged !== items);
+check("lưới giãn ra cho vừa việc riêng 06:00 và 23:30", gridHours(merged).from <= 6 && gridHours(merged).to >= 24);
+
 done();

@@ -978,6 +978,7 @@ model User {
   familyGroups         FamilyGroup[]       @relation("FamilyGroupTutor")
   tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
   sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
+  personalEvents       StudentPersonalEvent[] @relation("PersonalEventOwner") // NC2-043: lịch riêng của học sinh
 
   // Tiếng Anh tự học (docs/tieng-anh/DAC-TA.md) — mọi bản ghi gắn với một người học, xoá tài khoản thì xoá theo.
   engProfile      EngProfile?
@@ -1850,6 +1851,26 @@ model LessonNote {
 }
 
 // ─── EXAM RESULTS ─────────────────────────────────────────────────────────────
+
+// NC2-043 (28/10/2026): lịch RIÊNG của học sinh (học thêm ngoài KiN, tự ôn…). Chỉ THÊM bảng mới; không đụng lịch lớp (ClassSchedule) hay dữ liệu gia sư.
+// Chỉ chủ tài khoản đọc / sửa / xoá (mọi truy vấn lọc theo userId); không hiện cho gia sư, phụ huynh, quản trị; xoá tài khoản thì xoá theo.
+// dateKey "YYYY-MM-DD" và startTime/endTime "HH:mm" theo giờ Việt Nam (cùng kiểu ClassSchedule, không lưu múi giờ). Kiểm hợp lệ ở src/lib/personalEvents.ts.
+model StudentPersonalEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  dateKey   String
+  startTime String
+  endTime   String?
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("PersonalEventOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dateKey])
+  @@map("student_personal_events")
+}
 
 model ExamResult {
   id          String   @id @default(cuid())
