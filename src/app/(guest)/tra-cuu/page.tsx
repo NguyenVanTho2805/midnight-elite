@@ -1,33 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Search, CheckCircle, CloseCircle, BookOpen } from "griddy-icons";
-
-interface CourseResult {
-  id: string;
-  name: string;
-  shortTitle: string;
-  category: string;
-  status: boolean;
-}
+import { Search, CheckCircle, CloseCircle } from "griddy-icons";
+import { normalizeVnPhone } from "@/lib/phone";
 
 interface StudentResult {
-  name:      string;
-  studentId: number | null;
-  courses:   CourseResult[];
-}
-
-const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-  "HSA":  { bg: "var(--kin-nhan-nen-nhat)", text: "var(--kin-nhan-chu-tren-nhat)" },
-  "THPT": { bg: "var(--kin-tt-nen-xong)", text: "var(--kin-tt-chu-xong)" },
-  "V-ACT": { bg: "var(--kin-tt-nen-cho)", text: "var(--kin-tt-chu-cho)" },
-};
-
-function getCategoryStyle(category: string) {
-  for (const key of Object.keys(CATEGORY_COLORS)) {
-    if (category.toUpperCase().includes(key)) return CATEGORY_COLORS[key];
-  }
-  return { bg: "var(--kin-nen-re-chuot)", text: "var(--kin-chu-phu)" };
+  maskedName: string;
+  studentId:  number | null;
 }
 
 function getInitial(name: string) {
@@ -40,9 +19,10 @@ export default function TraCuuPage() {
   const [loading,  setLoading]  = useState(false);
   const [results,  setResults]  = useState<StudentResult[] | null>(null);
   const [error,    setError]    = useState("");
+  const [errorTitle, setErrorTitle] = useState("Không tìm thấy");
   const [searched, setSearched] = useState(false);
 
-  const isValidPhone = /^(0[3|5|7|8|9])[0-9]{8}$/.test(phone.replace(/\s/g, ""));
+  const isValidPhone = normalizeVnPhone(phone) !== null;
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -50,6 +30,7 @@ export default function TraCuuPage() {
 
     setLoading(true);
     setError("");
+    setErrorTitle("Không tìm thấy");
     setResults(null);
     setSearched(false);
 
@@ -57,11 +38,16 @@ export default function TraCuuPage() {
       const res  = await fetch("/api/tra-cuu", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ phone: phone.replace(/\s/g, "") }),
+        body:    JSON.stringify({ phone: phone.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Không tìm thấy"); }
-      else         { setResults(data.results); }
+      if (!res.ok) {
+        if (res.status === 503) setErrorTitle("Chưa mở");
+        else if (res.status === 429) setErrorTitle("Thử lại sau");
+        setError(data.error ?? "Không tìm thấy");
+      } else {
+        setResults(data.results);
+      }
     } catch {
       setError("Lỗi kết nối, vui lòng thử lại");
     } finally {
@@ -77,14 +63,14 @@ export default function TraCuuPage() {
       <div className="text-center mb-10">
         <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4"
           style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)", border: "1px solid var(--kin-nhan-vien)" }}>
-          Dành cho học viên &amp; phụ huynh
+          Dành cho học viên
         </span>
         <h1 className="text-3xl sm:text-4xl font-bold mb-3"
           style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.5px" }}>
           Tra cứu <span style={{ color: "var(--kin-nhan-link)" }}>học viên</span>
         </h1>
         <p className="text-sm max-w-md mx-auto" style={{ color: "var(--kin-chu-mo)" }}>
-          Nhập số điện thoại để kiểm tra mã học viên và danh sách khóa học đã đăng ký.
+          Nhập số điện thoại đã xác minh bằng mã SMS trong tài khoản để xem mã học viên. Danh sách lớp xem sau khi đăng nhập.
         </p>
       </div>
 
@@ -97,7 +83,7 @@ export default function TraCuuPage() {
           {/* Phone input */}
           <div>
             <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
-              Số điện thoại học sinh hoặc phụ huynh
+              Số điện thoại đã xác minh của học viên
             </label>
             <div className="relative">
               <input
@@ -121,7 +107,7 @@ export default function TraCuuPage() {
               </p>
             ) : (
               <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-                Hệ thống tự động tìm theo SĐT học sinh và SĐT phụ huynh
+                Chỉ khớp số đã xác minh bằng mã SMS, không khớp số tự khai
               </p>
             )}
           </div>
@@ -150,7 +136,7 @@ export default function TraCuuPage() {
           style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
           <CloseCircle size={18} style={{ color: "var(--kin-tt-chu-cho)", flexShrink: 0, marginTop: "1px" }} />
           <div>
-            <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>Không tìm thấy</p>
+            <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>{errorTitle}</p>
             <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>{error}</p>
           </div>
         </div>
@@ -167,11 +153,11 @@ export default function TraCuuPage() {
               <div className="px-5 py-4 flex items-center gap-4" style={{ background: "var(--kin-nen-trang)", borderBottom: "1px solid var(--kin-vien-nhat)" }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-lg font-bold text-white"
                   style={{ background: "var(--kin-nhan-nen)" }}>
-                  {getInitial(student.name)}
+                  {getInitial(student.maskedName)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-bold truncate" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.2px" }}>
-                    {student.name}
+                    {student.maskedName}
                   </p>
                   {student.studentId ? (
                     <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md text-xs font-mono font-semibold"
@@ -183,52 +169,12 @@ export default function TraCuuPage() {
                   )}
                 </div>
               </div>
-
-              {/* Courses */}
-              <div className="px-5 py-4" style={{ background: "var(--kin-nen-bang)" }}>
-                {student.courses.length === 0 ? (
-                  <div className="flex items-center gap-2 py-2">
-                    <BookOpen size={16} style={{ color: "var(--kin-vien-o-nhap)" }} />
-                    <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Chưa đăng ký khóa học nào</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs font-semibold mb-3" style={{ color: "var(--kin-chu-mo)" }}>
-                      KHÓA HỌC ĐÃ ĐĂNG KÝ ({student.courses.length})
-                    </p>
-                    <div className="space-y-2">
-                      {student.courses.map(course => {
-                        const catStyle = getCategoryStyle(course.category);
-                        return (
-                          <div key={course.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
-                            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ background: catStyle.bg }}>
-                              <BookOpen size={13} style={{ color: catStyle.text }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold truncate" style={{ color: "var(--kin-chu-chinh)" }}>
-                                {course.name}
-                              </p>
-                              <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{course.shortTitle}</p>
-                            </div>
-                            <span className="px-2 py-0.5 rounded-md text-xs font-semibold flex-shrink-0"
-                              style={{ background: catStyle.bg, color: catStyle.text }}>
-                              {course.category}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
           ))}
 
           {/* Privacy note */}
           <p className="text-xs text-center mt-2" style={{ color: "var(--kin-vien-o-nhap)" }}>
-            Thông tin chỉ hiển thị mã học viên và khóa học đã đăng ký.
+            Chỉ hiện chữ cái đầu của tên và mã học viên. Tên đầy đủ và các lớp đang học xem sau khi đăng nhập.
           </p>
         </div>
       )}
