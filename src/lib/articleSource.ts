@@ -19,7 +19,7 @@ export type ArticleSourceCheck = { ok: true; value: ArticleSourceValue } | { ok:
 
 const blank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
 // NFC: chữ có dấu dán từ Mac / Facebook có thể ở dạng tổ hợp (NFD).
-const oneLine = (v: unknown) => (typeof v === "string" ? v.normalize("NFC").replace(/[\u0000-\u001f\u007f​-‍⁠﻿]/g, " ").replace(/\s+/g, " ").trim() : "");
+const oneLine = (v: unknown) => (typeof v === "string" ? v.normalize("NFC").replace(/[\u0000-\u001f\u007f\u200b-\u200d\u2060\ufeff]/g, " ").replace(/\s+/g, " ").trim() : "");
 
 /**
  * Kiểm nguồn + ảnh bìa từ dữ liệu thô (JSON do trình duyệt gửi, KHÔNG tin). Trống = không có.

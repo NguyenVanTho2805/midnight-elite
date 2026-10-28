@@ -27,7 +27,7 @@ const bad = (name: string, o: unknown, re: RegExp) => { const r = ok(o); check(`
 bad("không phải đối tượng", "x", /không hợp lệ/);
 bad("mảng", [A00], /không hợp lệ/);
 bad("thiếu tên", { ...A00, name: " " }, /tên công thức/i);
-bad("tên toàn ký tự tàng hình (zero-width, BOM) = thiếu tên", { ...A00, name: "​‍﻿" }, /tên công thức/i);
+bad("tên toàn ký tự tàng hình (zero-width, BOM) = thiếu tên", { ...A00, name: "\u200b\u200d\ufeff" }, /tên công thức/i);
 bad("tên 101 ký tự", { ...A00, name: "a".repeat(101) }, /100/);
 bad("thang 0", { ...A00, scale: 0 }, /thang/i);
 bad("thang 30,5 (không nguyên)", { ...A00, scale: "30,5" }, /thang/i);

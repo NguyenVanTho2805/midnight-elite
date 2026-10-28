@@ -2234,6 +2234,24 @@ model AdmissionFormula {
   @@map("admission_formulas")
 }
 
+// NC2-046 (28/10/2026): kho tài liệu có tìm kiếm — danh sách VIDEO YOUTUBE do quản trị chọn và gắn theo chủ đề (mặc định Q19: không gọi YouTube Data API, không quét YouTube).
+// Chỉ THÊM bảng mới. KiN không lưu video, chỉ lưu mã video (11 ký tự) + tiêu đề + chủ đề để tìm; mở ở youtube.com. Chỉ hiện ở trang công khai khi published = true.
+// Kiểm hợp lệ và tách mã video ở src/lib/libraryVideo.ts / src/lib/youtubeLink.ts.
+model LibraryVideo {
+  id        String   @id @default(cuid())
+  title     String
+  videoId   String   @unique // một video chỉ có một dòng trong kho
+  topics    String[] @default([])
+  channel   String   @default("")
+  note      String   @default("")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published])
+  @@map("library_videos")
+}
+
 // ─── GIA SƯ DỜI / HUỶ MỘT BUỔI (hoàn thiện NV-189: dòng gợi ý loại 4) ──────────────────────────────────────────
 // Định danh một buổi = (scheduleId, dateKey GỐC theo lịch tuần). Dời vẫn giữ định danh gốc để báo nghỉ và nhắc lịch của buổi đó
 // không bị mồ côi; thời điểm hiệu lực lấy từ newDateKey / newStartTime / newEndTime (xem src/lib/sessionChange.ts).

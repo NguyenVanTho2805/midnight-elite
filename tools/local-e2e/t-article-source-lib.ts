@@ -24,7 +24,7 @@ r = cleanArticleSource({ sourceUrl: "https://www.facebook.com/kin.edu/posts/123"
 check("link Facebook → nhận; tên nguồn để trống thì lấy tên miền bỏ 'www.' (facebook.com)", r.ok && r.value.sourceUrl === "https://www.facebook.com/kin.edu/posts/123" && r.value.sourceName === "facebook.com", r);
 r = cleanArticleSource({ sourceUrl: "http://tuyensinh.example.edu.vn/thong-bao", sourceName: "  Phòng  Đào tạo \n ĐH Mẫu " });
 check("http cũng nhận cho NGUỒN; tên nguồn gộp khoảng trắng / dòng", r.ok && r.value.sourceName === "Phòng Đào tạo ĐH Mẫu", r);
-r = cleanArticleSource({ sourceUrl: "https://example.edu.vn/a", sourceName: "​‍﻿ ⁠" });
+r = cleanArticleSource({ sourceUrl: "https://example.edu.vn/a", sourceName: "\u200b\u200d\ufeff \u2060" });
 check("tên nguồn chỉ toàn ký tự tàng hình → coi là trống, lấy tên miền (không có liên kết chữ vô hình)", r.ok && r.value.sourceName === "example.edu.vn", r);
 const NFC = "Tuyển sinh".normalize("NFC"), NFD = NFC.normalize("NFD");
 check("(kiểm tra bài) hai dạng chữ thật sự khác nhau về byte", NFC !== NFD);
