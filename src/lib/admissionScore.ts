@@ -41,10 +41,10 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
 const oneLine = (v: unknown) => (typeof v === "string" ? v.normalize("NFC").replace(/\s+/g, " ").trim() : "");
 
 /** Chỉ nhận http(s), không kèm tên/mật khẩu trong URL (tránh link lừa đảo kiểu https://trusted.vn@evil.com). Trả URL đã chuẩn hoá hoặc null. */
-export function cleanSourceUrl(v: unknown): string | null {
+export function cleanSourceUrl(v: unknown, max: number = URL_MAX): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
-  if (!s || s.length > URL_MAX) return null;
+  if (!s || s.length > max) return null;
   let u: URL;
   try { u = new URL(s); } catch { return null; }
   if (u.protocol !== "https:" && u.protocol !== "http:") return null;

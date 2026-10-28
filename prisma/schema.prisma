@@ -2107,6 +2107,10 @@ model Article {
   readTime    Int       @default(5)
   views       Int       @default(0)
   publishedAt DateTime?
+  // NC2-051 (góp ý 28/10): bài tuyển sinh dán lại từ bài đăng Facebook hiện như bài báo có GHI NGUỒN. Cả ba cột cho phép trống (bài cũ không đổi).
+  sourceUrl   String?   // link bài gốc (http/https)
+  sourceName  String?   // tên hiển thị của nguồn; trống thì lấy tên miền
+  coverImage  String?   // link ảnh bìa (https)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

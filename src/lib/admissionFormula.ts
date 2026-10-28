@@ -39,7 +39,7 @@ export interface PublicFormula {
 export type FormulaParse = { ok: true; value: FormulaValue } | { ok: false; error: string };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const oneLine = (v: unknown) => (typeof v === "string" ? v.normalize("NFC").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim() : "");
+const oneLine = (v: unknown) => (typeof v === "string" ? v.normalize("NFC").replace(/[\u0000-\u001f\u007f​-‍⁠﻿]/g, " ").replace(/\s+/g, " ").trim() : "");
 const round = (n: number, d: number) => { const k = 10 ** d; return Math.round((n + Number.EPSILON) * k) / k; };
 const decimals = (n: number, d: number) => round(n, d) === n;
 

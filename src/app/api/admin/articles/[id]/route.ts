@@ -3,6 +3,7 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notifyMany } from "@/lib/notify";
+import { cleanArticleSource } from "@/lib/articleSource";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -35,6 +36,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (slugConflict) return NextResponse.json({ error: "Slug đã tồn tại" }, { status: 409 });
     }
 
+    // Nguồn + ảnh bìa (NC2-051): chỉ kiểm khi body có nhắc tới; ô nào không gửi thì giữ giá trị đang có rồi kiểm cả bộ ba.
+    let srcData: { sourceUrl: string | null; sourceName: string | null; coverImage: string | null } | null = null;
+    if (body.sourceUrl !== undefined || body.sourceName !== undefined || body.coverImage !== undefined) {
+      const c = cleanArticleSource({
+        sourceUrl:  body.sourceUrl  !== undefined ? body.sourceUrl  : existing.sourceUrl,
+        sourceName: body.sourceName !== undefined ? body.sourceName : existing.sourceName,
+        coverImage: body.coverImage !== undefined ? body.coverImage : existing.coverImage,
+      });
+      if (!c.ok) return NextResponse.json({ error: c.error }, { status: 400 });
+      srcData = c.value;
+    }
+
     const wasPublished = existing.published;
     const willPublish  = body.published ?? existing.published;
 
@@ -52,6 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.published !== undefined && { published: body.published        }),
         ...(body.readTime  !== undefined && { readTime:  Number(body.readTime) }),
         ...(!wasPublished && willPublish && { publishedAt: new Date() }),
+        ...(srcData ?? {}),
       },
     });
 
