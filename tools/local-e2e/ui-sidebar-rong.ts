@@ -62,7 +62,8 @@ import { prisma } from "@/lib/prisma";
   await nav(ps, "Module của học sinh").first().waitFor({ timeout: 90000 });
   const gs = await groupsOf(ps, "Module của học sinh");
   check("bốn nhóm: Làm việc hằng ngày · Học tập · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Học tập|Khám phá|Tài khoản", gs.map(g => g.title));
-  check("đủ mục như Figma 575:5571", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập" && gs[1].items.join("|") === "Thư viện|Tiếng Anh tự học|Thi thử|Bảng xếp hạng|Hỏi đáp|Cộng đồng"
+  // NC2-048 (28/10/2026): bỏ mục "Hỏi đáp" riêng khỏi nhóm Học tập (Hỏi đáp là tab trong Cộng đồng) theo góp ý người dùng thử; lệch Figma 575:5571 CÓ CHỦ ĐÍCH, cần Thanh cập nhật khung.
+  check("đủ mục như Figma 575:5571 (trừ mục Hỏi đáp đã gộp vào Cộng đồng)", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập" && gs[1].items.join("|") === "Thư viện|Tiếng Anh tự học|Thi thử|Bảng xếp hạng|Cộng đồng"
     && gs[2].items.join("|") === "Khoá học đang mở|Lớp đang theo dõi|Gia sư|Tin tức|Tra cứu điểm chuẩn" && gs[3].items.join("|") === "Hồ sơ|Học phí|Ví và Coin|Chủ đề màu", gs);
   check("nhãn vai 'HỌC SINH', thanh 272px, 'Việc của tôi' đang sáng", (await ps.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "HỌC SINH" && (await wrapW(ps)) === 272 && await nav(ps, "Module của học sinh").first().getByRole("link", { name: /^Việc của tôi/ }).getAttribute("aria-current") === "page");
   await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Ví và Coin", exact: true }).click();

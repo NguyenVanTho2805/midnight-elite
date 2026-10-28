@@ -65,6 +65,34 @@ export function groupRecordingsBySession<R extends RecordingLite>(recordings: R[
   return { bySession, unattached };
 }
 
+/** Một nhóm tháng của trang Bản ghi (NC2-042): thu gọn / mở được. `key` là "YYYY-MM" hoặc UNATTACHED_KEY. */
+export interface RecordingMonthGroup<R extends RecordingLite = RecordingLite> {
+  key: string;
+  /** "Tháng 10/2026" hoặc "Chưa gắn buổi". */
+  label: string;
+  /** Mỗi bản ghi kèm khoá ngày của buổi nó thuộc về (null = chưa gắn buổi). Bản ghi mới nhất trước trong từng buổi. */
+  items: { rec: R; sessionDateKey: string | null }[];
+}
+export const UNATTACHED_KEY = "chua-gan-buoi";
+
+/**
+ * Gom kết quả của groupRecordingsBySession theo THÁNG của buổi học (tháng mới nhất trước), để danh sách dài thu gọn được.
+ * Buổi không có bản ghi nào thì không tạo nhóm rỗng. Bản ghi chưa gắn buổi (hoặc buổi đã xoá) vào nhóm cuối, không biến mất.
+ * Không đổi dữ liệu đầu vào.
+ */
+export function groupRecordingsByMonth<R extends RecordingLite>(g: { bySession: SessionRecordings<R>[]; unattached: R[] }): RecordingMonthGroup<R>[] {
+  const groups: RecordingMonthGroup<R>[] = [];
+  for (const { session, recordings } of g.bySession) {
+    if (recordings.length === 0) continue;
+    const key = session.dateKey.slice(0, 7);
+    let grp = groups.find(x => x.key === key);
+    if (!grp) { grp = { key, label: `Tháng ${Number(key.slice(5, 7))}/${key.slice(0, 4)}`, items: [] }; groups.push(grp); }
+    for (const rec of recordings) grp.items.push({ rec, sessionDateKey: session.dateKey });
+  }
+  if (g.unattached.length) groups.push({ key: UNATTACHED_KEY, label: "Chưa gắn buổi", items: g.unattached.map(rec => ({ rec, sessionDateKey: null })) });
+  return groups;
+}
+
 // ── MD-17: ai đã xem video (LessonProgress) ───────────────────────────────────
 
 export type WatchState = "xong" | "dang-xem" | "chua";

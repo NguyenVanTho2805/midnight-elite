@@ -17,14 +17,15 @@ import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
-// `also`: href của Thi thử / Xếp hạng / Hỏi đáp / Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
+// `also`: href của Thi thử / Xếp hạng / Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Học tập", links: [
     { label: "Thư viện", href: "/thu-vien", icon: "thu-vien" },
     { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "bai-kt" },
     { label: "Thi thử", href: "/student/thi-thu", also: ["/thi-thu"], icon: "bai-kt" },
     { label: "Bảng xếp hạng", href: "/student/bang-xep-hang", also: ["/bang-xep-hang"], icon: "bao-cao" },
-    { label: "Hỏi đáp", href: "/student/hoi-dap", also: ["/cong-dong/hoi-dap"], icon: "khac" },
+    // NC2-048 (góp ý 28/10): "Hỏi đáp" từng là một mục riêng nhưng bấm vào lại mở Cộng đồng (tab Hỏi đáp) nên hai mục xung đột. Nay chỉ còn MỘT mục "Cộng đồng"; Hỏi đáp là tab bên trong.
+    // /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
     { label: "Cộng đồng", href: "/student/cong-dong", also: ["/cong-dong"], icon: "nguoi" },
   ] },
   { title: "Khám phá", links: [

@@ -14,7 +14,7 @@ export async function loadStudentTodo(userId: string, now: Date = new Date()): P
     where: { mode: { not: "azota" }, dueDate: { gte: since }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
     select: {
       id: true, title: true, instructions: true, fileUrl: true, maxPoints: true, dueDate: true, mode: true, createdAt: true, lessonId: true,
-      lesson: { select: { chapter: { select: { section: { select: { course: { select: { name: true, instructor: true } } } } } } } },
+      lesson: { select: { chapter: { select: { section: { select: { course: { select: { id: true, name: true, instructor: true } } } } } } } },
       submissions: { where: { userId }, select: { submittedAt: true, score: true, gradedAt: true, comment: true } },
       questions: { select: { answers: { where: { userId }, select: { id: true } } } },
     },
@@ -26,7 +26,7 @@ export async function loadStudentTodo(userId: string, now: Date = new Date()): P
     const course = r.lesson.chapter.section.course;
     return {
       id: r.id, title: r.title, instructions: r.instructions, fileUrl: r.fileUrl, maxPoints: r.maxPoints, dueDate: r.dueDate, mode: r.mode,
-      createdAt: r.createdAt, lessonId: r.lessonId, courseName: course.name, teacher: course.instructor,
+      createdAt: r.createdAt, lessonId: r.lessonId, courseName: course.name, teacher: course.instructor, courseId: course.id,
       submission: r.submissions[0] ?? null,
       answeredCount: r.questions.reduce((n, q) => n + q.answers.length, 0),
     };

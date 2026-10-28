@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import Link from "next/link";
 import { COURSE_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { useExams } from "@/hooks/useExams";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { computeExamStatus, type ExamStatus } from "@/lib/examData";
+import { groupExamsByMonth } from "@/lib/examList";
 import { KinPage, KinPageHeader, KinStatus, KinEmptyState, kinButtonClass, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD, type StatusTone } from "@/components/kin";
 
 interface MyResult {
@@ -124,8 +125,15 @@ export default function ThiThuPage() {
               </KinEmptyState>
             </div>
           ) : (
-            <ul>
-              {shown.map(exam => {
+            // NC2-040: xếp theo ngày thi (mới nhất trước) và gom theo THÁNG, mỗi tháng một tiêu đề luôn mở (góp ý 28/10: trước đây dàn một loạt, không theo thời gian, em không biết bắt đầu từ đâu).
+            <div>
+              {groupExamsByMonth(shown).map(month => (
+              <section key={month.key} data-exam-month={month.key} aria-label={month.label}>
+              <h2 className="px-[var(--kin-kc-6)] min-h-11 flex items-center gap-2 bg-[var(--kin-nen-nhan)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                <span className="font-medium">{month.label}</span><span className="text-[var(--kin-chu-mo)]">· {month.items.length} đề</span>
+              </h2>
+              <ul>
+              {month.items.map(exam => {
                 const result  = exam.myResult;
                 const hasDone = !!result;
                 // Đề gắn courseId mà học viên chưa ghi danh — vẫn hiện trong danh sách (không ẩn hẳn) nhưng khoá nút vào thi, ghi rõ lý do
@@ -163,7 +171,10 @@ export default function ThiThuPage() {
                   </li>
                 );
               })}
-            </ul>
+              </ul>
+              </section>
+              ))}
+            </div>
           )}
         </div>
 
@@ -176,6 +187,7 @@ export default function ThiThuPage() {
   }
 
   /* ── Guest view ─────────────────────────────────────────────────────── */
+  const guestRows = groupExamsByMonth(filtered).flatMap(m => m.items.map((exam, i) => ({ exam, head: i === 0 ? m : null })));
   const available = exams.filter(e => e.status === "available").length;
   const upcoming  = exams.filter(e => e.status === "upcoming").length;
 
@@ -242,12 +254,20 @@ export default function ThiThuPage() {
         </div>
 
         <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-          {filtered.map((exam, idx) => {
+          {/* NC2-040: khách cũng thấy đề theo ngày thi, gom theo tháng (cùng luật với bản học sinh). */}
+          {guestRows.map(({ exam, head }, idx) => {
             const s = STATUS_CFG[exam.status];
             const grad = CATEGORY_GRADIENT[exam.category] ?? "var(--kin-chu-phu)";
-            const isLast = idx === filtered.length - 1;
+            const isLast = idx === guestRows.length - 1;
             return (
-              <div key={exam.id} className="flex items-center gap-4 px-5 py-4"
+              <Fragment key={exam.id}>
+              {head && (
+                <h2 data-exam-month={head.key} className="px-5 py-2 text-sm"
+                  style={{ background: "var(--kin-nen-nhan)", borderBottom: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
+                  <span className="font-semibold">{head.label}</span><span style={{ color: "var(--kin-chu-mo)" }}> · {head.items.length} đề</span>
+                </h2>
+              )}
+              <div className="flex items-center gap-4 px-5 py-4"
                 style={{ borderBottom: isLast ? "none" : "1px solid var(--kin-vien-thuong)" }}>
                 <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
                   style={{ background: grad }}>
@@ -283,6 +303,7 @@ export default function ThiThuPage() {
                   )}
                 </div>
               </div>
+              </Fragment>
             );
           })}
           {filtered.length === 0 && (
