@@ -614,6 +614,16 @@ Sheet: tab "Nâng cấp lần 2" (`docs/kin/backlog/nang-cap-lan-2.csv`). Kế h
 - **Việc của Thọ:** (1) VAPID + `PUSH_ENABLED=1` + logo PNG + kiểm tay Android/iPhone (NC1-033/034, chưa đổi); (2) bật `KIN_TRIAL_MODE=1` ở Vercel Production khi muốn ẩn lối mua; (3) xác nhận Q1 (tick NC1-Q1), Q12 (đảo ghi chú NC1-030 "để sau"), quyết định chặn `POST /api/wallet/topups` khi bật cờ; (4) quyết F2/F3 ở trang phụ huynh; (5) đọc đề xuất NC2-021 (rút form tạo lớp, thêm lối bấm tới trang lớp, làm mới phiên sau khi duyệt, chữ "chờ duyệt"); (6) gửi `cau-hoi-luat-su.md` cho luật sư sau khi tự đọc (đây là bản nháp của agent); (7) merge PR theo thứ tự PR #63 → #64 … #71 → PR9.
 - **Không làm theo quyết định:** ĐX-08 (Q6, tiền), ĐX-09 + NC1-101/102/103 (Q7, trẻ em, chờ luật sư), FE-130/134/136 (Q13), NC2-028 (hạn mức Free/Pro cấu hình từ admin — dính tiền, chờ Q9 sau chạy thử), NC2-027 (đăng nhập Google — cần client OAuth của Thọ).
 
+## Siết tra cứu học viên `/tra-cuu` (28/10/2026) — LÀM XONG PHẦN MÃ (PR 87), chờ Thọ duyệt
+Việc dính dữ liệu học sinh. Thọ đã chọn hướng "siết và để theo công tắc SMS" (28/10).
+- **Lỗi:** `POST /api/tra-cuu` (không cần đăng nhập) khớp `phone` hoặc `parentPhone` (hai ô tự khai) rồi trả tên đầy đủ, mã học viên và danh sách lớp. Biết số của ai là xem được họ học lớp nào; chỉ có giới hạn 10 lượt/phút theo IP. Trang gọi nó không còn link nào trỏ tới (đã ẩn khỏi menu học sinh).
+- **Nay:** chỉ khớp `phoneE164` đã xác minh bằng SMS, đúng học sinh và có `phoneVerifiedAt`. Chỉ trả chữ cái đầu của tên ("N••• M••• A•••", `src/lib/traCuu.ts`) và mã học viên; không tên đầy đủ, không lớp. Thêm giới hạn 5 lần / 10 phút theo SỐ (dạng E.164) bên cạnh giới hạn theo IP. SMS tắt thì trả 503 `sms-off` và trang hiện "Chưa mở". Không đổi schema; `parentPhone` / `parentName` giữ nguyên.
+- **Hệ quả hôm nay (cần Thọ biết):** SMS xác minh số chưa bật nên chưa tài khoản nào có `phoneE164` → tra cứu trả "Chưa mở" cho mọi người. Tính năng sống lại khi bật SMS (mục D ở Đợt 14/10) và học sinh xác minh số. Phụ huynh không tra được nữa (họ chỉ khớp được qua `parentPhone` tự khai).
+- **Còn lộ cho người biết một số đã xác minh:** chữ cái đầu của tên, mã học viên, và việc số đó có tài khoản học sinh.
+- **Lệch giữa hai nguồn, chưa chọn bên nào:** ô BE-025 ở sheet (Thọ, 04/10) ghi "giữ mãi `parentPhone`, không cleanup"; `docs/kin/backlog/quyet-dinh.csv` D06 ghi "khoá ghi, 90 ngày xoá cột". Sheet không bị sửa.
+- **Test:** `t-tra-cuu-lib` 12/12, `t-tra-cuu` 37/37, `ui-tra-cuu` 14/14. Ca phá cố ý: route / trang bản cũ làm bài đỏ (21 ca / 1 ca); bẻ từng chốt của route mới (khớp lại số tự khai, bỏ chốt `phoneVerifiedAt`, bỏ chốt vai học sinh, trả tên đầy đủ, trả lại lớp, bỏ giới hạn theo số, bỏ giới hạn theo IP, bỏ cổng SMS, `req.json()` trần) đều làm đúng ca tương ứng đỏ.
+- **Chưa kiểm:** nhánh 503 chỉ qua gọi thẳng hàm `POST` (server dev luôn bật SMS); chưa thử trên production; bộ đếm giới hạn nằm trong bộ nhớ từng bản serverless (như các route số điện thoại khác).
+
 ## Không làm (chờ Thọ / luật sư / Thanh)
 PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh);
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).
