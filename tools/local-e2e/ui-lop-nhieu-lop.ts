@@ -20,6 +20,15 @@ const H = 3_600_000;
   // Vào lớp theo thứ tự Địa → Sử nâng cao → Sử: danh mục phải theo đúng thứ tự này (không phụ thuộc thứ tự lưu trong DB).
   for (const [i, c] of [B, C, A].entries()) await prisma.enrollment.create({ data: { userId: S.id, courseId: c.id, status: "active", createdAt: new Date(now - (10 - i) * 60_000) } });
   await prisma.enrollment.create({ data: { userId: S1.id, courseId: A.id, status: "active" } });
+  // Ca biên (rà soát độc lập 28/10): học sinh có lớp "tạm dừng", học sinh có lớp tạo bằng wizard (gia sư = "KiN").
+  const SU = await mkUser({ name: "Có Lớp Tạm Dừng" }), KS = await mkUser({ name: "Có Lớp KiN" });
+  const D = await mkCourse(T.id, { name: "Lịch sử địa phương" }), E = await mkCourse(T.id, { name: "Văn 12" });
+  await prisma.course.update({ where: { id: D.id }, data: { status: true, instructor: "KiN" } });
+  await prisma.course.update({ where: { id: E.id }, data: { status: true, instructor: "Cô Hạnh" } });
+  await prisma.enrollment.create({ data: { userId: SU.id, courseId: A.id, status: "active" } });
+  await prisma.enrollment.create({ data: { userId: SU.id, courseId: B.id, status: "suspended" } });
+  await prisma.enrollment.create({ data: { userId: KS.id, courseId: D.id, status: "active", createdAt: new Date(now - 120_000) } });
+  await prisma.enrollment.create({ data: { userId: KS.id, courseId: E.id, status: "active", createdAt: new Date(now - 60_000) } });
 
   // Mỗi lớp một chương + bài; Địa 12 có 2 bài (em xong 1). Bài tập: Sử 12 → 1 bài chưa nộp, Sử 12 nâng cao → 2 bài chưa nộp.
   const mkTree = async (c: { id: string }, n: number) => {
@@ -189,6 +198,92 @@ const H = 3_600_000;
   await dlg.waitFor({ timeout: 60000 });
   check("bảng 'Khác' (thanh hẹp): có 'Cộng đồng', 'Thi thử', 'Thư viện' và KHÔNG có 'Hỏi đáp'", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thi thử", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thư viện", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
   await cn.close();
+
+  section("Rà soát độc lập 28/10 — ca biên: đổi lớp khi mạng chậm, API lỗi, ?course= lạ, cô lập, tạm dừng, gia sư 'KiN'");
+  // P2-1: phản hồi CHẬM của lớp trước không được ghi đè lớp đang xem (bấm sang Địa 12 rồi Quay lại ngay về Sử 12).
+  const cr = await ctxFor(S, { width: 1280, height: 900 });
+  const pr = await cr.newPage(); watch(pr);
+  await pr.route(`**/api/courses/${B.id}`, async r => { await new Promise(res => setTimeout(res, 4500)); await r.continue().catch(() => {}); });
+  // Bản ghi trễ LÂU HƠN trang lớp (12 giây so với 4,5 giây): hero hiện ra khi bản ghi còn đang tải — đúng khoảng mà lỗi cũ để lộ bản ghi của lớp trước.
+  await pr.route(`**/api/courses/${B.id}/recordings`, async r => { await new Promise(res => setTimeout(res, 12000)); await r.continue().catch(() => {}); });
+  await go(pr, `/student/hoc-tap?course=${A.id}`);
+  await pr.locator("[data-my-classes]").waitFor({ timeout: 120000 });
+  await pr.locator("[data-my-classes]").getByRole("link", { name: /^Địa 12$/ }).click();
+  await pr.waitForURL(u => courseParam(pr) === B.id && u.pathname === "/student/hoc-tap", { timeout: 30000 });
+  await pr.goBack();
+  await pr.waitForURL(() => courseParam(pr) === A.id, { timeout: 30000 });
+  await pr.locator("[data-course-hero]").waitFor({ timeout: 60000 });
+  await pr.waitForTimeout(6500); // đợi phản hồi chậm của Địa 12 về tới nơi
+  check("P2-1: đã quay về Sử 12, phản hồi muộn của Địa 12 KHÔNG ghi đè (hero vẫn 'Sử 12', URL vẫn Sử 12)", courseParam(pr) === A.id && (await pr.locator("[data-course-hero]").innerText()).includes("Sử 12") && !(await pr.locator("[data-course-hero]").innerText()).includes("Địa 12"), await pr.locator("[data-course-hero]").innerText());
+  // P2-2: bản ghi của Sử 12 không được hiện sang Địa 12 trong lúc bản ghi Địa 12 còn đang tải.
+  await pr.getByRole("tab", { name: /Tài liệu & bản ghi/ }).click();
+  await pr.locator("[data-recording-months]").waitFor({ timeout: 60000 });
+  await pr.locator("[data-my-classes]").getByRole("link", { name: /^Địa 12$/ }).click();
+  await pr.waitForURL(() => courseParam(pr) === B.id, { timeout: 30000 });
+  await pr.locator("[data-course-hero]").waitFor({ timeout: 60000 });
+  check("P2-2: sang lớp khác thì về tab 'Tổng quan' (không mang tab của lớp trước)", (await pr.getByRole("tab", { name: "Tổng quan" }).getAttribute("aria-selected")) === "true");
+  await pr.getByRole("tab", { name: /Tài liệu & bản ghi/ }).click();
+  await pr.waitForTimeout(800);
+  const midText = await pr.locator("main").innerText();
+  check("P2-2: trong lúc bản ghi Địa 12 còn tải, KHÔNG thấy bản ghi của Sử 12 ('Bản ghi 16/10', 'Tháng 10/2026')", !/Bản ghi 16\/10|Bản ghi 20\/09|Tháng 10\/2026/.test(midText) && /Đang tải bản ghi/.test(midText), midText.slice(0, 300));
+  await eventually("P2-2: tải xong → Địa 12 'Chưa có bản ghi nào' (không dính bản ghi Sử 12)", async () => (await pr.getByText("Chưa có bản ghi nào").count()) === 1 && !/Bản ghi 16\/10/.test(await pr.locator("main").innerText()), 30000);
+  await cr.close();
+  // P2-3: API danh sách lớp lỗi thì nói là LỖI, không hiện 'Bạn chưa vào lớp nào'; thử lại được.
+  const ce = await ctxFor(S, { width: 1280, height: 900 });
+  const pe = await ce.newPage(); watch(pe);
+  let enrollFail = true;
+  await pe.route(u => u.pathname === "/api/enrollments" && u.searchParams.get("detail") === "1", r => (enrollFail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.continue()));
+  await go(pe, "/student/hoc-tap");
+  const strip = pe.locator('[role="alert"]:not(#__next-route-announcer__)');
+  await strip.waitFor({ timeout: 120000 });
+  check("P2-3: lỗi API → dải 'Không tải được danh sách lớp của bạn.' + 'Thử lại'; KHÔNG hiện 'Bạn chưa vào lớp nào'", await strip.getByText("Không tải được danh sách lớp của bạn.").isVisible() && await strip.getByRole("button", { name: "Thử lại" }).isVisible() && (await pe.getByText("Bạn chưa vào lớp nào").count()) === 0);
+  enrollFail = false;
+  await strip.getByRole("button", { name: "Thử lại" }).click();
+  await pe.locator("[data-class-catalog]").waitFor({ timeout: 60000 });
+  check("P2-3: bấm 'Thử lại' → thấy danh mục 3 lớp", (await pe.locator("[data-class-card]").count()) === 3 && (await strip.count()) === 0);
+  enrollFail = true;
+  await go(pe, `/student/hoc-tap?course=${A.id}`);
+  await strip.waitFor({ timeout: 120000 });
+  check("P2-3: đang ở trong một lớp mà API lỗi → vẫn là dải lỗi, không phải 'Bạn chưa vào lớp này'", await strip.getByText("Không tải được danh sách lớp của bạn.").isVisible() && (await pe.getByText("Bạn chưa vào lớp này").count()) === 0);
+  await ce.close();
+  // P3-1: ?course= không tồn tại → có lời giải thích và lối '← Tất cả lớp'.
+  const cx = await ctxFor(S, { width: 1280, height: 900 });
+  const px = await cx.newPage(); watch(px);
+  await go(px, "/student/hoc-tap?course=lop-khong-ton-tai");
+  await px.locator('[role="alert"]:not(#__next-route-announcer__)').waitFor({ timeout: 120000 });
+  check("P3-1: lớp không tồn tại → dải lỗi + vẫn có '← Tất cả lớp' (học sinh nhiều lớp không bị ngõ cụt)", await px.getByText(/Không tìm thấy khóa học/).first().isVisible() && await px.locator("[data-all-classes]").isVisible());
+  await px.locator("[data-all-classes]").click();
+  await px.locator("[data-class-catalog]").waitFor({ timeout: 60000 });
+  check("P3-1: bấm '← Tất cả lớp' → danh mục", (await px.locator("[data-class-card]").count()) === 3);
+  await cx.close();
+  // Cô lập: học sinh chỉ có Sử 12 không thấy lớp khác của bạn học (API và trang).
+  const iso = await api("GET", "/api/enrollments?detail=1", { as: S1 });
+  check("cô lập: học sinh chỉ học Sử 12 chỉ nhận đúng 1 lớp (không có Địa 12 / Sử 12 nâng cao)", iso.json.courses.length === 1 && iso.json.courses[0].id === A.id && !JSON.stringify(iso.json).includes(B.id) && !JSON.stringify(iso.json).includes(C.id), iso.json);
+  const ci = await ctxFor(S1, { width: 1280, height: 900 });
+  const pi = await ci.newPage(); watch(pi);
+  await go(pi, `/student/hoc-tap?course=${B.id}`);
+  await pi.getByText("Bạn chưa vào lớp này").waitFor({ timeout: 120000 });
+  const isoText = await pi.locator("main").innerText();
+  check("cô lập: mở lớp mình KHÔNG học → 'Bạn chưa vào lớp này', không có 'Các lớp của bạn', không lộ tên lớp khác", (await pi.locator("[data-my-classes]").count()) === 0 && !/Sử 12 nâng cao/.test(isoText), isoText.slice(0, 200));
+  await ci.close();
+  // Lớp 'tạm dừng' không vào danh sách (đồng nhất với quyền học: chỉ 'active').
+  const sus = await api("GET", "/api/enrollments?detail=1", { as: SU });
+  check("lớp 'suspended' không nằm trong danh sách (API)", sus.json.courseIds.join() === A.id && sus.json.courses.length === 1, sus.json);
+  const cs = await ctxFor(SU, { width: 1280, height: 900 });
+  const ps = await cs.newPage(); watch(ps);
+  await go(ps, "/student/hoc-tap");
+  await ps.waitForURL(() => courseParam(ps) === A.id, { timeout: 90000 });
+  check("chỉ còn 1 lớp đang học (lớp kia tạm dừng) → vào thẳng lớp đó, không hiện danh mục", courseParam(ps) === A.id && (await ps.locator("[data-class-catalog]").count()) === 0);
+  await cs.close();
+  // Lớp tạo bằng wizard có gia sư = "KiN": không hiện 'Gia sư: KiN'.
+  const ck = await ctxFor(KS, { width: 1280, height: 900 });
+  const pk = await ck.newPage(); watch(pk);
+  await go(pk, "/student/hoc-tap");
+  await pk.locator("[data-class-catalog]").waitFor({ timeout: 120000 });
+  const kinText = await pk.locator("[data-class-catalog]").innerText();
+  check("gia sư 'KiN' (tên giữ chỗ) không hiện 'Gia sư: KiN'; lớp có tên thật vẫn hiện 'Gia sư: Cô Hạnh'", !/Gia sư: KiN/.test(kinText) && (kinText.match(/Gia sư: Cô Hạnh/g) ?? []).length === 1 && /Lịch sử địa phương/.test(kinText) && /Văn 12/.test(kinText), kinText);
+  check("không gắn nhãn 'Môn:' cho nhóm lớp (có thể là nhóm kỳ thi)", !/Môn:/.test(kinText));
+  await ck.close();
 
   section("Điện thoại 390px");
   const cm = await ctxFor(S, { width: 390, height: 844 });

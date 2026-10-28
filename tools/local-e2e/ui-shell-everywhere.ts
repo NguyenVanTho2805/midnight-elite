@@ -64,6 +64,7 @@ async function settled(p: Page) {
     const p = await ctx.newPage(); watch(p);
     await p.goto(`${BASE}/student/hoc-tap`, { waitUntil: "load", timeout: 150000 });
     await p.locator("#kin-rail").waitFor({ timeout: 90000 });
+    // NC2-048 (28/10/2026): bỏ nhãn "Hỏi đáp" khỏi danh sách — mục thanh bên "Hỏi đáp" riêng đã gộp vào "Cộng đồng"; không xoá ca nào khác.
     const labels = ["Thi thử", "Bảng xếp hạng", "Cộng đồng", "Khoá học đang mở", "Lớp đang theo dõi", "Gia sư", "Tin tức", "Tra cứu điểm chuẩn", "Chủ đề màu"];
     const lost: string[] = [];
     const seen: string[] = [];

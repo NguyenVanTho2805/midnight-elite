@@ -3,6 +3,8 @@
 // NC2-041 (góp ý 28/10: học Sử + Địa mà chỉ thấy lớp Sử): trước đây thiếu ?course= thì TỰ chọn lớp đầu tiên và trang không có chỗ đổi lớp. Nay: 1 lớp → vào thẳng (như cũ);
 // từ 2 lớp → "danh mục lớp" để chọn (components/student/DanhMucLop), trong lớp có lối "Tất cả lớp" và danh sách "Các lớp của bạn" để đổi lớp. Đếm bài theo ID lớp, không theo tên.
 // NC2-042: bản ghi buổi học gom theo THÁNG, thu gọn / mở được (tháng mới nhất mở sẵn).
+// Rà soát độc lập 28/10: "đổi lớp" thành luồng chính nên trạng thái phải gắn với TỪNG lớp — Content được dựng lại (key = ID lớp) mỗi khi đổi lớp, nên phản hồi chậm
+// của lớp trước, bản ghi, tab và trạng thái gập của lớp trước không thể lọt sang lớp đang xem. Lỗi tải danh sách lớp nói là lỗi, không coi là "chưa vào lớp nào".
 // BỎ vì chưa có dữ liệu thật: nút "Liên hệ cô …" (chưa có kênh nhắn), "Hoạt động buổi học" (không có bản ghi từng buổi theo lớp), tab "Thông báo",
 // "n học sinh" (không hiện dữ liệu bạn học), dung lượng tệp, "Học trực tuyến". Giữ: mọi liên kết cũ (Tiếp tục học, Xem lớp học, Tài liệu & bản ghi của lớp này).
 // MD-07/SV-03: tab "Tài liệu & bản ghi" gộp 3 nguồn của CHÍNH lớp này: bản ghi gia sư dán theo buổi (/api/courses/[id]/recordings, chỉ học sinh đã ghi danh),
@@ -89,18 +91,20 @@ function Content() {
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<Tab>("tong-quan");
   const { completedIds, courseCompletion, loading: progressLoading } = useProgress();
-  const { classes, loading: enrollmentsLoading } = useMyClasses();
+  const { classes, loading: enrollmentsLoading, error: classesError, reload: reloadClasses } = useMyClasses();
   const enrolledIds = useMemo(() => new Set(classes.map(c => c.id)), [classes]);
   const work = useStudentWork();
 
   useEffect(() => {
     if (!courseId) { void Promise.resolve().then(() => setLoading(false)); return; }
-    void Promise.resolve().then(() => { setLoading(true); setError(""); });
+    let live = true;
+    void Promise.resolve().then(() => { if (live) { setLoading(true); setError(""); } });
     fetch(`/api/courses/${courseId}`, { credentials: "same-origin" })
       .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data: Course) => setCourse(data))
-      .catch(() => setError("Không tìm thấy khóa học"))
-      .finally(() => setLoading(false));
+      .then((data: Course) => { if (live && data.id === courseId) setCourse(data); else if (live) setError("Không tìm thấy khóa học"); })
+      .catch(() => { if (live) setError("Không tìm thấy khóa học"); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
   }, [courseId, tick]);
 
   // Thiếu ?course= và chỉ có MỘT lớp → vào thẳng lớp đó. Từ 2 lớp trở lên thì hiện danh mục để em tự chọn (NC2-041: không tự chọn hộ lớp đầu tiên nữa).
@@ -137,6 +141,9 @@ function Content() {
   );
   const wrap = (children: React.ReactNode) => <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">{children}</div>;
 
+  if (!enrollmentsLoading && classesError) {
+    return wrap(<>{head()}<ErrorStrip message="Không tải được danh sách lớp của bạn." onRetry={reloadClasses} /></>);
+  }
   if (!courseId) {
     if (enrollmentsLoading || progressLoading || classes.length === 1) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
     if (classes.length === 0) {
@@ -151,7 +158,7 @@ function Content() {
   }
   if (loading || progressLoading || enrollmentsLoading) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
   if (error || !course) {
-    return wrap(<>{head()}
+    return wrap(<>{head(undefined, classes.length >= 2)}
       <ErrorStrip message={error || "Không tìm thấy khóa học — có thể bạn đã rời lớp hoặc lớp đã đóng."} onRetry={() => setTick(t => t + 1)} />
       <div className="pt-4"><Link href="/khoa-hoc" className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Về danh sách khóa học</Link></div></>);
   }
@@ -322,6 +329,12 @@ function Content() {
   </>);
 }
 
+/** Dựng lại Content theo ID lớp: đổi lớp là một "trang" mới, không mang state của lớp trước sang. */
+function PerCourse() {
+  const course = useSearchParams().get("course") ?? "";
+  return <Content key={course} />;
+}
+
 export default function LopCuaToi() {
-  return <Suspense><Content /></Suspense>;
+  return <Suspense><PerCourse /></Suspense>;
 }
