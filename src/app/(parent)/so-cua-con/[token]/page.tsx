@@ -109,7 +109,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
   const allRecords = enrollments.flatMap(e => attByCourse.get(e.course.id) ?? []);
   const overall = computeAttendanceStats(allRecords);
   const todayKey = vnDateKeyOf(now);
-  const nextSession = sessions.upcoming.find(u => u.status !== "cancelled") ?? null;
+  // Buổi tiếp theo = sớm nhất giữa buổi theo lịch tuần (không huỷ) và buổi lẻ / dạy bù gia sư thêm.
+  const nextSession = [sessions.upcoming.find(u => u.status !== "cancelled"), sessions.extra[0]].flatMap(x => (x ? [x] : [])).sort((a, b) => a.startAt.localeCompare(b.startAt))[0] ?? null;
   const openInvoices = invoices.filter(i => i.status !== "paid");
   const owed = openInvoices.reduce((a, i) => a + i.remaining, 0);
   const thisMonthInvoices = invoices.filter(i => i.yearMonth === ym);
@@ -225,7 +226,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                   </ul>
                 </ParentSection>
 
-                <UpcomingSessions token={token} upcoming={sessions.upcoming} makeup={sessions.makeup} nowIso={now.toISOString()} />
+                <UpcomingSessions token={token} upcoming={sessions.upcoming} makeup={sessions.makeup} extra={sessions.extra} nowIso={now.toISOString()} />
 
                 <PartySessions items={partySessions} />
 

@@ -5,7 +5,8 @@
 "use client";
 import { useState } from "react";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey } from "@/lib/classSessions";
-import type { MakeupSummary, UpcomingSession } from "@/lib/absenceServer";
+import type { ExtraSessionView, MakeupSummary, UpcomingSession } from "@/lib/absenceServer";
+import { KIND_LABEL } from "@/lib/sessionBook";
 import ParentSection from "./Section";
 
 const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
@@ -23,7 +24,7 @@ const STATUS_TEXT: Record<string, { text: string; tone: string }> = {
   voided:       { text: "Buổi này đã huỷ nên không cần báo nghỉ", tone: "var(--kin-chu-phu)" },
 };
 
-export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { token: string; upcoming: UpcomingSession[]; makeup: MakeupSummary; nowIso: string }) {
+export default function UpcomingSessions({ token, upcoming, makeup, extra = [], nowIso }: { token: string; upcoming: UpcomingSession[]; makeup: MakeupSummary; extra?: ExtraSessionView[]; nowIso: string }) {
   const [items, setItems] = useState(upcoming);
   const [mk, setMk] = useState(makeup);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -75,11 +76,25 @@ export default function UpcomingSessions({ token, upcoming, makeup, nowIso }: { 
 
       {msg && <p role="status" className="text-sm mb-3 rounded-lg p-3" style={{ ...band, color: msg.ok ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>{msg.text}</p>}
 
-      {items.length === 0 ? (
+      {items.length === 0 && extra.length === 0 ? (
         <p className="text-sm rounded-lg p-3" style={{ ...band, color: "var(--kin-chu-phu)" }}>14 ngày tới con chưa có buổi học nào theo lịch.</p>
       ) : (
         <ul className="divide-y divide-[color:var(--kin-vien-nhat)]">
-          {items.map(s => {
+          {/* Buổi lẻ / dạy bù / phát sinh gia sư thêm ngoài lịch tuần: xếp chung theo giờ, chỉ để xem (không thuộc khung giờ tuần nên không có Báo nghỉ). */}
+          {[...items.map(s => ({ at: s.startAt, s, x: null as ExtraSessionView | null })), ...extra.map(x => ({ at: x.startAt, s: null as UpcomingSession | null, x }))]
+            .sort((a, b) => a.at.localeCompare(b.at)).map(({ s, x }) => {
+            if (x) {
+              return (
+                <li key={`extra:${x.id}`} data-extra-session className="py-3">
+                  <p className="font-medium truncate" style={{ color: "var(--kin-chu-chinh)" }}>{x.courseName}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-phu)" }}>
+                    {WEEKDAY[dayOfWeekOfKey(x.dateKey)]} {ddmm(x.dateKey)} · {vnHm(x.startAt)}–{vnHm(x.endAt)} · {KIND_LABEL[x.kind]}{x.place ? ` · ${x.place}` : ""}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>Buổi này gia sư thêm ngoài lịch tuần nên không có nút Báo nghỉ. Nếu con không đi được, anh/chị nhắn gia sư.</p>
+                </li>
+              );
+            }
+            if (!s) return null;
             const k = keyOf(s);
             const st = s.absence ? STATUS_TEXT[s.absence.status] : null;
             const free = Date.parse(s.deadlineAt) > nowMs;

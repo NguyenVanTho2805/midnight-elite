@@ -75,6 +75,20 @@ export function resolveJoinUrl(i: { sessionUrl?: string | null; scheduleUrl?: st
   return null;
 }
 
+/** Dòng "nơi học" cho người xem (học sinh, phụ huynh): "Online", "Offline · 12 Nguyễn Trãi", hoặc null khi chưa chọn hình thức. */
+export function placeLabel(mode: SessionMode | null | undefined, location?: string | null): string | null {
+  if (mode === "online") return MODE_LABEL.online;
+  if (mode === "offline") return location?.trim() ? `${MODE_LABEL.offline} · ${location.trim()}` : MODE_LABEL.offline;
+  return null;
+}
+
+/** Thông báo trong ứng dụng cho học sinh khi gia sư thêm buổi lẻ / dạy bù / phát sinh. Chỉ có tên lớp, ngày, giờ: không tên người, không tiền (quy tắc thông báo của kho). */
+export function extraSessionNotice(i: { kind: Exclude<SessionKind, "regular">; courseName: string; dateKey: string; startTime: string }): { title: string; message: string } {
+  const NOUN = { extra: "buổi học thêm", makeup: "buổi dạy bù", adhoc: "buổi học phát sinh" } as const;
+  const TITLE = { extra: "Có buổi học thêm", makeup: "Có buổi dạy bù", adhoc: "Có buổi học phát sinh" } as const;
+  return { title: TITLE[i.kind], message: `Lớp "${i.courseName}" có ${NOUN[i.kind]} ngày ${i.dateKey.slice(8, 10)}/${i.dateKey.slice(5, 7)} lúc ${i.startTime}.` };
+}
+
 /** LI-16: hình thức hiệu lực — riêng buổi thắng khung giờ. null = chưa chọn (hiểu như cũ, không hiện nhãn). */
 export function effectiveMode(i: { sessionMode?: string | null; scheduleMode?: string | null }): SessionMode | null {
   if (isSessionMode(i.sessionMode)) return i.sessionMode;

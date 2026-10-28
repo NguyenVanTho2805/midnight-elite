@@ -86,7 +86,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const invoices = (await loadPartyInvoices(studentId)).filter(i => i.yearMonth === ym || i.status !== "paid");
 
   // TT-202: buổi sắp tới (14 ngày) kèm nút báo nghỉ + số buổi bù đang giữ — hai bên cùng thấy một con số.
-  const { upcoming, makeup } = await loadStudentUpcoming(studentId, new Date());
+  const { upcoming, makeup, extra } = await loadStudentUpcoming(studentId, new Date());
   // NV-189: báo cáo tháng ĐÃ DUYỆT (tháng đang xem + tháng trước) — mục "Điều chưa đạt" luôn có trong mỗi báo cáo.
   const reports = await loadPartyReports(studentId, [ym, prevYearMonth(ym)]);
   // BU-11: điểm từng buổi của ĐÚNG em này (chỉ khi đồng ý ghi điểm còn hiệu lực).
@@ -109,6 +109,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       courses:   [],
       invoices,
       upcoming,
+      extra,
       makeup,
       reports,
       scores,
@@ -214,6 +215,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     courses,
     invoices,
     upcoming,
+    extra,
     makeup,
     reports,
     scores,
