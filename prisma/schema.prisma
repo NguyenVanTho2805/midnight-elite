@@ -2204,6 +2204,32 @@ model AdmissionScore {
   @@map("admission_scores")
 }
 
+// NC2-050 (28/10/2026): công thức TÍNH điểm xét tuyển do quản trị nhập (trang công khai /diem-chuan có công cụ tính, KẾT QUẢ CHỈ MANG TÍNH THAM KHẢO).
+// Chỉ THÊM bảng mới. Công thức là CẤU HÌNH có cấu trúc, không phải chuỗi để chạy: điểm = (Σ trọng số môn × điểm môn) × hệ số nhân + Σ điểm cộng, kẹp trong [0, thang].
+//   inputs  : [{ key: "m1", label, max, weight }]   — các môn / thành phần nhập vào
+//   bonuses : [{ key: "b1", label, max }]            — điểm cộng (ưu tiên, khuyến khích…), cộng sau khi nhân
+// Kiểm hợp lệ và tính ở src/lib/admissionFormula.ts. Không lưu điểm người dùng nhập (tính ở trình duyệt). Công khai chỉ khi published = true VÀ có đường dẫn nguồn.
+model AdmissionFormula {
+  id         String   @id @default(cuid())
+  name       String
+  school     String   @default("")
+  year       Int?
+  scale      Int
+  inputs     Json
+  multiplier Float    @default(1)
+  bonuses    Json
+  note       String?  @db.Text
+  sourceUrl  String   @default("")
+  sourceName String   @default("")
+  verified   Boolean  @default(false)
+  published  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([published, school])
+  @@map("admission_formulas")
+}
+
 // ─── GIA SƯ DỜI / HUỶ MỘT BUỔI (hoàn thiện NV-189: dòng gợi ý loại 4) ──────────────────────────────────────────
 // Định danh một buổi = (scheduleId, dateKey GỐC theo lịch tuần). Dời vẫn giữ định danh gốc để báo nghỉ và nhắc lịch của buổi đó
 // không bị mồ côi; thời điểm hiệu lực lấy từ newDateKey / newStartTime / newEndTime (xem src/lib/sessionChange.ts).

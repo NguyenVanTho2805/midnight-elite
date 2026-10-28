@@ -2,6 +2,7 @@
 // Mỗi dòng PHẢI có đường dẫn nguồn. "Đã đối chiếu" = người quản trị đã so với thông báo chính thức của trường.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, useNotify } from "@/components/tutor/shared";
@@ -145,6 +146,7 @@ function Content() {
           <div className="flex flex-wrap items-end gap-3">
             <button type="button" className={btn} style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }} onClick={() => { setFormError(""); setEditing({ id: null, form: emptyForm() }); }}>+ Thêm dòng</button>
             <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} onClick={() => { setDry(null); setImporting(true); }}>Nhập CSV / JSON</button>
+            <Link href="/admin/diem-chuan/cong-thuc" className={`${btn} inline-flex items-center`} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }}>Công thức tính điểm →</Link>
             <button type="button" className={btn} style={{ ...CARD_STYLE, color: "var(--kin-chu-chinh)" }} disabled={busy === "seed"} onClick={() => void seed()}>Nạp dữ liệu khởi đầu ({data.seedCount} dòng)</button>
             <label className="text-xs ml-auto" style={{ color: "var(--kin-chu-phu)" }}>Tìm trường / ngành
               <input value={q} onChange={e => setQ(e.target.value)} className="block mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} placeholder="VD: Bách khoa" />

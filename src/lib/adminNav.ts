@@ -37,6 +37,8 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Ngân hàng đề", href: "/admin/thi-thu/ngan-hang-de-thi", permission: PERMISSIONS.MANAGE_CURRICULUM },
       { label: "Tin tức & Blog", href: "/admin/tin-tuc", permission: PERMISSIONS.MANAGE_NEWS },
       { label: "Điểm chuẩn", href: "/admin/diem-chuan", permission: PERMISSIONS.MANAGE_NEWS },
+      // NC2-050: công thức tính điểm xét tuyển (công cụ "Tính điểm" ở trang công khai /diem-chuan).
+      { label: "Công thức tính điểm", href: "/admin/diem-chuan/cong-thuc", permission: PERMISSIONS.MANAGE_NEWS },
       { label: "Bảng vinh danh", href: "/admin/vinh-danh", permission: PERMISSIONS.MANAGE_HONOR },
     ],
   },
