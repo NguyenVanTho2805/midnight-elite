@@ -978,6 +978,7 @@ model User {
   familyGroups         FamilyGroup[]       @relation("FamilyGroupTutor")
   tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
   sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
+  personalEvents       StudentPersonalEvent[] @relation("PersonalEventOwner") // NC2-043: lịch riêng của học sinh
 
   // Tiếng Anh tự học (docs/tieng-anh/DAC-TA.md) — mọi bản ghi gắn với một người học, xoá tài khoản thì xoá theo.
   engProfile      EngProfile?
@@ -1851,6 +1852,26 @@ model LessonNote {
 
 // ─── EXAM RESULTS ─────────────────────────────────────────────────────────────
 
+// NC2-043 (28/10/2026): lịch RIÊNG của học sinh (học thêm ngoài KiN, tự ôn…). Chỉ THÊM bảng mới; không đụng lịch lớp (ClassSchedule) hay dữ liệu gia sư.
+// Chỉ chủ tài khoản đọc / sửa / xoá (mọi truy vấn lọc theo userId); không hiện cho gia sư, phụ huynh, quản trị; xoá tài khoản thì xoá theo.
+// dateKey "YYYY-MM-DD" và startTime/endTime "HH:mm" theo giờ Việt Nam (cùng kiểu ClassSchedule, không lưu múi giờ). Kiểm hợp lệ ở src/lib/personalEvents.ts.
+model StudentPersonalEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  dateKey   String
+  startTime String
+  endTime   String?
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("PersonalEventOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dateKey])
+  @@map("student_personal_events")
+}
+
 model ExamResult {
   id          String   @id @default(cuid())
   userId      String
@@ -2086,6 +2107,10 @@ model Article {
   readTime    Int       @default(5)
   views       Int       @default(0)
   publishedAt DateTime?
+  // NC2-051 (góp ý 28/10): bài tuyển sinh dán lại từ bài đăng Facebook hiện như bài báo có GHI NGUỒN. Cả ba cột cho phép trống (bài cũ không đổi).
+  sourceUrl   String?   // link bài gốc (http/https)
+  sourceName  String?   // tên hiển thị của nguồn; trống thì lấy tên miền
+  coverImage  String?   // link ảnh bìa (https)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -2181,6 +2206,50 @@ model AdmissionScore {
   @@unique([school, major, variant, year, method], name: "admission_score_key")
   @@index([published, year])
   @@map("admission_scores")
+}
+
+// NC2-050 (28/10/2026): công thức TÍNH điểm xét tuyển do quản trị nhập (trang công khai /diem-chuan có công cụ tính, KẾT QUẢ CHỈ MANG TÍNH THAM KHẢO).
+// Chỉ THÊM bảng mới. Công thức là CẤU HÌNH có cấu trúc, không phải chuỗi để chạy: điểm = (Σ trọng số môn × điểm môn) × hệ số nhân + Σ điểm cộng, kẹp trong [0, thang].
+//   inputs  : [{ key: "m1", label, max, weight }]   — các môn / thành phần nhập vào
+//   bonuses : [{ key: "b1", label, max }]            — điểm cộng (ưu tiên, khuyến khích…), cộng sau khi nhân
+// Kiểm hợp lệ và tính ở src/lib/admissionFormula.ts. Không lưu điểm người dùng nhập (tính ở trình duyệt). Công khai chỉ khi published = true VÀ có đường dẫn nguồn.
+model AdmissionFormula {
+  id         String   @id @default(cuid())
+  name       String
+  school     String   @default("")
+  year       Int?
+  scale      Int
+  inputs     Json
+  multiplier Float    @default(1)
+  bonuses    Json
+  note       String?  @db.Text
+  sourceUrl  String   @default("")
+  sourceName String   @default("")
+  verified   Boolean  @default(false)
+  published  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([published, school])
+  @@map("admission_formulas")
+}
+
+// NC2-046 (28/10/2026): kho tài liệu có tìm kiếm — danh sách VIDEO YOUTUBE do quản trị chọn và gắn theo chủ đề (mặc định Q19: không gọi YouTube Data API, không quét YouTube).
+// Chỉ THÊM bảng mới. KiN không lưu video, chỉ lưu mã video (11 ký tự) + tiêu đề + chủ đề để tìm; mở ở youtube.com. Chỉ hiện ở trang công khai khi published = true.
+// Kiểm hợp lệ và tách mã video ở src/lib/libraryVideo.ts / src/lib/youtubeLink.ts.
+model LibraryVideo {
+  id        String   @id @default(cuid())
+  title     String
+  videoId   String   @unique // một video chỉ có một dòng trong kho
+  topics    String[] @default([])
+  channel   String   @default("")
+  note      String   @default("")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published])
+  @@map("library_videos")
 }
 
 // ─── GIA SƯ DỜI / HUỶ MỘT BUỔI (hoàn thiện NV-189: dòng gợi ý loại 4) ──────────────────────────────────────────

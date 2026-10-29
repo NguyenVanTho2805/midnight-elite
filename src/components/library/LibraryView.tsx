@@ -2,6 +2,7 @@
 // kèm trạng thái của riêng người xem. Gom theo bài chứ không theo loại tệp — học sinh tìm "bài hôm thứ Năm", không tìm "file PDF thứ tư".
 // Thành phần máy chủ (không trạng thái); dữ liệu từ src/lib/libraryServer.ts.
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { KinStatus } from "@/components/kin/Status";
 import { docKind, viewerHref, LESSON_TYPE_LABEL } from "@/lib/library";
 import type { LibClass, LibLesson } from "@/lib/libraryServer";
@@ -43,7 +44,7 @@ function Lesson({ l, role, courseId }: { l: LibLesson; role: "student" | "tutor"
   );
 }
 
-export default function LibraryView({ role, classes }: { role: "student" | "tutor"; classes: LibClass[] }) {
+export default function LibraryView({ role, classes, search }: { role: "student" | "tutor"; classes: LibClass[]; search?: ReactNode }) {
   const lessons = classes.reduce((n, c) => n + c.lessons.length, 0);
   return (
     <div className="bg-[var(--kin-nen-trang)]">
@@ -54,6 +55,8 @@ export default function LibraryView({ role, classes }: { role: "student" | "tuto
             {role === "student" ? "Bản ghi và tài liệu của các lớp bạn đang học" : "Bản ghi và tài liệu của các lớp bạn dạy"} · {classes.length} lớp · {lessons} bài có nội dung · mọi tệp đều thuộc về một bài học
           </p>
         </header>
+
+        {search}
 
         <p role="note" className="mb-5 flex gap-2 rounded-[var(--kin-bo-sm)] px-[14px] py-3 bg-[var(--kin-nhan-nen-nhat)] text-[length:var(--kin-co-small)] text-[var(--kin-nhan-chu-tren-nhat)]">
           <span aria-hidden className="mt-[7px] w-[7px] h-[7px] rounded-full flex-shrink-0 bg-[var(--kin-nhan-nen)]" />

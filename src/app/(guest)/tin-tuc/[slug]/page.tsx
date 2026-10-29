@@ -20,6 +20,9 @@ interface Article {
   views: number;
   publishedAt: string | null;
   createdAt: string;
+  sourceUrl: string | null;
+  sourceName: string | null;
+  coverImage: string | null;
 }
 
 const catColors: Record<Category, { bg: string; color: string }> = {
@@ -62,6 +65,8 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
   const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  // Link ảnh bìa (vd. ảnh Facebook) có thể hết hạn: ảnh không tải được thì bỏ khung ảnh, bài vẫn đọc bình thường.
+  const [coverFailed, setCoverFailed] = useState(false);
 
   useEffect(() => {
     fetch(`/api/articles?slug=${encodeURIComponent(slug)}`)
@@ -166,10 +171,29 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ slug: 
         <span>{article.views.toLocaleString("vi-VN")} lượt xem</span>
       </div>
 
+      {/* Ảnh bìa (NC2-051): GIỮ nguyên tỉ lệ, không cắt — poster tuyển sinh dạng đứng mà bị cắt dải ngang sẽ mất chữ */}
+      {article.coverImage && !coverFailed && (
+        // eslint-disable-next-line @next/next/no-img-element -- link ngoài do quản trị nhập; không đi qua trình tối ưu ảnh của Next
+        <img src={article.coverImage} alt={`Ảnh bìa: ${article.title}`} data-article-cover
+          referrerPolicy="no-referrer" loading="lazy" onError={() => setCoverFailed(true)}
+          className="mx-auto mb-8 h-auto max-w-full rounded-xl" style={{ maxHeight: 560 }} />
+      )}
+
       {/* Content */}
       <div className="text-base" style={{ lineHeight: 1.8 }}>
         {renderContent(article.content)}
       </div>
+
+      {/* Nguồn (NC2-051): bài đăng lại từ bài gốc thì ghi nguồn kèm link */}
+      {article.sourceUrl && (
+        <p data-article-source className="mt-8 text-sm" style={{ color: "var(--kin-chu-mo)" }}>
+          Nguồn:{" "}
+          <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer nofollow"
+            className="inline-flex items-center min-h-11 underline" style={{ color: "var(--kin-nhan-link)" }}>
+            {article.sourceName || article.sourceUrl}<span aria-hidden> ↗</span>
+          </a>
+        </p>
+      )}
 
       {/* Footer */}
       <div className="mt-12 pt-8" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>

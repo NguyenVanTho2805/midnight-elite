@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Toggle } from "@/components/Toggle";
 import { toSlug } from "@/lib/slug";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
+import { cleanArticleSource, draftFromPaste, SOURCE_NAME_MAX, COVER_URL_MAX } from "@/lib/articleSource";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,9 @@ interface DrawerForm {
   isPinned: boolean;
   published: boolean;
   readTime: number;
+  sourceUrl: string;
+  sourceName: string;
+  coverImage: string;
 }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -62,6 +66,7 @@ const DRAWER_INIT: DrawerForm = {
   title: "", slug: "", excerpt: "", content: "",
   category: "tin-midnight", author: "", tag: "",
   isPinned: false, published: false, readTime: 5,
+  sourceUrl: "", sourceName: "", coverImage: "",
 };
 
 const INP = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -146,11 +151,15 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
   const [errors, setErrors] = useState<Partial<Record<keyof DrawerForm, string>>>({});
   const [saving, setSaving] = useState(false);
   const [slugEdited, setSlugEdited] = useState(false);
+  // NC2-051: ô dán nhanh nội dung bài đăng Facebook (chỉ khi tạo bài mới).
+  const [pasted, setPasted]       = useState("");
+  const [pasteMsg, setPasteMsg]   = useState("");
 
   useEffect(() => {
     if (open) {
       setForm(initialForm);
       setErrors({});
+      setPasted(""); setPasteMsg("");
       setSaving(false);
       setSlugEdited(!!editId);
     }
@@ -172,6 +181,16 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
     if (!slugEdited) set("slug", toSlug(v));
   }
 
+  // Dán nội dung bài Facebook → điền tiêu đề, slug, tóm tắt, nội dung, thời gian đọc, danh mục "Tuyển sinh". Chưa lưu gì: quản trị sửa rồi mới bấm "Tạo bài viết".
+  function fillFromPaste() {
+    const d = draftFromPaste(pasted);
+    if (!d) { setPasteMsg("Chưa có nội dung. Dán chữ của bài đăng vào ô trên rồi bấm lại."); return; }
+    setForm(p => ({ ...p, title: d.title, slug: d.slug, excerpt: d.excerpt, content: d.content, readTime: d.readTime, category: "tuyen-sinh" }));
+    setSlugEdited(true);
+    setErrors({});
+    setPasteMsg("Đã điền vào form bên dưới. Xem lại tiêu đề, tóm tắt, thêm link bài gốc rồi bấm Tạo bài viết.");
+  }
+
   function validate(): boolean {
     const e: Partial<Record<keyof DrawerForm, string>> = {};
     if (!form.title.trim())    e.title    = "Tiêu đề không được để trống";
@@ -179,6 +198,8 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
     if (!form.excerpt.trim())  e.excerpt  = "Tóm tắt không được để trống";
     if (!form.content.trim())  e.content  = "Nội dung không được để trống";
     if (!form.category.trim()) e.category = "Chọn danh mục";
+    const src = cleanArticleSource(form);
+    if (!src.ok) e[src.field] = src.error;
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -243,6 +264,28 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
 
         <div className="p-5 space-y-5">
 
+          {/* Dán nhanh từ bài đăng Facebook (chỉ khi tạo mới) */}
+          {!editId && (
+            <div data-fb-paste className="rounded-lg p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+              <label htmlFor="art-fb-paste" className="block text-xs font-medium text-gray-600 mb-1.5">
+                Dán nhanh từ bài đăng Facebook
+                <span className="ml-2 font-normal text-gray-400">(không bắt buộc)</span>
+              </label>
+              <textarea id="art-fb-paste" rows={4} className={INP + " resize-y"}
+                placeholder="Sao chép chữ của bài đăng (trang của chính bạn) rồi dán vào đây. Dòng đầu sẽ thành tiêu đề."
+                value={pasted} onChange={e => { setPasted(e.target.value); setPasteMsg(""); }} />
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <button type="button" data-fb-fill onClick={fillFromPaste}
+                  className="px-3 py-1.5 rounded-lg text-sm font-semibold border cursor-pointer"
+                  style={{ borderColor: "var(--kin-nhan-nen)", color: "var(--kin-nhan-link)" }}>
+                  Điền vào form
+                </button>
+                <span className="text-xs text-gray-400">Sẽ thay tiêu đề, tóm tắt và nội dung đang có. Chưa lưu gì cho tới khi bấm “Tạo bài viết”.</span>
+              </div>
+              {pasteMsg && <p role="status" data-fb-msg className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>{pasteMsg}</p>}
+            </div>
+          )}
+
           {/* Tiêu đề */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -298,6 +341,34 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Tác giả</label>
             <input className={INP} placeholder="VD: Thầy Minh, Ban biên tập"
               value={form.author} onChange={e => set("author", e.target.value)} />
+          </div>
+
+          {/* Nguồn + ảnh bìa (NC2-051) */}
+          <div data-article-source className="space-y-3">
+            <div>
+              <label htmlFor="art-source-url" className="block text-xs font-medium text-gray-600 mb-1.5">
+                Link bài gốc (nguồn)
+                <span className="ml-2 font-normal text-gray-400">bài sẽ ghi “Nguồn” kèm link này</span>
+              </label>
+              <input id="art-source-url" className={INP} placeholder="https://www.facebook.com/..."
+                value={form.sourceUrl} onChange={e => set("sourceUrl", e.target.value)} />
+              {errors.sourceUrl && <p className="text-xs text-red-500 mt-1">{errors.sourceUrl}</p>}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="art-source-name" className="block text-xs font-medium text-gray-600 mb-1.5">Tên nguồn (không bắt buộc)</label>
+                <input id="art-source-name" className={INP} maxLength={SOURCE_NAME_MAX} placeholder="Để trống = tên miền của link"
+                  value={form.sourceName} onChange={e => set("sourceName", e.target.value)} />
+                {errors.sourceName && <p className="text-xs text-red-500 mt-1">{errors.sourceName}</p>}
+              </div>
+              <div>
+                <label htmlFor="art-cover" className="block text-xs font-medium text-gray-600 mb-1.5">Link ảnh bìa (https, không bắt buộc)</label>
+                <input id="art-cover" className={INP} maxLength={COVER_URL_MAX} placeholder="https://..."
+                  value={form.coverImage} onChange={e => set("coverImage", e.target.value)} />
+                {errors.coverImage && <p className="text-xs text-red-500 mt-1">{errors.coverImage}</p>}
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">Link ảnh lấy thẳng từ Facebook (scontent…) thường hết hạn sau vài ngày; nên dùng link ảnh ổn định.</p>
           </div>
 
           {/* Excerpt */}
@@ -406,6 +477,9 @@ function PageInner() {
             isPinned: data.isPinned ?? false,
             published:data.published ?? false,
             readTime: data.readTime ?? 5,
+            sourceUrl:  data.sourceUrl  ?? "",
+            sourceName: data.sourceName ?? "",
+            coverImage: data.coverImage ?? "",
           });
           setDrawer(true);
         }

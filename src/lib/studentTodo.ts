@@ -27,6 +27,8 @@ export interface TodoAssignment {
   lessonId: string;
   courseName: string;
   teacher: string;
+  /** Id lớp (NC2-041): để màn "Lớp của tôi" đếm bài đúng từng lớp, không so theo tên (tên lớp này có thể là phần đầu tên lớp kia). Thiếu thì không gắn. */
+  courseId?: string;
   /** Học sinh đã nộp file (mode "file"). */
   submission: { submittedAt: Date; score: number | null; gradedAt: Date | null; comment: string | null } | null;
   /** Số câu học sinh đã trả lời (mode "interactive"). */
@@ -55,6 +57,8 @@ export interface TodoTask {
   name: string;
   /** "Toán 9 · Cô Lan" */
   courseLine: string;
+  /** Id lớp của bài (NC2-041). So theo id, không so theo `courseLine`. */
+  courseId?: string;
   /** "hạn hôm nay, 23:59" */
   dueText: string;
   href: string;
@@ -135,7 +139,7 @@ function assignmentItem(a: TodoAssignment, now: Date): StudentTodoItem | null {
   const teacherLine = `${a.courseName}${a.teacher ? ` · ${a.teacher}` : ""} giao ${dm(vnDateKeyOf(a.createdAt))}`;
   const doneAt = sub ? (sub.gradedAt ?? sub.submittedAt) : null;
   const courseLine = `${a.courseName}${a.teacher ? ` · ${a.teacher}` : ""}`;
-  const baseTask = { name: a.title, courseLine, dueText: dueTextOf(due, now), href: link, interactive };
+  const baseTask = { name: a.title, courseLine, ...(a.courseId ? { courseId: a.courseId } : {}), dueText: dueTextOf(due, now), href: link, interactive };
 
   // Đã chấm
   if (sub && sub.score !== null && sub.gradedAt) {

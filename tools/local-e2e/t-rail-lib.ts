@@ -114,7 +114,7 @@ const HOC_TAP = [
   { href: "/student/tieng-anh" },
   { href: "/student/thi-thu", also: ["/thi-thu"] },
   { href: "/student/bang-xep-hang", also: ["/bang-xep-hang"] },
-  { href: "/student/hoi-dap", also: ["/cong-dong/hoi-dap"] },
+  // NC2-048 (28/10/2026): đã gỡ mục "Hỏi đáp" riêng (bấm vào lại mở Cộng đồng nên hai mục xung đột); Hỏi đáp là tab trong Cộng đồng.
   { href: "/student/cong-dong", also: ["/cong-dong"] },
 ];
 const KHAM_PHA = [{ href: "/khoa-hoc" }, { href: "/khoa-hoc-da-luu" }, { href: "/giang-vien" }, { href: "/student/tin-tuc", also: ["/tin-tuc"] }, { href: "/diem-chuan" }];
@@ -123,7 +123,10 @@ check("/thi-thu (trang đích sau khi bấm Thi thử) → sáng đúng 'Thi th�
 check("/bang-xep-hang → sáng 'Bảng xếp hạng'", lit("/bang-xep-hang", HOC_TAP) === "/student/bang-xep-hang");
 check("/tin-tuc và /tin-tuc/<bài> → sáng 'Tin tức'", lit("/tin-tuc", KHAM_PHA) === "/student/tin-tuc" && lit("/tin-tuc/bai-viet-1", KHAM_PHA) === "/student/tin-tuc");
 check("/cong-dong (trang đích của Cộng đồng, cả ?tab=hoi-dap-qa) → sáng 'Cộng đồng'", lit("/cong-dong", HOC_TAP) === "/student/cong-dong" && lit("/cong-dong/123", HOC_TAP) === "/student/cong-dong");
-check("/cong-dong/hoi-dap/<id> → 'Hỏi đáp' thắng 'Cộng đồng' (khớp dài nhất), chỉ MỘT mục sáng", lit("/cong-dong/hoi-dap/abc", HOC_TAP) === "/student/hoi-dap");
+// NC2-048: bản cũ kiểm "Hỏi đáp thắng Cộng đồng" (khớp dài nhất). Nay chỉ còn MỘT mục nên trang câu hỏi sáng đúng "Cộng đồng", không mục nào sáng kép / sáng nhầm.
+check("/cong-dong/hoi-dap/<id> (trang một câu hỏi) → sáng 'Cộng đồng', chỉ MỘT mục sáng", lit("/cong-dong/hoi-dap/abc", HOC_TAP) === "/student/cong-dong" && HOC_TAP.filter((_, i) => i === activeIndex("/cong-dong/hoi-dap/abc", HOC_TAP)).length === 1);
+check("khớp dài nhất vẫn đúng khi có hai mục lồng nhau (luật chung của navActive, không phụ thuộc mục Hỏi đáp)", lit("/cong-dong/hoi-dap/abc", [{ href: "/student/cong-dong", also: ["/cong-dong"] }, { href: "/student/hoi-dap", also: ["/cong-dong/hoi-dap"] }]) === "/student/hoi-dap");
+check("thanh bên học sinh không còn mục /student/hoi-dap", !HOC_TAP.some(x => x.href === "/student/hoi-dap"));
 check("đứng ở chính href bí danh (/student/thi-thu) vẫn sáng mục đó", lit("/student/thi-thu", HOC_TAP) === "/student/thi-thu");
 check("khớp theo đoạn đường dẫn, không theo tiền tố chữ: /khoa-hoc-da-luu KHÔNG làm 'Khoá học đang mở' sáng, /khoa-hoc/abc thì có", lit("/khoa-hoc-da-luu", KHAM_PHA) === "/khoa-hoc-da-luu" && lit("/khoa-hoc/abc", KHAM_PHA) === "/khoa-hoc");
 check("không mục nào khớp → -1 (không sáng bậy mục đầu)", activeIndex("/student/ho-so", HOC_TAP) === -1 && activeIndex("/", []) === -1);

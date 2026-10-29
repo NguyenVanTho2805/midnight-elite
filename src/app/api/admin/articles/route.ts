@@ -3,6 +3,7 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notifyMany } from "@/lib/notify";
+import { cleanArticleSource } from "@/lib/articleSource";
 
 export async function GET() {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
     }
 
+    const src = cleanArticleSource({ sourceUrl: body.sourceUrl, sourceName: body.sourceName, coverImage: body.coverImage });
+    if (!src.ok) return NextResponse.json({ error: src.error }, { status: 400 });
+
     const existing = await prisma.article.findUnique({ where: { slug } });
     if (existing) {
       return NextResponse.json({ error: "Slug này đã tồn tại, hãy đổi slug khác" }, { status: 409 });
@@ -55,6 +59,7 @@ export async function POST(req: NextRequest) {
         published:   published ?? false,
         readTime:    Number(readTime) || 5,
         publishedAt: published ? new Date() : null,
+        ...src.value,
       },
     });
 

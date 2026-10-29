@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { Search } from "griddy-icons";
 import { SCORE_METHODS, filterGroups, formatScore, groupScores, methodLabel, scoreDelta, type PublicScore } from "@/lib/admissionScore";
+import type { PublicFormula } from "@/lib/admissionFormula";
+import TinhDiemChuan from "./TinhDiemChuan";
 
-export default function DiemChuanClient({ rows }: { rows: PublicScore[] }) {
+export default function DiemChuanClient({ rows, formulas = [] }: { rows: PublicScore[]; formulas?: PublicFormula[] }) {
   const [query, setQuery] = useState("");
   const [method, setMethod] = useState("");
 
@@ -33,6 +35,8 @@ export default function DiemChuanClient({ rows }: { rows: PublicScore[] }) {
         <strong>Đọc trước khi dùng.</strong> Mỗi trường dùng thang điểm và phương thức xét khác nhau, nên chỉ so sánh các năm có <em>cùng thang</em> (KiN chỉ hiện mức tăng/giảm khi đó).
         Dòng ghi <em>“Chưa đối chiếu”</em> là điểm lấy từ báo/nguồn công khai, chưa được KiN so với thông báo chính thức của trường — hãy mở nguồn và kiểm tra trên trang tuyển sinh của trường trước khi đăng ký nguyện vọng.
       </div>
+
+      {formulas.length > 0 && <TinhDiemChuan formulas={formulas} />}
 
       <div className="rounded-xl p-5 mb-6" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
         <div className="flex flex-col sm:flex-row gap-3">

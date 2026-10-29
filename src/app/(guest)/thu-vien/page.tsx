@@ -2,34 +2,26 @@
 //   Học viên đã đăng nhập: thư viện của các LỚP MÌNH ĐANG HỌC — gom theo bài, kèm tiến độ xem và trạng thái bài nộp của chính mình.
 //   Gia sư đã đăng nhập  : thư viện của các lớp mình dạy (kèm số bài nộp / chờ chấm), có lối sang sửa bài.
 //   Khách / quản trị     : danh sách tài liệu CÔNG KHAI (chỉ bài miễn phí) từ các khoá đang mở.
+// NC2-046: học sinh và khách đều có ô tìm (KhoTimKiem): tài liệu công khai + video YouTube do quản trị chọn; học sinh còn tìm được trong tài liệu của lớp mình.
 // 14/10/2026: trước đây mọi người đều thấy danh sách công khai; và nó đọc tài liệu theo dạng "nhãn|url" trong khi dữ liệu thật là mảng JSON nên gần như luôn trống.
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import LibraryView from "@/components/library/LibraryView";
 import TutorLibrary from "@/components/library/TutorLibrary";
 import { loadStudentLibrary, loadTutorLibrary } from "@/lib/libraryServer";
-import { parseLessonDocuments, viewerHref, type LibDoc } from "@/lib/library";
+import { viewerHref } from "@/lib/library";
+import { loadPublicDocs } from "@/lib/libraryKhoServer";
+import { ownItemsOf } from "@/lib/libraryOwn";
+import type { KhoDoc } from "@/lib/libraryKho";
+import KhoTimKiem from "@/components/library/KhoTimKiem";
 
 export const dynamic = "force-dynamic";
 
-type Doc = LibDoc & { courseName: string; lessonTitle: string };
+type Doc = KhoDoc;
 
 async function PublicLibrary() {
-  // Lấy course công khai + sections → chapters → lessons có documents. Giữ query ở Course root cho Prisma client sinh type đủ dùng.
-  const courses = await prisma.course.findMany({
-    where: { status: true },
-    select: { name: true, sections: { select: { chapters: { select: { lessons: { select: { title: true, documents: true, isFree: true } } } } } } },
-    take: 50,
-  });
-
-  const docs: Doc[] = [];
-  for (const c of courses) for (const s of c.sections) for (const ch of s.chapters) for (const l of ch.lessons) {
-    // Chỉ bài MIỄN PHÍ mới công khai. Không dùng isLocked để quyết định: cờ đó là giá trị tĩnh trong DB và gia sư hay quên khoá,
-    // nên API bài giảng đã bỏ qua nó (xem src/app/api/lessons/[id]/context/route.ts) — dùng nó ở đây từng làm lộ tài liệu của bài trả phí.
-    if (!l.isFree) continue;
-    for (const d of parseLessonDocuments(l.documents)) docs.push({ ...d, courseName: c.name, lessonTitle: l.title });
-  }
+  // Cùng một nguồn với ô tìm (src/lib/libraryKhoServer.ts): chỉ bài MIỄN PHÍ của các khoá đang mở mới công khai.
+  const docs: Doc[] = await loadPublicDocs();
 
   const byCourse = new Map<string, Doc[]>();
   for (const d of docs) byCourse.set(d.courseName, [...(byCourse.get(d.courseName) ?? []), d]);
@@ -43,6 +35,9 @@ async function PublicLibrary() {
             Tài liệu công khai từ các khoá đang mở. Mở miễn phí, không cần đăng nhập. Đăng nhập để xem bản ghi và tài liệu của lớp bạn đang học.
           </p>
         </header>
+
+        {/* NC2-046: ô tìm tài liệu công khai + video do quản trị chọn */}
+        <KhoTimKiem />
 
         {docs.length === 0 ? (
           <div className="rounded-xl p-6 text-center text-sm" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>
@@ -78,7 +73,11 @@ async function PublicLibrary() {
 
 export default async function ThuVienPage() {
   const session = await getSession();
-  if (session?.role === "student") return <LibraryView role="student" classes={await loadStudentLibrary(session.userId, new Date())} />;
+  if (session?.role === "student") {
+    const classes = await loadStudentLibrary(session.userId, new Date());
+    // NC2-046: ô tìm gồm cả tài liệu của các lớp MÌNH đang học — làm phẳng từ chính dữ liệu đã tải theo phiên này (không có đường truy cập mới).
+    return <LibraryView role="student" classes={classes} search={<KhoTimKiem own={ownItemsOf(classes)} />} />;
+  }
   if (session?.role === "admin" && session.adminRole === "teacher") {
     // Thư viện của gia sư chỉ là bảng tài liệu; bài tập nằm ở module Bài tập nên không đẩy chúng sang trình duyệt.
     const classes = (await loadTutorLibrary(session.userId)).map(c => ({ ...c, lessons: c.lessons.map(l => ({ ...l, assignments: [] })) }));
