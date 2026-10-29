@@ -1,6 +1,6 @@
 // MD-02 / MD-17 / BC-03 / MD-11 — phần thuần src/lib/classRecordings.ts: bộ kiểm link bản ghi (4 nguồn, PHÁ CỐ Ý: giả mạo máy chủ, scheme nguy hiểm, video tải lên,
 // Azota, danh sách nhiều link), gom bản ghi theo buổi, bảng ai đã xem, đếm tiến độ học liệu cho báo cáo tháng, và chữ trong báo cáo / cam kết bản quyền.
-import { checkRecordingLink, cleanRecordingTitle, groupRecordingsBySession, buildWatchTable, summariseMediaProgress, mediaProgressLine,
+import { checkRecordingLink, cleanRecordingTitle, groupRecordingsBySession, groupRecordingsByMonth, UNATTACHED_KEY, buildWatchTable, summariseMediaProgress, mediaProgressLine,
   COPYRIGHT_PLEDGE_LABEL, COPYRIGHT_NOTICE, RECORDING_TITLE_MAX } from "@/lib/classRecordings";
 import { renderReportText, type SubjectMonthMetrics } from "@/lib/monthlyReport";
 import { check, section, done } from "./h";
@@ -46,6 +46,21 @@ check("buổi mới nhất trước", g.bySession.map(x => x.session.id).join() 
 check("bản ghi nằm đúng buổi, mới nhất trước", g.bySession[1].recordings.map(r => r.id).join() === "r2,r1" && g.bySession[0].recordings.length === 0);
 check("bản ghi chưa gắn HOẶC gắn vào buổi đã xoá → vào 'chưa gắn', không biến mất", g.unattached.map(r => r.id).join() === "r4,r3");
 check("tổng không mất, không trùng bản ghi nào", g.bySession.flatMap(x => x.recordings).length + g.unattached.length === recs.length);
+
+section("NC2-042 — gom bản ghi theo THÁNG (thu gọn được)");
+const gm = groupRecordingsByMonth(g);
+check("buổi 16/10 có bản ghi → nhóm 'Tháng 10/2026', hai bản ghi mới nhất trước, kèm khoá ngày buổi", gm[0].key === "2026-10" && gm[0].label === "Tháng 10/2026" && gm[0].items.map(x => x.rec.id).join() === "r2,r1" && gm[0].items.every(x => x.sessionDateKey === "2026-10-16"));
+check("buổi KHÔNG có bản ghi (09/10, 23/10) không tạo nhóm rỗng", gm.every(x => x.items.length > 0));
+check("bản ghi chưa gắn / buổi đã xoá → nhóm cuối 'Chưa gắn buổi', sessionDateKey null", gm[gm.length - 1].key === UNATTACHED_KEY && gm[gm.length - 1].label === "Chưa gắn buổi" && gm[gm.length - 1].items.map(x => x.rec.id).join() === "r4,r3" && gm[gm.length - 1].items.every(x => x.sessionDateKey === null));
+check("tổng không mất, không trùng bản ghi nào", gm.flatMap(x => x.items).length === recs.length && new Set(gm.flatMap(x => x.items.map(i => i.rec.id))).size === recs.length);
+const multi = groupRecordingsBySession(
+  [{ id: "a", title: "A", url: "u", kind: "youtube", sessionId: "n1", createdAt: d("2026-11-03T01:00:00Z") }, { id: "b", title: "B", url: "u", kind: "youtube", sessionId: "o1", createdAt: d("2026-10-03T01:00:00Z") }, { id: "c", title: "C", url: "u", kind: "youtube", sessionId: "o2", createdAt: d("2026-10-10T01:00:00Z") }],
+  [{ id: "o1", dateKey: "2026-10-02" }, { id: "n1", dateKey: "2026-11-02" }, { id: "o2", dateKey: "2026-10-09" }, { id: "y1", dateKey: "2025-12-31" }],
+);
+const mm = groupRecordingsByMonth(multi);
+check("nhiều tháng: tháng mới nhất trước, buổi mới nhất trước trong tháng", mm.map(x => x.key).join() === "2026-11,2026-10" && mm[1].items.map(x => x.rec.id).join() === "c,b" && mm[1].label === "Tháng 10/2026");
+check("không có bản ghi nào → không có nhóm nào (không ném lỗi)", groupRecordingsByMonth(groupRecordingsBySession([], sessions)).length === 0);
+check("không đổi dữ liệu đầu vào", g.bySession.length === 3 && g.unattached.length === 2 && g.bySession[1].recordings.length === 2);
 
 section("MD-17 — bảng ai đã xem");
 const lessons = [{ id: "L1", title: "Bài 1", hasVideo: true }, { id: "L2", title: "Bài 2 (không video)", hasVideo: false }, { id: "L3", title: "Bài 3", hasVideo: true }];

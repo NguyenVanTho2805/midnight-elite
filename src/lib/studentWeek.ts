@@ -4,8 +4,9 @@ import type { ScheduleEvent } from "@/lib/studentSchedule";
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import { addDaysKey, dayOfWeekOfKey, hmOf, parseHm, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { placeLabel } from "@/lib/sessionBook";
+import type { PersonalEventDTO } from "@/lib/personalEvents";
 
-export type WeekKind = "class" | "exam" | "deadline" | "task";
+export type WeekKind = "class" | "exam" | "deadline" | "task" | "personal";
 export interface WeekItem {
   id: string;
   kind: WeekKind;
@@ -24,6 +25,9 @@ export interface WeekItem {
   /** Chỉ buổi học: "Online" / "Offline · địa chỉ" (thiếu khi gia sư chưa chọn hình thức) và link học online (chỉ http/https, không có khi học trực tiếp hay buổi đã huỷ). */
   place?: string;
   joinUrl?: string;
+  /** Việc RIÊNG của học sinh (kind "personal", NC2-043): id bản ghi và ghi chú, để sửa / xoá. Không có href. */
+  personalId?: string;
+  note?: string | null;
 }
 
 /** Thứ Hai của tuần chứa `dateKey`. */
@@ -66,7 +70,27 @@ export function buildWeekItems(events: ScheduleEvent[], todo: StudentTodoItem[])
   return out.sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.start - b.start || a.id.localeCompare(b.id));
 }
 
-export const KIND_LABEL: Record<WeekKind, string> = { class: "Buổi học", exam: "Thi thử", deadline: "Hạn nộp", task: "Hạn nộp" };
+export const KIND_LABEL: Record<WeekKind, string> = { class: "Buổi học", exam: "Thi thử", deadline: "Hạn nộp", task: "Hạn nộp", personal: "Việc riêng" };
+
+const byTime = (a: WeekItem, b: WeekItem) => a.dateKey.localeCompare(b.dateKey) || a.start - b.start || a.id.localeCompare(b.id);
+
+/** Việc RIÊNG của học sinh (NC2-043) thành mục lịch. Bản ghi có giờ sai thì bỏ qua (không ném lỗi). Không có liên kết: bấm để sửa. */
+export function personalWeekItems(list: readonly PersonalEventDTO[]): WeekItem[] {
+  const out: WeekItem[] = [];
+  for (const p of list) {
+    const start = parseHm(p.startTime);
+    if (start === null) continue;
+    const end = parseHm(p.endTime);
+    out.push({ id: `rieng:${p.id}`, kind: "personal", dateKey: p.dateKey, start, end: end !== null && end > start ? end : null, title: p.title, sub: p.note ?? "",
+      href: "", external: false, cancelled: false, unsent: false, interactive: false, personalId: p.id, note: p.note });
+  }
+  return out;
+}
+
+/** Gộp các danh sách mục lịch rồi xếp theo ngày, giờ (cùng luật với buildWeekItems). Không đổi đầu vào. */
+export function mergeWeekItems(...lists: readonly (readonly WeekItem[])[]): WeekItem[] {
+  return lists.flat().sort(byTime);
+}
 
 /** Khoảng giờ vẽ trên lưới: ít nhất 08:00–21:00, nới ra cho vừa mọi mục trong tuần. */
 export function gridHours(items: WeekItem[]): { from: number; to: number } {

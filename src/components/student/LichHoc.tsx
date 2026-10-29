@@ -1,12 +1,16 @@
 // Lịch học của học sinh (Figma "Học sinh · Lịch học" 299:114537, điện thoại 299:116644): tiêu đề + "Hôm nay", dải chuyển tuần,
 // lưới tuần T2–CN (máy tính ≥ 1024px: nền nhấn = buổi học, viền = hạn nộp) + danh sách theo ngày bên phải; điện thoại: dải 7 ngày + danh sách.
+// NC2-043 (góp ý 28/10): thêm / sửa / xoá VIỆC RIÊNG của em (học thêm ngoài KiN, tự ôn) ngoài lịch cố định của các lớp — nét đứt trên lưới, chỉ mình em thấy
+// (bảng student_personal_events, API /api/student/lich-rieng, form ở components/student/LichRieng); không đổi lịch lớp.
 // Dữ liệu: /api/schedule (buổi học, thi thử, hạn nộp ngoài KiN) + /api/student/viec-cua-toi (hạn nộp bài tập). Lịch chỉ có từ HÔM NAY trở đi
 // (nguồn không trả quá khứ) nên tuần đã qua ghi rõ điều đó. KHÔNG có dữ liệu thật nên bỏ: bộ lọc "Toán 9 ▾ · Tuần ▾", chữ "Trực tuyến".
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { addDaysKey, hmOf, vnDateKeyOf } from "@/lib/classSessions";
-import { buildWeekItems, gridHours, KIND_LABEL, mondayOf, weekKeys, type WeekItem } from "@/lib/studentWeek";
+import { buildWeekItems, gridHours, KIND_LABEL, mergeWeekItems, mondayOf, personalWeekItems, weekKeys, type WeekItem } from "@/lib/studentWeek";
+import { PersonalForm, usePersonalEvents, type PersonalFormInitial } from "@/components/student/LichRieng";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
@@ -41,8 +45,22 @@ function ItemLink({ it, className, style, children }: { it: WeekItem; className?
     : <Link href={it.href} className={className} style={style}>{children}</Link>;
 }
 
-function DayRow({ it }: { it: WeekItem }) {
+function DayRow({ it, onEdit, onDelete }: { it: WeekItem; onEdit: (it: WeekItem) => void; onDelete: (it: WeekItem) => void }) {
   const time = it.end ? `${hmOf(it.start)}–${hmOf(it.end)}` : hmOf(it.start);
+  if (it.kind === "personal") {
+    return (
+      <li data-week-item="personal" className="py-[var(--kin-kc-7)] border-t border-[var(--kin-vien-nhat)] first:border-t-0">
+        <p className="text-[length:var(--kin-co-goc)]"><KinStatus tone="mo">Việc riêng</KinStatus></p>
+        <p className="mt-2 text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)] break-words">{it.title}</p>
+        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] tabular-nums">{time}</p>
+        {it.note && <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)] whitespace-pre-line break-words">{it.note}</p>}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => onEdit(it)} aria-label={`Sửa việc riêng ${it.title}`} className={kinButtonClass("secondary")}>Sửa</button>
+          <button type="button" onClick={() => onDelete(it)} aria-label={`Xoá việc riêng ${it.title}`} className={kinButtonClass("secondary")}>Xoá</button>
+        </div>
+      </li>
+    );
+  }
   if (it.kind === "class") {
     return (
       <li data-week-item="class" className="py-[var(--kin-kc-7)]">
@@ -76,6 +94,9 @@ function DayRow({ it }: { it: WeekItem }) {
 
 export default function LichHoc() {
   const { items: todo, events, error, eventsError, load } = useStudentWork();
+  const { ask, dialog } = useKinConfirm();
+  const [form, setForm] = useState<PersonalFormInitial | null>(null);
+  const [actionError, setActionError] = useState("");
   const [today, setToday] = useState("");
   const [monday, setMonday] = useState("");
   const [pick, setPick] = useState<string | null>(null);
@@ -83,7 +104,8 @@ export default function LichHoc() {
 
   const thisMonday = today ? mondayOf(today) : "";
   const keys = useMemo(() => (monday ? weekKeys(monday) : []), [monday]);
-  const all = useMemo(() => buildWeekItems(events ?? [], todo ?? []), [events, todo]);
+  const personal = usePersonalEvents(keys[0] ?? "", keys[6] ?? "");
+  const all = useMemo(() => mergeWeekItems(buildWeekItems(events ?? [], todo ?? []), personalWeekItems(personal.list ?? [])), [events, todo, personal.list]);
   const week = useMemo(() => all.filter(i => keys.includes(i.dateKey)), [all, keys]);
   const shownKeys = keys.filter(k => (pick ? k === pick : week.some(i => i.dateKey === k)));
   const { from, to } = gridHours(week);
@@ -93,6 +115,24 @@ export default function LichHoc() {
   const monthLabel = keys.length ? (keys[0].slice(5, 7) === keys[6].slice(5, 7) ? `${Number(keys[0].slice(8))} – ${Number(keys[6].slice(8))} tháng ${Number(keys[6].slice(5, 7))}` : `${dmOfKey(keys[0])} – ${dmOfKey(keys[6])}`) : "";
   const go = (n: number) => { setMonday(m => addDaysKey(m, 7 * n)); setPick(null); };
 
+  // NC2-043: việc riêng. Mở form thêm (mặc định ngày đang chọn, hoặc hôm nay nếu tuần này, hoặc thứ Hai của tuần đang xem) / sửa / xoá có hộp xác nhận KiN.
+  const openNew = () => { setActionError(""); setForm({ title: "", dateKey: pick ?? (keys.includes(today) ? today : keys[0] ?? today), startTime: "19:00", endTime: "", note: "" }); };
+  const openEdit = (it: WeekItem) => {
+    const p = (personal.list ?? []).find(x => x.id === it.personalId);
+    if (!p) return;
+    setActionError("");
+    setForm({ id: p.id, title: p.title, dateKey: p.dateKey, startTime: p.startTime, endTime: p.endTime ?? "", note: p.note ?? "" });
+  };
+  const removePersonal = async (it: WeekItem) => {
+    if (!it.personalId) return;
+    if (!(await ask({ title: "Xoá việc riêng này?", message: `"${it.title}" sẽ bị xoá khỏi lịch của bạn. Không hoàn tác được.`, confirmLabel: "Xoá", tone: "nguy-hiem" }))) return;
+    try {
+      const res = await fetch(`/api/student/lich-rieng/${it.personalId}`, { method: "DELETE", credentials: "same-origin" });
+      if (!res.ok && res.status !== 404) throw new Error(String(res.status));
+      setActionError("");
+      personal.reload();
+    } catch { setActionError("Chưa xoá được, thử lại nhé."); }
+  };
   return (
     <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
@@ -102,8 +142,18 @@ export default function LichHoc() {
             {range}{range ? " · " : ""}<span className="md:hidden">Giờ Việt Nam</span><span className="hidden md:inline">Buổi học và hạn nộp bài tập được phân biệt rõ.</span>
           </p>
         </div>
-        <button type="button" onClick={() => { setMonday(thisMonday); setPick(null); }} className={`${kinButtonClass("secondary")} self-start flex-shrink-0 max-md:hidden`}>Hôm nay</button>
+        <div className="flex flex-wrap items-center gap-3 self-start flex-shrink-0">
+          <button type="button" onClick={openNew} data-add-personal className={kinButtonClass("primary")}>+ Thêm việc riêng</button>
+          <button type="button" onClick={() => { setMonday(thisMonday); setPick(null); }} className={`${kinButtonClass("secondary")} max-md:hidden`}>Hôm nay</button>
+        </div>
       </header>
+
+      {form && today && (
+        <PersonalForm key={form.id ?? "moi"} initial={form} todayKey={today} onCancel={() => setForm(null)}
+          onSaved={e => { setForm(null); setActionError(""); setMonday(mondayOf(e.dateKey)); setPick(null); personal.reload(); }} />
+      )}
+      {actionError && <p role="alert" className="mb-4 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{actionError}</p>}
+      {personal.error && <ErrorStrip message="Không tải được việc riêng của bạn." onRetry={personal.reload} />}
 
       {failed && <ErrorStrip message="Không tải được lịch." onRetry={load} />}
       <nav aria-label="Chuyển tuần" className="flex items-center justify-between md:justify-start md:gap-8 py-2">
@@ -154,6 +204,18 @@ export default function LichHoc() {
                           const top = ((it.start - from * 60) / 60) * ROW;
                           const h = Math.max(it.kind === "class" ? 44 : 80, it.end ? ((it.end - it.start) / 60) * ROW : 0);
                           const time = it.end ? `${hmOf(it.start)}–${hmOf(it.end)}` : hmOf(it.start);
+                          if (it.kind === "personal") {
+                            return (
+                              <button key={it.id} type="button" onClick={() => openEdit(it)} aria-label={`Sửa việc riêng ${it.title}`} style={{ top, height: h - 2, left: `${(l.lane / l.of) * 100}%`, width: `${100 / l.of}%` }}
+                                className="absolute block overflow-hidden px-2 py-1.5 text-left text-[length:var(--kin-co-small)] leading-4 bg-[var(--kin-nen-trang)] border border-dashed border-[var(--kin-nhan-nen)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)]">
+                                <span className="block">
+                                  <span className="block uppercase text-[var(--kin-chu-mo)]">{KIND_LABEL.personal}</span>
+                                  <span className="block font-medium break-words">{it.title}</span>
+                                  <span className="block tabular-nums">{time}</span>
+                                </span>
+                              </button>
+                            );
+                          }
                           return (
                             <ItemLink key={it.id} it={it} style={{ top, height: h - 2, left: `${(l.lane / l.of) * 100}%`, width: `${100 / l.of}%` }} className={`absolute block overflow-hidden px-2 py-1.5 text-[length:var(--kin-co-small)] leading-4 ${it.kind === "class" ? "bg-[var(--kin-nen-nhan)] border-l-2 border-[var(--kin-nhan-nen)] text-[var(--kin-nhan-link)]" : "bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)]"}`}>
                               <span className="block">
@@ -172,6 +234,7 @@ export default function LichHoc() {
               <p className="mt-4 flex flex-wrap gap-x-10 gap-y-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
                 <span><span aria-hidden className="inline-block w-3 h-1.5 mr-2 align-middle bg-[var(--kin-nhan-nen)]" />Nền nhấn: buổi học</span>
                 <span><span aria-hidden className="inline-block w-3 h-3 mr-2 align-middle border border-[var(--kin-vien-o-nhap)]" />Viền: hạn nộp bài</span>
+                <span><span aria-hidden className="inline-block w-3 h-3 mr-2 align-middle border border-dashed border-[var(--kin-nhan-nen)]" />Nét đứt: việc riêng của bạn (chỉ mình bạn thấy)</span>
               </p>
               <KinCallout className="mt-4">Hạn nộp được ghi bằng ngày và giờ cụ thể, không phải một buổi học. Múi giờ Việt Nam (GMT+7).</KinCallout>
             </div>
@@ -185,7 +248,7 @@ export default function LichHoc() {
               ) : shownKeys.map(k => (
                 <section key={k} aria-label={dayTitle(k)} className="mb-6">
                   <KinSectionHead title={dayTitle(k)} aside={k === today ? "Hôm nay" : undefined} />
-                  <ul>{week.filter(i => i.dateKey === k).map(it => <DayRow key={it.id} it={it} />)}</ul>
+                  <ul>{week.filter(i => i.dateKey === k).map(it => <DayRow key={it.id} it={it} onEdit={openEdit} onDelete={removePersonal} />)}</ul>
                 </section>
               ))}
               <KinCallout className="lg:hidden mt-2">Buổi học có nền nhấn; bài tập ghi hạn nộp riêng. Lịch dùng múi giờ Việt Nam (GMT+7).</KinCallout>
@@ -193,6 +256,7 @@ export default function LichHoc() {
           </div>
         </>
       )}
+      {dialog}
     </div>
   );
 }

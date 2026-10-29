@@ -1,21 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Search, CheckCircle, CloseCircle, BookOpen } from "griddy-icons";
+import { LOOKUP_PHONE_RE, type LookupResult } from "@/lib/lookupPrivacy";
 
-interface CourseResult {
-  id: string;
-  name: string;
-  shortTitle: string;
-  category: string;
-  status: boolean;
-}
-
-interface StudentResult {
-  name:      string;
-  studentId: number | null;
-  courses:   CourseResult[];
-}
+// NC2-053: người lạ chỉ nhận bản che (tên đã che + số khoá); chỉ chính học sinh đăng nhập mới nhận bản đủ (`detail: true`). Kiểu dùng chung với máy chủ.
+type StudentResult = LookupResult;
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   "HSA":  { bg: "var(--kin-nhan-nen-nhat)", text: "var(--kin-nhan-chu-tren-nhat)" },
@@ -42,7 +33,7 @@ export default function TraCuuPage() {
   const [error,    setError]    = useState("");
   const [searched, setSearched] = useState(false);
 
-  const isValidPhone = /^(0[3|5|7|8|9])[0-9]{8}$/.test(phone.replace(/\s/g, ""));
+  const isValidPhone = LOOKUP_PHONE_RE.test(phone.replace(/\s/g, ""));
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -84,7 +75,7 @@ export default function TraCuuPage() {
           Tra cứu <span style={{ color: "var(--kin-nhan-link)" }}>học viên</span>
         </h1>
         <p className="text-sm max-w-md mx-auto" style={{ color: "var(--kin-chu-mo)" }}>
-          Nhập số điện thoại để kiểm tra mã học viên và danh sách khóa học đã đăng ký.
+          Nhập số điện thoại học sinh đã đăng ký để kiểm tra học viên. Mã học viên và danh sách khóa học chỉ hiện cho chính học sinh sau khi đăng nhập.
         </p>
       </div>
 
@@ -97,7 +88,7 @@ export default function TraCuuPage() {
           {/* Phone input */}
           <div>
             <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>
-              Số điện thoại học sinh hoặc phụ huynh
+              Số điện thoại đăng ký của học sinh
             </label>
             <div className="relative">
               <input
@@ -121,7 +112,7 @@ export default function TraCuuPage() {
               </p>
             ) : (
               <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-                Hệ thống tự động tìm theo SĐT học sinh và SĐT phụ huynh
+                Chỉ tìm theo số học sinh dùng khi đăng ký; số của phụ huynh không dùng để tra cứu
               </p>
             )}
           </div>
@@ -173,7 +164,9 @@ export default function TraCuuPage() {
                   <p className="text-base font-bold truncate" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.2px" }}>
                     {student.name}
                   </p>
-                  {student.studentId ? (
+                  {!student.detail ? (
+                    <span className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Mã học viên chỉ hiện sau khi đăng nhập</span>
+                  ) : student.studentId ? (
                     <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md text-xs font-mono font-semibold"
                       style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
                       HS-{student.studentId}
@@ -184,7 +177,25 @@ export default function TraCuuPage() {
                 </div>
               </div>
 
-              {/* Courses */}
+              {/* Bản che (người chưa đăng nhập, hoặc không phải chính học sinh này) */}
+              {!student.detail && (
+                <div data-lookup-masked className="px-5 py-4" style={{ background: "var(--kin-nen-bang)" }}>
+                  <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>
+                    {student.courseCount === 0 ? "Chưa đăng ký khóa học nào" : `Đã đăng ký ${student.courseCount} khóa học`}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
+                    Tên được che để bảo vệ học sinh. Học sinh đăng nhập bằng tài khoản của mình để xem mã học viên và danh sách khóa học;
+                    phụ huynh đăng nhập và liên kết với con ở trang dành cho phụ huynh.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-x-5">
+                    <Link href="/dang-nhap" className="inline-flex items-center min-h-11 text-sm font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>Đăng nhập</Link>
+                    <Link href="/phu-huynh" className="inline-flex items-center min-h-11 text-sm font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>Dành cho phụ huynh</Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Courses (bản đủ, chỉ cho chính học sinh) */}
+              {student.detail && (
               <div className="px-5 py-4" style={{ background: "var(--kin-nen-bang)" }}>
                 {student.courses.length === 0 ? (
                   <div className="flex items-center gap-2 py-2">
@@ -223,12 +234,13 @@ export default function TraCuuPage() {
                   </>
                 )}
               </div>
+              )}
             </div>
           ))}
 
           {/* Privacy note */}
           <p className="text-xs text-center mt-2" style={{ color: "var(--kin-vien-o-nhap)" }}>
-            Thông tin chỉ hiển thị mã học viên và khóa học đã đăng ký.
+            Người chưa đăng nhập chỉ thấy tên đã che và số khóa học; mã học viên và danh sách khóa chỉ hiện cho chính học sinh.
           </p>
         </div>
       )}
