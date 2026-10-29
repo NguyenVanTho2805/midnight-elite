@@ -88,7 +88,11 @@ export function NextSession({ item, className = "" }: { item: StudentTodoItem; c
       <p className="mt-3 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{s.range}</p>
       <p className="mt-4 text-[length:var(--kin-co-tieu-de)] leading-6 text-[var(--kin-chu-chinh)]">{s.courseLine}</p>
       {s.topic && <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{s.topic}</p>}
-      <Link href={s.href} className={`${kinButtonClass("primary")} mt-5`}>Vào lớp học</Link>
+      {s.place && <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{s.place}</p>}
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link href={s.href} className={kinButtonClass("primary")}>Vào lớp học</Link>
+        {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Mở link học online</a>}
+      </div>
     </KinPanel>
   );
 }

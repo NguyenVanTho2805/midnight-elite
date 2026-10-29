@@ -6,6 +6,7 @@ import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 import { parseAzotaDeadline } from "@/lib/azotaDeadline";
 import { firstHttpLink } from "@/lib/lessonLinks";
+import { effectiveLocation, effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl, type SessionKind, type SessionMode } from "@/lib/sessionBook";
 
 export interface ScheduleEvent {
   id: string;
@@ -19,7 +20,20 @@ export interface ScheduleEvent {
   endTime?: string;
   /** Mô tả ngắn của đề (chỉ buổi thi), vd "10 câu · 15 phút"; thiếu dữ liệu thì bỏ. */
   meta?: string;
+  /** Chỉ buổi học: lớp của buổi (để trang lớp lọc đúng buổi của lớp đó). */
+  courseId?: string;
+  /** Chỉ buổi học: buổi theo lịch tuần hay buổi lẻ / dạy bù / phát sinh gia sư thêm ngoài lịch. */
+  sessionKind?: SessionKind;
+  /** Chỉ buổi học: hình thức + địa chỉ (offline) + link vào lớp, đã ghép theo thứ tự riêng buổi > khung giờ > chung lớp (cùng quy tắc bên gia sư). Buổi đã huỷ thì không có. */
+  mode?: SessionMode;
+  location?: string;
+  joinUrl?: string;
 }
+
+const dayDate = (dateKey: string) => new Date(`${dateKey}T00:00:00Z`);
+/** AttendanceSession.date là 00:00 UTC của NGÀY VN (cùng quy ước sessionBookServer.dayDate). */
+const keyOfDay = (d: Date) => d.toISOString().slice(0, 10);
+const httpOnly = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : undefined);
 
 function toISO(raw: string): string | null {
   // Handles "YYYY-MM-DD" or "DD/MM/YYYY"
@@ -114,10 +128,30 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
     const classSchedules = await prisma.classSchedule.findMany({
       where: { active: true, courseId: { in: courseIds } },
       select: {
-        id: true, dayOfWeek: true, startTime: true, endTime: true, note: true,
-        course: { select: { id: true, name: true, category: true } },
+        id: true, dayOfWeek: true, startTime: true, endTime: true, note: true, mode: true, location: true, joinUrl: true,
+        course: { select: { id: true, name: true, category: true, classJoinUrl: true } },
       },
     });
+
+    // Bản ghi buổi trong cửa sổ: (a) ghi đè hình thức / địa chỉ / link RIÊNG của một buổi theo lịch tuần, (b) buổi lẻ / dạy bù / phát sinh
+    // gia sư thêm ngoài lịch tuần (cột kind + startTime). Trước đây phần (b) không hề vào lịch của học sinh. Link vào lớp chỉ đi tới học sinh
+    // đang học (enrollments ở trên lọc status = "active"), cùng quy tắc với link chung của lớp ở mediaAccess.ts.
+    const courseRows = await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, name: true, category: true, classJoinUrl: true } });
+    const courseOf = new Map(courseRows.map(c => [c.id, c]));
+    const sessions = await prisma.attendanceSession.findMany({
+      where: { courseId: { in: courseIds }, date: { gte: dayDate(todayISO), lte: dayDate(maxISO) } },
+      select: { id: true, courseId: true, date: true, kind: true, startTime: true, endTime: true, mode: true, location: true, joinUrl: true },
+    });
+    const sessionOn = new Map(sessions.map(x => [`${x.courseId}|${keyOfDay(x.date)}`, x]));
+    const placeOf = (c: { classJoinUrl: string | null }, o: { sessionMode?: string | null; sessionLocation?: string | null; sessionUrl?: string | null; scheduleMode?: string | null; scheduleLocation?: string | null; scheduleUrl?: string | null }) => {
+      const mode = effectiveMode({ sessionMode: o.sessionMode, scheduleMode: o.scheduleMode });
+      return {
+        mode: mode ?? undefined,
+        location: effectiveLocation({ mode, sessionLocation: o.sessionLocation, scheduleLocation: o.scheduleLocation }) ?? undefined,
+        // Buổi học trực tiếp thì không đưa link online (link chung của lớp vẫn rơi xuống đây nếu khung giờ / buổi không có link riêng).
+        joinUrl: mode === "offline" ? undefined : httpOnly(resolveJoinUrl({ sessionUrl: o.sessionUrl, scheduleUrl: o.scheduleUrl, classUrl: c.classJoinUrl })?.url),
+      };
+    };
 
     if (classSchedules.length > 0) {
       const windowDates: { iso: string; dow: number }[] = [];
@@ -137,6 +171,11 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
         const prefix = slot?.status === "cancelled" ? "[ĐÃ HUỶ] " : slot?.status === "moved" ? `[DỜI từ ${dm(originalIso)}] ` : "";
         const isoDate = slot?.dateKey ?? originalIso;
         if (isoDate < firstIso || isoDate > lastIso) return; // dời ra khỏi cửa sổ hiển thị
+        const ses = sessionOn.get(`${sched.course.id}|${isoDate}`);
+        const place = slot?.status === "cancelled" ? {} : placeOf(sched.course, {
+          sessionMode: ses?.mode, sessionLocation: ses?.location, sessionUrl: ses?.joinUrl,
+          scheduleMode: sched.mode, scheduleLocation: sched.location, scheduleUrl: sched.joinUrl,
+        });
         events.push({
           id: `class-${sched.id}-${originalIso}`,
           type: "class",
@@ -146,6 +185,9 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
           endTime: slot ? hmOf(vnMinutesOfDay(slot.endAt)) : sched.endTime,
           isoDate,
           link: `/student/hoc-tap?course=${sched.course.id}`,
+          courseId: sched.course.id,
+          sessionKind: "regular",
+          ...place,
         });
       };
 
@@ -160,6 +202,26 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
         const sched = classSchedules.find(s => s.id === c.scheduleId);
         if (sched) push(sched, c.dateKey);
       }
+    }
+
+    // Buổi lẻ / dạy bù / phát sinh: không có khung giờ tuần nên không thể suy ra, phải đọc từ bản ghi buổi.
+    for (const x of sessions) {
+      if (!isOffScheduleKind(x.kind) || !x.startTime) continue;
+      const course = courseOf.get(x.courseId);
+      if (!course) continue;
+      events.push({
+        id: `class-extra-${x.id}`,
+        type: "class",
+        subject: course.category,
+        topic: `${course.name} — ${KIND_LABEL[x.kind]}`,
+        time: x.startTime,
+        endTime: x.endTime ?? undefined,
+        isoDate: keyOfDay(x.date),
+        link: `/student/hoc-tap?course=${course.id}`,
+        courseId: course.id,
+        sessionKind: x.kind,
+        ...placeOf(course, { sessionMode: x.mode, sessionLocation: x.location, sessionUrl: x.joinUrl }),
+      });
     }
   }
 

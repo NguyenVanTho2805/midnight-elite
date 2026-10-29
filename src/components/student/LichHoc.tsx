@@ -67,7 +67,13 @@ function DayRow({ it, onEdit, onDelete }: { it: WeekItem; onEdit: (it: WeekItem)
         <p className="text-[length:var(--kin-co-goc)]">{it.cancelled ? <KinStatus tone="loi">Buổi học đã huỷ</KinStatus> : <KinStatus tone="mo">Buổi học</KinStatus>}</p>
         <p className="mt-2 text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">{it.title}</p>
         <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] tabular-nums">{time}{it.sub ? ` · ${it.sub}` : ""}</p>
-        {!it.cancelled && <ItemLink it={it} className={`${kinButtonClass("primary")} mt-4`}>Vào lớp học</ItemLink>}
+        {it.place && <p data-week-place className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{it.place}</p>}
+        {!it.cancelled && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <ItemLink it={it} className={kinButtonClass("primary")}>Vào lớp học</ItemLink>
+            {it.joinUrl && <a href={it.joinUrl} target="_blank" rel="noopener noreferrer" data-week-join className={kinButtonClass("secondary")}>Mở link học online</a>}
+          </div>
+        )}
       </li>
     );
   }

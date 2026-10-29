@@ -13,8 +13,9 @@ import type { Prisma } from "@/generated/prisma/client";
 import { notify } from "@/lib/notify";
 import {
   absenceDeadline, addDaysKey, buildAbsenceChargedMessage, buildAbsenceFreeMessage, classifyAbsenceReport,
-  dayOfWeekOfKey, describeLead, hmOf, isValidDateKey, makeupExpiry, parseHm, tutorTitle, vnDateKeyOf, vnMinutesOfDay,
+  dayOfWeekOfKey, describeLead, hmOf, instantOf, isValidDateKey, makeupExpiry, parseHm, tutorTitle, vnDateKeyOf, vnMinutesOfDay,
 } from "@/lib/classSessions";
+import { effectiveMode, effectiveLocation, isOffScheduleKind, placeLabel, type SessionKind } from "@/lib/sessionBook";
 import { applyChanges, effectiveSlot } from "@/lib/sessionChange";
 import { findChange, loadChanges } from "@/lib/sessionChangeServer";
 
@@ -193,6 +194,11 @@ export interface UpcomingSession {
   freeWindowOpen: boolean;
   absence: { status: string; leadMinutes: number } | null;
 }
+/** Buổi lẻ / dạy bù / phát sinh gia sư thêm ngoài lịch tuần. Chỉ đọc: không thuộc khung giờ tuần nên không có Báo nghỉ. */
+export interface ExtraSessionView {
+  id: string; courseId: string; courseName: string; kind: Exclude<SessionKind, "regular">;
+  dateKey: string; startAt: string; endAt: string; place: string | null;
+}
 export interface MakeupSummary {
   count: number;
   nextExpiresAt: string | null;
@@ -200,7 +206,7 @@ export interface MakeupSummary {
 }
 
 /** Các buổi sắp tới của 1 học sinh + số buổi bù đang giữ — dùng cho "Sổ của con". */
-export async function loadStudentUpcoming(studentId: string, now: Date): Promise<{ upcoming: UpcomingSession[]; makeup: MakeupSummary }> {
+export async function loadStudentUpcoming(studentId: string, now: Date): Promise<{ upcoming: UpcomingSession[]; makeup: MakeupSummary; extra: ExtraSessionView[] }> {
   const enrollments = await prisma.enrollment.findMany({
     where: { userId: studentId, status: "active" },
     select: { course: { select: { id: true, name: true, classSchedules: { where: { active: true }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, joinUrl: true } } } } },
@@ -226,6 +232,24 @@ export async function loadStudentUpcoming(studentId: string, now: Date): Promise
       orderBy: { expiresAt: "asc" },
     }),
   ]);
+  const extraRows = await prisma.attendanceSession.findMany({
+    where: { courseId: { in: [...nameOf.keys()] }, date: { gte: sessionDate(today), lte: sessionDate(toKey) }, kind: { in: ["extra", "makeup", "adhoc"] }, startTime: { not: null } },
+    select: { id: true, courseId: true, date: true, kind: true, startTime: true, endTime: true, mode: true, location: true },
+  });
+  const extra: ExtraSessionView[] = [];
+  for (const x of extraRows) {
+    const dateKey = x.date.toISOString().slice(0, 10), s = parseHm(x.startTime);
+    if (s === null || !isOffScheduleKind(x.kind)) continue;
+    const startAt = instantOf(dateKey, s);
+    if (startAt.getTime() <= now.getTime()) continue; // như buổi theo lịch: chỉ ẩn buổi đã bắt đầu
+    const mode = effectiveMode({ sessionMode: x.mode });
+    extra.push({
+      id: x.id, courseId: x.courseId, courseName: nameOf.get(x.courseId) ?? "", kind: x.kind, dateKey,
+      startAt: startAt.toISOString(), endAt: instantOf(dateKey, parseHm(x.endTime) ?? s).toISOString(),
+      place: placeLabel(mode, effectiveLocation({ mode, sessionLocation: x.location })),
+    });
+  }
+  extra.sort((a, b) => a.startAt.localeCompare(b.startAt));
   const absOf = new Map(absences.map(a => [`${a.scheduleId}|${a.dateKey}`, a]));
   const upcoming: UpcomingSession[] = occs.map(o => {
     const a = absOf.get(`${o.scheduleId}|${o.originalDateKey}`) ?? null;
@@ -243,6 +267,7 @@ export async function loadStudentUpcoming(studentId: string, now: Date): Promise
   });
   return {
     upcoming,
+    extra,
     makeup: {
       count: credits.length,
       nextExpiresAt: credits[0]?.expiresAt.toISOString() ?? null,

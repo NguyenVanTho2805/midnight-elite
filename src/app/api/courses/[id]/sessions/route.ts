@@ -6,7 +6,8 @@
 // Không đụng điểm danh hay tiền: thêm buổi không tạo học phí; học phí kiểu mới chỉ sinh khi chốt buổi (Đã dạy xong).
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { conflictText, parseExtraSession } from "@/lib/sessionBook";
+import { conflictText, extraSessionNotice, parseExtraSession } from "@/lib/sessionBook";
+import { notifyMany } from "@/lib/notify";
 import { authorizeCourse, conflictsForSlot, dayDate } from "@/lib/sessionBookServer";
 import { logAction } from "@/lib/auditLog";
 
@@ -36,7 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       select: { id: true },
     });
     await logAction(r.auth.userId, "attendance_session.create_extra", "AttendanceSession", s.id, { courseId: id, kind: v.kind });
-    return NextResponse.json({ id: s.id, dateKey: v.dateKey }, { status: 201 });
+    // Học sinh đang học lớp phải biết có buổi mới (dời / huỷ buổi đã báo như vậy từ trước; buổi lẻ / bù thì trước đây im lặng). Phụ trợ: lỗi không làm hỏng việc đã ghi.
+    const students = await prisma.enrollment.findMany({ where: { courseId: id, status: "active" }, select: { userId: true } });
+    await notifyMany(students.map(x => x.userId), { type: "class_changed", ...extraSessionNotice({ kind: v.kind, courseName: r.course.name, dateKey: v.dateKey, startTime: v.startTime }), link: "/student/lich-hoc" });
+    return NextResponse.json({ id: s.id, dateKey: v.dateKey, notified: students.length }, { status: 201 });
   } catch (e) {
     if ((e as { code?: string })?.code === "P2002") {
       return NextResponse.json({ error: "Ngày này lớp đã có bản ghi buổi (đã điểm danh hoặc ghi chép). Mở buổi đó để sửa, hoặc chọn ngày khác." }, { status: 409 });

@@ -3,6 +3,7 @@
 import type { ScheduleEvent } from "@/lib/studentSchedule";
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import { addDaysKey, dayOfWeekOfKey, hmOf, parseHm, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { placeLabel } from "@/lib/sessionBook";
 import type { PersonalEventDTO } from "@/lib/personalEvents";
 
 export type WeekKind = "class" | "exam" | "deadline" | "task" | "personal";
@@ -21,6 +22,9 @@ export interface WeekItem {
   /** Bài tập chưa nộp (chỉ kind "task"). */
   unsent: boolean;
   interactive: boolean;
+  /** Chỉ buổi học: "Online" / "Offline · địa chỉ" (thiếu khi gia sư chưa chọn hình thức) và link học online (chỉ http/https, không có khi học trực tiếp hay buổi đã huỷ). */
+  place?: string;
+  joinUrl?: string;
   /** Việc RIÊNG của học sinh (kind "personal", NC2-043): id bản ghi và ghi chú, để sửa / xoá. Không có href. */
   personalId?: string;
   note?: string | null;
@@ -46,7 +50,8 @@ export function buildWeekItems(events: ScheduleEvent[], todo: StudentTodoItem[])
     const end = e.type === "class" ? parseHm(e.endTime) : null;
     if (e.type === "class") {
       out.push({ id: e.id, kind: "class", dateKey: e.isoDate, start, end, title: topic.split(" — ")[0], sub: topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "",
-        href: e.link ?? "/student/lich-hoc", external: false, cancelled, unsent: false, interactive: false });
+        href: e.link ?? "/student/lich-hoc", external: false, cancelled, unsent: false, interactive: false,
+        place: placeLabel(e.mode, e.location) ?? undefined, joinUrl: cancelled ? undefined : e.joinUrl });
     } else if (e.type === "exam") {
       out.push({ id: e.id, kind: "exam", dateKey: e.isoDate, start, end: null, title: topic, sub: e.meta ?? e.subject,
         href: e.link ?? `/student/thi-thu/${e.id.replace(/^exam-/, "")}`, external: !!e.link && isHttp(e.link), cancelled: false, unsent: false, interactive: false });

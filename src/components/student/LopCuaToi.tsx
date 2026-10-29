@@ -29,7 +29,8 @@ import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
-import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import { dayTitle, useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import { placeLabel } from "@/lib/sessionBook";
 
 interface Lesson { id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null }
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
@@ -171,6 +172,8 @@ function Content() {
     { key: "tai-lieu" as const, label: `Tài liệu & bản ghi · ${docs.length + (typeof recs === "object" && recs ? recs.recordings.length : 0)}` },
     { key: "bai-tap" as const, label: `Bài tập · ${quizzes.length}` },
   ];
+  // Buổi học sắp tới CỦA LỚP NÀY: cùng nguồn /api/schedule với trang Lịch (khung giờ tuần + buổi dời / huỷ + buổi lẻ / dạy bù), nên hai nơi không thể lệch nhau.
+  const nextSessions = (work.events ?? []).filter(e => e.type === "class" && e.courseId === courseId).slice(0, 4);
   const inCourse = (work.items ?? []).filter(i => i.task && i.task.courseId === course.id);
   const needCount = inCourse.filter(i => !i.done).length;
   const waitCount = inCourse.filter(i => i.task?.phase === "cho-cham").length;
@@ -314,6 +317,36 @@ function Content() {
           <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp.</p>
           <Link href="/student/nhap-ma-lop" className={`${kinButtonClass("secondary")} mt-4`}>Nhập mã lớp</Link>
         </section>
+        {isEnrolled && (
+          <section aria-labelledby="lop-lich" data-course-sessions className="mt-8">
+            <KinSectionHead id="lop-lich" title="Buổi học sắp tới" />
+            {work.events === null && !work.eventsError ? (
+              <p role="status" className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang tải lịch…</p>
+            ) : work.eventsError ? (
+              <div className="pt-4"><ErrorStrip message="Không tải được lịch của lớp." onRetry={work.load} /></div>
+            ) : nextSessions.length === 0 ? (
+              <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp chưa có buổi học nào trong 90 ngày tới. Khi gia sư thêm khung giờ hoặc buổi học, chúng sẽ hiện ở đây.</p>
+            ) : (
+              <ul>
+                {nextSessions.map(e => {
+                  const cancelled = e.topic.startsWith("[ĐÃ HUỶ]");
+                  const topic = e.topic.replace(/^\[[^\]]+\]\s*/, "");
+                  const sub = topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "";
+                  const place = placeLabel(e.mode, e.location);
+                  return (
+                    <li key={e.id} data-course-session className="py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
+                      <p className="text-[var(--kin-chu-chinh)]">{dayTitle(e.isoDate)} · <span className="tabular-nums">{e.endTime ? `${e.time}–${e.endTime}` : e.time}</span></p>
+                      <p className="mt-1 text-[var(--kin-chu-mo)]">{[sub, place].filter(Boolean).join(" · ") || "Buổi học theo lịch tuần"}</p>
+                      {cancelled && <p className="mt-2"><KinStatus tone="loi">Buổi học đã huỷ</KinStatus></p>}
+                      {!cancelled && e.joinUrl && <a href={e.joinUrl} target="_blank" rel="noopener noreferrer" data-course-session-join className={`${kinButtonClass("secondary")} mt-3`}>Mở link học online</a>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} mt-4`}>Xem cả lịch học</Link>
+          </section>
+        )}
         <section aria-labelledby="lop-info" className="mt-8">
           <KinSectionHead id="lop-info" title="Thông tin lớp" />
           <div className="pt-4 text-[length:var(--kin-co-goc)] leading-6 text-[var(--kin-chu-chinh)]">

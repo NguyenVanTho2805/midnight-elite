@@ -7,6 +7,7 @@ import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { effectiveSlot } from "@/lib/sessionChange";
+import { isOffScheduleKind, KIND_LABEL } from "@/lib/sessionBook";
 import { sendUnmarkedDaily, type UnmarkedDailyResult } from "@/lib/unmarkedDailyServer";
 
 const BATCH_SIZE  = 20;
@@ -63,7 +64,19 @@ export async function GET(req: NextRequest) {
     if (sched) pushIfTomorrow(sched, c.dateKey);
   }
 
-  if (todays.length === 0) {
+  // Buổi lẻ / dạy bù / phát sinh ngày mai: không có khung giờ tuần nên không nằm trong `rules`, phải đọc từ bản ghi buổi (trước đây không bao giờ được nhắc).
+  // Không có báo nghỉ để loại trừ: báo nghỉ khoá theo (khung giờ tuần, ngày gốc).
+  const extraTomorrow = await prisma.attendanceSession.findMany({
+    where: { date: new Date(`${tomorrowKey}T00:00:00Z`), kind: { in: ["extra", "makeup", "adhoc"] }, startTime: { not: null } },
+    select: { kind: true, startTime: true, endTime: true, course: { select: { id: true, name: true } } },
+  });
+  type Job = { courseId: string; courseName: string; note: string | null; startTime: string; endTime: string; absent: { scheduleId: string; dateKey: string } | null };
+  const jobs: Job[] = [
+    ...todays.map(t => ({ courseId: t.sched.course.id, courseName: t.sched.course.name, note: t.sched.note, startTime: t.startTime, endTime: t.endTime, absent: { scheduleId: t.sched.id, dateKey: t.identityKey } })),
+    ...extraTomorrow.map(x => ({ courseId: x.course.id, courseName: x.course.name, note: isOffScheduleKind(x.kind) ? KIND_LABEL[x.kind] : null, startTime: x.startTime!, endTime: x.endTime ?? x.startTime!, absent: null })),
+  ];
+
+  if (jobs.length === 0) {
     const unmarked = await runUnmarked();
     return NextResponse.json({ sent: 0, message: `Không có buổi học nào vào ${dayLabel}`, unmarked });
   }
@@ -71,18 +84,17 @@ export async function GET(req: NextRequest) {
   let totalSent = 0;
   const log: string[] = [];
 
-  for (const { sched, identityKey, startTime, endTime } of todays) {
+  for (const { courseId, courseName, note, startTime, endTime, absent: absentOf } of jobs) {
     // Chỉ em đang học (trước đây lấy cả em đang chờ phụ huynh xác nhận / tạm dừng) và bỏ em đã báo
     // nghỉ buổi này — đặc tả TT-201: "đã báo nghỉ thì không gửi".
     const [enrollments, absent] = await Promise.all([
       prisma.enrollment.findMany({
-        where: { courseId: sched.course.id, status: "active" },
+        where: { courseId, status: "active" },
         select: { user: { select: { id: true, name: true, email: true } } },
       }),
-      prisma.classAbsence.findMany({
-        where: { scheduleId: sched.id, dateKey: identityKey },
-        select: { studentId: true },
-      }),
+      absentOf
+        ? prisma.classAbsence.findMany({ where: { scheduleId: absentOf.scheduleId, dateKey: absentOf.dateKey }, select: { studentId: true } })
+        : Promise.resolve([] as { studentId: string }[]),
     ]);
     const absentIds = new Set(absent.map(a => a.studentId));
     const students = enrollments.map(e => e.user).filter(u => !absentIds.has(u.id));
@@ -91,7 +103,7 @@ export async function GET(req: NextRequest) {
       const batch   = students.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(s =>
-          sendClassReminderEmail(s.email, s.name, sched.course.name, dayLabel, startTime, endTime, sched.note, sched.course.id)
+          sendClassReminderEmail(s.email, s.name, courseName, dayLabel, startTime, endTime, note, courseId)
         )
       );
       totalSent += results.filter(r => r.status === "fulfilled").length;
@@ -101,11 +113,11 @@ export async function GET(req: NextRequest) {
     await notifyMany(students.map(s => s.id), {
       type:    "class_reminder",
       title:   "Nhắc nhở buổi học",
-      message: `Khoá "${sched.course.name}" có buổi học vào ${dayLabel} lúc ${startTime}`,
-      link:    `/student/hoc-tap?course=${sched.course.id}`,
+      message: `Khoá "${courseName}" có buổi học vào ${dayLabel} lúc ${startTime}`,
+      link:    `/student/hoc-tap?course=${courseId}`,
     });
 
-    log.push(`${sched.course.name}: ${students.length} học viên`);
+    log.push(`${courseName}: ${students.length} học viên`);
   }
 
   console.log(`[cron/remind-class] ${dayLabel} →`, log.join(" | "), `| Đã gửi: ${totalSent}`);

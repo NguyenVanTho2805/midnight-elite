@@ -5,6 +5,7 @@
 // Badge đỏ CHỈ đếm việc cần học sinh ra tay (chưa nộp mà sắp tới hạn / quá hạn), không đếm mục chưa đọc.
 import { DAY_LABELS_VI } from "@/lib/types";
 import { addDaysKey, dayOfWeekOfKey, hmOf, instantOf, parseHm, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { placeLabel } from "@/lib/sessionBook";
 
 const H = 3_600_000;
 export const DUE_SOON_MS = 24 * H;           // còn dưới 24 giờ → "Sắp hết hạn"
@@ -45,6 +46,10 @@ export interface TodoEvent {
   link?: string;
   endTime?: string;
   meta?: string;
+  /** Chỉ buổi học (cùng nghĩa với ScheduleEvent): hình thức, địa chỉ, link học online. */
+  mode?: "online" | "offline";
+  location?: string;
+  joinUrl?: string;
 }
 
 export type TodoTone = "cho" | "loi" | "mo" | "xong";
@@ -72,7 +77,7 @@ export interface TodoTask {
 }
 
 /** Buổi học (kind "buoi-hoc"): giờ, tên lớp, ghi chú của lớp (có thể rỗng). */
-export interface TodoSession { courseLine: string; range: string; topic: string; dayText: string; href: string; cancelled: boolean }
+export interface TodoSession { courseLine: string; range: string; topic: string; dayText: string; href: string; cancelled: boolean; place?: string; joinUrl?: string }
 
 export interface StudentTodoItem {
   id: string;
@@ -220,16 +225,18 @@ function classItem(e: TodoEvent, now: Date): StudentTodoItem | null {
   const prefix = cancelled ? "Buổi đã huỷ" : "Buổi";
   const status = cancelled ? { label: "Đã huỷ", tone: "loi" as const } : moved ? { label: "Đã dời", tone: "cho" as const } : { label: "Sắp tới", tone: "mo" as const };
   const link = e.link ?? "/student/lich-hoc";
+  const place = placeLabel(e.mode, e.location) ?? undefined;
+  const joinUrl = cancelled ? undefined : e.joinUrl;
   return {
     id: `buoi-hoc:${e.id}`, kind: "buoi-hoc", title: `${prefix} ${e.subject} ${e.time}`, subtitle: topic,
     at: at.toISOString(), when: whenLabel(at, now), status, needsAction: false, done: cancelled,
-    session: { courseLine: topic.split(" — ")[0], range: e.endTime ? `${e.time}–${e.endTime}` : e.time, topic: topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "", dayText: whenLabel(at, now), href: link, cancelled },
+    session: { courseLine: topic.split(" — ")[0], range: e.endTime ? `${e.time}–${e.endTime}` : e.time, topic: topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "", dayText: whenLabel(at, now), href: link, cancelled, place, joinUrl },
     detail: {
       heading: `${prefix} ${topic} ${e.time} ${whenLabel(at, now).toLowerCase()}`,
-      meta: `${DAY_LABELS_VI[dayOfWeekOfKey(e.isoDate)]}, ${dm(e.isoDate)}${at.getTime() > now.getTime() ? ` · ${remainingText(at, now)}` : " · đang diễn ra hoặc vừa bắt đầu"}`,
+      meta: `${DAY_LABELS_VI[dayOfWeekOfKey(e.isoDate)]}, ${dm(e.isoDate)}${at.getTime() > now.getTime() ? ` · ${remainingText(at, now)}` : " · đang diễn ra hoặc vừa bắt đầu"}${place ? ` · ${place}` : ""}`,
       commands: cancelled
         ? [{ label: "Xem lịch", href: "/student/lich-hoc", kind: "primary" }]
-        : [{ label: "Vào lớp", href: link, kind: "primary" }, { label: "Xem lịch", href: "/student/lich-hoc", kind: "secondary" }],
+        : [{ label: "Vào lớp", href: link, kind: "primary" }, ...(joinUrl ? [{ label: "Mở link học online", href: joinUrl, kind: "secondary" as const, external: true }] : []), { label: "Xem lịch", href: "/student/lich-hoc", kind: "secondary" }],
       sections: cancelled
         ? [{ title: "Buổi này đã huỷ", text: "Thầy/cô đã huỷ buổi này. Xem lịch để biết buổi học tiếp theo." }]
         : moved
