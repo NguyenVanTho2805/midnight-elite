@@ -16,6 +16,8 @@ import { prisma } from "@/lib/prisma";
 import HopViec from "@/components/tutor/HopViec";
 import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { contentHref } from "@/lib/tutorRoutes";
+import { loadTutorStatus } from "@/lib/tutorGateServer";
+import { isApplicant, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,9 @@ export default async function LopCuaToiPage() {
     if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
     return <HopViec />;
   }
+
+  // BU-00 bước 5: gia sư CHỜ DUYỆT (role student + đơn đang chờ) không có lớp nào để liệt kê — trang đầu của họ là Trạng thái hồ sơ.
+  if (session.role === "student" && isApplicant(await loadTutorStatus(session))) redirect(TUTOR_PENDING_PATH);
 
   // 2 danh sách tuỳ role.
   const [owned, enrolled] = await Promise.all([

@@ -8,6 +8,7 @@ import { createSession } from "@/lib/session";
 import { sendPasswordChangedEmail } from "@/lib/email";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 import { landingPath } from "@/lib/landing";
+import { tutorPendingOf } from "@/lib/loginSession";
 import { loginThrottle } from "@/lib/loginThrottle";
 import {
   EXPIRED_MESSAGE, INVALID_MESSAGE, checkToken, hashResetToken, parseResetToken, validateNewPassword,
@@ -78,7 +79,8 @@ export async function POST(req: Request) {
       ...(record.user.adminRole ? { adminRole: record.user.adminRole as "admin_super" | "admin_content" | "teacher" } : {}),
     });
 
-    return NextResponse.json({ success: true, role: record.user.role, adminRole: record.user.adminRole, next: landingPath(record.user.role, record.user.adminRole) });
+    // BU-00 bước 5: gia sư chờ duyệt đặt lại mật khẩu xong cũng về trang chờ duyệt (cùng cách tính với đăng nhập).
+    return NextResponse.json({ success: true, role: record.user.role, adminRole: record.user.adminRole, next: landingPath(record.user.role, record.user.adminRole, tutorPendingOf(record.user)) });
   } catch (e) {
     console.error("[reset-password]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });

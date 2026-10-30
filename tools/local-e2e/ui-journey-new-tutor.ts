@@ -134,23 +134,26 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   if (cur) cur.clicks++;   // người dùng mở thư và bấm liên kết = 1 lần bấm
   await p.goto(`${BASE}${new URL(link!).pathname}${new URL(link!).search}`, GOTO);
   await eventually("trang báo 'Xác thực thành công'", async () => (await body()).includes("Xác thực thành công"), 60000);
-  // NC2-029(b): gia sư chờ duyệt không được hứa "Dashboard"; chữ phải nói đúng sự thật.
-  await eventually("trang xác thực nói hồ sơ gia sư đang chờ duyệt", async () => (await body()).includes("Hồ sơ gia sư của bạn đang chờ quản trị duyệt"), 15000);
-  check("trang xác thực không còn hứa 'Dashboard' cho gia sư chờ duyệt", !(await body()).includes("Dashboard"));
-  await eventually("tự chuyển sang trang đầu của vai (hồ sơ gia sư còn chờ duyệt nên vẫn là học viên)", () => at().pathname.startsWith("/student/"), 30000);
+  // NC2-029(b): gia sư chờ duyệt không được hứa "Dashboard"; chữ phải nói đúng sự thật. BU-00 bước 5: câu mới chỉ đường tới trang chờ duyệt.
+  await eventually("trang xác thực nói hồ sơ đang chờ KiN duyệt và chỉ tới trang chờ duyệt", async () => (await body()).includes("Hồ sơ của bạn đang chờ KiN duyệt; bạn có thể xem trạng thái ở trang chờ duyệt"), 15000);
+  check("trang xác thực không còn hứa 'Dashboard' / 'tài khoản học viên' cho gia sư chờ duyệt", !(await body()).includes("Dashboard") && !(await body()).includes("tài khoản học viên"));
+  // BU-00 bước 5: `landing` do API trả là /lop-cua-toi/cho-duyet — vỏ GIA SƯ dạng chờ duyệt, không còn rơi vào khu học viên.
+  await eventually("tự chuyển sang trang chờ duyệt /lop-cua-toi/cho-duyet (vỏ gia sư), KHÔNG vào /student/*", () => at().pathname === "/lop-cua-toi/cho-duyet", 30000);
   const landedAfterVerify = at().pathname;
+  await p.getByRole("heading", { name: "Hồ sơ gia sư đang chờ duyệt", level: 1 }).waitFor({ timeout: 60000 });
   await p.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
   const pendingText = await body();
-  // NC2-029(a): thẻ "chờ duyệt" ở Việc của tôi, đúng người.
-  await p.waitForSelector("[data-tutor-pending]", { timeout: 30000 }).catch(() => {});
-  const pendingCard = await p.locator("[data-tutor-pending]").count();
-  const pendingCardText = pendingCard ? await p.locator("[data-tutor-pending]").first().innerText() : "";
+  const pendingRail = p.getByRole("navigation", { name: "Module của gia sư" });
+  const pendingRailNames = (await pendingRail.getByRole("link").allInnerTexts()).map(t => t.trim()).filter(t => t && !/^KiN/.test(t));
+  const pendingBand = p.locator("[data-tutor-pending-band]");
   const meBefore = await p.evaluate(async () => (await (await fetch("/api/auth/me")).json()) as Record<string, unknown>);
   end();
-  check("Việc của tôi có thẻ 'hồ sơ gia sư đang chờ quản trị duyệt' cho gia sư vừa đăng ký", pendingCard === 1 && /đang chờ quản trị duyệt/.test(pendingCardText) && /KiN sẽ báo khi xong/.test(pendingCardText), pendingCardText);
+  check("vỏ 'Module của gia sư' nhãn CHỜ DUYỆT, thanh bên 3 mục (Trạng thái hồ sơ, Liên hệ hỗ trợ, Cài đặt)", await pendingRail.count() === 1 && await pendingRail.getByText("CHỜ DUYỆT").isVisible() && pendingRailNames.length === 3 && pendingRailNames[0].startsWith("Trạng thái hồ sơ") && pendingRailNames[1].startsWith("Liên hệ hỗ trợ") && pendingRailNames[2].startsWith("Cài đặt"), pendingRailNames);
+  check("băng 'Hồ sơ gia sư đang chờ duyệt' trên vùng nội dung", await pendingBand.count() === 1 && /Hồ sơ gia sư đang chờ duyệt/.test(await pendingBand.innerText()));
+  check("trang chờ duyệt nói trạng thái + môn đã khai 'Toán' + giới thiệu đã khai", /Đang chờ duyệt/.test(pendingText) && /Môn đã khai/.test(pendingText) && /Toán/.test(pendingText) && /Cử nhân Toán/.test(pendingText));
   check("/api/auth/me trả cờ tutorPending=true cho đúng người đó, không lộ ngày/lý do đơn", meBefore.tutorPending === true && !("tutorAppliedAt" in meBefore) && !("tutorRejectedAt" in meBefore), Object.keys(meBefore));
   {
-    // Học viên thường (chưa nộp đơn) KHÔNG thấy thẻ và cờ là false.
+    // Học viên thường (chưa nộp đơn) vẫn vào Việc của tôi, KHÔNG bị đẩy sang trang chờ duyệt, cờ là false.
     const plain = await mkUser({ name: "Học viên thường", role: "student" });
     const pc = await ctxFor(plain, { width: 1280, height: 900 });
     const pp = await pc.newPage();
@@ -158,7 +161,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
     await pp.getByRole("heading", { name: "Việc của tôi" }).first().waitFor({ timeout: 90000 });
     await pp.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
     const me2 = await pp.evaluate(async () => (await (await fetch("/api/auth/me")).json()) as Record<string, unknown>);
-    check("học viên thường: không có thẻ 'chờ duyệt' và tutorPending=false", (await pp.locator("[data-tutor-pending]").count()) === 0 && me2.tutorPending === false, me2.tutorPending);
+    check("học viên thường: ở lại Việc của tôi, không băng chờ duyệt, tutorPending=false", new URL(pp.url()).pathname === "/student/viec-cua-toi" && (await pp.locator("[data-tutor-pending-band]").count()) === 0 && me2.tutorPending === false, me2.tutorPending);
     await pc.close();
   }
   const u0 = await prisma.user.findUnique({ where: { email } });
@@ -179,7 +182,9 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   // ───────────────────── G2: vào app gia sư → tạo lớp đầu tiên ─────────────────────
   begin("G2", "xác thực → lớp đầu tiên đã tạo");
   section("G2a. Phiên cũ còn là học viên → đăng xuất, đăng nhập lại (thông báo duyệt dặn 'Đăng nhập lại')");
-  await p.goto(`${BASE}/student/viec-cua-toi`, GOTO);
+  // BU-00 bước 5: phiên cũ vẫn role student; /api/auth/me đồng bộ vai → vỏ gia sư đủ module. Mở trang chờ duyệt (nay đã là gia sư → 307 về /lop-cua-toi) rồi đăng xuất từ menu tài khoản.
+  await p.goto(`${BASE}/lop-cua-toi/cho-duyet`, GOTO);
+  await eventually("đã duyệt → trang chờ duyệt đưa về /lop-cua-toi", () => at().pathname === "/lop-cua-toi", 90000);
   await click(p.getByRole("button", { name: /^Tài khoản của/ }));
   sub("menu tài khoản");
   await click(p.getByRole("menuitem", { name: "Đăng xuất" }));

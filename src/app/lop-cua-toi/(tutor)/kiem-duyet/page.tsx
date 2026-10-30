@@ -1,16 +1,14 @@
 // FE-155/156 — gia sư kiểm duyệt cộng đồng của CÁC LỚP MÌNH. API đã giới hạn theo
 // chủ lớp (BE-072); cộng đồng chung vẫn do quản lý trung tâm xử lý.
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { redirectIfNotTutor } from "@/lib/tutorGateServer";
 import KiemDuyetClient from "./KiemDuyetClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function KiemDuyetPage() {
-  const session = await getSession();
-  if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/kiem-duyet");
-  if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
+  await redirectIfNotTutor(await getSession(), { path: "/lop-cua-toi/kiem-duyet" });
   return (
     <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
       <div className="max-w-3xl mx-auto px-4 py-6">

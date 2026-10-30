@@ -16,7 +16,9 @@ import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
+import { KinCallout } from "@/components/kin/Callout";
 import { OPTIONAL_TUTOR_MODULES, visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
+import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
 /** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
@@ -40,19 +42,31 @@ const MORE_BASE: MoreGroup[] = [
   ] },
 ];
 
+// BU-00 bước 5 (31/10/2026): vỏ gia sư CHỜ DUYỆT — cùng khung (thanh trái / thanh dưới + dải trên) nhưng thanh chỉ 3 mục, nhãn vai "CHỜ DUYỆT", không bảng "Khác",
+// không số đếm, và một băng "Hồ sơ gia sư đang chờ duyệt" trên vùng nội dung. Cài đặt trỏ thẳng /cai-dat/chu-de vì /lop-cua-toi/cai-dat (module, nhắc lịch, kết nối)
+// chỉ có nghĩa khi đã dạy.
+const PENDING_ITEMS: ModuleItem[] = [
+  { key: "cho-duyet", label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH, icon: "nguoi" },
+  { key: "ho-tro", label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro", icon: "khac" },
+  { key: "cai-dat", label: "Cài đặt", href: "/cai-dat/chu-de", icon: "cai-dat" },
+];
+
 export default function TutorShell({
-  modules, badges, children,
+  modules, badges, pending = false, children,
 }: {
   /** Module tuỳ chọn gia sư đã bật. `undefined` = chưa chọn = đủ module (BU-00); `[]` = chế độ gọn tường minh. */
   modules?: OptionalTutorModule[];
   /** Số việc đang chờ theo module (chỉ đếm việc cần gia sư ra tay). */
   badges: Record<string, number>;
+  /** Gia sư chờ duyệt (BU-00 bước 5): thanh 3 mục, không "Khác", không số đếm, có băng chờ duyệt. */
+  pending?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = useCallback(() => setMoreOpen(false), []);
+  if (pending) return <PendingShell user={user} onLogout={() => void logout()}>{children}</PendingShell>;
   const visible = visibleTutorModules({ modules });
   // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
   const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => !visible.some(m => m.key === k)).length;
@@ -130,6 +144,45 @@ export default function TutorShell({
       </div>
 
       {moreOpen && <MorePanel id="khac-bang" groups={groups} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+    </div>
+  );
+}
+
+function PendingShell({ user, onLogout, children }: { user: { name: string; email: string } | null; onLogout: () => void; children: React.ReactNode }) {
+  const wide: NavGroup[] = [{ title: "Hồ sơ gia sư", items: PENDING_ITEMS.map(m => ({ key: m.key, label: m.label, href: m.href ?? TUTOR_PENDING_PATH, icon: m.icon })) }];
+  return (
+    <div data-tutor-pending-shell className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <ModuleRail roleLabel="CHỜ DUYỆT" ariaLabel="Module của gia sư" modules={PENDING_ITEMS} groups={wide}
+        home={{ href: TUTOR_PENDING_PATH, label: "KiN — Hồ sơ gia sư đang chờ duyệt" }} footnote="Miễn phí ra mắt" />
+
+      <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+        <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={0} />
+            <Link href={TUTOR_PENDING_PATH} aria-label="KiN — Hồ sơ gia sư đang chờ duyệt" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            {user && <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hồ sơ gia sư của {user.name}</p>}
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <TopDate />
+            <NotificationBell />
+            <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
+              className="inline-flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-lg border border-[var(--kin-vien-thuong)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-bang)] hover:text-[var(--kin-chu-chinh)] transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
+              </svg>
+            </Link>
+            {user && <AccountMenu name={user.name} email={user.email} onLogout={onLogout}
+              links={[{ label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH }, { label: "Sửa hồ sơ", href: "/lop-cua-toi/ho-so" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
+          </div>
+        </div>
+        {/* Băng chờ duyệt: chữ nói rõ trạng thái (không chỉ màu), một liên kết đi tiếp. */}
+        <div data-tutor-pending-band className="mx-4 md:mx-10 mt-4">
+          <KinCallout title="Hồ sơ gia sư đang chờ duyệt">
+            KiN sẽ báo khi duyệt xong. Trong lúc chờ, bạn xem được trạng thái hồ sơ và gửi câu hỏi cho KiN ở <Link href="/lop-cua-toi/ho-tro" className="underline text-[var(--kin-nhan-link)]">Liên hệ hỗ trợ</Link>.
+          </KinCallout>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

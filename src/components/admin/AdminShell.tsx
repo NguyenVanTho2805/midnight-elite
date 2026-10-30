@@ -12,6 +12,7 @@ import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { QUEUE_CHANGED } from "@/components/admin/KiemDuyet";
 import { matchSub, visibleModules, type AdminSub } from "@/lib/adminNav";
+import { MAIN_HOST } from "@/lib/hostRouting";
 
 const STRIP = 48, TABS = 44;
 
@@ -81,9 +82,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-3 min-w-0">
             <TopDate />
-            {/* Trang học viên nằm ở tên miền riêng (midnightelite-edu.com): dùng <a>, không dùng <Link> (điều hướng khác nguồn). */}
-            <a href="https://midnightelite-edu.com/student" target="_blank" rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center min-h-11 px-2 text-[length:var(--kin-co-small)] font-medium text-[var(--kin-nhan-link)] hover:underline">Trang học viên</a>
+            {/* BU-00 bước 4: "Xem thử trang học sinh" — khu học sinh ở tên miền chính, cookie không dùng chung hai tên miền (src/lib/hostRouting.ts) nên đi qua
+                /dang-nhap?redirect= ở đó rồi vào thẳng Việc của tôi (vỏ học sinh hiện băng "Đang xem thử"). Dùng <a>, không <Link> (điều hướng khác nguồn). */}
+            <a href={`https://${MAIN_HOST}/dang-nhap?redirect=${encodeURIComponent("/student/viec-cua-toi")}`} target="_blank" rel="noopener noreferrer" data-preview-student
+              className="hidden md:inline-flex items-center min-h-11 px-2 text-[length:var(--kin-co-small)] font-medium text-[var(--kin-nhan-link)] hover:underline">Xem thử trang học sinh</a>
             <span className="hidden sm:inline-flex items-center px-2 py-[2px] rounded-full border border-[var(--kin-vien-thuong)] text-[length:var(--kin-co-caption)] font-semibold text-[var(--kin-chu-phu)]">{getAdminRoleLabel(user?.adminRole)}</span>
             <span className="hidden sm:block truncate max-w-[160px] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">{user?.name ?? "Admin"}</span>
             <button type="button" onClick={() => void logout()}

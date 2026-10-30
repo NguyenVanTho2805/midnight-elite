@@ -6,11 +6,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import TutorShell from "@/components/tutor/TutorShell";
 import { isTutorModuleVisible, readPreferences, type OptionalTutorModule } from "@/lib/userPreferences";
 
-export default function TutorShellClient({ children }: { children: ReactNode }) {
+// `pending` (BU-00 bước 5): gia sư chờ duyệt — vỏ 3 mục, không hỏi module / số việc (API Hộp việc từ chối role student).
+export default function TutorShellClient({ children, pending = false }: { children: ReactNode; pending?: boolean }) {
   const [modules, setModules] = useState<OptionalTutorModule[] | undefined>(undefined);
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (pending) return;
     let off = false;
     void (async () => {
       try {
@@ -26,7 +28,7 @@ export default function TutorShellClient({ children }: { children: ReactNode }) 
       } catch { /* không có mạng: giữ đủ module, không số đếm */ }
     })();
     return () => { off = true; };
-  }, []);
+  }, [pending]);
 
-  return <TutorShell modules={modules} badges={badges}>{children}</TutorShell>;
+  return <TutorShell modules={modules} badges={badges} pending={pending}>{children}</TutorShell>;
 }

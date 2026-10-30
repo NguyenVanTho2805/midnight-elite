@@ -47,6 +47,9 @@ import { prisma } from "@/lib/prisma";
   // 24/10/2026 (QT-02): thêm tab "Nhật ký" cho cấp 1 → 6 trang con.
   check("dải tab 6 trang con (có 'Nhật ký'), 'Hàng chờ' đang ở", (await tabs.getByRole("link").count()) === 6 && await tabs.getByRole("link", { name: "Nhật ký" }).isVisible() && await tabs.getByRole("link", { name: "Hàng chờ" }).getAttribute("aria-current") === "page");
   check("thanh bên cũ (neumorphic) và dòng 'Hệ thống hoạt động bình thường' giả không còn", await pg.getByLabel("Menu quản trị").count() === 0 && await pg.getByText("Hệ thống hoạt động bình thường").count() === 0);
+  // BU-00 bước 4: cookie không dùng chung hai tên miền → nút "Xem thử trang học sinh" đi qua /dang-nhap?redirect= ở tên miền chính (vỏ học sinh sẽ hiện băng "Đang xem thử").
+  const preview = pg.locator("a[data-preview-student]");
+  check("nút 'Xem thử trang học sinh' → https://midnightelite-edu.com/dang-nhap?redirect=%2Fstudent%2Fviec-cua-toi (tab mới)", await preview.count() === 1 && (await preview.innerText()).trim() === "Xem thử trang học sinh" && await preview.getAttribute("href") === "https://midnightelite-edu.com/dang-nhap?redirect=%2Fstudent%2Fviec-cua-toi" && await preview.getAttribute("target") === "_blank", await preview.getAttribute("href"));
   const opts = lb().getByRole("option");
   check(`${TOTAL} dòng; dòng đầu đang chọn; chờ lâu nhất đứng đầu (hồ sơ gia sư)`, await opts.count() === TOTAL && await opts.nth(0).getAttribute("aria-selected") === "true" && /Gia sư chờ duyệt/.test(await opts.nth(0).innerText()), await opts.count());
   check("tiêu đề danh sách theo Figma: 'Chờ kiểm duyệt' + 'Hàng chờ nội dung và hồ sơ'", await pg.getByRole("heading", { name: "Chờ kiểm duyệt" }).isVisible() && await pg.getByText("Hàng chờ nội dung và hồ sơ").isVisible());

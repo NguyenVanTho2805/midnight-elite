@@ -11,7 +11,7 @@ function VerifyContent() {
 
   const [status, setStatus] = useState<"loading" | "success" | "already" | "error">("loading");
   const [name,   setName]   = useState("");
-  // NC2-029: gia sư vừa đăng ký, hồ sơ chưa được duyệt → họ vào khung học viên; chữ phải nói đúng như vậy.
+  // NC2-029: gia sư vừa đăng ký, hồ sơ chưa được duyệt — chữ phải nói đúng. BU-00 bước 5: họ vào trang chờ duyệt /lop-cua-toi/cho-duyet (`landing` do API trả).
   const [tutorPending, setTutorPending] = useState(false);
   const [errMsg, setErrMsg] = useState("");
 
@@ -67,7 +67,7 @@ function VerifyContent() {
                 Chào mừng <strong style={{ color: "var(--kin-nhan-link)" }}>{name}</strong> đến với KiN
               </p>
               {tutorPending ? (
-                <p className="text-xs mb-5" style={{ color: "var(--kin-chu-mo)" }}>Hồ sơ gia sư của bạn đang chờ quản trị duyệt. Trong lúc chờ, bạn vào KiN bằng tài khoản học viên…</p>
+                <p className="text-xs mb-5" style={{ color: "var(--kin-chu-mo)" }}>Hồ sơ của bạn đang chờ KiN duyệt; bạn có thể xem trạng thái ở trang chờ duyệt. Đang chuyển…</p>
               ) : (
                 <p className="text-xs mb-5" style={{ color: "var(--kin-chu-mo)" }}>Đang chuyển vào KiN…</p>
               )}

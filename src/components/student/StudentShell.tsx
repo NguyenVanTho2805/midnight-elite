@@ -42,9 +42,12 @@ const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.filter(l => l.active !== fal
 /** Phòng thi: /student/thi-thu/<mã đề> (không tính danh sách /student/thi-thu). */
 export const isExamRoom = (pathname: string) => /^\/student\/thi-thu\/[^/]+/.test(pathname);
 
-export default function StudentShell({ children }: { children: ReactNode }) {
+// `preview` (BU-00 bước 4, 31/10/2026): quản trị cấp 1 / cấp nội dung "xem thử" khu học sinh — băng mỏng trên cùng nói rõ đang xem thử, kèm đường về /admin
+// (proxy đưa sang tên miền quản trị). Không truyền thì tự nhận theo vai: role admin (gia sư không còn tới đây — AuthGuard đẩy về Hộp việc) = đang xem thử.
+export default function StudentShell({ children, preview }: { children: ReactNode; preview?: boolean }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const showPreview = preview ?? user?.role === "admin";
   const [badge, setBadge] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
   const exam = isExamRoom(pathname);
@@ -88,6 +91,13 @@ export default function StudentShell({ children }: { children: ReactNode }) {
         home={{ href: "/student/viec-cua-toi", label: "KiN — Việc của tôi" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+        {showPreview && (
+          <div data-admin-preview role="status" className="min-h-9 flex items-center justify-center gap-2 px-4 text-[length:var(--kin-co-small)] bg-[var(--kin-nen-nhan)] text-[var(--kin-chu-chinh)] border-b border-[var(--kin-vien-nhat)]">
+            <span>Đang xem thử giao diện học sinh</span>
+            <span aria-hidden>·</span>
+            <a href="/admin" className="font-semibold underline text-[var(--kin-nhan-link)] min-h-9 inline-flex items-center">Về bảng quản trị</a>
+          </div>
+        )}
         <VerifyEmailBanner />
         <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
           <div className="flex items-center gap-1 min-w-0">
