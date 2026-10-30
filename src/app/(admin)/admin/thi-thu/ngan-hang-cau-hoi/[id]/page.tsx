@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionCategoryFull, type Difficulty, type QuestionType } from "@/lib/api";
@@ -94,6 +95,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
   onRefetch: () => Promise<void>;
   showToast: (msg: string, ok?: boolean) => void;
 }) {
+  const href = useContentHref(); // BU-00 bước 3
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(node.name);
@@ -177,7 +179,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
           </>
         ) : (
           <>
-            <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${node.id}`} className="text-sm text-gray-800 hover:text-blue-600 hover:underline">
+            <Link href={href(`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${node.id}`)} className="text-sm text-gray-800 hover:text-blue-600 hover:underline">
               {node.name}
             </Link>
             <span className="text-xs text-gray-400">({node.total} câu hỏi)</span>
@@ -232,6 +234,7 @@ function CategoryRow({ node, depth, forceOpen, onRefetch, showToast }: {
 function PageInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const href = useContentHref(); // BU-00 bước 3
   const bankId = params.id;
 
   const [items, setItems] = useState<QuestionCategoryFull[]>([]);
@@ -285,7 +288,7 @@ function PageInner() {
     try {
       const result = await api.questionCategories.duplicate(root.id, copyName.trim() || undefined);
       setCopying(false);
-      router.push(`/admin/thi-thu/ngan-hang-cau-hoi/${result.id}`);
+      router.push(href(`/admin/thi-thu/ngan-hang-cau-hoi/${result.id}`));
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Copy thất bại", false);
     }
@@ -295,7 +298,7 @@ function PageInner() {
     return (
       <div className="p-6 max-w-3xl mx-auto">
         <p className="text-sm text-gray-500 mb-1">
-          <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
+          <Link href={href("/admin/thi-thu/ngan-hang-cau-hoi")} className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
         </p>
         <p className="text-center text-gray-400 text-sm py-12">Không tìm thấy ngân hàng này</p>
       </div>
@@ -307,7 +310,7 @@ function PageInner() {
       {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
 
       <p className="text-sm text-gray-500 mb-1">
-        <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
+        <Link href={href("/admin/thi-thu/ngan-hang-cau-hoi")} className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
         {" "}/ <span className="font-medium text-gray-800">{root?.name ?? "..."}</span>
       </p>
       <div className="flex items-center justify-between mb-5">
@@ -327,11 +330,11 @@ function PageInner() {
                 className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 Quét trùng lặp
               </button>
-              <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}&select=1`}
+              <Link href={href(`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}&select=1`)}
                 className="px-4 py-2.5 text-sm font-semibold rounded-lg border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
                 Tự chọn câu hỏi
               </Link>
-              <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}`}
+              <Link href={href(`/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi?categoryId=${root.id}`)}
                 className="px-4 py-2.5 text-sm font-semibold text-white rounded-lg" style={{ background: "var(--kin-nhan-nen)" }}>
                 + Thêm câu hỏi
               </Link>

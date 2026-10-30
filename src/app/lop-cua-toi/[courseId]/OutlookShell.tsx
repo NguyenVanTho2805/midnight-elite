@@ -55,13 +55,13 @@ function tutorItems(): Item[] {
     { key: "tong-quan", label: "Tổng quan", icon: "📋",
       render: ({ courseName }) => <OverviewBlock courseName={courseName} /> },
     { key: "diem-danh", label: "Điểm danh", icon: "✅",
-      render: ({ courseId }) => <OpenPageBlock title="Điểm danh" href={`/admin/khoa-hoc/${courseId}/diem-danh`}
+      render: ({ courseId }) => <OpenPageBlock title="Điểm danh" href={`/lop-cua-toi/quan-lop/${courseId}/diem-danh`}
         note="Bấm các em có mặt / muộn / có phép / vắng (AS-191)." /> },
     { key: "roster", label: "Danh sách HS", icon: "👥",
-      render: ({ courseId }) => <OpenPageBlock title="Danh sách học sinh" href={`/admin/khoa-hoc/${courseId}/hoc-vien`}
+      render: ({ courseId }) => <OpenPageBlock title="Danh sách học sinh" href={`/lop-cua-toi/quan-lop/${courseId}/hoc-vien`}
         note="Danh bạ lớp — gọi tên, mở Zalo PH (TK-171)." /> },
     { key: "quan-khoa", label: "Quản khoá", icon: "⚙️",
-      render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={`/admin/khoa-hoc/${courseId}`}
+      render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={`/lop-cua-toi/quan-lop/${courseId}`}
         note="Chương - bài - học phí - lịch học - học viên." /> },
     { key: "ma-moi", label: "Mã mời", icon: "🔗",
       render: ({ courseId, courseName, viewerName }) => (

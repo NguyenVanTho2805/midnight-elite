@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { launch, closeAll } from "./ui";
 import { mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done, cookieFor, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
+import { toTutorPath } from "@/lib/tutorRoutes";
 import type { BrowserContext, Page } from "playwright";
 
 const PORT = Number(process.env.PORT ?? 3100);
@@ -38,23 +39,28 @@ const isProtected = (p: string) => PROTECTED.some(r => r.test(p));
 
 // Chuyển hướng CÓ CHỦ ĐÍCH: (kịch bản, đường dẫn yêu cầu) → đường dẫn cuối được chấp nhận.
 //   - Người đã đăng nhập mở trang chủ / đăng nhập / đăng ký thì vào thẳng dashboard (hostRouting.ts).
-//   - Gia sư mở bảng tổng quan quản trị /admin thì về Hộp việc.
+//   - Gia sư mở /admin/* thì 307 sang bí danh /lop-cua-toi/… hoặc về Hộp việc (BU-00 bước 3, xem expectedRedirect).
 // Bí danh cũ trong vỏ học viên (Quyết định S 15/10): thanh bên trỏ /student/thi-thu… rồi các trang này chuyển tới trang công khai tương ứng, mở TRONG khung thanh bên.
 const STUDENT_ALIASES: Record<string, string> = {
   "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong",
   "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu",
 };
 // Trang CHỈ để chuyển hướng (page.tsx gọi redirect()): không phải liên kết sai mà là cửa vào cũ / ngắn gọn.
-const PAGE_REDIRECTS: Record<string, string> = { "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu" };
+// BU-00 bước 3: gia sư dùng bí danh /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi*; trang tao-moi ở cả hai họ chỉ chuyển tiếp.
+const PAGE_REDIRECTS: Record<string, string> = { "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/quan-lop", "/lop-cua-toi/de-thi/tao-moi": "/lop-cua-toi/de-thi" };
 function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
   if (PAGE_REDIRECTS[reqPath] === finPath) return true;
+  // Gia sư mở đường cũ /admin/...: proxy 307 sang bí danh (src/lib/tutorRoutes.ts), không có bí danh → Hộp việc (BU-00 bước 3).
+  if (sc.role === "tutor" && /^\/admin(\/|$)/.test(reqPath)) {
+    const alias = toTutorPath(reqPath)?.split("?")[0] ?? null;
+    return finPath === (alias ?? "/lop-cua-toi") || (alias !== null && PAGE_REDIRECTS[alias] === finPath);
+  }
   // /ban-do là bản đồ cho MỌI người, có mục "Gia sư" (Lịch / Lớp / Học phí): quản trị không có vỏ gia sư nên các trang này đưa họ về danh sách lớp /lop-cua-toi.
   if ((sc.role === "super" || sc.role === "content") && /^\/lop-cua-toi\/(lich|lop|hoc-phi)$/.test(reqPath)) return finPath === "/lop-cua-toi";
   if ((sc.role === "student" || sc.role === "tutor") && ["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) {
     return finPath === (sc.role === "student" ? "/student/viec-cua-toi" : "/lop-cua-toi");
   }
-  if (sc.role === "tutor" && reqPath === "/admin") return finPath === "/lop-cua-toi";
   return false;
 }
 

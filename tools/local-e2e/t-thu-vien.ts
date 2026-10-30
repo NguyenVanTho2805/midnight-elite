@@ -94,7 +94,7 @@ const D = 24 * 3_600_000;
   section("Gia sư: thư viện các lớp MÌNH dạy");
   const th = await page(tc);
   check("phụ đề nói đây là các lớp bạn dạy; hiện lớp của mình, KHÔNG hiện lớp của gia sư khác", th.includes("Bản ghi và tài liệu của các lớp bạn dạy") && th.includes("Tài liệu của cô, sắp xếp theo nhóm lớp") && th.includes("Toán 9 công khai") && !th.includes("Lý 10 lớp khác"));
-  check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /admin/khoa-hoc/<lớp>?tab=chuong-bai (đúng tab chương bài, không phải Cài đặt)", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/admin/khoa-hoc/${A.id}?tab=chuong-bai`));
+  check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /lop-cua-toi/quan-lop/<lớp>?tab=chuong-bai (đúng tab chương bài, không phải Cài đặt)", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/lop-cua-toi/quan-lop/${A.id}?tab=chuong-bai`));
   // 23/10/2026 (Figma 299:113561): Thư viện của gia sư là BẢNG tài liệu; bài tập và số bài nộp/chờ chấm đã chuyển sang module Bài tập (/lop-cua-toi/bai-tap).
   check("bảng tài liệu: cột 'Đã chia sẻ' (tên lớp), loại PDF, lối 'Xem' mở trang xem trước", th.includes("Đã chia sẻ") && th.includes("PDF") && th.includes("/xem-tai-lieu?url="));
   check("bài tập không còn nằm trong Thư viện của gia sư (đã sang Bài tập)", !th.includes("Phiếu bài tập Vi-ét") && !th.includes("bài nộp"));
@@ -106,7 +106,7 @@ const D = 24 * 3_600_000;
   section("Gia sư mới chưa mở lớp nào");
   const T3 = await mkTutor("Cô Mới");
   const t3h = await page(await cookieFor(T3));
-  check("thông báo 'Bạn chưa mở lớp nào' + lối 'Tạo lớp' mở THẲNG form tạo lớp (/admin/khoa-hoc?tao=1), không dừng ở danh sách trống", t3h.includes("Bạn chưa mở lớp nào") && t3h.includes('href="/admin/khoa-hoc?tao=1"'), t3h.match(/Bạn chưa mở lớp nào[\s\S]{0,300}/)?.[0]);
+  check("thông báo 'Bạn chưa mở lớp nào' + lối 'Tạo lớp' mở THẲNG form tạo lớp (/lop-cua-toi/quan-lop?tao=1), không dừng ở danh sách trống", t3h.includes("Bạn chưa mở lớp nào") && t3h.includes('href="/lop-cua-toi/quan-lop?tao=1"'), t3h.match(/Bạn chưa mở lớp nào[\s\S]{0,300}/)?.[0]);
 
   await done();
 })();

@@ -83,7 +83,7 @@ check("nhiều lớp: sắp CŨ NHẤT trước (việc để lâu lên đầu)"
 check("số việc = số BUỔI (không phải số em)", r.length === 2 && r[1].missing === 3);
 
 section("Đích của dòng việc và trang điểm danh");
-check("href mở đúng trang điểm danh của lớp kèm ngày", unmarkedHref("c1", "2026-10-20") === "/admin/khoa-hoc/c1/diem-danh?date=2026-10-20");
+check("href mở đúng trang điểm danh của lớp kèm ngày (BU-00 bước 3: bí danh gia sư /lop-cua-toi/quan-lop/…)", unmarkedHref("c1", "2026-10-20") === "/lop-cua-toi/quan-lop/c1/diem-danh?date=2026-10-20");
 check("isValidDateKey (trang điểm danh dùng để nhận ?date=): nhận ngày thật, bỏ rác", isValidDateKey("2026-10-20") && !isValidDateKey("2026-13-01") && !isValidDateKey("2026-02-30") && !isValidDateKey("abc") && !isValidDateKey("") && !isValidDateKey("2026-10-20; DROP"));
 const page = readFileSync(join(process.cwd(), "src/app/(admin)/admin/khoa-hoc/[id]/diem-danh/page.tsx"), "utf8");
 check("trang điểm danh đọc ?date= qua useSearchParams, bọc Suspense, kiểm bằng isValidDateKey", /useSearchParams\(\)\.get\("date"\)/.test(page) && /<Suspense/.test(page) && /isValidDateKey\(queryDate\)/.test(page));

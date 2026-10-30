@@ -36,7 +36,7 @@ import { prisma } from "@/lib/prisma";
   check("học viên được mở khoá lớp (enrollment active)", (await prisma.enrollment.findUnique({ where: { id: enr.id } }))?.status === "active");
   const nt = await prisma.notification.findFirst({ where: { userId: T.id, type: "parent_consent_responded" } });
   check("gia sư chủ lớp có thông báo", !!nt);
-  check("liên kết → tab 'Học viên đăng ký' của ĐÚNG lớp (/admin/khoa-hoc/<lớp>?tab=hoc-vien), không phải /admin/hoc-sinh", nt?.link === `/admin/khoa-hoc/${C.id}?tab=hoc-vien`, nt?.link);
+  check("liên kết → tab 'Học viên đăng ký' của ĐÚNG lớp ở bí danh gia sư (/lop-cua-toi/quan-lop/<lớp>?tab=hoc-vien, BU-00 bước 3), không phải /admin/hoc-sinh", nt?.link === `/lop-cua-toi/quan-lop/${C.id}?tab=hoc-vien`, nt?.link);
   const ns = await prisma.notification.findFirst({ where: { userId: stu.id, type: "parent_consent_responded" } });
   check("học viên: liên kết → /student/hoc-tap", ns?.link === "/student/hoc-tap", ns?.link);
 

@@ -1,7 +1,8 @@
 // Rà soát TOÀN BỘ vai GIA SƯ bằng trình duyệt thật (15/10/2026, Thọ: "kiểm tra toàn bộ role gia sư xem có lỗi hay button đến sai địa chỉ").
 //
-// Gia sư ở tên miền chính (midnightelite-edu.com): vỏ gia sư (/lop-cua-toi/*), các trang quản lớp / đề thi dùng chung (/admin/khoa-hoc, /admin/thi-thu…) chạy ngay
-// trong vỏ gia sư, và các trang công khai (/thu-vien, /khoa-hoc, /giang-vien, /mentor/…) cũng hiện trong vỏ gia sư.
+// Gia sư ở tên miền chính (midnightelite-edu.com): vỏ gia sư (/lop-cua-toi/*), các trang quản lớp / đề thi dùng chung chạy ở bí danh gia sư
+// /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi* (BU-00 bước 3, 31/10/2026 — đường cũ /admin/khoa-hoc*, /admin/thi-thu* được proxy 307 sang đó; src/lib/tutorRoutes.ts),
+// và các trang công khai (/thu-vien, /khoa-hoc, /giang-vien, /mentor/…) cũng hiện trong vỏ gia sư.
 //
 // Ba lớp kiểm tra, trên một "thế giới gia sư" đủ dữ liệu (tools/local-e2e/tutor-world.ts):
 //   A. LIÊN KẾT: duyệt từ mọi trang xuất phát, mở thật từng đích của mọi <a href> (kể cả trong menu "Khác" và menu tài khoản) → không 404 / không bị đẩy về đăng nhập /
@@ -16,6 +17,7 @@ import { launch, closeAll } from "./ui";
 import { wipe, check, section, done, cookieFor } from "./h";
 import { seedTutorWorld, OTHER } from "./tutor-world";
 import { prisma } from "@/lib/prisma";
+import { toTutorPath } from "@/lib/tutorRoutes";
 import type { BrowserContext, Page } from "playwright";
 
 const PORT = Number(process.env.PORT ?? 3100);
@@ -120,12 +122,18 @@ async function collect(p: Page, from: string, openMenus: boolean): Promise<Rec[]
   return all;
 }
 
-// Chuyển hướng CÓ CHỦ ĐÍCH cho gia sư: trang chủ / đăng nhập / đăng ký → Hộp việc; /admin (bảng tổng quan quản trị) → Hộp việc.
+// Chuyển hướng CÓ CHỦ ĐÍCH cho gia sư: trang chủ / đăng nhập / đăng ký → Hộp việc; /admin/* → bí danh /lop-cua-toi/… (BU-00 bước 3, src/lib/tutorRoutes.ts),
+// không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
 const HOME = COMPACT ? "/lop-cua-toi/lich" : "/lop-cua-toi";   // trang đầu của gia sư sau đăng nhập
-const STUDENT_ALIASES: Record<string, string> = { "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
+const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/quan-lop", "/lop-cua-toi/de-thi/tao-moi": "/lop-cua-toi/de-thi", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
 function expected(reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
-  if (["/", "/dang-nhap", "/dang-ky", "/admin"].includes(reqPath)) return finPath === HOME;
+  if (/^\/admin(\/|$)/.test(reqPath)) {
+    // đường cũ /admin/... của gia sư: 307 sang bí danh (rồi trang tao-moi còn chuyển tiếp một lần nữa), không có bí danh → Hộp việc
+    const alias = toTutorPath(reqPath)?.split("?")[0] ?? null;
+    return finPath === (alias ?? HOME) || (alias !== null && STUDENT_ALIASES[alias] === finPath);
+  }
+  if (["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) return finPath === HOME;
   if (COMPACT && reqPath === "/lop-cua-toi") return finPath === HOME;            // Hộp việc đã tắt (modules: []) → màn đầu là Lịch (TT-203)
   return false;
 }
@@ -268,8 +276,10 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     "/lop-cua-toi", "/lop-cua-toi/tong-quan", "/lop-cua-toi/lich", "/lop-cua-toi/lop", "/lop-cua-toi/hoc-phi", "/lop-cua-toi/doanh-thu", "/lop-cua-toi/bao-cao-thang",
     "/lop-cua-toi/ke-hoach-buoi", ...(full?.planId ? [`/lop-cua-toi/ke-hoach-buoi/${full.planId}`] : []), "/lop-cua-toi/kiem-duyet", "/lop-cua-toi/ho-so", "/lop-cua-toi/bai-dang", "/lop-cua-toi/cai-dat",
     ...(full ? [`/lop-cua-toi/${course1}`, `/lop-cua-toi/${course2}`] : []),
-    "/admin/khoa-hoc", "/admin/khoa-hoc/tao-moi", ...(full ? [`/admin/khoa-hoc/${course1}`, ...["chuong-bai", "lich-hoc", "hoc-vien"].map(t => `/admin/khoa-hoc/${course1}?tab=${t}`)] : []), "/admin/khoa-hoc/danh-muc",
-    "/admin/thi-thu", "/admin/thi-thu/tao-moi", ...(full ? [`/admin/thi-thu/${full.examId}`] : []), "/admin/thi-thu/ngan-hang-cau-hoi", "/admin/thi-thu/ngan-hang-de-thi",
+    // BU-00 bước 3: bí danh gia sư của /admin/khoa-hoc*, /admin/thi-thu*; hai đường cũ giữ lại làm hạt giống để kiểm 307 (kỳ vọng ở expected()).
+    "/lop-cua-toi/quan-lop", "/lop-cua-toi/quan-lop/tao-moi", ...(full ? [`/lop-cua-toi/quan-lop/${course1}`, ...["chuong-bai", "lich-hoc", "hoc-vien"].map(t => `/lop-cua-toi/quan-lop/${course1}?tab=${t}`), `/lop-cua-toi/quan-lop/${course1}/hoc-vien`, `/lop-cua-toi/quan-lop/${course1}/diem-danh`] : []),
+    "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/tao-moi", ...(full ? [`/lop-cua-toi/de-thi/${full.examId}`] : []), "/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-de-thi",
+    "/admin/khoa-hoc", "/admin/thi-thu", "/admin/khoa-hoc/danh-muc",
     "/thu-vien", "/khoa-hoc", ...(full ? [`/khoa-hoc/${course1}`] : []), "/giang-vien", `/mentor/${T.id}`, "/thi-thu", "/cong-dong", "/tin-tuc", "/diem-chuan", "/bang-xep-hang", "/cai-dat/chu-de", "/",
   ].map(s => MAIN + s);
 
@@ -328,15 +338,15 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // ── Quyền: gia sư mở trang chỉ dành cho quản trị thì được đưa về Hộp việc, không trang trắng / lỗi ──
   section("Quyền: trang chỉ dành cho quản trị → gia sư về Hộp việc (không trắng, không lỗi)");
   const issuesBeforePerm = issues.length;
-  for (const path of ["/admin", "/admin/doanh-thu", "/admin/hoc-sinh", "/admin/quan-tri-vien", "/admin/tin-tuc", "/admin/vinh-danh", "/admin/pheu", "/admin/diem-chuan"]) {
+  // BU-00 bước 3: gia sư KHÔNG còn vào /admin/* nào — kể cả /admin/kiem-duyet (hàng chờ của họ là /lop-cua-toi/kiem-duyet) và /admin/khoa-hoc/danh-muc (chỉ quản trị).
+  for (const path of ["/admin", "/admin/doanh-thu", "/admin/hoc-sinh", "/admin/quan-tri-vien", "/admin/tin-tuc", "/admin/vinh-danh", "/admin/pheu", "/admin/diem-chuan", "/admin/kiem-duyet", "/admin/khoa-hoc/danh-muc"]) {
     const r = await open(p, MAIN + path);
     check(`gia sư mở ${path} → về ${HOME}`, r.final.origin === MAIN_ORIGIN && norm(r.final.pathname) === HOME, abs(r.final));
   }
-  // /admin/kiem-duyet là hàng chờ gộp THEO QUYỀN (src/lib/adminQueueServer.ts): gia sư được vào, chỉ thấy báo cáo bài viết trong lớp của mình, KHÔNG thấy hồ sơ gia sư xin duyệt.
-  {
-    const r = await open(p, MAIN + "/admin/kiem-duyet");
-    check("gia sư mở /admin/kiem-duyet → vào được, khung gia sư, không thấy đơn xin làm gia sư của người khác", r.final.pathname === "/admin/kiem-duyet" && r.shell === "Module của gia sư" && !r.text.includes(OTHER.applicant), { url: abs(r.final), shell: r.shell });
-    check("hàng chờ trống của gia sư nói về báo cáo trong lớp của họ (không hứa hồ sơ gia sư xin duyệt)", EMPTY && VW >= 900 ? /Báo cáo bài viết trong lớp của bạn/.test(r.text) && !/Hồ sơ gia sư xin duyệt/.test(r.text) : true, r.text.slice(0, 300));   // khung đọc (bên phải) chỉ có ở màn rộng
+  // Đường cũ có bí danh: 307 sang bí danh, giữ tham số, vẫn khung gia sư.
+  if (full) {
+    const r = await open(p, MAIN + `/admin/khoa-hoc/${course1}?tab=lich-hoc`);
+    check("gia sư mở /admin/khoa-hoc/<lớp>?tab=lich-hoc (link cũ) → 307 sang /lop-cua-toi/quan-lop/<lớp>?tab=lich-hoc, khung gia sư", r.final.pathname === `/lop-cua-toi/quan-lop/${course1}` && r.final.searchParams.get("tab") === "lich-hoc" && r.shell === "Module của gia sư", { url: abs(r.final), shell: r.shell });
   }
   // Mở trang cấm làm trang gọi API trước khi PermissionGuard kịp đẩy đi → 403 là KỲ VỌNG, không tính vào mục C.
   const expected403 = issues.splice(issuesBeforePerm).filter(i => i.kind === "HTTP 403");
@@ -348,12 +358,12 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     const before = issues.length;
     const marks = [OTHER.course, OTHER.plan, OTHER.exam, OTHER.tutor];
     const leaks: string[] = [];
-    for (const path of ["/lop-cua-toi", "/lop-cua-toi/lop", "/lop-cua-toi/lich", "/lop-cua-toi/hoc-phi", "/lop-cua-toi/ke-hoach-buoi", "/lop-cua-toi/bao-cao-thang", "/lop-cua-toi/kiem-duyet", "/admin/khoa-hoc", "/admin/thi-thu", "/admin/thi-thu/ngan-hang-de-thi"]) {
+    for (const path of ["/lop-cua-toi", "/lop-cua-toi/lop", "/lop-cua-toi/lich", "/lop-cua-toi/hoc-phi", "/lop-cua-toi/ke-hoach-buoi", "/lop-cua-toi/bao-cao-thang", "/lop-cua-toi/kiem-duyet", "/lop-cua-toi/quan-lop", "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/ngan-hang-de-thi"]) {
       const r = await open(p, MAIN + path);
       for (const m of marks) if (r.text.includes(m)) leaks.push(`${path} có «${m}»`);
     }
     check("các trang riêng của gia sư không hiện lớp / kế hoạch / đề thi / tên của gia sư khác", leaks.length === 0, leaks);
-    const direct = [`/lop-cua-toi/${w.c3.id}`, `/admin/khoa-hoc/${w.c3.id}`, `/admin/thi-thu/${w.exam2Id}`, ...(w.plan2Id ? [`/lop-cua-toi/ke-hoach-buoi/${w.plan2Id}`] : [])];
+    const direct = [`/lop-cua-toi/${w.c3.id}`, `/lop-cua-toi/quan-lop/${w.c3.id}`, `/lop-cua-toi/de-thi/${w.exam2Id}`, ...(w.plan2Id ? [`/lop-cua-toi/ke-hoach-buoi/${w.plan2Id}`] : [])];
     const seenOther: string[] = [];
     const textOf = new Map<string, string>();
     for (const path of direct) {
@@ -364,7 +374,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
       if (hit.length) seenOther.push(`${path} hiện «${hit.join(", ")}»`);
     }
     check("mở thẳng địa chỉ lớp / đề / kế hoạch của gia sư khác → không thấy dữ liệu của họ", seenOther.length === 0, seenOther);
-    const editText = textOf.get(`/admin/khoa-hoc/${w.c3.id}`) ?? "";
+    const editText = textOf.get(`/lop-cua-toi/quan-lop/${w.c3.id}`) ?? "";
     check("trang sửa khoá của gia sư khác báo 'không có quyền', không hiện giao diện sửa (Lưu thay đổi / Học viên đăng ký)", /không có quyền/i.test(editText) && !/Lưu thay đổi|Học viên đăng ký/.test(editText), editText.slice(0, 160));
     // mở địa chỉ của người khác làm API trả 403/404 trước khi trang kịp đẩy đi → kỳ vọng, không tính vào mục C
     const dropped = issues.splice(before).filter(i => /^HTTP (401|403|404)$/.test(i.kind));
@@ -453,7 +463,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // ── độ phủ: các kiểu trang của gia sư đã được mở ──
   const walk = (d: string, out: string[] = []) => { for (const n of readdirSync(join(process.cwd(), d))) { const q = join(d, n); if (statSync(join(process.cwd(), q)).isDirectory()) { if (n !== "generated" && n !== "node_modules") walk(q, out); } else out.push(q); } return out; };
   const all = walk("src/app").filter(f => /\/page\.tsx?$/.test(f)).map(f => "/" + f.replace(/^src\/app\//, "").replace(/\/page\.\w+$/, "").split("/").filter(s => s && !/^\(.*\)$/.test(s)).join("/"));
-  const mine = all.filter(x => x.startsWith("/lop-cua-toi") || /^\/admin\/(khoa-hoc|thi-thu)/.test(x));
+  const mine = all.filter(x => x.startsWith("/lop-cua-toi"));   // BU-00 bước 3: bí danh /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi* đã nằm trong đây; gia sư không còn trang /admin/*
   const vis = new Set(visited.map(v => new URL(v.final).pathname));
   const match = (pt: string, path: string) => { const a = pt.split("/").filter(Boolean), b = path.split("/").filter(Boolean); return a.length === b.length && a.every((s, i) => /^\[.+\]$/.test(s) || s === b[i]); };
   const missing = mine.filter(pt => ![...vis].some(v => match(pt, v)));

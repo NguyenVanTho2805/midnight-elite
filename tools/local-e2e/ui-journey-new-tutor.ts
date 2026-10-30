@@ -209,7 +209,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await p.getByText("Cô chưa mở lớp nào").waitFor({ timeout: 60000 });
   await click(p.getByRole("link", { name: "Tạo lớp đầu tiên" }));
   sub("drawer 'Tạo khoá học mới' (trượt ra trên trang danh sách khoá)");
-  await eventually("tới /admin/khoa-hoc?tao=1 (drawer)", () => at().pathname === "/admin/khoa-hoc", 120000);
+  await eventually("tới /lop-cua-toi/quan-lop?tao=1 (drawer; BU-00 bước 3: bí danh gia sư của /admin/khoa-hoc)", () => at().pathname === "/lop-cua-toi/quan-lop", 120000);
   const drawerTitle = p.getByRole("heading", { name: "Tạo khoá học mới" });
   await drawerTitle.waitFor({ timeout: 60000 });
   await p.waitForTimeout(400);   // chờ drawer trượt vào xong rồi mới đếm ô
@@ -226,7 +226,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await click(dr.getByRole("button", { name: "Tạo khoá học" }));
   await eventually("DB: lớp có chủ là gia sư vừa đăng ký", async () => !!(await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } })), 90000);
   const course = (await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } }))!;
-  await eventually("NC2-029: tự chuyển tới trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học", () => at().pathname === `/admin/khoa-hoc/${course.id}` && at().searchParams.get("tab") === "lich-hoc", 120000);
+  await eventually("NC2-029: tự chuyển tới trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học", () => at().pathname === `/lop-cua-toi/quan-lop/${course.id}` && at().searchParams.get("tab") === "lich-hoc", 120000);
   await eventually("có thông báo thành công 'Đã tạo khoá học mới' (như cũ)", async () => (await body()).includes("Đã tạo khoá học mới"), 30000);
   const [dd, mm, yyyy] = [today.slice(8, 10), today.slice(5, 7), today.slice(0, 4)];
   check("DB: bỏ trống → giá 0, số bài học 0, ngày khai giảng = hôm nay giờ VN", course.price === 0 && course.lessons === 0 && course.openDate === `${dd}/${mm}/${yyyy}`, { price: course.price, lessons: course.lessons, openDate: course.openDate, today });
@@ -302,7 +302,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
 
   // ───────────────────── NC2-029: kiểm thêm (không tính vào số đo) ─────────────────────
   section("NC2-029. Menu ··· của gia sư có 'Mở lớp'; quản trị tạo lớp vẫn bắt buộc đủ 4 ô");
-  await p.goto(`${BASE}/admin/khoa-hoc`, GOTO);
+  await p.goto(`${BASE}/lop-cua-toi/quan-lop`, GOTO);
   const row2 = p.locator("tr", { hasText: courseName });
   await row2.getByRole("button", { name: "···" }).click({ timeout: 60000 });
   const menuLink = p.getByRole("link", { name: /^Mở lớp/ });
@@ -348,7 +348,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
     list.forEach((n, i) => {
       const next = list[i + 1];
       if (n.path === "/lop-cua-toi" && next?.path === "/lop-cua-toi/lich") return;
-      if (n.path === "/admin/khoa-hoc/tao-moi") return;
+      if (n.path === "/admin/khoa-hoc/tao-moi" || n.path === "/lop-cua-toi/quan-lop/tao-moi") return;
       if (out.length && out[out.length - 1].path === n.path) return;
       out.push(n);
     });

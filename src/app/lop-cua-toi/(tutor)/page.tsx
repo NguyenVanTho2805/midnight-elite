@@ -7,15 +7,15 @@
 // - Học viên (role=student): các lớp đã Enrollment status="active".
 // - Chưa đăng nhập: redirect về /dang-nhap.
 //
-// Click 1 lớp → tạm thời sang trang quản khoá cũ (/admin/khoa-hoc/[id])
-// cho gia sư và /student/hoc-tap cho học viên. Khi TK-179 có → trỏ về
-// /lop-cua-toi/[courseId].
+// Click 1 lớp → trang lớp /lop-cua-toi/[courseId]; hai lối tắt Điểm danh / Danh sách HS đi theo vai (BU-00 bước 3: gia sư → /lop-cua-toi/quan-lop/…,
+// quản trị → /admin/khoa-hoc/…, src/lib/tutorRoutes.ts).
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import HopViec from "@/components/tutor/HopViec";
 import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
+import { contentHref } from "@/lib/tutorRoutes";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +53,10 @@ export default async function LopCuaToiPage() {
   const items = session.role === "admin"
     ? owned.map(c => ({ id: c.id, name: c.name, category: c.category,
          hrefOpen: `/lop-cua-toi/${c.id}`,
+         // BU-00 bước 3: gia sư đi bí danh /lop-cua-toi/quan-lop/…; quản trị (xem danh sách này) giữ /admin/khoa-hoc/….
          actions: [
-           { label: "Điểm danh",  href: `/admin/khoa-hoc/${c.id}/diem-danh` },
-           { label: "Danh sách HS", href: `/admin/khoa-hoc/${c.id}/hoc-vien` },
+           { label: "Điểm danh",  href: contentHref(session.adminRole === "teacher", `/admin/khoa-hoc/${c.id}/diem-danh`) },
+           { label: "Danh sách HS", href: contentHref(session.adminRole === "teacher", `/admin/khoa-hoc/${c.id}/hoc-vien`) },
          ],
          subtitle: c.status ? "Đang mở" : "Đã đóng",
       }))
@@ -86,7 +87,7 @@ export default async function LopCuaToiPage() {
           <div className="rounded-xl p-6 text-center"
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-phu)" }}>
             {session.role === "admin"
-              ? "Bạn chưa mở lớp nào. Tạo lớp mới ở /admin/khoa-hoc."
+              ? "Bạn chưa mở lớp nào. Tạo lớp mới ở trang Quản lớp."
               : "Bạn chưa đăng ký lớp nào."}
           </div>
         ) : (

@@ -10,6 +10,7 @@
 "use client";
 import { useEffect, useState, useCallback, use as usePromise } from "react";
 import Link from "next/link";
+import { useContentHref } from "@/components/tutor/useContentHref";
 
 type Student = {
   userId:       string;
@@ -25,6 +26,7 @@ type Student = {
 
 export default function RosterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = usePromise(params);
+  const href = useContentHref(); // BU-00 bước 3: gia sư ở bí danh /lop-cua-toi/quan-lop/…
   const [students, setStudents] = useState<Student[]>([]);
   const [total,    setTotal]    = useState(0);
   const [loading,  setLoading]  = useState(true);
@@ -55,7 +57,7 @@ export default function RosterPage({ params }: { params: Promise<{ id: string }>
     <div style={{ background: "var(--kin-nen-trang)", minHeight: "100vh" }}>
       <div className="max-w-5xl mx-auto px-4 py-6">
         <header className="mb-5">
-          <Link href={`/admin/khoa-hoc/${courseId}`}
+          <Link href={href(`/admin/khoa-hoc/${courseId}`)}
             className="text-sm hover:underline"
             style={{ color: "var(--kin-chu-phu)" }}>
             ← Về trang lớp

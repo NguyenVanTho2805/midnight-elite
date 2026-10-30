@@ -12,9 +12,9 @@ section("buildInboxItems");
 check("không việc nào → rỗng", buildInboxItems(raw({}), NOW).length === 0);
 check("loại có count=0 bị bỏ dù còn rows", buildInboxItems(raw({ bank: { count: 0, rows: rows(2), at: null } }), NOW).length === 0);
 check("mọi loại việc đều có trong thứ tự khai báo (11, kể cả unmarked của ĐX-01 và invoiceRemind của F2)", INBOX_KINDS.length === 11 && new Set(INBOX_KINDS).size === 11 && INBOX_KINDS.includes("unmarked") && INBOX_KINDS.includes("invoiceRemind"), INBOX_KINDS);
-const un = buildInboxItems(raw({ unmarked: { count: 3, rows: [{ title: "Toán 9", sub: "buổi 20/10 19:00 · thiếu 2/5 em: An, Bình", href: "/admin/khoa-hoc/c1/diem-danh?date=2026-10-20" }], at: "2026-10-20T12:00:00Z" } }), NOW)[0];
+const un = buildInboxItems(raw({ unmarked: { count: 3, rows: [{ title: "Toán 9", sub: "buổi 20/10 19:00 · thiếu 2/5 em: An, Bình", href: "/lop-cua-toi/quan-lop/c1/diem-danh?date=2026-10-20" }], at: "2026-10-20T12:00:00Z" } }), NOW)[0];
 check("ĐX-01: 'unmarked' là việc thường (không khẩn), tiêu đề có số buổi, có chữ trạng thái", un.id === "unmarked" && !un.urgent && un.title === "3 buổi đã qua giờ, chưa điểm danh xong" && un.status.label === "Chưa điểm danh" && un.status.tone === "cho", un);
-check("ĐX-01: dòng việc dẫn tới trang điểm danh của lớp kèm ngày; khung đọc nói rõ học phí không đổi", un.detail.rows[0].href === "/admin/khoa-hoc/c1/diem-danh?date=2026-10-20" && /Học phí không đổi/.test(un.detail.meta), un.detail);
+check("ĐX-01: dòng việc dẫn tới trang điểm danh của lớp kèm ngày; khung đọc nói rõ học phí không đổi", un.detail.rows[0].href === "/lop-cua-toi/quan-lop/c1/diem-danh?date=2026-10-20" && /Học phí không đổi/.test(un.detail.meta), un.detail);
 const mixedU = buildInboxItems(raw({ unmarked: { count: 9, rows: rows(2), at: null }, bank: { count: 1, rows: rows(1), at: null } }), NOW);
 check("ĐX-01: việc khẩn (bank 1) vẫn đứng trước unmarked (9)", mixedU.map(i => i.id).join() === "bank,unmarked", mixedU.map(i => i.id));
 
@@ -37,7 +37,7 @@ check("dòng phụ lấy việc đầu tiên", mixed[0].subtitle === "Em 1 · ch
 check("trạng thái có chữ (không chỉ màu)", mixed.every(i => i.status.label.length > 0) && mixed[0].status.label === "Cần xử lý" && mixed[1].status.label === "Chờ đối soát");
 check("nút trong khung đọc đều dẫn về /lop-cua-toi", mixed.every(i => i.detail.commands.every(c => c.href.startsWith("/lop-cua-toi/"))), mixed.map(i => i.detail.commands.map(c => c.href)));
 check("mỗi loại có việc đều có lối xử lý (nút hoặc dòng có href)", INBOX_KINDS.every(k => {
-  const it = buildInboxItems(raw({ [k]: { count: 1, rows: [{ title: "x", sub: "y", href: "/admin/khoa-hoc/a" }], at: null } }), NOW)[0];
+  const it = buildInboxItems(raw({ [k]: { count: 1, rows: [{ title: "x", sub: "y", href: "/lop-cua-toi/quan-lop/a" }], at: null } }), NOW)[0];
   return it.detail.commands.length > 0 || it.detail.rows.some(r => !!r.href);
 }));
 
@@ -65,7 +65,7 @@ check("inboxDateTime = 14/10 10:30", inboxDateTime(new Date("2026-10-14T03:30:00
 check("inboxVnd có dấu chấm nghìn + đ", /^1[., ]?250[., ]?000đ$/.test(inboxVnd(1250000)), inboxVnd(1250000));
 
 section("Hộp việc dạng trang dọc (23/10/2026): action, href, waiting + dải số");
-const all = buildInboxItems(raw(Object.fromEntries(INBOX_KINDS.map(k => [k, { count: 1, rows: [{ title: "x", sub: "y", href: "/admin/khoa-hoc/a" }], at: null }]))), NOW);
+const all = buildInboxItems(raw(Object.fromEntries(INBOX_KINDS.map(k => [k, { count: 1, rows: [{ title: "x", sub: "y", href: "/lop-cua-toi/quan-lop/a" }], at: null }]))), NOW);
 check("mỗi dòng có nhãn hành động và đường dẫn nội bộ (không đường chết)", all.every(i => i.action.length > 3 && i.href.startsWith("/")), all.map(i => [i.id, i.href]));
 check("chỉ 'consent' là việc chờ phụ huynh (waiting)", all.filter(i => i.waiting).map(i => i.id).join() === "consent");
 check("đối soát → tab đối soát; báo cáo → kiểm duyệt; nháp → Học phí", all.find(i => i.id === "bank")!.href === "/lop-cua-toi/hoc-phi?tab=doi-soat" && all.find(i => i.id === "reports")!.href === "/lop-cua-toi/kiem-duyet" && all.find(i => i.id === "draft")!.href === "/lop-cua-toi/hoc-phi");
@@ -83,7 +83,7 @@ const ov = buildHopViecOverview({
 check("đã xác nhận = tổng paidAmount (bỏ phiếu huỷ); đã lập = tổng amountDue (bỏ huỷ), gồm bản nháp", ov.stats.confirmed.value.startsWith("480.000") && ov.stats.invoices.value.startsWith("1.040.000") && /Gồm 560\.000đ bản nháp/.test(ov.stats.invoices.hint) && ov.stats.confirmed.hint === "1 phiếu đã thanh toán", ov.stats);
 check("lớp: 2 lớp / 3 học sinh; sắp theo sĩ số (Toán 9 trước)", ov.stats.classes.value === "2 lớp" && ov.stats.classes.hint === "3 học sinh đang học" && ov.classes.rows[0].name === "Toán 9", ov.classes);
 check("lịch hôm nay lấy buổi chưa kết thúc (19:00 giờ VN), bỏ buổi đã huỷ", ov.stats.today.value === "19:00" && /Toán 9 · 2 học sinh/.test(ov.stats.today.hint), ov.stats.today);
-check("buổi sắp tới: giờ, báo nghỉ chờ, buổi tiếp theo; link điểm danh theo ngày", ov.next?.time === "19:00 – 20:30" && !!ov.next.note && /Văn 8 · Thứ Bảy, 16:00/.test(ov.next.following ?? "") && ov.next.attendanceHref === "/admin/khoa-hoc/b/diem-danh?date=2026-10-14", ov.next);
+check("buổi sắp tới: giờ, báo nghỉ chờ, buổi tiếp theo; link điểm danh theo ngày", ov.next?.time === "19:00 – 20:30" && !!ov.next.note && /Văn 8 · Thứ Bảy, 16:00/.test(ov.next.following ?? "") && ov.next.attendanceHref === "/lop-cua-toi/quan-lop/b/diem-danh?date=2026-10-14", ov.next);
 const none2 = buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [] });
 check("không có dữ liệu: không số bịa (0đ, 'Trống', next=null, không lớp)", none2.stats.confirmed.value === "0đ" && none2.stats.today.value === "Trống" && none2.next === null && none2.classes.rows.length === 0 && /Chưa có phiếu/.test(none2.stats.invoices.hint));
 check("dòng ngày: 'Thứ Tư, 14 tháng 10'", ov.dateLine === "Thứ Tư, 14 tháng 10", ov.dateLine);

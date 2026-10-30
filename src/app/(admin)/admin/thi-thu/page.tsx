@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Fragment } from "react";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { type ExamStatus, computeExamStatus } from "@/lib/examData";
@@ -1664,6 +1665,7 @@ const STATUS_CFG: Record<ExamStatus, { label: string; color: string; bg: string 
 };
 
 function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => void; onDelete: () => void }) {
+  const href = useContentHref(); // BU-00 bước 3: gia sư ở bí danh /lop-cua-toi/de-thi/…
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1695,7 +1697,7 @@ function ActionMenu({ exam, onEdit, onDelete }: { exam: ExamRow; onEdit: () => v
             style={{ color: "var(--kin-nhan-link)" }}>
             <span className="w-5 text-center">👁</span> Xem portal học viên
           </Link>
-          <Link href={`/admin/thi-thu/${exam.id}`} onClick={() => setOpen(false)}
+          <Link href={href(`/admin/thi-thu/${exam.id}`)} onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-gray-50"
             style={{ color: "var(--kin-nhan-link)" }}>
             <span className="w-5 text-center">📝</span> Quản lý câu hỏi

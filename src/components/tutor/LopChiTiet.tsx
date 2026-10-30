@@ -85,7 +85,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
-          <Link href={`/admin/khoa-hoc/${d.courseId}`} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
+          <Link href={`/lop-cua-toi/quan-lop/${d.courseId}`} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </>} />
 
       {d.justCreated && <KinCallout title="Đã tạo lớp" className="mb-6">Gửi mã mời ở tab Mã mời để học sinh tự vào lớp.</KinCallout>}
@@ -93,7 +93,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
       {d.addFailed && <KinCallout title="Lớp đã tạo, nhưng chưa thêm được học sinh" className="mb-6">Cô thêm lại ở nút Thêm học sinh phía trên.</KinCallout>}
       {d.scheduleFailed && (
         <KinCallout title="Lớp đã tạo, nhưng khung giờ chưa lưu" className="mb-6">
-          Cô thêm lại khung giờ ở <Link href={`/admin/khoa-hoc/${d.courseId}?tab=lich-hoc`} className="underline text-[var(--kin-nhan-link)]">trang cài đặt lớp</Link>.
+          Cô thêm lại khung giờ ở <Link href={`/lop-cua-toi/quan-lop/${d.courseId}?tab=lich-hoc`} className="underline text-[var(--kin-nhan-link)]">trang cài đặt lớp</Link>.
         </KinCallout>
       )}
 
@@ -108,7 +108,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
             </div>
             <aside className="min-w-0 space-y-[var(--kin-cach-muc)]">
               <section aria-labelledby="lop-hs">
-                <KinSectionHead id="lop-hs" title="Học sinh" aside={<Link href={`/admin/khoa-hoc/${d.courseId}/hoc-vien`} className="text-[var(--kin-nhan-link)] hover:underline">Danh bạ lớp →</Link>} />
+                <KinSectionHead id="lop-hs" title="Học sinh" aside={<Link href={`/lop-cua-toi/quan-lop/${d.courseId}/hoc-vien`} className="text-[var(--kin-nhan-link)] hover:underline">Danh bạ lớp →</Link>} />
                 {n === 0 ? (
                   <KinEmptyState title="Lớp chưa có học sinh" action={<button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>}>
                     Gửi mã mời để học sinh tự vào lớp.
@@ -182,7 +182,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                   ))}
                 </ul>
                 </KinPanel>
-                <Link href={`/admin/khoa-hoc/${d.courseId}/hoc-vien`} className={`${kinButtonClass("secondary")} mt-4`}>Mở danh bạ lớp (gọi, Zalo phụ huynh)</Link>
+                <Link href={`/lop-cua-toi/quan-lop/${d.courseId}/hoc-vien`} className={`${kinButtonClass("secondary")} mt-4`}>Mở danh bạ lớp (gọi, Zalo phụ huynh)</Link>
               </>
             )}
             {n > 0 && <LopBaoCao courseId={d.courseId} students={d.students} />}

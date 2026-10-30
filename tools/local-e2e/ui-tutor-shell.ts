@@ -59,7 +59,7 @@ import { prisma } from "@/lib/prisma";
   check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem").count() === 1);
   check("dải trên 48px: logo KiN dẫn về Hộp việc + tên người dùng", await pg.getByRole("link", { name: /KiN — Hộp việc/ }).getAttribute("href") === "/lop-cua-toi" && await pg.getByText("Cô Lan").first().isVisible());
   check("Học sinh → /lop-cua-toi/hoc-sinh (không phải /admin/hoc-sinh)", await mod("Học sinh").getAttribute("href") === "/lop-cua-toi/hoc-sinh");
-  check("Bài tập → /lop-cua-toi/bai-tap (23/10/2026: trang Bài tập và kiểm tra theo Figma 299:113312; đề thi vẫn ở /admin/thi-thu); Thư viện → /thu-vien; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/lop-cua-toi/bai-tap" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
+  check("Bài tập → /lop-cua-toi/bai-tap (23/10/2026: trang Bài tập và kiểm tra theo Figma 299:113312; đề thi ở /lop-cua-toi/de-thi — BU-00 bước 3); Thư viện → /thu-vien; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/lop-cua-toi/bai-tap" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
 
   section("Trang dọc: dải số, Cần cô xử lý, Chờ phụ huynh, cột phải");
   // 23/10/2026: Figma 299:111821 bỏ kiểu hai khung (danh sách + khung đọc). Các ca chọn dòng / aria-selected / phím ↓ Home / bề rộng 330 / "trang không cuộn"
@@ -67,7 +67,7 @@ import { prisma } from "@/lib/prisma";
   const todo = pg.getByRole("list", { name: "Việc cần cô xử lý" });
   const rows = todo.getByRole("link");
   check("không còn hai khung (không có khung 'Danh sách' / 'Chi tiết' / listbox)", await pg.locator('section[aria-label="Danh sách"], section[aria-label="Chi tiết"], [role=listbox]').count() === 0);
-  check("tiêu đề H1 'Hộp việc' + dòng phụ có ngày; nút 'Tạo lớp' → /admin/khoa-hoc?tao=1", /Thứ|Chủ nhật/.test(await pg.locator("p", { hasText: /Việc cần cô xử lý trước, việc chờ phụ huynh để riêng/ }).first().innerText()) && await pg.getByRole("link", { name: "Tạo lớp", exact: true }).first().getAttribute("href") === "/admin/khoa-hoc?tao=1");
+  check("tiêu đề H1 'Hộp việc' + dòng phụ có ngày; nút 'Tạo lớp' → /lop-cua-toi/quan-lop?tao=1", /Thứ|Chủ nhật/.test(await pg.locator("p", { hasText: /Việc cần cô xử lý trước, việc chờ phụ huynh để riêng/ }).first().innerText()) && await pg.getByRole("link", { name: "Tạo lớp", exact: true }).first().getAttribute("href") === "/lop-cua-toi/quan-lop?tao=1");
   const stat = (label: string | RegExp) => pg.locator("[data-kin-stat]", { hasText: label });
   check("dải 4 số: Học phí tháng đã xác nhận, Phiếu đã lập, Lớp đang quản lý, Lịch hôm nay", await pg.locator("[data-kin-stat]").count() === 4 && await stat(/Học phí tháng \d+ đã xác nhận/).count() === 1 && await stat("Phiếu đã lập").count() === 1 && await stat("Lớp đang quản lý").count() === 1 && await stat("Lịch hôm nay").count() === 1);
   check("số thật: 1 lớp, 2 học sinh đang học (không số bịa); chưa có phiếu → hiện 0đ + câu giải thích", /1 lớp/.test(await stat("Lớp đang quản lý").innerText()) && /2 học sinh đang học/.test(await stat("Lớp đang quản lý").innerText()) && /0đ/.test(await stat("Phiếu đã lập").innerText()) && /Chưa có phiếu/.test(await stat("Phiếu đã lập").innerText()), await pg.locator("[data-kin-stat-row]").innerText());
@@ -79,7 +79,7 @@ import { prisma } from "@/lib/prisma";
   check("bấm dòng đối soát đi tới tab đối soát của Học phí; dòng báo cáo → /lop-cua-toi/kiem-duyet", await rows.nth(0).getAttribute("href") === "/lop-cua-toi/hoc-phi?tab=doi-soat" && await rows.nth(1).getAttribute("href") === "/lop-cua-toi/kiem-duyet");
   const wait = pg.locator("section", { has: pg.getByRole("heading", { name: "Chờ phụ huynh" }) });
   check("'Chờ phụ huynh': ghi rõ 'Không tính là việc cô cần làm', nêu 1 học sinh chờ xác nhận", await wait.getByText("Không tính là việc cô cần làm").isVisible() && await wait.getByText("1 học sinh chờ phụ huynh xác nhận").isVisible());
-  check("khối chờ phụ huynh dẫn tới danh sách học viên của lớp", await wait.getByRole("link", { name: /Mở danh sách học viên của lớp/ }).getAttribute("href") === `/admin/khoa-hoc/${c1.id}/hoc-vien`);
+  check("khối chờ phụ huynh dẫn tới danh sách học viên của lớp", await wait.getByRole("link", { name: /Mở danh sách học viên của lớp/ }).getAttribute("href") === `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien`);
   check("cột phải 'Buổi học sắp tới': chưa có lịch → câu giải thích + nút 'Mở Lịch' → /lop-cua-toi/lich", await pg.getByText("7 ngày tới chưa có buổi nào").isVisible() && await pg.getByRole("link", { name: "Mở Lịch", exact: true }).first().getAttribute("href") === "/lop-cua-toi/lich");
   check("'Lớp thường dùng': Toán 9 → /lop-cua-toi/<lớp> (2 học sinh), 'Xem 1 lớp' → /lop-cua-toi/lop", await pg.getByRole("link", { name: "Toán 9: 2 học sinh" }).getAttribute("href") === `/lop-cua-toi/${c1.id}` && await pg.getByRole("link", { name: "Xem 1 lớp" }).getAttribute("href") === "/lop-cua-toi/lop");
   check("ghi chú chân 'Chỉ chốt buổi đã dạy mới tạo học phí'", await pg.getByText("Chỉ chốt buổi đã dạy mới tạo học phí. Lưu điểm danh không tự tính tiền.").isVisible());
