@@ -4,7 +4,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
-import { requireTutor } from "@/lib/invoiceServer";
+import { getSession } from "@/lib/session";
+import { requireTutorOrApplicant } from "@/lib/tutorGateServer";
 import { getTutorPlan } from "@/lib/planServer";
 import { KIND_LABEL, MAX_OPEN_PER_USER, PRIVACY_HINT, STATUS_LABEL, laneOf, parseSupportInput, promiseFor, isSupportKind, type SupportStatus } from "@/lib/supportDesk";
 
@@ -16,7 +17,7 @@ const view = (r: { id: string; kind: string; subject: string; message: string; p
 });
 
 export async function GET() {
-  const auth = await requireTutor();
+  const auth = await requireTutorOrApplicant(await getSession()); // BU-00 bước 5: gia sư chờ duyệt cũng gửi được yêu cầu hỗ trợ
   if (isNextResponse(auth)) return auth;
   try {
     const [plan, rows] = await Promise.all([getTutorPlan(auth.userId), prisma.supportRequest.findMany({ where: { userId: auth.userId }, orderBy: { createdAt: "desc" }, take: 30 })]);
@@ -28,7 +29,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireTutor();
+  const auth = await requireTutorOrApplicant(await getSession()); // BU-00 bước 5: gia sư chờ duyệt cũng gửi được yêu cầu hỗ trợ
   if (isNextResponse(auth)) return auth;
   let body: unknown = null;
   try { body = await req.json(); } catch { /* báo lỗi bên dưới */ }

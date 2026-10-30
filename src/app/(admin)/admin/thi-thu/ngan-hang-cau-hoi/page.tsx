@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type QuestionCategoryFull } from "@/lib/api";
@@ -42,6 +43,7 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
   onDelete: (id: string) => void;
   onDuplicate: (id: string, name: string) => void;
 }) {
+  const href = useContentHref(); // BU-00 bước 3
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(card.name);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -61,7 +63,7 @@ function BankCardTile({ card, onRename, onDelete, onDuplicate }: {
           <button onClick={() => { onRename(card.id, name); setEditing(false); }} className="text-xs font-semibold text-blue-600">Lưu</button>
         </div>
       ) : (
-        <Link href={`/admin/thi-thu/ngan-hang-cau-hoi/${card.id}`} className="block mb-2">
+        <Link href={href(`/admin/thi-thu/ngan-hang-cau-hoi/${card.id}`)} className="block mb-2">
           <h3 className="text-base font-bold truncate" style={{ color: "var(--kin-chu-chinh)" }} title={card.name}>{card.name}</h3>
         </Link>
       )}

@@ -137,8 +137,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       type:    "parent_consent_responded",
       title:   "Cập nhật xác nhận phụ huynh",
       message: `Phụ huynh của ${studentName} đã ${approved ? "đồng ý" : "từ chối"} cho tham gia lớp "${courseName}".`,
-      // Tab "Học viên đăng ký" của ĐÚNG lớp (nơi hiện "Chờ phụ huynh xác nhận"). Trước đây /admin/hoc-sinh — trang chỉ dành cho quản trị: gia sư bấm là bị đẩy về Hộp việc, không thấy học viên nào.
-      link:    `/admin/khoa-hoc/${course.id}?tab=hoc-vien`,
+      // Tab "Học viên đăng ký" của ĐÚNG lớp (nơi hiện "Chờ phụ huynh xác nhận"), ở bí danh gia sư (BU-00 bước 3; link /admin/khoa-hoc cũ trong DB vẫn tới nhờ 307). Trước đây /admin/hoc-sinh — trang chỉ dành cho quản trị: gia sư bấm là bị đẩy về Hộp việc, không thấy học viên nào.
+      link:    `/lop-cua-toi/quan-lop/${course.id}?tab=hoc-vien`,
     });
   }
 

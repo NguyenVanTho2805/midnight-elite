@@ -93,5 +93,5 @@ export function findUnmarkedSessions(i: UnmarkedInput): UnmarkedSession[] {
 
 /** Đích của dòng việc: trang điểm danh của lớp, mở sẵn đúng ngày. Chỉ nhận ngày YYYY-MM-DD hợp lệ. */
 export function unmarkedHref(courseId: string, dateKey: string): string {
-  return `/admin/khoa-hoc/${courseId}/diem-danh?date=${dateKey}`;
+  return `/lop-cua-toi/quan-lop/${courseId}/diem-danh?date=${dateKey}`;
 }

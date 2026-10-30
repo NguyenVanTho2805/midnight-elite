@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createSession, type SessionPayload } from "@/lib/session";
 import { hostAcceptsLogin, mainLoginUrl } from "@/lib/hostRouting";
+import { tutorApplicationStatus } from "@/lib/tutorProfile";
 
 export interface SignInUser {
   id: string;
@@ -13,6 +14,17 @@ export interface SignInUser {
   school: string | null;
   emailVerified: boolean;
   banned: boolean;
+  /** BU-00 bước 5: ba cột của đơn gia sư (bản ghi Prisma đầy đủ có sẵn) — để trả `tutorPending` và chọn trang đầu đúng cho gia sư chờ duyệt. */
+  tutorAppliedAt?: Date | null;
+  tutorVerified?: boolean;
+  tutorRejectedAt?: Date | null;
+}
+
+/** Cùng một cách tính với /api/auth/me: "vẫn là học viên nhưng có đơn gia sư đang chờ" (bị từ chối không tính — họ vẫn mở được trang chờ duyệt để đọc lý do,
+ *  nhưng cờ này chỉ nói "đang chờ"). */
+export function tutorPendingOf(u: Pick<SignInUser, "role" | "adminRole" | "tutorAppliedAt" | "tutorVerified" | "tutorRejectedAt">): boolean {
+  if (u.role !== "student" || u.adminRole) return false;
+  return tutorApplicationStatus({ tutorAppliedAt: u.tutorAppliedAt ?? null, tutorVerified: u.tutorVerified ?? false, tutorRejectedAt: u.tutorRejectedAt ?? null }) === "pending";
 }
 
 export async function signInResponse(user: SignInUser, req?: Request): Promise<NextResponse> {
@@ -48,5 +60,7 @@ export async function signInResponse(user: SignInUser, req?: Request): Promise<N
     phone:         user.phone,
     school:        user.school,
     emailVerified: user.emailVerified,
+    // BU-00 bước 5: AuthContext dùng để chọn trang đầu (gia sư chờ duyệt → /lop-cua-toi/cho-duyet) và vỏ ngay sau đăng nhập, không chờ /api/auth/me.
+    tutorPending:  tutorPendingOf(user),
   });
 }

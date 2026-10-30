@@ -34,11 +34,15 @@ function Content({ children }: { children: React.ReactNode }) {
 // Chọn vỏ theo người đang xem. Nhóm trang này có MỘT trang dùng chung nằm ngoài /student/*: /cai-dat/chu-de (Chủ đề màu), mà gia sư cũng bấm vào từ
 // Cài đặt của họ. Trước đây gia sư rơi vào vỏ HỌC SINH (thanh bên "HỌC SINH": Việc của tôi / Lịch / Lớp trỏ sang /student/*) rồi bấm tiếp là lạc sang khu học viên
 // (15/10/2026). Nay gia sư giữ vỏ GIA SƯ ở đúng trang đó; /student/* vẫn là khu học viên (quản trị / gia sư vào xem thử như trước).
+// BU-00 bước 5: gia sư CHỜ DUYỆT (cờ tutorPending) bấm "Cài đặt" ở vỏ chờ duyệt cũng tới đúng trang này → giữ vỏ chờ duyệt. Vào /student/* thì AuthGuard đã đẩy
+// họ về /lop-cua-toi/cho-duyet trước khi tới đây.
 function Shell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
-  const tutorOnShared = user?.role === "admin" && user.adminRole === "teacher" && pathname === "/cai-dat/chu-de";
-  return tutorOnShared ? <TutorShellClient>{children}</TutorShellClient> : <StudentShell>{children}</StudentShell>;
+  const shared = pathname === "/cai-dat/chu-de";
+  if (shared && user?.role === "admin" && user.adminRole === "teacher") return <TutorShellClient>{children}</TutorShellClient>;
+  if (shared && user?.role === "student" && user.tutorPending) return <TutorShellClient pending>{children}</TutorShellClient>;
+  return <StudentShell>{children}</StudentShell>;
 }
 
 // Vỏ học sinh kiểu Outlook (Figma 11:98): thanh module trái / thanh dưới, dải trên có logo + xu + chuông.

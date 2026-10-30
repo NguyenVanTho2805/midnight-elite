@@ -34,7 +34,9 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/Failed to load resource|zalo/i.test(m.text())) errors.push(m.text()); });
 
-  section("TT-203: chế độ gọn mặc định");
+  // BU-00 (31/10/2026): mặc định của mã nay là ĐỦ module; bài này cần Hộp việc TẮT (việc dồn thành số đỏ trên Lịch) nên ghi tường minh `modules: []`.
+  await prisma.user.update({ where: { id: tutor.id }, data: { preferences: { modules: [] } } });
+  section("TT-203: chế độ gọn tường minh (modules: [])");
   await page.goto(`${MAIN}/lop-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 }).catch(e => console.log("goto:", String(e).slice(0, 80)));
   await page.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 120000 });
   await page.waitForLoadState("networkidle");

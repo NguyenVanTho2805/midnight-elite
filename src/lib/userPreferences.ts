@@ -33,7 +33,11 @@ export const TUTOR_MODULES: readonly TutorModuleDef[] = [
 ];
 
 export interface UserPreferences {
-  /** Module gia sư bật thêm. Vắng mặt = chưa chọn = chế độ gọn (chỉ Lịch + Học phí). */
+  /**
+   * Module gia sư tuỳ chọn đang bật. BU-00 (31/10/2026, theo quyết định chủ 25/10): VẮNG MẶT (`undefined`) = chưa chọn = bật ĐỦ mọi module tuỳ chọn
+   * (`OPTIONAL_TUTOR_MODULES`) — gia sư mới thấy đủ Hộp việc · Lịch · Lớp · Bài tập · Thư viện · Học phí ngay từ đầu. `[]` = chế độ gọn
+   * TƯỜNG MINH (gia sư tự tắt hết, chỉ còn Lịch + Học phí). Trước 25/10 thì ngược lại: vắng mặt = chế độ gọn.
+   */
   modules?: OptionalTutorModule[];
   theme?: KinTheme;
   mode?: KinMode;
@@ -219,12 +223,16 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
   return { ok: true, value: next };
 }
 
-/** Module hiển thị ở thanh bên của gia sư: luôn có Lịch + Học phí, thêm phần đã bật. */
+/**
+ * Module hiển thị ở thanh bên của gia sư: luôn có Lịch + Học phí, thêm phần đã bật.
+ * `prefs.modules` vắng mặt ⇒ đủ mọi module tuỳ chọn (mặc định BU-00); `[]` ⇒ chỉ Lịch + Học phí (chế độ gọn tường minh).
+ */
 export function visibleTutorModules(prefs: UserPreferences): TutorModuleDef[] {
-  const on = new Set<string>(prefs.modules ?? []);
+  const on = new Set<string>(prefs.modules ?? OPTIONAL_TUTOR_MODULES);
   return TUTOR_MODULES.filter(m => m.always || on.has(m.key));
 }
 
+/** Module `key` có đang hiện trên thanh bên không (cùng quy tắc mặc định với `visibleTutorModules`: chưa chọn gì = đủ module). */
 export function isTutorModuleVisible(prefs: UserPreferences, key: TutorModuleDef["key"]): boolean {
   return visibleTutorModules(prefs).some(m => m.key === key);
 }

@@ -47,6 +47,9 @@ import { prisma } from "@/lib/prisma";
   // 24/10/2026 (QT-02): thêm tab "Nhật ký" cho cấp 1 → 6 trang con.
   check("dải tab 6 trang con (có 'Nhật ký'), 'Hàng chờ' đang ở", (await tabs.getByRole("link").count()) === 6 && await tabs.getByRole("link", { name: "Nhật ký" }).isVisible() && await tabs.getByRole("link", { name: "Hàng chờ" }).getAttribute("aria-current") === "page");
   check("thanh bên cũ (neumorphic) và dòng 'Hệ thống hoạt động bình thường' giả không còn", await pg.getByLabel("Menu quản trị").count() === 0 && await pg.getByText("Hệ thống hoạt động bình thường").count() === 0);
+  // BU-00 bước 4: cookie không dùng chung hai tên miền → nút "Xem thử trang học sinh" đi qua /dang-nhap?redirect= ở tên miền chính (vỏ học sinh sẽ hiện băng "Đang xem thử").
+  const preview = pg.locator("a[data-preview-student]");
+  check("nút 'Xem thử trang học sinh' → https://midnightelite-edu.com/dang-nhap?redirect=%2Fstudent%2Fviec-cua-toi (tab mới)", await preview.count() === 1 && (await preview.innerText()).trim() === "Xem thử trang học sinh" && await preview.getAttribute("href") === "https://midnightelite-edu.com/dang-nhap?redirect=%2Fstudent%2Fviec-cua-toi" && await preview.getAttribute("target") === "_blank", await preview.getAttribute("href"));
   const opts = lb().getByRole("option");
   check(`${TOTAL} dòng; dòng đầu đang chọn; chờ lâu nhất đứng đầu (hồ sơ gia sư)`, await opts.count() === TOTAL && await opts.nth(0).getAttribute("aria-selected") === "true" && /Gia sư chờ duyệt/.test(await opts.nth(0).innerText()), await opts.count());
   check("tiêu đề danh sách theo Figma: 'Chờ kiểm duyệt' + 'Hàng chờ nội dung và hồ sơ'", await pg.getByRole("heading", { name: "Chờ kiểm duyệt" }).isVisible() && await pg.getByText("Hàng chờ nội dung và hồ sơ").isVisible());
@@ -135,15 +138,21 @@ import { prisma } from "@/lib/prisma";
   check("4 module: Kiểm duyệt, Nội dung, Báo cáo, Cài đặt (không có Người dùng)", namesC.length === 4 && !namesC.some(n => /Người dùng/.test(n)), namesC);
   await cc.close();
 
-  section("Giáo viên: chỉ thấy phần của mình (14/10: ở LẠI tên miền chính, trong vỏ gia sư — không sang tên miền quản trị)");
+  section("Giáo viên: không còn ở /admin/* (BU-00 31/10/2026) — /admin/kiem-duyet 307 về Hộp việc; kiểm duyệt lớp mình ở /lop-cua-toi/kiem-duyet trong vỏ gia sư");
+  // Trước BU-00 (14/10): gia sư mở /admin/kiem-duyet thấy hàng chờ quản trị thu hẹp trong vỏ gia sư. Nay /admin/kiem-duyet không có bí danh gia sư
+  // (src/lib/tutorRoutes.ts) → proxy 307 về /lop-cua-toi; việc kiểm duyệt của gia sư là trang riêng (tutor)/kiem-duyet (KiemDuyetClient), không phải listbox admin.
   const ct = await ctxFor(T, { width: 1280, height: 800 });
   const pt = await ct.newPage(); watch(pt);
-  await pt.goto(`${BASE}/admin/kiem-duyet`, { waitUntil: "networkidle", timeout: 120000 });
-  await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).waitFor({ timeout: 90000 });
-  check("vẫn ở tên miền chính (không bị chuyển sang admin.…)", !new URL(pt.url()).host.startsWith("admin."), pt.url());
-  check("thanh bên là của GIA SƯ; không có thanh bên quản trị", await pt.getByRole("navigation", { name: "Module của gia sư" }).first().isVisible() && (await pt.getByRole("navigation", { name: railName }).count()) === 0);
-  check("hàng chờ của giáo viên: đúng 1 dòng — bài viết của lớp mình", await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).getByRole("option").count() === 1 && (await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).innerText()).includes("Bài viết bị báo cáo") && !(await pt.content()).includes("Gia sư chờ duyệt"));
-  check("dải tab của Kiểm duyệt không có 'Duyệt gia sư' / 'Báo cáo trả lời' (không đủ quyền)", await pt.getByRole("navigation", { name: "Trang của Kiểm duyệt" }).getByRole("link", { name: /Duyệt gia sư|Báo cáo trả lời/ }).count() === 0);
+  await pt.goto(`${BASE}/admin/kiem-duyet`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await pt.waitForURL(/\/lop-cua-toi$/, { timeout: 90000 });
+  await pt.getByRole("navigation", { name: "Module của gia sư" }).first().waitFor({ timeout: 90000 });
+  check("gia sư mở /admin/kiem-duyet → về Hộp việc /lop-cua-toi, vẫn tên miền chính (không sang admin.…)", new URL(pt.url()).pathname === "/lop-cua-toi" && !new URL(pt.url()).host.startsWith("admin."), pt.url());
+  check("vỏ là của GIA SƯ ('Module của gia sư'); không có thanh bên quản trị, không có listbox 'Chờ kiểm duyệt'", await pt.getByRole("navigation", { name: "Module của gia sư" }).first().isVisible() && (await pt.getByRole("navigation", { name: railName }).count()) === 0 && (await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).count()) === 0);
+  await pt.goto(`${BASE}/lop-cua-toi/kiem-duyet`, { waitUntil: "networkidle", timeout: 120000 });
+  await pt.getByRole("heading", { name: "Kiểm duyệt cộng đồng lớp" }).waitFor({ timeout: 90000 });
+  check("gia sư mở /lop-cua-toi/kiem-duyet → trang 'Kiểm duyệt cộng đồng lớp' (KiemDuyetClient) trong vỏ gia sư, không chuyển hướng", new URL(pt.url()).pathname === "/lop-cua-toi/kiem-duyet" && await pt.getByRole("navigation", { name: "Module của gia sư" }).first().isVisible() && (await pt.getByRole("navigation", { name: railName }).count()) === 0, pt.url());
+  const body = await pt.content();
+  check("trang kiểm duyệt của gia sư chỉ nói về lớp mình: thấy bài của lớp cô Lan, KHÔNG thấy bài cộng đồng chung / hàng chờ duyệt gia sư / dải tab quản trị", body.includes("BAI_LOP_COLAN") && !body.includes("BAI_GO_BO") && !body.includes("Gia sư chờ duyệt") && (await pt.getByRole("navigation", { name: "Trang của Kiểm duyệt" }).count()) === 0 && (await pt.getByRole("listbox", { name: "Chờ kiểm duyệt" }).count()) === 0);
   await ct.close();
 
   section("Trạng thái lỗi: giữ danh sách cũ, có nút thử lại");

@@ -1,8 +1,9 @@
 // KiN Pro F3 — bản IN báo cáo tháng (A4 dọc). Chỉ in báo cáo ĐÃ DUYỆT, đọc số liệu ĐÃ ĐÓNG BĂNG lúc duyệt (cùng nguồn phụ huynh thấy).
 // Có ảnh chụp thương hiệu (brandSnapshot) thì in có thương hiệu; không thì mẫu mặc định KiN. Trang này KHÔNG hỏi gói: bản đã tạo luôn xem được,
 // kể cả khi hết hạn Pro. Việc tạo mới nằm ở POST …/branded (có cổng). Nhãn "ghi trên KiN" ở chân trang là hằng số, thương hiệu không che được.
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { redirectIfNotTutor } from "@/lib/tutorGateServer";
 import { prisma } from "@/lib/prisma";
 import { KinEmptyState, KinMark, KinPage, KinPageHeader } from "@/components/kin";
 import { isYearMonth } from "@/lib/monthlyReportServer";
@@ -27,12 +28,10 @@ const PRINT_CSS = `
 }`;
 
 export default async function InBaoCaoPage({ params, searchParams }: { params: Promise<{ studentId: string }>; searchParams: Promise<{ yearMonth?: string; mau?: string }> }) {
-  const session = await getSession();
   const { studentId } = await params;
   const sp = await searchParams;
   const ym = sp.yearMonth ?? vnMonthKey(new Date());
-  if (!session) redirect(`/dang-nhap?redirect=${encodeURIComponent(`/lop-cua-toi/bao-cao-thang/in/${studentId}?yearMonth=${ym}`)}`);
-  if (session.role !== "admin" || session.adminRole !== "teacher") redirect("/lop-cua-toi");
+  const session = await redirectIfNotTutor(await getSession(), { path: `/lop-cua-toi/bao-cao-thang/in/${studentId}?yearMonth=${ym}` });
   if (!isYearMonth(ym)) notFound();
 
   // Chỉ báo cáo của CHÍNH gia sư này (tutorId trong điều kiện): của người khác hay không có → 404, không lộ sự tồn tại.

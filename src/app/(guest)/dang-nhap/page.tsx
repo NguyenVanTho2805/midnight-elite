@@ -87,7 +87,7 @@ function DangNhapForm() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace(redirectTo ?? landingPath(user.role ?? "student", user.adminRole));
+      router.replace(redirectTo ?? landingPath(user.role ?? "student", user.adminRole, user.tutorPending)); // BU-00 bước 5: gia sư chờ duyệt → trang chờ duyệt
     }
   }, [user, isLoading, router, redirectTo]);
 

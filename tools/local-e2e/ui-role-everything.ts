@@ -133,10 +133,15 @@ const STUDENT_ALIASES: Record<string, string> = { "/student/thi-thu": "/thi-thu"
 const HOME = "/student/viec-cua-toi";
 const TUTOR_PAGES = /^\/lop-cua-toi\/(lich|lop|tong-quan|ho-so|cai-dat|kiem-duyet|bao-cao-thang|ke-hoach-buoi|bai-dang)(\/|$)/;   // trang của gia sư: học sinh được đưa về "Lớp của tôi"
 const TUTOR_MONEY = /^\/lop-cua-toi\/(hoc-phi|doanh-thu)$/;                                                                             // học phí / doanh thu của gia sư: học sinh được đưa sang Học phí của mình
+// BU-00 (31/10/2026): bí danh NỘI DUNG của gia sư (/lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* — thay /admin/thi-thu*, /admin/khoa-hoc*). Học sinh mở thẳng,
+// hoặc đi qua /dang-nhap?redirect=<bí danh> (vd "Quản khoá" ở /ban-do, trước trỏ /admin/khoa-hoc), đều được layout (noi-dung) đưa về "Lớp của tôi".
+const TUTOR_CONTENT = /^\/lop-cua-toi\/(de-thi|quan-lop)(\/|$)/;
 const notes = new Map<string, string>();   // đổi đích CÓ CHỦ ĐÍCH đã xem xét (in ra cuối phần A để người đọc soát lại, không nuốt im lặng)
 // Trả về lý do nếu việc đổi đích reqPath → finPath là CÓ CHỦ ĐÍCH, ngược lại null.
-function expected(reqPath: string, finPath: string): string | null {
+function expected(reqPath: string, finPath: string, redir = ""): string | null {
   if (ROLE === "guest") return null;
+  if (TUTOR_CONTENT.test(reqPath) && finPath === "/lop-cua-toi") return "bí danh nội dung của GIA SƯ (de-thi / quan-lop): học sinh được đưa về danh sách lớp của mình";
+  if (reqPath === "/dang-nhap" && TUTOR_CONTENT.test(redir) && finPath === "/lop-cua-toi") return "liên kết của GIA SƯ trỏ /dang-nhap?redirect=<bí danh de-thi / quan-lop> (vd 'Quản khoá' ở /ban-do): học sinh được đưa về danh sách lớp của mình";
   if (STUDENT_ALIASES[reqPath] === finPath) return "bí danh của vỏ học sinh trỏ sang trang công khai (mở trong khung thanh bên)";
   let m = reqPath.match(/^\/student\/cong-dong\/([^/]+)$/);
   if (m && finPath === `/cong-dong/${m[1]}`) return "bí danh chi tiết bài viết của vỏ học sinh";
@@ -167,8 +172,8 @@ function judge(requested: URL, r: { status: number | null; final: URL; text: str
     return redirectOk(requested, r.final) ? GATE : "về trang đăng nhập nhưng KHÔNG giữ ?redirect= đúng trang đang định vào";
   }
   if (reqP !== finP) {
-    const why = expected(reqP, finP);
-    if (why) { notes.set(`${reqP} → ${finP}`, why); return null; }
+    const why = expected(reqP, finP, requested.searchParams.get("redirect") ?? "");
+    if (why) { notes.set(`${reqP}${reqP === "/dang-nhap" ? requested.search : ""} → ${finP}`, why); return null; }
     return `đổi đích: ${reqP} → ${finP}`;
   }
   return null;

@@ -5,10 +5,11 @@
 import type { ReactNode } from "react";
 import StudentShell from "@/components/student/StudentShell";
 
-export default function StudentFrame({ children }: { children: ReactNode }) {
+// `preview` (BU-00 bước 4): quản trị cấp 1 / nội dung xem thử — StudentShell hiện băng "Đang xem thử giao diện học sinh · Về bảng quản trị".
+export default function StudentFrame({ children, preview }: { children: ReactNode; preview?: boolean }) {
   return (
     <div className="min-h-screen" style={{ background: "var(--kin-nen-trang)" }}>
-      <StudentShell>
+      <StudentShell preview={preview}>
         <main className="px-4 md:px-8 py-6 max-w-screen-2xl mx-auto">
           <div className="page-enter">{children}</div>
         </main>

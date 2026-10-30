@@ -80,8 +80,11 @@ const H = 3_600_000, D = 24 * H;
   await mod("Khác").click();
   const dlg = pg.getByRole("dialog", { name: "Các mục khác" });
   check("mở bảng, aria-expanded=true", await dlg.isVisible() && await mod("Khác").getAttribute("aria-expanded") === "true");
-  for (const l of ["Thư viện", "Thi thử", "Bảng xếp hạng", "Cộng đồng", "Tin tức", "Hồ sơ", "Học phí", "Chủ đề màu"]) check(`có mục '${l}'`, await dlg.getByRole("link", { name: l, exact: true }).count() === 1);
+  // BU-00 bước 6 (31/10/2026): bảng "Khác" rút còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp).
+  for (const l of ["Gia sư", "Cộng đồng", "Tin tức", "Hồ sơ", "Học phí", "Chủ đề màu", "Nhập mã lớp"]) check(`có mục '${l}'`, await dlg.getByRole("link", { name: l, exact: true }).count() === 1);
   check("NC2-048: không còn mục 'Hỏi đáp' riêng (gộp vào Cộng đồng)", await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count() === 0);
+  for (const l of ["Thư viện", "Tiếng Anh tự học", "Thi thử", "Bảng xếp hạng", "Khoá học đang mở", "Lớp đang theo dõi", "Tra cứu điểm chuẩn", "Ví và Coin"]) check(`BU-00: mục '${l}' đã rời bảng Khác (route vẫn giữ, chỉ ẩn lối vào)`, await dlg.getByRole("link", { name: l, exact: true }).count() === 0);
+  check("bảng Khác đúng 7 mục, 2 nhóm", await dlg.getByRole("link").count() === 7);
   check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Minh Anh").isVisible());
   await shot(pg, "student-shell-khac");
   await pg.keyboard.press("Escape");

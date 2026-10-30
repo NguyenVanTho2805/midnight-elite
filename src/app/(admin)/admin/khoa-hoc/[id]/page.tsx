@@ -4,6 +4,7 @@ import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings"
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { api, type AssignmentFull, type AssignmentInput, type AssignmentQuestionInput, type AssignmentSubmissionFull, type AssignmentResultsData, type ClassScheduleFull, type ExamQuestionInput } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
@@ -2385,10 +2386,11 @@ export default function KhoaHocDetailPage() {
   const params       = useParams();
   const searchParams = useSearchParams();
   const router       = useRouter();
+  const href         = useContentHref(); // BU-00 bước 3: gia sư ở bí danh /lop-cua-toi/quan-lop/…, quản trị ở /admin/khoa-hoc/…
   const courseSlug   = params.id as string;
   const rawTab       = searchParams.get("tab");
   const activeTab: TabId = (rawTab && TABS.some(t => t.id === rawTab) ? rawTab : "cai-dat") as TabId;
-  function setTab(tab: TabId) { router.push(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`); }
+  function setTab(tab: TabId) { router.push(href(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`)); }
 
   const { user } = useAuth();
   // NC2-029: vừa tạo lớp xong (gia sư được chuyển thẳng tới đây với ?moi=1) → báo thành công như danh sách khoá vẫn báo.
@@ -2401,7 +2403,7 @@ export default function KhoaHocDetailPage() {
     const rest = new URLSearchParams(searchParams.toString());
     rest.delete("moi");
     const qs = rest.toString();
-    router.replace(`/admin/khoa-hoc/${courseSlug}${qs ? `?${qs}` : ""}`);
+    router.replace(href(`/admin/khoa-hoc/${courseSlug}${qs ? `?${qs}` : ""}`));
   }, [justCreated]); // eslint-disable-line react-hooks/exhaustive-deps
   const [course, setCourse] = useState<CourseDB | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2434,7 +2436,7 @@ export default function KhoaHocDetailPage() {
     return (
       <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 p-10 text-center">
         <p className="text-red-500 font-semibold mb-2">{notMine ? "Bạn không có quyền với khoá học này" : "Không tìm thấy khoá học"}</p>
-        <Link href="/admin/khoa-hoc" className="text-sm text-blue-600 hover:underline">← Quay lại danh sách</Link>
+        <Link href={href("/admin/khoa-hoc")} className="text-sm text-blue-600 hover:underline">← Quay lại danh sách</Link>
       </div>
     );
   }
@@ -2445,7 +2447,7 @@ export default function KhoaHocDetailPage() {
       <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
         <p className="text-sm text-gray-500">
           Bảng điều khiển /{" "}
-          <Link href="/admin/khoa-hoc" className="hover:text-blue-600 transition-colors">Danh sách khoá học</Link>
+          <Link href={href("/admin/khoa-hoc")} className="hover:text-blue-600 transition-colors">Danh sách khoá học</Link>
           {" "}/ <span className="font-medium text-gray-800">{course.name}</span>
         </p>
       </div>

@@ -192,8 +192,8 @@ export default function BaiTap() {
   const groups = [...byCourse.entries()];
 
   const onlyCourse = data?.courses.length === 1 ? data.courses[0].id : null;
-  const giaoHref = onlyCourse ? `/admin/khoa-hoc/${onlyCourse}?tab=chuong-bai`
-    : courseId ? `/admin/khoa-hoc/${courseId}?tab=chuong-bai` : "/lop-cua-toi/lop";
+  const giaoHref = onlyCourse ? `/lop-cua-toi/quan-lop/${onlyCourse}?tab=chuong-bai`
+    : courseId ? `/lop-cua-toi/quan-lop/${courseId}?tab=chuong-bai` : "/lop-cua-toi/lop";
 
   function choose(i: BaiTapItem) {
     setSelKey(keyOf(i));
@@ -217,7 +217,7 @@ export default function BaiTap() {
         <div className="flex flex-wrap gap-3 self-start flex-shrink-0">
           <Link href="/lop-cua-toi/bai-tap/nhap-de" className={kinButtonClass("secondary")}>Nhập đề từ tệp</Link>
           <Link href="/lop-cua-toi/bai-tap/quiz/moi" className={kinButtonClass("secondary")}>Tạo quiz</Link>
-          <Link href="/admin/thi-thu" className={kinButtonClass("secondary")}>Quản lý đề thi</Link>
+          <Link href="/lop-cua-toi/de-thi" className={kinButtonClass("secondary")}>Quản lý đề thi</Link>
           <Link href={giaoHref} className={kinButtonClass("primary")}>+ Giao bài</Link>
         </div>
       </header>

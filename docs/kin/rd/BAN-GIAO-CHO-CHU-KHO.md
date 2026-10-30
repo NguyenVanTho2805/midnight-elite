@@ -50,6 +50,7 @@ Kết quả hồi quy cuối (bản `e5a4e8c`, 146 bài): 135 đạt ngay, `tsc`
    - Với người trưởng thành vẫn cần thông báo thu thập dữ liệu ngắn gọn (Nghị định 13/2023 áp dụng cho dữ liệu cá nhân nói chung, không chỉ trẻ em) và mỗi gia sư chỉ thấy dữ liệu học sinh của mình.
    - Chưa có ý kiến luật sư. Nên xin ý kiến trước khi bỏ hẳn các hộp đồng ý và trước khi mở cho người dùng thật.
    - Làm từng bước nhỏ, giữ test cũ, sửa test cho đúng quy tắc mới (không xoá ca).
+3. **Thanh bên mặc định hiện đủ mọi module.** Không giấu tính năng theo tuỳ chọn. Hiện trạng: `TUTOR_MODULES` trong `src/lib/userPreferences.ts` chỉ cho `Lịch` và `Học phí` luôn hiện (`always: true`); các module còn lại tuỳ chọn, và khi `preferences.modules` chưa có thì thanh bên ở "chế độ gọn" (chỉ Lịch và Học phí). `TutorShell.tsx` có dòng "Thêm module" khi còn module ẩn. Việc cần làm: khi `preferences.modules` chưa có, mặc định coi như đã bật đủ mọi module tuỳ chọn; ai đã chọn rõ thì giữ lựa chọn của họ. Cài đặt › Module hiển thị vẫn cho ẩn bớt. Tìm và sửa các bài kiểm có chữ "chế độ gọn", "TT-203", `modules` (ví dụ `ui-tutor-shell`, `ui-sidebar`, bài về `userPreferences`) cho đúng quy tắc mới, không xoá ca. Sơ đồ mới ở Figma, mục 8 (thanh bên rộng, đủ mục, không còn nút Khác).
 
 **24/10/2026:** bỏ hết mục "Cố ý không làm" khỏi phạm vi (tải video lên, ảnh bài làm của trẻ, gói Nhóm/Trung tâm, thẻ tín dụng, điểm danh sinh trắc); chốt buổi là điều kiện sinh phí; nhãn "Đã xác minh" đổi thành "Đã duyệt hồ sơ"; phí trễ hạn chỉ gợi ý; Pro tự kích hoạt bằng webhook SePay. Chi tiết ở `pro/QUYET-DINH-CHU.md`.
 
@@ -105,3 +106,60 @@ Kết quả hồi quy cuối (bản `e5a4e8c`, 146 bài): 135 đạt ngay, `tsc`
 - Test dùng ngày hôm nay: `ui-session-book` từng đỏ vào Chủ nhật vì buổi "ngày mai" rơi sang tuần sau của Lịch. Mọi bài tạo dữ liệu theo "hôm nay/ngày mai" phải xử lý tuần.
 - Component báo thành công trước khi làm mới dữ liệu thì test đọc quá sớm và người dùng thấy danh sách cũ: luôn làm mới rồi mới báo.
 - Bản xem trước của Vercel chặn đường tiền (`VERCEL_ENV=preview`), nên không thử thanh toán Pro ở đó được.
+
+## 8. Figma: thanh bên đầy đủ và các màn bổ sung (25/10/2026)
+
+File Figma: `https://www.figma.com/design/2orXvoHL2upkiGoMjlq8aX/KiN-Design-System`. Làm việc trực tiếp trong file, không qua GitHub. Đã dọn còn 13 page; xoá 25 page cũ, thử nghiệm, lưu trữ và trùng lặp (khôi phục bằng File › Show version history nếu cần).
+
+**Đọc theo thứ tự:**
+1. Page `📖 Mục lục & liên kết`: cấu trúc file, mỗi mục thanh bên dẫn tới màn chủ, danh mục màn theo vai, khoảng trống còn lại.
+2. Page `✅ Bản final — thanh bên & tính năng` (id `578:2`): thanh bên mở rộng đủ mọi tính năng của gia sư (18 mục), học sinh (19 mục), quản trị (24 mục trang con), kèm bản đồ `tính năng → màn Figma → đường dẫn ứng dụng`. Đây là chuẩn để dựng web. Mục không có màn Figma ghi "chưa có màn".
+3. Page `📐 Nền móng`: 84 màn gốc và 4 Section `🆕 … màn bổ sung 25/10` (28 màn mới, dựng từ khung vỏ có sẵn, dùng biến màu, kiểu chữ và thành phần chung).
+
+**Thanh bên chuẩn (một chuẩn duy nhất, đã áp cho mọi màn desktop trong `📐 Nền móng`):**
+- Thanh bên mở rộng, rộng 272px, chia nhóm, hiện đủ mọi mục. Khung màn rộng 1600px = thanh bên 272 + vùng làm việc 1328. Không còn thanh icon 112px và không còn nút "Khác" giấu mục. Đừng dựng bản thanh icon + bảng "Khác": đó là bản cũ.
+- Gia sư (18 mục): Làm việc hằng ngày (Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện), Dạy học (Tổng quan, Kế hoạch buổi, Báo cáo tháng, Sổ điểm, Kiểm duyệt cộng đồng), Tiền (Học phí, Doanh thu), Giới thiệu (Hồ sơ gia sư, Bài đăng tìm học sinh), Tài khoản (Gói của tôi, Liên hệ hỗ trợ, Cài đặt).
+- Học sinh (19 mục): Làm việc hằng ngày (Việc của tôi, Lịch học, Lớp của tôi, Bài tập), Học tập (Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Cộng đồng), Khám phá (Khoá học đang mở, Lớp đang theo dõi, Gia sư, Tin tức, Tra cứu điểm chuẩn), Tài khoản (Hồ sơ, Học phí, Ví và Coin, Chủ đề màu).
+- Quản trị (24 trang con): 5 nhóm Kiểm duyệt, Người dùng, Nội dung, Báo cáo, Cài đặt; mỗi trang con có mục riêng, trang đang mở được tô sáng. Trong màn Nội dung và Cài đặt còn dải tab trang con ở đầu trang.
+- Điện thoại: thanh dưới 4 mục, không có bảng Khác. Phụ huynh không có thanh bên.
+- Mỗi màn chỉ tô sáng đúng một mục (đã kiểm: 80 màn, 0 màn thiếu hoặc thừa mục đang chọn). Page `🖥 Vỏ ứng dụng — 4 vai` là bản cũ, đã ghi chú không dùng để dựng.
+
+**Màn bổ sung (node id, đường dẫn app):**
+
+| Vai | Màn | Id | Đường dẫn |
+|---|---|---|---|
+| Gia sư | Gói của tôi | `565:4641` | `/lop-cua-toi/goi` |
+| Gia sư | Liên hệ hỗ trợ | `565:4947` | `/lop-cua-toi/ho-tro` |
+| Gia sư | Tổng quan | `574:5188` | `/lop-cua-toi/tong-quan` |
+| Gia sư | Kế hoạch buổi | `574:5489` | `/lop-cua-toi/ke-hoach-buoi` |
+| Gia sư | Báo cáo tháng | `574:5777` | `/lop-cua-toi/bao-cao-thang` |
+| Gia sư | Kiểm duyệt cộng đồng | `574:6082` | `/lop-cua-toi/kiem-duyet` |
+| Gia sư | Bài đăng tìm học sinh | `574:6351` | `/lop-cua-toi/bai-dang` |
+| Học sinh | Thi thử | `575:5571` | `/student/thi-thu` |
+| Học sinh | Bảng xếp hạng | `575:5805` | `/student/bang-xep-hang` |
+| Học sinh | Ví và Coin | `575:5999` | `/student/vi` |
+| Học sinh | Hồ sơ | `575:6186` | `/student/ho-so` |
+| Học sinh | Tiếng Anh tự học | `575:6349` | `/student/tieng-anh` |
+| Học sinh | Hỏi đáp | `575:6538` | `/student/hoi-dap` |
+| Học sinh | Cộng đồng | `575:6741` | `/student/cong-dong` |
+| Quản trị | Nội dung — Khoá học | `567:4791` | `/admin/khoa-hoc` |
+| Quản trị | Nội dung — Danh mục | `576:5883` | `/admin/khoa-hoc/danh-muc` |
+| Quản trị | Nội dung — Đề thi | `576:6117` | `/admin/thi-thu` |
+| Quản trị | Nội dung — Ngân hàng câu hỏi | `576:6355` | `/admin/thi-thu/ngan-hang-cau-hoi` |
+| Quản trị | Nội dung — Ngân hàng đề | `576:6594` | `/admin/thi-thu/ngan-hang-de-thi` |
+| Quản trị | Nội dung — Tin tức & Blog | `576:6817` | `/admin/tin-tuc` |
+| Quản trị | Nội dung — Điểm chuẩn | `576:7032` | `/admin/diem-chuan` |
+| Quản trị | Nội dung — Bảng vinh danh | `576:7239` | `/admin/vinh-danh` |
+| Quản trị | Cài đặt — Gói KiN Pro | `567:5048` | `/admin/goi-pro` |
+| Quản trị | Cài đặt — Hỗ trợ gia sư | `568:4923` | `/admin/ho-tro` |
+| Quản trị | Cài đặt — Duyệt nạp Coin | `568:5154` | `/admin/topups` |
+| Điện thoại | Gia sư · Lịch | `570:5054` | thanh dưới |
+| Điện thoại | Học sinh · Lớp của tôi | `570:5237` | thanh dưới |
+| Điện thoại | Học sinh · Bài tập | `570:5387` | thanh dưới |
+
+**Lưu ý khi dựng từ các màn này:**
+- Số liệu và tên trong màn là ví dụ minh hoạ, không phải dữ liệu thật.
+- Ví và Coin của học sinh: Coin là điểm thưởng làm bài, học sinh không nạp bằng tiền. Duyệt nạp Coin của quản trị là cho yêu cầu nạp của gia sư.
+- Gói của tôi: gói Free hiện "Chưa mở bán" cho tới khi đặt đủ biến `KINPRO_*`; KiN không tự trừ tiền.
+- Chưa có màn Figma cho: Thư viện, Khoá học đang mở, Lớp đang theo dõi, Tin tức, Tra cứu điểm chuẩn, Học phí và Chủ đề màu của học sinh; Bài viết cộng đồng, Báo cáo trả lời, Đánh giá khoá học, Hồ sơ học sinh, Doanh thu, Phễu gia sư, Số đo sản phẩm của quản trị.
+- Liên kết prototype (mục thanh bên, dải tab) đã nối giữa các màn trong `📐 Nền móng`; mới kiểm bằng ảnh chụp, chưa chạy thử chế độ Present.

@@ -13,7 +13,9 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   section("Xuất component");
   const idx = read("src/components/kin/index.ts");
   for (const n of ["KinButton", "kinButtonClass", "KinStatus", "KinTabs", "KinTabInner", "KIN_TAB_BOX", "KinToast", "KinConfirm"]) check(`index.ts xuất ${n}`, new RegExp(`\\b${n}\\b`).test(idx));
-  const btn = read("src/components/kin/Button.tsx");
+  // 31/10/2026 (BU-00 sửa sau test): lớp CSS + kinButtonClass() tách sang buttonClass.ts (module thuần, không "use client") để trang máy chủ gọi được;
+  // Button.tsx chỉ còn component. Kiểm kiểu nút / chạm 44px / focus trên CẢ HAI tệp.
+  const btn = read("src/components/kin/Button.tsx") + "\n" + read("src/components/kin/buttonClass.ts");
   for (const v of ["primary", "secondary", "ghost", "danger", "danger-solid"]) check(`KinButton có kiểu "${v}"`, new RegExp(`["']?${v}["']?\\s*[:|,]|"${v}"`).test(btn));
   check("KinButton không còn vòng xoay (Figma: dùng chữ, không spinner)", !/animate-spin/.test(btn));
   const site0 = read("src/app/kin-site.css");
