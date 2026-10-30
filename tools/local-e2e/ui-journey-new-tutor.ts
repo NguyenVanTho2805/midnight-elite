@@ -201,6 +201,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await eventually("sau đăng nhập gia sư rơi vào /lop-cua-toi (Hộp việc), không bị đẩy sang Lịch", () => at().pathname === "/lop-cua-toi", 60000);
   const landingTutor = at().pathname;
   await p.getByRole("heading", { name: "Hộp việc", level: 1 }).waitFor({ timeout: 60000 });
+  await p.getByText("Không có việc nào đang chờ cô").waitFor({ timeout: 30000 }); // Hộp việc là client component tải /api/tutor/hop-viec: chờ trạng thái trống hiện rồi mới kiểm
   check("Hộp việc trống nói rõ không có việc + chỉ đường 'Xem lịch hôm nay' (không ngõ cụt)", await p.getByText("Không có việc nào đang chờ cô").isVisible() && await p.getByRole("link", { name: "Xem lịch hôm nay" }).getAttribute("href") === "/lop-cua-toi/lich");
   await click(p.getByRole("link", { name: "Xem lịch hôm nay" }));
   await eventually("tới /lop-cua-toi/lich", () => at().pathname === "/lop-cua-toi/lich", 90000);

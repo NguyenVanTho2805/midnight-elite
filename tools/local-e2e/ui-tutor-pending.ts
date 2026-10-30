@@ -135,7 +135,7 @@ const RAIL = "Module của gia sư";
   check("BU-00 bước 4: gia sư gõ /student/viec-cua-toi → về Hộp việc (không còn 'xem thử' khu học sinh)", new URL(pt.url()).pathname === "/lop-cua-toi", pt.url());
   await pt.goto(`${BASE}/cai-dat/chu-de`, GOTO);
   await pt.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
-  check("gia sư vẫn vào /cai-dat/chu-de (trang dùng chung) trong vỏ gia sư", new URL(pt.url()).pathname === "/cai-dat/chu-de" && await pt.getByRole("navigation", { name: RAIL }).getByText("GIA SƯ").isVisible());
+  check("gia sư vẫn vào /cai-dat/chu-de (trang dùng chung) trong vỏ gia sư", new URL(pt.url()).pathname === "/cai-dat/chu-de" && await pt.getByRole("navigation", { name: RAIL }).locator(".kin-rail-role", { hasText: "GIA SƯ" }).count() === 1);
   await ct.close();
 
   // ───────────────────────────── P4 ─────────────────────────────
