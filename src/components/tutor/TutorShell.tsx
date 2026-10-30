@@ -1,5 +1,6 @@
 // TT-203 — vỏ của gia sư theo bố cục Outlook (Figma "Vỏ — Gia sư" 9:2): thanh module 79px bên trái (điện thoại: thanh dưới 60px)
-// + dải trên 48px. Chỉ hiện module đang bật; mặc định "chế độ gọn" = Lịch + Học phí. Tắt module chỉ ẨN khỏi thanh — dữ liệu giữ nguyên.
+// + dải trên 48px. Chỉ hiện module đang bật; mặc định (BU-00, 25/10/2026) = ĐỦ module, gia sư tự tắt bớt ở Cài đặt ("chế độ gọn" = Lịch + Học phí
+// là lựa chọn tường minh `modules: []`). Tắt module chỉ ẨN khỏi thanh — dữ liệu giữ nguyên.
 // 13/10/2026: bỏ menu 226px + biểu tượng emoji + nhãn 9,5px; các trang không có trên thanh (Doanh thu, Báo cáo tháng, Kế hoạch buổi,
 // Kiểm duyệt, Hồ sơ gia sư, Bài đăng, Cài đặt) vào qua bảng "Khác" như vỏ học sinh. Hộp việc đang ở đúng /lop-cua-toi, nên mục này
 // chỉ sáng khi đúng đường dẫn đó (các trang con không làm nó sáng theo).
@@ -15,7 +16,7 @@ import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
-import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
+import { OPTIONAL_TUTOR_MODULES, visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
 /** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
@@ -42,8 +43,8 @@ const MORE_BASE: MoreGroup[] = [
 export default function TutorShell({
   modules, badges, children,
 }: {
-  /** Module tuỳ chọn gia sư đã bật. */
-  modules: OptionalTutorModule[];
+  /** Module tuỳ chọn gia sư đã bật. `undefined` = chưa chọn = đủ module (BU-00); `[]` = chế độ gọn tường minh. */
+  modules?: OptionalTutorModule[];
   /** Số việc đang chờ theo module (chỉ đếm việc cần gia sư ra tay). */
   badges: Record<string, number>;
   children: React.ReactNode;
@@ -53,7 +54,8 @@ export default function TutorShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = useCallback(() => setMoreOpen(false), []);
   const visible = visibleTutorModules({ modules });
-  const hiddenCount = 4 - modules.length;
+  // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
+  const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => !visible.some(m => m.key === k)).length;
 
   const groups: MoreGroup[] = [
     ...MORE_BASE,

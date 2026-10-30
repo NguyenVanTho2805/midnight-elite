@@ -26,7 +26,8 @@ export default async function LopCuaToiPage() {
   // Gia sư: Hộp việc dạng danh sách + khung đọc (Figma 9:2). Quản lý trung tâm và học viên giữ danh sách bên dưới.
   if (session.role === "admin" && session.adminRole === "teacher") {
     const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true } });
-    // TT-203: chế độ gọn — Hộp việc chưa bật thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở /lop-cua-toi/tong-quan.
+    // TT-203: Hộp việc đã bị gia sư tắt (chế độ gọn tường minh `modules` không có "hop-viec") thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở
+    // /lop-cua-toi/tong-quan. BU-00: `modules` vắng mặt = đủ module nên gia sư mới rơi thẳng vào Hộp việc, không chuyển hướng.
     if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
     return <HopViec />;
   }

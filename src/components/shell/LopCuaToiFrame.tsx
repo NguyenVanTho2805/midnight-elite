@@ -31,5 +31,6 @@ export default async function LopCuaToiFrame({ children }: { children: ReactNode
   if (inboxOn) badges["hop-viec"] = inbox;
   else if (sched) badges["lich"] = sched.pendingAbsences + sched.remindersDue;
 
-  return <TutorShell modules={prefs.modules ?? []} badges={badges}>{children}</TutorShell>;
+  // BU-00: truyền nguyên `prefs.modules` — vắng mặt là đủ module, không ép về `[]` (= chế độ gọn tường minh).
+  return <TutorShell modules={prefs.modules} badges={badges}>{children}</TutorShell>;
 }

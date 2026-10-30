@@ -77,7 +77,9 @@ check("đã chờ: 3 ngày / 5 giờ / 12 phút / vừa gửi", waitedText(new D
 check("giờ ở tương lai (lệch đồng hồ) không âm: 'vừa gửi'", waitedText(new Date(NOW.getTime() + 60_000), NOW) === "vừa gửi");
 
 section("Điều hướng quản trị: quyền từng vai");
-const roles: AdminRole[] = ["admin_super", "admin_content", "teacher"];
+// BU-00 bước 2 (25/10/2026): gia sư (teacher) không còn dùng vỏ quản trị → visibleModules("teacher") = [] (xem t-admin-nav-lib.ts), nên "teacher"
+// rời khỏi vòng so với thanh bên cũ; các kỳ vọng riêng cho teacher bên dưới đổi thành "không thấy gì".
+const roles: AdminRole[] = ["admin_super", "admin_content"];
 const hrefsOf = (r: AdminRole | null) => visibleModules(r).flatMap(m => m.subs.map(s => s.href));
 // Bản sao bảng NAV_ITEMS CŨ của AdminSidebar (href → quyền): vỏ mới không được hiện nhiều hơn hay ít hơn.
 const OLD: [string, Permission | null][] = [
@@ -93,6 +95,8 @@ const OLD: [string, Permission | null][] = [
   ["/admin/ho-tro", PERMISSIONS.MANAGE_TUTORS],
   // 24/10/2026 (QT-02/03/06): ba mục menu MỚI có chủ ý. Nhật ký chỉ cấp 1 (MANAGE_ADMINS); Triển khai và hạn mức + Duyệt nạp Coin cùng quyền MANAGE_REVENUE như Gói KiN Pro / API duyệt.
   ["/admin/nhat-ky", PERMISSIONS.MANAGE_ADMINS], ["/admin/trien-khai", PERMISSIONS.MANAGE_REVENUE], ["/admin/topups", PERMISSIONS.MANAGE_REVENUE],
+  // NC2-046 / NC2-050: hai mục menu MỚI có chủ ý (Video tham khảo, Công thức tính điểm), cùng quyền MANAGE_NEWS như Tin tức / Điểm chuẩn — trước BU-00 quên ghi vào đây nên 2 ca "không thừa" đỏ sẵn.
+  ["/admin/thu-vien-video", PERMISSIONS.MANAGE_NEWS], ["/admin/diem-chuan/cong-thuc", PERMISSIONS.MANAGE_NEWS],
 ];
 for (const r of roles) {
   const now = new Set(hrefsOf(r));
@@ -101,11 +105,11 @@ for (const r of roles) {
   const missing = old.filter(h => !now.has(h));
   check(`${r}: thấy đúng các trang như thanh bên cũ (không thừa, không thiếu)`, extra.length === 0 && missing.length === 0, { extra, missing });
 }
-check("'Hàng chờ' (/admin/kiem-duyet) hiện cho mọi vai quản trị", roles.every(r => hrefsOf(r).includes("/admin/kiem-duyet")));
+check("'Hàng chờ' (/admin/kiem-duyet) hiện cho mọi vai quản trị (cấp 1, nội dung)", roles.every(r => hrefsOf(r).includes("/admin/kiem-duyet")));
 check("chưa biết vai (đang tải) → chỉ trang không đòi quyền", JSON.stringify(hrefsOf(null)) === JSON.stringify(["/admin/kiem-duyet", "/admin"]), hrefsOf(null));
-check("gia sư (teacher) không thấy: Người dùng, Doanh thu, Phễu, Số đo, Duyệt gia sư, Quản trị viên", !["/admin/hoc-sinh", "/admin/doanh-thu", "/admin/pheu", "/admin/so-do", "/admin/ho-so-gia-su", "/admin/quan-tri-vien"].some(h => hrefsOf("teacher").includes(h)));
+check("gia sư (teacher) không thấy module quản trị nào (BU-00: vỏ quản trị chỉ còn quản trị)", visibleModules("teacher").length === 0 && hrefsOf("teacher").length === 0, visibleModules("teacher").map(m => m.key));
 check("module không còn trang con nào thì ẩn cả module (content không có 'Người dùng')", !visibleModules("admin_content").some(m => m.key === "nguoi-dung") && visibleModules("admin_super").length === ADMIN_MODULES.length);
-check("đường vào module = trang con đầu tiên được phép (teacher → Nội dung mở 'Khoá học')", visibleModules("teacher").find(m => m.key === "noi-dung")!.href === "/admin/khoa-hoc" && visibleModules("admin_super").find(m => m.key === "nguoi-dung")!.href === "/admin/hoc-sinh");
+check("đường vào module = trang con đầu tiên được phép (content → Nội dung mở 'Khoá học'; cấp 1 → Người dùng mở 'Hồ sơ học sinh')", visibleModules("admin_content").find(m => m.key === "noi-dung")!.href === "/admin/khoa-hoc" && visibleModules("admin_super").find(m => m.key === "nguoi-dung")!.href === "/admin/hoc-sinh");
 check("không có hai module cùng khoá; không có trang con nằm ở hai module", new Set(ADMIN_MODULES.map(m => m.key)).size === ADMIN_MODULES.length && new Set(ADMIN_MODULES.flatMap(m => m.subs.map(s => s.href))).size === ADMIN_MODULES.flatMap(m => m.subs).length);
 
 section("Điều hướng quản trị: khớp đường dẫn");
@@ -118,7 +122,7 @@ check("không khớp nhầm tiền tố chữ: /admin/khoa-hocxyz không phải 
 // QT-06 (24/10/2026): trước đây /admin/topups không có trong menu (test cũ khẳng định "không thuộc module nào" = đúng hiện trạng lúc đó). Nay có lối vào ở Cài đặt.
 check("/admin/topups thuộc Cài đặt · Duyệt nạp Coin (QT-06)", at("/admin/topups")?.moduleKey === "cai-dat" && at("/admin/topups")?.sub.label === "Duyệt nạp Coin");
 check("/admin/nhat-ky thuộc Kiểm duyệt · Nhật ký; /admin/trien-khai thuộc Cài đặt (QT-02/03)", at("/admin/nhat-ky")?.moduleKey === "kiem-duyet" && at("/admin/trien-khai")?.moduleKey === "cai-dat");
-check("quyền: chỉ cấp 1 thấy Nhật ký, Triển khai và hạn mức, Duyệt nạp Coin; quản trị nội dung và gia sư KHÔNG", ["admin_content", "teacher"].every(r => !["/admin/nhat-ky", "/admin/trien-khai", "/admin/topups"].some(h => hrefsOf(r as AdminRole).includes(h))) && ["/admin/nhat-ky", "/admin/trien-khai", "/admin/topups"].every(h => hrefsOf("admin_super").includes(h)));
+check("quyền: chỉ cấp 1 thấy Nhật ký, Triển khai và hạn mức, Duyệt nạp Coin; quản trị nội dung và gia sư KHÔNG (gia sư: không thấy gì cả)", ["admin_content", "teacher"].every(r => !["/admin/nhat-ky", "/admin/trien-khai", "/admin/topups"].some(h => hrefsOf(r as AdminRole).includes(h))) && ["/admin/nhat-ky", "/admin/trien-khai", "/admin/topups"].every(h => hrefsOf("admin_super").includes(h)));
 
 section("Mọi trang quản trị đang có đều có chỗ đứng trong một module");
 const root = join(process.cwd(), "src/app/(admin)/admin");

@@ -25,7 +25,7 @@ const REPORT = process.env.TUTOR_REPORT ?? "scratchpad/tutor-report.txt";
 const MAX_PAGES = Number(process.env.MAX_PAGES ?? 160);   // trần số đích khác nhau được mở ở phần A
 const MAX_BTN = Number(process.env.MAX_BTN ?? 28);        // trần số nút được bấm thử trên mỗi kiểu trang ở phần B
 const MAX_PER_PATTERN = 4;
-const COMPACT = process.env.TUTOR_MODULES === "compact";     // cấu hình MẶC ĐỊNH (chưa bật module nào): thanh chỉ có Lịch + Học phí, cửa vào là Lịch
+const COMPACT = process.env.TUTOR_MODULES === "compact";     // chế độ gọn TƯỜNG MINH (gia sư tự tắt hết: `modules: []`): thanh chỉ có Lịch + Học phí, cửa vào là Lịch. Mặc định của mã (BU-00) là đủ module.
 const EMPTY = process.env.TUTOR_WORLD === "empty";           // gia sư MỚI TINH chưa có lớp nào: trang trống + nút hướng dẫn
 const [VW, VH] = (process.env.VIEWPORT ?? "1280x900").split("x").map(Number); // VIEWPORT=390x844 để rà bản điện thoại (thanh module dưới đáy)
 
@@ -126,7 +126,7 @@ const STUDENT_ALIASES: Record<string, string> = { "/admin/khoa-hoc/tao-moi": "/a
 function expected(reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
   if (["/", "/dang-nhap", "/dang-ky", "/admin"].includes(reqPath)) return finPath === HOME;
-  if (COMPACT && reqPath === "/lop-cua-toi") return finPath === HOME;            // Hộp việc chưa bật → màn đầu là Lịch (TT-203)
+  if (COMPACT && reqPath === "/lop-cua-toi") return finPath === HOME;            // Hộp việc đã tắt (modules: []) → màn đầu là Lịch (TT-203)
   return false;
 }
 function judge(requested: URL, r: { status: number | null; final: URL; text: string }): string | null {
@@ -240,7 +240,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   const w = await seedTutorWorld({ empty: EMPTY, compact: COMPACT });
   const full = w.empty ? null : w;
   const T = w.T;
-  console.log(`  thế giới thử: ${EMPTY ? "gia sư mới tinh (chưa có lớp)" : "gia sư có dữ liệu đầy đủ"}; module: ${COMPACT ? "chế độ gọn mặc định (Lịch + Học phí)" : "bật đủ 4 module"}; khung nhìn ${VW}x${VH}`);
+  console.log(`  thế giới thử: ${EMPTY ? "gia sư mới tinh (chưa có lớp)" : "gia sư có dữ liệu đầy đủ"}; module: ${COMPACT ? "chế độ gọn tường minh modules: [] (Lịch + Học phí)" : "bật đủ 4 module (cũng là mặc định BU-00)"}; khung nhìn ${VW}x${VH}`);
   const browser = await launch();
   // x-forwarded-proto: Vercel luôn đặt; không có thì trang /mentor/[id] (tự gọi lại API của chính nó theo https) hỏng ở `next dev` chạy http.
   const ctx: BrowserContext = await browser.newContext({ viewport: { width: VW, height: VH }, locale: "vi-VN", extraHTTPHeaders: { "x-forwarded-proto": "http" } });

@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma";
   const T = await mkTutor("Cô Lan"), T0 = await mkTutor("Cô Mới"), TC = await mkTutor("Cô Gọn");
   const S = await mkUser({ name: "Em An" }), S2 = await mkUser({ name: "Em Bình" }), R = await mkUser({ name: "Người Báo" });
   for (const u of [T, T0]) await prisma.user.update({ where: { id: u.id }, data: { preferences: { modules: ["hop-viec", "lop", "bai-kt", "thu-vien"] } } });
+  // BU-00: mặc định (chưa chọn gì) nay là ĐỦ module, nên "Cô Gọn" phải GHI TƯỜNG MINH `modules: []` mới ra chế độ gọn.
+  await prisma.user.update({ where: { id: TC.id }, data: { preferences: { modules: [] } } });
   const c1 = await mkCourse(T.id, { name: "Toán 9" });
   for (const u of [S, S2]) await prisma.enrollment.create({ data: { userId: u.id, courseId: c1.id, status: "active" } });
   await prisma.enrollment.create({ data: { userId: (await mkUser({ name: "Em Chờ" })).id, courseId: c1.id, status: "pending_consent" } });
@@ -165,12 +167,12 @@ import { prisma } from "@/lib/prisma";
   await shot(p3, "tutor-shell-trong");
   await ctx3.close();
 
-  section("Chế độ gọn: Hộp việc tắt");
+  section("Chế độ gọn tường minh (modules: []): Hộp việc tắt");
   const cg = await ctxFor(TC, { width: 1280, height: 800 });
   const pc = await cg.newPage(); watch(pc);
   await pc.goto(`${BASE}/lop-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pc.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
-  check("Hộp việc chưa bật → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
+  check("Hộp việc đã tắt → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
   check("thanh chỉ có Lịch + Học phí + Cài đặt (+ logo, + Khác)", (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === 3);
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();

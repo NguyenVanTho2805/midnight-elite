@@ -10,7 +10,7 @@
 //   G3  Khung giờ học hằng tuần (tab Lịch học đã mở sẵn)
 //   G4  Nút "Mở lớp" ở trang quản khoá → "Mời cả lớp một lần" (ĐX-07, tab Mã mời của lớp)
 //   NC2-029 còn kiểm: thẻ "chờ duyệt" chỉ hiện đúng người; chữ trang xác thực; giá/bài/ngày mặc định; quản trị tạo lớp vẫn bắt buộc đủ; lối "Mở lớp" ở menu ···
-//   G5  Hộp việc (mặc định TẮT ở chế độ gọn → bật ở Cài đặt rồi mở)
+//   G5  Hộp việc (BU-00 25/10/2026: mặc định ĐỦ module nên Hộp việc đã BẬT sẵn → mở thẳng; nhánh "bật ở Cài đặt" chỉ chạy nếu thanh bên không có Hộp việc)
 //
 // THỜI GIAN là thời gian MÁY đo trên máy dev (có cả thời gian biên dịch lần đầu của Next dev), KHÔNG phải thời gian người.
 // Để khách quan: chạy bài HAI lần liên tiếp và lấy số lần hai (máy ấm). Mỗi lần chạy xoá sạch DB riêng (wipe) rồi tự dựng dữ liệu.
@@ -190,10 +190,15 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await typeIn(p.locator('input[type="email"], input[autocomplete="username"], input[name="email"]').first(), email);
   await typeIn(p.locator('input[type="password"]').first(), PASS);
   await click(p.locator('form button[type="submit"]').first());
-  await eventually("vào khung gia sư (thanh module GIA SƯ) — Hộp việc tắt nên màn đầu là Lịch", async () => at().pathname.startsWith("/lop-cua-toi") && (await p.locator('nav[aria-label="Module của gia sư"]').count()) > 0, 120000);
+  await eventually("vào khung gia sư (thanh module GIA SƯ) — BU-00: mặc định đủ module nên màn đầu là Hộp việc", async () => at().pathname.startsWith("/lop-cua-toi") && (await p.locator('nav[aria-label="Module của gia sư"]').count()) > 0, 120000);
   const loginDone = Date.now() - cur!.t0;
-  await eventually("sau đăng nhập gia sư rơi vào /lop-cua-toi/lich (chế độ gọn: Hộp việc tắt nên /lop-cua-toi chuyển sang Lịch)", () => at().pathname === "/lop-cua-toi/lich", 60000);
+  // BU-00 (31/10/2026): gia sư mới chưa chọn module nào = ĐỦ module → /lop-cua-toi là Hộp việc, KHÔNG còn chuyển sang /lop-cua-toi/lich như thời chế độ gọn mặc định.
+  await eventually("sau đăng nhập gia sư rơi vào /lop-cua-toi (Hộp việc), không bị đẩy sang Lịch", () => at().pathname === "/lop-cua-toi", 60000);
   const landingTutor = at().pathname;
+  await p.getByRole("heading", { name: "Hộp việc", level: 1 }).waitFor({ timeout: 60000 });
+  check("Hộp việc trống nói rõ không có việc + chỉ đường 'Xem lịch hôm nay' (không ngõ cụt)", await p.getByText("Không có việc nào đang chờ cô").isVisible() && await p.getByRole("link", { name: "Xem lịch hôm nay" }).getAttribute("href") === "/lop-cua-toi/lich");
+  await click(p.getByRole("link", { name: "Xem lịch hôm nay" }));
+  await eventually("tới /lop-cua-toi/lich", () => at().pathname === "/lop-cua-toi/lich", 90000);
   await p.getByText("Tuần này chưa có buổi học nào").waitFor({ timeout: 60000 });
   check("Lịch trống nói ĐÚNG chỗ đặt khung giờ (tab 'Lịch học' của trang quản khoá — trang lớp /lop-cua-toi/<lớp> không có tab này) — sửa chữ của NC2-021", (await body()).includes("trang quản khoá") && !(await body()).includes("trong trang lớp"));
   check("Lịch trống chỉ đường: có nút 'Xem các lớp của tôi'", await p.getByRole("link", { name: "Xem các lớp của tôi" }).isVisible());
@@ -275,9 +280,10 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
 
   // ───────────────────── G5: Hộp việc ─────────────────────
   begin("G5", "mời cả lớp → Hộp việc");
-  section("G5. Hộp việc: mặc định tắt (chế độ gọn) → Khác → Cài đặt → bật → mở");
+  section("G5. Hộp việc: BU-00 mặc định đủ module → đã có trên thanh bên → mở thẳng (nhánh bật ở Cài đặt chỉ chạy khi thiếu)");
   const rail = p.locator('nav[aria-label="Module của gia sư"]');
   const hasInbox = (await rail.getByRole("link", { name: /^Hộp việc/ }).count()) > 0;
+  check("BU-00: gia sư mới (chưa chọn module) thấy Hộp việc sẵn trên thanh bên, không phải vào Cài đặt bật", hasInbox);
   if (!hasInbox) {
     await click(rail.getByRole("button", { name: "Khác" }));
   sub("bảng 'Khác'");
@@ -334,7 +340,8 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   check("KiN không gửi thư đi thật: thư chỉ nằm trong EMAIL_SINK_DIR", readdirSync(SINK).length >= 1);
 
   // ───────────────────── BẢNG ĐO ─────────────────────
-  // Chặng đệm = chuyển hướng phía máy chủ mà người dùng không dừng lại ở đó (Hộp việc tắt: /lop-cua-toi → /lop-cua-toi/lich; đường cũ /admin/khoa-hoc/tao-moi → ?tao=1).
+  // Chặng đệm = chuyển hướng phía máy chủ mà người dùng không dừng lại ở đó (đường cũ /admin/khoa-hoc/tao-moi → ?tao=1; cặp /lop-cua-toi → /lop-cua-toi/lich
+  // chỉ còn xảy ra khi gia sư đã tự tắt Hộp việc — sau BU-00 mặc định đủ module nên hành trình này không đi qua, vẫn giữ để không đếm sai nếu có).
   // KHÔNG dùng thời gian lưu lại để loại: bài chạy máy nhanh hơn người nên màn thật cũng có thể chỉ hiện vài trăm ms.
   const collapse = (list: Nav[]) => {
     const out: Nav[] = [];

@@ -24,7 +24,9 @@ import { prisma } from "@/lib/prisma";
   const attr = (p: any) => p.evaluate(`document.documentElement.getAttribute("data-kin-rail")`) as Promise<string | null>;
 
   // ───────────── Gia sư
-  section("Gia sư: mặc định thanh RỘNG 272px, chế độ gọn (Lịch + Học phí) → nhóm ngắn hơn Figma nhưng đủ nhóm");
+  section("Gia sư: mặc định thanh RỘNG 272px; chế độ gọn tường minh (modules: [] → Lịch + Học phí) → nhóm ngắn hơn Figma nhưng đủ nhóm");
+  // BU-00 (31/10/2026): chưa chọn gì = ĐỦ module, nên muốn thử chế độ gọn phải ghi tường minh `modules: []`.
+  await prisma.user.update({ where: { id: T.id }, data: { preferences: { modules: [] } } });
   const ctxT = await ctxFor(T, { width: 1440, height: 1000, rail: "mac-dinh" });
   const pt = await ctxT.newPage(); watch(pt);
   await pt.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
@@ -43,32 +45,32 @@ import { prisma } from "@/lib/prisma";
   const dims = await pt.evaluate(() => { const it = document.querySelector<HTMLElement>("#kin-rail .kin-rail-wi")!; const r = it.getBoundingClientRect(); const ic = it.querySelector("svg")!.getBoundingClientRect(); return { h: Math.round(r.height), w: Math.round(r.width), icon: Math.round(ic.width), gap: Math.round(it.querySelector("span")!.getBoundingClientRect().left - ic.right) }; });
   check("số đo Figma: mục cao 37px, biểu tượng 21px, cách chữ 12px (màn chuột)", dims.h === 37 && dims.icon === 21 && dims.gap === 12 && dims.w > 220, dims);
   check("không tràn ngang, thanh sát mép trái", await pt.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean && (await pt.locator("#kin-rail").boundingBox())?.x === 0);
-  // bật thêm module: Lớp → hiện Lớp + Học sinh; Hộp việc → đứng đầu
-  await prisma.user.update({ where: { id: T.id }, data: { preferences: { modules: ["hop-viec", "lop", "bai-kt", "thu-vien"] } } });
+  // xoá lựa chọn (về mặc định BU-00 = đủ module): Lớp → hiện Lớp + Học sinh; Hộp việc → đứng đầu
+  await prisma.user.update({ where: { id: T.id }, data: { preferences: {} } });
   await pt.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(pt, "Module của gia sư").first().waitFor({ timeout: 90000 });
   const gt2 = await groupsOf(pt, "Module của gia sư");
-  check("bật đủ module: nhóm đầu = Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện (đúng Figma); hết 'Thêm module'", gt2[0].items.join("|") === "Hộp việc|Lịch|Lớp|Học sinh|Bài tập|Thư viện" && !gt2[4].items.includes("Thêm module"), gt2);
+  check("chưa chọn module (mặc định BU-00) = đủ module: nhóm đầu = Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện (đúng Figma); hết 'Thêm module'", gt2[0].items.join("|") === "Hộp việc|Lịch|Lớp|Học sinh|Bài tập|Thư viện" && !gt2[4].items.includes("Thêm module"), gt2);
   await pt.getByRole("link", { name: "Gói của tôi", exact: true }).first().click();
   await pt.waitForURL(/\/lop-cua-toi\/goi/, { timeout: 90000 });
   check("bấm 'Gói của tôi' → sang trang gói, mục đó sáng, 'Lịch' hết sáng", await nav(pt, "Module của gia sư").first().getByRole("link", { name: "Gói của tôi" }).getAttribute("aria-current") === "page" && (await nav(pt, "Module của gia sư").first().locator('.kin-rail-groups [aria-current="page"]').count()) === 1);
   await ctxT.close();
 
   // ───────────── Học sinh
-  section("Học sinh: Làm việc hằng ngày (4 module) · Học tập · Khám phá · Tài khoản");
+  section("Học sinh: Làm việc hằng ngày (4 module) · Khám phá · Tài khoản");
   const ctxS = await ctxFor(S, { width: 1440, height: 1000, rail: "mac-dinh" });
   const ps = await ctxS.newPage(); watch(ps);
   await ps.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(ps, "Module của học sinh").first().waitFor({ timeout: 90000 });
   const gs = await groupsOf(ps, "Module của học sinh");
-  check("bốn nhóm: Làm việc hằng ngày · Học tập · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Học tập|Khám phá|Tài khoản", gs.map(g => g.title));
-  // NC2-048 (28/10/2026): bỏ mục "Hỏi đáp" riêng khỏi nhóm Học tập (Hỏi đáp là tab trong Cộng đồng) theo góp ý người dùng thử; lệch Figma 575:5571 CÓ CHỦ ĐÍCH, cần Thanh cập nhật khung.
-  check("đủ mục như Figma 575:5571 (trừ mục Hỏi đáp đã gộp vào Cộng đồng)", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập" && gs[1].items.join("|") === "Thư viện|Tiếng Anh tự học|Thi thử|Bảng xếp hạng|Cộng đồng"
-    && gs[2].items.join("|") === "Khoá học đang mở|Lớp đang theo dõi|Gia sư|Tin tức|Tra cứu điểm chuẩn" && gs[3].items.join("|") === "Hồ sơ|Học phí|Ví và Coin|Chủ đề màu", gs);
+  // BU-00 bước 6 (31/10/2026): bỏ nhóm "Học tập" và rút Khám phá / Tài khoản — học sinh chỉ thấy việc học; lệch Figma 575:5571 CÓ CHỦ ĐÍCH (kế hoạch BIGUPDATE BU-00 ghi cập nhật khung).
+  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tài khoản", gs.map(g => g.title));
+  check("đúng mục BU-00: 4 module; Khám phá = Gia sư, Cộng đồng, Tin tức; Tài khoản = Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập"
+    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Hồ sơ|Học phí|Chủ đề màu|Nhập mã lớp", gs);
   check("nhãn vai 'HỌC SINH', thanh 272px, 'Việc của tôi' đang sáng", (await ps.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "HỌC SINH" && (await wrapW(ps)) === 272 && await nav(ps, "Module của học sinh").first().getByRole("link", { name: /^Việc của tôi/ }).getAttribute("aria-current") === "page");
-  await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Ví và Coin", exact: true }).click();
-  await ps.waitForURL(/\/student\/vi/, { timeout: 90000 });
-  check("bấm 'Ví và Coin' (nhóm Tài khoản) → vào /student/vi, mục đó sáng; vẫn ở thanh RỘNG", await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Ví và Coin" }).getAttribute("aria-current") === "page" && (await wrapW(ps)) === 272);
+  await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí", exact: true }).click();
+  await ps.waitForURL(/\/student\/hoc-phi/, { timeout: 90000 });
+  check("bấm 'Học phí' (nhóm Tài khoản) → vào /student/hoc-phi, mục đó sáng; vẫn ở thanh RỘNG", await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí" }).getAttribute("aria-current") === "page" && (await wrapW(ps)) === 272);
   // thu hẹp / thu / mở lại
   await ps.locator("[data-rail-widen]").click();
   await eventually("nút thu hẹp → 79px, <html data-kin-rail=mo>, nhóm ẩn, biểu tượng hiện", async () => (await wrapW(ps)) === 79 && (await attr(ps)) === "mo" && (await ps.locator("#kin-rail .kin-rail-groups").evaluate((e: any) => getComputedStyle(e).display)) === "none");

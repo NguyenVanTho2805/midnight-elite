@@ -9,12 +9,13 @@ import { activeIndex } from "@/lib/navActive";
 
 /** `icon`: tên biểu tượng của thanh rộng (ShellIcon); bảng "Khác" không vẽ biểu tượng. */
 /** `also`: đường dẫn đích khi `href` là bí danh chuyển hướng (vd. /student/thi-thu → /thi-thu), để mục vẫn sáng sau khi chuyển (src/lib/navActive.ts). */
-export interface MoreGroup { title: string; links: { label: string; href: string; icon?: string; also?: string[] }[] }
+/** `active: false`: lối tắt vào trang đã thuộc một module (vd. "Nhập mã lớp" thuộc "Lớp của tôi") — không bao giờ tô là đang chọn, để chỉ MỘT mục sáng. */
+export interface MoreGroup { title: string; links: { label: string; href: string; icon?: string; also?: string[]; active?: false }[] }
 
-/** Cùng các mục của bảng "Khác" nhưng ở dạng NHÓM của thanh rộng (Figma "Điều hướng"). Liên kết có "#neo" không bao giờ được tô là đang chọn (nó cùng đường dẫn với mục cha). */
+/** Cùng các mục của bảng "Khác" nhưng ở dạng NHÓM của thanh rộng (Figma "Điều hướng"). Liên kết có "#neo" hoặc khai `active: false` không bao giờ được tô là đang chọn (nó cùng đường dẫn với mục cha). */
 export const moreToNavGroup = (g: MoreGroup): NavGroup => ({
   title: g.title,
-  items: g.links.map(l => ({ key: l.href, label: l.label, href: l.href, icon: l.icon ?? "viec", ...(l.also ? { also: l.also } : {}), ...(l.href.includes("#") ? { active: false } : {}) })),
+  items: g.links.map(l => ({ key: l.href, label: l.label, href: l.href, icon: l.icon ?? "viec", ...(l.also ? { also: l.also } : {}), ...(l.href.includes("#") || l.active === false ? { active: false } : {}) })),
 });
 
 export const isUnder = (pathname: string, href: string) => {
