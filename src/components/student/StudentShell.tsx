@@ -91,11 +91,12 @@ export default function StudentShell({ children, preview }: { children: ReactNod
         home={{ href: "/student/viec-cua-toi", label: "KiN — Việc của tôi" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+        {/* BU-00 sửa sau test (31/10/2026): vùng bấm của liên kết ≥ 44px (min-h-11), băng theo chiều cao liên kết — không nhỏ hơn vùng bấm. */}
         {showPreview && (
-          <div data-admin-preview role="status" className="min-h-9 flex items-center justify-center gap-2 px-4 text-[length:var(--kin-co-small)] bg-[var(--kin-nen-nhan)] text-[var(--kin-chu-chinh)] border-b border-[var(--kin-vien-nhat)]">
+          <div data-admin-preview role="status" className="min-h-11 flex items-center justify-center gap-2 px-4 text-[length:var(--kin-co-small)] bg-[var(--kin-nen-nhan)] text-[var(--kin-chu-chinh)] border-b border-[var(--kin-vien-nhat)]">
             <span>Đang xem thử giao diện học sinh</span>
             <span aria-hidden>·</span>
-            <a href="/admin" className="font-semibold underline text-[var(--kin-nhan-link)] min-h-9 inline-flex items-center">Về bảng quản trị</a>
+            <a href="/admin" className="font-semibold underline text-[var(--kin-nhan-link)] min-h-11 px-1 inline-flex items-center">Về bảng quản trị</a>
           </div>
         )}
         <VerifyEmailBanner />

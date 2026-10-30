@@ -77,7 +77,7 @@ check("đã chờ: 3 ngày / 5 giờ / 12 phút / vừa gửi", waitedText(new D
 check("giờ ở tương lai (lệch đồng hồ) không âm: 'vừa gửi'", waitedText(new Date(NOW.getTime() + 60_000), NOW) === "vừa gửi");
 
 section("Điều hướng quản trị: quyền từng vai");
-// BU-00 bước 2 (25/10/2026): gia sư (teacher) không còn dùng vỏ quản trị → visibleModules("teacher") = [] (xem t-admin-nav-lib.ts), nên "teacher"
+// BU-00 bước 2 (31/10/2026): gia sư (teacher) không còn dùng vỏ quản trị → visibleModules("teacher") = [] (xem t-admin-nav-lib.ts), nên "teacher"
 // rời khỏi vòng so với thanh bên cũ; các kỳ vọng riêng cho teacher bên dưới đổi thành "không thấy gì".
 const roles: AdminRole[] = ["admin_super", "admin_content"];
 const hrefsOf = (r: AdminRole | null) => visibleModules(r).flatMap(m => m.subs.map(s => s.href));

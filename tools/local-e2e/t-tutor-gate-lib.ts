@@ -1,6 +1,13 @@
 // BU-00 bước 4–5 (31/10/2026) — cổng gia sư THUẦN (src/lib/tutorGate.ts): vỏ nào cho ai dưới /lop-cua-toi (tutorShellKind), trang chỉ-gia-sư đẩy ai đi đâu
 // (tutorGateTarget), AuthGuard đẩy ai khỏi khu học sinh (studentAreaRedirect); cộng vỏ ở trang khách (shellFor / parseShellHint, src/lib/signedInShell.ts).
-// Ca phá cố ý ở cuối: giả lập bản mã CŨ (mọi role admin vào /student/*, pending rơi vào danh sách lớp) phải ĐỎ đúng ca.
+// Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-tutor-gate-lib.ts
+// Ca phá cố ý (phá TAY trong src/lib/tutorGate.ts rồi chạy lại, phải đỏ đúng ca; xong khôi phục):
+//   - trong studentAreaRedirect đổi `if (isTeacher(u)) return inStudentArea ? TUTOR_HOME : null` thành `if (u.role === "admin") return null`
+//     (bản cũ của AuthGuard: mọi role admin xem thử được /student/*) → ca "gia sư: /student/* → Hộp việc" đỏ;
+//   - trong tutorGateTarget bỏ nhánh pending (`if (isApplicant(status)) return o.allowPending ? null : TUTOR_PENDING_PATH`)
+//     (bản cũ: `if (role !== "admin" || adminRole !== "teacher") redirect("/lop-cua-toi")`) → ca "gia sư chờ duyệt → trang chờ duyệt" đỏ;
+//   - trong tutorShellKind đổi `isApplicant(status) ? "tutor-pending" : "student"` thành luôn "student" → ca "học sinh có đơn đang chờ → tutor-pending" đỏ.
+// 31/10/2026: bỏ hai "ca phá cố ý" viết trong bài (oldAuthGuard/oldGate) — chúng luôn xanh (so `!==` với hằng) nên không bắt được gì.
 import { tutorShellKind, tutorGateTarget, studentAreaRedirect, isApplicant, TUTOR_PENDING_PATH, TUTOR_HOME } from "@/lib/tutorGate";
 import { shellFor, parseShellHint, shellHintFor, SHELL_INIT_SCRIPT } from "@/lib/signedInShell";
 import { check, section, done } from "./h";
@@ -46,11 +53,4 @@ check("trang xác thực không vỏ dù là gia sư chờ duyệt", shellFor({ 
 check("gợi ý vỏ nhớ 'tutor-pending'; giá trị lạ → null", shellHintFor({ ...S, tutorPending: true }) === "tutor-pending" && parseShellHint("tutor-pending") === "tutor-pending" && parseShellHint("student") === "student" && parseShellHint("tutor") === "tutor" && parseShellHint("admin") === null && parseShellHint(1) === null && parseShellHint(null) === null);
 check("SHELL_INIT_SCRIPT chấp nhận tutor-pending, một dòng, không chứa '</script'", SHELL_INIT_SCRIPT.includes("tutor-pending") && !SHELL_INIT_SCRIPT.includes("\n") && !SHELL_INIT_SCRIPT.includes("</script"));
 
-section("Ca phá cố ý — bản mã CŨ phải đỏ");
-// Bản cũ của AuthGuard: `adminViewingStudent = requiredRole === "student" && user.role === "admin"` → gia sư vào /student/* được.
-const oldAuthGuard = (u: { role: string; adminRole?: string | null }) => (u.role === "admin" ? null : null);
-check("(phá) bản cũ cho gia sư vào /student/* — ca 'gia sư → Hộp việc' phải bắt được", oldAuthGuard(T) !== studentAreaRedirect(T, "student", V));
-// Bản cũ của trang gia sư: `if (role !== "admin" || adminRole !== "teacher") redirect("/lop-cua-toi")` → pending rơi vào danh sách lớp.
-const oldGate = (s: { role: string; adminRole?: string | null }) => (s.role === "admin" && s.adminRole === "teacher" ? null : TUTOR_HOME);
-check("(phá) bản cũ đẩy gia sư chờ duyệt về danh sách lớp — ca 'pending → trang chờ duyệt' phải bắt được", oldGate(S) !== tutorGateTarget(S, "pending", P));
 done();

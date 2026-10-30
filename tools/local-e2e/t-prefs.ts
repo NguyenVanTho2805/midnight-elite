@@ -12,7 +12,7 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   check("bỏ khoá lạ và giá trị hỏng", eq(readPreferences({ modules: ["lop", "zzz", "lop", "hop-viec"], theme: "hong", mode: "toi", evil: 1 }), { modules: ["hop-viec", "lop"], mode: "toi" }));
   check("reminders thiếu trường → mặc định bật", eq(readPreferences({ reminders: { parent: false } }).reminders, { parent: false, student: true }));
 
-  section("Lib: mặc định ĐỦ module (BU-00, 25/10/2026); chế độ gọn là lựa chọn tường minh");
+  section("Lib: mặc định ĐỦ module (BU-00 31/10/2026, theo quyết định chủ 25/10); chế độ gọn là lựa chọn tường minh");
   // Ca phá cố ý: đổi `prefs.modules ?? OPTIONAL_TUTOR_MODULES` về `?? []` trong visibleTutorModules → ca đầu đỏ (chỉ còn Lịch + Học phí).
   check("chưa chọn gì (modules vắng mặt) → đủ 6 module đúng thứ tự thanh bên", eq(visibleTutorModules({}).map(m => m.key), ["hop-viec", "lich", "lop", "bai-kt", "thu-vien", "hoc-phi"]));
   check("modules: [] (gia sư tự tắt hết) → chế độ gọn: chỉ Lịch + Học phí", eq(visibleTutorModules({ modules: [] }).map(m => m.key), ["lich", "hoc-phi"]));

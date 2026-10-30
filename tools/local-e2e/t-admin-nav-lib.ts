@@ -1,4 +1,4 @@
-// BU-00 bước 2 (25/10/2026) — bản đồ điều hướng vỏ quản trị (src/lib/adminNav.ts), phần THUẦN: không DB, không mạng.
+// BU-00 bước 2 (31/10/2026) — bản đồ điều hướng vỏ quản trị (src/lib/adminNav.ts), phần THUẦN: không DB, không mạng.
 // Gia sư (teacher) KHÔNG còn thấy module quản trị nào; quản trị cấp 1 thấy đủ; quản trị nội dung không thấy trang cần MANAGE_ADMINS / MANAGE_REVENUE.
 // Ca phá cố ý: bỏ dòng `if (role === "teacher") return [];` trong visibleModules → 3 ca "teacher" đầu đỏ (gia sư lại thấy Kiểm duyệt, Nội dung, Báo cáo);
 // đổi `return []` thành `return visibleModules("admin_content")` → ca "teacher không thấy Khoá học / Đề thi" đỏ.

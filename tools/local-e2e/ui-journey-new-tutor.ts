@@ -10,7 +10,7 @@
 //   G3  Khung giờ học hằng tuần (tab Lịch học đã mở sẵn)
 //   G4  Nút "Mở lớp" ở trang quản khoá → "Mời cả lớp một lần" (ĐX-07, tab Mã mời của lớp)
 //   NC2-029 còn kiểm: thẻ "chờ duyệt" chỉ hiện đúng người; chữ trang xác thực; giá/bài/ngày mặc định; quản trị tạo lớp vẫn bắt buộc đủ; lối "Mở lớp" ở menu ···
-//   G5  Hộp việc (BU-00 25/10/2026: mặc định ĐỦ module nên Hộp việc đã BẬT sẵn → mở thẳng; nhánh "bật ở Cài đặt" chỉ chạy nếu thanh bên không có Hộp việc)
+//   G5  Hộp việc (BU-00 31/10/2026: mặc định ĐỦ module nên Hộp việc đã BẬT sẵn → mở thẳng; nhánh "bật ở Cài đặt" chỉ chạy nếu thanh bên không có Hộp việc)
 //
 // THỜI GIAN là thời gian MÁY đo trên máy dev (có cả thời gian biên dịch lần đầu của Next dev), KHÔNG phải thời gian người.
 // Để khách quan: chạy bài HAI lần liên tiếp và lấy số lần hai (máy ấm). Mỗi lần chạy xoá sạch DB riêng (wipe) rồi tự dựng dữ liệu.

@@ -108,7 +108,7 @@ for (const bad of ["xxx", "THU", 1, true, [], {}]) check(`vá nghiêm: rail=${JS
 check("vá rail không làm mất khoá khác", (() => { const r = applyPreferencesPatch({ theme: "man", modules: ["lop"] }, { rail: "thu" }); return r.ok && r.value.theme === "man" && r.value.modules?.[0] === "lop" && r.value.rail === "thu"; })());
 
 section("Mục nào của thanh bên sáng (src/lib/navActive.ts): bí danh chuyển hướng + khớp dài nhất trong nhóm");
-// Dữ liệu mẫu cho navActive, chép từ nhóm "Học tập" / "Khám phá" của vỏ học sinh TRƯỚC BU-00 bước 6 (25/10/2026 rút bảng "Khác" còn Khám phá + Tài khoản):
+// Dữ liệu mẫu cho navActive, chép từ nhóm "Học tập" / "Khám phá" của vỏ học sinh TRƯỚC BU-00 bước 6 (31/10/2026 rút bảng "Khác" còn Khám phá + Tài khoản):
 // giữ nguyên làm bộ mẫu vì các ca dưới kiểm LUẬT khớp của navActive (bí danh /student/… → trang đích `also`, khớp dài nhất), không kiểm nội dung menu.
 const HOC_TAP = [
   { href: "/thu-vien" },

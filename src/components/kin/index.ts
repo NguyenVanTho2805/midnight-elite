@@ -2,7 +2,9 @@
 // Dùng trong các màn KiN mới. Component cũ ở src/components/ui/* vẫn
 // hoạt động cho đến khi được migrate dần.
 export { KinInput, type KinInputProps } from "./Input";
-export { KinButton, kinButtonClass, type KinButtonProps, type KinButtonVariant } from "./Button";
+export { KinButton, type KinButtonProps } from "./Button";
+// kinButtonClass xuất từ module thuần (không "use client") để Server Component gọi được — BU-00 sửa sau test 31/10/2026.
+export { kinButtonClass, type KinButtonVariant, type KinButtonSize } from "./buttonClass";
 export { KinStatus, STATUS_DOT, STATUS_TEXT, type StatusTone } from "./Status";
 export { KinTabs, KinTabInner, KIN_TAB_BOX, type KinTabsProps, type KinTabItem } from "./Tabs";
 export { KinToast, type KinToastProps, type ToastTone } from "./Toast";

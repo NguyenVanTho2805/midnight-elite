@@ -6,10 +6,15 @@
 //
 // Panel phải lazy-render nội dung theo activeKey — không fetch gì
 // nặng ở shell này; mỗi item quyết fetch khi chọn.
+//
+// BU-00 sửa sau test (31/10/2026): ba lối tắt Điểm danh / Danh sách HS / Trang quản khoá đi theo vai qua contentHref (src/lib/tutorRoutes.ts):
+// gia sư → bí danh /lop-cua-toi/quan-lop/…; quản trị cấp 1/nội dung xem lớp với role="tutor" → /admin/khoa-hoc/… (trước đây trỏ cứng bí danh gia sư,
+// layout (noi-dung) đẩy quản trị về /admin, mất lớp đang xem).
 "use client";
 import { useState } from "react";
 import Link from "next/link";
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
+import { contentHref } from "@/lib/tutorRoutes";
 
 type Role = "tutor" | "student";
 
@@ -50,18 +55,18 @@ function OverviewBlock({ courseName }: { courseName: string }) {
   );
 }
 
-function tutorItems(): Item[] {
+function tutorItems(isTeacher: boolean): Item[] {
   return [
     { key: "tong-quan", label: "Tổng quan", icon: "📋",
       render: ({ courseName }) => <OverviewBlock courseName={courseName} /> },
     { key: "diem-danh", label: "Điểm danh", icon: "✅",
-      render: ({ courseId }) => <OpenPageBlock title="Điểm danh" href={`/lop-cua-toi/quan-lop/${courseId}/diem-danh`}
+      render: ({ courseId }) => <OpenPageBlock title="Điểm danh" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/diem-danh`)}
         note="Bấm các em có mặt / muộn / có phép / vắng (AS-191)." /> },
     { key: "roster", label: "Danh sách HS", icon: "👥",
-      render: ({ courseId }) => <OpenPageBlock title="Danh sách học sinh" href={`/lop-cua-toi/quan-lop/${courseId}/hoc-vien`}
+      render: ({ courseId }) => <OpenPageBlock title="Danh sách học sinh" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/hoc-vien`)}
         note="Danh bạ lớp — gọi tên, mở Zalo PH (TK-171)." /> },
     { key: "quan-khoa", label: "Quản khoá", icon: "⚙️",
-      render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={`/lop-cua-toi/quan-lop/${courseId}`}
+      render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}`)}
         note="Chương - bài - học phí - lịch học - học viên." /> },
     { key: "ma-moi", label: "Mã mời", icon: "🔗",
       render: ({ courseId, courseName, viewerName }) => (
@@ -96,15 +101,17 @@ function studentItems(): Item[] {
   ];
 }
 
-export default function OutlookShell({ courseId, courseName, category, role, viewerName = null }: {
+export default function OutlookShell({ courseId, courseName, category, role, viewerName = null, isTeacher = false }: {
   courseId:   string;
   courseName: string;
   /** Tên người đang xem (gia sư), dùng để tự giới thiệu trong tin mời phụ huynh. */
   viewerName?: string | null;
   category:   string;
   role:       Role;
+  /** Người xem là GIA SƯ thật (role admin + adminRole teacher) → lối tắt đi bí danh /lop-cua-toi/quan-lop/…; quản trị xem với role="tutor" giữ /admin/khoa-hoc/…. */
+  isTeacher?: boolean;
 }) {
-  const items = role === "tutor" ? tutorItems() : studentItems();
+  const items = role === "tutor" ? tutorItems(isTeacher) : studentItems();
   const [active, setActive] = useState(items[0].key);
   const activeItem = items.find(it => it.key === active) ?? items[0];
 

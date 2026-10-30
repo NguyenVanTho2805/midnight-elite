@@ -15,7 +15,7 @@ import { isTeacher, TUTOR_HOME, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 import { KinPage, KinPageHeader } from "@/components/kin/PageLayout";
 import { KinStatus } from "@/components/kin/Status";
 import { KinEmptyState } from "@/components/kin/EmptyState";
-import { kinButtonClass } from "@/components/kin/Button";
+import { kinButtonClass } from "@/components/kin/buttonClass"; // module thuần — trang máy chủ không gọi được hàm từ module "use client"
 
 export const dynamic = "force-dynamic";
 

@@ -62,7 +62,9 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   }
   // Bí danh gia sư không dành cho người khác: layout (noi-dung) đưa quản trị về /admin (rồi sang tên miền admin), học viên về /lop-cua-toi.
   const s1 = await get("/lop-cua-toi/de-thi", sc);
-  check("học viên mở /lop-cua-toi/de-thi → chuyển hướng về /lop-cua-toi (không thấy trang đề thi của gia sư)", s1.status === 307 && path(s1.location) === "/lop-cua-toi", s1);
+  // 31/10/2026 (sau BU-00 b): (tutor)/loading.tsx làm redirect() của layout (noi-dung) thành chuyển hướng PHÍA TRÌNH DUYỆT (HTTP 200 kèm
+  // lệnh chuyển), nên ở mức HTTP chấp nhận 200 hoặc 307 (307 thì phải về /lop-cua-toi); chốt thật là ca trình duyệt bên dưới (waitForURL /lop-cua-toi).
+  check("học viên mở /lop-cua-toi/de-thi → HTTP 200 (chuyển hướng phía trình duyệt) hoặc 307 về /lop-cua-toi — không 404/500", s1.status === 200 || (s1.status === 307 && path(s1.location) === "/lop-cua-toi"), s1);
 
   section("Máy chủ: tên miền admin");
   const a1 = await getAsAdminHost("/admin/thi-thu", tc);
