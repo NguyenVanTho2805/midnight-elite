@@ -148,7 +148,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   const pendingBand = p.locator("[data-tutor-pending-band]");
   const meBefore = await p.evaluate(async () => (await (await fetch("/api/auth/me")).json()) as Record<string, unknown>);
   end();
-  check("vỏ 'Module của gia sư' nhãn CHỜ DUYỆT, thanh bên 3 mục (Trạng thái hồ sơ, Liên hệ hỗ trợ, Cài đặt)", await pendingRail.count() === 1 && await pendingRail.getByText("CHỜ DUYỆT").isVisible() && pendingRailNames.length === 3 && pendingRailNames[0].startsWith("Trạng thái hồ sơ") && pendingRailNames[1].startsWith("Liên hệ hỗ trợ") && pendingRailNames[2].startsWith("Cài đặt"), pendingRailNames);
+  check("vỏ 'Module của gia sư' nhãn CHỜ DUYỆT, thanh bên 3 mục (Trạng thái hồ sơ, Liên hệ hỗ trợ, Cài đặt)", await pendingRail.count() === 1 && await pendingRail.locator(".kin-rail-role", { hasText: "CHỜ DUYỆT" }).count() === 1 && pendingRailNames.length === 3 && pendingRailNames[0].startsWith("Trạng thái hồ sơ") && pendingRailNames[1].startsWith("Liên hệ hỗ trợ") && pendingRailNames[2].startsWith("Cài đặt"), pendingRailNames);
   check("băng 'Hồ sơ gia sư đang chờ duyệt' trên vùng nội dung", await pendingBand.count() === 1 && /Hồ sơ gia sư đang chờ duyệt/.test(await pendingBand.innerText()));
   check("trang chờ duyệt nói trạng thái + môn đã khai 'Toán' + giới thiệu đã khai", /Đang chờ duyệt/.test(pendingText) && /Môn đã khai/.test(pendingText) && /Toán/.test(pendingText) && /Cử nhân Toán/.test(pendingText));
   check("/api/auth/me trả cờ tutorPending=true cho đúng người đó, không lộ ngày/lý do đơn", meBefore.tutorPending === true && !("tutorAppliedAt" in meBefore) && !("tutorRejectedAt" in meBefore), Object.keys(meBefore));

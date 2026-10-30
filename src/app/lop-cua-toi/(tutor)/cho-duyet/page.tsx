@@ -19,7 +19,12 @@ import { kinButtonClass } from "@/components/kin/buttonClass"; // module thuần
 
 export const dynamic = "force-dynamic";
 
-const fmtDay = (d: Date) => d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
+// Ghép tay "dd/mm": toLocaleDateString("vi-VN") ra "20-10" trên Node 26 (ICU 78) — dấu phân cách phụ thuộc ICU, không ổn định giữa các máy.
+const fmtDay = (d: Date) => {
+  const p = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }).formatToParts(d);
+  const get = (t: string) => p.find(x => x.type === t)?.value ?? "";
+  return `${get("day")}/${get("month")}`;
+};
 
 export default async function ChoDuyetPage() {
   const session = await getSession();
