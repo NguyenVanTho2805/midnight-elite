@@ -13,6 +13,7 @@ Tài liệu bàn giao ở `docs/kin/`:
 - `docs/kin/bao-cao/research-so-gia-su-2026-10-19.md` — bản chữ báo cáo research "Sổ Gia Sư + 14 nền tảng" (19/10/2026); căn cứ của các việc ĐX-xx và NC2-xxx.
 - `docs/kin/ke-hoach-nang-cap-2.md` — kế hoạch Nâng cấp lần 2 (đối chiếu sheet · repo · research); việc ở `docs/kin/backlog/nang-cap-lan-2.csv`.
 - `docs/kin/rd/BAN-GIAO-CHO-CHU-KHO.md` — **đọc đầu tiên khi mở kho sau PR 75** (25/10/2026): thứ tự đưa lên production, việc còn lại, quyết định mới nhất của chủ (không gói trả trước; người học từ 17 tuổi), quy tắc cứng, bẫy đã gặp.
+- `docs/kin/phong-ban/README.md` — **phòng ban phát triển** (01/11/2026): một COO (`kin-coo`), ba trưởng phòng (`pb-admin`, `pb-gia-su`, `pb-hoc-sinh`), mỗi phòng bốn nhân sự `*-rnd` · `*-code` · `*-dev` · `*-test` trong `.claude/agents/`; `PHAM-VI.md` nói phòng nào sở hữu thư mục nào, `BAN-GIAO.md` là mẫu phiếu bắt buộc khi bàn giao. Kế hoạch Bigupdate 9 phòng việc: `docs/kin/rd/BIGUPDATE-KE-HOACH.md`; báo cáo điểm yếu đầu vào: `docs/kin/bao-cao/diem-yeu-01-11-2026.md`.
 
 Bản sổ lớp đang chạy thật: github.com/aodtsix-cmd/kin-app
 

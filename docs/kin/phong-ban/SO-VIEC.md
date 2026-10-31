@@ -14,3 +14,16 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | BU-04 | STU | Phòng thi một cột | | | moi | Figma 606:6; sau BU-03 |
 | BU-06 | STU | Tìm gia sư kiểu sàn | | | moi | Sau BU-01 |
 | BU-08 | ADM | Quản trị gọn 4 module | | | moi | Figma 606:7; cuối cùng |
+| STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | | | moi | S · từ báo cáo điểm yếu 01/11 mục 4 |
+| STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | | | moi | S · chủ xem câu chữ |
+| ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | | | moi | S |
+| TUT-002 | TUT | Người nộp đơn gia sư không ghi danh lớp được | | | moi | S |
+| ADM-003 | ADM | Cron english-voa vào CRON_JOBS; bỏ route _template | | | moi | S |
+| ADM-002 | ADM | Validator server bài viết; thông báo theo tag | | | moi | M |
+| STU-003 | STU | Cache xếp hạng, rank bằng count | | | moi | M |
+| TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
+| TUT-003 | TUT | Hộp việc: câu hỏi học sinh trong lớp chưa trả lời | | | moi | M · sau BU-05 |
+| STU-004 | STU | generateMetadata trang khách + sitemap + lọc thi thử theo ghi danh | | | moi | L · làm chung BU-07 |
+| CHỦ-01 | chủ | Đổi feeMode lớp cũ sang per_session; hai hệ phí một phiếu | | | dung | TIỀN = có — chờ Thọ |
+| CHỦ-02 | chủ | Coin ẩn hẳn hay giữ; bật cổng ≥17 + hỏi ngày sinh | | | dung | chờ Thọ |
+| CHỦ-03 | chủ | Lớp 2 ca/ngày có cần không | | | dung | chờ Thọ |
