@@ -28,7 +28,17 @@ adm-test           tut-test            stu-test          Test — viết + chạ
 ```
 
 Mỗi tác tử là một tệp trong `.claude/agents/`. Gọi bằng công cụ Agent với
-`subagent_type` = tên tệp (ví dụ `pb-gia-su`, `stu-test`).
+`subagent_type` = tên tệp (ví dụ `pb-gia-su`, `stu-test`). **Danh sách agent
+chỉ được nạp lúc mở phiên** — tệp mới thêm trong phiên không gọi được bằng tên
+cho tới khi mở phiên mới; tạm thời gọi `general-purpose` và mở đầu prompt bằng
+"Bạn đóng vai `<tên>`: đọc và tuân thủ `.claude/agents/<tên>.md`" (đã dùng cách
+này cho đợt S đầu tiên 01/11/2026).
+
+Ba phòng chạy song song thì mỗi phòng một **worktree riêng** (`git worktree add
+<thư mục scratch> -b claude/<phòng>-<mã> origin/main`, link `node_modules` từ
+bản chính); chỉ có một máy test (cổng 3100, DB `kin_test`, `wipe()`), nên nhân
+sự Test của các phòng **viết** test còn COO **chạy** tuần tự từng nhánh sau khi
+nhận gói phát hành.
 
 ## 2. Ai làm gì
 

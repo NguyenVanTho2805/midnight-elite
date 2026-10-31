@@ -14,11 +14,11 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | BU-04 | STU | Phòng thi một cột | | | moi | Figma 606:6; sau BU-03 |
 | BU-06 | STU | Tìm gia sư kiểu sàn | | | moi | Sau BU-01 |
 | BU-08 | ADM | Quản trị gọn 4 module | | | moi | Figma 606:7; cuối cùng |
-| STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | | | moi | S · từ báo cáo điểm yếu 01/11 mục 4 |
-| STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | | | moi | S · chủ xem câu chữ |
-| ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | | | moi | S |
-| TUT-002 | TUT | Người nộp đơn gia sư không ghi danh lớp được | | | moi | S |
-| ADM-003 | ADM | Cron english-voa vào CRON_JOBS; bỏ route _template | | | moi | S |
+| STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | claude/stu-s1 | | dang-lam | S · giao 01/11 · từ báo cáo điểm yếu mục 4 |
+| STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | claude/stu-s1 | | dang-lam | S · giao 01/11 · chủ xem câu chữ |
+| ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | claude/adm-s1 | | dang-lam | S · giao 01/11 |
+| TUT-002 | TUT | Người nộp đơn gia sư không ghi danh lớp được | claude/tut-s1 | | dang-lam | S · giao 01/11 |
+| ADM-003 | ADM | Cron english-voa vào CRON_JOBS; bỏ route _template | claude/adm-s1 | | dang-lam | S · giao 01/11 · sau ADM-001 |
 | ADM-002 | ADM | Validator server bài viết; thông báo theo tag | | | moi | M |
 | STU-003 | STU | Cache xếp hạng, rank bằng count | | | moi | M |
 | TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
