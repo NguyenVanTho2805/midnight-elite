@@ -15,7 +15,7 @@ import { describeValidity } from "@/lib/quizQuestion";
 import { keyFromDmy, loadOwnedQuiz, loadQuestions, logChange, parseDurationMinutes, supersededBlock, toInput, tutorOwnsCourse } from "@/lib/quizServer";
 import { VARIANT_STUDENT_SUPPORT } from "@/lib/deThiAssign";
 import { publishGate } from "@/lib/deThiVariants";
-import { loadVariantGroup } from "@/lib/deThiServer";
+import { loadVariantGroup, lockExam } from "@/lib/deThiServer";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireTutor();
@@ -29,32 +29,41 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (e.variantOfId) return NextResponse.json({ error: "Đây là mã đề con — phát hành cùng đề gốc, không phát hành riêng.", code: "IS_VARIANT", variantOfId: e.variantOfId }, { status: 400 });
     if (!e.isDraft) return NextResponse.json({ error: "Quiz này đã phát hành rồi." }, { status: 409 });
 
-    const problems: string[] = [];
-    if (!e.title.trim()) problems.push("Quiz chưa có tên.");
-    if (!e.courseId || !(await tutorOwnsCourse(auth.userId, e.courseId))) problems.push("Chọn lớp sẽ làm quiz này.");
-    if (!keyFromDmy(e.date)) problems.push("Ngày mở bài chưa đúng.");
-    const questions = await loadQuestions(id);
-    if (questions.length === 0) problems.push("Quiz chưa có câu nào.");
-    questions.forEach((q, i) => { const v = describeValidity(toInput(q)); if (!v.ok) problems.push(`Câu ${i + 1}: ${v.message}.`); });
-    if (problems.length) return NextResponse.json({ error: "Chưa phát hành được. " + problems[0], problems }, { status: 400 });
-
-    // BU-03: cổng phát hành (công thức chưa đọc, giờ của bài kiểm tra, mã đề).
-    const group = await loadVariantGroup(id);
-    const gated = [questions, ...group.questionsOfChildren].flat();
-    const blocked = publishGate({
-      questions: gated.map(q => ({ text: q.text, explanation: q.explanation, options: q.options })),
-      variantCount: group.childIds.length > 0 ? group.childIds.length + 1 : 1,
-      variantStudentSupport: VARIANT_STUDENT_SUPPORT,
-      mode: e.mode,
-      hasSchedule: /^\d{1,2}:\d{2}$/.test((e.time ?? "").trim()) && (parseDurationMinutes(e.duration) ?? 0) > 0,
-      variantsStale: group.stale,
-    });
-    if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status });
+    if (!e.title.trim() || !e.courseId || !(await tutorOwnsCourse(auth.userId, e.courseId))) {
+      const early: string[] = [];
+      if (!e.title.trim()) early.push("Quiz chưa có tên.");
+      if (!e.courseId || !(await tutorOwnsCourse(auth.userId, e.courseId))) early.push("Chọn lớp sẽ làm quiz này.");
+      return NextResponse.json({ error: "Chưa phát hành được. " + early[0], problems: early }, { status: 400 });
+    }
 
     const now = new Date();
     const status = computeExamStatus(e.date, e.time, true);
-    await prisma.$transaction(async tx => {
-      await tx.exam.update({ where: { id }, data: { isDraft: false, active: true, status } });
+    // Khoá theo đề gốc (chung khoá với tạo mã đề): kiểm lại nháp, đọc lại câu + nhóm mã đề BÊN TRONG giao dịch, rồi mới phát hành.
+    // Cổng updateMany({isDraft:true}) → phát hành lần hai thấy count=0 → không làm gì và không báo học sinh lần hai.
+    const outcome = await prisma.$transaction(async (tx): Promise<{ res: NextResponse } | { published: boolean }> => {
+      await lockExam(tx, id);
+      const problems: string[] = [];
+      if (!keyFromDmy(e.date)) problems.push("Ngày mở bài chưa đúng.");
+      const questions = await loadQuestions(id, tx);
+      if (questions.length === 0) problems.push("Quiz chưa có câu nào.");
+      questions.forEach((q, i) => { const v = describeValidity(toInput(q)); if (!v.ok) problems.push(`Câu ${i + 1}: ${v.message}.`); });
+      if (problems.length) return { res: NextResponse.json({ error: "Chưa phát hành được. " + problems[0], problems }, { status: 400 }) };
+
+      // BU-03: cổng phát hành (công thức chưa đọc, giờ của bài kiểm tra, mã đề).
+      const group = await loadVariantGroup(id, tx);
+      const gated = [questions, ...group.questionsOfChildren].flat();
+      const blocked = publishGate({
+        questions: gated.map(q => ({ text: q.text, explanation: q.explanation, options: q.options })),
+        variantCount: group.childIds.length > 0 ? group.childIds.length + 1 : 1,
+        variantStudentSupport: VARIANT_STUDENT_SUPPORT,
+        mode: e.mode,
+        hasSchedule: /^\d{1,2}:\d{2}$/.test((e.time ?? "").trim()) && (parseDurationMinutes(e.duration) ?? 0) > 0,
+        variantsStale: group.stale,
+      });
+      if (blocked) return { res: NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status }) };
+
+      const claimed = await tx.exam.updateMany({ where: { id, isDraft: true, supersededById: null }, data: { isDraft: false, active: true, status } });
+      if (claimed.count === 0) return { published: false };
       if (group.childIds.length > 0) {
         // Mã con đi cùng nhóm: đồng bộ cài đặt của đề gốc (gia sư có thể đã đổi giờ/lớp/xem đáp án sau khi tạo mã đề) rồi phát hành cùng lúc.
         await tx.exam.updateMany({
@@ -73,7 +82,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         });
       }
       await logChange(tx, { examId: id, rootExamId: e.rootExamId, actorId: auth.userId, kind: e.rootExamId ? "version_published" : "publish", note: e.rootExamId ? `Phát hành phiên bản v${e.versionNo}` : "Phát hành quiz" });
+      return { published: true };
     });
+    if ("res" in outcome) return outcome.res;
+    if (!outcome.published) return NextResponse.json({ error: "Quiz này đã phát hành rồi." }, { status: 409 });
 
     // Báo học sinh trong lớp khi quiz ĐẦU TIÊN ra mắt (phiên bản mới không báo lại: tránh nhắn một nội dung hai lần). Chữ không có tên học sinh.
     if (!e.rootExamId && e.courseId) {

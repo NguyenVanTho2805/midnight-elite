@@ -103,10 +103,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const got = await loadOwnedQuiz(auth.userId, id);
     if (isNextResponse(got)) return got;
+    const locked = variantLockedBlock(got.exam); if (locked) return locked; // BU-03: mã đề con không xoá lẻ (409 VARIANT_LOCKED); xoá đề gốc nháp thì mã con đi cùng
     if (!got.exam.isDraft) return NextResponse.json({ error: "Quiz đã phát hành không xoá ở đây. Với bài đã có người làm, cô tạo phiên bản mới thay vì xoá." }, { status: 409 });
     if (got.attemptCount > 0) return NextResponse.json({ error: "Bản này đã có lượt làm nên không xoá được.", code: "HAS_ATTEMPTS" }, { status: 409 });
     await prisma.$transaction(async tx => {
       await logChange(tx, { examId: id, rootExamId: got.exam.rootExamId, actorId: auth.userId, kind: "discard", note: got.exam.versionNo > 1 ? `Bỏ đề xuất phiên bản v${got.exam.versionNo}` : "Bỏ quiz nháp" });
+      await tx.exam.deleteMany({ where: { variantOfId: id } }); // mã con (nháp) của đề gốc — câu/phương án đi theo qua cascade
       await tx.exam.delete({ where: { id } });
     });
     return NextResponse.json({ success: true, rootId: rootIdOf(got.exam) });

@@ -3,13 +3,15 @@
 // Cần máy chủ dev (BASE) + DB RIÊNG; wipe() ở đầu bài. Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-exam-variants.ts
 // Ca phá bằng thiết kế (sửa mã → đúng ca đó đỏ): mỗi ca VARIANT_LOCKED có ĐỐI CHỨNG cùng thao tác trên đề GỐC phải thành công (nên 409 không đậu giả vì thân sai);
 //   - makeVariants bỏ deleteMany → "tạo lại" làm số con nhân đôi; bỏ kiểm NOT_DRAFT → ca đề đã phát hành đỏ;
+//   - quiz/[id] DELETE bỏ deleteMany mã con → ca 'mã con bị xoá cùng đề gốc' đỏ; bỏ variantLockedBlock → ca 'DELETE thẳng mã con' đỏ;
+//   - publish bỏ lockExam hoặc cổng updateMany({isDraft:true}) → ca '3 lần song song' và 'chỉ MỘT thông báo' đỏ;
 //   - variantMatchesRoot luôn true → ca VARIANTS_STALE đỏ; publish bỏ publishGate → ca FORMULA_UNREAD/NEED_SCHEDULE/NOT_READY đỏ;
 //   - cờ VARIANT_STUDENT_SUPPORT bật (BU-04 xong) → ca NOT_READY tự đổi sang kiểm phát hành nguyên tử cả nhóm (đọc cờ từ mã, không cứng).
-import { api, wipe, check, section, done } from "./h";
+import { api, mkUser, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { VARIANT_STUDENT_SUPPORT } from "@/lib/deThiAssign";
 import { variantKey, variantCode } from "@/lib/deThiVariants";
-import { mkActors, mkDraft, mkPublished, questionsOf, snap, skip, MCQ } from "./bu03";
+import { azotaDocx, uploadDocx, mkActors, mkDraft, mkPublished, questionsOf, snap, skip, MCQ } from "./bu03";
 
 const MD = (id: string) => `/api/tutor/de-thi/${id}/ma-de`;
 const keyOf = (q: Awaited<ReturnType<typeof questionsOf>>[number]) => variantKey({ type: q.type, text: q.text, options: q.options.map(o => ({ text: o.text, isCorrect: o.isCorrect })) });
@@ -209,6 +211,55 @@ const childrenOf = (rootId: string) => prisma.exam.findMany({ where: { variantOf
     // 4) đề một mã không bị cổng mã đề chặn
     const one = await mkPublished(A, courseA.id, { n: 2 });
     check("ĐỐI CHỨNG: đề MỘT mã phát hành bình thường (cổng mã đề chỉ chặn khi N>1)", !!one);
+  }
+
+  section("DELETE đề gốc nháp có mã con · DELETE thẳng mã con · phát hành lặp/song song (race)");
+  {
+    // 1) Xoá đề GỐC nháp → mã con đi cùng (không mồ côi)
+    const G = await mkDraft(A, { n: 6, courseId: courseA.id, points: 1 });
+    const mk = await api("POST", MD(G), { as: A, body: { count: 3 } });
+    const kids = (await childrenOf(G)).map(k => k.id);
+    check("dựng: đề G có 2 mã con", mk.status === 200 && kids.length === 2, [mk.status, kids.length]);
+    // ĐỐI CHỨNG đi trước: xoá thẳng một mã con bị chặn, không mất gì
+    const dk = await api("DELETE", `/api/tutor/quiz/${kids[0]}`, { as: A });
+    check("DELETE thẳng một mã con → 409 VARIANT_LOCKED, mã con vẫn còn", dk.status === 409 && dk.json?.code === "VARIANT_LOCKED" && (await childrenOf(G)).length === 2, [dk.status, dk.json]);
+    const dg = await api("DELETE", `/api/tutor/quiz/${G}`, { as: A });
+    check("DELETE đề gốc nháp → 200", dg.status === 200, [dg.status, dg.json]);
+    check("PHÁ: mã con bị xoá cùng đề gốc (không còn mồ côi), cả câu hỏi của chúng", (await prisma.exam.count({ where: { id: { in: [G, ...kids] } } })) === 0 && (await prisma.examQuestion.count({ where: { examId: { in: kids } } })) === 0);
+    check("gia sư B xoá mã con của A → vẫn 403 (quyền đi trước khoá mã con)", await (async () => {
+      const H = await mkDraft(A, { n: 4, courseId: courseA.id }); await api("POST", MD(H), { as: A, body: { count: 2 } });
+      const k = (await childrenOf(H))[0].id; const r = await api("DELETE", `/api/tutor/quiz/${k}`, { as: B });
+      return r.status === 403 && (await prisma.exam.findUnique({ where: { id: k } })) !== null;
+    })());
+
+    // 2) Phát hành lặp: hai lần song song → đúng một lần thành công, chỉ MỘT thông báo exam_new cho mỗi học sinh
+    const stu = await mkUser({ name: "Em Race" });
+    await prisma.enrollment.create({ data: { userId: stu.id, courseId: courseA.id, status: "active" } });
+    const Q = await mkDraft(A, { n: 3, courseId: courseA.id, points: 1, title: "Đề phát hành lặp" });
+    const [p1, p2, p3] = await Promise.all([1, 2, 3].map(() => api("POST", `/api/tutor/quiz/${Q}/publish`, { as: A })));
+    const codes = [p1, p2, p3].map(r => r.status).sort();
+    check("3 lần phát hành song song: đúng 1 lần 200, còn lại 409", codes.join() === "200,409,409", codes);
+    const sent = await prisma.notification.count({ where: { userId: stu.id, type: "exam_new", link: `/student/thi-thu/${Q}` } });
+    check("PHÁ: học sinh chỉ nhận ĐÚNG MỘT thông báo exam_new (không gửi lần hai)", sent === 1, sent);
+    const again = await api("POST", `/api/tutor/quiz/${Q}/publish`, { as: A });
+    check("phát hành lần nữa sau đó → 409, vẫn một thông báo", again.status === 409 && (await prisma.notification.count({ where: { userId: stu.id, type: "exam_new", link: `/student/thi-thu/${Q}` } })) === 1, [again.status]);
+
+    // 3) Tạo mã đề song song với phát hành: không bao giờ có "đề đã phát hành mà mã con lại tạo mới ở nháp"
+    const R = await mkDraft(A, { n: 4, courseId: courseA.id, points: 1 });
+    const [mv, pb] = await Promise.all([api("POST", MD(R), { as: A, body: { count: 2 } }), api("POST", `/api/tutor/quiz/${R}/publish`, { as: A })]);
+    const root = await prisma.exam.findUnique({ where: { id: R } }); const ks = await childrenOf(R);
+    check("tạo mã đề ∥ phát hành: kết quả nhất quán (gốc đã phát hành ⇒ mã con cùng đã phát hành, hoặc không có mã con; không có con nháp bên gốc đã phát hành)", !!root && (root.isDraft ? true : ks.every(k => !k.isDraft)), { mv: mv.status, pb: pb.status, rootDraft: root?.isDraft, kids: ks.map(k => k.isDraft) });
+  }
+
+  section("Hạn mức phân tích Word: 20 lần/giờ/gia sư (đếm usage_events, không theo tiến trình)");
+  {
+    const buf = await azotaDocx(1);
+    await prisma.usageEvent.deleteMany({ where: { kind: "word_analyse" } });
+    let last = 0; let first429 = -1;
+    for (let i = 1; i <= 21; i++) { const r = await uploadDocx("/api/tutor/ngan-hang/nhap-word", A, buf); last = r.status; if (r.status === 429 && first429 < 0) { first429 = i; check("429 có code RATE_LIMITED + thông báo tiếng Việt", r.json?.code === "RATE_LIMITED" && /Cô đã phân tích Word/.test(r.json?.error ?? ""), r.json); } }
+    check("lần thứ 21 trong giờ → 429 (20 lần đầu qua)", first429 === 21 && last === 429, first429);
+    check("gia sư B không bị tính chung hạn mức của A", (await uploadDocx("/api/tutor/ngan-hang/nhap-word", B, buf)).status !== 429);
+    check("usage_events: A có đúng 20 dòng word_analyse", (await prisma.usageEvent.count({ where: { userId: A.id, kind: "word_analyse" } })) === 20);
   }
 
   section("Quyền gắn với mã đề (đầy đủ ở t-bu03-quyen)");

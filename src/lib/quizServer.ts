@@ -126,8 +126,8 @@ export const toSnap = (q: DbQuestion): SnapQuestion => ({
   options: [...q.options].sort((a, b) => a.order - b.order).map(o => ({ text: o.text, isCorrect: o.isCorrect, subLabel: o.subLabel })),
 });
 
-export async function loadQuestions(examId: string): Promise<DbQuestion[]> {
-  return prisma.examQuestion.findMany({ where: { examId }, orderBy: { order: "asc" }, include: { options: { orderBy: { order: "asc" } } } });
+export async function loadQuestions(examId: string, db: Pick<typeof prisma, "examQuestion"> = prisma): Promise<DbQuestion[]> {
+  return db.examQuestion.findMany({ where: { examId }, orderBy: { order: "asc" }, include: { options: { orderBy: { order: "asc" } } } });
 }
 
 // ── Chuỗi phiên bản ───────────────────────────────────────────────────────────────────────────────

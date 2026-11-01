@@ -11,7 +11,7 @@ import {
   isLevel, type BlueprintRow, type CatRef, type DrawResult, type PoolItem, type Shortage,
 } from "@/lib/deThiBlueprint";
 import { VARIANT_MAX, VARIANT_MIN, buildVariantPlan, shuffleWarnings, variantCode, variantMatchesRoot, type KeyQuestion } from "@/lib/deThiVariants";
-import { isAllowedSourceUrl, looksLikeDocx } from "@/lib/deThiSourceFile";
+import { isAllowedSourceUrl, looksLikeDocx, imageMimeFromMagic, wordAnalyseAllowed, WORD_ANALYSE_KIND, WORD_ANALYSE_WINDOW_MS, WORD_RATE_MESSAGE } from "@/lib/deThiSourceFile";
 import { AZOTA_MAX_QUESTIONS, parseAzotaBlocks, type AzotaParse } from "@/lib/azotaDocx";
 import { DOCX_MAX_BYTES, DOCX_MAX_IMAGES, DocxError, readDocx } from "@/lib/azotaDocxRead";
 import { cloudinaryServerConfigured, uploadImageBufferToCloudinary } from "@/lib/cloudinaryServer";
@@ -232,6 +232,11 @@ export async function getVariants(tutorId: string, examId: string): Promise<Outc
   return { ok: true, examId, ...(await variantView(got.exam)) };
 }
 
+/** Khoá tư vấn theo đề gốc (cùng mẫu lockInvoice): mã đề + phát hành cùng một đề chạy lần lượt. Gọi ĐẦU giao dịch. */
+export async function lockExam(tx: Prisma.TransactionClient, rootId: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`exam:${rootId}`}))`;
+}
+
 export interface MakeVariantsBody { count?: unknown; shuffleQuestions?: unknown; shuffleOptions?: unknown; fixed?: unknown }
 
 /**
@@ -252,17 +257,24 @@ export async function makeVariants(tutorId: string, examId: string, body: MakeVa
   const shuffleOptions = body.shuffleOptions === undefined ? true : body.shuffleOptions === true;
   if (!shuffleQuestions && !shuffleOptions) return fail(400, "Bật ít nhất một trong hai: đảo câu hoặc đảo phương án, nếu không các mã đề giống hệt nhau.", "NOTHING_TO_SHUFFLE");
 
-  const questions = await loadQuestions(examId);
-  if (questions.length === 0) return fail(400, "Đề chưa có câu nào để tạo mã đề.", "NO_QUESTIONS");
   const rawFixed = body.fixed == null ? [] : body.fixed;
-  if (!Array.isArray(rawFixed) || rawFixed.length > questions.length || !rawFixed.every(n => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= questions.length)) {
-    return fail(400, `Vị trí câu cố định phải là số từ 1 đến ${questions.length}.`, "BAD_FIXED");
-  }
-  const fixed0 = [...new Set(rawFixed as number[])].map(n => n - 1);
 
-  const plan = buildVariantPlan(questions.map(q => ({ type: q.type, sectionLabel: q.sectionLabel, options: q.options })), { count, shuffleQuestions, shuffleOptions, fixed: fixed0, seed: randomUUID() });
+  // Khoá theo đề gốc: tạo mã đề / phát hành chạy lần lượt. Kiểm lại nháp + đọc lại câu BÊN TRONG giao dịch (không tin dữ liệu đọc trước khoá).
+  const done = await prisma.$transaction(async tx => {
+    await lockExam(tx, examId);
+    const cur = await tx.exam.findUnique({ where: { id: examId }, select: { isDraft: true, supersededById: true } });
+    if (!cur) return fail(404, "Không tìm thấy đề này.");
+    if (cur.supersededById) return fail(409, "Đây là phiên bản cũ, chỉ để xem.", "SUPERSEDED");
+    if (!cur.isDraft) return fail(409, "Đề đã phát hành nên không tạo thêm mã đề. Tạo phiên bản mới của đề rồi tạo mã đề ở bản nháp.", "NOT_DRAFT");
 
-  await prisma.$transaction(async tx => {
+    const questions = await loadQuestions(examId, tx);
+    if (questions.length === 0) return fail(400, "Đề chưa có câu nào để tạo mã đề.", "NO_QUESTIONS");
+    if (!Array.isArray(rawFixed) || rawFixed.length > questions.length || !rawFixed.every(n => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= questions.length)) {
+      return fail(400, `Vị trí câu cố định phải là số từ 1 đến ${questions.length}.`, "BAD_FIXED");
+    }
+    const fixed0 = [...new Set(rawFixed as number[])].map(n => n - 1);
+    const plan = buildVariantPlan(questions.map(q => ({ type: q.type, sectionLabel: q.sectionLabel, options: q.options })), { count, shuffleQuestions, shuffleOptions, fixed: fixed0, seed: randomUUID() });
+
     await tx.exam.deleteMany({ where: { variantOfId: examId } });
     await tx.exam.update({ where: { id: examId }, data: { variantNo: 1 } });
     for (const v of plan.variants) {
@@ -279,7 +291,9 @@ export async function makeVariants(tutorId: string, examId: string, body: MakeVa
       }
     }
     await logChange(tx, { examId, rootExamId: exam.rootExamId, actorId: tutorId, kind: "variants", note: `Tạo ${count} mã đề (đảo câu: ${shuffleQuestions ? "có" : "không"}, đảo phương án: ${shuffleOptions ? "có" : "không"})` });
+    return null;
   });
+  if (done) return done;
   const fresh = await prisma.exam.findUniqueOrThrow({ where: { id: examId } });
   return { ok: true, examId, ...(await variantView(fresh)) };
 }
@@ -300,10 +314,10 @@ function childData(root: OwnedQuiz, id: string, code: string, variantNo: number,
  * Cho `publish`: các mã con của đề gốc, đã nạp câu, và các mã con còn khớp đề gốc không.
  * (Đề gốc sửa sau khi tạo mã đề → mã con cũ → VARIANTS_STALE.)
  */
-export async function loadVariantGroup(rootId: string) {
-  const children = await prisma.exam.findMany({ where: { variantOfId: rootId }, select: { id: true } });
+export async function loadVariantGroup(rootId: string, db: Pick<typeof prisma, "exam" | "examQuestion"> = prisma) {
+  const children = await db.exam.findMany({ where: { variantOfId: rootId }, select: { id: true } });
   if (children.length === 0) return { childIds: [] as string[], questionsOfChildren: [] as Awaited<ReturnType<typeof loadQuestions>>[], stale: false };
-  const [rootQs, ...childQs] = await Promise.all([loadQuestions(rootId), ...children.map(c => loadQuestions(c.id))]);
+  const [rootQs, ...childQs] = await Promise.all([loadQuestions(rootId, db), ...children.map(c => loadQuestions(c.id, db))]);
   const rootKeys = toKeyQuestions(rootQs);
   return { childIds: children.map(c => c.id), questionsOfChildren: childQs, stale: childQs.some(cq => !variantMatchesRoot(rootKeys, toKeyQuestions(cq))) };
 }
@@ -338,6 +352,20 @@ export async function listRootExams(tutorId: string, q: { lop?: string | null; t
 }
 
 // ── Tệp đề gốc ─────────────────────────────────────────────────────────────────────────────────
+/**
+ * Hạn mức phân tích Word theo gia sư (bền, đếm usage_events): tối đa 20 lần/giờ → 429 RATE_LIMITED. Khoá tư vấn theo gia sư để hai yêu cầu cùng lúc không cùng lọt.
+ * Gọi TRƯỚC khi đọc/tải tệp. Trả null = được phép (đã ghi một lượt).
+ */
+export async function reserveWordAnalysis(tutorId: string): Promise<Fail | null> {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`wordrate:${tutorId}`}))`;
+    const used = await tx.usageEvent.count({ where: { userId: tutorId, kind: WORD_ANALYSE_KIND, createdAt: { gte: new Date(Date.now() - WORD_ANALYSE_WINDOW_MS) } } });
+    if (!wordAnalyseAllowed(used)) return fail(429, WORD_RATE_MESSAGE, "RATE_LIMITED");
+    await tx.usageEvent.create({ data: { userId: tutorId, kind: WORD_ANALYSE_KIND, quantity: 1 } });
+    return null;
+  });
+}
+
 export type WordAnalysis = AzotaParse & { images: { key: string; url: string }[] };
 
 /**
@@ -366,7 +394,9 @@ export async function analyseDocx(buf: Buffer): Promise<Outcome<{ parsed: WordAn
       if (i === undefined) return;
       const b = read.images[i], mime = read.mime[i];
       if (!b || !mime || !cloudinaryServerConfigured) { failed.add(i); continue; }
-      try { urlByIndex.set(i, await uploadImageBufferToCloudinary(b, `word-${Date.now().toString(36)}-${i}.${mime.split("/")[1].replace("jpeg", "jpg")}`, mime)); }
+      const real = imageMimeFromMagic(b); // tin byte thật, không tin đuôi tệp trong Word
+      if (!real) { failed.add(i); continue; }
+      try { urlByIndex.set(i, await uploadImageBufferToCloudinary(b, `word-${Date.now().toString(36)}-${i}.${real.split("/")[1].replace("jpeg", "jpg")}`, real)); }
       catch (e) { console.error("[analyseDocx] upload ảnh", e); failed.add(i); }
     }
   };
@@ -423,6 +453,7 @@ export async function splitSourceFile(tutorId: string, fileId: string): Promise<
   }
   if (!looksLikeDocx(f)) return fail(400, "Chỉ tách được tệp Word .docx. Với PDF hoặc ảnh, dùng nhập đề bằng AI.", "NOT_DOCX");
   if (!isAllowedSourceUrl(f.fileUrl)) return fail(400, "Địa chỉ tệp không nằm trong kho KiN nên không tách được.", "BAD_HOST");
+  const limited = await reserveWordAnalysis(tutorId); if (limited) return limited; // 20 lần/giờ/gia sư (429 RATE_LIMITED)
   const buf = await downloadCapped(f.fileUrl, DOCX_MAX_BYTES);
   if (!Buffer.isBuffer(buf)) return buf;
   return analyseDocx(buf);

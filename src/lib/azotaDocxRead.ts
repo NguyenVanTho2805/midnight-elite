@@ -13,6 +13,12 @@ export const DOCX_MAX_UNPACKED = 30 * 1024 * 1024;
 export const DOCX_MAX_XML = 8 * 1024 * 1024;
 export const DOCX_MAX_IMAGES = 40;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+/** Độ sâu đệ quy tối đa khi duyệt XML (tệp giả lồng hàng vạn tầng sẽ làm tràn ngăn xếp → 500). Vượt → NOT_DOCX (400). */
+export const DOCX_MAX_DEPTH = 200;
+/** Thuần: ném DocxError NOT_DOCX khi `depth` vượt trần. Mỗi hàm đệ quy gọi ở đầu hàm. */
+export function assertDocxDepth(depth: number): void {
+  if (depth > DOCX_MAX_DEPTH) throw new DocxError("NOT_DOCX", "Tệp Word có cấu trúc lồng quá sâu — KiN không đọc loại tệp này.");
+}
 
 export type DocxErrorCode = "NOT_DOCX" | "TOO_LARGE";
 export class DocxError extends Error {
@@ -65,11 +71,12 @@ const attr = (n: XmlNodeLike | undefined, ...names: string[]): string | null => 
   return null;
 };
 /** Tìm hậu duệ đầu tiên có tên cục bộ `name` (không đi vào mc:Fallback). */
-function findFirst(n: XmlNodeLike, name: string): XmlNodeLike | undefined {
+function findFirst(n: XmlNodeLike, name: string, depth = 0): XmlNodeLike | undefined {
+  assertDocxDepth(depth);
   for (const c of els(n)) {
     if (ln(c) === name) return c;
     if (ln(c) === "Fallback") continue;
-    const f = findFirst(c, name);
+    const f = findFirst(c, name, depth + 1);
     if (f) return f;
   }
   return undefined;
@@ -126,7 +133,8 @@ function imageFromRelId(ctx: Ctx, relId: string | null): DocRun["image"] | undef
 }
 
 /** Duyệt nội dung một run (hoặc phần tử bọc) → DocRun[]. */
-function readRunContent(r: XmlNodeLike, ctx: Ctx, runs: DocRun[], props: Omit<DocRun, "text">): void {
+function readRunContent(r: XmlNodeLike, ctx: Ctx, runs: DocRun[], props: Omit<DocRun, "text">, depth = 0): void {
+  assertDocxDepth(depth);
   for (const c of els(r)) {
     switch (ln(c)) {
       case "t": { const t = c.textContent ?? ""; if (t) runs.push({ ...props, text: t }); break; }
@@ -154,7 +162,7 @@ function readRunContent(r: XmlNodeLike, ctx: Ctx, runs: DocRun[], props: Omit<Do
       }
       case "AlternateContent": {
         const choice = els(c).find(x => ln(x) === "Choice") ?? els(c).find(x => ln(x) === "Fallback");
-        if (choice) readRunContent(choice, ctx, runs, props);
+        if (choice) readRunContent(choice, ctx, runs, props, depth + 1);
         break;
       }
       default: break; // rPr, instrText, delText, sym… bỏ qua
@@ -162,12 +170,13 @@ function readRunContent(r: XmlNodeLike, ctx: Ctx, runs: DocRun[], props: Omit<Do
   }
 }
 
-function readInline(parent: XmlNodeLike, ctx: Ctx, runs: DocRun[]): void {
+function readInline(parent: XmlNodeLike, ctx: Ctx, runs: DocRun[], depth = 0): void {
+  assertDocxDepth(depth);
   for (const c of els(parent)) {
     switch (ln(c)) {
       case "r": {
         const rpr = els(c).find(x => ln(x) === "rPr");
-        readRunContent(c, ctx, runs, runProps(rpr));
+        readRunContent(c, ctx, runs, runProps(rpr), depth + 1);
         break;
       }
       case "oMath": {
@@ -175,11 +184,11 @@ function readInline(parent: XmlNodeLike, ctx: Ctx, runs: DocRun[]): void {
         runs.push({ text: ok ? `$${latex}$` : FORMULA_PLACEHOLDER, formula: "omml", latex: ok ? latex : undefined });
         break;
       }
-      case "oMathPara": readInline(c, ctx, runs); break;
-      case "hyperlink": case "ins": case "smartTag": case "sdt": case "sdtContent": case "fldSimple": case "customXml": case "moveTo": readInline(c, ctx, runs); break;
+      case "oMathPara": readInline(c, ctx, runs, depth + 1); break;
+      case "hyperlink": case "ins": case "smartTag": case "sdt": case "sdtContent": case "fldSimple": case "customXml": case "moveTo": readInline(c, ctx, runs, depth + 1); break;
       case "AlternateContent": {
         const choice = els(c).find(x => ln(x) === "Choice") ?? els(c).find(x => ln(x) === "Fallback");
-        if (choice) readInline(choice, ctx, runs);
+        if (choice) readInline(choice, ctx, runs, depth + 1);
         break;
       }
       default: break; // pPr, del, bookmark…
@@ -193,7 +202,8 @@ function readParagraph(p: XmlNodeLike, ctx: Ctx): DocRun[] {
   return runs;
 }
 
-function readTable(tbl: XmlNodeLike, ctx: Ctx): DocBlock {
+function readTable(tbl: XmlNodeLike, ctx: Ctx, depth = 0): DocBlock {
+  assertDocxDepth(depth);
   const rows: DocCell[][] = [];
   for (const tr of els(tbl).filter(x => ln(x) === "tr")) {
     const cells: DocCell[] = [];
@@ -202,7 +212,7 @@ function readTable(tbl: XmlNodeLike, ctx: Ctx): DocBlock {
       for (const p of els(tc)) {
         if (ln(p) === "p") paragraphs.push(readParagraph(p, ctx));
         else if (ln(p) === "tbl") { // bảng lồng nhau: trải phẳng chữ vào cùng ô
-          const inner = readTable(p, ctx);
+          const inner = readTable(p, ctx, depth + 1);
           if (inner.kind === "table") for (const r of inner.rows) for (const c of r) paragraphs.push(...c.paragraphs);
         }
       }
@@ -213,12 +223,13 @@ function readTable(tbl: XmlNodeLike, ctx: Ctx): DocBlock {
   return { kind: "table", rows };
 }
 
-function readBody(parent: XmlNodeLike, ctx: Ctx, out: DocBlock[]): void {
+function readBody(parent: XmlNodeLike, ctx: Ctx, out: DocBlock[], depth = 0): void {
+  assertDocxDepth(depth);
   for (const c of els(parent)) {
     switch (ln(c)) {
       case "p": out.push({ kind: "p", runs: readParagraph(c, ctx) }); break;
-      case "tbl": out.push(readTable(c, ctx)); break;
-      case "sdt": case "sdtContent": case "customXml": readBody(c, ctx, out); break;
+      case "tbl": out.push(readTable(c, ctx, depth + 1)); break;
+      case "sdt": case "sdtContent": case "customXml": readBody(c, ctx, out, depth + 1); break;
       default: break; // sectPr…
     }
   }
@@ -279,6 +290,10 @@ export async function readDocx(buf: Buffer): Promise<DocxRead> {
   const root = parseXml(docXml);
   const body = els(root).find(c => ln(c) === "body");
   const blocks: DocBlock[] = [];
-  if (body) readBody(body, ctx, blocks);
+  try { if (body) readBody(body, ctx, blocks); }
+  catch (err) {
+    if (err instanceof RangeError) throw new DocxError("NOT_DOCX", "Tệp Word có cấu trúc lồng quá sâu — KiN không đọc loại tệp này.");
+    throw err;
+  }
   return { blocks, images: ctx.images, mime: ctx.mime, extraImages: ctx.extraImages };
 }

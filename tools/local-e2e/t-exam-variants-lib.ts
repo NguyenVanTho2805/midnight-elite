@@ -1,3 +1,4 @@
+// Ca phá bổ sung: imageMimeFromMagic bỏ kiểm một byte (vd 0x0a cuối PNG) → ca 'PNG cụt'/'WAVE' đỏ; wordAnalyseAllowed đổi `<` thành `<=` → ca 'đúng 20 → hết' đỏ.
 // BU-03 P2 — nhiều mã đề (src/lib/deThiVariants.ts) + tách tệp gốc (deThiSourceFile.ts) + cờ cổng (deThiAssign.ts). THUẦN, không DB. Ca phá cố ý ở từng mục.
 import { check, section, done } from "./h";
 import { makeRng } from "@/lib/deThiBlueprint";
@@ -5,7 +6,7 @@ import {
   buildVariantPlan, optionsShuffleUnsafe, publishGate, questionsWithFormulaPlaceholder, shuffleWarnings, shuffleWithFixed, variantCode, variantKey, variantMatchesRoot,
   VARIANT_MAX, VARIANT_MIN, type KeyQuestion, type PlanQuestion,
 } from "@/lib/deThiVariants";
-import { isAllowedSourceUrl, looksLikeDocx } from "@/lib/deThiSourceFile";
+import { isAllowedSourceUrl, looksLikeDocx, imageMimeFromMagic, wordAnalyseAllowed, WORD_ANALYSE_PER_HOUR } from "@/lib/deThiSourceFile";
 import { AUDIENCE_LINK_READY, VARIANT_STUDENT_SUPPORT } from "@/lib/deThiAssign";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
 
@@ -114,6 +115,20 @@ for (const bad of [
 ]) check(`chặn: ${bad || "(rỗng)"}`, !isAllowedSourceUrl(bad));
 check("không phải chuỗi → chặn, không ném", !isAllowedSourceUrl(null) && !isAllowedSourceUrl(42) && !isAllowedSourceUrl("https://res.cloudinary.com/" + "a".repeat(2100)));
 check("nhận .docx theo tên hoặc loại; .doc/.docm/pdf không nhận", looksLikeDocx({ fileName: "De.DOCX", fileType: "" }) && looksLikeDocx({ fileName: "x", fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }) && !looksLikeDocx({ fileName: "De.doc", fileType: "application/msword" }) && !looksLikeDocx({ fileName: "De.docm", fileType: "" }) && !looksLikeDocx({ fileName: "a.pdf", fileType: "application/pdf" }));
+
+section("Hình trong Word: kiểm magic byte (đuôi tệp không đáng tin)");
+const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+const jpg = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
+const gif = Uint8Array.from(Buffer.from("GIF89a....", "latin1"));
+const webp = Uint8Array.from(Buffer.from("RIFF\x10\x00\x00\x00WEBPVP8 ", "latin1"));
+check("png / jpeg / gif / webp nhận đúng loại", imageMimeFromMagic(png) === "image/png" && imageMimeFromMagic(jpg) === "image/jpeg" && imageMimeFromMagic(gif) === "image/gif" && imageMimeFromMagic(webp) === "image/webp");
+check("PHÁ: tệp .exe/ZIP/HTML đổi đuôi .png → null (không tải lên)", imageMimeFromMagic(Uint8Array.from(Buffer.from("MZ\x90\x00"))) === null && imageMimeFromMagic(Uint8Array.from(Buffer.from("PK\x03\x04"))) === null && imageMimeFromMagic(Uint8Array.from(Buffer.from("<html><script>"))) === null);
+check("PHÁ: rỗng / quá ngắn / PNG cụt không ném lỗi, trả null", imageMimeFromMagic(new Uint8Array(0)) === null && imageMimeFromMagic(png.slice(0, 4)) === null && imageMimeFromMagic(jpg.slice(0, 2)) === null && imageMimeFromMagic(webp.slice(0, 8)) === null);
+check("RIFF không phải WEBP (WAVE) → null", imageMimeFromMagic(Uint8Array.from(Buffer.from("RIFF\x10\x00\x00\x00WAVEfmt "))) === null);
+
+section("Hạn mức phân tích Word: 20 lần/giờ/gia sư");
+check(`đã dùng ${WORD_ANALYSE_PER_HOUR - 1} → còn được; đúng ${WORD_ANALYSE_PER_HOUR} → hết (429)`, wordAnalyseAllowed(WORD_ANALYSE_PER_HOUR - 1) && !wordAnalyseAllowed(WORD_ANALYSE_PER_HOUR));
+check("PHÁ: 0 → được; vượt xa / NaN / Infinity → không được", wordAnalyseAllowed(0) && !wordAnalyseAllowed(500) && !wordAnalyseAllowed(NaN) && !wordAnalyseAllowed(Infinity));
 
 await done();
 })();

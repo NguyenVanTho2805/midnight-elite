@@ -21,7 +21,16 @@ export type RAnswer = QzAnswer;
 export interface RBool { attemptId: string; optionId: string; answerTrue: boolean | null }
 export interface ResultsInput { exams: RExam[]; questions: RQuestion[]; attempts: RAttempt[]; answers: RAnswer[]; booleans: RBool[]; passPercent?: number }
 
+/** Trần số lượt nộp đọc cho một đề (gồm mã đề con). Vượt → cắt và báo `truncated: true` thay vì im lặng. */
+export const RESULTS_MAX_ATTEMPTS = 5000;
+/** Thuần: nhận danh sách đọc với trần+1; nếu dài hơn `max` thì cắt về `max` và báo truncated. */
+export function capRows<T>(rows: T[], max: number): { rows: T[]; truncated: boolean } {
+  return rows.length > max ? { rows: rows.slice(0, max), truncated: true } : { rows, truncated: false };
+}
+
 export interface KetQua {
+  /** Chỉ có khi trả từ API: true = đề có hơn RESULTS_MAX_ATTEMPTS lượt nên số liệu chỉ tính trên các lượt đầu. */
+  truncated?: boolean;
   basic: { attempts: number; students: number; avg: number | null; median: number | null; max: number | null; min: number | null; passRate: number | null; avgDurationSec: number | null };
   distribution: { label: (typeof DISTRIBUTION_LABELS)[number]; count: number }[];
   frequency: { score: number; count: number }[];

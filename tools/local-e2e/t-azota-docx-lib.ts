@@ -6,13 +6,14 @@
 //   - parseAzotaBlocks: bỏ `vals.size > 1 ||` → các ca xung đột (gạch chân ≠ bảng, TF ≠ lời giải, SA ≠ bảng) đỏ vì tự chọn đáp án;
 //   - bỏ kiểm tra màu "không đủ": coi màu là đáp án → ca "chỉ tô màu → answer_missing" đỏ;
 //   - readEntry: bỏ giới hạn 8 MB mỗi XML → ca zip bomb đỏ (hoặc treo); bỏ kiểm DOCTYPE → ca DOCTYPE đỏ; bỏ vbaProject → ca .docm đỏ;
+//   - assertDocxDepth: bỏ lời gọi ở đầu readBody/readInline/readTable → ca 'lồng 300 lớp' đỏ (hoặc RangeError); đổi `>` thành `>=` → ca đúng-trần đỏ;
 //   - QUESTION_RE đặt hình đứng trước "Câu N." vào câu mới → ca "hình thuộc câu trước" đỏ.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
 import { check, section, done } from "./h";
-import { DOCX_MAX_BYTES, DocxError, readDocx } from "@/lib/azotaDocxRead";
+import { DOCX_MAX_BYTES, DOCX_MAX_DEPTH, DocxError, assertDocxDepth, readDocx } from "@/lib/azotaDocxRead";
 import { parseAnswerKeyText, parseAzotaBlocks, toQuizInput, type AzotaParse, type AzotaQuestion } from "@/lib/azotaDocx";
 import { validateQuizQuestion, validateForDraft } from "@/lib/quizQuestion";
 
@@ -308,6 +309,20 @@ const correct = (q?: AzotaQuestion) => (q ? q.options.map((o, i) => (o.isCorrect
     if (name.startsWith("De_Su12")) check("Su12: 24 TN + 4 Đ/S, đủ 28 đáp án, 0 cờ", p.stats.byType.MC === 24 && p.stats.byType.TRUE_FALSE_CLUSTER === 4 && p.stats.withAnswer === 28);
     if (name.startsWith("De_Toan12")) check("Toán12: 12 TN + 4 Đ/S + 6 trả lời ngắn, đủ 22 đáp án; mọi câu còn nhãn công thức MathType", p.stats.byType.MC === 12 && p.stats.byType.TRUE_FALSE_CLUSTER === 4 && p.stats.byType.SHORT_ANSWER === 6 && p.stats.withAnswer === 22 && p.stats.withFormulaUnread === 22);
     if (name.startsWith("mau_de_azota")) check("mẫu v2: 1 MC + 3 nhiều đáp án + 2 Đ/S + 2 trả lời ngắn", p.stats.byType.MC === 1 && p.stats.byType.MC_MULTI === 3 && p.stats.byType.TRUE_FALSE_CLUSTER === 2 && p.stats.byType.SHORT_ANSWER === 2);
+  }
+
+  section("6) Độ sâu đệ quy (tệp lồng hàng trăm tầng → NOT_DOCX 400, không tràn ngăn xếp / 500)");
+  {
+    const nest = (n: number) => "<w:sdt><w:sdtContent>".repeat(n) + Pt("Câu 1. x") + "</w:sdtContent></w:sdt>".repeat(n);
+    const ok = await rejects(await mkDocx(nest(50)));
+    check("lồng 50 lớp sdt (100 tầng) → vẫn đọc được", ok === null, ok);
+    const bad = await rejects(await mkDocx(nest(300)));
+    check("PHÁ: lồng 300 lớp sdt (600 tầng) → NOT_DOCX, đúng DocxError", bad?.code === "NOT_DOCX", bad);
+    const innerP = (n: number) => "<w:p>" + "<w:ins>".repeat(n) + R("x") + "</w:ins>".repeat(n) + "</w:p>";
+    check("PHÁ: đoạn lồng 400 lớp ins → NOT_DOCX", (await rejects(await mkDocx(innerP(400))))?.code === "NOT_DOCX");
+    check("bảng lồng 300 lớp → NOT_DOCX", (await rejects(await mkDocx("<w:tbl><w:tr><w:tc>".repeat(300) + P(R("x")) + "</w:tc></w:tr></w:tbl>".repeat(300))))?.code === "NOT_DOCX");
+    let thrown: unknown = null; try { assertDocxDepth(DOCX_MAX_DEPTH); assertDocxDepth(DOCX_MAX_DEPTH + 1); } catch (e) { thrown = e; }
+    check("assertDocxDepth: đúng trần thì qua, trần+1 ném DocxError NOT_DOCX", thrown instanceof DocxError && thrown.code === "NOT_DOCX");
   }
 
   await done();

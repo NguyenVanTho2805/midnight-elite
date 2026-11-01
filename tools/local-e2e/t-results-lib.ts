@@ -6,7 +6,7 @@
 //   - bỏ `${key}#${nth}` (gộp theo khoá thuần) → ca "câu lặp hai lần vẫn hai dòng" đỏ; đổi variantKey thành id câu → ca gộp xuyên mã đề đỏ;
 //   - đổi `>=` thành `>` ở passN → ca "đúng 5/10 là đạt" đỏ.
 import { check, section, done } from "./h";
-import { buildKetQua, buildScoreTable, median, toHalfStep, DISTRIBUTION_LABELS, type RAnswer, type RAttempt, type RBool, type RExam, type RQuestion, type ResultsInput } from "@/lib/deThiResults";
+import { capRows, RESULTS_MAX_ATTEMPTS, buildKetQua, buildScoreTable, median, toHalfStep, DISTRIBUTION_LABELS, type RAnswer, type RAttempt, type RBool, type RExam, type RQuestion, type ResultsInput } from "@/lib/deThiResults";
 import { variantKey } from "@/lib/deThiVariants";
 
 const T0 = Date.parse("2026-11-01T02:00:00Z");
@@ -149,6 +149,16 @@ check("bài còn tự luận chờ chấm: score = null (chờ chấm), vẫn c�
 check("thời gian làm và giờ nộp đúng (A1: 600 giây)", (() => { const r = byName(rowsOf("dau"), "Nguyễn An")!; return r.durationSec === 600 && r.submittedAt === new Date(T0 + 600_000).toISOString(); })());
 check("thiếu tên trong sổ → 'Học viên', không ném", buildScoreTable({ ...input, names: new Map() }, "dau").every(r => r.studentName === "Học viên"));
 check("chưa có ai nộp → bảng rỗng", buildScoreTable({ ...input, attempts: [], answers: [], names }, "dau").length === 0);
+
+// capRows: cắt ở trần và BÁO (không im lặng). Ca phá: đổi `>` thành `>=` → ca "đúng trần không cắt" đỏ; bỏ cờ truncated → ca "vượt trần báo true" đỏ.
+{
+  const five = [1, 2, 3, 4, 5];
+  const exact = capRows(five, 5), over = capRows([...five, 6], 5), few = capRows([], 5);
+  check("đúng trần: không cắt, truncated=false", exact.rows.length === 5 && exact.truncated === false);
+  check("vượt trần 1 hàng: cắt về trần, truncated=true", over.rows.length === 5 && over.truncated === true && over.rows[4] === 5);
+  check("rỗng: truncated=false", few.rows.length === 0 && !few.truncated);
+  check("trần thật = 5000", RESULTS_MAX_ATTEMPTS === 5000);
+}
 
 await done();
 })();
