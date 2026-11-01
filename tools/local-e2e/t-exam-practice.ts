@@ -40,8 +40,7 @@ import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
   check("reveal khi chưa nộp lần nào → 409 reveal_too_early", (await save(A, a, q.mc, q.mcNo), (await chk(A, a, q.mc, "reveal")).json.code) === "reveal_too_early");
   check("ca phá: 'chấm theo đáp án lưu' — thân yêu cầu có optionId đúng cũng bị phớt lờ", (await api("POST", `/api/exams/attempts/${a}/check`, { as: A, body: { questionId: q.mc, optionId: q.mcOk, correct: true } })).json.correct === false);
 
-  section("MC: sai lần 1 → hint; sai lần 2 → revealed; sau đó already_done");
-  // (lần chấm sai ở trên đã là lần 1) — lần này là lần 2 nên tới đây đã revealed
+  section("MC: sai lần 1 (ca phá ở trên) → hint; sai lần 2 → revealed; sau đó already_done");
   const mc2 = await chk(A, a, q.mc);
   check("MC có gợi ý: lần chấm đầu (ca phá trên) → hint; lần 2 → revealed + đáp án + lời giải", mc2.status === 200 && mc2.json.state === "revealed" && mc2.json.answer?.correctOptionIds?.[0] === q.mcOk && mc2.json.explanation === SEC.expl(q.mc) && mc2.json.hint === null, mc2.json);
   const done1 = await chk(A, a, q.mc);
@@ -80,7 +79,8 @@ import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
   const sub = await api("POST", `/api/exams/attempts/${a}/submit`, { as: A });
   check("nộp 200; mode=practice; không có hạng (luyện tập không vào bảng xếp hạng)", sub.status === 200 && sub.json.mode === "practice" && sub.json.rank === null && typeof sub.json.score === "number", sub.json);
   const dbAtt = await prisma.examAttempt.findUnique({ where: { id: a } });
-  check("điểm = chấm theo ĐÁP ÁN CUỐI ĐÃ LƯU (MC chọn sai, MC_MULTI đủ, điền ngắn đúng; Đúng–Sai 2/4): 0 + 2 + 2×0.25 + 2 = 4.5/10 thang gốc", Math.abs((dbAtt?.score ?? -1) - 4.5 * (10 / 8)) < 0.01 || typeof dbAtt?.score === "number", dbAtt?.score);
+  // 5 câu × 2 điểm = 10 thô, đề 10 điểm. MC chọn sai → 0; MC_MULTI đủ → 2; Đúng–Sai đúng 2/4 (thang mặc định 25%) → 0.5; điền ngắn đúng → 2; tự luận chưa chấm → 0.
+  check("điểm = chấm theo ĐÁP ÁN CUỐI ĐÃ LƯU lúc nộp (4.5/10), không bị check tác động", Math.abs((dbAtt?.score ?? -1) - 4.5) < 0.01, dbAtt?.score);
   check("không đổi số dòng ExamAnswer vì check", (await prisma.examAnswer.count({ where: { attemptId: a } })) === before);
   check("luyện tập KHÔNG tạo ExamResult và không tăng participants", (await prisma.examResult.count({ where: { examId: P.id } })) === 0 && (await prisma.exam.findUnique({ where: { id: P.id } }))!.participants === 0);
   check("check sau khi nộp → 409 finished", (await chk(A, a, q.mc)).json.code === "finished");
@@ -91,7 +91,6 @@ import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
 
   section("Lượt hết giờ / quyền / giới hạn tốc độ");
   const a3 = await start(A, O.id);
-  await save(A, a3, qo.short, qo.mcOk).catch(() => null);
   await prisma.examAttempt.update({ where: { id: a3 }, data: { expiresAt: new Date(Date.now() - 5000) } });
   const exp = await chk(A, a3, qo.mc);
   check("hết giờ → 409 expired và lượt chuyển 'expired'", exp.status === 409 && exp.json.code === "expired" && (await prisma.examAttempt.findUnique({ where: { id: a3 } }))!.status === "expired", exp.json);
