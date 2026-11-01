@@ -18,10 +18,13 @@ import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
 import { formatScheduleRules } from "@/lib/tutorClassTable";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { normalizeFeeMode } from "@/lib/tuitionFee";
+import { effectivePolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
+import { loadPendingJoinRequests } from "@/lib/enrollServer";
+import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string; them?: string }> };
+type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string; them?: string; duyet?: string; n?: string }> };
 const TABS: LopTab[] = ["diem-danh", "hoc-sinh", "ma-moi", "hoc-phi", "cong-dong"];
 
 export default async function LopPage({ params, searchParams }: Props) {
@@ -32,7 +35,7 @@ export default async function LopPage({ params, searchParams }: Props) {
 
   const course = await prisma.course.findUnique({
     where:  { id: courseId },
-    select: { id: true, name: true, category: true, ownerId: true, feeMode: true },
+    select: { id: true, name: true, category: true, ownerId: true, feeMode: true, joinPolicy: true, tag: true, price: true },
   });
   if (!course) notFound();
 
@@ -65,12 +68,19 @@ export default async function LopPage({ params, searchParams }: Props) {
   // Gia sư (chủ lớp hoặc quản trị): trang chi tiết lớp theo Figma 299:112581. Học sinh giữ vỏ cũ.
   if (roleView === "tutor") {
     const now = new Date();
+    // BU-01: hàng chờ duyệt qua enrollServer (trang không gọi prisma.classJoinRequest). Lỗi tải chỉ làm khối này báo lỗi, danh sách em vẫn hiện.
+    let pending: PendingJoinRequest[] = [], pendingFailed = false;
+    try {
+      pending = (await loadPendingJoinRequests(courseId)).map(r => ({ id: r.id, studentName: r.studentName, sentOn: `${vnDateKeyOf(r.createdAt).slice(8, 10)}/${vnDateKeyOf(r.createdAt).slice(5, 7)}` }));
+    } catch { pendingFailed = true; }
+    const hasFeeRate = (await prisma.courseFeeRate.count({ where: { courseId } })) > 0;
+    const feeInfo = { price: course.price, tag: course.tag, hasFeeRate };
     const [students, rules, sessions, taught, invites] = await Promise.all([
       prisma.enrollment.findMany({ where: { courseId, status: "active" }, select: { userId: true, user: { select: { name: true } } }, orderBy: { createdAt: "asc" } }),
       prisma.classSchedule.findMany({ where: { courseId, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
       prisma.attendanceSession.findMany({ where: { courseId }, orderBy: { date: "desc" }, take: 5, select: { id: true, date: true, note: true, _count: { select: { records: true } } } }),
       prisma.attendanceSession.count({ where: { courseId } }),
-      prisma.classInvite.findMany({ where: { courseId, revoked: false }, orderBy: { createdAt: "desc" }, take: 10, select: { code: true, maxUses: true, usedCount: true, expiresAt: true } }),
+      prisma.classInvite.findMany({ where: { courseId, revoked: false, kind: "class" }, orderBy: { createdAt: "desc" }, take: 10, select: { code: true, maxUses: true, usedCount: true, expiresAt: true } }),
     ]);
     const usable = invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
     return <LopChiTiet d={{
@@ -79,7 +89,9 @@ export default async function LopPage({ params, searchParams }: Props) {
       students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })),
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
-      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi", feeMode: normalizeFeeMode(course.feeMode),
+      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi",
+      joinPolicy: effectivePolicy(course.joinPolicy), isFree: isFreeClass(feeInfo), canOpen: canUseOpenPolicy(feeInfo),
+      pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(course.feeMode),
     }} />;
   }
 
