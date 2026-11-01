@@ -19,7 +19,7 @@ import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 // `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
-// BU-00 bước 6 (31/10/2026): bảng "Khác" rút từ 3 nhóm 15 mục còn 2 nhóm 7 mục — học sinh chỉ thấy việc học. Bỏ khỏi MENU (route giữ nguyên, chỉ ẩn lối vào):
+// BU-00 bước 6 (31/10/2026): bảng "Khác" rút từ 3 nhóm 15 mục còn 3 nhóm 8 mục (Tiếng Anh tự học được trả lại ngay sau đó) — học sinh chỉ thấy việc học. Bỏ khỏi MENU (route giữ nguyên, chỉ ẩn lối vào):
 // Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn, Ví và Coin. Thi thử / Tiếng Anh
 // vẫn sáng đúng module nhờ `also` của "Bài tập" (/student/thi-thu) và "Lớp của tôi" (/student/tieng-anh).
 // NC2-048 (góp ý 28/10): "Hỏi đáp" là tab bên trong Cộng đồng; /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
@@ -28,6 +28,11 @@ const MORE_GROUPS: MoreGroup[] = [
     { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
     { label: "Cộng đồng", href: "/student/cong-dong", also: ["/cong-dong"], icon: "nguoi" },
     { label: "Tin tức", href: "/student/tin-tuc", also: ["/tin-tuc"], icon: "hop-thu" },
+  ] },
+  { title: "Tự học", links: [
+    // Sửa sau BU-00 (01/11/2026): bước 6 đã bỏ mục này mà trang Lớp không có lối thay thế nên Tiếng Anh tự học không còn ai bấm tới được.
+    // Lối tắt `active: false`: /student/tieng-anh đã thuộc module "Lớp của tôi" (`also`) nên chỉ một mục sáng.
+    { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "lop", active: false },
   ] },
   { title: "Tài khoản", links: [
     { label: "Hồ sơ", href: "/student/ho-so", icon: "nguoi" },
