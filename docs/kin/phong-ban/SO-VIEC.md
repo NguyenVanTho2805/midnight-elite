@@ -29,3 +29,5 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | CHỦ-03 | chủ | Lớp 2 ca/ngày có cần không | | | dung | chờ Thọ |
 
 **Đợt S đầu tiên (01/11/2026):** test đã chạy thật trên bản sao test — adm: 9/12 bài sạch, 2 đỏ có sẵn + 1 nợ P3 `parseAuditFilter` nhận 31/02; tut: 8/8 sạch; stu: 5/5 sạch. Chưa chạy các bài `ui-*` (cần trình duyệt). Nợ mới: ADM-002 (validator bài viết, PUT học sinh), restore giữ `banned` cũ, phân trang đếm bản ẩn, nút 'Vào lớp này' khi đang nộp đơn gia sư, đổi 'bạn'→'em' ở màn review.
+
+**Figma 01/11/2026 (trang "🚀 Bigupdate (11/2026)" 606:2, file 2orXvoHL2upkiGoMjlq8aX):** CAT-01 = Section 647:442 (PR #100) · CAT-02 = Section 651:684 (PR #98) · HOME-02 = Section 653:848 (PR #99). Số liệu trong khung là dữ liệu mẫu; chữ lấy đúng từ mã.
