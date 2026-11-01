@@ -185,10 +185,11 @@ export default function KhoaHocDetailPage() {
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set());
   // BU-01: ?join=dong|day do POST /api/courses/<id>/join gửi về. Đọc ở effect để HTML máy chủ và lần render đầu của client khớp nhau.
   const [joinNote, setJoinNote] = useState<string | null>(null);
+  const [joinChiMa, setJoinChiMa] = useState(false);
   useEffect(() => {
     const j = new URLSearchParams(window.location.search).get("join");
-    const text = j === "dong" ? "Lớp đang đóng, chưa nhận thêm học sinh." : j === "day" ? "Lớp đã đầy, chưa nhận thêm học sinh." : null;
-    if (text) Promise.resolve().then(() => setJoinNote(text));
+    const text = j === "dong" ? "Lớp đang đóng, chưa nhận thêm học sinh." : j === "day" ? "Lớp đã đầy, chưa nhận thêm học sinh." : j === "chi-ma" ? "Lớp này hiện chỉ vào bằng mã gia sư gửi." : null;
+    if (text) Promise.resolve().then(() => { setJoinNote(text); setJoinChiMa(j === "chi-ma"); });
   }, []);
 
   useEffect(() => {
@@ -453,7 +454,7 @@ export default function KhoaHocDetailPage() {
                 </Link>
               ) : (
                 <>
-                  {joinNote && <div role="alert" data-join-note><KinCallout title={joinNote} /></div>}
+                  {joinNote && <div role="alert" data-join-note><KinCallout title={joinNote}>{joinChiMa && <Link href="/student/nhap-ma-lop" className="inline-flex items-center min-h-11 underline">Nhập mã lớp</Link>}</KinCallout></div>}
                   {canJoin && policy !== "invite_only" && (
                     <form method="post" action={`/api/courses/${encodeURIComponent(course.id)}/join`} data-join-form={policy}>
                       <button type="submit" className={`${kinButtonClass("primary", "lg")} w-full`}>{policy === "open" ? "Vào lớp miễn phí" : "Xin vào lớp"}</button>
