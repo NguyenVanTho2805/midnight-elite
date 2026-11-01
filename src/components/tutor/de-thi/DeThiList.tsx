@@ -127,7 +127,7 @@ export default function DeThiList() {
                 {shown.map(it => (
                   <li key={it.id} data-de-thi={it.id} className={`${GRID} ${KIN_TABLE_ROW} flex flex-col gap-y-2 lg:items-center`}>
                     <div className="min-w-0">
-                      <Link href={deThiDetailHref(it.id)} className="block min-h-11 lg:min-h-0 py-2 lg:py-0 font-medium text-[var(--kin-chu-chinh)] hover:underline break-words">{it.title}</Link>
+                      <Link href={deThiDetailHref(it.id)} className="flex items-center min-h-11 py-2 font-medium text-[var(--kin-chu-chinh)] hover:underline break-words">{it.title}</Link>
                       <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">{it.questionCount} câu{it.extractedFrom ? ` · tách từ ${it.extractedFrom.fileName}` : ""}</p>
                     </div>
                     <div className="min-w-0"><span className="lg:hidden text-[var(--kin-chu-mo)]">Mã đề: </span><VariantText it={it} /></div>

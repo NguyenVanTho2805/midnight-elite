@@ -52,7 +52,7 @@ const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/mai
     check("có stats và không có lỗi chí tử (fatal)", !!r.json?.stats && !r.json?.fatal, r.json?.fatal);
     check("Cache-Control: no-store", /no-store/.test(r.headers.get("cache-control") ?? ""));
     check("bộ đếm AI (UsageEvent ai_extract) KHÔNG tăng", (await aiCount()) === ai0);
-    check("DB không đổi: không câu ngân hàng, không đề, không UsageEvent nào, không nhật ký", (await snap()) === s0);
+    check("DB không đổi: không câu ngân hàng, không đề, không UsageEvent nào (trừ word_analyse: bộ đếm hạn mức Word, cố ý ghi), không nhật ký", (await snap()) === s0);
     const emb = await prisma.$queryRawUnsafe<{ n: bigint }[]>(`select count(*)::bigint as n from question_bank_items where embedding is not null`);
     check("không tính nhúng (embedding) nào", Number(emb[0].n) === 0);
   }

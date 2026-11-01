@@ -219,7 +219,7 @@ const childrenOf = (rootId: string) => prisma.exam.findMany({ where: { variantOf
     const G = await mkDraft(A, { n: 6, courseId: courseA.id, points: 1 });
     const mk = await api("POST", MD(G), { as: A, body: { count: 3 } });
     const kids = (await childrenOf(G)).map(k => k.id);
-    check("dựng: đề G có 2 mã con", mk.status === 200 && kids.length === 2, [mk.status, kids.length]);
+    check("dựng: đề G có 2 mã con", mk.status === 201 && kids.length === 2, [mk.status, kids.length]);
     // ĐỐI CHỨNG đi trước: xoá thẳng một mã con bị chặn, không mất gì
     const dk = await api("DELETE", `/api/tutor/quiz/${kids[0]}`, { as: A });
     check("DELETE thẳng một mã con → 409 VARIANT_LOCKED, mã con vẫn còn", dk.status === 409 && dk.json?.code === "VARIANT_LOCKED" && (await childrenOf(G)).length === 2, [dk.status, dk.json]);

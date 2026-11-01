@@ -12,7 +12,9 @@ import { prisma } from "@/lib/prisma";
   const course = await mkCourse(T.id, { name: "Toán 12 (đề thi)" });
 
   const root = await prisma.questionCategory.create({ data: { name: "Toán" } });
-  const ch = await prisma.questionCategory.create({ data: { name: "Chương 1", parentId: root.id } });
+  // Môn › Lớp › Chương › YCCĐ (đúng 4 tầng của đặc tả: chương = tầng 2; thiếu tầng Lớp thì "Chương 1" bị coi là Lớp và không hiện ở ma trận)
+  const lop = await prisma.questionCategory.create({ data: { name: "Lớp 12", parentId: root.id } });
+  const ch = await prisma.questionCategory.create({ data: { name: "Chương 1", parentId: lop.id } });
   const y11 = await prisma.questionCategory.create({ data: { name: "YCCĐ 1.1", parentId: ch.id } });
   const y12 = await prisma.questionCategory.create({ data: { name: "YCCĐ 1.2", parentId: ch.id } });
   const mkItem = async (cat: string, diff: string, i: number, owner: string, status = "approved") =>
@@ -92,6 +94,9 @@ import { prisma } from "@/lib/prisma";
   await goto(p, `${BASE_DT}/ma-tran/moi`);
   await p.getByText("Chương 1").first().waitFor({ timeout: 30000 });
   await p.getByText("Chương 1").first().click();
+  // YCCĐ nằm sau nút mở/gập của chương (aria-expanded); mở nếu đang gập.
+  const tg = p.getByRole("button", { name: /yêu cầu cần đạt của Chương 1/ });
+  if ((await tg.first().getAttribute("aria-expanded")) !== "true") await tg.first().click();
   await p.getByText("YCCĐ 1.2").first().click();
   const nb = p.getByLabel(/YCCĐ 1\.2, mức NB, số câu/);
   await nb.fill("5");
@@ -136,7 +141,11 @@ import { prisma } from "@/lib/prisma";
   const cookie = (await tctx.cookies()).map(c => `${c.name}=${c.value}`).join("; ");
   const redir = async (from: string, to: RegExp) => {
     const r = await tctx.request.get(`${BASE}${from}`, { maxRedirects: 0, headers: { cookie } });
-    check(`${from} → 307 ${to}`, r.status() === 307 && to.test(r.headers()["location"] ?? ""), [r.status(), r.headers()["location"]]);
+    // loading.tsx của vỏ gia sư biến redirect() của trang thành 200 + chỉ thị NEXT_REDIRECT;…;307; trong luồng (như mọi trang /lop-cua-toi); chấp nhận cả hai dạng.
+    const body = r.status() === 200 ? await r.text() : "";
+    const m = /NEXT_REDIRECT;(?:replace|push);([^;"]+);(\d+);/.exec(body);
+    const loc = r.headers()["location"] ?? (m ? decodeURIComponent(m[1]) : "");
+    check(`${from} → 307 ${to}`, (r.status() === 307 || m?.[2] === "307") && to.test(loc), [r.status(), loc]);
   };
   await redir("/lop-cua-toi/bai-tap/quiz/moi", /\/lop-cua-toi\/de-thi\/tao-moi/);
   await redir("/lop-cua-toi/bai-tap/quiz/bu3-own", /\/lop-cua-toi\/de-thi\/bu3-own$/);

@@ -42,7 +42,7 @@ export async function snap(): Promise<string> {
     prisma.examBlueprint.findMany({ select: { id: true, name: true, rows: true, updatedAt: true }, orderBy: { id: "asc" } }),
     prisma.questionBankItem.count(), prisma.exam.count(), prisma.examQuestion.count(),
     prisma.examFile.findMany({ select: { id: true, extractedExamId: true }, orderBy: { id: "asc" } }),
-    prisma.usageEvent.count(), prisma.examChangeLog.count(), prisma.quizAttemptLimit.count(),
+    prisma.usageEvent.count({ where: { kind: { not: "word_analyse" } } }), prisma.examChangeLog.count(), prisma.quizAttemptLimit.count(),
   ]);
   const exams = await prisma.exam.findMany({
     select: { id: true, title: true, mode: true, courseId: true, price: true, passwordHash: true, password: true, active: true, isDraft: true, date: true, time: true, duration: true, activeGuest: true, guestCanTake: true },

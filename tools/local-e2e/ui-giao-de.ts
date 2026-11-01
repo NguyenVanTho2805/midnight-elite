@@ -61,6 +61,7 @@ const SECRET = "Mk-BiMat-9137";
   check("Kiểm tra: số lần = 1 (không bật 'không giới hạn')", !(await p.getByLabel(/Không giới hạn số lần/).isChecked()) && (await p.getByLabel(/Mỗi học sinh làm tối đa/).inputValue()) === "1");
   check("Kiểm tra: đáp án chỉ khi hết giờ", await p.getByRole("radio", { name: /Xem khi hết giờ làm bài/ }).isChecked());
   check("Kiểm tra: ẩn đáp án đúng ở câu sai", await p.getByLabel(/Không hiện đáp án đúng ở câu học sinh làm sai/).isChecked());
+  await p.locator("#gd-ngay").fill(""); // đề dựng sẵn đã có ngày/giờ/thời lượng → xoá ngày để thật sự "thiếu giờ"
   check("Kiểm tra thiếu giờ → liệt kê lý do chặn phát hành + nút Phát hành khoá", (await p.locator("[data-giao-chan]").getByText(/ngày, giờ mở và thời lượng/).count()) >= 1 && await p.getByRole("button", { name: "Phát hành", exact: true }).isDisabled());
   await p.getByRole("radio", { name: /^Luyện tập/ }).check();
   check("Luyện tập: không giới hạn lần", await p.getByLabel(/Không giới hạn số lần/).isChecked());

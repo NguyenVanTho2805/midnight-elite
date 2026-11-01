@@ -125,18 +125,23 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
   section("Cổng trang (HTML): khách, học sinh, gia sư chờ duyệt, gia sư — không tải nội dung gia sư cho người không được");
   {
     const pages = ["/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ma-tran", `/lop-cua-toi/de-thi/${examA}/giao`, `/lop-cua-toi/de-thi/${examA}/ket-qua`, `/lop-cua-toi/de-thi/${examA}/ma-de`, "/lop-cua-toi/de-thi/ngan-hang-cau-hoi/nhap-word"];
+    // Vỏ gia sư có loading.tsx (streaming) nên cổng máy chủ trả 200 + chỉ thị NEXT_REDIRECT trong luồng thay vì 3xx — hành vi chung của MỌI trang /lop-cua-toi
+    // (đo thật: /lop-cua-toi/lop cũng vậy). Cái cần chứng minh: người không được vào bị chuyển đi (3xx HOẶC chỉ thị NEXT_REDIRECT) và KHÔNG nhận nội dung gia sư.
     const get = async (path: string, u?: TUser) => {
       const res = await fetch(BASE + path, { redirect: "manual", headers: u ? { cookie: await cookieFor(u) } : {} });
-      await res.arrayBuffer();
-      return { status: res.status, loc: res.headers.get("location") ?? "" };
+      const body = await res.text();
+      const m = /NEXT_REDIRECT;(?:replace|push);([^;"\\]+);/.exec(body);
+      const loc = res.headers.get("location") || (m ? decodeURIComponent(m[1]) : "");
+      const leaks = body.includes("Ma trận đề") || body.includes("Tệp đề gốc");
+      return { status: res.status, loc, leaks };
     };
-    const isRedirect = (n: number) => [301, 302, 303, 307, 308].includes(n);
+    const isRedirect = (r: { status: number; loc: string }) => [301, 302, 303, 307, 308].includes(r.status) || (r.status === 200 && r.loc !== "");
     for (const p of pages) {
       const g = await get(p), st = await get(p, S), pe = await get(p, P), t = await get(p, A);
-      check(`${p}: khách → chuyển hướng (không 200)`, isRedirect(g.status), g);
-      check(`${p}: học sinh → chuyển hướng, không nằm lại trang gia sư`, isRedirect(st.status) && !st.loc.includes("/de-thi"), st);
-      check(`${p}: gia sư chờ duyệt → ${TUTOR_PENDING_PATH}`, isRedirect(pe.status) && pe.loc.includes(TUTOR_PENDING_PATH), pe);
-      check(`${p}: ĐỐI CHỨNG gia sư đã duyệt → 200 (không bị đá đi)`, t.status === 200, t);
+      check(`${p}: khách → chuyển hướng (3xx hoặc NEXT_REDIRECT), không lộ nội dung gia sư`, isRedirect(g) && !g.leaks, g);
+      check(`${p}: học sinh → chuyển hướng, không nằm lại trang gia sư`, isRedirect(st) && !st.loc.includes("/de-thi") && !st.leaks, st);
+      check(`${p}: gia sư chờ duyệt → ${TUTOR_PENDING_PATH}`, isRedirect(pe) && pe.loc.includes(TUTOR_PENDING_PATH) && !pe.leaks, pe);
+      check(`${p}: ĐỐI CHỨNG gia sư đã duyệt → 200 và KHÔNG bị đá đi`, t.status === 200 && t.loc === "", t);
     }
   }
 
@@ -144,8 +149,11 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
   {
     const hop = async (path: string) => {
       const res = await fetch(BASE + path, { redirect: "manual", headers: { cookie: await cookieFor(A) } });
-      await res.arrayBuffer();
-      return { status: res.status, loc: new URL(res.headers.get("location") ?? "x:", BASE).pathname };
+      const body = await res.text();
+      // loading.tsx của vỏ gia sư làm redirect() của trang thành 200 + NEXT_REDIRECT trong luồng (xem ghi chú ở phần Cổng trang).
+      const m = /NEXT_REDIRECT;(?:replace|push);([^;"\\]+);(\d+);/.exec(body);
+      const raw = res.headers.get("location") || (m ? decodeURIComponent(m[1]) : "x:");
+      return { status: res.status, kind: m ? Number(m[2]) : res.status, loc: new URL(raw, BASE).pathname };
     };
     const cases: [string, string][] = [
       [`/lop-cua-toi/bai-tap/quiz/${examA}`, `/lop-cua-toi/de-thi/${examA}`],
@@ -156,13 +164,14 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
     ];
     for (const [from, to] of cases) {
       const h1 = await hop(from);
-      check(`${from} → 307 ${to}`, h1.status === 307 && h1.loc === to, h1);
+      check(`${from} → 307 ${to}`, (h1.status === 307 || h1.kind === 307) && h1.loc === to, h1);
       const h2 = await hop(to);
       check(`  đích ${to} không chuyển tiếp nữa (200, không vòng lặp)`, h2.status === 200, h2);
     }
     const stu = await fetch(BASE + `/lop-cua-toi/bai-tap/quiz/${examA}`, { redirect: "manual", headers: { cookie: await cookieFor(S) } });
-    await stu.arrayBuffer();
-    check("đường cũ với học sinh: cổng gia sư chạy TRƯỚC khi chuyển (không dẫn học sinh sang /de-thi)", !(stu.headers.get("location") ?? "").includes("/de-thi"), stu.headers.get("location"));
+    const stuBody = await stu.text();
+    const stuLoc = (stu.headers.get("location") ?? "") + (/NEXT_REDIRECT;[a-z]+;([^;"]+);/.exec(stuBody)?.[1] ?? "");
+    check("đường cũ với học sinh: cổng gia sư chạy TRƯỚC khi chuyển (không dẫn học sinh sang /de-thi)", !decodeURIComponent(stuLoc).includes("/de-thi"), stu.headers.get("location"));
   }
 
   section("KNOWN-ISSUE (có sẵn): GET /api/exams/[id] với đề NHÁP — chỉ ghi lại, không làm đỏ");

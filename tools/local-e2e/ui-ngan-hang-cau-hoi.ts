@@ -115,7 +115,7 @@ const FAKE_PARSE = {
   await sp2.route("**/api/tutor/ngan-hang/thong-ke**", r => failStats ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Máy chủ đang bận, thử lại sau ít phút." }) }) : r.continue());
   await sp2.goto(`${BASE}${NH}`, { waitUntil: "networkidle", timeout: 120000 });
   await sp2.getByText("Chưa tải được số liệu").waitFor({ timeout: 60000 });
-  check("lỗi: câu tiếng Việt từ máy chủ + nút 'Thử lại' (role=alert), không trắng trang", /Máy chủ đang bận/.test(await sp2.getByRole("alert").innerText()) && await sp2.getByRole("button", { name: "Thử lại" }).isVisible());
+  check("lỗi: câu tiếng Việt từ máy chủ + nút 'Thử lại' (role=alert), không trắng trang", /Máy chủ đang bận/.test(await sp2.locator('[role="alert"]:not(#__next-route-announcer__)').innerText()) && await sp2.getByRole("button", { name: "Thử lại" }).isVisible());
   failStats = false;
   await sp2.getByRole("button", { name: "Thử lại" }).click();
   await sp2.getByRole("region", { name: /Bảng số câu theo chương và mức/ }).waitFor({ timeout: 60000 });
@@ -147,10 +147,10 @@ const FAKE_PARSE = {
   check("tab dải 'Ngân hàng câu hỏi' vẫn sáng ở trang nhập Word", (await wp.locator("nav[aria-label^='Trang của'] [aria-current=page]:visible").innerText().catch(() => "")).includes("Ngân hàng câu hỏi"));
   const dir = mkdtempSync(join(tmpdir(), "nh-ui-"));
   writeFileSync(join(dir, "de.pdf"), "x");
-  await wp.getByLabel("Chọn tệp Word").setInputFiles(join(dir, "de.pdf"));
-  check("tệp không phải .docx → báo định dạng chưa đúng, không nhận", /chưa đúng định dạng/.test(await wp.getByRole("alert").first().innerText()) && await wp.getByRole("button", { name: "Đọc tệp và xem lại" }).isDisabled());
+  await wp.locator('input[type="file"][accept=".docx"]').setInputFiles(join(dir, "de.pdf"));
+  check("tệp không phải .docx → báo định dạng chưa đúng, không nhận", /chưa đúng định dạng/.test(await wp.locator('[role="alert"]:not(#__next-route-announcer__)').first().innerText()) && await wp.getByRole("button", { name: "Đọc tệp và xem lại" }).isDisabled());
   writeFileSync(join(dir, "De_Toan12.docx"), "PK-gia");
-  await wp.getByLabel("Chọn tệp Word").setInputFiles(join(dir, "De_Toan12.docx"));
+  await wp.locator('input[type="file"][accept=".docx"]').setInputFiles(join(dir, "De_Toan12.docx"));
   await wp.getByRole("button", { name: "Đọc tệp và xem lại" }).click();
   check("đang đọc: nút khoá và đổi chữ 'Đang đọc tệp…'", await wp.getByRole("button", { name: "Đang đọc tệp…" }).isDisabled().catch(() => false));
   await wp.getByText("5 câu đã đọc").waitFor({ timeout: 60000 });
@@ -206,10 +206,10 @@ const FAKE_PARSE = {
     ? r.fulfill({ status: 413, contentType: "application/json", body: JSON.stringify({ error: "Tệp lớn hơn 4 MB. Cô tách thành các tệp nhỏ hơn.", code: "TOO_LARGE" }) })
     : r.fulfill({ json: { ...FAKE_PARSE, questions: [], stats: { total: 0, byType: {}, withAnswer: 0, withImage: 0, withFormulaUnread: 0 }, warnings: [] } }));
   await ep.goto(`${BASE}${NH}/nhap-word`, { waitUntil: "networkidle", timeout: 120000 });
-  await ep.getByLabel("Chọn tệp Word").setInputFiles(join(dir, "De_Toan12.docx"));
+  await ep.locator('input[type="file"][accept=".docx"]').setInputFiles(join(dir, "De_Toan12.docx"));
   await ep.getByRole("button", { name: "Đọc tệp và xem lại" }).click();
   await ep.getByText("Chưa đọc được tệp").waitFor({ timeout: 60000 });
-  check("lỗi 413: câu tiếng Việt của máy chủ + nút 'Thử lại'; vẫn ở bước 1 (không mất tệp đã chọn)", /lớn hơn 4 MB/.test(await ep.getByRole("alert").innerText()) && await ep.getByRole("button", { name: "Thử lại" }).isVisible() && await ep.getByText(/Đã chọn: De_Toan12\.docx/).isVisible());
+  check("lỗi 413: câu tiếng Việt của máy chủ + nút 'Thử lại'; vẫn ở bước 1 (không mất tệp đã chọn)", /lớn hơn 4 MB/.test(await ep.locator('[role="alert"]:not(#__next-route-announcer__)').innerText()) && await ep.getByRole("button", { name: "Thử lại" }).isVisible() && await ep.getByText(/Đã chọn: De_Toan12\.docx/).isVisible());
   mode = "rong";
   await ep.getByRole("button", { name: "Thử lại" }).click();
   await ep.getByText("Chưa đọc được câu nào").waitFor({ timeout: 60000 });
@@ -259,7 +259,7 @@ const FAKE_PARSE = {
   await mp.goto(`${BASE}${NH}/nhap-word?nut=${ch1.id}`, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByRole("heading", { name: "Nhập câu hỏi từ Word", level: 1 }).waitFor({ timeout: 90000 });
   check("390px nhập Word bước 1: không tràn ngang; nút ≥44px", await noOverflow(mp) && (await smallTargets(mp)).length === 0, await smallTargets(mp));
-  await mp.getByLabel("Chọn tệp Word").setInputFiles(join(dir, "De_Toan12.docx"));
+  await mp.locator('input[type="file"][accept=".docx"]').setInputFiles(join(dir, "De_Toan12.docx"));
   await mp.getByRole("button", { name: "Đọc tệp và xem lại" }).click();
   await mp.getByText("5 câu đã đọc").waitFor({ timeout: 60000 });
   const mlist = mp.getByRole("list", { name: "Các câu đã đọc" });
