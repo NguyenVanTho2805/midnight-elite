@@ -665,6 +665,21 @@ Nguồn: phản hồi của người dùng thử (3 mục A + 10 mục B) do Th�
 - **Giới hạn:** chưa chạy `ui-role-everything` / `ui-links-everywhere` (rất dài, cần `/etc/hosts` — đã thêm trên máy cloud nhưng chưa chạy); chưa thử trên Android/iPhone thật; ảnh chụp ở `scratchpad/shots/lop-nhieu-lop-*.png`. Không đụng tiền, dữ liệu trẻ em hay schema.
 - **Chờ Thọ (đã ghi ở sheet):** Q14–Q16 (liên kết phụ huynh bằng SĐT + mã, SMS) chặn NC2-044/045 — mới phân tích, CHƯA viết mã; Q17 (sửa `kin-tokens.css`) chặn NC2-052; Q18 (góp ý "không cần thu gọn" nói về mục nào); Q19 (nguồn YouTube / bài Facebook) chưa chốt — NC2-046 và NC2-051 mới làm giai đoạn 1 theo mặc định (video do quản trị chọn, bài Facebook dán tay); tự tìm YouTube và nối Graph API chưa làm; NC2-043 đã làm theo cách hiểu "edit" = lịch cá nhân, chờ Thọ xác nhận; NC2-047 chờ cho phép tên miền forumflashstudy.com hoặc ảnh chụp; NC2-049 chờ ảnh tham chiếu; NC2-050 đã có công cụ, chờ Thọ / quản trị nhập công thức thật kèm nguồn; NC2-053 đã làm (xem trên).
 
+## BU-03 (Bigupdate) — Đề thi: ngân hàng câu hỏi, ma trận đề, giao đề, kết quả — LÀM ĐỦ P1+P2+P3 phần mã ngày 02/11 (test API/giao diện CHƯA CHẠY)
+Nhánh `claude/bu-03-de-thi` (đã push). Commit: P1 `8a27689` · P2 `97d95e1` · P3 `8e8aba3` · test API/quyền viết `6bba732` · sửa sau rà soát `3a45007`.
+- **Vì sao:** gia sư soạn đề từ tệp Word có sẵn, lưu vào ngân hàng, dựng đề theo ma trận, giao cho lớp và xem kết quả; không phải gõ lại từng câu và không cần AI để đọc đề.
+- **P1 — LÀM ĐỦ:** nhập Word kiểu Azota **không dùng AI** (đọc cấu trúc tệp, không gửi nội dung đi đâu); ngân hàng câu hỏi theo yêu cầu cần đạt (YCCĐ); thống kê chương × mức độ; lưu nhiều câu một lượt; giao diện ngân hàng câu hỏi.
+- **P2 — LÀM ĐỦ:** ma trận đề; bốc / đổi / bốc lại câu; đảo câu và đảo đáp án; tạo N mã đề (101…); lưu ma trận; dựng đề từ tệp gốc; gộp luồng soạn đề vào vỏ gia sư; đường cũ (307) vẫn chạy.
+- **P3 — LÀM ĐỦ:** giao đề (chế độ, số lượt làm, mật khẩu lưu dạng băm); kết quả 5 khối; bảng điểm; xuất Excel; giao diện Giao đề / Kết quả.
+- **Test đã chạy, xanh:** 11 bài thuần (khoảng 500 kiểm, `tsx`). Số từng bài lấy ở nhật ký chạy, chưa chép vào đây.
+- **Test viết nhưng CHƯA CHẠY (không tính là xanh):** `t-bu03-quyen`, `t-bank-word-import`, `t-blueprint`, `t-exam-variants`, `t-exam-source-file`, `t-assign`, `t-exam-results`, `t-exam-results-xlsx`, `ui-ngan-hang-cau-hoi`, `ui-ngan-hang-de`, `ui-giao-de`. Chưa chạy thử trên trình duyệt.
+- **Rà soát độc lập (`kin-ra-soat`):** 0 P1, 4 P2. Ba đã sửa ở `3a45007`: tranh nhau khi tạo mã đề / phát hành; xoá nhóm mã đề; hạn mức phân tích Word (kèm độ sâu docx, magic ảnh, cờ `truncated`). Cái thứ tư chính là việc chưa chạy test API / giao diện ở trên.
+- **Nợ P3 (chưa sửa):** query string mất khi 307 ở `bai-tap/**`; có đệm `'` đầu ô trong Excel; `saveManyToBank` không nguyên tử; `GET /api/exams/[id]` lộ metadata đề nháp (có sẵn từ trước); `gan-de` cho ghi đè (đặc tả ghi 409); giao diện chưa dùng cờ `truncated`.
+- **Lỗi có sẵn:** `GET /api/exams/[id]` lộ metadata nháp (nêu trên). Chưa chạy lại bộ đỏ có sẵn nào khác.
+- **Giới hạn còn lại / chưa làm:** P1b MathType (công thức chỉ thành nhãn ⟦công thức⟧ và **chặn phát hành**). Đề nhiều mã, giao theo link và ép khung giờ phía học sinh chờ BU-04 / D2 (cờ `VARIANT_STUDENT_SUPPORT`, `AUDIENCE_LINK_READY` = false).
+- **Cờ ĐỔI NỀN nhẹ:** `package.json` thêm `jszip`, `@xmldom/xmldom` (đã có gián tiếp, cùng phiên bản).
+- **Việc của Thọ:** chạy 11 bài API / giao diện nói trên (cần DB thật + Chromium) trước khi merge; duyệt cờ ĐỔI NỀN; quyết định có sửa P3 nợ trong BU này hay để sau; kiểm tay luồng Word → ngân hàng → ma trận → giao đề trên máy thật.
+
 ## Không làm (chờ Thọ / luật sư / Thanh)
 PH-208, PH-211, PH-217..222, PH-226 (trẻ em / cộng đồng, chờ PH-225); PH-224 (ngưỡng bậc thành thạo chờ Thanh);
 nối "không tính phí" của báo nghỉ vào phiếu học phí (GD-25, tiền); NV-184 (học bổng theo ngưỡng — Thanh ghi hoãn 02/10, liên quan tiền); NV-190 và AS-198 (việc của người, không phải code).
