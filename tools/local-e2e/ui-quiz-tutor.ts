@@ -44,7 +44,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await pg.getByLabel("Lớp (chọn sau cũng được)").selectOption({ label: "Toán 9 (soạn quiz)" });
   await pg.getByRole("button", { name: "Tạo và soạn câu hỏi" }).click();
   await pg.waitForURL(/\/lop-cua-toi\/de-thi\/quiz-/, { timeout: 60000 });
-  const qid = pg.url().split("/quiz/")[1].split(/[?#]/)[0];
+  const qid = pg.url().split("/de-thi/")[1].split(/[?#]/)[0];
   await pg.getByRole("heading", { name: "Quiz thử UI · Phương trình bậc hai", level: 1 }).waitFor({ timeout: 60000 });
   check("quiz mới là BẢN NHÁP, chưa có câu: trạng thái rỗng có lời giải thích + việc làm tiếp", await pg.getByText("Bản nháp · chưa phát hành").first().isVisible() && await pg.getByText("Quiz chưa có câu nào").isVisible() && await pg.getByRole("button", { name: "Thêm câu đầu tiên" }).isVisible());
 
@@ -131,7 +131,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await pg.getByRole("button", { name: "Tạo phiên bản mới" }).click();
   await pg.waitForURL(u => /\/de-thi\/quiz-/.test(u.toString()), { timeout: 60000 });
   await pg.getByText("Bản đề xuất v2").waitFor({ timeout: 60000 });
-  const v2id = pg.url().split("/quiz/")[1].split(/[?#]/)[0];
+  const v2id = pg.url().split("/de-thi/")[1].split(/[?#]/)[0];
   const v2db = await prisma.exam.findUnique({ where: { id: v2id } });
   check("sang bản nháp v2 (cùng chuỗi, nháp, có lý do); v1 còn nguyên", !!v2db && v2db.isDraft && v2db.rootExamId === "ui-q-v1" && v2db.versionNo === 2 && v2db.versionNote === "Câu 2 sai đáp án gốc" && (await prisma.examQuestion.count({ where: { examId: "ui-q-v1" } })) === 2 && (await prisma.examAttempt.count({ where: { examId: "ui-q-v1" } })) === 1);
   check("trong v2 có nút Sửa (bản nháp sửa tự do)", await pg.getByRole("button", { name: "Sửa câu 2" }).isVisible());
@@ -212,7 +212,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await shot(ip, "quiz-nhap-de-ra-soat-1280");
   await ip.getByRole("button", { name: "Lưu bản nháp" }).click();
   await ip.waitForURL(u => /\/de-thi\/quiz-/.test(u.toString()), { timeout: 60000 });
-  const impId = ip.url().split("/quiz/")[1].split(/[?#]/)[0];
+  const impId = ip.url().split("/de-thi/")[1].split(/[?#]/)[0];
   await eventually("bản nháp nhập từ tệp: 2 câu, là bản nháp, nhật ký ghi tên tệp", async () => {
     const e = await prisma.exam.findUnique({ where: { id: impId }, include: { examQuestions: true } });
     const log = await prisma.examChangeLog.findFirst({ where: { examId: impId, kind: "import" } });

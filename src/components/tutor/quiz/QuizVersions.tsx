@@ -37,7 +37,7 @@ function Card({ v, role }: { v: Version; role: "live" | "draft" }) {
   return (
     <section aria-label={`Phiên bản v${v.versionNo}`} className={`min-w-0 rounded-[var(--kin-bo-md)] p-6 ${role === "draft" ? "bg-[var(--kin-nen-bang)]" : "border border-[var(--kin-vien-thuong)]"}`}>
       <h3 className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">v{v.versionNo} · {role === "draft" ? "Bản đề xuất" : v.status === "superseded" ? "Đã thay" : "Đã phát hành"}</h3>
-      <KinStatus tone={s.tone} className="mt-2">{role === "draft" ? STATUS.draft.text : s.text}</KinStatus>
+      <KinStatus tone={s.tone} className="mt-2 !whitespace-normal max-w-full">{role === "draft" ? STATUS.draft.text : s.text}</KinStatus>
       <dl className="mt-4 text-[length:var(--kin-co-goc)]">
         {([
           ["Mở đề", `${v.date} · ${v.time}`],

@@ -100,8 +100,8 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   await shot(pg, "quiz-nhap-excel");
   for (const i of [0, 1]) { await pg.locator("[data-import-q]").nth(i).getByRole("button", { name: /Sửa câu/ }).click(); await pg.getByLabel(/Tôi đã đối chiếu câu này/).check(); await pg.getByRole("button", { name: "Xác nhận câu" }).click(); await pg.getByRole("button", { name: /Sửa câu \d/ }).first().waitFor({ timeout: 15000 }); }
   await pg.getByRole("button", { name: "Lưu bản nháp" }).click();
-  await pg.waitForURL(/\/lop-cua-toi\/bai-tap\/quiz\/quiz-/, { timeout: 60000 });
-  const newId = pg.url().split("/quiz/")[1].split(/[?#]/)[0];
+  await pg.waitForURL(/\/lop-cua-toi\/de-thi\/quiz-/, { timeout: 60000 });
+  const newId = pg.url().split("/de-thi/")[1].split(/[?#]/)[0];
   const saved = await prisma.examQuestion.findMany({ where: { examId: newId }, orderBy: { order: "asc" }, include: { options: true } });
   check("DB: bản nháp 2 câu — MC (đáp án B) và MC_MULTI (2 ô đúng)", saved.length === 2 && saved[0].type === "MC" && saved[0].options.filter(o => o.isCorrect).map(o => o.text).join() === "2" && saved[1].type === "MC_MULTI" && saved[1].options.filter(o => o.isCorrect).length === 2, saved.map(q => [q.type, q.options.map(o => o.isCorrect)]));
   check("đề mới là BẢN NHÁP (học sinh chưa thấy)", (await prisma.exam.findUnique({ where: { id: newId } }))!.isDraft === true);

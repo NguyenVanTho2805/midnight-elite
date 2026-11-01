@@ -93,9 +93,10 @@ import { regradeAttempt } from "@/lib/examGrading";
   await p2.goto(url, { waitUntil: "networkidle", timeout: 120000 });
   await p2.getByText("Đề này không phải của cô").waitFor({ timeout: 60000 });
   check("không lộ tên học sinh / tên đề cho gia sư khác", !/Gia Bảo|Ôn tập tổng hợp/.test(await p2.locator("body").innerText()));
-  await p2.getByRole("link", { name: "Về Bài tập" }).click();
-  await p2.waitForURL(/\/lop-cua-toi\/bai-tap$/, { timeout: 60000 });
-  check("'Về Bài tập' đi tới trang Bài tập", true);
+  await p2.getByRole("link", { name: "Về Đề thi" }).click();
+  await p2.waitForURL(/\/lop-cua-toi\/de-thi$/, { timeout: 60000 });
+  // BU-03: Chấm quiz thuộc nhóm Đề thi nên liên kết quay lại là 'Về Đề thi' → /lop-cua-toi/de-thi (thay đổi có chủ đích)
+  check("'Về Đề thi' đi tới trang Đề thi", true);
 
   section("Trang Bài tập của gia sư chủ: đề hiện 'Chờ chấm' và có lối vào chấm");
   const lp = await ctx.newPage(); watch(lp);

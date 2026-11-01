@@ -264,7 +264,7 @@ export default function QuizEditor({ id }: { id: string }) {
                         <div className="min-w-0">
                           <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] break-words"><span className="font-medium">Câu {i + 1}.</span> <MathText text={q.text.length > 220 ? q.text.slice(0, 220) + "…" : q.text} /></p>
                           <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{QUIZ_TYPE_LABEL[q.type]} · {fmtPoints(q.points)} điểm · Đáp án: {answerText(q)}</p>
-                          <KinStatus tone={v.ok ? "xong" : "loi"} className="mt-1">{v.message}</KinStatus>
+                          <KinStatus tone={v.ok ? "xong" : "loi"} className="mt-1 !whitespace-normal max-w-full">{v.message}</KinStatus>
                         </div>
                         <div className="flex flex-wrap gap-2 sm:justify-end">
                           {!locked && <>
@@ -357,7 +357,7 @@ export default function QuizEditor({ id }: { id: string }) {
                 <div className="mt-4 space-y-3">
                   {problems.length === 0
                     ? <KinStatus tone="xong"><span role="status">Đủ điều kiện phát hành.</span></KinStatus>
-                    : <ul aria-label="Việc còn lại trước khi phát hành" className="space-y-2">{problems.map((p, i) => <li key={i}><KinStatus tone="loi">{p}</KinStatus></li>)}</ul>}
+                    : <ul aria-label="Việc còn lại trước khi phát hành" className="space-y-2">{problems.map((p, i) => <li key={i}><KinStatus tone="loi" className="!whitespace-normal max-w-full">{p}</KinStatus></li>)}</ul>}
                   <KinButton onClick={() => void publish()} disabled={problems.length > 0} loading={busy === "publish"} loadingLabel="Đang phát hành…">{exam.versionNo > 1 ? `Phát hành v${exam.versionNo}` : "Phát hành quiz"}</KinButton>
                   <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Phát hành xong học sinh trong lớp mới thấy quiz. Bản nháp thì học sinh không thấy.</p>
                 </div>
