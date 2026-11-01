@@ -913,6 +913,9 @@ model User {
   // PH-212: quản trị khoá hồ sơ giả / bị báo cáo → hồ sơ công khai trả 404, gia sư vẫn dùng sổ lớp bình thường.
   profileLockedAt   DateTime?
   profileLockReason String?   @db.Text
+  // BU-06 (02/11/2026): ảnh bìa + video giới thiệu (link YouTube) cho /mentor/[id]. Chỉ thêm, nullable.
+  coverUrl          String?
+  introVideoUrl     String?
 
   sessionPlans   SessionPlan[]        @relation("SessionPlanTutor")
   profileVisits  ProfileVisit[]       @relation("ProfileVisitTutor")
