@@ -8,6 +8,8 @@ import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { FEE_MODE_LEGACY, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
 import { courseFor, type MediaViewer } from "@/lib/mediaAccess";
+import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
+import { loadFeeRateCourseIds } from "@/lib/enrollServer";
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,7 +59,12 @@ export async function GET(req: NextRequest) {
     // Link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) chỉ đi tới quản lý lớp và học viên đang học: danh sách công khai
     // (trang chủ, danh mục) trả cả dòng Course nên trước đây khách nào cũng lấy được qua DevTools.
     const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
-    return NextResponse.json(courses.map(c => courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c)));
+    // BU-01: `isFree` tính sẵn bằng isFreeClass (một truy vấn cho cả trang) để mọi nơi hiện nhãn "Miễn phí" dùng cùng một điều kiện.
+    const rated = await loadFeeRateCourseIds(courses.map(c => c.id));
+    return NextResponse.json(courses.map(c => ({
+      ...courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c),
+      isFree: isFreeClass({ price: c.price, tag: c.tag, hasFeeRate: rated.has(c.id) }),
+    })));
   } catch (e) {
     console.error("[GET /api/courses]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -73,7 +80,7 @@ export async function POST(req: NextRequest) {
     const allowed = [
       "id","name","adminName","shortTitle","category","instructor",
       "teacherAvatar","openDate","types","tag","tagColor","bg","strip",
-      "introVideo","price","originalPrice","lessons","hours","status",
+      "introVideo","price","originalPrice","lessons","hours","status","joinPolicy",
     ];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
@@ -97,6 +104,16 @@ export async function POST(req: NextRequest) {
       const v = validateFeeSetup({ mode: body.feeMode, rate: body.feeRate, sessionMinutes: body.feeSessionMinutes });
       if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
       feeSetup = v.value;
+    }
+
+    // BU-01: cách vào lớp. "open" (vào ngay) chỉ cho lớp miễn phí: price 0 + dấu "Miễn phí" + không nhập đơn giá lúc tạo.
+    if ("joinPolicy" in data) {
+      const jp = parseJoinPolicy(data.joinPolicy);
+      if (!jp.ok) return NextResponse.json({ error: jp.error }, { status: 400 });
+      if (jp.value === "open" && !canUseOpenPolicy({ price: Number(data.price ?? 0), tag: typeof data.tag === "string" ? data.tag : null, hasFeeRate: !!feeSetup })) {
+        return NextResponse.json({ error: "Vào ngay chỉ dành cho lớp miễn phí" }, { status: 400 });
+      }
+      data.joinPolicy = jp.value ?? null;
     }
 
     // Mã trùng tên một trang cố định của KiN (vd "lich") thì trang lớp không bao giờ mở được — xem src/lib/courseIds.ts.
