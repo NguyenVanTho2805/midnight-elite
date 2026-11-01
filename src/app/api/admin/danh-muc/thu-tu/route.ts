@@ -18,6 +18,7 @@ export async function PUT(req: NextRequest) {
     try { body = await req.json(); } catch { return NextResponse.json({ error: "Yêu cầu không hợp lệ" }, { status: 400 }); }
     await syncCourseCategories();
     const result = await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_categories_order'))`;
       const cur = await tx.courseCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true } });
       const currentIds = cur.map(c => c.id);
       const v = validateOrderIds(body?.ids, currentIds);

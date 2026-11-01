@@ -69,18 +69,16 @@ import { prisma } from "@/lib/prisma";
   await pg.getByText(/Đã đổi vị trí/).waitFor({ timeout: 15000 });
   await open();
   check("nút Lên đưa về vị trí 1, giữ sau tải lại", (await names())[0] === first, await names());
-  const pub = await pg.request.get(`${ADMIN}/api/categories`);
+  const pub = await pg.request.get(`${BASE}/api/categories`);
   const order = ((await pub.json()).categories as { name: string }[]).map(c => c.name);
   check("GET /api/categories công khai theo đúng thứ tự đó", order[0] === first, order);
   await shot(pg, "admin-categories-1280");
 
-  section("Gia sư chỉ đọc");
+  section("Gia sư không vào được /admin (BU-00)");
   const tctx = await ctxFor(T, { width: 1280, height: 800 });
   const tp = await tctx.newPage();
   await tp.goto(`${BASE}/admin/khoa-hoc/danh-muc`, { waitUntil: "networkidle", timeout: 120000 });
-  await tp.locator("[data-category-row]").first().waitFor({ timeout: 90000 });
-  check("không nút Thêm, không nút tên mở panel, không tay nắm kéo", (await tp.getByRole("button", { name: "Thêm danh mục" }).count()) === 0 && (await tp.locator("[data-category-row] button").count()) === 0 && (await tp.locator('[data-category-row][draggable="true"]').count()) === 0);
-  check("có dòng 'Chỉ quản trị viên đổi được danh mục'", await tp.getByText(/Chỉ quản trị viên đổi được danh mục/).isVisible());
+  check("gia sư bị chuyển khỏi trang danh mục quản trị", !new URL(tp.url()).pathname.startsWith("/admin"), tp.url());
   await tctx.close();
 
   section("390px");

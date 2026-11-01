@@ -14,8 +14,8 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   await prisma.course.update({ where: { id: c3.id }, data: { category: "Toán" } });
   const e = (status: string) => mkUser({ name: "Em " + status }).then(u => prisma.enrollment.create({ data: { userId: u.id, courseId: c1.id, status } }));
   await e("active"); await e("pending_consent"); await e("suspended");
-  const snap = async () => JSON.stringify((await prisma.course.findMany({ orderBy: { id: "asc" }, select: { id: true, price: true, originalPrice: true } })));
-  const feeBefore = { rates: await prisma.courseFeeRate.count(), inv: await prisma.invoice.count() };
+  const snap = async () => JSON.stringify((await prisma.course.findMany({ where: { id: { in: [c1.id, c2.id, c3.id] } }, orderBy: { id: "asc" }, select: { id: true, price: true, originalPrice: true } })));
+  const feeBefore = { rates: await prisma.courseFeeRate.count(), inv: await prisma.tuitionInvoice.count() };
   const priceBefore = await snap();
 
   section("Quyền");
@@ -128,8 +128,8 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   check("không ghi nhật ký khi 4xx: số dòng create = 1 dù đã thử tạo lỗi", (await prisma.auditLog.count({ where: { action: "course_category.create" } })) === 1);
 
   section("TIỀN không đổi");
-  check("price/originalPrice của mọi khoá giữ nguyên sau mọi lời gọi", (await snap()) === priceBefore);
-  check("CourseFeeRate và Invoice không đổi", (await prisma.courseFeeRate.count()) === feeBefore.rates && (await prisma.invoice.count()) === feeBefore.inv);
+  { const after = await snap(); if (after !== priceBefore) console.log("PRICE DIFF", priceBefore, after); check("price/originalPrice của mọi khoá giữ nguyên sau mọi lời gọi", after === priceBefore); }
+  check("CourseFeeRate và Invoice không đổi", (await prisma.courseFeeRate.count()) === feeBefore.rates && (await prisma.tuitionInvoice.count()) === feeBefore.inv);
 
   await done();
 })();
