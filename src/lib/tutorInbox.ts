@@ -4,7 +4,7 @@
 //
 // Chỉ hiện việc có thật và cần gia sư ra tay (bo-cuc-outlook.md: số đỏ chỉ đếm việc cần ra tay). Không có dòng "đã xong"
 // giả; không có loại việc nào không có nguồn dữ liệu thật.
-export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "invoiceRemind" | "draft";
+export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "invoiceRemind" | "draft" | "joinRequests";
 export type InboxTone = "xong" | "cho" | "loi" | "mo";
 
 export interface InboxRow { title: string; sub: string; href?: string }
@@ -85,6 +85,12 @@ const META: Record<InboxKind, Meta> = {
     hint: "Buổi bù còn không quá 3 ngày là hết hạn. Xếp lịch cho em dùng, không thì buổi bù mất.",
     commands: [{ label: "Mở Lịch", href: "/lop-cua-toi/lich", kind: "primary" }],
     action: "Xếp lịch cho em dùng buổi bù",
+  },
+  joinRequests: {
+    urgent: false, title: n => `${n} học sinh xin vào lớp`, status: { label: "Chờ duyệt", tone: "cho" },
+    hint: "Học sinh đã gửi yêu cầu vào lớp của bạn. Mở lớp, tab Học sinh để duyệt hoặc từ chối; em chưa vào lớp cho tới khi bạn duyệt.",
+    commands: [{ label: "Mở lớp", href: "/lop-cua-toi/lop", kind: "primary" }],
+    action: "Duyệt hoặc từ chối",
   },
   reports: {
     urgent: false, title: n => `${n} báo cáo trong cộng đồng lớp`, status: { label: "Chờ xử lý", tone: "cho" },

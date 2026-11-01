@@ -1,6 +1,6 @@
 import { buildTodoItems } from "@/lib/tutorTodo";
 import { check, section, done } from "./h";
-const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0 };
+const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0, joinRequests: 0 };
 section("buildTodoItems");
 check("không việc nào → rỗng", buildTodoItems(zero).length === 0);
 const items = buildTodoItems({ ...zero, draftInvoices: 9, classReports: 3, bankPending: 1, ungraded: 5, needBankCheck: 2 });
@@ -13,4 +13,7 @@ check("tin nhắc + buổi bù sắp hết hạn là việc thường, nhiều t
 check("mỗi việc có đường dẫn", items.every(i => i.href.startsWith("/lop-cua-toi")));
 const un = buildTodoItems({ ...zero, unmarkedSessions: 4, draftInvoices: 2 });
 check("ĐX-01: buổi chưa điểm danh là việc thường, nhiều trước phiếu nháp, dẫn tới danh sách lớp", un.length === 2 && un[0].key === "unmarked" && !un[0].urgent && un[0].count === 4 && un[0].href === "/lop-cua-toi/lop" && un[1].key === "draft", un.map(i => i.key));
+const jr = buildTodoItems({ ...zero, joinRequests: 3, draftInvoices: 1 });
+check("BU-01: học sinh xin vào lớp là việc thường, nhiều trước phiếu nháp, dẫn tới danh sách lớp, nhãn không có tên em", jr[0].key === "joinRequests" && !jr[0].urgent && jr[0].count === 3 && jr[0].href === "/lop-cua-toi/lop" && jr[1].key === "draft" && !/\d{4,}|đ\b/.test(jr[0].label), jr.map(i => i.key));
+check("BU-01 (phá): joinRequests = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "joinRequests"));
 done();
