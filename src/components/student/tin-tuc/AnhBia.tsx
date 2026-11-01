@@ -10,12 +10,14 @@ export function AnhBia({ src, alt, className = "", contain = false, marker = fal
   marker?: boolean;
 }) {
   const [loi, setLoi] = useState(false);
+  // Ảnh có thể lỗi TRƯỚC khi React gắn onError (HTML dựng sẵn từ máy chủ) → kiểm lại sau khi gắn.
   if (!src || loi) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- link ngoài do quản trị nhập; không qua trình tối ưu ảnh của Next
     <img
-      src={src} alt={alt} referrerPolicy="no-referrer" loading="lazy" onError={() => setLoi(true)}
+      ref={(i) => { if (i && i.complete && i.naturalWidth === 0) setLoi(true); }} src={src} alt={alt} referrerPolicy="no-referrer" loading="lazy" onError={() => setLoi(true)}
       {...(marker ? { "data-article-cover": "" } : {})}
+      style={contain ? { maxHeight: 560 } : undefined}
       className={contain ? `h-auto max-w-full ${className}` : `h-full w-full object-cover ${className}`}
     />
   );

@@ -30,7 +30,7 @@ export function DongTin({ bai, now }: { bai: TinThe; now: Date }) {
         )}
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <ChiaSe kieu="dong" duongDan={hrefBai(bai.slug)} tieuDe={bai.title} />
-          <Link href={hrefBai(bai.slug)} className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center px-2 text-[length:var(--kin-co-goc)] font-medium" style={{ color: "var(--kin-nhan-link)" }}>Mở</Link>
+          <Link href={hrefBai(bai.slug)} data-dong-mo className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[length:var(--kin-co-goc)] font-medium" style={{ color: "var(--kin-nhan-link)" }}>Mở</Link>
         </div>
       </div>
     </article>

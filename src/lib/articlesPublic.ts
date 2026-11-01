@@ -72,22 +72,20 @@ const oneLine = (v: unknown) => (typeof v === "string" ? v.normalize("NFC").repl
 
 /**
  * Chạy `cleanArticleSource` trên MỌI hàng đọc ra: dữ liệu sửa tay lạ → bỏ coverImage / sourceUrl (+ sourceName). Cũng làm sạch coverCaption (một dòng, ≤200).
- * Ảnh bìa và nguồn được kiểm RIÊNG nhau: nguồn hỏng không làm mất ảnh hợp lệ và ngược lại.
+ * Ảnh bìa và nguồn được kiểm CHUNG (khớp t-article-source): một phần sai thì bỏ cả bộ.
  */
 export function shapeCover<T extends { coverImage?: string | null; coverCaption?: string | null; sourceUrl?: string | null; sourceName?: string | null }>(row: T): T {
   const out = { ...row };
-  if ("coverImage" in out) {
-    const c = cleanArticleSource({ coverImage: out.coverImage });
-    out.coverImage = c.ok ? c.value.coverImage : null;
+  // NC2-051 (t-article-source): bộ ba nguồn + ảnh bìa được kiểm CHUNG; một phần sai thì bỏ cả bộ (an toàn hơn đoán phần nào dùng được).
+  if ("coverImage" in out || "sourceUrl" in out || "sourceName" in out) {
+    const c = cleanArticleSource({ sourceUrl: out.sourceUrl, sourceName: out.sourceName, coverImage: out.coverImage });
+    if ("coverImage" in out) out.coverImage = c.ok ? c.value.coverImage : null;
+    if ("sourceUrl" in out) out.sourceUrl = c.ok ? c.value.sourceUrl : null;
+    if ("sourceName" in out) out.sourceName = c.ok ? c.value.sourceName : null;
   }
   if ("coverCaption" in out) {
     const cap = oneLine(out.coverCaption).slice(0, CAPTION_MAX);
     out.coverCaption = cap || null;
-  }
-  if ("sourceUrl" in out || "sourceName" in out) {
-    const s = cleanArticleSource({ sourceUrl: out.sourceUrl, sourceName: out.sourceName });
-    out.sourceUrl = s.ok ? s.value.sourceUrl : null;
-    out.sourceName = s.ok ? s.value.sourceName : null;
   }
   return out;
 }
@@ -198,7 +196,9 @@ export async function getHomeBlocks(now: Date = new Date()): Promise<HomeBlocks>
   const used = new Set(hero.map(a => a.slug));
   const blocks: HomeBlock[] = [];
   ARTICLE_BLOCKS.forEach((block, i) => {
-    const fresh = perBlock[i].filter(a => !used.has(a.slug)).slice(0, 4);
+    // Ưu tiên bài chưa lên khối nổi bật / cột phụ; nếu mục ít bài đến mức hết sạch thì vẫn hiện bài của mục (trừ bài nổi bật), kẻo mục có bài mà khối biến mất.
+    let fresh = perBlock[i].filter(a => !used.has(a.slug)).slice(0, 4);
+    if (fresh.length === 0) fresh = perBlock[i].filter(a => a.slug !== featured?.slug).slice(0, 4);
     if (fresh.length === 0) return;
     fresh.forEach(a => used.add(a.slug));
     blocks.push({ block, lead: fresh[0], items: fresh.slice(1) });

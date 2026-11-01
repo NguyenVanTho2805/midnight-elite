@@ -71,7 +71,7 @@ export default async function TinTucPage({ searchParams }: { searchParams: SP })
           </KinEmptyState>
         ) : (
           <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="min-w-0">
+            <div className="min-w-0" data-ds-muc>
               <div className="mx-auto max-w-[540px] md:hidden">{ds.map((a) => <DongTin key={a.id} bai={a} now={now} />)}</div>
               <div className="hidden md:block">
                 {lead && <TinNoiBat bai={lead} now={now} />}
