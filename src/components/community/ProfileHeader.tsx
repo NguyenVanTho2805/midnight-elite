@@ -29,7 +29,7 @@ export function ProfileHeader({ profile }: { profile: ProfileData["profile"] }) 
           <div className="flex gap-1.5"><dd className="font-semibold tabular-nums text-[var(--kin-chu-chinh)]">{profile.answerCount}</dd><dt className="text-[var(--kin-chu-mo)]">câu trả lời</dt></div>
         </dl>
         {profile.isSelf && <p className="mt-3 kc-meta">Đây là cách mọi người nhìn thấy hồ sơ của bạn.</p>}
-        <div className="mt-4"><Link href={`/mentor/${profile.id}`} className={kinButtonClass("secondary")}>Xem hồ sơ gia sư</Link></div>
+        <div className="mt-4"><Link href={`/mentor/${profile.id}`} prefetch={false} className={kinButtonClass("secondary")}>Xem hồ sơ gia sư</Link></div>
       </div>
     </header>
   );

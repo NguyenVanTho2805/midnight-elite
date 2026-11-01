@@ -40,7 +40,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   };
   const box = async (loc: any) => (await loc.first().boundingBox()) as { x: number; y: number; width: number; height: number };
   const noOverflow = (p: any) => p.evaluate(`document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1`) as Promise<boolean>;
-  const open = async (p: any, path: string) => { await p.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 }); };
+  const open = async (p: any, path: string) => { await p.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 120000 }); await p.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {}); }; // không chết nếu mạng không bao giờ yên (dev server); phần tử cần thì có waitFor riêng
 
   // ───────────────────────────── Khách, 1280
   section("Khách 1280: ba cột, thẻ kẻ 1px, hàng hành động 36px");
@@ -64,7 +64,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   const acts = (await card.locator(".kc-act").allInnerTexts()).join(" ");
   check("hàng hành động có đủ Thích · Bình luận · Lưu · Báo cáo", ["Thích", "Bình luận", "Lưu", "Báo cáo"].every(t => acts.includes(t)), acts);
   check("không cuộn ngang", await noOverflow(g));
-  const gtxt = await g.locator("body").innerText();
+  const gtxt = await g.locator("main").innerText(); // chỉ khu cộng đồng; header/nav khách (có "Tin tức") là chrome chung, không thuộc phạm vi quét
   check("không chữ về xu / ví / xếp hạng / nhắn tin trên khu này", !FORBIDDEN.test(gtxt), gtxt.match(FORBIDDEN)?.[0]);
   check("khách KHÔNG thấy bài của lớp", !gtxt.includes("Bài của lớp: chỉ lớp thấy"));
   check("tên học sinh rút gọn 'Bích T.', không lộ 'Trần Thị Bích'", gtxt.includes("Bích T.") && !gtxt.includes("Trần Thị Bích"));
