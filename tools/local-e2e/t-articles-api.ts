@@ -73,7 +73,8 @@ async function main() {
     const r = await fetch(`${BASE}/api/articles?slug=${s}`);
     check(`?slug=${s.slice(0, 20)} → 404`, r.status === 404, r.status);
     const v = await fetch(`${BASE}/api/articles/${s}/view`, { method: "POST", headers: { "user-agent": UA } });
-    check(`POST view/${s.slice(0, 20)} → 404`, v.status === 404, v.status);
+    // Đường dẫn hỏng mã hoá (%E0%A4%A) bị chính Next chặn 400 trước khi tới route → chấp nhận 400 hoặc 404; điều quan trọng là không 500 và không đếm.
+    check(`POST view/${s.slice(0, 20)} → 404 (hoặc 400 do Next chặn đường dẫn hỏng)`, v.status === 404 || v.status === 400, v.status);
   }
 
   section("4. Tham số");

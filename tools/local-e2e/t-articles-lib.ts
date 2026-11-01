@@ -62,7 +62,7 @@ check("hợp lệ giữ nguyên", ok.coverImage === "https://cdn.example.edu.vn/
 for (const evil of ["http://cdn.example.edu.vn/a.png", "javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:image/svg+xml;base64,PHN2Zz4=", "//cdn.example.edu.vn/a.png", "ftp://x.vn/a.png", "https://u:p@x.vn/a.png", "https://" + "a".repeat(1100) + ".vn/x.png", "không phải link"])
   check(`coverImage ${evil.slice(0, 40)} → null`, shapeCover({ coverImage: evil }).coverImage === null);
 const mixed = shapeCover({ coverImage: "https://cdn.example.edu.vn/a.png", sourceUrl: "javascript:alert(1)", sourceName: "Gian" });
-check("nguồn hỏng bỏ nguồn + tên nguồn, nhưng KHÔNG làm mất ảnh hợp lệ", mixed.sourceUrl === null && mixed.sourceName === null && mixed.coverImage === "https://cdn.example.edu.vn/a.png", mixed);
+check("một phần sai (nguồn) → bỏ cả bộ nguồn + ảnh bìa (khớp t-article-source, NC2-051)", mixed.sourceUrl === null && mixed.sourceName === null && mixed.coverImage === null, mixed);
 check("danh sách không có khoá sourceUrl → không thêm khoá", !("sourceUrl" in shapeCover({ coverImage: null })));
 check("coverCaption nhiều dòng / ký tự điều khiển gộp một dòng", shapeCover({ coverCaption: "Dòng 1\n\u0000Dòng\t2" }).coverCaption === "Dòng 1 Dòng 2");
 check("coverCaption dài 300 bị cắt 200", shapeCover({ coverCaption: "x".repeat(300) }).coverCaption?.length === CAPTION_MAX);

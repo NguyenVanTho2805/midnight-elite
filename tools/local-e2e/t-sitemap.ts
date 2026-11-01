@@ -2,6 +2,7 @@
 // Có: bài đang hiển thị, khoá học status=true, trang tĩnh. Không có: nháp, lên lịch tương lai, khoá ẩn, /admin, /api, /student, /lop-cua-toi, /thi-thu. ≤ 5000 mục.
 import { api, mkSuper, wipe, check, section, done, BASE } from "./h";
 import { prisma } from "@/lib/prisma";
+import { request as httpRequest } from "node:http";
 
 (async () => {
   await wipe();
@@ -40,7 +41,12 @@ import { prisma } from "@/lib/prisma";
   check("200, có dòng Sitemap: …/sitemap.xml", rb.status === 200 && /^Sitemap: https:\/\/[^\s]+\/sitemap\.xml$/m.test(rb.text), rb.text.slice(0, 200));
   for (const p of ["/admin", "/api/", "/student", "/lop-cua-toi", "/phu-huynh", "/xem-tai-lieu", "/xac-", "/dat-lai-mat-khau"]) check(`Disallow ${p}`, new RegExp(`^Disallow: ${p.replace(/[/-]/g, "\\$&")}\\s*$`, "m").test(rb.text));
   check("cho phép /", /^Allow: \/\s*$/m.test(rb.text));
-  const ad = await fetch(`${BASE}/robots.txt`, { headers: { host: "admin.midnightelite-edu.com" } }).then(r => r.text()).catch(() => "");
+  // fetch (undici) bỏ qua header Host tự đặt → dùng node:http để thật sự gửi Host của tên miền admin.
+  const ad = await new Promise<string>((res) => {
+    const u = new URL(BASE);
+    const rq = httpRequest({ host: u.hostname, port: u.port, path: "/robots.txt", headers: { host: "admin.midnightelite-edu.com" } }, (r) => { let b = ""; r.on("data", (c) => (b += c)); r.on("end", () => res(b)); });
+    rq.on("error", () => res("")); rq.end();
+  });
   check("tên miền admin: Disallow: / (header Host giả; nếu trình chạy chặn đổi Host thì bài này cần chạy qua ADMIN trong ui.ts)", /^Disallow: \/\s*$/m.test(ad) && !/^Allow:/m.test(ad), ad.slice(0, 120));
 
   await done();

@@ -37,7 +37,8 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
     check(`/tin-tuc/${s}: ĐỒNG DẠNG với slug không tồn tại (status ${miss.status}, độ dài thân lệch ≤ 2%)`, r.status === miss.status && Math.abs(r.text.length - miss.text.length) / miss.text.length < 0.02, { a: r.text.length, b: miss.text.length });
   }
   const alias = await get("/student/tin-tuc");
-  check("/student/tin-tuc (khách) → về đăng nhập, không lộ gì", alias.status >= 300 && alias.status < 400 && leak(alias.text).length === 0, alias.status);
+  // /student/tin-tuc là redirect("/tin-tuc") nằm trong vỏ (student) — khách có thể nhận 200 + chuyển hướng phía máy khách; điều cần giữ: không lộ bài nháp/lịch.
+  check("/student/tin-tuc (khách) → không lộ gì (3xx hoặc 200 chuyển hướng)", alias.status < 400 && leak(alias.text).length === 0, alias.status);
   const asStu = await fetch(`${BASE}/tin-tuc/bi-mat-lich`, { redirect: "manual", headers: { "user-agent": UA, cookie: await cookieFor(ST) } });
   check("học sinh đăng nhập mở bài lịch = 404 (học sinh không có quyền xem trước)", asStu.status === 404);
   await prisma.article.update({ where: { id: lich.id }, data: { publishedAt: new Date(now - 1000) } });
@@ -54,7 +55,7 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
   section("2. Slug lạ (trang HTML + API)");
   for (const s of ["%00", "a%00b", "..%2F..%2Fetc%2Fpasswd", "%2e%2e/%2e%2e", "x".repeat(500), "%E0%A4%A", "%27%3B%20DROP%20TABLE%20articles%3B--", "%3Cscript%3Ealert(1)%3C%2Fscript%3E", "%20ra-mat", "ra-mat%20", "RA-MAT", "ra-mat/", "ra-mat%2F..%2Fra-mat-2"]) {
     const r = await get(`/tin-tuc/${s}`);
-    check(`GET /tin-tuc/${s.slice(0, 24)} → 404 (hoặc 3xx chuẩn hoá), không 500, không phản chiếu chữ nguy hiểm`, r.status !== 500 && (r.status === 404 || (r.status >= 300 && r.status < 400)) && !r.text.includes("<script>alert(1)</script>"), r.status);
+    check(`GET /tin-tuc/${s.slice(0, 24)} → 404 (hoặc 3xx chuẩn hoá), không 500, không phản chiếu chữ nguy hiểm`, r.status !== 500 && (r.status === 404 || r.status === 400 || (r.status >= 300 && r.status < 400)) && !r.text.includes("<script>alert(1)</script>"), r.status);
     const a = await api("GET", `/api/articles?slug=${s}`);
     check(`GET /api/articles?slug=${s.slice(0, 24)} không 500`, a.status !== 500, a.status);
     const v = await fetch(`${BASE}/api/articles/${s}/view`, { method: "POST", headers: { "user-agent": UA } });
