@@ -1,22 +1,13 @@
-// BU-03 — CHỖ GIỮ cho màn Giao đề (P3, vòng sau): tut-dev sẽ thay bằng GiaoDe.tsx. Có mặt để nút "Giao đề" ở trình soạn và ở Mã đề không dẫn tới 404.
-import Link from "next/link";
+// BU-03 P3 — Giao đề của một đề gốc: chế độ, lớp, giờ, mật khẩu, số lần, hiển thị đáp án, phát hành / đóng. useSearchParams (?lop=) → Suspense.
+import { Suspense } from "react";
 import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
-import { KinPage, KinPageHeader } from "@/components/kin/PageLayout";
-import { KinEmptyState } from "@/components/kin/EmptyState";
-import { kinButtonClass } from "@/components/kin/Button";
+import GiaoDe from "@/components/tutor/de-thi/GiaoDe";
 
 export const dynamic = "force-dynamic";
 
 export default async function GiaoDePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await redirectIfNotTutor(await getSession(), { path: `/lop-cua-toi/de-thi/${id}/giao` });
-  return (
-    <KinPage>
-      <KinPageHeader title="Giao đề" back={{ href: `/lop-cua-toi/de-thi/${id}`, label: "Về đề" }} />
-      <KinEmptyState title="Màn Giao đề đang được hoàn thiện" action={<Link href={`/lop-cua-toi/de-thi/${id}`} className={kinButtonClass("primary")}>Về trình soạn đề</Link>}>
-        Lớp, giờ làm, mật khẩu và cách hiển thị đáp án cô đặt tạm ở tab “Đáp án và phát hành” của trình soạn đề.
-      </KinEmptyState>
-    </KinPage>
-  );
+  return <Suspense fallback={null}><GiaoDe id={id} /></Suspense>;
 }

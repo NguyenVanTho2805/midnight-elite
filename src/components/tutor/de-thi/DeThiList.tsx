@@ -138,6 +138,8 @@ export default function DeThiList() {
                     <div className="flex flex-wrap gap-2 lg:justify-end">
                       {lop && <Link href={`${deThiSubHref(it.id, "giao")}?lop=${encodeURIComponent(lop)}`} className={kinButtonClass("primary")}>Giao đề này</Link>}
                       <Link href={deThiDetailHref(it.id)} className={kinButtonClass("secondary")}>Mở đề</Link>
+                      {!lop && <Link href={deThiSubHref(it.id, "giao")} className={kinButtonClass("secondary")}>Giao đề</Link>}
+                      {!lop && it.status !== "draft" && <Link href={deThiSubHref(it.id, "ket-qua")} className={kinButtonClass("secondary")}>Kết quả</Link>}
                       {!lop && <Link href={deThiSubHref(it.id, "ma-de")} className={kinButtonClass("secondary")}>Mã đề</Link>}
                     </div>
                   </li>

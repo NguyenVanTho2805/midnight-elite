@@ -202,6 +202,7 @@ export default function QuizEditor({ id }: { id: string }) {
         actions={<>
           <Link href={versionsHref(id)} className={kinButtonClass("secondary")}>Phiên bản</Link>
           <Link href={deThiSubHref(id, "ma-de")} className={kinButtonClass("secondary")}>Mã đề</Link>
+          {!exam.isDraft && <Link href={deThiSubHref(id, "ket-qua")} className={kinButtonClass("secondary")}>Kết quả</Link>}
           {!exam.supersededById && <Link href={deThiSubHref(id, "giao")} className={kinButtonClass("primary")}>Giao đề</Link>}
           {exam.isDraft && <KinButton variant="danger" onClick={() => void discardDraft()} loading={busy === "discard"} loadingLabel="Đang xoá…">{exam.versionNo > 1 ? "Bỏ đề xuất" : "Xoá nháp"}</KinButton>}
         </>}

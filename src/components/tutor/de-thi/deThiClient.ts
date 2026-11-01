@@ -263,5 +263,76 @@ export function toExamInputs(items: Parameters<typeof toBankInput>[0][]): QuizQu
 export interface ImportSaveReq { title: string; courseId?: string | null; fileName?: string; questions: QuizQuestionInput[] }
 export const importSave = (req: ImportSaveReq) => qfetch<{ id: string }>("POST", "/api/tutor/quiz/import-save", req);
 
-// ─── Chỗ mở rộng (vòng sau) ───────────────────────────────────────────────────────────────────────────────────────────────────
-// P3: giao đề (cấu hình, mode), kết quả 5 khối, Excel → /api/tutor/de-thi/[id]/giao|ket-qua/**
+// ─── P3.2 Chế độ và mặc định theo bảng của đặc tả ────────────────────────────────────────────────────────────────────────────────
+export type AnswerVisibility = "never" | "after_submit" | "after_exam_ends";
+/** Mặc định khi chọn chế độ (bảng P3.2). Đề cũ (mode=null) giữ nguyên hành vi hiện tại, không áp bảng này. */
+export const MODE_DEFAULTS: Record<ExamMode, { maxAttempts: number | null; answerVisibility: AnswerVisibility; hideAnswerForWrong: boolean; showLeaderboard: boolean; needSchedule: boolean }> = {
+  practice: { maxAttempts: null, answerVisibility: "after_submit", hideAnswerForWrong: false, showLeaderboard: false, needSchedule: false },
+  test: { maxAttempts: 1, answerVisibility: "after_exam_ends", hideAnswerForWrong: true, showLeaderboard: false, needSchedule: true },
+};
+export const MODE_BLURB: Record<ExamMode, string> = {
+  practice: "Học sinh làm lúc nào cũng được, làm lại nhiều lần, xem đáp án ngay sau khi nộp.",
+  test: "Có giờ mở và thời lượng cố định, mỗi em làm một lần, đáp án chỉ hiện khi hết giờ và ẩn đáp án đúng ở câu em làm sai.",
+};
+/** Ba mức xem điểm/đáp án của đặc tả + mức “hết giờ” (mặc định của chế độ Kiểm tra, vẫn là một giá trị của answerVisibility). */
+export type ViewLevel = AnswerVisibility | "hold";
+export const VIEW_LEVELS: { value: ViewLevel; label: string; hint: string }[] = [
+  { value: "never", label: "Không cho xem", hint: "Học sinh không thấy điểm và đáp án trong KiN. Cô đọc điểm ở trang Kết quả." },
+  { value: "after_submit", label: "Xem ngay sau khi nộp", hint: "Học sinh thấy điểm và đáp án ngay khi bấm nộp." },
+  { value: "after_exam_ends", label: "Xem khi hết giờ làm bài", hint: "Em nộp sớm vẫn phải chờ đến hết giờ mới thấy đáp án, để không lộ đề cho bạn đang làm." },
+  { value: "hold", label: "Giữ đến khi cô công bố", hint: "Học sinh chỉ thấy “đã nộp”. Điểm và đáp án hiện sau khi cô công bố ở trang Chấm." },
+];
+export const viewLevelOf = (c: Pick<GiaoCfg, "answerVisibility" | "holdUntilPublish">): ViewLevel => c.holdUntilPublish ? "hold" : c.answerVisibility;
+
+// ─── P3.3 Giao đề  (GET/PATCH/POST /api/tutor/de-thi/[id]/giao) ────────────────────────────────────────────────────────────────────
+export interface GiaoCfg {
+  mode: ExamMode | null; courseId: string | null;
+  dateKey: string | null; time: string | null; durationMin: number | null; // dateKey "YYYY-MM-DD", time "HH:mm"
+  hasPassword: boolean; // KHÔNG BAO GIỜ có mật khẩu hay mã băm
+  maxAttempts: number | null; answerVisibility: AnswerVisibility; hideAnswerForWrong: boolean; showLeaderboard: boolean; holdUntilPublish: boolean;
+  status: string; variants: number | unknown[];
+  /** Ngoài hợp đồng gốc (tut-code đã báo): số lượt làm của cả nhóm mã đề — để biết các khoá đang bị khoá. */
+  attemptCount?: number;
+}
+export const fetchGiao = (id: string) => qfetch<GiaoCfg>("GET", `/api/tutor/de-thi/${encodeURIComponent(id)}/giao`);
+/** Tập con các khoá của GiaoCfg + password (đặt chuỗi / xoá bằng null). 400 FORBIDDEN_FIELD nếu gửi price/activeGuest/guestCanTake — giao diện không bao giờ gửi. */
+export type GiaoPatch = Partial<Pick<GiaoCfg, "mode" | "courseId" | "dateKey" | "time" | "durationMin" | "maxAttempts" | "answerVisibility" | "hideAnswerForWrong" | "showLeaderboard" | "holdUntilPublish">> & { password?: string | null };
+/** 409 HAS_ATTEMPTS: đã có lượt làm → mode, courseId, durationMin bị khoá. 400 NEED_SCHEDULE: kiểm tra thiếu giờ. 403 NOT_YOUR_CLASS: lớp không phải của cô. */
+export const patchGiao = (id: string, body: GiaoPatch) => qfetch<{ warnings?: (string | { message?: string })[] } | null>("PATCH", `/api/tutor/de-thi/${encodeURIComponent(id)}/giao`, body);
+export const dongMoGiao = (id: string, action: "close" | "reopen") => qfetch<unknown>("POST", `/api/tutor/de-thi/${encodeURIComponent(id)}/giao`, { action });
+/** Các khoá bị khoá khi đã có lượt làm (đặc tả P3.3). */
+export const LOCKED_WHEN_ATTEMPTS = ["mode", "courseId", "durationMin"] as const;
+export const GIAO_ERROR_TEXT: Record<string, string> = {
+  HAS_ATTEMPTS: "Đã có học sinh làm bài nên cô không đổi được chế độ, lớp và thời lượng. Các mục còn lại vẫn sửa được.",
+  NEED_SCHEDULE: "Bài kiểm tra cần có ngày, giờ mở và thời lượng.",
+  NOT_YOUR_CLASS: "Lớp này không phải của cô.",
+  FORBIDDEN_FIELD: "Đề của gia sư không đặt giá hay mở cho khách.",
+};
+/** Kiểm trước khi gửi (cùng ý với validateAssignPatch của máy chủ, máy chủ vẫn là nơi quyết định). Trả câu tiếng Việt hoặc null. */
+export function giaoProblem(c: Pick<GiaoCfg, "mode" | "dateKey" | "time" | "durationMin" | "maxAttempts">): string | null {
+  if (c.mode && MODE_DEFAULTS[c.mode].needSchedule && (!c.dateKey || !c.time || !c.durationMin)) return "Bài kiểm tra cần có ngày, giờ mở và thời lượng.";
+  if (c.durationMin != null && (!Number.isInteger(c.durationMin) || c.durationMin < 1 || c.durationMin > 300)) return "Thời lượng từ 1 đến 300 phút.";
+  if (c.maxAttempts != null && (!Number.isInteger(c.maxAttempts) || c.maxAttempts < 1 || c.maxAttempts > 20)) return "Số lần làm từ 1 đến 20, hoặc để không giới hạn.";
+  return null;
+}
+export const deThiKetQuaHref = (id: string) => deThiSubHref(id, "ket-qua");
+
+// ─── P3.3 Kết quả  (GET …/ket-qua · …/ket-qua/bang-diem · …/ket-qua/xuat-xlsx) ───────────────────────────────────────────────────
+export interface KetQua {
+  basic: { attempts: number; students: number; avg: number | null; median: number | null; max: number | null; min: number | null; passRate: number | null; avgDurationSec: number | null };
+  distribution: { label: string; count: number }[]; // 5 khoảng: 0–<20% … 80–100%
+  frequency: { score: number; count: number }[];    // bước 0,5 trên thang 10
+  questions: { order: number; variantKey: string; correctRate: number; answered: number; avgSec: number | null; flagged: boolean }[];
+  variants: { variantNo: number; code: number; attempts: number; avg: number | null }[];
+}
+export type Chon = "dau" | "cuoi" | "cao-nhat";
+export const CHON_LABEL: Record<Chon, string> = { dau: "Lần làm đầu tiên", cuoi: "Lần làm cuối cùng", "cao-nhat": "Lần điểm cao nhất" };
+export interface BangDiemRow { attemptId: string; studentName: string; email?: string; score: number | null; submittedAt: string | null; durationSec: number | null; variantNo: number | null; tabSwitchCount: number }
+export const fetchKetQua = (id: string) => qfetch<KetQua>("GET", `/api/tutor/de-thi/${encodeURIComponent(id)}/ket-qua`);
+export const fetchBangDiem = (id: string, chon: Chon) => qfetch<{ rows: BangDiemRow[] }>("GET", `/api/tutor/de-thi/${encodeURIComponent(id)}/ket-qua/bang-diem?chon=${chon}`);
+export const xuatXlsxHref = (id: string, chon: Chon) => `/api/tutor/de-thi/${encodeURIComponent(id)}/ket-qua/xuat-xlsx?chon=${chon}`;
+/** Định dạng số kiểu Việt: dấu phẩy thập phân, tối đa một chữ số. */
+export const fmtNum = (n: number | null | undefined, digits = 1): string => n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("vi-VN", { maximumFractionDigits: digits });
+/** passRate và correctRate máy chủ trả TỈ LỆ 0–1. */
+export const fmtPct = (n: number | null | undefined): string => n == null || !Number.isFinite(n) ? "—" : `${Math.round(n * 100)}%`;
+export const fmtDur = (sec: number | null | undefined): string => sec == null || !Number.isFinite(sec) ? "—" : sec >= 3600 ? `${Math.floor(sec / 3600)} giờ ${Math.round((sec % 3600) / 60)} phút` : sec >= 60 ? `${Math.floor(sec / 60)} phút ${Math.round(sec % 60)} giây` : `${Math.round(sec)} giây`;

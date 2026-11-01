@@ -17,6 +17,7 @@ import { KinSectionHead } from "@/components/kin/SectionHead";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { dayAt } from "@/lib/baiTap";
+import { deThiListHref } from "@/components/tutor/de-thi/deThiClient";
 import { fmtPoints, validateEssayPoints, GRADE_STATE_LABEL, type GradeState, type QuizAnalytics } from "@/lib/quizGrade";
 
 interface Row {
@@ -98,14 +99,14 @@ export default function ChamQuiz({ examId }: { examId: string }) {
     const title = err.status === 403 ? "Đề này không phải của cô" : err.status === 404 ? "Không tìm thấy đề" : "Chưa tải được bài chấm";
     return (
       <KinPage>
-        <KinPageHeader title="Chấm quiz" back={{ href: "/lop-cua-toi/bai-tap", label: "‹ Bài tập" }} />
+        <KinPageHeader title="Chấm quiz" back={{ href: deThiListHref(), label: "Đề thi" }} />
         {err.status === 403 || err.status === 404
-          ? <KinEmptyState title={title} action={<Link href="/lop-cua-toi/bai-tap" className={kinButtonClass("secondary")}>Về Bài tập</Link>}>Cô chỉ chấm được quiz do chính mình tạo.</KinEmptyState>
+          ? <KinEmptyState title={title} action={<Link href={deThiListHref()} className={kinButtonClass("secondary")}>Về Đề thi</Link>}>Cô chỉ chấm được quiz do chính mình tạo.</KinEmptyState>
           : <ErrorStrip message={err.msg} onRetry={() => void load()} />}
       </KinPage>
     );
   }
-  if (!ov) return <KinPage><KinPageHeader title="Chấm quiz" back={{ href: "/lop-cua-toi/bai-tap", label: "‹ Bài tập" }} /><Skeleton /></KinPage>;
+  if (!ov) return <KinPage><KinPageHeader title="Chấm quiz" back={{ href: deThiListHref(), label: "Đề thi" }} /><Skeleton /></KinPage>;
 
   const allPublished = rows.length > 0 && ov.counts.cong_bo === rows.length;
   const tabs = [
@@ -123,7 +124,7 @@ export default function ChamQuiz({ examId }: { examId: string }) {
       <KinPageHeader
         title={ov.exam.title}
         sub={ov.exam.courseName ?? "Đề dùng chung"}
-        back={{ href: "/lop-cua-toi/bai-tap", label: "‹ Bài tập" }}
+        back={{ href: deThiListHref(), label: "Đề thi" }}
         actions={<KinStatus tone={rows.length === 0 ? "mo" : allPublished ? "xong" : "cho"}>{rows.length === 0 ? "Chưa có bài nộp" : allPublished ? "Đã công bố hết" : "Chưa công bố hết"}</KinStatus>}
       />
       <KinTabs tabs={tabs} value={tab} onChange={t => { setTab(t); setMsg(null); }} label="Các phần của bài chấm" />

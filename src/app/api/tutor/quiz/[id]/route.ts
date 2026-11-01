@@ -8,6 +8,7 @@ import { examPasswordPatch } from "@/lib/examPassword";
 import { isValidDateKey } from "@/lib/classSessions";
 import { parseHm } from "@/lib/classSessions";
 import { blockIfHasAttempts, supersededBlock, dmyFromKey, durationText, loadOwnedQuiz, logChange, rootIdOf, shapeMeta, shapeQuestionForTutor, loadQuestions, tutorOwnsCourse } from "@/lib/quizServer";
+import { variantLockedBlock } from "@/lib/deThiServer";
 import { computeExamStatus } from "@/lib/examData";
 
 const TITLE_MAX = 150;
@@ -41,6 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const got = await loadOwnedQuiz(auth.userId, id);
     if (isNextResponse(got)) return got;
+    const locked = variantLockedBlock(got.exam); if (locked) return locked; // BU-03: mã đề con không sửa trực tiếp (409 VARIANT_LOCKED)
     const sup = supersededBlock(got.exam); if (sup) return sup;
     const blocked = blockIfHasAttempts(got.attemptCount); if (blocked) return blocked;
 

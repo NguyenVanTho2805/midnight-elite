@@ -158,3 +158,11 @@ export function variantMatchesRoot(root: readonly KeyQuestion[], child: readonly
   const a = root.map(variantKey).sort(), b = child.map(variantKey).sort();
   return a.every((k, i) => k === b[i]);
 }
+
+/**
+ * Điều kiện Prisma cho danh sách "chọn quiz để thêm câu" (GET /api/tutor/quiz): chỉ đề của chính gia sư, không phải bản đã bị thay,
+ * và KHÔNG BAO GIỜ là mã đề con (nội dung suy ra từ đề gốc — thêm / sửa câu vào đó làm lệch nhóm mã đề). `editable` = chưa ai làm.
+ */
+export function pickerWhere(ownerId: string, editable: boolean) {
+  return { ownerId, supersededById: null, variantOfId: null, ...(editable ? { attempts: { none: {} } } : {}) };
+}
