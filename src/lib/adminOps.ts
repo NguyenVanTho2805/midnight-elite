@@ -96,12 +96,13 @@ const ACTION_LABEL: Record<string, string> = {
   "class_session.cancel": "Báo nghỉ buổi học", "class_session.move": "Dời buổi học", "class_session.restore": "Khôi phục buổi học",
   "attendance_session.create": "Tạo phiên điểm danh", "attendance_session.update": "Sửa phiên điểm danh", "attendance_session.delete": "Xoá phiên điểm danh",
   "bank_tx.resolve": "Đối soát giao dịch ngân hàng", "bank_tx.reverse": "Hoàn tác đối soát ngân hàng",
+  "course.bulk_update": "Đổi hàng loạt khoá học", "course_category.create": "Tạo danh mục", "course_category.rename": "Đổi tên danh mục", "course_category.delete": "Xoá danh mục", "course_category.reorder": "Đổi thứ tự danh mục",
   "payout_account.update": "Sửa tài khoản nhận tiền", "payout_account.webhook_key_rotate": "Đổi khoá webhook nhận tiền",
 };
 const RESOURCE_LABEL: Record<string, string> = {
   User: "Người dùng", Course: "Lớp", TutorSubscription: "Gói VIP gia sư", PlanConfig: "Cấu hình gói", ProOrder: "Yêu cầu gói Pro", CoinTopupRequest: "Yêu cầu nạp Coin",
   StudentProfile: "Hồ sơ học sinh", ParentLink: "Liên kết phụ huynh", Invoice: "Phiếu học phí", Enrollment: "Ghi danh", ClassInvite: "Mã mời lớp", ClassSessionChange: "Đổi buổi học",
-  TutorProfileReport: "Báo cáo hồ sơ gia sư", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng",
+  TutorProfileReport: "Báo cáo hồ sơ gia sư", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng", CourseCategory: "Danh mục khoá học",
 };
 export function auditActionLabel(action: string): string {
   if (ACTION_LABEL[action]) return ACTION_LABEL[action];
