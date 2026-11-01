@@ -5,7 +5,13 @@ import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } fro
 import { correctionSummary } from "@/lib/examCorrectionServer";
 import { scoreMultiSelect } from "@/lib/quizQuestion";
 import { loadPublishState } from "@/lib/quizPublication";
-import { resultVisibility } from "@/lib/quizRoom";
+import { attemptsGate, resultVisibility } from "@/lib/quizRoom";
+import { getMaxAttempts } from "@/lib/quizPublication";
+import { canStartByDeadline } from "@/lib/quizDeadline";
+import { getOwnDeadline } from "@/lib/quizDeadlineServer";
+import { isExamMode } from "@/lib/deThiAssign";
+import { answersOpenAtOf, startVerdict } from "@/lib/examWindow";
+import { countGroupAttempts, findInProgressInGroup, loadGroup } from "@/lib/examVariantServer";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -133,8 +139,28 @@ export async function GET(
       };
     });
 
+    // BU-04: đề gốc (mã con quy về gốc), chế độ, lúc đáp án mở, và có làm lại được không (cùng luật cổng vào đề).
+    const group = (await loadGroup(exam.id)) ?? { rootId: exam.id, ids: [exam.id], members: [] };
+    const root = group.rootId === exam.id ? exam : await prisma.exam.findUnique({ where: { id: group.rootId } });
+    const mode = isExamMode(root?.mode) ? (root!.mode as "practice" | "test") : null;
+    let canRetake = false;
+    if (root) {
+      const now = new Date();
+      const [used, resume, max, ownDue] = await Promise.all([
+        countGroupAttempts(session.userId, group.ids),
+        findInProgressInGroup(session.userId, group.ids),
+        getMaxAttempts(root.id),
+        getOwnDeadline(root.id, session.userId),
+      ]);
+      const open = root.active && !root.isDraft && !root.supersededById && (mode !== "test" || startVerdict(root, now) === "ok");
+      canRetake = open && !resume && attemptsGate({ used, max, hasInProgress: false }).canStart && canStartByDeadline(ownDue, now, false);
+    }
+
     return NextResponse.json({
       attemptId: attempt.id,
+      exam: { id: group.rootId, title: root?.title ?? exam.title, mode, showLeaderboard: root?.showLeaderboard ?? exam.showLeaderboard },
+      answersOpenAt: answersOpenAtOf(exam.answerVisibility, exam)?.toISOString() ?? null,
+      canRetake,
       score: vis.showScore ? attempt.score : null,
       held,
       pendingManual: vis.pendingManual,

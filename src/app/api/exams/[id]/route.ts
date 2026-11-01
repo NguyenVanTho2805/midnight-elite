@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
+import { rootIdOf } from "@/lib/examVariantRoute";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -11,16 +12,27 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     const { id } = await params;
-    const exam = await prisma.exam.findUnique({
+    let exam = await prisma.exam.findUnique({
       where: { id },
       include: { _count: { select: { examQuestions: true } } },
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    const isStaff = session.role === "admin";
+    // BU-04: học sinh gõ id MÃ CON thì nhận đề GỐC (không lộ mã đề / số mã). Quản trị / gia sư xem đúng đề mình hỏi.
+    if (!isStaff && exam.variantOfId) {
+      const root = await prisma.exam.findUnique({ where: { id: rootIdOf(exam) }, include: { _count: { select: { examQuestions: true } } } });
+      if (!root) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+      exam = root;
+    }
     // QZ-04: bản nháp chưa phát hành chỉ quản trị / gia sư thấy; học sinh gõ đúng địa chỉ cũng nhận 404 (không lộ tên bản nháp).
-    if (exam.isDraft && session.role !== "admin") return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    if (exam.isDraft && !isStaff) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
-    const { _count, ...rest } = exam;
-    return NextResponse.json({ ...withoutExamSecrets(rest), hasQuestions: _count.examQuestions > 0 });
+    const { _count, variantNo, variantOfId, blueprintId, ...rest } = exam;
+    return NextResponse.json({
+      ...withoutExamSecrets(rest),
+      ...(isStaff ? { variantNo, variantOfId, blueprintId } : {}), // học sinh không thấy dấu vết mã đề
+      hasQuestions: _count.examQuestions > 0,
+    });
   } catch (e) {
     console.error("[GET /api/exams/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

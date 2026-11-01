@@ -60,8 +60,7 @@ export function useRoomSession(examId: string) {
     auto.current = false; inFlight.current = false;
     setSelected(sel); setText(txt); setCluster(bool); setFlags(fl); setTabLeaves(st.tabSwitchCount ?? 0);
     setTimeUp(null); setTimeUpAt(null); setResult(null); setSubmitErr(""); setAttempt(st);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyClock]);
+  }, [applyClock, q.adopt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const start = useCallback(async (password?: string): Promise<boolean> => {
     setStartErr(""); setStarting(true);
