@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { spendCoins, InsufficientBalanceError, QUESTION_COST } from "@/lib/wallet";
 import { COIN_REASONS } from "@/lib/wallet-constants";
+import { publicName } from "@/lib/communityRules";
 
 // GET /api/questions — danh sách câu hỏi (mới nhất trước), đọc được cả khi
 // chưa đăng nhập (giống GET /api/community/threads) vì tab "Hỏi đáp" hiển
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     take:    50,
     include: {
-      author: { select: { id: true, name: true } },
+      author: { select: { id: true, name: true, role: true, adminRole: true, tutorVerified: true } },
       _count: { select: { answers: true } },
     },
   });
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     bountyPaid:   q.bountyPaid,
     status:       q.status,
     createdAt:    q.createdAt.toISOString(),
-    author:       q.author,
+    author:       { id: q.author.id, name: publicName(q.author) },
     answerCount:  q._count.answers,
     isOwn:        q.authorId === userId,
   })));

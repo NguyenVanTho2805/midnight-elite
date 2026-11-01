@@ -1,41 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
-import { canAccessThread } from "@/lib/classThreadAccess";
 import { notifyLikeAggregate } from "@/lib/notify";
+import { notificationText, threadLink } from "@/lib/communityRules";
+import { isUniqueViolation, loadAccessibleThread, notFoundThread, NO_STORE, withLock } from "@/lib/communityServer";
 
+// POST /api/community/threads/[id]/like — bật/tắt thích. An toàn khi gọi song song: các lần bấm của CÙNG người trên CÙNG bài xếp hàng
+// qua advisory lock, nên không bao giờ 500 và trạng thái cuối nhất quán.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireSession();
   if (isNextResponse(auth)) return auth;
-
   const { id: threadId } = await params;
 
-  const exists = await prisma.thread.findUnique({ where: { id: threadId }, select: { id: true, authorId: true, courseId: true } });
-  // Thread lớp: người ngoài lớp nhận 404 như không tồn tại (không lộ bài).
-  if (!exists || !(await canAccessThread(auth, exists))) return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
+  const t = await loadAccessibleThread(auth, threadId);
+  if (!t) return notFoundThread();
 
-  const existing = await prisma.threadLike.findUnique({
-    where: { userId_threadId: { userId: auth.userId, threadId } },
-  });
-
-  if (existing) {
-    await prisma.threadLike.delete({ where: { userId_threadId: { userId: auth.userId, threadId } } });
-  } else {
-    await prisma.threadLike.create({ data: { userId: auth.userId, threadId } });
-    if (exists.authorId !== auth.userId) {
-      const liker = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
-      const likerName = liker?.name ?? "Một học viên";
-      await notifyLikeAggregate(exists.authorId, {
-        type:          "thread_like",
-        link:          `/cong-dong/${threadId}`,
-        singularTitle: "Có lượt thích mới",
-        buildMessage:  count => count === 1
-          ? `${likerName} đã thích bài viết của bạn`
-          : `${likerName} và ${count - 1} người khác đã thích bài viết của bạn`,
-      });
-    }
+  let likedByMe = false;
+  let likeCount = 0;
+  try {
+    ({ likedByMe, likeCount } = await withLock(`tlike:${auth.userId}:${threadId}`, async tx => {
+      const key = { userId_threadId: { userId: auth.userId, threadId } };
+      const existing = await tx.threadLike.findUnique({ where: key });
+      if (existing) await tx.threadLike.deleteMany({ where: { userId: auth.userId, threadId } });
+      else await tx.threadLike.create({ data: { userId: auth.userId, threadId } });
+      return { likedByMe: !existing, likeCount: await tx.threadLike.count({ where: { threadId } }) };
+    }));
+  } catch (e) {
+    if (!isUniqueViolation(e)) throw e;
+    likedByMe = true; // đã có hàng (yêu cầu khác thắng) → coi như đã thích
+    likeCount = await prisma.threadLike.count({ where: { threadId } });
   }
 
-  const likeCount = await prisma.threadLike.count({ where: { threadId } });
-  return NextResponse.json({ likedByMe: !existing, likeCount });
+  // Không báo khi tự thích, khi bỏ thích, hoặc khi tác giả là tài khoản khách hệ thống.
+  if (likedByMe && t.authorId !== auth.userId && t.guestName === null) {
+    await notifyLikeAggregate(t.authorId, {
+      type: "thread_like", link: threadLink(threadId), singularTitle: notificationText("thread_like").title,
+      buildMessage: count => notificationText("thread_like", count).message,
+    });
+  }
+  return NextResponse.json({ likedByMe, likeCount }, { headers: NO_STORE });
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { addCoins, ANSWER_REWARD } from "@/lib/wallet";
 import { COIN_REASONS } from "@/lib/wallet-constants";
 import { notify } from "@/lib/notify";
+import { notificationText } from "@/lib/communityRules";
 
 // POST /api/answers/[id]/accept — chủ câu hỏi chấp nhận 1 câu trả lời, thưởng xu cho người trả lời
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,9 +45,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   if (answer.authorId !== auth.userId) {
     await notify(answer.authorId, {
-      type:    "answer_accepted",
-      title:   "Câu trả lời được chấp nhận!",
-      message: `Câu trả lời của bạn cho "${answer.question.title}" đã được chấp nhận, bạn nhận được ${ANSWER_REWARD} xu`,
+      ...notificationText("answer_accepted"),
       link:    `/student/hoi-dap/${answer.question.id}`,
     });
   }
