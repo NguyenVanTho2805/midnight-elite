@@ -3,6 +3,19 @@
 Mọi việc "sẵn sàng làm ngay" đã làm hoặc đã ghi rõ vì sao chưa làm. Ghi chú từng việc nằm trong Google Sheet (cột H/I của Thọ; không đụng cột J/K của Thanh).
 Bộ test chạy với Postgres + Next dev + Chromium thật nằm ở `tools/local-e2e/` (xem README ở đó).
 
+## BU-06 (Bigupdate 02/11/2026) — Tìm gia sư kiểu sàn — LÀM XONG PHẦN MÃ, chờ chạy test tuần tự
+Nhánh `claude/bu-06-tim-gia-su` (rẽ từ `claude/bu-01-lop`), HEAD `b9db960`. PR chưa mở, chưa push. Backlog: `backlog/bigupdate.csv` dòng BU-06. Đặc tả: `phong-ban/dac-ta/BU-06.md`.
+- **Vì sao:** `/giang-vien` và `/mentor/[id]` chưa giống một sàn: lọc nghèo, hồ sơ không có bìa/video/tab, không có đường "Vào lớp miễn phí". Không hoa hồng, không đặt lịch qua sàn.
+- **Đã làm (commit):** `28a76bc` đặc tả + schema `User.coverUrl/introVideoUrl` (chỉ thêm); `55fb1ae` `lib/tutorSearch.ts` (lọc/sắp/trang/facet/gợi ý, hàm thuần); `c9485b4` `tutorSearchMedia.ts` (kiểm ảnh bìa/video); `9e0a2cc` lưới 4/2 cột, bộ lọc trên URL, tờ trượt, ô tìm gợi ý; `c61e404` `/api/tutors/[id]` thêm `coverUrl`, `introVideo`, `classes.joinPolicy/isFree`; `b3eaf59` hồ sơ kiểu sàn (bìa, video bấm mới nạp, 3 tab, Vào lớp miễn phí qua luồng BU-01); `5805cf4` + `3d56b75` viết lại `ui-tim-gia-su`; `b9db960` ghi rõ ảnh nhỏ `i.ytimg.com`. Bài: `c109ba4`, `8bc6252`, `4e23f91`, `71f9990`. Schema chỉ thêm 3 dòng.
+- **Test đã chạy, xanh:** `tsc` (chỉ lỗi có sẵn `ts-fsrs`), `eslint` sạch; bài thuần: `t-tutor-search-lib` 163/0, `t-tutor-activity-lib` 26/0, `t-tutor-area-lib` 55/0, `t-tutor-visibility-lib` 40/0, `t-join-request-lib` 71/0, `t-tutor-routes-lib` 61/0, `t-db-push-guard` 28/0.
+- **CHƯA CHẠY (cần server; COO chạy tuần tự, không tính là xanh):** `t-tutor-search.ts`, `ui-tim-gia-su.ts`, `shoot-tutor-pages.ts`, `t-join-request.ts`, `ui-join-request.ts`, `t-tutor-area.ts`, `t-tutor-activity.ts`. Chưa chạy thử trên trình duyệt.
+- **Lỗi có sẵn (đỏ giống hệt `claude/bu-01-lop`, không do BU-06):** `t-taught-sessions-lib` 1, `t-unmarked-lib` 1, `t-unmarked-daily-lib` 2, `t-links` 1; `tsc` thiếu `ts-fsrs`.
+- **Rà soát (kin-ra-soat):** P1 0. P2: (1) chưa có đường ghi `coverUrl/introVideoUrl` nên hai trường rỗng cho tới khi làm BU-06b (phòng Gia sư: `tutorProfile.ts`, `api/users/me/tutor-profile/route.ts`, `TutorProfileForm.tsx`, `ho-so/page.tsx`); (2) `t-db-push-guard` đã chạy 28/0.
+- **Đổi hành vi cần biết:** `/api/tutors` mặc định 24 mục/trang; `classCount/studentCount` chỉ đếm lớp đang hiện; bỏ sao và sắp "Đánh giá cao" khỏi giao diện; lọc cấp suy từ tên môn (`gradesOfSubject` bỏ "cấp N").
+- **Giới hạn còn lại (nợ P3):** ảnh nhỏ `i.ytimg.com` tải trước khi bấm; `loadVisibleTutors` đọc avatar + preferences của mọi gia sư (cần bộ nhớ đệm thu hồi được); `role=tab` đặt trên `Link`; `avatarBase64` chưa kiểm. Figma `299:115283`, `299:116882`, `299:115452` CHƯA đối chiếu.
+- **Phụ thuộc:** BU-01 (PR #103) chưa gộp; PR của BU-06 phải rẽ sau #103.
+- **Việc của Thọ:** cho chạy tuần tự 7 bài chưa chạy rồi mới merge (sau #103); đối chiếu 3 khung Figma bằng mắt; giao BU-06b cho phòng Gia sư (đường ghi bìa/video).
+
 ## BU-01 (Bigupdate 02/11/2026) — Lớp: joinPolicy, lớp miễn phí, mã mời cá nhân, duyệt vào lớp — LÀM XONG PHẦN MÃ, chờ chạy test tuần tự
 Nhánh `claude/bu-01-lop`, HEAD `446057a`. PR chưa mở. Backlog: `backlog/bigupdate.csv` dòng BU-01.
 - **Vì sao:** lớp chưa có chính sách vào lớp rõ ràng; gia sư cần lớp miễn phí tự vào, lớp duyệt từng người, lớp chỉ vào bằng mã (mã gắn đúng một người).
