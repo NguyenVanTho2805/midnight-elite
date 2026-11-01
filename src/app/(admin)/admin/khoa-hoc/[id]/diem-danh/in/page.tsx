@@ -8,6 +8,7 @@ import { Suspense, useCallback, useEffect, useState, use as usePromise } from "r
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { KinButton, kinButtonClass } from "@/components/kin";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { GRID_LEGEND, NA_SYMBOL, SUMMARY_HEADERS, cellText, parseExportMonth, type AttendanceGrid } from "@/lib/attendanceExport";
 import { vnDateKeyOf } from "@/lib/classSessions";
 
@@ -29,6 +30,7 @@ const CELL: React.CSSProperties = { border: "1px solid var(--kin-vien-thuong)", 
 
 function InBangDiemDanh({ params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = usePromise(params);
+  const href = useContentHref(); // BU-00 bước 3
   const queryMonth = useSearchParams().get("month");
   const [month, setMonth] = useState<string>(() => {
     const p = parseExportMonth(queryMonth);
@@ -71,7 +73,7 @@ function InBangDiemDanh({ params }: { params: Promise<{ id: string }> }) {
             className="px-3 py-1.5 text-body-sm font-semibold rounded-lg"
             style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }} />
           <KinButton onClick={() => window.print()} disabled={state !== "ok" || !grid || grid.dates.length === 0}>In / Lưu thành PDF</KinButton>
-          <Link href={`/admin/khoa-hoc/${courseId}/diem-danh`} className={kinButtonClass("secondary")}>Về điểm danh</Link>
+          <Link href={href(`/admin/khoa-hoc/${courseId}/diem-danh`)} className={kinButtonClass("secondary")}>Về điểm danh</Link>
         </div>
       </div>
 

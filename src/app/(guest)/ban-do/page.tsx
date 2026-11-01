@@ -50,9 +50,9 @@ const SECTIONS: Section[] = [
       { href: "/lop-cua-toi/lich",       label: "Lịch",            note: "Buổi dạy, nhắc lịch, báo nghỉ sát giờ" },
       { href: "/lop-cua-toi/lop",        label: "Lớp",             note: "Danh sách lớp, học viên, mã mời" },
       { href: "/lop-cua-toi/hoc-phi",    label: "Học phí",         note: "Phiếu học phí và đối soát chuyển khoản" },
-      // Qua cửa đăng nhập của tên miền chính: khách bấm thẳng /admin/khoa-hoc sẽ bị đẩy sang cửa đăng nhập QUẢN TRỊ (tên miền admin) — nơi gia sư không đăng nhập được.
-      // Gia sư đã đăng nhập thì /dang-nhap?redirect= đưa thẳng tới /admin/khoa-hoc (xem src/lib/hostRouting.ts), nên không thêm bước nào.
-      { href: "/dang-nhap?redirect=%2Fadmin%2Fkhoa-hoc", label: "Quản khoá", note: "Tạo lớp + chương bài + điểm danh" },
+      // Qua cửa đăng nhập của tên miền chính; gia sư đã đăng nhập thì /dang-nhap?redirect= đưa thẳng tới trang Quản lớp (xem src/lib/hostRouting.ts), nên không thêm bước nào.
+      // BU-00 bước 3: trỏ thẳng bí danh gia sư /lop-cua-toi/quan-lop (không còn /admin/khoa-hoc — gia sư không làm việc trong vỏ quản trị).
+      { href: "/dang-nhap?redirect=%2Flop-cua-toi%2Fquan-lop", label: "Quản khoá", note: "Tạo lớp + chương bài + điểm danh" },
     ],
   },
   {

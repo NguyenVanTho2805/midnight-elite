@@ -33,7 +33,8 @@ import { check, section, done } from "./h";
   const uiTopup = hits(/wallet\/topups/, "src").filter(f => !f.startsWith("src/app/api/") && !f.startsWith("src/app/(admin)/"));
   check("chỉ MỘT trang gọi API nạp Coin: /student/vi", uiTopup.length === 1 && uiTopup[0] === "src/app/(student)/student/vi/page.tsx", uiTopup);
   const walletLinks = hits(/["'`]\/student\/vi["'`?#]/, "src").filter(f => f.endsWith(".tsx"));
-  check("liên kết tới /student/vi chỉ nằm ở vỏ học sinh (gia sư không có mục menu nào dẫn tới)", walletLinks.length === 1 && walletLinks[0] === "src/components/student/StudentShell.tsx", walletLinks);
+  // BU-00 bước 6 (31/10/2026): "Ví và Coin" rời bảng "Khác" của học sinh (route /student/vi giữ, chỉ ẩn lối vào) → không tệp giao diện nào còn dẫn tới.
+  check("không tệp giao diện nào dẫn tới /student/vi (gia sư không có mục menu nào; học sinh cũng không còn mục 'Ví và Coin')", walletLinks.length === 0, walletLinks);
   const vi = files.find(f => f.rel === "src/app/(student)/student/vi/page.tsx")!.txt;
   check("trang /student/vi dùng cờ (hàm hideTopup: học sinh luôn ẩn, gia sư theo cờ) và bọc form nạp bằng !hideTopup", /hideTopup\s*=\s*!isTutor\s*\|\|\s*trial\s*!==\s*false/.test(vi) && /\{!hideTopup && <form/.test(vi));
   const purchase = files.find(f => f.rel === "src/app/api/subscriptions/[code]/purchase/route.ts")!.txt;

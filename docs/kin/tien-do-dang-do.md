@@ -3,6 +3,26 @@
 Mọi việc "sẵn sàng làm ngay" đã làm hoặc đã ghi rõ vì sao chưa làm. Ghi chú từng việc nằm trong Google Sheet (cột H/I của Thọ; không đụng cột J/K của Thanh).
 Bộ test chạy với Postgres + Next dev + Chromium thật nằm ở `tools/local-e2e/` (xem README ở đó).
 
+## BU-00 (Bigupdate 31/10/2026) — Tách 3 giao diện theo vai — LÀM XONG PHẦN MÃ, đang chạy lại test
+Nhánh `claude/bu-00-phan-vai`, HEAD `f3ba8ac`, 8 commit kể từ `main` (`b099289`). Kế hoạch: `rd/BIGUPDATE-KE-HOACH.md` mục BU-00; backlog: `backlog/bigupdate.csv`; mô tả PR: `rd/pr/BU-00.md`. PR chưa mở.
+- **Vì sao:** gia sư mới đăng ký mang `role: "student"` tới khi được duyệt nên thấy vỏ học sinh; gia sư đã duyệt mặc định ở chế độ gọn, tắt Bài tập (không có lối tạo đề); gia sư phải làm việc trong `/admin` (vỏ quản trị) mới soạn được đề và nội dung lớp.
+- **Đã làm (6 bước):**
+  1. `535b997` kế hoạch; `7e5bd81` bước 1: `userPreferences` mặc định đủ module (`modules` vắng mặt = đủ 6, `[]` = gọn tường minh) — `src/lib/userPreferences.ts`, `LopCuaToiFrame`, `TutorShell`, `TutorShellClient`, `CaiDatClient`.
+  2. `7e5bd81` bước 2: `adminNav.visibleModules("teacher")` trả rỗng — `src/lib/adminNav.ts` (quyền API trong `permissions.ts` không đổi).
+  3. `1cb1e76` bước 3: `src/lib/tutorRoutes.ts` (bản đồ thuần) + 13 trang mỏng re-export dưới `lop-cua-toi/(tutor)/(noi-dung)/{de-thi,quan-lop}` + layout `(noi-dung)` + `TutorContentTabs` + `hostRouting` 307 theo vai (giữ query) + bỏ `TutorAdminFrame`.
+  4. `d1c5981` bước 4: `AuthGuard` chỉ cho admin_super/admin_content vào `/student/*`; `LopCuaToiFrame` 4 vỏ (gia sư · chờ duyệt · học sinh · quản trị xem thử); băng "Đang xem thử giao diện học sinh · Về bảng quản trị"; nút "Xem thử trang học sinh" trong `AdminShell`.
+  5. `d1c5981` bước 5: `src/lib/tutorGate.ts` (+ `tutorGateServer.ts`), trang `/lop-cua-toi/cho-duyet`, `landingPath` và `/api/auth/login` trả `tutorPending`, vỏ gia sư chờ duyệt (3 mục).
+  6. `7e5bd81` bước 6: `StudentShell` bảng "Khác" từ 15 mục còn 2 nhóm 7 mục (Khám phá: Gia sư, Cộng đồng, Tin tức; Tài khoản: Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp). Route giữ nguyên, chỉ ẩn lối vào.
+  7. `a1ec4f3` sửa sau test và rà soát (xem dưới).
+- **Figma** (file `2orXvoHL2upkiGoMjlq8aX`): sửa "Bản final" `578:2` (thanh bên học sinh bỏ mục thừa, ghi chú cho gia sư); thêm khung "Vai GIA SƯ — chờ duyệt" `599:237`; cập nhật Mục lục mục 6.
+- **Test lần 1 (HEAD `d1c5981`):** thuần/API xanh hết, trừ 2 ca có sẵn (`t-kin-components` chữ 10px ở `tieng-anh`/`tien-do`; `t-unmarked-lib` `useSearchParams`). Trình duyệt: `ui-journey-new-student` 17/0 · `ui-bai-tap-thu-vien` 30/0 · `ui-tutor-dash` 52/0 · `ui-course-moi` 7/0 · `ui-course-ops` 11/0 · `ui-shell-everywhere` 18/0 · `ui-sidebar` 59/0 · `ui-attendance-export` 15/0 · `ui-invite-input` 26/0 · `ui-links-everywhere` 7/0. `ui-tutor-everything` mặc định 18/4 và compact 20/2 (đỏ chỉ do dữ liệu giả `fileUrl "x"` có sẵn và `/mentor/*` thiếu `/etc/hosts`). `ui-role-everything` student 34/4 (`/mentor/*` + "Quản khoá" — kỳ vọng đã sửa).
+- **Lỗi MỚI tìm ra khi chạy, đã sửa ở `a1ec4f3`:** trang `/lop-cua-toi/cho-duyet` trả 500 vì `kinButtonClass` nằm trong module `"use client"` → tách `src/components/kin/buttonClass.ts`. Rà soát độc lập (`kin-ra-soat`): 0 P1, 3 P2 đã sửa (lối tắt theo vai ở `OutlookShell`/`LopChiTiet` cho quản trị xem thử; băng xem thử 44px; bỏ 2 ca tautology ở `t-tutor-gate-lib`).
+- **Test lần 2 (HEAD `a1ec4f3` → `f3ba8ac`):** `ui-tutor-admin` 50/0, `ui-course-ops` 11/0, `ui-lop` 17/0, `t-tutor-gate-lib` 25/0, `t-tutor-routes-lib` 61/0, `t-host-routing-lib` 71/0, `ROLE=student ui-role-everything` 35/3 (chỉ `/mentor/*`, thiếu `/etc/hosts`). `ui-tutor-pending` 37/0, `ui-journey-new-tutor` 54/0 sau hai sửa test (`f3ba8ac`). Thêm một lỗi mã nhỏ tìm ra và sửa (`102aa84`): "gửi 20-10" vì `toLocaleDateString("vi-VN")` phụ thuộc ICU → ghép tay `dd/mm`. Kiểm tay: `/lop-cua-toi/cho-duyet` 200, không còn "Attempted to call"; quản trị cấp 1 xem lớp thấy băng xem thử, "Cài đặt lớp" → `/admin/khoa-hoc/<id>`. `ui-admin-shell` còn sập `:42` (có sẵn ở nền).
+- **Lỗi có sẵn ở bản nền (không do BU-00):** 4 bài shell/schedule sập vì locator strict-mode (thanh bên rộng + hẹp cùng DOM); `ui-sidebar-rong` ca 900px; `ui-host-flows` 24/4 (bấm trượt); `ui-account-menu` chập chờn; cùng 2 ca thuần nêu ở trên.
+- **Giới hạn còn lại / ghi nợ P3:** `COURSE_TABS` chép tay `TABS` (gộp khi tách tệp ở BU-02/03); layout `(noi-dung)` với khách mất `pathname` khi redirect; gia sư chờ duyệt mở `/` đi 2–3 nhịp (cookie không mang `tutorPending`); nút "Thử lại" ở `cho-duyet` là Link mềm; hai tệp trang lớn (`admin/khoa-hoc/[id]`, `admin/thi-thu`) chưa tách. **Chưa làm:** "chọn vai khi đăng ký" (TK-02 dựng lại `/dang-ky`) và ca vai chờ duyệt riêng trong `ui-role-everything` — dời BU-01 trở đi. Chưa chạy thử trên trình duyệt của người dùng, chỉ Chromium trong bộ test cục bộ.
+- **Không đụng:** schema (không cột/bảng mới), tiền, trẻ em, biến môi trường.
+- **Việc của Thanh / chủ kho:** (1) gộp PR (mô tả ở `rd/pr/BU-00.md`); (2) thêm dòng `/etc/hosts` cho máy test để các ca `/mentor/*` hết đỏ; (3) chạy lại test lần 2 (đang chạy). Link cũ `/admin/...` trong thông báo vẫn tới nhờ 307.
+
 ## Đã xong và đã đẩy lên nhánh (đều có test, xem `tools/local-e2e/`)
 - Doanh thu: BE-074/075/076, FE-137, FE-153/154, FE-164
 - Duyệt gia sư: FE-138

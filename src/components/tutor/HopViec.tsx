@@ -64,7 +64,7 @@ export default function HopViec() {
     <KinPage>
       <KinPageHeader title="Hộp việc"
         sub={<>{o ? `${o.dateLine} · ` : ""}<span className="md:hidden">Sổ dạy học</span><span className="hidden md:inline">Việc cần cô xử lý trước, việc chờ phụ huynh để riêng.</span></>}
-        actions={<><KinMoneyEye /><Link href="/admin/khoa-hoc?tao=1" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link></>} />
+        actions={<><KinMoneyEye /><Link href="/lop-cua-toi/quan-lop?tao=1" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link></>} />
 
       {error && <ErrorStrip message="Không tải được Hộp việc." onRetry={load} />}
       {items === null || !o ? (!error ? <Skeleton /> : null) : (
@@ -205,7 +205,7 @@ export default function HopViec() {
                 <KinSectionHead id="hv-classes" title={<><span className="md:hidden">Lớp của cô</span><span className="hidden md:inline">Lớp thường dùng</span></>}
                   aside={<span className="md:hidden">{o.classes.total} lớp · {o.stats.classes.hint.replace(" đang học", "")}</span>} />
                 {o.classes.rows.length === 0 ? (
-                  <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/admin/khoa-hoc?tao=1" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
+                  <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/lop-cua-toi/quan-lop?tao=1" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
                     Tạo lớp đầu tiên, rồi gửi mã mời cho học sinh vào lớp.
                   </KinEmptyState>
                 ) : (

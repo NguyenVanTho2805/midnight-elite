@@ -18,7 +18,7 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
         <div className="rounded-xl p-8 text-center" style={{ ...CARD, borderStyle: "dashed" }}>
           <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Bạn chưa mở lớp nào</p>
           <p className="text-sm mt-1 mb-4" style={{ color: "var(--kin-chu-phu)" }}>Tạo lớp đầu tiên, rồi gửi mã mời cho học viên để vào lớp.</p>
-          <Link href="/admin/khoa-hoc?tao=1" className="inline-flex items-center px-5 py-2.5 rounded-lg text-sm font-semibold min-h-[44px]"
+          <Link href="/lop-cua-toi/quan-lop?tao=1" className="inline-flex items-center px-5 py-2.5 rounded-lg text-sm font-semibold min-h-[44px]"
             style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" }}>Tạo lớp đầu tiên</Link>
         </div>
       ) : (
@@ -51,7 +51,7 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
                   <div className="flex gap-x-4 flex-wrap mt-auto">
                     <Link href={`/lop-cua-toi/${c.id}`} className="text-xs font-semibold min-h-[44px] inline-flex items-center whitespace-nowrap"
                       style={{ color: "var(--kin-nhan-link)" }}>Mở lớp</Link>
-                    {[["Điểm danh", `/admin/khoa-hoc/${c.id}/diem-danh`], ["Danh sách HS", `/admin/khoa-hoc/${c.id}/hoc-vien`]].map(([l, h]) => (
+                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Danh sách HS", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].map(([l, h]) => (
                       <Link key={h} href={h} className="text-xs min-h-[44px] inline-flex items-center whitespace-nowrap"
                         style={{ color: "var(--kin-chu-phu)" }}>{l}</Link>
                     ))}

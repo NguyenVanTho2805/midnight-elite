@@ -1,5 +1,6 @@
 // Quy tắc chuyển hướng theo tên miền + vai (src/lib/hostRouting.ts, phần thuần của src/proxy.ts). Không DB, không mạng.
 // 14/10/2026: gia sư ở lại tên miền chính; người đã đăng nhập không thấy trang giới thiệu của khách.
+// 31/10/2026 (BU-00 bước 3): gia sư mở /admin/* → 307 sang bí danh /lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* (src/lib/tutorRoutes.ts); không có bí danh → /lop-cua-toi.
 import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, isAdminHost, isPwaFile, type RouteSession, type RouteDecision } from "@/lib/hostRouting";
 import { check, section, done } from "./h";
 
@@ -15,10 +16,17 @@ section("Hằng số");
 check("tên miền chính suy ra từ tên miền admin", MAIN_HOST === MAIN && ADM === "admin.midnightelite-edu.com", [MAIN_HOST, ADM]);
 check("nhận ra tên miền admin kể cả có cổng (giả lập cục bộ), không nhầm tên miền chính", isAdminHost(ADM) && isAdminHost(`${ADM}:3100`) && !isAdminHost(MAIN) && !isAdminHost("localhost:3100") && !isAdminHost(`x${ADM}`));
 
-section("Tên miền chính — /admin/*: gia sư ở lại, người khác sang tên miền admin");
-check("gia sư mở /admin/thi-thu → ở lại (next)", eq(d(MAIN, "/admin/thi-thu", tutor), { kind: "next" }));
-check("gia sư mở trang sâu /admin/khoa-hoc/abc/diem-danh → ở lại", eq(d(MAIN, "/admin/khoa-hoc/abc/diem-danh", tutor), { kind: "next" }));
+section("Tên miền chính — /admin/*: gia sư 307 sang bí danh /lop-cua-toi (BU-00 bước 3), người khác sang tên miền admin");
+// 31/10/2026 (BU-00 bước 3): gia sư KHÔNG còn ở lại /admin/*. Trang đề thi / quản lớp có bí danh (src/lib/tutorRoutes.ts) → 307 cùng tên miền, giữ tham số;
+// đường không có bí danh → Hộp việc. Ca phá cố ý: đổi `alias ? … : …` trong hostRouting thành `{ kind: "next" }` → 4 ca đầu đỏ.
+check("gia sư mở /admin/thi-thu → 307 sang /lop-cua-toi/de-thi (cùng tên miền, không có host)", eq(d(MAIN, "/admin/thi-thu", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/de-thi", search: "" }), d(MAIN, "/admin/thi-thu", tutor));
+check("gia sư mở /admin/thi-thu/abc?x=1 → /lop-cua-toi/de-thi/abc?x=1 (giữ tham số)", eq(d(MAIN, "/admin/thi-thu/abc", tutor, "?x=1"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/de-thi/abc", search: "?x=1" }), d(MAIN, "/admin/thi-thu/abc", tutor, "?x=1"));
+check("gia sư mở trang sâu /admin/khoa-hoc/abc/diem-danh?date=2026-10-20 (link cũ trong thông báo) → /lop-cua-toi/quan-lop/abc/diem-danh?date=…", eq(d(MAIN, "/admin/khoa-hoc/abc/diem-danh", tutor, "?date=2026-10-20"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/quan-lop/abc/diem-danh", search: "?date=2026-10-20" }));
+check("gia sư mở /admin/khoa-hoc/abc?tab=lich-hoc&moi=1 → /lop-cua-toi/quan-lop/abc?tab=lich-hoc&moi=1", eq(d(MAIN, "/admin/khoa-hoc/abc", tutor, "?tab=lich-hoc&moi=1"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/quan-lop/abc", search: "?tab=lich-hoc&moi=1" }));
+check("gia sư mở /admin/khoa-hoc/danh-muc (danh mục chỉ quản trị, không có bí danh) → Hộp việc /lop-cua-toi, bỏ tham số", eq(d(MAIN, "/admin/khoa-hoc/danh-muc", tutor, "?x=1"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi" }), d(MAIN, "/admin/khoa-hoc/danh-muc", tutor, "?x=1"));
+check("gia sư mở /admin/kiem-duyet (không có bí danh) → /lop-cua-toi", eq(d(MAIN, "/admin/kiem-duyet", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi" }));
 check("gia sư mở đúng /admin (bảng tổng quan quản trị, không dành cho gia sư) → về Hộp việc /lop-cua-toi", eq(d(MAIN, "/admin", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi" }));
+check("mọi chuyển hướng của gia sư khỏi /admin/* đều ở LẠI tên miền chính (không có host) và là 307", ["/admin", "/admin/thi-thu", "/admin/khoa-hoc/abc", "/admin/khoa-hoc/danh-muc", "/admin/doanh-thu"].every(p => { const r = d(MAIN, p, tutor); return r.kind === "redirect" && r.status === 307 && r.host === undefined; }));
 for (const [name, s] of [["quản trị cấp 1", sup], ["quản trị nội dung", content], ["học viên", student], ["khách", null]] as const)
   check(`${name} mở /admin/thi-thu?x=1 → 307 (KHÔNG phải 308: đích phụ thuộc phiên, 308 bị trình duyệt nhớ) sang tên miền admin, GIỮ NGUYÊN đường dẫn /admin/thi-thu và tham số`, eq(d(MAIN, "/admin/thi-thu", s, "?x=1"), { kind: "redirect", status: 307, host: "admin", pathname: "/admin/thi-thu", search: "?x=1" }), d(MAIN, "/admin/thi-thu", s, "?x=1"));
 // 15/10/2026: trước đây bỏ tiền tố /admin ("/admin/kiem-duyet" → "/kiem-duyet"), mà tên miền admin chỉ phục vụ /admin/* nên đích đó lại bị đẩy về dashboard: link/bookmark cũ không bao giờ tới đúng trang.

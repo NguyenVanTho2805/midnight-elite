@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { contentHref } from "@/lib/tutorRoutes";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import Link from "next/link";
 import { useCourses } from "@/hooks/useCourses";
 import { api } from "@/lib/api";
@@ -469,7 +471,7 @@ function ActionMenu({ courseId, isTeacher, onDelete, onDuplicate }: { courseId: 
       {open && (
         <div className="absolute right-0 z-50 mt-1 w-52 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
           {items.map(item => (
-            <Link key={item.label} href={`/admin/khoa-hoc/${courseId}?tab=${item.tab}`}
+            <Link key={item.label} href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}?tab=${item.tab}`)}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
               {item.label}
@@ -531,6 +533,7 @@ function KhoaHocListInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const href = useContentHref(); // BU-00 bước 3: gia sư sang bí danh /lop-cua-toi/quan-lop/…
   const { data: apiCourses, loading, refetch } = useCourses({ all: "1" });
   const courses: Course[] = apiCourses.map(c => ({
     id:         c.adminId,
@@ -711,7 +714,7 @@ function KhoaHocListInner() {
         onCreated={slug => {
           // Gia sư: sang thẳng trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học (bỏ bước tìm lớp trong danh sách + menu ···).
           // Thông báo thành công hiện ở trang đó (?moi=1). Quản trị trung tâm: ở lại danh sách như cũ.
-          if (user?.adminRole === "teacher") { router.push(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`); return; }
+          if (user?.adminRole === "teacher") { router.push(href(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`)); return; }
           showToast("Đã tạo khoá học mới"); refetch();
         }}
         showToast={showToast}

@@ -26,7 +26,7 @@ function rowsOf(classes: LibClass[]): Row[] {
   for (const c of classes) {
     const subject = (c.category ?? "").trim() || "Khác";
     for (const l of c.lessons) {
-      const edit = `/admin/khoa-hoc/${c.id}?tab=chuong-bai`;
+      const edit = `/lop-cua-toi/quan-lop/${c.id}?tab=chuong-bai`;
       if (l.hasVideo) out.push({ key: `${l.id}:v`, classId: c.id, className: c.name, subject, name: "Bản ghi bài học", lesson: l.title, kind: "Video", view: null, edit });
       for (const d of l.docs) out.push({ key: `${l.id}:${d.url}`, classId: c.id, className: c.name, subject, name: d.name, lesson: l.title, kind: docKind(d), view: viewerHref(d.name, d.url), edit });
     }
@@ -56,7 +56,7 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
   const shown = inSubject.filter(r => (cid === "all" || r.classId === cid)
     && (!needle || `${r.name} ${r.lesson} ${r.className} ${r.kind}`.toLowerCase().includes(needle)));
 
-  const uploadHref = classes.length === 1 ? `/admin/khoa-hoc/${classes[0].id}?tab=chuong-bai` : "/lop-cua-toi/lop";
+  const uploadHref = classes.length === 1 ? `/lop-cua-toi/quan-lop/${classes[0].id}?tab=chuong-bai` : "/lop-cua-toi/lop";
   const pickSubject = (s: string | null) => { setSubject(s); setClassId("all"); };
   const subjectBtn = (active: boolean) => `w-full text-left min-h-11 flex items-center justify-between gap-2 text-[length:var(--kin-co-goc)] ${active ? "text-[var(--kin-nhan-link)] font-medium" : "text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]"}`;
 
@@ -66,7 +66,7 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
         actions={<Link href={uploadHref} className={kinButtonClass("primary")}>↑ Tải tài liệu</Link>} />
 
       {classes.length === 0 ? (
-        <KinEmptyState title="Bạn chưa mở lớp nào" action={<Link href="/admin/khoa-hoc?tao=1" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
+        <KinEmptyState title="Bạn chưa mở lớp nào" action={<Link href="/lop-cua-toi/quan-lop?tao=1" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
           Tạo lớp rồi thêm bài giảng và tài liệu, chúng sẽ hiện ở đây.
         </KinEmptyState>
       ) : all.length === 0 ? (
