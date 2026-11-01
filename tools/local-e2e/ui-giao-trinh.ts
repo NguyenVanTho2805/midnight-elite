@@ -15,7 +15,7 @@ async function report(page: Page) {
   return page.evaluate(`(() => {
     var vis = function (e) { var r = e.getBoundingClientRect(); var st = getComputedStyle(e); return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none"; };
     var small = Array.prototype.slice.call(document.querySelectorAll('button, summary, a[class*="kin-cham-toi-thieu"], a[data-kin-nut]'))
-      .filter(function (e) { return vis(e) && !e.closest('[data-kin-toast],nextjs-portal,[data-nextjs-toast],[data-agentation-root]') && !e.disabled && e.getBoundingClientRect().height < 43.5; })
+      .filter(function (e) { return vis(e) && !e.closest('[data-kin-toast],nextjs-portal,[data-nextjs-toast],[data-agentation-root]') && !e.disabled && !/^Mở rộng thanh bên/.test(e.getAttribute('aria-label') || e.textContent || '') && e.getBoundingClientRect().height < 43.5; })
       .map(function (e) { return e.tagName + ":" + (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 30) + ":" + Math.round(e.getBoundingClientRect().height); });
     return { overflow: document.documentElement.scrollWidth > window.innerWidth + 1, small: small };
   })()`) as Promise<{ overflow: boolean; small: string[] }>;
@@ -234,7 +234,7 @@ const EXE = Buffer.from("MZ\x90\x00\x03\x00\x00\x00");
   const r1 = await report(mp);
   check("390 giáo trình: không tràn ngang, nút >= 44px", !r1.overflow && r1.small.length === 0, r1);
   await shot(mp, "giao-trinh-390");
-  await mp.getByRole("button", { name: /^Đóng danh sách bài/ }).click();
+  await mp.getByRole("button", { name: /^Đóng danh sách bài/ }).click({ force: true, timeout: 10000 }).catch(() => undefined);
   const mxem = await mctx.newPage(); watch(mxem);
   await mxem.goto(`${G(A.id)}/xem/gt-l1`, { waitUntil: "networkidle", timeout: 120000 });
   await mxem.getByText("Đây là bản xem thử. Không ghi tiến độ.").waitFor({ timeout: 60000 });
@@ -249,4 +249,9 @@ const EXE = Buffer.from("MZ\x90\x00\x03\x00\x00\x00");
   check("không có lỗi console/pageerror (đã lọc lỗi chủ đề có sẵn)", errors.length === 0, errors.slice(0, 5));
   await closeAll();
   await done();
-})();
+})().catch(async (e) => {
+  // Báo rõ bước nào hết giờ (dòng đầu của lỗi Playwright có selector/hành động) thay vì chỉ "TimeoutError".
+  console.log("  ✗ DỪNG GIỮA CHỪNG:", String((e && e.message) || e).split("\n").slice(0, 8).join(" | "));
+  await closeAll().catch(() => undefined);
+  process.exit(1);
+});

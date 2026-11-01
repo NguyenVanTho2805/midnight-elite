@@ -261,12 +261,12 @@ async function lessonTree(courseId: string, tag: string) {
   const before = async () => JSON.stringify(await prisma.lesson.findMany({ where: { id: { in: [L.paid.id, L.free.id, tB.paid.id, tB.free.id] } }, orderBy: { id: "asc" }, select: { id: true, order: true, chapterId: true } }));
   const snap0 = await before();
   const rr = (as: any, courseId: string, body: unknown) => api("PATCH", `/api/courses/${courseId}/reorder`, { as, body });
-  const x1 = await rr(T, course.id, { type: "lesson", items: [{ id: tB.paid.id, order: 0 }] });
-  check("gia sư A (chủ lớp A) đưa bài của lớp B vào danh sách sắp xếp → 403, lớp B không đổi", x1.status === 403 && (await before()) === snap0, x1.json);
-  const x2 = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 5, parentId: `ch-r2` }] });
-  check("bài của mình nhưng parentId là chương của lớp B → 403, không ghi gì", x2.status === 403 && (await before()) === snap0, x2.json);
-  const x3 = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 7 }, { id: tB.free.id, order: 0 }] });
-  check("lẫn 1 mục hợp lệ + 1 mục của lớp khác → 403 và mục hợp lệ CŨNG không bị ghi (không ghi dở)", x3.status === 403 && (await before()) === snap0);
+  const r1 = await rr(T, course.id, { type: "lesson", items: [{ id: tB.paid.id, order: 0 }] });
+  check("gia sư A (chủ lớp A) đưa bài của lớp B vào danh sách sắp xếp → 403, lớp B không đổi", r1.status === 403 && (await before()) === snap0, r1.json);
+  const r2 = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 5, parentId: `ch-r2` }] });
+  check("bài của mình nhưng parentId là chương của lớp B → 403, không ghi gì", r2.status === 403 && (await before()) === snap0, r2.json);
+  const r3 = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 7 }, { id: tB.free.id, order: 0 }] });
+  check("lẫn 1 mục hợp lệ + 1 mục của lớp khác → 403 và mục hợp lệ CŨNG không bị ghi (không ghi dở)", r3.status === 403 && (await before()) === snap0);
   check("section có parentId → 403", (await rr(T, course.id, { type: "section", items: [{ id: `s-a`, order: 0, parentId: "s-r2" }] })).status === 403);
   check("gia sư B sắp xếp lớp A → 403; khách → 401; lớp lạ → 404", (await rr(T2, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 1 }] })).status === 403 && (await rr(undefined, course.id, { type: "lesson", items: [] })).status === 401 && (await rr(T, "khong-co", { type: "lesson", items: [] })).status === 404);
   check("body hỏng: order không nguyên / type lạ → 400", (await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 1.5 }] })).status === 400 && (await rr(T, course.id, { type: "xxx", items: [] })).status === 400);
