@@ -224,7 +224,7 @@ const B64 = "A".repeat(400);
   }
   await setMedia(cvOk, null);
   check("coverUrl hợp lệ ⇒ trả nguyên", (await detail()).coverUrl === cvOk);
-  for (const bad of ["https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ", "javascript:alert(1)", "xyz", "https://vimeo.com/123"]) {
+  for (const bad of ["https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ", "javascript:alert(1)", "xyz", "https://vimeo.com/123", "https://www.youtube.com@evil.test/watch?v=dQw4w9WgXcQ", "https://evilyoutube.com/watch?v=dQw4w9WgXcQ", "https://youtu.be.evil.test/dQw4w9WgXcQ", "https://user:pw@youtu.be/dQw4w9WgXcQ"]) {
     await setMedia(null, bad);
     check(`introVideoUrl hỏng/tên miền giả (${bad.slice(0, 30)}) ⇒ introVideo=null`, (await detail()).introVideo === null);
   }
@@ -280,6 +280,30 @@ const B64 = "A".repeat(400);
   // ── (10) Ghi coverUrl/introVideoUrl: CHƯA có (cần BU-06b) ────────────────────────────────────
   section("(10) Ghi bìa/video qua PUT /api/users/me/tutor-profile");
   console.log("  (bỏ qua: route thuộc phòng Gia sư, chờ phiếu BU-06b; hàm kiểm nằm ở src/lib/tutorSearchMedia.ts và đã có test thuần)");
+
+  // ── (11) Kẻ tấn công: tham số cực đoan ở cả ba API (BU-06 rà bổ sung) ─────────────────────────
+  section("(11) Tham số cực đoan: không 500, không rò ẩn/PII");
+  const EXTREME = ["page=-1", "pageSize=0", "pageSize=-5", "page=0&pageSize=0", "page=99999999999999999999", "priceMin=-100&priceMax=-1", "priceMin=99999999999999999999",
+    "priceMin=300000&priceMax=100000", "q=" + encodeURIComponent(".*(["), "q=" + encodeURIComponent("%_\\"), "q=" + encodeURIComponent("'; DROP TABLE \"User\";--"), "q=%00", "q=" + "%E1%BB%87".repeat(300),
+    "q=" + encodeURIComponent("<script>alert(1)</script>"), "subject=" + "z".repeat(5000), "q=a&q=b&sort=price_asc&sort=rating&page=1&page=2", "sort=__proto__&page=constructor", "city=&district=&mode=&grade="];
+  for (const junk of EXTREME) {
+    const r = await list(junk);
+    check(`/api/tutors?${junk.slice(0, 40)} ⇒ 200, items là mảng, không có người bị ẩn`, r.status === 200 && Array.isArray(r.json?.items) && !(r.json.items as any[]).some(i => hiddenIds.includes(i.id)) && !/@test\.local/.test(r.text), [r.status]);
+  }
+  const rev = await list("priceMin=300000&priceMax=100000&pageSize=48");
+  check("priceMin>priceMax ⇒ cùng kết quả với khoảng đã đổi chỗ", rev.json.total === (await list("priceMin=100000&priceMax=300000&pageSize=48")).json.total && rev.json.total > 0);
+  check("q rất dài bị cắt, không khớp nhầm cả danh sách", (await list("q=" + "x".repeat(2000))).json.total === 0);
+  check("q chứa % _ \\ không như ký tự đại diện (không ra cả danh sách)", (await list("q=%25")).json.total === 0 && (await list("q=_")).json.total === 0);
+  for (const q of ["x".repeat(500), encodeURIComponent("'; DROP TABLE x;--"), encodeURIComponent(".*"), "%00%00", "chua%20duyet", "don%20cho", "bi%20cam", "bi%20khoa", "da%20an", "%25%25"]) {
+    const r = await api("GET", `/api/tutors/suggest?q=${q}`);
+    check(`suggest?q=${q.slice(0, 24)} ⇒ 200, mảng, không người bị ẩn / PII`, r.status === 200 && Array.isArray(r.json?.suggestions) && r.json.suggestions.length <= 8 && !(r.json.suggestions as any[]).some(x => hiddenIds.includes(x.id)) && !/@test\.local|09123/.test(r.text), [r.status, r.text.slice(0, 80)]);
+  }
+  for (const id of ["%00", "x".repeat(3000), encodeURIComponent("' OR '1'='1"), "..%2F..%2Fetc%2Fpasswd", "%25", "undefined", "null"]) {
+    const r = await api("GET", `/api/tutors/${id}`);
+    check(`/api/tutors/${id.slice(0, 24)} ⇒ 404 (không 500, không rò)`, r.status === 404, [r.status]);
+  }
+  const noAuthHidden = await api("GET", `/api/tutors/${HID.id}?preview=1&preview=0`, { as: S1 });
+  check("preview lặp tham số bởi người khác ⇒ vẫn 404", noAuthHidden.status === 404);
 
   await done();
 })();

@@ -65,7 +65,12 @@ const NOW = new Date("2026-10-21T05:00:00Z"); // 12:00 ngày 21/10 giờ VN
   check("danh sách: trả sessionsTaught + recentlyActive, chỉ tính lớp đang bật (khớp hồ sơ chi tiết), dùng taughtSessionWhere và sắp bằng hàm thuần", /get\(o\)\.sessionsTaught \+= /.test(apiAll) && /get\(o\)\.recentlyActive = true/.test(apiAll) && /status: true/.test(apiAll) && /taughtSessionWhere\(\)/.test(apiAll) && /recentTaughtSessionWhere\(\)/.test(apiAll) && /compareFor\(/.test(apiAll) && /parseTutorSortKey\(/.test(apiAll));
   check("danh sách không còn tự sắp bằng if/else trong route (đã chuyển sang hàm thuần có test)", !/items\.sort\(/.test(apiList));
   check("thẻ + đầu hồ sơ + bản xem trước đều ghi 'Có dạy trong 30 ngày qua'", [card, head, prev].every(s => /Có dạy trong 30 ngày qua/.test(s)));
-  check("trang danh sách: mặc định 'active' và có lựa chọn 'Hoạt động gần đây'", /useState<SortKey>\("active"\)/.test(list2) && /value="active">Hoạt động gần đây/.test(list2));
+  // BU-06: trang danh sách đổi sang tim-gia-su/*. Ý gốc giữ nguyên: mặc định ưu tiên gia sư đang hoạt động (API không có sort => 'active'; ô 'Phù hợp' hoà điểm thì xét hoạt động trước), có bộ lọc/nhãn 'đang hoạt động'.
+  const tgs = (f: string) => read(`src/components/tutor/tim-gia-su/${f}`), srch = read("src/lib/tutorSearch.ts");
+  const locUrl = tgs("locUrl.ts"), boLoc = tgs("BoLoc.tsx"), gsCard = tgs("GiaSuCard.tsx"), goiApi = tgs("goiApi.ts");
+  check("trang danh sách: không gửi sort mặc định lên API (=> API dùng 'active'), 'Phù hợp' là mặc định giao diện", /DEFAULT_TUTOR_SORT\b/.test(srch) && /f\.sort !== "relevant"\) qs\.set\("sort"/.test(locUrl) && /sort: "relevant"/.test(locUrl) && /\/api\/tutors\?\$\{ghiBoLoc\(/.test(goiApi));
+  check("'Phù hợp' hoà điểm thì xếp theo hoạt động gần đây (compareFor relevant gọi active trước tail)", /case "relevant": return \(a, b\) => scoreMatch\(b, terms\) - scoreMatch\(a, terms\) \|\| active\(a, b\) \|\| tail\(a, b\)/.test(srch) && /Number\(b\.recentlyActive\) - Number\(a\.recentlyActive\)/.test(srch));
+  check("giao diện: có công tắc 'Chỉ gia sư đang hoạt động' (active=1 trên URL) và nhãn 'Hoạt động gần đây' ở thẻ", /active: sp\.get\("active"\) === "1"/.test(locUrl) && /Chỉ gia sư đang hoạt động/.test(boLoc) && /Hoạt động gần đây/.test(gsCard));
   check("Q3: KHÔNG hiện 'đúng hạn %' và KHÔNG còn vế 'phụ huynh xác nhận' ở thẻ, đầu hồ sơ, hồ sơ công khai, danh sách", ![card, head, mentor, list2].some(s => /đúng hạn|phụ huynh xác nhận|buổi[^"'`]{0,30}xác nhận|% buổi/i.test(s)));
   check("không gắn chữ 'đã xác minh' cho số buổi / hoạt động (đó là số gia sư tự ghi)", !/xác minh[^"'`\n]{0,40}(buổi|hoạt động)/.test(card + head));
 

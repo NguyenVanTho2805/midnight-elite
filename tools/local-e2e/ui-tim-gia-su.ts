@@ -221,6 +221,9 @@ async function gridColumns(page: Page) {
     const page = await ctx.newPage(); watch(page);
     await goto(page, `/mentor/${T.id}`, "[data-ho-so-dau]");
     check("ảnh bìa hiện", await page.locator("[data-cover] img").isVisible());
+    { const html = await page.content(); // kẻ tấn công đọc nguồn trang: không PII, không đường dẫn video thô lẫn tham số theo dõi, không mã quản trị
+      check("HTML hồ sơ không nhúng số điện thoại / email / ngày sinh / tên em học sinh", !/0901234567|901234567|@test\.local|dateOfBirth|phoneE164|Em Mai Kín Tên|Em Nam Kín Tên/.test(html));
+      check("HTML hồ sơ không nhúng khoá introVideoUrl / preferences thô", !/introVideoUrl|"preferences"/.test(html)); }
     const play = page.getByRole("button", { name: /Phát video giới thiệu của Cô Lan/ });
     await play.waitFor({ timeout: 30000 });
     check("trước khi bấm: video là NÚT và KHÔNG có iframe trong DOM", (await page.locator("iframe").count()) === 0);
@@ -272,6 +275,16 @@ async function gridColumns(page: Page) {
     check(`hồ sơ: nút ≥ 44px (${label})`, m.small.length === 0, m.small);
     check(`hồ sơ: không tràn ngang (${label})`, !m.overflow);
     await shot(page, `ho-so-gia-su-${label}`);
+    await ctx.close();
+  }
+
+  section("Hồ sơ — video tên miền giả YouTube bị loại");
+  {
+    await prisma.user.update({ where: { id: T3.id }, data: { introVideoUrl: "https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ" } });
+    const ctx = await ctxFor(null, { width: 390, height: 844 });
+    const page = await ctx.newPage(); watch(page);
+    await goto(page, `/mentor/${T3.id}`, "[data-ho-so-dau]");
+    check("tên miền giả: không video, không iframe, không liên kết ra tên miền giả", (await page.locator("[data-intro-video]").count()) === 0 && (await page.locator("iframe").count()) === 0 && !(await page.content()).includes("xau.vn"));
     await ctx.close();
   }
 

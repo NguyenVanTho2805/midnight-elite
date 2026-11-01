@@ -113,7 +113,9 @@ const err = (r: { error?: string }) => r.error ?? null;
   check("form ĐĂNG KÝ không có ô khu vực / hình thức (giữ form ngắn — Thọ chốt Q4)", !/Quận\/Huyện|teaching|Hình thức dạy|Tỉnh\/Thành/.test(reg));
   check("form hồ sơ: có đủ năm mục, nói rõ 'tự khai', 'không bao giờ hiện địa chỉ nhà', giá mặc định tắt, không có ô địa chỉ", /Quận\/Huyện/.test(form) && /Hình thức dạy/.test(form) && /tự khai/i.test(form) && /không bao giờ hiện địa chỉ nhà/.test(form) && /useState\(initialTeaching\?\.showPrice === true\)/.test(form) && !/htmlFor="[^"]*(dia-chi|address)/i.test(form));
   check("hiển thị công khai (đầu hồ sơ + thẻ): ghi '(tự khai)' cho trường/bằng cấp, giá kèm 'giá tham khảo', dùng PublicArea", /\(tự khai\)/.test(head) && /giá tham khảo/.test(head) && /hasPublicArea/.test(head) && /hasPublicArea/.test(card));
-  check("trang danh sách: có lọc Tỉnh/Thành + Hình thức, gửi city / mode cho API", /id="tutor-city"/.test(listPage) && /id="tutor-mode"/.test(listPage) && /qs\.set\("city", city\)/.test(listPage) && /qs\.set\("mode", mode\)/.test(listPage));
+  // BU-06: lọc nằm ở tim-gia-su/BoLoc + locUrl (URL <-> API). Ý gốc: có lọc Tỉnh/Thành + Hình thức và gửi city / mode cho API.
+  const tgsLoc = read("src/components/tutor/tim-gia-su/locUrl.ts"), tgsBoLoc = read("src/components/tutor/tim-gia-su/BoLoc.tsx"), tgsApi = read("src/components/tutor/tim-gia-su/goiApi.ts");
+  check("trang danh sách: có lọc Tỉnh/Thành + Hình thức, gửi city / mode cho API", /value=\{value\.city\}/.test(tgsBoLoc) && /set\(\{ city: e\.target\.value/.test(tgsBoLoc) && /value\.mode === k/.test(tgsBoLoc) && /put\("city", f\.city\)/.test(tgsLoc) && /put\("mode", f\.mode\)/.test(tgsLoc) && /mode === "online" \|\| mode === "offline"/.test(tgsLoc) && /\/api\/tutors\?\$\{ghiBoLoc\(/.test(tgsApi));
   check("không còn ký tự vô hình trong mã nguồn mới", ![read("src/lib/tutorArea.ts"), form, head, card].some(s => /[\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/.test(s)));
 
   done();
