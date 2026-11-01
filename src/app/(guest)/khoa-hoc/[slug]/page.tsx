@@ -188,7 +188,7 @@ export default function KhoaHocDetailPage() {
   const [joinChiMa, setJoinChiMa] = useState(false);
   useEffect(() => {
     const j = new URLSearchParams(window.location.search).get("join");
-    const text = j === "dong" ? "Lớp đang đóng, chưa nhận thêm học sinh." : j === "day" ? "Lớp đã đầy, chưa nhận thêm học sinh." : j === "chi-ma" ? "Lớp này hiện chỉ vào bằng mã gia sư gửi." : null;
+    const text = j === "dong" ? "Lớp đang đóng, chưa nhận thêm học sinh." : j === "day" ? "Lớp đã đầy, chưa nhận thêm học sinh." : j === "khong-co" ? "Không tìm thấy lớp này." : j === "chi-ma" ? "Lớp này hiện chỉ vào bằng mã gia sư gửi." : null;
     if (text) Promise.resolve().then(() => { setJoinNote(text); setJoinChiMa(j === "chi-ma"); });
   }, []);
 
