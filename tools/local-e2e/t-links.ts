@@ -30,8 +30,8 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
   check(`có trang để đối chiếu (${pages.length})`, pages.length > 60);
   const STR = /(["'`])(\/[A-Za-z0-9\-_/${}.?=&#:%,\[\]+*]*)\1/g;
   const norm = (p: string) => p.split("#")[0].split("?")[0].replace(/\$\{[^}]*\}/g, "*").replace(/\/+$/, "").split("/").filter(Boolean);
-  // Tiền tố / bản mẫu không phải liên kết: proxy.ts (so sánh tiền tố), StudentShell (`also` = tiền tố module), thư mục _template (không định tuyến).
-  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts", "src/app/(admin)/admin/_template/page.tsx"]); // hostRouting.ts: so khớp TIỀN TỐ ("/api", "/_next"), không phải liên kết
+  // Tiền tố / bản mẫu không phải liên kết: proxy.ts (so sánh tiền tố), StudentShell (`also` = tiền tố module).
+  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts"]); // hostRouting.ts: so khớp TIỀN TỐ ("/api", "/_next"), không phải liên kết
   const IGNORE_PATH = new Set(["/student/bai-giang"]);
   const badPages: string[] = [];
   let nLinks = 0;
@@ -67,7 +67,7 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
   const bad: string[] = [];
   let nCalls = 0;
   for (const f of files) {
-    if (f.startsWith("src/app/api/") || f === "src/proxy.ts" || f === "src/app/(admin)/admin/_template/page.tsx") continue;
+    if (f.startsWith("src/app/api/") || f === "src/proxy.ts") continue;
     const text = read(f);
     for (const m of text.matchAll(/\b(fetch|apiFetch|callApi)\s*(?:<[^()]*>)?\(\s*(?:`(\/api\/(?:[^`$]|\$\{(?:[^{}]|\{[^{}]*\})*\})*)`|"(\/api\/[^"]*)"|'(\/api\/[^']*)')([^)]*)/g)) {
       const line = text.slice(0, m.index).split("\n").length;

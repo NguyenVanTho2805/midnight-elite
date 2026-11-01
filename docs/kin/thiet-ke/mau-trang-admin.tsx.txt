@@ -1,3 +1,11 @@
+// ĐÃ CŨ — không copy vào src. Bản mẫu trang quản trị thời chưa có bộ components/kin (12/10/2026), chuyển ra đây theo ADM-003 (01/11/2026)
+// vì: Next coi thư mục _template là private folder (chưa bao giờ là route), nhưng tệp vẫn bị tsc/eslint biên dịch và cần 3 ngoại lệ test.
+// Chuẩn hiện hành: src/components/kin (docs/kin/thiet-ke/COMPONENTS.md) và trang mẫu thật src/app/(admin)/admin/trien-khai/page.tsx.
+// Những gì dưới đây TRÁI luật kho hôm nay: màu text-gray-*/bg-blue-* thay token --kin-*, icon emoji, alert(), link và API giả (/admin/template, /api/template).
+// Chỉ còn giá trị tra cứu: cách dựng drawer cuộn độc lập (sticky header, visibility/pointerEvents), action menu click-outside, skeleton bảng.
+// Đuôi .tsx.txt là cố ý: tsconfig include **/*.tsx nên để đuôi .tsx trong docs vẫn bị biên dịch.
+// Nguồn gốc: git show 822e83f:"src/app/(admin)/admin/_template/page.tsx"
+// ----------------------------------------------------------------------------------------------------------------------------------
 "use client";
 
 /**

@@ -90,7 +90,7 @@ Soạn 23/10/2026. Chỉ đọc và viết tài liệu, không sửa `src/`. Đ�
 | Nhật ký thao tác (`AuditLog`) `[K]` | ghi ở nhiều route, **không có trang đọc** | **GIỮ+**: làm một trang đọc tối thiểu |
 | Cron nhắc lịch học/thi, hết hạn VIP, push `[Đ]` | `vercel.json`, `/api/cron/*` | **GIỮ**; thêm trang "lần chạy gần nhất" |
 | Tin tức & Blog, Điểm chuẩn, Bảng vinh danh `[Đ]` | `/admin/tin-tuc`, `/diem-chuan`, `/vinh-danh` | **GỘP** nhóm "Truyền thông"; Điểm chuẩn **ẨN** nếu không luyện thi |
-| Trang mẫu `/admin/_template` `[K]` | `src/app/(admin)/admin/_template/page.tsx` | **BỎ** khỏi route (chuyển vào docs) |
+| Trang mẫu `/admin/_template` `[K]` | `src/app/(admin)/admin/_template/page.tsx` | **ĐÃ CHUYỂN** sang `docs/kin/thiet-ke/mau-trang-admin.tsx.txt` (ADM-003, 01/11/2026) |
 
 ### 1.5 Khách (chưa đăng nhập)
 
@@ -192,7 +192,7 @@ Soạn 23/10/2026. Chỉ đọc và viết tài liệu, không sửa `src/`. Đ�
 | Thưởng 3 xu khi bấm "Đánh dấu xong" | **ẨN**: thưởng cho bấm, không cần xem; Coin đã ra khỏi phạm vi (26/09). Giữ Knowledge Bounty của Hỏi đáp (đang chạy thật) |
 | Tin tức/Tra cứu/Điểm chuẩn trong menu "Khác" của học sinh | **ẨN** khỏi vỏ học sinh |
 | Phần thưởng huy hiệu hứa "hoàn học phí 10%", "mentor 1-1", "EXP x2" | **BỎ chữ hứa**: không có mã thực hiện; hoàn học phí còn dính tiền |
-| `/admin/_template` | **BỎ** khỏi route |
+| `/admin/_template` | **ĐÃ CHUYỂN** sang `docs/kin/thiet-ke/mau-trang-admin.tsx.txt` (ADM-003) |
 | Phễu gia sư, Điểm chuẩn | **Thứ yếu**: là tuyển sinh/SEO, không phải vận hành lớp |
 
 ---
