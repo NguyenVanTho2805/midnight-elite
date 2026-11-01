@@ -18,6 +18,9 @@ check("[phá cố ý] bắt đủ các câu mẫu", MUST.every(t => checkClaims(
 check("[không bắt nhầm] 'Trợ giảng, nhiều giáo viên', 'gpa, streak, rank', 'Học ở đây thì được gì?'", ["Trợ giảng, nhiều giáo viên", "gpa, streak, rank", "Học ở đây thì được gì?", "Tốt nghiệp THPT", "8 môn thi quốc gia"].every(t => checkClaims(t) === null));
 check("[phá cố ý] viết lách: chữ hoa, dấu tách rời (NFD), ký tự rộng bằng 0 chen giữa, nhiều khoảng trắng vẫn bị bắt",
   checkClaims("LIVE MỖI TỐI") !== null && checkClaims("live mỗi tối".normalize("NFD")) !== null && checkClaims("li​ve mỗi tối") !== null && checkClaims("live    mỗi \n tối") !== null);
+const EVADE = ["Truong hang dau", "Hoan tien 100 phan tram", "Giảm １００％", "Top 1 Việt Nam", "Đảm bảo đầu ra", "Hỗ trợ 24h/7", "Hỗ trợ 24 / 7", "Dam bao dau ra", "TOP 1 Viet Nam", "Hoàn tiền 100 phần trăm", "Tot nhat Viet Nam"];
+check("[phá cố ý] bản NFKC + không dấu: các cách lách đều bị bắt", EVADE.every(t => checkClaims(t) !== null), EVADE.filter(t => !checkClaims(t)));
+check("[không bắt nhầm] chữ trang chủ hiện có không dính bản không dấu", ["Tốt nghiệp THPT", "Học thử trước khi đăng ký", "Chọn gia sư phù hợp", "Kỳ thi đánh giá năng lực"].every(t => checkClaims(t) === null));
 check("lỗi nêu cụm đã khớp và lý do", (() => { const h = checkClaims("Học live mỗi tối nhé"); return !!h && /live mỗi tối/i.test(h.match) && /live/.test(h.reason); })());
 {
   const c = good(); c.why.cards[1].desc = "Buổi học live mỗi tối cùng gia sư";

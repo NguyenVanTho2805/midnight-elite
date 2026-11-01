@@ -17,15 +17,34 @@ export const CLAIM_BLOCKLIST: readonly { re: RegExp; reason: string }[] = [
   { re: /live mỗi tối|Học trực tiếp LIVE|video quay sẵn/i, reason: "KiN không tổ chức lớp live" },
   { re: /realtime|thời gian thực/i, reason: "không có cập nhật thời gian thực" },
   { re: /(phản hồi|trả lời) trong ngày/i, reason: "không ai đỡ cam kết thời gian phản hồi" },
-  { re: /24\/7/, reason: "KiN không hỗ trợ 24/7" },
+  { re: /24\s?(h|giờ)?\s?[\/\-]\s?7|24\s?(h|giờ)\s?(một|mỗi)\s?ngày|cả ngày lẫn đêm/i, reason: "KiN không hỗ trợ 24/7" },
+  { re: /top\s?(1|một)\b/i, reason: "lời tự xưng không có căn cứ" },
+  { re: /đảm bảo đầu ra|bao (đỗ|đậu|điểm)/i, reason: "KiN không cam kết kết quả" },
   { re: /thứ hạng toàn hệ thống|GPA, streak và/, reason: "không có bảng GPA / streak theo thời gian thực" },
   { re: /cam kết|đảm bảo (kết quả|điểm|đỗ|đậu)/i, reason: "KiN không cam kết kết quả" },
-  { re: /\d{2,}\s?(học sinh|gia sư|phụ huynh)|\d+\s?%/i, reason: "số liệu viết tay dễ sai; số thật hiện ở khối số liệu tự động" },
+  { re: /\d{2,}\s?(học sinh|gia sư|phụ huynh)|\d+\s?(%|phần trăm)/i, reason: "số liệu viết tay dễ sai; số thật hiện ở khối số liệu tự động" },
 ];
+
+/** Bản KHÔNG DẤU của các cụm cấm (chạy trên chữ đã bỏ dấu, hạ chữ thường): bắt người gõ "Truong hang dau", "Hoan tien 100 phan tram"…
+ *  Đồng bộ với GUARD_LISTS của tools/local-e2e/t-no-fabricated.ts: thêm cụm vào một danh sách thì thêm cả hai, và thêm ca phá vào t-home-content-guard-lib. */
+const FOLDED_BLOCKLIST: readonly { re: RegExp; reason: string }[] = [
+  { re: /hoan tien/, reason: "KiN không thu học phí hộ nên không có hoàn tiền" },
+  { re: /hang dau|so 1\b|so mot|tot nhat|top\s?(1|mot)\b/, reason: "lời tự xưng không có căn cứ" },
+  { re: /hoc tron doi|mien phi[^.]*(tron doi|mai mai)/, reason: "trái cách bán thật (học phí theo tháng)" },
+  { re: /24\s?(h|gio)?\s?[\/\-]\s?7|ca ngay lan dem/, reason: "KiN không hỗ trợ 24/7" },
+  { re: /dam bao (dau ra|ket qua|diem|do|dau)|cam ket|bao (do|dau|diem)\b/, reason: "KiN không cam kết kết quả" },
+  { re: /\d+\s?(%|phan tram)/, reason: "số liệu viết tay dễ sai; số thật hiện ở khối số liệu tự động" },
+  { re: /vnpay|realtime|thoi gian thuc|live moi toi|tro giang (rieng|phan hoi|nguoi that)/, reason: "tính năng / đối tác KiN không có" },
+];
+
+/** Bỏ dấu tiếng Việt (NFD rồi bỏ dấu kết hợp; đ→d), hạ chữ thường. */
+function foldVi(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase();
+}
 
 /** Bỏ ký tự độ rộng bằng 0 và gộp khoảng trắng, đưa về dạng chuẩn NFC để chữ có dấu tách rời không lách được. */
 function squash(text: string): string {
-  return text.normalize("NFC").replace(/[​-‍⁠﻿­]/g, "").replace(/\s+/g, " ");
+  return text.normalize("NFKC").replace(/[​-‍⁠﻿­]/g, "").replace(/\s+/g, " ");
 }
 
 /** Trả cụm cấm đã khớp đầu tiên (và lý do), hoặc null. */
@@ -33,6 +52,11 @@ export function checkClaims(text: string): { match: string; reason: string } | n
   const t = squash(text);
   for (const { re, reason } of CLAIM_BLOCKLIST) {
     const m = re.exec(t);
+    if (m) return { match: m[0], reason };
+  }
+  const f = foldVi(t);
+  for (const { re, reason } of FOLDED_BLOCKLIST) {
+    const m = re.exec(f);
     if (m) return { match: m[0], reason };
   }
   return null;

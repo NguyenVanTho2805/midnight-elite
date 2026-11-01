@@ -102,7 +102,9 @@ export async function PUT(req: NextRequest) {
       }
     }
     // Nhật ký: CHỈ tên trường đã đổi, không chép chữ cũ / mới.
-    await logAction(auth.userId, "site_content.update", "SiteContent", HOME_CONTENT_KEY, { fields: changed, count: changed.length });
+    // Lỗi ghi nhật ký không được biến lần lưu đã thành công thành 500.
+    try { await logAction(auth.userId, "site_content.update", "SiteContent", HOME_CONTENT_KEY, { fields: changed, count: changed.length }); }
+    catch (e) { console.error("[site-content/home PUT] logAction", e instanceof Error ? e.message.split("\n").pop() : e); }
     let revalidated = true;
     try { revalidateHome(); } catch { revalidated = false; }
     return NextResponse.json({ ok: true, content: next, updatedAt: now.toISOString(), changedFields: changed, revalidated });
