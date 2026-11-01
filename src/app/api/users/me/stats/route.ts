@@ -57,7 +57,7 @@ export async function GET() {
     betterCount = [...bestByUser.values()].filter(b => b > myBest).length;
   }
   const rank = betterCount !== null ? betterCount + 1 : null;
-  const totalStudents = await prisma.user.count({ where: { role: "student" } });
+  const totalStudents = await prisma.user.count({ where: { role: "student", deletedAt: null } });
 
   return NextResponse.json({ gpa, streak, rank, totalStudents, exp });
 }

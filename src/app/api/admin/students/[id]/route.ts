@@ -23,7 +23,13 @@ export async function PUT(
 
   try {
     // Quản trị sửa số của học sinh: số đã xác minh (đăng nhập SMS) hết hiệu lực nếu số đổi.
-    const cur = await prisma.user.findUnique({ where: { id }, select: { phoneE164: true } });
+    const cur = await prisma.user.findUnique({ where: { id }, select: { phoneE164: true, role: true, deletedAt: true } });
+    if (cur && cur.role !== "student") {
+      return NextResponse.json({ error: "Chỉ sửa được tài khoản học sinh ở đây", code: "not_student" }, { status: 403 });
+    }
+    if (cur?.deletedAt) {
+      return NextResponse.json({ error: "Học sinh đang ẩn — khôi phục trước khi sửa", code: "hidden" }, { status: 409 });
+    }
     const updated = await prisma.user.update({
       where: { id },
       data: {

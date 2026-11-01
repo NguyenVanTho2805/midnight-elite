@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     if (blockedPhone) return blockedPhone;
 
     const users = await prisma.user.findMany({
-      where: { role: "student", phone },
+      where: { role: "student", deletedAt: null, phone },
       select: {
         id:        true,
         name:      true,
