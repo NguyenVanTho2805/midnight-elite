@@ -108,6 +108,17 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   r = await api("DELETE", `/api/admin/danh-muc/${empty.id}`, { as: SA });
   check("xoá danh mục trống → 200 và GET không còn", r.status === 200 && !(await api("GET", "/api/admin/danh-muc", { as: SA })).json.categories.some((c: any) => c.id === empty.id));
   check("xoá lại → 404", (await api("DELETE", `/api/admin/danh-muc/${empty.id}`, { as: SA })).status === 404);
+  // Đua đổi tên: hai danh mục cùng đổi sang một tên → đúng một 200, một 409 (kiểm trùng nằm trong giao dịch có khoá).
+  const ra: any = await api("POST", "/api/admin/danh-muc", { as: SA, body: { name: "Đua A" } });
+  const rb: any = await api("POST", "/api/admin/danh-muc", { as: SA, body: { name: "Đua B" } });
+  const [q1, q2] = await Promise.all([
+    api("PUT", `/api/admin/danh-muc/${ra.json.category.id}`, { as: SA, body: { name: "Đua Chung" } }),
+    api("PUT", `/api/admin/danh-muc/${rb.json.category.id}`, { as: SA, body: { name: "Đua Chung" } }),
+  ]);
+  check("[phá] hai yêu cầu đổi tên cùng lúc sang một tên → một 200 + một 409, DB chỉ một 'Đua Chung'",
+    [q1.status, q2.status].sort().join() === "200,409" && (await prisma.courseCategory.count({ where: { name: "Đua Chung" } })) === 1, { a: q1.status, b: q2.status });
+  await api("DELETE", `/api/admin/danh-muc/${ra.json.category.id}`, { as: SA });
+  await api("DELETE", `/api/admin/danh-muc/${rb.json.category.id}`, { as: SA });
 
   const cur = (await api("GET", "/api/admin/danh-muc", { as: SA })).json.categories.map((c: any) => c.id) as string[];
   const rev = [...cur].reverse();

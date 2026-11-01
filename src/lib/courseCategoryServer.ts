@@ -5,6 +5,11 @@ import { categorySlug, validateCategoryName } from "@/lib/courseCatalogAdmin";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
+/** Khoá tư vấn theo giao dịch cho mọi thao tác ghi danh mục (đổi tên, xoá, đặt thứ tự). Tự nhả khi giao dịch kết thúc. */
+export async function lockCategories(tx: Prisma.TransactionClient): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('course_categories_order'))`;
+}
+
 /**
  * Đồng bộ lười: mọi Course.category chưa có dòng → tạo ở cuối theo chữ cái. Idempotent (skipDuplicates), an toàn khi gọi đồng thời.
  */
@@ -47,15 +52,17 @@ export async function renameCategory(opts: { id?: string; oldName?: string; newN
   const v = validateCategoryName(opts.newName);
   if (!v.ok) return { ok: false, status: 400, error: v.error };
   if (!opts.id) await syncCourseCategories();
-  const cur = opts.id
-    ? await prisma.courseCategory.findUnique({ where: { id: opts.id } })
-    : await prisma.courseCategory.findUnique({ where: { name: opts.oldName ?? "" } });
-  if (!cur) return { ok: false, status: 404, error: "Không tìm thấy danh mục" };
-  if (cur.name === v.name) return { ok: false, status: 400, error: "Tên mới trùng tên hiện tại" };
-  const clash = await findCategoryConflict(v.slug, cur.id);
-  if (clash) return { ok: false, status: 409, error: "Đã có danh mục tên này", existing: clash };
   try {
     return await prisma.$transaction(async tx => {
+      // Cùng khoá với thu-tu/route.ts: kiểm trùng tên + đổi tên nằm trong một giao dịch, không chen ngang nhau.
+      await lockCategories(tx);
+      const cur = opts.id
+        ? await tx.courseCategory.findUnique({ where: { id: opts.id } })
+        : await tx.courseCategory.findUnique({ where: { name: opts.oldName ?? "" } });
+      if (!cur) return { ok: false as const, status: 404 as const, error: "Không tìm thấy danh mục" };
+      if (cur.name === v.name) return { ok: false as const, status: 400 as const, error: "Tên mới trùng tên hiện tại" };
+      const clash = await findCategoryConflict(v.slug, cur.id, tx);
+      if (clash) return { ok: false as const, status: 409 as const, error: "Đã có danh mục tên này", existing: clash };
       const upd = await tx.courseCategory.update({ where: { id: cur.id }, data: { name: v.name, slug: v.slug } });
       const r = await tx.course.updateMany({ where: { category: cur.name }, data: { category: v.name } });
       return { ok: true as const, category: { id: upd.id, name: upd.name, slug: upd.slug, sortOrder: upd.sortOrder }, renamedCourses: r.count, from: cur.name };

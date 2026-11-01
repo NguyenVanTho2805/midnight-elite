@@ -15,6 +15,9 @@ export async function GET() {
   if (isNextResponse(auth)) return auth;
   if (auth.adminRole === "teacher") return NextResponse.json({ error: NO_TEACHER }, { status: 403 });
   try {
+    // CỐ Ý: GET ghi DB. Đồng bộ lười từ Course.category cũ (tên danh mục trước đây chỉ là chuỗi trên khoá) sang bảng
+    // course_categories. Idempotent (skipDuplicates, chỉ tạo dòng còn thiếu, không đổi dòng có sẵn), an toàn khi gọi song song;
+    // không ghi audit vì là hệ thống tự điền, không phải thao tác của người. Nợ: chuyển sang một lần POST/migration.
     await syncCourseCategories();
     const [rows, grouped] = await Promise.all([
       prisma.courseCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),

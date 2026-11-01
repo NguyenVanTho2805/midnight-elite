@@ -293,3 +293,9 @@ Thêm nhãn Việt vào `ACTION_LABEL` (`adminOps.ts:82`): "Đổi hàng loạt 
 | `src/lib/adminOps.ts` | thêm nhãn nhật ký (mục 7). Tệp không liệt kê trong `PHAM-VI.md`; xin xác nhận thuộc adm-code như `adminNav.ts` | adm-code | không |
 | Hai tệp lớn `khoa-hoc/[id]/page.tsx`, `thi-thu/**` | **không đụng** | — | — |
 | `src/app/api/courses/[id]/route.ts` | **không đụng.** Ghi nợ cho tut-code: thêm `logAction` khi đổi `status`/`price`/`capacity` (mục 7) | tut-code, việc riêng | pb-gia-su |
+
+## 11. Nợ
+- **409 `baseUpdatedAt` cho đổi tên / hàng loạt:** cố ý KHÔNG làm ở CAT-02 (hai quản trị sửa cùng lúc chỉ được bảo vệ bằng khoá tư vấn + kiểm trùng trong giao dịch, chưa có kiểm bản cũ).
+- **`GET /api/admin/danh-muc` còn ghi DB** (đồng bộ lười từ tên danh mục cũ trên `Course.category`): idempotent và có ghi chú trong mã; chuyển sang một lần migration/POST là việc sau.
+- **`CreateCourseDrawer.tsx` còn ~66 chỗ dùng lớp Tailwind thô** `gray-*/blue-*/red-*/green-*` (42 dòng): quá nhiều để đổi gọn trong lượt sửa này; đổi sang token `--kin-*` ở việc riêng của pb-gia-su.
+- Thao tác tạo danh mục (POST) chưa lấy khoá tư vấn; dựa vào `@unique` + bắt P2002.

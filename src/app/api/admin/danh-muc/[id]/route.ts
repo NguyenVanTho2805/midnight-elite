@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logAction } from "@/lib/auditLog";
-import { renameCategory } from "@/lib/courseCategoryServer";
+import { renameCategory, lockCategories } from "@/lib/courseCategoryServer";
 
 export const dynamic = "force-dynamic";
 const NO_TEACHER = "Chỉ quản trị viên được quản lý danh mục";
@@ -33,12 +33,19 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   if (auth.adminRole === "teacher") return NextResponse.json({ error: NO_TEACHER }, { status: 403 });
   try {
     const { id } = await ctx.params;
-    const cat = await prisma.courseCategory.findUnique({ where: { id } });
-    if (!cat) return NextResponse.json({ error: "Không tìm thấy danh mục" }, { status: 404 });
-    const n = await prisma.course.count({ where: { category: cat.name } });
-    if (n > 0) return NextResponse.json({ error: `Còn ${n} khoá học đang dùng danh mục này`, courses: n }, { status: 409 });
-    await prisma.courseCategory.delete({ where: { id } });
-    await logAction(auth.userId, "course_category.delete", "CourseCategory", id, { name: cat.name });
+    // Đếm khoá + xoá trong một giao dịch có khoá tư vấn: không ai đổi tên/đặt thứ tự chen vào giữa.
+    const out = await prisma.$transaction(async tx => {
+      await lockCategories(tx);
+      const cat = await tx.courseCategory.findUnique({ where: { id } });
+      if (!cat) return { status: 404 as const };
+      const n = await tx.course.count({ where: { category: cat.name } });
+      if (n > 0) return { status: 409 as const, n };
+      await tx.courseCategory.delete({ where: { id } });
+      await tx.auditLog.create({ data: { actorId: auth.userId, action: "course_category.delete", resourceType: "CourseCategory", resourceId: id, metadata: { name: cat.name } } });
+      return { status: 200 as const };
+    });
+    if (out.status === 404) return NextResponse.json({ error: "Không tìm thấy danh mục" }, { status: 404 });
+    if (out.status === 409) return NextResponse.json({ error: `Còn ${out.n} khoá học đang dùng danh mục này`, courses: out.n }, { status: 409 });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[admin/danh-muc DELETE]", e);
