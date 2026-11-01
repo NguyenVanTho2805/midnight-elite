@@ -10,7 +10,8 @@ const FORM = { "content-type": "application/x-www-form-urlencoded" };
 const form = (path: string, as: TUser | undefined) => api("POST", path, { as, raw: new URLSearchParams([]), headers: FORM });
 const loc = (r: { headers: Headers }) => { const h = r.headers.get("location") ?? ""; if (!h) return ""; const u = new URL(h, "http://x"); return u.pathname + u.search; };
 const list = (qs = "") => api("GET", `/api/tutors${qs ? "?" + qs : ""}`);
-const idsOf = (j: any) => (j.items as any[]).map(x => x.id as string);
+// nhận cả phản hồi {status,json} lẫn thân JSON; thiếu items ⇒ mảng rỗng (để ca đỏ báo rõ thay vì làm cả bài sập)
+const idsOf = (j: any) => ((j?.items ?? j?.json?.items ?? []) as any[]).map(x => x.id as string);
 const day = (n: number) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - n); return d; };
 async function setPrefs(id: string, prefs: unknown, extra: Record<string, unknown> = {}) {
   await prisma.user.update({ where: { id }, data: { preferences: prefs as any, ...extra } });
@@ -293,7 +294,10 @@ const B64 = "A".repeat(400);
   const rev = await list("priceMin=300000&priceMax=100000&pageSize=48");
   check("priceMin>priceMax ⇒ cùng kết quả với khoảng đã đổi chỗ", rev.json.total === (await list("priceMin=100000&priceMax=300000&pageSize=48")).json.total && rev.json.total > 0);
   check("q rất dài bị cắt, không khớp nhầm cả danh sách", (await list("q=" + "x".repeat(2000))).json.total === 0);
-  check("q chứa % _ \\ không như ký tự đại diện (không ra cả danh sách)", (await list("q=%25")).json.total === 0 && (await list("q=_")).json.total === 0);
+  // Ký hiệu bị bỏ khi chuẩn hoá (normalizeKey) ⇒ q chỉ gồm ký hiệu = không có từ khoá = không lọc (như q rỗng); điều cần chặn là nó KHÔNG hoạt động như ký tự đại diện khi đi kèm chữ.
+  const unfilteredTotal = (await list("pageSize=1")).json.total;
+  check("q chỉ gồm % _ \\ = không có từ khoá (bằng danh sách không lọc), không lỗi", (await list("q=%25&pageSize=1")).json.total === unfilteredTotal && (await list("q=_&pageSize=1")).json.total === unfilteredTotal, unfilteredTotal);
+  check("q = chữ + % hoặc _ không khớp đại diện (không ra cả danh sách)", (await list("q=zzzq%25&pageSize=1")).json.total === 0 && (await list("q=zzzq_&pageSize=1")).json.total === 0);
   for (const q of ["x".repeat(500), encodeURIComponent("'; DROP TABLE x;--"), encodeURIComponent(".*"), "%00%00", "chua%20duyet", "don%20cho", "bi%20cam", "bi%20khoa", "da%20an", "%25%25"]) {
     const r = await api("GET", `/api/tutors/suggest?q=${q}`);
     check(`suggest?q=${q.slice(0, 24)} ⇒ 200, mảng, không người bị ẩn / PII`, r.status === 200 && Array.isArray(r.json?.suggestions) && r.json.suggestions.length <= 8 && !(r.json.suggestions as any[]).some(x => hiddenIds.includes(x.id)) && !/@test\.local|09123/.test(r.text), [r.status, r.text.slice(0, 80)]);

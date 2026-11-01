@@ -82,7 +82,9 @@ async function gridColumns(page: Page) {
     p.on("pageerror", e => errors.push(String(e)));
     p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); });
   };
-  const goto = async (p: Page, url: string, ready: string) => { await p.goto(`${BASE}${url}`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.locator(ready).first().waitFor({ timeout: 90000 }); };
+  // Next dev truyền trang theo luồng: lúc đầu nội dung nằm trong <div hidden id="S:n"> RỒI mới được script tráo vào chỗ — đo/đếm trước lúc đó sẽ thấy HAI bản. Chờ hết mẫu ẩn.
+  const settle = (p: Page) => p.waitForFunction(`!document.querySelector('div[hidden][id^="S:"]')`, undefined, { timeout: 60000 }).catch(() => undefined);
+  const goto = async (p: Page, url: string, ready: string) => { await p.goto(`${BASE}${url}`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.locator(ready).first().waitFor({ timeout: 90000 }); await settle(p); };
 
   // ───────────────────────── Danh sách
   for (const [label, w, h] of [["1600", 1600, 900], ["390", 390, 844]] as const) {
@@ -103,8 +105,11 @@ async function gridColumns(page: Page) {
     const lanText = await lan.first().innerText();
     check("thẻ có tên, môn, '150.000đ / buổi · giá tham khảo'", lanText.includes("Cô Lan") && lanText.includes("Toán 9") && /150\.000đ \/ buổi/.test(lanText) && lanText.includes("giá tham khảo"), lanText);
     check("thẻ có 'N buổi đã dạy', 'học sinh đang dạy', 'Hoạt động gần đây', khu vực", /1 buổi đã dạy/.test(lanText) && /học sinh đang dạy/.test(lanText) && lanText.includes("Hoạt động gần đây") && lanText.includes("Cầu Giấy"), lanText);
+    // Thầy Khang không nằm trang 1 (24 thẻ/trang, còn 26 gia sư phụ) ⇒ tìm theo tên rồi trả về danh sách đầy đủ.
+    await goto(page, "/giang-vien?q=Khang", "[data-tutor-card]");
     const khang = page.locator("[data-tutor-card]", { hasText: "Thầy Khang" });
-    check("gia sư không khai giá: thẻ không in dòng giá, không in 'Liên hệ'", (await khang.count()) === 1 && (await khang.locator("[data-tutor-price]").count()) === 0 && !/Liên hệ/.test(await khang.innerText()));
+    check("gia sư không khai giá: thẻ không in dòng giá, không in 'Liên hệ'", (await khang.count()) === 1 && (await khang.locator("[data-tutor-price]").count()) === 0 && !/Liên hệ/.test(await khang.innerText()), { cards: await khang.count(), price: await khang.locator("[data-tutor-price]").count(), text: (await khang.first().innerText().catch(() => "")).slice(0, 200) });
+    await goto(page, "/giang-vien", "[data-tutor-card]");
     check("khách không thấy gia sư bị khoá / ẩn", (await page.locator("[data-tutor-card]", { hasText: /Cô Bị Khoá|Cô Ẩn Hồ Sơ/ }).count()) === 0);
     check("thẻ là MỘT liên kết aria-label 'Xem hồ sơ …' tới /mentor/<id>", (await page.getByRole("link", { name: "Xem hồ sơ Cô Lan" }).getAttribute("href")) === `/mentor/${T.id}`);
 
@@ -128,7 +133,7 @@ async function gridColumns(page: Page) {
     // Gợi ý + chọn môn ⇒ lưới lọc ⇒ URL
     const box = page.getByRole("combobox", { name: /Tìm gia sư/ });
     await box.fill("hoa");
-    const opts = page.getByRole("option");
+    const opts = page.locator('[role="option"]'); // KHÔNG dùng getByRole("option"): nó cũng đếm <option> của ô chọn native trong bộ lọc
     await opts.first().waitFor({ timeout: 30000 });
     check("hộp gợi ý hiện, ≤ 8 dòng", (await opts.count()) >= 1 && (await opts.count()) <= 8, await opts.count());
     await page.getByRole("option", { name: /Hoá học/ }).first().click();
@@ -221,8 +226,9 @@ async function gridColumns(page: Page) {
     const page = await ctx.newPage(); watch(page);
     await goto(page, `/mentor/${T.id}`, "[data-ho-so-dau]");
     check("ảnh bìa hiện", await page.locator("[data-cover] img").isVisible());
-    { const html = await page.content(); // kẻ tấn công đọc nguồn trang: không PII, không đường dẫn video thô lẫn tham số theo dõi, không mã quản trị
-      check("HTML hồ sơ không nhúng số điện thoại / email / ngày sinh / tên em học sinh", !/0901234567|901234567|@test\.local|dateOfBirth|phoneE164|Em Mai Kín Tên|Em Nam Kín Tên/.test(html));
+    { // Gia sư BẬT Zalo cố ý đưa số vào đúng đường dẫn zalo.me/<số> (nút "Nhắn Zalo"); số đó KHÔNG được xuất hiện ở bất kỳ chỗ nào khác.
+      const html = (await page.content()).replace(/zalo\.me\/\+?\d+/g, "zalo.me/·"); // kẻ tấn công đọc nguồn trang: không PII, không đường dẫn video thô lẫn tham số theo dõi, không mã quản trị
+      check("HTML hồ sơ không nhúng số điện thoại / email / ngày sinh / tên em học sinh", !/0901234567|901234567|@test\.local|dateOfBirth|phoneE164|Em Mai Kín Tên|Em Nam Kín Tên/.test(html), (html.match(/0901234567|901234567|@test\.local|dateOfBirth|phoneE164|Em Mai Kín Tên|Em Nam Kín Tên/g) ?? []).slice(0, 5));
       check("HTML hồ sơ không nhúng khoá introVideoUrl / preferences thô", !/introVideoUrl|"preferences"/.test(html)); }
     const play = page.getByRole("button", { name: /Phát video giới thiệu của Cô Lan/ });
     await play.waitFor({ timeout: 30000 });
@@ -248,16 +254,16 @@ async function gridColumns(page: Page) {
     for (const [name, key, marker] of [["Lớp đang mở", "lop", "[data-tab-lop]"], ["Chỉ số", "chi-so", "[data-tab-chi-so]"], ["Giới thiệu", "gioi-thieu", "[data-tab-gioi-thieu]"]] as const) {
       await page.getByRole("tab", { name }).click();
       await page.waitForURL(u => rel(u.toString()).includes(`tab=${key}`), { timeout: 30000 });
-      await page.locator(marker).waitFor({ timeout: 30000 });
+      await page.locator(marker).first().waitFor({ timeout: 30000 }); await settle(page);
       check(`tab ${name}: URL ?tab=${key} và nội dung đổi`, rel(page.url()).includes(`tab=${key}`));
       if (key === "lop") await shot(page, `ho-so-gia-su-lop-${label}`);
     }
     await page.goto(`${BASE}/mentor/${T.id}?tab=lop`, { waitUntil: "domcontentloaded" });
-    await page.locator("[data-tab-lop]").waitFor({ timeout: 60000 });
+    await page.locator("[data-tab-lop]").first().waitFor({ timeout: 60000 }); await settle(page);
     check("tab 'Lớp đang mở': thấy lớp miễn phí và nhãn 'Miễn phí'", await page.locator('[data-class-row]', { hasText: "Tin học miễn phí" }).getByText("Miễn phí", { exact: true }).isVisible());
     check("lớp có học phí: chỉ 'Xem lớp', không nút Vào lớp", (await page.locator("[data-class-row]", { hasText: "Toán 9 có học phí" }).getByRole("button").count()) === 0);
     await page.goto(`${BASE}/mentor/${T.id}?tab=chi-so`, { waitUntil: "domcontentloaded" });
-    await page.locator("[data-tab-chi-so]").waitFor({ timeout: 60000 });
+    await page.locator("[data-tab-chi-so]").first().waitFor({ timeout: 60000 }); await settle(page);
     check("tab 'Chỉ số' không có ★", !(await page.locator("[data-ho-so]").innerText()).includes("★"));
     check("Chỉ số: nhãn 'Có dạy trong 30 ngày qua' và chân 'Không hiển thị thông tin học sinh'", /Có dạy trong 30 ngày qua/.test(await page.locator("[data-tab-chi-so]").innerText()) && /Không hiển thị thông tin học sinh/.test(await page.locator("[data-tab-chi-so]").innerText()));
     check("giá trị tab lạ ⇒ tab Giới thiệu", await (async () => { await page.goto(`${BASE}/mentor/${T.id}?tab=bay-ba`, { waitUntil: "domcontentloaded" }); return page.locator("[data-tab-gioi-thieu]").waitFor({ timeout: 60000 }).then(() => true, () => false); })());
@@ -270,7 +276,7 @@ async function gridColumns(page: Page) {
       check("390: hai nút ngang hàng", !!nz && !!nr && Math.abs(nz.y - nr.y) < 4, { nz, nr });
     }
     await page.goto(`${BASE}/mentor/${T.id}`, { waitUntil: "domcontentloaded" });
-    await page.locator("[data-ho-so-dau]").waitFor({ timeout: 60000 });
+    await page.locator("[data-ho-so-dau]").first().waitFor({ timeout: 60000 }); await settle(page);
     const m = await measure(page);
     check(`hồ sơ: nút ≥ 44px (${label})`, m.small.length === 0, m.small);
     check(`hồ sơ: không tràn ngang (${label})`, !m.overflow);

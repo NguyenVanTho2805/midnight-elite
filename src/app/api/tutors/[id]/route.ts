@@ -18,6 +18,8 @@ import { coverForPublic, introVideoView } from "@/lib/tutorSearchMedia";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // id rác (ký tự NUL làm Postgres báo lỗi ⇒ 500, hoặc quá dài) không thể là id thật: 404 như không tồn tại.
+  if (!id || id.length > 64 || id.includes("\u0000")) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
 
   const t = await prisma.user.findFirst({
     where: {

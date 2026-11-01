@@ -208,7 +208,7 @@ export default async function MentorProfilePage({ params, searchParams }: { para
         {!session && (
           <>
             Hồ sơ tạo bằng KiN · sổ lớp miễn phí cho gia sư →{" "}
-            <Link href="/dang-ky?vai=gia-su&n=ho-so" className="font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>Tạo hồ sơ của bạn</Link>
+            <Link href="/dang-ky?vai=gia-su&n=ho-so" className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center font-semibold underline" style={{ color: "var(--kin-nhan-link)" }}>Tạo hồ sơ của bạn</Link>
           </>
         )}
       </div>
