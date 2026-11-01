@@ -22,6 +22,11 @@ const resetToken = (to: string) => readdirSync(SINK).sort().map(f => JSON.parse(
   .filter(m => m.to === to && /Đặt lại mật khẩu/.test(m.subject)).at(-1)?.text.match(/token=([0-9a-f]{64})/)?.[1] ?? "";
 
 type Loc = ReturnType<Page["locator"]>;
+// Chờ React gắn sự kiện vào ô (hydrate xong) rồi mới thao tác: bấm "Đăng nhập" / "Tiếp theo" TRƯỚC lúc đó thì biểu mẫu bị gửi kiểu trình duyệt thuần (không có yêu cầu
+// /api/auth/login nào) — bài từng đỏ chập chờn đúng vì vậy khi `next dev` biên dịch chậm.
+const hydrated = (p: Page, sel: string) => p.waitForFunction(
+  `(() => { var el = document.querySelector(${JSON.stringify(sel)}); return !!el && Object.keys(el).some(function (k) { return k.indexOf("__reactProps$") === 0; }); })()`,
+  null, { timeout: 150000 });
 const read = async (l: Loc) => ({
   type: await l.getAttribute("type"),
   cap: await l.getAttribute("autocapitalize"),
@@ -54,6 +59,7 @@ const protectedAttrs = (a: Awaited<ReturnType<typeof read>>) => a.cap === "off" 
   const email = `uyen.${Date.now()}@example.com`;
   const PASS = "uyen2005xyz"; // chữ thường toàn bộ: nếu bàn phím viết hoa chữ đầu thì mật khẩu lưu sẽ lệch
   await p.goto(`${BASE}/dang-ky`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await hydrated(p, 'input[placeholder="Nguyễn Văn A"]');
   await p.getByPlaceholder("Nguyễn Văn A").fill("Phương Uyên");
   const nameAttrs = await read(p.getByPlaceholder("Nguyễn Văn A"));
   check("ô Họ và tên KHÔNG bị tắt viết hoa (tên người vẫn viết hoa chữ đầu)", nameAttrs.cap !== "off" && nameAttrs.spell !== "false", nameAttrs);
@@ -93,6 +99,7 @@ const protectedAttrs = (a: Awaited<ReturnType<typeof read>>) => a.cap === "off" 
   const p2 = await page();
   await p2.goto(`${BASE}/dang-nhap`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await p2.locator("#dn-id-pw").waitFor({ timeout: 90000 });
+  await hydrated(p2, "#dn-pass");
   await p2.locator("#dn-id-pw").fill(`  ${email.toUpperCase()}  `);              // gõ HOA + dấu cách thừa (bàn phím điện thoại hay thêm)
   await p2.locator("#dn-pass").fill(PASS);
   // Chốt vào PHẢN HỒI của máy chủ, không vào thời gian tải trang đích: lần mở đầu của `next dev` biên dịch trang đích rất lâu (README), bài từng đỏ vì hạn 60 giây đó.
@@ -109,6 +116,7 @@ const protectedAttrs = (a: Awaited<ReturnType<typeof read>>) => a.cap === "off" 
   const p3 = await page();
   await p3.goto(`${BASE}/dang-nhap`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await p3.locator("#dn-pass").waitFor({ timeout: 90000 });
+  await hydrated(p3, "#dn-pass");
   a = await read(p3.locator("#dn-id-pw"));
   check("ô tài khoản (email / số điện thoại): ba thuộc tính", protectedAttrs(a), a);
   a = await read(p3.locator("#dn-pass"));
