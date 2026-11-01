@@ -107,7 +107,6 @@ export function canUseOpenPolicy(c: FreeInput): boolean {
 export function normalizeJoinNote(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
   if (raw === undefined || raw === null) return { ok: true, value: null };
   if (typeof raw !== "string") return { ok: false, error: "Lời nhắn không hợp lệ" };
-  // eslint-disable-next-line no-control-regex
   const s = raw.replace(/[\u0000-\u001F\u007F-\u009F]/g, "").trim();
   if (s.length > JOIN_NOTE_MAX) return { ok: false, error: `Lời nhắn tối đa ${JOIN_NOTE_MAX} ký tự` };
   return { ok: true, value: s === "" ? null : s };
