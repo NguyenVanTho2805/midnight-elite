@@ -1,0 +1,16 @@
+// G1 (BU-02) — Bản chụp Giáo trình của một lớp. Chỉ gia sư ĐÃ DUYỆT và là CHỦ lớp: chưa đăng nhập 401, không phải gia sư / lớp người khác 403, không có lớp 404.
+// Không có tên học sinh trong câu trả lời (chỉ cây Phần › Chương › Bài và mục nội dung).
+import { NextRequest, NextResponse } from "next/server";
+import { requireCourseTutor } from "@/lib/enrollServer";
+import { loadGiaoTrinh } from "@/lib/giaoTrinhServer";
+
+const NO_STORE = { "Cache-Control": "no-store" } as const;
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = await params;
+  const auth = await requireCourseTutor(courseId);
+  if (auth instanceof NextResponse) return auth;
+  const snap = await loadGiaoTrinh(courseId);
+  if (!snap) return NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404, headers: NO_STORE });
+  return NextResponse.json(snap, { headers: NO_STORE });
+}

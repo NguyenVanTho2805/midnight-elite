@@ -1,14 +1,15 @@
 // Thư viện (TK-176; Figma 30:2 "Bản ghi và tài liệu").
 //   Học viên đã đăng nhập: thư viện của các LỚP MÌNH ĐANG HỌC — gom theo bài, kèm tiến độ xem và trạng thái bài nộp của chính mình.
-//   Gia sư đã đăng nhập  : thư viện của các lớp mình dạy (kèm số bài nộp / chờ chấm), có lối sang sửa bài.
+//   Gia sư đã đăng nhập  : "Thư viện của tôi" (BU-02): tài liệu trong bài của các lớp mình dạy + tệp tải lên chưa gắn + đề gốc; dùng lại giữa các lớp.
 //   Khách / quản trị     : danh sách tài liệu CÔNG KHAI (chỉ bài miễn phí) từ các khoá đang mở.
 // NC2-046: học sinh và khách đều có ô tìm (KhoTimKiem): tài liệu công khai + video YouTube do quản trị chọn; học sinh còn tìm được trong tài liệu của lớp mình.
 // 14/10/2026: trước đây mọi người đều thấy danh sách công khai; và nó đọc tài liệu theo dạng "nhãn|url" trong khi dữ liệu thật là mảng JSON nên gần như luôn trống.
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import LibraryView from "@/components/library/LibraryView";
-import TutorLibrary from "@/components/library/TutorLibrary";
-import { loadStudentLibrary, loadTutorLibrary } from "@/lib/libraryServer";
+import ThuVienCuaToi, { type TutorLibraryView } from "@/components/tutor/giao-trinh/ThuVienCuaToi";
+import { loadStudentLibrary } from "@/lib/libraryServer";
+import { loadTutorLibrary } from "@/lib/tutorLibraryServer";
 import { viewerHref } from "@/lib/library";
 import { loadPublicDocs } from "@/lib/libraryKhoServer";
 import { ownItemsOf } from "@/lib/libraryOwn";
@@ -79,9 +80,10 @@ export default async function ThuVienPage() {
     return <LibraryView role="student" classes={classes} search={<KhoTimKiem own={ownItemsOf(classes)} />} />;
   }
   if (session?.role === "admin" && session.adminRole === "teacher") {
-    // Thư viện của gia sư chỉ là bảng tài liệu; bài tập nằm ở module Bài tập nên không đẩy chúng sang trình duyệt.
-    const classes = (await loadTutorLibrary(session.userId)).map(c => ({ ...c, lessons: c.lessons.map(l => ({ ...l, assignments: [] })) }));
-    return <TutorLibrary classes={classes} />;
+    // BU-02 (D2): Thư viện của tôi — tài liệu dùng lại giữa các lớp (src/lib/tutorLibraryServer.ts). Lỗi tải → màn lỗi có Thử lại, không trắng trang.
+    let view: TutorLibraryView | null = null;
+    try { view = await loadTutorLibrary(session.userId); } catch { view = null; }
+    return <ThuVienCuaToi view={view} />;
   }
   return <PublicLibrary />;
 }

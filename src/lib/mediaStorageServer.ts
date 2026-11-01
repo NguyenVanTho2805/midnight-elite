@@ -6,12 +6,14 @@
 //   CHƯA CHẠY THẬT với tài khoản Cloudinary (máy này không có khoá): thuật toán ký làm theo tài liệu Cloudinary và có test cho phần thuần;
 //   lần đầu bật ở production phải thử tải 1 video nhỏ và phát lại.
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, mkdirSync, statSync, createWriteStream, rmSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, statSync, createWriteStream, rmSync, openSync, readSync, closeSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
-import { resolveVideoUploadConfig, safeFileName, type VideoUploadConfig } from "./mediaStorage";
+import { resolveDocumentUploadConfig, resolveVideoUploadConfig, safeFileName, type DocumentUploadConfig, type VideoUploadConfig } from "./mediaStorage";
 
 export const videoUploadConfig = (): VideoUploadConfig => resolveVideoUploadConfig(process.env as Record<string, string | undefined>);
+/** BU-02: cấu hình tải TÀI LIỆU lên KiN (độc lập với cờ KIN_VIDEO_UPLOAD của video). */
+export const documentUploadConfig = (): DocumentUploadConfig => resolveDocumentUploadConfig(process.env as Record<string, string | undefined>);
 
 // ── Đĩa cục bộ ──────────────────────────────────────────────────────────────
 
@@ -64,6 +66,21 @@ export function openLocalRange(path: string, range: { start: number; end: number
   return { body: Readable.toWeb(node) as unknown as ReadableStream, size, start, end };
 }
 
+/** Đọc tối đa `n` byte ĐẦU của tệp cục bộ (để kiểm magic bytes); tệp không có ⇒ null. */
+export function readLocalHead(path: string, n: number): Uint8Array | null {
+  if (!existsSync(path)) return null;
+  const fd = openSync(path, "r");
+  try {
+    const buf = Buffer.alloc(n);
+    const got = readSync(fd, buf, 0, n, 0);
+    return new Uint8Array(buf.subarray(0, got));
+  } finally { closeSync(fd); }
+}
+/** Kích thước tệp cục bộ trên đĩa; không có ⇒ null. */
+export function statLocalBytes(path: string): number | null {
+  try { return existsSync(path) ? statSync(path).size : null; } catch { return null; }
+}
+
 export function removeLocal(storageKey: string): void {
   try { rmSync(localPathFor(storageKey), { force: true }); } catch { /* đã mất thì thôi */ }
 }
@@ -93,6 +110,45 @@ export function cloudinaryUploadInit(env: CloudinaryEnv, publicId: string, nowSe
   };
 }
 
+export const cloudinaryDocPublicId = (courseId: string, assetId: string, ext: string): string =>
+  `kin-docs/${courseId.replace(/[^A-Za-z0-9_-]/g, "_")}/${assetId}.${ext.replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
+
+/** Chỉ dẫn tải TÀI LIỆU lên Cloudinary: resource_type=raw, type=authenticated (KHÔNG có địa chỉ công khai, khác preset không ký của trang quản trị cũ). Có ký, nên máy chủ KiN quyết public_id. */
+export function cloudinaryDocUploadInit(env: CloudinaryEnv, publicId: string, nowSeconds = Math.floor(Date.now() / 1000)) {
+  const params = { public_id: publicId, timestamp: String(nowSeconds), type: "authenticated" };
+  return {
+    method: "POST" as const,
+    url: `https://api.cloudinary.com/v1_1/${env.cloud}/raw/upload`,
+    fields: { ...params, api_key: env.apiKey, signature: signCloudinaryParams(params, env.apiSecret) },
+  };
+}
+
+/** Địa chỉ đã ký để máy chủ KiN tải tệp "raw authenticated" (public_id của raw đã gồm đuôi). Chữ ký giống video: 8 ký tự đầu base64url(sha1(public_id + secret)). */
+export function cloudinarySignedRawUrl(env: CloudinaryEnv, publicId: string): string {
+  const sig = createHash("sha1").update(publicId + env.apiSecret).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").slice(0, 8);
+  return `https://res.cloudinary.com/${env.cloud}/raw/authenticated/s--${sig}--/${publicId}`;
+}
+
+/** Xoá tệp trên Cloudinary (best-effort: lỗi mạng chỉ ghi log, không ném). Dùng khi tệp sai nội dung/vượt trần hoặc chủ xoá tệp chưa dùng. */
+export async function cloudinaryDestroy(env: CloudinaryEnv, publicId: string, resourceType: "raw" | "video" = "raw", nowSeconds = Math.floor(Date.now() / 1000)): Promise<boolean> {
+  const params = { public_id: publicId, timestamp: String(nowSeconds), type: "authenticated" };
+  const body = new URLSearchParams({ ...params, api_key: env.apiKey, signature: signCloudinaryParams(params, env.apiSecret) });
+  try {
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${env.cloud}/${resourceType}/destroy`, { method: "POST", body, cache: "no-store" });
+    return r.ok;
+  } catch (e) { console.error("[cloudinaryDestroy]", publicId, e); return false; }
+}
+
+/** Đọc `n` byte ĐẦU của tệp raw authenticated bằng Range qua địa chỉ đã ký (để kiểm magic bytes). Lỗi/không thấy ⇒ null. */
+export async function cloudinaryReadHead(env: CloudinaryEnv, publicId: string, n: number): Promise<Uint8Array | null> {
+  try {
+    const r = await fetch(cloudinarySignedRawUrl(env, publicId), { headers: { Range: `bytes=0-${n - 1}` }, cache: "no-store" });
+    if (!r.ok && r.status !== 206) return null;
+    const buf = new Uint8Array(await r.arrayBuffer());
+    return buf.subarray(0, n);
+  } catch { return null; }
+}
+
 /** Địa chỉ phát đã ký cho video "authenticated": chữ ký = 8 ký tự đầu của base64url(sha1(public_id + secret)). */
 export function cloudinarySignedVideoUrl(env: CloudinaryEnv, publicId: string, format: string): string {
   const sig = createHash("sha1").update(publicId + env.apiSecret).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").slice(0, 8);
@@ -100,13 +156,13 @@ export function cloudinarySignedVideoUrl(env: CloudinaryEnv, publicId: string, f
 }
 
 /** Hỏi Admin API xem video đã thật sự có trên Cloudinary và nặng bao nhiêu (không tin con số trình duyệt gửi lên). */
-export async function cloudinaryVerify(env: CloudinaryEnv, publicId: string): Promise<{ bytes: number; format: string } | null> {
+export async function cloudinaryVerify(env: CloudinaryEnv, publicId: string, resourceType: "video" | "raw" = "video"): Promise<{ bytes: number; format: string } | null> {
   const auth = "Basic " + Buffer.from(`${env.apiKey}:${env.apiSecret}`).toString("base64");
-  const url = `https://api.cloudinary.com/v1_1/${env.cloud}/resources/video/authenticated/${publicId.split("/").map(encodeURIComponent).join("/")}`;
+  const url = `https://api.cloudinary.com/v1_1/${env.cloud}/resources/${resourceType}/authenticated/${publicId.split("/").map(encodeURIComponent).join("/")}`;
   try {
     const r = await fetch(url, { headers: { Authorization: auth }, cache: "no-store" });
     if (!r.ok) return null;
     const j = await r.json() as { bytes?: number; format?: string };
-    return typeof j.bytes === "number" ? { bytes: j.bytes, format: j.format ?? "mp4" } : null;
+    return typeof j.bytes === "number" ? { bytes: j.bytes, format: j.format ?? (resourceType === "video" ? "mp4" : "") } : null;
   } catch { return null; }
 }

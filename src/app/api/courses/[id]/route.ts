@@ -7,7 +7,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
-import { canViewAllMaterials, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
+import { canViewAllMaterials, isCourseManager, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -39,7 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     if (session) {
       if (session.role === "admin") {
-        hasAccess = true;
+        // V7 (BU-02): trước đây MỌI tài khoản admin đều coi là có quyền ⇒ gia sư không phải chủ thấy cây tên bài của lớp ẩn. Nay: quản trị hoặc đúng chủ lớp.
+        hasAccess = isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, course.ownerId);
       } else {
         enrolled = await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.userId, courseId: id } },
@@ -51,7 +52,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // Hidden courses: only admin or enrolled students can access
+    // Hidden courses: only the class manager (admin / owner tutor) or enrolled students can access
     if (!course.status && !hasAccess) {
       return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     }
