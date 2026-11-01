@@ -109,8 +109,11 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   check("xoá danh mục trống → 200 và GET không còn", r.status === 200 && !(await api("GET", "/api/admin/danh-muc", { as: SA })).json.categories.some((c: any) => c.id === empty.id));
   check("xoá lại → 404", (await api("DELETE", `/api/admin/danh-muc/${empty.id}`, { as: SA })).status === 404);
   // Đua đổi tên: hai danh mục cùng đổi sang một tên → đúng một 200, một 409 (kiểm trùng nằm trong giao dịch có khoá).
-  const ra: any = await api("POST", "/api/admin/danh-muc", { as: SA, body: { name: "Đua A" } });
-  const rb: any = await api("POST", "/api/admin/danh-muc", { as: SA, body: { name: "Đua B" } });
+  // Tạo thẳng bằng prisma (không qua API) để không thêm dòng nhật ký create mà phép kiểm "không ghi khi 4xx" bên dưới đếm.
+  const mx = (await prisma.courseCategory.aggregate({ _max: { sortOrder: true } }))._max.sortOrder ?? 0;
+  const ca_ = await prisma.courseCategory.create({ data: { name: "Đua A", slug: "dua-a", sortOrder: mx + 1 } });
+  const cb_ = await prisma.courseCategory.create({ data: { name: "Đua B", slug: "dua-b", sortOrder: mx + 2 } });
+  const ra: any = { json: { category: { id: ca_.id } } }, rb: any = { json: { category: { id: cb_.id } } };
   const [q1, q2] = await Promise.all([
     api("PUT", `/api/admin/danh-muc/${ra.json.category.id}`, { as: SA, body: { name: "Đua Chung" } }),
     api("PUT", `/api/admin/danh-muc/${rb.json.category.id}`, { as: SA, body: { name: "Đua Chung" } }),
