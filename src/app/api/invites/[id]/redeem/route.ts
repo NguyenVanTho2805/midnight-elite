@@ -39,6 +39,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const inv = await invites().findUnique({ where: { code } });
+  // Đã có yêu cầu pending bằng chính mã này (bấm lại / F5): trả lại idempotent, không đòi mã còn lượt (mã cá nhân maxUses 1 đã dùng).
+  if (inv) {
+    const mine = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true, status: true, inviteId: true } });
+    if (mine && mine.status === "pending" && mine.inviteId === inv.id && !inv.revoked) {
+      return NextResponse.json({ ok: true, pending: true, requestId: mine.id, courseId: inv.courseId });
+    }
+  }
   const pre = checkInviteValidity(inv);
   if (!pre.ok) return NextResponse.json({ error: pre.error }, { status: pre.status });
 

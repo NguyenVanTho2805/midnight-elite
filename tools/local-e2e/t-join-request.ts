@@ -7,7 +7,7 @@ import { loadTutorInboxRaw } from "@/lib/tutorInboxServer";
 
 const FORM = { "content-type": "application/x-www-form-urlencoded" };
 const form = (path: string, as: TUser | undefined, pairs: [string, string][] = []) => api("POST", path, { as, raw: new URLSearchParams(pairs), headers: FORM });
-const loc = (r: { headers: Headers }) => r.headers.get("location") ?? "";
+const loc = (r: { headers: Headers }) => { const h = r.headers.get("location") ?? ""; if (!h) return ""; const u = new URL(h, "http://x"); return u.pathname + u.search; };
 const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchParams.get("code") ?? "";
 
 (async () => {
@@ -66,7 +66,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("GET /lop-cua-toi/<id> của A không phải 200 (404 / chuyển hướng)", pg.status !== 200, pg.status);
   const nt1 = await prisma.notification.findMany({ where: { userId: T.id, type: "join_request_new" } });
   check("gia sư nhận đúng 1 thông báo join_request_new, trỏ tab Học sinh", nt1.length === 1 && nt1[0].link === `/lop-cua-toi/${AP.id}?tab=hoc-sinh`, nt1);
-  check("thông báo: có tên lớp, KHÔNG tên em, KHÔNG số tiền", nt1[0].message.includes("Toán Duyệt") && !/Em An|Xin Lop/.test(nt1[0].title + nt1[0].message) && !/\d{4,}|đ\b/.test(nt1[0].message));
+  check("thông báo: có tên lớp, KHÔNG tên em, KHÔNG số tiền", nt1[0].message.includes("Toán Duyệt") && !/Em An|Xin Lop/.test(nt1[0].title + nt1[0].message) && !/\d{4,}|\d\s*(đ|₫|vnd)/i.test(nt1[0].message));
   const rdA2 = await api("POST", `/api/invites/${codeA}/redeem`, { as: A });
   check("nhập lại khi đang pending → pending, KHÔNG tăng lượt, KHÔNG báo lại", rdA2.json?.pending === true && (await prisma.classInvite.findUnique({ where: { code: codeA } }))?.usedCount === 1 && (await prisma.notification.count({ where: { userId: T.id, type: "join_request_new" } })) === 1 && (await prisma.notification.findFirst({ where: { userId: T.id, type: "join_request_new" } }))?.count === 1);
   const jA3 = await form(`/api/courses/${AP.id}/join`, A);
