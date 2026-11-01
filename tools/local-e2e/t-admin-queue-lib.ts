@@ -92,6 +92,8 @@ const OLD: [string, Permission | null][] = [
   // 23/10/2026 (KiN Pro F6): hàng đợi hỗ trợ gia sư, mục menu MỚI có chủ ý, cùng quyền MANAGE_TUTORS.
   ["/admin/ho-tro", PERMISSIONS.MANAGE_TUTORS],
   // 24/10/2026 (QT-02/03/06): ba mục menu MỚI có chủ ý. Nhật ký chỉ cấp 1 (MANAGE_ADMINS); Triển khai và hạn mức + Duyệt nạp Coin cùng quyền MANAGE_REVENUE như Gói KiN Pro / API duyệt.
+  // HOME-02: sửa chữ trang chủ công khai, cùng quyền MANAGE_NEWS như Tin tức / Điểm chuẩn. (Công thức tính điểm và Video tham khảo cũng MANAGE_NEWS; thiếu từ NC2-046/050.)
+  ["/admin/trang-chu", PERMISSIONS.MANAGE_NEWS], ["/admin/diem-chuan/cong-thuc", PERMISSIONS.MANAGE_NEWS], ["/admin/thu-vien-video", PERMISSIONS.MANAGE_NEWS],
   ["/admin/nhat-ky", PERMISSIONS.MANAGE_ADMINS], ["/admin/trien-khai", PERMISSIONS.MANAGE_REVENUE], ["/admin/topups", PERMISSIONS.MANAGE_REVENUE],
 ];
 for (const r of roles) {

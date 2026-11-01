@@ -68,6 +68,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     items: m.subs.map(s => ({ key: s.href, label: s.label, href: s.href, icon: m.icon, active: hit?.sub.href === s.href, ...(s.href === "/admin/kiem-duyet" ? { badge } : {}) })),
   }));
 
+  // HOME-02: khung xem trước trang chủ (iframe trong /admin/trang-chu) cần trang TRẦN, không thanh module / tab.
+  if (pathname.endsWith("/xem-truoc")) return <>{children}</>;
+
   return (
     <div className="md:flex h-screen overflow-hidden bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: `${top}px` }}>
       <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} groups={wide}
