@@ -67,7 +67,7 @@ const COURSE_TABS = ["cai-dat", "chuong-bai", "lich-hoc", "hoc-vien"] as const;
 
 /**
  * Dải tab theo đường đang mở (chỉ đường GIA SƯ). `tab` = giá trị ?tab= của trang quản lớp (mặc định "cai-dat" như trang gốc).
- *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ngân hàng đề" (sáng theo tiền tố dài nhất).
+ *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc" (sáng theo tiền tố dài nhất).
  *  - /lop-cua-toi/quan-lop/[id]… → "Cài đặt · Chương bài · Lịch học · Học viên · Điểm danh" (3 tab ?tab= của trang gốc + 2 trang con /hoc-vien, /diem-danh).
  *  - danh sách lớp, tao-moi, đường khác → null (không dải tab).
  */
@@ -77,7 +77,8 @@ export function contentTabsFor(pathname: string, tab: string | null = null): Con
     const defs = [
       { label: "Đề thi", href: DE_THI },
       { label: "Ngân hàng câu hỏi", href: `${DE_THI}/ngan-hang-cau-hoi` },
-      { label: "Ngân hàng đề", href: `${DE_THI}/ngan-hang-de-thi` },
+      { label: "Ma trận đề", href: `${DE_THI}/ma-tran` },
+      { label: "Tệp đề gốc", href: `${DE_THI}/ngan-hang-de-thi` },
     ];
     const best = defs.filter(d => isUnder(pathname, d.href)).sort((a, b) => b.href.length - a.href.length)[0];
     return { label: "Đề thi", tabs: defs.map(d => ({ ...d, active: d === best })) };

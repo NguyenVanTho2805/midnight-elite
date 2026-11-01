@@ -98,7 +98,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   const tabsDeThi = (p: any) => p.getByRole("navigation", { name: "Trang của Đề thi" });
   const tabsQuanLop = (p: any) => p.getByRole("navigation", { name: "Trang của Quản lớp" });
 
-  section("Trình duyệt: gia sư bấm 'Quản lý đề thi' → bí danh /lop-cua-toi/de-thi trong vỏ gia sư, có dải tab Đề thi · Ngân hàng câu hỏi · Ngân hàng đề");
+  section("Trình duyệt: gia sư bấm 'Quản lý đề thi' → bí danh /lop-cua-toi/de-thi trong vỏ gia sư, có dải tab Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc");
   const ctx = await ctxFor(T, { width: 1280, height: 800 });
   const pg = await ctx.newPage(); watch(pg);
   await pg.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
@@ -117,7 +117,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   check("'Bài tập' đang chọn (aria-current=page), 'Thư viện' không", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page");
   await tabsDeThi(pg).waitFor({ timeout: 30000 });
   const tabText = (await tabsDeThi(pg).innerText()).replace(/\s+/g, " ").trim();
-  check("dải tab 'Trang của Đề thi': Đề thi · Ngân hàng câu hỏi · Ngân hàng đề, 'Đề thi' đang chọn, không có dải tab quản trị 'Trang của Nội dung'", /Đề thi.*Ngân hàng câu hỏi.*Ngân hàng đề/.test(tabText) && await tabsDeThi(pg).getByRole("link", { name: "Đề thi", exact: true }).getAttribute("aria-current") === "page" && (await pg.getByRole("navigation", { name: "Trang của Nội dung" }).count()) === 0, tabText);
+  check("dải tab 'Trang của Đề thi': Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc, 'Đề thi' đang chọn, không có dải tab quản trị 'Trang của Nội dung'", /Đề thi.*Ngân hàng câu hỏi.*Ma trận đề.*Tệp đề gốc/.test(tabText) && await tabsDeThi(pg).getByRole("link", { name: "Đề thi", exact: true }).getAttribute("aria-current") === "page" && (await pg.getByRole("navigation", { name: "Trang của Nội dung" }).count()) === 0, tabText);
   check("có dải trên của vỏ gia sư (logo KiN + tên + nút mở thanh bên ẩn)", await pg.getByRole("link", { name: /KiN — Hộp việc của gia sư/ }).isVisible());
   await shot(pg, "tutor-admin-1-de-thi");
 
@@ -129,7 +129,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await pg.goto(`${BASE}/admin/thi-thu/ngan-hang-de-thi`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(/\/lop-cua-toi\/de-thi\/ngan-hang-de-thi/, { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
-  check("/admin/thi-thu/ngan-hang-de-thi → /lop-cua-toi/de-thi/ngan-hang-de-thi; 'Bài tập' sáng, 'Thư viện' không; tab 'Ngân hàng đề' đang chọn", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page" && await tabsDeThi(pg).getByRole("link", { name: "Ngân hàng đề" }).getAttribute("aria-current") === "page", pg.url());
+  check("/admin/thi-thu/ngan-hang-de-thi → /lop-cua-toi/de-thi/ngan-hang-de-thi; 'Bài tập' sáng, 'Thư viện' không; tab 'Tệp đề gốc' đang chọn", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page" && await tabsDeThi(pg).getByRole("link", { name: "Tệp đề gốc" }).getAttribute("aria-current") === "page", pg.url());
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}?tab=lich-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}\\?tab=lich-hoc`), { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });

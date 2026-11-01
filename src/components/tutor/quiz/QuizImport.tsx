@@ -25,7 +25,7 @@ import { duplicateGroups, fmtPoints, QUIZ_TYPE_LABEL, validateQuizQuestion, type
 import { nhapWordHref } from "@/components/tutor/de-thi/deThiClient";
 import QuestionForm from "./QuestionForm";
 import { answerText } from "./QuizEditor";
-import { fileProblem, IMPORT_ACCEPT, qfetch, quizHref, sizeText, type QuizQ } from "./quizClient";
+import { fileProblem, IMPORT_ACCEPT, NEW_QUIZ_HREF, qfetch, quizHref, DE_THI_ROOT, sizeText, type QuizQ } from "./quizClient";
 import { cellText, parseQuizSheet, SHEET_MAX_BYTES, type SheetRowError } from "@/lib/quizSheetImport";
 
 type Step = "chon-tep" | "ra-soat";
@@ -196,7 +196,7 @@ export default function QuizImport() {
 
   return (
     <KinPage>
-      <KinPageHeader title="Nhập đề từ tệp" back={{ href: "/lop-cua-toi/bai-tap", label: "Bài tập" }}
+      <KinPageHeader title="Nhập đề từ tệp" back={{ href: `${DE_THI_ROOT}/tao-moi`, label: "Tạo đề" }}
         sub={step === "chon-tep" ? "Bước 1/2 · Chọn tệp và cấu trúc" : "Bước 2/2 · Rà soát câu hỏi và đáp án · chưa phát hành"} />
       <KinTabs<Step> label="Các bước nhập đề" value={step} onChange={s => { if (s === "chon-tep" || cands.length > 0) setStep(s); }}
         tabs={[{ key: "chon-tep", label: "1. Chọn tệp và cấu trúc" }, { key: "ra-soat", label: "2. Rà soát câu hỏi và đáp án" }]} />
@@ -284,10 +284,10 @@ export default function QuizImport() {
               </div>
             </section>
 
-            {extractErr && <div role="alert" className="border-l-2 border-[var(--kin-tt-chu-loi)] pl-4 py-2"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-tt-chu-loi)]">Chưa đọc được tệp</p><p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{extractErr} Cô thử lại, hoặc <Link href="/lop-cua-toi/bai-tap/quiz/moi" className="underline">soạn tay từng câu</Link>.</p></div>}
+            {extractErr && <div role="alert" className="border-l-2 border-[var(--kin-tt-chu-loi)] pl-4 py-2"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-tt-chu-loi)]">Chưa đọc được tệp</p><p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{extractErr} Cô thử lại, hoặc <Link href={NEW_QUIZ_HREF} className="underline">soạn tay từng câu</Link>.</p></div>}
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/lop-cua-toi/bai-tap" className={kinButtonClass("secondary")}>Huỷ nhập</Link>
+              <Link href={`${DE_THI_ROOT}/tao-moi`} className={kinButtonClass("secondary")}>Huỷ nhập</Link>
               {extracting
                 ? <KinButton variant="secondary" onClick={cancelExtract}>Dừng chờ</KinButton>
                 : null}

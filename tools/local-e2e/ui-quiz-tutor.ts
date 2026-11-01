@@ -37,13 +37,13 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   const pg = await dctx.newPage(); watch(pg);
   await pg.goto(`${BASE}/lop-cua-toi/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
   check("trang Bài tập có 'Tạo quiz' và 'Nhập đề từ tệp'", await pg.getByRole("link", { name: "Tạo quiz" }).isVisible() && await pg.getByRole("link", { name: "Nhập đề từ tệp" }).isVisible());
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/moi`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/tao-moi?cach=trang`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByRole("heading", { name: "Tạo quiz", level: 1 }).waitFor({ timeout: 90000 });
   check("nút tạo khoá khi chưa có tên", await pg.getByRole("button", { name: "Tạo và soạn câu hỏi" }).isDisabled());
   await pg.getByLabel("Tên quiz *").fill("Quiz thử UI · Phương trình bậc hai");
   await pg.getByLabel("Lớp (chọn sau cũng được)").selectOption({ label: "Toán 9 (soạn quiz)" });
   await pg.getByRole("button", { name: "Tạo và soạn câu hỏi" }).click();
-  await pg.waitForURL(/\/lop-cua-toi\/bai-tap\/quiz\/quiz-/, { timeout: 60000 });
+  await pg.waitForURL(/\/lop-cua-toi\/de-thi\/quiz-/, { timeout: 60000 });
   const qid = pg.url().split("/quiz/")[1].split(/[?#]/)[0];
   await pg.getByRole("heading", { name: "Quiz thử UI · Phương trình bậc hai", level: 1 }).waitFor({ timeout: 60000 });
   check("quiz mới là BẢN NHÁP, chưa có câu: trạng thái rỗng có lời giải thích + việc làm tiếp", await pg.getByText("Bản nháp · chưa phát hành").first().isVisible() && await pg.getByText("Quiz chưa có câu nào").isVisible() && await pg.getByRole("button", { name: "Thêm câu đầu tiên" }).isVisible());
@@ -120,7 +120,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   check("hết nháp: mục Phát hành biến mất", await pg.getByRole("button", { name: "Phát hành quiz" }).count() === 0);
 
   section("Quiz đã có người làm: không sửa đè → phiên bản mới");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/ui-q-v1`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/ui-q-v1`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByRole("heading", { name: "Kiểm tra 15 phút", level: 1 }).waitFor({ timeout: 90000 });
   check("hộp 'Đã có 1 lượt làm — KiN không sửa đè' + nút Tạo phiên bản mới", await pg.getByText(/Đã có 1 lượt làm — KiN không sửa đè/).isVisible() && await pg.getByRole("button", { name: "Tạo phiên bản mới" }).isVisible());
   check("KHÔNG có nút Sửa / Bỏ / + Thêm câu (mọi ô sửa bị khoá)", await pg.getByRole("button", { name: /^Sửa câu/ }).count() === 0 && await pg.getByRole("button", { name: /^Bỏ câu/ }).count() === 0 && await pg.getByRole("button", { name: "+ Thêm câu" }).count() === 0);
@@ -129,7 +129,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await pg.getByRole("tab", { name: /Nội dung đề/ }).click();
   await pg.getByLabel("Lý do chỉnh (không bắt buộc, ghi vào nhật ký)").fill("Câu 2 sai đáp án gốc");
   await pg.getByRole("button", { name: "Tạo phiên bản mới" }).click();
-  await pg.waitForURL(u => /\/quiz\/quiz-/.test(u.toString()), { timeout: 60000 });
+  await pg.waitForURL(u => /\/de-thi\/quiz-/.test(u.toString()), { timeout: 60000 });
   await pg.getByText("Bản đề xuất v2").waitFor({ timeout: 60000 });
   const v2id = pg.url().split("/quiz/")[1].split(/[?#]/)[0];
   const v2db = await prisma.exam.findUnique({ where: { id: v2id } });
@@ -142,7 +142,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   check("v1 KHÔNG đổi sau khi sửa v2 (đáp án đúng câu 2 của v1 vẫn là B)", (await prisma.examOption.findFirst({ where: { questionId: "ui-q-v1-2", isCorrect: true } }))?.text === "Đáp án B");
 
   section("Trang so sánh phiên bản");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/ui-q-v1/phien-ban`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/ui-q-v1/phien-ban`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByRole("heading", { name: "Chỉnh sửa và phiên bản quiz", level: 1 }).waitFor({ timeout: 90000 });
   await pg.getByText("Thay đổi so với bản đang dùng").waitFor({ timeout: 60000 });
   const body = (await pg.locator("body").innerText()).replace(/\s+/g, " ");
@@ -154,15 +154,15 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await shot(pg, "quiz-phien-ban-1280");
 
   section("Quyền và địa chỉ sai");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/ui-q-other`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/ui-q-other`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByText("Không tìm thấy quiz này").waitFor({ timeout: 60000 });
-  check("quiz của gia sư khác: lời giải thích + đường đi tiếp (không lộ tên quiz, không trắng)", !(await pg.locator("body").innerText()).includes("Quiz của cô khác") && await pg.getByRole("link", { name: "Về Bài tập" }).isVisible());
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/khong-co-ma-nay/phien-ban`, { waitUntil: "networkidle", timeout: 120000 });
-  check("mã không có → cũng lời giải thích + liên kết đi tiếp", await pg.getByText("Không tìm thấy quiz này").isVisible() && await pg.getByRole("link", { name: "Về Bài tập" }).isVisible());
+  check("quiz của gia sư khác: lời giải thích + đường đi tiếp (không lộ tên quiz, không trắng)", !(await pg.locator("body").innerText()).includes("Quiz của cô khác") && await pg.getByRole("link", { name: "Về Đề thi" }).isVisible());
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/khong-co-ma-nay/phien-ban`, { waitUntil: "networkidle", timeout: 120000 });
+  check("mã không có → cũng lời giải thích + liên kết đi tiếp", await pg.getByText("Không tìm thấy quiz này").isVisible() && await pg.getByRole("link", { name: "Về Đề thi" }).isVisible());
   const sctx = await ctxFor(S, { width: 1280, height: 900 });
   const sp = await sctx.newPage(); watch(sp);
-  await sp.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/${qid}`, { waitUntil: "networkidle", timeout: 120000 });
-  check("học sinh mở trang soạn quiz → không vào được (bị đưa sang trang học sinh, không thấy trình soạn)", !/\/bai-tap\/quiz\//.test(sp.url()) && await sp.getByRole("button", { name: "Lưu cài đặt" }).count() === 0, sp.url());
+  await sp.goto(`${BASE}/lop-cua-toi/de-thi/${qid}`, { waitUntil: "networkidle", timeout: 120000 });
+  check("học sinh mở trang soạn quiz → không vào được (bị đưa sang trang học sinh, không thấy trình soạn)", !/\/lop-cua-toi\/de-thi/.test(sp.url()) && await sp.getByRole("button", { name: "Lưu cài đặt" }).count() === 0, sp.url());
 
   section("Nhập đề từ tệp — hai bước (AI giả ở tầng mạng)");
   const ip = await dctx.newPage(); watch(ip);
@@ -180,7 +180,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       errors: [{ block: 8, message: "Câu 8: Phải có đúng 1 đáp án đúng" }],
     } });
   });
-  await ip.goto(`${BASE}/lop-cua-toi/bai-tap/nhap-de`, { waitUntil: "networkidle", timeout: 120000 });
+  await ip.goto(`${BASE}/lop-cua-toi/de-thi/tao-moi?cach=pdf`, { waitUntil: "networkidle", timeout: 120000 });
   await ip.getByRole("heading", { name: "Nhập đề từ tệp", level: 1 }).waitFor({ timeout: 90000 });
   check("bước 1: nói rõ chỉ tải đề gốc, không tải bài làm / tên học sinh; có dòng 'còn 4 lượt'", await ip.getByText("Chỉ tải đề gốc của cô").isVisible() && /Không tải bài làm, ảnh bài làm hay tên của học sinh/.test(await ip.locator("body").innerText()) && await ip.getByTestId("ai-quota-remaining").isVisible());
   check("chưa chọn tệp: 'Tiếp tục rà soát' khoá", await ip.getByRole("button", { name: /Tiếp tục rà soát/ }).isDisabled());
@@ -211,7 +211,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   check("lưu bản nháp cần tên: đang có tên từ tệp → nút bật", await ip.getByRole("button", { name: "Lưu bản nháp" }).isEnabled());
   await shot(ip, "quiz-nhap-de-ra-soat-1280");
   await ip.getByRole("button", { name: "Lưu bản nháp" }).click();
-  await ip.waitForURL(u => /\/quiz\/quiz-/.test(u.toString()), { timeout: 60000 });
+  await ip.waitForURL(u => /\/de-thi\/quiz-/.test(u.toString()), { timeout: 60000 });
   const impId = ip.url().split("/quiz/")[1].split(/[?#]/)[0];
   await eventually("bản nháp nhập từ tệp: 2 câu, là bản nháp, nhật ký ghi tên tệp", async () => {
     const e = await prisma.exam.findUnique({ where: { id: impId }, include: { examQuestions: true } });
@@ -224,14 +224,14 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   section("Điện thoại 390px");
   const mctx = await ctxFor(T, { width: 390, height: 844 });
   const mp = await mctx.newPage(); watch(mp);
-  for (const [name, path] of [["trình soạn", `/lop-cua-toi/bai-tap/quiz/${qid}`], ["quiz khoá", "/lop-cua-toi/bai-tap/quiz/ui-q-v1"], ["phiên bản", "/lop-cua-toi/bai-tap/quiz/ui-q-v1/phien-ban"], ["nhập đề", "/lop-cua-toi/bai-tap/nhap-de"], ["tạo quiz", "/lop-cua-toi/bai-tap/quiz/moi"]] as const) {
+  for (const [name, path] of [["trình soạn", `/lop-cua-toi/de-thi/${qid}`], ["quiz khoá", "/lop-cua-toi/de-thi/ui-q-v1"], ["phiên bản", "/lop-cua-toi/de-thi/ui-q-v1/phien-ban"], ["nhập đề", "/lop-cua-toi/de-thi/tao-moi?cach=pdf"], ["tạo quiz", "/lop-cua-toi/de-thi/tao-moi?cach=trang"]] as const) {
     await mp.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await mp.getByRole("heading", { level: 1 }).first().waitFor({ timeout: 90000 });
     check(`390px ${name}: không tràn ngang`, await noOverflow(mp));
     const small = await smallTargets(mp);
     check(`390px ${name}: nút cao ≥ 44px`, small.length === 0, small);
   }
-  await mp.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/${v2id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp.goto(`${BASE}/lop-cua-toi/de-thi/${v2id}`, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByRole("button", { name: "Sửa câu 2" }).click();
   await mp.getByLabel("Nội dung câu hỏi *").waitFor({ timeout: 30000 });
   check("390px đang sửa câu: không tràn ngang; nút 'Xem như học sinh' mở bản xem trước", await noOverflow(mp) && await mp.getByRole("button", { name: "Xem như học sinh" }).isVisible());

@@ -21,7 +21,7 @@ import { regradeAttempt } from "@/lib/examGrading";
     await prisma.examAnswer.create({ data: { attemptId: a.id, questionId: q2.id, textAnswer: `Bài làm của ${s.name}: (x − 2)(x − 3) = 0`, ...(i === 2 ? { pointsAwarded: 1.5, teacherComment: "Tốt" } : {}) } });
     await regradeAttempt(a.id); atts.push(a.id);
   }
-  const url = `${BASE}/lop-cua-toi/bai-tap/de/${ex.id}`;
+  const url = `${BASE}/lop-cua-toi/de-thi/${ex.id}/cham`;
 
   await launch();
   const errors: string[] = [];
@@ -103,7 +103,7 @@ import { regradeAttempt } from "@/lib/examGrading";
   await lp.getByText("Ôn tập tổng hợp · Toán 9").first().waitFor({ timeout: 90000 });
   await lp.locator("[data-bai-tap-row]").first().click();
   await lp.getByRole("link", { name: "Chấm và theo dõi" }).click();
-  await lp.waitForURL(new RegExp(`/bai-tap/de/${ex.id}$`), { timeout: 60000 });
+  await lp.waitForURL(new RegExp(`/de-thi/${ex.id}/cham$`), { timeout: 60000 });
   check("'Chấm và theo dõi' mở đúng trang chấm của đề", true);
 
   check("không có lỗi JS/console", errors.length === 0, errors.slice(0, 3));

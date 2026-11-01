@@ -1,12 +1,12 @@
-// QZ-04 / QZ-03 — trình soạn quiz của gia sư: nội dung đề, đáp án, phát hành. Quyền theo từng quiz kiểm ở API (của người khác → 403, không có → 404, hiện thành lời giải thích).
+// BU-03 — đường cũ bai-tap/quiz/[id], giữ để link trong thông báo đã lưu DB và dấu trang vẫn tới. Chuyển 307 (không 308) sang đường mới của Đề thi; cổng gia sư kiểm trước bằng đường cũ.
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
-import QuizEditor from "@/components/tutor/quiz/QuizEditor";
 
 export const dynamic = "force-dynamic";
 
-export default async function QuizPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function QuizRedirect({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await redirectIfNotTutor(await getSession(), { path: `/lop-cua-toi/bai-tap/quiz/${id}` });
-  return <QuizEditor id={id} />;
+  redirect(`/lop-cua-toi/de-thi/${id}`);
 }

@@ -1,10 +1,11 @@
 // BU-03 P1 · S2 — Nhập câu hỏi từ Word theo mẫu Azota vào NGÂN HÀNG (/lop-cua-toi/de-thi/ngan-hang-cau-hoi/nhap-word). KHÔNG DÙNG AI, không tốn lượt AI.
 // Ba bước: 1 chọn tệp → 2 xem lại (loại câu, đáp án + nguồn đáp án, cờ, mức, nút đích) → 3 lưu. Xem trước KHÔNG ghi DB; chỉ bước lưu mới ghi (luu-nhieu, câu luôn là NHÁP của cô).
 // Cờ đỏ chặn lưu: câu còn nhãn ⟦công thức⟧ chưa sửa; câu thiếu / mâu thuẫn đáp án cho tới khi cô chọn đáp án (KiN không tự đoán). Muốn bỏ qua câu thì bỏ tích “Lưu câu này”.
-// Mức NB/TH/VD/VDC: đặt cho tất cả hoặc từng câu; máy chủ nhận một mức mặc định mỗi lần gọi nên các câu được gom theo mức rồi lưu lần lượt.
+// Mức NB/TH/VD/VDC: đặt cho tất cả hoặc từng câu; luu-nhieu nhận `difficulty` trên TỪNG câu nên lưu đúng MỘT lần gọi (câu chưa có mức vẫn gửi, máy chủ tính vào skippedInvalid).
+// Hai đích: ngân hàng câu hỏi (mặc định) hoặc ĐỀ NHÁP MỚI (?dich=de, dùng import-save có sẵn — lối "Từ Word" của màn Tạo đề).
 "use client";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
@@ -16,8 +17,8 @@ import { KinStatus } from "@/components/kin/Status";
 import { MathText } from "@/components/MathText";
 import { QUIZ_TYPE_LABEL, validateQuizQuestion } from "@/lib/quizQuestion";
 import {
-  ANSWER_SOURCE_LABEL, fetchCategories, flattenCategories, hasFormulaPlaceholder, LEVEL_LABEL, LEVELS, luuNhieu, nganHangHref, nganHangNodeHref, nhapWordHref,
-  tierLabel, toBankInput, uploadWord, wordFileProblem, WORD_MAX_QUESTIONS, type AzotaFlag, type AzotaQuestion, type Level, type LuuNhieuRes, type NhapWordRes,
+  ANSWER_SOURCE_LABEL, deThiDetailHref, fetchCategories, flattenCategories, hasFormulaPlaceholder, importSave, LEVEL_LABEL, LEVELS, luuNhieu, nganHangHref, nganHangNodeHref, nhapWordHref,
+  taoDeHref, tierLabel, toBankInput, toExamInputs, uploadWord, wordFileProblem, WORD_MAX_QUESTIONS, type AzotaFlag, type AzotaQuestion, type Level, type LuuNhieuRes, type NhapWordRes,
 } from "./deThiClient";
 
 interface Item {
@@ -39,14 +40,18 @@ const FLAG_TEXT: Record<AzotaFlag, { tone: "loi" | "cho"; text: string }> = {
 };
 
 /** Lý do một câu (đang được tích lưu) chưa lưu được; null = ổn. */
-function blockReason(it: Item): string | null {
+function blockReason(it: Item, toExam: boolean): string | null {
   if (hasFormulaPlaceholder(it.text) || it.options.some(o => hasFormulaPlaceholder(o.text))) return "Còn nhãn ⟦công thức⟧: bấm “Sửa câu” và gõ lại công thức (dạng $...$).";
   if (it.q.type !== "ESSAY" && (it.q.flags.includes("answer_missing") || it.q.flags.includes("answer_conflict")) && !it.answerTouched) return "Chưa có đáp án chắc chắn: bấm “Sửa câu” và chọn đáp án đúng.";
+  if (!toExam && !it.difficulty) return "Chọn mức NB / TH / VD / VDC cho câu này (ngân hàng cần mức để bốc đề, KiN không tự đoán).";
   return validateQuizQuestion(toBankInput({ type: it.q.type, text: it.text, imageUrl: it.q.imageUrl, explanation: it.q.explanation, options: it.options }));
 }
 
 export default function NhapWord() {
   const params = useSearchParams();
+  const router = useRouter();
+  const toExam = params.get("dich") === "de"; // lưu thành đề nháp mới thay vì vào ngân hàng
+  const [examTitle, setExamTitle] = useState("");
   const [step, setStep] = useState<Step>("chon-tep");
   const [file, setFile] = useState<File | null>(null);
   const [fileErr, setFileErr] = useState<string | null>(null);
@@ -106,38 +111,36 @@ export default function NhapWord() {
     patch(it.q.key, { options: it.options.map((o, i) => i === idx ? { ...o, isCorrect: v } : o), answerTouched: true });
   }
 
-  const reasons = useMemo(() => new Map(items.map(it => [it.q.key, it.include ? blockReason(it) : null])), [items]);
+  const reasons = useMemo(() => new Map(items.map(it => [it.q.key, it.include ? blockReason(it, toExam) : null])), [items, toExam]);
   const chosen = items.filter(i => i.include);
   const blocked = chosen.filter(i => reasons.get(i.q.key));
   const noLevel = chosen.filter(i => !i.difficulty).length;
-  const canSave = !!target && chosen.length > 0 && blocked.length === 0 && !saving;
-  const whyNot = !target ? "Chọn nút đích trong ngân hàng." : chosen.length === 0 ? "Chưa tích câu nào để lưu." : blocked.length > 0 ? `Còn ${blocked.length} câu cần xử lý hoặc bỏ tích.` : null;
+  const canSave = (toExam ? !!examTitle.trim() : !!target) && chosen.length > 0 && blocked.length === 0 && !saving;
+  const whyNot = toExam && !examTitle.trim() ? "Đặt tên cho đề." : !toExam && !target ? "Chọn nút đích trong ngân hàng." : chosen.length === 0 ? "Chưa tích câu nào để lưu." : blocked.length > 0 ? `Còn ${blocked.length} câu cần xử lý hoặc bỏ tích.` : null;
 
   async function save() {
     setSaving(true); setSaveErr(null);
-    const sum: LuuNhieuRes = { saved: 0, skippedDuplicate: 0, skippedInvalid: 0, ids: [] };
-    const groups = new Map<Level | "none", Item[]>();
-    for (const it of chosen) groups.set(it.difficulty ?? "none", [...(groups.get(it.difficulty ?? "none") ?? []), it]);
-    for (const [lv, list] of groups) {
-      const r = await luuNhieu({
-        categoryId: target, ...(lv === "none" ? {} : { defaultDifficulty: lv }),
-        items: list.map(it => toBankInput({ type: it.q.type, text: it.text, imageUrl: it.q.imageUrl, explanation: it.q.explanation, options: it.options })),
-      });
-      if (!r.ok || !r.data) {
-        setSaving(false);
-        setSaveErr(`${r.error ?? "Chưa lưu được."}${sum.saved ? ` Đã lưu ${sum.saved} câu trước đó; bấm Lưu lại, câu trùng sẽ tự được bỏ qua.` : ""}`);
-        return;
-      }
-      sum.saved += r.data.saved; sum.skippedDuplicate += r.data.skippedDuplicate; sum.skippedInvalid += r.data.skippedInvalid; sum.ids.push(...r.data.ids);
+    if (toExam) {
+      const r = await importSave({ title: examTitle.trim(), fileName: file?.name, questions: toExamInputs(chosen.map(it => ({ type: it.q.type, text: it.text, imageUrl: it.q.imageUrl, explanation: it.q.explanation, options: it.options }))) });
+      if (!r.ok || !r.data) { setSaving(false); setSaveErr(r.error ?? "Chưa lưu được đề."); return; }
+      router.push(deThiDetailHref(r.data.id));
+      return;
     }
-    setSaving(false); setDone(sum); setStep("xong");
+    // Một lần gọi: mức nằm trên từng câu (luu-nhieu nhận difficulty/categoryId trên từng item).
+    const r = await luuNhieu({
+      categoryId: target,
+      items: chosen.map(it => ({ ...toBankInput({ type: it.q.type, text: it.text, imageUrl: it.q.imageUrl, explanation: it.q.explanation, options: it.options }), ...(it.difficulty ? { difficulty: it.difficulty } : {}) })),
+    });
+    setSaving(false);
+    if (!r.ok || !r.data) { setSaveErr(r.error ?? "Chưa lưu được. Cô bấm Lưu lại; câu trùng sẽ tự được bỏ qua."); return; }
+    setDone(r.data); setStep("xong");
   }
 
   const stepSub = step === "chon-tep" ? "Bước 1/3 · Chọn tệp Word" : step === "xem-lai" ? "Bước 2/3 · Xem lại câu đã đọc" : "Bước 3/3 · Đã lưu";
 
   return (
     <KinPage>
-      <KinPageHeader title="Nhập câu hỏi từ Word" back={{ href: nganHangHref(), label: "Ngân hàng câu hỏi" }} sub={stepSub} />
+      <KinPageHeader title={toExam ? "Tạo đề từ Word" : "Nhập câu hỏi từ Word"} back={toExam ? { href: taoDeHref(), label: "Tạo đề" } : { href: nganHangHref(), label: "Ngân hàng câu hỏi" }} sub={stepSub} />
 
       {step === "chon-tep" && (
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] gap-x-8 gap-y-8 items-start">
@@ -167,7 +170,7 @@ export default function NhapWord() {
               </KinStateCard>
             )}
             <div className="flex flex-wrap gap-3">
-              <Link href={nganHangHref()} className={kinButtonClass("secondary")}>Huỷ nhập</Link>
+              <Link href={toExam ? taoDeHref() : nganHangHref()} className={kinButtonClass("secondary")}>Huỷ nhập</Link>
               <KinButton onClick={() => void read()} disabled={!file || busy} loading={busy} loadingLabel="Đang đọc tệp…">Đọc tệp và xem lại</KinButton>
             </div>
           </div>
@@ -186,7 +189,7 @@ export default function NhapWord() {
 
       {step === "xem-lai" && res && (
         <div className="space-y-6">
-          <KinCallout title="Không tốn lượt AI" tone="nhan">Chưa có gì được ghi. Cô chọn nút đích, đặt mức, xử lý các câu có cờ đỏ rồi bấm Lưu vào ngân hàng. Câu lưu vào là bản nháp của riêng cô.</KinCallout>
+          <KinCallout title="Không tốn lượt AI" tone="nhan">{toExam ? "Chưa có gì được ghi. Cô đặt tên đề, xử lý các câu có cờ đỏ rồi bấm Tạo đề nháp. Đề là bản nháp, học sinh chưa thấy." : "Chưa có gì được ghi. Cô chọn nút đích, đặt mức, xử lý các câu có cờ đỏ rồi bấm Lưu vào ngân hàng. Câu lưu vào là bản nháp của riêng cô."}</KinCallout>
 
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]" role="status">
             <span>{res.stats.total} câu đã đọc · {res.stats.withAnswer} có đáp án</span>
@@ -209,7 +212,14 @@ export default function NhapWord() {
           )}
 
           <section aria-labelledby="nw-dest" className="grid md:grid-cols-2 gap-x-6 gap-y-4">
-            <div className="min-w-0 md:col-span-2"><KinSectionHead id="nw-dest" title="Lưu vào đâu" /></div>
+            <div className="min-w-0 md:col-span-2"><KinSectionHead id="nw-dest" title={toExam ? "Đặt tên đề" : "Lưu vào đâu"} /></div>
+            {toExam ? (
+              <div className="min-w-0">
+                <label htmlFor="nw-title" className={`${KIN_LABEL} mb-2`}>Tên đề *</label>
+                <input id="nw-title" className={KIN_FIELD} value={examTitle} maxLength={150} onChange={e => setExamTitle(e.target.value)} placeholder="Ví dụ: Kiểm tra giữa kỳ 1 · Toán 12" />
+                <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đề là bản nháp, tổng 10 điểm chia đều. Cô chọn lớp và giao đề sau.</p>
+              </div>
+            ) : (
             <div className="min-w-0">
               <label htmlFor="nw-target" className={`${KIN_LABEL} mb-2`}>Nút đích trong ngân hàng *</label>
               {nodesErr ? (
@@ -226,14 +236,17 @@ export default function NhapWord() {
               )}
               <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nên chọn nút Yêu cầu cần đạt hoặc Chương; câu trùng nội dung trong cùng nút sẽ tự được bỏ qua.</p>
             </div>
+            )}
+            {!toExam && (
             <div className="min-w-0">
               <p className={`${KIN_LABEL} mb-2`} id="nw-all">Đặt mức cho tất cả câu đang tích</p>
               <div role="group" aria-labelledby="nw-all" className="flex flex-wrap gap-2">
                 {LEVELS.map(l => <KinButton key={l} variant="secondary" onClick={() => setItems(a => a.map(it => it.include ? { ...it, difficulty: l } : it))} title={LEVEL_LABEL[l]}>{l}</KinButton>)}
                 <KinButton variant="ghost" onClick={() => setItems(a => a.map(it => it.include ? { ...it, difficulty: null } : it))}>Xoá mức</KinButton>
               </div>
-              <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{noLevel > 0 ? `${noLevel} câu đang tích chưa có mức; vẫn lưu được, nhưng chưa bốc được vào đề theo ma trận.` : "Mọi câu đang tích đều có mức."}</p>
+              <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{noLevel > 0 ? `${noLevel} câu đang tích chưa có mức. Ngân hàng cần mức để bốc đề nên cô đặt mức (hoặc bỏ tích) rồi mới lưu được.` : "Mọi câu đang tích đều có mức."}</p>
             </div>
+            )}
           </section>
 
           <section aria-labelledby="nw-list">
@@ -253,7 +266,7 @@ export default function NhapWord() {
 
           <div className="sticky bottom-0 z-10 -mx-4 md:mx-0 px-4 md:px-0 py-3 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-nhat)] flex flex-wrap items-center gap-3">
             <KinButton variant="secondary" onClick={() => { setStep("chon-tep"); setRes(null); setItems([]); }}>Chọn tệp khác</KinButton>
-            <KinButton onClick={() => void save()} disabled={!canSave} loading={saving} loadingLabel="Đang lưu…">Lưu {chosen.length} câu vào ngân hàng</KinButton>
+            <KinButton onClick={() => void save()} disabled={!canSave} loading={saving} loadingLabel="Đang lưu…">{toExam ? `Tạo đề nháp với ${chosen.length} câu` : `Lưu ${chosen.length} câu vào ngân hàng`}</KinButton>
             {whyNot && <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] min-w-0">{whyNot}</p>}
           </div>
         </div>

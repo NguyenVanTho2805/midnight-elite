@@ -34,10 +34,13 @@ export async function qfetch<T = unknown>(method: "GET" | "POST" | "PUT" | "PATC
   }
 }
 
-export const QUIZ_BASE = "/lop-cua-toi/bai-tap/quiz";
+// BU-03: một trình soạn duy nhất của gia sư, ở nhóm Đề thi. Đường cũ /lop-cua-toi/bai-tap/quiz/* còn 307 sang đây.
+export const DE_THI_ROOT = "/lop-cua-toi/de-thi";
+export const QUIZ_BASE = DE_THI_ROOT;
 export const quizHref = (id: string) => `${QUIZ_BASE}/${id}`;
 export const versionsHref = (id: string) => `${QUIZ_BASE}/${id}/phien-ban`;
-export const IMPORT_HREF = "/lop-cua-toi/bai-tap/nhap-de";
+export const NEW_QUIZ_HREF = `${DE_THI_ROOT}/tao-moi?cach=trang`;
+export const IMPORT_HREF = `${DE_THI_ROOT}/tao-moi?cach=pdf`;
 
 export const IMPORT_MAX_BYTES = 4 * 1024 * 1024; // giới hạn của API trích câu hỏi (body Vercel Serverless)
 export const IMPORT_MIME = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/jpeg", "image/png", "image/webp"] as const;

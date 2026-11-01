@@ -20,7 +20,8 @@ import { MathText } from "@/components/MathText";
 import { describeValidity, fmtPoints, QUIZ_TYPE_LABEL, type QuizQuestionInput } from "@/lib/quizQuestion";
 import QuestionForm from "./QuestionForm";
 import SaveToBank from "./SaveToBank";
-import { qfetch, quizHref, versionsHref, IMPORT_HREF, type QuizDetail, type QuizQ } from "./quizClient";
+import { deThiSubHref } from "@/components/tutor/de-thi/deThiClient";
+import { qfetch, quizHref, versionsHref, DE_THI_ROOT, IMPORT_HREF, type QuizDetail, type QuizQ } from "./quizClient";
 
 type Tab = "noi-dung" | "dap-an";
 const STATUS_LABEL: Record<string, { tone: StatusTone; text: string }> = {
@@ -168,13 +169,13 @@ export default function QuizEditor({ id }: { id: string }) {
     const r = await qfetch<{ rootId: string }>("DELETE", `/api/tutor/quiz/${id}`);
     setBusy(null);
     if (!r.ok || !r.data) { say("loi", "Chưa xoá được", r.error ?? undefined); return; }
-    router.push(isVersion ? quizHref(r.data.rootId) : "/lop-cua-toi/bai-tap");
+    router.push(isVersion ? quizHref(r.data.rootId) : DE_THI_ROOT);
   }
 
   if (notFound) {
     return (
       <KinPage>
-        <KinEmptyState title="Không tìm thấy quiz này" action={<Link href="/lop-cua-toi/bai-tap" className={kinButtonClass("primary")}>Về Bài tập</Link>}>
+        <KinEmptyState title="Không tìm thấy quiz này" action={<Link href={DE_THI_ROOT} className={kinButtonClass("primary")}>Về Đề thi</Link>}>
           Quiz có thể đã bị xoá, hoặc không nằm trong các quiz của cô.
         </KinEmptyState>
       </KinPage>
@@ -196,10 +197,12 @@ export default function QuizEditor({ id }: { id: string }) {
     <KinPage>
       <KinPageHeader
         title={exam.title}
-        back={{ href: "/lop-cua-toi/bai-tap", label: "Bài tập" }}
+        back={{ href: DE_THI_ROOT, label: "Đề thi" }}
         sub={<>{st.text} · v{exam.versionNo} · {questions.length} câu · tổng {totalLabel} điểm</>}
         actions={<>
           <Link href={versionsHref(id)} className={kinButtonClass("secondary")}>Phiên bản</Link>
+          <Link href={deThiSubHref(id, "ma-de")} className={kinButtonClass("secondary")}>Mã đề</Link>
+          {!exam.supersededById && <Link href={deThiSubHref(id, "giao")} className={kinButtonClass("primary")}>Giao đề</Link>}
           {exam.isDraft && <KinButton variant="danger" onClick={() => void discardDraft()} loading={busy === "discard"} loadingLabel="Đang xoá…">{exam.versionNo > 1 ? "Bỏ đề xuất" : "Xoá nháp"}</KinButton>}
         </>}
       />
