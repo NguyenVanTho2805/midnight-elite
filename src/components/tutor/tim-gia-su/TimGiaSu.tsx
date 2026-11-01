@@ -80,7 +80,7 @@ export function TimGiaSu() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-5 py-6 sm:px-8 lg:gap-6 lg:px-14 lg:py-10">
+    <div data-tim-gia-su className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-5 py-6 sm:px-8 lg:gap-6 lg:px-14 lg:py-10">
       <header className="flex flex-col gap-2">
         <h1 className="text-[length:var(--kin-co-h3)] font-semibold leading-tight text-[var(--kin-chu-chinh)] lg:text-[length:var(--kin-co-h2)]">Tìm gia sư</h1>
         <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Hồ sơ công khai do gia sư tự lựa chọn. Không cần tài khoản để xem. KiN không thu phí nhận lớp.</p>

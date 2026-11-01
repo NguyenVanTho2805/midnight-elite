@@ -99,7 +99,7 @@ export default async function MentorProfilePage({ params, searchParams }: { para
   const freeClasses = openClasses.filter(duocVaoLop).slice(0, 3);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-5 py-6 sm:px-8 lg:px-14 lg:py-10">
+    <div data-ho-so className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-5 py-6 sm:px-8 lg:px-14 lg:py-10">
       <Link href="/giang-vien" className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center gap-2 self-start text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-mo)]">
         <ArrowLeft size={16} /> Quay lại danh sách
       </Link>
