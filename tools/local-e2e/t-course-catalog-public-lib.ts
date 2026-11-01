@@ -1,7 +1,7 @@
 // CAT-01 — quy tắc thuần của trang /khoa-hoc công khai (src/lib/courseCatalogPublic.ts). Không cần máy chủ.
 import { check, section, done } from "./h";
 import {
-  seatState, seatLabel, seatTone, hasSeat, priceView, parseCatalogParams, buildCatalogQuery, filterCatalog, sortCatalog,
+  seatState, safeTagColor, seatLabel, seatTone, hasSeat, priceView, parseCatalogParams, buildCatalogQuery, filterCatalog, sortCatalog,
   catalogChips, orderCategoryNames, toPublicCard, isFiltered, DEFAULT_FILTERS, type PublicCard,
 } from "@/lib/courseCatalogPublic";
 
@@ -12,8 +12,9 @@ check("capacity null = không giới hạn", seatState(null, 999, "open").state 
 check("đúng bằng capacity = đầy, left 0", JSON.stringify(seatState(5, 5, "open")) === JSON.stringify({ state: "full", left: 0 }));
 check("đang học > capacity vẫn là đầy (không âm)", seatState(5, 9, "open").left === 0 && seatState(5, 9, "open").state === "full");
 check("capacity 0 = đầy", seatState(0, 0, "open").state === "full");
-check("còn đúng 5 = low; còn 6 = open", seatState(10, 5, "open").state === "low" && seatState(10, 4, "open").state === "open" && seatState(10, 4, "open").left === 6);
-check("chữ", seatLabel(seatState(10, 4, "open")) === "Còn 6 chỗ" && seatLabel(seatState(10, 9, "open")) === "Chỉ còn 1 chỗ" && seatLabel(seatState(5, 5, "open")) === "Đã đầy" && seatLabel(seatState(null, 0, "closed")) === "Đã đóng nhận học viên");
+check("còn đúng 5 = low; còn 6 = open", seatState(10, 5, "open").state === "low" && seatState(10, 4, "open").state === "open" && seatState(10, 4, "open").left === null);
+check("left chỉ là số khi 1..5; ngoài đó null", [0,1,2,3,4,5,6,7,50,500].every(n => { const l = seatState(1000, 1000 - n, "open").left; return n >= 1 && n <= 5 ? l === n : n === 0 ? l === 0 : l === null; }));
+check("chữ", seatLabel(seatState(10, 4, "open")) === "Còn chỗ" && seatLabel(seatState(10, 9, "open")) === "Chỉ còn 1 chỗ" && seatLabel(seatState(5, 5, "open")) === "Đã đầy" && seatLabel(seatState(null, 0, "closed")) === "Đã đóng nhận học viên");
 check("tông: đầy = loi, low = cho, mở = xong, đóng = mo", seatTone(seatState(5, 5, "open")) === "loi" && seatTone(seatState(10, 9, "open")) === "cho" && seatTone(seatState(null, 0, "open")) === "xong" && seatTone(seatState(null, 0, "closed")) === "mo");
 check("hasSeat: chỉ unlimited/open/low", hasSeat(seatState(null, 0, "open")) && hasSeat(seatState(10, 9, "open")) && !hasSeat(seatState(5, 5, "open")) && !hasSeat(seatState(null, 0, "paused")));
 
@@ -72,6 +73,12 @@ const dbRow = {
 } as Parameters<typeof toPublicCard>[0];
 const pub = JSON.stringify(toPublicCard(dbRow, 7));
 check("không có capacity / enrolled / link / chủ lớp / tên nội bộ", !/capacity|enrolled|zalo|classJoin|meet\.example|bi-mat|ownerId|adminName|nội bộ/.test(pub), pub);
-check("chỉ còn trạng thái chỗ đã tính (20-7=13 → open, left 13)", JSON.parse(pub).seat.left === 13 && JSON.parse(pub).seat.state === "open");
+check("chỉ còn trạng thái chỗ đã tính (20-7=13 → open, left 13)", JSON.parse(pub).seat.left === null && JSON.parse(pub).seat.state === "open");
+const bigRows = [6, 20, 99, 500].map(cap => JSON.stringify(toPublicCard({ ...dbRow, capacity: cap }, 0)));
+check("payload JSON không có left > 5 (không suy ra capacity)", bigRows.every(j => { const l = JSON.parse(j).seat.left; return l === null || l <= 5; }), bigRows.join(" "));
+
+section("safeTagColor");
+check("hex 6 và var(--kin-) được giữ", safeTagColor("#a1B2c3") === "#a1B2c3" && safeTagColor("var(--kin-tt-chu-loi)") === "var(--kin-tt-chu-loi)");
+check("chuỗi chèn style / sai dạng bị bỏ", [null, undefined, "", "red", "#fff", "#12345g", "red;background:url(x)", "#ffffff;x:y", "var(--other)", "var(--kin-a);color:red", "url(javascript:1)"].every(v => safeTagColor(v as string | null) === null));
 
 done();

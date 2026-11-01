@@ -31,15 +31,19 @@ export function seatState(capacity: number | null | undefined, enrolled: number,
   if (capacity == null) return { state: "unlimited", left: null };
   const left = Math.max(0, capacity - Math.max(0, enrolled));
   if (left === 0) return { state: "full", left: 0 };
-  return { state: left <= LOW_SEAT_THRESHOLD ? "low" : "open", left };
+  // Chỉ lộ số khi sắp hết (1..5); còn nhiều thì không gửi số, tránh suy ra được sĩ số.
+  return left <= LOW_SEAT_THRESHOLD ? { state: "low", left } : { state: "open", left: null };
 }
 
 export const SEAT_TEXT: Record<SeatState, string> = {
   unlimited: "Đang nhận học viên", open: "Còn chỗ", low: "Còn chỗ", full: "Đã đầy", closed: "Đã đóng nhận học viên", paused: "Tạm ngừng",
 };
+/** Màu thẻ lấy từ DB: chỉ nhận #rrggbb hoặc var(--kin-...), còn lại bỏ (dùng màu mặc định). */
+export function safeTagColor(c: string | null | undefined): string | null {
+  return c && /^(#[0-9a-fA-F]{6}|var\(--kin-[a-z0-9-]+\))$/.test(c) ? c : null;
+}
 export function seatLabel(s: SeatInfo): string {
-  if (s.state === "open") return `Còn ${s.left} chỗ`;
-  if (s.state === "low") return `Chỉ còn ${s.left} chỗ`;
+  if (s.state === "low" && s.left != null && s.left >= 1 && s.left <= LOW_SEAT_THRESHOLD) return `Chỉ còn ${s.left} chỗ`;
   return SEAT_TEXT[s.state];
 }
 export function seatTone(s: SeatInfo): "xong" | "cho" | "loi" | "mo" {

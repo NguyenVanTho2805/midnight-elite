@@ -34,7 +34,7 @@ import { prisma } from "@/lib/prisma";
   check("chip: Tất cả, rồi ĐGNL HCM trước ĐGNL HSA (sortOrder)", chips.join("|") === "all|ĐGNL HCM|ĐGNL HSA", chips);
   check("thẻ là liên kết thật tới /khoa-hoc/<slug>", (await pg.locator(`[data-course-card="${a.id}"] a`).first().getAttribute("href")) === `/khoa-hoc/${a.id}`);
   const txt = (id: string) => pg.locator(`[data-course-card="${id}"]`).innerText();
-  check("chỗ: còn chỗ / đã đầy / đã đóng", /Còn 20 chỗ|Chỉ còn/.test(await txt(a.id)) && /Đã đầy/.test(await txt(b.id)) && /Đã đóng nhận học viên/.test(await txt(c.id)));
+  check("chỗ: còn chỗ / đã đầy / đã đóng", /Còn chỗ|Chỉ còn/.test(await txt(a.id)) && /Đã đầy/.test(await txt(b.id)) && /Đã đóng nhận học viên/.test(await txt(c.id)));
   check("giá: 2.990.000đ, giảm 25%, Miễn phí", /2\.990\.000đ/.test(await txt(a.id)) && /-25%/.test(await txt(a.id)) && /Miễn phí/.test(await txt(d.id)));
   check("khách không thấy tên học sinh", !/Em A/.test(await pg.content()));
 

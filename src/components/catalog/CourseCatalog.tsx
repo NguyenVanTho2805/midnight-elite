@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import TeacherTag from "@/components/TeacherTag";
 import { KinStatus, KinBookmark, KinEmptyState, kinButtonClass } from "@/components/kin";
 import {
-  buildCatalogQuery, catalogChips, filterCatalog, isFiltered, priceView, seatLabel, seatTone, sortCatalog,
+  buildCatalogQuery, catalogChips, filterCatalog, isFiltered, priceView, safeTagColor, seatLabel, seatTone, sortCatalog,
   DEFAULT_FILTERS, type CatalogFilters, type PublicCard,
 } from "@/lib/courseCatalogPublic";
 
@@ -23,6 +23,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
   course: PublicCard; following: boolean; onToggleFollow: () => void; isEnrolled: boolean;
 }) {
   const p = priceView(course.price, course.originalPrice);
+  const tagColor = safeTagColor(course.tagColor) ?? "var(--kin-tt-chu-loi)";
   const dim = course.seat.state === "closed" || course.seat.state === "paused";
   return (
     <article data-course-card={course.slug} data-seat={course.seat.state}
@@ -49,7 +50,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
           <KinStatus tone={seatTone(course.seat)}>{seatLabel(course.seat)}</KinStatus>
           {course.tag && (
             <span className="rounded-[var(--kin-bo-tron)] px-2 py-0.5 text-[length:var(--kin-co-caption)] font-semibold"
-              style={{ color: course.tagColor ?? "var(--kin-tt-chu-loi)", background: `color-mix(in srgb, ${course.tagColor ?? "var(--kin-tt-chu-loi)"} 14%, transparent)` }}>
+              style={{ color: tagColor, background: `color-mix(in srgb, ${tagColor} 14%, transparent)` }}>
               {course.tag}
             </span>
           )}

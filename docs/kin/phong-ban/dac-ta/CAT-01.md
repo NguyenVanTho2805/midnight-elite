@@ -49,8 +49,8 @@ Bỏ khỏi thẻ: ngày khai giảng, nút "Xem chi tiết" (cả thẻ đã l�
 | `capacity` null | Đang nhận học viên | xong |
 | `đang học ≥ capacity` | Đã đầy | loi |
 | còn ≤ 5 chỗ | Chỉ còn N chỗ | cho |
-| còn lại | Còn N chỗ | xong |
-"Đang học" = số `Enrollment` `status="active"` (cùng quy tắc `PUT /api/courses/[id]`); đếm bằng **một** `groupBy`. **Sĩ số, `capacity`, số đang học KHÔNG gửi ra trình duyệt**; chỉ gửi `{state, left}`. Lớp đầy/đóng vẫn hiện (không giấu) và vẫn bấm vào xem được; bộ lọc "Chỉ lớp còn chỗ" giữ state ∈ {open, low, unlimited}.
+| còn lại (> 5) | Còn chỗ (không kèm số) | xong |
+"Đang học" = số `Enrollment` `status="active"` (cùng quy tắc `PUT /api/courses/[id]`); đếm bằng **một** `groupBy`. **Sĩ số, `capacity`, số đang học KHÔNG gửi ra trình duyệt**; chỉ gửi `{state, left}`, trong đó `left` chỉ là số khi `low` (1–5), còn lại `null` — số lớn suy ra được sĩ số. `tagColor` từ DB chỉ được dùng nếu khớp `#rrggbb` hoặc `var(--kin-…)` (`safeTagColor`). Lớp đầy/đóng vẫn hiện (không giấu) và vẫn bấm vào xem được; bộ lọc "Chỉ lớp còn chỗ" giữ state ∈ {open, low, unlimited}.
 
 ### Trạng thái
 - **Đang tải:** `loading.tsx` của route — khung bộ lọc + 6 ô xám `KinSkeleton`, `aria-busy`, có chữ "Đang tải danh sách khoá học".
