@@ -8,16 +8,17 @@
 // POST redeem đã bắt).
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
+import { isNextResponse } from "@/lib/auth-guard";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { tuitionPreview } from "@/lib/invitePreview";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
 import { effectivePolicy, isFreeClass, redeemOutcome } from "@/lib/joinRequest";
-import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { loadFeeRateCourseIds, requireStudentForJoin } from "@/lib/enrollServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  // Học sinh thật (cùng cổng với redeem / my-requests): gia sư chờ duyệt 403, không xem trước được lớp.
+  const session = await requireStudentForJoin();
+  if (isNextResponse(session)) return session;
 
   const { code } = await params;
   if (typeof code !== "string" || code.length < 4 || code.length > 20) {

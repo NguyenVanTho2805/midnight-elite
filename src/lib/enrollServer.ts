@@ -75,13 +75,14 @@ export async function logEnrollment(
 // ── Mã cá nhân (spec 4.4) ───────────────────────────────────────────────────────────────────────
 
 /** Cấp / tái dùng mã cá nhân của (em, lớp). Gọi hai lần (kể cả song song) ⇒ cùng một dòng, cùng một `code`.
- *  Còn hạn và còn lượt ⇒ trả y nguyên; hết hạn / thu hồi / hết lượt mà em chưa có yêu cầu đang chờ ⇒ làm sống lại dòng cũ, GIỮ `code`. */
+ *  Còn hạn và còn lượt ⇒ trả y nguyên; hết hạn / hết lượt mà em chưa có yêu cầu đang chờ ⇒ làm sống lại dòng cũ, GIỮ `code`.
+ *  Mã đã THU HỒI (revoked) KHÔNG bao giờ được làm sống lại: bị bỏ qua, em nhận một mã cá nhân mới. */
 export async function issuePersonalCode(courseId: string, userId: string, now: Date = new Date()): Promise<{ code: string; inviteId: string; reused: boolean }> {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const out = await prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`personal_code:${courseId}:${userId}`}))`;
-        const found = await tx.classInvite.findFirst({ where: { courseId, boundUserId: userId, kind: "personal" }, orderBy: { createdAt: "asc" } });
+        const found = await tx.classInvite.findFirst({ where: { courseId, boundUserId: userId, kind: "personal", revoked: false }, orderBy: { createdAt: "asc" } });
         const expiresAt = new Date(now.getTime() + PERSONAL_CODE_TTL_DAYS * 86_400_000);
         if (!found) {
           const created = await tx.classInvite.create({
@@ -89,7 +90,7 @@ export async function issuePersonalCode(courseId: string, userId: string, now: D
           });
           return { code: created.code, inviteId: created.id, reused: false, fresh: true };
         }
-        const dead = found.revoked || (found.expiresAt !== null && found.expiresAt <= now) || (found.maxUses !== null && found.usedCount >= found.maxUses);
+        const dead = (found.expiresAt !== null && found.expiresAt <= now) || (found.maxUses !== null && found.usedCount >= found.maxUses);
         if (dead) {
           const req = await tx.classJoinRequest.findUnique({ where: { userId_courseId: { userId, courseId } }, select: { status: true } });
           if (req?.status !== "pending") {
@@ -167,7 +168,7 @@ async function refundInviteUse(tx: Tx, inviteId: string | null): Promise<void> {
   await tx.classInvite.updateMany({ where: { id: inviteId, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } });
 }
 
-/** Học sinh huỷ yêu cầu của CHÍNH MÌNH. Người gọi đã kiểm chủ sở hữu. */
+/** Học sinh huỷ yêu cầu của CHÍNH MÌNH. Người gọi đã kiểm chủ sở hữu (id không có / của người khác ⇒ cùng 403, không lộ id nào tồn tại). */
 export async function cancelJoinRequest(requestId: string, userId: string): Promise<{ ok: true; changed: boolean }> {
   const changed = await prisma.$transaction(async (tx) => {
     const r = await tx.classJoinRequest.findUnique({ where: { id: requestId } });
@@ -187,11 +188,11 @@ export async function cancelJoinRequest(requestId: string, userId: string): Prom
 
 // ── Duyệt / từ chối (gia sư chủ lớp) ────────────────────────────────────────────────────────────
 
-export type DecideOutcome = "ok" | "tuchoi" | "day" | "goi" | "da-xu-ly" | "loi-ghi-chu" | "khong-co";
+export type DecideOutcome = "ok" | "tuchoi" | "day" | "dong" | "goi" | "da-xu-ly" | "loi-ghi-chu" | "khong-co";
 export interface DecideCourse { id: string; name: string; ownerId: string | null; capacity: number | null; classStatus: string }
 
 /** Duyệt (`duyet`) hoặc từ chối (`tu-choi`) MỘT yêu cầu của lớp `course`. Người gọi đã kiểm gia sư là chủ lớp.
- *  Yêu cầu không thuộc lớp này ⇒ "khong-co" (404). Lớp đầy / gói chặn ⇒ "day" / "goi" và yêu cầu VẪN pending. Đã xử lý ⇒ "da-xu-ly" (không tạo thêm gì). */
+ *  Yêu cầu không thuộc lớp này ⇒ "khong-co" (404). Lớp đầy / đang đóng / gói chặn ⇒ "day" / "dong" / "goi" và yêu cầu VẪN pending. Đã xử lý ⇒ "da-xu-ly" (không tạo thêm gì). */
 export async function decideJoinRequest(
   course: DecideCourse,
   requestId: string,
@@ -217,7 +218,7 @@ export async function decideJoinRequest(
     if (!step.ok) return { outcome: "da-xu-ly" };
     if (action === "duyet") {
       const enr = await enrollInTx(tx, { userId: r.userId, course, source: "join_approved", inviteId: r.inviteId });
-      if (!enr.ok) return { outcome: enr.code === "CAPACITY_FULL" ? "day" : "goi" };
+      if (!enr.ok) return { outcome: enr.code === "CAPACITY_FULL" ? "day" : enr.code === "CLASS_CLOSED" ? "dong" : "goi" };
       await tx.classJoinRequest.update({ where: { id: requestId }, data: { status: "approved", decidedBy: tutorId, decidedAt: now, note: null } });
       return { outcome: "ok", studentId: r.userId, enrollment: enr };
     }
@@ -229,9 +230,13 @@ export async function decideJoinRequest(
   if (res.outcome === "ok" && res.studentId && res.enrollment) {
     await logEnrollment(res.studentId, res.enrollment, { courseId: course.id, source: "join_approved" });
     await logAction(tutorId, "class_join_request.approve", "ClassJoinRequest", requestId, { courseId: course.id });
+    // Cổng đồng ý còn chờ: KHÔNG nói "đã vào lớp". Chữ trung tính — không tên em, không tiền.
+    const waiting = res.enrollment.status === "pending_consent";
     await notify(res.studentId, {
-      type: JOIN_NOTIFY_TYPES.approved, title: "Bạn đã được vào lớp",
-      message: `Gia sư đã duyệt. Bạn đã vào lớp "${course.name}"`, link: `/student/hoc-tap?course=${course.id}`,
+      type: JOIN_NOTIFY_TYPES.approved,
+      title: waiting ? "Gia sư đã duyệt" : "Bạn đã được vào lớp",
+      message: waiting ? "Gia sư đã duyệt, đang chờ phụ huynh đồng ý" : `Gia sư đã duyệt. Bạn đã vào lớp "${course.name}"`,
+      link: `/student/hoc-tap?course=${course.id}`,
     });
   } else if (res.outcome === "tuchoi" && res.studentId) {
     await logAction(tutorId, "class_join_request.reject", "ClassJoinRequest", requestId, { courseId: course.id });
@@ -250,19 +255,20 @@ export async function decideJoinRequestsBulk(
   action: "duyet" | "tu-choi",
   tutorId: string,
   rawNote?: unknown,
-): Promise<{ done: number; blocked: boolean; noteError: boolean }> {
+): Promise<{ done: number; blocked: boolean; closed: boolean; noteError: boolean }> {
   const rows = await prisma.classJoinRequest.findMany({
     where: { id: { in: ids }, courseId: course.id, status: "pending" }, orderBy: { createdAt: "asc" }, select: { id: true },
   });
   let done = 0;
   let blocked = false;
+  let closed = false;
   for (const r of rows) {
     const o = await decideJoinRequest(course, r.id, action, tutorId, rawNote);
-    if (o === "loi-ghi-chu") return { done, blocked, noteError: true };
+    if (o === "loi-ghi-chu") return { done, blocked, closed, noteError: true };
     if (o === "ok" || o === "tuchoi") done++;
-    else if (o === "day" || o === "goi") { blocked = true; if (action === "duyet") break; }
+    else if (o === "day" || o === "dong" || o === "goi") { blocked = true; if (o === "dong") closed = true; if (action === "duyet") break; }
   }
-  return { done, blocked, noteError: false };
+  return { done, blocked, closed, noteError: false };
 }
 
 // ── Bộ đọc cho trang / route ────────────────────────────────────────────────────────────────────

@@ -37,7 +37,8 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("mã: maxUses 1, createdBy = A, hạn ~30 ngày", personal[0]?.maxUses === 1 && personal[0]?.createdBy === A.id && personal[0].expiresAt !== null && personal[0].expiresAt.getTime() - Date.now() > 29 * 86_400_000);
   const codeA = personal[0].code;
   check("chưa đăng nhập → 303 /dang-nhap?redirect=", (await form(`/api/courses/${AP.id}/join`, undefined)).status === 303 && loc(await form(`/api/courses/${AP.id}/join`, undefined)).startsWith("/dang-nhap?redirect="));
-  check("lớp không có → 404", (await form(`/api/courses/khong-co-lop/join`, A)).status === 404);
+  const jNo = await form(`/api/courses/khong-co-lop/join`, A);
+  check("lớp không có (học sinh) → 303 ?join=khong-co", jNo.status === 303 && loc(jNo) === "/khoa-hoc/khong-co-lop?join=khong-co", [jNo.status, loc(jNo)]);
 
   // ── (2) Mã cá nhân của A, B dùng ─────────────────────────────────────────────
   section("(2) Mã cá nhân của người khác");
@@ -107,6 +108,10 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("ứng viên /join (lớp open) → 403, không Enrollment", jP.status === 403 && (await prisma.enrollment.count({ where: { userId: P.id } })) === 0, jP.status);
   check("ứng viên không tạo yêu cầu", (await prisma.classJoinRequest.count({ where: { userId: P.id } })) === 0);
   check("ứng viên gọi R7 → 403", (await form(`${base}/${reqA!.id}/duyet`, P)).status === 403);
+  check("ứng viên gọi R6 / R8 / R9 → 403", (await api("GET", base, { as: P })).status === 403 && (await form(`${base}/${reqA!.id}/tu-choi`, P)).status === 403 && (await form(`${base}/hang-loat`, P, [["action", "duyet"], ["id", reqA!.id]])).status === 403);
+  check("ứng viên GET my-requests → 403", (await api("GET", "/api/invites/my-requests", { as: P })).status === 403);
+  const pvP = await api("GET", `/api/invites/by-code/${codeA}`, { as: P });
+  check("ứng viên GET by-code → 403, không lộ tên lớp", pvP.status === 403 && !/Toán Duyệt|Cô Lan/.test(pvP.text), pvP.status);
 
   // ── (6) Duyệt ───────────────────────────────────────────────────────────────
   section("(6) Chủ lớp duyệt");
@@ -224,7 +229,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   const bPending = myB.json?.items?.find((i: any) => i.status === "pending");
   check("R4: B thấy yêu cầu đang chờ của mình, kèm mã riêng", !!bPending && !!bPending.personalCode, myB.json);
   check("R5: A huỷ yêu cầu của B → 403", (await form(`/api/invites/my-requests/${reqB!.id}/cancel`, A)).status === 403);
-  check("R5: id lạ → 404", (await form(`/api/invites/my-requests/khong-co/cancel`, B)).status === 404);
+  check("R5: id lạ → 403 (cùng mã với của người khác)", (await form(`/api/invites/my-requests/khong-co/cancel`, B)).status === 403);
   const usedBefore = (await prisma.classInvite.findUnique({ where: { code: codeB } }))!.usedCount;
   const cn = await form(`/api/invites/my-requests/${reqB!.id}/cancel`, B);
   check("B huỷ của mình → 303 ?huy=ok, status cancelled, hoàn lượt", cn.status === 303 && loc(cn).endsWith("huy=ok") && (await prisma.classJoinRequest.findUnique({ where: { id: reqB!.id } }))?.status === "cancelled" && (await prisma.classInvite.findUnique({ where: { code: codeB } }))!.usedCount === usedBefore - 1);
@@ -254,6 +259,60 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   const clInv = await prisma.classInvite.create({ data: { courseId: CL.id, code: "CLOSED22", maxUses: 3, createdBy: T.id } });
   const rcl = await api("POST", `/api/invites/${clInv.code}/redeem`, { as: E });
   check("redeem lớp đóng → 409, không tạo yêu cầu, không tăng lượt", rcl.status === 409 && (await prisma.classJoinRequest.count({ where: { courseId: CL.id } })) === 0 && (await prisma.classInvite.findUnique({ where: { id: clInv.id } }))?.usedCount === 0, rcl);
+
+  // ── (17) P2/P3 rà soát ───────────────────────────────────────────────────────
+  section("(17) /join chỉ-mã → 303 ?join=chi-ma; duyệt lớp đóng → dong; chờ đồng ý; mã revoked; pending → approved khi redeem vào ngay");
+  await prisma.course.update({ where: { id: OLD.id }, data: { joinPolicy: null } });
+  const jOld2 = await form(`/api/courses/${OLD.id}/join`, D);
+  check("/join lớp chỉ-mã → 303 ?join=chi-ma (không JSON 409)", jOld2.status === 303 && loc(jOld2) === `/khoa-hoc/${OLD.id}?join=chi-ma`, [jOld2.status, loc(jOld2)]);
+  // duyệt khi lớp đã đóng ⇒ dong, yêu cầu vẫn pending
+  const XC = await mkCourse(T.id, { name: "Lớp Sắp Đóng" });
+  await prisma.course.update({ where: { id: XC.id }, data: { joinPolicy: "approve" } });
+  const xcode = codeOf(await form(`/api/courses/${XC.id}/join`, E));
+  await api("POST", `/api/invites/${xcode}/redeem`, { as: E });
+  const xReq = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: E.id, courseId: XC.id } } });
+  await prisma.course.update({ where: { id: XC.id }, data: { classStatus: "closed" } });
+  const xd = await form(`/api/tutor/lop/${XC.id}/yeu-cau/${xReq!.id}/duyet`, T);
+  check("duyệt lớp đóng → duyet=dong, vẫn pending", loc(xd).endsWith("duyet=dong") && (await prisma.classJoinRequest.findUnique({ where: { id: xReq!.id } }))?.status === "pending", loc(xd));
+  const xb = await form(`/api/tutor/lop/${XC.id}/yeu-cau/hang-loat`, T, [["action", "duyet"], ["id", xReq!.id]]);
+  check("hàng loạt lớp đóng → duyet=dong&n=0", loc(xb).includes("duyet=dong") && loc(xb).includes("n=0"), loc(xb));
+  // duyệt em nhỏ khi cổng đồng ý bật ⇒ thông báo chờ phụ huynh
+  const kid3 = await mkUser({ name: "Em Nhỏ Ba" });
+  await prisma.user.update({ where: { id: kid3.id }, data: { dateOfBirth: new Date(Date.now() - 10 * 365 * 86_400_000) } });
+  const KC = await mkCourse(T.id, { name: "Lớp Chờ Phụ Huynh" });
+  await prisma.course.update({ where: { id: KC.id }, data: { joinPolicy: "approve" } });
+  const kcode = codeOf(await form(`/api/courses/${KC.id}/join`, kid3));
+  await api("POST", `/api/invites/${kcode}/redeem`, { as: kid3 });
+  const kReq = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: kid3.id, courseId: KC.id } } });
+  const prevG = process.env.KIN_ENROLL_CONSENT_GATE;
+  process.env.KIN_ENROLL_CONSENT_GATE = "1"; // chỉ có hiệu lực nếu máy chủ test cùng môi trường; nếu không thì ca dưới tự kiểm theo trạng thái thật
+  const kd = await form(`/api/tutor/lop/${KC.id}/yeu-cau/${kReq!.id}/duyet`, T);
+  if (prevG === undefined) delete process.env.KIN_ENROLL_CONSENT_GATE; else process.env.KIN_ENROLL_CONSENT_GATE = prevG;
+  const kEnr = await prisma.enrollment.findFirst({ where: { userId: kid3.id, courseId: KC.id } });
+  const kNote = await prisma.notification.findFirst({ where: { userId: kid3.id, type: "join_request_approved" } });
+  check("duyệt → 303 ok, thông báo khớp trạng thái Enrollment (chờ đồng ý ⇒ không nói 'đã vào lớp'; không tên em, không tiền)",
+    loc(kd).endsWith("duyet=ok") && !!kEnr && !!kNote && !/Em Nhỏ|\d{4,}/.test(kNote.message) &&
+    (kEnr.status === "pending_consent" ? kNote.message === "Gia sư đã duyệt, đang chờ phụ huynh đồng ý" && !/đã vào lớp/i.test(kNote.title + kNote.message) : /vào lớp/.test(kNote.message)), [kEnr?.status, kNote]);
+  // mã cá nhân đã thu hồi không sống lại
+  const RV = await mkCourse(T.id, { name: "Lớp Mã Thu Hồi" });
+  await prisma.course.update({ where: { id: RV.id }, data: { joinPolicy: "approve" } });
+  const rvCode = codeOf(await form(`/api/courses/${RV.id}/join`, C));
+  await prisma.classInvite.update({ where: { code: rvCode }, data: { revoked: true } });
+  const rvCode2 = codeOf(await form(`/api/courses/${RV.id}/join`, C));
+  const rvOld = await prisma.classInvite.findUnique({ where: { code: rvCode } });
+  check("mã đã thu hồi KHÔNG sống lại; em nhận mã mới dùng được", rvCode2 !== rvCode && rvOld?.revoked === true && (await prisma.classInvite.findUnique({ where: { code: rvCode2 } }))?.revoked === false, [rvCode, rvCode2]);
+  const rvRd = await api("POST", `/api/invites/${rvCode}/redeem`, { as: C });
+  check("redeem mã thu hồi → bị từ chối", rvRd.status >= 400, rvRd.status);
+  // pending cũ + vào lớp ngay bằng mã lớp ⇒ yêu cầu thành approved
+  const PN = await mkCourse(T.id, { name: "Lớp Pending Rồi Vào" });
+  await prisma.course.update({ where: { id: PN.id }, data: { joinPolicy: "approve" } });
+  const pnCode = codeOf(await form(`/api/courses/${PN.id}/join`, C));
+  await api("POST", `/api/invites/${pnCode}/redeem`, { as: C });
+  await prisma.course.update({ where: { id: PN.id }, data: { joinPolicy: null } });
+  const pnClass = await api("POST", `/api/courses/${PN.id}/invites`, { as: T, body: { maxUses: 5 } });
+  const pnRd = await api("POST", `/api/invites/${pnClass.json.code}/redeem`, { as: C });
+  const pnReq = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: C.id, courseId: PN.id } } });
+  check("vào lớp ngay bằng mã lớp → yêu cầu pending cũ thành approved, có Enrollment", pnRd.status === 200 && pnReq?.status === "approved" && (await prisma.enrollment.count({ where: { userId: C.id, courseId: PN.id } })) === 1, [pnRd.json, pnReq?.status]);
 
   // ── (16) Audit ───────────────────────────────────────────────────────────────
   section("(16) Audit");

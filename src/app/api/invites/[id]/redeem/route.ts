@@ -80,6 +80,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       const enr = await enrollInTx(tx, { userId: session.userId, course, source: "class_invite", inviteId: inv!.id });
       if (!enr.ok) throw Object.assign(new Error(enr.code), { status: enr.status, body: enr.error, code: enr.code });
       if (!enr.created) return enr;
+      // Em đang có yêu cầu pending của lớp này mà lại vào được ngay bằng mã khác ⇒ chuyển yêu cầu thành approved trong CÙNG giao dịch
+      // (không để hàng chờ của gia sư còn một dòng ma). Mã của yêu cầu đã giữ một lượt: nếu chính là mã này thì không tính lượt hai lần.
+      const pendingReq = await tx.classJoinRequest.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { id: true, status: true, inviteId: true } });
+      if (pendingReq?.status === "pending") {
+        await tx.classJoinRequest.update({ where: { id: pendingReq.id }, data: { status: "approved", decidedAt: new Date(), note: null } });
+        if (pendingReq.inviteId === inv!.id) return enr;
+      }
       // Atomic increment: KHÔNG tăng nếu đã đạt maxUses — tránh race ở giây cuối.
       const txInvites = invites(tx as unknown as typeof prisma);
       const bumped = await txInvites.updateMany({

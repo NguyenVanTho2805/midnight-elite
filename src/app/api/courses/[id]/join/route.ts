@@ -1,6 +1,7 @@
 // BU-01 (R1) — POST /api/courses/[id]/join: nút "Vào lớp" / "Xin vào lớp" ở trang lớp công khai (form, rỗng). [id] là slug lớp.
 // Quyết định bằng joinDecision (src/lib/joinRequest.ts): lớp "open" (miễn phí) vào ngay qua enrollInTx; lớp "approve" cấp / trả lại MÃ CÁ NHÂN
-// gắn tài khoản (gọi hai lần, kể cả song song ⇒ cùng một mã) rồi chuyển sang trang nhập mã; lớp chỉ-mã-mời trả 409. Kết quả người dùng gặp được ⇒ 303 về trang kèm ?join=.
+// gắn tài khoản (gọi hai lần, kể cả song song ⇒ cùng một mã) rồi chuyển sang trang nhập mã; lớp chỉ-mã-mời ⇒ 303 ?join=chi-ma. Kết quả người dùng gặp được (đóng / đầy / chỉ-mã / không có lớp) ⇒ 303 về trang kèm ?join=
+// (dong | day | chi-ma | khong-co); chỉ 401/403 giữ JSON.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionChecked } from "@/lib/session";
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     select: { id: true, name: true, status: true, classStatus: true, capacity: true, ownerId: true, joinPolicy: true, price: true, tag: true },
   });
-  if (!course || !course.status) return NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404, headers: NO_STORE });
+  if (!course || !course.status) return see(`${page}?join=khong-co`);
 
   const [enr, req0, rated] = await Promise.all([
     prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: id } }, select: { id: true } }),
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   switch (d.action) {
     case "already_member": return see(`/student/hoc-tap?course=${encodeURIComponent(id)}`);
     case "closed": return see(`${page}?join=dong`);
-    case "invite_only": return NextResponse.json({ error: "Lớp này chỉ vào bằng mã gia sư gửi" }, { status: 409, headers: NO_STORE });
+    case "invite_only": return see(`${page}?join=chi-ma`);
     case "enroll": {
       const r = await prisma.$transaction((tx) => enrollInTx(tx, { userId: session.userId, course, source: "join_open" }));
       if (!r.ok) return see(`${page}?join=${r.code === "CLASS_CLOSED" ? "dong" : "day"}`);
