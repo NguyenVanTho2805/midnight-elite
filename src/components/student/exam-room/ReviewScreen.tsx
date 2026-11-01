@@ -37,7 +37,7 @@ export default function ReviewScreen(p: ReviewScreenProps) {
           <>
             {(d.correctableCount ?? 0) > 0 && (
               <div className="rounded-xl p-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: "var(--kin-nhan-nen-nhat)", border: "1px solid var(--kin-nhan-vien)" }}>
-                <p className="text-sm" style={{ color: "var(--kin-nhan-chu-tren-nhat)" }}>Em có <strong>{d.correctableCount} câu</strong> làm chưa đúng. Chữa lại từng câu: gợi ý trước, đáp án sau.</p>
+                <p className="text-sm" style={{ color: "var(--kin-nhan-chu-tren-nhat)" }}>Bạn có <strong>{d.correctableCount} câu</strong> làm chưa đúng. Chữa lại từng câu: gợi ý trước, đáp án sau.</p>
                 <KinButton variant="primary" onClick={() => setFixing(true)}>Chữa lại các câu sai</KinButton>
               </div>
             )}

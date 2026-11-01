@@ -20,7 +20,7 @@ export function SaveChipView({ chip, onRetry }: { chip: ChipView; onRetry: () =>
   const label = chip.label;
   const failed = chip.status === "failed";
   return (
-    <div role="status" data-chip-luu={chip.status} className="flex items-center justify-end gap-2 min-h-[28px] text-[length:var(--kin-co-caption)] font-semibold">
+    <div role="status" data-chip-luu={chip.status} className="flex flex-col items-end lg:flex-row lg:items-center lg:justify-end gap-0 lg:gap-2 min-h-[28px] text-[length:var(--kin-co-caption)] font-semibold">
       {label && (
         <span className="inline-flex items-center gap-1 px-2 py-[2px] rounded-[var(--kin-bo-tron)]"
           style={failed ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" } : { background: "var(--kin-nen-trang)", color: "var(--kin-chu-phu)" }}>
@@ -28,7 +28,7 @@ export function SaveChipView({ chip, onRetry }: { chip: ChipView; onRetry: () =>
         </span>
       )}
       {failed && (
-        <button type="button" onClick={onRetry} className="min-h-[44px] px-2 underline underline-offset-2 text-[var(--kin-chu-tren-nut-chinh)]">Thử lại</button>
+        <button type="button" onClick={onRetry} className="min-h-[44px] px-2 underline underline-offset-2 text-[var(--kin-chu-tren-nut-chinh)] whitespace-nowrap">Thử lại</button>
       )}
     </div>
   );

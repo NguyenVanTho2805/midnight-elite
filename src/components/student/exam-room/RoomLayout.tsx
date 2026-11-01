@@ -13,7 +13,7 @@ export interface RoomLayoutProps {
 
 export default function RoomLayout({ title, counter, clock, chip, strip, subBar, aside, footer, sheet, scrollBox, children }: RoomLayoutProps) {
   return (
-    <div className="flex flex-col h-[100dvh] bg-[var(--kin-nen-trang)]" data-phong-thi-khung>
+    <div className="flex flex-col h-[100dvh] overflow-hidden bg-[var(--kin-nen-trang)]" data-phong-thi-khung>
       <header className="flex-shrink-0 text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-th-navy)" }}>
         <div className="mx-auto max-w-[1100px] grid grid-cols-[auto_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 min-h-[52px] lg:min-h-14">
           <div className="order-1 lg:order-2">{clock}</div>
