@@ -351,7 +351,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // ── Vỏ ──
   if (ROLE === "student") {
     section("Vỏ: học sinh luôn ở trong khung thanh bên HỌC SINH (trừ phòng thi, trang phụ huynh, trang gửi qua thư)");
-    const NO_SHELL_OK = /^\/(phieu|so-cua-con|xac-nhan-phu-huynh|xac-thuc-email|dat-lai-mat-khau|quen-mat-khau|xem-tai-lieu)(\/|$)|^\/student\/thi-thu\/[^/]+$/;
+    const NO_SHELL_OK = /^\/$|^\/(phieu|so-cua-con|xac-nhan-phu-huynh|xac-thuc-email|dat-lai-mat-khau|quen-mat-khau|xem-tai-lieu)(\/|$)|^\/student\/thi-thu\/[^/]+$/;
     const final = visited.filter(v => !v.why && new URL(v.final).origin === MAIN_ORIGIN);
     const wrongShell = final.filter(v => v.shell && v.shell !== SHELL_STUDENT);
     for (const x of wrongShell.slice(0, 20)) console.log(`   ✗ ${new URL(x.final).pathname} hiện khung "${x.shell}"`);

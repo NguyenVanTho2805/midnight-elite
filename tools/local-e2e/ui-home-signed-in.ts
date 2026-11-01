@@ -111,7 +111,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await shot(p, "home-signed-in-1600");
     await reg.click();
     await p.waitForURL(/\/dang-ky/, { timeout: 90000 });
-    check("bấm 'Đăng ký gia sư' → /dang-ky có vai Gia sư được chọn sẵn", await p.getByText(/Hồ sơ gia sư sẽ chờ admin duyệt/).isVisible({ timeout: 30000 }));
+    check("bấm 'Đăng ký gia sư' → /dang-ky có vai Gia sư được chọn sẵn", await p.getByText(/Hồ sơ gia sư sẽ chờ admin duyệt/).waitFor({ timeout: 30000 }).then(() => true, () => false));
     await c.close();
     const m = await open(null, 390, 844);
     check("390px không tràn ngang", await m.p.evaluate(NOT_OVERFLOW) as boolean);
