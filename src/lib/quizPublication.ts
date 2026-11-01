@@ -14,7 +14,9 @@ async function readPublishedFlag(examId: string, userId: string, attemptId?: str
     if (!own) return false; // lượt không phải của học sinh này → không bao giờ coi là đã công bố
     return !!(await prisma.examAttemptPublish.findUnique({ where: { attemptId }, select: { attemptId: true } }));
   }
-  const mine = await prisma.examAttempt.findMany({ where: { examId, userId }, select: { id: true } });
+  // BU-04: nhiều mã đề — lượt của em có thể nằm ở mã con; xét cả nhóm (đề gốc + mã con).
+  const kids = await prisma.exam.findMany({ where: { variantOfId: examId }, select: { id: true } });
+  const mine = await prisma.examAttempt.findMany({ where: { examId: { in: [examId, ...kids.map(k => k.id)] }, userId }, select: { id: true } });
   if (mine.length === 0) return false;
   return (await prisma.examAttemptPublish.count({ where: { attemptId: { in: mine.map(a => a.id) } } })) > 0;
 }
