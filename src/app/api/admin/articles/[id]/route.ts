@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notifyMany } from "@/lib/notify";
 import { cleanArticleSource } from "@/lib/articleSource";
+import { cleanCoverCaption, parseSchedule, checkNotPast } from "@/lib/articlesPublic"; // BU-07
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -31,7 +32,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const existing = await prisma.article.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Không tìm thấy bài viết" }, { status: 404 });
 
+    if (body.title !== undefined && typeof body.title !== "string") return NextResponse.json({ error: "title phải là chuỗi" }, { status: 400 });
+    if (body.published !== undefined && typeof body.published !== "boolean") return NextResponse.json({ error: "published phải là true/false" }, { status: 400 });
+    if (body.slug !== undefined && typeof body.slug !== "string") return NextResponse.json({ error: "slug phải là chuỗi" }, { status: 400 });
+    if (typeof body.slug === "string") body.slug = body.slug.trim();
     if (body.slug && body.slug !== existing.slug) {
+      if (!/^[a-z0-9-]{1,200}$/.test(body.slug)) return NextResponse.json({ error: "Slug chỉ gồm chữ thường, số, gạch ngang (tối đa 200 ký tự)" }, { status: 400 });
       const slugConflict = await prisma.article.findUnique({ where: { slug: body.slug } });
       if (slugConflict) return NextResponse.json({ error: "Slug đã tồn tại" }, { status: 409 });
     }
@@ -51,6 +57,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const wasPublished = existing.published;
     const willPublish  = body.published ?? existing.published;
 
+    // BU-07: chú thích ảnh bìa + giờ đăng. Giờ trống khi bài chưa đăng/đang lên lịch = đăng ngay; bài đã đăng (quá khứ) giữ giờ cũ.
+    const cap = body.coverCaption !== undefined ? cleanCoverCaption(body.coverCaption) : null;
+    if (cap && !cap.ok) return NextResponse.json({ error: cap.error }, { status: 400 });
+    const sched = parseSchedule(body.publishedAt);
+    if (!sched.ok) return NextResponse.json({ error: sched.error }, { status: 400 });
+    const wasFuture = !!existing.publishedAt && existing.publishedAt.getTime() > Date.now();
+    // Bài đã hiện cho khách rồi (đăng, giờ đã qua) được sửa thoải mái giờ đăng cũ (ô datetime-local cắt giây); chỉ chặn khi ĐẶT MỚI vào quá khứ.
+    const alreadyLive = wasPublished && !wasFuture;
+    if (willPublish && sched.value && !alreadyLive && !checkNotPast(sched.value)) return NextResponse.json({ error: "Giờ đăng không được ở quá khứ" }, { status: 400 });
+    const newPublishedAt: Date | undefined =
+      willPublish && sched.value ? sched.value
+      : willPublish && (!wasPublished || wasFuture) ? new Date()
+      : undefined;
+
     const updated = await prisma.article.update({
       where: { id },
       data: {
@@ -64,12 +84,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.isPinned  !== undefined && { isPinned:  body.isPinned         }),
         ...(body.published !== undefined && { published: body.published        }),
         ...(body.readTime  !== undefined && { readTime:  Number(body.readTime) }),
-        ...(!wasPublished && willPublish && { publishedAt: new Date() }),
+        ...(newPublishedAt && { publishedAt: newPublishedAt }),
+        ...(cap && cap.ok && { coverCaption: cap.value }),
         ...(srcData ?? {}),
       },
     });
 
-    if (!wasPublished && willPublish) {
+    // BU-07: báo khi bài VỪA trở nên hiển thị (đăng mới, hoặc bài lên lịch được kéo về hiện tại); bài đặt lịch tương lai chưa báo.
+    if (willPublish && (!wasPublished || wasFuture) && updated.publishedAt && updated.publishedAt.getTime() <= Date.now()) {
       const students = await prisma.user.findMany({ where: { role: "student" }, select: { id: true } });
       await notifyMany(students.map(s => s.id), {
         type:    "article_new",
