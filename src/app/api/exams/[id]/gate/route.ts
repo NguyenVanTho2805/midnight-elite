@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { parseDurationMinutes } from "@/lib/examGrading";
 import { hasExamPassword } from "@/lib/examPassword";
-import { getMaxAttempts } from "@/lib/quizPublication";
+import { loadEffectivePolicy } from "@/lib/quizPublication";
 import { attemptCounterLabel, attemptsGate } from "@/lib/quizRoom";
 import { canStartByDeadline, deadlineState } from "@/lib/quizDeadline";
 import { getOwnDeadline } from "@/lib/quizDeadlineServer";
@@ -35,14 +35,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    const [used, inProgress, max, essayCount] = await Promise.all([
-      prisma.examAttempt.count({ where: { userId: session.userId, examId } }),
-      prisma.examAttempt.findFirst({ where: { userId: session.userId, examId, status: "in_progress" }, select: { id: true, expiresAt: true } }),
-      getMaxAttempts(examId),
+    // STU-001: số lượt + cách hiện đáp án theo chính sách HIỆU LỰC (đề công khai chưa cài → 2 lượt, nhãn tự ra "Lượt 1/2").
+    // Lượt dở đã quá hạn thì không còn là "đang làm" (máy chủ sẽ chấm nó khi học sinh bấm vào) — vẫn tính là đã dùng.
+    const [policy, essayCount] = await Promise.all([
+      loadEffectivePolicy(exam, session.userId),
       prisma.examQuestion.count({ where: { examId, type: "ESSAY" } }),
     ]);
-    // Lượt dở đã quá hạn thì không còn là "đang làm" (máy chủ sẽ chấm nó khi học sinh bấm vào) — vẫn tính là đã dùng.
-    const resumable = !!inProgress && inProgress.expiresAt.getTime() > Date.now();
+    const { used, inProgressLive: resumable } = policy;
+    const max = policy.maxAttempts;
     const gate = attemptsGate({ used, max, hasInProgress: resumable });
     if (exam._count.examQuestions === 0) blockReason = blockReason ?? "no_questions";
     else if (!gate.canStart) blockReason = blockReason ?? "attempts_exhausted";
@@ -61,6 +61,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       klass: exam.course ? { id: exam.course.id, name: exam.course.name, tutorName: exam.course.owner?.name ?? null } : null,
       enrolled,
       attempts: { used, max, remaining: gate.remaining, resumable, label: attemptCounterLabel(used, max, resumable) },
+      // STU-001: để màn cổng nói trước "đáp án hiện khi hết lượt/hết hạn". Không có câu hỏi, đáp án hay mật khẩu ở đây.
+      policy: { guarded: policy.guarded, answersLockedReason: policy.answersLockedReason },
       canStart: blockReason === null,
       blockReason,
       serverNow: new Date().toISOString(),

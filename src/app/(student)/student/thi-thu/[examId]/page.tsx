@@ -44,6 +44,40 @@ function ExamExitLink() {
   );
 }
 
+// STU-001 §6: màn "Xem lại bài làm" nói vì sao chưa xem được đáp án và khi nào thì được.
+// Ba trường mới của review (answersLockedReason / publicGuarded / attemptsMax — đặc tả §4.4) đọc qua kiểu tại chỗ,
+// vì máy chủ cũ chưa trả chúng: thiếu trường → giữ câu cũ (đổi "bạn" → "em"). Chỉ dựng chữ từ dữ liệu API trả, không đoán đáp án.
+type AnswersLockedReason = "until_exam_ends" | "until_attempts_exhausted" | "never" | null;
+type ReviewPolicyFields = {
+  canSeeAnswers: boolean;
+  pendingManual?: boolean;
+  answersLockedReason?: AnswersLockedReason;
+  publicGuarded?: boolean;
+  attemptsMax?: number | null;
+};
+function answersLockedNotice(review: ReviewPolicyFields): { reason: string; text: string } | null {
+  // Giữ điểm (gia sư chưa công bố) được ưu tiên bằng khối "chờ công bố" bên trên — không nói hai lần.
+  if (review.pendingManual) return null;
+  const reason = review.answersLockedReason;
+  const soLuot = typeof review.attemptsMax === "number" && review.attemptsMax > 0 ? `${review.attemptsMax} lượt` : "số lượt làm bài";
+  if (reason === "until_exam_ends") {
+    return review.publicGuarded
+      ? { reason, text: `Đây là đề thi thử công khai nên KiN chỉ hiện đáp án và lời giải khi em dùng hết ${soLuot} hoặc khi đề hết hạn — để bảng xếp hạng công bằng cho mọi người. Em vẫn xem được câu trả lời của mình và điểm.` }
+      : { reason, text: "Gia sư đặt đề này chỉ hiện đáp án sau khi hết hạn làm bài. Em vẫn xem được câu trả lời của mình." };
+  }
+  if (reason === "until_attempts_exhausted") {
+    return { reason, text: `Đây là đề thi thử công khai: câu làm đúng có dấu ✓, câu chưa đúng sẽ hiện đáp án khi em dùng hết ${soLuot} — để bảng xếp hạng công bằng cho mọi người.` };
+  }
+  if (reason === "never") {
+    return { reason, text: "Gia sư đặt đề này không hiện đáp án. Em xem được câu trả lời của mình và điểm." };
+  }
+  // Máy chủ chưa trả trường mới (hoặc trả null mà vẫn khoá): giữ câu cũ, giọng "em".
+  if (!review.canSeeAnswers) {
+    return { reason: "khong-ro", text: "Đề thi này chưa cho phép xem đáp án lúc này — chỉ hiện câu trả lời của em." };
+  }
+  return null;
+}
+
 export default function ExamEntryPage() {
   return (
     <div data-vung="phong-thi">
@@ -556,11 +590,14 @@ function ExamEntryInner() {
                 Gia sư chưa chấm xong và công bố kết quả bài này. Em chỉ xem được câu trả lời của chính mình; điểm, đáp án và lời giải sẽ hiện khi gia sư công bố.
               </div>
             )}
-            {!reviewData.canSeeAnswers && !reviewData.pendingManual && (
-              <div className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
-                Đề thi này chưa cho phép xem đáp án lúc này — chỉ hiện câu trả lời của bạn.
-              </div>
-            )}
+            {(() => {
+              const notice = answersLockedNotice(reviewData);
+              return notice ? (
+                <div role="status" data-khoa-dap-an={notice.reason} className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }}>
+                  {notice.text}
+                </div>
+              ) : null;
+            })()}
             <div className="space-y-3">
               {reviewData.questions.map((q, idx) => {
                 const prevSection = idx > 0 ? reviewData.questions[idx - 1].sectionLabel : undefined;

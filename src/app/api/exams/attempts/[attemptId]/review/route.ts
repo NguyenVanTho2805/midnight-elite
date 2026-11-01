@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
+import { orderQuestionsAndOptionsFull, loadAnswerState } from "@/lib/examGrading";
 import { correctionSummary } from "@/lib/examCorrectionServer";
 import { scoreMultiSelect } from "@/lib/quizQuestion";
-import { loadPublishState } from "@/lib/quizPublication";
+import { loadEffectivePolicy, loadPublishState } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
-// Tôn trọng 2 cấu hình của đề: answerVisibility (khi nào được xem đáp án) và
-// hideAnswerForWrong (câu trả lời sai chỉ hiện "Sai", không lộ đáp án đúng).
+// Theo chính sách HIỆU LỰC của đề (STU-001, examPolicy.ts): answerVisibility (khi nào được xem đáp án) và
+// hideAnswerForWrong (câu trả lời sai chỉ hiện "Sai", không lộ đáp án đúng) — đề thi thử công khai chưa cài gì thì
+// KiN tự khoá đáp án tới khi em hết lượt hoặc đề hết hạn. Mọi mốc giờ tính ở máy chủ; không đọc giờ từ trình duyệt.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ attemptId: string }> }
@@ -33,13 +34,10 @@ export async function GET(
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const canSeeByExam =
-      exam.answerVisibility === "after_submit" ? true :
-      exam.answerVisibility === "after_exam_ends" ? hasExamWindowEnded(exam) :
-      false; // "never"
+    const policy = await loadEffectivePolicy(exam, session.userId);
     // QZ-08/11/12: đề đang GIỮ điểm (examHold — một nguồn) và lượt này chưa được gia sư công bố → không điểm, không điểm/nhận xét tự luận,
-    // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng cài đặt của đề).
-    const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), canSeeByExam);
+    // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng chính sách của đề).
+    const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), policy.canSeeAnswers);
     const held = vis.pendingManual;
     const canSeeAnswers = vis.showAnswers;
 
@@ -75,7 +73,7 @@ export async function GET(
         const options = q.options.map(o => {
           const studentAnswerTrue = boolAnswersByOption[o.id] ?? null;
           const wasCorrect = studentAnswerTrue !== null && studentAnswerTrue === o.isCorrect;
-          const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+          const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect);
           return {
             id: o.id, text: o.text, subLabel: o.subLabel,
             studentAnswerTrue,
@@ -90,7 +88,7 @@ export async function GET(
         const picked = q.options.filter(o => boolAnswersByOption[o.id] === true).map(o => o.id);
         const wasCorrect = scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), picked, q.points) > 0;
         const pendingFix = pendingIds.has(q.id);
-        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
+        const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect) && !pendingFix;
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           options: q.options.map(o => ({ id: o.id, text: o.text, picked: picked.includes(o.id), isCorrect: reveal ? o.isCorrect : null })),
@@ -105,7 +103,7 @@ export async function GET(
         const normalize = (s: string) => s.trim().toLowerCase().replace(/,/g, ".");
         const wasCorrect = !!studentAnswer?.trim() && !!correctOption && normalize(studentAnswer) === normalize(correctOption.text);
         const pendingFix = pendingIds.has(q.id);
-        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
+        const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect) && !pendingFix;
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           studentAnswer,
@@ -120,7 +118,7 @@ export async function GET(
       const chosenOption = q.options.find(o => o.id === studentOptionId);
       const wasCorrect = !!chosenOption?.isCorrect;
       const pendingFix = pendingIds.has(q.id);
-      const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
+      const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect) && !pendingFix;
       return {
         id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
         correctionPending: pendingFix,
@@ -140,6 +138,10 @@ export async function GET(
       pendingManual: vis.pendingManual,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
+      // STU-001: vì sao đáp án còn bị giấu (null = không giấu gì), đề công khai có bị KiN áp mặc định an toàn không, số lượt hiệu lực.
+      answersLockedReason: policy.answersLockedReason,
+      publicGuarded: policy.guarded,
+      attemptsMax: policy.maxAttempts,
       // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).
       correctableCount,
       questions,
