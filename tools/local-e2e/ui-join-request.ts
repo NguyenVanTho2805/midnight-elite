@@ -12,10 +12,12 @@ const FREE_TAG = "Miễn phí";
 // Cỡ nút trên điện thoại: mọi button / summary / link-dạng-nút đang hiện phải cao >= 44px (ô chọn tick và radio không tính: nhãn bao ngoài mới là vùng bấm).
 async function mobileReport(page: Page) {
   // Chuỗi mã (không phải hàm): tsx/esbuild chèn __name() vào hàm có tên, trình duyệt không có hàm đó.
+  // Ẩn lớp phủ dev của Next / công cụ chú thích: nút của chúng không phải nút của trang. Nút × của KinToast dùng chung (có sẵn, không thuộc BU-01) cũng loại.
+  await page.addStyleTag({ content: "nextjs-portal, [data-nextjs-toast], [data-agentation-root] { display: none !important; }" });
   return page.evaluate(`(() => {
     var vis = function (e) { var r = e.getBoundingClientRect(); var st = getComputedStyle(e); return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none"; };
     var small = Array.prototype.slice.call(document.querySelectorAll('button, summary, a[class*="kin-cham-toi-thieu"]'))
-      .filter(function (e) { return vis(e) && !e.disabled && e.getBoundingClientRect().height < 43.5; })
+      .filter(function (e) { return vis(e) && !e.closest('[data-kin-toast],nextjs-portal,[data-nextjs-toast],[data-agentation-root]') && !e.disabled && e.getBoundingClientRect().height < 43.5; })
       .map(function (e) { return e.tagName + ":" + (e.textContent || "").trim().slice(0, 30) + ":" + Math.round(e.getBoundingClientRect().height); });
     return { overflow: document.documentElement.scrollWidth > window.innerWidth + 1, small: small };
   })()`) as Promise<{ overflow: boolean; small: string[] }>;

@@ -198,7 +198,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   await prisma.courseFeeRate.create({ data: { courseId: OP.id, mode: "per_session", rate: 100000, effectiveFrom: "2026-01-01", createdBy: T.id } });
   const D = await mkUser({ name: "Em Dũng" });
   const joD = await form(`/api/courses/${OP.id}/join`, D);
-  check("lớp open nhưng gia sư đã nhập đơn giá → /join 409, không Enrollment", joD.status === 409 && (await prisma.enrollment.count({ where: { userId: D.id, courseId: OP.id } })) === 0, joD.status);
+  check("lớp open nhưng gia sư đã nhập đơn giá → /join 303 ?join=chi-ma, không Enrollment", joD.status === 303 && loc(joD) === `/khoa-hoc/${OP.id}?join=chi-ma` && (await prisma.enrollment.count({ where: { userId: D.id, courseId: OP.id } })) === 0, joD.status);
   await prisma.courseFeeRate.deleteMany({ where: { courseId: OP.id } });
   const pFree = await api("PATCH", `/api/courses/${paid.id}`, { as: T, body: { tag: "Miễn phí", joinPolicy: "open" } });
   check("PATCH tag Miễn phí + open cùng lúc → 200", pFree.status === 200 && pFree.json?.joinPolicy === "open", pFree);
@@ -209,7 +209,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   section("(11) joinPolicy null = như trước BU-01");
   const E = await mkUser({ name: "Em Hoa" });
   const jn = await form(`/api/courses/${OLD.id}/join`, E);
-  check("/join lớp null → 409", jn.status === 409, jn.status);
+  check("/join lớp null → 303 ?join=chi-ma", jn.status === 303 && loc(jn) === `/khoa-hoc/${OLD.id}?join=chi-ma`, [jn.status, loc(jn)]);
   const rdE = await api("POST", `/api/invites/${invOld.json.code}/redeem`, { as: E });
   check("mã lớp vào ngay như cũ", rdE.status === 200 && rdE.json?.status === "active" && !rdE.json?.pending, rdE);
 

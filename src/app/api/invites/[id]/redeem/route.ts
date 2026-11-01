@@ -40,7 +40,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const inv = await invites().findUnique({ where: { code } });
   // Đã có yêu cầu pending bằng chính mã này (bấm lại / F5): trả lại idempotent, không đòi mã còn lượt (mã cá nhân maxUses 1 đã dùng).
-  if (inv) {
+  if (inv && (!inv.boundUserId || inv.boundUserId === session.userId)) {
+    // Đã là thành viên: trả idempotent dù mã đã hết lượt (mã cá nhân maxUses 1). Mã gắn người khác không vào nhánh này (đi tiếp tới 403).
+    const enrolledAlready = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true } });
+    if (enrolledAlready) return NextResponse.json({ ok: true, alreadyEnrolled: true, courseId: inv.courseId });
     const mine = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true, status: true, inviteId: true } });
     if (mine && mine.status === "pending" && mine.inviteId === inv.id && !inv.revoked) {
       return NextResponse.json({ ok: true, pending: true, requestId: mine.id, courseId: inv.courseId });
