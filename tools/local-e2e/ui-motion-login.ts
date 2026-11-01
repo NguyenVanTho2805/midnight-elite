@@ -86,11 +86,12 @@ const noFonts = (ctx: { route: (u: RegExp, h: (r: { abort: () => Promise<void> }
     const lock = p.locator(".kin-lock");
     await lock.waitFor({ timeout: 10000 });
     check("hiện đồng hồ đếm ngược (role=timer) cùng thông báo khoá; ổ khoá ĐANG KHOÁ", (await lock.locator('[role="timer"]').count()) === 1 && (await lock.getAttribute("data-open")) === null && (await p.locator('div[role="alert"].kin-notice-in').innerText()).includes("tạm khoá"));
+    // 01/11/2026: giả lập khoá 4 giây nhưng đồng hồ làm tròn LÊN, nên mẫu đầu có lúc đọc 0:05 (đỏ chập chờn khi máy nhanh) → chấp nhận 0:02–0:05; ý kiểm (số giảm theo giây thật, vòng co dần) giữ nguyên.
     const t1 = await lock.locator(".kin-lock-time").innerText();
     await sleep(1400);
     const t2 = await lock.locator(".kin-lock-time").innerText();
     const prog = await lock.locator(".kin-lock-dial").evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--p")));
-    check("số đếm ngược giảm theo giây thật; vòng co dần (0 < tiến độ < 1)", /^0:0[2-4]$/.test(t1) && t2 < t1 && prog > 0 && prog < 1, { t1, t2, prog });
+    check("số đếm ngược giảm theo giây thật; vòng co dần (0 < tiến độ < 1)", /^0:0[2-5]$/.test(t1) && t2 < t1 && prog > 0 && prog < 1, { t1, t2, prog });
     check("nhãn đọc cho trình đọc màn hình nói số giây còn lại", /^Còn \d+ giây$/.test((await lock.locator('[role="timer"]').getAttribute("aria-label")) ?? ""));
     const retry = lock.getByRole("button", { name: "Thử đăng nhập lại" });
     check("chưa hết giờ: nút 'Thử đăng nhập lại' bị khoá", await retry.isDisabled());
