@@ -1058,7 +1058,7 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
         if (r.status !== 200) break;
         for (const it of r.json.items) keys.push(it.key);
         cursor = r.json.nextCursor; guard++;
-      } while (cursor && guard < 40);
+      } while (cursor && guard < 100);
       return { keys, pages };
     }
     const w10 = await walkAll(undefined, "", 10);
@@ -1067,7 +1067,7 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
     check("…không thiếu, không thừa (đúng tập 59 khoá)", expectKeys.every(k => w10.keys.includes(k)) && w10.keys.every(k => expectKeys.includes(k)));
     check("…6 trang (5 × 10 + 9), mọi trang trừ cuối có nextCursor; trang cuối nextCursor null", w10.pages.length === 6 && w10.pages.slice(0, 5).every(p => p.json.items.length === 10 && !!p.json.nextCursor) && w10.pages[5].json.items.length === 9 && w10.pages[5].json.nextCursor === null, w10.pages.map(p => p.json?.items?.length));
     const items = w10.pages.flatMap(p => p.json.items as any[]);
-    const sorted = items.every((it, i) => i === 0 || Date.parse(items[i - 1].createdAt) > Date.parse(it.createdAt) || (Date.parse(items[i - 1].createdAt) === Date.parse(it.createdAt) && (items[i - 1].source < it.source || (items[i - 1].source === it.source && items[i - 1].id > it.id))));
+    const sorted = items.every((it, i) => i === 0 || Date.parse(items[i - 1].createdAt) > Date.parse(it.createdAt) || (Date.parse(items[i - 1].createdAt) === Date.parse(it.createdAt) && (items[i - 1].source === "thread" && it.source === "question" || (items[i - 1].source === it.source && items[i - 1].id > it.id))));
     check("…thứ tự: mới nhất trước; cùng mili-giây thì thread trước câu hỏi cũ, rồi id giảm dần", sorted, items.slice(28, 38).map(i => [i.createdAt.slice(-8), i.source]));
     const tieAt = items.filter(i => Date.parse(i.createdAt) === TIE.getTime());
     check("…5 mục cùng mili-giây đều có mặt đúng 1 lần (4 bài + 1 câu hỏi cũ)", tieAt.length === 5 && tieAt.filter(i => i.source === "question").length === 1);
@@ -1075,7 +1075,7 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
       const w = await walkAll(undefined, "", lim);
       check(`limit=${lim}: 59 mục, không lặp, đúng tập`, w.keys.length === 59 && new Set(w.keys).size === 59 && w.keys.every(k => expectKeys.includes(k)), { got: w.keys.length, uniq: new Set(w.keys).size });
     }
-    check("limit=59 → một trang, nextCursor null", (await feed(undefined, "limit=59")).json?.nextCursor === null && (await feed(undefined, "limit=59")).json?.items?.length === 59);
+    check("limit=59 > trần 50 → 400 limit_invalid (trần là 50 theo đặc tả, không kẹp)", (await feed(undefined, "limit=59")).status === 400);
     check("bài ghim: chỉ ở `pinned` của trang ĐẦU (2 bài), không ở `items`, không ở trang sau", w10.pages[0].json.pinned.length === 2 && w10.pages.slice(1).every(p => p.json.pinned.length === 0) && ![pin1.id, pin2.id].some(id => items.some(i => i.id === id)), w10.pages.map(p => p.json.pinned.length));
     check("bài xoá / chờ duyệt / bị từ chối / bài lớp không có trong phân trang của khách", hidden.concat([classT]).every(h => !w10.pages.some(p => p.text.includes(h.mark) || p.text.includes(h.id))));
     const wm = await walkAll(pa, "", 10);

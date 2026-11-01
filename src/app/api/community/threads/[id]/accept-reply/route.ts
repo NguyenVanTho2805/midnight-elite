@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Một lệnh UPDATE: gọi song song thì giá trị cuối là một trong các replyId hợp lệ, không lỗi.
   const changed = await prisma.thread.updateMany({
-    where: { id: threadId, deletedAt: null, status: "published", NOT: { acceptedReplyId: replyId } },
+    where: { id: threadId, deletedAt: null, status: "published", OR: [{ acceptedReplyId: null }, { acceptedReplyId: { not: replyId } }] }, // NOT(col = x) bỏ sót hàng NULL trong SQL: lần chọn đầu sẽ không bao giờ ghi
     data: { acceptedReplyId: replyId },
   });
   if (changed.count > 0 && reply.authorId !== auth.userId) {
