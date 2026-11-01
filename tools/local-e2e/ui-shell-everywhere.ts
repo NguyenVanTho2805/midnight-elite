@@ -6,7 +6,8 @@ import { BASE, mkUser, mkTutor, mkSuper, wipe, check, section, done } from "./h"
 import { launch, ctxFor, closeAll } from "./ui";
 import type { Page } from "./ui";
 
-// Tất cả lối vào học viên thấy ở "Khác" + "Thư viện" trên thanh module (StudentShell). Mỗi mục: mở xong phải còn thanh bên, không có chân trang / thanh trên của khách.
+// Mọi chức năng học viên từng có lối vào ở "Khác" (StudentShell). BU-00 bước 6 (31/10/2026) rút bảng "Khác" còn 7 mục nhưng các ROUTE này vẫn chạy,
+// nên vẫn mở bằng địa chỉ để kiểm vỏ. Mỗi mục: mở xong phải còn thanh bên, không có chân trang / thanh trên của khách.
 const PATHS = ["/student/thi-thu", "/student/hoi-dap", "/student/cong-dong", "/student/bang-xep-hang", "/student/tin-tuc", "/thu-vien", "/khoa-hoc", "/khoa-hoc-da-luu", "/giang-vien", "/diem-chuan", "/cai-dat/chu-de"];
 
 async function guestChromeLeft(p: Page) {
@@ -57,15 +58,17 @@ async function settled(p: Page) {
     await ctx.close();
   }
 
-  section("Đúng thao tác của Thọ: quản trị đứng ở 'Lớp', mở 'Khác' → bấm từng mục; rồi bấm 'Thư viện' trên thanh");
+  section("Đúng thao tác của Thọ: quản trị đứng ở 'Lớp', mở 'Khác' → bấm từng mục; rồi mở 'Thư viện' bằng địa chỉ");
   {
     const ctx = await ctxFor(A, { width: 1280, height: 800 });
     await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     const p = await ctx.newPage(); watch(p);
     await p.goto(`${BASE}/student/hoc-tap`, { waitUntil: "load", timeout: 150000 });
     await p.locator("#kin-rail").waitFor({ timeout: 90000 });
-    // NC2-048 (28/10/2026): bỏ nhãn "Hỏi đáp" khỏi danh sách — mục thanh bên "Hỏi đáp" riêng đã gộp vào "Cộng đồng"; không xoá ca nào khác.
-    const labels = ["Thi thử", "Bảng xếp hạng", "Cộng đồng", "Khoá học đang mở", "Lớp đang theo dõi", "Gia sư", "Tin tức", "Tra cứu điểm chuẩn", "Chủ đề màu"];
+    // NC2-048 (28/10/2026): bỏ nhãn "Hỏi đáp" — gộp vào "Cộng đồng".
+    // BU-00 bước 6 (31/10/2026): bỏ Thi thử, Bảng xếp hạng, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn khỏi danh sách — các mục này đã rời bảng "Khác"
+    // (route vẫn chạy, kiểm ở vòng PATHS phía trên). Còn lại đúng các mục có trong bảng mới.
+    const labels = ["Gia sư", "Cộng đồng", "Tin tức", "Chủ đề màu"];
     const lost: string[] = [];
     const seen: string[] = [];
     for (const label of labels) {
@@ -80,11 +83,12 @@ async function settled(p: Page) {
       if (!r.rail || r.footer || r.guest > 0) lost.push(`${label} → ${new URL(p.url()).pathname} ${JSON.stringify(r)}`);
     }
     check(`bấm ${seen.length} mục trong 'Khác' (${seen.join(", ")}): luôn còn thanh bên, không nhảy ra trang kiểu trang chủ`, lost.length === 0 && seen.length === labels.length, { lost, seen });
-    await p.locator("#kin-rail").getByRole("link", { name: "Thư viện" }).click();
-    await p.waitForURL(u => u.pathname === "/thu-vien", { timeout: 90000 });
+    // BU-00 bước 6: "Thư viện" không còn trên thanh / bảng Khác của học sinh → mở bằng địa chỉ; vỏ vẫn phải là vỏ học sinh.
+    await p.goto(`${BASE}/thu-vien`, { waitUntil: "load", timeout: 150000 });
+    await p.locator("#kin-rail").waitFor({ state: "attached", timeout: 90000 }).catch(() => {});
     await p.waitForTimeout(1500);
     const r = await guestChromeLeft(p);
-    check("bấm 'Thư viện' trên thanh module: vẫn còn thanh bên, không có chân trang của khách", r.rail && !r.footer && r.guest === 0, r);
+    check("mở /thu-vien bằng địa chỉ (không còn lối vào trên thanh): vẫn còn thanh bên, không có chân trang của khách", r.rail && !r.footer && r.guest === 0, r);
     await ctx.close();
   }
 

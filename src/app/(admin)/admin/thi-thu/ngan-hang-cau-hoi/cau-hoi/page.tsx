@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
@@ -413,6 +414,7 @@ function ItemDrawer({ open, initial, isEdit, categories, onCategoriesChange, onC
 function PageInner() {
   const { user } = useAuth();
   const isTeacher = user?.adminRole === "teacher";
+  const href = useContentHref(); // BU-00 bước 3
   const searchParams = useSearchParams();
   const initialCategoryId = searchParams.get("categoryId") ?? "";
 
@@ -583,7 +585,7 @@ function PageInner() {
   return (
     <div className={`p-6 max-w-7xl mx-auto ${selectMode && selected.size > 0 ? "pb-24" : ""}`}>
       <p className="text-sm text-gray-500 mb-1">
-        <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
+        <Link href={href("/admin/thi-thu/ngan-hang-cau-hoi")} className="hover:text-blue-600">Ngân hàng câu hỏi</Link>
         {" "}/ <span className="font-medium text-gray-800">Danh sách câu hỏi</span>
       </p>
       <div className="flex items-center justify-between mb-5">

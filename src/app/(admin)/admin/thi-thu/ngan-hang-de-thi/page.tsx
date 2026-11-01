@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import PermissionGuard from "@/components/PermissionGuard";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFileFull, type ExamFileFolderFull } from "@/lib/api";
@@ -175,6 +176,7 @@ function FileFolderTable({ folders, files, allFolders, onOpenFolder, onRenamed, 
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 function PageInner() {
+  const href = useContentHref(); // BU-00 bước 3
   const [items, setItems] = useState<ExamFileFull[]>([]);
   const [folders, setFolders] = useState<ExamFileFolderFull[]>([]);
   const [view, setView] = useState<View>({ type: "root" });
@@ -276,7 +278,7 @@ function PageInner() {
         <h1 className="text-xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Ngân hàng đề thi</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           Lưu trữ file đề gốc (PDF/Word) để xem lại sau — bấm &quot;Tách câu hỏi&quot; khi cần đưa câu vào{" "}
-          <Link href="/admin/thi-thu/ngan-hang-cau-hoi" className="text-blue-600 hover:underline">Ngân hàng câu hỏi</Link>
+          <Link href={href("/admin/thi-thu/ngan-hang-cau-hoi")} className="text-blue-600 hover:underline">Ngân hàng câu hỏi</Link>
         </p>
       </div>
 

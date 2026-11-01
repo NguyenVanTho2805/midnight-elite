@@ -14,12 +14,13 @@
 //
 // Dùng token --kin-* để màu nhất quán với 5 chủ đề của KiN.
 //
-// 23/10/2026: tách khỏi trang /admin/khoa-hoc/[id]/diem-danh thành thành phần dùng chung để tab "Buổi học & điểm danh" của trang lớp
+// 23/10/2026: tách khỏi trang admin/khoa-hoc/[id]/diem-danh (gia sư mở ở bí danh /lop-cua-toi/quan-lop/[id]/diem-danh) thành thành phần dùng chung để tab "Buổi học & điểm danh" của trang lớp
 // (Figma "Chi tiết lớp" 299:112581) nhúng cùng một bản: `embedded` bỏ tiêu đề trang, chỉ còn "Điểm danh" làm đầu mục.
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Modal, callApi, copyText, useNotify } from "@/components/tutor/shared";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import Link from "next/link";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import { KinSectionHead } from "@/components/kin/SectionHead";
@@ -62,6 +63,7 @@ function todayISO(): string {
 // `fixedDate` (trang buổi học BU-01, Lịch LI-05): đã biết đúng ngày → bỏ ô chọn ngày. `onChanged`: báo trang chứa sau khi tạo buổi / lưu điểm danh (để làm mới bộ đếm, trạng thái).
 export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, onChanged }: { courseId: string; embedded?: boolean; fixedDate?: string; onChanged?: () => void }) {
   const queryDate = useSearchParams().get("date");
+  const href = useContentHref(); // BU-00 bước 3: trang in dùng chung — gia sư /lop-cua-toi/quan-lop/…, quản trị /admin/khoa-hoc/…
   // useNotify (danh tính ổn định) chứ không phải useToast(): useToast() trả object mới mỗi lần render, đưa vào
   // deps của load() làm trang tự tải lại mỗi khi thông báo hiện/tắt — và xoá các ô điểm danh chưa lưu.
   const toast = useNotify();
@@ -228,7 +230,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
         <span className="text-body-sm" style={{ color: "var(--kin-chu-mo)" }}>Bảng tháng {exportLabel}:</span>
         <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=csv`} download className={kinButtonClass("secondary")}>Tải CSV</a>
         <a href={`/api/courses/${courseId}/attendance-export?month=${exportMonth}&format=xlsx`} download className={kinButtonClass("secondary")}>Tải Excel</a>
-        <Link href={`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
+        <Link href={href(`/admin/khoa-hoc/${courseId}/diem-danh/in?month=${exportMonth}`)} className={kinButtonClass("secondary")}>In / Lưu PDF</Link>
       </div>
   );
 

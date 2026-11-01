@@ -4,6 +4,8 @@
 // Cookie phiên KHÔNG dùng chung giữa hai tên miền (không đặt `domain`), nên mỗi lần người dùng bị chuyển sang tên miền kia là đăng nhập lại và thấy một giao diện khác.
 // 14/10/2026 (Thọ: "đăng nhập vào là chỉ hiện dashboard, không hiện như trang cho guest"):
 //   - Gia sư ở LẠI tên miền chính: các trang /admin/* mà gia sư dùng (Bài KT, ngân hàng đề, lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ gia sư.
+//     31/10/2026 (BU-00 bước 3): gia sư KHÔNG còn ở lại /admin/* nữa — mở /admin/thi-thu*, /admin/khoa-hoc* thì 307 sang bí danh /lop-cua-toi/de-thi*,
+//     /lop-cua-toi/quan-lop* (src/lib/tutorRoutes.ts, giữ tham số); mọi /admin/... khác (kể cả /admin, /admin/khoa-hoc/danh-muc) → Hộp việc /lop-cua-toi.
 //   - Học viên / gia sư đã đăng nhập mà mở trang chủ, /dang-ky hoặc /dang-nhap thì đi thẳng vào dashboard (không thấy trang giới thiệu của khách).
 //   - Quản trị cấp 1 / cấp nội dung giữ nguyên: /admin trên tên miền riêng.
 // 15/10/2026 (Thọ mở admin.midnightelite-edu.com/dang-nhap: mọi nút công khai quay lại chính trang đăng nhập):
@@ -18,6 +20,7 @@
 //     proxy.ts còn đặt Cache-Control: no-store lên mọi chuyển hướng.
 import { landingPath } from "@/lib/landing";
 import { safeRedirect } from "@/lib/safeRedirect";
+import { toTutorPath } from "@/lib/tutorRoutes";
 
 export const ADMIN_HOST = "admin.midnightelite-edu.com";
 export const MAIN_HOST = ADMIN_HOST.replace(/^admin\./, "");
@@ -68,8 +71,10 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
   // Tên miền chính.
   if (isAdminPath(pathname)) {
     if (isTeacher(session)) {
-      // Gia sư ở lại tên miền chính (trang /admin/* chạy trong vỏ gia sư). Riêng bảng tổng quan quản trị /admin không dành cho gia sư: về Hộp việc.
-      return pathname === "/admin" ? { kind: "redirect", status: 307, pathname: "/lop-cua-toi" } : { kind: "next" };
+      // BU-00 bước 3: gia sư KHÔNG còn làm việc trong /admin/*. Trang đề thi / quản lớp có bí danh dưới /lop-cua-toi (src/lib/tutorRoutes.ts) → 307 sang đó,
+      // giữ tham số (link cũ trong thông báo, bookmark vẫn tới). Đường không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
+      const alias = toTutorPath(pathname);
+      return alias ? { kind: "redirect", status: 307, pathname: alias, search } : { kind: "redirect", status: 307, pathname: "/lop-cua-toi" };
     }
     // Chặn hẳn đường cũ /admin/..., ép sang tên miền admin. GIỮ NGUYÊN toàn bộ đường dẫn (kể cả /admin) — tên miền admin chỉ phục vụ /admin/*, nên bỏ tiền tố
     // sẽ rơi vào nhánh "đường lạ" và liên kết / bookmark cũ không bao giờ tới đúng trang.

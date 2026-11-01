@@ -47,7 +47,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   await pg.getByRole("heading", { name: "Bài tập & kiểm tra", level: 1 }).waitFor({ timeout: 90000 });
   await pg.getByRole("list", { name: "Bài của Toán 9" }).waitFor({ timeout: 60000 });
   check("một h1; nút '+ Giao bài' → tab Chương và bài khi có nhiều lớp thì về danh sách Lớp", await pg.getByRole("heading", { level: 1 }).count() === 1 && (await pg.getByRole("link", { name: "+ Giao bài" }).getAttribute("href")) === "/lop-cua-toi/lop");
-  check("có 'Quản lý đề thi' → /admin/thi-thu (chức năng cũ vẫn tới được)", (await pg.getByRole("link", { name: "Quản lý đề thi" }).getAttribute("href")) === "/admin/thi-thu");
+  check("có 'Quản lý đề thi' → /lop-cua-toi/de-thi (BU-00 bước 3: bí danh gia sư của /admin/thi-thu)", (await pg.getByRole("link", { name: "Quản lý đề thi" }).getAttribute("href")) === "/lop-cua-toi/de-thi");
   const tabTxt = (await pg.getByRole("tablist", { name: "Lọc theo tình trạng" }).innerText()).replace(/\s+/g, " ");
   check("tab: Tất cả · Chờ chấm · 1 · Đang giao · 4 · Đã hoàn tất (5 bài + 1 đề = 6 mục, chia không trùng nhau)", /Tất cả/.test(tabTxt) && /Chờ chấm · 1/.test(tabTxt) && /Đang giao · 4/.test(tabTxt) && /Đã hoàn tất/.test(tabTxt), tabTxt);
   const rows = pg.locator("[data-bai-tap-row]");
@@ -73,7 +73,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   check("tab Đã hoàn tất: bài hết hạn đã chấm hiện, bài đang giao thì không", await pg.getByText("Ôn tập chương 1").isVisible() && await pg.getByText("Viết đoạn văn nghị luận").count() === 0);
   await pg.getByRole("tab", { name: "Tất cả" }).click();
   await pg.getByLabel("Lọc lớp").selectOption({ label: "Văn 8" });
-  check("lọc lớp Văn 8: chỉ còn bài của Văn 8; '+ Giao bài' → tab Chương và bài của lớp đó", await pg.locator("[data-bai-tap-row]").count() === 1 && (await pg.getByRole("link", { name: "+ Giao bài" }).getAttribute("href")) === `/admin/khoa-hoc/${B.id}?tab=chuong-bai`);
+  check("lọc lớp Văn 8: chỉ còn bài của Văn 8; '+ Giao bài' → tab Chương và bài của lớp đó", await pg.locator("[data-bai-tap-row]").count() === 1 && (await pg.getByRole("link", { name: "+ Giao bài" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${B.id}?tab=chuong-bai`);
   await pg.getByLabel("Lọc lớp").selectOption({ label: "Tất cả lớp" });
   await pg.locator("[data-bai-tap-row]", { hasText: "Bài làm trực tiếp" }).click();
   check("bài làm trực tiếp: chuyển sang chấm ở trang lớp (không chấm điểm tổng ở đây)", await pg.getByRole("link", { name: "Chấm ở trang lớp" }).isVisible());
@@ -115,7 +115,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   check("bảng liệt kê tài liệu và bản ghi của cả hai lớp (4 dòng: PDF, Docs, Video, PDF Văn)", await table.locator("li").count() === 4, await table.innerText());
   const t0 = (await table.innerText()).replace(/\s+/g, " ");
   check("mỗi dòng có tên, loại (PDF/DOC/Video) và lớp chia sẻ", /Chuyên đề phương trình bậc hai\.pdf/.test(t0) && /PDF/.test(t0) && /DOC/.test(t0) && /Video/.test(t0) && /Toán 9/.test(t0) && /Văn 8/.test(t0), t0);
-  check("'Xem' mở trang xem trước; 'Sửa bài' tới tab Chương và bài của lớp", (await lp.getByRole("link", { name: "Xem" }).first().getAttribute("href"))!.startsWith("/xem-tai-lieu?url=") && await lp.locator(`a[href="/admin/khoa-hoc/${A.id}?tab=chuong-bai"]`, { hasText: "Sửa bài" }).count() >= 1);
+  check("'Xem' mở trang xem trước; 'Sửa bài' tới tab Chương và bài của lớp", (await lp.getByRole("link", { name: "Xem" }).first().getAttribute("href"))!.startsWith("/xem-tai-lieu?url=") && await lp.locator(`a[href="/lop-cua-toi/quan-lop/${A.id}?tab=chuong-bai"]`, { hasText: "Sửa bài" }).count() >= 1);
   check("không có nút chết: không 'Tạo thư mục', không 'Chia sẻ tới lớp'", await lp.getByText("Tạo thư mục").count() === 0 && await lp.getByText("Chia sẻ tới lớp").count() === 0);
   await lp.getByRole("button", { name: /^Tốt nghiệp THPT/ }).click();
   check("chọn nhóm lớp 'Tốt nghiệp THPT': chỉ còn tài liệu lớp Toán 9", await table.locator("li").count() === 3 && !(await table.innerText()).includes("Văn 8"));
@@ -138,7 +138,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   const nl = await nctx.newPage();
   await nl.goto(`${BASE}/thu-vien`, { waitUntil: "networkidle", timeout: 120000 });
   await nl.getByText("Bạn chưa mở lớp nào").waitFor({ timeout: 90000 });
-  check("chưa có lớp → câu giải thích + lối 'Tạo lớp' (/admin/khoa-hoc?tao=1)", (await nl.getByRole("link", { name: "Tạo lớp", exact: true }).first().getAttribute("href")) === "/admin/khoa-hoc?tao=1");
+  check("chưa có lớp → câu giải thích + lối 'Tạo lớp' (/lop-cua-toi/quan-lop?tao=1)", (await nl.getByRole("link", { name: "Tạo lớp", exact: true }).first().getAttribute("href")) === "/lop-cua-toi/quan-lop?tao=1");
 
   check("không có lỗi JS/console", errors.length === 0, errors);
   await closeAll();

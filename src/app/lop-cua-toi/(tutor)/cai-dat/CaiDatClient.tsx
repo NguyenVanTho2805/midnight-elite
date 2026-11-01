@@ -43,7 +43,8 @@ export default function CaiDatClient({ initial, classes, phone, quota = null }: 
   const notify = useNotify();
   const [prefs, setPrefs] = useState<UserPreferences>(initial);
   const [busy, setBusy] = useState(false);
-  const modules = prefs.modules ?? [];
+  // BU-00: chưa chọn gì (`undefined`) = đủ module → công tắc hiện đúng "đang bật"; `[]` = gia sư đã tắt hết.
+  const modules: OptionalTutorModule[] = prefs.modules ?? [...OPTIONAL_TUTOR_MODULES];
   const channels = reminderChannels(prefs);
   // PH-215 Kết nối
   const [links, setLinks] = useState<Record<string, string>>(() => Object.fromEntries(classes.map(c => [c.id, c.zaloGroupUrl ?? ""])));
@@ -90,6 +91,7 @@ export default function CaiDatClient({ initial, classes, phone, quota = null }: 
   }
 
   const toggleModule = (key: OptionalTutorModule, on: boolean) => {
+    // Luôn ghi DANH SÁCH các module còn bật (kể cả khi tắt một module lúc đang ở mặc định đủ) — không ghi `undefined`, vì vắng mặt nghĩa là đủ module.
     const next = on ? [...modules, key] : modules.filter(m => m !== key);
     void save({ modules: next }, on ? "Đã bật module — xem ở thanh bên." : "Đã ẩn module khỏi thanh bên. Dữ liệu vẫn giữ nguyên.");
   };

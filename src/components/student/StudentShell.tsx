@@ -1,6 +1,7 @@
 // Vỏ của học sinh (Figma "Vỏ — Học sinh" 11:98): thanh module bên trái (điện thoại: thanh dưới) với 4 module đúng Figma
-// — (23/10/2026, Figma 299:114360 + 299:116497) Việc của tôi, Lịch học, Lớp của tôi, Bài tập — cộng "Khác" (Thư viện chuyển vào "Khác" vì Figma không có trên thanh) cho các trang còn lại (thi thử, xếp hạng, cộng đồng, học phí, hồ sơ…) để không
-// trang nào mất lối vào khi bỏ thanh trên cũ. Phòng thi (/student/thi-thu/<mã đề>) KHÔNG có vỏ: toàn màn hình, khoá cứng.
+// — (23/10/2026, Figma 299:114360 + 299:116497) Việc của tôi, Lịch học, Lớp của tôi, Bài tập — cộng "Khác" cho các trang còn lại. BU-00 bước 6 (31/10/2026):
+// "Khác" chỉ còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp); các lối vào khác bị ẩn, route vẫn chạy.
+// Phòng thi (/student/thi-thu/<mã đề>) KHÔNG có vỏ: toàn màn hình, khoá cứng.
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,38 +18,36 @@ import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
-// `also`: href của Thi thử / Xếp hạng / Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
+// `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
+// BU-00 bước 6 (31/10/2026): bảng "Khác" rút từ 3 nhóm 15 mục còn 2 nhóm 7 mục — học sinh chỉ thấy việc học. Bỏ khỏi MENU (route giữ nguyên, chỉ ẩn lối vào):
+// Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn, Ví và Coin. Thi thử / Tiếng Anh
+// vẫn sáng đúng module nhờ `also` của "Bài tập" (/student/thi-thu) và "Lớp của tôi" (/student/tieng-anh).
+// NC2-048 (góp ý 28/10): "Hỏi đáp" là tab bên trong Cộng đồng; /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
 const MORE_GROUPS: MoreGroup[] = [
-  { title: "Học tập", links: [
-    { label: "Thư viện", href: "/thu-vien", icon: "thu-vien" },
-    { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "bai-kt" },
-    { label: "Thi thử", href: "/student/thi-thu", also: ["/thi-thu"], icon: "bai-kt" },
-    { label: "Bảng xếp hạng", href: "/student/bang-xep-hang", also: ["/bang-xep-hang"], icon: "bao-cao" },
-    // NC2-048 (góp ý 28/10): "Hỏi đáp" từng là một mục riêng nhưng bấm vào lại mở Cộng đồng (tab Hỏi đáp) nên hai mục xung đột. Nay chỉ còn MỘT mục "Cộng đồng"; Hỏi đáp là tab bên trong.
-    // /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
-    { label: "Cộng đồng", href: "/student/cong-dong", also: ["/cong-dong"], icon: "nguoi" },
-  ] },
   { title: "Khám phá", links: [
-    { label: "Khoá học đang mở", href: "/khoa-hoc", icon: "lop" },
-    { label: "Lớp đang theo dõi", href: "/khoa-hoc-da-luu", icon: "lop" },
     { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
+    { label: "Cộng đồng", href: "/student/cong-dong", also: ["/cong-dong"], icon: "nguoi" },
     { label: "Tin tức", href: "/student/tin-tuc", also: ["/tin-tuc"], icon: "hop-thu" },
-    { label: "Tra cứu điểm chuẩn", href: "/diem-chuan", icon: "bao-cao" },
   ] },
   { title: "Tài khoản", links: [
     { label: "Hồ sơ", href: "/student/ho-so", icon: "nguoi" },
     { label: "Học phí", href: "/student/hoc-phi", icon: "hoc-phi" },
-    { label: "Ví và Coin", href: "/student/vi", icon: "hoc-phi" },
     { label: "Chủ đề màu", href: "/cai-dat/chu-de", icon: "cai-dat" },
+    // Lối tắt: trang này đã thuộc module "Lớp của tôi" (`also`) nên mục này không tô sáng, để chỉ một mục sáng (như "Thêm module" bên gia sư).
+    { label: "Nhập mã lớp", href: "/student/nhap-ma-lop", icon: "lop", active: false },
   ] },
 ];
-const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.flatMap(l => [l.href, ...(l.also ?? [])]));
+// Chỉ các mục KHÔNG phải lối tắt mới làm nút "Khác" sáng (lối tắt `active: false` đã có module cha sáng).
+const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.filter(l => l.active !== false).flatMap(l => [l.href, ...(l.also ?? [])]));
 /** Phòng thi: /student/thi-thu/<mã đề> (không tính danh sách /student/thi-thu). */
 export const isExamRoom = (pathname: string) => /^\/student\/thi-thu\/[^/]+/.test(pathname);
 
-export default function StudentShell({ children }: { children: ReactNode }) {
+// `preview` (BU-00 bước 4, 31/10/2026): quản trị cấp 1 / cấp nội dung "xem thử" khu học sinh — băng mỏng trên cùng nói rõ đang xem thử, kèm đường về /admin
+// (proxy đưa sang tên miền quản trị). Không truyền thì tự nhận theo vai: role admin (gia sư không còn tới đây — AuthGuard đẩy về Hộp việc) = đang xem thử.
+export default function StudentShell({ children, preview }: { children: ReactNode; preview?: boolean }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const showPreview = preview ?? user?.role === "admin";
   const [badge, setBadge] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
   const exam = isExamRoom(pathname);
@@ -74,7 +73,8 @@ export default function StudentShell({ children }: { children: ReactNode }) {
   const modules: ModuleItem[] = [
     { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", icon: "viec", badge },
     { key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" },
-    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/lop-cua-toi"], icon: "lop" },
+    // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
+    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/student/tieng-anh", "/lop-cua-toi"], icon: "lop" },
     { key: "bai-tap", label: "Bài tập", href: "/student/bai-tap", also: ["/student/thi-thu"], icon: "bai-kt" },
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
@@ -91,6 +91,14 @@ export default function StudentShell({ children }: { children: ReactNode }) {
         home={{ href: "/student/viec-cua-toi", label: "KiN — Việc của tôi" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+        {/* BU-00 sửa sau test (31/10/2026): vùng bấm của liên kết ≥ 44px (min-h-11), băng theo chiều cao liên kết — không nhỏ hơn vùng bấm. */}
+        {showPreview && (
+          <div data-admin-preview role="status" className="min-h-11 flex items-center justify-center gap-2 px-4 text-[length:var(--kin-co-small)] bg-[var(--kin-nen-nhan)] text-[var(--kin-chu-chinh)] border-b border-[var(--kin-vien-nhat)]">
+            <span>Đang xem thử giao diện học sinh</span>
+            <span aria-hidden>·</span>
+            <a href="/admin" className="font-semibold underline text-[var(--kin-nhan-link)] min-h-11 px-1 inline-flex items-center">Về bảng quản trị</a>
+          </div>
+        )}
         <VerifyEmailBanner />
         <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
           <div className="flex items-center gap-1 min-w-0">
