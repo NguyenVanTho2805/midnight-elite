@@ -66,7 +66,8 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   check("API hồ sơ gia sư: ghi profile trong CÙNG giao dịch + khoá prefsLockKey với teaching", /\$transaction/.test(tp) && /parsed\.hidden !== undefined/.test(tp) && /applyProfileHidden\(prefs, parsed\.hidden\)/.test(tp) && /prefsLockKey\(auth\.userId\)/.test(tp));
   check("API hồ sơ gia sư: GET trả profile.hidden để giao diện điền sẵn", /isProfileHidden\(readPreferences\(u\.preferences\)\)/.test(tp));
   check("API giao diện (preferences) không có đường ghi profile", !/profile/.test(prefsApi) || /applyPreferencesPatch/.test(prefsApi));
-  check("GET /api/tutors: bỏ gia sư ẩn TRƯỚC khi tính area / facets", /isProfileHidden\(readPreferences\(t\.preferences\)\)/.test(pubList) && pubList.indexOf("isProfileHidden(") < pubList.indexOf("const areaOf"));
+  const srv = read("src/lib/tutorSearchServer.ts"); // BU-06: danh sách + gợi ý dùng chung một hàm tải
+  check("GET /api/tutors và /suggest: bỏ gia sư ẩn TRƯỚC khi tính area / facets", /isProfileHidden\(prefs\)/.test(srv) && srv.indexOf("isProfileHidden(") < srv.indexOf("area: publicArea(") && /loadSearchableTutors/.test(pubList) && /loadSearchableTutors/.test(read("src/app/api/tutors/suggest/route.ts")));
   check("GET /api/tutors/[id]: ẩn → 404; ngoại lệ DUY NHẤT là chính chủ xem trước (?preview=1 + phiên đúng chủ)", /isProfileHidden\(readPreferences\(t\.preferences\)\)/.test(pubId) && /preview"\) === "1"/.test(pubId) && /\.userId === id/.test(pubId) && /status: 404/.test(pubId));
   check("POST /api/tutors/[id]/visit: hồ sơ ẩn không ghi lượt (404)", /isProfileHidden\(/.test(visit));
   check("trang /mentor/[id] và thẻ og lấy dữ liệu qua API công khai KHÔNG kèm cookie (nên ẩn = 404 cho cả thẻ og)", /fetch\(`\$\{proto\}:\/\/\$\{host\}\/api\/tutors\/\$\{id\}`, \{ cache: "no-store" \}\)/.test(mentor) && !/preview=1/.test(mentor) && !/cookie/i.test(mentor.split("fetchTutor")[1]?.slice(0, 600) ?? ""));

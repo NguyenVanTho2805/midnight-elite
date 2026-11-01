@@ -57,10 +57,12 @@ const NOW = new Date("2026-10-21T05:00:00Z"); // 12:00 ngày 21/10 giờ VN
   const root = join(__dirname, "..", "..");
   const read = (p: string) => readFileSync(join(root, p), "utf8");
   const apiId = read("src/app/api/tutors/[id]/route.ts"), apiList = read("src/app/api/tutors/route.ts");
+  // BU-06: danh sách chuyển sang tutorSearchServer.ts (truy vấn + số liệu) và tutorSearch.ts (sắp xếp thuần); route chỉ ghép lại.
+  const apiAll = apiList + read("src/lib/tutorSearchServer.ts") + read("src/lib/tutorSearch.ts");
   const card = read("src/components/tutor/TutorCard.tsx"), head = read("src/components/tutor/TutorProfileHeader.tsx"), prev = read("src/components/tutor/PublicProfilePreview.tsx");
   const mentor = read("src/app/(guest)/mentor/[id]/page.tsx"), list2 = read("src/app/(guest)/giang-vien/page.tsx");
   check("hồ sơ chi tiết: trả stats.recentlyActive từ định nghĩa chung recentTaughtSessionWhere", /recentTaughtSessionWhere\(\)/.test(apiId) && /recentlyActive: recentSession !== null/.test(apiId));
-  check("danh sách: trả sessionsTaught + recentlyActive, chỉ tính lớp đang bật (khớp hồ sơ chi tiết), dùng taughtSessionWhere và sortTutors", /sessionsTaught: sessionsTaught\.get\(t\.id\)/.test(apiList) && /recentlyActive: recentOwners\.has\(t\.id\)/.test(apiList) && /status: true/.test(apiList) && /taughtSessionWhere\(\)/.test(apiList) && /recentTaughtSessionWhere\(\)/.test(apiList) && /sortTutors\(items, sort\)/.test(apiList) && /parseTutorSort\(/.test(apiList));
+  check("danh sách: trả sessionsTaught + recentlyActive, chỉ tính lớp đang bật (khớp hồ sơ chi tiết), dùng taughtSessionWhere và sắp bằng hàm thuần", /get\(o\)\.sessionsTaught \+= /.test(apiAll) && /get\(o\)\.recentlyActive = true/.test(apiAll) && /status: true/.test(apiAll) && /taughtSessionWhere\(\)/.test(apiAll) && /recentTaughtSessionWhere\(\)/.test(apiAll) && /compareFor\(/.test(apiAll) && /parseTutorSortKey\(/.test(apiAll) && /parseTutorSort\(/.test(apiAll));
   check("danh sách không còn tự sắp bằng if/else trong route (đã chuyển sang hàm thuần có test)", !/items\.sort\(/.test(apiList));
   check("thẻ + đầu hồ sơ + bản xem trước đều ghi 'Có dạy trong 30 ngày qua'", [card, head, prev].every(s => /Có dạy trong 30 ngày qua/.test(s)));
   check("trang danh sách: mặc định 'active' và có lựa chọn 'Hoạt động gần đây'", /useState<SortKey>\("active"\)/.test(list2) && /value="active">Hoạt động gần đây/.test(list2));

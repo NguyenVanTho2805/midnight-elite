@@ -94,7 +94,7 @@ const gradeGroupOfNumber = (n: number): string => (n <= 5 ? "tieu-hoc" : n <= 9 
 /** Bỏ dấu, hạ chữ, GIỮ dấu câu (cần để phân biệt "6.5" với "6"). */
 const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d");
 const GROUP_PATTERNS: [string, RegExp][] = [
-  ["tieu-hoc", /(?<![a-z0-9])tieu hoc(?![a-z0-9])/],
+  ["tieu-hoc", /(?<![a-z0-9])(?:tieu hoc|cap 1)(?![a-z0-9])/],
   ["thcs", /(?<![a-z0-9])(?:thcs|trung hoc co so|cap 2)(?![a-z0-9])/],
   ["thpt", /(?<![a-z0-9])(?:thpt|trung hoc pho thong|cap 3)(?![a-z0-9])/],
   ["dai-hoc", /(?<![a-z0-9])dai hoc(?![a-z0-9])/],
@@ -106,7 +106,9 @@ const GROUP_PATTERNS: [string, RegExp][] = [
 export function gradesOfSubject(subject: string): string[] {
   const s = fold(typeof subject === "string" ? subject : "");
   const out = new Set<string>();
-  for (const m of s.matchAll(/(?<![a-z0-9.,])(\d{1,2})(?![a-z0-9]|[.,]\d)/g)) {
+  // "cấp 1/2/3" là tên cấp, không phải lớp 1/2/3 — bỏ khỏi phép dò số (vẫn được dò ở GROUP_PATTERNS).
+  const forNumbers = s.replace(/(?<![a-z0-9])cap [123](?![a-z0-9])/g, " ");
+  for (const m of forNumbers.matchAll(/(?<![a-z0-9.,])(\d{1,2})(?![a-z0-9]|[.,]\d)/g)) {
     const n = Number(m[1]);
     if (n >= 1 && n <= 12) { out.add(String(n)); out.add(gradeGroupOfNumber(n)); }
   }
