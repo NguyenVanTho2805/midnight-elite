@@ -1,5 +1,5 @@
 // BU-06 — video giới thiệu của gia sư: chỉ YouTube, qua mã 11 ký tự do máy chủ đã tách (xem lib/youtubeLink.ts).
-// Trước khi bấm chỉ có ảnh nhỏ + nút phát (KHÔNG có iframe trong DOM, không gọi bên thứ ba để phát); bấm mới nạp youtube-nocookie.
+// Trước khi bấm chỉ có ảnh nhỏ + nút phát (KHÔNG có iframe trong DOM; ảnh nhỏ tải từ i.ytimg.com của YouTube như trang Thư viện — nợ P3: chưa thay bằng khối màu); bấm mới nạp youtube-nocookie.
 // Luôn có liên kết chữ "Xem trên YouTube" làm lối thoát khi iframe bị chặn.
 "use client";
 import { useState } from "react";
