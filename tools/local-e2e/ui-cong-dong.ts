@@ -238,6 +238,8 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
     check("trả lời con thụt đúng 48px", Math.round(child.x - parent.x) === 48, { parent: parent.x, child: child.x });
     check("chi tiết: không tràn ngang", await noOverflow(mp));
     await shot(mp, `cong-dong-${width}-chi-tiet`);
+    // Bài chung đầu tiên của gia sư đã bị quản trị xoá ở bước trước (dòng ~207) → hồ sơ chỉ còn dòng "Chưa có bài viết"; tạo lại một bài để có lưới.
+    if (!(await post(T, { content: `Bài chung mới cho lưới hồ sơ ${width}`, category: "kinh-nghiem" }))?.id) check("tạo bài chung cho lưới hồ sơ", false);
     await open(mp, `/cong-dong/ho-so/${T.id}`);
     await mp.getByRole("heading", { name: "Cô Lan", level: 1 }).waitFor({ timeout: 60000 });
     await mp.locator(".kc-pgrid").first().waitFor({ timeout: 60000 }); // hồ sơ gia sư có bài chung → lưới; không có bài thì chỉ có dòng "Chưa có bài viết"
