@@ -175,7 +175,9 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   await s.getByLabel("Nội dung trả lời").fill("Em hiểu rồi!");
   await s.getByRole("button", { name: "Gửi", exact: true }).click();
   await s.getByText("Em hiểu rồi!").waitFor({ timeout: 30000 });
-  check("'Trả lời' dưới trả lời con vẫn gắn vào cha gốc (vẫn đúng 1 cấp: 2 con dưới 1 cha)", (await s.locator(".kc-reply-indent").first().locator("[data-kc-reply]").count()) === 2);
+  const rootBlock = s.locator("[data-kc-replies] > div", { hasText: "Em tính delta" }).first();
+  await rootBlock.locator(".kc-reply-indent [data-kc-reply]", { hasText: "Em hiểu rồi!" }).waitFor({ timeout: 30000 }).catch(() => {});
+  check("'Trả lời' dưới trả lời con vẫn gắn vào cha gốc (vẫn đúng 1 cấp: 2 con dưới 1 cha, không có cấp 3)", (await rootBlock.locator(".kc-reply-indent [data-kc-reply]").count()) === 2 && (await rootBlock.locator(".kc-reply-indent .kc-reply-indent").count()) === 0);
   check("chủ câu hỏi thấy 'Chọn là đúng'", (await s.getByRole("button", { name: "Chọn là đúng" }).count()) > 0);
   await shot(s, "cong-dong-1280-chi-tiet");
 
@@ -238,6 +240,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
     await shot(mp, `cong-dong-${width}-chi-tiet`);
     await open(mp, `/cong-dong/ho-so/${T.id}`);
     await mp.getByRole("heading", { name: "Cô Lan", level: 1 }).waitFor({ timeout: 60000 });
+    await mp.locator(".kc-pgrid").first().waitFor({ timeout: 60000 }); // hồ sơ gia sư có bài chung → lưới; không có bài thì chỉ có dòng "Chưa có bài viết"
     check("hồ sơ: lưới 3 cột, không tràn ngang", (await mp.locator(".kc-pgrid").evaluate((el: Element) => getComputedStyle(el).gridTemplateColumns.split(" ").length)) === 3 && (await noOverflow(mp)));
     await shot(mp, `cong-dong-${width}-ho-so`);
   }

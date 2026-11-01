@@ -23,6 +23,7 @@ export function useFeed(opts: { tab: string; scope: string; saved: boolean; enab
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [more, setMore] = useState<"idle" | "loading" | "error">("idle");
   const gen = useRef(0);
+  const ctl = useRef<AbortController | null>(null); // huỷ yêu cầu cũ khi tải lại / đổi tab / rời trang: không bỏ request mở
 
   const urlFor = useCallback((cursor: string | null) => {
     const q = new URLSearchParams({ limit: "20" });
@@ -36,9 +37,12 @@ export function useFeed(opts: { tab: string; scope: string; saved: boolean; enab
   const load = useCallback(async () => {
     if (!enabled) return;
     const my = ++gen.current;
+    ctl.current?.abort();
+    const ac = new AbortController();
+    ctl.current = ac;
     setStatus("loading");
     try {
-      const res = await fetch(urlFor(null), { credentials: "same-origin", cache: "no-store" });
+      const res = await fetch(urlFor(null), { credentials: "same-origin", cache: "no-store", signal: ac.signal });
       if (my !== gen.current) return;
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -66,7 +70,7 @@ export function useFeed(opts: { tab: string; scope: string; saved: boolean; enab
     void Promise.resolve().then(load);
     // Huỷ kết quả của yêu cầu đang bay khi đổi tab/lớp hoặc rời trang: cần đúng giá trị MỚI NHẤT của bộ đếm, nên cố ý đọc gen.current lúc dọn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    return () => { gen.current++; };
+    return () => { gen.current++; ctl.current?.abort(); };
   }, [load]);
 
   const loadMore = useCallback(async () => {
@@ -74,7 +78,7 @@ export function useFeed(opts: { tab: string; scope: string; saved: boolean; enab
     const my = gen.current;
     setMore("loading");
     try {
-      const res = await fetch(urlFor(nextCursor), { credentials: "same-origin", cache: "no-store" });
+      const res = await fetch(urlFor(nextCursor), { credentials: "same-origin", cache: "no-store", signal: ctl.current?.signal });
       if (my !== gen.current) return;
       if (!res.ok) { setMore("error"); return; }
       const data = (await res.json()) as BookmarksPage;

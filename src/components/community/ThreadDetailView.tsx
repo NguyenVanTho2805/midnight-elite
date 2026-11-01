@@ -41,16 +41,16 @@ function Inner({ id }: { id: string }) {
   const [notice, setNotice] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setView({ s: "loading" });
     try {
-      const res = await fetch(`/api/community/threads/${id}`, { credentials: "same-origin", cache: "no-store" });
+      const res = await fetch(`/api/community/threads/${id}`, { credentials: "same-origin", cache: "no-store", signal });
       if (res.status === 404 || res.status === 403) { setView({ s: "notfound" }); return; }
       if (!res.ok) { setView({ s: "error" }); return; }
       setView({ s: "ok", t: (await res.json()) as ThreadDetail });
-    } catch { setView({ s: "error" }); }
+    } catch (e) { if ((e as Error)?.name !== "AbortError") setView({ s: "error" }); }
   }, [id]);
-  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  useEffect(() => { const ac = new AbortController(); void Promise.resolve().then(() => load(ac.signal)); return () => ac.abort(); }, [load]);
 
   // Mở thẳng một trả lời (#r-<id>) từ thông báo.
   useEffect(() => {

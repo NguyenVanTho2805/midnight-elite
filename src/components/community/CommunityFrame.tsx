@@ -21,11 +21,12 @@ export function CommunityFrame({ active, scope = "all", children }: { active: Na
 
   useEffect(() => {
     let off = false;
-    fetch("/api/community/sidebar")
+    const ac = new AbortController();
+    fetch("/api/community/sidebar", { signal: ac.signal })
       .then(r => (r.ok ? (r.json() as Promise<SidebarData>) : null))
       .then(d => { if (!off && d) setSidebar(d); })
       .catch(() => { /* cột phải là phụ: lỗi thì ẩn khối, không báo */ });
-    return () => { off = true; };
+    return () => { off = true; ac.abort(); };
   }, []);
 
   return (

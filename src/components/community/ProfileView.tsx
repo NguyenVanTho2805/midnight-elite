@@ -18,16 +18,16 @@ function Inner({ id }: { id: string }) {
   const [st, setSt] = useState<State>({ s: "loading" });
   const [more, setMore] = useState<"idle" | "loading" | "error">("idle");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setSt({ s: "loading" });
     try {
-      const res = await fetch(`/api/community/profiles/${id}?limit=18`, { credentials: "same-origin", cache: "no-store" });
+      const res = await fetch(`/api/community/profiles/${id}?limit=18`, { credentials: "same-origin", cache: "no-store", signal });
       if (res.status === 404) { setSt({ s: "notfound" }); return; }
       if (!res.ok) { setSt({ s: "error" }); return; }
       setSt({ s: "ok", d: (await res.json()) as ProfileData });
-    } catch { setSt({ s: "error" }); }
+    } catch (e) { if ((e as Error)?.name !== "AbortError") setSt({ s: "error" }); }
   }, [id]);
-  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  useEffect(() => { const ac = new AbortController(); void Promise.resolve().then(() => load(ac.signal)); return () => ac.abort(); }, [load]);
 
   async function loadMore() {
     if (st.s !== "ok" || !st.d.nextCursor || more === "loading") return;

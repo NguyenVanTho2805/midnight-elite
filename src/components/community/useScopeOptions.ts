@@ -8,11 +8,12 @@ export function useScopeOptions(signedIn: boolean): ScopeOption[] {
   const [options, setOptions] = useState<ScopeOption[]>([]);
   useEffect(() => {
     let cancelled = false;
+    const ac = new AbortController();
     const p: Promise<{ scopes?: ScopeOption[] }> = signedIn
-      ? fetch("/api/community/scope-options", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : { scopes: [] }))
+      ? fetch("/api/community/scope-options", { credentials: "same-origin", signal: ac.signal }).then(r => (r.ok ? r.json() : { scopes: [] }))
       : Promise.resolve({ scopes: [] });
     p.then(d => { if (!cancelled) setOptions(d.scopes ?? []); }).catch(() => { /* lỗi mạng: chỉ ẩn mục lớp */ });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; ac.abort(); };
   }, [signedIn]);
   return options;
 }

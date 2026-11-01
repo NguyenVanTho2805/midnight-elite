@@ -30,17 +30,17 @@ function Inner({ id }: { id: string }) {
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(`/api/questions/${id}`, { credentials: "same-origin", cache: "no-store" });
+      const res = await fetch(`/api/questions/${id}`, { credentials: "same-origin", cache: "no-store", signal });
       if (res.status === 401) { router.replace(loginHref(`/cong-dong/hoi-dap/${id}`)); return; } // giữ khung chờ, không nháy "Không tìm thấy"
       if (res.status === 404) { setSt({ s: "notfound" }); return; }
       if (!res.ok) { setSt({ s: "error" }); return; }
       setSt({ s: "ok", q: (await res.json()) as QuestionDetailDTO });
-    } catch { setSt({ s: "error" }); }
+    } catch (e) { if ((e as Error)?.name !== "AbortError") setSt({ s: "error" }); }
   }, [id, router]);
   // Qua Promise để setState "đang tải" không chạy đồng bộ trong thân effect (react-hooks/set-state-in-effect).
-  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  useEffect(() => { const ac = new AbortController(); void Promise.resolve().then(() => load(ac.signal)); return () => ac.abort(); }, [load]);
 
   const flash = (m: string) => { setNotice(m); window.setTimeout(() => setNotice(""), 4000); };
 
