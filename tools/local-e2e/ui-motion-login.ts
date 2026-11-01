@@ -111,7 +111,9 @@ const noFonts = (ctx: { route: (u: RegExp, h: (r: { abort: () => Promise<void> }
     const { ctx, p } = await open();
     await ctx.route("**/api/auth/code/request", async route => { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, resendAfterSec: 60 }) }); });
     await ctx.route("**/api/auth/code/verify", async route => { await sleep(1100); await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Mã không đúng", code: "wrong", attemptsLeft: 3 }) }); });
-    await p.getByRole("tab", { name: "Mã một lần" }).click();
+    // 01/11/2026: "Mã một lần" không còn là tab từ 25/10 (Figma 464:9828 không vẽ); lối phụ mở thẳng bằng /dang-nhap?cach=ma (xem đầu src/app/(guest)/dang-nhap/page.tsx).
+    await p.goto(`${BASE}/dang-nhap?cach=ma`, { waitUntil: "load", timeout: 150000 });
+    await p.locator("#dn-email").waitFor({ timeout: 60000 });
     await p.locator("#dn-email").fill("ai-do@test.local");
     await p.getByRole("button", { name: "Gửi mã đăng nhập" }).click();
     const cells = p.locator(".kin-code-cell");

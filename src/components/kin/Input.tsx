@@ -9,6 +9,7 @@
 //   <KinInput label="Mật khẩu" type="password" error="Sai mật khẩu" />
 "use client";
 import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
+import { NO_AUTOFIX, isCredentialField } from "./noAutofix";
 
 type Size = "sm" | "md" | "lg";
 
@@ -61,6 +62,8 @@ export const KinInput = forwardRef<HTMLInputElement, KinInputProps>(function Kin
           aria-describedby={error ? `${inputId}-err` : hint ? `${inputId}-hint` : undefined}
           className={`flex-1 min-w-0 px-3 outline-none bg-transparent ${PADDING[size]}`}
           style={{ color: "var(--kin-chu-chinh)" }}
+          // Mật khẩu / email / tài khoản: không để bàn phím điện thoại viết hoa hay sửa chữ (kể cả khi nút "Hiện" đã đổi sang type="text"). Đặt TRƯỚC {...rest} để nơi gọi ghi đè được.
+          {...(isCredentialField(rest.type, rest.autoComplete) ? NO_AUTOFIX : null)}
           {...rest}
         />
         {suffix && (
