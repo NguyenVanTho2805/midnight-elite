@@ -1,6 +1,8 @@
 // Bảng số câu: đã làm = viền liền + chấm, chưa = viền đứt, đánh dấu = cờ, đang xem = nền Navy. KHÔNG dựa vào màu một mình (mỗi ô có chữ đọc được).
 "use client";
-import { cellLabel, cellState, type CellState } from "./roomLogic";
+import { gridCell } from "@/lib/examRoomLib";
+
+type CellState = "empty" | "answered" | "flagged" | "flagged-answered";
 
 export interface GridQuestion { id: string; answered: boolean; flagged: boolean; practice?: "correct" | "wrong" | null }
 
@@ -27,10 +29,11 @@ export default function QuestionGrid({ items, current, onPick, label = "Nhảy t
     <nav aria-label={label} id="luoi-nhay-cau">
       <ul className="grid grid-cols-5 gap-2">
         {items.map((it, i) => {
-          const st = cellState(it.answered, it.flagged), on = i === current, b = BOX[st];
+          const on = i === current, cell = gridCell(i + 1, it.answered, it.flagged, on);
+          const b = BOX[(it.flagged ? (it.answered ? "flagged-answered" : "flagged") : it.answered ? "answered" : "empty") as CellState];
           return (
             <li key={it.id}>
-              <button type="button" onClick={() => onPick(i)} aria-label={cellLabel(i + 1, st, false, it.practice)} aria-current={on ? "true" : undefined}
+              <button type="button" onClick={() => onPick(i)} aria-label={it.practice ? `${cell.ariaLabel}, ${it.practice === "correct" ? "đúng" : "chưa đúng"}` : cell.ariaLabel} aria-current={on ? "true" : undefined}
                 data-da-tra-loi={it.answered ? "1" : "0"} data-danh-dau={it.flagged ? "1" : "0"}
                 className="relative w-full min-h-[44px] rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold tabular-nums"
                 style={on ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", border: "2px solid var(--kin-nhan-nen)" } : { background: b.bg, color: b.color, border: b.border }}>

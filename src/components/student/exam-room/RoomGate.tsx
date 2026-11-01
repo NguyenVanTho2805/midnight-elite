@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { KinButton, KinCallout } from "@/components/kin";
 import { clockOffsetMs } from "@/lib/quizRoom";
 import { studentDeadlineText } from "@/lib/quizDeadline";
-import type { RoomBlockReason, RoomGate as Gate } from "./roomApi";
+import type { BlockReason as RoomBlockReason, GateResponse as Gate } from "@/lib/examRoomApi";
 import { countdownLabel, windowLabel } from "./roomLogic";
 
 export const GATE_REASON: Record<RoomBlockReason, { title: string; body: string }> = {

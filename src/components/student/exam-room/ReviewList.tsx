@@ -3,7 +3,7 @@
 "use client";
 import { Fragment } from "react";
 import { MathText } from "@/components/MathText";
-import type { RoomReview } from "./roomApi";
+import type { ReviewResponse } from "@/lib/examRoomApi";
 
 const CARD = { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" } as const;
 const NOTE = { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" } as const;
@@ -16,7 +16,7 @@ function Unfixed({ hint }: { hint: string }) {
   return <p className="text-xs mt-1.5 p-2 rounded-lg" style={PENDING}>Câu này chưa chữa. Bấm <strong>Chữa lại các câu sai</strong> {hint}</p>;
 }
 
-export default function ReviewList({ data }: { data: RoomReview }) {
+export default function ReviewList({ data }: { data: ReviewResponse }) {
   return (
     <div className="space-y-3">
       {data.questions.map((q, idx) => {
@@ -29,7 +29,7 @@ export default function ReviewList({ data }: { data: RoomReview }) {
 
               {q.type === "MC" && (
                 <div className="space-y-1.5">
-                  {q.options.map(o => {
+                  {(q.options ?? []).map(o => {
                     const mine = o.id === q.studentOptionId;
                     const color = o.isCorrect === true ? "var(--kin-tt-chu-xong)" : o.isCorrect === false && mine ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)";
                     return <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color }}>{mine && <strong>→</strong>} <MathText text={o.text} />{o.isCorrect === true && " ✓"}</div>;
@@ -41,7 +41,7 @@ export default function ReviewList({ data }: { data: RoomReview }) {
 
               {q.type === "MC_MULTI" && (
                 <div className="space-y-1.5">
-                  {q.options.map(o => (
+                  {(q.options ?? []).map(o => (
                     <div key={o.id} className="text-xs flex items-center gap-1.5" style={{ color: o.isCorrect === true ? "var(--kin-tt-chu-xong)" : o.picked && o.isCorrect === false ? "var(--kin-tt-chu-loi)" : "var(--kin-chu-mo)" }}>
                       <strong>{o.picked ? "☑" : "☐"}</strong> <MathText text={o.text} />{o.picked && " — bạn chọn"}{o.isCorrect === true && " ✓ đáp án đúng"}
                     </div>
@@ -53,11 +53,11 @@ export default function ReviewList({ data }: { data: RoomReview }) {
 
               {q.type === "TRUE_FALSE_CLUSTER" && (
                 <div className="space-y-1.5">
-                  {q.options.map(o => (
+                  {(q.options ?? []).map(o => (
                     <div key={o.id} className="text-xs flex flex-wrap items-center gap-1.5" style={{ color: "var(--kin-chu-phu)" }}>
                       <strong>{o.subLabel})</strong> <MathText text={o.text} />
-                      <span style={{ color: "var(--kin-chu-mo)" }}>— bạn chọn: {o.studentAnswerTrue === null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}</span>
-                      {o.isCorrect !== null && <span style={{ color: o.isCorrect === o.studentAnswerTrue ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>(đáp án đúng: {o.isCorrect ? "Đúng" : "Sai"})</span>}
+                      <span style={{ color: "var(--kin-chu-mo)" }}>— bạn chọn: {o.studentAnswerTrue == null ? "chưa trả lời" : o.studentAnswerTrue ? "Đúng" : "Sai"}</span>
+                      {o.isCorrect != null && <span style={{ color: o.isCorrect === o.studentAnswerTrue ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>(đáp án đúng: {o.isCorrect ? "Đúng" : "Sai"})</span>}
                     </div>
                   ))}
                 </div>
@@ -80,7 +80,7 @@ export default function ReviewList({ data }: { data: RoomReview }) {
               {q.type === "SHORT_ANSWER" && (
                 <div className="text-xs space-y-1">
                   <p style={{ color: q.isCorrect ? "var(--kin-tt-chu-xong)" : "var(--kin-tt-chu-loi)" }}>Bạn trả lời: <strong>{q.studentAnswer?.trim() || "chưa trả lời"}</strong>{q.isCorrect === true && " ✓"}</p>
-                  {q.correctAnswer !== null && <p style={{ color: "var(--kin-chu-mo)" }}>Đáp án đúng: {q.correctAnswer}</p>}
+                  {q.correctAnswer != null && <p style={{ color: "var(--kin-chu-mo)" }}>Đáp án đúng: {q.correctAnswer}</p>}
                   {q.correctionPending && <Unfixed hint="để thử trước — đáp án hiện sau khi bạn thử." />}
                 </div>
               )}

@@ -12,26 +12,27 @@ import RoomLayout from "./RoomLayout";
 import { Clock, SaveChipView } from "./RoomClock";
 import SubmitPanel from "./SubmitPanel";
 import ViewSwitch from "./ViewSwitch";
-import { roomApi, RoomApiError, type CheckResult, type ExamMode } from "./roomApi";
-import { resolveView, VIEW_STORAGE_KEY, type ViewMode } from "./roomLogic";
+import { examRoomApi, type ExamMode, type PracticeCheckResponse } from "@/lib/examRoomApi";
+import { resolveView, type RoomView } from "@/lib/examRoomLib";
+import { VIEW_STORAGE_KEY } from "./roomLogic";
 import type { RoomSession } from "./useRoomSession";
 
-interface PState { result: CheckResult | null; loading: boolean; error: string }
+interface PState { result: PracticeCheckResponse | null; loading: boolean; error: string }
 const NONE: PState = { result: null, loading: false, error: "" };
 
-export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSession; examTitle: string; mode: ExamMode; feedback: "instant" | "none" }) {
+export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSession; examTitle: string; mode: ExamMode | null; feedback: "instant" | "none" }) {
   const att = s.attempt!;
   const practice = mode === "practice";
   const vis = s.questions.visible;
   const last = Math.max(0, vis.length - 1);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [cur, setCur] = useState(0);
-  const [view, setView] = useState<ViewMode>(() => resolveView(mode, typeof window === "undefined" ? null : window.localStorage.getItem(VIEW_STORAGE_KEY), typeof window === "undefined" ? 1280 : window.innerWidth));
+  const [view, setView] = useState<RoomView>(() => resolveView(typeof window === "undefined" ? null : window.localStorage.getItem(VIEW_STORAGE_KEY), mode, typeof window === "undefined" ? 1280 : window.innerWidth));
   const [sheet, setSheet] = useState(false);
   const [ps, setPs] = useState<Record<string, PState>>({});
   const idx = Math.min(cur, last);
 
-  const pick = (v: ViewMode) => { setView(v); try { window.localStorage.setItem(VIEW_STORAGE_KEY, v); } catch { /* bỏ qua */ } };
+  const pick = (v: RoomView) => { setView(v); try { window.localStorage.setItem(VIEW_STORAGE_KEY, v); } catch { /* bỏ qua */ } };
   const goTo = useCallback((i: number) => {
     const n = Math.min(last, Math.max(0, i));
     setCur(n); setSheet(false);
@@ -61,13 +62,10 @@ export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSe
   const setP = (id: string, v: Partial<PState>) => setPs(p => ({ ...p, [id]: { ...(p[id] ?? NONE), ...v } }));
   const run = async (id: string, action: "check" | "reveal") => {
     setP(id, { loading: true, error: "" });
-    try {
-      await s.flush(); // máy chủ chấm ĐÁP ÁN ĐÃ LƯU, nên phải lưu xong đã
-      setP(id, { result: await roomApi.check(att.attemptId, id, action), loading: false });
-    } catch (e) {
-      const er = e as RoomApiError;
-      setP(id, { loading: false, error: er.code === "not_answered" ? "Đáp án câu này chưa lưu được. Kiểm tra mạng rồi bấm lại." : er.code === "no_feedback" ? "Đề này giữ điểm tới khi gia sư công bố nên chưa kiểm từng câu được." : er.message || "Chưa kiểm tra được, thử lại." });
-    }
+    await s.flush(); // máy chủ chấm ĐÁP ÁN ĐÃ LƯU, nên phải lưu xong đã
+    const r = await examRoomApi.check(att.attemptId, id, action);
+    if (r.ok) setP(id, { result: r.data, loading: false });
+    else setP(id, { loading: false, error: r.code === "not_answered" ? "Đáp án câu này chưa lưu được. Kiểm tra mạng rồi bấm lại." : r.code === "no_feedback" ? "Đề này giữ điểm tới khi gia sư công bố nên chưa kiểm từng câu được." : r.error || "Chưa kiểm tra được, thử lại." });
   };
   const stale = (id: string) => { if (ps[id]?.result?.state === "hint") setP(id, { result: null }); };
 
@@ -93,7 +91,7 @@ export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSe
     return (
       <QuestionBlock key={q.id} q={q} index={i} locked={s.questions.locked?.has(q.sectionLabel ?? null) ?? false} answered={grid[i].answered} flagged={s.flags.has(q.id)}
         selected={s.selected[q.id]} text={s.text[q.id] ?? ""} cluster={s.cluster} textStatus={s.textStatus[q.id]}
-        onSelect={o => { stale(q.id); s.selectOption(q.id, o); }} onBool={(o, v) => { stale(q.id); s.setBool(q.id, o, v); }}
+        onSelect={o => { stale(q.id); s.selectOption(q.id, o); }} onBool={(o, v) => { stale(q.id); s.setBool(o, v); }}
         onText={t => s.typeText(q.id, t)} onBlur={s.blurText} onFlag={() => s.toggleFlag(q.id)}
         practice={practice ? { feedback, result: st.result, loading: st.loading, error: st.error, isLast: i >= last,
           onCheck: () => void run(q.id, "check"), onRetry: () => setP(q.id, { result: null, error: "" }), onReveal: () => void run(q.id, "reveal"), onNext: () => goTo(i + 1) } : undefined} />

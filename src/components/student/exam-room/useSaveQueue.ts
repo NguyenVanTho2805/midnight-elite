@@ -1,116 +1,103 @@
-// Hàng đợi lưu đáp án + chip "Đã lưu / Chưa lưu được" (BU-04 mục 5.2).
-// Đáp án luôn hiện đã chọn trên màn; việc lưu chạy nền. Mất mạng → giữ trong hàng đợi (localStorage), thử lại lùi mũi và khi có mạng / quay lại tab.
-// Mỗi câu chỉ giữ BẢN CUỐI (không phát lại bản cũ). Hết giờ / bài đã kết thúc do MÁY CHỦ quyết (409) → báo cho trang chuyển màn, không coi là lỗi mạng.
+// Hàng đợi lưu đáp án + chip "Đã lưu / Chưa lưu được" (BU-04 mục 5.2). Luật hàng đợi nằm ở `@/lib/examRoomLib` (thuần, có test); ở đây chỉ nối với mạng và localStorage.
+// Đáp án luôn hiện đã chọn trên màn; việc lưu chạy nền. Mất mạng → giữ trong hàng đợi (localStorage `kin.room.queue.<attemptId>`), thử lại lùi mũi 1s/2s/4s/8s trần 15s
+// và khi có mạng / quay lại tab. Mỗi câu chỉ giữ BẢN CUỐI. Hết giờ / bài đã kết thúc do MÁY CHỦ quyết (409) → báo cho trang chuyển màn, không coi là lỗi mạng.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DraftState } from "@/lib/quizRoom";
-import { saveAnswer, type SavePayload } from "./roomApi";
-import { backoffMs, pendingQuestionCount, queueKey, queueStorageKey, type QueueItem, type SaveChip } from "./roomLogic";
+import { examRoomApi, type SaveAnswerBody } from "@/lib/examRoomApi";
+import { backoffMs, chipLabel, classifySaveFailure, dropQueued, enqueue as enqueueAnswer, initialSaveState, markFailed, markSaved, parseQueue, serializeQueue, type SaveState } from "@/lib/examRoomLib";
+import { queueStorageKey } from "./roomLogic";
+
+export interface SaveQueueHooks { onClock: (serverNow: string | null, expiresAt: string | null) => void; onEnded: () => void }
+export interface ChipView { status: SaveState["status"]; label: string }
 
 const stamp = (iso: string | null) => new Date(iso && Number.isFinite(Date.parse(iso)) ? iso : Date.now()).toLocaleTimeString("vi-VN", { hour12: false });
 
-function readStored(attemptId: string): QueueItem[] {
-  try {
-    const raw = window.localStorage.getItem(queueStorageKey(attemptId));
-    const arr = raw ? (JSON.parse(raw) as QueueItem[]) : [];
-    return Array.isArray(arr) ? arr.filter(i => i && typeof i.key === "string" && i.payload) : [];
-  } catch { return []; }
-}
-
-export interface SaveQueueHooks { onClock: (serverNow: string | null, expiresAt: string | null) => void; onEnded: () => void }
-
 export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
-  const [chip, setChip] = useState<SaveChip>({ kind: "idle" });
+  const [st, setSt] = useState<SaveState>(initialSaveState);
   const [textStatus, setTextStatus] = useState<Record<string, DraftState>>({});
-  const queue = useRef(new Map<string, QueueItem>());
-  const seq = useRef(0);
+  const ref = useRef<SaveState>(st);
   const busy = useRef(false);
   const again = useRef(false);
-  const failures = useRef(0);
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idRef = useRef(attemptId);
   const hk = useRef(hooks);
   useEffect(() => { hk.current = hooks; });
 
-  const persist = useCallback(() => {
+  const commit = useCallback((n: SaveState) => {
+    ref.current = n; setSt(n);
     const id = idRef.current;
-    if (!id) return;
-    try { window.localStorage.setItem(queueStorageKey(id), JSON.stringify([...queue.current.values()])); } catch { /* chế độ riêng tư: chấp nhận */ }
+    if (id) try { window.localStorage.setItem(queueStorageKey(id), serializeQueue(n.queue)); } catch { /* chế độ riêng tư: chấp nhận */ }
   }, []);
+  const setText = (b: SaveAnswerBody, s: DraftState) => { if (b.kind === "text") setTextStatus(m => ({ ...m, [b.questionId]: s })); };
 
   const flush = useCallback(async (): Promise<void> => {
     const id = idRef.current;
     if (!id) return;
     if (busy.current) { again.current = true; return; }
     busy.current = true;
-    if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     try {
       do {
         again.current = false;
-        for (const item of [...queue.current.values()]) {
+        while (ref.current.queue.length > 0) {
           if (idRef.current !== id) return;
-          const p = item.payload;
-          setChip({ kind: "saving" });
-          if (p.kind === "text") setTextStatus(s => ({ ...s, [p.questionId]: { kind: "saving" } }));
-          const r = await saveAnswer(id, p);
+          const item = ref.current.queue[0];
+          commit({ ...ref.current, status: "saving" });
+          setText(item.body, { kind: "saving" });
+          const r = await examRoomApi.saveAnswer(id, item.body);
           if (r.ok) {
-            failures.current = 0;
-            if (queue.current.get(item.key)?.v === item.v) queue.current.delete(item.key);
-            persist();
-            hk.current.onClock(r.serverNow, r.expiresAt);
-            if (p.kind === "text") setTextStatus(s => ({ ...s, [p.questionId]: { kind: "saved", at: stamp(r.savedAt ?? r.serverNow) } }));
-            setChip(queue.current.size === 0 ? { kind: "saved", at: stamp(r.savedAt ?? r.serverNow) } : { kind: "saving" });
-          } else if (r.code === "expired" || r.code === "finished") {
-            queue.current.clear(); persist(); hk.current.onEnded(); return;
-          } else if (r.code === "section_locked") {
-            queue.current.delete(item.key); persist(); // Phần đã khoá: máy chủ không nhận nữa, giữ lại chỉ làm chip đỏ mãi
-            if (p.kind === "text") setTextStatus(s => ({ ...s, [p.questionId]: { kind: "idle" } }));
-          } else {
-            if (p.kind === "text") setTextStatus(s => ({ ...s, [p.questionId]: { kind: "failed" } }));
-            setChip({ kind: "failed", count: pendingQuestionCount(queue.current.values()) });
-            retryTimer.current = setTimeout(() => { void flush(); }, backoffMs(failures.current++));
-            return;
+            commit(markSaved(ref.current, item.key, item.seq, r.data.savedAt ?? r.data.serverNow ?? new Date().toISOString()));
+            hk.current.onClock(r.data.serverNow ?? null, r.data.expiresAt ?? null);
+            setText(item.body, { kind: "saved", at: stamp(r.data.savedAt ?? r.data.serverNow ?? null) });
+            continue;
           }
+          const kind = classifySaveFailure(r.status, r.code);
+          if (kind === "time_up") { commit({ ...ref.current, queue: [], status: "idle" }); hk.current.onEnded(); return; }
+          if (kind === "drop") { commit(dropQueued(ref.current, item.key, item.seq)); setText(item.body, { kind: "idle" }); continue; } // vd. Phần đã khoá: giữ lại chỉ làm chip đỏ mãi
+          setText(item.body, { kind: "failed" });
+          commit(markFailed(ref.current));
+          timer.current = setTimeout(() => { void flush(); }, backoffMs(ref.current.retries - 1));
+          return;
         }
       } while (again.current);
     } finally { busy.current = false; }
-  }, [persist]);
+  }, [commit]);
 
-  const enqueue = useCallback((payload: SavePayload, delayMs = 0) => {
-    const key = queueKey(payload);
-    queue.current.set(key, { key, v: ++seq.current, payload });
-    persist();
-    if (payload.kind === "text") setTextStatus(s => ({ ...s, [payload.questionId]: { kind: "saving" } }));
+  const enqueue = useCallback((body: SaveAnswerBody, delayMs = 0) => {
+    commit(enqueueAnswer(ref.current, body));
+    setText(body, { kind: "saving" });
     if (delayMs <= 0) { void flush(); return; }
     // gõ chữ: chờ em ngừng gõ rồi mới gửi (bản chưa gửi vẫn nằm trong localStorage)
-    if (retryTimer.current) clearTimeout(retryTimer.current);
-    retryTimer.current = setTimeout(() => { void flush(); }, delayMs);
-  }, [persist, flush]);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { void flush(); }, delayMs);
+  }, [commit, flush]);
 
   /** Nạp hàng đợi còn sót của lượt này (lần trước mất mạng / đóng tab). Trả các mục để trang phủ lên câu trả lời đang hiện. */
-  const adopt = useCallback((id: string): QueueItem[] => {
-    idRef.current = id; queue.current.clear(); failures.current = 0; setChip({ kind: "idle" }); setTextStatus({});
-    const stored = readStored(id);
-    stored.forEach(i => { queue.current.set(i.key, i); seq.current = Math.max(seq.current, i.v); });
-    if (stored.length > 0) { setChip({ kind: "failed", count: pendingQuestionCount(stored) }); void flush(); }
-    return stored;
-  }, [flush]);
+  const adopt = useCallback((id: string): SaveAnswerBody[] => {
+    idRef.current = id; setTextStatus({});
+    let stored: ReturnType<typeof parseQueue> = [];
+    try { stored = parseQueue(window.localStorage.getItem(queueStorageKey(id))); } catch { /* bỏ qua */ }
+    const base = initialSaveState();
+    commit(stored.length > 0 ? { ...base, queue: stored, seq: Math.max(...stored.map(q => q.seq)), status: "failed" } : base);
+    if (stored.length > 0) void flush();
+    return stored.map(q => q.body);
+  }, [commit, flush]);
 
   const clearStored = useCallback(() => {
-    const id = idRef.current;
-    queue.current.clear();
-    if (retryTimer.current) clearTimeout(retryTimer.current);
-    try { if (id) window.localStorage.removeItem(queueStorageKey(id)); } catch { /* bỏ qua */ }
-  }, []);
+    if (timer.current) clearTimeout(timer.current);
+    commit(initialSaveState());
+    try { if (idRef.current) window.localStorage.removeItem(queueStorageKey(idRef.current)); } catch { /* bỏ qua */ }
+  }, [commit]);
 
   useEffect(() => {
     if (!attemptId) return;
-    const kick = () => { if (queue.current.size > 0) void flush(); };
-    const vis = kick; // rời tab: đẩy ngay phần chưa gửi; quay lại: thử lại
+    const kick = () => { if (ref.current.queue.length > 0) void flush(); };
     window.addEventListener("online", kick);
-    document.addEventListener("visibilitychange", vis);
-    return () => { window.removeEventListener("online", kick); document.removeEventListener("visibilitychange", vis); };
+    document.addEventListener("visibilitychange", kick); // rời tab: đẩy ngay phần chưa gửi; quay lại: thử lại
+    return () => { window.removeEventListener("online", kick); document.removeEventListener("visibilitychange", kick); };
   }, [attemptId, flush]);
-  useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  return { chip, textStatus, enqueue, flush, adopt, clearStored, hasPending: () => queue.current.size > 0 };
+  const chip: ChipView = { status: st.status, label: chipLabel(st).replace(/ · Thử lại$/, "") };
+  return { chip, textStatus, enqueue, flush, adopt, clearStored };
 }

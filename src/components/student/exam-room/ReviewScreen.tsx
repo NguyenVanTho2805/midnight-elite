@@ -5,11 +5,11 @@ import { useState } from "react";
 import CorrectionPanel from "@/components/exam/CorrectionPanel";
 import { KinButton } from "@/components/kin";
 import ReviewList from "./ReviewList";
-import type { RoomReview } from "./roomApi";
+import type { ReviewResponse } from "@/lib/examRoomApi";
 import { answersOpenLabel } from "./roomLogic";
 
 export interface ReviewScreenProps {
-  title: string; data: RoomReview | null; loading: boolean; error: string;
+  title: string; data: ReviewResponse | null; loading: boolean; error: string;
   onBack: () => void; onRetry: () => void; onCorrectionClosed: () => void;
 }
 

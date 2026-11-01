@@ -2,25 +2,24 @@
 "use client";
 import { MathText } from "@/components/MathText";
 import { KinButton } from "@/components/kin";
-import type { ExamQuestionPublic } from "@/lib/api";
+import type { PracticeCheckResponse, RoomQuestion } from "@/lib/examRoomApi";
 import type { DraftState } from "@/lib/quizRoom";
 import AnswerInputs, { type Reveal } from "./AnswerInputs";
 import PracticeFeedback from "./PracticeFeedback";
-import type { CheckResult } from "./roomApi";
 
 export interface PracticeProps {
   /** "none" = đề giữ điểm tới khi công bố: không có nút kiểm tra. */
-  feedback: "instant" | "none"; result: CheckResult | null; loading: boolean; error: string;
+  feedback: "instant" | "none"; result: PracticeCheckResponse | null; loading: boolean; error: string;
   onCheck: () => void; onRetry: () => void; onReveal: () => void; onNext: () => void; isLast: boolean;
 }
 export interface QuestionBlockProps {
-  q: ExamQuestionPublic; index: number; locked: boolean; answered: boolean; flagged: boolean;
+  q: RoomQuestion; index: number; locked: boolean; answered: boolean; flagged: boolean;
   selected?: string; text: string; cluster: Record<string, boolean | null>; textStatus?: DraftState;
   onSelect: (oid: string) => void; onBool: (oid: string, v: boolean) => void; onText: (t: string) => void; onBlur: () => void; onFlag: () => void;
   practice?: PracticeProps;
 }
 
-function revealOf(r: CheckResult | null): Reveal | null {
+function revealOf(r: PracticeCheckResponse | null): Reveal | null {
   if (!r?.answer) return null;
   return { correctIds: new Set(r.answer.correctOptionIds), truths: new Map(r.answer.clusterTruths.map(t => [t.optionId, t.isTrue])), correctText: r.answer.correctText };
 }

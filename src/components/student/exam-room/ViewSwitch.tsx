@@ -1,6 +1,6 @@
 // "Từng câu / Cả đề" — hai nút tab 44px. Luyện tập không có công tắc này (luôn từng câu).
 "use client";
-import type { ViewMode } from "./roomLogic";
+import type { RoomView as ViewMode } from "@/lib/examRoomLib";
 
 const OPTS: { v: ViewMode; label: string }[] = [{ v: "per-question", label: "Từng câu" }, { v: "whole", label: "Cả đề" }];
 

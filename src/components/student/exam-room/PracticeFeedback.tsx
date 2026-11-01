@@ -3,7 +3,7 @@
 "use client";
 import { KinButton } from "@/components/kin";
 import { MathText } from "@/components/MathText";
-import type { CheckResult } from "./roomApi";
+import type { PracticeCheckResponse as CheckResult } from "@/lib/examRoomApi";
 
 export interface PracticeFeedbackProps {
   result: CheckResult | null; loading: boolean; error: string; isCluster: boolean; isLast: boolean;

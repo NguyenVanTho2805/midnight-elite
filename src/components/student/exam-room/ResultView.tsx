@@ -5,10 +5,10 @@ import Link from "next/link";
 import { KinButton, KinCopyButton } from "@/components/kin";
 import type { ExamAttemptHistoryItem } from "@/lib/api";
 import { submittedNotice } from "@/lib/quizRoom";
-import type { ExamMode } from "./roomApi";
+import type { ExamMode } from "@/lib/examRoomApi";
 
 export interface ResultViewProps {
-  examTitle: string; mode: ExamMode; hasQuestions: boolean;
+  examTitle: string; mode: ExamMode | null; hasQuestions: boolean;
   result: { score: number | null; totalPoints: number; rank: number | null; pendingManual?: boolean };
   receipt: string; submittedAt: string | null; expired: boolean;
   tiles: { label: string; value: string }[];

@@ -1,14 +1,14 @@
 // Ô trả lời theo loại câu. Đáp án ≥52px (token --kin-cham-dap-an), Đúng–Sai ≥48px, ô điền 52px; đang chọn = viền Navy 2px + nền nhạt + dấu ✓ (không chỉ đổi màu chữ).
 // `reveal` chỉ có khi máy chủ đã trả đáp án (luyện tập, sau khi xem đáp án): giao diện KHÔNG tự suy ra đáp án từ dữ liệu nào khác.
 "use client";
-import type { ExamQuestionPublic } from "@/lib/api";
+import type { RoomQuestion } from "@/lib/examRoomApi";
 import { MathText } from "@/components/MathText";
 import { FormulaBar } from "@/components/exam/FormulaBar";
 import { draftStatusLabel, type DraftState } from "@/lib/quizRoom";
 
 export interface Reveal { correctIds: Set<string>; truths: Map<string, boolean>; correctText: string | null }
 export interface AnswerInputsProps {
-  q: ExamQuestionPublic; locked: boolean; selected?: string; text: string; cluster: Record<string, boolean | null>; textStatus?: DraftState;
+  q: RoomQuestion; locked: boolean; selected?: string; text: string; cluster: Record<string, boolean | null>; textStatus?: DraftState;
   onSelect: (optionId: string) => void; onBool: (optionId: string, value: boolean) => void; onText: (t: string) => void; onBlur: () => void;
   reveal?: Reveal | null;
 }

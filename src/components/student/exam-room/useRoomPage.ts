@@ -2,7 +2,7 @@
 // Phòng thi KHÔNG có vỏ; mọi màn (cổng, làm bài, hết giờ, kết quả, xem lại) nằm trong cùng khung data-vung="phong-thi" do trang bọc.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type ExamAttemptHistoryItem, type ExamFull } from "@/lib/api";
-import { roomApi, type RoomGate, type RoomReview } from "./roomApi";
+import { examRoomApi, type GateResponse, type ReviewResponse } from "@/lib/examRoomApi";
 
 export type Phase = "loading" | "error" | "gate" | "azota" | "taking" | "done" | "review";
 export interface MyResult { score: number | null; totalPoints: number; rank: number | null; pendingManual?: boolean }
@@ -10,19 +10,20 @@ export interface MyResult { score: number | null; totalPoints: number; rank: num
 export function useRoomPage(examId: string) {
   const [exam, setExam] = useState<ExamFull | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
-  const [gate, setGate] = useState<RoomGate | null>(null);
+  const [gate, setGate] = useState<GateResponse | null>(null);
   const [gateErr, setGateErr] = useState(false);
   const [myResult, setMyResult] = useState<MyResult | null>(null);
   const [history, setHistory] = useState<ExamAttemptHistoryItem[]>([]);
   const [board, setBoard] = useState<{ score: number }[]>([]);
-  const [review, setReview] = useState<RoomReview | null>(null);
+  const [review, setReview] = useState<ReviewResponse | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewErr, setReviewErr] = useState("");
   const reviewFor = useRef<string | null>(null);
 
-  const loadGate = useCallback(async (): Promise<RoomGate | null> => {
-    try { const g = await roomApi.gate(examId); setGate(g); setGateErr(false); return g; }
-    catch { setGateErr(true); return null; }
+  const loadGate = useCallback(async (): Promise<GateResponse | null> => {
+    const r = await examRoomApi.gate(examId);
+    if (!r.ok) { setGateErr(true); return null; }
+    setGate(r.data); setGateErr(false); return r.data;
   }, [examId]);
 
   const loadHistory = useCallback(() => {
@@ -60,9 +61,11 @@ export function useRoomPage(examId: string) {
   const loadReview = useCallback(async (attemptId: string, silent = false) => {
     reviewFor.current = attemptId;
     if (!silent) { setReviewLoading(true); setReviewErr(""); }
-    try { const d = await roomApi.review(attemptId); if (reviewFor.current === attemptId) setReview(d); }
-    catch (e) { if (!silent) setReviewErr(e instanceof Error ? e.message : "Không tải được bài làm"); }
-    finally { if (!silent) setReviewLoading(false); }
+    const r = await examRoomApi.review(attemptId);
+    if (reviewFor.current === attemptId) {
+      if (r.ok) setReview(r.data); else if (!silent) setReviewErr(r.error || "Không tải được bài làm");
+    }
+    if (!silent) setReviewLoading(false);
   }, []);
 
   /** Lượt có thể xem lại khi vào thẳng trang đã có kết quả: lượt đã nộp gần nhất trong lịch sử. */

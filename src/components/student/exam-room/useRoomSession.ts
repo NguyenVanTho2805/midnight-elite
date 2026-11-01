@@ -2,16 +2,16 @@
 // Luật giữ nguyên từ phòng thi cũ: mốc giờ là của MÁY CHỦ (offset lấy từ serverNow mỗi lần máy chủ trả lời), hết giờ → tự nộp kể cả mất mạng
 // (không có xác nhận thì ở màn "chưa xác nhận" và gửi lại khi có mạng; máy chủ chốt tại expiresAt nên câu gửi muộn bị từ chối).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ExamQuestionPublic } from "@/lib/api";
 import { clockOffsetMs, remainingSecFrom } from "@/lib/quizRoom";
-import { roomApi, RoomApiError, type RoomStart, type RoomSubmit } from "./roomApi";
+import { examRoomApi, type RoomQuestion, type StartResponse, type SubmitResponse } from "@/lib/examRoomApi";
+import { parseFlags, pruneFlags, toggleFlag as toggleFlagList } from "@/lib/examRoomLib";
 import { flagStorageKey } from "./roomLogic";
 import { useSaveQueue } from "./useSaveQueue";
 
 const TEXT_DEBOUNCE_MS = 1200;
 
 export function useRoomSession(examId: string) {
-  const [attempt, setAttempt] = useState<RoomStart | null>(null);
+  const [attempt, setAttempt] = useState<StartResponse | null>(null);
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [text, setText] = useState<Record<string, string>>({});
   const [cluster, setCluster] = useState<Record<string, boolean | null>>({});
@@ -26,7 +26,7 @@ export function useRoomSession(examId: string) {
   const [submitErr, setSubmitErr] = useState("");
   const [timeUp, setTimeUp] = useState<null | "sending" | "unconfirmed">(null);
   const [timeUpAt, setTimeUpAt] = useState<string | null>(null);
-  const [result, setResult] = useState<RoomSubmit | null>(null);
+  const [result, setResult] = useState<SubmitResponse | null>(null);
   const auto = useRef(false);
   const inFlight = useRef(false);
   const offsetRef = useRef(0);
@@ -46,17 +46,16 @@ export function useRoomSession(examId: string) {
   }, []);
 
   /** Đổ trạng thái lượt (bắt đầu / tiếp tục) vào màn làm bài; phủ hàng đợi chưa lưu của lần trước lên trên bản máy chủ. */
-  const hydrate = useCallback((st: RoomStart) => {
+  const hydrate = useCallback((st: StartResponse) => {
     applyClock(st.serverNow ?? null, st.expiresAt ?? null);
     const sel = { ...((st.answers ?? {}) as Record<string, string>) };
     const txt = { ...(st.textAnswers ?? {}) };
     const bool = { ...(st.boolAnswers ?? {}) };
-    for (const it of q.adopt(st.attemptId)) {
-      const p = it.payload;
-      if (p.kind === "opt") sel[p.questionId] = p.optionId; else if (p.kind === "text") txt[p.questionId] = p.text; else bool[p.optionId] = p.value;
+    for (const b of q.adopt(st.attemptId)) {
+      if (b.kind === "option") sel[b.questionId] = b.optionId; else if (b.kind === "text") txt[b.questionId] = b.textAnswer; else bool[b.optionId] = b.answerTrue;
     }
     let fl = new Set<string>();
-    try { fl = new Set(JSON.parse(window.localStorage.getItem(flagStorageKey(st.attemptId)) ?? "[]") as string[]); } catch { /* bỏ qua */ }
+    try { fl = new Set(pruneFlags(parseFlags(window.localStorage.getItem(flagStorageKey(st.attemptId))), st.questions.map(x => x.id))); } catch { /* bỏ qua */ }
     auto.current = false; inFlight.current = false; setNow(Date.now());
     setSelected(sel); setText(txt); setCluster(bool); setFlags(fl); setTabLeaves(st.tabSwitchCount ?? 0);
     setTimeUp(null); setTimeUpAt(null); setResult(null); setSubmitErr(""); setAttempt(st);
@@ -64,22 +63,24 @@ export function useRoomSession(examId: string) {
 
   const start = useCallback(async (password?: string): Promise<boolean> => {
     setStartErr(""); setStarting(true);
-    try { hydrate(await roomApi.start(examId, password || undefined)); return true; }
-    catch (e) { setStartErr(e instanceof RoomApiError ? e.message : "Không thể bắt đầu bài thi"); return false; }
-    finally { setStarting(false); }
+    try {
+      const r = await examRoomApi.start(examId, password || undefined);
+      if (!r.ok) { setStartErr(r.error || "Không thể bắt đầu bài thi"); return false; }
+      hydrate(r.data); return true;
+    } finally { setStarting(false); }
   }, [examId, hydrate]);
 
   // ── đáp án ──
-  const selectOption = (questionId: string, optionId: string) => { setSelected(p => ({ ...p, [questionId]: optionId })); q.enqueue({ kind: "opt", questionId, optionId }); };
-  const setBool = (questionId: string, optionId: string, value: boolean) => { setCluster(p => ({ ...p, [optionId]: value })); q.enqueue({ kind: "bool", questionId, optionId, value }); };
-  const typeText = (questionId: string, t: string) => { setText(p => ({ ...p, [questionId]: t })); q.enqueue({ kind: "text", questionId, text: t }, TEXT_DEBOUNCE_MS); };
+  const selectOption = (questionId: string, optionId: string) => { setSelected(p => ({ ...p, [questionId]: optionId })); q.enqueue({ kind: "option", questionId, optionId }); };
+  const setBool = (optionId: string, answerTrue: boolean) => { setCluster(p => ({ ...p, [optionId]: answerTrue })); q.enqueue({ kind: "bool", optionId, answerTrue }); };
+  const typeText = (questionId: string, t: string) => { setText(p => ({ ...p, [questionId]: t })); q.enqueue({ kind: "text", questionId, textAnswer: t }, TEXT_DEBOUNCE_MS); };
   const blurText = () => { void q.flush(); };
   const toggleFlag = (questionId: string) => setFlags(prev => {
-    const n = new Set(prev); if (n.has(questionId)) n.delete(questionId); else n.add(questionId);
+    const n = new Set(toggleFlagList([...prev], questionId));
     if (attempt) try { window.localStorage.setItem(flagStorageKey(attempt.attemptId), JSON.stringify([...n])); } catch { /* bỏ qua */ }
     return n;
   });
-  const isAnswered = useCallback((x: ExamQuestionPublic): boolean => {
+  const isAnswered = useCallback((x: RoomQuestion): boolean => {
     if (x.type === "ESSAY" || x.type === "SHORT_ANSWER") return !!text[x.id]?.trim();
     if (x.type === "TRUE_FALSE_CLUSTER") return x.options.every(o => cluster[o.id] === true || cluster[o.id] === false);
     if (x.type === "MC_MULTI") return x.options.some(o => cluster[o.id] === true);
@@ -111,9 +112,10 @@ export function useRoomSession(examId: string) {
     try {
       // Gửi nốt phần còn trong hàng đợi (chờ tối đa 5 giây); sau hạn máy chủ từ chối cũng không sao — bản đã lưu trước đó vẫn là bài.
       if (!isAuto) await Promise.race([q.flush(), new Promise(r => setTimeout(r, 5000))]);
-      const r = await roomApi.submit(attempt.attemptId);
+      const r = await examRoomApi.submit(attempt.attemptId);
+      if (!r.ok) throw new Error(r.error);
       q.clearStored();
-      setResult({ ...r, expired: !!r.expired || auto.current /* tự nộp vì hết giờ thì luôn nói "Hết giờ" */ });
+      setResult({ ...r.data, expired: !!r.data.expired || auto.current /* tự nộp vì hết giờ thì luôn nói "Hết giờ" */ });
     } catch {
       if (isAuto || auto.current) setTimeUp("unconfirmed"); else setSubmitErr("Nộp bài thất bại, thử lại");
     } finally { inFlight.current = false; setSubmitting(false); }
@@ -132,7 +134,7 @@ export function useRoomSession(examId: string) {
   useEffect(() => {
     if (!running || !attempt) return;
     const id = attempt.attemptId;
-    const onHide = () => { if (document.visibilityState === "hidden") roomApi.tabEvent(id).then(r => { if (typeof r.tabSwitchCount === "number") setTabLeaves(r.tabSwitchCount); }).catch(() => {}); };
+    const onHide = () => { if (document.visibilityState === "hidden") examRoomApi.tabEvent(id).then(r => { const n = r.ok ? (r.data as { tabSwitchCount?: number }).tabSwitchCount : undefined; if (typeof n === "number") setTabLeaves(n); }); };
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [running, attempt]);
