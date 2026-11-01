@@ -1,7 +1,12 @@
 // BU-01 — phần MÁY CHỦ của "vào lớp": MỘT đường duy nhất tạo Enrollment cho học sinh tự vào / được duyệt (enrollInTx), mã cá nhân, gửi / duyệt / từ chối / huỷ
 // yêu cầu vào lớp, và các bộ đọc cho trang (để trang không viết prisma tay). Luật thuần ở src/lib/joinRequest.ts.
 // KHÔNG chạm đường tiền: tệp này không nhập feeCharge*/invoiceServer*/sessionBook*, không đọc Course.price.
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { SessionPayload } from "@/lib/session";
+import { requireSession } from "@/lib/auth-guard";
+import { isApplicant } from "@/lib/tutorGate";
+import { loadTutorStatus, requireTutorOnly } from "@/lib/tutorGateServer";
 import type { Prisma } from "@/generated/prisma/client";
 import { deriveStatusForNewEnrollment, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { assertCanAddStudent, type EnrollGate } from "@/lib/planServer";
@@ -302,4 +307,42 @@ export async function loadMyJoinRequests(userId: string, now: Date = new Date())
     id: r.id, status: r.status as JoinStatus, note: r.note, decidedAt: r.decidedAt, createdAt: r.createdAt,
     course: r.course, personalCode: r.status === "pending" ? byCourse.get(r.courseId) ?? null : null,
   }));
+}
+
+// ── Nhãn "Miễn phí" (chỉ ĐỌC; không đụng đường tiền) ───────────────────────────────────────────
+
+/** Tập id lớp ĐÃ có đơn giá (CourseFeeRate) — một truy vấn cho cả danh sách, không N+1. Có đơn giá ⇒ không còn là lớp miễn phí. */
+export async function loadFeeRateCourseIds(courseIds: string[], db: Pick<typeof prisma, "courseFeeRate"> = prisma): Promise<Set<string>> {
+  if (!courseIds.length) return new Set();
+  const rows = await db.courseFeeRate.groupBy({ by: ["courseId"], where: { courseId: { in: courseIds } } });
+  return new Set(rows.map((r) => r.courseId));
+}
+
+// ── Cổng quyền dùng chung cho các route BU-01 ───────────────────────────────────────────────────
+
+/** Học sinh THẬT (role student, không bị khoá, không phải người nộp đơn gia sư). Chưa đăng nhập 401; role khác / người nộp đơn gia sư 403. */
+export async function requireStudentForJoin(): Promise<SessionPayload | NextResponse> {
+  const auth = await requireSession();
+  if (auth instanceof NextResponse) return auth;
+  const denied = await denyNonStudent(auth);
+  return denied ?? auth;
+}
+
+/** Dùng khi đã có phiên: null = được; ngược lại là câu trả lời 403. */
+export async function denyNonStudent(session: SessionPayload): Promise<NextResponse | null> {
+  if (session.role !== "student") return NextResponse.json({ error: "Chỉ học sinh mới dùng chức năng này" }, { status: 403 });
+  if (isApplicant(await loadTutorStatus(session))) {
+    return NextResponse.json({ error: "Tài khoản gia sư chờ duyệt chưa vào lớp bằng cách này" }, { status: 403 });
+  }
+  return null;
+}
+
+/** Gia sư ĐÃ DUYỆT và là CHỦ lớp `courseId`: chưa đăng nhập 401, không phải gia sư / lớp của gia sư khác 403, không có lớp 404. */
+export async function requireCourseTutor(courseId: string): Promise<{ session: SessionPayload; course: DecideCourse } | NextResponse> {
+  const auth = await requireTutorOnly();
+  if (auth instanceof NextResponse) return auth;
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, ownerId: true, capacity: true, classStatus: true } });
+  if (!course) return NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404 });
+  if (course.ownerId !== auth.userId) return NextResponse.json({ error: "Lớp này không phải của bạn" }, { status: 403 });
+  return { session: auth, course };
 }
