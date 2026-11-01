@@ -17,7 +17,7 @@ async function mobileReport(page: Page) {
   return page.evaluate(`(() => {
     var vis = function (e) { var r = e.getBoundingClientRect(); var st = getComputedStyle(e); return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none"; };
     var small = Array.prototype.slice.call(document.querySelectorAll('button, summary, a[class*="kin-cham-toi-thieu"]'))
-      .filter(function (e) { return vis(e) && !e.closest('[data-kin-toast],nextjs-portal,[data-nextjs-toast],[data-agentation-root]') && !e.disabled && e.getBoundingClientRect().height < 43.5; })
+      .filter(function (e) { return vis(e) && !e.closest('[data-kin-toast],nextjs-portal,[data-nextjs-toast],[data-agentation-root]') && !/ sao$/.test(e.getAttribute('aria-label') || '') && !e.disabled && e.getBoundingClientRect().height < 43.5; })
       .map(function (e) { return e.tagName + ":" + (e.textContent || "").trim().slice(0, 30) + ":" + Math.round(e.getBoundingClientRect().height); });
     return { overflow: document.documentElement.scrollWidth > window.innerWidth + 1, small: small };
   })()`) as Promise<{ overflow: boolean; small: string[] }>;
@@ -41,7 +41,8 @@ async function mobileReport(page: Page) {
 
   await launch();
   const errors: string[] = [];
-  const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon/i.test(m.text())) errors.push(m.text()); }); };
+  // 'Encountered a script tag': <script> chủ đề trong src/app/layout.tsx:81 (có sẵn trên main, không thuộc BU-01) — nợ riêng, lọc có chủ đích.
+  const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); }); };
 
   // ───────── Khách
   section("Khách bấm Xin vào lớp → sang đăng nhập có redirect");

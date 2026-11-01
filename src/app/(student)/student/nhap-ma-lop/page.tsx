@@ -73,7 +73,7 @@ function WaitingCard({ p, requestId, sentOn, personalCode }: { p: InvitePreviewO
           <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo-tren-nen-nhan)]">Mã riêng của bạn</p>
           <p className="mt-1 flex items-center gap-2 flex-wrap">
             <b data-personal-code className="font-mono text-[length:var(--kin-co-body)] tracking-[0.12em] text-[var(--kin-chu-chinh)]">{personalCode}</b>
-            <KinCopyButton text={personalCode} label="Chép mã riêng" appearance="icon" size="sm" />
+            <KinCopyButton text={personalCode} label="Chép mã riêng" appearance="icon" />
           </p>
           <p className="mt-1 text-[length:var(--kin-co-caption)] leading-[1.45] text-[var(--kin-chu-mo-tren-nen-nhan)]">Mã này chỉ dùng được ở tài khoản của bạn.</p>
         </div>
