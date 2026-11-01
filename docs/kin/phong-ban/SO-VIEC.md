@@ -7,7 +7,7 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | COO-000 | COO | Dựng phòng ban (16 tác tử, 4 tài liệu) + báo cáo điểm yếu 01/11 | claude/phong-ban-agent | | cho-gop-pr | Nền cho mọi việc sau |
 | BU-00 | TUT+STU+ADM | Tách 3 giao diện theo vai | claude/bu-00-phan-vai | #88 | cho-gop-pr | Làm trước khi có phòng ban; chờ Thọ gộp |
 | BU-01 | TUT (+STU màn nhập mã) | Lớp: joinPolicy, mã cá nhân, duyệt, lớp miễn phí | | | moi | Mở sau #88; đặc tả = BIGUPDATE-KE-HOACH.md mục BU-01 |
-| BU-02 | TUT (ADM giữ 2 tệp lớn) | Học liệu: tab Giáo trình + ô tải lên chung | | | moi | Figma 606:5 |
+| BU-02 | TUT (ADM giữ 2 tệp lớn) | Học liệu: tab Giáo trình + ô tải lên chung | claude/bu-02-hoc-lieu | | cho-test | Figma 606:5. Rẽ từ bu-01 (PR #103). Mã xong HEAD 1335f62; test thuần xanh, 5 bài CSDL/UI chưa chạy; Figma chưa đối chiếu |
 | BU-05 | STU | Cộng đồng 3 cột / Threads | | | moi | Figma 606:3 |
 | BU-07 | STU (ADM soạn bài) | Tin tức | | | moi | Figma 606:4 |
 | BU-03 | ADM+TUT | Đề thi kiểu Azota | | | moi | Sau BU-00 |

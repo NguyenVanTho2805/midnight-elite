@@ -3,6 +3,16 @@
 Mọi việc "sẵn sàng làm ngay" đã làm hoặc đã ghi rõ vì sao chưa làm. Ghi chú từng việc nằm trong Google Sheet (cột H/I của Thọ; không đụng cột J/K của Thanh).
 Bộ test chạy với Postgres + Next dev + Chromium thật nằm ở `tools/local-e2e/` (xem README ở đó).
 
+## BU-02 (Bigupdate 02/11/2026) — Học liệu: tab Giáo trình, ô tải lên chung, Thư viện của tôi — LÀM XONG PHẦN MÃ, chưa chạy bài CSDL
+Nhánh `claude/bu-02-hoc-lieu` (rẽ từ `claude/bu-01-lop`, phụ thuộc BU-01 PR #103), HEAD `1335f62`. PR chưa mở. Đặc tả: `phong-ban/dac-ta/BU-02.md`. Backlog: `backlog/bigupdate.csv` dòng BU-02.
+- **Vì sao:** gia sư cần một chỗ trong lớp xếp học liệu (link + tệp) rõ kiểu, tải tài liệu có ký, có thư viện riêng và xem lớp như học sinh.
+- **Đã làm (commit):** `1ba1dff` đặc tả; `9d9d051` tab Giáo trình (trang + G1-G3), ô tải lên chung link+tệp, `media/document` init/complete/file/DELETE, `fileSniff`, Thư viện của tôi, "Xem như học sinh", D2/D3/D4 nhỏ ngoài phòng, vá V6 (reorder), V7 (lớp ẩn), V8 (chủ tệp); `1335f62` sửa P2 rà soát (khớp mã tệp đúng danh sách, `overwrite=false` khi ký). MD-03/MD-09/QZ-14 đã có từ BU-00, chỉ hồi quy. Không đổi schema. Không sửa `src/` ngoài phạm vi phiếu.
+- **Test đã chạy, xanh:** `t-giao-trinh-lib` 170, `t-file-sniff-lib` 52, `t-media-link-lib` 245, `t-tutor-routes-lib` 70; `tsc` sạch (trừ lỗi `ts-fsrs` có sẵn).
+- **CHƯA CHẠY (cần Postgres + Next, COO chạy tuần tự; không tính là xanh):** `t-giao-trinh`, `t-media-api` (đặt `KIN_VIDEO_MAX_MB=1`), `t-media-security`, `ui-giao-trinh`, `ui-thu-vien-gia-su`. Chưa chạy thử trên trình duyệt.
+- **Lỗi có sẵn:** `tsc` thiếu `ts-fsrs` (node_modules).
+- **Giới hạn còn lại / nợ:** Figma chưa đối chiếu; Cloudinary thật chưa thử; tab Chương bài cũ vẫn upload không ký (BU-08); P3: PUT upload dùng `MANAGE_CURRICULUM`, MIME họ chặt oan, không huỷ khi init, `content-length` Cloudinary, html không bị cấm; gộp `ExamFile` sang BU-03.
+- **Việc của Thọ:** duyệt chi phí Cloudinary để bật `KIN_VIDEO_UPLOAD` (mặc định video là link); thử tay 1 tệp thật; COO chạy 5 bài chưa chạy rồi mới merge, sau BU-01 (#103).
+
 ## BU-01 (Bigupdate 02/11/2026) — Lớp: joinPolicy, lớp miễn phí, mã mời cá nhân, duyệt vào lớp — LÀM XONG PHẦN MÃ, chờ chạy test tuần tự
 Nhánh `claude/bu-01-lop`, HEAD `446057a`. PR chưa mở. Backlog: `backlog/bigupdate.csv` dòng BU-01.
 - **Vì sao:** lớp chưa có chính sách vào lớp rõ ràng; gia sư cần lớp miễn phí tự vào, lớp duyệt từng người, lớp chỉ vào bằng mã (mã gắn đúng một người).
