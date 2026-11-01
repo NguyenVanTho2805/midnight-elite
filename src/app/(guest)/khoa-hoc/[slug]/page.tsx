@@ -8,6 +8,8 @@ import { useProgress } from "@/hooks/useProgress";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import TeacherTag from "@/components/TeacherTag";
 import { KinLoader } from "@/components/kin/KinLoader";
+import { kinButtonClass } from "@/components/kin/buttonClass";
+import { KinCallout } from "@/components/kin/Callout";
 
 interface DBLesson { id: string; title: string; duration?: string | null; isFree: boolean }
 interface DBChapter { id: string; title: string; lessons: DBLesson[] }
@@ -17,6 +19,9 @@ interface DBCourse {
   teacherAvatar?: string | null;
   lessons: number; hours: number; price: number; originalPrice?: number | null;
   openDate?: string | null;
+  /** BU-01: cách vào lớp hiệu lực ("invite_only" | "open" | "approve"; null/vắng = chỉ mã mời) và nhãn Miễn phí do máy chủ tính (isFreeClass). */
+  joinPolicy?: string | null;
+  isFree?: boolean;
   introVideo?: string | null;
   sections: DBSection[];
 }
@@ -178,6 +183,13 @@ export default function KhoaHocDetailPage() {
   const [loaded, setLoaded]             = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set());
+  // BU-01: ?join=dong|day do POST /api/courses/<id>/join gửi về. Đọc ở effect để HTML máy chủ và lần render đầu của client khớp nhau.
+  const [joinNote, setJoinNote] = useState<string | null>(null);
+  useEffect(() => {
+    const j = new URLSearchParams(window.location.search).get("join");
+    const text = j === "dong" ? "Lớp đang đóng, chưa nhận thêm học sinh." : j === "day" ? "Lớp đã đầy, chưa nhận thêm học sinh." : null;
+    if (text) Promise.resolve().then(() => setJoinNote(text));
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -226,6 +238,10 @@ export default function KhoaHocDetailPage() {
 
   const discount = course.originalPrice ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
   const isEnrolled = !enrollmentsLoading && enrolledIds.has(course.id);
+  // BU-01: nút vào lớp chỉ cho khách và học sinh; gia sư/quản trị và người nộp đơn gia sư không thấy.
+  const canJoin = !user || (user.role === "student" && user.tutorPending !== true);
+  const policy = course.joinPolicy === "open" || course.joinPolicy === "approve" ? course.joinPolicy : "invite_only";
+  const free = course.isFree === true;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto">
@@ -419,7 +435,7 @@ export default function KhoaHocDetailPage() {
             {/* Price */}
             <div className="mb-5">
               <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-3xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{course.price.toLocaleString("vi-VN")}đ</span>
+                <span className="text-3xl font-extrabold" style={{ color: "var(--kin-nhan-link)" }}>{free ? "Miễn phí" : `${course.price.toLocaleString("vi-VN")}đ`}</span>
                 {discount > 0 && (
                   <span className="px-2 py-0.5 rounded-lg text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>-{discount}%</span>
                 )}
@@ -437,6 +453,19 @@ export default function KhoaHocDetailPage() {
                 </Link>
               ) : (
                 <>
+                  {joinNote && <div role="alert" data-join-note><KinCallout title={joinNote} /></div>}
+                  {canJoin && policy !== "invite_only" && (
+                    <form method="post" action={`/api/courses/${encodeURIComponent(course.id)}/join`} data-join-form={policy}>
+                      <button type="submit" className={`${kinButtonClass("primary", "lg")} w-full`}>{policy === "open" ? "Vào lớp miễn phí" : "Xin vào lớp"}</button>
+                      {policy === "approve" && <p className="mt-2 text-center text-xs" style={{ color: "var(--kin-chu-mo)" }}>Gia sư duyệt trước khi vào lớp</p>}
+                    </form>
+                  )}
+                  {canJoin && policy === "invite_only" && (
+                    <p data-join-invite-only className="text-sm text-center" style={{ color: "var(--kin-chu-mo)" }}>
+                      Lớp này vào bằng mã gia sư gửi.{" "}
+                      <Link href="/student/nhap-ma-lop" className="inline-flex items-center min-h-11 underline" style={{ color: "var(--kin-nhan-link)" }}>Nhập mã lớp</Link>
+                    </p>
+                  )}
                   <a href="tel:0384409051"
                     className="block w-full py-3 rounded-xl text-sm font-bold text-center text-white"
                     style={{ background: "var(--kin-nhan-nen)", borderRadius: "8px" }}>
