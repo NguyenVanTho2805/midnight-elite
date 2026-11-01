@@ -4,15 +4,15 @@
 /**
  * `true` khi phòng thi (BU-04, stu-code) đã định tuyến học sinh vào đúng mã đề (`pickVariantFor`), gộp lượt/điểm theo nhóm mã đề
  * và ẩn hàng `variantOfId != null` khỏi danh sách (yêu cầu D2). Cho tới lúc đó: đề N>1 mã bị chặn phát hành (422 VARIANTS_NOT_READY).
- * BU-04 xong thì đổi đúng dòng này thành `true`.
+ * BU-04 xong (02/11/2026): ĐÃ đổi thành `true` — start định tuyến mã (examVariantRoute.pickMember), đếm lượt/điểm theo nhóm, GET /api/exams ẩn mã con.
  */
-export const VARIANT_STUDENT_SUPPORT = false;
+export const VARIANT_STUDENT_SUPPORT = true;
 
 /**
- * `true` khi đối tượng "giao theo link" (đề không gắn lớp) không còn lọt vào danh sách công khai của học sinh (D2). Đổi `true` một dòng khi BU-04 xong.
+ * `true` khi đối tượng "giao theo link" (đề không gắn lớp) không còn lọt vào danh sách công khai của học sinh (D2). BU-04 xong (02/11/2026): ĐÃ đổi `true` — GET /api/exams ẩn đề giao-theo-link (examVariantRoute.isListedToStudent); học sinh vào bằng đường dẫn.
  * Hiện publish vẫn bắt buộc có lớp nên cờ này chưa chặn thêm gì; P3 (giao theo link) dùng nó.
  */
-export const AUDIENCE_LINK_READY = false;
+export const AUDIENCE_LINK_READY = true;
 
 // ── P3 · Giao đề (mục P3.2 / P3.3 của đặc tả). THUẦN: không prisma, không next. Phần ghi DB ở deThiAssignServer.ts. ──────────────
 import { isValidDateKey, parseHm } from "@/lib/classSessions";
