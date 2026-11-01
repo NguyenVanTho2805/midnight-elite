@@ -91,9 +91,9 @@ export default async function HomePage() {
             <div className="w-full lg:w-[480px] lg:flex-shrink-0 flex flex-col gap-4">
               <p className="text-[length:var(--kin-co-caption)] font-semibold tracking-[0.09em] text-white/65">ĐANG MỞ LUYỆN THI</p>
               <div className="grid grid-cols-2 gap-[10px]">
-                {c.exams.map((e) => (
+                {c.exams.map((e, i) => (
                   <ContentLink
-                    key={e.label}
+                    key={`${i}-${e.label}`}
                     href={e.href}
                     className="flex flex-col gap-[3px] rounded-[var(--kin-bo-xl)] border border-white/10 bg-white/[0.08] p-[14px] transition-colors hover:bg-white/[0.14]"
                   >
@@ -127,10 +127,10 @@ export default async function HomePage() {
             </div>
             {/* 4 thẻ trở xuống: 4 cột ở lg; 5-6 thẻ: 3 cột để hàng cuối không mồ côi. */}
             <div className={`grid grid-cols-1 sm:grid-cols-2 gap-[14px] ${c.why.cards.length > 4 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
-              {c.why.cards.map(({ icon, title, desc }) => {
+              {c.why.cards.map(({ icon, title, desc }, i) => {
                 const Icon = ICONS[icon];
                 return (
-                <article key={title} className="flex flex-col gap-[14px] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] p-[22px]">
+                <article key={`${i}-${title}`} className="flex flex-col gap-[14px] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] p-[22px]">
                   <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[var(--kin-bo-lg)] bg-[var(--kin-nen-nhan)] text-[var(--kin-nhan-link)]" aria-hidden="true">
                     <Icon size={20} />
                   </span>
