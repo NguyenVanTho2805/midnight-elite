@@ -1,4 +1,5 @@
 // A5 (BU-02) — chủ tệp xoá một tệp tài liệu CHƯA DÙNG. Còn bài nào tham chiếu `/api/media/<mã>/file` ⇒ 409 (trạng thái không đổi). Người khác 403. Xoá cả tệp lưu (best-effort).
+import { documentFileIds } from "@/lib/lessonMediaServer";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTutorOnly } from "@/lib/tutorGateServer";
@@ -18,7 +19,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!asset || asset.kind !== "document") return err("Không tìm thấy tệp.", 404);
   if (asset.ownerId !== auth.userId) return err("Tệp này không phải của bạn.", 403);
 
-  const using = await prisma.lesson.count({ where: { documents: { contains: kinFileLink(id) } } });
+  const usedIn = await prisma.lesson.findMany({ where: { documents: { contains: kinFileLink(id) } }, select: { documents: true } });
+  const using = usedIn.filter((l) => documentFileIds(l.documents).includes(id)).length;
   if (using > 0) return err(`Đang dùng ở ${using} bài`, 409);
 
   if (asset.driver === "cloudinary") { const env = cloudinaryEnv(); if (env && asset.storageKey) await cloudinaryDestroy(env, asset.storageKey, "raw"); }

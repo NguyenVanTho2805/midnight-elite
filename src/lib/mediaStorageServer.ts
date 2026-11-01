@@ -115,7 +115,7 @@ export const cloudinaryDocPublicId = (courseId: string, assetId: string, ext: st
 
 /** Chỉ dẫn tải TÀI LIỆU lên Cloudinary: resource_type=raw, type=authenticated (KHÔNG có địa chỉ công khai, khác preset không ký của trang quản trị cũ). Có ký, nên máy chủ KiN quyết public_id. */
 export function cloudinaryDocUploadInit(env: CloudinaryEnv, publicId: string, nowSeconds = Math.floor(Date.now() / 1000)) {
-  const params = { public_id: publicId, timestamp: String(nowSeconds), type: "authenticated" };
+  const params = { overwrite: "false", public_id: publicId, timestamp: String(nowSeconds), type: "authenticated" }; // overwrite=false: chữ ký dùng lại không ghi đè tệp đã kiểm
   return {
     method: "POST" as const,
     url: `https://api.cloudinary.com/v1_1/${env.cloud}/raw/upload`,

@@ -2,6 +2,7 @@
 // Được xem: chủ tệp; quản trị cấp 1 / nội dung; gia sư CHỦ LỚP của một bài đang tham chiếu tệp; học viên "active" / "suspended" của lớp có bài tham chiếu; bài `isFree` (vẫn phải đăng nhập).
 // "Bài tham chiếu" = Lesson.documents chứa `/api/media/<mã>/file` (gỡ tệp khỏi hết bài ⇒ học sinh không còn mở được). Chưa đăng nhập 401; không đủ quyền 403; mã lạ / chưa ready 404.
 // An toàn nội dung: Content-Type lấy từ BẢNG đuôi (không từ tệp), nosniff, CSP chặn mọi thứ (sandbox, trừ PDF vì trình xem PDF của Chrome không chạy trong sandbox), chỉ PDF/ảnh/văn bản mới `inline`.
+import { documentFileIds } from "@/lib/lessonMediaServer";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   let allowed = asset.ownerId === session.userId;
   if (!allowed) {
     const link = kinFileLink(id);
-    const select = { id: true, isFree: true, chapter: { select: { section: { select: { course: { select: { id: true, ownerId: true } } } } } } } as const;
+    const select = { id: true, isFree: true, documents: true, chapter: { select: { section: { select: { course: { select: { id: true, ownerId: true } } } } } } } as const;
     const mayWatch = async (l: { isFree: boolean; chapter: { section: { course: { id: string; ownerId: string | null } } } }): Promise<boolean> => {
       const course = l.chapter.section.course;
       const enr = session.role === "student"
@@ -39,11 +40,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const tried: string[] = [];
     if (asset.lessonId) {
       const first = await prisma.lesson.findFirst({ where: { id: asset.lessonId, documents: { contains: link } }, select });
-      if (first) { tried.push(first.id); allowed = await mayWatch(first); }
+      // Khớp chuỗi con chưa đủ: link ngoài có thể chứa đường dẫn này. Chỉ tính khi mã tệp nằm đúng trong danh sách tài liệu.
+      if (first && documentFileIds(first.documents).includes(id)) { tried.push(first.id); allowed = await mayWatch(first); }
     }
     if (!allowed) {
       const lessons = await prisma.lesson.findMany({ where: { documents: { contains: link }, ...(tried.length ? { id: { notIn: tried } } : {}) }, select, take: 20 });
-      for (const l of lessons) { if (await mayWatch(l)) { allowed = true; break; } }
+      for (const l of lessons) { if (documentFileIds(l.documents).includes(id) && await mayWatch(l)) { allowed = true; break; } }
     }
   }
   if (!allowed) return NextResponse.json({ error: "Tài liệu này dành cho học sinh của lớp" }, { status: 403, headers: base });

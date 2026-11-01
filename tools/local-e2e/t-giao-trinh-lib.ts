@@ -262,9 +262,9 @@ section("Cloudinary tài liệu — raw + authenticated, public_id do máy chủ
 const env = { cloud: "kin-demo", apiKey: "123", apiSecret: "s3cret" };
 check("public_id = kin-docs/<lớp đã làm sạch>/<mã>.<đuôi thường>", cloudinaryDocPublicId("lop/../x y", "ck1abc", "PDF") === "kin-docs/lop____x_y/ck1abc.pdf", cloudinaryDocPublicId("lop/../x y", "ck1abc", "PDF"));
 const init = cloudinaryDocUploadInit(env, "kin-docs/lop1/ck1abc.pdf", 1700000000);
-const expectSig = createHash("sha1").update("public_id=kin-docs/lop1/ck1abc.pdf&timestamp=1700000000&type=authenticated" + env.apiSecret).digest("hex");
+const expectSig = createHash("sha1").update("overwrite=false&public_id=kin-docs/lop1/ck1abc.pdf&timestamp=1700000000&type=authenticated" + env.apiSecret).digest("hex");
 check("POST tới /raw/upload (không phải /video), type=authenticated, KHÔNG có upload_preset (không ký)", init.method === "POST" && init.url === "https://api.cloudinary.com/v1_1/kin-demo/raw/upload" && init.fields.type === "authenticated" && !("upload_preset" in init.fields));
-check("chữ ký = sha1('public_id=…&timestamp=…&type=authenticated' + secret); có api_key, không lộ secret", init.fields.signature === expectSig && init.fields.api_key === "123" && !JSON.stringify(init).includes("s3cret"), init);
+check("chữ ký = sha1('overwrite=false&public_id=…&timestamp=…&type=authenticated' + secret); có api_key, không lộ secret", init.fields.signature === expectSig && init.fields.api_key === "123" && !JSON.stringify(init).includes("s3cret"), init);
 check("signCloudinaryParams bỏ file/api_key/resource_type và tham số rỗng", signCloudinaryParams({ a: "1", file: "x", api_key: "k", resource_type: "raw", empty: "" }, "S") === createHash("sha1").update("a=1" + "S").digest("hex"));
 const signed = cloudinarySignedRawUrl(env, "kin-docs/lop1/ck1abc.pdf");
 const sig8 = createHash("sha1").update("kin-docs/lop1/ck1abc.pdf" + env.apiSecret).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").slice(0, 8);
