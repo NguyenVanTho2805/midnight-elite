@@ -41,7 +41,7 @@ import { prisma } from "@/lib/prisma";
   section("Chọn chip → URL, tải lại giữ lọc");
   await pg.locator('[data-chip="ĐGNL HCM"]').click();
   await pg.waitForURL(/[?&]category=/, { timeout: 15000 });
-  check("URL có category= (tên, không phải id số)", decodeURIComponent(pg.url()).includes("category=ĐGNL HCM"), pg.url());
+  check("URL có category= (tên, không phải id số)", new URL(pg.url()).searchParams.get("category") === "ĐGNL HCM", pg.url());
   check("còn 2 thẻ HCM", (await pg.locator("[data-course-card]").count()) === 2);
   await pg.reload({ waitUntil: "networkidle" });
   check("tải lại vẫn 2 thẻ và chip bật", (await pg.locator("[data-course-card]").count()) === 2 && (await pg.locator('[data-chip="ĐGNL HCM"]').getAttribute("aria-pressed")) === "true");

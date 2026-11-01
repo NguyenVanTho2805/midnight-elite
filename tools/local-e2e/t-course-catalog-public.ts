@@ -19,14 +19,14 @@ import { prisma } from "@/lib/prisma";
   await prisma.courseCategory.upsert({ where: { name: "ĐGNL HCM" }, update: { sortOrder: 1 }, create: { name: "ĐGNL HCM", slug: "dgnl-hcm", sortOrder: 1 } });
   await prisma.courseCategory.upsert({ where: { name: "ĐGNL HSA" }, update: { sortOrder: 2 }, create: { name: "ĐGNL HSA", slug: "dgnl-hsa", sortOrder: 2 } });
 
-  const html = async (qs = "") => (await fetch(`${BASE}/khoa-hoc${qs}`)).text();
+  const html = async (qs = "") => (await (await fetch(`${BASE}/khoa-hoc${qs}`)).text()).replace(/<script[\s\S]*?<\/script>/g, "").replace(/<!-- -->/g, "");
 
   section("SEO: HTML thô đã có khoá");
   const all = await html();
   check("có tên 3 khoá công khai", ["Toán HSA mở", "Lý HSA đầy", "Hoá HCM đóng"].every(n => all.includes(n)));
   check("khoá ẩn KHÔNG xuất hiện", !all.includes("Khoá ẩn bí mật"));
   check("liên kết thật tới trang khoá", all.includes(`href="/khoa-hoc/${open.id}"`));
-  check("chỗ: 'Còn 4 chỗ' (chờ phụ huynh không chiếm chỗ), 'Đã đầy', 'Đã đóng nhận học viên'", all.includes("Còn 4 chỗ") && all.includes("Đã đầy") && all.includes("Đã đóng nhận học viên"));
+  check("chỗ: 'Chỉ còn 4 chỗ' (chờ phụ huynh không chiếm chỗ), 'Đã đầy', 'Đã đóng nhận học viên'", all.includes("Chỉ còn 4 chỗ") && all.includes("Đã đầy") && all.includes("Đã đóng nhận học viên"));
   check("giá 0 → 'Miễn phí'; có giá hiện 900.000", all.includes("Miễn phí") && /900\.000/.test(all));
 
   section("Lọc theo URL bằng TÊN danh mục");
