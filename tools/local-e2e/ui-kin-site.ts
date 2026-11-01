@@ -75,13 +75,18 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   const rc = ratio(await colorOf(ctaP), navy); check(`đoạn mô tả khung CTA: ${rc.toFixed(2)}:1`, rc >= 4.5, rc);
 
   section("Mục 'Học ở đây thì được gì?', CTA, chân trang");
-  // Cập nhật: trang chủ nay có thêm các mục dành cho gia sư (Việc giấy tờ, Cách hoạt động) cũng dùng h3, nên không còn đúng 4 h3 toàn trang.
-  // Giới hạn trong mục "Học ở đây thì được gì?" (h2 + khối kế tiếp); 4 thẻ giữ, chữ đổi theo STU-002; không bỏ ca nào.
+  // HOME-01: khối gia sư dạy thêm (Việc giấy tờ, Cách hoạt động, Câu hỏi) đã bỏ; khối "Tìm gia sư" mới không dùng article / h3.
+  // Vẫn giới hạn trong mục "Học ở đây thì được gì?" (h2 + khối kế tiếp); 4 thẻ giữ, chữ đổi theo STU-002; không bỏ ca nào.
   const whySection = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Học ở đây thì được gì?" }) }).first();
   const why = await whySection.getByRole("heading", { level: 3 }).allInnerTexts();
   check("4 thẻ lợi ích đúng chữ KiN", JSON.stringify(why) === JSON.stringify(["Vào lớp bằng mã mời", "Lịch học và buổi học", "Thi thử trong phòng thi", "Bài tập và hỏi đáp"]), why);
   const grid = await p.locator("article").first().boundingBox();
   check("thẻ lợi ích đầu tiên cách mép trái 260px (lưới 920px, Figma 152:6)", !!grid && Math.abs(grid.x - 260) <= 1, grid?.x);
+  const tutorSec = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Đang tìm gia sư?" }) }).first();
+  const tutorBtn = tutorSec.getByRole("link", { name: "Tìm gia sư", exact: true });
+  check("khối 'Tìm gia sư': nút → /giang-vien, cao ≥ 44px", (await tutorBtn.getAttribute("href")) === "/giang-vien" && ((await tutorBtn.boundingBox())?.height ?? 0) >= 44);
+  check("khối 'Tìm gia sư': không có article / h3 bên trong", await tutorSec.locator("article, h3").count() === 0);
+  check("khối 'Tìm gia sư': liên kết 'Đăng ký gia sư' → /dang-ky?vai=gia-su cao ≥ 44px", (await tutorSec.getByRole("link", { name: "Đăng ký gia sư" }).getAttribute("href")) === "/dang-ky?vai=gia-su" && ((await tutorSec.getByRole("link", { name: "Đăng ký gia sư" }).boundingBox())?.height ?? 0) >= 44);
   check("khung CTA 760px: nút Tạo tài khoản → /dang-ky", (await p.getByRole("link", { name: /Tạo tài khoản miễn phí/ }).getAttribute("href")) === "/dang-ky");
   const foot = p.locator("footer");
   const footLinks = await foot.getByRole("link").evaluateAll(els => els.map(e => [e.textContent?.trim(), e.getAttribute("href")]));
