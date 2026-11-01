@@ -22,6 +22,7 @@ import { MathText } from "@/components/MathText";
 import { AiQuotaNote } from "@/components/AiQuotaNote";
 import { api } from "@/lib/api";
 import { duplicateGroups, fmtPoints, QUIZ_TYPE_LABEL, validateQuizQuestion, type QuizQuestionInput } from "@/lib/quizQuestion";
+import { nhapWordHref } from "@/components/tutor/de-thi/deThiClient";
 import QuestionForm from "./QuestionForm";
 import { answerText } from "./QuizEditor";
 import { fileProblem, IMPORT_ACCEPT, qfetch, quizHref, sizeText, type QuizQ } from "./quizClient";
@@ -221,6 +222,12 @@ export default function QuizImport() {
                 </label>
               </div>
               {fileErr && <p role="alert" className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{fileErr}</p>}
+            </section>
+
+            <section aria-labelledby="qi-word" className="rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] p-5">
+              <h2 id="qi-word" className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">Word theo mẫu Azota — không dùng AI</h2>
+              <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Đề Word đã soạn đúng mẫu Azota (Câu 1., A. B. C. D., đáp án gạch chân hoặc bảng đáp án cuối đề): KiN đọc trực tiếp, không tốn lượt AI, rồi cô xem lại và lưu vào ngân hàng câu hỏi.</p>
+              <div className="mt-4"><Link href={nhapWordHref()} className={kinButtonClass("secondary")}>Nhập Word vào ngân hàng</Link></div>
             </section>
 
             <section aria-labelledby="qi-sheet" className="rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] p-5">

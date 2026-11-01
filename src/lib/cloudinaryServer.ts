@@ -60,3 +60,30 @@ export async function uploadRawFileToCloudinary(
   const data = await res.json();
   return data.secure_url as string;
 }
+
+// BU-03 D3 — upload ảnh với content-type THẬT (png/jpg/gif/webp). Thêm mới; `uploadBufferToCloudinary` ở trên giữ nguyên (cứng image/png).
+// Dùng cho hình lấy ra từ tệp Word (nhập Word Azota). Trả secure_url.
+export async function uploadImageBufferToCloudinary(
+  buffer: Buffer, filename: string, mimeType: string, folder = "de-thi-word"
+): Promise<string> {
+  if (!cloudinaryServerConfigured) throw new Error("Cloudinary chưa được cấu hình");
+  if (!/^image\/(png|jpe?g|gif|webp)$/i.test(mimeType)) throw new Error("Chỉ nhận ảnh png, jpg, gif hoặc webp");
+
+  const formData = new FormData();
+  formData.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }), filename);
+  formData.append("upload_preset", UPLOAD_PRESET!);
+  formData.append("folder", folder);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: { message?: string } }).error?.message ?? "Upload ảnh thất bại");
+  }
+
+  const data = await res.json();
+  return data.secure_url as string;
+}

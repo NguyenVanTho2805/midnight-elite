@@ -16,6 +16,15 @@ const PAIRS: [admin: string, tutor: string][] = [
   ["/admin/thi-thu/ngan-hang-cau-hoi/bank1", "/lop-cua-toi/de-thi/ngan-hang-cau-hoi/bank1"],
   ["/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-cau-hoi/cau-hoi"],
   ["/admin/thi-thu/ngan-hang-de-thi", "/lop-cua-toi/de-thi/ngan-hang-de-thi"],
+  // BU-03: đuôi mới
+  ["/admin/thi-thu/ma-tran", "/lop-cua-toi/de-thi/ma-tran"],
+  ["/admin/thi-thu/ma-tran/m1", "/lop-cua-toi/de-thi/ma-tran/m1"],
+  ["/admin/thi-thu/ngan-hang-cau-hoi/nhap-word", "/lop-cua-toi/de-thi/ngan-hang-cau-hoi/nhap-word"],
+  ["/admin/thi-thu/abc/phien-ban", "/lop-cua-toi/de-thi/abc/phien-ban"],
+  ["/admin/thi-thu/abc/giao", "/lop-cua-toi/de-thi/abc/giao"],
+  ["/admin/thi-thu/abc/ket-qua", "/lop-cua-toi/de-thi/abc/ket-qua"],
+  ["/admin/thi-thu/abc/ma-de", "/lop-cua-toi/de-thi/abc/ma-de"],
+  ["/admin/thi-thu/abc/cham", "/lop-cua-toi/de-thi/abc/cham"],
   ["/admin/khoa-hoc", "/lop-cua-toi/quan-lop"],
   ["/admin/khoa-hoc/tao-moi", "/lop-cua-toi/quan-lop/tao-moi"],
   ["/admin/khoa-hoc/toan-9", "/lop-cua-toi/quan-lop/toan-9"],
@@ -44,6 +53,8 @@ check("/admin/khoa-hoc/danh-muc?x=1 → vẫn null (query không cứu được)
 for (const p of ["/admin", "/admin/kiem-duyet", "/admin/hoc-sinh", "/admin/doanh-thu", "/admin/tin-tuc", "/admin/thi-thuxyz", "/admin/khoa-hocabc", "/administrator"])
   check(`${p} → null`, toTutorPath(p) === null, toTutorPath(p));
 check("đuôi lạ → null: /admin/khoa-hoc/a/b, /admin/khoa-hoc/a/diem-danh/x, /admin/thi-thu/a/b, /admin/thi-thu/ngan-hang-cau-hoi/a/b", ["/admin/khoa-hoc/a/b", "/admin/khoa-hoc/a/diem-danh/x", "/admin/thi-thu/a/b", "/admin/thi-thu/ngan-hang-cau-hoi/a/b"].every(p => toTutorPath(p) === null));
+check("BU-03: đuôi lạ vẫn null (/ma-tran/a/b, /abc/giao/x, /abc/khong-co)", ["/admin/thi-thu/ma-tran/a/b", "/admin/thi-thu/abc/giao/x", "/admin/thi-thu/abc/khong-co"].every(p => toTutorPath(p) === null));
+check("BU-03: khai báo đuôi cố định không bị nuốt làm :id (/admin/thi-thu/ma-tran → ma-tran, không phải đề tên ma-tran)", toTutorPath("/admin/thi-thu/ma-tran?x=1") === "/lop-cua-toi/de-thi/ma-tran?x=1");
 check("dấu '/' thừa → null: /admin/thi-thu/, /admin/khoa-hoc//a", toTutorPath("/admin/thi-thu/") === null && toTutorPath("/admin/khoa-hoc//a") === null);
 check("toAdminPath với đường không thuộc hai họ → null: /lop-cua-toi, /lop-cua-toi/lich, /lop-cua-toi/de-thixyz, /student/x", ["/lop-cua-toi", "/lop-cua-toi/lich", "/lop-cua-toi/de-thixyz", "/student/x", "/admin/thi-thu"].every(p => toAdminPath(p) === null));
 check("toAdminPath không nhận đường ngoài mẫu: /lop-cua-toi/quan-lop/danh-muc → null", toAdminPath("/lop-cua-toi/quan-lop/danh-muc") === null);

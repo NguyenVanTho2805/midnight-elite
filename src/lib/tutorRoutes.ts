@@ -11,7 +11,9 @@
 interface Family { admin: string; tutor: string; tails: readonly string[]; banned: readonly string[] }
 const FAMILIES: readonly Family[] = [
   { admin: "/admin/thi-thu", tutor: "/lop-cua-toi/de-thi",
-    tails: ["", ":id", "tao-moi", "ngan-hang-cau-hoi", "ngan-hang-cau-hoi/:id", "ngan-hang-cau-hoi/cau-hoi", "ngan-hang-de-thi"], banned: [] },
+    tails: ["", ":id", "tao-moi", "ngan-hang-cau-hoi", "ngan-hang-cau-hoi/:id", "ngan-hang-cau-hoi/cau-hoi", "ngan-hang-de-thi",
+      // BU-03 (02/11/2026) — đuôi mới của luồng đề thi gia sư (chỉ thêm).
+      "ma-tran", "ma-tran/:id", "ngan-hang-cau-hoi/nhap-word", ":id/phien-ban", ":id/giao", ":id/ket-qua", ":id/ma-de", ":id/cham"], banned: [] },
   { admin: "/admin/khoa-hoc", tutor: "/lop-cua-toi/quan-lop",
     tails: ["", ":id", "tao-moi", ":id/hoc-vien", ":id/diem-danh", ":id/diem-danh/in"], banned: ["danh-muc"] },
 ];
