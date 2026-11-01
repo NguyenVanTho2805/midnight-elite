@@ -196,7 +196,9 @@ async function main() {
   check("đã xếp lớp", t.json.profile.placementDone === true);
 
   section("dọn dẹp + cron");
-  check("cron VOA không có nguồn → 0 bài, không lỗi", (await api("GET", "/api/cron/english-voa")).json.added === 0);
+  // 01/11/2026: mọi /api/cron/* bắt buộc `Authorization: Bearer CRON_SECRET` (xem README, env.example.sh). Bản cũ gọi không khoá → 401 nên `.added` là undefined và ca này đỏ sẵn.
+  check("cron VOA không kèm khoá → 401 (không ai gọi được tuỳ ý)", (await api("GET", "/api/cron/english-voa")).status === 401);
+  check("cron VOA không có nguồn → 0 bài, không lỗi", (await api("GET", "/api/cron/english-voa", { headers: { authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` } })).json?.added === 0);
   check("xoá bài thi thử", (await api("DELETE", `/api/english/mock/${mockId}`, { as: a })).status === 200 && !(await prisma.engMock.findUnique({ where: { id: mockId } })));
   check("người khác không xoá được sách", (await api("DELETE", `/api/english/books/${bookId}`, { as: b })).status === 404);
   check("xoá sách → xoá cả unit, trang, đoạn, bài tập", (await api("DELETE", `/api/english/books/${bookId}`, { as: a })).status === 200

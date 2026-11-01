@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { requireUser, isResp, bad } from "@/lib/english/server";
+import { requireUser, isResp, bad, retryOnUnique } from "@/lib/english/server";
 import { lemmatize, listEntry, freqRank } from "@/lib/english/lexicon";
 import { lookupInContext } from "@/lib/english/ai";
 import { rateLimit } from "@/lib/rate-limit";
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const r = await lookupInContext(word, sentence || word);
     const meaningVi = (r.meaningVi ?? "").slice(0, 200);
     const note = r.note?.slice(0, 300) || null;
-    if (meaningVi) await prisma.engLookup.upsert({ where: { key }, create: { key, lemma, meaningVi, note }, update: {} });
+    if (meaningVi) await retryOnUnique(() => prisma.engLookup.upsert({ where: { key }, create: { key, lemma, meaningVi, note }, update: {} }));
     return NextResponse.json({ lemma, meaningVi, note, dict, list: listEntry(lemma)?.list ?? null, freqRank: freqRank(lemma) ?? null, cached: false });
   } catch (e) {
     console.error("[english.lookup]", e);
