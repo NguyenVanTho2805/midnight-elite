@@ -1,11 +1,12 @@
 // FE-138 — danh sách hồ sơ gia sư để quản lý trung tâm duyệt / từ chối.
 // API đã có từ 1.4.4: GET /api/admin/tutor-applications?status=…,
 // POST …/[userId]/approve, POST …/[userId]/reject { reason }.
-// Dùng ở /admin/ho-so-gia-su và tab "Hồ sơ gia sư" trong /admin/quan-tri-vien.
+// Dùng ở tab "Hồ sơ gia sư" trong /admin/quan-tri-vien. BU-08: `readOnly` ẩn Duyệt/Từ chối (việc duyệt ở Hàng chờ), đơn đang chờ có liên kết "Mở trong Hàng chờ".
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui";
-import { KinButton, KinCallout, KinConfirm, KinEmptyState, KinSkeleton, KinStateCard, KinStatus, KinTabs } from "@/components/kin";
+import Link from "next/link";
+import { KinButton, kinButtonClass, KinCallout, KinConfirm, KinEmptyState, KinSkeleton, KinStateCard, KinStatus, KinTabs } from "@/components/kin";
 
 type Status = "pending" | "approved" | "rejected";
 
@@ -37,9 +38,9 @@ function fmt(d: string | null): string {
   return d ? new Date(d).toLocaleString("vi-VN") : "—";
 }
 
-export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCount?: (n: number) => void }) {
+export default function TutorApplicationsPanel({ onPendingCount, readOnly = false }: { onPendingCount?: (n: number) => void; readOnly?: boolean }) {
   const toast = useToast();
-  const [status, setStatus]     = useState<Status>("pending");
+  const [status, setStatus]     = useState<Status>(readOnly ? "approved" : "pending");
   const [items, setItems]       = useState<Application[]>([]);
   const [loading, setLoading]   = useState(true);
   const [failed, setFailed]     = useState(false);
@@ -184,7 +185,12 @@ export default function TutorApplicationsPanel({ onPendingCount }: { onPendingCo
                   <KinCallout className="mt-3">Lý do: {a.tutorRejectReason}</KinCallout>
                 )}
 
-                {status === "pending" && (
+                {status === "pending" && readOnly && (
+                  <div className="mt-4">
+                    <Link href="/admin/kiem-duyet?loai=gia-su" className={kinButtonClass("secondary")}>Mở trong Hàng chờ</Link>
+                  </div>
+                )}
+                {status === "pending" && !readOnly && (
                   <div className="mt-4 flex items-center gap-3 flex-wrap">
                     <KinButton onClick={() => approve(a)} disabled={busy || !a.emailVerified} loading={busy} loadingLabel="Đang xử lý…"
                       title={a.emailVerified ? undefined : "Người nộp đơn chưa xác thực email nên chưa thể duyệt"}>Duyệt</KinButton>

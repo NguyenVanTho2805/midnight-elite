@@ -19,7 +19,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   check("không cookie → 401", (await api("GET", "/api/admin/trien-khai")).status === 401);
   check("quản trị nội dung → 403; gia sư → 403; học sinh → 403", (await api("GET", "/api/admin/trien-khai", { as: CA })).status === 403 && (await api("GET", "/api/admin/trien-khai", { as: T })).status === 403 && (await api("GET", "/api/admin/trien-khai", { as: kid })).status === 403);
   let r = await api("GET", "/api/admin/trien-khai", { as: SA });
-  check("cấp 1 → 200, có cờ, cron, hạn mức, số đo", r.status === 200 && r.json.flags.length === 4 && r.json.crons.length === 4 && r.json.limits.free.studentLimit > 0 && typeof r.json.measure.tutors === "number", r.json);
+  check("cấp 1 → 200, có cờ, cron, hạn mức, số đo", r.status === 200 && r.json.flags.length === 5 && r.json.crons.length === 5 && r.json.crons.some((c: any) => c.key === "article-publish") && r.json.flags.some((f: any) => f.key === "KIN_GUEST_QUESTIONS") && r.json.limits.free.studentLimit > 0 && typeof r.json.measure.tutors === "number", r.json);
   check("KHÔNG lộ giá trị CRON_SECRET / DATABASE_URL / SESSION_SECRET / VAPID_PRIVATE_KEY", ![SECRET, process.env.DATABASE_URL, process.env.SESSION_SECRET, process.env.VAPID_PRIVATE_KEY].some(v => v && r.text.includes(v)));
   const fl = (k: string) => r.json.flags.find((f: any) => f.key === k);
   check("CRON_SECRET hiện 'Đã đặt' (máy chủ thử có đặt), chỉ là chữ", fl("CRON_SECRET").on === true && fl("CRON_SECRET").state === "Đã đặt");
@@ -27,7 +27,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   check("số đo khớp dữ liệu: 1 gia sư", r.json.measure.tutors === 1, r.json.measure);
 
   section("Lần gọi cron gần nhất");
-  check("trước khi gọi: cả bốn 'Chưa ghi nhận'", r.json.crons.every((c: any) => c.status === "Chưa ghi nhận"));
+  check("trước khi gọi: cả năm tác vụ (kể cả article-publish) 'Chưa ghi nhận'", r.json.crons.every((c: any) => c.status === "Chưa ghi nhận"));
   const bad = await fetch(`${BASE}/api/cron/remind-exam`);
   check("gọi KHÔNG khoá → 401 và KHÔNG được ghi nhận", bad.status === 401 && (await api("GET", "/api/admin/trien-khai", { as: SA })).json.crons.find((c: any) => c.key === "remind-exam").status === "Chưa ghi nhận");
   const wrong = await fetch(`${BASE}/api/cron/remind-exam`, { headers: { authorization: "Bearer sai-khoa" } });
@@ -40,6 +40,10 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   check("khoá lưu trong SettingKV là ISO (không phải chữ rác)", !Number.isNaN(new Date((await prisma.settingKV.findUnique({ where: { key: "cron.remind-exam.lastCall" } }))!.value).getTime()));
   await prisma.settingKV.update({ where: { key: "cron.remind-exam.lastCall" }, data: { value: new Date(Date.now() - 4 * 86_400_000).toISOString() } });
   check("lần gọi cũ 4 ngày → 'Chậm so với lịch'", (await api("GET", "/api/admin/trien-khai", { as: SA })).json.crons.find((c: any) => c.key === "remind-exam").status === "Chậm so với lịch");
+  // adm-test 02/11: cron chậm nay hiện ở Hôm nay (nhóm he-thong, chỉ ai có MANAGE_REVENUE) — kiểm rồi đặt lại "vừa gọi" để các ca đếm việc chờ bên dưới sạch.
+  const hnLate = await api("GET", "/api/admin/hom-nay", { as: SA }), hnLateCA = await api("GET", "/api/admin/hom-nay", { as: CA });
+  check("cron chậm → Hôm nay (cấp 1) có 'cron-cham' đếm 1 ở nhóm he-thong; quản trị nội dung KHÔNG thấy", hnLate.json.items.some((i: any) => i.key === "cron-cham" && i.count === 1 && i.group === "he-thong") && !hnLateCA.json.items.some((i: any) => i.key === "cron-cham"), [hnLate.json.items, hnLateCA.json.items]);
+  await prisma.settingKV.update({ where: { key: "cron.remind-exam.lastCall" }, data: { value: new Date().toISOString() } });
 
   section("Nhật ký: quyền, không lộ tên trẻ, lọc, phân trang");
   check("không cookie → 401; quản trị nội dung 403; gia sư 403", (await api("GET", "/api/admin/nhat-ky")).status === 401 && (await api("GET", "/api/admin/nhat-ky", { as: CA })).status === 403 && (await api("GET", "/api/admin/nhat-ky", { as: T })).status === 403);
@@ -83,7 +87,9 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   const hc = await api("GET", "/api/admin/hom-nay", { as: CA });
   check("quản trị nội dung: thấy gia sư + hỗ trợ (MANAGE_TUTORS) nhưng KHÔNG thấy nạp Coin (MANAGE_REVENUE)", hc.json.items.map((i: any) => i.key).sort().join() === "gia-su,ho-tro", hc.json);
   const ht = await api("GET", "/api/admin/hom-nay", { as: T });
-  check("gia sư: không thấy hồ sơ gia sư, nạp Coin, hỗ trợ", ht.status === 200 && ht.json.items.length === 0, ht.json);
+  check("gia sư: 403 (BU-08: gia sư KHÔNG BAO GIỜ vào Hôm nay của quản trị)", ht.status === 403, ht.status);
+  check("BU-08: phản hồi có `groups` (duyet) và `stats` chỉ là số đếm; mọi href hàng chờ dẫn /admin/kiem-duyet?loai=…", Array.isArray(hn.json.groups) && hn.json.groups[0]?.key === "duyet" && hn.json.items.filter((i: any) => ["gia-su", "nap-coin"].includes(i.key)).every((i: any) => i.href === `/admin/kiem-duyet?loai=${i.key}`) && ["students", "openClasses", "tutors"].every(k => k in hn.json.stats));
+  check("BU-08: quản trị nội dung không có thống kê học sinh (null) — MANAGE_STUDENTS chỉ cấp 1", hn.json.stats.students !== null && hc.json.stats.students === null, hc.json.stats);
   check("phản hồi chỉ có số đếm, không có tên người", !/Gia sư xin duyệt|Nguyễn|@test\.local/.test(hn.text));
 
   section("Nhắc hàng loạt CHỈ theo lớp");

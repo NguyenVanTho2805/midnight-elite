@@ -1,12 +1,13 @@
-// QT-04 — "Hôm nay cần làm gì": số việc đang chờ theo QUYỀN của người xem. Chỉ đếm, không trả tên người.
+// QT-04 / BU-08 — "Hôm nay cần làm gì": số việc đang chờ theo QUYỀN của người xem, chia nhóm (duyet · theo-doi · he-thong) kèm vài chỉ số ĐẾM.
+// Chỉ đếm: không tên người, không số điện thoại, không tổng tiền. Gia sư (teacher) → 403.
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { requireCenterAdmin } from "@/lib/tutorApplicationGuard";
+import { isNextResponse } from "@/lib/auth-guard";
 import { loadTodayList } from "@/lib/adminOpsServer";
 
 export async function GET() {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
-  if (session.role !== "admin") return NextResponse.json({ error: "Không có quyền admin" }, { status: 403 });
+  const session = await requireCenterAdmin();
+  if (isNextResponse(session)) return session;
   try {
     return NextResponse.json(await loadTodayList(session, new Date()), { headers: { "Cache-Control": "no-store" } });
   } catch (e) {

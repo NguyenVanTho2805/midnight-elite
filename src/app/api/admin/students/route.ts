@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { NOT_SYSTEM_ACCOUNT } from "@/lib/adminSystemAccounts"; // BU-08: tài khoản hệ thống (khách hỏi) không phải học sinh
 import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/gpa";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { signupBonusOps } from "@/lib/wallet";
@@ -21,9 +22,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const [total, users] = await Promise.all([
-      paginate ? prisma.user.count({ where: { role: "student" } }) : Promise.resolve(0),
+      paginate ? prisma.user.count({ where: { role: "student", ...NOT_SYSTEM_ACCOUNT } }) : Promise.resolve(0),
       prisma.user.findMany({
-      where: { role: "student" },
+      where: { role: "student", ...NOT_SYSTEM_ACCOUNT },
       select: {
         id: true, name: true, email: true, phone: true, school: true, createdAt: true, banned: true,
         enrollments: {

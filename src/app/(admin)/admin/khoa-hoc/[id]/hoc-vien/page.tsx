@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback, use as usePromise } from "react";
 import Link from "next/link";
 import { useContentHref } from "@/components/tutor/useContentHref";
+import RemindClass from "@/components/admin/RemindClass";
 
 type Student = {
   userId:       string;
@@ -69,6 +70,8 @@ export default function RosterPage({ params }: { params: Promise<{ id: string }>
             {total === 0 ? "Chưa có em nào ghi danh." : `${total} em trong lớp`}
           </p>
         </header>
+
+        <RemindClass courseId={courseId} recipients={total} />
 
         <div className="mb-4">
           <input

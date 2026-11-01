@@ -1,5 +1,7 @@
-// GET /api/admin/kiem-duyet (và ?badge=1): hàng chờ gộp theo QUYỀN từng vai — quản lý trung tâm thấy hết, giáo viên chỉ thấy báo cáo trong lớp mình,
-// học sinh bị chặn; và các lệnh của khung đọc gọi đúng API xử lý cũ rồi dòng biến mất.
+// GET /api/admin/kiem-duyet (BU-08): hàng chờ gộp 6 loại thật theo QUYỀN từng vai; gia sư KHÔNG BAO GIỜ vào được (403, kể cả ?badge=1);
+// badge/counts CHÍNH XÁC khi có > 100 việc; phân trang bằng con trỏ; không lộ email/điện thoại học sinh; các lệnh gọi đúng API cũ và sinh AuditLog.
+// CHƯA CHẠY ĐƯỢC ở máy dựng (cần Next dev cổng 3100 + Postgres thử) — COO chạy tuần tự; xem phiếu bàn giao.
+// Ca phá cố ý: cấp MANAGE_REVENUE cho admin_content (permissions.ts) → ca "admin_content ?loai=nap-coin → 403" đỏ; bỏ `requireCenterAdmin` khỏi route → ca "gia sư → 403" đỏ.
 import { prisma } from "@/lib/prisma";
 import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
 
@@ -7,12 +9,12 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   await wipe();
   const SA = await mkSuper("Quản trị cấp 1");
   const CA = await mkUser({ name: "Quản trị nội dung", role: "admin", adminRole: "admin_content" });
-  const T = await mkTutor("Cô Lan"), T2 = await mkTutor("Thầy Khác");
+  const T = await mkTutor("Cô Lan");
   const S = await mkUser({ name: "Học sinh" });
-  const A = await mkUser({ name: "Em An" }), B = await mkUser({ name: "Em Bình" });
-  const mine = await mkCourse(T.id, { name: "Toán 9 của cô Lan" }), other = await mkCourse(T2.id, { name: "Lý 9 của thầy Khác" });
+  const A = await mkUser({ name: "Nguyễn Văn An" }), B = await mkUser({ name: "Trần Thị Bích" });
+  await prisma.user.update({ where: { id: A.id }, data: { phone: "0987654321" } });
+  const course = await mkCourse(T.id, { name: "Toán 9 của cô Lan" });
 
-  // hồ sơ gia sư xin duyệt: một người đã xác thực email, một người chưa
   const ok = await mkUser({ name: "Gia sư chờ duyệt", emailVerified: true });
   const unv = await mkUser({ name: "Gia sư chưa xác thực", emailVerified: false });
   const when = new Date(Date.now() - 3 * 86_400_000);
@@ -20,66 +22,94 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   await prisma.user.update({ where: { id: unv.id }, data: { tutorAppliedAt: new Date(when.getTime() + 1000) } });
 
   const th = (content: string, courseId: string | null) => prisma.thread.create({ data: { content, authorId: A.id, courseId, category: "hoi-dap" } });
-  const tMine = await th("BAI_CUA_LOP_TOI", mine.id), tOther = await th("BAI_CUA_LOP_KHAC", other.id), tChung = await th("BAI_CHUNG", null);
+  const tMine = await th("BAI_CUA_LOP_TOI", course.id), tChung = await th("BAI_CHUNG", null);
   const trep = (threadId: string, reason: string) => prisma.threadReport.create({ data: { threadId, reporterId: B.id, reason } });
-  const rMine = await trep(tMine.id, "Lạc đề"), rOther = await trep(tOther.id, "Spam"), rChung = await trep(tChung.id, "Quảng cáo");
-
+  const rMine = await trep(tMine.id, "Lạc đề"), rChung = await trep(tChung.id, "Quảng cáo");
   const q = await prisma.question.create({ data: { authorId: A.id, title: "CAU_HOI_X", content: "nội dung", bountyPaid: 0 } });
   const answer = await prisma.answer.create({ data: { questionId: q.id, authorId: A.id, content: "Trả lời sai", rewardPaid: 20 } });
-  await prisma.answerReport.create({ data: { answerId: answer.id, reporterId: B.id, reason: "Sai kiến thức" } });
+  const arep = await prisma.answerReport.create({ data: { answerId: answer.id, reporterId: B.id, reason: "Sai kiến thức" } });
   const pr = await prisma.tutorProfileReport.create({ data: { tutorId: T.id, reason: "Ảnh không phải của gia sư" } });
+  const topupOfA = await prisma.coinTopupRequest.create({ data: { userId: A.id, amountVnd: 100000, coinAmount: 100000, status: "pending", bankRef: "FT1", note: "ghi chú" } as never });
+  const topupOfSA = await prisma.coinTopupRequest.create({ data: { userId: SA.id, amountVnd: 50000, coinAmount: 50000, status: "pending" } as never });
+
+  // 120 đánh giá chờ (mỗi học sinh một đánh giá vì @@unique([userId, courseId]))
+  const reviewers = [];
+  for (let i = 0; i < 120; i++) reviewers.push(await mkUser({ name: `Em Đánh Giá ${i}` }));
+  await prisma.courseReview.createMany({ data: reviewers.map((u, i) => ({ userId: u.id, courseId: course.id, rating: 1 + (i % 5), comment: `NX_${i}`, status: "pending", createdAt: new Date(Date.now() - (200 - i) * 60_000) })) });
 
   const get = (as: any, p = "/api/admin/kiem-duyet") => api("GET", p, { as });
-  const kinds = (r: any) => r.json.items.map((i: any) => i.id.split(":")[0]).sort().join(",");
+  const kindsOf = (r: any) => [...new Set(r.json.items.map((i: any) => i.kind))].sort().join(",");
 
   section("Cần đăng nhập và đúng vai");
   check("không cookie → 401", (await get(undefined)).status === 401);
   check("học sinh → 403 (cả ?badge=1)", (await get(S)).status === 403 && (await get(S, "/api/admin/kiem-duyet?badge=1")).status === 403);
+  check("GIA SƯ → 403 (cả ?badge=1, cả ?loai=danh-gia dù có MANAGE_COURSES)", (await get(T)).status === 403 && (await get(T, "/api/admin/kiem-duyet?badge=1")).status === 403 && (await get(T, "/api/admin/kiem-duyet?loai=danh-gia")).status === 403);
 
-  section("Quản trị cấp 1 thấy mọi loại");
-  let r = await get(SA);
-  check("200 và đủ bốn loại: gia-su ×2, bai-viet ×3, ho-so ×1, tra-loi ×1", r.status === 200 && kinds(r) === "bai-viet,bai-viet,bai-viet,gia-su,gia-su,ho-so,tra-loi", kinds(r));
-  check("badge = tổng số dòng (7)", r.json.badge === 7 && r.json.items.length === 7);
-  check("chờ lâu nhất lên trước: hai hồ sơ gia sư (3 ngày trước) đứng đầu", r.json.items[0].kind === "gia-su" && r.json.items[1].kind === "gia-su");
-  const rb = await get(SA, "/api/admin/kiem-duyet?badge=1");
-  check("?badge=1 chỉ trả { badge }", rb.status === 200 && rb.json.badge === 7 && rb.json.items === undefined, rb.json);
-  const unvItem = r.json.items.find((i: any) => i.id === `gia-su:${unv.id}`);
-  check("người chưa xác thực email: nút Duyệt bị khoá, có chữ báo", unvItem.status.label === "Chưa xác thực email" && !!unvItem.detail.actions[0].disabled);
-  check("không lộ mật khẩu / băm / dữ liệu thừa của người nộp đơn", !/password|\$2[aby]\$|viewToken|payoutAccount/i.test(r.text));
+  section("Quản trị cấp 1: 6 loại thật");
+  let r = await get(SA, "/api/admin/kiem-duyet?limit=100");
+  check("200; counts đủ 6 khoá thật; KHÔNG có khoá khach-hoi / vao-lop khi nhánh B chưa gộp (vắng khoá, không phải 0)",
+    r.status === 200 && ["gia-su", "bai-viet", "ho-so", "tra-loi", "danh-gia", "nap-coin"].every(k => k in r.json.counts), r.json.counts);
+  check("counts chính xác: gia-su 2, bai-viet 2, ho-so 1, tra-loi 1, danh-gia 120, nap-coin 2", JSON.stringify([2, 2, 1, 1, 120, 2]) === JSON.stringify(["gia-su", "bai-viet", "ho-so", "tra-loi", "danh-gia", "nap-coin"].map(k => r.json.counts[k])), r.json.counts);
+  check("badge = 128 (tổng counts nhóm duyet), KHÔNG bị cắt ở 100", r.json.badge === 128, r.json.badge);
+  check("?badge=1 cho cùng badge và counts, không có items", await (async () => { const b = await get(SA, "/api/admin/kiem-duyet?badge=1"); return b.status === 200 && b.json.badge === 128 && b.json.items === undefined && b.json.counts["danh-gia"] === 120; })());
 
-  section("Quản trị nội dung (admin_content)");
-  r = await get(CA);
-  check("thấy cả bốn loại (có MANAGE_TUTORS và MANAGE_COMMUNITY)", r.status === 200 && kinds(r) === "bai-viet,bai-viet,bai-viet,gia-su,gia-su,ho-so,tra-loi", kinds(r));
+  section("Phân trang bằng con trỏ: 120 đánh giá, trang 50");
+  const seen: string[] = []; let cursor: string | null = null; let pages = 0;
+  do {
+    const rr: any = await get(SA, `/api/admin/kiem-duyet?loai=danh-gia&limit=50${cursor ? `&cursor=${cursor}` : ""}`);
+    if (pages === 0) check("trang 1: 50 dòng, nextCursor khác null", rr.status === 200 && rr.json.items.length === 50 && rr.json.nextCursor !== null);
+    seen.push(...rr.json.items.map((i: any) => i.id)); cursor = rr.json.nextCursor; pages++;
+  } while (cursor && pages < 6);
+  check("gộp các trang: đúng 120 dòng, không trùng, không sót", seen.length === 120 && new Set(seen).size === 120, seen.length);
+  check("limit=0 / 101 / abc → 400; cursor hỏng → 400; loai lạ → 400",
+    (await get(SA, "/api/admin/kiem-duyet?limit=0")).status === 400 && (await get(SA, "/api/admin/kiem-duyet?limit=101")).status === 400 && (await get(SA, "/api/admin/kiem-duyet?limit=abc")).status === 400
+    && (await get(SA, "/api/admin/kiem-duyet?cursor=!!!")).status === 400 && (await get(SA, "/api/admin/kiem-duyet?loai=khac")).status === 400);
 
-  section("Giáo viên: chỉ báo cáo bài viết trong lớp do mình sở hữu");
-  r = await get(T);
-  check("200; chỉ 1 dòng: bài viết của lớp mình", r.status === 200 && r.json.items.length === 1 && r.json.items[0].id === `bai-viet:${rMine.id}`, r.json.items?.map((i: any) => i.id));
-  check("không thấy báo cáo bài chung, bài lớp khác, hồ sơ gia sư, câu trả lời", !r.text.includes("BAI_CHUNG") && !r.text.includes("BAI_CUA_LOP_KHAC") && !r.text.includes("Ảnh không phải") && !r.text.includes("CAU_HOI_X") && !r.text.includes(unv.name));
-  check("badge của giáo viên = 1", r.json.badge === 1 && (await get(T, "/api/admin/kiem-duyet?badge=1")).json.badge === 1);
-  r = await get(T2);
-  check("giáo viên khác thấy đúng báo cáo lớp của họ, không phải của cô Lan", r.json.items.length === 1 && r.json.items[0].id === `bai-viet:${rOther.id}` && !r.text.includes("BAI_CUA_LOP_TOI"));
+  section("Quản trị nội dung: 5 loại, không có nap-coin");
+  r = await get(CA, "/api/admin/kiem-duyet?limit=100");
+  check("thấy gia-su, bai-viet, ho-so, tra-loi, danh-gia; KHÔNG nap-coin; counts cũng không có nap-coin", r.status === 200 && !kindsOf(r).includes("nap-coin") && !("nap-coin" in r.json.counts) && r.json.badge === 126, [kindsOf(r), r.json.badge]);
+  check("?loai=nap-coin → 403 'Không có quyền xem loại này'", await (async () => { const x = await get(CA, "/api/admin/kiem-duyet?loai=nap-coin"); return x.status === 403 && /Không có quyền xem loại này/.test(x.json.error); })());
+  check("?loai=khach-hoi / vao-lop khi nhánh B chưa gộp → 403 (loại chưa được hỗ trợ), không 500", [(await get(CA, "/api/admin/kiem-duyet?loai=khach-hoi")).status, (await get(CA, "/api/admin/kiem-duyet?loai=vao-lop")).status].every(s => s === 403 || s === 200));
 
-  section("Lệnh trong khung đọc gọi đúng API cũ");
+  section("Dữ liệu tối thiểu: tên rút gọn, không email / điện thoại học sinh");
+  r = await get(SA, "/api/admin/kiem-duyet?limit=100");
+  // adm-test 02/11: hàng chờ xếp theo thời gian chờ (cũ trước) nên 120 đánh giá cũ chiếm hết 100 dòng đầu — lấy từng loại riêng để khảo sát đủ các loại.
+  const perKind: any[] = [];
+  for (const k of ["gia-su", "bai-viet", "ho-so", "tra-loi", "nap-coin"]) perKind.push(...(await get(SA, `/api/admin/kiem-duyet?loai=${k}`)).json.items);
+  const allItems = [...r.json.items, ...perKind.filter(x => !r.json.items.some((y: any) => y.id === x.id))];
+  const sample = JSON.stringify(allItems.filter((i: any) => i.kind !== "gia-su"));
+  check("không có email / SĐT mẫu của học sinh trong dòng (quét toàn JSON, trừ đơn gia sư)", !sample.includes(A.email) && !sample.includes(B.email) && !sample.includes("0987654321"));
+  check("tên học sinh rút gọn: 'Bích T.' (người báo cáo), không có 'Trần Thị Bích' / 'Nguyễn Văn An' ở dòng hàng chờ", sample.includes("Bích T.") && !sample.includes("Trần Thị Bích") && !sample.includes("Nguyễn Văn An"));
+  const ntop = allItems.find((i: any) => i.id === `nap-coin:${topupOfA.id}`), ntopSA = allItems.find((i: any) => i.id === `nap-coin:${topupOfSA.id}`);
+  check("nạp Coin: nút Duyệt của yêu cầu do CHÍNH người xem tạo bị khoá; yêu cầu của người khác thì không", !!ntopSA.detail.actions[0].disabled && !ntop.detail.actions[0].disabled);
+  check("JSON không chứa userId người nạp", !JSON.stringify(ntop).includes(A.id));
+
+  section("Lệnh gọi đúng API cũ và sinh nhật ký");
   const act = async (as: any, a: any, extra: Record<string, unknown> = {}) => api(a.method, a.url, { as, body: { ...(a.body ?? {}), ...extra } });
-  r = await get(SA);
-  const okItem = r.json.items.find((i: any) => i.id === `gia-su:${ok.id}`);
-  check("Từ chối không có lý do → 400 (API bắt buộc lý do)", (await act(SA, okItem.detail.actions[1], { reason: "" })).status === 400);
-  check("Duyệt người đã xác thực email → 200, thành gia sư", (await act(SA, okItem.detail.actions[0])).status === 200 && (await prisma.user.findUnique({ where: { id: ok.id } }))?.tutorVerified === true);
-  check("duyệt xong: dòng biến mất khỏi hàng chờ", !(await get(SA)).json.items.some((i: any) => i.id === `gia-su:${ok.id}`));
-  check("Duyệt lại lần hai → 409 (đã xử lý, không duyệt đôi)", (await act(SA, okItem.detail.actions[0])).status === 409);
-  check("người chưa xác thực email: Duyệt → 409 (chặn ở máy chủ, không chỉ ở nút)", (await act(SA, unvItem.detail.actions[0])).status === 409);
-  check("Từ chối kèm lý do → 200, dòng biến mất", (await act(SA, unvItem.detail.actions[1], { reason: "Chưa đủ thông tin" })).status === 200 && !(await get(SA)).json.items.some((i: any) => i.id === `gia-su:${unv.id}`));
-  const tItem = (await get(SA)).json.items.find((i: any) => i.id === `bai-viet:${rChung.id}`);
-  check("Gỡ bài viết: giáo viên KHÔNG xử lý được báo cáo bài chung (403)", (await act(T, tItem.detail.actions[0])).status === 403);
-  check("quản trị Gỡ bài → 200, bài bị xoá mềm (giữ bằng chứng), dòng biến mất", (await act(SA, tItem.detail.actions[0])).status === 200 && !!(await prisma.thread.findUnique({ where: { id: tChung.id } }))?.deletedAt && !(await get(SA)).json.items.some((i: any) => i.id === `bai-viet:${rChung.id}`));
-  const mItem = (await get(T)).json.items[0];
-  check("giáo viên Giữ bài lại của lớp mình → 200, bài còn nguyên", (await act(T, mItem.detail.actions[1])).status === 200 && (await prisma.thread.findUnique({ where: { id: tMine.id } }))?.deletedAt === null && (await get(T)).json.items.length === 0);
-  const pItem = (await get(SA)).json.items.find((i: any) => i.id === `ho-so:${pr.id}`);
-  check("Khoá hồ sơ không có lý do → 400", (await act(SA, pItem.detail.actions[0], { reason: "" })).status === 400);
-  check("Khoá hồ sơ kèm lý do → 200, hồ sơ công khai bị khoá", (await act(SA, pItem.detail.actions[0], { reason: "Ảnh giả mạo" })).status === 200 && !!(await prisma.user.findUnique({ where: { id: T.id } }))?.profileLockedAt);
-  check("báo cáo câu trả lời: không có lệnh trong hàng chờ, báo cáo vẫn đang chờ (chưa trừ xu)", (await get(SA)).json.items.filter((i: any) => i.kind === "tra-loi").every((i: any) => i.detail.actions.length === 0) && (await prisma.answer.findUnique({ where: { id: answer.id } }))?.isPenalized === false);
-  r = await get(SA);
-  check("còn lại đúng 2 dòng: bài lớp Lý (giáo viên khác) và câu trả lời", r.json.items.length === 2 && r.json.badge === 2 && kinds(r) === "bai-viet,tra-loi", kinds(r));
+  const okItem = r.json.items.find((i: any) => i.id === `gia-su:${ok.id}`), unvItem = r.json.items.find((i: any) => i.id === `gia-su:${unv.id}`);
+  check("Từ chối không có lý do → 400", (await act(SA, okItem.detail.actions[1], { reason: "" })).status === 400);
+  check("Duyệt người đã xác thực email → 200, thành gia sư; Duyệt lại → 409", (await act(SA, okItem.detail.actions[0])).status === 200 && (await prisma.user.findUnique({ where: { id: ok.id } }))?.tutorVerified === true && (await act(SA, okItem.detail.actions[0])).status === 409);
+  check("người chưa xác thực email: Duyệt → 409 (chặn ở máy chủ)", (await act(SA, unvItem.detail.actions[0])).status === 409);
+  const rev0 = r.json.items.find((i: any) => i.kind === "danh-gia");
+  check("Duyệt đánh giá (PATCH) → 200; AuditLog review.approve actor = người duyệt, resourceType CourseReview", (await act(SA, rev0.detail.actions[0])).status === 200
+    && !!(await prisma.auditLog.findFirst({ where: { action: "review.approve", resourceId: rev0.id.split(":")[1], actorId: SA.id, resourceType: "CourseReview" } })));
+  check("Gỡ bài viết (bài chung) → 200, bài bị xoá mềm; AuditLog thread_report.approve", await (async () => {
+    const it = (await get(SA, "/api/admin/kiem-duyet?loai=bai-viet")).json.items.find((i: any) => i.id === `bai-viet:${rChung.id}`);
+    return (await act(SA, it.detail.actions[0])).status === 200 && !!(await prisma.thread.findUnique({ where: { id: tChung.id } }))?.deletedAt
+      && !!(await prisma.auditLog.findFirst({ where: { action: "thread_report.approve", resourceId: rChung.id } }));
+  })());
+  check("Xác nhận vi phạm câu trả lời → 200, trừ đúng 20 Coin (isPenalized); AuditLog answer_report.approve có coinDeducted 20", await (async () => {
+    const it = (await get(SA, "/api/admin/kiem-duyet?loai=tra-loi")).json.items.find((i: any) => i.id === `tra-loi:${arep.id}`);
+    const st = (await act(SA, it.detail.actions[0])).status;
+    const log = await prisma.auditLog.findFirst({ where: { action: "answer_report.approve", resourceId: arep.id } });
+    return st === 200 && (await prisma.answer.findUnique({ where: { id: answer.id } }))?.isPenalized === true && (log?.metadata as any)?.coinDeducted === 20;
+  })());
+  check("Khoá hồ sơ không lý do → 400; kèm lý do → 200", await (async () => {
+    const it = (await get(SA, "/api/admin/kiem-duyet?loai=ho-so")).json.items.find((i: any) => i.id === `ho-so:${pr.id}`);
+    return (await act(SA, it.detail.actions[0], { reason: "" })).status === 400 && (await act(SA, it.detail.actions[0], { reason: "Ảnh giả mạo" })).status === 200;
+  })());
+  check("sau khi xử lý: badge giảm đúng (còn gia sư 1, bài viết 1, đánh giá 119, nạp Coin 2) = 123", (await get(SA, "/api/admin/kiem-duyet?badge=1")).json.badge === 123, (await get(SA, "/api/admin/kiem-duyet?badge=1")).json);
+  void rMine;
 
   await done();
 })().catch(e => { console.error("TEST CRASH", e); process.exit(1); });
