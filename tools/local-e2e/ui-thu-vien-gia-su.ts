@@ -17,6 +17,7 @@ async function report(page: Page) {
   })()`) as Promise<{ overflow: boolean; small: string[] }>;
 }
 
+const seen: Page[] = [];
 (async () => {
   await wipe();
   const T = await mkTutor("Cô Lan"), EMPTY = await mkTutor("Cô Mới");
@@ -39,7 +40,7 @@ async function report(page: Page) {
   await launch();
   const errors: string[] = [];
   // 'Encountered a script tag': <script> chủ đề trong src/app/layout.tsx (có sẵn trên main, lỗi React 19, không thuộc BU-02) — nợ riêng, lọc có chủ đích.
-  const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); }); };
+  const watch = (p: Page) => { seen.push(p); p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); }); };
   const rows = (p: Page) => p.locator("[data-tv-muc]");
 
   section("Rỗng — gia sư mới chưa có tài liệu");
@@ -148,6 +149,9 @@ async function report(page: Page) {
   await done();
 })().catch(async (e) => {
   // Báo rõ bước nào hết giờ (dòng đầu của lỗi Playwright có selector/hành động) thay vì chỉ "TimeoutError".
+  for (const p of seen.slice(-2)) {
+    try { console.log("  · trang cuối:", p.url(), "| h1:", JSON.stringify(await p.locator("h1").allInnerTexts()), "| thân:", (await p.locator("body").innerText({ timeout: 3000 })).replace(/\s+/g, " ").slice(0, 400)); } catch { /* trang đã đóng */ }
+  }
   console.log("  ✗ DỪNG GIỮA CHỪNG:", String((e && e.message) || e).split("\n").slice(0, 8).join(" | "));
   await closeAll().catch(() => undefined);
   process.exit(1);

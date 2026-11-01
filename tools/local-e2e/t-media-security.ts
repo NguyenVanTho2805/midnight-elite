@@ -224,7 +224,7 @@ async function lessonTree(courseId: string, tag: string) {
   const gf = (as?: any, q = "") => api("GET", `${fileUrl}${q}`, { as });
   check("khách → 401", (await gf()).status === 401);
   check("học viên CHƯA ghi danh → 403", (await gf(stuOut)).status === 403);
-  check("học viên chờ đồng ý (pending_consent) → 403; tạm ngưng → 403", (await gf(stuPend)).status === 403 && (await gf(stuSus)).status === 403);
+  check("học viên chờ đồng ý (pending_consent) → 403; tạm ngưng → 200 (xem lại theo R01, cùng canWatchStoredMedia với video)", (await gf(stuPend)).status === 403 && (await gf(stuSus)).status === 200);
   const ok = await gf(stuIn);
   check("học viên đã ghi danh → 200 đúng nội dung", ok.status === 200);
   check("Content-Type theo bảng đuôi (application/pdf), nosniff, riêng tư/no-store", ok.headers.get("content-type") === "application/pdf" && ok.headers.get("x-content-type-options") === "nosniff" && /no-store|private/.test(ok.headers.get("cache-control") ?? ""), [...ok.headers.entries()]);

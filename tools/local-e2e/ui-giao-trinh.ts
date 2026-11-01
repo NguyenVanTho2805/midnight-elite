@@ -24,6 +24,7 @@ async function report(page: Page) {
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
 const EXE = Buffer.from("MZ\x90\x00\x03\x00\x00\x00");
 
+const seen: Page[] = [];
 (async () => {
   await wipe();
   const T = await mkTutor("Cô Lan"), T2 = await mkTutor("Cô Khác");
@@ -50,7 +51,7 @@ const EXE = Buffer.from("MZ\x90\x00\x03\x00\x00\x00");
   await launch();
   const errors: string[] = [];
   // 'Encountered a script tag': <script> chủ đề trong src/app/layout.tsx (có sẵn trên main, lỗi React 19, không thuộc BU-02) — nợ riêng, lọc có chủ đích.
-  const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); }); };
+  const watch = (p: Page) => { seen.push(p); p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); }); };
   const G = (id: string) => `${BASE}/lop-cua-toi/quan-lop/${id}/giao-trinh`;
   const g1 = "**/api/tutor/lop/*/giao-trinh";
   /** Đổi cờ video trong câu trả lời G1 (cờ thật nằm ở biến môi trường máy chủ; bài này kiểm cả hai nhánh giao diện). */
@@ -251,6 +252,9 @@ const EXE = Buffer.from("MZ\x90\x00\x03\x00\x00\x00");
   await done();
 })().catch(async (e) => {
   // Báo rõ bước nào hết giờ (dòng đầu của lỗi Playwright có selector/hành động) thay vì chỉ "TimeoutError".
+  for (const p of seen.slice(-2)) {
+    try { console.log("  · trang cuối:", p.url(), "| h1:", JSON.stringify(await p.locator("h1").allInnerTexts()), "| thân:", (await p.locator("body").innerText({ timeout: 3000 })).replace(/\s+/g, " ").slice(0, 400)); } catch { /* trang đã đóng */ }
+  }
   console.log("  ✗ DỪNG GIỮA CHỪNG:", String((e && e.message) || e).split("\n").slice(0, 8).join(" | "));
   await closeAll().catch(() => undefined);
   process.exit(1);
