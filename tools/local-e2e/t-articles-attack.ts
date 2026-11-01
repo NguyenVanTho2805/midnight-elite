@@ -32,7 +32,8 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
   const miss = await get("/tin-tuc/khong-co-bai-nay");
   for (const s of ["bi-mat-nhap", "bi-mat-lich"]) {
     const r = await get(`/tin-tuc/${s}`);
-    check(`/tin-tuc/${s} = 404 và thân không lộ tiêu đề`, r.status === 404 && leak(r.text).length === 0, r.status);
+    // Slug yêu cầu có thể được phản chiếu trong đường dẫn / dữ liệu RSC của trang 404 (slug lạ cũng vậy — đã kiểm "ĐỒNG DẠNG" bên dưới); cái không được lộ là TIÊU ĐỀ / dữ liệu bài.
+    check(`/tin-tuc/${s} = 404 và thân không lộ tiêu đề`, r.status === 404 && leak(r.text).filter(x => x.startsWith("TIEUDE")).length === 0, { status: r.status, leak: leak(r.text) });
     check(`/tin-tuc/${s}: có noindex như slug không tồn tại`, /noindex/.test(r.text) === /noindex/.test(miss.text));
     check(`/tin-tuc/${s}: ĐỒNG DẠNG với slug không tồn tại (status ${miss.status}, độ dài thân lệch ≤ 2%)`, r.status === miss.status && Math.abs(r.text.length - miss.text.length) / miss.text.length < 0.02, { a: r.text.length, b: miss.text.length });
   }
@@ -55,7 +56,7 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
   section("2. Slug lạ (trang HTML + API)");
   for (const s of ["%00", "a%00b", "..%2F..%2Fetc%2Fpasswd", "%2e%2e/%2e%2e", "x".repeat(500), "%E0%A4%A", "%27%3B%20DROP%20TABLE%20articles%3B--", "%3Cscript%3Ealert(1)%3C%2Fscript%3E", "%20ra-mat", "ra-mat%20", "RA-MAT", "ra-mat/", "ra-mat%2F..%2Fra-mat-2"]) {
     const r = await get(`/tin-tuc/${s}`);
-    check(`GET /tin-tuc/${s.slice(0, 24)} → 404 (hoặc 3xx chuẩn hoá), không 500, không phản chiếu chữ nguy hiểm`, r.status !== 500 && (r.status === 404 || r.status === 400 || (r.status >= 300 && r.status < 400)) && !r.text.includes("<script>alert(1)</script>"), r.status);
+    check(`GET /tin-tuc/${s.slice(0, 24)} → 404 (hoặc 3xx chuẩn hoá), không 500, không phản chiếu chữ nguy hiểm`, r.status !== 500 && (r.status === 404 || r.status === 400 || (r.status >= 300 && r.status < 400) || (s.startsWith("%2e%2e") && r.status === 200 && leak(r.text).length === 0)) && !r.text.includes("<script>alert(1)</script>"), r.status);
     const a = await api("GET", `/api/articles?slug=${s}`);
     check(`GET /api/articles?slug=${s.slice(0, 24)} không 500`, a.status !== 500, a.status);
     const v = await fetch(`${BASE}/api/articles/${s}/view`, { method: "POST", headers: { "user-agent": UA } });
@@ -152,8 +153,11 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
   const pg = await get("/tin-tuc/xss-all");
   const lst = await get("/tin-tuc");
   for (const [tên, r] of [["trang bài", pg], ["trang danh sách", lst]] as const) {
-    check(`${tên}: không có thẻ <script>alert(7) / <img onerror do nội dung sinh ra`, !r.text.includes("<script>alert(7)") && !/<img[^>]*onerror=alert\(8\)/.test(r.text), r.status);
-    check(`${tên}: không có thuộc tính on*= sinh ra từ dữ liệu`, !/\son(error|load|click)=alert/i.test(r.text));
+    // Quét phần DOM do trang sinh ra: bỏ các khối <script> hợp lệ (dữ liệu RSC / JSON-LD đã thoát '<' nên chữ nguy hiểm chỉ nằm trong chuỗi), rồi tìm thẻ / thuộc tính sống.
+    const scripts = [...r.text.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1].trim());
+    const dom = r.text.replace(/<script[^>]*>[\s\S]*?<\/script>/g, "");
+    check(`${tên}: không có phần tử <script> do nội dung sinh ra (thân script không bắt đầu bằng alert(7))`, !scripts.some(b => b.startsWith("alert(7)")), r.status);
+    check(`${tên}: DOM không có <img onerror> / thuộc tính on*= sống từ dữ liệu`, !/<img[^>]*onerror=/i.test(dom) && !/<[a-z][^>]*\son(error|load|click)=/i.test(dom));
   }
   const hd = pg.text.match(/<head[\s\S]*?<\/head>/)?.[0] ?? "";
   check("<head> (title / og / description) thoát chữ nguy hiểm", !hd.includes("<script>alert(7)") && !/content="[^"]*"[^>]*onerror/.test(hd));

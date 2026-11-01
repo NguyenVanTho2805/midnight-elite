@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
   if (isNextResponse(auth)) return auth;
 
   try {
-    const body = await req.json();
+    let body;
+    try { body = await req.json(); } catch { return NextResponse.json({ error: "Dữ liệu gửi lên không phải JSON hợp lệ" }, { status: 400 }); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Dữ liệu gửi lên không hợp lệ" }, { status: 400 });
     const { title, excerpt, content, category, author, authorId, tag, isPinned, published, readTime } = body;
 
     const slug = typeof body.slug === "string" ? body.slug.trim() : "";
