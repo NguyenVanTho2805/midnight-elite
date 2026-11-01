@@ -19,7 +19,7 @@ export function useRoomSession(examId: string) {
   const [tabLeaves, setTabLeaves] = useState(0);
   const [offset, setOffset] = useState(0);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [, setTick] = useState(0);
+  const [now, setNow] = useState(0); // giờ trình duyệt, cập nhật mỗi giây; giờ MÁY CHỦ = now + offset
   const [starting, setStarting] = useState(false);
   const [startErr, setStartErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +57,7 @@ export function useRoomSession(examId: string) {
     }
     let fl = new Set<string>();
     try { fl = new Set(JSON.parse(window.localStorage.getItem(flagStorageKey(st.attemptId)) ?? "[]") as string[]); } catch { /* bỏ qua */ }
-    auto.current = false; inFlight.current = false;
+    auto.current = false; inFlight.current = false; setNow(Date.now());
     setSelected(sel); setText(txt); setCluster(bool); setFlags(fl); setTabLeaves(st.tabSwitchCount ?? 0);
     setTimeUp(null); setTimeUpAt(null); setResult(null); setSubmitErr(""); setAttempt(st);
   }, [applyClock, q.adopt]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -88,13 +88,13 @@ export function useRoomSession(examId: string) {
 
   // ── giờ: theo máy chủ, có giờ riêng Phần ──
   const windows = attempt?.sectionWindows ?? null;
-  const serverNowMs = Date.now() + offset;
+  const serverNowMs = now + offset;
   const sectionIndex = windows && windows.length > 0 ? (() => { const i = windows.findIndex(w => new Date(w.endsAt).getTime() > serverNowMs); return i === -1 ? windows.length - 1 : i; })() : -1;
   const isLastSection = !windows || sectionIndex === windows.length - 1;
   const endIso = windows && sectionIndex >= 0 ? windows[sectionIndex].endsAt : expiresAt;
-  const remainingSec = endIso ? remainingSecFrom(endIso, offset, Date.now()) : 0;
+  const remainingSec = endIso ? remainingSecFrom(endIso, offset, now) : 0;
   const running = !!attempt && !result;
-  useEffect(() => { if (!running) return; const t = setInterval(() => setTick(n => n + 1), 1000); return () => clearInterval(t); }, [running]);
+  useEffect(() => { if (!running) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [running]);
   useEffect(() => { if (running && expiresAt && isLastSection && remainingSec <= 0) void beginTimeUp(); }, [running, expiresAt, isLastSection, remainingSec, beginTimeUp]);
 
   const questions = useMemo(() => {

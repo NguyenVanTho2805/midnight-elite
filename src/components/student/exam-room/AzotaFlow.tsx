@@ -16,8 +16,9 @@ export default function AzotaFlow({ exam, onDone }: { exam: ExamFull; onDone: (r
 
   useEffect(() => {
     if (phase !== "entering") return;
-    if (countdown <= 0) { if (exam.azotaUrl) window.open(exam.azotaUrl, "_blank"); setPhase("submit"); return; }
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    const t = setTimeout(() => {
+      if (countdown <= 0) { if (exam.azotaUrl) window.open(exam.azotaUrl, "_blank"); setPhase("submit"); } else setCountdown(c => c - 1);
+    }, countdown <= 0 ? 0 : 1000);
     return () => clearTimeout(t);
   }, [phase, countdown, exam.azotaUrl]);
 

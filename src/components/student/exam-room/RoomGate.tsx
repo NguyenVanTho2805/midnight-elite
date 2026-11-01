@@ -9,7 +9,7 @@ import { studentDeadlineText } from "@/lib/quizDeadline";
 import type { RoomBlockReason, RoomGate as Gate } from "./roomApi";
 import { countdownLabel, windowLabel } from "./roomLogic";
 
-const REASON: Record<RoomBlockReason, { title: string; body: string }> = {
+export const GATE_REASON: Record<RoomBlockReason, { title: string; body: string }> = {
   not_enrolled: { title: "Em chưa vào lớp của đề này", body: "Đề này dành cho học sinh trong lớp. Nhập mã lớp gia sư gửi để vào lớp, rồi quay lại làm bài." },
   payment_required: { title: "Đề này cần được gia sư mở quyền", body: "Hãy liên hệ gia sư của lớp để được mở quyền vào làm đề này." },
   attempts_exhausted: { title: "Em đã dùng hết số lượt làm bài", body: "Đề này giới hạn số lượt. Cần làm thêm thì hỏi gia sư." },
@@ -51,7 +51,7 @@ export default function RoomGate(p: RoomGateProps) {
     );
   }
   const mode = gate.exam.mode ?? null;
-  const reason = gate.blockReason ? REASON[gate.blockReason] : null;
+  const reason = gate.blockReason ? GATE_REASON[gate.blockReason] : null;
   const dueText = gate.deadline ? studentDeadlineText(new Date(gate.deadline.dueAt), new Date(gate.serverNow)) : null;
   const win = gate.window && gate.window.state !== "none" && gate.window.opensAt ? windowLabel(gate.window.opensAt, gate.window.closesAt) : null;
   const modeNote = mode === "practice" ? "Sai thì được gợi ý, làm lại ngay." : "Hết giờ hệ thống tự nộp.";

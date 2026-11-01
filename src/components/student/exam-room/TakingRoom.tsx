@@ -24,7 +24,7 @@ export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSe
   const practice = mode === "practice";
   const vis = s.questions.visible;
   const last = Math.max(0, vis.length - 1);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [cur, setCur] = useState(0);
   const [view, setView] = useState<ViewMode>(() => resolveView(mode, typeof window === "undefined" ? null : window.localStorage.getItem(VIEW_STORAGE_KEY), typeof window === "undefined" ? 1280 : window.innerWidth));
   const [sheet, setSheet] = useState(false);
@@ -104,7 +104,7 @@ export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSe
 
   const counterText = questionCounter(idx + 1, s.questions.all.length);
   return (
-    <RoomLayout scrollRef={scrollRef}
+    <RoomLayout scrollBox={el => { scrollRef.current = el; }}
       title={<p className="hidden lg:block text-[length:var(--kin-co-caption)] font-semibold uppercase tracking-[0.04em] truncate max-w-full" data-phong-thi-phan>{roomHeading({ examTitle, sectionLabel: label, sectionIndex: s.sectionIndex })}</p>}
       counter={<>
         <p data-so-cau className="hidden lg:block text-[length:var(--kin-co-body)] font-semibold tabular-nums">{counterText}{att.variantCode != null && <span className="ml-3 font-normal opacity-80" data-ma-de>Mã đề {att.variantCode}</span>}</p>
