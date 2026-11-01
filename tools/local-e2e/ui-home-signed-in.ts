@@ -83,6 +83,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await link.waitFor({ timeout: 90000 });
     check("phụ huynh: còn dòng 'Trang riêng cho phụ huynh' và chân trang", await p.getByRole("banner").getByText("Trang riêng cho phụ huynh").isVisible() && await p.getByRole("contentinfo").isVisible());
     check("phụ huynh: liên kết cao ≥ 44px, 390px không tràn ngang", ((await link.boundingBox())?.height ?? 0) >= 44 && await p.evaluate(NOT_OVERFLOW) as boolean);
+    check("phụ huynh: liên kết có referrerpolicy=no-referrer (token cổng không đi vào Referer)", (await link.getAttribute("referrerpolicy")) === "no-referrer");
     await link.click();
     await p.waitForURL((u2: URL) => u2.pathname === "/", { timeout: 90000 });
     check("phụ huynh: bấm → '/'", new URL(p.url()).pathname === "/", p.url());
