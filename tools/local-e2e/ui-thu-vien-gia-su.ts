@@ -33,7 +33,7 @@ const seen: Page[] = [];
   const loose = await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: A.id, kind: "document", driver: "local", storageKey: "tv-loose.pdf", mimeType: "application/pdf", bytes: 2048, originalName: "phieu-chua-gan.pdf", status: "ready" } });
   const loose2 = await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: A.id, kind: "document", driver: "local", storageKey: "tv-loose2.pdf", mimeType: "application/pdf", bytes: 1024, originalName: "xoa-di.pdf", status: "ready" } });
   const shared = { name: "Đề cương.pdf", url: "https://files.example/de-cuong.pdf", type: "pdf" };
-  await mk(A, "A", "tv-la", [shared, { name: "Bảng công thức", url: "https://docs.google.com/document/d/abc/edit", type: "doc" }, { name: "Phiếu KiN.pdf", url: `/api/media/${kin.id}/file`, type: "pdf" }]);
+  await mk(A, "A", "tv-la", [shared, { name: "Bảng công thức", url: "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345/edit", type: "doc" }, { name: "Phiếu KiN.pdf", url: `/api/media/${kin.id}/file`, type: "pdf" }]);
   await mk(B, "B", "tv-lb", [shared]);
   await prisma.examFile.create({ data: { fileName: "De-goc-toan9.pdf", fileUrl: "https://files.example/dg.pdf", fileType: "application/pdf", ownerId: T.id } });
 
@@ -80,21 +80,22 @@ const seen: Page[] = [];
   await cf.getByRole("button", { name: "Dùng ở lớp khác" }).click();
   await cf.getByLabel("Lớp").selectOption({ label: "Văn 8" });
   await cf.getByRole("button", { name: "Thêm vào lớp này" }).click();
+  await cf.getByRole("alert").getByText("Thêm mục thất bại").waitFor({ timeout: 15000 }).catch(() => undefined);
   check("lỗi máy chủ → báo tại chỗ (role=alert), không mất khung chọn", await cf.getByRole("alert").getByText("Thêm mục thất bại").isVisible());
   await pg.unroute("**/api/tutor/lop/*/giao-trinh/muc");
   await cf.getByRole("button", { name: "Thêm vào lớp này" }).click();
   await pg.locator("[data-tv-thong-bao]").getByText(/Đã thêm .*Bảng công thức.* vào lớp Văn 8/).waitFor({ timeout: 60000 });
   await eventually("DB: bài của lớp Văn 8 có thêm 'Bảng công thức' (Bài mới) và số 'đang dùng ở' tăng", async () => {
     const lessons = await prisma.lesson.findMany({ where: { chapter: { section: { courseId: B.id } } } });
-    return lessons.some(l => (l.documents ?? "").includes("docs.google.com/document/d/abc"));
+    return lessons.some(l => (l.documents ?? "").includes("docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345"));
   });
   await eventually("sau khi làm mới: 'Bảng công thức' dùng ở 2 lớp", async () => /2 lớp/.test(await rows(pg).filter({ hasText: "Bảng công thức" }).locator("[data-tv-dung-o]").innerText()));
 
   section("Gỡ khỏi bài này (G3) — hộp xác nhận KiN");
   let nativeDialog = false; pg.on("dialog", d => { nativeDialog = true; void d.dismiss(); });
-  await rows(pg).filter({ hasText: "Bảng công thức" }).getByRole("button", { name: "Gỡ khỏi bài này" }).last().click();
+  await rows(pg).filter({ hasText: "Bảng công thức" }).locator("li", { hasText: "Văn 8 · " }).getByRole("button", { name: "Gỡ khỏi bài này" }).click(); // bài vừa thêm ở lớp Văn 8 (thứ tự usedIn không cố định)
   await pg.getByRole("dialog").getByRole("button", { name: "Gỡ khỏi bài" }).click();
-  await eventually("DB: bản vừa thêm ở lớp Văn 8 bị gỡ", async () => !(await prisma.lesson.findMany({ where: { chapter: { section: { courseId: B.id } } } })).some(l => (l.documents ?? "").includes("docs.google.com/document/d/abc")));
+  await eventually("DB: bản vừa thêm ở lớp Văn 8 bị gỡ", async () => !(await prisma.lesson.findMany({ where: { chapter: { section: { courseId: B.id } } } })).some(l => (l.documents ?? "").includes("docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345")));
   check("không dùng hộp thoại gốc", !nativeDialog);
 
   section("Chưa gắn vào bài: gắn và xoá");

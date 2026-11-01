@@ -170,7 +170,7 @@ const seen: Page[] = [];
   await shot(emp, "giao-trinh-rong-1280");
   await emp.locator("#gt-link").fill("https://www.youtube.com/watch?v=aaaaaaaaaaa");
   await emp.getByRole("button", { name: "Thêm link" }).click();
-  await emp.locator("[data-gt-da-them]").waitFor({ timeout: 60000 });
+  await emp.locator("[data-gt-da-them], [data-gt-thong-bao]").first().waitFor({ timeout: 60000 });
   await eventually("DB: lớp rỗng có đúng 1 Phần, 1 Chương, 1 Bài chứa link", async () => {
     const secs = await prisma.section.findMany({ where: { courseId: B.id }, include: { chapters: { include: { lessons: true } } } });
     return secs.length === 1 && secs[0].chapters.length === 1 && secs[0].chapters[0].lessons.length === 1 && (secs[0].chapters[0].lessons[0].videoUrl ?? "").includes("aaaaaaaaaaa");

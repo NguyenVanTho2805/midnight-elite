@@ -4,6 +4,8 @@
 // tệp .exe/.mp4 khi cờ video tắt; tệp vượt hạn mức; mã tệp KiN lạ trong documents; trùng URL; lessonTypeFor khớp từng ca với deriveTypes+serializeTypes của trang quản trị cũ.
 // Mutation tự thử: đổi MAX_LINKS_PER_SLOT thành 21 ⇒ ca "21 link" đỏ; bỏ nhánh isSocialVideoHost trong routeInput ⇒ ca Facebook đỏ; itemKey đổi sang phụ thuộc vị trí ⇒ ca "đổi thứ tự" đỏ.
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { PROTECTED_LESSON_FIELDS } from "@/lib/mediaAccess";
 import { deriveItems, itemKey, routeInput, placeItem, removeItem, lessonTypeFor, mergeLibrary, docTypeOf, storedDocType, kinFileIdOf, kinFileLink, MAX_LINKS_PER_SLOT, MAX_ITEM_NAME, type GtConfig, type LessonRow } from "@/lib/giaoTrinh";
 import { resolveDocumentUploadConfig, resolveVideoUploadConfig, validateDocumentFile, DOCUMENT_MAX_BYTES, DOCUMENT_QUOTA_BYTES, DOCUMENT_MIME_BY_EXT, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 import { cloudinaryDocPublicId, cloudinaryDocUploadInit, cloudinarySignedRawUrl, signCloudinaryParams } from "@/lib/mediaStorageServer";
@@ -292,5 +294,14 @@ check("mặc định: chỉ http(s) — tệp KiN KHÔNG lọt vào kho công kh
 check("allowKinFiles:true: thêm tệp KiN (đúng dạng /file), vẫn bỏ /etc/passwd và /stream", parseLessonDocuments(mixed, { allowKinFiles: true }).map(d => d.name).join() === "Ngoài,KiN");
 check("allowKinFiles không mở cửa cho đường dẫn lạ, //host, javascript:", parseLessonDocuments(JSON.stringify([{ name: "a", url: "//evil.example/x" }, { name: "b", url: "javascript:alert(1)" }, { name: "c", url: "/api/media/ab/file" }]), { allowKinFiles: true }).length === 0);
 check("dạng cũ 'nhãn|url' cũng chỉ nhận tệp KiN khi bật tuỳ chọn", parseLessonDocuments(`KiN|${kinFileLink(KIN)}`).length === 0 && parseLessonDocuments(`KiN|${kinFileLink(KIN)}`, { allowKinFiles: true }).length === 1);
+
+section("XemNhuHocSinh — bản sao redact cho người ngoài lớp khớp PROTECTED_LESSON_FIELDS (component client không được import mediaAccess)");
+{
+  const src = readFileSync("src/components/tutor/giao-trinh/XemNhuHocSinh.tsx", "utf8");
+  const m = src.match(/OUTSIDER_REDACTED_FIELDS = \[([^\]]*)\]/);
+  const have = (m?.[1] ?? "").split(",").map(x => x.trim().replace(/"/g, "")).filter(Boolean).sort().join(",");
+  check("danh sách trường khoá khớp mediaAccess.PROTECTED_LESSON_FIELDS", have === [...PROTECTED_LESSON_FIELDS].sort().join(","), have);
+  check("component client KHÔNG import @/lib/mediaAccess (kéo prisma vào gói trình duyệt)", !/from "@\/lib\/mediaAccess"/.test(src));
+}
 
 done();

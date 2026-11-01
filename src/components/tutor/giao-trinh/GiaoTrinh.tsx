@@ -208,7 +208,8 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
         <div className="max-w-3xl">
           <KinEmptyState title="Lớp chưa có bài nào">Dán link hoặc thả tệp đầu tiên vào ô bên dưới. KiN sẽ tự tạo Phần 1 › Chương 1 và bài đầu tiên cho bạn.</KinEmptyState>
           <OTaiLen large courseId={courseId} config={snap.config} currentLesson={null} newChapterId={newChapterId}
-            onAdd={g.addItem} onUndo={(l, k) => g.removeItem(l, k)} />
+            // Thêm xong lớp có bài ⇒ bố cục đổi, ô tải này bị dựng lại và mất dòng "Đã thêm": báo ở thông báo cấp trang để người dùng vẫn thấy kết quả.
+            onAdd={async (...a: Parameters<typeof g.addItem>) => { const r = await g.addItem(...a); if (r.ok && !r.duplicate) g.setNotice({ tone: "ok", text: `Đã thêm vào ${r.lessonTitle ?? "bài đầu tiên"}. KiN đã tạo Phần 1 › Chương 1 cho lớp.` }); return r; }} onUndo={(l, k) => g.removeItem(l, k)} />
         </div>
       ) : (
         <div className="grid lg:grid-cols-[320px_minmax(0,1fr)_300px] gap-x-[var(--kin-cach-cot)] gap-y-[var(--kin-cach-muc)] items-start">

@@ -14,7 +14,6 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { DocumentRows, parseMaterials, formatDeadlineVn } from "@/components/media/StudentLessonPanels";
 import { classifyMediaLink, parseLinkList, firstSafeHttpsLink, uploadIdOf } from "@/lib/mediaLink";
-import { lessonFor } from "@/lib/mediaAccess";
 import { giaoTrinhHref } from "@/lib/tutorRoutes";
 import { jfetch } from "@/components/tutor/studentUi";
 
@@ -22,6 +21,15 @@ interface RawLesson {
   id: string; title: string; type?: string; duration?: string | null; isLocked?: boolean; isFree?: boolean;
   videoUrl?: string | null; zoomUrl?: string | null; azotaUrl?: string | null; azotaDeadline?: string | null; documents?: string | null;
   chapter?: { section?: { courseId?: string } };
+}
+// KHÔNG import "@/lib/mediaAccess" vào component client: nó kéo "@/lib/enrollment" (nạp prisma bằng import động) vào gói trình duyệt, trang vỡ 500 ở dev.
+// Bản sao nhỏ của redactLesson cho viewer=null; danh sách trường phải khớp PROTECTED_LESSON_FIELDS (src/lib/mediaAccess.ts; t-giao-trinh-lib đối chiếu).
+const OUTSIDER_REDACTED_FIELDS = ["videoUrl", "zoomUrl", "azotaUrl", "documents", "adminNote"] as const;
+function lessonForOutsider<L extends { isFree?: boolean | null }>(lesson: L): L {
+  if (lesson.isFree === true) return lesson;
+  const out: Record<string, unknown> = { ...(lesson as Record<string, unknown>) };
+  for (const f of OUTSIDER_REDACTED_FIELDS) if (f in out) out[f] = f === "documents" ? "[]" : null;
+  return out as L;
 }
 type View = "da-vao" | "chua-vao";
 type Load = { phase: "loading" } | { phase: "error"; status: number } | { phase: "ready"; lesson: RawLesson };
@@ -47,7 +55,7 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
   const shown = useMemo<RawLesson | null>(() => {
     if (load.phase !== "ready") return null;
     // Cùng hàm với máy chủ: viewer=null → khoá link trừ bài isFree.
-    return view === "chua-vao" ? lessonFor({ viewer: null, courseOwnerId: null, enrollment: null }, load.lesson) : load.lesson;
+    return view === "chua-vao" ? lessonForOutsider(load.lesson) : load.lesson;
   }, [load, view]);
 
   if (load.phase === "loading") return <KinPageSkeleton label="Đang tải bản xem thử" rows={3} side={false} />;
