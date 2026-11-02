@@ -26,6 +26,9 @@ export function useRoomPage(examId: string) {
     setGate(r.data); setGateErr(false); return r.data;
   }, [examId]);
 
+  /** Bỏ cổng cũ rồi nạp lại: sau khi nộp bài số lượt đã đổi, nên màn kết quả/nút "Làm lại" không được dùng `canStart` của lần nạp trước (cho tới khi có bản mới, nút tắt). */
+  const refreshGate = useCallback(() => { setGate(null); return loadGate(); }, [loadGate]);
+
   const loadHistory = useCallback(() => {
     api.examAttempts.history(examId).then(setHistory).catch(() => {});
     fetch(`/api/exam-results?examId=${examId}`, { credentials: "same-origin" }).then(r => (r.ok ? r.json() : []))
@@ -70,5 +73,5 @@ export function useRoomPage(examId: string) {
 
   /** Lượt có thể xem lại khi vào thẳng trang đã có kết quả: lượt đã nộp gần nhất trong lịch sử. */
   const latestSubmitted = history.find(h => h.status !== "in_progress")?.id ?? null;
-  return { exam, phase, setPhase, gate, gateErr, setGateErr, loadGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
+  return { exam, phase, setPhase, gate, gateErr, setGateErr, loadGate, refreshGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
 }

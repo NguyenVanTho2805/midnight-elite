@@ -120,9 +120,11 @@ const ids = (j: unknown, pick: (x: any) => string) => (Array.isArray(j) ? j : (j
   }
   const xSched = await api("GET", "/api/schedule", { as: X });
   const xEv: string[] = (Array.isArray(xSched.json) ? xSched.json : xSched.json?.events ?? []).filter((e: any) => e.type === "exam").map((e: any) => String(e.id));
-  // Câu hỏi cho chủ (không tính đỏ): lịch thi là lịch CÔNG KHAI từ trước BU-03, nay đề gắn lớp cũng hiện cho người ngoài lớp.
-  if (xEv.includes("exam-ra-main")) console.log("  ⚠ CÂU HỎI CHO CHỦ: /api/schedule hiện đề gắn lớp (ra-main) cho học sinh ngoài lớp — có chủ ý không?");
-  else check("X (ngoài lớp): lịch thi không liệt kê đề của lớp Toán 9", true);
+  // STU-004 (cùng luật GET /api/exams): đề của lớp em không học không hiện tên ở Lịch thi; học sinh TRONG lớp vẫn thấy.
+  check("X (ngoài lớp): lịch thi không liệt kê đề của lớp Toán 9", !xEv.includes("exam-ra-main"), xEv);
+  const aSched = await api("GET", "/api/schedule", { as: A });
+  const aEv: string[] = (aSched.json?.events ?? []).filter((e: any) => e.type === "exam").map((e: any) => String(e.id));
+  check("A (trong lớp): lịch thi VẪN liệt kê đề của lớp mình (ra-main)", aEv.includes("exam-ra-main"), aEv);
 
   const gd = await api("GET", `/api/exams/${D.id}/gate`, { as: A });
   check("gate đề nháp (học sinh) → không 200 / không kèm câu hỏi", gd.status !== 200 && leaksIn(gd.text).length === 0, [gd.status, gd.text.slice(0, 120)]);

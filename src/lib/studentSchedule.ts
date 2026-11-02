@@ -6,6 +6,7 @@ import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 import { parseAzotaDeadline } from "@/lib/azotaDeadline";
 import { isListedToStudent } from "@/lib/examVariantRoute";
+import { isEnrollmentActive } from "@/lib/enrollment";
 import { firstHttpLink } from "@/lib/lessonLinks";
 import { effectiveLocation, effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl, type SessionKind, type SessionMode } from "@/lib/sessionBook";
 
@@ -66,7 +67,14 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
       variantOfId: true, courseId: true, owner: { select: { adminRole: true } },
     },
   });
-  const exams = examRows.filter(e => isListedToStudent(e, e.owner?.adminRole));
+  // STU-004 (cùng luật GET /api/exams): đề của lớp em không học thì KHÔNG hiện tên ở lịch, trừ đề đã được cấp quyền vào (ExamGuestAccess).
+  const [enr, acc] = await Promise.all([
+    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
+    prisma.examGuestAccess.findMany({ where: { userId }, select: { examId: true } }),
+  ]);
+  const enrolledCourses = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));
+  const grantedExams = new Set(acc.map(a => a.examId));
+  const exams = examRows.filter(e => grantedExams.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolledCourses));
 
   for (const exam of exams) {
     const iso = toISO(exam.date);

@@ -46,7 +46,7 @@ function ExamRoomPage() {
     if (!submitted || !s.attempt) return;
     d.setMyResult({ score: submitted.score, totalPoints: submitted.totalPoints, rank: submitted.rank, pendingManual: !!submitted.pendingManual });
     d.setPhase("done");
-    void d.loadGate(); d.loadHistory(); void d.loadReview(s.attempt.attemptId, true);
+    void d.refreshGate(); d.loadHistory(); void d.loadReview(s.attempt.attemptId, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted]);
   // Vào thẳng trang đã có kết quả: tải im lặng bài xem lại của lượt gần nhất.
@@ -58,7 +58,7 @@ function ExamRoomPage() {
   async function begin() {
     if (await s.start(password)) d.setPhase("taking"); else void d.loadGate(); // số lượt/quyền/giờ mở có thể đã đổi
   }
-  function again() { setPassword(""); s.setStartErr(""); d.setPhase("gate"); void d.loadGate(); }
+  function again() { setPassword(""); s.setStartErr(""); d.setPhase("gate"); void d.refreshGate(); }
   function openReview(attemptId?: string) { const id = attemptId ?? reviewId; if (!id) return; d.setPhase("review"); void d.loadReview(id); }
 
   const wrap = (children: React.ReactNode, narrow = true) => <div className="px-4 py-6"><div className={narrow ? "max-w-[480px] mx-auto" : ""}>{children}</div></div>;
