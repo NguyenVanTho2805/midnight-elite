@@ -133,7 +133,8 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
       const m = /NEXT_REDIRECT;(?:replace|push);([^;"\\]+);/.exec(body);
       const loc = res.headers.get("location") || (m ? decodeURIComponent(m[1]) : "");
       const leaks = body.includes("Ma trận đề") || body.includes("Tệp đề gốc");
-      return { status: res.status, loc, leaks };
+      const broken = /useAuth phải dùng|Application error|Internal Server Error/.test(body); // vỏ gia sư dựng ngoài AuthProvider (500 gặp ở ui-links-everywhere)
+      return { status: res.status, loc, leaks, broken };
     };
     const isRedirect = (r: { status: number; loc: string }) => [301, 302, 303, 307, 308].includes(r.status) || (r.status === 200 && r.loc !== "");
     for (const p of pages) {
@@ -141,7 +142,7 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
       check(`${p}: khách → chuyển hướng (3xx hoặc NEXT_REDIRECT), không lộ nội dung gia sư`, isRedirect(g) && !g.leaks, g);
       check(`${p}: học sinh → chuyển hướng, không nằm lại trang gia sư`, isRedirect(st) && !st.loc.includes("/de-thi") && !st.leaks, st);
       check(`${p}: gia sư chờ duyệt → ${TUTOR_PENDING_PATH}`, isRedirect(pe) && pe.loc.includes(TUTOR_PENDING_PATH) && !pe.leaks, pe);
-      check(`${p}: ĐỐI CHỨNG gia sư đã duyệt → 200 và KHÔNG bị đá đi`, t.status === 200 && t.loc === "", t);
+      check(`${p}: ĐỐI CHỨNG gia sư đã duyệt → 200 và KHÔNG bị đá đi`, t.status === 200 && t.loc === "" && !t.broken, t);
     }
   }
 
