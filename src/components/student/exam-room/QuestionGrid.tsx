@@ -38,7 +38,7 @@ export default function QuestionGrid({ items, current, onPick, label = "Nhảy t
                 className="relative w-full min-h-[44px] rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold tabular-nums"
                 style={on ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", border: "2px solid var(--kin-nhan-nen)" } : { background: b.bg, color: b.color, border: b.border }}>
                 {i + 1}
-                {it.flagged && <span aria-hidden className="absolute top-0 right-[3px] text-[10px] leading-4">⚑</span>}
+                {it.flagged && <span aria-hidden className="absolute top-0 right-[3px] text-[length:var(--kin-co-caption)] leading-4">⚑</span>}
                 {it.answered && !on && <span aria-hidden className="absolute bottom-[3px] right-[4px] w-[5px] h-[5px] rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
               </button>
             </li>
