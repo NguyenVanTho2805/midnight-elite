@@ -6,6 +6,7 @@ import {
   type SearchableTutor, type TutorFilters, type TutorSortKey,
 } from "@/lib/tutorSearch";
 import { introVideoView, isValidCover, parseCoverInput, parseIntroVideoInput, coverForPublic } from "@/lib/tutorSearchMedia";
+import { parseTutorProfileInput } from "@/lib/tutorProfile";
 import { check, section, done } from "./h";
 
 const Q = (s: string) => parseTutorQuery(new URLSearchParams(s));
@@ -235,6 +236,21 @@ const perms = <X,>(a: X[]): X[][] => (a.length <= 1 ? [a] : a.flatMap((x, i) => 
   check("parseCoverInput: không gửi giữ nguyên, null/'' xoá, hợp lệ nhận, sai ⇒ lỗi tiếng Việt", pc(undefined) === undefined && pc(null) === null && pc("  ") === null && pc(okCover) === okCover
     && pc(`data:image/svg+xml;base64,${B64}`) === "ERR:Ảnh bìa phải là JPG/PNG/WebP và nhỏ hơn 250 KB");
   check("coverForPublic: hỏng ⇒ null, hợp lệ giữ nguyên", coverForPublic("javascript:alert(1)") === null && coverForPublic(`data:image/svg+xml;base64,${B64}`) === null && coverForPublic("A".repeat(1_000_000)) === null && coverForPublic(okCover) === okCover && coverForPublic(null) === null);
+
+  // BU-06b — đường GHI: parseTutorProfileInput nhận coverUrl / introVideoUrl (dùng chung đăng ký gia sư và sửa hồ sơ).
+  section("BU-06b: parseTutorProfileInput nhận bìa + video");
+  const pp = (b: Record<string, unknown>) => parseTutorProfileInput(b);
+  check("không gửi khoá nào ⇒ không có coverUrl/introVideoUrl (PUT giữ nguyên, không ghi đè)", (() => { const q = pp({ bio: "x" }); return !("coverUrl" in q) && !("introVideoUrl" in q) && !q.error; })());
+  check("bìa hợp lệ ⇒ giữ nguyên; null / rỗng ⇒ null (xoá)", pp({ coverUrl: okCover }).coverUrl === okCover && pp({ coverUrl: null }).coverUrl === null && pp({ coverUrl: "  " }).coverUrl === null);
+  check("video: link chữ gõ (có ?si=, youtu.be) ⇒ LƯU dạng chuẩn watchUrl, không lưu chữ gõ", pp({ introVideoUrl: "https://youtu.be/dQw4w9WgXcQ?si=abc&t=9" }).introVideoUrl === "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  check("video null / rỗng ⇒ null (xoá)", pp({ introVideoUrl: null }).introVideoUrl === null && pp({ introVideoUrl: "" }).introVideoUrl === null);
+  for (const bad of [`data:image/svg+xml;base64,${B64}`, "https://evil.test/a.jpg", "javascript:alert(1)", 123, [okCover], `data:image/jpeg;base64,${"A".repeat(250_000)}`]) {
+    check(`bìa xấu bị từ chối với thông báo tiếng Việt (${String(bad).slice(0, 24)})`, /Ảnh bìa/.test(pp({ coverUrl: bad }).error ?? ""));
+  }
+  for (const bad of ["https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ", "javascript:alert(1)", "https://vimeo.com/1", "https://www.youtube.com@evil.test/watch?v=dQw4w9WgXcQ", 5]) {
+    check(`video xấu bị từ chối với thông báo tiếng Việt (${String(bad).slice(0, 24)})`, /YouTube/.test(pp({ introVideoUrl: bad }).error ?? ""));
+  }
+  check("lỗi bìa không làm mất lỗi: có error thì KHÔNG trả các trường đã chuẩn hoá khác", (() => { const q = pp({ bio: "ok", coverUrl: "javascript:x" }); return !!q.error && q.bio === undefined; })());
 
   await done();
 })();
