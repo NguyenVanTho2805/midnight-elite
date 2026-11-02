@@ -53,7 +53,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const hit = matchSub(pathname);
   const modules = visibleModules(user?.adminRole);
   const current = modules.find(m => m.key === hit?.moduleKey) ?? null;
-  const tabs = current && current.subs.length > 1 ? current.subs : null;
+  // BU-08 (D3a): dải tab chỉ hiện NHÓM đang ở (≤ 6 tab) theo `group` của adminNav; trang không thuộc nhóm nào thì giữ cả module như trước.
+  const group = hit?.sub.group;
+  const groupSubs = current ? (group ? current.subs.filter(s => s.group === group) : current.subs) : [];
+  const tabs = groupSubs.length > 1 ? groupSubs : null;
   // Chiều cao dải trên + dải tab: các khung Outlook trong trang trừ đi để vừa khít màn hình, không sinh thanh cuộn của trang.
   const top = STRIP + (tabs ? TABS : 0);
   const flush = pathname === "/admin/kiem-duyet";
@@ -77,7 +80,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <div className="flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] flex-shrink-0" style={{ height: STRIP }}>
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={badge} />
-            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex md:hidden items-center min-h-11"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
             <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Quản trị KiN</p>
           </div>
           <div className="flex items-center gap-3 min-w-0">

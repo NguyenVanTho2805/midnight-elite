@@ -20,7 +20,14 @@ const hit = (path: string, cookie?: string): Promise<{ status: number; headers: 
   const SA = await mkSuper("Quản trị cấp 1"), T = await mkTutor("Cô Lan");
   section("308 giữ query");
   let r = await hit("/admin/ho-so-gia-su?x=1");
-  check("/admin/ho-so-gia-su?x=1 → 308, Location kết thúc /admin/kiem-duyet?loai=gia-su&x=1", r.status === 308 && /\/admin\/kiem-duyet\?loai=gia-su&x=1$/.test(r.headers.get("location") ?? ""), [r.status, r.headers.get("location")]);
+  // Next ghép query của yêu cầu TRƯỚC query của đích (`?x=1&loai=gia-su`), còn lookupAdminRedirect (thuần) ghép sau; thứ tự tham số không có ý nghĩa nên so theo TẬP tham số.
+  const qs = (loc: string | null) => { const u = new URL(loc ?? "", "http://x"); return { path: u.pathname, params: JSON.stringify([...u.searchParams.entries()].sort()) }; };
+  const l1 = qs(r.headers.get("location"));
+  check("/admin/ho-so-gia-su?x=1 → 308 tới /admin/kiem-duyet với đủ loai=gia-su và x=1 (không phụ thuộc thứ tự)", r.status === 308 && l1.path === "/admin/kiem-duyet" && l1.params === JSON.stringify([["loai", "gia-su"], ["x", "1"]]), [r.status, r.headers.get("location")]);
+  // Tham số trùng tên: ĐÍCH thắng (khớp lookupAdminRedirect) — không để đường cũ + ?loai=tra-loi đổi được loại hàng chờ.
+  const rd = await hit("/admin/ho-so-gia-su?loai=tra-loi&loai=ho-so");
+  const ld = qs(rd.headers.get("location"));
+  check("?loai=tra-loi&loai=ho-so trên đường cũ → vẫn loai=gia-su duy nhất (đích thắng)", rd.status === 308 && ld.params === JSON.stringify([["loai", "gia-su"]]), [rd.status, rd.headers.get("location")]);
   r = await hit("/admin/cong-dong/bao-cao");
   check("/admin/cong-dong/bao-cao → 308 ?loai=tra-loi", r.status === 308 && /\/admin\/kiem-duyet\?loai=tra-loi$/.test(r.headers.get("location") ?? ""), [r.status, r.headers.get("location")]);
 
