@@ -114,6 +114,9 @@ import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
   const pos = await pg.evaluate(`[...document.querySelectorAll("[data-cau]")].map(e => e.id)`) as string[]; // đề xáo thứ tự mỗi lượt → lấy thứ tự thật trên màn hình
   const doneAt = pos.indexOf("q-q1-pt") + 1, openAt = pos.indexOf("q-q1-pt") === 0 ? 2 : 1;
   const bDone = grid.getByRole("button", { name: new RegExp(`^Câu ${doneAt}, đã làm`) }), bOpen = grid.getByRole("button", { name: new RegExp(`^Câu ${openAt}, chưa làm`) });
+  // Ô của câu HIỆN TẠI luôn viền liền (nền Navy — đúng đặc tả). Đề được xáo mỗi lượt nên câu đang hiện có thể chính là câu CHƯA làm (đỏ ngẫu nhiên khi thứ tự là q2,q1):
+  // chuyển câu hiện tại sang câu đã làm trước khi đo, để ô 'chưa làm' chắc chắn không phải ô hiện tại.
+  await bDone.click();
   check("ô có chữ trạng thái: câu đã chọn = 'đã làm' (viền liền), câu còn lại = 'chưa làm' (viền đứt) — không chỉ dựa vào màu", await bDone.count() === 1 && await bOpen.count() === 1 && await bDone.evaluate(e => getComputedStyle(e).borderTopStyle) === "solid" && await bOpen.evaluate(e => getComputedStyle(e).borderTopStyle) === "dashed", pos);
   await grid.getByRole("button", { name: /^Câu 2,/ }).click();
   await eventually("chọn ô câu 2 → nhảy tới câu 2", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 2 / 2"));
