@@ -1,6 +1,6 @@
 // BU-08 phần B — dải "N câu hỏi của khách chờ duyệt" + chip "Câu hỏi của khách". BỎ QUA có chữ khi BU-05 (#104) chưa gộp (không đếm xanh).
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-admin-community-guest.ts
-import { mkSuper, wipe, check, section, done } from "./h";
+import { mkSuper, mkUser, wipe, check, section, done } from "./h";
 import { launch, ctxFor, closeAll, ADMIN } from "./ui";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -14,7 +14,9 @@ import { prisma } from "@/lib/prisma";
   }
   await wipe();
   const SA = await mkSuper("Quản trị cấp 1");
-  const mk = (content: string) => (prisma.thread as any).create({ data: { content, category: "hoi-dap", status: "pending", guestName: "Khách thử" } });
+  // Thread.authorId bắt buộc: câu hỏi của khách do MỘT tài khoản hệ thống đứng tên (cùng cách t-admin-queue-external tạo dữ liệu).
+  const author = await mkUser({ name: "Khách hệ thống", role: "student" });
+  const mk = (content: string) => (prisma.thread as any).create({ data: { content, authorId: author.id, category: "hoi-dap", status: "pending", guestName: "Khách thử" } });
   await mk("CAU_HOI_KHACH_1 làm sao giải phương trình?");
   await mk("CAU_HOI_KHACH_2 gọi tôi số 0912345678");
 
