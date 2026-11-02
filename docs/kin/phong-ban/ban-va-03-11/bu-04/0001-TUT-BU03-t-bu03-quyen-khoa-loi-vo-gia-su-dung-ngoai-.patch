@@ -1,0 +1,37 @@
+From 2659253685bfdebe4191709fd724f6bc2db659a6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Nguy=E1=BB=85n=20Ph=C3=BAc=20Thanh?= <aod.tsix@gmail.com>
+Date: Mon, 2 Nov 2026 04:56:43 +0700
+Subject: [PATCH 1/5] TUT-BU03: t-bu03-quyen khoa loi vo gia su dung ngoai
+ AuthProvider (500 gap o ui-links-everywhere)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+---
+ tools/local-e2e/t-bu03-quyen.ts | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/tools/local-e2e/t-bu03-quyen.ts b/tools/local-e2e/t-bu03-quyen.ts
+index b21d88b..721c06c 100644
+--- a/tools/local-e2e/t-bu03-quyen.ts
++++ b/tools/local-e2e/t-bu03-quyen.ts
+@@ -133,7 +133,8 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
+       const m = /NEXT_REDIRECT;(?:replace|push);([^;"\\]+);/.exec(body);
+       const loc = res.headers.get("location") || (m ? decodeURIComponent(m[1]) : "");
+       const leaks = body.includes("Ma trận đề") || body.includes("Tệp đề gốc");
+-      return { status: res.status, loc, leaks };
++      const broken = /useAuth phải dùng|Application error|Internal Server Error/.test(body); // vỏ gia sư dựng ngoài AuthProvider (500 gặp ở ui-links-everywhere)
++      return { status: res.status, loc, leaks, broken };
+     };
+     const isRedirect = (r: { status: number; loc: string }) => [301, 302, 303, 307, 308].includes(r.status) || (r.status === 200 && r.loc !== "");
+     for (const p of pages) {
+@@ -141,7 +142,7 @@ interface Route { name: string; call: (as: TUser | undefined) => Promise<Res>; c
+       check(`${p}: khách → chuyển hướng (3xx hoặc NEXT_REDIRECT), không lộ nội dung gia sư`, isRedirect(g) && !g.leaks, g);
+       check(`${p}: học sinh → chuyển hướng, không nằm lại trang gia sư`, isRedirect(st) && !st.loc.includes("/de-thi") && !st.leaks, st);
+       check(`${p}: gia sư chờ duyệt → ${TUTOR_PENDING_PATH}`, isRedirect(pe) && pe.loc.includes(TUTOR_PENDING_PATH) && !pe.leaks, pe);
+-      check(`${p}: ĐỐI CHỨNG gia sư đã duyệt → 200 và KHÔNG bị đá đi`, t.status === 200 && t.loc === "", t);
++      check(`${p}: ĐỐI CHỨNG gia sư đã duyệt → 200 và KHÔNG bị đá đi`, t.status === 200 && t.loc === "" && !t.broken, t);
+     }
+   }
+ 
+-- 
+2.43.0
+

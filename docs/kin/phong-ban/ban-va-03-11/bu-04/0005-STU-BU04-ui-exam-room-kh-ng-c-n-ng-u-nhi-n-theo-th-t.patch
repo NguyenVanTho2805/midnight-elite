@@ -1,0 +1,36 @@
+From bfc4b39220fbdd6e4c9d6ec60a8f9995f4f10e4b Mon Sep 17 00:00:00 2001
+From: x <x@x>
+Date: Mon, 2 Nov 2026 12:41:56 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?STU-BU04:=20ui-exam-room=20kh=C3=B4ng=20c?=
+ =?UTF-8?q?=C3=B2n=20=C4=91=E1=BB=8F=20ng=E1=BA=ABu=20nhi=C3=AAn=20theo=20?=
+ =?UTF-8?q?th=E1=BB=A9=20t=E1=BB=B1=20c=C3=A2u=20b=E1=BB=8B=20x=C3=A1o?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ô câu HIỆN TẠI luôn viền liền (đúng đặc tả); khi đề xáo ra q2,q1 thì ô 'chưa làm' lại là ô hiện tại nên bài kỳ vọng 'viền đứt' đỏ (1/4 lần chạy).
+Chuyển câu hiện tại sang câu đã làm trước khi đo. 6/6 lần chạy liên tiếp đạt 81/81.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01129FZcxS6cj8vBghUmM8k1
+---
+ tools/local-e2e/ui-exam-room.ts | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tools/local-e2e/ui-exam-room.ts b/tools/local-e2e/ui-exam-room.ts
+index d213f1e..b359b28 100644
+--- a/tools/local-e2e/ui-exam-room.ts
++++ b/tools/local-e2e/ui-exam-room.ts
+@@ -114,6 +114,9 @@ import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
+   const pos = await pg.evaluate(`[...document.querySelectorAll("[data-cau]")].map(e => e.id)`) as string[]; // đề xáo thứ tự mỗi lượt → lấy thứ tự thật trên màn hình
+   const doneAt = pos.indexOf("q-q1-pt") + 1, openAt = pos.indexOf("q-q1-pt") === 0 ? 2 : 1;
+   const bDone = grid.getByRole("button", { name: new RegExp(`^Câu ${doneAt}, đã làm`) }), bOpen = grid.getByRole("button", { name: new RegExp(`^Câu ${openAt}, chưa làm`) });
++  // Ô của câu HIỆN TẠI luôn viền liền (nền Navy — đúng đặc tả). Đề được xáo mỗi lượt nên câu đang hiện có thể chính là câu CHƯA làm (đỏ ngẫu nhiên khi thứ tự là q2,q1):
++  // chuyển câu hiện tại sang câu đã làm trước khi đo, để ô 'chưa làm' chắc chắn không phải ô hiện tại.
++  await bDone.click();
+   check("ô có chữ trạng thái: câu đã chọn = 'đã làm' (viền liền), câu còn lại = 'chưa làm' (viền đứt) — không chỉ dựa vào màu", await bDone.count() === 1 && await bOpen.count() === 1 && await bDone.evaluate(e => getComputedStyle(e).borderTopStyle) === "solid" && await bOpen.evaluate(e => getComputedStyle(e).borderTopStyle) === "dashed", pos);
+   await grid.getByRole("button", { name: /^Câu 2,/ }).click();
+   await eventually("chọn ô câu 2 → nhảy tới câu 2", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 2 / 2"));
+-- 
+2.43.0
+

@@ -1,0 +1,118 @@
+From dcac2873c288c5459520203aaac3662fe00ec93b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 2 Nov 2026 10:28:47 +0000
+Subject: [PATCH 3/5] =?UTF-8?q?STU-BU04:=20n=C3=BAt=20L=C3=A0m=20l?=
+ =?UTF-8?q?=E1=BA=A1i=20kh=C3=B4ng=20d=C3=B9ng=20s=E1=BB=91=20l=C6=B0?=
+ =?UTF-8?q?=E1=BB=A3t=20c=C5=A9=20sau=20n=E1=BB=99p;=20L=E1=BB=8Bch=20thi?=
+ =?UTF-8?q?=20kh=C3=B4ng=20l=E1=BB=99=20t=C3=AAn=20=C4=91=E1=BB=81=20c?=
+ =?UTF-8?q?=E1=BB=A7a=20l=E1=BB=9Bp=20em=20kh=C3=B4ng=20h=E1=BB=8Dc?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- useRoomPage.refreshGate: bỏ cổng cũ rồi nạp lại (sau nộp và khi bấm Làm lại). ui-quiz-hs đỏ 1 ca: màn kết quả vẽ bằng gate.canStart cũ nên 'Làm lại' bật dù đã hết lượt.
+- studentSchedule: đề gắn lớp chỉ hiện cho học sinh đang ghi danh (hoặc có ExamGuestAccess), cùng luật GET /api/exams (STU-004). ui-bai-tap-hs đỏ 1 ca.
+- t-exam-roles-attack: đổi câu hỏi-cho-chủ thành khẳng định thật (ngoài lớp không thấy, trong lớp vẫn thấy).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01129FZcxS6cj8vBghUmM8k1
+---
+ src/app/(student)/student/thi-thu/[examId]/page.tsx |  4 ++--
+ src/components/student/exam-room/useRoomPage.ts     |  5 ++++-
+ src/lib/studentSchedule.ts                          | 10 +++++++++-
+ tools/local-e2e/t-exam-roles-attack.ts              |  8 +++++---
+ 4 files changed, 20 insertions(+), 7 deletions(-)
+
+diff --git a/src/app/(student)/student/thi-thu/[examId]/page.tsx b/src/app/(student)/student/thi-thu/[examId]/page.tsx
+index 4ca9545..eda23d2 100644
+--- a/src/app/(student)/student/thi-thu/[examId]/page.tsx
++++ b/src/app/(student)/student/thi-thu/[examId]/page.tsx
+@@ -46,7 +46,7 @@ function ExamRoomPage() {
+     if (!submitted || !s.attempt) return;
+     d.setMyResult({ score: submitted.score, totalPoints: submitted.totalPoints, rank: submitted.rank, pendingManual: !!submitted.pendingManual });
+     d.setPhase("done");
+-    void d.loadGate(); d.loadHistory(); void d.loadReview(s.attempt.attemptId, true);
++    void d.refreshGate(); d.loadHistory(); void d.loadReview(s.attempt.attemptId, true);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [submitted]);
+   // Vào thẳng trang đã có kết quả: tải im lặng bài xem lại của lượt gần nhất.
+@@ -58,7 +58,7 @@ function ExamRoomPage() {
+   async function begin() {
+     if (await s.start(password)) d.setPhase("taking"); else void d.loadGate(); // số lượt/quyền/giờ mở có thể đã đổi
+   }
+-  function again() { setPassword(""); s.setStartErr(""); d.setPhase("gate"); void d.loadGate(); }
++  function again() { setPassword(""); s.setStartErr(""); d.setPhase("gate"); void d.refreshGate(); }
+   function openReview(attemptId?: string) { const id = attemptId ?? reviewId; if (!id) return; d.setPhase("review"); void d.loadReview(id); }
+ 
+   const wrap = (children: React.ReactNode, narrow = true) => <div className="px-4 py-6"><div className={narrow ? "max-w-[480px] mx-auto" : ""}>{children}</div></div>;
+diff --git a/src/components/student/exam-room/useRoomPage.ts b/src/components/student/exam-room/useRoomPage.ts
+index 2be38ee..26bc781 100644
+--- a/src/components/student/exam-room/useRoomPage.ts
++++ b/src/components/student/exam-room/useRoomPage.ts
+@@ -26,6 +26,9 @@ export function useRoomPage(examId: string) {
+     setGate(r.data); setGateErr(false); return r.data;
+   }, [examId]);
+ 
++  /** Bỏ cổng cũ rồi nạp lại: sau khi nộp bài số lượt đã đổi, nên màn kết quả/nút "Làm lại" không được dùng `canStart` của lần nạp trước (cho tới khi có bản mới, nút tắt). */
++  const refreshGate = useCallback(() => { setGate(null); return loadGate(); }, [loadGate]);
++
+   const loadHistory = useCallback(() => {
+     api.examAttempts.history(examId).then(setHistory).catch(() => {});
+     fetch(`/api/exam-results?examId=${examId}`, { credentials: "same-origin" }).then(r => (r.ok ? r.json() : []))
+@@ -70,5 +73,5 @@ export function useRoomPage(examId: string) {
+ 
+   /** Lượt có thể xem lại khi vào thẳng trang đã có kết quả: lượt đã nộp gần nhất trong lịch sử. */
+   const latestSubmitted = history.find(h => h.status !== "in_progress")?.id ?? null;
+-  return { exam, phase, setPhase, gate, gateErr, setGateErr, loadGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
++  return { exam, phase, setPhase, gate, gateErr, setGateErr, loadGate, refreshGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
+ }
+diff --git a/src/lib/studentSchedule.ts b/src/lib/studentSchedule.ts
+index cdc81db..ed28a37 100644
+--- a/src/lib/studentSchedule.ts
++++ b/src/lib/studentSchedule.ts
+@@ -6,6 +6,7 @@ import { effectiveSlot } from "@/lib/sessionChange";
+ import { loadChanges } from "@/lib/sessionChangeServer";
+ import { parseAzotaDeadline } from "@/lib/azotaDeadline";
+ import { isListedToStudent } from "@/lib/examVariantRoute";
++import { isEnrollmentActive } from "@/lib/enrollment";
+ import { firstHttpLink } from "@/lib/lessonLinks";
+ import { effectiveLocation, effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl, type SessionKind, type SessionMode } from "@/lib/sessionBook";
+ 
+@@ -66,7 +67,14 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new
+       variantOfId: true, courseId: true, owner: { select: { adminRole: true } },
+     },
+   });
+-  const exams = examRows.filter(e => isListedToStudent(e, e.owner?.adminRole));
++  // STU-004 (cùng luật GET /api/exams): đề của lớp em không học thì KHÔNG hiện tên ở lịch, trừ đề đã được cấp quyền vào (ExamGuestAccess).
++  const [enr, acc] = await Promise.all([
++    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
++    prisma.examGuestAccess.findMany({ where: { userId }, select: { examId: true } }),
++  ]);
++  const enrolledCourses = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));
++  const grantedExams = new Set(acc.map(a => a.examId));
++  const exams = examRows.filter(e => grantedExams.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolledCourses));
+ 
+   for (const exam of exams) {
+     const iso = toISO(exam.date);
+diff --git a/tools/local-e2e/t-exam-roles-attack.ts b/tools/local-e2e/t-exam-roles-attack.ts
+index 2cae3b9..8109cfa 100644
+--- a/tools/local-e2e/t-exam-roles-attack.ts
++++ b/tools/local-e2e/t-exam-roles-attack.ts
+@@ -120,9 +120,11 @@ const ids = (j: unknown, pick: (x: any) => string) => (Array.isArray(j) ? j : (j
+   }
+   const xSched = await api("GET", "/api/schedule", { as: X });
+   const xEv: string[] = (Array.isArray(xSched.json) ? xSched.json : xSched.json?.events ?? []).filter((e: any) => e.type === "exam").map((e: any) => String(e.id));
+-  // Câu hỏi cho chủ (không tính đỏ): lịch thi là lịch CÔNG KHAI từ trước BU-03, nay đề gắn lớp cũng hiện cho người ngoài lớp.
+-  if (xEv.includes("exam-ra-main")) console.log("  ⚠ CÂU HỎI CHO CHỦ: /api/schedule hiện đề gắn lớp (ra-main) cho học sinh ngoài lớp — có chủ ý không?");
+-  else check("X (ngoài lớp): lịch thi không liệt kê đề của lớp Toán 9", true);
++  // STU-004 (cùng luật GET /api/exams): đề của lớp em không học không hiện tên ở Lịch thi; học sinh TRONG lớp vẫn thấy.
++  check("X (ngoài lớp): lịch thi không liệt kê đề của lớp Toán 9", !xEv.includes("exam-ra-main"), xEv);
++  const aSched = await api("GET", "/api/schedule", { as: A });
++  const aEv: string[] = (aSched.json?.events ?? []).filter((e: any) => e.type === "exam").map((e: any) => String(e.id));
++  check("A (trong lớp): lịch thi VẪN liệt kê đề của lớp mình (ra-main)", aEv.includes("exam-ra-main"), aEv);
+ 
+   const gd = await api("GET", `/api/exams/${D.id}/gate`, { as: A });
+   check("gate đề nháp (học sinh) → không 200 / không kèm câu hỏi", gd.status !== 200 && leaksIn(gd.text).length === 0, [gd.status, gd.text.slice(0, 120)]);
+-- 
+2.43.0
+

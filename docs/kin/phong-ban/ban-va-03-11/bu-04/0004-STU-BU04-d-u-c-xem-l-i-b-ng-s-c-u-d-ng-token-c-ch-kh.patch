@@ -1,0 +1,35 @@
+From e642ab94d4e0af47bf46b043b3d6c450c6244327 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 2 Nov 2026 10:47:31 +0000
+Subject: [PATCH 4/5] =?UTF-8?q?STU-BU04:=20d=E1=BA=A5u=20c=E1=BB=9D=20'xem?=
+ =?UTF-8?q?=20l=E1=BA=A1i'=20=E1=BB=9F=20b=E1=BA=A3ng=20s=E1=BB=91=20c?=
+ =?UTF-8?q?=C3=A2u=20d=C3=B9ng=20token=20c=E1=BB=A1=20ch=E1=BB=AF=20(kh?=
+ =?UTF-8?q?=C3=B4ng=20c=C3=B2n=20text-[10px])?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+t-kin-components đỏ 1 ca: không được có chữ nhỏ hơn --kin-co-caption (11,1px) trong .tsx.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01129FZcxS6cj8vBghUmM8k1
+---
+ src/components/student/exam-room/QuestionGrid.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/student/exam-room/QuestionGrid.tsx b/src/components/student/exam-room/QuestionGrid.tsx
+index 5547fe4..067ba00 100644
+--- a/src/components/student/exam-room/QuestionGrid.tsx
++++ b/src/components/student/exam-room/QuestionGrid.tsx
+@@ -38,7 +38,7 @@ export default function QuestionGrid({ items, current, onPick, label = "Nhảy t
+                 className="relative w-full min-h-[44px] rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold tabular-nums"
+                 style={on ? { background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", border: "2px solid var(--kin-nhan-nen)" } : { background: b.bg, color: b.color, border: b.border }}>
+                 {i + 1}
+-                {it.flagged && <span aria-hidden className="absolute top-0 right-[3px] text-[10px] leading-4">⚑</span>}
++                {it.flagged && <span aria-hidden className="absolute top-0 right-[3px] text-[length:var(--kin-co-caption)] leading-4">⚑</span>}
+                 {it.answered && !on && <span aria-hidden className="absolute bottom-[3px] right-[4px] w-[5px] h-[5px] rounded-full" style={{ background: "var(--kin-nhan-nen)" }} />}
+               </button>
+             </li>
+-- 
+2.43.0
+

@@ -1,0 +1,517 @@
+From dd9b683055801fcef5d725bc6fabc6f62b226bfd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 2 Nov 2026 11:32:59 +0000
+Subject: [PATCH] =?UTF-8?q?BU-06b:=20gia=20s=C6=B0=20ghi=20=C4=91=C6=B0?=
+ =?UTF-8?q?=E1=BB=A3c=20=E1=BA=A3nh=20b=C3=ACa=20+=20video=20gi=E1=BB=9Bi?=
+ =?UTF-8?q?=20thi=E1=BB=87u=20(PUT=20/api/users/me/tutor-profile)=20v?=
+ =?UTF-8?q?=C3=A0=20form=20c=C3=B3=20d=C3=B2ng=20'Kh=C3=B4ng=20=C4=91?=
+ =?UTF-8?q?=C4=83ng=20=E1=BA=A3nh/video=20c=C3=B3=20h=E1=BB=8Dc=20sinh'?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- tutorProfile.parseTutorProfileInput nhận coverUrl/introVideoUrl qua parseCoverInput/parseIntroVideoInput (data URL jpeg|png|webp ≤ 250 000; chỉ link YouTube, lưu dạng chuẩn do máy chủ dựng). Thiếu khoá = giữ nguyên, null/rỗng = xoá.
+- route tutor-profile: đọc/ghi 2 cột; GET trả bản đã kiểm (dữ liệu hỏng không ra ngoài).
+- TutorProfileForm: khu 'Ảnh bìa và video giới thiệu' (cắt 16:9 về 960×540, giảm chất lượng tới vừa 250 KB; link sai báo tại ô, không lưu nửa vời).
+- Test: bật ca (10) của t-tutor-search (202/0, bẻ một dòng ghi bìa làm đỏ 7 ca), +ca thuần ở t-tutor-search-lib (179/0), ui-ho-so-bia-video mới (51/0, 1440 và 390).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01129FZcxS6cj8vBghUmM8k1
+---
+ src/app/api/users/me/tutor-profile/route.ts   |  10 +-
+ .../(tutor)/ho-so/TutorProfileForm.tsx        |  82 ++++++++++-
+ src/app/lop-cua-toi/(tutor)/ho-so/page.tsx    |   6 +-
+ src/lib/tutorProfile.ts                       |  16 ++-
+ tools/local-e2e/t-tutor-search-lib.ts         |  16 +++
+ tools/local-e2e/t-tutor-search.ts             |  55 ++++++-
+ tools/local-e2e/ui-ho-so-bia-video.ts         | 135 ++++++++++++++++++
+ 7 files changed, 309 insertions(+), 11 deletions(-)
+ create mode 100644 tools/local-e2e/ui-ho-so-bia-video.ts
+
+diff --git a/src/app/api/users/me/tutor-profile/route.ts b/src/app/api/users/me/tutor-profile/route.ts
+index 525e315..eb90f4b 100644
+--- a/src/app/api/users/me/tutor-profile/route.ts
++++ b/src/app/api/users/me/tutor-profile/route.ts
+@@ -4,6 +4,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
+ import { parseTutorProfileInput, tutorApplicationStatus } from "@/lib/tutorProfile";
+ import { prefsLockKey, readPreferences } from "@/lib/userPreferences";
+ import { applyProfileHidden, isProfileHidden } from "@/lib/tutorVisibility";
++import { coverForPublic, introVideoView } from "@/lib/tutorSearchMedia";
+ import type { Prisma } from "@/generated/prisma/client";
+ 
+ // GET/PUT /api/users/me/tutor-profile — gia sư xem/sửa hồ sơ của mình (BE-049).
+@@ -19,11 +20,13 @@ const SELECT = {
+   bio: true, subjects: true, adminRole: true,
+   tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true,
+   tutorRejectedAt: true, tutorRejectReason: true, city: true, preferences: true,
++  coverUrl: true, introVideoUrl: true, // BU-06b
+ } as const;
+ 
+ function toDTO(u: {
+   adminRole: string | null; bio: string | null; subjects: string[]; tutorAppliedAt: Date | null; tutorVerified: boolean;
+   tutorVerifiedAt: Date | null; tutorRejectedAt: Date | null; tutorRejectReason: string | null; city: string | null; preferences: unknown;
++  coverUrl: string | null; introVideoUrl: string | null;
+ }) {
+   return {
+     bio:              u.bio,
+@@ -38,6 +41,9 @@ function toDTO(u: {
+     teaching:         readPreferences(u.preferences).teaching ?? null,
+     // NC2-022: đang ẩn khỏi nơi công khai? (mặc định false = hiện)
+     profile:          { hidden: isProfileHidden(readPreferences(u.preferences)) },
++    // BU-06b: dữ liệu hỏng trong DB không bao giờ ra ngoài (coverForPublic / introVideoView kiểm lại); video trả dạng link chuẩn do máy chủ dựng.
++    coverUrl:         coverForPublic(u.coverUrl),
++    introVideoUrl:    introVideoView(u.introVideoUrl)?.watchUrl ?? null,
+   };
+ }
+ 
+@@ -72,10 +78,12 @@ export async function PUT(req: NextRequest) {
+     return NextResponse.json({ error: "Chọn ít nhất 1 môn dạy" }, { status: 400 });
+   }
+ 
+-  const data: { bio?: string | null; subjects?: string[]; city?: string | null; preferences?: Prisma.InputJsonValue } = {};
++  const data: { bio?: string | null; subjects?: string[]; city?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; preferences?: Prisma.InputJsonValue } = {};
+   if (parsed.bio !== undefined) data.bio = parsed.bio;
+   if (parsed.subjects !== undefined) data.subjects = parsed.subjects;
+   if (parsed.city !== undefined) data.city = parsed.city;
++  if (parsed.coverUrl !== undefined) data.coverUrl = parsed.coverUrl;
++  if (parsed.introVideoUrl !== undefined) data.introVideoUrl = parsed.introVideoUrl;
+ 
+   // `teaching` nằm trong User.preferences: đọc-sửa-ghi một cột JSON nên dùng CÙNG khoá giao dịch với /api/users/me/preferences,
+   // để đổi chủ đề/module ở tab khác không ghi đè lên khu vực vừa lưu (và ngược lại).
+diff --git a/src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx b/src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx
+index b44d5fc..1fe6435 100644
+--- a/src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx
++++ b/src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx
+@@ -5,6 +5,7 @@ import { required, type FieldRule } from "@/lib/fieldRules";
+ import { KinButton } from "@/components/kin";
+ import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
+ import { CITY_MAX, CREDENTIAL_MAX, DISTRICT_MAX, MODE_LABEL, TEACHING_MODES, priceText as fmtPrice, type TeachingMode, type TutorTeaching } from "@/lib/tutorArea";
++import { isValidCover, parseIntroVideoInput } from "@/lib/tutorSearchMedia"; // hàm thuần, không kéo Prisma vào gói trình duyệt
+ 
+ const BIO_MAX = 2000, SUBJECTS_MAX = 10, SUBJECT_LEN = 50;
+ // Chính tả KHỚP form đăng ký gia sư (dang-ky/page.tsx: "Hóa học", "Kỹ năng mềm"). Gia sư đăng ký bằng "Hóa học" mà gợi ý ghi "Hoá học" thì hồ sơ hiện hai môn trùng nhau.
+@@ -21,12 +22,35 @@ async function toAvatarDataUrl(file: File): Promise<string> {
+   return c.toDataURL("image/jpeg", 0.85);
+ }
+ 
+-export default function TutorProfileForm({ initialBio, initialSubjects, initialCity, initialTeaching }: {
++// BU-06b: ảnh bìa hiện ở hồ sơ công khai theo khung 16:9 → cắt giữa về 960×540, giảm chất lượng JPEG tới khi vừa giới hạn máy chủ (≤ 250 000 ký tự data URL). Không vừa → null.
++async function toCoverDataUrl(file: File): Promise<string | null> {
++  const bmp = await createImageBitmap(file);
++  const W = 960, H = 540;
++  const c = document.createElement("canvas"); c.width = W; c.height = H;
++  const s = Math.max(W / bmp.width, H / bmp.height);
++  const dw = bmp.width * s, dh = bmp.height * s;
++  c.getContext("2d")!.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
++  for (const q of [0.85, 0.75, 0.65, 0.55, 0.45, 0.35, 0.25]) {
++    const url = c.toDataURL("image/jpeg", q);
++    if (isValidCover(url)) return url;
++  }
++  return null;
++}
++
++export default function TutorProfileForm({ initialBio, initialSubjects, initialCity, initialTeaching, initialCover = null, initialVideo = "" }: {
+   initialBio: string; initialSubjects: string[];
+   /** ĐX-06: Tỉnh/Thành (users.city) và mục khu vực / hình thức đã lưu (null = chưa khai). */
+   initialCity: string; initialTeaching: TutorTeaching | null;
++  /** BU-06b: ảnh bìa (data URL đã kiểm) và link video YouTube (dạng chuẩn) đã lưu. */
++  initialCover?: string | null; initialVideo?: string;
+ }) {
+   const notify = useNotify();
++  const [cover, setCover] = useState<string | null>(initialCover);
++  const [coverDirty, setCoverDirty] = useState(false); // chỉ gửi ảnh bìa lên máy chủ khi gia sư vừa đổi/gỡ (ảnh nặng ~vài trăm KB)
++  const [coverBusy, setCoverBusy] = useState(false);
++  const [video, setVideo] = useState(initialVideo);
++  const [videoErr, setVideoErr] = useState("");
++  const coverRef = useRef<HTMLInputElement>(null);
+   const [bio, setBio] = useState(initialBio);
+   const [city, setCity] = useState(initialCity);
+   const [district, setDistrict] = useState(initialTeaching?.district ?? "");
+@@ -72,10 +96,30 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
+     const priceNum = price ? Number(price) : null;
+     const empty = !city.trim() && !district.trim() && !mode && !credential.trim() && !price && !showPrice;
+     const teaching = empty ? null : { district: district.trim() || null, mode: mode || null, credential: credential.trim() || null, price: priceNum, showPrice };
++    // BU-06b: kiểm link YouTube ngay ở trình duyệt (máy chủ kiểm lại); nhập sai thì dừng, không lưu nửa vời.
++    const vid = parseIntroVideoInput(video);
++    if (!vid.ok) { setVideoErr(vid.error); document.getElementById("video-url")?.focus(); return; }
++    setVideoErr("");
+     setSaving(true);
+-    const r = await callApi<{ error?: string }>("/api/users/me/tutor-profile", { method: "PUT", body: JSON.stringify({ bio, subjects, city: city.trim() || null, teaching }) });
++    const r = await callApi<{ error?: string; introVideoUrl?: string | null }>("/api/users/me/tutor-profile", { method: "PUT", body: JSON.stringify({
++      bio, subjects, city: city.trim() || null, teaching,
++      introVideoUrl: video.trim() || null,
++      ...(coverDirty ? { coverUrl: cover } : {}),
++    }) });
+     setSaving(false);
+-    if (r.ok) notify.ok("Đã lưu hồ sơ."); else notify.err(r.data.error ?? "Không lưu được hồ sơ");
++    if (r.ok) { setCoverDirty(false); setVideo(r.data.introVideoUrl ?? ""); notify.ok("Đã lưu hồ sơ."); } else notify.err(r.data.error ?? "Không lưu được hồ sơ");
++  }
++
++  async function onCover(f: File | undefined) {
++    if (!f) return;
++    if (!f.type.startsWith("image/")) { notify.err("Hãy chọn một tệp ảnh"); return; }
++    setCoverBusy(true);
++    try {
++      const url = await toCoverDataUrl(f);
++      if (!url) notify.err("Ảnh này nặng quá, hãy chọn ảnh khác (JPG/PNG/WebP, dưới 250 KB sau khi thu nhỏ)");
++      else { setCover(url); setCoverDirty(true); }
++    } catch { notify.err("Không đọc được ảnh này"); }
++    finally { setCoverBusy(false); if (coverRef.current) coverRef.current.value = ""; }
+   }
+ 
+   async function onFile(f: File | undefined) {
+@@ -105,6 +149,38 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
+         </div>
+       </section>
+ 
++      {/* BU-06b: ảnh bìa + video giới thiệu trên hồ sơ công khai. Tự khai, KiN không kiểm nội dung → nhắc rõ KHÔNG đăng ảnh/video có học sinh (trẻ em). */}
++      <section className="rounded-xl p-5 space-y-4" style={CARD_STYLE} aria-labelledby="h-bia">
++        <div>
++          <h2 id="h-bia" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Ảnh bìa và video giới thiệu</h2>
++          <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Tuỳ chọn. Hiện ở đầu hồ sơ công khai của bạn. KiN không kiểm nội dung ảnh và video.</p>
++          <p className="text-sm font-semibold mt-2" style={{ color: "var(--kin-chu-chinh)" }} data-testid="luu-y-hoc-sinh">Không đăng ảnh/video có học sinh.</p>
++        </div>
++
++        <div>
++          <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Ảnh bìa</p>
++          {cover
++            // eslint-disable-next-line @next/next/no-img-element
++            ? <img src={cover} alt="Ảnh bìa hiện tại" className="w-full aspect-video object-cover rounded-lg mb-2" style={{ border: "1px solid var(--kin-vien-thuong)" }} data-testid="anh-bia-xem-truoc" />
++            : <div className="w-full aspect-[16/6] rounded-lg mb-2 flex items-center justify-center text-sm" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px dashed var(--kin-vien-thuong)" }}>Chưa có ảnh bìa — hồ sơ dùng ảnh đại diện</div>}
++          <input ref={coverRef} id="cover-file" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Chọn ảnh bìa" onChange={e => onCover(e.target.files?.[0])} />
++          <div className="flex flex-wrap gap-2">
++            <KinButton variant="secondary" loading={coverBusy} onClick={() => coverRef.current?.click()}>{cover ? "Đổi ảnh bìa" : "Chọn ảnh bìa"}</KinButton>
++            {cover && <KinButton variant="secondary" onClick={() => { setCover(null); setCoverDirty(true); }}>Gỡ ảnh bìa</KinButton>}
++          </div>
++          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>JPG, PNG hoặc WebP; KiN tự thu nhỏ về khung 16:9, tối đa 250 KB. Bấm “Lưu hồ sơ” để áp dụng.</p>
++        </div>
++
++        <div>
++          <label htmlFor="video-url" className="block text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Link video giới thiệu (YouTube)</label>
++          <input id="video-url" value={video} maxLength={200} inputMode="url" autoComplete="off" placeholder="https://www.youtube.com/watch?v=…" className="w-full px-3 py-2 rounded-lg min-h-[44px]"
++            style={{ ...FIELD_STYLE, ...(videoErr ? { border: "2px solid var(--kin-tt-chu-loi)" } : {}) }} aria-invalid={videoErr ? true : undefined} aria-describedby={videoErr ? "video-err" : undefined}
++            onChange={e => { setVideo(e.target.value); if (videoErr) setVideoErr(""); }} />
++          {videoErr && <p id="video-err" role="alert" className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{videoErr}</p>}
++          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Chỉ nhận link YouTube (youtube.com hoặc youtu.be). Để trống để gỡ video.</p>
++        </div>
++      </section>
++
+       <section className="rounded-xl p-5" style={CARD_STYLE} aria-labelledby="h-bio">
+         <h2 id="h-bio" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Giới thiệu</h2>
+         <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>Kinh nghiệm dạy, thành tích, cách dạy. Phụ huynh đọc phần này khi chọn gia sư.</p>
+diff --git a/src/app/lop-cua-toi/(tutor)/ho-so/page.tsx b/src/app/lop-cua-toi/(tutor)/ho-so/page.tsx
+index 84400cf..6a1e343 100644
+--- a/src/app/lop-cua-toi/(tutor)/ho-so/page.tsx
++++ b/src/app/lop-cua-toi/(tutor)/ho-so/page.tsx
+@@ -9,6 +9,7 @@ import TutorProfileForm from "./TutorProfileForm";
+ import PublicProfilePreview from "@/components/tutor/PublicProfilePreview";
+ import { readPreferences } from "@/lib/userPreferences";
+ import { isProfileHidden } from "@/lib/tutorVisibility";
++import { coverForPublic, introVideoView } from "@/lib/tutorSearchMedia";
+ import ProfileVisibilityToggle from "./ProfileVisibilityToggle";
+ 
+ export const dynamic = "force-dynamic";
+@@ -18,7 +19,7 @@ export default async function HoSoGiaSuPage() {
+   if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/ho-so");
+   const u = await prisma.user.findUnique({
+     where: { id: session.userId },
+-    select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true, city: true, preferences: true },
++    select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true, city: true, preferences: true, coverUrl: true, introVideoUrl: true },
+   });
+   if (!u || (u.adminRole !== "teacher" && !u.tutorAppliedAt)) redirect("/lop-cua-toi");
+   const status = u.adminRole === "teacher" ? "approved" : tutorApplicationStatus(u);
+@@ -55,7 +56,8 @@ export default async function HoSoGiaSuPage() {
+         {status === "approved" && <PublicProfilePreview tutorId={u.id} hidden={hidden} reason={u.profileLockedAt ? "bi-khoa" : u.tutorVerified ? null : "chua-duyet"} />}
+         {status !== "approved" && <PublicProfilePreview tutorId={u.id} reason="chua-duyet" />}
+ 
+-        <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} initialCity={u.city ?? ""} initialTeaching={readPreferences(u.preferences).teaching ?? null} />
++        <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} initialCity={u.city ?? ""} initialTeaching={readPreferences(u.preferences).teaching ?? null}
++          initialCover={coverForPublic(u.coverUrl)} initialVideo={introVideoView(u.introVideoUrl)?.watchUrl ?? ""} />
+       </div>
+     </div>
+   );
+diff --git a/src/lib/tutorProfile.ts b/src/lib/tutorProfile.ts
+index 2104b09..f298f4a 100644
+--- a/src/lib/tutorProfile.ts
++++ b/src/lib/tutorProfile.ts
+@@ -1,6 +1,7 @@
+ // Hồ sơ gia sư (1.4.4) — validate dùng chung cho đăng ký gia sư và sửa hồ sơ.
+ import { parseAreaInput, type TutorTeaching } from "@/lib/tutorArea";
+ import { parseProfileInput } from "@/lib/tutorVisibility";
++import { parseCoverInput, parseIntroVideoInput } from "@/lib/tutorSearchMedia";
+ 
+ export const TUTOR_BIO_MAX      = 2000;
+ export const TUTOR_SUBJECTS_MAX = 10;
+@@ -9,9 +10,11 @@ export const TUTOR_SUBJECT_LEN  = 50;
+ // Trả { bio, subjects } đã chuẩn hoá, hoặc { error } nếu dữ liệu sai.
+ // Field không truyền → undefined (route PUT bỏ qua, không ghi đè).
+ // ĐX-06: thêm `city` (Tỉnh/Thành) và `teaching` (quận/huyện, hình thức, trường + bằng cấp, giá tham khảo) — xem src/lib/tutorArea.ts.
+-export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown; city?: unknown; teaching?: unknown; profile?: unknown }):
+-  { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; error?: string } {
+-  const out: { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean } = {};
++// BU-06b: thêm `coverUrl` (ảnh bìa, data URL jpeg/png/webp ≤ 250 KB) và `introVideoUrl` (link YouTube → lưu lại dạng chuẩn do máy chủ dựng) — kiểm ở tutorSearchMedia.ts.
++// Thiếu khoá → giữ nguyên; null hoặc chuỗi rỗng → xoá. Tự khai: KiN không kiểm nội dung ảnh/video.
++export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown; city?: unknown; teaching?: unknown; profile?: unknown; coverUrl?: unknown; introVideoUrl?: unknown }):
++  { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; coverUrl?: string | null; introVideoUrl?: string | null; error?: string } {
++  const out: { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; coverUrl?: string | null; introVideoUrl?: string | null } = {};
+ 
+   if (body.bio !== undefined) {
+     if (body.bio !== null && typeof body.bio !== "string") return { error: "bio phải là chuỗi" };
+@@ -50,6 +53,13 @@ export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown
+   if (prof.error) return { error: prof.error };
+   if (prof.hidden !== undefined) out.hidden = prof.hidden;
+ 
++  const cover = parseCoverInput(body.coverUrl);
++  if (!cover.ok) return { error: cover.error };
++  if (cover.value !== undefined) out.coverUrl = cover.value;
++  const video = parseIntroVideoInput(body.introVideoUrl);
++  if (!video.ok) return { error: video.error };
++  if (video.value !== undefined) out.introVideoUrl = video.value;
++
+   return out;
+ }
+ 
+diff --git a/tools/local-e2e/t-tutor-search-lib.ts b/tools/local-e2e/t-tutor-search-lib.ts
+index a16d373..0c4d2d6 100644
+--- a/tools/local-e2e/t-tutor-search-lib.ts
++++ b/tools/local-e2e/t-tutor-search-lib.ts
+@@ -6,6 +6,7 @@ import {
+   type SearchableTutor, type TutorFilters, type TutorSortKey,
+ } from "@/lib/tutorSearch";
+ import { introVideoView, isValidCover, parseCoverInput, parseIntroVideoInput, coverForPublic } from "@/lib/tutorSearchMedia";
++import { parseTutorProfileInput } from "@/lib/tutorProfile";
+ import { check, section, done } from "./h";
+ 
+ const Q = (s: string) => parseTutorQuery(new URLSearchParams(s));
+@@ -236,5 +237,20 @@ const perms = <X,>(a: X[]): X[][] => (a.length <= 1 ? [a] : a.flatMap((x, i) =>
+     && pc(`data:image/svg+xml;base64,${B64}`) === "ERR:Ảnh bìa phải là JPG/PNG/WebP và nhỏ hơn 250 KB");
+   check("coverForPublic: hỏng ⇒ null, hợp lệ giữ nguyên", coverForPublic("javascript:alert(1)") === null && coverForPublic(`data:image/svg+xml;base64,${B64}`) === null && coverForPublic("A".repeat(1_000_000)) === null && coverForPublic(okCover) === okCover && coverForPublic(null) === null);
+ 
++  // BU-06b — đường GHI: parseTutorProfileInput nhận coverUrl / introVideoUrl (dùng chung đăng ký gia sư và sửa hồ sơ).
++  section("BU-06b: parseTutorProfileInput nhận bìa + video");
++  const pp = (b: Record<string, unknown>) => parseTutorProfileInput(b);
++  check("không gửi khoá nào ⇒ không có coverUrl/introVideoUrl (PUT giữ nguyên, không ghi đè)", (() => { const q = pp({ bio: "x" }); return !("coverUrl" in q) && !("introVideoUrl" in q) && !q.error; })());
++  check("bìa hợp lệ ⇒ giữ nguyên; null / rỗng ⇒ null (xoá)", pp({ coverUrl: okCover }).coverUrl === okCover && pp({ coverUrl: null }).coverUrl === null && pp({ coverUrl: "  " }).coverUrl === null);
++  check("video: link chữ gõ (có ?si=, youtu.be) ⇒ LƯU dạng chuẩn watchUrl, không lưu chữ gõ", pp({ introVideoUrl: "https://youtu.be/dQw4w9WgXcQ?si=abc&t=9" }).introVideoUrl === "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
++  check("video null / rỗng ⇒ null (xoá)", pp({ introVideoUrl: null }).introVideoUrl === null && pp({ introVideoUrl: "" }).introVideoUrl === null);
++  for (const bad of [`data:image/svg+xml;base64,${B64}`, "https://evil.test/a.jpg", "javascript:alert(1)", 123, [okCover], `data:image/jpeg;base64,${"A".repeat(250_000)}`]) {
++    check(`bìa xấu bị từ chối với thông báo tiếng Việt (${String(bad).slice(0, 24)})`, /Ảnh bìa/.test(pp({ coverUrl: bad }).error ?? ""));
++  }
++  for (const bad of ["https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ", "javascript:alert(1)", "https://vimeo.com/1", "https://www.youtube.com@evil.test/watch?v=dQw4w9WgXcQ", 5]) {
++    check(`video xấu bị từ chối với thông báo tiếng Việt (${String(bad).slice(0, 24)})`, /YouTube/.test(pp({ introVideoUrl: bad }).error ?? ""));
++  }
++  check("lỗi bìa không làm mất lỗi: có error thì KHÔNG trả các trường đã chuẩn hoá khác", (() => { const q = pp({ bio: "ok", coverUrl: "javascript:x" }); return !!q.error && q.bio === undefined; })());
++
+   await done();
+ })();
+diff --git a/tools/local-e2e/t-tutor-search.ts b/tools/local-e2e/t-tutor-search.ts
+index bb56780..647a1bb 100644
+--- a/tools/local-e2e/t-tutor-search.ts
++++ b/tools/local-e2e/t-tutor-search.ts
+@@ -278,9 +278,60 @@ const B64 = "A".repeat(400);
+   const gr = await form(`/api/courses/${RATED.id}/join`, SA);
+   check("lớp open nhưng có đơn giá ⇒ ?join=chi-ma (đúng như API báo 'invite_only')", gr.status === 303 && /join=chi-ma/.test(loc(gr)), loc(gr));
+ 
+-  // ── (10) Ghi coverUrl/introVideoUrl: CHƯA có (cần BU-06b) ────────────────────────────────────
++  // ── (10) Ghi coverUrl/introVideoUrl (BU-06b) ─────────────────────────────────────────────────
+   section("(10) Ghi bìa/video qua PUT /api/users/me/tutor-profile");
+-  console.log("  (bỏ qua: route thuộc phòng Gia sư, chờ phiếu BU-06b; hàm kiểm nằm ở src/lib/tutorSearchMedia.ts và đã có test thuần)");
++  const W = bulk[3]; // gia sư đã duyệt, chưa có bìa/video
++  const put = (as: TUser | undefined, body: unknown) => api("PUT", "/api/users/me/tutor-profile", { as, body });
++  const rowOf = (id: string) => prisma.user.findUnique({ where: { id }, select: { coverUrl: true, introVideoUrl: true, bio: true } });
++  const goodCover = `data:image/png;base64,${B64}`;
++
++  const w1 = await put(W, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/dQw4w9WgXcQ?si=abc&t=9" });
++  check("gia sư ghi bìa + video hợp lệ ⇒ 200", w1.status === 200, w1.json);
++  check("DB: bìa lưu nguyên; video lưu dạng CHUẨN do máy chủ dựng (không lưu chữ gõ, không '?si=')", (await rowOf(W.id))?.coverUrl === goodCover && (await rowOf(W.id))?.introVideoUrl === "https://www.youtube.com/watch?v=dQw4w9WgXcQ", await rowOf(W.id));
++  check("phản hồi trả bìa + link chuẩn, không trả chữ gõ thô", w1.json?.coverUrl === goodCover && w1.json?.introVideoUrl === "https://www.youtube.com/watch?v=dQw4w9WgXcQ" && !/si=abc/.test(w1.text), w1.json);
++  check("GET hồ sơ của chính mình trả lại bìa + video (để form điền sẵn)", (await api("GET", "/api/users/me/tutor-profile", { as: W })).json?.coverUrl === goodCover);
++  const pubW = (await api("GET", `/api/tutors/${W.id}`)).json?.tutor;
++  check("hồ sơ công khai /api/tutors/[id] hiện bìa + video nhúng nocookie", pubW?.coverUrl === goodCover && pubW?.introVideo?.embedUrl === "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", pubW);
++
++  // Kẻ tấn công: giá trị xấu ⇒ 400, và KHÔNG ghi gì (cột giữ nguyên)
++  const before = await rowOf(W.id);
++  const badCovers: [string, unknown][] = [["svg", `data:image/svg+xml;base64,${B64}`], ["html", `data:text/html;base64,${B64}`], ["gif", `data:image/gif;base64,${B64}`], ["https ngoài", "https://evil.test/a.jpg"], ["javascript:", "javascript:alert(1)"],
++    ["base64 hỏng", "data:image/png;base64,@@@"], ["base64 lệch 4", "data:image/png;base64,AAAAA"], ["quá 250 000 ký tự", `data:image/jpeg;base64,${"A".repeat(250_000)}`], ["số", 123], ["mảng", [goodCover]], ["đối tượng", { url: goodCover }]];
++  for (const [n, v] of badCovers) {
++    const r = await put(W, { coverUrl: v });
++    check(`bìa xấu (${n}) ⇒ 400`, r.status === 400, r.status);
++  }
++  const badVideos: [string, unknown][] = [["tên miền giả", "https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ"], ["javascript:", "javascript:alert(1)"], ["vimeo", "https://vimeo.com/123"], ["@ lừa tên miền", "https://www.youtube.com@evil.test/watch?v=dQw4w9WgXcQ"], ["iframe HTML", "<iframe src=\"https://evil.test\"></iframe>"], ["số", 5], ["mã thiếu 1 ký tự", "dQw4w9WgXc"]];
++  for (const [n, v] of badVideos) {
++    const r = await put(W, { introVideoUrl: v });
++    check(`video xấu (${n}) ⇒ 400`, r.status === 400, r.status);
++  }
++  const after = await rowOf(W.id);
++  check("sau 18 lần gửi xấu: bìa + video trong DB KHÔNG đổi", after?.coverUrl === before?.coverUrl && after?.introVideoUrl === before?.introVideoUrl, after);
++
++  // undefined = giữ nguyên; null / rỗng = xoá
++  const keep = await put(W, { bio: "Chỉ đổi giới thiệu." });
++  check("PUT chỉ có bio ⇒ giữ nguyên bìa + video", keep.status === 200 && (await rowOf(W.id))?.coverUrl === goodCover && (await rowOf(W.id))?.introVideoUrl === before?.introVideoUrl && (await rowOf(W.id))?.bio === "Chỉ đổi giới thiệu.");
++  const clearV = await put(W, { introVideoUrl: "   " });
++  check("video rỗng ⇒ xoá video, bìa giữ", clearV.status === 200 && (await rowOf(W.id))?.introVideoUrl === null && (await rowOf(W.id))?.coverUrl === goodCover);
++  const clearC = await put(W, { coverUrl: null });
++  check("bìa null ⇒ xoá bìa", clearC.status === 200 && (await rowOf(W.id))?.coverUrl === null);
++  // Biên: phần base64 phải dài chia hết cho 4 nên với tiền tố jpeg (23 ký tự) lớn nhất hợp lệ là 249 999; thêm một khối 4 ký tự là 250 003 > 250 000.
++  const edge = `data:image/jpeg;base64,${"A".repeat(249_976)}`, over = `data:image/jpeg;base64,${"A".repeat(249_980)}`;
++  check("bìa 249 999 ký tự (lớn nhất hợp lệ) ⇒ nhận", edge.length === 249_999 && (await put(W, { coverUrl: edge })).status === 200);
++  check("bìa 250 003 ký tự (vượt biên) ⇒ 400", over.length === 250_003 && (await put(W, { coverUrl: over })).status === 400);
++  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: null, introVideoUrl: null } });
++
++  // Quyền: học sinh / khách không ghi được; gia sư không ghi hộ người khác; gia sư chờ duyệt ghi được nhưng chưa ra công khai
++  const rs = await put(S1, { coverUrl: goodCover });
++  check("học sinh PUT ⇒ 403 và KHÔNG ghi", rs.status === 403 && (await rowOf(S1.id))?.coverUrl === null, rs.status);
++  check("khách PUT ⇒ 401", (await put(undefined, { coverUrl: goodCover })).status === 401);
++  const other = await put(W, { coverUrl: goodCover, userId: R.id, id: R.id });
++  check("thân có userId/id của người khác ⇒ bị bỏ qua: chỉ ghi vào chính mình", other.status === 200 && (await rowOf(W.id))?.coverUrl === goodCover && (await rowOf(R.id))?.coverUrl === null);
++  const pn = await put(NV, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/dQw4w9WgXcQ" });
++  check("gia sư chưa duyệt ghi được (sửa trước khi nộp lại)", pn.status === 200, pn.status);
++  check("…nhưng hồ sơ chưa duyệt KHÔNG ra công khai", (await api("GET", `/api/tutors/${NV.id}`)).status === 404);
++  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: null, introVideoUrl: null } });
+ 
+   // ── (11) Kẻ tấn công: tham số cực đoan ở cả ba API (BU-06 rà bổ sung) ─────────────────────────
+   section("(11) Tham số cực đoan: không 500, không rò ẩn/PII");
+diff --git a/tools/local-e2e/ui-ho-so-bia-video.ts b/tools/local-e2e/ui-ho-so-bia-video.ts
+new file mode 100644
+index 0000000..3fd60bb
+--- /dev/null
++++ b/tools/local-e2e/ui-ho-so-bia-video.ts
+@@ -0,0 +1,135 @@
++// BU-06b — form hồ sơ gia sư: ảnh bìa + video giới thiệu (src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx).
++// Kiểm trên trình duyệt thật, 1440 và 390: dòng nhắc "Không đăng ảnh/video có học sinh", link xấu bị chặn NGAY tại ô (không lưu nửa vời), tải ảnh thật
++// (cắt 16:9, vừa ≤ 250 000 ký tự), lưu → tải lại còn nguyên, gỡ bìa / video, ảnh quá nặng không bao giờ lọt vào DB, hồ sơ công khai /mentor/[id] hiện bìa + video nhúng nocookie.
++// Cần máy chủ Next ở BASE + DB RIÊNG (wipe() ở đầu bài). Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-ho-so-bia-video.ts
++import { BASE, mkTutor, wipe, check, section, done } from "./h";
++import { launch, ctxFor, shot, closeAll } from "./ui";
++import type { Page } from "./ui";
++import { prisma } from "@/lib/prisma";
++import { COVER_MAX_CHARS } from "@/lib/tutorSearchMedia";
++
++const YT = "https://youtu.be/dQw4w9WgXcQ?si=abc&t=9";
++const YT_CANON = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
++
++/** Đặt một tệp ảnh do chính trang vẽ ra (canvas) vào ô chọn ảnh bìa rồi bắn sự kiện change. `noise` = ảnh nhiễu (gần như không nén được). */
++async function pickCover(p: Page, kind: "dep" | "nhieu") {
++  await p.evaluate(async (k) => {
++    const c = document.createElement("canvas"); c.width = 2400; c.height = 1400;
++    const x = c.getContext("2d")!;
++    if (k === "dep") { for (let i = 0; i < 60; i++) { x.fillStyle = `hsl(${(i * 37) % 360} 70% 50%)`; x.fillRect((i * 97) % 2400, (i * 53) % 1400, 500, 300); } }
++    else { const d = x.createImageData(c.width, c.height); for (let i = 0; i < d.data.length; i += 4) { d.data[i] = Math.random() * 255; d.data[i + 1] = Math.random() * 255; d.data[i + 2] = Math.random() * 255; d.data[i + 3] = 255; } x.putImageData(d, 0, 0); }
++    const blob: Blob = await new Promise(r => c.toBlob(b => r(b!), "image/png"));
++    const dt = new DataTransfer(); dt.items.add(new File([blob], "bia.png", { type: "image/png" }));
++    const input = document.getElementById("cover-file") as HTMLInputElement;
++    input.files = dt.files; input.dispatchEvent(new Event("change", { bubbles: true }));
++  }, kind);
++}
++
++(async () => {
++  await wipe();
++  const T = await mkTutor("Cô Lan");
++  await prisma.user.update({ where: { id: T.id }, data: { subjects: ["Toán"] } });
++  await launch();
++  const errors: string[] = [];
++  const watch = (p: Page) => {
++    p.on("pageerror", e => errors.push(String(e)));
++    p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of [45]\d\d|negative time stamp|youtube/i.test(m.text())) errors.push(m.text()); });
++  };
++  const noOverflow = (p: Page) => p.evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`) as Promise<boolean>;
++  const row = () => prisma.user.findUnique({ where: { id: T.id }, select: { coverUrl: true, introVideoUrl: true } });
++  /** Chờ DB đạt trạng thái mong đợi (thông báo "Đã lưu" của lần trước có thể còn trên màn → không tin riêng nó). Hết hạn thì trả trạng thái hiện có. */
++  const waitRow = async (pred: (r: { coverUrl: string | null; introVideoUrl: string | null } | null) => boolean, ms = 25000) => {
++    const t0 = Date.now(); let r = await row();
++    while (!pred(r) && Date.now() - t0 < ms) { await new Promise(res => setTimeout(res, 300)); r = await row(); }
++    return r;
++  };
++  const save = (p: Page) => p.getByRole("button", { name: "Lưu hồ sơ" });
++  const open = async (p: Page) => { await p.goto(`${BASE}/lop-cua-toi/ho-so`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.getByRole("heading", { name: "Ảnh bìa và video giới thiệu" }).waitFor({ timeout: 90000 }); };
++
++  for (const [w, h, tag] of [[1440, 900, "1440"], [390, 844, "390"]] as const) {
++    await prisma.user.update({ where: { id: T.id }, data: { coverUrl: null, introVideoUrl: null } });
++    const tc = await ctxFor(T, { width: w, height: h });
++    await tc.route(/fonts\.(googleapis|gstatic)\.com|youtube/, r => r.abort());
++    const p = await tc.newPage(); watch(p);
++
++    section(`[${tag}] Khu 'Ảnh bìa và video giới thiệu': nhắc không đăng ảnh/video có học sinh`);
++    await open(p);
++    const sec = p.locator('section[aria-labelledby="h-bia"]');
++    check("có dòng 'Không đăng ảnh/video có học sinh.' (trẻ em) trong khu này", (await sec.getByTestId("luu-y-hoc-sinh").innerText()).trim() === "Không đăng ảnh/video có học sinh.");
++    check("ghi rõ KiN không kiểm nội dung (tự khai)", (await sec.innerText()).includes("KiN không kiểm nội dung"));
++    check("chưa có bìa: hiện khung trống chứ không ảnh giả", (await sec.getByTestId("anh-bia-xem-truoc").count()) === 0 && (await sec.innerText()).includes("Chưa có ảnh bìa"));
++    check("không tràn ngang", await noOverflow(p));
++    const small = await sec.locator("button").evaluateAll(els => els.filter(e => (e as HTMLElement).offsetHeight > 0 && (e as HTMLElement).getBoundingClientRect().height < 44).map(e => (e.textContent ?? "").trim()));
++    check("nút trong khu này cao ≥ 44px", small.length === 0, small);
++    if (tag === "390") await shot(p, "ho-so-bia-video-390");
++
++    section(`[${tag}] Link video xấu bị chặn ngay tại ô, không lưu gì`);
++    await p.locator("#video-url").fill("https://vimeo.com/123");
++    await save(p).click();
++    await p.locator("#video-err").waitFor({ timeout: 15000 });
++    check("báo 'Chỉ nhận link video YouTube' dưới ô, aria-invalid, tiêu điểm vào ô", (await p.locator("#video-err").innerText()).includes("Chỉ nhận link video YouTube") && (await p.locator("#video-url").getAttribute("aria-invalid")) === "true" && (await p.locator("#video-url").evaluate(el => el === document.activeElement)));
++    check("câu báo KHÔNG chứa chữ vừa gõ", !(await p.locator("#video-err").innerText()).includes("vimeo"));
++    check("DB không đổi (bìa + video vẫn null)", JSON.stringify(await row()) === JSON.stringify({ coverUrl: null, introVideoUrl: null }), await row());
++    await p.locator("#video-url").fill("javascript:alert(1)");
++    await save(p).click();
++    await p.locator("#video-err").waitFor({ timeout: 15000 });
++    check("javascript: cũng bị chặn, DB vẫn null", (await row())?.introVideoUrl === null);
++
++    section(`[${tag}] Chọn ảnh thật → cắt 16:9, vừa 250 KB → lưu`);
++    await pickCover(p, "dep");
++    const prev = sec.getByTestId("anh-bia-xem-truoc");
++    await prev.waitFor({ timeout: 60000 });
++    const info = await prev.evaluate(async (img: HTMLImageElement) => { await img.decode(); return { w: img.naturalWidth, h: img.naturalHeight, len: img.src.length, jpeg: img.src.startsWith("data:image/jpeg;base64,") }; });
++    check("ảnh xem trước là JPEG 960×540 (16:9), ≤ 250 000 ký tự", info.jpeg && info.w === 960 && info.h === 540 && info.len <= COVER_MAX_CHARS, info);
++    check("chưa bấm Lưu thì DB chưa đổi", (await row())?.coverUrl === null);
++    await p.locator("#video-url").fill(YT);
++    await save(p).click();
++    const r1 = await waitRow(r => !!r?.coverUrl && !!r.introVideoUrl);
++    check("DB: bìa là data URL JPEG ≤ 250 000 ký tự", !!r1?.coverUrl && r1.coverUrl.startsWith("data:image/jpeg;base64,") && r1.coverUrl.length <= COVER_MAX_CHARS, r1?.coverUrl?.length);
++    check("DB: video lưu dạng CHUẨN (không '?si=', không chữ gõ)", r1?.introVideoUrl === YT_CANON, r1?.introVideoUrl);
++    check("ô video hiện lại link chuẩn sau khi lưu", (await p.locator("#video-url").inputValue()) === YT_CANON);
++
++    section(`[${tag}] Tải lại: còn nguyên; hồ sơ công khai hiện bìa + video`);
++    await open(p);
++    check("tải lại: xem trước bìa + ô video điền sẵn", (await sec.getByTestId("anh-bia-xem-truoc").count()) === 1 && (await p.locator("#video-url").inputValue()) === YT_CANON);
++    const pubCtx = await ctxFor(null, { width: w, height: h });
++    await pubCtx.route(/fonts\.(googleapis|gstatic)\.com|youtube/, r => r.abort());
++    const pub = await pubCtx.newPage(); watch(pub);
++    await pub.goto(`${BASE}/mentor/${T.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
++    await pub.locator("[data-cover]").waitFor({ timeout: 90000 });
++    check("khách mở /mentor/[id]: có ảnh bìa (img data:image/jpeg)", (await pub.locator("[data-cover] img").getAttribute("src"))?.startsWith("data:image/jpeg;base64,") === true);
++    const vid = pub.locator("[data-intro-video]");
++    await vid.waitFor({ timeout: 60000 });
++    check("trước khi bấm phát: KHÔNG có iframe trong DOM (không gọi YouTube khi chỉ mở trang)", (await vid.locator("iframe").count()) === 0);
++    check("có liên kết 'Xem trên YouTube' trỏ đúng link chuẩn", (await vid.getByRole("link", { name: "Xem trên YouTube" }).getAttribute("href")) === YT_CANON);
++    await vid.getByRole("button", { name: /Phát video giới thiệu/ }).click();
++    const frame = await vid.locator("iframe").first().getAttribute("src").catch(() => null);
++    check("bấm phát: nhúng youtube-nocookie, đúng mã", !!frame && frame.startsWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), frame);
++    check("nguồn trang công khai không chứa '?si=' hay chữ gõ thô", !(await pub.content()).includes("si=abc"));
++    await pubCtx.close();
++
++    section(`[${tag}] Ảnh nhiễu (gần như không nén được): hoặc vừa giới hạn, hoặc báo lỗi — không bao giờ vượt 250 KB trong DB`);
++    await pickCover(p, "nhieu");
++    await p.waitForTimeout(6000);
++    const nz = await sec.getByTestId("anh-bia-xem-truoc").evaluate((img: HTMLImageElement) => img.src.length).catch(() => 0);
++    const errShown = await p.getByText("Ảnh này nặng quá").count();
++    check("ảnh nhiễu: xem trước luôn còn và ≤ 250 000 ký tự (ảnh mới vừa giới hạn, hoặc báo 'nặng quá' và giữ ảnh cũ)", nz > 0 && nz <= COVER_MAX_CHARS, { nz, errShown });
++    await save(p).click();
++    await p.getByText("Đã lưu hồ sơ.").first().waitFor({ timeout: 30000 });
++    await new Promise(res => setTimeout(res, 1500));
++    const r2 = await row();
++    check("sau khi lưu: DB không bao giờ có bìa > 250 000 ký tự", (r2?.coverUrl?.length ?? 0) <= COVER_MAX_CHARS, r2?.coverUrl?.length);
++
++    section(`[${tag}] Gỡ bìa + gỡ video`);
++    await sec.getByRole("button", { name: "Gỡ ảnh bìa" }).click();
++    await p.locator("#video-url").fill("");
++    await save(p).click();
++    const r3 = await waitRow(r => r?.coverUrl === null && r?.introVideoUrl === null);
++    check("gỡ: DB bìa = null, video = null", JSON.stringify(r3) === JSON.stringify({ coverUrl: null, introVideoUrl: null }), r3);
++    check("gỡ: khung 'Chưa có ảnh bìa' quay lại", (await sec.getByTestId("anh-bia-xem-truoc").count()) === 0);
++    check("không tràn ngang sau các thao tác", await noOverflow(p));
++    await tc.close();
++  }
++  check("không có lỗi console / pageerror", errors.length === 0, errors.slice(0, 4));
++  await closeAll(); done();
++})().catch(e => { console.error("TEST CRASH", e); process.exit(1); });
+-- 
+2.43.0
+
