@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
 import { coerceQuestionInput, validateForDraft, type QuizQuestionInput } from "@/lib/quizQuestion";
+import { variantLockedBlock } from "@/lib/deThiServer";
 import { QUIZ_CATEGORY, appendQuestions, dmyFromKey, durationText, loadOwnedQuiz, logChange, newExamCode, newExamId, supersededBlock, syncQuizTotals, todayKeyVN, tutorOwnsCourse } from "@/lib/quizServer";
 
 const MAX = 200, TITLE_MAX = 150;
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     if (typeof body.targetExamId === "string" && body.targetExamId) {
       const got = await loadOwnedQuiz(auth.userId, body.targetExamId);
       if (isNextResponse(got)) return got;
+      const locked = variantLockedBlock(got.exam); if (locked) return locked; // BU-03: mã đề con không nhận thêm câu
       const sup = supersededBlock(got.exam); if (sup) return sup;
       if (!got.exam.isDraft) return NextResponse.json({ error: "Chỉ thêm được vào quiz nháp. Quiz đã phát hành cần tạo phiên bản mới trước." }, { status: 409 });
       if (got.exam.questions + qs.length > MAX) return NextResponse.json({ error: `Một quiz tối đa ${MAX} câu.` }, { status: 400 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { logAction } from "@/lib/auditLog";
 
 // POST /api/admin/thread-reports/[id]/resolve — duyệt report:
 // { decision: "approved" | "rejected" }.
@@ -53,6 +54,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Soft-delete bài viết vi phạm — không xoá cứng, giữ bằng chứng.
     await prisma.thread.update({ where: { id: report.threadId }, data: { deletedAt: new Date() } });
   }
+
+  // BU-08: nhật ký (ai, việc gì, đối tượng, lúc nào). Chỉ ghi SAU khi trạng thái đã lật thành công (409/403 không ghi). metadata không có tên/nội dung.
+  await logAction(auth.userId, decision === "approved" ? "thread_report.approve" : "thread_report.reject", "ThreadReport", id, { threadId: report.threadId });
 
   return NextResponse.json({ success: true });
 }

@@ -1,729 +1,289 @@
+// CAT-02 — danh sách khoá học phía quản trị (dùng chung cho gia sư trong TutorAdminFrame).
+// Bảng 6 cột + ô chọn, cột đầu là tên khoá; bộ lọc đồng bộ URL + chip; sửa nhanh trong panel bên; chọn nhiều + Hoàn tác.
+// Giá CHỈ hiển thị (không ô sửa giá ở đây). Form tạo khoá nằm ở components/admin/courses/CreateCourseDrawer.tsx (chuyển nguyên văn).
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { contentHref } from "@/lib/tutorRoutes";
-import { useContentHref } from "@/components/tutor/useContentHref";
-import Link from "next/link";
-import { useCourses } from "@/hooks/useCourses";
-import { api } from "@/lib/api";
-import { SkeletonTable } from "@/components/Skeleton";
-import { Toggle } from "@/components/Toggle";
-import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
-import { toSlug } from "@/lib/slug";
-import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
-import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { DropZone } from "@/components/DropZone";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { vnDateKeyOf } from "@/lib/classSessions";
+import { useContentHref } from "@/components/tutor/useContentHref";
+import {
+  KinPage, KinPageHeader, KinButton, KinStateCard, KinEmptyState, KinTableSkeleton, KinToast, KinStatus, kinButtonClass,
+} from "@/components/kin";
+import { CreateCourseDrawer } from "@/components/admin/courses/CreateCourseDrawer";
+import { CourseTable } from "@/components/admin/courses/CourseTable";
+import { CourseFilters, EMPTY_FILTER, applyFilter, buildFacets, filterToQuery, readFilter, type CatalogRow, type CatalogFilter } from "@/components/admin/courses/CourseFilters";
+import { CoursePanel, type CoursePatch } from "@/components/admin/courses/CoursePanel";
+import { BulkBar } from "@/components/admin/courses/BulkBar";
+import { PANEL_GUTTER } from "@/components/admin/panel/SidePanel";
 
-// ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
-interface CreateForm {
-  name: string; slug: string; category: string; instructor: string;
-  openDate: string; price: string; originalPrice: string;
-  lessons: string; hours: string; tag: string; tagColor: string;
-  bgImage: string; status: boolean;
+interface ListResponse { rows: CatalogRow[]; truncated: boolean; canManageCategories: boolean }
+interface BulkResult { updated: { id: string; prev: { status: boolean; category: string } }[]; skipped: { id: string; reason: string }[] }
+interface UndoToast { title: string; detail?: string; undo?: () => Promise<void> }
+
+async function postBulk(body: object): Promise<BulkResult> {
+  const res = await fetch("/api/admin/khoa-hoc/bulk", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error || "Không lưu được. Thử lại nhé.");
+  return data as BulkResult;
 }
 
-const CREATE_INIT: CreateForm = {
-  name: "", slug: "", category: "ĐGNL HSA",
-  instructor: "KiN", openDate: "",
-  price: "", originalPrice: "",
-  lessons: "", hours: "", tag: "", tagColor: "#FF2157",
-  bgImage: "", status: true,
-};
-
-const TAG_COLORS = ["#FF2157", "#FE9900", "#0068FF", "#00A63D"];
-const TAG_LABELS: Record<string, string> = {
-  "#FF2157": "HOT", "#FE9900": "SALE", "#0068FF": "MỚI", "#00A63D": "FREE",
-};
-
-function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
-  open: boolean; onClose: () => void; onCreated: (slug: string) => void; showToast: (msg: string, ok?: boolean) => void;
-}) {
-  // NC2-029: gia sư (adminRole teacher) chỉ bắt buộc TÊN; ngày khai giảng / giá / số bài học để trống thì dùng mặc định (hôm nay giờ VN / 0 / 0).
-  // Quản trị trung tâm giữ nguyên: bắt buộc đủ 4 ô. Máy chủ (POST /api/courses) không đổi — nó vốn không kiểm các trường này.
+function KhoaHocListInner() {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
   const isTeacher = user?.adminRole === "teacher";
-  const [form, setForm]     = useState<CreateForm>(CREATE_INIT);
-  const [errors, setErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
-  const [saving, setSaving] = useState(false);
-  // File gốc CHƯA upload — chỉ thật sự lên Cloudinary lúc bấm "Tạo khoá học"
-  // (xem handleSave), tránh file mồ côi nếu đóng drawer mà không lưu.
-  const [bgImageFile, setBgImageFile] = useState<File | null>(null);
-  const bgFileRef = useRef<HTMLInputElement>(null);
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const [categoryOptions, setCategoryOptions] = useState<string[]>([...ADMIN_CATEGORIES]);
+  const href = useContentHref(); // gia sư sang bí danh /lop-cua-toi/quan-lop/…
 
-  const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
+  const [rows, setRows] = useState<CatalogRow[]>([]);
+  const [truncated, setTruncated] = useState(false);
+  const [canCategory, setCanCategory] = useState(false);
+  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [reloading, setReloading] = useState(false);
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
 
-  // Load categories từ DB — hợp nhất với danh mục tĩnh (không thay thế hẳn),
-  // nếu không category mặc định của form ("ĐGNL HSA") có thể biến mất khỏi
-  // danh sách option khi DB chưa có khoá nào thuộc category đó. <select> HTML
-  // khi đó âm thầm hiển thị fallback sang option khác trong khi state form
-  // vẫn giữ giá trị cũ không còn hợp lệ — admin tưởng đã chọn đúng nhưng thực
-  // ra lưu sai category.
+  const [filter, setFilter] = useState<CatalogFilter>(() => readFilter(sp));
+  // ?tao=1: nút "Tạo lớp đầu tiên" của gia sư mới (và đường cũ /admin/khoa-hoc/tao-moi) mở thẳng form tạo.
+  const [createOpen, setCreateOpen] = useState(sp.get("tao") === "1");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [busyIds] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [toast, setToast] = useState<UndoToast | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((title: string, ok = true, undo?: () => Promise<void>, detail?: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ title: ok ? title : `Lỗi: ${title}`, detail, undo });
+    toastTimer.current = setTimeout(() => setToast(null), undo ? 8000 : 4000);
+  }, []);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+
+  const load = useCallback(async (initial: boolean) => {
+    if (initial) setState("loading"); else setReloading(true);
+    try {
+      const res = await fetch("/api/admin/khoa-hoc", { credentials: "same-origin", cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      const d = (await res.json()) as ListResponse;
+      setRows(d.rows ?? []); setTruncated(!!d.truncated); setCanCategory(!!d.canManageCategories);
+      setState("ok");
+    } catch {
+      setState("error");
+    } finally { setReloading(false); }
+  }, []);
+
+  // Trạng thái đầu đã là "loading"; gọi sau một nhịp để không setState đồng bộ trong effect.
+  useEffect(() => { queueMicrotask(() => { void load(true); }); }, [load]);
   useEffect(() => {
-    fetch("/api/categories")
-      .then(r => r.ok ? r.json() : { categories: [] })
-      .then(d => {
-        const cats = (d.categories as { name: string }[]).map(c => c.name);
-        if (cats.length > 0) setCategoryOptions([...new Set([...ADMIN_CATEGORIES, ...cats])]);
-      })
+    fetch("/api/categories", { credentials: "same-origin" })
+      .then(r => (r.ok ? r.json() : { categories: [] }))
+      .then(d => setCategoryNames(((d.categories ?? []) as { name: string }[]).map(c => c.name)))
       .catch(() => {});
   }, []);
 
-  // Reset form khi đóng
-  useEffect(() => {
-    if (!open) { setForm(CREATE_INIT); setErrors({}); setSaving(false); setBgImageFile(null); }
-  }, [open]);
+  // Bộ lọc → URL (giữ ?tao nếu còn). replace để không đầy lịch sử.
+  const changeFilter = useCallback((next: CatalogFilter) => {
+    setFilter(next);
+    const qs = filterToQuery(next);
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [router, pathname]);
 
-  // Escape key
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const facets = useMemo(() => buildFacets(rows), [rows]);
+  const filtered = useMemo(() => applyFilter(rows, filter), [rows, filter]);
+  const categories = useMemo(() => [...new Set([...categoryNames, ...facets.categories.map(c => c.name)])], [categoryNames, facets]);
+  const activeRow = activeId ? rows.find(r => r.id === activeId) ?? null : null;
+  const hasFilter = JSON.stringify({ ...filter, sx: "" }) !== JSON.stringify(EMPTY_FILTER);
 
-  function set<K extends keyof CreateForm>(k: K, v: CreateForm[K]) {
-    setForm(p => {
-      const next = { ...p, [k]: v };
-      if (k === "name") next.slug = toSlug(v as string);
-      return next;
-    });
-    setErrors(p => ({ ...p, [k]: undefined }));
+  function patchRows(ids: string[], fn: (r: CatalogRow) => CatalogRow) {
+    const set = new Set(ids);
+    setRows(prev => prev.map(r => (set.has(r.id) ? fn(r) : r)));
   }
 
-  // Chỉ giữ File + preview tạm — KHÔNG upload ngay (xem ghi chú ở bgImageFile).
-  function setBgFile(file: File) {
-    if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
-    setBgImageFile(file);
-    setForm(p => ({ ...p, bgImage: URL.createObjectURL(file) }));
+  function toggle(id: string) {
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
-  function handleBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setBgFile(file);
-  }
+  function toggleAll(on: boolean) { setSelected(on ? new Set(filtered.map(r => r.id)) : new Set()); }
 
-  function validate(): typeof errors {
-    const e: typeof errors = {};
-    if (!form.name.trim()) e.name     = "Tên khoá học không được để trống";
-    if (isTeacher) {
-      // Tuỳ chọn: trống thì thôi; có gõ thì phải là số hợp lệ (không âm).
-      if (form.price   && (isNaN(+form.price)   || +form.price   < 0)) e.price   = "Giá bán phải là số không âm";
-      if (form.lessons && (isNaN(+form.lessons) || +form.lessons < 0)) e.lessons = "Số bài học phải là số không âm";
-    } else {
-      if (!form.openDate)    e.openDate = "Chọn ngày khai giảng";
-      if (!form.price || isNaN(+form.price) || +form.price <= 0)
-        e.price   = "Giá bán phải là số dương";
-      if (!form.lessons || isNaN(+form.lessons))
-        e.lessons = "Số bài học phải là số";
-    }
-    setErrors(e);
-    return e;
-  }
-
-  async function handleSave() {
-    const e = validate();
-    const firstErrorField = Object.keys(e)[0];
-    if (firstErrorField) {
-      drawerRef.current
-        ?.querySelector(`[data-field="${firstErrorField}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  async function runBulk(body: { action: "set_status"; status: boolean } | { action: "set_category"; category: string }) {
+    const ids = [...selected];
+    if (ids.length > 100) { showToast("Chỉ đổi được tối đa 100 khoá mỗi lần — bỏ bớt khoá đã chọn", false); return; }
+    setBulkBusy(true);
+    const updated: BulkResult["updated"] = [];
+    let skipped = 0;
+    try {
+      for (let i = 0; i < ids.length; i += 100) {
+        const r = await postBulk({ ids: ids.slice(i, i + 100), ...body });
+        updated.push(...r.updated); skipped += r.skipped.length;
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Không lưu được", false);
+      if (updated.length) patchRows(updated.map(u => u.id), r => (body.action === "set_status" ? { ...r, status: body.status } : { ...r, category: body.category }));
+      setBulkBusy(false);
       return;
     }
-    setSaving(true);
-    try {
-      // Chỉ thật sự upload lên Cloudinary ở đây — ngay trước khi tạo khoá học,
-      // không còn khoảng hở nào giữa lúc có file trên Cloudinary và lúc DB
-      // biết tới nó (tránh file mồ côi nếu đóng drawer giữa chừng).
-      let bgImage = form.bgImage;
-      if (bgImageFile) {
-        const result = await uploadToCloudinary(bgImageFile, "courses/backgrounds");
-        bgImage = result.url;
+    patchRows(updated.map(u => u.id), r => (body.action === "set_status" ? { ...r, status: body.status } : { ...r, category: body.category }));
+    setSelected(new Set());
+    setBulkBusy(false);
+    const n = updated.length;
+    const what = body.action === "set_status" ? (body.status ? `Đã hiện ${n} khoá` : `Đã ẩn ${n} khoá`) : `Đã chuyển ${n} khoá sang “${body.category}”`;
+    const detail = skipped > 0 ? `${skipped} khoá được bỏ qua (không đổi hoặc không thuộc bạn).` : undefined;
+    if (n === 0) { showToast("Không có khoá nào cần đổi", true, undefined, detail); return; }
+    showToast(what, true, async () => {
+      // Hoàn tác = gọi lại cùng API với giá trị trước, gom theo giá trị.
+      const groups = new Map<string, string[]>();
+      for (const u of updated) {
+        const k = body.action === "set_status" ? String(u.prev.status) : u.prev.category;
+        groups.set(k, [...(groups.get(k) ?? []), u.id]);
       }
-
-      const slug = form.slug.trim() || toSlug(form.name);
-      // Gia sư bỏ trống: ngày khai giảng = hôm nay (giờ VN), giá 0, số bài học 0.
-      const openDateKey = form.openDate || (isTeacher ? vnDateKeyOf(new Date()) : "");
-      await api.courses.create({
-        id:            slug,
-        name:          form.name.trim(),
-        adminName:     form.name.trim(),
-        shortTitle:    form.name.trim().toUpperCase().split(" ").slice(0, 2).join("\n"),
-        category:      form.category,
-        instructor:    form.instructor,
-        teacherAvatar: form.instructor[0] ?? "?",
-        openDate:      openDateKey.split("-").reverse().join("/"),
-        types:         ["Video"],
-        tag:           form.tag || null,
-        tagColor:      form.tag ? form.tagColor : null,
-        bg:            bgImage
-                         ? `url(${bgImage}) center/cover no-repeat`
-                         : CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)",
-        strip:         "var(--kin-tt-chu-cho)",
-        price:         form.price ? +form.price : 0,
-        originalPrice: form.originalPrice ? +form.originalPrice : null,
-        lessons:       form.lessons ? +form.lessons : 0,
-        hours:         form.hours ? +form.hours : 0,
-        status:        form.status,
-      });
-      onCreated(slug);
-      onClose();
-    } catch (e) {
-      showToast(e instanceof Error && bgImageFile ? "Upload ảnh hoặc tạo khoá học thất bại: " + e.message : "Lỗi tạo khoá học: " + (e instanceof Error ? e.message : "Unknown"), false);
-    } finally {
-      setSaving(false);
-    }
+      try {
+        for (const [k, gids] of groups) {
+          for (let i = 0; i < gids.length; i += 100) {
+            const chunk = gids.slice(i, i + 100);
+            if (body.action === "set_status") {
+              await postBulk({ ids: chunk, action: "set_status", status: k === "true", undo: true });
+              patchRows(chunk, r => ({ ...r, status: k === "true" }));
+            } else {
+              await postBulk({ ids: chunk, action: "set_category", category: k, undo: true });
+              patchRows(chunk, r => ({ ...r, category: k }));
+            }
+          }
+        }
+        showToast(`Đã hoàn tác cho ${n} khoá`);
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "Hoàn tác không được", false);
+      }
+    }, detail);
   }
 
-  const discount = form.originalPrice && form.price
-    ? Math.round((1 - +form.price / +form.originalPrice) * 100) : 0;
+  function onPanelSaved(id: string, patch: CoursePatch) {
+    patchRows([id], r => ({
+      ...r,
+      ...(patch.name !== undefined ? { name: patch.name } : null),
+      ...(patch.adminName !== undefined ? { adminName: patch.adminName } : null),
+      ...(patch.category !== undefined ? { category: patch.category } : null),
+      ...(patch.status !== undefined ? { status: patch.status } : null),
+      ...(patch.classStatus !== undefined ? { classStatus: patch.classStatus } : null),
+      ...(patch.capacity !== undefined ? { capacity: patch.capacity } : null),
+      ...(patch.instructor !== undefined && r.tutor.id == null ? { tutor: { ...r.tutor, name: patch.instructor } } : null),
+    }));
+    setActiveId(null);
+    showToast("Đã lưu thay đổi");
+  }
+
+  const total = rows.length;
+  const sub = state === "ok" ? `${total} khoá · ${facets.shown} đang hiển thị · ${facets.hidden} đang ẩn` : undefined;
 
   return (
-    <>
-      {open && (
-        <div className="fixed inset-0 z-40" style={{ background: "rgba(0,0,0,0.3)" }} onClick={onClose} />
+    <KinPage className={activeRow ? PANEL_GUTTER : ""}>
+      <KinPageHeader
+        title="Khoá học"
+        sub={sub}
+        live
+        actions={<KinButton className="max-md:hidden" onClick={() => setCreateOpen(true)}>Tạo khoá học</KinButton>}
+      />
+
+      {state === "loading" && <KinTableSkeleton label="Đang tải danh sách khoá học" rows={8} />}
+
+      {state === "error" && (
+        <KinStateCard tone="loi" kicker="Lỗi · Có thể thử lại" title="Không tải được danh sách khoá học"
+          status={<KinStatus tone="loi">Chưa lấy được dữ liệu</KinStatus>}
+          actions={<KinButton onClick={() => load(true)}>Thử lại</KinButton>}>
+          Có thể mạng đang chập chờn hoặc máy chủ bận. Danh sách của bạn không bị mất — bấm Thử lại là xem được ngay.
+        </KinStateCard>
       )}
-      <div
-        ref={drawerRef}
-        className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
-        style={{
-          width: "min(540px, 100vw)",
-          transform: open ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
-          pointerEvents: open ? "auto" : "none",
-          visibility: open ? "visible" : "hidden",
-        }}>
 
-        {/* Header */}
-        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <button onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
-              ×
-            </button>
-            <div>
-              <h2 className="text-base font-bold text-gray-800">Tạo khoá học mới</h2>
-              {form.name && (
-                <p className="text-xs text-blue-600 font-mono mt-0.5">{toSlug(form.name)}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
-              Huỷ
-            </button>
-            <button onClick={handleSave} disabled={saving}
-              className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)" }}>
-              {saving ? "Đang lưu..." : "Tạo khoá học"}
-            </button>
-          </div>
-        </div>
-
-        {/* Form */}
-        <div className="p-5 space-y-6">
-
-          {/* Tên + Slug */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Tên khoá học</h3>
-            <div className="space-y-3">
-              <div data-field="name">
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Tên khoá học <span className="text-red-500">*</span>
-                </label>
-                <input className={inp} placeholder="VD: ĐGNL HSA — Trọn gói lộ trình"
-                  value={form.name} onChange={e => set("name", e.target.value)} />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Slug (URL)</label>
-                <div className="flex items-center gap-0">
-                  <span className="inline-flex items-center px-3 py-2.5 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-xs text-gray-400 whitespace-nowrap">/khoa-hoc/</span>
-                  <input className="flex-1 px-3 py-2.5 text-sm border border-gray-300 rounded-r-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 font-mono"
-                    placeholder="tu-dong-tao-tu-ten"
-                    value={form.slug}
-                    onChange={e => setForm(p => ({ ...p, slug: toSlug(e.target.value) }))} />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Tự tạo từ tên. Chỉnh nếu cần URL riêng.</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Ảnh nền */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Ảnh nền thẻ khoá học</h3>
-            <div className="space-y-3">
-              {/* Preview */}
-              <div className="w-full h-24 rounded-xl overflow-hidden flex items-center justify-center relative"
-                style={{ background: form.bgImage ? `url(${form.bgImage}) center/cover no-repeat` : (CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)") }}>
-                <span className="text-white text-xs font-bold opacity-60 select-none">
-                  {form.bgImage ? "Ảnh nền" : "Gradient mặc định theo danh mục"}
-                </span>
-                {form.bgImage && (
-                  <button onClick={() => {
-                      if (form.bgImage.startsWith("blob:")) URL.revokeObjectURL(form.bgImage);
-                      setBgImageFile(null);
-                      setForm(p => ({ ...p, bgImage: "" }));
-                    }}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/70">
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgUpload} />
-
-              {cloudinaryConfigured ? (
-                <DropZone onFiles={files => files[0] && setBgFile(files[0])} disabled={saving} className="rounded-lg">
-                  <button onClick={() => bgFileRef.current?.click()} disabled={saving}
-                    className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors disabled:opacity-50"
-                    style={{ borderColor: "var(--kin-vien-o-nhap)", color: "var(--kin-chu-mo)" }}>
-                    {bgImageFile ? `📎 ${bgImageFile.name} (đã chọn, tải lên lúc lưu)` : "🖼 Chọn hoặc kéo-thả ảnh (JPG, PNG, WebP)"}
-                  </button>
-                </DropZone>
-              ) : (
-                <p className="text-xs text-center py-2" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Chưa cấu hình Cloudinary</p>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Hoặc paste URL ảnh</label>
-                <input className={inp} placeholder="https://..."
-                  value={bgImageFile ? "" : form.bgImage}
-                  onChange={e => { setBgImageFile(null); setForm(p => ({ ...p, bgImage: e.target.value.trim() })); }} />
-              </div>
-            </div>
-          </section>
-
-          {/* Phân loại */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Phân loại</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} onChange={e => set("category", e.target.value)}>
-                  {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Gia sư</label>
-                <input className={inp} placeholder="Thầy Nguyễn Minh"
-                  value={form.instructor} onChange={e => set("instructor", e.target.value)} />
-              </div>
-              <div data-field="openDate">
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Ngày khai giảng {isTeacher ? <span className="text-gray-400 font-normal">(tuỳ chọn · mặc định hôm nay)</span> : <span className="text-red-500">*</span>}
-                </label>
-                <input type="date" className={inp} value={form.openDate} onChange={e => set("openDate", e.target.value)} />
-                {errors.openDate && <p className="text-xs text-red-500 mt-1">{errors.openDate}</p>}
-              </div>
-            </div>
-          </section>
-
-          {/* Giá */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Giá bán</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div data-field="price">
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Giá bán (đ) {isTeacher ? <span className="text-gray-400 font-normal">(tuỳ chọn · mặc định 0)</span> : <span className="text-red-500">*</span>}
-                </label>
-                <input type="number" min="0" className={inp} placeholder="2990000"
-                  value={form.price} onChange={e => set("price", e.target.value)} />
-                {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Giá gốc (đ)</label>
-                <input type="number" min="0" className={inp} placeholder="4990000"
-                  value={form.originalPrice} onChange={e => set("originalPrice", e.target.value)} />
-                {discount > 0 && <p className="text-xs text-green-600 mt-1">Giảm {discount}%</p>}
-              </div>
-            </div>
-          </section>
-
-          {/* Nội dung */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Nội dung</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div data-field="lessons">
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  Số bài học {isTeacher ? <span className="text-gray-400 font-normal">(tuỳ chọn · mặc định 0)</span> : <span className="text-red-500">*</span>}
-                </label>
-                <input type="number" min={isTeacher ? "0" : "1"} className={inp} placeholder="96"
-                  value={form.lessons} onChange={e => set("lessons", e.target.value)} />
-                {errors.lessons && <p className="text-xs text-red-500 mt-1">{errors.lessons}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Số giờ học</label>
-                <input type="number" min="1" className={inp} placeholder="120"
-                  value={form.hours} onChange={e => set("hours", e.target.value)} />
-              </div>
-            </div>
-          </section>
-
-          {/* Nhãn */}
-          <section>
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Nhãn (tuỳ chọn)</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Nội dung nhãn</label>
-                <input className={inp} placeholder="VD: HOT, SALE, MỚI"
-                  value={form.tag} onChange={e => set("tag", e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Màu nhãn</label>
-                <div className="flex gap-2 mt-1">
-                  {TAG_COLORS.map(c => (
-                    <button key={c} type="button" data-mau-du-lieu onClick={() => set("tagColor", c)}
-                      className="w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center text-white text-xs font-bold"
-                      style={{ background: c, borderColor: form.tagColor === c ? "var(--kin-chu-chinh)" : "transparent" }}
-                      title={TAG_LABELS[c]}>
-                      {form.tagColor === c && "✓"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Trạng thái */}
-          <div className="flex items-center justify-between py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-            <div>
-              <p className="text-sm font-medium text-gray-700">Hiển thị trên website</p>
-              <p className="text-xs text-gray-400">Tắt để lưu nháp, không hiện với học viên</p>
-            </div>
-            <Toggle checked={form.status} onChange={() => set("status", !form.status)} />
-          </div>
-
-          {/* Preview */}
-          {form.name && (
-            <div className="p-4 rounded-xl border border-dashed border-green-300 bg-green-50">
-              <p className="text-xs font-bold text-green-700 mb-2">Preview — học viên sẽ thấy:</p>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-8 rounded flex items-center justify-center text-xs font-black text-[var(--kin-chu-tren-nut-chinh)] flex-shrink-0"
-                  style={{ background: CATEGORY_GRADIENT[form.category] ?? "var(--kin-chu-phu)" }}>KiN</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{form.name}</p>
-                  <p className="text-xs text-gray-500">{form.category} · {form.instructor}</p>
-                </div>
-                {form.tag && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded text-white flex-shrink-0"
-                    style={{ background: form.tagColor }}>{form.tag}</span>
-                )}
-                {form.price && (
-                  <span className="text-sm font-bold flex-shrink-0" style={{ color: "var(--kin-tt-chu-loi)" }}>
-                    {(+form.price).toLocaleString("vi-VN")}đ
-                  </span>
-                )}
-              </div>
-            </div>
+      {state === "ok" && (
+        <div className="flex flex-col gap-4">
+          {selected.size > 0 ? (
+            <BulkBar
+              count={selected.size} total={filtered.length}
+              canCategory={canCategory && !isTeacher} categories={categories} busy={bulkBusy}
+              onShow={() => runBulk({ action: "set_status", status: true })}
+              onHide={() => runBulk({ action: "set_status", status: false })}
+              onCategory={c => runBulk({ action: "set_category", category: c })}
+              onClear={() => setSelected(new Set())}
+              onSelectAll={() => toggleAll(true)}
+            />
+          ) : null}
+          <CourseFilters
+            value={filter} onChange={changeFilter} facets={facets}
+            showTutor={!isTeacher} onReload={() => load(false)} reloading={reloading}
+            hidden={selected.size > 0}
+          />
+          {truncated && (
+            <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">Chỉ hiện 1000 khoá đầu — thu hẹp bằng bộ lọc để thấy đủ.</p>
           )}
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-interface Course {
-  id: number;
-  name: string;
-  publicName: string;
-  slug: string;
-  category: string;
-  instructor: string;
-  status: boolean;
-  createdAt: string;
-}
-
-// ─── COMPONENTS ───────────────────────────────────────────────────────────────
-function ActionMenu({ courseId, isTeacher, onDelete, onDuplicate }: { courseId: string; isTeacher: boolean; onDelete: () => void; onDuplicate: () => Promise<void> }) {
-  const [open, setOpen] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function h(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setConfirmDel(false); }
-    }
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  const items = [
-    { label: "Cài đặt",               tab: "cai-dat"    },
-    { label: "Danh sách chương bài",  tab: "chuong-bai" },
-    { label: "Học viên đăng ký",      tab: "hoc-vien"   },
-  ];
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button onClick={() => setOpen(p => !p)}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-blue-400 border border-blue-200 hover:bg-blue-50 transition-colors text-lg font-bold cursor-pointer"
-        style={{ lineHeight: 1 }}>
-        ···
-      </button>
-      {open && (
-        <div className="absolute right-0 z-50 mt-1 w-52 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
-          {items.map(item => (
-            <Link key={item.label} href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}?tab=${item.tab}`)}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-              {item.label}
-            </Link>
-          ))}
-          {/* NC2-029: lối thẳng tới trang lớp (tab Mã mời…) cho gia sư — khỏi đi vòng Khác → Cài đặt → bật module Lớp. */}
-          {isTeacher && (
-            <Link href={`/lop-cua-toi/${courseId}`} onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
-              style={{ color: "var(--kin-nhan-link)" }}>
-              Mở lớp (mã mời, học viên)
-            </Link>
-          )}
-          <div className="border-t border-gray-100 my-1" />
-          {/* Cross-origin từ admin.midnightelite-edu.com — dùng <a>, không phải <Link> */}
-          <a href="https://midnightelite-edu.com/student/hoc-tap" target="_blank" onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors"
-            style={{ color: "var(--kin-nhan-link)" }}>
-            Xem portal học viên
-          </a>
-          <button
-            disabled={duplicating}
-            onClick={async () => {
-              setDuplicating(true);
-              try { await onDuplicate(); } finally { setDuplicating(false); setOpen(false); }
-            }}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
-            style={{ color: "var(--kin-tt-chu-xong)" }}>
-            {duplicating ? "Đang sao chép…" : "Sao chép khóa học"}
-          </button>
-          <div className="border-t border-gray-100 my-1" />
-          {confirmDel ? (
-            <div className="px-4 py-2.5">
-              <p className="text-xs text-red-600 font-semibold mb-1">Xác nhận xoá khoá học?</p>
-              <p className="text-xs text-red-500 mb-2">
-                Toàn bộ bài học, chương và tài liệu sẽ bị xoá vĩnh viễn.
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmDel(false)}
-                  className="flex-1 py-1.5 rounded text-xs border border-gray-300 text-gray-600 hover:bg-gray-50">Huỷ</button>
-                <button onClick={() => { onDelete(); setOpen(false); setConfirmDel(false); }}
-                  className="flex-1 py-1.5 rounded text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)]" style={{ background: "var(--kin-tt-chu-loi)" }}>Xoá</button>
-              </div>
-            </div>
+          {total === 0 ? (
+            <KinEmptyState title="Chưa có khoá học" action={<KinButton onClick={() => setCreateOpen(true)}>Tạo khoá học đầu tiên</KinButton>}>
+              Khi bạn tạo khoá, nó sẽ hiện ở đây để sửa nhanh, ẩn/hiện và xem sĩ số.
+            </KinEmptyState>
+          ) : filtered.length === 0 ? (
+            <KinEmptyState title="Không có khoá khớp bộ lọc"
+              action={hasFilter ? <KinButton variant="secondary" onClick={() => changeFilter({ ...EMPTY_FILTER, sx: filter.sx })}>Xoá bộ lọc</KinButton> : undefined}>
+              Thử bỏ bớt điều kiện hoặc tìm bằng từ ngắn hơn.
+            </KinEmptyState>
           ) : (
-            <button onClick={() => setConfirmDel(true)}
-              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
-              Xoá khoá học
-            </button>
+            <CourseTable
+              rows={filtered} selected={selected} onToggle={toggle} onToggleAll={toggleAll}
+              onOpen={setActiveId} activeId={activeId} busyIds={busyIds} refreshing={reloading} hrefFor={href}
+            />
           )}
+          <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Hiển thị {filtered.length}/{total} khoá học</p>
         </div>
       )}
-    </div>
-  );
-}
 
-// ─── INNER PAGE (needs useSearchParams) ──────────────────────────────────────
-function KhoaHocListInner() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { user } = useAuth();
-  const href = useContentHref(); // BU-00 bước 3: gia sư sang bí danh /lop-cua-toi/quan-lop/…
-  const { data: apiCourses, loading, refetch } = useCourses({ all: "1" });
-  const courses: Course[] = apiCourses.map(c => ({
-    id:         c.adminId,
-    name:       c.adminName,
-    publicName: c.name,
-    slug:       c.id,
-    category:   c.category,
-    instructor: c.instructor,
-    status:     c.status,
-    createdAt:  c.createdAt,
-  }));
+      {/* Nút Tạo khoá nổi ở điện thoại */}
+      {state !== "loading" && (
+        <button type="button" onClick={() => setCreateOpen(true)}
+          className={`md:hidden fixed bottom-4 right-4 z-30 shadow-[var(--kin-bong-noi)] ${kinButtonClass("primary", "lg")}`}>
+          Tạo khoá học
+        </button>
+      )}
 
-  const { toast, showToast } = useAdminToast();
-  // ?tao=1: nút "Tạo lớp đầu tiên" của gia sư mới (và đường cũ /admin/khoa-hoc/tao-moi) mở thẳng form tạo thay vì dừng ở danh sách trống.
-  const [createOpen, setCreateOpen] = useState(searchParams.get("tao") === "1");
-  const [search, setSearch]         = useState("");
-  const [catFilter, setCat]         = useState(searchParams.get("category") ?? "");
-  const [statusFilter, setStatus]   = useState("");
-  const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
+      {activeRow && (
+        <CoursePanel
+          key={activeRow.id}
+          row={activeRow} categories={categories} isTeacher={isTeacher} hrefFor={href}
+          onClose={() => setActiveId(null)}
+          onSaved={onPanelSaved}
+          onRemoved={id => { setRows(p => p.filter(r => r.id !== id)); setSelected(p => { const n = new Set(p); n.delete(id); return n; }); setActiveId(null); showToast("Đã xoá khoá học"); }}
+          onDuplicated={() => { showToast("Đã sao chép khoá học"); load(false); }}
+        />
+      )}
 
-  // Derive categories directly from loaded courses (no extra API call)
-  const apiCategories = [...new Set(apiCourses.map(c => c.category))].filter(Boolean).sort() as string[];
-
-  // Sync catFilter with URL param changes (e.g. navigating from danh-muc page)
-  useEffect(() => {
-    setCat(searchParams.get("category") ?? "");
-  }, [searchParams]);
-
-  const filtered = courses.filter(c => {
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) &&
-        !c.publicName.toLowerCase().includes(search.toLowerCase()) &&
-        !c.slug.includes(search.toLowerCase())) return false;
-    if (catFilter && c.category !== catFilter) return false;
-    if (statusFilter === "active"   && !c.status) return false;
-    if (statusFilter === "inactive" &&  c.status) return false;
-    return true;
-  });
-
-  return (
-    <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
-
-      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
-
-      {/* Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex-shrink-0">
-        <h1 className="text-lg font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Danh sách khoá học</h1>
-        <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>Quản lý toàn bộ khoá học trong hệ thống</p>
-      </div>
-
-      {/* Filters */}
-      <div className="px-5 pt-4 pb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 border-b border-gray-100 flex-shrink-0">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Tên hoặc Slug</label>
-          <input type="text" placeholder="Nhập từ khoá" value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200" />
+      {toast && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[400px]">
+          <KinToast
+            tone={toast.title.startsWith("Lỗi") ? "loi" : "xong"}
+            title={toast.title}
+            detail={toast.detail || toast.undo ? (
+              <span className="flex flex-wrap items-center gap-x-3">
+                {toast.detail}
+                {toast.undo && (
+                  <button type="button" onClick={() => { const u = toast.undo!; setToast(null); u(); }} className="min-h-11 font-semibold text-[var(--kin-nhan-link)] underline">Hoàn tác</button>
+                )}
+              </span>
+            ) : undefined}
+            onClose={() => setToast(null)}
+          />
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
-          <select value={catFilter} onChange={e => setCat(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
-            <option value="">Chọn danh mục</option>
-            {apiCategories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
-          <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
-            <option value="">Tất cả</option>
-            <option value="active">Đang hiển thị</option>
-            <option value="inactive">Ẩn</option>
-          </select>
-        </div>
-        <div className="flex items-end">
-          <button onClick={() => { setSearch(""); setCat(""); setStatus(""); refetch(); }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors mr-2">
-            ↺ Làm mới
-          </button>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-            style={{ background: "var(--kin-nhan-nen)", boxShadow: "var(--kin-bong-the)" }}>
-            + Tạo mới
-          </button>
-        </div>
-      </div>
-
-      {/* Table — flex-1, overflow-auto để tự scroll dọc nếu cần */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm min-w-[800px]">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              {["ID","Tên khoá học","Slug","Danh mục","Gia sư","Trạng thái","Ngày tạo","Hành động"].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading && (
-              <tr><td colSpan={8}><SkeletonTable rows={5} /></td></tr>
-            )}
-            {!loading && filtered.map(course => (
-              <tr key={course.slug} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">{course.id}</td>
-                <td className="px-4 py-3 max-w-[260px]">
-                  <p className="font-medium text-gray-800 truncate">{course.publicName}</p>
-                </td>
-                <td className="px-4 py-3 max-w-[160px]">
-                  <span className="text-blue-600 text-xs font-mono truncate block">{course.slug}</span>
-                </td>
-                <td className="px-4 py-3 max-w-[140px]">
-                  <span className="text-gray-600 text-xs truncate block">{course.category || "—"}</span>
-                </td>
-                <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">{course.instructor || "—"}</td>
-                <td className="px-4 py-3">
-                  <Toggle
-                    checked={course.status}
-                    disabled={togglingSlug === course.slug}
-                    onChange={async () => {
-                      if (togglingSlug) return;
-                      setTogglingSlug(course.slug);
-                      try {
-                        await api.courses.update(course.slug, { status: !course.status });
-                        await refetch();
-                      } catch (e) {
-                        showToast("Lỗi cập nhật: " + (e instanceof Error ? e.message : "Unknown"), false);
-                      } finally {
-                        setTogglingSlug(null);
-                      }
-                    }}
-                  />
-                </td>
-                <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{course.createdAt}</td>
-                <td className="px-4 py-3 text-center">
-                  <ActionMenu
-                    courseId={course.slug}
-                    isTeacher={user?.adminRole === "teacher"}
-                    onDelete={async () => {
-                      try {
-                        await api.courses.remove(course.slug);
-                        await refetch();
-                      } catch (e) {
-                        showToast("Lỗi xoá khoá học", false);
-                      }
-                    }}
-                    onDuplicate={async () => {
-                      const res = await fetch(`/api/courses/${course.slug}/duplicate`, { method: "POST" });
-                      if (!res.ok) { showToast("Sao chép thất bại", false); return; }
-                      showToast("Đã sao chép khoá học");
-                      await refetch();
-                    }}
-                  />
-                </td>
-              </tr>
-            ))}
-            {!loading && filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} className="py-16 text-center text-gray-400 text-sm">
-                  Không tìm thấy khoá học nào
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Footer — luôn ở dưới cùng nhờ flex-col + flex-1 ở table */}
-      <div className="px-5 py-3 border-t border-gray-100 flex-shrink-0">
-        <p className="text-xs text-gray-500">Hiển thị {filtered.length}/{courses.length} khoá học</p>
-      </div>
+      )}
 
       <CreateCourseDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={slug => {
-          // Gia sư: sang thẳng trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học (bỏ bước tìm lớp trong danh sách + menu ···).
-          // Thông báo thành công hiện ở trang đó (?moi=1). Quản trị trung tâm: ở lại danh sách như cũ.
-          if (user?.adminRole === "teacher") { router.push(href(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`)); return; }
-          showToast("Đã tạo khoá học mới"); refetch();
+          // Gia sư: sang thẳng trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học. Quản trị trung tâm: ở lại danh sách.
+          if (isTeacher) { router.push(href(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`)); return; }
+          showToast("Đã tạo khoá học mới"); load(false);
         }}
-        showToast={showToast}
+        showToast={(msg, ok) => showToast(msg, ok ?? true)}
       />
-    </div>
+    </KinPage>
   );
 }
 
-// ─── PAGE (Suspense boundary for useSearchParams) ─────────────────────────────
 export default function KhoaHocListPage() {
   return (
     <Suspense>

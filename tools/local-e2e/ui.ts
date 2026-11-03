@@ -30,5 +30,23 @@ export async function ctxFor(u: TUser | null, o: { width?: number; height?: numb
 export async function shot(page: Page, name: string) {
   await page.screenshot({ path: `${process.env.SHOTS ?? "scratchpad/shots"}/${name}.png`, fullPage: true });
 }
+/**
+ * GET tới tên miền admin KHÔNG phụ thuộc /etc/hosts (APIRequestContext của Playwright phân giải bằng DNS của Node, không dùng --host-resolver-rules của Chrome):
+ * nối 127.0.0.1:<cổng> và đặt header Host. Không đi theo chuyển hướng (như maxRedirects: 0). Cookie lấy từ ngữ cảnh của trang. Trả về giao diện giống APIResponse (status/headers/text/json).
+ */
+export async function adminGet(page: Page, url: string) {
+  const u = new URL(url);
+  const cookie = (await page.context().cookies(url)).map(c => `${c.name}=${c.value}`).join("; ");
+  const http = await import("node:http");
+  return new Promise<{ status(): number; headers(): Record<string, string>; text(): Promise<string>; json(): Promise<any> }>((resolve, reject) => {
+    const req = http.request({ host: "127.0.0.1", port: Number(u.port || 80), path: u.pathname + u.search, method: "GET", headers: { host: u.host, ...(cookie ? { cookie } : {}) } }, res => {
+      const chunks: Buffer[] = [];
+      res.on("data", c => chunks.push(c));
+      res.on("end", () => { const body = Buffer.concat(chunks).toString("utf8"); resolve({ status: () => res.statusCode ?? 0, headers: () => Object.fromEntries(Object.entries(res.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(", ") : String(v ?? "")])), text: async () => body, json: async () => JSON.parse(body) }); });
+    });
+    req.setTimeout(60000, () => req.destroy(new Error("adminGet timeout " + url)));
+    req.on("error", reject); req.end();
+  });
+}
 export async function closeAll() { await browser?.close(); }
 export type { Page };

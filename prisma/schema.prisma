@@ -47,6 +47,11 @@ model Course {
   //   - "closed" : đã đóng, không nhận thêm — Enrollment cũ vẫn hoạt động
   //   - "paused" : tạm ngừng cả hoạt động mới lẫn hiện có
   classStatus String @default("open")
+  // Cách vào lớp (BU-01). null = như trước BU-01 (chỉ vào bằng mã lớp, vào ngay) ≡ "invite_only".
+  //   "invite_only" : chỉ mã gia sư phát
+  //   "open"        : bấm "Vào lớp" trên trang lớp là vào ngay (chỉ cho lớp miễn phí)
+  //   "approve"     : bấm "Vào lớp" / nhập mã → thành yêu cầu, gia sư duyệt
+  joinPolicy String?
 
   // Giáo viên sở hữu (null = nội dung cũ/của quản lý trung tâm). Chỉ dùng để
   // scope quyền khi User.adminRole === "teacher" — admin_super/admin_content
@@ -83,6 +88,7 @@ model Course {
   calendarColor String?
   classJoinUrl  String?
   studentProfiles    StudentProfile[]
+  joinRequests       ClassJoinRequest[]
 
   @@index([ownerId])
   @@map("courses")
@@ -413,6 +419,16 @@ model Exam {
   supersededAt   DateTime?
   versionNote    String?   @db.Text
 
+  // BU-03 (chỉ thêm, nullable): ma trận đề đã dùng · mã đề · chế độ giao đề.
+  //   variantOfId — null = đề gốc (hoặc đề thường); có giá trị = id đề GỐC mà mã đề này suy ra (không khoá ngoại, như rootExamId).
+  //   variantNo   — đề gốc = 1 (đặt khi tạo mã đề đầu tiên), mã đề con = 2..N. Hiển thị "Mã đề 10N".
+  //   mode        — "practice" | "test" | null. null = đề cũ: phía học sinh coi như "test".
+  blueprintId String?
+  blueprint   ExamBlueprint? @relation(fields: [blueprintId], references: [id], onDelete: SetNull)
+  variantOfId String?
+  variantNo   Int?
+  mode        String?
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]
@@ -421,7 +437,23 @@ model Exam {
   @@index([ownerId])
   @@index([courseId])
   @@index([rootExamId])
+  @@index([variantOfId])
+  @@index([blueprintId])
   @@map("exams")
+}
+
+// BU-03 P2 — Ma trận đề của gia sư: lưu để dùng lại. KHÔNG khoá ngoại tới User (như QuizStudentDeadline) để không động model User.
+model ExamBlueprint {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  rows      Json     // BlueprintRow[] = [{ "categoryId": string, "difficulty": "NB"|"TH"|"VD"|"VDC", "count": number }] — đúng ba khoá này, không thêm
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  exams     Exam[]
+
+  @@index([ownerId])
+  @@map("exam_blueprints")
 }
 
 // Ngân hàng câu hỏi dùng chung giữa các giáo viên — kho bản mẫu ĐỘC LẬP với
@@ -828,6 +860,9 @@ model ExamFile {
   owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
+  // BU-03 P2 — id đề đã tách ra từ tệp này (không khoá ngoại; giao diện kiểm đề còn tồn tại).
+  extractedExamId String?
+
   // null = "Chưa phân loại". Xoá thư mục KHÔNG xoá theo file (SetNull) — API
   // xoá thư mục vẫn tự chặn nếu còn file để tránh mất tổ chức, xem
   // exam-file-folders/[id]/route.ts.
@@ -886,6 +921,10 @@ model User {
   adminRole     String? // "admin_super" | "admin_content" | "teacher"
   emailVerified Boolean  @default(false)
   banned        Boolean  @default(false)
+  // ADM-001 (01/11/2026): học sinh "đã ẩn" khỏi quản trị — thay cho xoá cứng. Giữ nguyên mọi bản ghi con (ghi danh, điểm danh, ví, bài làm)
+  // làm bằng chứng. Khi ẩn, `banned` cũng được đặt true để chặn đăng nhập mà không sửa loginSession/sessionVerify (tệp chung).
+  // Ẩn ⇒ khoá; khoá ⇏ ẩn. Chỉ route /api/admin/students/[id] (DELETE, restore) được ghi cột này.
+  deletedAt     DateTime?
   createdAt     DateTime @default(now())
 
   // ─── Hồ sơ gia sư (1.4.4) — field phẳng, nhất quán avatarBase64/facebookUrl.
@@ -907,6 +946,9 @@ model User {
   // PH-212: quản trị khoá hồ sơ giả / bị báo cáo → hồ sơ công khai trả 404, gia sư vẫn dùng sổ lớp bình thường.
   profileLockedAt   DateTime?
   profileLockReason String?   @db.Text
+  // BU-06 (02/11/2026): ảnh bìa + video giới thiệu (link YouTube) cho /mentor/[id]. Chỉ thêm, nullable.
+  coverUrl          String?
+  introVideoUrl     String?
 
   sessionPlans   SessionPlan[]        @relation("SessionPlanTutor")
   profileVisits  ProfileVisit[]       @relation("ProfileVisitTutor")
@@ -959,6 +1001,7 @@ model User {
   parentLinksAsStudent ParentLink[] @relation("StudentLinks")
   auditLogs            AuditLog[]
   createdClassInvites  ClassInvite[] @relation("ClassInviteCreator")
+  classJoinRequests    ClassJoinRequest[] @relation("ClassJoinRequestUser")
   topupRequests        CoinTopupRequest[] @relation("TopupRequests")
   topupReviews         CoinTopupRequest[] @relation("TopupRequestReviews")
   monthlyCourseFeesUpdated MonthlyCourseFee[] @relation("MonthlyCourseFeeUpdater")
@@ -1623,12 +1666,39 @@ model ClassInvite {
   revoked    Boolean   @default(false)
   createdBy  String
   createdAt  DateTime  @default(now())
+  // BU-01: mã cá nhân — chỉ tài khoản boundUserId dùng được; mã lớp = null.
+  boundUserId String?
+  kind        String   @default("class") // "class" | "personal"
 
   course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator User   @relation("ClassInviteCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([courseId])
+  @@index([courseId, kind])
+  @@index([boundUserId])
   @@map("class_invites")
+}
+
+// BU-01 — học sinh xin vào lớp "approve". Một dòng cho mỗi cặp (em, lớp); xin lại = cập nhật dòng.
+// Chỉ lưu id + lời nhắn của GIA SƯ (không thu thêm dữ liệu học sinh).
+model ClassJoinRequest {
+  id        String    @id @default(cuid())
+  courseId  String
+  userId    String
+  inviteId  String? // mã đã dùng để xin (chỉ id, không quan hệ)
+  status    String    @default("pending") // pending | approved | rejected | cancelled
+  note      String? // lời nhắn của gia sư khi từ chối, ≤ 200 ký tự
+  decidedBy String? // id gia sư duyệt/từ chối
+  decidedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation("ClassJoinRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@map("class_join_requests")
 }
 
 // ─── PARENT LINKS & CONSENT ───────────────────────────────────────────────────
@@ -1716,7 +1786,7 @@ model AuditLog {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded"
+  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded" | "join_request_new" | "join_request_approved" | "join_request_rejected"
   title     String
   message   String
   link      String?
@@ -1932,7 +2002,21 @@ model Thread {
   bookmarks ThreadBookmark[]
   reports   ThreadReport[]
 
+  // BU-05 (01/11/2026) — chỉ THÊM. Hàng cũ tự nhận kind="post", status="published".
+  kind            String    @default("post")      // "post" | "question"
+  title           String?                          // chỉ kind="question" (5–120 ký tự)
+  status          String    @default("published")  // "published" | "pending" | "rejected"
+  guestName       String?                          // bài của khách: tên hiển thị khách tự gõ
+  guestIpHash     String?                          // HMAC(IP) — chỉ để giới hạn tần suất, không đọc ngược được
+  acceptedReplyId String?                          // kind="question": trả lời được chọn đúng. CỐ Ý không khai relation (tránh vòng khoá ngoại); mã kiểm thuộc cùng bài
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectReason    String?
+
   @@index([courseId])
+  @@index([status, createdAt])
+  @@index([kind, createdAt])
+  @@index([authorId, createdAt])
   @@map("threads")
 }
 
@@ -1960,10 +2044,17 @@ model ThreadReply {
   deletedAt DateTime? // soft-delete, xem giải thích ở Thread.deletedAt
   createdAt DateTime  @default(now())
 
+  // BU-05: trả lời lồng đúng 1 cấp (máy chủ ép về cha gốc — communityRules.normalizeParent).
+  parentReplyId String?
+  parent        ThreadReply?  @relation("ReplyChildren", fields: [parentReplyId], references: [id], onDelete: Cascade)
+  children      ThreadReply[] @relation("ReplyChildren")
+
   author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   thread Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   likes  ReplyLike[]
 
+  @@index([threadId, createdAt])
+  @@index([parentReplyId])
   @@map("thread_replies")
 }
 
@@ -2111,9 +2202,13 @@ model Article {
   sourceUrl   String?   // link bài gốc (http/https)
   sourceName  String?   // tên hiển thị của nguồn; trống thì lấy tên miền
   coverImage  String?   // link ảnh bìa (https)
+  coverCaption String?  // BU-07: chú thích ảnh bìa (≤200 ký tự, văn bản thuần)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@index([published, publishedAt])
+  @@index([category, published, publishedAt])
+  @@index([published, views])
   @@map("articles")
 }
 
@@ -2997,4 +3092,27 @@ model EngMock {
 
   @@index([userId, skill, takenAt])
   @@map("eng_mocks")
+}
+
+/// Nội dung trang công khai sửa được từ màn quản trị. Mỗi trang một hàng, khoá cố định (hiện chỉ "home").
+/// Không khoá ngoại tới User: xoá người dùng không được kéo theo mất nội dung (updatedBy chỉ là dấu vết).
+model SiteContent {
+  key       String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("site_content")
+}
+
+// CAT-02: danh mục khoá học do quản trị trung tâm quản (tên, thứ tự). Course.category vẫn là chuỗi, không khoá ngoại.
+model CourseCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0) // KHÔNG @unique: đổi thứ tự không phải né va chạm khoá
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("course_categories")
 }

@@ -76,8 +76,9 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
 
   section("Máy chủ: trang chủ / đăng ký / đăng nhập cho người ĐÃ đăng nhập");
   const h1 = await get("/", sc), h2 = await get("/", tc), h3 = await get("/"), h4 = await get("/", ac);
-  check("học viên mở '/' → /student/viec-cua-toi", h1.status === 307 && path(h1.location) === "/student/viec-cua-toi", h1);
-  check("gia sư mở '/' → /lop-cua-toi", h2.status === 307 && path(h2.location) === "/lop-cua-toi", h2);
+  // HOME-01 (01/11/2026): trang chủ mở được khi đã đăng nhập; trước đó học viên / gia sư bị 307 về dashboard.
+  check("học viên mở '/' → xem trang chủ (200), không bị chuyển", h1.status === 200, h1);
+  check("gia sư mở '/' → xem trang chủ (200), không bị chuyển", h2.status === 200, h2);
   check("khách mở '/' → xem trang chủ (200)", h3.status === 200, h3);
   check("quản trị mở '/' trên tên miền chính → vẫn 200 (không bị đẩy sang tên miền không có phiên)", h4.status === 200, h4);
   const g1 = await get("/dang-ky", sc), g2 = await get("/dang-nhap", tc), g3 = await get("/dang-nhap?redirect=%2Fstudent%2Flich-hoc", sc), g4 = await get("/dang-nhap?redirect=https%3A%2F%2Fevil.example%2Fx", sc);
@@ -98,7 +99,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   const tabsDeThi = (p: any) => p.getByRole("navigation", { name: "Trang của Đề thi" });
   const tabsQuanLop = (p: any) => p.getByRole("navigation", { name: "Trang của Quản lớp" });
 
-  section("Trình duyệt: gia sư bấm 'Quản lý đề thi' → bí danh /lop-cua-toi/de-thi trong vỏ gia sư, có dải tab Đề thi · Ngân hàng câu hỏi · Ngân hàng đề");
+  section("Trình duyệt: gia sư bấm 'Quản lý đề thi' → bí danh /lop-cua-toi/de-thi trong vỏ gia sư, có dải tab Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc");
   const ctx = await ctxFor(T, { width: 1280, height: 800 });
   const pg = await ctx.newPage(); watch(pg);
   await pg.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
@@ -117,7 +118,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   check("'Bài tập' đang chọn (aria-current=page), 'Thư viện' không", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page");
   await tabsDeThi(pg).waitFor({ timeout: 30000 });
   const tabText = (await tabsDeThi(pg).innerText()).replace(/\s+/g, " ").trim();
-  check("dải tab 'Trang của Đề thi': Đề thi · Ngân hàng câu hỏi · Ngân hàng đề, 'Đề thi' đang chọn, không có dải tab quản trị 'Trang của Nội dung'", /Đề thi.*Ngân hàng câu hỏi.*Ngân hàng đề/.test(tabText) && await tabsDeThi(pg).getByRole("link", { name: "Đề thi", exact: true }).getAttribute("aria-current") === "page" && (await pg.getByRole("navigation", { name: "Trang của Nội dung" }).count()) === 0, tabText);
+  check("dải tab 'Trang của Đề thi': Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc, 'Đề thi' đang chọn, không có dải tab quản trị 'Trang của Nội dung'", /Đề thi.*Ngân hàng câu hỏi.*Ma trận đề.*Tệp đề gốc/.test(tabText) && await tabsDeThi(pg).getByRole("link", { name: "Đề thi", exact: true }).getAttribute("aria-current") === "page" && (await pg.getByRole("navigation", { name: "Trang của Nội dung" }).count()) === 0, tabText);
   check("có dải trên của vỏ gia sư (logo KiN + tên + nút mở thanh bên ẩn)", await pg.getByRole("link", { name: /KiN — Hộp việc của gia sư/ }).isVisible());
   await shot(pg, "tutor-admin-1-de-thi");
 
@@ -129,7 +130,7 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await pg.goto(`${BASE}/admin/thi-thu/ngan-hang-de-thi`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(/\/lop-cua-toi\/de-thi\/ngan-hang-de-thi/, { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
-  check("/admin/thi-thu/ngan-hang-de-thi → /lop-cua-toi/de-thi/ngan-hang-de-thi; 'Bài tập' sáng, 'Thư viện' không; tab 'Ngân hàng đề' đang chọn", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page" && await tabsDeThi(pg).getByRole("link", { name: "Ngân hàng đề" }).getAttribute("aria-current") === "page", pg.url());
+  check("/admin/thi-thu/ngan-hang-de-thi → /lop-cua-toi/de-thi/ngan-hang-de-thi; 'Bài tập' sáng, 'Thư viện' không; tab 'Tệp đề gốc' đang chọn", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page" && await tabsDeThi(pg).getByRole("link", { name: "Tệp đề gốc" }).getAttribute("aria-current") === "page", pg.url());
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}?tab=lich-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}\\?tab=lich-hoc`), { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
@@ -162,11 +163,11 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await rail(pg).waitFor({ timeout: 10000 });
   await ctx.close();
 
-  section("Trình duyệt: trang chủ / đăng ký cho người đã đăng nhập → thẳng dashboard");
+  section("Trình duyệt: trang chủ mở được khi đã đăng nhập; /dang-ky vẫn → dashboard");
   const ctxS = await ctxFor(S, { width: 1280, height: 800 });
   const ps = await ctxS.newPage(); watch(ps);
   await ps.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 120000 });
-  check("học viên gõ trang chủ → /student/viec-cua-toi, thấy thanh bên học sinh, không thấy Navbar khách", /\/student\/viec-cua-toi/.test(ps.url()) && await ps.getByRole("navigation", { name: "Module của học sinh" }).isVisible() && (await ps.getByRole("navigation", { name: "Điều hướng chính" }).count()) === 0, ps.url());
+  check("học viên gõ trang chủ → ở lại '/', có Navbar, có 'Vào trang của tôi', không có thanh bên học sinh", new URL(ps.url()).pathname === "/" && await ps.getByRole("navigation", { name: "Điều hướng chính" }).isVisible() && await ps.locator("header").getByRole("link", { name: "Vào trang của tôi" }).isVisible() && (await ps.getByRole("navigation", { name: "Module của học sinh" }).count()) === 0, ps.url());
   await ps.goto(`${BASE}/dang-ky`, { waitUntil: "networkidle", timeout: 120000 });
   check("học viên gõ /dang-ky → dashboard", /\/student\/viec-cua-toi/.test(ps.url()), ps.url());
   await ps.goto(`${BASE}/lop-cua-toi/de-thi`, { waitUntil: "networkidle", timeout: 120000 });

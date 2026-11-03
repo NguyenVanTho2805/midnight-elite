@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
-import { qfetch, quizHref, IMPORT_HREF } from "./quizClient";
+import { qfetch, quizHref, DE_THI_ROOT, IMPORT_HREF } from "./quizClient";
 
 export default function QuizNew() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function QuizNew() {
 
   return (
     <KinPage>
-      <KinPageHeader title="Tạo quiz" back={{ href: "/lop-cua-toi/bai-tap", label: "Bài tập" }} sub="Bước 1 · Đặt tên, rồi soạn từng câu" />
+      <KinPageHeader title="Tạo quiz" back={{ href: `${DE_THI_ROOT}/tao-moi`, label: "Tạo đề" }} sub="Bước 1 · Đặt tên, rồi soạn từng câu" />
       <form className="max-w-[560px] space-y-5" onSubmit={e => { e.preventDefault(); void create(); }}>
         <div>
           <label htmlFor="qn-title" className={`${KIN_LABEL} mb-2`}>Tên quiz *</label>

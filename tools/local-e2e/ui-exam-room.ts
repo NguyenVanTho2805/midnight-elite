@@ -2,6 +2,7 @@
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
 
 (async () => {
   await wipe();
@@ -21,6 +22,10 @@ import { prisma } from "@/lib/prisma";
     const q = await prisma.examQuestion.create({ data: { id: `qs${i}-pt`, examId: ex2.id, order: i + 1, text: `Câu hỏi số ${i + 1} của đề chia Phần`, type: "MC", sectionLabel: label, sectionMinutes: mins } });
     for (const [j, t] of ["Đáp án một", "Đáp án hai"].entries()) await prisma.examOption.create({ data: { id: `os${i}-${j}`, questionId: q.id, order: j, text: t, isCorrect: j === 0 } });
   }
+
+  // Đề LUYỆN TẬP đủ 5 loại câu (gợi ý / lời giải mồi trong SEC) để kiểm: DOM không chứa đáp án trước khi máy chủ trả.
+  const pr = await mkExam({ id: "prac", ownerId: T.id, courseId: C.id, mode: "practice", title: "Luyện tập thử" });
+  await mkFiveQuestions(pr.id, "prac");
 
   await launch();
   const errors: string[] = [];
@@ -62,7 +67,7 @@ import { prisma } from "@/lib/prisma";
   const hdBg = await hd.evaluate(e => getComputedStyle(e).backgroundColor);
   check("thanh trên tô Navy (rgb 30,58,138) bất kể chủ đề Cổ vịt, chữ trắng", hdBg === "rgb(30, 58, 138)" && await hd.evaluate(e => getComputedStyle(e).color) === "rgb(255, 255, 255)", hdBg);
   check("đề không chia Phần → dòng đầu là tên đề (chữ hoa bằng CSS)", (await pg.locator("[data-phong-thi-phan]").innerText()).trim() === "PHÒNG THI THỬ" && (await pg.locator("[data-phong-thi-phan]").textContent())?.trim() === "Phòng thi thử");
-  const counter = hd.getByRole("button", { name: /^Câu \d+ \/ \d+/ });
+  const counter = hd.locator("[data-so-cau]");
   check("'Câu 1 / 2' (câu hiện tại / tổng số câu của đề)", (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 1 / 2"), await counter.innerText());
   const clock = pg.getByRole("timer");
   const t0 = await clock.innerText();
@@ -77,44 +82,77 @@ import { prisma } from "@/lib/prisma";
 
   section("Khung: trang không cuộn, thân cuộn riêng, chân trang cố định");
   const lay = await pg.evaluate(`(() => {
-    const body = document.querySelector('[data-cau]').parentElement.parentElement; const ft = document.querySelector('footer').getBoundingClientRect(); const h = document.querySelector('header').getBoundingClientRect();
+    const body = document.querySelector('[data-thanh-cuon]'); const ft = document.querySelector('footer').getBoundingClientRect(); const h = document.querySelector('header').getBoundingClientRect();
     return { page: document.documentElement.scrollHeight - window.innerHeight, bodyOverflow: getComputedStyle(body).overflowY, footBottom: Math.round(ft.bottom), headTop: Math.round(h.top), vh: window.innerHeight };
   })()`) as any;
   check("trang không cuộn dọc; thân tự cuộn", lay.page <= 1 && lay.bodyOverflow === "auto", lay);
   check("thanh trên dính đỉnh, chân trang dính đáy", lay.headTop === 0 && lay.footBottom === lay.vh, lay);
 
-  section("Chân trang: tiến độ, ghi chú hết giờ, Câu trước / Câu sau / Nộp bài");
+  section("Chân trang: chỉ Câu trước / Câu sau; Nộp bài nằm ở bảng bên phải");
   const foot = pg.locator("footer");
-  check("tiến độ 'Đã trả lời 1 / 2 câu' (đã chọn câu 1)", (await foot.innerText()).includes("Đã trả lời 1 / 2 câu"), await foot.innerText());
-  check("ghi chú đúng sự thật khi hết giờ: 'Hết giờ hệ thống tự nộp bài.'", (await foot.innerText()).includes("Hết giờ hệ thống tự nộp bài."));
   const btnH = await foot.getByRole("button").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
-  check("3 nút (Nộp bài, Câu trước, Câu sau) đều cao ≥ 44px", btnH.length === 3 && btnH.every(h => h >= 44), btnH);
-  check("đang ở câu 1: 'Câu trước' tắt, 'Câu sau' bật", await foot.getByRole("button", { name: "Câu trước" }).isDisabled() && await foot.getByRole("button", { name: "Câu sau" }).isEnabled());
-  await foot.getByRole("button", { name: "Câu sau" }).click();
-  await eventually("bấm 'Câu sau' → 'Câu 2 / 2' và 'Câu sau' tắt", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 2 / 2") && await foot.getByRole("button", { name: "Câu sau" }).isDisabled());
+  check("chân trang chỉ có 2 nút (Câu trước, Câu sau), đều cao ≥ 44px — không có 'Nộp bài' ở đây", btnH.length === 2 && btnH.every(h => h >= 44) && await foot.getByRole("button", { name: "Nộp bài" }).count() === 0, btnH);
+  const bang = pg.locator('[data-nop-bai="bang"]');
+  const bangText = (await bang.innerText()).replace(/\s+/g, " ");
+  check("khối Nộp bài ở bảng bên phải: 'Đã làm 1 / 2' + ghi chú 'Hết giờ hệ thống tự nộp bài.'", bangText.includes("Đã làm 1 / 2") && bangText.includes("Hết giờ hệ thống tự nộp bài."), bangText);
+  check("đang ở câu 1: 'Câu trước' tắt, 'Câu sau' bật", await foot.getByRole("button", { name: /Câu trước/ }).isDisabled() && await foot.getByRole("button", { name: /Câu sau/ }).isEnabled());
+  await foot.getByRole("button", { name: /Câu sau/ }).click();
+  await eventually("bấm 'Câu sau' → 'Câu 2 / 2' và 'Câu sau' tắt", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 2 / 2") && await foot.getByRole("button", { name: /Câu sau/ }).isDisabled());
   check("câu 2 nằm trong khung nhìn (đã cuộn tới)", await pg.locator('[data-cau="1"]').evaluate(e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.top < window.innerHeight; }));
-  await foot.getByRole("button", { name: "Câu trước" }).click();
+  await foot.getByRole("button", { name: /Câu trước/ }).click();
   await eventually("bấm 'Câu trước' → về 'Câu 1 / 2'", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 1 / 2"));
 
-  section("Lưới nhảy câu");
-  check("chưa mở: aria-expanded=false", (await counter.getAttribute("aria-expanded")) === "false");
-  await counter.click();
+  section("Một cột 680 ở giữa, bảng số câu bên phải (1280)");
+  const colBox = await pg.locator("[data-cot-cau-hoi]").boundingBox(), asideBox = await pg.locator("[data-bang-so-cau]").boundingBox();
+  check("cột câu hỏi rộng 680 ± 1px", !!colBox && Math.abs(colBox.width - 680) <= 1, colBox);
+  check("bảng số câu nằm bên phải cột câu hỏi, không đè lên nhau", !!colBox && !!asideBox && asideBox.x >= colBox.x + colBox.width - 1, { colBox, asideBox });
+  check("không có nút 'Số câu' ở 1280 (bảng đã hiện sẵn)", await pg.getByRole("button", { name: /^Câu \d+ \/ \d+/ }).isHidden().catch(() => true));
+
+  section("Bảng số câu");
   const grid = pg.getByRole("navigation", { name: "Nhảy tới câu" });
-  check("mở lưới: aria-expanded=true, có 2 ô", (await counter.getAttribute("aria-expanded")) === "true" && await grid.getByRole("button").count() === 2);
+  check("bảng có 2 ô, mỗi ô cao ≥ 44px", await grid.getByRole("button").count() === 2 && (await grid.getByRole("button").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)))).every(h => h >= 44));
   const pos = await pg.evaluate(`[...document.querySelectorAll("[data-cau]")].map(e => e.id)`) as string[]; // đề xáo thứ tự mỗi lượt → lấy thứ tự thật trên màn hình
   const doneAt = pos.indexOf("q-q1-pt") + 1, openAt = pos.indexOf("q-q1-pt") === 0 ? 2 : 1;
-  const bDone = grid.getByRole("button", { name: `Câu ${doneAt}, đã trả lời` }), bOpen = grid.getByRole("button", { name: `Câu ${openAt}, chưa trả lời` });
-  check("ô có chữ trạng thái: câu đã chọn = 'đã trả lời' (viền liền), câu còn lại = 'chưa trả lời' (viền đứt) — không chỉ dựa vào màu", await bDone.count() === 1 && await bOpen.count() === 1 && await bDone.evaluate(e => getComputedStyle(e).borderTopStyle) === "solid" && await bOpen.evaluate(e => getComputedStyle(e).borderTopStyle) === "dashed", pos);
-  check("ô cao ≥ 44px", (await grid.getByRole("button").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)))).every(h => h >= 44));
+  const bDone = grid.getByRole("button", { name: new RegExp(`^Câu ${doneAt}, đã làm`) }), bOpen = grid.getByRole("button", { name: new RegExp(`^Câu ${openAt}, chưa làm`) });
+  // Ô của câu HIỆN TẠI luôn viền liền (nền Navy — đúng đặc tả). Đề được xáo mỗi lượt nên câu đang hiện có thể chính là câu CHƯA làm (đỏ ngẫu nhiên khi thứ tự là q2,q1):
+  // chuyển câu hiện tại sang câu đã làm trước khi đo, để ô 'chưa làm' chắc chắn không phải ô hiện tại.
+  await bDone.click();
+  check("ô có chữ trạng thái: câu đã chọn = 'đã làm' (viền liền), câu còn lại = 'chưa làm' (viền đứt) — không chỉ dựa vào màu", await bDone.count() === 1 && await bOpen.count() === 1 && await bDone.evaluate(e => getComputedStyle(e).borderTopStyle) === "solid" && await bOpen.evaluate(e => getComputedStyle(e).borderTopStyle) === "dashed", pos);
   await grid.getByRole("button", { name: /^Câu 2,/ }).click();
-  await eventually("chọn ô câu 2 → nhảy tới câu 2 và lưới tự đóng", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 2 / 2") && await grid.count() === 0);
+  await eventually("chọn ô câu 2 → nhảy tới câu 2", async () => (await counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 2 / 2"));
+  await pg.locator("[data-danh-dau-nut]").nth(1).click();
+  await eventually("đánh dấu xem lại câu 2 → ô có chữ 'đánh dấu xem lại'", async () => await grid.getByRole("button", { name: /^Câu 2, .*đánh dấu xem lại/ }).count() === 1);
+
+  section("Chip lưu: Đã lưu / Chưa lưu được (mất mạng không mất đáp án)");
+  const chip = pg.locator("[data-chip-luu]");
+  await eventually("đã chọn đáp án câu 1 → chip 'Đã lưu'", async () => (await chip.getAttribute("data-chip-luu")) === "saved" && (await chip.innerText()).includes("Đã lưu"), 20000);
+  await ctx.setOffline(true);
+  await pg.getByText("−5", { exact: true }).first().click();
+  await eventually("mất mạng → chip 'Chưa lưu được' + nút 'Thử lại'", async () => (await chip.getAttribute("data-chip-luu")) === "failed" && (await chip.innerText()).includes("Chưa lưu được") && await chip.getByRole("button", { name: "Thử lại" }).isVisible(), 40000);
+  check("đáp án vẫn hiện đã chọn trên màn khi chưa lưu được", await pg.locator('label:has(input[type=radio]:checked)').innerText().then(t => t.includes("−5")));
+  check("hàng đợi nằm trong localStorage (kin.room.queue.*)", await pg.evaluate(`Object.keys(localStorage).some(k => k.startsWith("kin.room.queue."))`) as boolean);
+  await ctx.setOffline(false);
+  await chip.getByRole("button", { name: "Thử lại" }).click().catch(() => {});
+  await eventually("có mạng lại → chip về 'Đã lưu' và DB có đáp án mới", async () => (await chip.getAttribute("data-chip-luu")) === "saved" && (await prisma.examAnswer.findFirst({ where: { questionId: q1.id } }))?.optionId === "o1-1", 40000);
+  await shot(pg, "exam-room-taking-1280");
+  await pg.getByText("5", { exact: true }).first().click();
+
+  section("Hai cách xem: Từng câu / Cả đề");
+  const tabW = pg.getByRole("tab", { name: "Cả đề" }), tabP = pg.getByRole("tab", { name: "Từng câu" });
+  check("1280: mặc định 'Cả đề' (tab chọn), 2 khối câu cùng hiện", (await tabW.getAttribute("aria-selected")) === "true" && await pg.locator("[data-cau]").count() === 2);
+  check("2 tab cao ≥ 44px", (await pg.getByRole("tab").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)))).every(h => h >= 44));
+  await tabP.click();
+  check("bấm 'Từng câu' → chỉ một khối câu, lựa chọn được nhớ (kin.room.view)", await pg.locator("[data-cau]").count() === 1 && (await pg.evaluate(`localStorage.getItem("kin.room.view")`)) === "per-question");
+  await tabW.click();
+  check("bấm 'Cả đề' → lại hiện cả 2 câu", await pg.locator("[data-cau]").count() === 2);
+  check("đề kiểm tra (không phải luyện tập): KHÔNG có nút 'Kiểm tra câu này' (không lộ đáp án giữa chừng)", await pg.getByRole("button", { name: "Kiểm tra câu này" }).count() === 0);
 
   section("Rời tab → dải báo + server đếm");
   const leave = () => pg.evaluate(`(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); document.dispatchEvent(new Event("visibilitychange")); Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); })()`);
   await leave();
   const strip = pg.locator("[data-dai-roi-tab]");
   await strip.waitFor({ timeout: 30000 });
-  check("rời 1 lần: dải hiện đúng chữ 'Bạn đã rời khỏi tab 1 lần. Hệ thống có ghi lại số lần, không quay màn hình.'", (await strip.innerText()).replace(/\s+/g, " ").trim() === "Bạn đã rời khỏi tab 1 lần. Hệ thống có ghi lại số lần, không quay màn hình.", await strip.innerText());
+  check("rời 1 lần: dải hiện đúng chữ 'Em đã rời khỏi màn hình 1 lần. KiN chỉ ghi nhận để gia sư biết.'", (await strip.innerText()).replace(/\s+/g, " ").trim() === "Em đã rời khỏi màn hình 1 lần. KiN chỉ ghi nhận để gia sư biết.", await strip.innerText());
   check("dải là vùng thông báo (role=status, aria-live) — đọc được bằng trình đọc màn hình", await strip.getAttribute("role") === "status" && await strip.getAttribute("aria-live") === "polite");
   await leave();
   await pg.waitForFunction(`document.querySelector("[data-dai-roi-tab]")?.textContent?.includes("2 lần")`, null, { timeout: 30000 });
@@ -141,32 +179,33 @@ import { prisma } from "@/lib/prisma";
   await p2.getByText("Câu hỏi số 1 của đề chia Phần").waitFor({ timeout: 60000 });
   await hide(p2);
   check("dòng đầu = tên Phần đang làm (đã có chữ 'Phần' nên giữ nguyên)", (await p2.locator("[data-phong-thi-phan]").textContent())?.trim() === "Phần 1: Toán và xử lý số liệu", await p2.locator("[data-phong-thi-phan]").textContent());
-  const c2counter = p2.locator("header").getByRole("button", { name: /^Câu \d+ \/ \d+/ });
+  const c2counter = p2.locator("header [data-so-cau]");
   check("'Câu 1 / 3' — mẫu số là cả đề (3), dù Phần 2 chưa hiện", (await c2counter.innerText()).replace(/\s+/g, " ").startsWith("Câu 1 / 3"), await c2counter.innerText());
   const tt = (await p2.getByRole("timer").innerText()).split(":").map(Number);
   check("đồng hồ theo Phần 1 (20 phút), không phải cả đề 45 phút", tt[0] === 19 || tt[0] === 20, tt);
   check("dưới đồng hồ: 'còn lại của Phần 1'", await p2.locator("header").getByText("còn lại của Phần 1", { exact: true }).isVisible());
   check("Phần 2 chưa tới lượt → ẩn hoàn toàn (không lộ đề)", await p2.getByText("Câu hỏi số 3 của đề chia Phần").count() === 0 && await p2.getByText("Câu 3.").count() === 0);
-  const f2 = (await p2.locator("footer").innerText()).replace(/\s+/g, " ");
-  check("tiến độ đếm theo Phần: 'Đã trả lời 0 / 2 câu Phần 1'", f2.includes("Đã trả lời 0 / 2 câu Phần 1"), f2);
+  const f2 = (await p2.locator('[data-nop-bai="bang"]').innerText()).replace(/\s+/g, " ");
+  check("tiến độ đếm theo Phần đang hiện: 'Đã làm 0 / 2'", f2.includes("Đã làm 0 / 2"), f2);
   check("ghi chú: 'Hết giờ Phần 1 thì Phần 1 khoá lại, tự sang Phần 2. Không sửa lại được.'", f2.includes("Hết giờ Phần 1 thì Phần 1 khoá lại, tự sang Phần 2. Không sửa lại được."), f2);
   await shot(p2, "exam-room-section");
 
   section("Nộp bài luôn qua hộp xác nhận");
   await p2.getByText("Đáp án một").first().click();
-  check("chọn xong: 'Đã trả lời 1 / 2 câu Phần 1'", (await p2.locator("footer").innerText()).includes("Đã trả lời 1 / 2 câu Phần 1"));
-  await p2.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
+  check("chọn xong: 'Đã làm 1 / 2'", (await p2.locator('[data-nop-bai="bang"]').innerText()).includes("Đã làm 1 / 2"));
+  await p2.locator("[data-danh-dau-nut]").first().click();
+  await p2.locator('[data-nop-bai="bang"]').getByRole("button", { name: "Nộp bài" }).click();
   const dlg = p2.getByRole("dialog", { name: "Nộp bài ngay?" });
   await dlg.waitFor({ timeout: 15000 });
-  check("hộp ghi rõ số câu chưa trả lời của CẢ đề (2 trên 3, kể cả Phần chưa hiện)", (await dlg.innerText()).includes("Em còn 2 câu chưa làm: Câu 2 và 1 câu ở Phần chưa mở.") && (await dlg.innerText()).includes("Nộp rồi thì không sửa lại được."), await dlg.innerText());
+  check("hộp ghi rõ số câu chưa trả lời của CẢ đề (2 trên 3, kể cả Phần chưa hiện)", (await dlg.innerText()).includes("Em còn 2 câu chưa làm: Câu 2 và 1 câu ở Phần chưa mở.") && (await dlg.innerText()).includes("Nộp rồi thì không sửa lại được.") && (await dlg.innerText()).includes("câu đánh dấu xem lại"), await dlg.innerText());
   check("tiêu điểm rơi vào nút an toàn 'Làm tiếp' (Enter nhầm không nộp bài)", await dlg.getByRole("button", { name: "Làm tiếp" }).evaluate(e => e === document.activeElement));
   await dlg.getByRole("button", { name: "Làm tiếp" }).click();
   check("'Làm tiếp' đóng hộp, bài vẫn đang làm (DB in_progress)", await dlg.count() === 0 && (await prisma.examAttempt.findFirst({ where: { examId: ex2.id } }))?.status === "in_progress");
-  await p2.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
+  await p2.locator('[data-nop-bai="bang"]').getByRole("button", { name: "Nộp bài" }).click();
   await dlg.waitFor({ timeout: 15000 });
   await p2.keyboard.press("Escape");
   check("Esc cũng đóng hộp, không nộp", await dlg.count() === 0 && (await prisma.examAttempt.findFirst({ where: { examId: ex2.id } }))?.status === "in_progress");
-  await p2.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
+  await p2.locator('[data-nop-bai="bang"]').getByRole("button", { name: "Nộp bài" }).click();
   await dlg.waitFor({ timeout: 15000 });
   await dlg.getByRole("button", { name: "Nộp bài", exact: true }).click();
   await eventually("xác nhận → DB: lượt thi đã nộp (submitted)", async () => (await prisma.examAttempt.findFirst({ where: { examId: ex2.id } }))?.status === "submitted", 30000);
@@ -186,9 +225,61 @@ import { prisma } from "@/lib/prisma";
   const mh = await pm.evaluate(`(() => { const h = document.querySelector('header').getBoundingClientRect(), f = document.querySelector('footer').getBoundingClientRect(); return { headH: Math.round(h.height), footBottom: Math.round(f.bottom), vh: window.innerHeight, headRight: Math.round(document.querySelector('[role=timer]').getBoundingClientRect().right) }; })()`) as any;
   check("điện thoại: đồng hồ nằm trọn trong thanh Navy (không tràn phải), chân trang dính đáy", mh.headRight <= 390 && mh.footBottom === mh.vh, mh);
   const mbtn = await pm.locator("footer").getByRole("button").evaluateAll(els => els.map(e => ({ h: Math.round(e.getBoundingClientRect().height), w: Math.round(e.getBoundingClientRect().width) })));
-  check("3 nút chân trang cao ≥ 44px, rộng ≥ 44px, xếp vừa 390px", mbtn.length === 3 && mbtn.every(b => b.h >= 44 && b.w >= 44), mbtn);
+  check("2 nút chân trang (Câu trước / Câu sau) cao ≥ 44px, rộng ≥ 44px, xếp vừa 390px", mbtn.length === 2 && mbtn.every(b => b.h >= 44 && b.w >= 44), mbtn);
+  check("390px: cột một lề 16px, không có bảng số câu cố định bên phải", await pm.locator("[data-bang-so-cau]").isHidden() && ((await pm.locator("[data-cot-cau-hoi]").boundingBox())?.width ?? 999) <= 358);
+  const moptH = await pm.locator('label:has(input[type=radio])').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
+  check("390px: mỗi ô đáp án trắc nghiệm cao ≥ 52px (nếu câu đang xem là trắc nghiệm)", moptH.length === 0 || moptH.every(h => h >= 52), moptH);
+  check("chip lưu nằm trong thanh Navy, không tràn", ((await pm.locator("[data-chip-luu]").boundingBox())?.x ?? 0) + ((await pm.locator("[data-chip-luu]").boundingBox())?.width ?? 999) <= 390);
+  const nbtn = pm.locator("header").getByRole("button", { name: /^Câu \d+ \/ \d+/ });
+  check("nút 'Câu N / M ▾' cao ≥ 44px mở bảng số câu", ((await nbtn.boundingBox())?.height ?? 0) >= 44);
+  await nbtn.click();
+  const sheetEl = pm.getByRole("dialog", { name: "Bảng số câu" });
+  await sheetEl.waitFor({ timeout: 15000 });
+  const sb2 = await sheetEl.boundingBox();
+  check("bảng số câu là tờ trượt ở đáy màn hình, rộng đúng 390 và không tràn", !!sb2 && sb2.width <= 390 && sb2.y + sb2.height >= 799 && await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean, sb2);
+  check("trong tờ trượt: lưới nhảy câu + khối Nộp bài", await sheetEl.getByRole("navigation").getByRole("button").count() === 2 && await sheetEl.locator('[data-nop-bai="to"]').getByRole("button", { name: "Nộp bài" }).isVisible());
+  await shot(pm, "exam-room-mobile-so-cau");
+  await sheetEl.getByRole("button", { name: "Đóng" }).click();
+  check("'Đóng' đóng tờ trượt", await sheetEl.count() === 0);
   await shot(pm, "exam-room-mobile");
   await cm.close();
+
+  section("Luyện tập: máy chủ mới là nơi nói đúng/sai, DOM không chứa đáp án");
+  const cp = await ctxFor(S, { width: 1280, height: 900 });
+  const pp = await cp.newPage(); watch(pp);
+  const bodies: string[] = [];
+  pp.on("response", async r => { if (r.url().includes("/api/") && !r.url().includes("/check")) { try { bodies.push(await r.text()); } catch { /* bỏ qua */ } } });
+  await pp.goto(`${BASE}/student/thi-thu/${pr.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await pp.getByRole("button", { name: /Bắt đầu/ }).click();
+  await pp.locator("[data-cau]").first().waitFor({ timeout: 60000 });
+  await hide(pp);
+  check("luyện tập: không có công tắc Từng câu/Cả đề, có nhãn 'Luyện tập · sai thì được gợi ý', chỉ một khối câu", await pp.getByRole("tab", { name: "Cả đề" }).count() === 0 && await pp.locator('[data-che-do="luyen-tap"]').isVisible() && await pp.locator("[data-cau]").count() === 1);
+  const html0 = await pp.content();
+  check("trước khi kiểm: DOM không chứa đáp án điền ngắn / lời giải / gợi ý mồi", !html0.includes(SEC.short) && !html0.includes(SEC.expl("prac-mc")) && !html0.includes(SEC.hint("prac-mc")));
+  check("các phản hồi API trước khi kiểm không có đáp án đúng (isCorrect:true / đáp án điền ngắn)", bodies.every(b => !/"isCorrect"\s*:\s*true/.test(b) && !b.includes(SEC.short)), bodies.length);
+  for (let k = 0; k < 6 && await pp.getByText("Câu mc (prac)").count() === 0; k++) await pp.locator("footer").getByRole("button", { name: /Câu sau/ }).click();
+  await pp.getByText("Đáp án sai MC", { exact: true }).click();
+  await pp.getByRole("button", { name: "Kiểm tra câu này" }).click();
+  await pp.locator('[data-trang-thai-cau="hint"]').waitFor({ timeout: 30000 });
+  const fb = (await pp.locator("[data-phan-hoi]").innerText()).replace(/\s+/g, " ");
+  check("chọn sai → 'Chưa đúng' + gợi ý của gia sư, chưa có lời giải", fb.includes("Chưa đúng") && fb.includes(SEC.hint("prac-mc")) && !fb.includes(SEC.expl("prac-mc")), fb);
+  check("hai nút 'Làm lại' và 'Xem đáp án' cao ≥ 44px", (await pp.locator("[data-phan-hoi] button").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)))).every(h => h >= 44));
+  await pp.getByText("Đáp án đúng MC", { exact: true }).click();
+  await pp.getByRole("button", { name: "Kiểm tra câu này" }).click();
+  await pp.locator('[data-trang-thai-cau="solved"]').waitFor({ timeout: 30000 });
+  check("chọn đúng → '✓ Đúng rồi' + lời giải do máy chủ trả", (await pp.locator("[data-phan-hoi]").innerText()).includes("Đúng rồi") && (await pp.locator("[data-phan-hoi]").innerText()).includes(SEC.expl("prac-mc")));
+  await shot(pp, "exam-room-practice");
+  await pp.locator('[data-nop-bai="bang"]').getByRole("button", { name: "Nộp bài" }).click();
+  await pp.getByRole("dialog", { name: "Nộp bài ngay?" }).getByRole("button", { name: "Nộp bài", exact: true }).click();
+  await pp.getByRole("heading", { level: 1 }).first().waitFor({ timeout: 40000 });
+  await eventually("kết quả luyện tập: nhãn 'Điểm luyện tập · không vào bảng xếp hạng' hoặc chờ chấm, không có 'Hạng #'", async () => { const t = await pp.locator("body").innerText(); return !t.includes("Hạng #") && (t.includes("Điểm luyện tập") || t.includes("Chờ gia sư chấm")); }, 30000);
+  const resBtn = pp.getByRole("button", { name: /^Làm lại/ });
+  check("màn kết quả có nút 'Làm lại' (≥ 44px) và nút xem lại", ((await resBtn.first().boundingBox())?.height ?? 0) >= 44 && await pp.getByRole("button", { name: /Xem lại/ }).count() >= 1);
+  await shot(pp, "exam-room-result");
+  // BU-04 rà soát: luyện tập không có ExamResult → trước đây tải lại trang rơi về cổng vào đề và mất kết quả. Nay dựng lại từ lượt nộp gần nhất.
+  await pp.reload({ waitUntil: "domcontentloaded" });
+  await eventually("tải lại trang luyện tập sau khi nộp: vẫn thấy màn kết quả (không rơi về cổng vào đề), không có 'Hạng #'", async () => { const t = await pp.locator("body").innerText(); return !t.includes("Hạng #") && (t.includes("Điểm luyện tập") || t.includes("Chờ gia sư chấm")) && (await pp.getByRole("button", { name: "Bắt đầu làm bài" }).count()) === 0; }, 40000);
+  await cp.close();
 
   section("Không lỗi trình duyệt");
   check("không có pageerror / console.error", errors.length === 0, errors.slice(0, 3));

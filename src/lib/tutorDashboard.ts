@@ -12,7 +12,7 @@ import type { UnmarkedSession } from "@/lib/unmarkedSessions";
 /** `pre.unmarked`: Hộp việc đã tự tải danh sách buổi chưa điểm danh (để hiện chi tiết) nên truyền vào đây cho khỏi truy vấn hai lần. */
 export async function loadTutorTodoCounts(tutorId: string, now: Date = new Date(), pre?: { unmarked?: Promise<UnmarkedSession[]>; invoiceRemind?: Promise<ReminderDueRow[]> }): Promise<TodoCounts> {
   const own = { ownerId: tutorId };
-  const [bankPending, needBankCheck, drafts, pendingConsent, classReports, ungradedFiles, ungradedEssays, sched, unmarked, remindDue] = await Promise.all([
+  const [bankPending, needBankCheck, drafts, pendingConsent, classReports, ungradedFiles, ungradedEssays, sched, unmarked, remindDue, joinRequests] = await Promise.all([
     prisma.bankTransaction.count({ where: { tutorId, status: "pending" } }),
     prisma.tuitionInvoice.count({ where: { tutorId, status: "parent_reported", parentReportedAt: { lt: new Date(now.getTime() - 24 * 3600_000) } } }),
     prisma.tuitionInvoice.count({ where: { tutorId, status: "draft" } }),
@@ -25,12 +25,14 @@ export async function loadTutorTodoCounts(tutorId: string, now: Date = new Date(
     loadScheduleCounters(tutorId, now),
     pre?.unmarked ?? loadUnmarkedSessions(tutorId, now),
     pre?.invoiceRemind ?? loadReminderDue(tutorId, now),
+    prisma.classJoinRequest.count({ where: { status: "pending", course: own } }),
   ]);
   return {
     bankPending, needBankCheck, draftInvoices: drafts, pendingConsent, classReports, ungraded: ungradedFiles + ungradedEssays,
     lateAbsences: sched.pendingAbsences, remindersDue: sched.remindersDue, makeupExpiring: sched.makeupExpiring,
     unmarkedSessions: unmarked.length,
     invoiceReminders: remindDue.length,
+    joinRequests,
   };
 }
 

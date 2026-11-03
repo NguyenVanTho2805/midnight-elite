@@ -2,7 +2,7 @@
 //   - Khách / quản trị: danh sách CÔNG KHAI, chỉ bài MIỄN PHÍ (isLocked không được dùng để quyết định công khai — từng làm lộ tài liệu bài trả phí).
 //   - Tài liệu đọc đúng dạng dữ liệu thật: mảng JSON `[{name,url,type}]` (và dạng cũ "nhãn|url").
 //   - Học viên: thư viện CỦA LỚP MÌNH ĐANG HỌC, kèm tiến độ xem + trạng thái bài nộp của chính mình; không lộ lớp khác.
-//   - Gia sư: thư viện các lớp mình dạy kèm số bài nộp / chờ chấm.
+//   - Gia sư: "Thư viện của tôi" (BU-02): tài liệu trong bài các lớp mình dạy, dùng lại giữa các lớp.
 import { BASE, cookieFor, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { shortDate } from "@/lib/library";
@@ -93,10 +93,11 @@ const D = 24 * 3_600_000;
 
   section("Gia sư: thư viện các lớp MÌNH dạy");
   const th = await page(tc);
-  check("phụ đề nói đây là các lớp bạn dạy; hiện lớp của mình, KHÔNG hiện lớp của gia sư khác", th.includes("Bản ghi và tài liệu của các lớp bạn dạy") && th.includes("Tài liệu của cô, sắp xếp theo nhóm lớp") && th.includes("Toán 9 công khai") && !th.includes("Lý 10 lớp khác"));
-  check("hiện cả bài trả phí của chính mình (tài liệu + video), lối 'Sửa bài' → /lop-cua-toi/quan-lop/<lớp>?tab=chuong-bai (đúng tab chương bài, không phải Cài đặt)", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Sửa bài") && th.includes(`/lop-cua-toi/quan-lop/${A.id}?tab=chuong-bai`));
+  // BU-02 (D2, có chủ đích): nhánh gia sư là "Thư viện của tôi" (ThuVienCuaToi) thay bảng TutorLibrary theo lớp; kỳ vọng cũ về phụ đề/cột "Đã chia sẻ"/lối "Sửa bài" đổi theo.
+  check("phụ đề 'Thư viện của tôi': tài liệu dùng lại giữa các lớp; hiện lớp của mình, KHÔNG hiện lớp của gia sư khác", th.includes("Tài liệu của cô, dùng lại giữa các lớp") && th.includes("Toán 9 công khai") && !th.includes("Lý 10 lớp khác"));
+  check("hiện cả tài liệu bài trả phí của chính mình, kèm 'Đang dùng ở' (số lớp) và lối 'Xem' mở trang xem trước", th.includes("TL-TRA-PHI-MO.pdf") && th.includes("Đang dùng ở") && th.includes("/xem-tai-lieu?url="));
   // 23/10/2026 (Figma 299:113561): Thư viện của gia sư là BẢNG tài liệu; bài tập và số bài nộp/chờ chấm đã chuyển sang module Bài tập (/lop-cua-toi/bai-tap).
-  check("bảng tài liệu: cột 'Đã chia sẻ' (tên lớp), loại PDF, lối 'Xem' mở trang xem trước", th.includes("Đã chia sẻ") && th.includes("PDF") && th.includes("/xem-tai-lieu?url="));
+  check("có nhóm 'Truy cập nhanh' và lối '↑ Tải tài liệu' sang Giáo trình (đường gia sư, không /admin)", th.includes("Truy cập nhanh") && th.includes("Tải tài liệu") && !th.includes("/admin/"));
   check("bài tập không còn nằm trong Thư viện của gia sư (đã sang Bài tập)", !th.includes("Phiếu bài tập Vi-ét") && !th.includes("bài nộp"));
   check("gia sư không thấy 'Đã xem' (không có tiến độ cá nhân)", !th.includes("Đã xem"));
   check("gia sư KHÔNG có lối 'Học tiếp trong lớp' (đó là của học viên)", !th.includes("Học tiếp trong lớp") && !th.includes("/student/hoc-tap"));
@@ -106,7 +107,7 @@ const D = 24 * 3_600_000;
   section("Gia sư mới chưa mở lớp nào");
   const T3 = await mkTutor("Cô Mới");
   const t3h = await page(await cookieFor(T3));
-  check("thông báo 'Bạn chưa mở lớp nào' + lối 'Tạo lớp' mở THẲNG form tạo lớp (/lop-cua-toi/quan-lop?tao=1), không dừng ở danh sách trống", t3h.includes("Bạn chưa mở lớp nào") && t3h.includes('href="/lop-cua-toi/quan-lop?tao=1"'), t3h.match(/Bạn chưa mở lớp nào[\s\S]{0,300}/)?.[0]);
+  check("gia sư chưa có tài liệu: trạng thái rỗng 'Chưa có tài liệu' + lối 'Thêm ở Giáo trình'", t3h.includes("Chưa có tài liệu") && t3h.includes("Thêm ở Giáo trình"), t3h.match(/Chưa có tài liệu[\s\S]{0,200}/)?.[0]);
 
   await done();
 })();

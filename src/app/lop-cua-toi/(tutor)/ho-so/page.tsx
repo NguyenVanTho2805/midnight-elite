@@ -9,6 +9,7 @@ import TutorProfileForm from "./TutorProfileForm";
 import PublicProfilePreview from "@/components/tutor/PublicProfilePreview";
 import { readPreferences } from "@/lib/userPreferences";
 import { isProfileHidden } from "@/lib/tutorVisibility";
+import { coverForPublic, introVideoView } from "@/lib/tutorSearchMedia";
 import ProfileVisibilityToggle from "./ProfileVisibilityToggle";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function HoSoGiaSuPage() {
   if (!session) redirect("/dang-nhap?redirect=/lop-cua-toi/ho-so");
   const u = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true, city: true, preferences: true },
+    select: { id: true, name: true, bio: true, subjects: true, adminRole: true, tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true, tutorRejectedAt: true, tutorRejectReason: true, profileLockedAt: true, city: true, preferences: true, coverUrl: true, introVideoUrl: true },
   });
   if (!u || (u.adminRole !== "teacher" && !u.tutorAppliedAt)) redirect("/lop-cua-toi");
   const status = u.adminRole === "teacher" ? "approved" : tutorApplicationStatus(u);
@@ -55,7 +56,8 @@ export default async function HoSoGiaSuPage() {
         {status === "approved" && <PublicProfilePreview tutorId={u.id} hidden={hidden} reason={u.profileLockedAt ? "bi-khoa" : u.tutorVerified ? null : "chua-duyet"} />}
         {status !== "approved" && <PublicProfilePreview tutorId={u.id} reason="chua-duyet" />}
 
-        <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} initialCity={u.city ?? ""} initialTeaching={readPreferences(u.preferences).teaching ?? null} />
+        <TutorProfileForm initialBio={u.bio ?? ""} initialSubjects={u.subjects} initialCity={u.city ?? ""} initialTeaching={readPreferences(u.preferences).teaching ?? null}
+          initialCover={coverForPublic(u.coverUrl)} initialVideo={introVideoView(u.introVideoUrl)?.watchUrl ?? ""} />
       </div>
     </div>
   );

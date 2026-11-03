@@ -63,14 +63,26 @@ function ViewerContent() {
   const safeUrl = check.url;
   const googleSrc = googlePreviewUrl(safeUrl);
   const planned = planDocumentPreview(safeUrl);
-  const internalPdf = check.kind === "internal" && fileExtOf(safeUrl) === "pdf";
+  // BU-02 (D3): tệp tải lên KiN có đường dẫn /api/media/<mã>/file — KHÔNG có đuôi, nên lấy đuôi từ `name` (tên tệp gốc). Chỉ áp cho đường dẫn nội bộ dạng này.
+  const internalFile = check.kind === "internal" && /^\/api\/media\/[A-Za-z0-9_-]{8,40}\/file$/.test(safeUrl.split(/[?#]/)[0]);
+  const nameExt = internalFile ? fileExtOf(name) : null;
+  const internalPdf = check.kind === "internal" && (fileExtOf(safeUrl) === "pdf" || nameExt === "pdf");
+  const internalImage = internalFile && !!nameExt && ["png", "jpg", "jpeg", "webp"].includes(nameExt);
+  const internalText = internalFile && nameExt === "txt";
+  const internalOffice = internalFile && !!nameExt && ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(nameExt);
   const plan = googleSrc
     ? { mode: "iframe" as const, src: googleSrc, downloadHref: null, sandbox: true, reason: null }
     : internalPdf
       ? { mode: "iframe" as const, src: safeUrl, downloadHref: safeUrl, sandbox: false, reason: null }
-      : planned.mode === "none" && check.kind === "internal"
-        ? { mode: "external" as const, src: safeUrl, downloadHref: safeUrl, sandbox: true, reason: "Loại tệp này không xem trước được. Bạn có thể tải về." }
-        : planned;
+      : internalImage
+        ? { mode: "image" as const, src: safeUrl, downloadHref: safeUrl, sandbox: true, reason: null }
+        : internalText
+          ? { mode: "iframe" as const, src: safeUrl, downloadHref: safeUrl, sandbox: true, reason: null }
+          : internalOffice
+            ? { mode: "external" as const, src: safeUrl, downloadHref: safeUrl, sandbox: true, reason: "Word, Excel và PowerPoint lưu riêng tư trên KiN nên chưa xem trước được. Bấm Tải xuống để mở bằng máy của bạn." }
+            : planned.mode === "none" && check.kind === "internal"
+              ? { mode: "external" as const, src: safeUrl, downloadHref: safeUrl, sandbox: true, reason: "Loại tệp này không xem trước được. Bạn có thể tải về." }
+              : planned;
   const openHref = plan.mode === "none" ? null : plan.src;
   const btn = "flex-shrink-0 inline-flex items-center justify-center px-4 rounded-lg text-xs font-bold";
   const btnStyle = { minHeight: 44, background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)" } as const;

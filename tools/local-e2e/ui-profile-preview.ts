@@ -43,14 +43,19 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   await sec2.getByRole("heading", { name: "Cô Lan", level: 2 }).waitFor({ timeout: 30000 });
   check("xem trước: nhãn 'Có dạy trong 30 ngày qua' hiện, số buổi đã dạy = 4", (await sec2.getByTestId("recently-active").isVisible()) && /4\s*Buổi đã dạy/.test((await sec2.innerText()).replace(/\s+/g, " ")));
   const pub = await (await ctxFor(null)).newPage(); watch(pub);
-  await pub.goto(`${BASE}/mentor/${T.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  // BU-06: trang công khai mới đưa các chỉ số vào tab "Chỉ số" (?tab=chi-so); nhãn hoạt động nằm trong ô "Hoạt động gần đây" (không còn data-testid="recently-active" — chỉ bản xem trước dùng TutorProfileHeader cũ).
+  await pub.goto(`${BASE}/mentor/${T.id}?tab=chi-so`, { waitUntil: "networkidle", timeout: 120000 });
   await pub.getByRole("heading", { name: "Cô Lan", level: 1 }).waitFor({ timeout: 60000 });
-  check("hồ sơ công khai: cùng nhãn và cùng số buổi (không lệch với xem trước)", (await pub.getByTestId("recently-active").isVisible()) && /4\s*Buổi đã dạy/.test((await pub.locator("body").innerText()).replace(/\s+/g, " ")));
+  const chiSo = pub.locator("[data-tab-chi-so]");
+  await chiSo.waitFor({ timeout: 60000 });
+  const chiSoTxt = (await chiSo.innerText()).replace(/\s+/g, " ");
+  check("hồ sơ công khai (tab Chỉ số): cùng nhãn 'Có dạy trong 30 ngày qua' và cùng số buổi (không lệch với xem trước)", /Có dạy trong 30 ngày qua/.test(chiSoTxt) && /4\s*Buổi đã dạy/.test(chiSoTxt), chiSoTxt);
   const lst = await (await ctxFor(null)).newPage(); watch(lst);
   await lst.goto(`${BASE}/giang-vien`, { waitUntil: "networkidle", timeout: 120000 });
   const card = lst.locator("article", { has: lst.locator("h3", { hasText: "Cô Lan" }) });
   await card.waitFor({ timeout: 60000 });
-  check("danh sách /giang-vien: thẻ ghi '4 buổi đã dạy' và 'Có dạy trong 30 ngày qua'; mặc định sắp 'Hoạt động gần đây'", /4 buổi đã dạy/.test(await lst.getByTestId("tutor-activity").first().innerText()) && /Có dạy trong 30 ngày qua/.test(await lst.getByTestId("tutor-activity").first().innerText()) && (await lst.locator("#tutor-sort").inputValue()) === "active");
+  const cardTxt = (await card.innerText()).replace(/\s+/g, " ");
+  check("danh sách /giang-vien: thẻ ghi '4 buổi đã dạy' và nhãn 'Hoạt động gần đây'; mặc định sắp 'Phù hợp'", /4 buổi đã dạy/.test((await card.locator("[data-tutor-stats]").innerText()).replace(/\s+/g, " ")) && /Hoạt động gần đây/.test(cardTxt) && (await lst.getByRole("combobox", { name: "Sắp xếp" }).filter({ visible: true }).inputValue()) === "relevant", cardTxt);
 
   section("ĐX-06: khai khu vực và hình thức dạy → hiện ở hồ sơ công khai; giá chỉ hiện khi gia sư bật công tắc");
   const form = page.locator("section", { has: page.getByRole("heading", { name: "Khu vực và hình thức dạy" }) });
@@ -78,19 +83,21 @@ const dayAgo = (n: number) => new Date(`${vnDateKeyOf(new Date(Date.now() - n * 
   const pub2 = await (await ctxFor(null)).newPage(); watch(pub2);
   await pub2.goto(`${BASE}/mentor/${T.id}`, { waitUntil: "networkidle", timeout: 120000 });
   await pub2.getByRole("heading", { name: "Cô Lan", level: 1 }).waitFor({ timeout: 60000 });
-  const area = (await pub2.getByTestId("tutor-area").innerText()).replace(/\s+/g, " ");
-  check("hồ sơ công khai: khu vực + hình thức + '(tự khai)'; bật công tắc thì hiện '150.000đ / buổi · giá tham khảo'", /TP\. Hồ Chí Minh · Quận 7/.test(area) && /Dạy trực tiếp/.test(area) && /\(tự khai\)/.test(area) && /150\.000đ \/ buổi · giá tham khảo/.test(area), area);
-  check("không có địa chỉ nhà / số điện thoại ở khối khu vực", !/đường|ngõ|0\d{9}/i.test(area));
+  // BU-06: khu vực/hình thức/giá nằm ở khối [data-tutor-area-detail] (tab Giới thiệu, mặc định); data-testid="tutor-area" chỉ còn dòng "môn · khu vực" ở đầu hồ sơ.
+  const head = (await pub2.getByTestId("tutor-area").innerText()).replace(/\s+/g, " ");
+  const det = (await pub2.locator("[data-tutor-area-detail]").innerText()).replace(/\s+/g, " ");
+  check("hồ sơ công khai: khu vực + hình thức + '(tự khai)'; bật công tắc thì hiện giá tham khảo '150.000đ / buổi'", /TP\. Hồ Chí Minh · Quận 7/.test(head) && /Quận 7, TP\. Hồ Chí Minh/.test(det) && /Dạy trực tiếp/.test(det) && /\(tự khai\)/.test(det) && /Giá tham khảo\s*150\.000đ \/ buổi/.test(det), `${head} | ${det}`);
+  check("không có địa chỉ nhà / số điện thoại ở khối khu vực", !/đường|ngõ|0\d{9}/i.test(head + " " + det));
+  // Bộ lọc của /giang-vien nằm trong URL (city, mode…): kiểm bằng đường dẫn; thao tác từng ô lọc đã có ở ui-tim-gia-su.
   const lst2 = await (await ctxFor(null)).newPage(); watch(lst2);
-  await lst2.goto(`${BASE}/giang-vien`, { waitUntil: "networkidle", timeout: 120000 });
-  await lst2.locator("#tutor-city").waitFor({ timeout: 60000 });
-  check("/giang-vien: có ô lọc Tỉnh/Thành (từ gia sư đã khai) và Hình thức", (await lst2.locator("#tutor-city option").allInnerTexts()).includes("TP. Hồ Chí Minh") && await lst2.locator("#tutor-mode").isVisible());
-  await lst2.locator("#tutor-city").selectOption("TP. Hồ Chí Minh");
-  await lst2.locator("h3", { hasText: "Cô Lan" }).waitFor({ timeout: 30000 });
-  check("lọc tỉnh 'TP. Hồ Chí Minh' → Cô Lan còn, thẻ có chip khu vực", (await lst2.getByTestId("tutor-area").first().innerText()).includes("Quận 7"));
-  await lst2.locator("#tutor-mode").selectOption("online");
-  await lst2.getByText("Chưa có gia sư nào phù hợp bộ lọc").waitFor({ timeout: 30000 });
-  check("lọc 'Online' → Cô Lan (chỉ dạy trực tiếp) biến mất, hiện gợi ý bỏ bộ lọc", (await lst2.locator("h3", { hasText: "Cô Lan" }).count()) === 0);
+  await lst2.goto(`${BASE}/giang-vien?city=${encodeURIComponent("TP. Hồ Chí Minh")}`, { waitUntil: "networkidle", timeout: 120000 });
+  await lst2.locator("h3", { hasText: "Cô Lan" }).waitFor({ timeout: 60000 });
+  const cityOpts = await lst2.locator("select").evaluateAll(els => els.flatMap(e => Array.from((e as HTMLSelectElement).options).map(o => o.text)));
+  check("/giang-vien: ô lọc Tỉnh/Thành có 'TP. Hồ Chí Minh' (từ gia sư đã khai) và có nhóm Hình thức", cityOpts.includes("TP. Hồ Chí Minh") && (await lst2.getByText("Dạy trực tiếp").first().count()) > 0);
+  check("lọc tỉnh 'TP. Hồ Chí Minh' → Cô Lan còn, thẻ có dòng khu vực", (await lst2.locator("article", { has: lst2.locator("h3", { hasText: "Cô Lan" }) }).getByTestId("tutor-area").first().innerText()).includes("Quận 7"));
+  await lst2.goto(`${BASE}/giang-vien?city=${encodeURIComponent("TP. Hồ Chí Minh")}&mode=online`, { waitUntil: "networkidle", timeout: 120000 });
+  await lst2.getByText("Chưa có gia sư phù hợp").waitFor({ timeout: 60000 });
+  check("lọc 'Online' → Cô Lan (chỉ dạy trực tiếp) biến mất, hiện gợi ý xoá bộ lọc", (await lst2.locator("h3", { hasText: "Cô Lan" }).count()) === 0 && await lst2.getByRole("button", { name: "Xóa bộ lọc" }).first().isVisible());
 
   section("Chưa duyệt / bị khoá: không giả vờ có hồ sơ công khai");
   const pp = await (await ctxFor(P)).newPage(); watch(pp);

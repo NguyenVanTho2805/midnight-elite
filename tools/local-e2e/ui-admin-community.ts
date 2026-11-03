@@ -26,7 +26,7 @@ import { prisma } from "@/lib/prisma";
   page.on("console", m => { if (m.type() === "error" && !/Failed to load resource/i.test(m.text())) errors.push(m.text()); });
 
   section("Kiểm duyệt cộng đồng: nhãn lớp");
-  await page.goto(`${ADMIN}/admin/cong-dong`, { waitUntil: "networkidle", timeout: 120000 });
+  await page.goto(`${ADMIN}/admin/cong-dong`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.getByRole("heading", { name: "Kiểm duyệt cộng đồng" }).waitFor({ timeout: 90000 });
   await page.getByText("BAI_CHUNG: cách học nhanh").waitFor({ timeout: 30000 });
   const card = (t: string) => page.locator("div.rounded-xl", { hasText: t }).filter({ has: page.getByRole("button", { name: /Xoá/ }) }).last();
@@ -54,28 +54,25 @@ import { prisma } from "@/lib/prisma";
   await sel.selectOption("all");
   await shot(page, "admin-community-scope");
 
-  section("Báo cáo cộng đồng: nhãn lớp + lọc");
+  // BU-08: trang /admin/cong-dong/bao-cao (nhãn lớp + BỘ LỌC theo lớp) được thay bằng hàng chờ một cửa; báo cáo BÀI VIẾT là loại ?loai=bai-viet (đường cũ → 308 ?loai=tra-loi).
+  // Bộ lọc theo lớp của trang cũ không còn (đặc tả BU-08 mục 5.4); nhãn lớp nằm ở cột "nơi" của dòng, lý do báo cáo nằm trong panel bên.
+  section("Báo cáo bài viết: hàng chờ một cửa (BU-08)");
   const rp = await ctx.newPage();
   rp.on("pageerror", e => errors.push(String(e)));
-  await rp.goto(`${ADMIN}/admin/cong-dong/bao-cao`, { waitUntil: "networkidle", timeout: 120000 });
-  await rp.getByRole("heading", { name: "Báo cáo cộng đồng" }).waitFor({ timeout: 90000 });
-  await rp.getByText("Quảng cáo trong bài chung").waitFor({ timeout: 30000 });
-  const rcard = (t: string) => rp.locator("div.rounded-xl.border", { hasText: t }).last();
-  check("3 báo cáo; mỗi báo cáo có nhãn lớp / cộng đồng chung", /Cộng đồng chung/.test(await rcard("Quảng cáo trong bài chung").innerText()) && /Lớp: Toán 9/.test(await rcard("Nội dung lạc đề lớp Toán").innerText()) && /Lớp: Lý 9/.test(await rcard("Spam lớp Lý").innerText()));
-  check("tiêu đề đếm: (3)", await rp.getByRole("heading", { name: /Báo cáo bài viết cộng đồng \(3\)/ }).isVisible());
-  const rsel = rp.getByLabel("Lọc theo lớp");
-  const ropts = await rsel.locator("option").allInnerTexts();
-  check("lọc chỉ liệt kê lớp CÓ báo cáo (Toán 9, Lý 9)", ropts.includes("Toán 9") && ropts.includes("Lý 9") && ropts.length === 4, ropts);
-  await rsel.selectOption({ label: "Lý 9" });
-  check("lọc Lý 9 → 1 báo cáo; tiêu đề '1 / 3'", (await rp.getByText(/Spam lớp Lý|Nội dung lạc đề|Quảng cáo trong bài chung/).count()) === 1 && await rp.getByRole("heading", { name: /\(1 \/ 3\)/ }).isVisible());
-  await rsel.selectOption("null");
-  check("chỉ cộng đồng chung → 1 báo cáo đúng", await rp.getByText("Quảng cáo trong bài chung").isVisible() && (await rp.getByText("Spam lớp Lý").count()) === 0);
-  await rsel.selectOption({ label: "Toán 9" });
-  await rp.getByRole("button", { name: "Bỏ qua report" }).first().click();
-  await eventually("xử lý báo cáo trong phạm vi lọc → phạm vi rỗng hiện thông báo", async () => await rp.getByText("Không có report nào trong phạm vi đã chọn").isVisible());
-  check("DB: báo cáo Toán 9 đã xử lý, hai báo cáo kia còn", (await prisma.threadReport.count({ where: { status: "pending" } })) === 2);
-  await rsel.selectOption("all");
-  check("về Tất cả → còn 2 báo cáo", await rp.getByRole("heading", { name: /Báo cáo bài viết cộng đồng \(2\)/ }).isVisible());
+  await rp.goto(`${ADMIN}/admin/kiem-duyet?loai=bai-viet`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await rp.locator("[data-queue-table]").waitFor({ timeout: 120000 });
+  const rrows = rp.locator("[data-queue-table] tbody tr");
+  await rrows.filter({ hasText: "BAI_CHUNG" }).first().waitFor({ timeout: 60000 });
+  check("3 báo cáo bài viết; mỗi dòng có nhãn lớp / 'Cộng đồng chung'", (await rrows.count()) === 3 && /Cộng đồng chung/.test(await rrows.filter({ hasText: "BAI_CHUNG" }).innerText()) && /Toán 9/.test(await rrows.filter({ hasText: "BAI_TOAN" }).innerText()) && /Lý 9/.test(await rrows.filter({ hasText: "BAI_LY" }).innerText()));
+  const rpanel = rp.locator("aside[data-side-panel]");
+  await rrows.filter({ hasText: "BAI_TOAN" }).locator("[data-row-open]").click();
+  await rpanel.waitFor({ timeout: 30000 });
+  const ptxt = await rpanel.innerText();
+  check("panel hiện lý do báo cáo, nội dung bài và lớp", ptxt.includes("Nội dung lạc đề lớp Toán") && ptxt.includes("BAI_TOAN") && ptxt.includes("Toán 9"), ptxt.slice(0, 200));
+  await rpanel.getByRole("button", { name: "Giữ bài lại" }).click(); // báo cáo bị bác (decision rejected): bài ở lại, báo cáo không còn chờ
+  await eventually("xử lý báo cáo → hàng chờ còn 2 dòng", async () => (await rrows.count()) === 2, 30000);
+  check("DB: báo cáo Toán 9 đã xử lý, hai báo cáo kia còn chờ", (await prisma.threadReport.count({ where: { status: "pending" } })) === 2);
+  check("bài bị báo cáo vẫn còn (Giữ bài lại không gỡ)", !!(await prisma.thread.findUnique({ where: { id: tToan.id } })) && !(await prisma.thread.findUnique({ where: { id: tToan.id }, select: { deletedAt: true } }))?.deletedAt);
 
   section("Gia sư vẫn chỉ thấy báo cáo của lớp mình (không đổi quyền)");
   const T2 = await mkTutor("Thầy Khác");
@@ -87,11 +84,11 @@ import { prisma } from "@/lib/prisma";
 
   section("Điện thoại 390px");
   const mp = await (await ctxFor(SA, { width: 390, height: 800 })).newPage();
-  await mp.goto(`${ADMIN}/admin/cong-dong/bao-cao`, { waitUntil: "networkidle", timeout: 120000 });
-  await mp.getByRole("heading", { name: "Báo cáo cộng đồng" }).waitFor({ timeout: 60000 });
+  await mp.goto(`${ADMIN}/admin/kiem-duyet?loai=bai-viet`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await mp.locator("[data-queue-cards], [data-queue-table]").first().waitFor({ timeout: 90000 });
   check("báo cáo: không tràn ngang", await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   const mp2 = await (await ctxFor(SA, { width: 390, height: 800 })).newPage();
-  await mp2.goto(`${ADMIN}/admin/cong-dong`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp2.goto(`${ADMIN}/admin/cong-dong`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await mp2.getByRole("heading", { name: "Kiểm duyệt cộng đồng" }).waitFor({ timeout: 60000 });
   check("kiểm duyệt: không tràn ngang", await mp2.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 

@@ -19,7 +19,7 @@ import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
 import { checkLinkForSlot, type MediaSlot } from "@/lib/mediaLink";
 import { AiQuotaNote } from "@/components/AiQuotaNote";
-import { validateDocumentFile, DOCUMENT_ACCEPT, DOCUMENT_MAX_MB, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
+import { MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -567,7 +567,6 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
   const docs: DocItem[] = (() => { try { return JSON.parse(value || "[]"); } catch { return []; } })();
   const [newName, setNewName] = useState("");
   const [newUrl,  setNewUrl]  = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
 
   function save(list: DocItem[]) { onChange(JSON.stringify(list)); }
 
@@ -584,28 +583,11 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
     setNewName(""); setNewUrl("");
   }
 
-  function addPendingFile(file: File) {
-    // Báo TRƯỚC khi tải: sai loại hoặc quá nặng thì chặn ngay, kèm lý do, không đợi tới lúc bấm Lưu.
-    const chk = validateDocumentFile({ name: file.name, size: file.size, type: file.type });
-    if (!chk.ok) { setProblem(chk.error); return; }
-    if (docs.length + pending.length >= MAX_DOCUMENTS_PER_LESSON) { setProblem(`Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.`); return; }
-    setProblem(null);
-    const name = newName.trim() || file.name.replace(/\.[^.]+$/, "");
-    onPendingChange([...pending, { name, file }]);
-    setNewName("");
-  }
   function move(i: number, dir: -1 | 1) {
     const j = i + dir;
     if (j < 0 || j >= docs.length) return;
     const n = [...docs]; [n[i], n[j]] = [n[j], n[i]]; save(n);
   }
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    addPendingFile(file);
-  }
-
   function remove(i: number) { save(docs.filter((_, idx) => idx !== i)); }
   function removePending(i: number) { onPendingChange(pending.filter((_, idx) => idx !== i)); }
 
@@ -661,37 +643,17 @@ function DocumentsEditor({ value, onChange, pending, onPendingChange }: {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400">hoặc</span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
-
-        <input ref={fileRef} type="file"
-          accept={DOCUMENT_ACCEPT}
-          className="hidden" onChange={handleFileSelect} />
-
-        {cloudinaryConfigured ? (
-          <DropZone onFiles={files => files[0] && addPendingFile(files[0])} className="rounded-lg">
-            <button onClick={() => fileRef.current?.click()}
-              className="w-full py-2.5 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors"
-              style={{ borderColor: "var(--kin-vien-o-nhap)", color: "var(--kin-chu-mo)" }}>
-              📎 Chọn hoặc kéo-thả file từ máy tính (PDF, Word, Excel...)
-            </button>
-          </DropZone>
-        ) : (
-          <p className="text-xs text-center py-2" style={{ color: "var(--kin-tt-chu-cho)" }}>
-            ⚠ Chưa cấu hình Cloudinary — chỉ dùng được link Drive
-          </p>
-        )}
+        <p data-tai-lieu-dong className="text-xs text-center py-2" style={{ color: "var(--kin-chu-mo)" }}>
+          Tải tệp lên: dùng tab Giáo trình của lớp (sắp có). Hiện chỉ dán link Drive.
+        </p>
       </div>
 
       <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
-        Nhận PDF, Word, Excel, PowerPoint, TXT, ảnh · mỗi tệp tối đa {DOCUMENT_MAX_MB} MB · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài. Học sinh xem thử được rồi mới tải về.
+        Dán link Google Drive (chia sẻ &quot;Bất kỳ ai có liên kết&quot;) · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài.
       </p>
       {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
       <p data-copyright-notice className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
-      {problem && <p role="alert" className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
+      {problem && <p role="status" data-loi className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && pending.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}
@@ -805,10 +767,8 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
   const [fileName, setFileName]         = useState(initial?.fileName ?? "");
   // File mới chọn nhưng CHƯA upload — chỉ thật sự lên Cloudinary lúc bấm "Lưu
   // bài tập" (xem handleSaveClick), tránh mồ côi nếu Huỷ giữa chừng.
-  const [pendingFile, setPendingFile]   = useState<File | null>(null);
   const [maxPoints, setMaxPoints]       = useState(String(initial?.maxPoints ?? 10));
   const [dueDate, setDueDate]           = useState(initial?.dueDate ? initial.dueDate.slice(0, 10) : "");
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Câu hỏi "làm trên web" — chỉ dùng lúc tạo mới (xem ghi chú ở khối type phía trên).
   const [questions, setQuestions]     = useState<LocalQuestion[]>([]);
@@ -846,18 +806,6 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
     setQuestions(prev => prev.filter((_, i) => i !== idx));
   }
 
-  function setAssignmentFile(file: File) {
-    setPendingFile(file);
-    setFileName(file.name);
-  }
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setAssignmentFile(file);
-  }
-
-  const [uploading, setUploading] = useState(false);
 
   async function handleSaveClick() {
     if (!title.trim()) return;
@@ -889,18 +837,10 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
       return;
     }
 
-    let url = fileUrl;
-    if (pendingFile) {
-      setUploading(true);
-      try {
-        const result = await uploadToCloudinary(pendingFile, "assignments/files");
-        url = result.url;
-      } catch (err) {
-        alert("Upload file thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
-        return;
-      } finally {
-        setUploading(false);
-      }
+    const url = fileUrl.trim();
+    if (url) {
+      const chk = checkLinkForSlot(url, "document");
+      if (!chk.ok) { alert(chk.error); return; }
     }
     onSave({
       title: title.trim(), instructions: instructions.trim() || undefined,
@@ -950,30 +890,14 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
       </div>
 
       {mode === "file" && (
-        fileName || fileUrl ? (
-          <div className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 bg-gray-50">
-            <DocBadge type={detectType(fileUrl || fileName, fileName || "file")} />
-            <p className="flex-1 text-xs font-semibold text-gray-800 truncate">
-              {fileName || fileUrl}{pendingFile && " (chưa lưu — sẽ tải lên khi bấm Lưu)"}
-            </p>
-            <button onClick={() => { setPendingFile(null); setFileUrl(""); setFileName(""); }} className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
-          </div>
-        ) : (
-          <>
-            <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" className="hidden" onChange={handleFileSelect} />
-            {cloudinaryConfigured ? (
-              <DropZone onFiles={files => files[0] && setAssignmentFile(files[0])} className="rounded-lg">
-                <button onClick={() => fileRef.current?.click()}
-                  className="w-full py-2 rounded-lg text-xs font-semibold border-2 border-dashed transition-colors"
-                  style={{ borderColor: "var(--kin-vien-o-nhap)", color: "var(--kin-chu-mo)" }}>
-                  📎 Đính kèm hoặc kéo-thả file đề bài (tuỳ chọn)
-                </button>
-              </DropZone>
-            ) : (
-              <p className="text-xs text-center py-1" style={{ color: "var(--kin-tt-chu-cho)" }}>⚠ Chưa cấu hình Cloudinary</p>
-            )}
-          </>
-        )
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Link đề bài (Google Drive, tuỳ chọn)</label>
+          <input className={inp} placeholder="Dán link Drive của đề bài…" value={fileUrl}
+            onChange={e => { setFileUrl(e.target.value); if (!fileName) setFileName(""); }} />
+          <p data-tai-lieu-dong className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
+            Tải tệp đề lên: dùng tab Giáo trình của lớp (sắp có). Hiện chỉ dán link Drive.
+          </p>
+        </div>
       )}
 
       {mode === "interactive" && !isEditing && (
@@ -1010,9 +934,9 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
       <div className="flex items-center justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-xs border rounded-lg text-gray-600 hover:bg-gray-50">Huỷ</button>
         <button onClick={handleSaveClick}
-          disabled={!title.trim() || saving || uploading}
+          disabled={!title.trim() || saving}
           className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-40" style={{ background: "var(--kin-nhan-nen)" }}>
-          {uploading ? "Đang tải file..." : saving ? "Đang lưu..." : "Lưu bài tập"}
+          {saving ? "Đang lưu..." : "Lưu bài tập"}
         </button>
       </div>
     </div>
@@ -1568,11 +1492,8 @@ function TabChuongBai({ courseSlug, initialSections }: { courseSlug: string; ini
   async function resolvePendingDocuments(): Promise<string> {
     const existing: DocItem[] = (() => { try { return JSON.parse(ls.documentsRaw || "[]"); } catch { return []; } })();
     if (ls.pendingDocuments.length === 0) return JSON.stringify(existing);
-    const uploaded = await Promise.all(ls.pendingDocuments.map(async p => {
-      const result = await uploadToCloudinary(p.file, "lessons/documents");
-      return { name: p.name, url: result.url, type: detectType(result.url, p.file.name) };
-    }));
-    return JSON.stringify([...existing, ...uploaded]);
+    // Đường tải tệp công khai (preset không ký) đã đóng; nút chọn tệp không còn nên nhánh này không xảy ra — đây là lưới an toàn.
+    throw new Error("Tải tệp công khai đã đóng");
   }
 
   async function savePanel() {

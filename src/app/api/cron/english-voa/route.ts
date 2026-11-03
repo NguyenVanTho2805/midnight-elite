@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchFeed, fetchArticle } from "@/lib/english/voa";
 import { countWords } from "@/lib/english/text";
 import { checkCronAuth } from "@/lib/cronAuth";
+import { recordCronRun } from "@/lib/adminOpsServer";
 
 export const maxDuration = 60;
 const MAX_NEW = 6;
@@ -13,6 +14,7 @@ const MAX_NEW = 6;
 export async function GET(req: NextRequest) {
   const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
   if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
+  await recordCronRun("english-voa"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
   const feeds = (process.env.ENGLISH_VOA_FEEDS ?? "").split(",").map(s => s.trim()).filter(Boolean);
   if (!feeds.length) return NextResponse.json({ added: 0, message: "Chưa cấu hình ENGLISH_VOA_FEEDS" });
 

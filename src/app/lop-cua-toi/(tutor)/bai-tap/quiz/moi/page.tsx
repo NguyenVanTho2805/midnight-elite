@@ -1,11 +1,11 @@
-// QZ-04 — tạo quiz mới (bước đặt tên). Chỉ gia sư; không phải gia sư → về /lop-cua-toi.
+// BU-03 — đường cũ bai-tap/quiz/moi, giữ để link trong thông báo đã lưu DB và dấu trang vẫn tới. Chuyển 307 (không 308) sang đường mới của Đề thi; cổng gia sư kiểm trước bằng đường cũ.
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
-import QuizNew from "@/components/tutor/quiz/QuizNew";
 
 export const dynamic = "force-dynamic";
 
-export default async function QuizMoiPage() {
+export default async function QuizMoiRedirect() {
   await redirectIfNotTutor(await getSession(), { path: "/lop-cua-toi/bai-tap/quiz/moi" });
-  return <QuizNew />;
+  redirect("/lop-cua-toi/de-thi/tao-moi");
 }

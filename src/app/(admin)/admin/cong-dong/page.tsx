@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import PermissionGuard from "@/components/PermissionGuard";
+import GuestQuestionStrip from "@/components/admin/GuestQuestionStrip";
 import ClassScopeBadge, { ClassScopeSelect, type ClassScope } from "@/components/admin/ClassScopeBadge";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -212,6 +213,7 @@ function CommunityAdmin() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <GuestQuestionStrip />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -7,6 +7,8 @@ import { KinButton, KinConfirm } from "@/components/kin";
 import { Badge, CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 import { KinCopyButton } from "@/components/kin/CopyButton";
 import BulkInvite from "@/components/tutor/BulkInvite";
+import { KinStatus } from "@/components/kin/Status";
+import type { JoinPolicy } from "@/lib/joinRequest";
 
 export interface Invite {
   id: string; code: string; maxUses: number | null; usedCount: number;
@@ -119,8 +121,79 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
   );
 }
 
+const POLICY_OPTIONS: { value: JoinPolicy; title: string; hint: string }[] = [
+  { value: "approve", title: "Cô duyệt", hint: "Học sinh bấm Vào lớp hoặc nhập mã thì thành yêu cầu, cô duyệt ở tab Học sinh." },
+  { value: "invite_only", title: "Chỉ mã mời", hint: "Chỉ ai có mã cô gửi mới vào được, vào ngay không cần duyệt." },
+  { value: "open", title: "Vào ngay", hint: "Học sinh bấm Vào lớp ở trang lớp là vào ngay. Chỉ dành cho lớp miễn phí." },
+];
+
+/** BU-01: ô "Cách vào lớp" (lưu bằng PATCH /api/courses/<id>) + link trang lớp để gửi cho học sinh. */
+export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending }: { courseId: string; policy: JoinPolicy; isFree: boolean; canOpen: boolean; pending: number }) {
+  const notify = useNotify();
+  const [value, setValue] = useState<JoinPolicy>(policy);
+  const [asking, setAsking] = useState<JoinPolicy | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save(next: JoinPolicy) {
+    setBusy(true);
+    const r = await callApi<{ error?: string }>(`/api/courses/${courseId}`, { method: "PATCH", body: JSON.stringify({ joinPolicy: next }) });
+    setBusy(false); setAsking(null);
+    if (!r.ok) { notify.err(r.data.error ?? "Chưa đổi được cách vào lớp, thử lại sau."); return; }
+    setValue(next);
+    notify.ok("Đã đổi cách vào lớp.");
+  }
+  function choose(next: JoinPolicy) {
+    if (next === value || busy) return;
+    if (value === "approve" && pending > 0) { setAsking(next); return; } // còn yêu cầu chờ: nói rõ rồi mới đổi
+    void save(next);
+  }
+
+  return (
+    <section className="rounded-xl p-4" style={CARD_STYLE} aria-labelledby="cvl-title" data-join-policy-box>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p id="cvl-title" className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Cách vào lớp</p>
+        {isFree && <KinStatus tone="xong">Miễn phí</KinStatus>}
+      </div>
+      <fieldset className="mt-3 space-y-2" disabled={busy}>
+        <legend className="sr-only">Cách học sinh vào lớp</legend>
+        {POLICY_OPTIONS.map(o => {
+          const locked = o.value === "open" && !canOpen;
+          return (
+            <label key={o.value} className={`flex items-start gap-3 min-h-11 py-1 text-sm ${locked ? "opacity-60" : ""}`}>
+              <input type="radio" name="cvl-policy" className="mt-1 size-5" checked={value === o.value} disabled={locked} onChange={() => choose(o.value)} />
+              <span><span className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>{o.title}</span>
+                <span className="block" style={{ color: "var(--kin-chu-phu)" }}>{locked ? "Chỉ bật được khi lớp miễn phí (chưa có đơn giá học phí)." : o.hint}</span></span>
+            </label>
+          );
+        })}
+      </fieldset>
+      {(value === "open" || value === "approve") && (
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-sm" style={{ color: "var(--kin-chu-phu)" }}>
+          <span>Link trang lớp để gửi học sinh:</span>
+          <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`}
+            onResult={ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép link trang lớp." : "Không sao chép được.")}>Sao chép link trang lớp</KinCopyButton>
+        </div>
+      )}
+      <KinConfirm
+        open={asking !== null}
+        title="Đổi cách vào lớp?"
+        message={`Còn ${pending} yêu cầu đang chờ. Các yêu cầu đó vẫn giữ nguyên để cô duyệt sau ở tab Học sinh.`}
+        cancelLabel="Giữ nguyên"
+        confirmLabel="Vẫn đổi"
+        loading={busy}
+        onCancel={() => setAsking(null)}
+        onConfirm={() => { if (asking) void save(asking); }}
+      />
+    </section>
+  );
+}
+
 // Khối đầy đủ cho Hộp việc của lớp.
-export default function ClassInvitesPanel({ courseId, courseName, tutorName }: { courseId: string; courseName?: string; tutorName?: string | null }) {
+export default function ClassInvitesPanel({ courseId, courseName, tutorName, join }: {
+  courseId: string; courseName?: string; tutorName?: string | null;
+  /** BU-01: có thì hiện ô "Cách vào lớp" ở đầu khối. */
+  join?: { policy: JoinPolicy; isFree: boolean; canOpen: boolean; pending: number };
+}) {
   const [items, setItems] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -143,6 +216,7 @@ export default function ClassInvitesPanel({ courseId, courseName, tutorName }: {
 
   return (
     <div className="space-y-4">
+      {join && <JoinPolicyBox courseId={courseId} policy={join.policy} isFree={join.isFree} canOpen={join.canOpen} pending={join.pending} />}
       <ClassInviteForm courseId={courseId} onCreated={() => load()} />
       {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => load()} /> : null}
       {loading ? <div className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />

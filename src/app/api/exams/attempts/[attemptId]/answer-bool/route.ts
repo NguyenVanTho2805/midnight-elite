@@ -23,10 +23,10 @@ export async function PATCH(
 
     if (attempt.status === "in_progress" && attempt.expiresAt.getTime() <= Date.now()) {
       await finalizeAttempt(attempt.id, { status: "expired", at: attempt.expiresAt });
-      return NextResponse.json({ error: "Đã hết giờ làm bài" }, { status: 409 });
+      return NextResponse.json({ error: "Đã hết giờ làm bài", code: "expired" }, { status: 409 });
     }
     if (attempt.status !== "in_progress") {
-      return NextResponse.json({ error: "Bài thi đã kết thúc" }, { status: 409 });
+      return NextResponse.json({ error: "Bài thi đã kết thúc", code: "finished" }, { status: 409 });
     }
 
     const { optionId, answerTrue } = await req.json() as { optionId?: string; answerTrue?: boolean };
@@ -35,12 +35,12 @@ export async function PATCH(
     }
 
     const option = await prisma.examOption.findFirst({
-      where: { id: optionId, question: { type: { in: ["TRUE_FALSE_CLUSTER", "MC_MULTI"] } } }, // MC_MULTI (QZ-03): mỗi ô tích là một dòng answerTrue
+      where: { id: optionId, question: { examId: attempt.examId, type: { in: ["TRUE_FALSE_CLUSTER", "MC_MULTI"] } } }, // BU-04: ý phải thuộc đúng đề của lượt // MC_MULTI (QZ-03): mỗi ô tích là một dòng answerTrue
       include: { question: { select: { sectionLabel: true } } },
     });
     if (!option) return NextResponse.json({ error: "Ý trả lời không hợp lệ" }, { status: 400 });
     if (isSectionLocked(attempt.sectionWindows, option.question.sectionLabel)) {
-      return NextResponse.json({ error: "Phần này đã hết giờ" }, { status: 409 });
+      return NextResponse.json({ error: "Phần này đã hết giờ", code: "section_locked" }, { status: 409 });
     }
 
     await prisma.examAnswerBoolean.upsert({
@@ -49,7 +49,8 @@ export async function PATCH(
       update: { answerTrue },
     });
 
-    return NextResponse.json({ success: true });
+    const serverNow = new Date().toISOString();
+    return NextResponse.json({ success: true, savedAt: serverNow, serverNow, expiresAt: attempt.expiresAt.toISOString() });
   } catch (e) {
     console.error("[PATCH /api/exams/attempts/[attemptId]/answer-bool]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

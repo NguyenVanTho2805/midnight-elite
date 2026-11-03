@@ -4,6 +4,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { parseTutorProfileInput, tutorApplicationStatus } from "@/lib/tutorProfile";
 import { prefsLockKey, readPreferences } from "@/lib/userPreferences";
 import { applyProfileHidden, isProfileHidden } from "@/lib/tutorVisibility";
+import { coverForPublic, introVideoView } from "@/lib/tutorSearchMedia";
 import type { Prisma } from "@/generated/prisma/client";
 
 // GET/PUT /api/users/me/tutor-profile — gia sư xem/sửa hồ sơ của mình (BE-049).
@@ -19,11 +20,13 @@ const SELECT = {
   bio: true, subjects: true, adminRole: true,
   tutorAppliedAt: true, tutorVerified: true, tutorVerifiedAt: true,
   tutorRejectedAt: true, tutorRejectReason: true, city: true, preferences: true,
+  coverUrl: true, introVideoUrl: true, // BU-06b
 } as const;
 
 function toDTO(u: {
   adminRole: string | null; bio: string | null; subjects: string[]; tutorAppliedAt: Date | null; tutorVerified: boolean;
   tutorVerifiedAt: Date | null; tutorRejectedAt: Date | null; tutorRejectReason: string | null; city: string | null; preferences: unknown;
+  coverUrl: string | null; introVideoUrl: string | null;
 }) {
   return {
     bio:              u.bio,
@@ -38,6 +41,9 @@ function toDTO(u: {
     teaching:         readPreferences(u.preferences).teaching ?? null,
     // NC2-022: đang ẩn khỏi nơi công khai? (mặc định false = hiện)
     profile:          { hidden: isProfileHidden(readPreferences(u.preferences)) },
+    // BU-06b: dữ liệu hỏng trong DB không bao giờ ra ngoài (coverForPublic / introVideoView kiểm lại); video trả dạng link chuẩn do máy chủ dựng.
+    coverUrl:         coverForPublic(u.coverUrl),
+    introVideoUrl:    introVideoView(u.introVideoUrl)?.watchUrl ?? null,
   };
 }
 
@@ -72,10 +78,12 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Chọn ít nhất 1 môn dạy" }, { status: 400 });
   }
 
-  const data: { bio?: string | null; subjects?: string[]; city?: string | null; preferences?: Prisma.InputJsonValue } = {};
+  const data: { bio?: string | null; subjects?: string[]; city?: string | null; coverUrl?: string | null; introVideoUrl?: string | null; preferences?: Prisma.InputJsonValue } = {};
   if (parsed.bio !== undefined) data.bio = parsed.bio;
   if (parsed.subjects !== undefined) data.subjects = parsed.subjects;
   if (parsed.city !== undefined) data.city = parsed.city;
+  if (parsed.coverUrl !== undefined) data.coverUrl = parsed.coverUrl;
+  if (parsed.introVideoUrl !== undefined) data.introVideoUrl = parsed.introVideoUrl;
 
   // `teaching` nằm trong User.preferences: đọc-sửa-ghi một cột JSON nên dùng CÙNG khoá giao dịch với /api/users/me/preferences,
   // để đổi chủ đề/module ở tab khác không ghi đè lên khu vực vừa lưu (và ngược lại).

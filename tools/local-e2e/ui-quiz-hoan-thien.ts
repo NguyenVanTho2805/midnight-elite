@@ -35,7 +35,7 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   const pg = await tctx.newPage(); watch(pg);
 
   section("A. Tab 'Hạn riêng' trong trang Phiên bản");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/${exam.id}/phien-ban`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/${exam.id}/phien-ban`, { waitUntil: "networkidle", timeout: 120000 });
   await hide(pg);
   await pg.getByRole("tab", { name: "Hạn riêng" }).click({ timeout: 90000 });
   await pg.getByRole("heading", { name: "Chọn học sinh" }).waitFor({ timeout: 60000 });
@@ -74,7 +74,7 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   check("nhật ký đề KHÔNG có tên học sinh nào", !/Em Một|Em Hai|Em Ba/.test(await pg.locator("tbody").innerText()));
 
   section("B. Tải mẫu Excel + nhập bảng .xlsx");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/nhap-de`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/tao-moi?cach=pdf`, { waitUntil: "networkidle", timeout: 120000 });
   const tai = pg.locator("[data-tai-mau-excel]");
   await tai.waitFor({ timeout: 90000 });
   check("có nút 'Tải bảng mẫu Excel' trỏ tới API mẫu, thuộc tính download", (await tai.getAttribute("href")) === "/api/tutor/quiz/mau-excel" && (await tai.getAttribute("download")) !== null);
@@ -100,14 +100,14 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   await shot(pg, "quiz-nhap-excel");
   for (const i of [0, 1]) { await pg.locator("[data-import-q]").nth(i).getByRole("button", { name: /Sửa câu/ }).click(); await pg.getByLabel(/Tôi đã đối chiếu câu này/).check(); await pg.getByRole("button", { name: "Xác nhận câu" }).click(); await pg.getByRole("button", { name: /Sửa câu \d/ }).first().waitFor({ timeout: 15000 }); }
   await pg.getByRole("button", { name: "Lưu bản nháp" }).click();
-  await pg.waitForURL(/\/lop-cua-toi\/bai-tap\/quiz\/quiz-/, { timeout: 60000 });
-  const newId = pg.url().split("/quiz/")[1].split(/[?#]/)[0];
+  await pg.waitForURL(/\/lop-cua-toi\/de-thi\/quiz-/, { timeout: 60000 });
+  const newId = pg.url().split("/de-thi/")[1].split(/[?#]/)[0];
   const saved = await prisma.examQuestion.findMany({ where: { examId: newId }, orderBy: { order: "asc" }, include: { options: true } });
   check("DB: bản nháp 2 câu — MC (đáp án B) và MC_MULTI (2 ô đúng)", saved.length === 2 && saved[0].type === "MC" && saved[0].options.filter(o => o.isCorrect).map(o => o.text).join() === "2" && saved[1].type === "MC_MULTI" && saved[1].options.filter(o => o.isCorrect).length === 2, saved.map(q => [q.type, q.options.map(o => o.isCorrect)]));
   check("đề mới là BẢN NHÁP (học sinh chưa thấy)", (await prisma.exam.findUnique({ where: { id: newId } }))!.isDraft === true);
 
   section("C. Tải nhật ký CSV");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/de/${exam.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/${exam.id}/cham`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByRole("tab", { name: "Lịch sử công bố" }).click({ timeout: 90000 });
   const csvBtn = pg.locator("[data-xuat-csv]");
   await csvBtn.waitFor({ timeout: 30000 });
@@ -119,7 +119,7 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   check("tệp tải về: tên nhat-ky-cham-quiz-…csv, BOM, tiêu đề, ô '=BIEN-NHAN' bị chèn nháy", /^nhat-ky-cham-quiz-\d{4}-\d{2}-\d{2}\.csv$/.test(download.suggestedFilename()) && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf && csv.includes("Thời điểm (giờ VN),Loại,Học sinh") && csv.includes("'=BIEN-NHAN"), [download.suggestedFilename(), csv.slice(0, 300)]);
 
   section("D. Lưu vào ngân hàng câu hỏi ở trình soạn");
-  await pg.goto(`${BASE}/lop-cua-toi/bai-tap/quiz/${exam.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await pg.goto(`${BASE}/lop-cua-toi/de-thi/${exam.id}`, { waitUntil: "networkidle", timeout: 120000 });
   const saveBtn = pg.getByRole("button", { name: "Lưu câu 1 vào ngân hàng câu hỏi" });
   await saveBtn.waitFor({ timeout: 90000 });
   check("quiz đã có người làm (khoá sửa) vẫn có nút lưu vào ngân hàng", await saveBtn.isVisible() && (await pg.getByRole("button", { name: "Sửa câu 1" }).count()) === 0);
@@ -145,9 +145,9 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   const mctx = await ctxFor(T, { width: 390, height: 844 });
   const pm = await mctx.newPage(); watch(pm);
   for (const [name, url, ready] of [
-    ["phiên bản · hạn riêng", `/lop-cua-toi/bai-tap/quiz/${exam.id}/phien-ban`, async () => { await pm.getByRole("tab", { name: "Hạn riêng" }).click({ timeout: 90000 }); await pm.getByRole("heading", { name: "Chọn học sinh" }).waitFor({ timeout: 60000 }); }],
-    ["nhập đề từ tệp", `/lop-cua-toi/bai-tap/nhap-de`, async () => { await pm.locator("[data-tai-mau-excel]").waitFor({ timeout: 90000 }); }],
-    ["lịch sử công bố", `/lop-cua-toi/bai-tap/de/${exam.id}`, async () => { await pm.getByRole("tab", { name: "Lịch sử công bố" }).click({ timeout: 90000 }); await pm.locator("[data-xuat-csv]").waitFor({ timeout: 30000 }); }],
+    ["phiên bản · hạn riêng", `/lop-cua-toi/de-thi/${exam.id}/phien-ban`, async () => { await pm.getByRole("tab", { name: "Hạn riêng" }).click({ timeout: 90000 }); await pm.getByRole("heading", { name: "Chọn học sinh" }).waitFor({ timeout: 60000 }); }],
+    ["nhập đề từ tệp", `/lop-cua-toi/de-thi/tao-moi?cach=pdf`, async () => { await pm.locator("[data-tai-mau-excel]").waitFor({ timeout: 90000 }); }],
+    ["lịch sử công bố", `/lop-cua-toi/de-thi/${exam.id}/cham`, async () => { await pm.getByRole("tab", { name: "Lịch sử công bố" }).click({ timeout: 90000 }); await pm.locator("[data-xuat-csv]").waitFor({ timeout: 30000 }); }],
   ] as [string, string, () => Promise<void>][]) {
     await pm.goto(`${BASE}${url}`, { waitUntil: "networkidle", timeout: 120000 });
     await ready();

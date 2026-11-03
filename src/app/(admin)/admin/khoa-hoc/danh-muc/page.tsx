@@ -1,482 +1,157 @@
+// CAT-02 — danh mục khoá học phía quản trị: có thứ tự (kéo thả · Alt+↑/↓ · Lên/Xuống), thêm/đổi tên/xoá THẬT (bảng course_categories).
+// Vai gia sư: chỉ đọc danh mục (đếm khoá của mình từ /api/categories). Số khoá chỉ đếm, không tính tiền.
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { Toggle } from "@/components/Toggle";
-import { toSlug } from "@/lib/slug";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useContentHref } from "@/components/tutor/useContentHref";
+import { KinPage, KinPageHeader, KinButton, KinStateCard, KinEmptyState, KinTableSkeleton, KinToast, KinStatus } from "@/components/kin";
+import { CategoryList, type CategoryRow } from "@/components/admin/categories/CategoryList";
+import { CategoryPanel, type PanelMode } from "@/components/admin/categories/CategoryPanel";
+import { PANEL_GUTTER } from "@/components/admin/panel/SidePanel";
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-interface Category {
-  id: number;
-  name: string;
-  courseCount: number;
+interface Toast { title: string; ok: boolean; undo?: () => void }
+
+function move<T>(arr: T[], from: number, to: number): T[] {
+  const a = [...arr];
+  const [x] = a.splice(from, 1);
+  a.splice(to, 0, x);
+  return a;
 }
 
-type DrawerMode =
-  | { type: "none" }
-  | { type: "add" }
-  | { type: "edit"; cat: Category };
-
-async function safeFetch(url: string, init?: RequestInit) {
-  const res = await fetch(url, init);
-  const text = await res.text();
-  let data: Record<string, unknown> = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { /* empty */ }
-  return { ok: res.ok, status: res.status, data };
-}
-
-// ─── DELETE CONFIRM MODAL ────────────────────────────────────────────────────
-function DelModal({ name, onClose, onConfirm }: {
-  name: string; onClose: () => void; onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
-      <div className="bg-[var(--kin-nen-trang)] rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-        <div className="text-center mb-4">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "var(--kin-tt-nen-loi)" }}>
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="var(--kin-tt-chu-loi)" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </div>
-          <h2 className="text-base font-bold text-gray-800 mb-1">Xoá danh mục?</h2>
-          <p className="text-sm text-gray-500">
-            Bạn sắp xoá <strong className="text-gray-700">"{name}"</strong>. Hành động này không thể hoàn tác.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
-            Huỷ
-          </button>
-          <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] transition-colors"
-            style={{ background: "var(--kin-tt-chu-loi)" }}>
-            Xoá
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── DRAWER ───────────────────────────────────────────────────────────────────
-function CategoryDrawer({ mode, onClose, onSave, saving }: {
-  mode: DrawerMode;
-  onClose: () => void;
-  onSave: (name: string) => void;
-  saving: boolean;
-}) {
-  const open = mode.type !== "none";
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState("");
-
-  useEffect(() => {
-    if (mode.type === "edit") setName(mode.cat.name);
-    else setName("");
-    // Focus input after open animation (no autoFocus to avoid scroll hijack)
-    if (mode.type !== "none") {
-      const t = setTimeout(() => inputRef.current?.focus(), 320);
-      return () => clearTimeout(t);
-    }
-  }, [mode]);
-
-  // Escape key closes drawer
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && mode.type !== "none") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [mode, onClose]);
-
-  const title = mode.type === "add" ? "Thêm danh mục mới" :
-                mode.type === "edit" ? "Chỉnh sửa danh mục" : "";
-
-  const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
-
-  return (
-    <>
-      {open && (
-        <div
-          className="fixed inset-0 z-40"
-          style={{ background: "rgba(0,0,0,0.3)" }}
-          onClick={onClose}
-        />
-      )}
-      <div
-        className="fixed top-0 right-0 bottom-0 z-50 bg-[var(--kin-nen-trang)] overflow-y-auto shadow-2xl"
-        style={{
-          width: "min(440px, 100vw)",
-          transform: open ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
-          pointerEvents: open ? "auto" : "none",
-          visibility: open ? "visible" : "hidden",
-        }}>
-        <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <button onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-xl font-light">
-              ×
-            </button>
-            <h2 className="text-base font-bold text-gray-800">{title}</h2>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
-              Huỷ
-            </button>
-            <button
-              disabled={!name.trim() || saving}
-              onClick={() => name.trim() && onSave(name.trim())}
-              className="px-4 py-1.5 rounded-lg text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50 transition-opacity"
-              style={{ background: "var(--kin-tt-chu-xong)" }}>
-              {saving ? "Đang lưu…" : "Lưu"}
-            </button>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              Tên danh mục <span className="text-red-500">*</span>
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="VD: ĐGNL HSA"
-              className={inp}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">Slug (tự động)</label>
-            <div className="px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-mono">
-              {toSlug(name) || "—"}
-            </div>
-          </div>
-          {mode.type === "add" && (
-            <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
-              <p className="text-xs text-blue-700">
-                Danh mục được tạo tự động từ khoá học. Để kích hoạt chính thức: tạo khoá học mới và nhập tên danh mục này trong form.
-              </p>
-            </div>
-          )}
-          {mode.type === "edit" && (
-            <div className="p-3 rounded-lg border border-yellow-200 bg-yellow-50">
-              <p className="text-xs text-yellow-700">
-                Đổi tên danh mục sẽ cập nhật tất cả khoá học đang dùng danh mục này.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── ACTION MENU ─────────────────────────────────────────────────────────────
-function ActionMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function h(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        onClick={() => setOpen(p => !p)}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-blue-400 border border-blue-200 hover:bg-blue-50 transition-colors text-lg font-bold cursor-pointer"
-        style={{ lineHeight: 1 }}>
-        ···
-      </button>
-      {open && (
-        <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg shadow-xl border border-gray-200 bg-[var(--kin-nen-trang)] py-1">
-          <button
-            onClick={() => { setOpen(false); onEdit(); }}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Chỉnh sửa
-          </button>
-          <div className="my-1 border-t border-gray-100" />
-          <button
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Xoá
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function DanhMucPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [apiError, setApiError]     = useState("");
-  const [search, setSearch]         = useState("");
-  const [drawer, setDrawer]         = useState<DrawerMode>({ type: "none" });
-  const [delTarget, setDelTarget]   = useState<Category | null>(null);
-  const [toast, setToast]           = useState<{ msg: string; error?: boolean } | null>(null);
-  const [saving, setSaving]         = useState(false);
-  // FE-140: danh mục dùng chung cho mọi gia sư — chỉ quản trị viên được đổi tên; gia sư xem được, không sửa được.
-  const [canEdit, setCanEdit]       = useState(false);
-  const [scope, setScope]           = useState<"all" | "mine" | "public">("public");
+  const href = useContentHref();
+  const [rows, setRows] = useState<CategoryRow[]>([]);
+  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [readOnly, setReadOnly] = useState(false);
+  const [panel, setPanel] = useState<PanelMode | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chain = useRef<Promise<unknown>>(Promise.resolve());
 
-  function showToast(msg: string, error = false) {
-    setToast({ msg, error });
-    setTimeout(() => setToast(null), 2500);
-  }
-
-  const loadCategories = useCallback(async () => {
-    setLoading(true);
-    setApiError("");
-    let cats: Category[] = [];
-    try {
-      const { ok, data } = await safeFetch("/api/categories");
-      if (ok) {
-        cats = (data.categories as Category[] | undefined) ?? [];
-        setCanEdit(data.canEdit === true);
-        setScope((data.scope as "all" | "mine" | "public" | undefined) ?? "public");
-      } else {
-        setApiError("Không thể tải danh mục. Vui lòng thử lại.");
-      }
-    } catch {
-      setApiError("Lỗi kết nối. Kiểm tra server đang chạy.");
-    }
-    setCategories(cats);
-    setLoading(false);
+  const showToast = useCallback((title: string, ok = true, undo?: () => void) => {
+    if (timer.current) clearTimeout(timer.current);
+    setToast({ title, ok, undo });
+    timer.current = setTimeout(() => setToast(null), undo ? 8000 : 4000);
   }, []);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  useEffect(() => { loadCategories(); }, [loadCategories]);
-
-  const filtered = categories.filter(c => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return c.name.toLowerCase().includes(q) || toSlug(c.name).includes(q);
-  });
-
-  // ── Save (add or edit) ─────────────────────────────────────────────────────
-  const handleSave = useCallback(async (newName: string) => {
-    setSaving(true);
-    if (drawer.type === "add") {
-      // Category không có model riêng trong DB — chỉ tồn tại khi có khoá học dùng nó
-      // Danh mục không có bảng riêng: chỉ tồn tại khi có khoá học dùng tên đó, nên ở đây KHÔNG lưu gì cả.
-      showToast(`Chưa lưu gì: danh mục "${newName}" chỉ có khi một khoá học dùng tên này. Nhập tên đó ở form khoá học.`);
-    } else if (drawer.type === "edit") {
-      const oldName = drawer.cat.name;
-      const { ok, data } = await safeFetch("/api/categories", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldName, newName }),
-      });
-      if (ok) {
-        setCategories(prev =>
-          prev.map(c => c.name === oldName ? { ...c, name: newName } : c)
-        );
-        showToast("Đã cập nhật danh mục và đổi tên trên tất cả khoá học");
-      } else {
-        showToast((data.error as string | undefined) ?? "Lỗi khi cập nhật danh mục", true);
+  const load = useCallback(async (initial = true) => {
+    if (initial) setState("loading");
+    try {
+      const res = await fetch("/api/admin/danh-muc", { credentials: "same-origin", cache: "no-store" });
+      if (res.ok) {
+        const d = (await res.json()) as { categories: { id: string; name: string; slug: string; courses: { total: number; shown: number; hidden: number } }[] };
+        setRows(d.categories.map(c => ({ id: c.id, name: c.name, slug: c.slug, total: c.courses.total, shown: c.courses.shown, hidden: c.courses.hidden })));
+        setReadOnly(false); setState("ok"); return;
       }
-    }
-    setSaving(false);
-    setDrawer({ type: "none" });
-  }, [drawer]);
+      if (res.status === 403) {
+        // Vai gia sư: xem danh sách dùng chung, đếm khoá của mình.
+        const r2 = await fetch("/api/categories", { credentials: "same-origin", cache: "no-store" });
+        if (!r2.ok) throw new Error(String(r2.status));
+        const d = (await r2.json()) as { categories: { id: number | string; name: string; courseCount?: number }[] };
+        setRows(d.categories.map(c => ({ id: String(c.id), name: c.name, slug: "", total: c.courseCount ?? 0, shown: c.courseCount ?? 0, hidden: 0 })));
+        setReadOnly(true); setState("ok"); return;
+      }
+      throw new Error(String(res.status));
+    } catch { setState("error"); }
+  }, []);
+  // Trạng thái đầu đã là "loading"; gọi sau một nhịp để không setState đồng bộ trong effect.
+  useEffect(() => { queueMicrotask(() => { void load(true); }); }, [load]);
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
-  function confirmDelete() {
-    if (!delTarget) return;
-    if (delTarget.courseCount > 0) {
-      showToast(`Không thể xoá: còn ${delTarget.courseCount} khoá học đang dùng danh mục này`, true);
-      setDelTarget(null);
-      return;
-    }
-    setCategories(prev => prev.filter(c => c.name !== delTarget.name));
-    showToast("Đã xoá danh mục");
-    setDelTarget(null);
-  }
+  /** Lưu thứ tự (nối tiếp, để bấm Alt+↓ liên tục không đè nhau). Trả true nếu lưu được. */
+  const persistOrder = useCallback((ids: string[]): Promise<boolean> => {
+    const run = async (): Promise<boolean> => {
+      setSaving(true);
+      try {
+        const res = await fetch("/api/admin/danh-muc/thu-tu", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+        if (res.status === 409) { showToast("Danh sách vừa đổi, đã tải lại", false); await load(false); return false; }
+        if (!res.ok) { const d = await res.json().catch(() => ({})); showToast((d as { error?: string }).error || "Không lưu được thứ tự", false); await load(false); return false; }
+        return true;
+      } catch { showToast("Mất kết nối, chưa lưu được thứ tự", false); await load(false); return false; }
+      finally { setSaving(false); }
+    };
+    const p = chain.current.then(run, run);
+    chain.current = p;
+    return p;
+  }, [load, showToast]);
 
-  const totalCourses = categories.reduce((a, c) => a + c.courseCount, 0);
+  const reorder = useCallback((from: number, to: number) => {
+    if (readOnly || from === to || from < 0 || to < 0 || from >= rows.length || to >= rows.length) return;
+    const before = rows.map(r => r.id);
+    const next = move(rows, from, to);
+    setRows(next);
+    persistOrder(next.map(r => r.id)).then(ok => {
+      if (!ok) return;
+      showToast(`Đã đổi vị trí “${rows[from].name}”`, true, () => {
+        setRows(prev => before.map(id => prev.find(r => r.id === id)!).filter(Boolean));
+        persistOrder(before).then(k => k && showToast("Đã hoàn tác thứ tự"));
+      });
+    });
+  }, [rows, readOnly, persistOrder, showToast]);
+
+  const moveBy = useCallback((id: string, dir: -1 | 1) => {
+    const i = rows.findIndex(r => r.id === id);
+    reorder(i, i + dir);
+  }, [rows, reorder]);
+
+  const total = rows.reduce((a, c) => a + c.total, 0);
+  const panelRow = panel?.type === "edit" ? rows.find(r => r.id === panel.id) ?? null : null;
+  const panelIndex = panelRow ? rows.findIndex(r => r.id === panelRow.id) : -1;
 
   return (
-    <div className="bg-[var(--kin-nen-trang)] rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-w-0" style={{ height: "calc(100vh - 104px)" }}>
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] shadow-lg"
-          style={{ background: toast.error ? "var(--kin-tt-chu-loi)" : "var(--kin-tt-chu-xong)" }}>
-          {toast.error ? "✗" : "✓"} {toast.msg}
-        </div>
-      )}
-
-      {/* Delete confirm */}
-      {delTarget && (
-        <DelModal
-          name={delTarget.name}
-          onClose={() => setDelTarget(null)}
-          onConfirm={confirmDelete}
-        />
-      )}
-
-      {/* Drawer */}
-      <CategoryDrawer
-        mode={drawer}
-        onClose={() => setDrawer({ type: "none" })}
-        onSave={handleSave}
-        saving={saving}
+    <KinPage className={panel ? PANEL_GUTTER : ""}>
+      <KinPageHeader
+        title="Danh mục khoá học"
+        sub={state === "ok" ? `${rows.length} danh mục · ${total} khoá. Danh mục dùng chung cho mọi gia sư; đổi tên sẽ cập nhật khoá của tất cả gia sư.` : "Danh mục dùng chung cho mọi gia sư."}
+        actions={state === "ok" && !readOnly ? <KinButton onClick={() => setPanel({ type: "add" })}>Thêm danh mục</KinButton> : undefined}
       />
 
-      {/* Breadcrumb */}
-      <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex-shrink-0">
-        <p className="text-sm text-gray-500">
-          Bảng điều khiển /{" "}
-          <Link href="/admin/khoa-hoc" className="hover:text-blue-600 transition-colors">Danh sách khoá học</Link>
-          {" "}/ <span className="font-medium text-gray-800">Danh mục khoá học</span>
-        </p>
-      </div>
+      {state === "loading" && <KinTableSkeleton label="Đang tải danh mục" rows={5} />}
 
-      {/* Filters + Actions */}
-      <div className="px-5 pt-4 pb-3 flex flex-wrap items-end gap-3 border-b border-gray-100 flex-shrink-0">
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-medium text-gray-500 mb-1">Tìm danh mục</label>
-          <input
-            type="text"
-            placeholder="Nhập tên hoặc slug…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-          />
-        </div>
-        <div className="flex items-end gap-2">
-          <button
-            onClick={() => { setSearch(""); loadCategories(); }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-            ↺ Làm mới
-          </button>
-          {canEdit && (
-            <button
-              onClick={() => setDrawer({ type: "add" })}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer"
-              style={{ background: "var(--kin-nhan-nen)" }}>
-              + Thêm danh mục
-            </button>
+      {state === "error" && (
+        <KinStateCard tone="loi" kicker="Lỗi · Có thể thử lại" title="Không tải được danh mục"
+          status={<KinStatus tone="loi">Chưa lấy được dữ liệu</KinStatus>}
+          actions={<KinButton onClick={() => load(true)}>Thử lại</KinButton>}>
+          Có thể mạng đang chập chờn hoặc máy chủ bận. Bấm Thử lại là xem được ngay.
+        </KinStateCard>
+      )}
+
+      {state === "ok" && (
+        <div className="flex flex-col gap-4">
+          {readOnly && <p role="note" className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Chỉ quản trị viên đổi được danh mục. Số khoá bên dưới là khoá của riêng bạn.</p>}
+          {!readOnly && rows.length > 1 && <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Kéo hàng để đổi thứ tự, hoặc chọn tên rồi bấm Alt + mũi tên lên/xuống. Thứ tự này là thứ tự học viên thấy ở trang công khai.{saving ? " Đang lưu thứ tự…" : ""}</p>}
+          {rows.length === 0 ? (
+            <KinEmptyState title="Chưa có danh mục"
+              action={!readOnly ? <KinButton onClick={() => setPanel({ type: "add" })}>Thêm danh mục</KinButton> : undefined}>
+              Tạo khoá học hoặc bấm Thêm danh mục để bắt đầu.
+            </KinEmptyState>
+          ) : (
+            <CategoryList rows={rows} readOnly={readOnly} activeId={panelRow?.id ?? null} saving={saving} hrefFor={href}
+              onOpen={id => setPanel({ type: "edit", id })} onMove={moveBy} onReorder={reorder} />
           )}
         </div>
-      </div>
+      )}
 
-      {/* Error banner */}
-      {apiError && (
-        <div className="px-5 py-3 border-b border-red-200 bg-red-50 flex-shrink-0 flex items-center justify-between">
-          <p className="text-sm text-red-600">{apiError}</p>
-          <button onClick={loadCategories}
-            className="text-xs font-semibold text-red-700 underline cursor-pointer">
-            Thử lại
-          </button>
+      {panel && !readOnly && (
+        <CategoryPanel
+          key={panel.type === "add" ? "add" : panel.id}
+          mode={panel} row={panelRow} index={panelIndex} count={rows.length} hrefFor={href}
+          onClose={() => setPanel(null)}
+          onCreated={c => { setRows(p => [...p, c]); setPanel(null); showToast(`Đã thêm danh mục “${c.name}”`); }}
+          onRenamed={(id, name, slug) => { setRows(p => p.map(r => (r.id === id ? { ...r, name, slug } : r))); setPanel(null); showToast("Đã đổi tên danh mục và cập nhật các khoá học"); }}
+          onDeleted={id => { setRows(p => p.filter(r => r.id !== id)); setPanel(null); showToast("Đã xoá danh mục"); }}
+          onMove={moveBy}
+        />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[400px]">
+          <KinToast tone={toast.ok ? "xong" : "loi"} title={toast.title}
+            detail={toast.undo ? <button type="button" onClick={() => { const u = toast.undo!; setToast(null); u(); }} className="min-h-11 font-semibold text-[var(--kin-nhan-link)] underline">Hoàn tác</button> : undefined}
+            onClose={() => setToast(null)} />
         </div>
       )}
-
-      {/* Info banner */}
-      {!apiError && !loading && (
-        canEdit ? (
-          <div className="px-5 py-2.5 border-b border-blue-100 bg-blue-50 flex-shrink-0">
-            <p className="text-xs text-blue-600">
-              Danh mục <strong>dùng chung cho mọi gia sư</strong>, đồng bộ từ trường <strong>category</strong> của khoá học.
-              Đổi tên sẽ cập nhật khoá học của <strong>tất cả</strong> gia sư thuộc danh mục đó — chỉ quản trị viên được làm.
-            </p>
-          </div>
-        ) : (
-          <div role="note" className="px-5 py-2.5 border-b border-amber-200 bg-amber-50 flex-shrink-0">
-            <p className="text-xs text-amber-800">
-              Danh mục <strong>dùng chung cho mọi gia sư</strong> nên chỉ quản trị viên được đổi tên hoặc thêm mới. Bạn chỉ xem được danh sách và chọn danh mục
-              khi tạo hoặc sửa khoá học của mình. Cột “Khoá của bạn” chỉ đếm khoá do bạn tạo.
-            </p>
-          </div>
-        )
-      )}
-
-      {/* Table */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        <table className="w-full text-sm min-w-[600px]">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              {["#", "Tên danh mục", "Slug", scope === "mine" ? "Khoá của bạn" : "Số khoá học", canEdit ? "Hành động" : "Quyền"].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading && (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="animate-pulse">
-                  <td className="px-4 py-3"><div className="h-4 w-6 bg-gray-200 rounded" /></td>
-                  <td className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 rounded" /></td>
-                  <td className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 rounded" /></td>
-                  <td className="px-4 py-3"><div className="h-6 w-10 bg-gray-200 rounded" /></td>
-                  <td className="px-4 py-3"><div className="h-8 w-8 bg-gray-200 rounded-full" /></td>
-                </tr>
-              ))
-            )}
-
-            {!loading && filtered.map((cat, idx) => (
-                <tr key={cat.name} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">{idx + 1}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-semibold text-gray-800">{cat.name}</span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-blue-600">{toSlug(cat.name)}</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/khoa-hoc?category=${encodeURIComponent(cat.name)}`}
-                      className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-bold hover:opacity-80 transition-opacity cursor-pointer"
-                      style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}
-                      title="Xem khoá học trong danh mục">
-                      {cat.courseCount}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {canEdit ? (
-                      <ActionMenu
-                        onEdit={() => setDrawer({ type: "edit", cat })}
-                        onDelete={() => setDelTarget(cat)}
-                      />
-                    ) : (
-                      <span className="text-xs text-gray-400">Chỉ quản trị viên sửa</span>
-                    )}
-                  </td>
-                </tr>
-            ))}
-
-            {!loading && filtered.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-16 text-center text-gray-400 text-sm">
-                  {search ? `Không tìm thấy danh mục nào khớp "${search}"` : "Chưa có danh mục nào"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-gray-100 flex-shrink-0">
-        <p className="text-xs text-gray-500">
-          {categories.length} danh mục · {totalCourses} {scope === "mine" ? "khoá của bạn" : "khoá học"}
-        </p>
-      </div>
-    </div>
+    </KinPage>
   );
 }

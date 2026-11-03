@@ -203,5 +203,100 @@ async function lessonTree(courseId: string, tag: string) {
   check("học viên chưa ghi danh không thấy hạn của lớp trong lịch", !((await api("GET", "/api/schedule", { as: stuOut })).json.events as any[]).some(e => e.id === `deadline-${L.paid.id}`));
   check("chưa đăng nhập → 401", (await api("GET", "/api/schedule")).status === 401);
 
-  done();
+  // ───────── BU-02: A3 /api/media/[id]/file, V6 reorder, V7 lớp ẩn, V8 tệp KiN của người khác ─────────
+  section("BU-02 A3 · GET /api/media/[id]/file — ma trận vai");
+  const course2 = await mkCourse(T2.id, { name: "Lớp của gia sư B" });
+  const fdir = `${course.id}`; // khoá lưu cục bộ
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { localPathFor } = await import("@/lib/mediaStorageServer");
+  const mkFile = async (ownerId: string, courseId: string, name: string, body: Buffer, mime = "application/pdf") => {
+    const a = await prisma.fileAsset.create({ data: { ownerId, courseId, kind: "document", driver: "local", storageKey: "", mimeType: mime, bytes: body.length, originalName: name, status: "ready" } });
+    const key = `${courseId}/${a.id}-${name}`;
+    mkdirSync(localPathFor(`${courseId}/x`).replace(/\/x$/, ""), { recursive: true });
+    writeFileSync(localPathFor(key), body);
+    return prisma.fileAsset.update({ where: { id: a.id }, data: { storageKey: key } });
+  };
+  void fdir;
+  const PDF = Buffer.from("%PDF-1.4\nnoi dung bi mat\n%%EOF\n");
+  const fa = await mkFile(T.id, course.id, "bi-mat.pdf", PDF);
+  const fileUrl = `/api/media/${fa.id}/file`;
+  await prisma.lesson.update({ where: { id: L.paid.id }, data: { documents: JSON.stringify([{ name: "Bí mật", url: fileUrl, type: "pdf" }]) } });
+  const gf = (as?: any, q = "") => api("GET", `${fileUrl}${q}`, { as });
+  check("khách → 401", (await gf()).status === 401);
+  check("học viên CHƯA ghi danh → 403", (await gf(stuOut)).status === 403);
+  check("học viên chờ đồng ý (pending_consent) → 403; tạm ngưng → 200 (xem lại theo R01, cùng canWatchStoredMedia với video)", (await gf(stuPend)).status === 403 && (await gf(stuSus)).status === 200);
+  const ok = await gf(stuIn);
+  check("học viên đã ghi danh → 200 đúng nội dung", ok.status === 200);
+  check("Content-Type theo bảng đuôi (application/pdf), nosniff, riêng tư/no-store", ok.headers.get("content-type") === "application/pdf" && ok.headers.get("x-content-type-options") === "nosniff" && /no-store|private/.test(ok.headers.get("cache-control") ?? ""), [...ok.headers.entries()]);
+  check("có Content-Security-Policy default-src 'none'", /default-src 'none'/.test(ok.headers.get("content-security-policy") ?? ""));
+  check("inline mặc định; ?dl=1 → attachment, tên theo RFC5987", /^inline/.test(ok.headers.get("content-disposition") ?? "") && /^attachment.*filename\*=/.test((await gf(stuIn, "?dl=1")).headers.get("content-disposition") ?? ""));
+  check("gia sư CHỦ tệp → 200; gia sư LỚP KHÁC → 403; quản trị cấp 1 → 200", (await gf(T)).status === 200 && (await gf(T2)).status === 403 && (await gf(ADM)).status === 200);
+  const rg = await api("GET", fileUrl, { as: stuIn, headers: { Range: "bytes=0-3" } });
+  check("Range bytes=0-3 → 206, 4 byte '%PDF'", rg.status === 206 && rg.text.startsWith("%PDF"), rg.status);
+  check("mã không có → 404; mã của VIDEO (không phải tài liệu) → 404", (await api("GET", "/api/media/ckkhongco12345/file", { as: stuIn })).status === 404);
+
+  section("BU-02 A3 · tệp dùng ở lớp khác / gỡ khỏi bài / bài miễn phí");
+  const fb = await mkFile(T.id, course.id, "dung-lai.pdf", PDF);
+  const stuB = await mkUser({ name: "HS lớp B" });
+  await prisma.enrollment.create({ data: { userId: stuB.id, courseId: course2.id, status: "active" } });
+  check("HS lớp B chưa thấy tệp (chưa gắn bài nào) → 403", (await api("GET", `/api/media/${fb.id}/file`, { as: stuB })).status === 403);
+  const LB = await lessonTree(course2.id, "b2");
+  await prisma.lesson.update({ where: { id: LB.paid.id }, data: { documents: JSON.stringify([{ name: "Dùng lại", url: `/api/media/${fb.id}/file`, type: "pdf" }]) } });
+  check("tệp của gia sư A được gắn vào bài của lớp B → HS lớp B (đã ghi danh) đọc được; HS lớp A vẫn 403 vì tệp không gắn bài lớp A", (await api("GET", `/api/media/${fb.id}/file`, { as: stuB })).status === 200 && (await api("GET", `/api/media/${fb.id}/file`, { as: stuIn })).status === 403);
+  await prisma.lesson.update({ where: { id: LB.paid.id }, data: { documents: "[]" } });
+  check("GỠ khỏi mọi bài → HS lớp B lại 403 ngay (không giữ quyền cũ)", (await api("GET", `/api/media/${fb.id}/file`, { as: stuB })).status === 403);
+  const fc = await mkFile(T.id, course.id, "mien-phi.pdf", PDF);
+  await prisma.lesson.update({ where: { id: L.free.id }, data: { documents: JSON.stringify([{ name: "MP", url: `/api/media/${fc.id}/file`, type: "pdf" }]) } });
+  check("tệp trong BÀI MIỄN PHÍ: học viên chưa ghi danh (đã đăng nhập) → 200; khách vẫn 401", (await api("GET", `/api/media/${fc.id}/file`, { as: stuOut })).status === 200 && (await api("GET", `/api/media/${fc.id}/file`)).status === 401);
+  const fp = await mkFile(T.id, course.id, "cho.pdf", PDF);
+  await prisma.fileAsset.update({ where: { id: fp.id }, data: { status: "pending" } });
+  check("tệp pending → 404 kể cả với chủ", (await api("GET", `/api/media/${fp.id}/file`, { as: T })).status === 404);
+  const fh = await mkFile(T.id, course.id, "x.html", Buffer.from("<script>alert(1)</script>"), "text/html");
+  check("tệp có đuôi lạ (.html) lỡ nằm trong kho → không bao giờ trả text/html", (await api("GET", `/api/media/${fh.id}/file`, { as: T })).headers.get("content-type") !== "text/html");
+  const fx = await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: course.id, kind: "document", driver: "local", storageKey: "../../etc/passwd", mimeType: "application/pdf", bytes: 5, originalName: "p.pdf", status: "ready" } });
+  check("khoá lưu đi ra ngoài thư mục kho (../..) → 404, không đọc tệp hệ thống", (await api("GET", `/api/media/${fx.id}/file`, { as: T })).status === 404);
+
+  section("BU-02 V6 · PATCH /api/courses/[id]/reorder — không kéo mục của lớp khác");
+  const tB = await lessonTree(course2.id, "r2");
+  const before = async () => JSON.stringify(await prisma.lesson.findMany({ where: { id: { in: [L.paid.id, L.free.id, tB.paid.id, tB.free.id] } }, orderBy: { id: "asc" }, select: { id: true, order: true, chapterId: true } }));
+  const snap0 = await before();
+  const rr = (as: any, courseId: string, body: unknown) => api("PATCH", `/api/courses/${courseId}/reorder`, { as, body });
+  const r1 = await rr(T, course.id, { type: "lesson", items: [{ id: tB.paid.id, order: 0 }] });
+  check("gia sư A (chủ lớp A) đưa bài của lớp B vào danh sách sắp xếp → 403, lớp B không đổi", r1.status === 403 && (await before()) === snap0, r1.json);
+  const r2 = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 5, parentId: `ch-r2` }] });
+  check("bài của mình nhưng parentId là chương của lớp B → 403, không ghi gì", r2.status === 403 && (await before()) === snap0, r2.json);
+  const r3 = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 7 }, { id: tB.free.id, order: 0 }] });
+  check("lẫn 1 mục hợp lệ + 1 mục của lớp khác → 403 và mục hợp lệ CŨNG không bị ghi (không ghi dở)", r3.status === 403 && (await before()) === snap0);
+  check("section có parentId → 403", (await rr(T, course.id, { type: "section", items: [{ id: `s-a`, order: 0, parentId: "s-r2" }] })).status === 403);
+  check("gia sư B sắp xếp lớp A → 403; khách → 401; lớp lạ → 404", (await rr(T2, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 1 }] })).status === 403 && (await rr(undefined, course.id, { type: "lesson", items: [] })).status === 401 && (await rr(T, "khong-co", { type: "lesson", items: [] })).status === 404);
+  check("body hỏng: order không nguyên / type lạ → 400", (await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 1.5 }] })).status === 400 && (await rr(T, course.id, { type: "xxx", items: [] })).status === 400);
+  const okR = await rr(T, course.id, { type: "lesson", items: [{ id: L.paid.id, order: 1 }, { id: L.free.id, order: 0 }] });
+  check("sắp xếp hợp lệ trong lớp mình → 200, thứ tự đổi", okR.status === 200 && (await prisma.lesson.findUnique({ where: { id: L.paid.id } }))?.order === 1 && (await prisma.lesson.findUnique({ where: { id: L.free.id } }))?.order === 0, okR.json);
+
+  section("BU-02 V7 · GET /api/courses/[id] — lớp ẩn chỉ chủ lớp/quản trị/học viên");
+  await prisma.course.update({ where: { id: course.id }, data: { status: false } });
+  check("lớp ẩn: gia sư LẠ (T2) → 404 (trước đây 200, thấy cây tên bài)", (await api("GET", `/api/courses/${course.id}`, { as: T2 })).status === 404);
+  check("lớp ẩn: khách / học viên chưa ghi danh → 404", (await api("GET", `/api/courses/${course.id}`)).status === 404 && (await api("GET", `/api/courses/${course.id}`, { as: stuOut })).status === 404);
+  check("lớp ẩn: chủ lớp → 200; quản trị cấp 1 → 200; học viên đã ghi danh → 200", (await api("GET", `/api/courses/${course.id}`, { as: T })).status === 200 && (await api("GET", `/api/courses/${course.id}`, { as: ADM })).status === 200 && (await api("GET", `/api/courses/${course.id}`, { as: stuIn })).status === 200);
+  await prisma.course.update({ where: { id: course.id }, data: { status: true } });
+
+  section("BU-02 V8 · ghi tệp KiN vào bài — chỉ tệp của mình");
+  const fOther = await mkFile(T2.id, course2.id, "cua-b.pdf", PDF);
+  const putDoc = (as: any, lessonId: string, id: string) => api("PUT", `/api/lessons/${lessonId}`, { as, body: { documents: JSON.stringify([{ name: "x", url: `/api/media/${id}/file`, type: "pdf" }]) } });
+  const v1 = await putDoc(T, L.free.id, fOther.id);
+  check("gia sư A dán mã tệp CỦA GIA SƯ B vào bài của mình → 400, cột không đổi", v1.status === 400 && !((await prisma.lesson.findUnique({ where: { id: L.free.id } }))?.documents ?? "").includes(fOther.id), v1.json);
+  check("mã tệp không tồn tại → 400", (await putDoc(T, L.free.id, "ckkhongco12345")).status === 400);
+  const fMine = await mkFile(T.id, course.id, "cua-a.pdf", PDF);
+  const v2 = await putDoc(T, L.free.id, fMine.id);
+  check("tệp của chính mình → 200 và FileAsset được gắn lessonId", v2.status === 200 && (await prisma.fileAsset.findUnique({ where: { id: fMine.id } }))?.lessonId === L.free.id, v2.json);
+  const fPend = await mkFile(T.id, course.id, "chua-xong.pdf", PDF);
+  await prisma.fileAsset.update({ where: { id: fPend.id }, data: { status: "pending" } });
+  check("tệp chưa tải xong (pending) → 400", (await putDoc(T, L.free.id, fPend.id)).status === 400);
+  const fVid = await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: course.id, kind: "video", driver: "local", storageKey: "v/v.mp4", mimeType: "video/mp4", bytes: 5, originalName: "v.mp4", status: "ready" } });
+  check("mã của VIDEO dán vào danh sách tài liệu → 400", (await putDoc(T, L.free.id, fVid.id)).status === 400);
+  const v3 = await api("POST", `/api/chapters/ch-a/lessons`, { as: T, body: { title: "Bài mới V8", type: "document", documents: JSON.stringify([{ name: "x", url: `/api/media/${fOther.id}/file`, type: "pdf" }]) } });
+  check("tạo bài mới kèm mã tệp của người khác → 400 và bài KHÔNG được tạo", v3.status === 400 && (await prisma.lesson.count({ where: { title: "Bài mới V8" } })) === 0, v3.json);
+
+  await done();
+
 })();

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { loadPublishState, loadPublishStates } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
 import { dropHeldResults, heldAttemptIdsAmong } from "@/lib/examHold";
+import { rootIdOfExam } from "@/lib/examVariantServer";
 
 /** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
 async function rankOf(examId: string, score: number): Promise<number> {
@@ -15,7 +16,7 @@ async function rankOf(examId: string, score: number): Promise<number> {
 // GET /api/exam-results?mine=true  — kết quả của user hiện tại (kèm rank)
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const examId = searchParams.get("examId");
+  const examIdParam = searchParams.get("examId");
   const mine   = searchParams.get("mine") === "true";
 
   if (mine) {
@@ -43,24 +44,28 @@ export async function GET(req: Request) {
     // để học sinh thấy bài đã được ghi nhận (không thấy như chưa làm), không có điểm, không có hạng.
     const haveResult = new Set(results.map(r => r.examId));
     const submitted = await prisma.examAttempt.findMany({
-      where: { userId: session.userId, status: { not: "in_progress" }, examId: { notIn: [...haveResult] } },
+      where: { userId: session.userId, status: { not: "in_progress" } },
       orderBy: { submittedAt: "desc" },
-      select: { id: true, examId: true, submittedAt: true, exam: { select: { title: true, code: true, totalPoints: true } } },
+      select: { id: true, examId: true, submittedAt: true, exam: { select: { title: true, code: true, totalPoints: true, variantOfId: true } } },
     });
-    const held = await heldAttemptIdsAmong(submitted);
+    // BU-04: lượt ở MÃ CON tính cho ĐỀ GỐC (ExamResult ghi theo gốc); không trả id mã con ra ngoài.
+    const submittedNoResult = submitted.filter(a => !haveResult.has(a.exam.variantOfId ?? a.examId));
+    const held = await heldAttemptIdsAmong(submittedNoResult);
     const seen = new Set<string>();
-    const pending = submitted.filter(a => held.has(a.id) && !seen.has(a.examId) && !!seen.add(a.examId)).map(a => ({
-      id: `cho-${a.id}`, userId: session.userId, examId: a.examId, score: null, totalPoints: a.exam.totalPoints,
+    const pending = submittedNoResult.filter(a => { const root = a.exam.variantOfId ?? a.examId; return held.has(a.id) && !seen.has(root) && !!seen.add(root); }).map(a => ({
+      id: `cho-${a.id}`, userId: session.userId, examId: a.exam.variantOfId ?? a.examId, score: null, totalPoints: a.exam.totalPoints,
       completedAt: a.submittedAt, exam: { title: a.exam.title, code: a.exam.code }, rank: null, pendingManual: true,
     }));
 
     return NextResponse.json([...withRank, ...pending]);
   }
 
-  if (examId) {
+  if (examIdParam) {
     // Yêu cầu đăng nhập để xem bảng điểm
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+    // BU-04: ExamResult ghi theo ĐỀ GỐC (một dòng cho cả nhóm mã đề) — id mã con quy về gốc. Phần còn lại (top 50, hiển thị tên) KHÔNG đổi (quyết định COO 02/11).
+    const examId = (await rootIdOfExam(examIdParam)) ?? examIdParam;
 
     // QZ-11: chưa được công bố thì không xem bảng điểm của đề có tự luận (điểm còn dở dang).
     if (!resultVisibility(await loadPublishState(examId, session.userId), true).showScore) return NextResponse.json([]);

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
+import { variantLockedBlock } from "@/lib/deThiServer";
 import { blockIfHasAttempts, loadOwnedQuiz, loadQuestions, shapeQuestionForTutor, supersededBlock } from "@/lib/quizServer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const got = await loadOwnedQuiz(auth.userId, id);
     if (isNextResponse(got)) return got;
+    const locked = variantLockedBlock(got.exam); if (locked) return locked; // BU-03: mã đề con khoá nội dung
     const sup = supersededBlock(got.exam); if (sup) return sup;
     const blocked = blockIfHasAttempts(got.attemptCount); if (blocked) return blocked;
     const body = await req.json().catch(() => ({})) as { ids?: unknown };

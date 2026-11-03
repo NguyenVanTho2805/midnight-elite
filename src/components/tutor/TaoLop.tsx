@@ -1,4 +1,6 @@
-// "Tạo lớp" của gia sư, WIZARD 3 BƯỚC (LO-03; Figma "Gia sư · Tạo lớp đầu tiên" 299:112849): Thông tin → Học sinh → Lịch học; nút cuối "Tạo lớp + N buổi".
+// BU-01: 3 bước đổi thành Thông tin → Lịch học → Cách vào lớp. Bước 1 có "Học phí: Miễn phí | Có học phí" (Miễn phí ẩn "Cách tính học phí", gửi tag "Miễn phí", không gửi feeMode/feeRate);
+// bước 3 chọn Cô duyệt (mặc định) / Chỉ mã mời / Vào ngay (chỉ khi Miễn phí) và có mục gập "Thêm sẵn em đã học lớp khác" (StudentPicker, không mất tính năng cũ). Figma khung mới: chưa dựng.
+// "Tạo lớp" của gia sư, WIZARD 3 BƯỚC (LO-03; Figma "Gia sư · Tạo lớp đầu tiên" 299:112849, bản cũ: Thông tin → Học sinh → Lịch học); nút cuối "Tạo lớp + N buổi".
 // Bước 1 gồm cả "Cách tính học phí" (HP-15: chọn LÚC TẠO LỚP; mặc định giữ cách hiện tại; không đổi được hình thức của lớp đã tạo; số tiền do máy chủ tính).
 // Bước 2: chỉ thêm được em ĐÃ học một lớp khác của gia sư (StudentPicker); em mới vào lớp bằng mã mời (KiN mở sẵn tab Mã mời sau khi tạo). Không thu thêm dữ liệu trẻ ở đây.
 // Bước 3: một hoặc nhiều khung giờ hằng tuần + ngày buổi đầu + số tuần xem trước. "N buổi" là số buổi lịch lặp sinh ra trong khoảng đó (previewSessionCount) — chỉ để hiển thị;
@@ -26,12 +28,18 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinPageHeader, KIN_PAGE, KIN_TWO_COL, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
+import { FREE_CLASS_TAG, type JoinPolicy } from "@/lib/joinRequest";
 
 const FIELD = KIN_FIELD;
 const LABEL = KIN_LABEL;
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const; // Thứ Hai đứng đầu
 type Step = 1 | 2 | 3;
-const STEPS: { n: Step; label: string }[] = [{ n: 1, label: "Thông tin" }, { n: 2, label: "Học sinh" }, { n: 3, label: "Lịch học" }];
+const STEPS: { n: Step; label: string }[] = [{ n: 1, label: "Thông tin" }, { n: 2, label: "Lịch học" }, { n: 3, label: "Cách vào lớp" }];
+const POLICY_CARDS: { value: JoinPolicy; title: string; hint: string }[] = [
+  { value: "approve", title: "Cô duyệt", hint: "Học sinh xin vào lớp, cô duyệt từng bạn. Nên chọn khi lớp công khai." },
+  { value: "invite_only", title: "Chỉ mã mời", hint: "Chỉ ai có mã cô gửi mới vào được, vào ngay không cần duyệt." },
+  { value: "open", title: "Vào ngay", hint: "Học sinh bấm Vào lớp là vào ngay. Chỉ dành cho lớp miễn phí." },
+];
 
 export default function TaoLop() {
   const router = useRouter();
@@ -43,6 +51,8 @@ export default function TaoLop() {
   const [feeMode, setFeeMode] = useState<FeeMode>(FEE_MODE_LEGACY); // HP-15: mặc định = cách hiện tại
   const [feeRate, setFeeRate] = useState("");
   const [feeMinutes, setFeeMinutes] = useState("90");
+  const [free, setFree] = useState(false);                       // BU-01: "Miễn phí" (dấu do gia sư tick) — mặc định "Có học phí" = hành vi cũ
+  const [policy, setPolicy] = useState<JoinPolicy>("approve");  // BU-01: mặc định Cô duyệt
   const [students, setStudents] = useState<string[]>([]);
   const [slots, setSlots] = useState<WizardSlot[]>([]);          // rỗng = chưa xếp lịch
   const [firstDate, setFirstDate] = useState(todayKey);
@@ -60,12 +70,12 @@ export default function TaoLop() {
   const formRef = useRef<HTMLFormElement>(null);
   const rules = useMemo<Record<string, readonly FieldRule[]>>(() => {
     const r: Record<string, readonly FieldRule[]> = { name: [required("Cô nhập tên lớp trước nhé.")] };
-    if (isNewFeeMode(feeMode)) {
+    if (!free && isNewFeeMode(feeMode)) {
       r.feeRate = [v => { const x = validateFeeSetup({ mode: feeMode, rate: Number(v), sessionMinutes: 90 }); return x.ok ? null : x.error; }];
       if (feeMode === "per_hour") r.feeMinutes = [v => { const x = validateFeeSetup({ mode: feeMode, rate: FEE_RATE_MIN, sessionMinutes: Number(v) }); return x.ok ? null : x.error; }];
     }
     return r;
-  }, [feeMode]);
+  }, [feeMode, free]);
   const fv = useFieldValidation(rules);
 
   const openKey = firstDate || todayKey;
@@ -73,7 +83,7 @@ export default function TaoLop() {
 
   function checkInfo(): string | null {
     if (!name.trim()) return "Cô nhập tên lớp trước nhé.";
-    if (isNewFeeMode(feeMode)) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
+    if (!free && isNewFeeMode(feeMode)) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
     return null;
   }
   function next() {
@@ -93,7 +103,7 @@ export default function TaoLop() {
     const slotErr = validateSlots(slots);
     if (slotErr) { setError(slotErr); return; }
     let fee: Record<string, unknown> = {};
-    if (isNewFeeMode(feeMode)) {
+    if (!free && isNewFeeMode(feeMode)) {
       const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) });
       if (v.ok) fee = { feeMode, feeRate: v.value.rate, ...(v.value.sessionMinutes != null ? { feeSessionMinutes: v.value.sessionMinutes } : {}) };
     }
@@ -105,9 +115,9 @@ export default function TaoLop() {
         ...fee,
         id: slug, name: clean, adminName: clean, shortTitle: clean.toUpperCase().split(" ").slice(0, 2).join("\n"),
         category: cat, instructor: "KiN", teacherAvatar: "K", openDate: openKey.split("-").reverse().join("/"),
-        types: ["Video"], tag: null, tagColor: null,
+        types: ["Video"], tag: free ? FREE_CLASS_TAG : null, tagColor: null,
         bg: CATEGORY_GRADIENT[cat] ?? "var(--kin-chu-phu)", strip: "var(--kin-tt-chu-cho)",
-        price: 0, originalPrice: null, lessons: 0, hours: 0, status: true,
+        joinPolicy: policy, price: 0, originalPrice: null, lessons: 0, hours: 0, status: true,
       };
       await api.courses.create(payload);
     } catch (err) {
@@ -134,7 +144,7 @@ export default function TaoLop() {
 
   return (
     <form ref={formRef} noValidate onSubmit={e => void submit(e)} className={KIN_PAGE} aria-label="Tạo lớp">
-      <KinPageHeader title="Tạo lớp học" sub="Ba bước, cô có thể bỏ qua học sinh và lịch để làm sau."
+      <KinPageHeader title="Tạo lớp học" sub="Ba bước, cô có thể bỏ qua lịch học để làm sau."
         actions={<Link href="/lop-cua-toi/lop" className={kinButtonClass("ghost")}>Thoát</Link>} />
 
       <ol aria-label="Các bước tạo lớp" className="mb-6 flex flex-wrap gap-x-6 gap-y-2 text-[length:var(--kin-co-goc)]">
@@ -163,7 +173,23 @@ export default function TaoLop() {
                 </div>
               </section>
 
-              <section aria-labelledby="tl-phi">
+              <section aria-labelledby="tl-hp">
+                <KinSectionHead id="tl-hp" title="Học phí" aside="Chọn một" />
+                <fieldset className="pt-5">
+                  <legend className="sr-only">Lớp có thu học phí không</legend>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {([[true, "Miễn phí", "Lớp không thu học phí. Cô vẫn có thể tự nhập đơn giá sau nếu cần."], [false, "Có học phí", "Chọn cách tính học phí ngay bên dưới."]] as const).map(([v, t, h]) => (
+                      <label key={t} className={`flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] ${free === v ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)]" : "border-[var(--kin-vien-o-nhap)]"}`}>
+                        <input type="radio" name="tl-free" className="mt-1" checked={free === v}
+                          onChange={() => { setFree(v); setError(null); if (!v && policy === "open") setPolicy("approve"); }} />
+                        <span><span className="font-medium text-[var(--kin-chu-chinh)]">{t}</span><span className="block text-[var(--kin-chu-mo)]">{h}</span></span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </section>
+
+              {!free && <section aria-labelledby="tl-phi">
                 <KinSectionHead id="tl-phi" title="Cách tính học phí" aside="Chọn một lần" />
                 <fieldset className="pt-5">
                   <legend className="sr-only">Cách tính học phí của lớp</legend>
@@ -193,21 +219,43 @@ export default function TaoLop() {
                     </p>
                   </div>
                 )}
+              </section>}
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <section aria-labelledby="tl-vao">
+                <KinSectionHead id="tl-vao" title="Cách vào lớp" aside="Đổi được sau" />
+                <fieldset className="pt-5">
+                  <legend className="sr-only">Cách học sinh vào lớp</legend>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {POLICY_CARDS.map(c => {
+                      const locked = c.value === "open" && !free;
+                      return (
+                        <label key={c.value} data-policy={c.value} className={`flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] ${locked ? "opacity-60" : ""} ${policy === c.value ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)]" : "border-[var(--kin-vien-o-nhap)]"}`}>
+                          <input type="radio" name="tl-policy" className="mt-1" checked={policy === c.value} disabled={locked} onChange={() => { setPolicy(c.value); setError(null); }} />
+                          <span><span className="font-medium text-[var(--kin-chu-chinh)]">{c.title}</span>
+                            <span className="block text-[var(--kin-chu-mo)]">{locked ? "Chỉ chọn được khi lớp miễn phí. Cô quay lại bước 1 để chọn Miễn phí." : c.hint}</span></span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+                {policy === "open" && <p className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp hiện ở trang Khóa học công khai, ai có tài khoản học sinh cũng vào được.</p>}
+                {policy === "approve" && <p className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Học sinh xin vào lớp, cô duyệt ở tab Học sinh của lớp.</p>}
               </section>
+              <details className="border-t border-[var(--kin-vien-nhat)] pt-4" data-wizard-students>
+                <summary className="inline-flex items-center min-h-11 cursor-pointer text-[var(--kin-nhan-link)] underline">Thêm sẵn em đã học lớp khác của cô (không bắt buộc){students.length ? ` · đã chọn ${students.length}` : ""}</summary>
+                <p className="pt-3 pb-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+                  Chọn em đã học một lớp khác của cô để thêm ngay. Em mới thì cô gửi mã mời hoặc link lớp sau khi tạo lớp, em tự vào lớp.
+                </p>
+                <StudentPicker selected={students} onChange={ids => { setStudents(ids); setError(null); }} max={ADD_STUDENTS_MAX} />
+              </details>
             </>
           )}
 
           {step === 2 && (
-            <section aria-labelledby="tl-hs">
-              <KinSectionHead id="tl-hs" title="Học sinh" aside="Có thể để sau" />
-              <p className="pt-4 pb-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
-                Chọn em đã học một lớp khác của cô để thêm ngay. Em mới thì cô gửi mã mời sau khi tạo lớp (KiN mở sẵn tab Mã mời), em tự vào lớp.
-              </p>
-              <StudentPicker selected={students} onChange={ids => { setStudents(ids); setError(null); }} max={ADD_STUDENTS_MAX} />
-            </section>
-          )}
-
-          {step === 3 && (
             <section aria-labelledby="tl-lich">
               <KinSectionHead id="tl-lich" title="Lịch học" aside="Có thể để sau" />
               {slots.length === 0 ? (

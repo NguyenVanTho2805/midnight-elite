@@ -24,6 +24,7 @@ interface ApiArticle {
   views: number;
   publishedAt: string | null;
   createdAt: string;
+  coverCaption?: string | null; // BU-07
 }
 
 interface DrawerForm {
@@ -40,14 +41,17 @@ interface DrawerForm {
   sourceUrl: string;
   sourceName: string;
   coverImage: string;
+  coverCaption: string; // BU-07: chú thích ảnh bìa (≤200)
+  publishedAt: string; // BU-07: datetime-local, trống = đăng ngay
 }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { value: "hoc-thuat",    label: "Học thuật"          },
+  { value: "hoc-thuat",    label: "Học tập"            },
   { value: "tuyen-sinh",   label: "Tuyển sinh"         },
-  { value: "tin-midnight", label: "Tin KiN" },
+  { value: "tin-midnight", label: "KiN" },
+  { value: "gia-su",       label: "Gia sư"             },
   { value: "kinh-nghiem",  label: "Kinh nghiệm thi"   },
 ];
 
@@ -60,13 +64,26 @@ const CAT_COLOR: Record<string, { bg: string; color: string }> = {
   "tuyen-sinh":  { bg: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" },
   "tin-midnight":{ bg: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
   "kinh-nghiem": { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
+  "gia-su":      { bg: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
 };
+
+/** ISO → giá trị ô datetime-local theo giờ Việt Nam (+07:00), không phụ thuộc múi giờ máy. */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? "" : new Date(t + 7 * 3600000).toISOString().slice(0, 16);
+}
+const isFuture = (iso: string): boolean => new Date(iso).getTime() > Date.now();
+function fmtSchedule(iso: string): string {
+  const v = toLocalInput(iso); // yyyy-MM-ddTHH:mm
+  return v ? `${v.slice(8, 10)}/${v.slice(5, 7)} ${v.slice(11, 16)}` : "";
+}
 
 const DRAWER_INIT: DrawerForm = {
   title: "", slug: "", excerpt: "", content: "",
   category: "tin-midnight", author: "", tag: "",
   isPinned: false, published: false, readTime: 5,
-  sourceUrl: "", sourceName: "", coverImage: "",
+  sourceUrl: "", sourceName: "", coverImage: "", coverCaption: "", publishedAt: "",
 };
 
 const INP = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
@@ -368,6 +385,12 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
                 {errors.coverImage && <p className="text-xs text-red-500 mt-1">{errors.coverImage}</p>}
               </div>
             </div>
+            <div>
+              <label htmlFor="art-cover-caption" className="block text-xs font-medium text-gray-600 mb-1.5">Chú thích ảnh bìa (không bắt buộc, tối đa 200 ký tự)</label>
+              <input id="art-cover-caption" className={INP} maxLength={200} placeholder="VD: Thí sinh làm thủ tục dự thi sáng 28/6"
+                value={form.coverCaption} onChange={e => set("coverCaption", e.target.value)} />
+              {errors.coverCaption && <p className="text-xs text-red-500 mt-1">{errors.coverCaption}</p>}
+            </div>
             <p className="text-xs text-gray-400">Link ảnh lấy thẳng từ Facebook (scontent…) thường hết hạn sau vài ngày; nên dùng link ảnh ổn định.</p>
           </div>
 
@@ -416,6 +439,14 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
               </div>
               <Toggle checked={form.published} onChange={() => set("published", !form.published)} />
             </div>
+            {form.published && (
+              <div className="py-3 px-4 rounded-lg" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
+                <label htmlFor="art-published-at" className="block text-sm font-medium text-gray-700">Đăng lúc</label>
+                <p className="text-xs text-gray-400 mb-2">Để trống = đăng ngay. Chọn giờ tương lai = lên lịch, bài chỉ hiện với khách khi tới giờ (giờ Việt Nam).</p>
+                <input id="art-published-at" type="datetime-local" className={INP} value={form.publishedAt} onChange={e => set("publishedAt", e.target.value)} />
+                {errors.publishedAt && <p className="text-xs text-red-500 mt-1">{errors.publishedAt}</p>}
+              </div>
+            )}
           </div>
 
         </div>
@@ -480,6 +511,8 @@ function PageInner() {
             sourceUrl:  data.sourceUrl  ?? "",
             sourceName: data.sourceName ?? "",
             coverImage: data.coverImage ?? "",
+            coverCaption: data.coverCaption ?? "",
+            publishedAt: toLocalInput(data.publishedAt),
           });
           setDrawer(true);
         }
@@ -648,7 +681,9 @@ function PageInner() {
                       {a.views.toLocaleString("vi-VN")}
                     </td>
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                      {a.createdAt.slice(0, 10)}
+                      {a.published && a.publishedAt && isFuture(a.publishedAt)
+                        ? <span className="font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>Lên lịch {fmtSchedule(a.publishedAt)}</span>
+                        : a.createdAt.slice(0, 10)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <ActionMenu

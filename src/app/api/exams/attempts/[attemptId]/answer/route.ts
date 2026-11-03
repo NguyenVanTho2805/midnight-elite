@@ -21,10 +21,10 @@ export async function PATCH(
 
     if (attempt.status === "in_progress" && attempt.expiresAt.getTime() <= Date.now()) {
       await finalizeAttempt(attempt.id, { status: "expired", at: attempt.expiresAt });
-      return NextResponse.json({ error: "Đã hết giờ làm bài" }, { status: 409 });
+      return NextResponse.json({ error: "Đã hết giờ làm bài", code: "expired" }, { status: 409 });
     }
     if (attempt.status !== "in_progress") {
-      return NextResponse.json({ error: "Bài thi đã kết thúc" }, { status: 409 });
+      return NextResponse.json({ error: "Bài thi đã kết thúc", code: "finished" }, { status: 409 });
     }
 
     const { questionId, optionId, textAnswer } = await req.json() as {
@@ -36,13 +36,14 @@ export async function PATCH(
 
     if (optionId) {
       // Câu MC — chọn 1 trong N đáp án.
+      // BU-04: câu phải thuộc ĐÚNG đề của lượt này (không ghi đáp án vào câu của đề khác).
       const option = await prisma.examOption.findFirst({
-        where: { id: optionId, questionId },
+        where: { id: optionId, questionId, question: { examId: attempt.examId } },
         include: { question: { select: { sectionLabel: true } } },
       });
       if (!option) return NextResponse.json({ error: "Đáp án không hợp lệ" }, { status: 400 });
       if (isSectionLocked(attempt.sectionWindows, option.question.sectionLabel)) {
-        return NextResponse.json({ error: "Phần này đã hết giờ" }, { status: 409 });
+        return NextResponse.json({ error: "Phần này đã hết giờ", code: "section_locked" }, { status: 409 });
       }
 
       await prisma.examAnswer.upsert({
@@ -55,11 +56,11 @@ export async function PATCH(
       // (gõ tự do, chấm tự động bằng so khớp text lúc nộp — xem examGrading.ts) —
       // cả 2 đều lưu vào textAnswer, chỉ khác nhau ở cách chấm sau này.
       const question = await prisma.examQuestion.findFirst({
-        where: { id: questionId, type: { in: ["ESSAY", "SHORT_ANSWER"] } },
+        where: { id: questionId, examId: attempt.examId, type: { in: ["ESSAY", "SHORT_ANSWER"] } },
       });
       if (!question) return NextResponse.json({ error: "Câu hỏi không hợp lệ" }, { status: 400 });
       if (isSectionLocked(attempt.sectionWindows, question.sectionLabel)) {
-        return NextResponse.json({ error: "Phần này đã hết giờ" }, { status: 409 });
+        return NextResponse.json({ error: "Phần này đã hết giờ", code: "section_locked" }, { status: 409 });
       }
 
       await prisma.examAnswer.upsert({
@@ -69,7 +70,9 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ success: true });
+    // BU-04: giờ máy chủ + hạn lượt để chip lưu hiện giờ máy chủ và đồng hồ tự hiệu chỉnh mỗi lần lưu.
+    const serverNow = new Date().toISOString();
+    return NextResponse.json({ success: true, savedAt: serverNow, serverNow, expiresAt: attempt.expiresAt.toISOString() });
   } catch (e) {
     console.error("[PATCH /api/exams/attempts/[attemptId]/answer]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

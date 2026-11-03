@@ -1,5 +1,8 @@
 // ─── API fetch helpers ────────────────────────────────────────────────────────
 
+// STU-001: chỉ kiểu (bị xoá khi biên dịch); examPolicy.ts thuần, không prisma.
+import type { AnswersLockedReason } from "@/lib/examPolicy";
+
 // Luôn tương đối (same-origin) — admin.* và domain chính là 2 origin khác nhau
 // từ khi tách domain (src/proxy.ts). Dùng NEXT_PUBLIC_APP_URL ở đây sẽ đẩy
 // request sang origin khác, làm mất cookie phiên đăng nhập (credentials:
@@ -385,6 +388,12 @@ export interface ExamAttemptReview {
   pendingManual?: boolean;
   canSeeAnswers: boolean; questions: ExamReviewQuestion[];
   correctableCount?: number; // NV-188: số câu làm sai có thể chữa bài (0 = đề không cho xem đáp án)
+  /** STU-001: vì sao đáp án còn bị giấu (null = không giấu). Thiếu trường = máy chủ cũ. */
+  answersLockedReason?: AnswersLockedReason;
+  /** STU-001: đề thi thử công khai bị KiN áp mặc định an toàn (2 lượt, đáp án sau hết lượt/hết hạn). */
+  publicGuarded?: boolean;
+  /** STU-001: số lượt hiệu lực của đề (null = không giới hạn). */
+  attemptsMax?: number | null;
 }
 
 // Dạng admin — bao gồm isCorrect (không được gửi cho học viên trước khi nộp bài)
@@ -612,6 +621,8 @@ export interface ExamGate {
   blockReason: "not_enrolled" | "payment_required" | "attempts_exhausted" | "no_questions" | "past_deadline" | null;
   /** Hạn nộp RIÊNG của chính học sinh này (gia sư đặt); null = theo lịch chung của đề. */
   deadline?: { dueAt: string; state: "open" | "passed" } | null;
+  /** STU-001: chính sách hiệu lực để màn cổng nói trước khi nào đáp án hiện. */
+  policy?: { guarded: boolean; answersLockedReason: AnswersLockedReason };
   serverNow: string;
 }
 
