@@ -62,7 +62,9 @@ export default function TakingRoom({ s, examTitle, mode, feedback }: { s: RoomSe
   const setP = (id: string, v: Partial<PState>) => setPs(p => ({ ...p, [id]: { ...(p[id] ?? NONE), ...v } }));
   const run = async (id: string, action: "check" | "reveal") => {
     setP(id, { loading: true, error: "" });
-    await s.flush(); // máy chủ chấm ĐÁP ÁN ĐÃ LƯU, nên phải lưu xong đã
+    await s.flush(); // máy chủ chấm ĐÁP ÁN ĐÃ LƯU, nên phải lưu xong đã (flush chờ cả vòng đang gửi dở)
+    // BU-04 rà soát: còn đáp án chưa lên máy chủ (mạng chậm/đứt) thì không chấm — nếu không /check chấm đáp án CŨ, tốn lần thử và mở đáp án trong khi màn đang hiện đáp án mới.
+    if (s.pending() > 0) { setP(id, { loading: false, error: "Đáp án vừa chọn chưa lưu được. Kiểm tra mạng rồi bấm lại." }); return; }
     const r = await examRoomApi.check(att.attemptId, id, action);
     if (r.ok) setP(id, { result: r.data, loading: false });
     else setP(id, { loading: false, error: r.code === "not_answered" ? "Đáp án câu này chưa lưu được. Kiểm tra mạng rồi bấm lại." : r.code === "no_feedback" ? "Đề này giữ điểm tới khi gia sư công bố nên chưa kiểm từng câu được." : r.error || "Chưa kiểm tra được, thử lại." });

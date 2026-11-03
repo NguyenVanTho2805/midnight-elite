@@ -25,7 +25,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       exam = root;
     }
     // QZ-04: bản nháp chưa phát hành chỉ quản trị / gia sư thấy; học sinh gõ đúng địa chỉ cũng nhận 404 (không lộ tên bản nháp).
-    if (exam.isDraft && !isStaff) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // BU-04 rà soát: gia sư cũng là role "admin" (adminRole teacher) nên chỉ kiểm role là để gia sư B đọc được nháp của gia sư A (id là slug theo tên, đoán được) → thêm ownsResource.
+    if (exam.isDraft && !(isStaff && ownsResource(session, exam.ownerId))) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     const { _count, variantNo, variantOfId, blueprintId, ...rest } = exam;
     return NextResponse.json({

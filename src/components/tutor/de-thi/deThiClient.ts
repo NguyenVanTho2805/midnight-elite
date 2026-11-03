@@ -247,6 +247,7 @@ export const PUBLISH_BLOCK_TEXT: Record<string, string> = {
   FORMULA_UNREAD: "Còn câu có nhãn ⟦công thức⟧ chưa được gõ lại. Cô sửa các câu đó trong đề gốc rồi tạo lại mã đề.",
   VARIANTS_NOT_READY: "Phía học sinh chưa làm được đề nhiều mã (đang chờ bản cập nhật phòng thi). Cô vẫn soạn và lưu mã đề được, chỉ chưa phát hành.",
   VARIANTS_STALE: "Đề gốc đã được sửa sau khi tạo mã đề nên các mã con không còn khớp. Cô bấm “Tạo lại mã đề” rồi phát hành.",
+  VARIANTS_ESSAY: "Đề nhiều mã chưa phát hành được khi đề có câu tự luận (màn chấm bài chưa gom bài của các mã đề). Cô phát hành đề một mã, hoặc tách phần tự luận ra đề riêng.",
 };
 
 // ─── P2.3 Tệp đề gốc  (POST …/tep-goc/[fileId]/tach|gan-de) ────────────────────────────────────────────────────────────────────

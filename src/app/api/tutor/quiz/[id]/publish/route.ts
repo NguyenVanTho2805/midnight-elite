@@ -59,6 +59,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         mode: e.mode,
         hasSchedule: /^\d{1,2}:\d{2}$/.test((e.time ?? "").trim()) && (parseDurationMinutes(e.duration) ?? 0) > 0,
         variantsStale: group.stale,
+        hasEssay: questions.some(q => q.type === "ESSAY"), // mã con sao chép câu của gốc nên xét gốc là đủ
       });
       if (blocked) return { res: NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status }) };
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { parseDurationMinutes } from "@/lib/examGrading";
 import { hasExamPassword } from "@/lib/examPassword";
@@ -33,7 +34,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     // Bản nháp chỉ quản trị / gia sư thấy; học sinh nhận 404 (không lộ tên bản nháp).
-    if (exam.isDraft && session.role !== "admin") return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // BU-04 rà soát: gia sư cũng là role "admin" → nháp của gia sư khác phải 404 (chỉ chủ đề hoặc quản trị trung tâm xem được), không chỉ kiểm role.
+    if (exam.isDraft && !(session.role === "admin" && ownsResource(session, exam.ownerId))) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
     const [used, inProgress, max, essayCount, ownDue, held] = await Promise.all([
       countGroupAttempts(session.userId, group.ids),

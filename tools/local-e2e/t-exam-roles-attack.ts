@@ -130,6 +130,13 @@ const ids = (j: unknown, pick: (x: any) => string) => (Array.isArray(j) ? j : (j
   check("gate đề nháp (học sinh) → không 200 / không kèm câu hỏi", gd.status !== 200 && leaksIn(gd.text).length === 0, [gd.status, gd.text.slice(0, 120)]);
   const sd = await api("POST", `/api/exams/${D.id}/start`, { as: A, body: {} });
   check("start đề nháp → không vào được, không có attempt", sd.status >= 400 && (await prisma.examAttempt.count({ where: { examId: D.id } })) === 0, [sd.status, sd.json]);
+  // BU-04 rà soát: gia sư cũng là role "admin" → nháp của gia sư KHÁC phải 404 (id là slug theo tên nên đoán được); chủ đề và quản trị trung tâm vẫn đọc được.
+  const gdT2 = await api("GET", `/api/exams/${D.id}/gate`, { as: T2 });
+  const exT2 = await api("GET", `/api/exams/${D.id}`, { as: T2 });
+  check("gia sư KHÁC đọc nháp của gia sư này: gate và GET /api/exams/[id] → 404, không lộ tên đề/chủ đề", gdT2.status === 404 && exT2.status === 404 && !gdT2.text.includes("NHÁP") && !exT2.text.includes("NHÁP") && !/ownerId|price/.test(gdT2.text + exT2.text), [gdT2.status, exT2.status]);
+  const gdT = await api("GET", `/api/exams/${D.id}/gate`, { as: T });
+  const exT = await api("GET", `/api/exams/${D.id}`, { as: T });
+  check("ĐỐI CHỨNG: chủ đề vẫn đọc được nháp của mình (gate 200, GET 200)", gdT.status === 200 && exT.status === 200, [gdT.status, exT.status]);
   const gv = await api("GET", "/api/exams/ra-g-v2/gate", { as: A });
   check("gate bằng id mã con: không lộ variantNo / variantOfId", !/variantNo|variantOfId/.test(gv.text) && leaksIn(gv.text).length === 0, gv.text.slice(0, 200));
   const sv = await api("POST", "/api/exams/ra-g-v2/start", { as: A, body: {} });

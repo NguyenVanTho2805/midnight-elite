@@ -54,8 +54,17 @@ export function useRoomPage(examId: string) {
         if (!ex.hasQuestions) { setPhase(existing ? "done" : "azota"); return; }
         const g = await loadGate();
         if (!live) return;
+        // BU-04 rà soát: LUYỆN TẬP không bao giờ có ExamResult (không vào xếp hạng) nên "Xem kết quả" / tải lại trang rơi về cổng và mất kết quả.
+        // Đề luyện tập đã có lượt nộp → dựng màn kết quả từ lượt nộp gần nhất (điểm tham khảo; giữ điểm → "chờ gia sư chấm").
+        let practiceDone = false;
+        if (!existing && g?.exam.mode === "practice" && !g.attempts.resumable && g.attempts.used > 0) {
+          const h = await api.examAttempts.history(examId).catch(() => [] as ExamAttemptHistoryItem[]);
+          if (!live) return;
+          const last = h.find(x => x.status !== "in_progress");
+          if (last) { setHistory(h); setMyResult({ score: last.held ? null : last.score, totalPoints: ex.totalPoints, rank: null, pendingManual: !!last.held }); practiceDone = true; }
+        }
         loadHistory();
-        setPhase(existing && !g?.attempts.resumable ? "done" : "gate");
+        setPhase((existing || practiceDone) && !g?.attempts.resumable ? "done" : "gate");
       } catch { if (live) setPhase("error"); }
     })();
     return () => { live = false; };
