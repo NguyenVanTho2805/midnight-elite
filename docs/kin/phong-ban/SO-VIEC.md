@@ -6,14 +6,15 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 |---|---|---|---|---|---|---|
 | COO-000 | COO | Dựng phòng ban (16 tác tử, 4 tài liệu) + báo cáo điểm yếu 01/11 | claude/phong-ban-agent | | cho-gop-pr | Nền cho mọi việc sau |
 | BU-00 | TUT+STU+ADM | Tách 3 giao diện theo vai | claude/bu-00-phan-vai | #88 | cho-gop-pr | Làm trước khi có phòng ban; chờ Thọ gộp |
-| BU-01 | TUT (+STU màn nhập mã) | Lớp: joinPolicy, mã cá nhân, duyệt, lớp miễn phí | | | moi | Mở sau #88; đặc tả = BIGUPDATE-KE-HOACH.md mục BU-01 |
-| BU-02 | TUT (ADM giữ 2 tệp lớn) | Học liệu: tab Giáo trình + ô tải lên chung | | | moi | Figma 606:5 |
-| BU-05 | STU | Cộng đồng 3 cột / Threads | | | moi | Figma 606:3 |
-| BU-07 | STU (ADM soạn bài) | Tin tức | | | moi | Figma 606:4 |
-| BU-03 | ADM+TUT | Đề thi kiểu Azota | | | moi | Sau BU-00 |
-| BU-04 | STU | Phòng thi một cột | | | moi | Figma 606:6; sau BU-03 |
-| BU-06 | STU | Tìm gia sư kiểu sàn | | | moi | Sau BU-01 |
-| BU-08 | ADM | Quản trị gọn 4 module | | | moi | Figma 606:7; cuối cùng |
+| BU-01 | TUT (+STU màn nhập mã) | Lớp: joinPolicy, mã cá nhân, duyệt, lớp miễn phí | claude/bu-01-lop | #103 | cho-gop-pr | Mở sau #88; đặc tả = BIGUPDATE-KE-HOACH.md mục BU-01 · PR mở 01/11 |
+| BU-02 | TUT (ADM giữ 2 tệp lớn) | Học liệu: tab Giáo trình + ô tải lên chung | claude/bu-02-hoc-lieu | #106 | cho-gop-pr | Figma 606:5 · xếp chồng trên #103 |
+| BU-05 | STU | Cộng đồng 3 cột / Threads | claude/bu-05-cong-dong | #104 | cho-gop-pr | Figma 606:3 · KIN_GUEST_QUESTIONS giữ tắt tới khi #104 + BU-08 cùng lên |
+| BU-07 | STU (ADM soạn bài) | Tin tức | claude/bu-07-tin-tuc | #102 | cho-gop-pr | Figma 606:4 · kèm STU-004 |
+| BU-03 | ADM+TUT | Đề thi kiểu Azota | claude/bu-03-de-thi | #107 | cho-gop-pr | Sau BU-00 · gộp trước BU-04 |
+| BU-04 | STU | Phòng thi một cột | claude/bu-04-phong-thi | #108 | cho-gop-pr | Figma 606:6; sau BU-03 · xếp chồng #107; ghép sẵn #94 ở nhánh -gop-94; múi giờ còn mở |
+| BU-06 | STU | Tìm gia sư kiểu sàn | claude/bu-06-tim-gia-su | #105 | cho-gop-pr | Sau BU-01 · xếp chồng #103; BU-06b = #109 |
+| BU-06b | STU+TUT | Gia sư ghi ảnh bìa + video giới thiệu (PUT tutor-profile) | claude/bu-06b-anh-bia-video | #109 | cho-gop-pr | xếp chồng #105; ảnh bìa data URL ≤250 000 ký tự |
+| BU-08 | ADM | Quản trị gọn 4 module | claude/bu-08-quan-tri | (03/11) | cho-gop-pr | Figma 606:7; cuối cùng · gộp cuối cùng; D2 chưa làm |
 | STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | claude/stu-s1 | | dang-lam | S · giao 01/11 · từ báo cáo điểm yếu mục 4 |
 | STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | claude/stu-s1 | | dang-lam | S · giao 01/11 · chủ xem câu chữ |
 | ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | claude/adm-s1 | | dang-lam | S · giao 01/11 |
