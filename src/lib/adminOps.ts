@@ -97,6 +97,7 @@ const ACTION_LABEL: Record<string, string> = {
   "class_session.cancel": "Báo nghỉ buổi học", "class_session.move": "Dời buổi học", "class_session.restore": "Khôi phục buổi học",
   "attendance_session.create": "Tạo phiên điểm danh", "attendance_session.update": "Sửa phiên điểm danh", "attendance_session.delete": "Xoá phiên điểm danh",
   "bank_tx.resolve": "Đối soát giao dịch ngân hàng", "bank_tx.reverse": "Hoàn tác đối soát ngân hàng",
+  "site_content.update": "Sửa nội dung trang chủ",
   "payout_account.update": "Sửa tài khoản nhận tiền", "payout_account.webhook_key_rotate": "Đổi khoá webhook nhận tiền",
   // ADM-001 (01/11/2026) — Tin tức và ẩn / khôi phục học sinh (mục 7.1 đặc tả).
   "article.create": "Tạo bài viết", "article.update": "Sửa bài viết", "article.publish": "Đăng bài viết", "article.unpublish": "Gỡ đăng bài viết (về nháp)", "article.delete": "Xoá bài viết",
@@ -127,7 +128,7 @@ const ACTION_LABEL: Record<string, string> = {
 const RESOURCE_LABEL: Record<string, string> = {
   User: "Người dùng", Course: "Lớp", TutorSubscription: "Gói VIP gia sư", PlanConfig: "Cấu hình gói", ProOrder: "Yêu cầu gói Pro", CoinTopupRequest: "Yêu cầu nạp Coin",
   StudentProfile: "Hồ sơ học sinh", ParentLink: "Liên kết phụ huynh", Invoice: "Phiếu học phí", Enrollment: "Ghi danh", ClassInvite: "Mã mời lớp", ClassSessionChange: "Đổi buổi học",
-  TutorProfileReport: "Báo cáo hồ sơ gia sư", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng",
+  TutorProfileReport: "Báo cáo hồ sơ gia sư", SiteContent: "Nội dung trang công khai", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng",
   // ADM-001 (mục 7.3): resourceType đang được ghi nhưng chưa có nhãn. Giữ `Invoice` cũ; các route thật ghi `TuitionInvoice`.
   Article: "Bài viết", AdmissionScore: "Điểm chuẩn", AdmissionFormula: "Công thức xét tuyển", LibraryVideo: "Video thư viện", ProPayment: "Thanh toán gói Pro",
   ParentConsent: "Đồng ý của phụ huynh", AssignmentSubmission: "Bài nộp", AssignmentAnswer: "Câu trả lời bài tập", Exam: "Đề thi", ExamAttempt: "Lượt thi", ExamAnswer: "Câu trả lời đề thi",

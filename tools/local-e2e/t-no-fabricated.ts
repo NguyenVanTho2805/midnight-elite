@@ -48,8 +48,10 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
     [/24\/7/, "KiN không hỗ trợ 24/7", []],
     [/thứ hạng toàn hệ thống|GPA, streak và/, "không có dashboard GPA/streak realtime", []],
   ];
+  // HOME-02: src/lib/homeContentGuard.ts LÀ danh sách cụm cấm (chặn khi quản trị lưu chữ trang chủ), nên tự nó chứa các cụm này dưới dạng biểu thức chính quy.
+  const GUARD_LISTS = ["src/lib/homeContentGuard.ts"];
   for (const [re, why, allow] of BANNED) {
-    const hit = src.filter(p => !allow.includes(p) && re.test(read(p).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")));
+    const hit = src.filter(p => !allow.includes(p) && !GUARD_LISTS.includes(p) && re.test(read(p).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")));
     check(`không còn ${re.source.slice(0, 40)}${re.source.length > 40 ? "…" : ""} — ${why}`, hit.length === 0, hit);
   }
   // ca phá cố ý (STU-002): bộ quét phải bắt được câu vi phạm, và không bắt nhầm tên biến / câu nói KiN KHÔNG có trợ giảng.
@@ -66,7 +68,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   section("Số liệu trang chủ là số đếm thật");
   const home = read("src/app/page.tsx");
   check("trang chủ đếm từ cơ sở dữ liệu (prisma) và làm mới theo giờ", /prisma\./.test(home) && /export const revalidate = 3600/.test(home));
-  check("số nào bằng 0 thì ẩn, truy vấn lỗi thì ẩn cả khối (không bao giờ hiện số bịa)", /filter\(s => s\.value > 0\)/.test(home) && /catch \{\s*return \[\];/.test(home) && /stats\.length > 0/.test(home));
+  check("số nào bằng 0 thì ẩn, truy vấn lỗi thì ẩn cả khối (không bao giờ hiện số bịa)", /filter\(s => s\.value > 0\)/.test(home) && /catch \{\s*return \[\];/.test(home) && /stats\.length > 0/.test(read("src/components/guest/HomeSections.tsx")));
   check("không còn mảng STATS viết cứng", !/const STATS\s*=/.test(home));
 
   section("Trang chính sách chỉ nói điều kiểm chứng được");
