@@ -10,7 +10,7 @@ import { ModuleRail, type ModuleItem, type NavGroup } from "@/components/kin/she
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
-import { QUEUE_CHANGED } from "@/components/admin/KiemDuyet";
+import { QUEUE_CHANGED } from "@/components/admin/HangCho";
 import { matchSub, visibleModules, type AdminSub } from "@/lib/adminNav";
 import { MAIN_HOST } from "@/lib/hostRouting";
 
