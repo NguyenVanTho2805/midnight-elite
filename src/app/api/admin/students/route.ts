@@ -18,14 +18,19 @@ export async function GET(req: NextRequest) {
   const page  = parseInt(searchParams.get("page")  ?? "0");
   const limit = parseInt(searchParams.get("limit") ?? "0");
   const paginate = page > 0 && limit > 0;
+  // ADM-001: mặc định chỉ trả học sinh đang hiện (deletedAt null); ?includeHidden=1 trả cả bản đã ẩn.
+  const includeHidden = searchParams.get("includeHidden") === "1";
 
   try {
+    // ADM-001 (4.7): findMany LUÔN lấy đủ (kể cả bản ẩn) để SBD — vốn là chỉ số trong danh sách theo createdAt — không đánh số lại
+    // khi một em bị ẩn; lọc bỏ bản ẩn SAU khi đã gán SBD. count/skip/take cũng tính trên danh sách đầy đủ để offset nhất quán
+    // (trang có thể trả ít hơn `limit` dòng). SBD theo chỉ số là điểm yếu có sẵn — nợ P3, không sửa gốc ở đây.
     const [total, users] = await Promise.all([
       paginate ? prisma.user.count({ where: { role: "student" } }) : Promise.resolve(0),
       prisma.user.findMany({
       where: { role: "student" },
       select: {
-        id: true, name: true, email: true, phone: true, school: true, createdAt: true, banned: true,
+        id: true, name: true, email: true, phone: true, school: true, createdAt: true, banned: true, deletedAt: true,
         enrollments: {
           select: {
             courseId: true,
@@ -87,6 +92,7 @@ export async function GET(req: NextRequest) {
         school:      u.school,
         createdAt:   u.createdAt,
         banned:      u.banned,
+        deletedAt:   u.deletedAt, // ADM-001: ISO hoặc null — màn chỉ suy "đã ẩn" từ cột này, không từ `banned`
         enrollments: u.enrollments.map(e => ({ courseId: e.courseId, courseName: e.course.name })),
         gpa,
         completion,
@@ -95,11 +101,13 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    const visible = includeHidden ? result : result.filter(r => r.deletedAt === null);
+
     // Trả kèm pagination metadata khi có params
     if (paginate) {
-      return NextResponse.json({ data: result, total, page, limit, pages: Math.ceil(total / limit) });
+      return NextResponse.json({ data: visible, total, page, limit, pages: Math.ceil(total / limit) });
     }
-    return NextResponse.json(result);
+    return NextResponse.json(visible);
   } catch (e) {
     console.error("[GET /api/admin/students]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -119,7 +127,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Thiếu họ tên hoặc email" }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, deletedAt: true } });
+    if (existing?.deletedAt) {
+      // ADM-001: email thuộc một em đã ẩn → chỉ cho khôi phục, không tạo bản trùng.
+      return NextResponse.json({ error: "Email này thuộc một học sinh đã ẩn. Khôi phục thay vì tạo mới.", code: "hidden_exists" }, { status: 409 });
+    }
     if (existing) return NextResponse.json({ error: "Email đã tồn tại" }, { status: 409 });
 
     // Mật khẩu ngẫu nhiên — không ai biết (kể cả admin); học sinh tự đặt mật khẩu qua email

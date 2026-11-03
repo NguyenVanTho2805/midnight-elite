@@ -135,7 +135,7 @@ const walk = (dir: string, url: string) => {
   }
 };
 walk(root, "/admin");
-const orphan = routes.filter(r => !r.includes("/_template") && !matchSub(r)); // /admin/topups không còn là ngoại lệ (QT-06)
+const orphan = routes.filter(r => !matchSub(r)); // /admin/topups không còn là ngoại lệ (QT-06)
 check(`${routes.length} trang quản trị tìm thấy; trang mới thêm mà quên đưa vào module sẽ làm test này đỏ`, routes.length >= 20 && orphan.length === 0, orphan);
 
 done();

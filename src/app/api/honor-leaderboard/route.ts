@@ -6,7 +6,7 @@ import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/g
 export async function GET() {
   try {
     const students = await prisma.user.findMany({
-      where: { role: "student", enrollments: { some: {} } },
+      where: { role: "student", deletedAt: null, enrollments: { some: {} } },
       select: {
         id:     true,
         name:   true,

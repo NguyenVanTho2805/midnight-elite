@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   try {
     // Chỉ tính điểm của lượt đã công bố / đề không giữ điểm (examHold): điểm tự luận dở dang không vào bảng xếp hạng.
     const results = await dropHeldResults(await prisma.examResult.findMany({
-      where: category ? { exam: { category } } : undefined,
+      where: category ? { exam: { category }, user: { deletedAt: null } } : { user: { deletedAt: null } },
       select: {
         userId: true, examId: true, score: true,
         user: { select: { id: true, name: true, school: true } },

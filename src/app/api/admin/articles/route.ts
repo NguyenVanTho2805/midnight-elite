@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notifyMany } from "@/lib/notify";
 import { cleanArticleSource } from "@/lib/articleSource";
+import { logAction } from "@/lib/auditLog";
 
 export async function GET() {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -31,7 +32,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { title, slug, excerpt, content, category, author, authorId, tag, isPinned, published, readTime } = body;
+    // ADM-001: `authorId` KHÔNG đọc từ body — luôn là người đang đăng nhập (trước đây form không gửi → mọi bài có authorId "").
+    const { title, slug, excerpt, content, category, author, tag, isPinned, published, readTime } = body;
 
     if (!title?.trim() || !slug?.trim() || !excerpt?.trim() || !content?.trim() || !category?.trim()) {
       return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
         content:     content.trim(),
         category:    category.trim(),
         author:      author?.trim() || "Admin",
-        authorId:    authorId ?? "",
+        authorId:    auth.userId,
         tag:         tag?.trim() || null,
         isPinned:    isPinned ?? false,
         published:   published ?? false,
@@ -63,8 +65,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // ADM-001: ghi nhật ký SAU khi ghi DB thành công; bài tạo ở trạng thái đăng ghi thêm article.publish để lọc "Đăng bài viết" thấy đủ.
+    await logAction(auth.userId, "article.create", "Article", article.id, { slug: article.slug, published: article.published });
+    if (article.published) await logAction(auth.userId, "article.publish", "Article", article.id, { slug: article.slug });
+
     if (article.published) {
-      const students = await prisma.user.findMany({ where: { role: "student" }, select: { id: true } });
+      // ADM-001 (4.9a): không tạo thông báo cho học sinh đã ẩn.
+      const students = await prisma.user.findMany({ where: { role: "student", deletedAt: null }, select: { id: true } });
       await notifyMany(students.map(s => s.id), {
         type:    "article_new",
         title:   "Bài viết mới",

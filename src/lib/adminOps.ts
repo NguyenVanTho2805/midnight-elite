@@ -49,12 +49,13 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: cả bốn chạy mỗi ngày (0:00, 0:30 và 1:00 UTC). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: cả năm chạy mỗi ngày (23:30, 0:00, 0:30 và 1:00 UTC). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "expire-tutor-subscriptions", label: "Hết hạn gói VIP gia sư", path: "/api/cron/expire-tutor-subscriptions", schedule: "Mỗi ngày 08:00 giờ VN", maxGapHours: 36 },
   { key: "pro-renewal-reminders", label: "Nhắc gia hạn gói KiN Pro", path: "/api/cron/pro-renewal-reminders", schedule: "Mỗi ngày 07:30 giờ VN", maxGapHours: 36 },
+  { key: "english-voa", label: "Lấy bài VOA Learning English", path: "/api/cron/english-voa", schedule: "Mỗi ngày 06:30 giờ VN", maxGapHours: 36 },
 ];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 
@@ -97,11 +98,41 @@ const ACTION_LABEL: Record<string, string> = {
   "attendance_session.create": "Tạo phiên điểm danh", "attendance_session.update": "Sửa phiên điểm danh", "attendance_session.delete": "Xoá phiên điểm danh",
   "bank_tx.resolve": "Đối soát giao dịch ngân hàng", "bank_tx.reverse": "Hoàn tác đối soát ngân hàng",
   "payout_account.update": "Sửa tài khoản nhận tiền", "payout_account.webhook_key_rotate": "Đổi khoá webhook nhận tiền",
+  // ADM-001 (01/11/2026) — Tin tức và ẩn / khôi phục học sinh (mục 7.1 đặc tả).
+  "article.create": "Tạo bài viết", "article.update": "Sửa bài viết", "article.publish": "Đăng bài viết", "article.unpublish": "Gỡ đăng bài viết (về nháp)", "article.delete": "Xoá bài viết",
+  "student.hide": "Ẩn học sinh", "student.restore": "Khôi phục học sinh đã ẩn",
+  // ADM-001 — mã đang được logAction trong api/admin/** nhưng chưa có nhãn (mục 7.2, bắt buộc). Bài t-adm-001-lib quét nguồn để nhãn không thiếu lại.
+  "admission_score.create": "Thêm dòng điểm chuẩn", "admission_score.update": "Sửa dòng điểm chuẩn", "admission_score.delete": "Xoá dòng điểm chuẩn",
+  "admission_score.import": "Nhập điểm chuẩn hàng loạt", "admission_score.seed": "Nạp điểm chuẩn khởi đầu",
+  "admission_formula.create": "Tạo công thức điểm xét tuyển", "admission_formula.update": "Sửa công thức điểm xét tuyển", "admission_formula.delete": "Xoá công thức điểm xét tuyển",
+  "library_video.create": "Thêm video thư viện", "library_video.update": "Sửa video thư viện", "library_video.delete": "Xoá video thư viện",
+  "pro_payment.resolve": "Đối soát thanh toán gói Pro",
+  // ADM-001 — mã của phòng Gia sư / Học sinh / hệ thống (mục 7.2, chỉ nhãn, không đổi hành vi).
+  "pro_order.activate_sepay": "Kích hoạt gói Pro qua SePay (tự động)", "coin_transaction.tutor_vip_purchase": "Mua gói VIP gia sư bằng Coin", "push.test": "Gửi tin đẩy thử",
+  "assignment_submission.grade": "Chấm bài nộp", "assignment_answer.grade": "Chấm câu trả lời bài tập", "exam_answer.grade": "Chấm câu tự luận đề thi", "exam_attempt.publish": "Công bố điểm lượt thi",
+  "exam_history.export": "Xuất lịch sử làm đề (CSV)", "quiz_deadline.set": "Đặt hạn nộp đề", "quiz_deadline.clear": "Bỏ hạn nộp đề",
+  "attendance_session.close": "Chốt buổi học", "attendance_session.reopen": "Mở lại buổi đã chốt", "attendance_session.create_extra": "Thêm buổi lẻ / dạy bù", "attendance_session.notes": "Ghi chú buổi học",
+  "session_score.update": "Sửa điểm theo buổi", "session_package.create": "Tạo gói buổi học", "session_package.cancel": "Huỷ gói buổi học",
+  "course.calendar": "Sửa lịch lớp", "course.add_students": "Thêm học viên vào lớp (gia sư)", "class.zalo_group": "Đặt nhóm Zalo của lớp", "class_schedule.import": "Nhập lịch lớp từ tệp",
+  "course_fee.set_rate": "Đặt mức phí lớp", "course_fee.set_student_rate": "Đặt mức phí riêng cho học viên", "course_fee.extra_add": "Thêm khoản thu phát sinh", "course_fee.extra_remove": "Gỡ khoản thu phát sinh",
+  "monthly_course_fee.upsert": "Ghi học phí tháng của lớp", "student_discount.set": "Đặt mức giảm cho học viên",
+  "invoice.send": "Gửi phiếu học phí", "invoice.set_amount": "Sửa số tiền phiếu", "invoice.set_due_date": "Đổi hạn phiếu", "invoice.attach_charges": "Gắn khoản thu vào phiếu",
+  "invoice.zalo_opened": "Mở gửi phiếu qua Zalo", "invoice.view_link_issue": "Cấp liên kết xem phiếu", "invoice.late_fee_hint": "Bật/tắt nhắc phí trễ",
+  "enrollment.mark_left": "Đánh dấu học viên nghỉ lớp", "enrollment.mark_back": "Đánh dấu học viên học lại",
+  "student_field.create": "Tạo trường hồ sơ tuỳ chỉnh", "student_field.delete": "Xoá trường hồ sơ tuỳ chỉnh",
+  "family_group.create": "Tạo nhóm gia đình", "family_group.update": "Sửa nhóm gia đình", "family_group.delete": "Xoá nhóm gia đình",
+  "tutor_request.create": "Gửi yêu cầu tới gia sư", "tutor_request.accept": "Gia sư tiếp nhận yêu cầu", "tutor_request.decline": "Gia sư từ chối yêu cầu", "tutor_request.withdraw": "Rút yêu cầu tới gia sư",
+  "parent_link.portal_token.enable": "Bật liên kết sổ phụ huynh", "parent_link.portal_token.rotate": "Đổi liên kết sổ phụ huynh", "parent_link.portal_token.revoke": "Thu hồi liên kết sổ phụ huynh",
 };
 const RESOURCE_LABEL: Record<string, string> = {
   User: "Người dùng", Course: "Lớp", TutorSubscription: "Gói VIP gia sư", PlanConfig: "Cấu hình gói", ProOrder: "Yêu cầu gói Pro", CoinTopupRequest: "Yêu cầu nạp Coin",
   StudentProfile: "Hồ sơ học sinh", ParentLink: "Liên kết phụ huynh", Invoice: "Phiếu học phí", Enrollment: "Ghi danh", ClassInvite: "Mã mời lớp", ClassSessionChange: "Đổi buổi học",
   TutorProfileReport: "Báo cáo hồ sơ gia sư", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng",
+  // ADM-001 (mục 7.3): resourceType đang được ghi nhưng chưa có nhãn. Giữ `Invoice` cũ; các route thật ghi `TuitionInvoice`.
+  Article: "Bài viết", AdmissionScore: "Điểm chuẩn", AdmissionFormula: "Công thức xét tuyển", LibraryVideo: "Video thư viện", ProPayment: "Thanh toán gói Pro",
+  ParentConsent: "Đồng ý của phụ huynh", AssignmentSubmission: "Bài nộp", AssignmentAnswer: "Câu trả lời bài tập", Exam: "Đề thi", ExamAttempt: "Lượt thi", ExamAnswer: "Câu trả lời đề thi",
+  ClassSchedule: "Lịch lớp", FamilyGroup: "Nhóm gia đình", MonthlyCourseFee: "Học phí tháng", SessionPackage: "Gói buổi học", StudentDiscount: "Mức giảm học viên",
+  StudentFieldDef: "Trường hồ sơ tuỳ chỉnh", TuitionInvoice: "Phiếu học phí", TutorPayoutAccount: "Tài khoản nhận tiền", TutorRequest: "Yêu cầu tới gia sư",
 };
 export function auditActionLabel(action: string): string {
   if (ACTION_LABEL[action]) return ACTION_LABEL[action];

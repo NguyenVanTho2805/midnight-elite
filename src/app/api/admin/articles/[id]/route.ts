@@ -4,6 +4,11 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { notifyMany } from "@/lib/notify";
 import { cleanArticleSource } from "@/lib/articleSource";
+import { logAction } from "@/lib/auditLog";
+
+// ADM-001: các trường "nội dung" được phép sửa qua PATCH — dùng để ghi `article.update` kèm tên trường đã gửi.
+// `authorId` cố ý KHÔNG có ở đây và không bao giờ được spread vào `data`: tác giả là người tạo bài, không đổi qua body.
+const UPDATABLE_FIELDS = ["title", "slug", "excerpt", "content", "category", "author", "tag", "isPinned", "readTime", "sourceUrl", "sourceName", "coverImage"] as const;
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -69,8 +74,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     });
 
+    // ADM-001: nhật ký sau khi update thành công. Chỉ gửi { published } → đúng MỘT dòng publish/unpublish, không có dòng update.
+    const fields = UPDATABLE_FIELDS.filter(k => body[k] !== undefined);
+    if (fields.length > 0) await logAction(auth.userId, "article.update", "Article", updated.id, { slug: updated.slug, fields });
+    if (!wasPublished && willPublish) await logAction(auth.userId, "article.publish", "Article", updated.id, { slug: updated.slug });
+    else if (wasPublished && body.published === false) await logAction(auth.userId, "article.unpublish", "Article", updated.id, { slug: updated.slug });
+
     if (!wasPublished && willPublish) {
-      const students = await prisma.user.findMany({ where: { role: "student" }, select: { id: true } });
+      // ADM-001 (4.9a): không tạo thông báo cho học sinh đã ẩn.
+      const students = await prisma.user.findMany({ where: { role: "student", deletedAt: null }, select: { id: true } });
       await notifyMany(students.map(s => s.id), {
         type:    "article_new",
         title:   "Bài viết mới",
@@ -92,9 +104,17 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   try {
+    // ADM-001: đọc trước để nhật ký giữ được slug/title của bài đã xoá (bài viết vẫn xoá cứng — không có bản ghi con, tạo lại được).
+    const existing = await prisma.article.findUnique({ where: { id }, select: { id: true, slug: true, title: true } });
+    if (!existing) return NextResponse.json({ error: "Không tìm thấy bài viết" }, { status: 404 });
     await prisma.article.delete({ where: { id } });
+    await logAction(auth.userId, "article.delete", "Article", existing.id, { slug: existing.slug, title: existing.title });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Không tìm thấy bài viết" }, { status: 404 });
+  } catch (e: unknown) {
+    if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2025") {
+      return NextResponse.json({ error: "Không tìm thấy bài viết" }, { status: 404 });
+    }
+    console.error("[articles/DELETE]", e);
+    return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
   }
 }
