@@ -371,7 +371,11 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
       const exit = await p.locator('a[href="/student/thi-thu"]:visible').count();
       check(`phòng thi — ${what}: không có thanh module (đúng thiết kế) nhưng có lối "← Về danh sách đề thi"`, !r.shell && exit > 0, { shell: r.shell, exit });
       if (exit > 0) {
-        await p.locator('a[href="/student/thi-thu"]:visible').first().click(); await settle(p);
+        await p.locator('a[href="/student/thi-thu"]:visible').first().click();
+        // /student/thi-thu chỉ là bí danh chuyển hướng phía máy chủ (→ /thi-thu) và đây là chuyển trang PHÍA TRÌNH DUYỆT: `waitForLoadState` trả về ngay vì tài liệu đã nạp xong,
+        // còn `settle` thấy URL đứng yên ~0,7 giây thì dừng — mà chuyển hướng mất ~1 giây ⇒ đỏ giả (đo riêng 3/3 lần đều tới /thi-thu sau ~1,1 giây). Đợi đích thật trước.
+        await p.waitForURL(u => u.pathname === "/thi-thu", { timeout: 20000 }).catch(() => {});
+        await settle(p);
         check(`bấm lối đó → danh sách đề thi, trong khung học sinh`, new URL(p.url()).pathname === "/thi-thu" && (await p.evaluate(SHELL_OF).catch(() => "")) === SHELL_STUDENT, p.url());
       }
     }

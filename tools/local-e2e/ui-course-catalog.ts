@@ -21,10 +21,14 @@ import { prisma } from "@/lib/prisma";
 
   await launch();
   const errors: string[] = [];
+  // Cảnh báo React "Cannot update a component (Router) while rendering…" (replaceState trong hàm cập nhật state) — console.error, không phải pageerror.
+  const reactWarns: string[] = [];
+  const watchConsole = (p: { on: (ev: "console", cb: (m: { type(): string; text(): string }) => void) => unknown }) =>
+    p.on("console", m => { if (m.type() === "error" && /Cannot update a component|while rendering a different component/i.test(m.text())) reactWarns.push(m.text().slice(0, 200)); });
 
   section("1280 — khách");
   const ctx = await ctxFor(null, { width: 1280, height: 800 });
-  const pg = await ctx.newPage(); pg.on("pageerror", (e: unknown) => errors.push(String(e)));
+  const pg = await ctx.newPage(); pg.on("pageerror", (e: unknown) => errors.push(String(e))); watchConsole(pg);
   await pg.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.locator("[data-course-card]").first().waitFor({ timeout: 60000 });
   check("4 thẻ", (await pg.locator("[data-course-card]").count()) === 4);
@@ -83,6 +87,7 @@ import { prisma } from "@/lib/prisma";
   check("thẻ lớp đang học có 'Vào học' → /student/hoc-tap?course=", (await sp.locator(`[data-course-card="${b.id}"]`).getByRole("link", { name: /Vào học/ }).getAttribute("href"))?.includes(`/student/hoc-tap?course=${b.id}`) === true);
 
   check("không lỗi JS trang", errors.length === 0, errors.slice(0, 3));
+  check("gõ tìm / chọn chip / đổi lọc không gây cảnh báo React 'cập nhật Router khi đang dựng' (replaceState ngoài hàm cập nhật state)", reactWarns.length === 0, reactWarns.slice(0, 2));
   await closeAll();
   await done();
 })();
