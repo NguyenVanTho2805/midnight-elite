@@ -5,8 +5,10 @@ import { required, type FieldRule } from "@/lib/fieldRules";
 import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 import { CITY_MAX, CREDENTIAL_MAX, DISTRICT_MAX, MODE_LABEL, TEACHING_MODES, priceText as fmtPrice, type TeachingMode, type TutorTeaching } from "@/lib/tutorArea";
+import { isValidCover, parseIntroVideoInput } from "@/lib/tutorSearchMedia"; // hàm thuần, không kéo Prisma vào gói trình duyệt
 
 const BIO_MAX = 2000, SUBJECTS_MAX = 10, SUBJECT_LEN = 50;
+const COVER_FILE_MAX_BYTES = 10 * 1024 * 1024; // tệp ảnh bìa gốc tối đa 10 MB (trước khi thu nhỏ)
 // Chính tả KHỚP form đăng ký gia sư (dang-ky/page.tsx: "Hóa học", "Kỹ năng mềm"). Gia sư đăng ký bằng "Hóa học" mà gợi ý ghi "Hoá học" thì hồ sơ hiện hai môn trùng nhau.
 // ĐX-06: chỉ là GỢI Ý khi gõ Tỉnh/Thành (không bắt buộc chọn trong danh sách); tên khác vẫn nhận, "TP.HCM" / "Sài Gòn" được KiN thống nhất khi lưu.
 const CITY_SUGGEST = ["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ", "Huế"];
@@ -21,12 +23,40 @@ async function toAvatarDataUrl(file: File): Promise<string> {
   return c.toDataURL("image/jpeg", 0.85);
 }
 
-export default function TutorProfileForm({ initialBio, initialSubjects, initialCity, initialTeaching }: {
+// BU-06b: ảnh bìa hiện ở hồ sơ công khai theo khung 16:9 → cắt giữa về 960×540, giảm chất lượng JPEG tới khi vừa giới hạn máy chủ (≤ 250 000 ký tự data URL). Không vừa → null.
+async function toCoverDataUrl(file: File): Promise<string | null> {
+  const bmp = await createImageBitmap(file);
+  const W = 960, H = 540;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d")!;
+  // BU-06b rà soát: PNG nền trong suốt mà đổi sang JPEG thì nền thành ĐEN → tô nền trắng trước (từ khoá màu, không phải mã hex).
+  g.fillStyle = "white"; g.fillRect(0, 0, W, H);
+  const s = Math.max(W / bmp.width, H / bmp.height);
+  const dw = bmp.width * s, dh = bmp.height * s;
+  g.drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  bmp.close(); // trả bộ nhớ của ảnh gốc ngay (ảnh hàng chục nghìn pixel mỗi chiều có thể tốn cả GB)
+  for (const q of [0.85, 0.75, 0.65, 0.55, 0.45, 0.35, 0.25]) {
+    const url = c.toDataURL("image/jpeg", q);
+    if (isValidCover(url)) return url;
+  }
+  return null;
+}
+
+export default function TutorProfileForm({ initialBio, initialSubjects, initialCity, initialTeaching, initialCover = null, initialVideo = "" }: {
   initialBio: string; initialSubjects: string[];
   /** ĐX-06: Tỉnh/Thành (users.city) và mục khu vực / hình thức đã lưu (null = chưa khai). */
   initialCity: string; initialTeaching: TutorTeaching | null;
+  /** BU-06b: ảnh bìa (data URL đã kiểm) và link video YouTube (dạng chuẩn) đã lưu. */
+  initialCover?: string | null; initialVideo?: string;
 }) {
   const notify = useNotify();
+  const [cover, setCover] = useState<string | null>(initialCover);
+  const [coverDirty, setCoverDirty] = useState(false); // chỉ gửi ảnh bìa lên máy chủ khi gia sư vừa đổi/gỡ (ảnh nặng ~vài trăm KB)
+  const [coverBusy, setCoverBusy] = useState(false);
+  const coverNow = useRef<string | null>(initialCover); // ảnh bìa MỚI NHẤT trên màn (đọc được sau khi await, không bị closure cũ)
+  const [video, setVideo] = useState(initialVideo);
+  const [videoErr, setVideoErr] = useState("");
+  const coverRef = useRef<HTMLInputElement>(null);
   const [bio, setBio] = useState(initialBio);
   const [city, setCity] = useState(initialCity);
   const [district, setDistrict] = useState(initialTeaching?.district ?? "");
@@ -72,10 +102,37 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
     const priceNum = price ? Number(price) : null;
     const empty = !city.trim() && !district.trim() && !mode && !credential.trim() && !price && !showPrice;
     const teaching = empty ? null : { district: district.trim() || null, mode: mode || null, credential: credential.trim() || null, price: priceNum, showPrice };
+    // BU-06b: kiểm link YouTube ngay ở trình duyệt (máy chủ kiểm lại); nhập sai thì dừng, không lưu nửa vời.
+    const vid = parseIntroVideoInput(video);
+    if (!vid.ok) { setVideoErr(vid.error); document.getElementById("video-url")?.focus(); return; }
+    setVideoErr("");
     setSaving(true);
-    const r = await callApi<{ error?: string }>("/api/users/me/tutor-profile", { method: "PUT", body: JSON.stringify({ bio, subjects, city: city.trim() || null, teaching }) });
+    const sentCover = cover; // ảnh bìa thực sự được gửi lần này (nếu có thay đổi)
+    const r = await callApi<{ error?: string; introVideoUrl?: string | null }>("/api/users/me/tutor-profile", { method: "PUT", body: JSON.stringify({
+      bio, subjects, city: city.trim() || null, teaching,
+      introVideoUrl: video.trim() || null,
+      ...(coverDirty ? { coverUrl: sentCover } : {}),
+    }) });
     setSaving(false);
-    if (r.ok) notify.ok("Đã lưu hồ sơ."); else notify.err(r.data.error ?? "Không lưu được hồ sơ");
+    if (r.ok) {
+      // BU-06b rà soát: chỉ xoá cờ "đã đổi" khi ảnh bìa trên màn VẪN là ảnh vừa gửi — gia sư bấm "Gỡ ảnh bìa"/chọn ảnh khác trong lúc đang lưu thì giữ cờ để lần Lưu sau áp dụng.
+      if (coverNow.current === sentCover) setCoverDirty(false);
+      setVideo(r.data.introVideoUrl ?? ""); notify.ok("Đã lưu hồ sơ.");
+    } else notify.err(r.data.error ?? "Không lưu được hồ sơ");
+  }
+
+  async function onCover(f: File | undefined) {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { notify.err("Hãy chọn một tệp ảnh"); return; }
+    // BU-06b rà soát: chặn tệp quá nặng TRƯỚC khi giải mã (một PNG 20000×20000 chỉ ~400 KB nhưng giải mã tốn ~1,6 GB RAM, có thể sập tab trên điện thoại).
+    if (f.size > COVER_FILE_MAX_BYTES) { notify.err("Tệp ảnh quá lớn (tối đa 10 MB). Hãy chọn ảnh nhỏ hơn."); if (coverRef.current) coverRef.current.value = ""; return; }
+    setCoverBusy(true);
+    try {
+      const url = await toCoverDataUrl(f);
+      if (!url) notify.err("Ảnh này nặng quá, hãy chọn ảnh khác (JPG/PNG/WebP, dưới 250 KB sau khi thu nhỏ)");
+      else { coverNow.current = url; setCover(url); setCoverDirty(true); }
+    } catch { notify.err("Không đọc được ảnh này"); }
+    finally { setCoverBusy(false); if (coverRef.current) coverRef.current.value = ""; }
   }
 
   async function onFile(f: File | undefined) {
@@ -102,6 +159,38 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
           <p className="text-xs mb-2" style={{ color: "var(--kin-chu-phu)" }}>Ảnh vuông, hiện trên hồ sơ công khai của bạn.</p>
           <input ref={fileRef} id="avatar-file" type="file" accept="image/*" className="sr-only" onChange={e => onFile(e.target.files?.[0])} />
           <KinButton variant="secondary" loading={avatarBusy} onClick={() => fileRef.current?.click()}>Chọn ảnh</KinButton>
+        </div>
+      </section>
+
+      {/* BU-06b: ảnh bìa + video giới thiệu trên hồ sơ công khai. Tự khai, KiN không kiểm nội dung → nhắc rõ KHÔNG đăng ảnh/video có học sinh (trẻ em). */}
+      <section className="rounded-xl p-5 space-y-4" style={CARD_STYLE} aria-labelledby="h-bia">
+        <div>
+          <h2 id="h-bia" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Ảnh bìa và video giới thiệu</h2>
+          <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Tuỳ chọn. Hiện ở đầu hồ sơ công khai của bạn. KiN không kiểm nội dung ảnh và video.</p>
+          <p className="text-sm font-semibold mt-2" style={{ color: "var(--kin-chu-chinh)" }} data-testid="luu-y-hoc-sinh">Không đăng ảnh/video có học sinh.</p>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Ảnh bìa</p>
+          {cover
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={cover} alt="Ảnh bìa hiện tại" className="w-full aspect-video object-cover rounded-lg mb-2" style={{ border: "1px solid var(--kin-vien-thuong)" }} data-testid="anh-bia-xem-truoc" />
+            : <div className="w-full aspect-[16/6] rounded-lg mb-2 flex items-center justify-center text-sm" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px dashed var(--kin-vien-thuong)" }}>Chưa có ảnh bìa — hồ sơ dùng ảnh đại diện</div>}
+          <input ref={coverRef} id="cover-file" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Chọn ảnh bìa" onChange={e => onCover(e.target.files?.[0])} />
+          <div className="flex flex-wrap gap-2">
+            <KinButton variant="secondary" loading={coverBusy} onClick={() => coverRef.current?.click()}>{cover ? "Đổi ảnh bìa" : "Chọn ảnh bìa"}</KinButton>
+            {cover && <KinButton variant="secondary" onClick={() => { coverNow.current = null; setCover(null); setCoverDirty(true); }}>Gỡ ảnh bìa</KinButton>}
+          </div>
+          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>JPG, PNG hoặc WebP; KiN tự thu nhỏ về khung 16:9, tối đa 250 KB. Bấm “Lưu hồ sơ” để áp dụng.</p>
+        </div>
+
+        <div>
+          <label htmlFor="video-url" className="block text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Link video giới thiệu (YouTube)</label>
+          <input id="video-url" value={video} maxLength={200} inputMode="url" autoComplete="off" placeholder="https://www.youtube.com/watch?v=…" className="w-full px-3 py-2 rounded-lg min-h-[44px]"
+            style={{ ...FIELD_STYLE, ...(videoErr ? { border: "2px solid var(--kin-tt-chu-loi)" } : {}) }} aria-invalid={videoErr ? true : undefined} aria-describedby={videoErr ? "video-err" : undefined}
+            onChange={e => { setVideo(e.target.value); if (videoErr) setVideoErr(""); }} />
+          {videoErr && <p id="video-err" role="alert" className="text-sm mt-1" style={{ color: "var(--kin-tt-chu-loi)" }}>{videoErr}</p>}
+          <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>Chỉ nhận link YouTube (youtube.com hoặc youtu.be). Để trống để gỡ video.</p>
         </div>
       </section>
 
@@ -196,7 +285,8 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
         </div>
       </section>
 
-      <KinButton size="lg" onClick={save} loading={saving}>Lưu hồ sơ</KinButton>
+      {/* BU-06b rà soát: khoá Lưu khi ảnh bìa còn đang thu nhỏ — nếu không "Đã lưu hồ sơ." hiện ra mà ảnh mới chưa được gửi. */}
+      <KinButton size="lg" onClick={save} loading={saving} disabled={coverBusy}>Lưu hồ sơ</KinButton>
     </div>
   );
 }

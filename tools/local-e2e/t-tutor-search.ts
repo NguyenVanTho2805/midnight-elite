@@ -278,9 +278,67 @@ const B64 = "A".repeat(400);
   const gr = await form(`/api/courses/${RATED.id}/join`, SA);
   check("lớp open nhưng có đơn giá ⇒ ?join=chi-ma (đúng như API báo 'invite_only')", gr.status === 303 && /join=chi-ma/.test(loc(gr)), loc(gr));
 
-  // ── (10) Ghi coverUrl/introVideoUrl: CHƯA có (cần BU-06b) ────────────────────────────────────
+  // ── (10) Ghi coverUrl/introVideoUrl (BU-06b) ─────────────────────────────────────────────────
   section("(10) Ghi bìa/video qua PUT /api/users/me/tutor-profile");
-  console.log("  (bỏ qua: route thuộc phòng Gia sư, chờ phiếu BU-06b; hàm kiểm nằm ở src/lib/tutorSearchMedia.ts và đã có test thuần)");
+  const W = bulk[3]; // gia sư đã duyệt, chưa có bìa/video
+  const put = (as: TUser | undefined, body: unknown) => api("PUT", "/api/users/me/tutor-profile", { as, body });
+  const rowOf = (id: string) => prisma.user.findUnique({ where: { id }, select: { coverUrl: true, introVideoUrl: true, bio: true } });
+  const goodCover = `data:image/png;base64,${B64}`;
+
+  const w1 = await put(W, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/dQw4w9WgXcQ?si=abc&t=9" });
+  check("gia sư ghi bìa + video hợp lệ ⇒ 200", w1.status === 200, w1.json);
+  check("DB: bìa lưu nguyên; video lưu dạng CHUẨN do máy chủ dựng (không lưu chữ gõ, không '?si=')", (await rowOf(W.id))?.coverUrl === goodCover && (await rowOf(W.id))?.introVideoUrl === "https://www.youtube.com/watch?v=dQw4w9WgXcQ", await rowOf(W.id));
+  check("phản hồi trả bìa + link chuẩn, không trả chữ gõ thô", w1.json?.coverUrl === goodCover && w1.json?.introVideoUrl === "https://www.youtube.com/watch?v=dQw4w9WgXcQ" && !/si=abc/.test(w1.text), w1.json);
+  check("GET hồ sơ của chính mình trả lại bìa + video (để form điền sẵn)", (await api("GET", "/api/users/me/tutor-profile", { as: W })).json?.coverUrl === goodCover);
+  const pubW = (await api("GET", `/api/tutors/${W.id}`)).json?.tutor;
+  check("hồ sơ công khai /api/tutors/[id] hiện bìa + video nhúng nocookie", pubW?.coverUrl === goodCover && pubW?.introVideo?.embedUrl === "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", pubW);
+
+  // Kẻ tấn công: giá trị xấu ⇒ 400, và KHÔNG ghi gì (cột giữ nguyên)
+  const before = await rowOf(W.id);
+  const badCovers: [string, unknown][] = [["svg", `data:image/svg+xml;base64,${B64}`], ["html", `data:text/html;base64,${B64}`], ["gif", `data:image/gif;base64,${B64}`], ["https ngoài", "https://evil.test/a.jpg"], ["javascript:", "javascript:alert(1)"],
+    ["base64 hỏng", "data:image/png;base64,@@@"], ["base64 lệch 4", "data:image/png;base64,AAAAA"], ["quá 250 000 ký tự", `data:image/jpeg;base64,${"A".repeat(250_000)}`], ["số", 123], ["mảng", [goodCover]], ["đối tượng", { url: goodCover }]];
+  for (const [n, v] of badCovers) {
+    const r = await put(W, { coverUrl: v });
+    check(`bìa xấu (${n}) ⇒ 400`, r.status === 400, r.status);
+  }
+  const badVideos: [string, unknown][] = [["tên miền giả", "https://youtube.com.xau.vn/watch?v=dQw4w9WgXcQ"], ["javascript:", "javascript:alert(1)"], ["vimeo", "https://vimeo.com/123"], ["@ lừa tên miền", "https://www.youtube.com@evil.test/watch?v=dQw4w9WgXcQ"], ["iframe HTML", "<iframe src=\"https://evil.test\"></iframe>"], ["số", 5], ["mã thiếu 1 ký tự", "dQw4w9WgXc"]];
+  for (const [n, v] of badVideos) {
+    const r = await put(W, { introVideoUrl: v });
+    check(`video xấu (${n}) ⇒ 400`, r.status === 400, r.status);
+  }
+  const after = await rowOf(W.id);
+  check("sau 18 lần gửi xấu: bìa + video trong DB KHÔNG đổi", after?.coverUrl === before?.coverUrl && after?.introVideoUrl === before?.introVideoUrl, after);
+
+  // undefined = giữ nguyên; null / rỗng = xoá
+  const keep = await put(W, { bio: "Chỉ đổi giới thiệu." });
+  check("PUT chỉ có bio ⇒ giữ nguyên bìa + video", keep.status === 200 && (await rowOf(W.id))?.coverUrl === goodCover && (await rowOf(W.id))?.introVideoUrl === before?.introVideoUrl && (await rowOf(W.id))?.bio === "Chỉ đổi giới thiệu.");
+  const clearV = await put(W, { introVideoUrl: "   " });
+  check("video rỗng ⇒ xoá video, bìa giữ", clearV.status === 200 && (await rowOf(W.id))?.introVideoUrl === null && (await rowOf(W.id))?.coverUrl === goodCover);
+  const clearC = await put(W, { coverUrl: null });
+  check("bìa null ⇒ xoá bìa", clearC.status === 200 && (await rowOf(W.id))?.coverUrl === null);
+  // Biên: phần base64 phải dài chia hết cho 4 nên với tiền tố jpeg (23 ký tự) lớn nhất hợp lệ là 249 999; thêm một khối 4 ký tự là 250 003 > 250 000.
+  const edge = `data:image/jpeg;base64,${"A".repeat(249_976)}`, over = `data:image/jpeg;base64,${"A".repeat(249_980)}`;
+  check("bìa 249 999 ký tự (lớn nhất hợp lệ) ⇒ nhận", edge.length === 249_999 && (await put(W, { coverUrl: edge })).status === 200);
+  check("bìa 250 003 ký tự (vượt biên) ⇒ 400", over.length === 250_003 && (await put(W, { coverUrl: over })).status === 400);
+  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: null, introVideoUrl: null } });
+
+  // Quyền: học sinh / khách không ghi được; gia sư không ghi hộ người khác; gia sư chờ duyệt ghi được nhưng chưa ra công khai
+  const rs = await put(S1, { coverUrl: goodCover });
+  check("học sinh PUT ⇒ 403 và KHÔNG ghi", rs.status === 403 && (await rowOf(S1.id))?.coverUrl === null, rs.status);
+  check("khách PUT ⇒ 401", (await put(undefined, { coverUrl: goodCover })).status === 401);
+  const rBefore = await rowOf(R.id); // R có video từ mục (8); cả bìa lẫn video của R đều phải đứng yên
+  const other = await put(W, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/AAAAAAAAAAA", userId: R.id, id: R.id });
+  check("thân có userId/id của người khác ⇒ bị bỏ qua: chỉ ghi vào chính mình (cả bìa lẫn video; hàng của R không đổi một byte)", other.status === 200 && (await rowOf(W.id))?.coverUrl === goodCover
+    && (await rowOf(W.id))?.introVideoUrl === "https://www.youtube.com/watch?v=AAAAAAAAAAA" && JSON.stringify(await rowOf(R.id)) === JSON.stringify(rBefore), { other: other.status, r: await rowOf(R.id), rBefore });
+  // BU-06b rà soát: DB có giá trị hỏng (ghi tay / dữ liệu cũ) thì GET hồ sơ của CHÍNH MÌNH cũng không được trả ra — chỉ /api/tutors/[id] từng được kiểm.
+  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: "javascript:alert(1)", introVideoUrl: "https://evil.test/watch?v=dQw4w9WgXcQ" } });
+  const own = await api("GET", "/api/users/me/tutor-profile", { as: W });
+  check("DB hỏng: GET hồ sơ của chính mình trả bìa = null, video = null, không lọt chữ hỏng", own.status === 200 && own.json?.coverUrl === null && own.json?.introVideoUrl === null && !/javascript:|evil\.test/.test(own.text), own.json);
+  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: goodCover, introVideoUrl: null } });
+  const pn = await put(NV, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/dQw4w9WgXcQ" });
+  check("gia sư chưa duyệt ghi được (sửa trước khi nộp lại)", pn.status === 200, pn.status);
+  check("…nhưng hồ sơ chưa duyệt KHÔNG ra công khai", (await api("GET", `/api/tutors/${NV.id}`)).status === 404);
+  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: null, introVideoUrl: null } });
 
   // ── (11) Kẻ tấn công: tham số cực đoan ở cả ba API (BU-06 rà bổ sung) ─────────────────────────
   section("(11) Tham số cực đoan: không 500, không rò ẩn/PII");
