@@ -14,7 +14,7 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | BU-04 | STU | Phòng thi một cột | claude/bu-04-phong-thi | #108 | cho-gop-pr | Figma 606:6; sau BU-03 · xếp chồng #107; ghép sẵn #94 ở nhánh -gop-94; múi giờ còn mở |
 | BU-06 | STU | Tìm gia sư kiểu sàn | claude/bu-06-tim-gia-su | #105 | cho-gop-pr | Sau BU-01 · xếp chồng #103; BU-06b = #109 |
 | BU-06b | STU+TUT | Gia sư ghi ảnh bìa + video giới thiệu (PUT tutor-profile) | claude/bu-06b-anh-bia-video | #109 | cho-gop-pr | xếp chồng #105; ảnh bìa data URL ≤250 000 ký tự |
-| BU-08 | ADM | Quản trị gọn 4 module | claude/bu-08-quan-tri | (03/11) | cho-gop-pr | Figma 606:7; cuối cùng · gộp cuối cùng; D2 chưa làm |
+| BU-08 | ADM | Quản trị gọn 4 module | claude/bu-08-quan-tri | #110 | cho-gop-pr | Figma 606:7; cuối cùng · gộp cuối cùng; D2 chưa làm |
 | STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | claude/stu-s1 | | dang-lam | S · giao 01/11 · từ báo cáo điểm yếu mục 4 |
 | STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | claude/stu-s1 | | dang-lam | S · giao 01/11 · chủ xem câu chữ |
 | ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | claude/adm-s1 | | dang-lam | S · giao 01/11 |
