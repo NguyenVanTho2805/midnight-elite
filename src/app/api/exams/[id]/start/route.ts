@@ -5,7 +5,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { examPasswordPatch, hasExamPassword, verifyExamPassword } from "@/lib/examPassword";
-import { getMaxAttempts } from "@/lib/quizPublication";
+import { loadEffectivePolicy } from "@/lib/quizPublication";
 import { attemptsGate } from "@/lib/quizRoom";
 import { DEADLINE_PASSED_MESSAGE, canStartByDeadline } from "@/lib/quizDeadline";
 import { getOwnDeadline } from "@/lib/quizDeadlineServer";
@@ -171,7 +171,9 @@ export async function POST(
 
       const totalPoints = questionsOfPicked.reduce((sum, q) => sum + q.points, 0);
       const minutes = parseDurationMinutes(exam.duration);
-      const maxAttempts = await getMaxAttempts(examId);
+      // STU-001: số lượt HIỆU LỰC — đề thi thử công khai chưa cài gì → KiN áp 2 lượt (chặn dò đáp án rồi thi lại đẩy điểm lên bảng xếp hạng).
+      // BU-04: `exam` là đề GỐC; chính sách đọc theo gốc, lượt đếm theo cả nhóm mã đề (giao dịch bên dưới đếm lại dưới khoá).
+      const maxAttempts = (await loadEffectivePolicy(exam, session.userId, { examIds: group.ids })).maxAttempts;
       const windowClosesAt = mode === "test" ? win.closesAt : null;
 
       // Xáo thứ tự câu hỏi + đáp án riêng cho lượt này, cố định suốt attempt

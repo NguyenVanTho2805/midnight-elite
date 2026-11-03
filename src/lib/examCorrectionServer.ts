@@ -1,15 +1,17 @@
 // NV-188 — Chữa bài (phần chạm DB). Quy tắc thuần ở examCorrection.ts.
 //
 // Bất biến an toàn (có test):
-//  • Chỉ chủ lượt thi, chỉ lượt đã nộp, chỉ khi đề cho xem đáp án và KHÔNG bật hideAnswerForWrong.
+//  • Chỉ chủ lượt thi, chỉ lượt đã nộp, chỉ khi chính sách HIỆU LỰC của đề (STU-001, examPolicy.ts) cho xem đáp án và KHÔNG ẩn đáp án câu sai —
+//    đề thi thử công khai chưa cài → chưa chữa bài tới khi em hết lượt hoặc đề hết hạn.
 //  • Chỉ câu MC / điền ngắn mà học sinh đã làm SAI hoặc bỏ trống trong bài thi.
 //  • Đáp án và lời giải CHỈ có trong phản hồi khi câu đã xong (đúng hoặc đã xem đáp án); gợi ý CHỈ lộ ở bước 2.
 //  • Không bao giờ ghi vào ExamAttempt.score / ExamAnswer: chữa bài chỉ để học.
 //  • Mọi thao tác trên một (lượt × câu) khoá bằng advisory lock; hai lần bấm cùng lúc không đếm đôi lượt nộp.
 import { prisma } from "@/lib/prisma";
-import { loadPublishState } from "@/lib/quizPublication";
+import { loadEffectivePolicy, loadPublishState } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
-import { hasExamWindowEnded, loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
+import { loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
+import type { EffectiveExamPolicy } from "@/lib/examPolicy";
 import {
   EMPTY_CORRECTION, REFLECTION_MAX, SHORT_ANSWER_MAX, afterReveal, afterSubmit, canReveal, correctionState, hintVisible,
   isCorrectableType, isFinished, multiAnswerCorrect, normalizePickedIds, reflectionAllowed, shortAnswerCorrect, type CorrectionRow, type CorrectionState,
@@ -66,10 +68,9 @@ async function loadOrdered(examId: string, attempt: { questionOrder: unknown; op
   return orderQuestionsAndOptionsFull(examQuestions, attempt);
 }
 
-/** Cho review: đề cho phép chữa bài không (không phụ thuộc bài làm). */
-export function correctionAllowedByExam(exam: { answerVisibility: string; hideAnswerForWrong: boolean; date: string; time: string; duration: string }): boolean {
-  const canSee = exam.answerVisibility === "after_submit" ? true : exam.answerVisibility === "after_exam_ends" ? hasExamWindowEnded(exam) : false;
-  return canSee && !exam.hideAnswerForWrong;
+/** Cho review: đề cho phép chữa bài không — theo chính sách HIỆU LỰC (loadEffectivePolicy), không đọc thẳng cột của đề. */
+export function correctionAllowedByExam(policy: Pick<EffectiveExamPolicy, "canSeeAnswers" | "hideAnswerForWrong">): boolean {
+  return policy.canSeeAnswers && !policy.hideAnswerForWrong;
 }
 
 /** Học sinh làm sai/bỏ trống câu này trong bài thi? Chỉ xét MC, nhiều đáp án và điền ngắn. */
@@ -103,7 +104,7 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
   if (vis.pendingManual) {
     return { ok: true, ctx: { attemptId, available: false, reason: "Cô chưa công bố điểm bài này nên chưa chữa bài được.", questions: [], rows: new Map() } };
   }
-  if (!correctionAllowedByExam(exam)) {
+  if (!correctionAllowedByExam(await loadEffectivePolicy(exam, userId))) {
     return { ok: true, ctx: { attemptId, available: false, reason: "Đề này chưa cho xem đáp án nên chưa có chế độ chữa bài.", questions: [], rows: new Map() } };
   }
   const [ordered, state, rows] = await Promise.all([

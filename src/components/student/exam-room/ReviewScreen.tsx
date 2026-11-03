@@ -6,7 +6,7 @@ import CorrectionPanel from "@/components/exam/CorrectionPanel";
 import { KinButton } from "@/components/kin";
 import ReviewList from "./ReviewList";
 import type { ReviewResponse } from "@/lib/examRoomApi";
-import { answersOpenLabel } from "./roomLogic";
+import { answersLockedNotice } from "./answersLocked";
 
 export interface ReviewScreenProps {
   title: string; data: ReviewResponse | null; loading: boolean; error: string;
@@ -49,11 +49,14 @@ export default function ReviewScreen(p: ReviewScreenProps) {
                 Gia sư chưa chấm xong và công bố kết quả bài này. Em chỉ xem được câu trả lời của chính mình; điểm, đáp án và lời giải sẽ hiện khi gia sư công bố.
               </div>
             )}
-            {!d.canSeeAnswers && !d.pendingManual && (
-              <div className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }} data-dap-an-chua-mo>
-                {d.answersOpenAt ? `${answersOpenLabel(d.answersOpenAt, new Date().toISOString())}. Bây giờ em chỉ xem được câu trả lời của mình.` : "Gia sư chưa cho xem đáp án ở đề này. Em chỉ xem được câu trả lời của mình."}
-              </div>
-            )}
+            {(() => {
+              const notice = answersLockedNotice(d, new Date().toISOString());
+              return notice ? (
+                <div role="status" className="rounded-xl p-3 text-xs" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)", color: "var(--kin-tt-chu-cho)" }} data-dap-an-chua-mo data-khoa-dap-an={notice.reason}>
+                  {notice.text}
+                </div>
+              ) : null;
+            })()}
             <ReviewList data={d} />
           </>
         ) : null}

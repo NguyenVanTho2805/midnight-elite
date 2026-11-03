@@ -125,6 +125,9 @@ import { prisma } from "@/lib/prisma";
 
   section("Quiz chỉ trắc nghiệm: điểm và đáp án hiện ngay (không hồi quy)");
   const ex2 = await prisma.exam.create({ data: { id: "qz-mc-only", code: "qz-mc-only", title: "Trắc nghiệm", category: "Toán", date: "01/01/2030", time: "08:00", duration: "10 phút", questions: 1, status: "available", createdAt: "2020", ownerId: T.id, totalPoints: 10 } });
+  // STU-001 (ghép với BU-04): đề công khai (không lớp) mà gia sư CHƯA chỉnh gì thì KiN áp 2 lượt + khoá đáp án tới khi hết lượt/hết hạn. Bài này kiểm
+  // "không hồi quy" của đề gia sư ĐÃ cấu hình (đặt số lượt) → tôn trọng trọn bộ cài đặt: đáp án hiện ngay, số lượt theo gia sư. Đề mặc định kiểm ở cuối mục.
+  await prisma.quizAttemptLimit.create({ data: { examId: ex2.id, maxAttempts: 100 } });
   const q2 = await prisma.examQuestion.create({ data: { id: "qz2-q", examId: ex2.id, order: 1, text: "Thủ đô Việt Nam?", type: "MC", points: 1, explanation: "Hà Nội" } });
   await prisma.examOption.create({ data: { id: "qz2-ok", questionId: q2.id, order: 0, text: "Hà Nội", isCorrect: true } });
   await prisma.examOption.create({ data: { id: "qz2-no", questionId: q2.id, order: 1, text: "Huế", isCorrect: false } });
@@ -135,7 +138,24 @@ import { prisma } from "@/lib/prisma";
   const rv2 = await api("GET", `/api/exams/attempts/${s2.json.attemptId}/review`, { as: A });
   check("review: thấy đáp án đúng và lời giải như trước", rv2.json.canSeeAnswers === true && rv2.text.includes('"isCorrect":true') && rv2.text.includes("Hà Nội"));
   const g2 = await api("GET", `/api/exams/${ex2.id}/gate`, { as: A });
-  check("đề không gắn lớp: cổng cho vào, không đòi mã lớp, không giới hạn lượt", g2.json.canStart === true && g2.json.klass === null && g2.json.attempts.max === null, g2.json);
+  check("đề không gắn lớp (gia sư đã đặt lượt): cổng cho vào, không đòi mã lớp, số lượt theo gia sư (100), không bị KiN áp mặc định", g2.json.canStart === true && g2.json.klass === null && g2.json.attempts.max === 100 && g2.json.policy?.guarded === false, g2.json);
+
+  // STU-001 trong luồng BU-04: đề công khai CHƯA chỉnh gì → 2 lượt; đáp án khoá tới khi hết lượt hoặc hết hạn (đề này hạn 2030 nên chưa hết hạn).
+  const ex3 = await prisma.exam.create({ data: { id: "qz-mc-public", code: "qz-mc-public", title: "Trắc nghiệm công khai", category: "Toán", date: "01/01/2030", time: "08:00", duration: "10 phút", questions: 1, status: "available", createdAt: "2020", ownerId: T.id, totalPoints: 10 } });
+  const q3 = await prisma.examQuestion.create({ data: { id: "qz3-q", examId: ex3.id, order: 1, text: "Thủ đô Việt Nam?", type: "MC", points: 1, explanation: "Hà Nội" } });
+  await prisma.examOption.create({ data: { id: "qz3-ok", questionId: q3.id, order: 0, text: "Hà Nội", isCorrect: true } });
+  await prisma.examOption.create({ data: { id: "qz3-no", questionId: q3.id, order: 1, text: "Huế", isCorrect: false } });
+  const g3 = await api("GET", `/api/exams/${ex3.id}/gate`, { as: A });
+  check("đề công khai mặc định: cổng báo 2 lượt, guarded, đáp án khoá tới khi hết hạn", g3.json.canStart === true && g3.json.attempts.max === 2 && g3.json.policy?.guarded === true && g3.json.policy?.answersLockedReason === "until_exam_ends", g3.json);
+  const s3 = await api("POST", `/api/exams/${ex3.id}/start`, { as: A, body: {} });
+  await api("PATCH", `/api/exams/attempts/${s3.json.attemptId}/answer`, { as: A, body: { questionId: q3.id, optionId: "qz3-ok" } });
+  await api("POST", `/api/exams/attempts/${s3.json.attemptId}/submit`, { as: A });
+  const rv3 = await api("GET", `/api/exams/attempts/${s3.json.attemptId}/review`, { as: A });
+  check("đề công khai mặc định: review KHÔNG lộ đáp án đúng/lời giải khi chưa hết hạn và chưa hết lượt; nói rõ vì sao + khi nào", rv3.json.canSeeAnswers === false && !rv3.text.includes('"isCorrect":true') && (rv3.json.questions as { explanation?: string | null }[]).every(q => q.explanation == null) && rv3.json.answersLockedReason === "until_exam_ends" && rv3.json.publicGuarded === true && rv3.json.attemptsMax === 2 && typeof rv3.json.answersOpenAt === "string", rv3.json);
+  const s3b = await api("POST", `/api/exams/${ex3.id}/start`, { as: A, body: {} });
+  await api("POST", `/api/exams/attempts/${s3b.json.attemptId}/submit`, { as: A });
+  const rv3b = await api("GET", `/api/exams/attempts/${s3.json.attemptId}/review`, { as: A });
+  check("hết 2 lượt → đáp án mở (đề công khai mặc định) và không còn lượt thứ 3", rv3b.json.canSeeAnswers === true && rv3b.text.includes('"isCorrect":true') && (rv3b.json.questions as { explanation?: string | null }[]).some(q => q.explanation === "Hà Nội") && (await api("POST", `/api/exams/${ex3.id}/start`, { as: A, body: {} })).status === 409, rv3b.json);
 
   section("Một nguồn sự thật với phía gia sư: công bố mở điểm; đề cũ có tự luận giữ hành vi cũ");
   const aAtt = await prisma.examAttempt.findFirst({ where: { examId: "qz-mix", userId: A.id } });

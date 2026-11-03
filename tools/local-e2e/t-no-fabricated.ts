@@ -40,11 +40,23 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
     [/Kích hoạt (nhanh chóng|sau khi xác nhận)|trong vòng 24 giờ/i, "cam kết thời gian kích hoạt bịa", ["src/app/(guest)/chinh-sach/page.tsx"]],
     [/Google Analytics|Hotjar/i, "công cụ phân tích không hề gắn (trang chính sách chỉ được nhắc để nói KiN KHÔNG dùng)", ["src/app/(guest)/chinh-sach/page.tsx"]],
     [/47 đề thi/i, "câu 'đã đối chiếu 47 đề' của bong bóng AI giả", ["src/components/AIChatWidget.tsx", "src/app/(student)/layout.tsx"]],
+    // STU-002: sáu lời hứa trang chủ từng có mà KiN không có. Không dùng /streak/i hay /GPA, streak/i trần — khớp tên biến ở api/users/me/stats.
+    [/trợ giảng (riêng|phản hồi|người thật)|phân công trợ giảng/i, "KiN không có vai trợ giảng", ["src/app/(admin)/admin/quan-tri-vien/page.tsx"]],
+    [/live mỗi tối|Học trực tiếp LIVE|video quay sẵn/i, "KiN không tổ chức lớp live", []],
+    [/realtime|thời gian thực/i, "không có cập nhật thời gian thực", []],
+    [/(phản hồi|trả lời) trong ngày/i, "SLA trả lời không ai đỡ", []],
+    [/24\/7/, "KiN không hỗ trợ 24/7", []],
+    [/thứ hạng toàn hệ thống|GPA, streak và/, "không có dashboard GPA/streak realtime", []],
   ];
   for (const [re, why, allow] of BANNED) {
     const hit = src.filter(p => !allow.includes(p) && re.test(read(p).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")));
     check(`không còn ${re.source.slice(0, 40)}${re.source.length > 40 ? "…" : ""} — ${why}`, hit.length === 0, hit);
   }
+  // ca phá cố ý (STU-002): bộ quét phải bắt được câu vi phạm, và không bắt nhầm tên biến / câu nói KiN KHÔNG có trợ giảng.
+  check("[phá cố ý] bộ quét bắt 'Trợ giảng riêng 1-1', 'live mỗi tối', 'realtime', 'phản hồi trong ngày', '24/7'",
+    ["Trợ giảng riêng 1-1", "Buổi học live mỗi tối", "Theo dõi tiến độ realtime", "trợ giảng phản hồi trong ngày", "Hỗ trợ 24/7"].every(t => BANNED.some(([re]) => re.test(t))));
+  check("[không bắt nhầm] 'gpa, streak, rank' và 'Trợ giảng, nhiều giáo viên' không khớp 6 dòng STU-002",
+    ["gpa, streak, rank", "Trợ giảng, nhiều giáo viên"].every(t => !BANNED.slice(-6).some(([re]) => re.test(t))));
 
   section("Bong bóng 'KiN AI' giả không được gắn");
   const users = src.filter(p => p !== "src/components/AIChatWidget.tsx" && /AIChatWidget/.test(read(p).replace(/^\s*\/\/.*$/gm, "")));

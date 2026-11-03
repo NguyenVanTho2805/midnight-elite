@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import type { PublishState } from "@/lib/quizRoom";
 import { examHolds } from "@/lib/examHold";
+import { effectiveExamPolicy, type EffectiveExamPolicy, type ExamPolicyInput } from "@/lib/examPolicy";
 
 /** Đã có dòng công bố trong exam_attempt_publishes chưa: theo một lượt cụ thể, hoặc (không đưa lượt) lượt nào của học sinh này ở đề này. */
 async function readPublishedFlag(examId: string, userId: string, attemptId?: string): Promise<boolean> {
@@ -42,8 +43,28 @@ export async function loadPublishState(examId: string, userId: string, attemptId
   return { hasEssay: essay, hold, published: hold ? await readPublishedFlag(examId, userId, attemptId) : true };
 }
 
-/** Số lượt tối đa của đề; null = không giới hạn. */
-export async function getMaxAttempts(examId: string): Promise<number | null> {
-  const row = await prisma.quizAttemptLimit.findUnique({ where: { examId } });
-  return row && row.maxAttempts > 0 ? row.maxAttempts : null;
+/**
+ * STU-001 — Chính sách HIỆU LỰC của đề với học sinh này (thay `getMaxAttempts` cũ; quy tắc thuần ở examPolicy.ts).
+ * Phía học sinh (start/gate/review/chữa bài) CHỈ đọc answerVisibility / hideAnswerForWrong / số lượt qua đây — không đọc thẳng cột của đề.
+ * `used` = mọi lượt (kể cả đang làm / hết giờ chưa chấm); `inProgressLive` = lượt in_progress chưa quá expiresAt.
+ * BU-04 (nhiều mã đề): `exam` PHẢI là đề GỐC (cài đặt, số lượt và QuizAttemptLimit đọc theo gốc) và `opts.examIds` là id của CẢ NHÓM mã đề
+ * (gốc + mã con) — lượt đếm theo cả nhóm (maxAttempts=1 thì làm mã 101 rồi không làm được mã 102). Không đưa `examIds` = chỉ đếm đề này như STU-001.
+ */
+export async function loadEffectivePolicy(
+  exam: ExamPolicyInput & { id: string },
+  userId: string,
+  opts?: { now?: Date; examIds?: readonly string[] },
+): Promise<EffectiveExamPolicy & { used: number; inProgressLive: boolean }> {
+  const now = opts?.now ?? new Date();
+  const ids = opts?.examIds && opts.examIds.length > 0 ? [...opts.examIds] : [exam.id];
+  const [limit, used, inProgress] = await Promise.all([
+    prisma.quizAttemptLimit.findUnique({ where: { examId: exam.id }, select: { maxAttempts: true } }),
+    prisma.examAttempt.count({ where: { userId, examId: { in: ids } } }),
+    prisma.examAttempt.findFirst({ where: { userId, examId: { in: ids }, status: "in_progress" }, orderBy: { startedAt: "desc" }, select: { expiresAt: true } }),
+  ]);
+  const inProgressLive = !!inProgress && inProgress.expiresAt.getTime() > now.getTime();
+  // Số lượt hiệu lực có thể là mặc định 2 của KiN (đề công khai chưa cài) → tính "hết lượt" theo chính sách, không theo dòng limit thô.
+  const base = effectiveExamPolicy(exam, limit, { now });
+  const attemptsExhausted = base.maxAttempts !== null && used >= base.maxAttempts && !inProgressLive;
+  return { ...effectiveExamPolicy(exam, limit, { now, attemptsExhausted }), used, inProgressLive };
 }

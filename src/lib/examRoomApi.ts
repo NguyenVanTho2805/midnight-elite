@@ -4,6 +4,7 @@
 // và ở `check` (luyện tập, theo chính sách máy chủ) — xem ReviewQuestion / PracticeCheckResponse.
 // Tệp này THUẦN (không prisma, không next): an toàn để import từ component.
 import type { ExamMode } from "@/lib/deThiAssign";
+import type { AnswersLockedReason } from "@/lib/examPolicy"; // STU-001: chỉ kiểu; examPolicy.ts thuần, không prisma
 
 export type { ExamMode };
 
@@ -41,6 +42,8 @@ export interface GateResponse {
   enrolled: boolean | null;
   attempts: { used: number; max: number | null; remaining: number | null; resumable: boolean; label: string };
   deadline: { dueAt: string; state: string } | null;
+  /** STU-001: chính sách hiệu lực để màn cổng nói trước khi nào đáp án hiện. */
+  policy?: { guarded: boolean; answersLockedReason: AnswersLockedReason };
   serverNow: string;
   canStart: boolean;
   blockReason: BlockReason | null;
@@ -122,6 +125,10 @@ export interface ReviewResponse {
   exam: { id: string; title: string; mode: ExamMode | null; showLeaderboard: boolean };
   answersOpenAt: string | null;
   canRetake: boolean;
+  /** STU-001: vì sao đáp án còn bị giấu (null = không giấu gì); đề công khai bị KiN áp mặc định an toàn không; số lượt hiệu lực. Thiếu trường = máy chủ cũ. */
+  answersLockedReason?: AnswersLockedReason;
+  publicGuarded?: boolean;
+  attemptsMax?: number | null;
   questions: ReviewQuestion[];
 }
 

@@ -3,7 +3,8 @@
 // không đáp án, không giá. Điểm tốt nhất chỉ khi quyền xem điểm cho phép (đề giữ điểm chưa công bố → null).
 import { prisma } from "@/lib/prisma";
 import { isEnrollmentActive } from "@/lib/enrollment";
-import { getMaxAttempts, loadPublishStates } from "@/lib/quizPublication";
+import { loadPublishStates } from "@/lib/quizPublication";
+import { effectiveExamPolicy } from "@/lib/examPolicy";
 import { resultVisibility } from "@/lib/quizRoom";
 import { heldAttemptIdsAmong } from "@/lib/examHold";
 import { assignmentState, sortAssignments } from "@/lib/examRoomLib";
@@ -45,13 +46,13 @@ export async function listStudentAssignments(userId: string, now: Date): Promise
   const groupAttempts = myAttempts.filter(a => rootOf.has(a.examId));
 
   const [limits, deadlines, results, states, held] = await Promise.all([
-    Promise.all(rootIds.map(async id => [id, await getMaxAttempts(id)] as const)),
+    prisma.quizAttemptLimit.findMany({ where: { examId: { in: rootIds } }, select: { examId: true, maxAttempts: true } }),
     prisma.quizStudentDeadline.findMany({ where: { userId, examId: { in: rootIds } }, select: { examId: true, dueAt: true } }),
     prisma.examResult.findMany({ where: { userId, examId: { in: rootIds } }, select: { examId: true, score: true, totalPoints: true } }),
     loadPublishStates(rootIds, userId),
     heldAttemptIdsAmong(groupAttempts.filter(a => a.status !== "in_progress").map(a => ({ id: a.id, examId: a.examId }))),
   ]);
-  const maxOf = new Map(limits);
+  const limitOf = new Map(limits.map(l => [l.examId, l]));
   const dueOf = new Map(deadlines.map(d => [d.examId, d.dueAt]));
   const resultOf = new Map(results.map(r => [r.examId, r]));
 
@@ -64,7 +65,8 @@ export async function listStudentAssignments(userId: string, now: Date): Promise
     const ownDue = dueOf.get(e.id) ?? null;
     let ws = windowState(mode, e, now);
     if (!inProgress && ownDue && ownDue.getTime() <= now.getTime()) ws = "closed"; // hạn riêng đã qua: không bắt đầu lượt mới
-    const max = maxOf.get(e.id) ?? null;
+    // STU-001: số lượt HIỆU LỰC (đề công khai chưa chỉnh gì → 2 lượt), cùng nguồn với cổng vào đề và start.
+    const max = effectiveExamPolicy(e, limitOf.get(e.id) ?? null, { now }).maxAttempts;
     const state = assignmentState({ inProgress, used: mine.length, max, pendingPublish, windowState: ws, active: e.active, mode });
 
     const vis = resultVisibility(states.get(e.id) ?? { hasEssay: false, published: true }, true);

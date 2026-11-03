@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { orderQuestionsAndOptionsFull, loadAnswerState, hasExamWindowEnded } from "@/lib/examGrading";
+import { orderQuestionsAndOptionsFull, loadAnswerState } from "@/lib/examGrading";
 import { correctionSummary } from "@/lib/examCorrectionServer";
 import { scoreMultiSelect } from "@/lib/quizQuestion";
-import { loadPublishState } from "@/lib/quizPublication";
+import { loadEffectivePolicy, loadPublishState } from "@/lib/quizPublication";
 import { attemptsGate, resultVisibility } from "@/lib/quizRoom";
-import { getMaxAttempts } from "@/lib/quizPublication";
 import { canStartByDeadline } from "@/lib/quizDeadline";
 import { getOwnDeadline } from "@/lib/quizDeadlineServer";
 import { isExamMode } from "@/lib/deThiAssign";
 import { answersOpenAtOf, startVerdict } from "@/lib/examWindow";
-import { countGroupAttempts, findInProgressInGroup, loadGroup } from "@/lib/examVariantServer";
+import { loadGroup } from "@/lib/examVariantServer";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
-// Tôn trọng 2 cấu hình của đề: answerVisibility (khi nào được xem đáp án) và
-// hideAnswerForWrong (câu trả lời sai chỉ hiện "Sai", không lộ đáp án đúng).
+// Theo chính sách HIỆU LỰC của đề (STU-001, examPolicy.ts): answerVisibility (khi nào được xem đáp án) và
+// hideAnswerForWrong (câu trả lời sai chỉ hiện "Sai", không lộ đáp án đúng) — đề thi thử công khai chưa cài gì thì
+// KiN tự khoá đáp án tới khi em hết lượt hoặc đề hết hạn. Mọi mốc giờ tính ở máy chủ; không đọc giờ từ trình duyệt.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ attemptId: string }> }
@@ -39,13 +39,13 @@ export async function GET(
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const canSeeByExam =
-      exam.answerVisibility === "after_submit" ? true :
-      exam.answerVisibility === "after_exam_ends" ? hasExamWindowEnded(exam) :
-      false; // "never"
+    // BU-04: mã con quy về ĐỀ GỐC — chính sách (STU-001) đọc theo gốc, số lượt đếm theo cả nhóm mã đề; câu hỏi/đáp án của lượt vẫn là của mã đã làm.
+    const group = (await loadGroup(exam.id)) ?? { rootId: exam.id, ids: [exam.id], members: [] };
+    const root = group.rootId === exam.id ? exam : await prisma.exam.findUnique({ where: { id: group.rootId } });
+    const policy = await loadEffectivePolicy(root ?? exam, session.userId, { examIds: group.ids });
     // QZ-08/11/12: đề đang GIỮ điểm (examHold — một nguồn) và lượt này chưa được gia sư công bố → không điểm, không điểm/nhận xét tự luận,
-    // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng cài đặt của đề).
-    const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), canSeeByExam);
+    // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng chính sách của đề).
+    const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), policy.canSeeAnswers);
     const held = vis.pendingManual;
     const canSeeAnswers = vis.showAnswers;
 
@@ -81,7 +81,7 @@ export async function GET(
         const options = q.options.map(o => {
           const studentAnswerTrue = boolAnswersByOption[o.id] ?? null;
           const wasCorrect = studentAnswerTrue !== null && studentAnswerTrue === o.isCorrect;
-          const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect);
+          const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect);
           return {
             id: o.id, text: o.text, subLabel: o.subLabel,
             studentAnswerTrue,
@@ -96,7 +96,7 @@ export async function GET(
         const picked = q.options.filter(o => boolAnswersByOption[o.id] === true).map(o => o.id);
         const wasCorrect = scoreMultiSelect(q.options.filter(o => o.isCorrect).map(o => o.id), picked, q.points) > 0;
         const pendingFix = pendingIds.has(q.id);
-        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
+        const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect) && !pendingFix;
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           options: q.options.map(o => ({ id: o.id, text: o.text, picked: picked.includes(o.id), isCorrect: reveal ? o.isCorrect : null })),
@@ -111,7 +111,7 @@ export async function GET(
         const normalize = (s: string) => s.trim().toLowerCase().replace(/,/g, ".");
         const wasCorrect = !!studentAnswer?.trim() && !!correctOption && normalize(studentAnswer) === normalize(correctOption.text);
         const pendingFix = pendingIds.has(q.id);
-        const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
+        const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect) && !pendingFix;
         return {
           id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
           studentAnswer,
@@ -126,7 +126,7 @@ export async function GET(
       const chosenOption = q.options.find(o => o.id === studentOptionId);
       const wasCorrect = !!chosenOption?.isCorrect;
       const pendingFix = pendingIds.has(q.id);
-      const reveal = canSeeAnswers && (!exam.hideAnswerForWrong || wasCorrect) && !pendingFix;
+      const reveal = canSeeAnswers && (!policy.hideAnswerForWrong || wasCorrect) && !pendingFix;
       return {
         id: q.id, type: q.type, text: q.text, points: q.points, sectionLabel: q.sectionLabel,
         correctionPending: pendingFix,
@@ -139,33 +139,31 @@ export async function GET(
       };
     });
 
-    // BU-04: đề gốc (mã con quy về gốc), chế độ, lúc đáp án mở, và có làm lại được không (cùng luật cổng vào đề).
-    const group = (await loadGroup(exam.id)) ?? { rootId: exam.id, ids: [exam.id], members: [] };
-    const root = group.rootId === exam.id ? exam : await prisma.exam.findUnique({ where: { id: group.rootId } });
+    // BU-04: đề gốc (mã con quy về gốc), chế độ, lúc đáp án mở, và có làm lại được không (cùng luật cổng vào đề; số lượt = chính sách hiệu lực STU-001).
     const mode = isExamMode(root?.mode) ? (root!.mode as "practice" | "test") : null;
     let canRetake = false;
     if (root) {
       const now = new Date();
-      const [used, resume, max, ownDue] = await Promise.all([
-        countGroupAttempts(session.userId, group.ids),
-        findInProgressInGroup(session.userId, group.ids),
-        getMaxAttempts(root.id),
-        getOwnDeadline(root.id, session.userId),
-      ]);
+      const ownDue = await getOwnDeadline(root.id, session.userId);
       const open = root.active && !root.isDraft && !root.supersededById && (mode !== "test" || startVerdict(root, now) === "ok");
-      canRetake = open && !resume && attemptsGate({ used, max, hasInProgress: false }).canStart && canStartByDeadline(ownDue, now, false);
+      canRetake = open && !policy.inProgressLive && attemptsGate({ used: policy.used, max: policy.maxAttempts, hasInProgress: false }).canStart && canStartByDeadline(ownDue, now, false);
     }
 
     return NextResponse.json({
       attemptId: attempt.id,
       exam: { id: group.rootId, title: root?.title ?? exam.title, mode, showLeaderboard: root?.showLeaderboard ?? exam.showLeaderboard },
-      answersOpenAt: answersOpenAtOf(exam.answerVisibility, exam)?.toISOString() ?? null,
+      // Mốc mở đáp án theo chính sách HIỆU LỰC (đề công khai chưa chỉnh → "sau khi đề hết hạn"), không theo cột thô của đề.
+      answersOpenAt: answersOpenAtOf(policy.answerVisibility, root ?? exam)?.toISOString() ?? null,
       canRetake,
       score: vis.showScore ? attempt.score : null,
       held,
       pendingManual: vis.pendingManual,
       totalPoints: exam.totalPoints,
       canSeeAnswers,
+      // STU-001: vì sao đáp án còn bị giấu (null = không giấu gì), đề công khai có bị KiN áp mặc định an toàn không, số lượt hiệu lực.
+      answersLockedReason: policy.answersLockedReason,
+      publicGuarded: policy.guarded,
+      attemptsMax: policy.maxAttempts,
       // NV-188: số câu làm sai có thể chữa (0 nếu đề không cho xem đáp án / đang ẩn đáp án câu sai).
       correctableCount,
       questions,

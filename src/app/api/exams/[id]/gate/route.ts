@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { parseDurationMinutes } from "@/lib/examGrading";
 import { hasExamPassword } from "@/lib/examPassword";
-import { getMaxAttempts } from "@/lib/quizPublication";
+import { loadEffectivePolicy } from "@/lib/quizPublication";
 import { attemptCounterLabel, attemptsGate } from "@/lib/quizRoom";
 import { canStartByDeadline, deadlineState } from "@/lib/quizDeadline";
 import { getOwnDeadline } from "@/lib/quizDeadlineServer";
@@ -12,7 +12,7 @@ import { examHolds } from "@/lib/examHold";
 import { isExamMode } from "@/lib/deThiAssign";
 import { examWindowOf, windowState } from "@/lib/examWindow";
 import { practicePolicy } from "@/lib/examPracticeLib";
-import { countGroupAttempts, findInProgressInGroup, loadGroup } from "@/lib/examVariantServer";
+import { loadGroup } from "@/lib/examVariantServer";
 import type { BlockReason } from "@/lib/examRoomApi";
 
 // GET /api/exams/[id]/gate — "cổng vào đề" (QZ-11, BU-04): thông tin để học sinh biết mình vào được không TRƯỚC khi bấm bắt đầu.
@@ -35,14 +35,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Bản nháp chỉ quản trị / gia sư thấy; học sinh nhận 404 (không lộ tên bản nháp).
     if (exam.isDraft && session.role !== "admin") return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const [used, inProgress, max, essayCount, ownDue, held] = await Promise.all([
-      countGroupAttempts(session.userId, group.ids),
-      findInProgressInGroup(session.userId, group.ids),
-      getMaxAttempts(examId),
+    // STU-001 + BU-04: chính sách HIỆU LỰC tính trên đề GỐC, lượt đếm theo CẢ NHÓM mã đề (đề công khai chưa cài → 2 lượt, đáp án khoá tới khi hết lượt/hết hạn).
+    const [policy, essayCount, ownDue, held] = await Promise.all([
+      loadEffectivePolicy(exam, session.userId, { examIds: group.ids }),
       prisma.examQuestion.count({ where: { examId, type: "ESSAY" } }),
       getOwnDeadline(examId, session.userId),
       examHolds(prisma, examId),
     ]);
+    // Lượt dở đã quá hạn thì không còn là "đang làm" (máy chủ sẽ chấm nó khi học sinh bấm vào) — vẫn tính là đã dùng.
+    const { used, inProgressLive: resumable } = policy;
+    const max = policy.maxAttempts;
     // Phiên bản cũ đã bị thay: học sinh chưa có lượt nào thì không thấy (đề vẫn tồn tại cho người đã làm).
     if (exam.supersededById && used === 0 && session.role !== "admin") return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
@@ -63,8 +65,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // Lượt dở đã quá hạn thì không còn là "đang làm" (máy chủ sẽ chấm nó khi học sinh bấm vào) — vẫn tính là đã dùng.
-    const resumable = !!inProgress && inProgress.expiresAt.getTime() > now.getTime();
     const gate = attemptsGate({ used, max, hasInProgress: resumable });
     if (exam._count.examQuestions === 0) blockReason = blockReason ?? "no_questions";
     if (!resumable) {
@@ -88,6 +88,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       klass: exam.course ? { id: exam.course.id, name: exam.course.name, tutorName: exam.course.owner?.name ?? null } : null,
       enrolled,
       attempts: { used, max, remaining: gate.remaining, resumable, label: attemptCounterLabel(used, max, resumable) },
+      // STU-001: để màn cổng nói trước "đáp án hiện khi hết lượt/hết hạn". Không có câu hỏi, đáp án hay mật khẩu ở đây.
+      policy: { guarded: policy.guarded, answersLockedReason: policy.answersLockedReason },
       canStart: blockReason === null,
       blockReason,
       serverNow: now.toISOString(),
