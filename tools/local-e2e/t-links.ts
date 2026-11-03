@@ -20,6 +20,12 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
   return pat.length === link.length && pat.every((s, i) => isParam(s) || s === link[i] || link[i] === "*");
 });
 
+const expandTernary = (str: string): string[] => {
+  const m = /\$\{[^{}?]*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\s*\}/.exec(str);
+  if (!m) return [str];
+  return [m[1], m[2]].flatMap(v => expandTernary(str.slice(0, m.index) + v + str.slice(m.index + m[0].length)));
+};
+
 (async () => {
   const appFiles = walk("src/app");
   const pages = appFiles.filter(p => /\/page\.(tsx|ts)$/.test(p)).map(p => p.replace(/^src\/app\//, "").replace(/\/page\.\w+$/, "").split("/").filter(Boolean).filter(s => !/^\(.*\)$/.test(s) && !s.startsWith("@") && !s.startsWith("_")));
@@ -71,15 +77,18 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
     const text = read(f);
     for (const m of text.matchAll(/\b(fetch|apiFetch|callApi)\s*(?:<[^()]*>)?\(\s*(?:`(\/api\/(?:[^`$]|\$\{(?:[^{}]|\{[^{}]*\})*\})*)`|"(\/api\/[^"]*)"|'(\/api\/[^']*)')([^)]*)/g)) {
       const line = text.slice(0, m.index).split("\n").length;
-      const raw = m[2] ?? m[3] ?? m[4];
-      // `${…}` ngay sau một dấu "/" là một đoạn đường dẫn; còn lại (vd `/api/x${qs ? "?"+qs : ""}`) là phần truy vấn.
-      const path = raw.replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, "\u0001").replace(/\/\u0001/g, "/X").replace(/\u0001/g, "").split("?")[0];
-      const methodExpr = /method:\s*([^,}]+)/.exec(m[5])?.[1] ?? '"GET"';
-      const verbs = [...methodExpr.matchAll(/"(\w+)"/g)].map(x => x[1].toUpperCase()); // vế điều kiện ?: có thể có hai phương thức
-      nCalls++;
-      const hit = pats.find(p => p.re.test(path));
-      if (!hit) { bad.push(`${f}:${line} ${raw} → không có route`); continue; }
-      for (const v of verbs) if (!methodsOf[hit.u].has(v)) bad.push(`${f}:${line} ${v} ${raw} → route ${hit.u} chỉ có ${[...methodsOf[hit.u]].join(",")}`);
+      const rawFull = m[2] ?? m[3] ?? m[4];
+      // BU-05: `${cond ? "a" : "b"}` với hai vế là chuỗi tĩnh → kiểm cả hai nhánh (trước đây bị coi là một đoạn tuỳ ý "X" và không khớp route).
+      for (const raw of expandTernary(rawFull)) {
+        // `${…}` ngay sau một dấu "/" là một đoạn đường dẫn; còn lại (vd `/api/x${qs ? "?"+qs : ""}`) là phần truy vấn.
+        const path = raw.replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, "\u0001").replace(/\/\u0001/g, "/X").replace(/\u0001/g, "").split("?")[0];
+        const methodExpr = /method:\s*([^,}]+)/.exec(m[5])?.[1] ?? '"GET"';
+        const verbs = [...methodExpr.matchAll(/"(\w+)"/g)].map(x => x[1].toUpperCase()); // vế điều kiện ?: có thể có hai phương thức
+        nCalls++;
+        const hit = pats.find(p => p.re.test(path));
+        if (!hit) { bad.push(`${f}:${line} ${raw} → không có route`); continue; }
+        for (const v of verbs) if (!methodsOf[hit.u].has(v)) bad.push(`${f}:${line} ${v} ${raw} → route ${hit.u} chỉ có ${[...methodsOf[hit.u]].join(",")}`);
+      }
     }
   }
   check(`${nCalls} lời gọi API đều có route và đúng phương thức`, bad.length === 0, bad);
@@ -92,6 +101,8 @@ const matchRoute = (table: string[][], link: string[]) => table.some(pat => {
   check("/admin/khoa-hoc/[id] đọc ?tab= (lich-hoc)", has("src/app/(admin)/admin/khoa-hoc/[id]/page.tsx", /searchParams\.get\("tab"\)/));
   check("/student/hoc-tap đọc ?course= (bố cục chuyển sang components/student/LopCuaToi, NC2 học sinh Figma 299:114766)", has("src/components/student/LopCuaToi.tsx", /searchParams\.get\("course"\)/));
   check("/cong-dong đọc ?tab= (hoi-dap-qa)", has("src/app/(guest)/cong-dong/page.tsx", /searchParams\.get\("tab"\)/));
+  check("/cong-dong đọc ?tab=da-luu (BU-05: liên kết 'Đã lưu' của điều hướng trái)", has("src/app/(guest)/cong-dong/page.tsx", /"da-luu"/));
+  check("/cong-dong/ho-so/[id] có trang (BU-05: tên gia sư trong feed trỏ tới đây)", pages.some(p => p.join("/") === "cong-dong/ho-so/[id]"));
   check("Cài đặt gia sư có mốc #module cho liên kết 'Thêm module'", has("src/app/lop-cua-toi/(tutor)/cai-dat/CaiDatClient.tsx", /id="module"/));
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

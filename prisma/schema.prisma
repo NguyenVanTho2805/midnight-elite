@@ -1936,7 +1936,21 @@ model Thread {
   bookmarks ThreadBookmark[]
   reports   ThreadReport[]
 
+  // BU-05 (01/11/2026) — chỉ THÊM. Hàng cũ tự nhận kind="post", status="published".
+  kind            String    @default("post")      // "post" | "question"
+  title           String?                          // chỉ kind="question" (5–120 ký tự)
+  status          String    @default("published")  // "published" | "pending" | "rejected"
+  guestName       String?                          // bài của khách: tên hiển thị khách tự gõ
+  guestIpHash     String?                          // HMAC(IP) — chỉ để giới hạn tần suất, không đọc ngược được
+  acceptedReplyId String?                          // kind="question": trả lời được chọn đúng. CỐ Ý không khai relation (tránh vòng khoá ngoại); mã kiểm thuộc cùng bài
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectReason    String?
+
   @@index([courseId])
+  @@index([status, createdAt])
+  @@index([kind, createdAt])
+  @@index([authorId, createdAt])
   @@map("threads")
 }
 
@@ -1964,10 +1978,17 @@ model ThreadReply {
   deletedAt DateTime? // soft-delete, xem giải thích ở Thread.deletedAt
   createdAt DateTime  @default(now())
 
+  // BU-05: trả lời lồng đúng 1 cấp (máy chủ ép về cha gốc — communityRules.normalizeParent).
+  parentReplyId String?
+  parent        ThreadReply?  @relation("ReplyChildren", fields: [parentReplyId], references: [id], onDelete: Cascade)
+  children      ThreadReply[] @relation("ReplyChildren")
+
   author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   thread Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   likes  ReplyLike[]
 
+  @@index([threadId, createdAt])
+  @@index([parentReplyId])
   @@map("thread_replies")
 }
 

@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { addDailyCappedCoins } from "@/lib/wallet";
 import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/wallet-constants";
 import { canAccessClass, visibleThreadScope } from "@/lib/classThreadAccess";
+import { notify } from "@/lib/notify";
+import { cleanText, notificationText, publicName } from "@/lib/communityRules";
+import { communityError, publishedThreadWhere, withLock, NO_STORE, AUTHOR_SELECT, isCenterAdmin } from "@/lib/communityServer";
+import { threadToFeedItem } from "@/lib/communityFeed";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
 const DEFAULT_PAGE_SIZE  = 20;
@@ -19,6 +23,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const category   = searchParams.get("category") ?? undefined;
   const cursor     = searchParams.get("cursor") ?? undefined;
+  if (cursor && Number.isNaN(new Date(cursor).getTime())) {
+    return communityError(400, "cursor_invalid", "Con trỏ không hợp lệ");
+  }
   const limitParam = parseInt(searchParams.get("limit") ?? "", 10);
   const pageSize   = isNaN(limitParam) ? DEFAULT_PAGE_SIZE : Math.min(limitParam, MAX_PAGE_SIZE);
 
@@ -43,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 
   const include = {
-    author:    { select: { id: true, name: true, role: true, adminRole: true } },
+    author:    { select: AUTHOR_SELECT },
     course:    { select: { id: true, name: true } },
     _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
     likes:     { where: { userId }, select: { userId: true } },
@@ -52,14 +59,14 @@ export async function GET(req: NextRequest) {
 
   const [pinned, regular] = await Promise.all([
     prisma.thread.findMany({
-      where:   { isPinned: true, deletedAt: null, ...(category ? { category } : {}), ...scope },
+      where:   { isPinned: true, ...publishedThreadWhere, ...(category ? { category } : {}), ...scope },
       orderBy: { createdAt: "desc" },
       include,
     }),
     prisma.thread.findMany({
       where: {
         isPinned: false,
-        deletedAt: null,
+        ...publishedThreadWhere,
         ...(category ? { category } : {}),
         ...scope,
         ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
@@ -76,7 +83,9 @@ export async function GET(req: NextRequest) {
     ? regular[regular.length - 1].createdAt.toISOString()
     : null;
 
-  return NextResponse.json({ threads: combined.map(toDTO.bind(null, userId)), nextCursor });
+  // Tên: quản trị thấy tên đầy đủ (kiểm duyệt); người khác thấy tên rút gọn (học sinh) — TRẺ EM.
+  const fullNames = isCenterAdmin(session);
+  return NextResponse.json({ threads: combined.map(t => toDTO(userId, t, fullNames)), nextCursor }, { headers: NO_STORE });
 }
 
 export async function POST(req: NextRequest) {
@@ -84,81 +93,86 @@ export async function POST(req: NextRequest) {
   if (isNextResponse(auth)) return auth;
 
   try {
-    const { content, category, imageUrls, fileUrl, fileName, courseId } = await req.json() as {
-      content?: string; category?: string;
-      imageUrls?: unknown; fileUrl?: string | null; fileName?: string | null;
-      courseId?: string | null;
-    };
+    let body: Record<string, unknown> = {};
+    try { const j = await req.json(); if (j && typeof j === "object") body = j as Record<string, unknown>; } catch { /* thân rỗng → báo thiếu nội dung */ }
 
-    if (!content?.trim()) {
-      return NextResponse.json({ error: "Nội dung không được để trống" }, { status: 400 });
+    const kindRaw = body.kind ?? "post";
+    if (kindRaw !== "post" && kindRaw !== "question") return communityError(400, "kind_invalid", "Loại bài không hợp lệ");
+    const kind = kindRaw;
+
+    const content = cleanText(body.content, true);
+    if (!content) return communityError(400, "content_empty", "Nội dung không được để trống");
+    if (Array.from(content).length > 2000) return communityError(400, "content_too_long", "Nội dung không được vượt quá 2000 ký tự");
+
+    let title: string | null = null;
+    if (kind === "question") {
+      title = cleanText(body.title);
+      if (Array.from(title).length < 5) return communityError(400, "title_required", "Câu hỏi cần có tiêu đề (từ 5 ký tự)");
+      if (Array.from(title).length > 120) return communityError(400, "title_too_long", "Tiêu đề không được vượt quá 120 ký tự");
     }
-    if (content.trim().length > 2000) {
-      return NextResponse.json({ error: "Nội dung không được vượt quá 2000 ký tự" }, { status: 400 });
-    }
+
+    const category = kind === "question" ? "hoi-dap" : body.category;
     if (!ALLOWED_CATEGORIES.includes(category as (typeof ALLOWED_CATEGORIES)[number])) {
-      return NextResponse.json({ error: "Danh mục không hợp lệ" }, { status: 400 });
+      return communityError(400, "category_invalid", "Danh mục không hợp lệ");
     }
-    if (imageUrls && (!Array.isArray(imageUrls) || imageUrls.length > 4)) {
-      return NextResponse.json({ error: "Tối đa 4 ảnh mỗi bài" }, { status: 400 });
+    const imageUrls = body.imageUrls;
+    if (imageUrls !== undefined && imageUrls !== null && (!Array.isArray(imageUrls) || imageUrls.length > 4 || imageUrls.some(u => typeof u !== "string"))) {
+      return communityError(400, "too_many_images", "Tối đa 4 ảnh mỗi bài");
+    }
+    const fileUrl  = typeof body.fileUrl === "string" ? body.fileUrl : null;
+    const fileName = typeof body.fileName === "string" ? body.fileName : null;
+
+    // BE-071: courseId null/không truyền = cộng đồng chung; có courseId = chỉ thành viên lớp (hoặc quản trị cấp trên) được đăng.
+    const courseId = body.courseId;
+    if (courseId !== undefined && courseId !== null && typeof courseId !== "string") {
+      return communityError(400, "not_member", "courseId không hợp lệ");
+    }
+    if (courseId && !(await canAccessClass(auth, courseId))) {
+      return communityError(403, "not_member", "Bạn phải là học viên của lớp hoặc giáo viên chủ chốt mới được đăng bài");
     }
 
-    // BE-071: validate courseId. Null hoặc không truyền = cộng đồng chung
-    // (giữ hành vi cũ, ai login đều post được). Có courseId = chỉ members
-    // của lớp đó (học viên Enrollment.active hoặc GVCN Course.ownerId) được
-    // post. Admin cấp trên (admin_super/admin_content) được post vào bất kỳ
-    // lớp nào — đồng bộ ownsResource mặc định "non-teacher adminRole bypass".
-    if (courseId !== undefined && courseId !== null && typeof courseId !== "string") {
-      return NextResponse.json({ error: "courseId không hợp lệ" }, { status: 400 });
+    // Giới hạn 5 bài/giờ/người (chung post + question); đếm-rồi-ghi trong một khoá nên bấm đúp không lọt.
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW);
+    const thread = await withLock(`thread:${auth.userId}`, async tx => {
+      const recent = await tx.thread.count({ where: { authorId: auth.userId, createdAt: { gte: windowStart } } });
+      if (recent >= RATE_LIMIT_THREADS) return null;
+      return tx.thread.create({
+        data: {
+          content, authorId: auth.userId, category: category as string, kind, title,
+          imageUrls: (imageUrls as string[] | undefined | null) ?? [], fileUrl, fileName, courseId: courseId ?? null,
+        },
+        include: {
+          author:    { select: AUTHOR_SELECT },
+          course:    { select: { id: true, name: true } },
+          _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
+          likes:     { where: { userId: auth.userId }, select: { userId: true } },
+          bookmarks: { where: { userId: auth.userId }, select: { userId: true } },
+        },
+      });
+    });
+    if (!thread) {
+      return communityError(429, "rate_limited", "Bạn đã đăng quá nhiều bài trong 1 giờ. Vui lòng chờ trước khi đăng tiếp.");
     }
-    if (courseId) {
-      if (!(await canAccessClass(auth, courseId))) {
-        return NextResponse.json(
-          { error: "Bạn phải là học viên của lớp hoặc giáo viên chủ chốt mới được đăng bài" },
-          { status: 403 },
-        );
+
+    // Bài vào lớp → báo chủ lớp (không tên, không tiêu đề); không báo chính người đăng.
+    if (thread.courseId) {
+      const course = await prisma.course.findUnique({ where: { id: thread.courseId }, select: { ownerId: true } });
+      if (course?.ownerId && course.ownerId !== auth.userId) {
+        const n = notificationText("thread_new_class");
+        await notify(course.ownerId, { type: n.type, title: n.title, message: n.message, link: `/cong-dong/${thread.id}` });
       }
     }
 
-    const windowStart  = new Date(Date.now() - RATE_LIMIT_WINDOW);
-    const recentPosts  = await prisma.thread.count({
-      where: { authorId: auth.userId, createdAt: { gte: windowStart } },
-    });
-    if (recentPosts >= RATE_LIMIT_THREADS) {
-      return NextResponse.json(
-        { error: "Bạn đã đăng quá nhiều bài trong 1 giờ. Vui lòng chờ trước khi đăng tiếp." },
-        { status: 429 },
+    // Thưởng xu như cũ CHỈ cho bài viết thường (câu hỏi mới không thưởng/không trừ). UI không hiển thị.
+    let coinsEarned = 0;
+    if (kind === "post") {
+      const awarded = await addDailyCappedCoins(
+        auth.userId, THREAD_REWARD, COIN_REASONS.THREAD_REWARD, thread.id, MAX_THREAD_REWARDS_PER_DAY,
       );
+      coinsEarned = awarded ? THREAD_REWARD : 0;
     }
 
-    const thread = await prisma.thread.create({
-      data: {
-        content:   content.trim(),
-        authorId:  auth.userId,
-        category:  category as string,
-        imageUrls: (imageUrls as string[] | undefined) ?? [],
-        fileUrl:   fileUrl ?? null,
-        fileName:  fileName ?? null,
-        courseId:  courseId ?? null,
-      },
-      include: {
-        author:    { select: { id: true, name: true, role: true, adminRole: true } },
-        course:    { select: { id: true, name: true } },
-        _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
-        likes:     { where: { userId: auth.userId }, select: { userId: true } },
-        bookmarks: { where: { userId: auth.userId }, select: { userId: true } },
-      },
-    });
-
-    // Thưởng xu cho bài viết, tối đa MAX_THREAD_REWARDS_PER_DAY lần/ngày.
-    // addDailyCappedCoins serializable qua advisory_xact_lock → 2 request POST
-    // đồng thời không cùng vượt cap.
-    const awarded = await addDailyCappedCoins(
-      auth.userId, THREAD_REWARD, COIN_REASONS.THREAD_REWARD, thread.id, MAX_THREAD_REWARDS_PER_DAY,
-    );
-    const coinsEarned = awarded ? THREAD_REWARD : 0;
-
-    return NextResponse.json({ ...toDTO(auth.userId, thread), coinsEarned }, { status: 201 });
+    return NextResponse.json({ ...threadToFeedItem(thread, auth.userId), coinsEarned }, { status: 201, headers: NO_STORE });
   } catch (e) {
     console.error("[community/POST]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
@@ -169,12 +183,12 @@ function toDTO(userId: string, t: {
   id: string; content: string; category: string; isPinned: boolean;
   imageUrls: string[]; fileUrl: string | null; fileName: string | null;
   createdAt: Date; updatedAt: Date;
-  author:    { id: string; name: string; role: string; adminRole: string | null };
+  author:    { id: string; name: string; role: string; adminRole: string | null; tutorVerified: boolean };
   course:    { id: string; name: string } | null;
   _count:    { replies: number; likes: number };
   likes:     { userId: string }[];
   bookmarks: { userId: string }[];
-}) {
+}, fullNames: boolean) {
   return {
     id:           t.id,
     content:      t.content,
@@ -186,7 +200,7 @@ function toDTO(userId: string, t: {
     createdAt:    t.createdAt.toISOString(),
     author: {
       id:        t.author.id,
-      name:      t.author.name,
+      name:      fullNames ? t.author.name : publicName(t.author),
       isTeacher: t.author.role === "admin",
     },
     course:         t.course,

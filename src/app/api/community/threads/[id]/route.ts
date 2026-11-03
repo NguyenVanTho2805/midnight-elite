@@ -3,74 +3,17 @@ import { requireSession, requirePermission, isNextResponse } from "@/lib/auth-gu
 import { getSession } from "@/lib/session";
 import { PERMISSIONS, checkPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { canAccessThread } from "@/lib/classThreadAccess";
+import { loadThreadDetail, notFoundThread, NO_STORE } from "@/lib/communityServer";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(req: NextRequest, { params }: Params) {
+export async function GET(_req: NextRequest, { params }: Params) {
   const session = await getSession();
-  const userId  = session?.userId ?? "";
-
   const { id } = await params;
-
-  const thread = await prisma.thread.findUnique({
-    where: { id },
-    include: {
-      author:    { select: { id: true, name: true, role: true, adminRole: true } },
-      _count:    { select: { replies: { where: { deletedAt: null } }, likes: true } },
-      likes:     { where: { userId }, select: { userId: true } },
-      bookmarks: { where: { userId }, select: { userId: true } },
-      replies: {
-        where:   { deletedAt: null },
-        orderBy: { createdAt: "asc" },
-        include: {
-          author: { select: { id: true, name: true, role: true, adminRole: true } },
-          _count: { select: { likes: true } },
-          likes:  { where: { userId }, select: { userId: true } },
-        },
-      },
-    },
-  });
-
-  // Thread lớp: người ngoài lớp nhận 404 như không tồn tại (không lộ bài).
-  if (!thread || thread.deletedAt || !(await canAccessThread(session, thread))) {
-    return NextResponse.json({ error: "Không tìm thấy thread" }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    id:           thread.id,
-    content:      thread.content,
-    category:     thread.category,
-    isPinned:     thread.isPinned,
-    imageUrls:    thread.imageUrls,
-    fileUrl:      thread.fileUrl,
-    fileName:     thread.fileName,
-    courseId:     thread.courseId,
-    createdAt:    thread.createdAt.toISOString(),
-    author: {
-      id:        thread.author.id,
-      name:      thread.author.name,
-      isTeacher: thread.author.role === "admin",
-    },
-    likeCount:      thread._count.likes,
-    replyCount:     thread._count.replies,
-    likedByMe:      thread.likes.some(l => l.userId === userId),
-    bookmarkedByMe: thread.bookmarks.some(b => b.userId === userId),
-    replies: thread.replies.map(r => ({
-      id:        r.id,
-      content:   r.content,
-      imageUrls: r.imageUrls,
-      createdAt: r.createdAt.toISOString(),
-      author: {
-        id:        r.author.id,
-        name:      r.author.name,
-        isTeacher: r.author.role === "admin",
-      },
-      likeCount:  r._count.likes,
-      likedByMe:  r.likes.some(l => l.userId === userId),
-      isOwn:      r.authorId === userId,
-    })),
-  });
+  // Bài xoá / chờ duyệt / bị từ chối / lớp mà người gọi không phải thành viên → cùng một 404 (không lộ sự tồn tại).
+  const detail = await loadThreadDetail(session, id);
+  if (!detail) return notFoundThread();
+  return NextResponse.json(detail, { headers: NO_STORE });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
