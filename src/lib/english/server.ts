@@ -36,8 +36,25 @@ export async function ensureWordsSeeded(): Promise<void> {
   seeded = true;
 }
 
+/**
+ * Chạy lại MỘT lần khi gặp P2002 (vi phạm khoá duy nhất), dùng cho `upsert` có `update: {}` RỖNG. Đã kiểm bằng log SQL của Postgres: `update` rỗng thì Prisma KHÔNG dùng được
+ * INSERT … ON CONFLICT DO UPDATE mà chạy `SELECT` rồi `INSERT` — hai yêu cầu cùng lúc cùng thấy "chưa có", cùng chèn, bên thua nhận P2002 → 500. Còn `update` có nội dung (vd. `increment`)
+ * thì Prisma chạy ON CONFLICT nguyên tử, không đua (logStudy, tiến độ unit, thẻ "làm lại") nên KHÔNG cần bọc.
+ * Người học mới mở trang Tiếng Anh là lúc dễ gặp nhất: nhiều API cùng tạo hồ sơ / thẻ; StrictMode ở dev gọi hai lần; bấm hai lần, mở hai tab cũng vậy.
+ * Bên thua chạy lại thì bản ghi của bên thắng đã ghi xong (Postgres chỉ báo trùng sau khi giao dịch kia chốt) nên lần này thành "tìm thấy, giữ nguyên".
+ * Chỉ dùng cho thao tác idempotent; lỗi khác, hoặc P2002 lần hai, vẫn ném ra.
+ */
+export async function retryOnUnique<T>(op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (e) {
+    if ((e as { code?: string })?.code !== "P2002") throw e;
+    return op();
+  }
+}
+
 export async function getProfile(userId: string) {
-  return prisma.engProfile.upsert({ where: { userId }, create: { userId }, update: {} });
+  return retryOnUnique(() => prisma.engProfile.upsert({ where: { userId }, create: { userId }, update: {} }));
 }
 
 /** Lemma người học đã biết hoặc đang học — nền để tính độ phủ bài đọc. */
@@ -56,7 +73,7 @@ export async function logStudy(userId: string, module: string, d: { items?: numb
     where: { userId_day_module: { userId, day, module } },
     create: { userId, day, module, ...inc },
     update: { items: { increment: inc.items }, correct: { increment: inc.correct }, total: { increment: inc.total }, seconds: { increment: inc.seconds } },
-  });
+  }); // update có increment → Prisma chạy INSERT … ON CONFLICT DO UPDATE (nguyên tử), không cần retryOnUnique
 }
 
 /** Bổ sung nghĩa tiếng Việt / ví dụ cho các từ còn thiếu (gọi AI theo lô 20 từ). Lỗi AI không chặn việc học: thẻ vẫn tạo, nghĩa bổ sung sau. */
@@ -85,11 +102,11 @@ export function wordCardKey(wordId: string, cardType: string) { return `w:${word
 export async function ensureWordCard(userId: string, wordId: string, cardType: "recognize" | "recall" | "listen" | "cloze", due?: Date) {
   const key = wordCardKey(wordId, cardType);
   const base = newCardRow(due ?? new Date());
-  await prisma.engCard.upsert({
+  await retryOnUnique(() => prisma.engCard.upsert({
     where: { userId_key: { userId, key } },
     create: { userId, key, kind: "word", cardType, wordId, ...base },
     update: {},
-  });
+  }));
 }
 
 /** Thêm (hoặc cập nhật) một từ vào sổ từ của người học. Trả về id từ. */
@@ -97,13 +114,13 @@ export async function addUserWord(userId: string, rawWord: string, opts: { sourc
   const lemma = lemmatize(rawWord.trim().toLowerCase()).slice(0, 60);
   if (!/^[a-z][a-z'-]*$/.test(lemma)) throw new Error("Từ không hợp lệ");
   const entry = listEntry(lemma);
-  const word = await prisma.engWord.upsert({
+  const word = await retryOnUnique(() => prisma.engWord.upsert({
     where: { lemma },
     create: { lemma, list: entry?.list ?? "own", listRank: entry?.listRank ?? null, freqRank: entry?.freqRank ?? freqRank(lemma) ?? null },
     update: {},
-  });
+  }));
   const status = opts.status ?? "learning";
-  await prisma.engUserWord.upsert({
+  await retryOnUnique(() => prisma.engUserWord.upsert({
     where: { userId_wordId: { userId, wordId: word.id } },
     create: { userId, wordId: word.id, status, source: opts.source, context: opts.context ?? null, contextVi: opts.contextVi ?? null, textId: opts.textId ?? null },
     update: {
@@ -111,7 +128,7 @@ export async function addUserWord(userId: string, rawWord: string, opts: { sourc
       ...(status === "learning" ? { status: "learning" } : {}),
       ...(opts.context ? { context: opts.context, contextVi: opts.contextVi ?? null, textId: opts.textId ?? null } : {}),
     },
-  });
+  }));
   if (status === "learning") await ensureWordCard(userId, word.id, "recognize");
   return word;
 }

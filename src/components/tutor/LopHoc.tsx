@@ -58,7 +58,7 @@ export default function LopHoc() {
 
       {error && <ErrorStrip message="Không tải được danh sách lớp." onRetry={load} />}
       {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 ? (
-        <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/admin/khoa-hoc?tao=1" className={kinButtonClass("primary")}>Tạo lớp đầu tiên</Link>}>
+        <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/lop-cua-toi/quan-lop?tao=1" className={kinButtonClass("primary")}>Tạo lớp đầu tiên</Link>}>
           Tạo lớp đầu tiên, rồi gửi mã mời cho học sinh vào lớp. Lớp có lịch và học sinh sẽ hiện thành bảng ở đây.
         </KinEmptyState>
       ) : (

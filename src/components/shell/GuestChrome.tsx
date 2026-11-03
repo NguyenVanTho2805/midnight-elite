@@ -21,6 +21,7 @@ export default function GuestChrome({ children }: { children: ReactNode }) {
 
   if (kind === "student") return <StudentShell><main className="flex-1">{children}</main></StudentShell>;
   if (kind === "tutor") return <TutorShellClient><main className="flex-1">{children}</main></TutorShellClient>;
+  if (kind === "tutor-pending") return <TutorShellClient pending><main className="flex-1">{children}</main></TutorShellClient>; // BU-00 bước 5
 
   // data-guest-chrome="cho": CSS (kin-tokens.css) ẩn hai khối này khi <html> có data-kin-vo (máy này lần trước đã đăng nhập) VÀ còn đang chờ biết ai đăng nhập —
   // xem src/lib/signedInShell.ts. Hết chờ ("hien") thì luôn hiện: khách, và cả người đã đăng nhập ở trang không có vỏ (/quen-mat-khau…) vẫn cần thanh trên.

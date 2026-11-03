@@ -122,11 +122,11 @@ async function fillLogin(p: Page, email: string, password: string) {
     await hint.click().catch(() => {}); await settle(p);
     check("bấm lối đó → trang đăng nhập của tên miền chính (không phải cửa admin)", !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/dang-nhap", p.url());
     await fillLogin(p, T.email, "Passw0rd!");
-    await eventually("gia sư đăng nhập xong → vào ĐÚNG /admin/khoa-hoc ở tên miền chính (không bị đẩy sang tên miền admin)", () => !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/admin/khoa-hoc", 40000);
+    await eventually("gia sư đăng nhập xong → ?redirect=/admin/khoa-hoc được proxy 307 sang bí danh /lop-cua-toi/quan-lop ở tên miền chính (BU-00 bước 3; không bị đẩy sang tên miền admin)", () => !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/lop-cua-toi/quan-lop", 40000);
     await eventually("trong vỏ gia sư", async () => (await p.locator('nav[aria-label="Module của gia sư"]').count()) > 0, 20000);
     // Mở LẠI đúng địa chỉ ấy bằng tay trên cùng trình duyệt: không được dùng bản chuyển hướng đã nhớ từ lần 1.
     await p.goto(MAIN + "/admin/khoa-hoc", { waitUntil: "domcontentloaded" }); await settle(p);
-    check("mở lại đúng địa chỉ cũ → ở lại tên miền chính", !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/admin/khoa-hoc", p.url());
+    check("mở lại đúng địa chỉ cũ → ở lại tên miền chính, tới bí danh /lop-cua-toi/quan-lop (không dùng bản 308 đã nhớ)", !u(p.url()).host.startsWith("admin.") && u(p.url()).pathname === "/lop-cua-toi/quan-lop", p.url());
     await ctx.close();
   }
 

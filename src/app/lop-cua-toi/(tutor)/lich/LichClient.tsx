@@ -663,7 +663,7 @@ function OccurrenceDetail(p: CardProps & { panel?: boolean }) {
               ? <>Link vào lớp ({occ.joinSource ? JOIN_SOURCE_LABEL[occ.joinSource] : "đã đặt"}): <a href={occ.joinUrl} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--kin-nhan-link)" }}>{occ.joinUrl}</a></>
               : occ.mode === "offline"
                 ? <>Học trực tiếp.</>
-                : <>Chưa có link vào lớp. Thêm ở tab <Link href={`/admin/khoa-hoc/${occ.courseId}?tab=lich-hoc`} className="underline" style={{ color: "var(--kin-nhan-link)" }}>Lịch học</Link> hoặc mở buổi để đặt link riêng.</>}
+                : <>Chưa có link vào lớp. Thêm ở tab <Link href={`/lop-cua-toi/quan-lop/${occ.courseId}?tab=lich-hoc`} className="underline" style={{ color: "var(--kin-nhan-link)" }}>Lịch học</Link> hoặc mở buổi để đặt link riêng.</>}
           </p>
 
           <p className="text-sm">

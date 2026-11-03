@@ -1,5 +1,6 @@
 // TT-203 — vỏ của gia sư theo bố cục Outlook (Figma "Vỏ — Gia sư" 9:2): thanh module 79px bên trái (điện thoại: thanh dưới 60px)
-// + dải trên 48px. Chỉ hiện module đang bật; mặc định "chế độ gọn" = Lịch + Học phí. Tắt module chỉ ẨN khỏi thanh — dữ liệu giữ nguyên.
+// + dải trên 48px. Chỉ hiện module đang bật; mặc định (BU-00 31/10/2026, theo quyết định chủ 25/10) = ĐỦ module, gia sư tự tắt bớt ở Cài đặt ("chế độ gọn" = Lịch + Học phí
+// là lựa chọn tường minh `modules: []`). Tắt module chỉ ẨN khỏi thanh — dữ liệu giữ nguyên.
 // 13/10/2026: bỏ menu 226px + biểu tượng emoji + nhãn 9,5px; các trang không có trên thanh (Doanh thu, Báo cáo tháng, Kế hoạch buổi,
 // Kiểm duyệt, Hồ sơ gia sư, Bài đăng, Cài đặt) vào qua bảng "Khác" như vỏ học sinh. Hộp việc đang ở đúng /lop-cua-toi, nên mục này
 // chỉ sáng khi đúng đường dẫn đó (các trang con không làm nó sáng theo).
@@ -15,13 +16,15 @@ import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
-import { visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
+import { KinCallout } from "@/components/kin/Callout";
+import { OPTIONAL_TUTOR_MODULES, visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
+import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
 /** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
 const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
-// Các trang /admin/* mà gia sư dùng (đề thi, ngân hàng đề, quản lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ này (src/lib/hostRouting.ts,
-// TutorAdminFrame) — nên Bài KT / Thư viện / Lớp là liên kết nội bộ chứ không còn nhảy sang tên miền quản trị.
+// BU-00 bước 3 (31/10/2026): trang đề thi / ngân hàng / quản lớp của gia sư nằm ở /lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* (bí danh của
+// /admin/thi-thu*, /admin/khoa-hoc* — src/lib/tutorRoutes.ts), chạy trong chính vỏ này; gia sư không còn vào /admin/* (proxy 307 sang bí danh).
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của gia sư, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 const MORE_BASE: MoreGroup[] = [
@@ -39,21 +42,34 @@ const MORE_BASE: MoreGroup[] = [
   ] },
 ];
 
+// BU-00 bước 5 (31/10/2026): vỏ gia sư CHỜ DUYỆT — cùng khung (thanh trái / thanh dưới + dải trên) nhưng thanh chỉ 3 mục, nhãn vai "CHỜ DUYỆT", không bảng "Khác",
+// không số đếm, và một băng "Hồ sơ gia sư đang chờ duyệt" trên vùng nội dung. Cài đặt trỏ thẳng /cai-dat/chu-de vì /lop-cua-toi/cai-dat (module, nhắc lịch, kết nối)
+// chỉ có nghĩa khi đã dạy.
+const PENDING_ITEMS: ModuleItem[] = [
+  { key: "cho-duyet", label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH, icon: "nguoi" },
+  { key: "ho-tro", label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro", icon: "khac" },
+  { key: "cai-dat", label: "Cài đặt", href: "/cai-dat/chu-de", icon: "cai-dat" },
+];
+
 export default function TutorShell({
-  modules, badges, children,
+  modules, badges, pending = false, children,
 }: {
-  /** Module tuỳ chọn gia sư đã bật. */
-  modules: OptionalTutorModule[];
+  /** Module tuỳ chọn gia sư đã bật. `undefined` = chưa chọn = đủ module (BU-00); `[]` = chế độ gọn tường minh. */
+  modules?: OptionalTutorModule[];
   /** Số việc đang chờ theo module (chỉ đếm việc cần gia sư ra tay). */
   badges: Record<string, number>;
+  /** Gia sư chờ duyệt (BU-00 bước 5): thanh 3 mục, không "Khác", không số đếm, có băng chờ duyệt. */
+  pending?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = useCallback(() => setMoreOpen(false), []);
+  if (pending) return <PendingShell user={user} onLogout={() => void logout()}>{children}</PendingShell>;
   const visible = visibleTutorModules({ modules });
-  const hiddenCount = 4 - modules.length;
+  // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
+  const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => !visible.some(m => m.key === k)).length;
 
   const groups: MoreGroup[] = [
     ...MORE_BASE,
@@ -70,8 +86,8 @@ export default function TutorShell({
     key: m.key, label: m.label, href: m.href, icon: ICON[m.key] ?? "viec", badge: badges[m.key],
     // Hộp việc nằm ở đúng /lop-cua-toi nên chỉ sáng khi đúng đường dẫn đó (isUnder sẽ làm nó sáng ở mọi trang con).
     active: m.key === "hop-viec" ? pathname === "/lop-cua-toi"
-      : m.key === "bai-kt" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/thi-thu")   // trang Bài tập + đề thi, ngân hàng câu hỏi, ngân hàng đề (cùng một họ "bài kiểm tra")
-      : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/admin/khoa-hoc")  // quản lớp / điểm danh / học viên của lớp
+      : m.key === "bai-kt" ? isUnder(pathname, m.href) || isUnder(pathname, "/lop-cua-toi/de-thi")   // trang Bài tập + đề thi, ngân hàng câu hỏi, ngân hàng đề (cùng một họ "bài kiểm tra")
+      : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/lop-cua-toi/quan-lop")  // quản lớp / điểm danh / học viên của lớp
       : isUnder(pathname, m.href),
     desktopOnly: !MOBILE_KEYS.has(m.key),
   }));
@@ -128,6 +144,45 @@ export default function TutorShell({
       </div>
 
       {moreOpen && <MorePanel id="khac-bang" groups={groups} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+    </div>
+  );
+}
+
+function PendingShell({ user, onLogout, children }: { user: { name: string; email: string } | null; onLogout: () => void; children: React.ReactNode }) {
+  const wide: NavGroup[] = [{ title: "Hồ sơ gia sư", items: PENDING_ITEMS.map(m => ({ key: m.key, label: m.label, href: m.href ?? TUTOR_PENDING_PATH, icon: m.icon })) }];
+  return (
+    <div data-tutor-pending-shell className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <ModuleRail roleLabel="CHỜ DUYỆT" ariaLabel="Module của gia sư" modules={PENDING_ITEMS} groups={wide}
+        home={{ href: TUTOR_PENDING_PATH, label: "KiN — Hồ sơ gia sư đang chờ duyệt" }} footnote="Miễn phí ra mắt" />
+
+      <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+        <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
+          <div className="flex items-center gap-1 min-w-0">
+            <RailOpenButton pending={0} />
+            <Link href={TUTOR_PENDING_PATH} aria-label="KiN — Hồ sơ gia sư đang chờ duyệt" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            {user && <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hồ sơ gia sư của {user.name}</p>}
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <TopDate />
+            <NotificationBell />
+            <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
+              className="inline-flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-lg border border-[var(--kin-vien-thuong)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-bang)] hover:text-[var(--kin-chu-chinh)] transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
+              </svg>
+            </Link>
+            {user && <AccountMenu name={user.name} email={user.email} onLogout={onLogout}
+              links={[{ label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH }, { label: "Sửa hồ sơ", href: "/lop-cua-toi/ho-so" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
+          </div>
+        </div>
+        {/* Băng chờ duyệt: chữ nói rõ trạng thái (không chỉ màu), một liên kết đi tiếp. */}
+        <div data-tutor-pending-band className="mx-4 md:mx-10 mt-4">
+          <KinCallout title="Hồ sơ gia sư đang chờ duyệt">
+            KiN sẽ báo khi duyệt xong. Trong lúc chờ, bạn xem được trạng thái hồ sơ và gửi câu hỏi cho KiN ở <Link href="/lop-cua-toi/ho-tro" className="underline text-[var(--kin-nhan-link)]">Liên hệ hỗ trợ</Link>.
+          </KinCallout>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

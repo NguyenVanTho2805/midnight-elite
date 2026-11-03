@@ -43,7 +43,8 @@ export interface AuthUser {
   zaloPhone?:    string | null;
   adminRole?:    AdminRole;
   emailVerified: boolean;
-  /** NC2-029: đã nộp đơn gia sư, đang chờ quản trị duyệt (vẫn là học viên). */
+  /** NC2-029: đã nộp đơn gia sư, đang chờ quản trị duyệt (vẫn là role học viên). BU-00 bước 5: cờ này chọn vỏ gia sư "chờ duyệt" và trang đầu /lop-cua-toi/cho-duyet;
+   *  /api/auth/me, /api/auth/login, /api/auth/code/verify đều trả. */
   tutorPending?: boolean;
 }
 
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, retryAfterSec: data.retryAfterSec };
     setUser(toAuthUser(data));
-    router.push(landingPath(data.role, data.adminRole));
+    router.push(landingPath(data.role, data.adminRole, data.tutorPending === true)); // BU-00 bước 5: gia sư chờ duyệt → trang chờ duyệt
     return { success: true };
   }
 
@@ -108,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, attemptsLeft: data.attemptsLeft, retryAfterSec: data.retryAfterSec };
     }
     setUser(toAuthUser(data));
-    router.push(landingPath(data.role, data.adminRole));
+    router.push(landingPath(data.role, data.adminRole, data.tutorPending === true));
     return { success: true };
   }
 

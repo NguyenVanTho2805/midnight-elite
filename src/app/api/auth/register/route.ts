@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
-import { grantSignupBonus } from "@/lib/wallet";
+import { signupBonusOps } from "@/lib/wallet";
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
@@ -31,31 +31,33 @@ export async function POST(req: Request) {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        name:          name.trim(),
-        email:         email.trim().toLowerCase(),
-        password:      hashed,
-        phone:         phone?.trim() || null,
-        parentPhone:   parentPhone?.trim() || null,
-        school:        school?.trim() || null,
-        city:          city?.trim() || null,
-        role:          "student",
-        emailVerified: false,
-      },
-    });
-
-    await grantSignupBonus(user.id);
-
-    // Tạo verification token (24 giờ)
-    const token = randomBytes(32).toString("hex");
-    await prisma.verifyToken.create({
-      data: {
-        token,
-        userId:    user.id,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      },
-    });
+    // Tài khoản + ví + xu khởi đầu + link xác thực trong MỘT giao dịch: lỗi ở bước nào thì không còn gì lại. Trước đây User được tạo xong rồi mới tới các bước sau,
+    // lỗi giữa chừng để lại tài khoản không ví / không link và chặn đăng ký lại ("Email này đã được đăng ký") dù người dùng thấy "Lỗi server".
+    const token = randomBytes(32).toString("hex"); // verification token (24 giờ)
+    const user = await prisma.$transaction(async tx => {
+      const u = await tx.user.create({
+        data: {
+          name:          name.trim(),
+          email:         email.trim().toLowerCase(),
+          password:      hashed,
+          phone:         phone?.trim() || null,
+          parentPhone:   parentPhone?.trim() || null,
+          school:        school?.trim() || null,
+          city:          city?.trim() || null,
+          role:          "student",
+          emailVerified: false,
+        },
+      });
+      for (const op of signupBonusOps(tx, u.id)) await op;
+      await tx.verifyToken.create({
+        data: {
+          token,
+          userId:    u.id,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
+      return u;
+    }, { timeout: 15_000, maxWait: 10_000 });
 
     // Gửi email xác thực
     let emailSent = true;
@@ -74,6 +76,8 @@ export async function POST(req: Request) {
       emailSent,
     });
   } catch (e) {
+    // Hai yêu cầu cùng email chạy song song: cả hai qua bước kiểm tra, một bên thua ở khoá duy nhất → báo đúng như lần kiểm tra ở trên, không phải "Lỗi server".
+    if ((e as { code?: string })?.code === "P2002") return NextResponse.json({ error: "Email này đã được đăng ký" }, { status: 409 });
     console.error("[register]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
   }

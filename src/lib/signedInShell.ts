@@ -10,14 +10,19 @@
 // Các trang xác thực không có vỏ dù đã đăng nhập (người dùng chỉ ghé qua rồi bị đưa đi chỗ khác).
 export const NO_SHELL_PATHS = ["/dang-nhap", "/dang-ky", "/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email", "/xac-nhan-phu-huynh"] as const;
 
-export type ShellKind = "student" | "tutor";
+// BU-00 bước 5 (31/10/2026): "tutor-pending" = gia sư CHỜ DUYỆT (role student + đơn đang chờ, cờ `tutorPending` do /api/auth/me tính) → vỏ gia sư dạng
+// chờ duyệt (3 mục) thay vì vỏ học sinh. Quản trị cấp 1 / nội dung vẫn là "student" (vỏ học sinh có băng "Đang xem thử" — StudentShell tự nhận theo role).
+export type ShellKind = "student" | "tutor" | "tutor-pending";
+const SHELL_KINDS: readonly ShellKind[] = ["student", "tutor", "tutor-pending"];
 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(base + "/");
 
-export function shellFor(user: { role: string | null; adminRole?: string | null } | null, pathname: string): ShellKind | null {
+export interface ShellUser { role: string | null; adminRole?: string | null; tutorPending?: boolean }
+
+export function shellFor(user: ShellUser | null, pathname: string): ShellKind | null {
   if (!user) return null;
   if (NO_SHELL_PATHS.some(p => under(pathname, p))) return null;
-  if (user.role === "student") return "student";
+  if (user.role === "student") return user.tutorPending ? "tutor-pending" : "student";
   if (user.role === "admin") return user.adminRole === "teacher" ? "tutor" : "student";
   return null;
 }
@@ -31,10 +36,11 @@ export function shellFor(user: { role: string | null; adminRole?: string | null 
 export const SHELL_HINT_KEY = "kin.vo";
 export const SHELL_HINT_ATTR = "data-kin-vo";
 
-export const parseShellHint = (v: unknown): ShellKind | null => (v === "student" || v === "tutor" ? v : null);
+/** Giá trị lạ (bản cũ, tay ghi) → null = không gợi ý, khung khách hiện như thường. */
+export const parseShellHint = (v: unknown): ShellKind | null => (typeof v === "string" && (SHELL_KINDS as readonly string[]).includes(v) ? (v as ShellKind) : null);
 
 /** Vỏ của người này ở một trang khách thường (không phải trang xác thực) — chính là thứ cần nhớ làm gợi ý. */
-export const shellHintFor = (user: { role: string | null; adminRole?: string | null } | null): ShellKind | null => shellFor(user, "/");
+export const shellHintFor = (user: ShellUser | null): ShellKind | null => shellFor(user, "/");
 
 /** Chạy TRƯỚC khi trình duyệt vẽ trang (chèn ở layout gốc). Một dòng, không chứa "</script", không ném lỗi khi localStorage bị chặn. */
-export const SHELL_INIT_SCRIPT = `try{var v=localStorage.getItem(${JSON.stringify(SHELL_HINT_KEY)});if(v==="student"||v==="tutor")document.documentElement.setAttribute(${JSON.stringify(SHELL_HINT_ATTR)},v)}catch(e){}`;
+export const SHELL_INIT_SCRIPT = `try{var v=localStorage.getItem(${JSON.stringify(SHELL_HINT_KEY)});if(${JSON.stringify(SHELL_KINDS)}.indexOf(v)>=0)document.documentElement.setAttribute(${JSON.stringify(SHELL_HINT_ATTR)},v)}catch(e){}`;

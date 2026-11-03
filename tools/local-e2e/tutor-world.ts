@@ -8,9 +8,11 @@ import { prisma } from "@/lib/prisma";
 const vnDateKey = (offsetDays: number) => new Date(Date.now() + 7 * 3600_000 + offsetDays * 86400_000).toISOString().slice(0, 10);
 let seq = 9000;
 
-// `compact: true` = để nguyên cấu hình mặc định (chưa chọn module nào) → "chế độ gọn": thanh chỉ có Lịch + Học phí, các mục còn lại nằm trong «Khác».
-// Đây là cái gia sư mới / gia sư hiện có (chưa bật gì) THỰC SỰ thấy lúc đầu; mặc định của bài rà là bật đủ 4 module tuỳ chọn để mọi trang có lối vào.
+// BU-00 (31/10/2026): cấu hình MẶC ĐỊNH (chưa chọn module nào) nay là ĐỦ module. `compact: true` = ghi TƯỜNG MINH `{ modules: [] }` → "chế độ gọn":
+// thanh chỉ có Lịch + Học phí, các mục còn lại nằm trong «Khác» — là cái gia sư đã tự tắt hết module thấy. Mặc định của bài rà: bật đủ 4 module tuỳ chọn
+// (ghi rõ danh sách để không phụ thuộc vào mặc định của mã).
 const ALL_MODULES = { modules: ["hop-viec", "lop", "bai-kt", "thu-vien"] };
+const COMPACT_MODULES = { modules: [] as string[] };
 
 // Dấu hiệu dữ liệu của gia sư THỨ HAI: bài rà dùng để chắc chắn chúng không lọt vào trang của gia sư chính.
 export const OTHER = { tutor: "Thầy Khác (không liên quan)", course: "Lớp của gia sư khác", plan: "Kế hoạch của gia sư khác", exam: "Đề của gia sư khác", applicant: "Ứng Viên Gia Sư Chờ Duyệt" };
@@ -22,10 +24,10 @@ export async function seedTutorWorld(opts: { empty?: boolean; compact?: boolean 
   const T2 = await mkTutor(OTHER.tutor); // gia sư thứ hai: dữ liệu của người khác không được lẫn vào
   const s1 = await mkUser({ name: "Trần Gia Bảo" }), s2 = await mkUser({ name: "Đỗ Hà" }), s3 = await mkUser({ name: "Lê Minh" });
   const waiting = await mkUser({ name: "Chờ Phụ Huynh" }), rep = await mkUser({ name: "Người Báo Cáo" });
-  // bật đủ 4 module tuỳ chọn (Hộp việc, Lớp, Bài KT, Thư viện); Lịch + Học phí luôn có
+  // bật đủ 4 module tuỳ chọn (Hộp việc, Lớp, Bài KT, Thư viện) hoặc, khi `compact`, ghi tường minh `modules: []`; Lịch + Học phí luôn có
   await prisma.user.update({
     where: { id: T.id },
-    data: { ...(opts.compact ? {} : { preferences: ALL_MODULES }), bio: "Gia sư Toán 9 – 12 với 8 năm kinh nghiệm luyện thi vào 10 và THPT.", subjects: ["Toán"] },
+    data: { preferences: opts.compact ? COMPACT_MODULES : ALL_MODULES, bio: "Gia sư Toán 9 – 12 với 8 năm kinh nghiệm luyện thi vào 10 và THPT.", subjects: ["Toán"] },
   });
 
   // một đơn xin làm gia sư đang chờ duyệt: chỉ quản trị trung tâm được thấy, gia sư thường mở "Chờ kiểm duyệt" không được thấy tên người này
@@ -38,7 +40,7 @@ export async function seedTutorWorld(opts: { empty?: boolean; compact?: boolean 
   const stamp2 = Date.now();
   const exam2 = await prisma.exam.create({ data: { id: `exam-o-${stamp2}`, code: `DE-O-${stamp2.toString(36).toUpperCase().slice(-5)}`, title: OTHER.exam, category: "toan", date: vnDateKey(6), time: "19:00", duration: "15", questions: 0, status: "upcoming", createdAt: new Date().toISOString(), ownerId: T2.id, courseId: c3.id } });
   if (opts.empty) {
-    if (!opts.compact) await prisma.user.update({ where: { id: T.id }, data: { preferences: ALL_MODULES } });
+    await prisma.user.update({ where: { id: T.id }, data: { preferences: opts.compact ? COMPACT_MODULES : ALL_MODULES } });
     const stud = await mkUser({ name: "Học viên bất kỳ" });
     return { empty: true as const, T, T2, s1: stud, c3, plan2Id: plan2.json?.id as string | undefined, exam2Id: exam2.id };
   }

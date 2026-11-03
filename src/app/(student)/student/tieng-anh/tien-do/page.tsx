@@ -89,12 +89,13 @@ export default function ProgressPage() {
       <Card aria-labelledby="h-tuan">
         <h2 id="h-tuan" className="font-bold mb-3" style={{ color: INK.chinh }}>Phút học mỗi tuần (12 tuần)</h2>
         <ol className="flex items-end gap-1.5 h-40" aria-label="Số phút học mỗi tuần">
-          {d.weeks.map(w => (
+          {d.weeks.map((w, i) => (
             <li key={w.start} className="flex-1 flex flex-col items-center justify-end gap-1 h-full min-w-0">
-              <span className="text-[10px] sm:text-xs" style={{ color: INK.phu }}>{w.minutes}</span>
+              <span className="text-[length:var(--kin-co-caption)] sm:text-xs" style={{ color: INK.phu }}>{w.minutes}</span>
               <span className="w-full rounded-t" aria-hidden
                 style={{ height: `${Math.max(2, (w.minutes / maxWeek) * 75)}%`, background: w.minutes >= d.hours.weekTargetMinutes ? "var(--kin-nhan-nen)" : w.minutes ? "var(--kin-chu-mo)" : "var(--kin-vien-nhat)" }} />
-              <span className="text-[10px] sm:text-xs" style={{ color: INK.mo }}>{ddmm(w.start)}</span>
+              {/* Sàn cỡ chữ 11,1px (--kin-co-caption): 12 cột ở màn hẹp quá chật cho 12 nhãn ngày (đo 360px: 7 cặp đè nhau, 320px: 11), nên màn hẹp chỉ hiện mỗi cột thứ 3; từ `sm` hiện đủ. `invisible` giữ chỗ nên cột không xô lệch. */}
+              <span className={`text-[length:var(--kin-co-caption)] sm:text-xs${i % 3 === 0 ? "" : " max-sm:invisible"}`} style={{ color: INK.mo }}>{ddmm(w.start)}</span>
             </li>
           ))}
         </ol>

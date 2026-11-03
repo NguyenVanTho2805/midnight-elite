@@ -21,6 +21,7 @@ import { useFieldValidation } from "@/components/kin/useFieldValidation";
 import { email as emailRule, required } from "@/lib/fieldRules";
 import { CodeBoxes } from "@/components/kin/CodeBoxes";
 import { KinSubmitButton } from "@/components/kin/SubmitButton";
+import { NO_AUTOFIX } from "@/components/kin/noAutofix";
 import { LockCountdown } from "@/components/kin/LockCountdown";
 import { replayClass } from "@/lib/replayClass";
 import { KinTabs } from "@/components/kin/Tabs";
@@ -87,7 +88,7 @@ function DangNhapForm() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace(redirectTo ?? landingPath(user.role ?? "student", user.adminRole));
+      router.replace(redirectTo ?? landingPath(user.role ?? "student", user.adminRole, user.tutorPending)); // BU-00 bước 5: gia sư chờ duyệt → trang chờ duyệt
     }
   }, [user, isLoading, router, redirectTo]);
 
@@ -290,7 +291,7 @@ function DangNhapForm() {
               <form onSubmit={sendCode} noValidate className="flex flex-col gap-4">
                 <div className="flex flex-col gap-[6px]">
                   <label htmlFor="dn-email" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">{idLabel}</label>
-                  <input id="dn-email" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete={phoneOn ? "username" : "email"} ref={focusOnce} value={email}
+                  <input id="dn-email" type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete={phoneOn ? "username" : "email"} {...NO_AUTOFIX} ref={focusOnce} value={email}
                     onChange={e => setEmail(e.target.value)} placeholder={idPlaceholder} className={field} />
                 </div>
                 {noticeBox}

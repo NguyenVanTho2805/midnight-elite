@@ -44,6 +44,7 @@ export default async function LopPage({ params, searchParams }: Props) {
   const isAdmin   = session.role === "admin";
   const isOwner   = isAdmin && session.userId === course.ownerId;
   const isElevated = isAdmin && session.adminRole !== "teacher";
+  const isTeacher  = isAdmin && session.adminRole === "teacher"; // BU-00: lối tắt trong OutlookShell đi bí danh gia sư hay /admin/khoa-hoc tuỳ vai thật
 
   if (!isOwner && !isElevated) {
     if (session.role !== "student") notFound();
@@ -73,7 +74,7 @@ export default async function LopPage({ params, searchParams }: Props) {
     ]);
     const usable = invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
     return <LopChiTiet d={{
-      courseId: course.id, courseName: course.name, category: course.category, viewerName,
+      courseId: course.id, courseName: course.name, category: course.category, viewerName, isTeacher,
       schedule: formatScheduleRules(rules),
       students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })),
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
@@ -82,5 +83,5 @@ export default async function LopPage({ params, searchParams }: Props) {
     }} />;
   }
 
-  return <OutlookShell courseId={course.id} courseName={course.name} category={course.category} role={roleView} viewerName={viewerName} />;
+  return <OutlookShell courseId={course.id} courseName={course.name} category={course.category} role={roleView} viewerName={viewerName} isTeacher={isTeacher} />;
 }
