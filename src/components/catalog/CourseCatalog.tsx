@@ -89,14 +89,14 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
   const { enrolledIds } = useEnrollments();
   const [f, setF] = useState<CatalogFilters>(initial);
 
+  // Không đặt window.history.replaceState trong hàm cập nhật của setF: Next vá replaceState để cập nhật Router, mà hàm cập nhật chạy lúc React đang dựng
+  // CourseCatalog → React báo "Cannot update a component (Router) while rendering a different component". Tính bộ lọc mới từ `f` rồi mới ghi URL.
   const apply = useCallback((patch: Partial<CatalogFilters>) => {
-    setF(prev => {
-      const next = { ...prev, ...patch };
-      const qs = buildCatalogQuery(next);
-      window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-      return next;
-    });
-  }, []);
+    const next = { ...f, ...patch };
+    const qs = buildCatalogQuery(next);
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+    setF(next);
+  }, [f]);
 
   const chips = useMemo(() => catalogChips(categories, cards, f.category), [categories, cards, f.category]);
   const shown = useMemo(() => sortCatalog(filterCatalog(cards, f), f.sort), [cards, f]);
