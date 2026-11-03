@@ -4,6 +4,7 @@
 // học sinh vào /admin; thông báo article_new không tên/số; slug khoảng trắng; category chứa NUL; XFF xoay vòng; XSS ở title/author/tag.
 import { prisma } from "@/lib/prisma";
 import { api, mkSuper, mkUser, mkTutor, wipe, BASE, check, section, done, cookieFor } from "./h";
+const PAD = "Nội dung bổ sung cho đủ độ dài tối thiểu của bài viết (ADM-002: nội dung ≥ 100 ký tự). ".repeat(2);
 
 const UA = "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/120 Safari/537.36";
 const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { redirect: "manual", headers: { "user-agent": UA, ...h } }).then(async r => ({ status: r.status, text: await r.text(), headers: r.headers }));
@@ -75,7 +76,7 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
   }
 
   section("4. Khách / học sinh / gia sư gọi API admin bài viết");
-  const body = { title: "Giả mạo", slug: "gia-mao", excerpt: "x", content: "x", category: "gia-su", published: true };
+  const body = { title: "Giả mạo tin tức", slug: "gia-mao", excerpt: "x", content: PAD, category: "gia-su", published: true };
   const id = nhap.id;
   const calls: [string, string, unknown][] = [["GET", "/api/admin/articles", undefined], ["POST", "/api/admin/articles", body], ["GET", `/api/admin/articles/${id}`, undefined], ["PATCH", `/api/admin/articles/${id}`, { published: true }], ["DELETE", `/api/admin/articles/${id}`, undefined]];
   for (const [who, u] of [["khách", undefined], ["học sinh", ST], ["gia sư", TU]] as const)
@@ -112,9 +113,9 @@ const get = (p: string, h: Record<string, string> = {}) => fetch(BASE + p, { red
   await api("POST", "/api/admin/articles", { as: SA, body: { ...body, slug: "lich-khong-bao", publishedAt: new Date(now + 3 * H).toISOString() } });
   check("lịch tương lai: không gửi", (await prisma.notification.count({ where: { type: "article_new" } })) === c1);
   const nhap2 = await api("POST", "/api/admin/articles", { as: SA, body: { ...body, slug: "nhap-khong-bao", published: false } });
-  await api("PATCH", `/api/admin/articles/${nhap2.json.id}`, { as: SA, body: { title: "đổi tên" } });
+  await api("PATCH", `/api/admin/articles/${nhap2.json.id}`, { as: SA, body: { title: "Đổi tên bài viết" } });
   check("nháp + sửa nháp: không gửi", (await prisma.notification.count({ where: { type: "article_new" } })) === c1);
-  await api("PATCH", `/api/admin/articles/${(await prisma.article.findUniqueOrThrow({ where: { slug: "bao-tb" } })).id}`, { as: SA, body: { title: "Sửa lại", content: "mới" } });
+  await api("PATCH", `/api/admin/articles/${(await prisma.article.findUniqueOrThrow({ where: { slug: "bao-tb" } })).id}`, { as: SA, body: { title: "Sửa lại bài viết", content: `Nội dung mới. ${PAD}` } });
   check("sửa bài ĐÃ đăng (không đổi trạng thái) không gửi lại", (await prisma.notification.count({ where: { type: "article_new" } })) === c1);
   const titleEvil = await api("POST", "/api/admin/articles", { as: SA, body: { ...body, slug: "tb-xss", title: '<img src=x onerror=alert(1)>"' } });
   const nx = await prisma.notification.findFirst({ where: { type: "article_new", link: "/tin-tuc/tb-xss" } });

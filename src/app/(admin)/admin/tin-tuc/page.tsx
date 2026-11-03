@@ -5,7 +5,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Toggle } from "@/components/Toggle";
-import { toSlug } from "@/lib/slug";
+import { toArticleSlug, titleError, slugError, contentError } from "@/lib/articleValidate";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { cleanArticleSource, draftFromPaste, SOURCE_NAME_MAX, COVER_URL_MAX } from "@/lib/articleSource";
 
@@ -195,7 +195,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
 
   function handleTitleChange(v: string) {
     set("title", v);
-    if (!slugEdited) set("slug", toSlug(v));
+    if (!slugEdited) set("slug", toArticleSlug(v));
   }
 
   // Dán nội dung bài Facebook → điền tiêu đề, slug, tóm tắt, nội dung, thời gian đọc, danh mục "Tuyển sinh". Chưa lưu gì: quản trị sửa rồi mới bấm "Tạo bài viết".
@@ -210,10 +210,14 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
 
   function validate(): boolean {
     const e: Partial<Record<keyof DrawerForm, string>> = {};
+    // ADM-002: cùng luật với máy chủ (articleValidate.ts) — slug 3–80 ký tự, tiêu đề ≥ 10, nội dung ≥ 100.
     if (!form.title.trim())    e.title    = "Tiêu đề không được để trống";
+    else { const t = titleError(form.title); if (t) e.title = t; }
     if (!form.slug.trim())     e.slug     = "Slug không được để trống";
+    else { const sl = slugError(form.slug); if (sl) e.slug = sl; }
     if (!form.excerpt.trim())  e.excerpt  = "Tóm tắt không được để trống";
     if (!form.content.trim())  e.content  = "Nội dung không được để trống";
+    else { const c = contentError(form.content); if (c) e.content = c; }
     if (!form.category.trim()) e.category = "Chọn danh mục";
     const src = cleanArticleSource(form);
     if (!src.ok) e[src.field] = src.error;

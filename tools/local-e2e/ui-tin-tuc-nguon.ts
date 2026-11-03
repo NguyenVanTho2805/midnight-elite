@@ -4,6 +4,7 @@
 import { BASE, api, mkSuper, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, closeAll, shot, ADMIN, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
+const PAD = "Nội dung bổ sung cho đủ độ dài tối thiểu của bài viết (ADM-002: nội dung ≥ 100 ký tự). ".repeat(2);
 
 // Ảnh giả dạng SVG có kích thước thật (ngang 800×500, đứng 800×1000) để đo tỉ lệ; tên miền ảnh không có mạng nên phải chặn và trả thay.
 const svg = (w: number, h: number) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#e66"/></svg>`;
@@ -78,7 +79,7 @@ const FB = "🎓 THÔNG BÁO: Điểm chuẩn ĐH Mẫu 2026\n\nTrường vừa 
 
   // ───────────── Công khai
   section("Công khai: bài hiện như bài báo, có nguồn");
-  const mk = (slug: string, o: Record<string, unknown> = {}) => api("POST", "/api/admin/articles", { as: SA, body: { title: `Bài ${slug}`, slug, excerpt: "Tóm tắt.", content: "Đoạn một.\n\nĐoạn hai.", category: "tuyen-sinh", published: true, ...o } });
+  const mk = (slug: string, o: Record<string, unknown> = {}) => api("POST", "/api/admin/articles", { as: SA, body: { title: `Bài ${slug}`, slug, excerpt: "Tóm tắt.", content: `Đoạn một.\n\nĐoạn hai.\n\n${PAD}`, category: "tuyen-sinh", published: true, ...o } });
   await mk("co-nguon", { title: "Điểm chuẩn ĐH Mẫu 2026", sourceUrl: "https://www.facebook.com/kin.edu/posts/123", sourceName: "Fanpage <b>KiN</b>", coverImage: "https://cdn.example.edu.vn/bia.png" });
   await mk("anh-doc", { sourceUrl: "https://example.edu.vn/poster", coverImage: "https://cdn.example.edu.vn/doc.svg" });
   await mk("anh-het-han", { sourceUrl: "https://example.edu.vn/tb", coverImage: "https://cdn.example.edu.vn/het-han.png" });

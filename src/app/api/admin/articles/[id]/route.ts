@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { notifyMany } from "@/lib/notify";
+import { noticeArticlePublishedNow } from "@/lib/articleNoticeServer";
+import { validateArticleText } from "@/lib/articleValidate";
 import { cleanArticleSource } from "@/lib/articleSource";
 import { logAction } from "@/lib/auditLog";
 import { cleanCoverCaption, parseSchedule, checkNotPast } from "@/lib/articlesPublic"; // BU-07
@@ -43,8 +44,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.published !== undefined && typeof body.published !== "boolean") return NextResponse.json({ error: "published phải là true/false" }, { status: 400 });
     if (body.slug !== undefined && typeof body.slug !== "string") return NextResponse.json({ error: "slug phải là chuỗi" }, { status: 400 });
     if (typeof body.slug === "string") body.slug = body.slug.trim();
+    // ADM-002: chỉ kiểm các trường được gửi (bài cũ ngắn vẫn đổi được `published`); slug chỉ kiểm khi ĐỔI sang giá trị mới.
+    const bad = validateArticleText({ title: body.title, slug: body.slug, content: body.content }, { slugChanged: body.slug !== existing.slug });
+    if (bad) return NextResponse.json({ error: bad.error, field: bad.field }, { status: 400 });
     if (body.slug && body.slug !== existing.slug) {
-      if (!/^[a-z0-9-]{1,200}$/.test(body.slug)) return NextResponse.json({ error: "Slug chỉ gồm chữ thường, số, gạch ngang (tối đa 200 ký tự)" }, { status: 400 });
       const slugConflict = await prisma.article.findUnique({ where: { slug: body.slug } });
       if (slugConflict) return NextResponse.json({ error: "Slug đã tồn tại" }, { status: 409 });
     }
@@ -105,14 +108,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // BU-07: báo khi bài VỪA trở nên hiển thị (đăng mới, hoặc bài lên lịch được kéo về hiện tại); bài đặt lịch tương lai chưa báo.
     if (willPublish && (!wasPublished || wasFuture) && updated.publishedAt && updated.publishedAt.getTime() <= Date.now()) {
-      // ADM-001 (4.9a): không tạo thông báo cho học sinh đã ẩn.
-      const students = await prisma.user.findMany({ where: { role: "student", deletedAt: null }, select: { id: true } });
-      await notifyMany(students.map(s => s.id), {
-        type:    "article_new",
-        title:   "Bài viết mới",
-        message: `Bài viết mới: "${updated.title}"`,
-        link:    `/tin-tuc/${updated.slug}`,
-      });
+      // ADM-002: tối đa MỘT thông báo cho mỗi bài — bật → tắt → bật lại đăng không báo lần hai (khoá article.notified.<id>; người nhận loại tài khoản ẩn / hệ thống như cron).
+      await noticeArticlePublishedNow({ id: updated.id, slug: updated.slug, title: updated.title });
     }
 
     return NextResponse.json(updated);
