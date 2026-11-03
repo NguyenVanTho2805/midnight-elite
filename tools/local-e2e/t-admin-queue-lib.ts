@@ -204,7 +204,7 @@ const walk = (dir: string, url: string) => {
 };
 walk(root, "/admin");
 const goneFrom = new Set(ADMIN_REDIRECTS.map(r => r.from)); // t-admin-redirects-lib kiểm riêng việc các trang cũ đã bị xoá
-const orphan = routes.filter(r => !r.includes("/_template") && !goneFrom.has(r) && !matchSub(r));
+const orphan = routes.filter(r => !goneFrom.has(r) && !matchSub(r)); // ADM-003 (#92): trang mẫu đã chuyển ra docs, không còn ngoại lệ
 check(`${routes.length} trang quản trị tìm thấy; trang mới thêm mà quên đưa vào module sẽ làm ca này đỏ`, routes.length >= 18 && orphan.length === 0, orphan);
 
 done();

@@ -126,7 +126,9 @@ const st = (u: number, l: number) => quotaState(u, l).state;
   check("tạo yêu cầu / kích hoạt / tặng chặn xem trước", /proPayConfig\(\)/.test(ps) && (ps.match(/isPreviewEnv\(\)/g) ?? []).length >= 2);
   check("mã Pro không đụng Coin, ví hay giao dịch Coin", !/wallet|coinTransaction|spendCoins/i.test(noComments(ps)) && !/wallet|coinTransaction/i.test(noComments(read("src/app/api/tutor/goi/mua/route.ts"))));
   const redeem = read("src/app/api/invites/[id]/redeem/route.ts");
-  check("ghi danh bằng mã mời: gọi cổng TRONG giao dịch, học viên chỉ thấy chữ trung tính, không lộ gói", /assertCanAddStudent\(course\.ownerId, \{[^}]*db: tx/.test(redeem) && /CLASS_PAUSED_MESSAGE/.test(redeem) && CLASS_PAUSED_MESSAGE === "Lớp tạm chưa nhận thêm" && !/PLAN_LIMIT|Free|Pro\b/.test(redeem.replace(/\/\/.*$/gm, "")));
+  // BU-01 (#103): ghi danh đi qua enrollInTx ở enrollServer.ts (đường duy nhất tạo Enrollment) — cổng gói nằm ở đó, route redeem chỉ gọi enrollInTx.
+  const enrollSrv = read("src/lib/enrollServer.ts");
+  check("ghi danh bằng mã mời: gọi cổng TRONG giao dịch (qua enrollInTx), học viên chỉ thấy chữ trung tính, không lộ gói", /enrollInTx\(tx/.test(redeem) && /assertCanAddStudent\(ownerId, \{[^}]*db: tx/.test(enrollSrv) && /CLASS_PAUSED_MESSAGE/.test(enrollSrv) && CLASS_PAUSED_MESSAGE === "Lớp tạm chưa nhận thêm" && !/PLAN_LIMIT|Free|Pro\b/.test(redeem.replace(/\/\/.*$/gm, "")));
   check("mã mời / mời hàng loạt: gọi cổng, trả 409 PLAN_LIMIT", /assertCanAddStudent/.test(read("src/app/api/courses/[id]/invites/route.ts")) && /PLAN_LIMIT_CODE/.test(read("src/app/api/courses/[id]/invites/route.ts")));
   check("mã có maxUses N cần đủ N chỗ (BulkInvite không đổi, vẫn chỉ gửi maxUses + expiresAt)", /const add = maxUses \?\? 1/.test(read("src/app/api/courses/[id]/invites/route.ts")) && !/bulk/.test(read("src/components/tutor/BulkInvite.tsx").replace(/\/\/.*$/gm, "").replace(/bulkInvite|BulkInvite|Bulk[A-Z]\w*|BULK_\w+|bulk-code|[a-z]+Bulk\w*/g, "")));
   const ai1 = read("src/app/api/exams/ai-extract-questions/route.ts"), ai2 = read("src/app/api/exam-files/[id]/extract/route.ts");

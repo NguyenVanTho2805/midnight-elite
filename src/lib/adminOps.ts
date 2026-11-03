@@ -100,6 +100,9 @@ const ACTION_LABEL: Record<string, string> = {
   "self_consent.grant": "Học sinh tự đồng ý", "self_consent.revoke": "Học sinh rút đồng ý",
   "invoice.issue": "Chốt phiếu học phí", "invoice.cancel": "Huỷ phiếu học phí", "invoice.restore": "Khôi phục phiếu học phí", "invoice.record_payment": "Ghi nhận thanh toán phiếu",
   "enrollment.create": "Thêm học viên vào lớp", "class_invite.create": "Tạo mã mời lớp", "class_invite.redeem": "Dùng mã mời lớp", "class_invite.revoke": "Thu hồi mã mời lớp",
+  // BU-01 (#103): cách vào lớp, mã mời cá nhân, yêu cầu vào lớp (ghi trong enrollServer.ts và route redeem). Bài t-adm-001-lib quét nguồn nên phải có nhãn.
+  "class_invite.personal_issue": "Cấp mã mời cá nhân", "class_join_request.create": "Gửi yêu cầu vào lớp", "class_join_request.approve": "Duyệt yêu cầu vào lớp",
+  "class_join_request.reject": "Từ chối yêu cầu vào lớp", "class_join_request.cancel": "Học sinh huỷ yêu cầu vào lớp",
   "class_session.cancel": "Báo nghỉ buổi học", "class_session.move": "Dời buổi học", "class_session.restore": "Khôi phục buổi học",
   "attendance_session.create": "Tạo phiên điểm danh", "attendance_session.update": "Sửa phiên điểm danh", "attendance_session.delete": "Xoá phiên điểm danh",
   "bank_tx.resolve": "Đối soát giao dịch ngân hàng", "bank_tx.reverse": "Hoàn tác đối soát ngân hàng",
@@ -140,7 +143,7 @@ const ACTION_LABEL: Record<string, string> = {
 };
 const RESOURCE_LABEL: Record<string, string> = {
   User: "Người dùng", Course: "Lớp", TutorSubscription: "Gói VIP gia sư", PlanConfig: "Cấu hình gói", ProOrder: "Yêu cầu gói Pro", CoinTopupRequest: "Yêu cầu nạp Coin",
-  StudentProfile: "Hồ sơ học sinh", ParentLink: "Liên kết phụ huynh", Invoice: "Phiếu học phí", Enrollment: "Ghi danh", ClassInvite: "Mã mời lớp", ClassSessionChange: "Đổi buổi học",
+  StudentProfile: "Hồ sơ học sinh", ParentLink: "Liên kết phụ huynh", Invoice: "Phiếu học phí", Enrollment: "Ghi danh", ClassInvite: "Mã mời lớp", ClassJoinRequest: "Yêu cầu vào lớp", ClassSessionChange: "Đổi buổi học",
   TutorProfileReport: "Báo cáo hồ sơ gia sư", SiteContent: "Nội dung trang công khai", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng", CourseCategory: "Danh mục khoá học",
   // ADM-001 (mục 7.3): resourceType đang được ghi nhưng chưa có nhãn. Giữ `Invoice` cũ; các route thật ghi `TuitionInvoice`.
   Article: "Bài viết", AdmissionScore: "Điểm chuẩn", AdmissionFormula: "Công thức xét tuyển", LibraryVideo: "Video thư viện", ProPayment: "Thanh toán gói Pro",
