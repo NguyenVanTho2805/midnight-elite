@@ -2115,9 +2115,13 @@ model Article {
   sourceUrl   String?   // link bài gốc (http/https)
   sourceName  String?   // tên hiển thị của nguồn; trống thì lấy tên miền
   coverImage  String?   // link ảnh bìa (https)
+  coverCaption String?  // BU-07: chú thích ảnh bìa (≤200 ký tự, văn bản thuần)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  @@index([published, publishedAt])
+  @@index([category, published, publishedAt])
+  @@index([published, views])
   @@map("articles")
 }
 

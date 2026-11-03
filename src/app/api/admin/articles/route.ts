@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { notifyMany } from "@/lib/notify";
 import { cleanArticleSource } from "@/lib/articleSource";
 import { logAction } from "@/lib/auditLog";
+import { cleanCoverCaption, parseSchedule, checkNotPast } from "@/lib/articlesPublic"; // BU-07
 
 export async function GET() {
   const auth = await requirePermission(PERMISSIONS.MANAGE_NEWS);
@@ -17,6 +18,7 @@ export async function GET() {
         id: true, slug: true, title: true, category: true, author: true,
         tag: true, isPinned: true, published: true, readTime: true,
         views: true, publishedAt: true, createdAt: true,
+        coverImage: true, coverCaption: true, // BU-07
       },
     });
     return NextResponse.json(articles);
@@ -31,16 +33,28 @@ export async function POST(req: NextRequest) {
   if (isNextResponse(auth)) return auth;
 
   try {
-    const body = await req.json();
+    let body;
+    try { body = await req.json(); } catch { return NextResponse.json({ error: "Dữ liệu gửi lên không phải JSON hợp lệ" }, { status: 400 }); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Dữ liệu gửi lên không hợp lệ" }, { status: 400 });
     // ADM-001: `authorId` KHÔNG đọc từ body — luôn là người đang đăng nhập (trước đây form không gửi → mọi bài có authorId "").
-    const { title, slug, excerpt, content, category, author, tag, isPinned, published, readTime } = body;
+    const { title, excerpt, content, category, author, tag, isPinned, published, readTime } = body;
 
+    const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+    if (typeof title !== "string" || (published !== undefined && typeof published !== "boolean")) return NextResponse.json({ error: "title phải là chuỗi, published phải là true/false" }, { status: 400 });
+    if (slug && !/^[a-z0-9-]{1,200}$/.test(slug)) return NextResponse.json({ error: "Slug chỉ gồm chữ thường, số, gạch ngang (tối đa 200 ký tự)" }, { status: 400 });
     if (!title?.trim() || !slug?.trim() || !excerpt?.trim() || !content?.trim() || !category?.trim()) {
       return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
     }
 
     const src = cleanArticleSource({ sourceUrl: body.sourceUrl, sourceName: body.sourceName, coverImage: body.coverImage });
     if (!src.ok) return NextResponse.json({ error: src.error }, { status: 400 });
+
+    // BU-07: chú thích ảnh bìa + giờ đăng (lên lịch). Giờ không múi giờ = giờ Việt Nam.
+    const cap = cleanCoverCaption(body.coverCaption);
+    if (!cap.ok) return NextResponse.json({ error: cap.error }, { status: 400 });
+    const sched = parseSchedule(body.publishedAt);
+    if (!sched.ok) return NextResponse.json({ error: sched.error }, { status: 400 });
+    if (published && sched.value && !checkNotPast(sched.value)) return NextResponse.json({ error: "Giờ đăng không được ở quá khứ" }, { status: 400 });
 
     const existing = await prisma.article.findUnique({ where: { slug } });
     if (existing) {
@@ -50,7 +64,7 @@ export async function POST(req: NextRequest) {
     const article = await prisma.article.create({
       data: {
         title:       title.trim(),
-        slug:        slug.trim(),
+        slug,
         excerpt:     excerpt.trim(),
         content:     content.trim(),
         category:    category.trim(),
@@ -60,7 +74,8 @@ export async function POST(req: NextRequest) {
         isPinned:    isPinned ?? false,
         published:   published ?? false,
         readTime:    Number(readTime) || 5,
-        publishedAt: published ? new Date() : null,
+        publishedAt: published ? (sched.value ?? new Date()) : null,
+        coverCaption: cap.value,
         ...src.value,
       },
     });
@@ -69,7 +84,7 @@ export async function POST(req: NextRequest) {
     await logAction(auth.userId, "article.create", "Article", article.id, { slug: article.slug, published: article.published });
     if (article.published) await logAction(auth.userId, "article.publish", "Article", article.id, { slug: article.slug });
 
-    if (article.published) {
+    if (article.published && article.publishedAt && article.publishedAt.getTime() <= Date.now()) { // BU-07: bài lên lịch tương lai chưa báo
       // ADM-001 (4.9a): không tạo thông báo cho học sinh đã ẩn.
       const students = await prisma.user.findMany({ where: { role: "student", deletedAt: null }, select: { id: true } });
       await notifyMany(students.map(s => s.id), {
