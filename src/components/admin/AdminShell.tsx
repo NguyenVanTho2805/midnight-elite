@@ -63,7 +63,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   const items: ModuleItem[] = modules.map(m => ({
     key: m.key, label: m.label, href: m.href, icon: m.icon, active: m.key === current?.key,
-    ...(m.key === "kiem-duyet" ? { badge } : {}),
+    ...(m.key === "viec-cho" ? { badge } : {}), // BU-08 rà soát: khoá module đã đổi "kiem-duyet" → "viec-cho" (icon vẫn là "kiem-duyet"); so sai khoá thì thanh dưới/thanh hẹp mất số đếm
   }));
 
   // Thanh RỘNG (Figma "Điều hướng" của quản trị, 25/10/2026): mỗi module là một NHÓM, các trang con là mục (biểu tượng của module); dải tab các trang con vẫn giữ ở đầu trang.

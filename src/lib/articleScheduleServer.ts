@@ -23,7 +23,17 @@ export async function runArticlePublishNotices(now: Date = new Date()): Promise<
     where: { type: "article_new", link: { in: candidates.map(a => articleNoticeLink(a.slug)) } },
     select: { link: true }, distinct: ["link"],
   });
-  const todo = selectArticlesToNotify(candidates, new Set(noticed.map(n => n.link).filter((l): l is string => !!l)), now);
+  const noticedLinks = new Set(noticed.map(n => n.link).filter((l): l is string => !!l));
+  // BU-08 rà soát: dedupe theo LINK (slug) không đủ — admin sửa slug sau khi đăng thì link mới chưa có thông báo → báo lần hai cho cả trường. Bài đã báo (theo link)
+  // được ghi khoá theo ID ngay lúc thấy, và mọi bài đã có khoá ID đều bị loại, nên đổi slug về sau không gây gửi đôi.
+  const alreadyByLink = candidates.filter(a => noticedLinks.has(articleNoticeLink(a.slug)));
+  if (alreadyByLink.length > 0) {
+    await prisma.settingKV.createMany({ data: alreadyByLink.map(a => ({ key: articleNotifiedKey(a.id), value: now.toISOString() })), skipDuplicates: true })
+      .catch(e => console.error("[article-publish] không ghi được khoá cho bài đã báo:", e));
+  }
+  const keyed = await prisma.settingKV.findMany({ where: { key: { in: candidates.map(a => articleNotifiedKey(a.id)) } }, select: { key: true } });
+  const keyedSet = new Set(keyed.map(k => k.key));
+  const todo = selectArticlesToNotify(candidates.filter(a => !keyedSet.has(articleNotifiedKey(a.id))), noticedLinks, now);
   if (todo.length === 0) return { notified: 0 };
 
   const students = await prisma.user.findMany({
@@ -42,6 +52,13 @@ export async function runArticlePublishNotices(now: Date = new Date()): Promise<
       continue;
     }
     await notifyMany(ids, { ...articleNoticeText(a.title), link: articleNoticeLink(a.slug) });
+    // BU-08 rà soát: notifyMany NUỐT lỗi (notify.ts, tệp chung) nên khoá đã giành mà chưa có thông báo nào ghi được thì bài sẽ không bao giờ được báo lại và nhật ký
+    // vẫn ghi "recipients: N". Tự kiểm: không có thông báo nào trỏ tới bài → nhả khoá để lần cron sau thử lại, không ghi nhật ký "đã báo".
+    if (ids.length > 0 && (await prisma.notification.count({ where: { type: "article_new", link: articleNoticeLink(a.slug) } })) === 0) {
+      await prisma.settingKV.delete({ where: { key: articleNotifiedKey(a.id) } }).catch(() => {});
+      console.error("[article-publish] không ghi được thông báo cho bài", a.id, "— sẽ thử lại ở lần cron sau");
+      continue;
+    }
     await logAction(null, "article.scheduled_notify", "Article", a.id, { recipients: ids.length });
     notified++;
   }

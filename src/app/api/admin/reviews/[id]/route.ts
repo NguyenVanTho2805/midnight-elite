@@ -31,7 +31,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!["approved", "rejected"].includes(status)) {
     return NextResponse.json({ error: "Trạng thái không hợp lệ" }, { status: 400 });
   }
-  const review = await prisma.courseReview.update({ where: { id }, data: { status } });
+  // BU-08 rà soát: CHỈ đánh giá đang chờ mới duyệt / từ chối được. Hai quản trị cùng xử lý một đánh giá (một duyệt nhanh, một từ chối hàng loạt từ danh sách cũ):
+  // người thua nhận 409 (hàng chờ báo "đã có người xử lý"), không lật quyết định của người thắng và không ghi nhật ký lần hai.
+  const claimed = await prisma.courseReview.updateMany({ where: { id, status: "pending" }, data: { status } });
+  if (claimed.count === 0) return NextResponse.json({ error: "Đánh giá này đã được xử lý." }, { status: 409 });
+  const review = await prisma.courseReview.findUnique({ where: { id } });
   // BU-08: nhật ký duyệt / từ chối đánh giá (ai, việc gì, đối tượng). metadata chỉ có id lớp, không tên, không nhận xét.
   await logAction(g.actorId, status === "approved" ? "review.approve" : "review.reject", "CourseReview", id, { courseId: g.courseId });
   return NextResponse.json({ review });

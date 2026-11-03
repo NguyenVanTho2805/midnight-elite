@@ -1,5 +1,5 @@
 // BU-08 mục 4.6 / 8.2 — 308 từ đường quản trị cũ sang mới (cần next.config.ts đã nhập src/lib/adminRedirects.ts — COO gắn, D1).
-// Cần Next dev cổng 3100. CHƯA CHẠY ĐƯỢC ở máy dựng — COO chạy tuần tự.
+// Cần Next dev cổng 3100. Đã chạy tuần tự trên máy test (02/11/2026), số liệu trong PR.
 // Ca phá cố ý: thêm { from: "/admin/danh-gia", to: … } vào ADMIN_REDIRECTS → ca "đường giữ nguyên không 308" đỏ.
 import { BASE, wipe, mkTutor, mkSuper, cookieFor, check, section, done } from "./h";
 

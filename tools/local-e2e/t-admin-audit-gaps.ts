@@ -1,6 +1,6 @@
 // BU-08 mục 7 — các chỗ xử lý hàng chờ TRƯỚC ĐÂY không ghi AuditLog: thread-reports/resolve, answer-reports/resolve (trừ Coin), reviews PATCH/DELETE.
 // Quy tắc: ghi SAU khi trạng thái đã lật thành công (409/403 KHÔNG ghi); actor = người xử lý; metadata không tên / nội dung.
-// CHƯA CHẠY ĐƯỢC ở máy dựng (cần Next dev cổng 3100 + Postgres thử) — COO chạy tuần tự.
+// Đã chạy trên máy test (02/11/2026) (cần Next dev cổng 3100 + Postgres thử) — COO chạy tuần tự.
 // Ca phá cố ý: xoá `logAction` khỏi DELETE của reviews/[id]/route.ts → ca "review.delete" đỏ; đặt `logAction` của answer-reports TRƯỚC `updateMany`
 // (ghi cả khi thua cuộc đua) → ca "2 lần bấm đồng thời → đúng 1 dòng log" đỏ.
 import { prisma } from "@/lib/prisma";
@@ -74,7 +74,18 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   })());
   check("PATCH rejected → review.reject", (await api("PATCH", `/api/admin/reviews/${v2.id}`, { as: CA, body: { status: "rejected" } })).status === 200 && (await logs("review.reject", v2.id)).length === 1);
   check("PATCH trạng thái sai → 400, không log", (await api("PATCH", `/api/admin/reviews/${v3.id}`, { as: SA, body: { status: "pending" } })).status === 400 && (await prisma.auditLog.count({ where: { resourceId: v3.id } })) === 0);
-  check("gia sư KHÔNG sở hữu lớp → 403, không log; id không tồn tại → 404, không log", (await api("PATCH", `/api/admin/reviews/${v3.id}`, { as: T2, body: { status: "approved" } })).status === 403 && (await api("PATCH", `/api/admin/reviews/khong-co`, { as: SA, body: { status: "approved" } })).status === 404 && (await prisma.auditLog.count({ where: { resourceId: v3.id } })) === 0);
+  // BU-08 rà soát: người thua cuộc đua không lật quyết định của người thắng; không ghi nhật ký lần hai.
+  const raceRev = await mkRev();
+  const rr = await Promise.all([api("PATCH", `/api/admin/reviews/${raceRev.id}`, { as: SA, body: { status: "approved" } }), api("PATCH", `/api/admin/reviews/${raceRev.id}`, { as: CA, body: { status: "rejected" } })]);
+  const finalSt = (await prisma.courseReview.findUnique({ where: { id: raceRev.id } }))?.status;
+  check("hai quản trị xử lý cùng một đánh giá: đúng 1 bên 200, bên kia 409; trạng thái cuối = của bên thắng; đúng 1 dòng nhật ký", rr.filter(x => x.status === 200).length === 1 && rr.filter(x => x.status === 409).length === 1
+    && ((rr[0].status === 200 && finalSt === "approved") || (rr[1].status === 200 && finalSt === "rejected")) && (await prisma.auditLog.count({ where: { resourceId: raceRev.id } })) === 1, [rr.map(x => x.status), finalSt]);
+  check("đánh giá ĐÃ xử lý: PATCH lại (đổi ý) → 409, trạng thái không đổi, không thêm nhật ký", await (async () => {
+    const before = await prisma.auditLog.count({ where: { resourceId: v1.id } });
+    const again = await api("PATCH", `/api/admin/reviews/${v1.id}`, { as: SA, body: { status: "rejected" } });
+    return again.status === 409 && (await prisma.courseReview.findUnique({ where: { id: v1.id } }))?.status === "approved" && (await prisma.auditLog.count({ where: { resourceId: v1.id } })) === before;
+  })());
+  check("gia sư KHÔNG sở hữu lớp → 403, không log; id không tồn tại → 404, không log",(await api("PATCH", `/api/admin/reviews/${v3.id}`, { as: T2, body: { status: "approved" } })).status === 403 && (await api("PATCH", `/api/admin/reviews/khong-co`, { as: SA, body: { status: "approved" } })).status === 404 && (await prisma.auditLog.count({ where: { resourceId: v3.id } })) === 0);
   check("DELETE → 200 + review.delete { courseId }", (await api("DELETE", `/api/admin/reviews/${v3.id}`, { as: SA })).status === 200 && (await logs("review.delete", v3.id)).length === 1 && !(await prisma.courseReview.findUnique({ where: { id: v3.id } })));
   check("DELETE lần 2 (đã xoá) → 404, KHÔNG thêm log", (await api("DELETE", `/api/admin/reviews/${v3.id}`, { as: SA })).status === 404 && (await logs("review.delete", v3.id)).length === 1);
 

@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
   await wipe();
   const SA = await mkSuper("Quản trị cấp 1"), T = await mkTutor("Cô Lan"), S = await mkUser({ name: "Học viên" });
   const C = await mkCourse(T.id, { name: "Toán 9" });
-  await prisma.courseReview.create({ data: { userId: S.id, courseId: C.id, rating: 4, comment: "Khóa học rất tốt", status: "pending" } });
+  await prisma.courseReview.create({ data: { userId: S.id, courseId: C.id, rating: 4, comment: "Khóa học rất tốt", status: "approved" } });
   await prisma.examFileFolder.create({ data: { name: "Thư mục thử", ownerId: SA.id } });
   await prisma.exam.create({ data: { id: "ex-xoa", code: "ex-xoa", title: "Đề xoá thử", category: "Toán", date: "01/01/2030", time: "08:00", duration: "45 phút", questions: 0, status: "available", createdAt: "2020", ownerId: SA.id } });
 
@@ -43,9 +43,21 @@ import { prisma } from "@/lib/prisma";
     check("vẫn không có hộp thoại gốc", nativeDialogs === 0, nativeDialogs);
   };
 
-  await pg.goto(`${ADMIN}/admin/danh-gia`, { waitUntil: "networkidle", timeout: 120000 });
+  // BU-08: /admin/danh-gia chỉ còn LỊCH SỬ đã xử lý + nút Xoá; xác nhận xoá nằm NGAY TRONG DÒNG (Xoá → Xác nhận xoá / Huỷ), không còn hộp thoại KiN. Vẫn không có hộp thoại gốc, Huỷ không xoá.
+  await pg.goto(`${ADMIN}/admin/danh-gia`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pg.getByText("Khóa học rất tốt").waitFor({ timeout: 90000 });
-  await flow("Đánh giá khoá học: Xóa đánh giá", async () => { await pg.getByRole("button", { name: "Xóa", exact: true }).click(); }, "Xóa đánh giá này?", async () => (await prisma.courseReview.count()) === 0);
+  section("Đánh giá khoá học: xác nhận xoá ngay trong dòng (BU-08)");
+  const delBtn = () => pg.getByRole("button", { name: /^Xoá đánh giá khoá/ });
+  await delBtn().click();
+  const sure = pg.getByRole("button", { name: "Xác nhận xoá" });
+  await sure.waitFor({ timeout: 20000 });
+  check("bấm Xoá → hiện 'Xác nhận xoá' và 'Huỷ' trong dòng, KHÔNG có role=dialog, không hộp thoại gốc", await pg.getByRole("button", { name: "Huỷ" }).isVisible() && (await pg.locator("[role=dialog]").count()) === 0 && nativeDialogs === 0, nativeDialogs);
+  await pg.getByRole("button", { name: "Huỷ" }).click();
+  check("Huỷ: quay về nút Xoá, đánh giá còn nguyên (DB)", (await delBtn().count()) === 1 && (await sure.count()) === 0 && (await prisma.courseReview.count()) === 1);
+  await delBtn().click();
+  await sure.click();
+  await eventually("Xác nhận xoá: đánh giá bị xoá thật (DB)", async () => (await prisma.courseReview.count()) === 0, 20000);
+  check("vẫn không có hộp thoại gốc", nativeDialogs === 0, nativeDialogs);
 
   await pg.goto(`${ADMIN}/admin/thi-thu/ngan-hang-de-thi`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByText("Thư mục thử").waitFor({ timeout: 90000 });

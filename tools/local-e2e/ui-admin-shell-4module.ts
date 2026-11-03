@@ -37,7 +37,11 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   const curVis = await pg.evaluate(`[...document.querySelectorAll('nav[aria-label="Module quản trị"] [aria-current=page]')].filter(e => e.getBoundingClientRect().width > 0).map(e => (e.textContent || '').trim())`) as string[];
   check("'Việc chờ' đang ở (aria-current=page, đúng một nút đang hiện)", curVis.length === 1 && /^Việc chờ/.test(curVis[0]), curVis);
   await pg.waitForFunction(`document.querySelector('.kin-badge-dem')?.textContent === '${N}'`, null, { timeout: 60000 }).catch(() => {});
-  check(`badge đúng '${N}' và CHỈ nằm trên 'Việc chờ'`, (await rail().locator(".kin-badge-dem").count()) === 1 && (await rail().locator(".kin-badge-dem").innerText()) === String(N));
+  // DOM có cả bộ module (thanh hẹp) lẫn bộ nhóm (thanh rộng) trong cùng một <nav>; CSS chỉ hiện một bộ → chỉ tính badge ĐANG HIỆN.
+  check(`badge đúng '${N}' và CHỈ nằm trên 'Việc chờ' (chỉ tính badge đang hiện)`, (await rail().locator(".kin-badge-dem:visible").count()) === 1 && (await rail().locator(".kin-badge-dem:visible").innerText()) === String(N));
+  // BU-08 rà soát: DOM có 3 bản thanh; kiểm MỌI bản đang hiện (trước đây chỉ một bản có badge vẫn qua vì `rail()` chỉ lấy một bản).
+  const badgesVis = await pg.evaluate(`[...document.querySelectorAll('nav[aria-label="Module quản trị"]')].filter(n => n.getBoundingClientRect().width > 0).map(n => [...n.querySelectorAll('.kin-badge-dem')].filter(b => b.getBoundingClientRect().width > 0).map(b => (b.closest('a')?.textContent || '').replace(/\\d+\\s*$/, '').trim() + '=' + (b.textContent || '').trim()))`) as string[][];
+  check(`1280: MỌI thanh module đang hiện đều có đúng một badge '${N}' trên 'Việc chờ'`, badgesVis.length >= 1 && badgesVis.every(b => b.length === 1 && b[0] === `Việc chờ=${N}`), badgesVis);
   await shot(pg, "admin-shell-4module-1280");
 
   section("Mỗi module dẫn tới trang đầu được phép; Vận hành → /admin (Hôm nay)");
@@ -85,6 +89,9 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   await pm.getByRole("navigation", { name: railName }).waitFor({ timeout: 120000 });
   const bar = await pm.evaluate(`(() => { const n = [...document.querySelectorAll('nav[aria-label="Module quản trị"]')].find(x => x.getBoundingClientRect().width > 0); const r = n.getBoundingClientRect(); return { h: Math.round(r.height), bottom: Math.round(innerHeight - r.bottom) }; })()`) as any;
   check("thanh module ở đáy, cao ≤ 60px", bar.h <= 60 && bar.bottom <= 1, bar);
+  await pm.waitForFunction(`[...document.querySelectorAll('nav[aria-label="Module quản trị"]')].some(n => n.getBoundingClientRect().width > 0 && n.querySelector('.kin-badge-dem'))`, null, { timeout: 60000 }).catch(() => {});
+  const badgesM = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="Module quản trị"]')].filter(n => n.getBoundingClientRect().width > 0).map(n => [...n.querySelectorAll('.kin-badge-dem')].filter(b => b.getBoundingClientRect().width > 0).map(b => (b.closest('a')?.textContent || '').replace(/\\d+\\s*$/, '').trim() + '=' + (b.textContent || '').trim()))`) as string[][];
+  check(`390: thanh dưới có badge '${N}' trên 'Việc chờ' (lỗi cũ: so sai khoá module nên thanh dưới mất số đếm)`, badgesM.length >= 1 && badgesM.every(b => b.length === 1 && b[0] === `Việc chờ=${N}`), badgesM);
   const small = await pm.evaluate(`(() => [...document.querySelectorAll("button, a[href]")].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height < 43.5 && !e.closest("nextjs-portal") && !/Mở rộng thanh bên/.test(e.getAttribute("aria-label") || "") && !/styles-module__/.test(String(e.className)) && !e.closest("[data-feedback-toolbar],[data-annotation-popup],[data-annotation-marker]"); }).map(e => (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 30)))()`) as string[];
   check("không nút/liên kết < 44px (trừ nextjs-portal, KinToast, 'Mở rộng thanh bên')", small.filter(s => !SKIP_44.test(s)).length === 0, small);
   check("390: không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`));
