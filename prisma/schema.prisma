@@ -419,6 +419,16 @@ model Exam {
   supersededAt   DateTime?
   versionNote    String?   @db.Text
 
+  // BU-03 (chỉ thêm, nullable): ma trận đề đã dùng · mã đề · chế độ giao đề.
+  //   variantOfId — null = đề gốc (hoặc đề thường); có giá trị = id đề GỐC mà mã đề này suy ra (không khoá ngoại, như rootExamId).
+  //   variantNo   — đề gốc = 1 (đặt khi tạo mã đề đầu tiên), mã đề con = 2..N. Hiển thị "Mã đề 10N".
+  //   mode        — "practice" | "test" | null. null = đề cũ: phía học sinh coi như "test".
+  blueprintId String?
+  blueprint   ExamBlueprint? @relation(fields: [blueprintId], references: [id], onDelete: SetNull)
+  variantOfId String?
+  variantNo   Int?
+  mode        String?
+
   results       ExamResult[]
   examQuestions ExamQuestion[]
   attempts      ExamAttempt[]
@@ -427,7 +437,23 @@ model Exam {
   @@index([ownerId])
   @@index([courseId])
   @@index([rootExamId])
+  @@index([variantOfId])
+  @@index([blueprintId])
   @@map("exams")
+}
+
+// BU-03 P2 — Ma trận đề của gia sư: lưu để dùng lại. KHÔNG khoá ngoại tới User (như QuizStudentDeadline) để không động model User.
+model ExamBlueprint {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  rows      Json     // BlueprintRow[] = [{ "categoryId": string, "difficulty": "NB"|"TH"|"VD"|"VDC", "count": number }] — đúng ba khoá này, không thêm
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  exams     Exam[]
+
+  @@index([ownerId])
+  @@map("exam_blueprints")
 }
 
 // Ngân hàng câu hỏi dùng chung giữa các giáo viên — kho bản mẫu ĐỘC LẬP với
@@ -833,6 +859,9 @@ model ExamFile {
   ownerId   String?
   owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+
+  // BU-03 P2 — id đề đã tách ra từ tệp này (không khoá ngoại; giao diện kiểm đề còn tồn tại).
+  extractedExamId String?
 
   // null = "Chưa phân loại". Xoá thư mục KHÔNG xoá theo file (SetNull) — API
   // xoá thư mục vẫn tự chặn nếu còn file để tránh mất tổ chức, xem

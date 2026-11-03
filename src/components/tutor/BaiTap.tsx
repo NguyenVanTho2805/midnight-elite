@@ -19,6 +19,8 @@ import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinCallout } from "@/components/kin/Callout";
 import { dayAt } from "@/lib/baiTap";
+import { deThiSubHref, taoDeHref } from "@/components/tutor/de-thi/deThiClient";
+import { IMPORT_HREF } from "@/components/tutor/quiz/quizClient";
 
 type Tab = "all" | BaiTapGroup;
 interface Data { items: BaiTapItem[]; courses: { id: string; name: string }[] }
@@ -144,7 +146,7 @@ function Detail({ item, onGraded }: { item: BaiTapItem; onGraded: () => void }) 
           <KinCallout title="Đề thi">
             <p>{item.ungraded > 0 ? `${item.ungraded} bài đang chờ cô chấm tự luận. ` : ""}Chấm tự luận, công bố điểm, xem lượt làm và phân tích kết quả của đề này; soạn câu hỏi và phiên bản ở trang quiz.</p>
             <div className="mt-3 flex flex-wrap gap-3">
-              <Link href={`/lop-cua-toi/bai-tap/de/${item.id}`} className={kinButtonClass("primary")}>Chấm và theo dõi</Link>
+              <Link href={deThiSubHref(item.id, "cham")} className={kinButtonClass("primary")}>Chấm và theo dõi</Link>
               <Link href={item.href} className={kinButtonClass("secondary")}>Mở đề thi</Link>
               <Link href={`${item.href}/phien-ban`} className={kinButtonClass("secondary")}>Phiên bản</Link>
             </div>
@@ -215,8 +217,8 @@ export default function BaiTap() {
           <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Giao bài, xem bài nộp và gửi phản hồi theo từng lớp.</p>
         </div>
         <div className="flex flex-wrap gap-3 self-start flex-shrink-0">
-          <Link href="/lop-cua-toi/bai-tap/nhap-de" className={kinButtonClass("secondary")}>Nhập đề từ tệp</Link>
-          <Link href="/lop-cua-toi/bai-tap/quiz/moi" className={kinButtonClass("secondary")}>Tạo quiz</Link>
+          <Link href={IMPORT_HREF} className={kinButtonClass("secondary")}>Nhập đề từ tệp</Link>
+          <Link href={taoDeHref()} className={kinButtonClass("secondary")}>Tạo quiz</Link>
           <Link href="/lop-cua-toi/de-thi" className={kinButtonClass("secondary")}>Quản lý đề thi</Link>
           <Link href={giaoHref} className={kinButtonClass("primary")}>+ Giao bài</Link>
         </div>

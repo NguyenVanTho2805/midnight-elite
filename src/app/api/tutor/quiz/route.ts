@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { requireTutor } from "@/lib/invoiceServer";
+import { pickerWhere } from "@/lib/deThiVariants";
 import { QUIZ_CATEGORY, dmyFromKey, durationText, logChange, newExamCode, newExamId, todayKeyVN, tutorOwnsCourse } from "@/lib/quizServer";
 
 const TITLE_MAX = 150;
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   try {
     const editable = new URL(req.url).searchParams.get("editable") === "1";
     const exams = await prisma.exam.findMany({
-      where: { ownerId: auth.userId, supersededById: null, ...(editable ? { attempts: { none: {} } } : {}) },
+      where: pickerWhere(auth.userId, editable), // không liệt kê mã đề con (BU-03)
       select: { id: true, title: true, isDraft: true, versionNo: true, questions: true },
       orderBy: { createdAt: "desc" }, take: 100,
     });

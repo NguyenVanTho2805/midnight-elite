@@ -21,7 +21,7 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
       orderBy: { createdAt: "desc" }, take: MAX_ASSIGNMENTS,
     }),
     prisma.exam.findMany({
-      where: { ownerId: tutorId, supersededById: null }, // QZ-07: phiên bản cũ mở từ trang phiên bản, không hiện thành dòng riêng
+      where: { ownerId: tutorId, supersededById: null, variantOfId: null }, // QZ-07: phiên bản cũ mở từ trang phiên bản · BU-03: mã đề con gộp vào đề gốc, không hiện dòng riêng
       select: { id: true, title: true, date: true, time: true, questions: true, active: true, isDraft: true, versionNo: true, courseId: true, course: { select: { name: true } } },
       orderBy: { createdAt: "desc" }, take: MAX_EXAMS,
     }),
@@ -53,6 +53,8 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
   });
   // QZ-08: đề có bài nộp còn câu tự luận chưa chấm → "Chờ chấm" (số bài, không đếm câu). Bài bỏ trống không cần chấm.
   const examIds = exams.map(e => e.id);
+  const kids = examIds.length === 0 ? [] : await prisma.exam.groupBy({ by: ["variantOfId"], where: { variantOfId: { in: examIds } }, _count: { _all: true } });
+  const nVariants = new Map(kids.map(k => [k.variantOfId as string, k._count._all + 1])); // gốc + các mã con
   const essayRows = examIds.length === 0 ? [] : await prisma.examAnswer.findMany({
     where: { attempt: { examId: { in: examIds }, status: { not: "in_progress" } }, question: { type: "ESSAY" }, pointsAwarded: null, textAnswer: { not: null } },
     select: { attemptId: true, textAnswer: true, attempt: { select: { examId: true } } },
@@ -70,7 +72,7 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
       id: e.id, kind: "exam", courseId: e.courseId, courseName: e.course?.name ?? "Đề dùng chung", title: e.title, mode: "exam", maxPoints: 0,
       submitted: 0, ungraded: waiting,
       group: waiting > 0 ? "cho" : cls.group, statusLabel: waiting > 0 ? "Chờ chấm" : cls.label, statusTone: waiting > 0 ? "cho" : cls.tone,
-      sub: `${e.questions} câu${e.versionNo > 1 ? ` · v${e.versionNo}` : ""}${e.isDraft ? "" : ` · thi ${e.date} lúc ${e.time}`}${waiting > 0 ? ` · ${waiting} bài chờ chấm` : ""}`, href: `/lop-cua-toi/bai-tap/quiz/${e.id}`, // QZ-04: trình soạn quiz; QZ-08 chấm ở /de/[id]
+      sub: `${e.questions} câu${e.versionNo > 1 ? ` · v${e.versionNo}` : ""}${(nVariants.get(e.id) ?? 1) > 1 ? ` · ${nVariants.get(e.id)} mã đề` : ""}${e.isDraft ? "" : ` · thi ${e.date} lúc ${e.time}`}${waiting > 0 ? ` · ${waiting} bài chờ chấm` : ""}`, href: `/lop-cua-toi/de-thi/${e.id}`, // BU-03: trình soạn duy nhất của gia sư (đường cũ /bai-tap/quiz/[id] chuyển 307 sang đây)
     });
   }
   // Ổn định: nhóm trước, cùng nhóm giữ thứ tự mới → cũ đã lấy từ DB.
