@@ -4,6 +4,7 @@
 // spam lượt xem (cùng cookie, không cookie, bot, GET ?slug=, tải trang SSR); trường cấm; XSS; coverImage sửa tay; bài cũ publishedAt null.
 import { prisma } from "@/lib/prisma";
 import { api, mkSuper, wipe, BASE, check, section, done } from "./h";
+const PAD = "Nội dung bổ sung cho đủ độ dài tối thiểu của bài viết (ADM-002: nội dung ≥ 100 ký tự). ".repeat(2);
 
 const FORBIDDEN_LIST = ["content", "authorId", "published", "sourceUrl"];
 const UA = "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/120 Safari/537.36";
@@ -23,7 +24,7 @@ async function main() {
   await wipe();
   const SA = await mkSuper();
   const mk = async (slug: string, o: Record<string, unknown> = {}) => {
-    const r = await api("POST", "/api/admin/articles", { as: SA, body: { title: `Bài ${slug}`, slug, excerpt: "Tóm tắt.", content: "Đoạn một.\n\nĐoạn hai.", category: "tuyen-sinh", published: true, ...o } });
+    const r = await api("POST", "/api/admin/articles", { as: SA, body: { title: `Bài viết ${slug}`, slug, excerpt: "Tóm tắt.", content: `Đoạn một.\n\nĐoạn hai.\n\n${PAD}`, category: "tuyen-sinh", published: true, ...o } });
     if (r.status !== 201) throw new Error(`tạo ${slug}: ${r.status} ${r.text}`);
     return r.json;
   };
@@ -56,16 +57,16 @@ async function main() {
   await prisma.article.update({ where: { id: lich.id }, data: { publishedAt: new Date(Date.now() - 1000) } }); // không dùng sleep
   const after = await api("GET", "/api/articles?slug=len-lich");
   check("chỉnh publishedAt về quá khứ → hiện", after.status === 200 && after.json.slug === "len-lich", after.text);
-  const adm = await api("POST", "/api/admin/articles", { as: SA, body: { title: "x", slug: "lich-sai", excerpt: "x", content: "x", category: "gia-su", published: true, publishedAt: "mai" } });
+  const adm = await api("POST", "/api/admin/articles", { as: SA, body: { title: "Tiêu đề đủ dài", slug: "lich-sai", excerpt: "x", content: PAD, category: "gia-su", published: true, publishedAt: "mai" } });
   check("admin: publishedAt sai định dạng → 400", adm.status === 400, adm.text);
-  const adm2 = await api("POST", "/api/admin/articles", { as: SA, body: { title: "x", slug: "chu-thich-dai", excerpt: "x", content: "x", category: "gia-su", coverCaption: "x".repeat(201) } });
+  const adm2 = await api("POST", "/api/admin/articles", { as: SA, body: { title: "Tiêu đề đủ dài", slug: "chu-thich-dai", excerpt: "x", content: PAD, category: "gia-su", coverCaption: "x".repeat(201) } });
   check("admin: coverCaption 201 ký tự → 400", adm2.status === 400, adm2.text);
   const notif0 = await prisma.notification.count({ where: { type: "article_new" } });
   await mk("lich-xa", { publishedAt: new Date(Date.now() + 86400_000).toISOString() });
   check("admin: published:true + tương lai không gửi thông báo article_new", (await prisma.notification.count({ where: { type: "article_new" } })) === notif0);
   const row = await prisma.article.findUniqueOrThrow({ where: { slug: "lich-xa" } });
   check("admin: publishedAt lưu đúng giờ đã đặt", Math.abs((row.publishedAt?.getTime() ?? 0) - (Date.now() + 86400_000)) < 5000);
-  const local = await api("POST", "/api/admin/articles", { as: SA, body: { title: "x", slug: "gio-vn", excerpt: "x", content: "x", category: "gia-su", published: true, publishedAt: new Date(Date.now() + 2 * 86400_000).toISOString().slice(0, 16) } });
+  const local = await api("POST", "/api/admin/articles", { as: SA, body: { title: "Tiêu đề đủ dài", slug: "gio-vn", excerpt: "x", content: PAD, category: "gia-su", published: true, publishedAt: new Date(Date.now() + 2 * 86400_000).toISOString().slice(0, 16) } });
   check("admin: chuỗi datetime-local không múi giờ nhận được (hiểu theo giờ VN)", local.status === 201, local.text);
 
   section("3. Slug lạ không gây 500");
@@ -124,9 +125,9 @@ async function main() {
   check("header Cache-Control công khai", /s-maxage=60/.test(l2.headers.get("cache-control") ?? ""));
 
   section("7. XSS");
-  const evil = await mk("xss", { title: "</script><script>alert(1)</script>", content: "<script>alert(1)</script>", coverCaption: '"><img src=x onerror=alert(1)>', coverImage: "https://cdn.example.edu.vn/a.png" });
+  const evil = await mk("xss", { title: "</script><script>alert(1)</script>", content: "<script>alert(1)</script> " + PAD, coverCaption: '"><img src=x onerror=alert(1)>', coverImage: "https://cdn.example.edu.vn/a.png" });
   const ev = await api("GET", "/api/articles?slug=xss");
-  check("API trả nguyên văn (không thoát hộ)", ev.json.content === "<script>alert(1)</script>" && ev.json.coverCaption === '"><img src=x onerror=alert(1)>' && ev.json.title.includes("</script>"));
+  check("API trả nguyên văn (không thoát hộ)", ev.json.content.startsWith("<script>alert(1)</script>") && ev.json.coverCaption === '"><img src=x onerror=alert(1)>' && ev.json.title.includes("</script>"));
   const html = await fetch(`${BASE}/tin-tuc/xss`).then(r => r.text());
   check("HTML không chứa <script>alert(1) do nội dung sinh ra", !html.includes("<script>alert(1)</script>") && !html.includes('onerror=alert(1)>'));
   check("coverCaption hiện thành chữ (đã thoát)", html.includes("&quot;&gt;&lt;img src=x onerror=alert(1)&gt;"));

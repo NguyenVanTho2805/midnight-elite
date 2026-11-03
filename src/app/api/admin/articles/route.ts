@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { notifyMany } from "@/lib/notify";
+import { noticeArticlePublishedNow } from "@/lib/articleNoticeServer";
+import { validateArticleText } from "@/lib/articleValidate";
 import { cleanArticleSource } from "@/lib/articleSource";
 import { logAction } from "@/lib/auditLog";
 import { cleanCoverCaption, parseSchedule, checkNotPast } from "@/lib/articlesPublic"; // BU-07
@@ -41,10 +42,12 @@ export async function POST(req: NextRequest) {
 
     const slug = typeof body.slug === "string" ? body.slug.trim() : "";
     if (typeof title !== "string" || (published !== undefined && typeof published !== "boolean")) return NextResponse.json({ error: "title phải là chuỗi, published phải là true/false" }, { status: 400 });
-    if (slug && !/^[a-z0-9-]{1,200}$/.test(slug)) return NextResponse.json({ error: "Slug chỉ gồm chữ thường, số, gạch ngang (tối đa 200 ký tự)" }, { status: 400 });
     if (!title?.trim() || !slug?.trim() || !excerpt?.trim() || !content?.trim() || !category?.trim()) {
       return NextResponse.json({ error: "Thiếu thông tin bắt buộc" }, { status: 400 });
     }
+    // ADM-002: luật máy chủ (articleValidate.ts): slug 3–80 ký tự a-z0-9-, tiêu đề ≥ 10, nội dung ≥ 100.
+    const bad = validateArticleText({ title, slug, content });
+    if (bad) return NextResponse.json({ error: bad.error, field: bad.field }, { status: 400 });
 
     const src = cleanArticleSource({ sourceUrl: body.sourceUrl, sourceName: body.sourceName, coverImage: body.coverImage });
     if (!src.ok) return NextResponse.json({ error: src.error }, { status: 400 });
@@ -84,15 +87,9 @@ export async function POST(req: NextRequest) {
     await logAction(auth.userId, "article.create", "Article", article.id, { slug: article.slug, published: article.published });
     if (article.published) await logAction(auth.userId, "article.publish", "Article", article.id, { slug: article.slug });
 
-    if (article.published && article.publishedAt && article.publishedAt.getTime() <= Date.now()) { // BU-07: bài lên lịch tương lai chưa báo
-      // ADM-001 (4.9a): không tạo thông báo cho học sinh đã ẩn.
-      const students = await prisma.user.findMany({ where: { role: "student", deletedAt: null }, select: { id: true } });
-      await notifyMany(students.map(s => s.id), {
-        type:    "article_new",
-        title:   "Bài viết mới",
-        message: `Bài viết mới: "${article.title}"`,
-        link:    `/tin-tuc/${article.slug}`,
-      });
+    // ADM-002: báo học sinh tối đa MỘT lần cho mỗi bài (khoá article.notified.<id>); bài lên lịch tương lai để cron báo khi tới giờ (BU-07).
+    if (article.published && article.publishedAt && article.publishedAt.getTime() <= Date.now()) {
+      await noticeArticlePublishedNow({ id: article.id, slug: article.slug, title: article.title });
     }
 
     return NextResponse.json(article, { status: 201 });
