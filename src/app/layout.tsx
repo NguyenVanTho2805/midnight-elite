@@ -45,11 +45,11 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: "KiN — Luyện thi ĐGNL & Tốt nghiệp THPT",
-  description: "Nền tảng học cùng gia sư thật cho luyện thi ĐGNL & Tốt nghiệp THPT.", // chữ của chân trang Figma 152:46
+  description: "Học cùng gia sư thật: vào lớp bằng mã mời, xem lịch học, làm bài tập và thi thử trên KiN. Phụ huynh xem Sổ của con bằng đường dẫn riêng.",
   keywords: ["ĐGNL", "luyện thi", "HSA", "tốt nghiệp THPT", "học online", "KiN"],
   openGraph: {
-    title: "KiN",
-    description: "Chinh phục ĐGNL & Tốt nghiệp THPT cùng KiN",
+    title: "KiN — Học cùng gia sư thật",
+    description: "Học cùng gia sư thật: vào lớp bằng mã, lịch học, bài tập, thi thử. Phụ huynh xem Sổ của con.",
     type: "website",
   },
   // ĐX-02: iPhone chỉ nhận thông báo đẩy khi KiN đã được "Thêm vào Màn hình chính" (iOS 16.4+); hai dòng dưới cho biểu tượng và tên đúng khi thêm.

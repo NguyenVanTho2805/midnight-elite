@@ -1,5 +1,6 @@
 // Trang chủ KiN — dựng theo Figma "Trang chủ KiN" (node 145:8, file KiN Design System).
 // Khung: Header (Navbar) → Hero → "Học ở đây thì được gì?" → CTA → Footer.
+// Chữ hero + 4 thẻ cố ý khác Figma 145:8 (STU-002): Figma hứa live/trợ giảng/realtime mà KiN không có.
 //
 // So với bản cũ (đã bỏ, đều có chỗ khác hoặc không còn đúng):
 //  - Danh sách khoá học + tìm kiếm + theo dõi lớp: nằm ở /khoa-hoc (đã có đủ).
@@ -9,7 +10,7 @@
 // Chữ nhỏ trên nền navy dùng độ đục cao hơn bản Figma (0,65–0,78 thay vì 0,45–0,68):
 // bản Figma đo được 3,4–4,3:1, trượt ngưỡng 4,5:1 mà docs/kin/thiet-ke/tuong-phan.md đặt ra.
 import Link from "next/link";
-import { BookOpen, ChartBar, CheckCircle, Flash } from "griddy-icons";
+import { Calendar, ChatCircleDots, ClipboardList, Key } from "griddy-icons";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
@@ -47,10 +48,10 @@ async function loadStats(): Promise<{ value: string; label: string }[]> {
 }
 
 const WHY_ITEMS = [
-  { Icon: Flash,       title: "Học trực tiếp LIVE",        desc: "Buổi học live mỗi tối với gia sư thực, không phải video cũ. Đặt câu hỏi và nhận phản hồi ngay lập tức." },
-  { Icon: ChartBar,    title: "Theo dõi tiến độ realtime", desc: "Dashboard cá nhân hiển thị tiến độ từng môn, GPA, streak và thứ hạng toàn hệ thống." },
-  { Icon: BookOpen,    title: "Trợ giảng riêng 1-1",       desc: "Mỗi học sinh được phân công trợ giảng người thật để hỏi bài và định hướng lộ trình." },
-  { Icon: CheckCircle, title: "Hỏi bài không giới hạn",    desc: "Hỏi trong cộng đồng, trợ giảng phản hồi trong ngày." },
+  { Icon: Key,            title: "Vào lớp bằng mã mời",      desc: "Gia sư gửi mã, em nhập là thấy tên gia sư, lịch và học phí (nếu có) của lớp trước khi bấm vào." },
+  { Icon: Calendar,       title: "Lịch học và buổi học",     desc: "Một lịch tuần cho mọi lớp: buổi học với gia sư, hạn nộp bài tập và buổi thi thử." },
+  { Icon: ClipboardList,  title: "Thi thử trong phòng thi",  desc: "Làm đề có giờ như thi thật. Nộp xong, KiN ghi nhận bài và tính điểm phần trắc nghiệm." },
+  { Icon: ChatCircleDots, title: "Bài tập và hỏi đáp",       desc: "Nộp bài tập gia sư giao ngay trên KiN. Có thắc mắc thì đăng hỏi trong lớp của mình hoặc ngoài cộng đồng." },
 ];
 
 const btnOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-trang)] text-[var(--kin-nhan-nen)] font-semibold transition-opacity hover:opacity-90";
@@ -72,10 +73,10 @@ export default async function HomePage() {
                 KiN · Luyện thi ĐGNL, THPT &amp; BCA cùng gia sư thật
               </p>
               <h1 className="kin-chu-tieu-de max-w-[620px] font-semibold leading-[1.14] tracking-[-0.02em] text-white text-[length:clamp(28px,7.5vw,var(--kin-co-display))]">
-                Học live mỗi tối,<br />cùng gia sư thật
+                Học cùng gia sư thật,<br />theo lớp và theo lịch
               </h1>
               <p className="max-w-[480px] text-[length:var(--kin-co-body)] leading-[1.6] text-white/[0.78]">
-                Không phải video quay sẵn — mỗi buổi học đều live, hỏi đáp trực tiếp, và tiến độ của con được cập nhật theo từng ngày.
+                Vào lớp bằng mã gia sư gửi, xem lịch và buổi học, làm bài tập và đề thi thử ngay trên KiN. Phụ huynh xem Sổ của con bằng đường dẫn riêng.
               </p>
               <div className="flex flex-wrap gap-3 pt-3">
                 <Link href="/khoa-hoc" className={`${btnOnNavy} text-[length:var(--kin-co-body)]`}>Xem lớp học</Link>
@@ -195,7 +196,7 @@ export default async function HomePage() {
               Gia nhập cộng đồng KiN ngay hôm nay
             </h2>
             <p className="max-w-[420px] text-[length:var(--kin-co-small)] leading-[1.6] text-white/[0.78]">
-              Thi thử miễn phí. Kết quả thật sau 30 ngày học nghiêm túc cùng gia sư thực.
+              Tạo tài khoản học sinh để thi thử ngay. Có mã từ gia sư thì vào lớp, xem lịch và nộp bài trên KiN.
             </p>
             <div className="flex flex-wrap justify-center gap-3 pt-3">
               <Link href="/dang-ky" className={`${btnOnNavy} text-[length:var(--kin-co-small)]`}>Tạo tài khoản miễn phí →</Link>

@@ -22,7 +22,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   const p = await gctx.newPage(); watch(p);
   await p.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 240000 });
   await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 90000 });
-  check("h1 đúng bản Figma", /Học live mỗi tối,\s*cùng gia sư thật/.test(await p.getByRole("heading", { level: 1 }).innerText()));
+  check("h1 đúng chữ KiN (cố ý khác Figma 145:8)", /Học cùng gia sư thật,\s*theo lớp và theo lịch/.test(await p.getByRole("heading", { level: 1 }).innerText()));
   check("không còn câu 'Mua 1 lần, học trọn đời' (KiN thu theo tháng)", !(await p.locator("body").innerText()).includes("Mua 1 lần"));
   const nav = p.getByRole("navigation", { name: "Điều hướng chính" });
   const navHrefs = await nav.getByRole("link").evaluateAll(els => els.map(e => [e.textContent, e.getAttribute("href")]));
@@ -66,20 +66,20 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   });
   const samples: [string, any, RGBA][] = [
     ["nhãn ĐANG MỞ LUYỆN THI", hero.getByText("ĐANG MỞ LUYỆN THI"), navy],
-    ["đoạn mô tả hero", hero.getByText(/Không phải video quay sẵn/), navy],
+    ["đoạn mô tả hero", hero.getByText(/Vào lớp bằng mã gia sư gửi/), navy],
     ["mô tả ô kỳ thi", hero.getByText("ĐH Quốc gia Hà Nội"), over([255, 255, 255, 0.08], navy)],
     ["nhãn số liệu", hero.getByText("Học sinh đang học"), over([255, 255, 255, 0.06], navy)],
   ];
   for (const [name, loc, bg] of samples) { const r = ratio(await colorOf(loc), bg); check(`${name}: ${r.toFixed(2)}:1`, r >= 4.5, r); }
-  const ctaP = p.getByText(/Kết quả thật sau 30 ngày/);
+  const ctaP = p.getByText(/Tạo tài khoản học sinh để thi thử ngay/);
   const rc = ratio(await colorOf(ctaP), navy); check(`đoạn mô tả khung CTA: ${rc.toFixed(2)}:1`, rc >= 4.5, rc);
 
   section("Mục 'Học ở đây thì được gì?', CTA, chân trang");
   // Cập nhật: trang chủ nay có thêm các mục dành cho gia sư (Việc giấy tờ, Cách hoạt động) cũng dùng h3, nên không còn đúng 4 h3 toàn trang.
-  // Giới hạn trong mục "Học ở đây thì được gì?" (h2 + khối kế tiếp); 4 thẻ và chữ Figma giữ nguyên, không bỏ ca nào.
+  // Giới hạn trong mục "Học ở đây thì được gì?" (h2 + khối kế tiếp); 4 thẻ giữ, chữ đổi theo STU-002; không bỏ ca nào.
   const whySection = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Học ở đây thì được gì?" }) }).first();
   const why = await whySection.getByRole("heading", { level: 3 }).allInnerTexts();
-  check("4 thẻ lợi ích đúng chữ Figma", JSON.stringify(why) === JSON.stringify(["Học trực tiếp LIVE", "Theo dõi tiến độ realtime", "Trợ giảng riêng 1-1", "Hỏi bài không giới hạn"]), why);
+  check("4 thẻ lợi ích đúng chữ KiN", JSON.stringify(why) === JSON.stringify(["Vào lớp bằng mã mời", "Lịch học và buổi học", "Thi thử trong phòng thi", "Bài tập và hỏi đáp"]), why);
   const grid = await p.locator("article").first().boundingBox();
   check("thẻ lợi ích đầu tiên cách mép trái 260px (lưới 920px, Figma 152:6)", !!grid && Math.abs(grid.x - 260) <= 1, grid?.x);
   check("khung CTA 760px: nút Tạo tài khoản → /dang-ky", (await p.getByRole("link", { name: /Tạo tài khoản miễn phí/ }).getAttribute("href")) === "/dang-ky");
