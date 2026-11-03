@@ -11,6 +11,15 @@ import { COVER_MAX_CHARS } from "@/lib/tutorSearchMedia";
 const YT = "https://youtu.be/dQw4w9WgXcQ?si=abc&t=9";
 const YT_CANON = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
+/** Bấm "Lưu hồ sơ" cho tới khi `sel` hiện ra: ở lần mở đầu của trang mới biên dịch React có thể chưa gắn xong sự kiện, bấm sớm không có tác dụng (không phải lỗi mã). */
+const clickSaveUntil = async (p: Page, sel: string) => {
+  for (let i = 0; i < 6; i++) {
+    await p.getByRole("button", { name: "Lưu hồ sơ" }).click();
+    try { await p.locator(sel).waitFor({ timeout: 6000 }); return; } catch { /* thử lại */ }
+  }
+  await p.locator(sel).waitFor({ timeout: 5000 });
+};
+
 /** Đặt một tệp ảnh do chính trang vẽ ra (canvas) vào ô chọn ảnh bìa rồi bắn sự kiện change. `noise` = ảnh nhiễu (gần như không nén được). */
 async function pickCover(p: Page, kind: "dep" | "nhieu") {
   await p.evaluate(async (k) => {
@@ -65,14 +74,13 @@ async function pickCover(p: Page, kind: "dep" | "nhieu") {
 
     section(`[${tag}] Link video xấu bị chặn ngay tại ô, không lưu gì`);
     await p.locator("#video-url").fill("https://vimeo.com/123");
-    await save(p).click();
-    await p.locator("#video-err").waitFor({ timeout: 15000 });
+    await clickSaveUntil(p, "#video-err");
     check("báo 'Chỉ nhận link video YouTube' dưới ô, aria-invalid, tiêu điểm vào ô", (await p.locator("#video-err").innerText()).includes("Chỉ nhận link video YouTube") && (await p.locator("#video-url").getAttribute("aria-invalid")) === "true" && (await p.locator("#video-url").evaluate(el => el === document.activeElement)));
     check("câu báo KHÔNG chứa chữ vừa gõ", !(await p.locator("#video-err").innerText()).includes("vimeo"));
     check("DB không đổi (bìa + video vẫn null)", JSON.stringify(await row()) === JSON.stringify({ coverUrl: null, introVideoUrl: null }), await row());
     await p.locator("#video-url").fill("javascript:alert(1)");
-    await save(p).click();
-    await p.locator("#video-err").waitFor({ timeout: 15000 });
+    await p.locator("#video-err").waitFor({ state: "detached", timeout: 5000 }).catch(() => {}); // lỗi cũ biến mất khi gõ lại
+    await clickSaveUntil(p, "#video-err");
     check("javascript: cũng bị chặn, DB vẫn null", (await row())?.introVideoUrl === null);
 
     section(`[${tag}] Chọn ảnh thật → cắt 16:9, vừa 250 KB → lưu`);

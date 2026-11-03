@@ -326,8 +326,15 @@ const B64 = "A".repeat(400);
   const rs = await put(S1, { coverUrl: goodCover });
   check("học sinh PUT ⇒ 403 và KHÔNG ghi", rs.status === 403 && (await rowOf(S1.id))?.coverUrl === null, rs.status);
   check("khách PUT ⇒ 401", (await put(undefined, { coverUrl: goodCover })).status === 401);
-  const other = await put(W, { coverUrl: goodCover, userId: R.id, id: R.id });
-  check("thân có userId/id của người khác ⇒ bị bỏ qua: chỉ ghi vào chính mình", other.status === 200 && (await rowOf(W.id))?.coverUrl === goodCover && (await rowOf(R.id))?.coverUrl === null);
+  const rBefore = await rowOf(R.id); // R có video từ mục (8); cả bìa lẫn video của R đều phải đứng yên
+  const other = await put(W, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/AAAAAAAAAAA", userId: R.id, id: R.id });
+  check("thân có userId/id của người khác ⇒ bị bỏ qua: chỉ ghi vào chính mình (cả bìa lẫn video; hàng của R không đổi một byte)", other.status === 200 && (await rowOf(W.id))?.coverUrl === goodCover
+    && (await rowOf(W.id))?.introVideoUrl === "https://www.youtube.com/watch?v=AAAAAAAAAAA" && JSON.stringify(await rowOf(R.id)) === JSON.stringify(rBefore), { other: other.status, r: await rowOf(R.id), rBefore });
+  // BU-06b rà soát: DB có giá trị hỏng (ghi tay / dữ liệu cũ) thì GET hồ sơ của CHÍNH MÌNH cũng không được trả ra — chỉ /api/tutors/[id] từng được kiểm.
+  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: "javascript:alert(1)", introVideoUrl: "https://evil.test/watch?v=dQw4w9WgXcQ" } });
+  const own = await api("GET", "/api/users/me/tutor-profile", { as: W });
+  check("DB hỏng: GET hồ sơ của chính mình trả bìa = null, video = null, không lọt chữ hỏng", own.status === 200 && own.json?.coverUrl === null && own.json?.introVideoUrl === null && !/javascript:|evil\.test/.test(own.text), own.json);
+  await prisma.user.update({ where: { id: W.id }, data: { coverUrl: goodCover, introVideoUrl: null } });
   const pn = await put(NV, { coverUrl: goodCover, introVideoUrl: "https://youtu.be/dQw4w9WgXcQ" });
   check("gia sư chưa duyệt ghi được (sửa trước khi nộp lại)", pn.status === 200, pn.status);
   check("…nhưng hồ sơ chưa duyệt KHÔNG ra công khai", (await api("GET", `/api/tutors/${NV.id}`)).status === 404);
