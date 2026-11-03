@@ -2,8 +2,9 @@
 // sửa một phần không làm mất nguồn; trang công khai CHỈ nhận nguồn / ảnh đã qua bộ kiểm (dữ liệu lạ do sửa tay trong DB không thành href / src).
 import { api, mkUser, mkTutor, mkSuper, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
+const PAD = "Nội dung bổ sung cho đủ độ dài tối thiểu của bài viết (ADM-002: nội dung ≥ 100 ký tự). ".repeat(2);
 
-const POST = { title: "Điểm chuẩn ĐH Mẫu 2026", slug: "diem-chuan-dh-mau-2026", excerpt: "Trường công bố điểm chuẩn.", content: "Nội dung bài.\n\nĐoạn hai.", category: "tuyen-sinh", published: true,
+const POST = { title: "Điểm chuẩn ĐH Mẫu 2026", slug: "diem-chuan-dh-mau-2026", excerpt: "Trường công bố điểm chuẩn.", content: `Nội dung bài.\n\nĐoạn hai.\n\n${PAD}`, category: "tuyen-sinh", published: true,
   sourceUrl: "https://www.facebook.com/kin.edu/posts/123", sourceName: "Fanpage KiN", coverImage: "https://cdn.example.edu.vn/bia.jpg" };
 const U = "/api/admin/articles";
 const row = (slug: string) => prisma.article.findUniqueOrThrow({ where: { slug } });
@@ -27,7 +28,7 @@ const row = (slug: string) => prisma.article.findUniqueOrThrow({ where: { slug }
   const c2 = await api("POST", U, { as: SA, body: { ...POST, slug: "khong-nguon", title: "Bài không nguồn", sourceUrl: "", sourceName: "", coverImage: "" } });
   a = await row("khong-nguon");
   check("bài không nguồn / không ảnh (chuỗi rỗng) → 201, cả ba cột là null (không phải chuỗi rỗng)", c2.status === 201 && a.sourceUrl === null && a.sourceName === null && a.coverImage === null, a);
-  const c3 = await api("POST", U, { as: SA, body: { title: "Bài kiểu cũ", slug: "kieu-cu", excerpt: "t", content: "c", category: "tin-midnight" } });
+  const c3 = await api("POST", U, { as: SA, body: { title: "Bài kiểu cũ", slug: "kieu-cu", excerpt: "t", content: PAD, category: "tin-midnight" } });
   a = await row("kieu-cu");
   check("thân kiểu CŨ (không nhắc tới nguồn) vẫn tạo được; ba cột null", c3.status === 201 && a.sourceUrl === null && a.coverImage === null, c3.json);
   const c4 = await api("POST", U, { as: SA, body: { ...POST, slug: "ten-mien", title: "Tên nguồn trống", sourceName: "" } });
@@ -79,7 +80,7 @@ const row = (slug: string) => prisma.article.findUniqueOrThrow({ where: { slug }
   check("khách đọc bài đã xuất bản → có nguồn, tên nguồn, ảnh bìa", pub.status === 200 && pub.json.sourceUrl === "https://tuyensinh.example.edu.vn/tb" && pub.json.sourceName === "tuyensinh.example.edu.vn" && pub.json.coverImage === "https://cdn.example.edu.vn/moi.png", pub.json);
   const nosrc = await api("GET", "/api/articles?slug=khong-nguon");
   check("bài không nguồn → ba trường là null (không phải chuỗi rỗng, không thiếu khoá)", nosrc.status === 200 && nosrc.json.sourceUrl === null && nosrc.json.sourceName === null && nosrc.json.coverImage === null && "coverImage" in nosrc.json, nosrc.json);
-  const hidden = await api("POST", U, { as: SA, body: { ...POST, slug: "ban-nhap", title: "Bản nháp", published: false } });
+  const hidden = await api("POST", U, { as: SA, body: { ...POST, slug: "ban-nhap", title: "Bản nháp tin tức", published: false } });
   check("bản nháp: khách đọc → 404 (không lộ nguồn / ảnh)", hidden.status === 201 && (await api("GET", "/api/articles?slug=ban-nhap")).status === 404);
 
   // Dữ liệu lạ chèn thẳng vào DB (bỏ qua API) — mô phỏng sửa tay / nhập từ nơi khác: trang công khai không được biến nó thành href / src.

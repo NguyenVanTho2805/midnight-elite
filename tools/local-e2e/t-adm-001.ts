@@ -10,9 +10,10 @@
 //   - Bỏ `logAction` ở POST articles → ca 2 đỏ (không có dòng article.create).
 import { prisma } from "@/lib/prisma";
 import { api, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
+const PAD = "Nội dung bổ sung cho đủ độ dài tối thiểu của bài viết (ADM-002: nội dung ≥ 100 ký tự). ".repeat(2);
 
 const U = "/api/admin/articles";
-const ART = (slug: string, extra: Record<string, unknown> = {}) => ({ title: `Bài ${slug}`, slug, excerpt: "Tóm tắt.", content: "Nội dung bài.", category: "tuyen-sinh", published: false, ...extra });
+const ART = (slug: string, extra: Record<string, unknown> = {}) => ({ title: `Bài viết ${slug}`, slug, excerpt: "Tóm tắt.", content: `Nội dung bài. ${PAD}`, category: "tuyen-sinh", published: false, ...extra });
 const audits = (where: Record<string, unknown> = {}) => prisma.auditLog.findMany({ where, orderBy: { createdAt: "asc" } });
 const auditCount = () => prisma.auditLog.count();
 const noPII = (meta: unknown, ...needles: string[]) => { const s = JSON.stringify(meta ?? {}); return !needles.some(n => n && s.includes(n)); };
@@ -50,7 +51,7 @@ const noPII = (meta: unknown, ...needles: string[]) => { const s = JSON.stringif
   check("4b. PATCH { published: false } → 1 dòng article.unpublish kèm slug", r.status === 200 && (await auditCount()) === before + 1 && (await audits({ resourceId: a1!.id, action: "article.unpublish" })).some(x => (x.metadata as { slug?: string })?.slug === "bai-mot"));
   // 5
   before = await auditCount();
-  r = await api("PATCH", `${U}/${a1!.id}`, { as: CA, body: { title: "Mới" } });
+  r = await api("PATCH", `${U}/${a1!.id}`, { as: CA, body: { title: "Tiêu đề mới của bài" } });
   const upd = await audits({ resourceId: a1!.id, action: "article.update" });
   check("5a. PATCH { title } → 1 dòng article.update, metadata.fields chứa 'title'", r.status === 200 && (await auditCount()) === before + 1 && upd.length === 1 && ((upd[0].metadata as { fields?: string[] })?.fields ?? []).includes("title"), upd);
   r = await api("PATCH", `${U}/${a1!.id}`, { as: SA, body: { authorId: SA.id } });
