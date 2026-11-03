@@ -301,11 +301,11 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     "/student/nhap-ma-lop", `/student/nhap-ma-lop?code=${w.invite.code}`,
     `/student/bai-giang/${L.rec.id}`, `/student/bai-giang/${L.paid.id}`, `/student/bai-giang/${L.live.id}`, `/student/bai-giang/${L.doc.id}`,
     "/student", "/student/thi-thu", `/student/thi-thu/${w.E1.id}`, `/student/thi-thu/${w.E2.id}`, "/student/bang-xep-hang", "/student/cong-dong", `/student/cong-dong/${w.th1.id}`, "/student/hoi-dap", `/student/hoi-dap/${w.qA.id}`, "/student/tin-tuc", "/student/tra-cuu",
-    "/lop-cua-toi", "/cai-dat/chu-de", "/thu-vien", "/khoa-hoc", `/khoa-hoc/${w.C1.id}`, "/khoa-hoc-da-luu", "/giang-vien", `/mentor/${w.T.id}`, "/thi-thu", "/cong-dong", `/cong-dong/${w.th1.id}`, `/cong-dong/hoi-dap/${w.qA.id}`,
+    "/lop-cua-toi", "/cai-dat/chu-de", "/thu-vien", "/khoa-hoc", `/khoa-hoc/${w.C1.id}`, "/khoa-hoc-da-luu", "/giang-vien", `/mentor/${w.T.id}`, "/thi-thu", "/cong-dong", "/cong-dong?tab=da-luu", `/cong-dong/ho-so/${w.T.id}`, `/cong-dong/${w.th1.id}`, `/cong-dong/hoi-dap/${w.qA.id}`,
     "/tin-tuc", `/tin-tuc/${w.article.slug}`, "/diem-chuan", "/bang-xep-hang", "/ban-do", "/chinh-sach", "/tra-cuu", "/phu-huynh", "/",
     `/phieu/${TOKENS.invoice}`, `/so-cua-con/${TOKENS.portal}`,
   ] : [
-    "/", "/khoa-hoc", `/khoa-hoc/${w.C1.id}`, "/khoa-hoc-da-luu", "/giang-vien", `/mentor/${w.T.id}`, "/thi-thu", "/cong-dong", `/cong-dong/${w.th1.id}`, `/cong-dong/hoi-dap/${w.qA.id}`, "/tin-tuc", `/tin-tuc/${w.article.slug}`,
+    "/", "/khoa-hoc", `/khoa-hoc/${w.C1.id}`, "/khoa-hoc-da-luu", "/giang-vien", `/mentor/${w.T.id}`, "/thi-thu", "/cong-dong", "/cong-dong?tab=da-luu", `/cong-dong/ho-so/${w.T.id}`, `/cong-dong/${w.th1.id}`, `/cong-dong/hoi-dap/${w.qA.id}`, "/tin-tuc", `/tin-tuc/${w.article.slug}`,
     "/diem-chuan", "/bang-xep-hang", "/ban-do", "/chinh-sach", "/thu-vien", "/tra-cuu", "/phu-huynh",
     "/dang-nhap", "/dang-ky", "/dang-ky?vai=gia-su", "/quen-mat-khau", `/dat-lai-mat-khau?token=${"0".repeat(64)}`, "/xac-thuc-email",
     `/xac-nhan-phu-huynh?token=${TOKENS.consent}`,
@@ -356,7 +356,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // ── Vỏ ──
   if (ROLE === "student") {
     section("Vỏ: học sinh luôn ở trong khung thanh bên HỌC SINH (trừ phòng thi, trang phụ huynh, trang gửi qua thư)");
-    const NO_SHELL_OK = /^\/(phieu|so-cua-con|xac-nhan-phu-huynh|xac-thuc-email|dat-lai-mat-khau|quen-mat-khau|xem-tai-lieu)(\/|$)|^\/student\/thi-thu\/[^/]+$/;
+    const NO_SHELL_OK = /^\/$|^\/(phieu|so-cua-con|xac-nhan-phu-huynh|xac-thuc-email|dat-lai-mat-khau|quen-mat-khau|xem-tai-lieu)(\/|$)|^\/student\/thi-thu\/[^/]+$/;
     const final = visited.filter(v => !v.why && new URL(v.final).origin === MAIN_ORIGIN);
     const wrongShell = final.filter(v => v.shell && v.shell !== SHELL_STUDENT);
     for (const x of wrongShell.slice(0, 20)) console.log(`   ✗ ${new URL(x.final).pathname} hiện khung "${x.shell}"`);

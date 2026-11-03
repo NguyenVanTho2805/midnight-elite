@@ -67,7 +67,7 @@ export async function loadStudentLibrary(userId: string, now: Date): Promise<Lib
   return flat.map(({ c, items }) => {
     const lessons: LibLesson[] = [];
     for (const { where, l } of items) {
-      const docs = parseLessonDocuments(l.documents);
+      const docs = parseLessonDocuments(l.documents, { allowKinFiles: true });
       const hasVideo = !!l.videoUrl;
       if (!hasVideo && docs.length === 0 && l.assignments.length === 0) continue;
       lessons.push({

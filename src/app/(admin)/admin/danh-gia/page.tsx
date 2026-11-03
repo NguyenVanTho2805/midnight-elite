@@ -1,193 +1,126 @@
+// Đánh giá khoá học — LỊCH SỬ + xoá (BU-08). Đánh giá đang chờ duyệt/từ chối nằm ở Hàng chờ (/admin/kiem-duyet?loai=danh-gia), không còn ở đây.
+// Bảng: cột đầu là định danh (khoá học · người viết rút gọn); ≤ 1 nút mỗi hàng (Xoá, xác nhận NỘI DÒNG — không hộp thoại); học sinh chỉ hiện tên rút gọn, không email.
 "use client";
-
-import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { KinButton, KinCallout, KinEmptyState, KinStatus } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
-import { AdminToast, useAdminToast } from "@/components/AdminToast";
-import { useKinConfirm } from "@/components/kin/useConfirm";
+import { QueueErrorStrip, QueueSkeleton } from "@/components/admin/queue/shared";
 
-interface Review {
-  id: string;
-  rating: number;
-  comment: string;
-  status: string;
-  createdAt: string;
-  user: { name: string; email: string };
-  course: { name: string };
+interface Review { id: string; rating: number; comment: string; status: string; createdAt: string; user: { name: string }; course: { name: string } }
+type Tab = "approved" | "rejected" | "all";
+
+const TABS: { key: Tab; label: string }[] = [{ key: "approved", label: "Đã duyệt" }, { key: "rejected", label: "Đã từ chối" }, { key: "all", label: "Tất cả" }];
+const STATUS: Record<string, { label: string; tone: "xong" | "loi" | "cho" }> = { approved: { label: "Đã duyệt", tone: "xong" }, rejected: { label: "Đã từ chối", tone: "loi" }, pending: { label: "Đang chờ ở Hàng chờ", tone: "cho" } };
+
+/** "Trần Thị Bích" → "Bích T."; một từ giữ nguyên. */
+function shortName(full: string): string {
+  const w = full.trim().split(/\s+/).filter(Boolean);
+  return w.length < 2 ? (w[0] ?? "Học viên") : `${w[w.length - 1]} ${w[0][0].toUpperCase()}.`;
 }
 
-function StarDisplay({ value }: { value: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(s => (
-        <svg key={s} width="14" height="14" viewBox="0 0 24 24"
-          fill={s <= value ? "var(--kin-tt-chu-cho)" : "none"} stroke={s <= value ? "var(--kin-tt-chu-cho)" : "var(--kin-chu-mo)"} strokeWidth="1.5">
-          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-        </svg>
-      ))}
-    </div>
-  );
+function Stars({ value }: { value: number }) {
+  return <span aria-label={`${value} trên 5 sao`} className="whitespace-nowrap tabular-nums text-[var(--kin-tt-chu-cho)]">{"★".repeat(value)}<span className="text-[var(--kin-chu-mo)]">{"☆".repeat(Math.max(0, 5 - value))}</span><span className="sr-only">{` ${value} sao`}</span></span>;
 }
 
-const STATUS_TAB = [
-  { key: "pending",  label: "Chờ duyệt",  color: "var(--kin-tt-chu-cho)", bg: "color-mix(in srgb, var(--kin-tt-cham-cho) 12%, transparent)"  },
-  { key: "approved", label: "Đã duyệt",   color: "var(--kin-tt-chu-xong)", bg: "color-mix(in srgb, var(--kin-tt-chu-xong) 12%, transparent)"  },
-  { key: "rejected", label: "Đã từ chối", color: "var(--kin-tt-chu-loi)", bg: "color-mix(in srgb, var(--kin-tt-chu-loi) 12%, transparent)"  },
-  { key: "all",      label: "Tất cả",     color: "var(--kin-chu-mo)", bg: "color-mix(in srgb, var(--kin-chu-mo) 10%, transparent)" },
-];
+function Content() {
+  const [tab, setTab] = useState<Tab>("approved");
+  const [reviews, setReviews] = useState<Review[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
 
-function DanhGiaContent() {
-  const { toast, showToast } = useAdminToast();
-  const { ask, dialog } = useKinConfirm();
-  const [tab, setTab] = useState("pending");
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    fetch(`/api/admin/reviews?status=${tab}`)
-      .then(r => r.json())
-      .then(d => { setReviews(d.reviews ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+  const load = useCallback(async () => {
+    await Promise.resolve();
+    setReviews(null); setFailed(false);
+    try {
+      const r = await fetch(`/api/admin/reviews?status=${tab}`, { credentials: "same-origin", cache: "no-store" });
+      if (!r.ok) throw new Error(String(r.status));
+      const d = await r.json();
+      setReviews(Array.isArray(d.reviews) ? d.reviews : []);
+    } catch { setFailed(true); }
   }, [tab]);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function act(id: string, status: "approved" | "rejected") {
-    setActing(id);
-    const res = await fetch(`/api/admin/reviews/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    setActing(null);
-    showToast(res.ok ? (status === "approved" ? "Đã duyệt đánh giá" : "Đã từ chối đánh giá") : "Lỗi cập nhật", res.ok);
-    load();
-  }
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, [load]);
 
   async function del(id: string) {
-    if (!(await ask({ title: "Xóa đánh giá này?", message: "Việc này không hoàn tác được." }))) return;
-    setActing(id);
-    const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
-    setActing(null);
-    showToast(res.ok ? "Đã xóa đánh giá" : "Lỗi xóa", res.ok);
-    load();
+    setBusyId(id); setNote(null);
+    try {
+      const res = await fetch(`/api/admin/reviews/${id}`, { method: "DELETE", credentials: "same-origin" });
+      setNote(res.ok ? { ok: true, text: "Đã xoá đánh giá." } : { ok: false, text: "Chưa xoá được. Thử lại." });
+      setConfirmId(null);
+      if (res.ok) await load();
+    } catch { setNote({ ok: false, text: "Không kết nối được. Thử lại." }); } finally { setBusyId(null); }
   }
 
-  const tabInfo = STATUS_TAB.find(t => t.key === tab)!;
-
+  const list = reviews ?? [];
   return (
-    <div>
-      {dialog}
-      {toast && <AdminToast msg={toast.msg} ok={toast.ok} />}
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Đánh giá khóa học</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Duyệt hoặc từ chối đánh giá của học viên</p>
-      </div>
+    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      <header>
+        <h1 className="text-[28px] font-medium leading-9 text-[var(--kin-chu-chinh)]">Đánh giá khoá học</h1>
+        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lịch sử các đánh giá đã xử lý. Có thể xoá một đánh giá không phù hợp.</p>
+      </header>
+      <KinCallout title="Đánh giá mới chờ duyệt ở Hàng chờ">
+        Duyệt hoặc từ chối ở <Link href="/admin/kiem-duyet?loai=danh-gia" className="font-medium underline text-[var(--kin-nhan-link)]">Hàng chờ, loại Đánh giá khoá</Link>.
+      </KinCallout>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {STATUS_TAB.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
-            style={tab === t.key
-              ? { background: t.bg, color: t.color, border: `1px solid color-mix(in srgb, ${t.color} 25%, transparent)` }
-              : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)", border: "1px solid var(--kin-vien-thuong)" }}>
-            {t.label}
-          </button>
+      <nav aria-label="Lọc theo trạng thái" className="flex flex-wrap gap-2">
+        {TABS.map(t => (
+          <button key={t.key} type="button" aria-pressed={tab === t.key} onClick={() => setTab(t.key)}
+            className={`inline-flex min-h-11 items-center rounded-full border px-4 text-[length:var(--kin-co-goc)] font-medium ${tab === t.key ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nhan-nen-nhat)] text-[var(--kin-nhan-link)]" : "border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-phu)]"}`}>{t.label}</button>
         ))}
-      </div>
+      </nav>
+      <p data-dang-loc className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Đang lọc: <b className="font-semibold text-[var(--kin-chu-chinh)]">{TABS.find(t => t.key === tab)!.label}</b></p>
+      {note && <p role="status" data-loi={note.ok ? undefined : ""} className={`text-[length:var(--kin-co-goc)] font-medium ${note.ok ? "text-[var(--kin-tt-chu-xong)]" : "text-[var(--kin-tt-chu-loi)]"}`}>{note.text}</p>}
 
-      {/* Table */}
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
-        {loading ? (
-          <div className="space-y-3">
-            {[1,2,3].map(i => (
-              <div key={i} className="p-4 rounded-xl animate-pulse" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                <div className="flex gap-3">
-                  <div className="h-4 w-24 rounded bg-gray-200" />
-                  <div className="h-4 w-32 rounded bg-gray-200" />
-                </div>
-                <div className="h-3 w-3/4 rounded bg-gray-200 mt-3" />
-              </div>
-            ))}
-          </div>
-        ) : reviews.length === 0 ? (
-          <div className="py-16 text-center text-sm" style={{ color: "var(--kin-chu-mo)" }}>
-            Không có đánh giá nào
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
-              <tr>
-                {["Học viên", "Khóa học", "Sao", "Nhận xét", "Ngày gửi", "Trạng thái", ""].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>{h}</th>
-                ))}
+      {failed && <QueueErrorStrip message="Chưa tải được đánh giá." onRetry={() => void load()} />}
+      {reviews === null && !failed && <QueueSkeleton rows={4} />}
+      {reviews !== null && list.length === 0 && <KinEmptyState title="Chưa có đánh giá nào ở mục này">Đánh giá đã duyệt hoặc đã từ chối sẽ hiện ở đây.</KinEmptyState>}
+      {reviews !== null && list.length > 0 && (
+        <div className="overflow-x-auto rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)]">
+          <table data-danh-gia-table className="w-full min-w-[640px] border-collapse text-left text-[length:var(--kin-co-goc)]">
+            <thead>
+              <tr className="text-[length:var(--kin-co-caption)] uppercase tracking-wide text-[var(--kin-chu-mo)]">
+                {["Khoá học · người viết", "Sao", "Nhận xét", "Ngày", "Trạng thái", "Hành động"].map(h => <th key={h} scope="col" className="border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] px-3 py-2 font-semibold">{h}</th>)}
               </tr>
             </thead>
             <tbody>
-              {reviews.map((r, i) => {
-                const st = STATUS_TAB.find(t => t.key === r.status)!;
+              {list.map(r => {
+                const st = STATUS[r.status] ?? { label: r.status, tone: "cho" as const };
                 return (
-                  <tr key={r.id} style={{ borderBottom: i < reviews.length - 1 ? "1px solid var(--kin-vien-thuong)" : "none" }}>
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{r.user.name}</p>
-                      <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{r.user.email}</p>
-                    </td>
-                    <td className="px-4 py-3 text-sm max-w-[160px] truncate" style={{ color: "var(--kin-chu-phu)" }}>{r.course.name}</td>
-                    <td className="px-4 py-3"><StarDisplay value={r.rating} /></td>
-                    <td className="px-4 py-3 text-sm max-w-[220px]" style={{ color: "var(--kin-chu-phu)" }}>
-                      <p className="line-clamp-2">{r.comment}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: "var(--kin-chu-mo)" }}>
-                      {new Date(r.createdAt).toLocaleDateString("vi-VN")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        style={{ background: st?.bg ?? "var(--kin-nen-bang)", color: st?.color ?? "var(--kin-chu-mo)" }}>
-                        {st?.label ?? r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 justify-end">
-                        {r.status !== "approved" && (
-                          <button disabled={acting === r.id} onClick={() => act(r.id, "approved")}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
-                            style={{ background: "var(--kin-nhan-nen)" }}>
-                            Duyệt
-                          </button>
-                        )}
-                        {r.status !== "rejected" && (
-                          <button disabled={acting === r.id} onClick={() => act(r.id, "rejected")}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                            style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
-                            Từ chối
-                          </button>
-                        )}
-                        <button disabled={acting === r.id} onClick={() => del(r.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                          style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
-                          Xóa
-                        </button>
-                      </div>
+                  <tr key={r.id} className="border-b border-[var(--kin-vien-nhat)] last:border-b-0">
+                    <th scope="row" className="px-3 py-3 font-normal">
+                      <p className="font-semibold text-[var(--kin-chu-chinh)]">{r.course.name}</p>
+                      <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">{shortName(r.user.name)}</p>
+                    </th>
+                    <td className="px-3 py-3"><Stars value={r.rating} /></td>
+                    <td className="max-w-[260px] px-3 py-3 text-[var(--kin-chu-phu)]"><p className="line-clamp-2">{r.comment}</p></td>
+                    <td className="whitespace-nowrap px-3 py-3 text-[var(--kin-chu-phu)]">{new Date(r.createdAt).toLocaleDateString("vi-VN")}</td>
+                    <td className="px-3 py-3"><KinStatus tone={st.tone}>{st.label}</KinStatus></td>
+                    <td className="px-3 py-2">
+                      {confirmId === r.id ? (
+                        <div className="flex items-center gap-2">
+                          <KinButton variant="danger-solid" loading={busyId === r.id} loadingLabel="Đang xoá…" onClick={() => void del(r.id)}>Xác nhận xoá</KinButton>
+                          <KinButton variant="secondary" disabled={busyId === r.id} onClick={() => setConfirmId(null)}>Huỷ</KinButton>
+                        </div>
+                      ) : (
+                        <KinButton variant="danger" onClick={() => { setConfirmId(r.id); setNote(null); }} aria-label={`Xoá đánh giá khoá ${r.course.name}`}>Xoá</KinButton>
+                      )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
+      <p className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Xoá đánh giá không hoàn tác được.</p>
     </div>
   );
 }
 
 export default function DanhGiaPage() {
-  return (
-    <PermissionGuard required={PERMISSIONS.MANAGE_COURSES}>
-      <DanhGiaContent />
-    </PermissionGuard>
-  );
+  return <PermissionGuard required={PERMISSIONS.MANAGE_COURSES}><Content /></PermissionGuard>;
 }

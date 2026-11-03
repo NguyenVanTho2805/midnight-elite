@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { nextAdminRedirects } from "./src/lib/adminRedirects";
 
 const nextConfig: NextConfig = {
   // @napi-rs/canvas ships a native binary loader (js-binding.js) that
@@ -13,6 +14,12 @@ const nextConfig: NextConfig = {
   // với localhost → trang admin không hydrate. Cho phép domain này. 15/10/2026: thêm cả tên miền chính — bài rà liên kết chạy thử
   // cả hai tên miền thật (chuyển tên miền giữ nguyên cổng) và cần trang hydrate được ở cả hai.
   allowedDevOrigins: ["admin.midnightelite-edu.com", "midnightelite-edu.com"],
+
+  // BU-08 (mục 4.6 / D1): đường quản trị cũ → mới bằng 308. Đích không phụ thuộc người xem nên an toàn để trình duyệt nhớ (khác các chuyển hướng theo phiên
+  // ở hostRouting.ts). Một nguồn: src/lib/adminRedirects.ts (phần thuần, có test t-admin-redirects-lib / t-admin-redirects).
+  async redirects() {
+    return nextAdminRedirects();
+  },
 
   // ĐX-02: service worker (public/sw.js) không bao giờ được nằm trong bộ nhớ đệm — trình duyệt phải luôn lấy bản mới nhất để cập nhật được.
   // CSP chặt: tệp này chỉ được chạy mã cùng nguồn. Cấu hình theo hướng dẫn PWA của Next 16 (node_modules/next/dist/docs/01-app/02-guides/progressive-web-apps.md).

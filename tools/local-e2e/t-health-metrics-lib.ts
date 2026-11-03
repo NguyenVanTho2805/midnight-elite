@@ -200,10 +200,10 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms);
   check("NC2-020: trang vẽ nhóm 'Gia sư mới vào' theo ACTIVATION_ORDER", /ACTIVATION_ORDER\.map/.test(page) && /Gia sư mới vào/.test(page));
   check("trang: chọn 7 / 30 / 90 ngày, có trạng thái đang tải và lỗi + Thử lại", /\[7, 30, 90\]/.test(page) && /aria-busy="true"/.test(page) && /role="alert"/.test(page) && /Thử lại/.test(page));
   check("trang không viết số tự nghĩ: mọi số lấy từ dữ liệu API (không có chuỗi phần trăm cố định)", !/\b\d{1,3}%/.test(page.replace(/{ratioText[^}]*}/g, "")));
-  const baoCao = ADMIN_MODULES.find(x => x.key === "bao-cao");
+  const baoCao = ADMIN_MODULES.find(x => x.key === "van-hanh");
   const sub = baoCao?.subs.find(s => s.href === "/admin/so-do");
-  check("menu: 'Số đo sản phẩm' nằm trong module Báo cáo, cùng quyền với Phễu gia sư", !!sub && sub.label === "Số đo sản phẩm" && sub.permission === baoCao?.subs.find(s => s.href === "/admin/pheu")?.permission);
-  check("matchSub nhận /admin/so-do là module Báo cáo", matchSub("/admin/so-do")?.moduleKey === "bao-cao");
+  check("menu: 'Số đo sản phẩm' nằm trong module Vận hành (BU-08: trước là Báo cáo), cùng quyền với Phễu gia sư", !!sub && sub.label === "Số đo sản phẩm" && sub.permission === baoCao?.subs.find(s => s.href === "/admin/pheu")?.permission);
+  check("matchSub nhận /admin/so-do là module Vận hành (BU-08)", matchSub("/admin/so-do")?.moduleKey === "van-hanh");
   const hrefs = (r: "admin_super" | "admin_content" | "teacher") => visibleModules(r).flatMap(x => x.subs.map(s => s.href));
   check("quản lý trung tâm thấy trang, gia sư thì không", hrefs("admin_super").includes("/admin/so-do") && hrefs("admin_content").includes("/admin/so-do") && !hrefs("teacher").includes("/admin/so-do"));
 

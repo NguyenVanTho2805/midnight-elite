@@ -16,45 +16,53 @@ async function applicant(name: string, emailVerified: boolean) {
   const unv = await applicant("Ứng viên Chưa Xác Thực", false);
   await launch();
 
-  section("Trang /admin/ho-so-gia-su (quản lý)");
+  // BU-08: trang /admin/ho-so-gia-su và hộp thoại từ chối đã được thay bằng HÀNG CHỜ một cửa (/admin/kiem-duyet?loai=gia-su, panel bên). Đường cũ vẫn mở được qua 308.
+  section("Hàng chờ gia sư (BU-08): đường cũ /admin/ho-so-gia-su → 308 sang hàng chờ");
   const ctx = await ctxFor(sup);
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
-  await page.goto(`${ADMIN}/admin/ho-so-gia-su`, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Duyệt hồ sơ gia sư" }).waitFor({ timeout: 60000 });
-  await page.getByText("Ứng viên Hợp lệ").waitFor();
-  check("thấy 2 hồ sơ chờ", (await page.locator("li").count()) === 2);
-  const approveBtns = page.getByRole("button", { name: "Duyệt", exact: true });
-  check("nút Duyệt của người chưa xác thực email bị khoá", (await approveBtns.nth(1).isDisabled()) === true && (await approveBtns.nth(0).isDisabled()) === false);
-  check("có nhãn 'Chưa xác thực email'", await page.getByText("Chưa xác thực email").first().isVisible());
+  await page.goto(`${ADMIN}/admin/ho-so-gia-su`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.waitForURL(/\/admin\/kiem-duyet\?.*loai=gia-su/, { timeout: 90000 });
+  check("đường cũ /admin/ho-so-gia-su → 308 sang /admin/kiem-duyet?loai=gia-su", /loai=gia-su/.test(page.url()), page.url());
+  const rows = page.locator("[data-queue-table] tbody tr");
+  const panel = page.locator("aside[data-side-panel]");
+  await page.locator("[data-queue-table]").waitFor({ timeout: 120000 });
+  await rows.filter({ hasText: "Ứng viên Hợp lệ" }).first().waitFor({ timeout: 60000 });
+  check("thấy 2 hồ sơ chờ", (await rows.count()) === 2);
+  check("có nhãn 'Chưa xác thực email' ở hồ sơ chưa xác thực", await rows.filter({ hasText: "Ứng viên Chưa Xác Thực" }).getByText("Chưa xác thực email").first().isVisible());
   await shot(page, "tutor-apps-desktop");
-
-  await approveBtns.nth(0).click();
-  await page.getByText(/Đã duyệt Ứng viên Hợp lệ/).waitFor({ timeout: 15000 });
-  await eventually("duyệt xong: hồ sơ biến khỏi tab chờ", async () => (await page.locator("li").count()) === 1);
+  await rows.filter({ hasText: "Ứng viên Chưa Xác Thực" }).locator("[data-row-open]").click();
+  await panel.waitFor({ timeout: 30000 });
+  check("nút 'Duyệt gia sư' của người chưa xác thực email bị khoá", await panel.getByRole("button", { name: "Duyệt gia sư" }).isDisabled());
+  await page.keyboard.press("Escape");
+  await rows.filter({ hasText: "Ứng viên Hợp lệ" }).locator("[data-row-open]").click();
+  await panel.waitFor({ timeout: 30000 });
+  check("nút 'Duyệt gia sư' của người đã xác thực mở", await panel.getByRole("button", { name: "Duyệt gia sư" }).isEnabled());
+  await panel.getByRole("button", { name: "Duyệt gia sư" }).click(); // không cần xác nhận thêm: việc có thể hoàn tác bằng cách đổi vai ở Con người
+  await eventually("duyệt xong: hồ sơ biến khỏi hàng chờ", async () => (await rows.count()) === 1, 30000);
   const dbU = await prisma.user.findUnique({ where: { id: ok.id } });
   check("DB: đã thành gia sư", dbU?.tutorVerified === true && dbU?.adminRole === "teacher");
 
-  section("Từ chối bằng modal");
-  await page.getByRole("button", { name: "Từ chối", exact: true }).click();
-  const dlg = page.getByRole("dialog");
-  await dlg.waitFor();
-  const submit = dlg.getByRole("button", { name: "Từ chối hồ sơ" });
-  check("chưa nhập lý do: nút gửi bị khoá", await submit.isDisabled());
-  await dlg.getByLabel("Lý do từ chối").fill("Cần xác thực email và bổ sung bằng cấp");
-  check("nhập lý do: nút gửi mở", !(await submit.isDisabled()));
-  await shot(page, "tutor-apps-reject-modal");
+  section("Từ chối: panel bên, bắt buộc lý do");
+  await rows.first().locator("[data-row-open]").click();
+  await panel.waitFor({ timeout: 30000 });
+  await panel.getByRole("button", { name: "Từ chối" }).click();
+  const submit = panel.getByRole("button", { name: /^Xác nhận: Từ chối/ });
+  check("chưa nhập lý do: nút xác nhận bị khoá", await submit.isDisabled());
+  await panel.getByLabel(/Lý do từ chối/).fill("Cần xác thực email và bổ sung bằng cấp");
+  check("nhập lý do: nút xác nhận mở", !(await submit.isDisabled()));
+  check("không dùng hộp thoại (role=dialog = 0)", (await page.locator("[role=dialog]").count()) === 0);
+  await shot(page, "tutor-apps-reject-panel");
   await submit.click();
-  await page.getByText(/Đã từ chối hồ sơ của/).waitFor({ timeout: 15000 });
-  await page.getByRole("tab", { name: "Đã từ chối" }).click();
-  await page.getByText("Lý do: Cần xác thực email và bổ sung bằng cấp").waitFor({ timeout: 15000 });
-  check("tab 'Đã từ chối' hiện lý do", true);
+  await eventually("từ chối xong: hàng chờ trống", async () => (await rows.count()) === 0, 30000);
+  const rej = await prisma.user.findUnique({ where: { id: unv.id } });
+  check("DB: đã từ chối kèm lý do, chưa thành gia sư", !!rej?.tutorRejectedAt && rej.tutorRejectReason === "Cần xác thực email và bổ sung bằng cấp" && rej.tutorVerified === false);
 
   // 24/10/2026 (QT-02): tab "Hồ sơ gia sư chờ duyệt" trong /admin/quan-tri-vien đã bỏ (duyệt gia sư chỉ còn MỘT cửa: hàng chờ kiểm duyệt). Test cũ khẳng định tab đó nên đổi sang khẳng định hành vi mới.
   section("/admin/quan-tri-vien: không còn tab duyệt gia sư, có liên kết sang hàng chờ");
-  await page.goto(`${ADMIN}/admin/quan-tri-vien`, { waitUntil: "networkidle" });
+  await page.goto(`${ADMIN}/admin/quan-tri-vien`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.getByPlaceholder("Tìm theo tên, email hoặc SĐT...").waitFor({ timeout: 60000 });
   check("không còn tab 'Hồ sơ gia sư chờ duyệt'", (await page.getByRole("tab", { name: /Hồ sơ gia sư chờ duyệt/ }).count()) === 0);
   check("có liên kết sang hàng chờ kiểm duyệt", (await page.getByRole("link", { name: "hàng chờ kiểm duyệt" }).getAttribute("href")) === "/admin/kiem-duyet");
@@ -64,8 +72,8 @@ async function applicant(name: string, emailVerified: boolean) {
   const mctx = await ctxFor(sup, { width: 390, height: 800 });
   const mp = await mctx.newPage();
   await applicant("Ứng viên Di Động", true);
-  await mp.goto(`${ADMIN}/admin/ho-so-gia-su`, { waitUntil: "networkidle" });
-  await mp.getByText("Ứng viên Di Động").waitFor({ timeout: 60000 });
+  await mp.goto(`${ADMIN}/admin/kiem-duyet?loai=gia-su`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await mp.getByText("Ứng viên Di Động").first().waitFor({ timeout: 90000 });
   const overflow = await mp.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check("không tràn ngang trên mobile", !overflow);
   await shot(mp, "tutor-apps-mobile");
@@ -73,7 +81,7 @@ async function applicant(name: string, emailVerified: boolean) {
   section("Gia sư thường bị đẩy khỏi trang");
   const tctx = await ctxFor(teacher);
   const tp = await tctx.newPage();
-  await tp.goto(`${BASE}/admin/ho-so-gia-su`, { waitUntil: "networkidle" });
+  await tp.goto(`${BASE}/admin/ho-so-gia-su`, { waitUntil: "domcontentloaded" });
   await tp.waitForURL(u => !u.pathname.includes("ho-so-gia-su"), { timeout: 30000 });
   await tp.waitForURL(/\/lop-cua-toi(\/|$)/, { timeout: 30000 }); // /admin của gia sư → Hộp việc /lop-cua-toi (chế độ gọn thì tiếp tục sang Lịch) — hostRouting.ts
   check("bị đưa khỏi trang → /admin → khu của gia sư /lop-cua-toi (tên miền chính)", true);

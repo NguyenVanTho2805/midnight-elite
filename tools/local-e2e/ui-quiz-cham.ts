@@ -21,7 +21,7 @@ import { regradeAttempt } from "@/lib/examGrading";
     await prisma.examAnswer.create({ data: { attemptId: a.id, questionId: q2.id, textAnswer: `Bài làm của ${s.name}: (x − 2)(x − 3) = 0`, ...(i === 2 ? { pointsAwarded: 1.5, teacherComment: "Tốt" } : {}) } });
     await regradeAttempt(a.id); atts.push(a.id);
   }
-  const url = `${BASE}/lop-cua-toi/bai-tap/de/${ex.id}`;
+  const url = `${BASE}/lop-cua-toi/de-thi/${ex.id}/cham`;
 
   await launch();
   const errors: string[] = [];
@@ -93,9 +93,10 @@ import { regradeAttempt } from "@/lib/examGrading";
   await p2.goto(url, { waitUntil: "networkidle", timeout: 120000 });
   await p2.getByText("Đề này không phải của cô").waitFor({ timeout: 60000 });
   check("không lộ tên học sinh / tên đề cho gia sư khác", !/Gia Bảo|Ôn tập tổng hợp/.test(await p2.locator("body").innerText()));
-  await p2.getByRole("link", { name: "Về Bài tập" }).click();
-  await p2.waitForURL(/\/lop-cua-toi\/bai-tap$/, { timeout: 60000 });
-  check("'Về Bài tập' đi tới trang Bài tập", true);
+  await p2.getByRole("link", { name: "Về Đề thi" }).click();
+  await p2.waitForURL(/\/lop-cua-toi\/de-thi$/, { timeout: 60000 });
+  // BU-03: Chấm quiz thuộc nhóm Đề thi nên liên kết quay lại là 'Về Đề thi' → /lop-cua-toi/de-thi (thay đổi có chủ đích)
+  check("'Về Đề thi' đi tới trang Đề thi", true);
 
   section("Trang Bài tập của gia sư chủ: đề hiện 'Chờ chấm' và có lối vào chấm");
   const lp = await ctx.newPage(); watch(lp);
@@ -103,7 +104,7 @@ import { regradeAttempt } from "@/lib/examGrading";
   await lp.getByText("Ôn tập tổng hợp · Toán 9").first().waitFor({ timeout: 90000 });
   await lp.locator("[data-bai-tap-row]").first().click();
   await lp.getByRole("link", { name: "Chấm và theo dõi" }).click();
-  await lp.waitForURL(new RegExp(`/bai-tap/de/${ex.id}$`), { timeout: 60000 });
+  await lp.waitForURL(new RegExp(`/de-thi/${ex.id}/cham$`), { timeout: 60000 });
   check("'Chấm và theo dõi' mở đúng trang chấm của đề", true);
 
   check("không có lỗi JS/console", errors.length === 0, errors.slice(0, 3));

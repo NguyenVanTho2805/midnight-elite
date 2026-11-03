@@ -1,6 +1,7 @@
 // Hồ sơ gia sư (1.4.4) — validate dùng chung cho đăng ký gia sư và sửa hồ sơ.
 import { parseAreaInput, type TutorTeaching } from "@/lib/tutorArea";
 import { parseProfileInput } from "@/lib/tutorVisibility";
+import { parseCoverInput, parseIntroVideoInput } from "@/lib/tutorSearchMedia";
 
 export const TUTOR_BIO_MAX      = 2000;
 export const TUTOR_SUBJECTS_MAX = 10;
@@ -9,9 +10,11 @@ export const TUTOR_SUBJECT_LEN  = 50;
 // Trả { bio, subjects } đã chuẩn hoá, hoặc { error } nếu dữ liệu sai.
 // Field không truyền → undefined (route PUT bỏ qua, không ghi đè).
 // ĐX-06: thêm `city` (Tỉnh/Thành) và `teaching` (quận/huyện, hình thức, trường + bằng cấp, giá tham khảo) — xem src/lib/tutorArea.ts.
-export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown; city?: unknown; teaching?: unknown; profile?: unknown }):
-  { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; error?: string } {
-  const out: { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean } = {};
+// BU-06b: thêm `coverUrl` (ảnh bìa, data URL jpeg/png/webp ≤ 250 KB) và `introVideoUrl` (link YouTube → lưu lại dạng chuẩn do máy chủ dựng) — kiểm ở tutorSearchMedia.ts.
+// Thiếu khoá → giữ nguyên; null hoặc chuỗi rỗng → xoá. Tự khai: KiN không kiểm nội dung ảnh/video.
+export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown; city?: unknown; teaching?: unknown; profile?: unknown; coverUrl?: unknown; introVideoUrl?: unknown }):
+  { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; coverUrl?: string | null; introVideoUrl?: string | null; error?: string } {
+  const out: { bio?: string | null; subjects?: string[]; city?: string | null; teaching?: TutorTeaching | null; hidden?: boolean; coverUrl?: string | null; introVideoUrl?: string | null } = {};
 
   if (body.bio !== undefined) {
     if (body.bio !== null && typeof body.bio !== "string") return { error: "bio phải là chuỗi" };
@@ -49,6 +52,13 @@ export function parseTutorProfileInput(body: { bio?: unknown; subjects?: unknown
   const prof = parseProfileInput(body.profile);
   if (prof.error) return { error: prof.error };
   if (prof.hidden !== undefined) out.hidden = prof.hidden;
+
+  const cover = parseCoverInput(body.coverUrl);
+  if (!cover.ok) return { error: cover.error };
+  if (cover.value !== undefined) out.coverUrl = cover.value;
+  const video = parseIntroVideoInput(body.introVideoUrl);
+  if (!video.ok) return { error: video.error };
+  if (video.value !== undefined) out.introVideoUrl = video.value;
 
   return out;
 }

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { Search } from "griddy-icons";
@@ -18,6 +17,22 @@ interface Student {
   role: "hoc-vien" | "chua-kich-hoat";
   status: "safe" | "warn" | "danger"; lastSeen: string;
   banned: boolean;
+  // ADM-001: học sinh "đã ẩn" (thay cho xoá cứng). Chỉ suy từ deletedAt, KHÔNG suy từ banned.
+  deletedAt: string | null;
+}
+
+const HIDDEN_BADGE = { bg: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-mo)" };
+
+// Giờ VN cho dòng "Đã ẩn lúc dd/mm/yyyy HH:mm" trong panel.
+function formatHiddenAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  // vi-VN của toLocaleString xếp giờ trước ngày ("14:05 01/11/2026") — ghép tay để ra đúng "dd/mm/yyyy HH:mm".
+  const part = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+      .formatToParts(d).map(x => [x.type, x.value]),
+  ) as Record<string, string>;
+  return `${part.day}/${part.month}/${part.year} ${part.hour === "24" ? "00" : part.hour}:${part.minute}`;
 }
 
 const ROLE_CONFIG = {
@@ -31,6 +46,7 @@ interface ApiStudent {
   enrollments: { courseId: string; courseName: string }[];
   gpa: number; completion: number; assignmentAvg: number | null;
   sbd: string;
+  deletedAt?: string | null; // ADM-001: ISO hoặc null; máy chủ cũ chưa trả → coi là đang hiện
 }
 
 function toStudent(u: ApiStudent): Student {
@@ -57,6 +73,7 @@ function toStudent(u: ApiStudent): Student {
     status,
     lastSeen:        new Date(u.createdAt).toLocaleDateString("vi-VN"),
     banned:          u.banned,
+    deletedAt:       u.deletedAt ?? null,
   };
 }
 
@@ -77,14 +94,16 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
 }
 
 // ─── STUDENT DETAIL MODAL ─────────────────────────────────────────────────────
-function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
+function DetailModal({ student, dbCourses, onClose, onRefresh, onDone }: {
   student: Student;
   dbCourses: CourseFull[];
   onClose: () => void;
   onRefresh: () => void;
-  onDelete: () => void;
+  /** Đóng panel và báo kết quả bằng toast ở cấp trang (panel đã đóng thì toast trong panel không còn thấy). */
+  onDone: (msg: string, ok: boolean) => void;
 }) {
   const cfg = STATUS_CONFIG[student.status];
+  const hidden = student.deletedAt != null;
   const [copied,      setCopied]      = useState(false);
   const [enrolledIds, setEnrolledIds] = useState<string[]>(student.enrolledCourseIds);
   const [activating,  setActivating]  = useState<string | null>(null);
@@ -94,9 +113,11 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
   const [reminding,   setReminding]   = useState(false);
   const [banned,      setBanned]      = useState(student.banned);
   const [banning,     setBanning]     = useState(false);
-  const [confirmDel,  setConfirmDel]  = useState(false);
-  const [deleting,    setDeleting]    = useState(false);
+  const [confirmHide, setConfirmHide] = useState(false);
+  const [hiding,      setHiding]      = useState(false);
+  const [restoring,   setRestoring]   = useState(false);
   const [consentBusy, setConsentBusy] = useState<string | null>(null);
+  const coursesRef = useRef<HTMLDivElement | null>(null);
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -187,7 +208,8 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
         showToast(d.banned ? "Đã ban học sinh" : "Đã gỡ ban học sinh");
         onRefresh();
       } else {
-        showToast("Lỗi cập nhật", false);
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error ?? "Lỗi cập nhật", false);
       }
     } catch {
       showToast("Lỗi kết nối", false);
@@ -196,22 +218,51 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
     }
   }
 
-  async function deleteStudent() {
-    setDeleting(true);
+  // ADM-001: DELETE nay có nghĩa là ẨN (giữ nguyên ghi danh, điểm danh, bài làm). Hợp đồng JSON ở dac-ta/ADM-001.md mục 2.
+  async function hideStudent() {
+    setHiding(true);
     try {
       const res = await fetch(`/api/admin/students/${student.userId}`, { method: "DELETE", credentials: "same-origin" });
+      const d = await res.json().catch(() => ({})) as { error?: string; code?: string };
       if (res.ok) {
         onRefresh();
-        onDelete();
-        onClose();
+        onDone("Đã ẩn học sinh", true);
+        return;
+      }
+      if (res.status === 404) {
+        onRefresh();
+        onDone("Học sinh không còn trong hệ thống", false);
+        return;
+      }
+      // 409 active_enrollments: giữ panel mở, dùng đúng chữ máy chủ, cuộn tới khối Khoá học để thu hồi.
+      showToast(d.error ?? "Lỗi ẩn học sinh", false);
+      if (res.status === 409 && d.code === "active_enrollments") {
+        coursesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      setConfirmHide(false);
+    } catch {
+      showToast("Lỗi kết nối", false);
+    } finally {
+      setHiding(false);
+    }
+  }
+
+  async function restoreStudent() {
+    setRestoring(true);
+    try {
+      const res = await fetch(`/api/admin/students/${student.userId}/restore`, { method: "POST", credentials: "same-origin" });
+      if (res.ok) {
+        setBanned(false); // máy chủ đặt banned=false khi khôi phục (đặc tả 4.5)
+        showToast("Đã khôi phục. Tài khoản mở khoá; nếu trước đó em bị khoá, hãy khoá lại.");
+        onRefresh();
       } else {
-        showToast("Lỗi xóa học sinh", false);
-        setDeleting(false);
-        setConfirmDel(false);
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error ?? "Lỗi khôi phục học sinh", false);
       }
     } catch {
       showToast("Lỗi kết nối", false);
-      setDeleting(false);
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -252,6 +303,12 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                   style={{ background: ROLE_CONFIG[student.role].bg, color: ROLE_CONFIG[student.role].color }}>
                   {ROLE_CONFIG[student.role].labelFull}
                 </span>
+                {hidden && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                    style={{ background: HIDDEN_BADGE.bg, color: HIDDEN_BADGE.color }}>
+                    Đã ẩn
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -309,37 +366,55 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
             </div>
           </div>
 
-          {/* Ban + Xóa học sinh */}
-          <div className="flex gap-2">
-            <button
-              onClick={toggleBan}
-              disabled={banning}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50"
-              style={banned
-                ? { borderColor: "var(--kin-tt-vien-xong)", background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }
-                : { borderColor: "var(--kin-tt-vien-cho)", background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
-              {banning ? "Đang xử lý…" : banned ? "✓ Gỡ ban" : "Ban học sinh"}
-            </button>
-            {!confirmDel ? (
+          {/* ADM-001: Ban + Ẩn học sinh (đang hiện) / Khôi phục (đã ẩn). Không hộp thoại mới — xác nhận hai bước trong panel. */}
+          {hidden ? (
+            <div className="space-y-1.5">
               <button
-                onClick={() => setConfirmDel(true)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors"
-                style={{ borderColor: "var(--kin-tt-vien-loi)", background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
-                Xóa học sinh
+                onClick={restoreStudent}
+                disabled={restoring}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50 cursor-pointer"
+                style={{ borderColor: "var(--kin-tt-vien-xong)", background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
+                {restoring ? "Đang khôi phục…" : "Khôi phục học sinh"}
               </button>
-            ) : (
-              <div className="flex-1 rounded-xl border p-2.5 space-y-1.5" style={{ borderColor: "var(--kin-tt-vien-loi)", background: "var(--kin-tt-nen-loi)" }}>
-                <p className="text-xs font-bold text-center" style={{ color: "var(--kin-tt-chu-loi)" }}>Xác nhận xóa?</p>
-                <div className="flex gap-1.5">
-                  <button onClick={() => setConfirmDel(false)}
-                    className="flex-1 py-1 rounded-lg text-xs border" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Huỷ</button>
-                  <button onClick={deleteStudent} disabled={deleting}
-                    className="flex-1 py-1 rounded-lg text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
-                    style={{ background: "var(--kin-tt-chu-loi)" }}>{deleting ? "…" : "Xóa"}</button>
+              <p className="text-xs text-center" style={{ color: "var(--kin-chu-mo)" }}>
+                Đã ẩn lúc {formatHiddenAt(student.deletedAt as string)}
+              </p>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={toggleBan}
+                disabled={banning}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50"
+                style={banned
+                  ? { borderColor: "var(--kin-tt-vien-xong)", background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }
+                  : { borderColor: "var(--kin-tt-vien-cho)", background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
+                {banning ? "Đang xử lý…" : banned ? "✓ Gỡ ban" : "Ban học sinh"}
+              </button>
+              {!confirmHide ? (
+                <button
+                  onClick={() => setConfirmHide(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors"
+                  style={{ borderColor: "var(--kin-tt-vien-loi)", background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }}>
+                  Ẩn học sinh
+                </button>
+              ) : (
+                <div role="group" aria-label="Ẩn học sinh" className="flex-1 rounded-xl border p-2.5 space-y-1.5" style={{ borderColor: "var(--kin-tt-vien-loi)", background: "var(--kin-tt-nen-loi)" }}>
+                  <p className="text-xs font-bold" style={{ color: "var(--kin-tt-chu-loi)" }}>Ẩn học sinh này?</p>
+                  <p className="text-xs" style={{ color: "var(--kin-tt-chu-loi)" }}>
+                    Dữ liệu lớp, điểm danh và bài làm được giữ lại; em không đăng nhập được nữa.
+                  </p>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => setConfirmHide(false)} disabled={hiding}
+                      className="flex-1 py-1.5 rounded-lg text-xs border disabled:opacity-50" style={{ borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)", background: "var(--kin-nen-trang)" }}>Huỷ</button>
+                    <button onClick={hideStudent} disabled={hiding}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-[var(--kin-chu-tren-nut-chinh)] disabled:opacity-50"
+                      style={{ background: "var(--kin-tt-chu-loi)" }}>{hiding ? "Đang ẩn…" : "Ẩn"}</button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {toast && (
             <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] text-center"
@@ -349,8 +424,12 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
           )}
 
           {/* Kích hoạt khoá học */}
-          <div>
-            <p className="text-xs font-bold mb-2.5" style={{ color: "var(--kin-chu-chinh)" }}>Kích hoạt / Thu hồi khoá học</p>
+          <div ref={coursesRef}>
+            <p className="text-xs font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Kích hoạt / Thu hồi khoá học</p>
+            {hidden && (
+              <p className="text-xs mb-2.5" style={{ color: "var(--kin-chu-mo)" }}>Khôi phục để ghi danh lại</p>
+            )}
+            {!hidden && <div className="mb-1.5" />}
             {dbCourses.length === 0 ? (
               <p className="text-xs text-center py-3" style={{ color: "var(--kin-chu-mo)" }}>Chưa có khoá học nào trong hệ thống</p>
             ) : (
@@ -375,7 +454,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                         {enrolled && (
                           <button
                             onClick={() => requestParentConsent(course.id)}
-                            disabled={consentBusy === course.id}
+                            disabled={hidden || consentBusy === course.id}
                             title="Gửi email cho phụ huynh xác nhận (cần học viên đã có ParentLink verified)"
                             className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
                             style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" }}>
@@ -384,7 +463,7 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
                         )}
                         <button
                           onClick={() => toggleCourse(course.id)}
-                          disabled={busy}
+                          disabled={hidden || busy}
                           className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 disabled:opacity-50 cursor-pointer"
                           style={enrolled
                             ? { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)" }
@@ -399,16 +478,16 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDelete }: {
             )}
           </div>
 
-          {/* Nhắc nhở */}
-          <button onClick={() => setShowRemind(v => !v)}
+          {/* Nhắc nhở — bản đã ẩn không nhắc (em không đăng nhập được) */}
+          {!hidden && <button onClick={() => setShowRemind(v => !v)}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors border"
             style={showRemind
               ? { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", borderColor: "var(--kin-tt-vien-cho)" }
               : { background: "var(--kin-tt-cham-cho)", color: "var(--kin-chu-tren-nut-chinh)", borderColor: "transparent" }}>
             Nhắc nhở học tập
-          </button>
+          </button>}
 
-          {showRemind && (
+          {!hidden && showRemind && (
             <div className="space-y-2">
               <textarea rows={3} value={remindMsg} onChange={e => setRemindMsg(e.target.value)}
                 placeholder={DEFAULT_REMIND}
@@ -445,6 +524,7 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
   const inp = "w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200";
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) { setForm({ name: "", phone: "", email: "", school: "", courseId: defaultCourseId }); setSaving(false); }
   }, [open, defaultCourseId]);
 
@@ -541,12 +621,15 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function HocSinhPage() {
+  // `students` = bản đang hiện (deletedAt null) — hai dòng tổng "N học sinh" chỉ đếm danh sách này.
+  // `hiddenStudents` = bản đã ẩn, chỉ dùng cho chip "Đã ẩn" và số đếm trên chip. (ADM-001)
   const [students, setStudents]         = useState<Student[]>([]);
+  const [hiddenStudents, setHidden]     = useState<Student[]>([]);
   const [dbCourses, setDbCourses]       = useState<CourseFull[]>([]);
   const [loading, setLoading]           = useState(true);
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "safe" | "warn" | "danger">("all");
-  const [roleFilter,   setRoleFilter]   = useState<"all" | "hoc-vien" | "chua-kich-hoat">("all");
+  const [roleFilter,   setRoleFilter]   = useState<"all" | "hoc-vien" | "chua-kich-hoat" | "da-an">("all");
   const [classFilter,  setClassFilter]  = useState<string>("all"); // QT-07: xem học sinh theo từng lớp
   const [detailTarget, setDetailTarget] = useState<Student | null>(null);
   const [showAdd, setShowAdd]           = useState(false);
@@ -555,12 +638,17 @@ export default function HocSinhPage() {
   const loadStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetch("/api/admin/students", { credentials: "same-origin" })
-        .then(r => r.ok ? r.json() : []) as ApiStudent[];
-      const updated = data.map(toStudent);
-      setStudents(updated);
+      // ADM-001: gọi MỘT lần `includeHidden=1` rồi tách client — số đếm chip "Đã ẩn" và danh sách ẩn
+      // lấy từ cùng một lần tải; ba chip cũ chỉ nhìn phần đang hiện nên hành vi không đổi.
+      const res = await fetch("/api/admin/students?includeHidden=1", { credentials: "same-origin" });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json() as ApiStudent[];
+      const all = data.map(toStudent);
+      const visible = all.filter(s => s.deletedAt == null);
+      setStudents(visible);
+      setHidden(all.filter(s => s.deletedAt != null));
       setDetailTarget(prev =>
-        prev ? (updated.find(s => s.userId === prev.userId) ?? prev) : null
+        prev ? (all.find(s => s.userId === prev.userId) ?? prev) : null
       );
     } catch {
       showToast("Lỗi tải danh sách học sinh", false);
@@ -570,6 +658,7 @@ export default function HocSinhPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadStudents();
     fetch("/api/courses?all=1", { credentials: "same-origin" })
       .then(r => r.ok ? r.json() : [])
@@ -582,10 +671,13 @@ export default function HocSinhPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
+  const showingHidden = roleFilter === "da-an";
+
   const filtered = useMemo(() => {
-    return students.filter(s => {
+    const base = showingHidden ? hiddenStudents : students;
+    return base.filter(s => {
       const matchStatus = statusFilter === "all" || s.status === statusFilter;
-      const matchRole   = roleFilter   === "all" || s.role   === roleFilter;
+      const matchRole   = showingHidden || roleFilter === "all" || s.role === roleFilter;
       const matchClass  = classFilter  === "all" || s.enrolledCourseIds.includes(classFilter);
       const q = search.toLowerCase();
       const matchSearch = q === "" || s.name.toLowerCase().includes(q) || s.phone.includes(q)
@@ -595,7 +687,7 @@ export default function HocSinhPage() {
         || ROLE_CONFIG[s.role].labelFull.toLowerCase().includes(q);
       return matchStatus && matchRole && matchClass && matchSearch;
     });
-  }, [search, statusFilter, roleFilter, classFilter, students]);
+  }, [search, statusFilter, roleFilter, classFilter, students, hiddenStudents, showingHidden]);
 
   // QT-07: các lớp có học sinh kèm số học sinh (đếm từ chính danh sách đang xem).
   const classOptions = useMemo(() => {
@@ -610,7 +702,8 @@ export default function HocSinhPage() {
     danger:  students.filter(s => s.status === "danger").length,
     hocVien: students.filter(s => s.role   === "hoc-vien").length,
     chuaKH:  students.filter(s => s.role   === "chua-kich-hoat").length,
-  }), [students]);
+    daAn:    hiddenStudents.length,
+  }), [students, hiddenStudents]);
 
   async function handleAddStudent(data: { name: string; phone: string; email: string; school: string; courseId: string }) {
     const res = await fetch("/api/admin/students", {
@@ -652,7 +745,7 @@ export default function HocSinhPage() {
           dbCourses={dbCourses}
           onClose={() => setDetailTarget(null)}
           onRefresh={loadStudents}
-          onDelete={() => setDetailTarget(null)}
+          onDone={(msg, ok) => { setDetailTarget(null); showToast(msg, ok); }}
         />
       )}
       <AddDrawer
@@ -707,6 +800,7 @@ export default function HocSinhPage() {
               { key: "all"            as const, label: "Tất cả"                       },
               { key: "hoc-vien"       as const, label: `Học viên · ${counts.hocVien}` },
               { key: "chua-kich-hoat" as const, label: `Chưa KH · ${counts.chuaKH}`  },
+              { key: "da-an"          as const, label: `Đã ẩn · ${counts.daAn}`      },
             ]).map(f => (
               <button key={f.key} onClick={() => setRoleFilter(f.key)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
@@ -768,7 +862,9 @@ export default function HocSinhPage() {
             )}
             {!loading && filtered.length === 0 && (
               <div className="px-5 py-12 text-center">
-                <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-mo)" }}>Không tìm thấy học sinh</p>
+                <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-mo)" }}>
+                  {showingHidden && hiddenStudents.length === 0 ? "Chưa có học sinh nào bị ẩn" : "Không tìm thấy học sinh"}
+                </p>
                 <button onClick={() => { setSearch(""); setStatusFilter("all"); setRoleFilter("all"); setClassFilter("all"); }}
                   className="text-xs mt-2 cursor-pointer" style={{ color: "var(--kin-nhan-link)" }}>
                   Xóa bộ lọc
@@ -784,8 +880,14 @@ export default function HocSinhPage() {
                   <div className="col-span-1 hidden sm:block">
                     <span className="text-xs font-mono" style={{ color: "var(--kin-nhan-link)" }}>{s.sbd}</span>
                   </div>
-                  <div className="col-span-4 sm:col-span-3">
-                    <div className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{s.name}</div>
+                  <div className="col-span-4 sm:col-span-3 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-sm truncate" style={{ color: s.deletedAt ? "var(--kin-chu-mo)" : "var(--kin-chu-chinh)" }}>{s.name}</span>
+                      {s.deletedAt && (
+                        <span className="px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0"
+                          style={{ background: HIDDEN_BADGE.bg, color: HIDDEN_BADGE.color }}>Đã ẩn</span>
+                      )}
+                    </div>
                     <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{s.lastSeen}</div>
                   </div>
                   <div className="col-span-2 hidden sm:block">
@@ -827,7 +929,9 @@ export default function HocSinhPage() {
 
           <div className="px-5 py-3 text-xs text-right flex-shrink-0"
             style={{ borderTop: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
-            {filtered.length}/{students.length} học sinh · GPA = 40% tiến độ + 60% điểm thi
+            {showingHidden
+              ? `${filtered.length}/${hiddenStudents.length} học sinh đã ẩn`
+              : `${filtered.length}/${students.length} học sinh`} · GPA = 40% tiến độ + 60% điểm thi
           </div>
         </div>
       </div>

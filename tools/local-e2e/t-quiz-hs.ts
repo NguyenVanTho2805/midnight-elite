@@ -28,6 +28,8 @@ import { prisma } from "@/lib/prisma";
   check("học sinh trong lớp: 200, vào được", g.status === 200 && g.json.canStart === true && g.json.blockReason === null, g.json);
   check("hiện tên lớp, số câu, 15 phút, có tự luận, nhãn 'Lượt 1/1'", g.json.klass?.name === "Toán 9" && g.json.exam.questionCount === 2 && g.json.exam.durationMinutes === 15 && g.json.exam.hasEssay === true && g.json.attempts.label === "Lượt 1/1", g.json);
   check("cổng KHÔNG chứa đáp án / lời giải / mật khẩu", !/LỜI-GIẢI|isCorrect|passwordHash|"password"/.test(g.text), g.text.slice(0, 300));
+  // BU-04: cổng có chế độ + khung giờ + phản hồi từng câu, và KHÔNG lộ variantNo.
+  check("BU-04 cổng: có exam.mode (null = đề cũ), window.state='none', feedback='none', không variantNo", g.json.exam.mode === null && g.json.window?.state === "none" && g.json.feedback === "none" && !/variantNo|variantOfId/.test(g.text), g.json);
   const gx = await api("GET", `/api/exams/${ex.id}/gate`, { as: X });
   check("không thuộc lớp → blockReason not_enrolled (dẫn tới nhập mã lớp)", gx.json.canStart === false && gx.json.blockReason === "not_enrolled" && gx.json.enrolled === false, gx.json);
   const sx = await api("POST", `/api/exams/${ex.id}/start`, { as: X, body: {} });
@@ -40,6 +42,7 @@ import { prisma } from "@/lib/prisma";
   check("serverNow gần giờ thật (≤ 10 giây)", Math.abs(Date.parse(st.json.serverNow) - Date.now()) < 10_000);
   check("hạn = bắt đầu + 15 phút (máy chủ tính)", (() => { const a = Date.parse(st.json.expiresAt) - Date.now(); return a > 14 * 60_000 && a <= 15 * 60_000 + 5000; })());
   check("câu hỏi gửi học sinh KHÔNG có isCorrect / lời giải", !/isCorrect|LỜI-GIẢI|explanation/.test(st.text));
+  check("BU-04 start: examId = đề gốc, variantCode = null (đề không chia mã), không variantNo, windowClosesAt = null (mode null)", st.json.examId === ex.id && st.json.variantCode === null && st.json.windowClosesAt === null && !/variantNo|variantOfId/.test(st.text), st.json);
   const aid: string = st.json.attemptId;
   const st2 = await api("POST", `/api/exams/${ex.id}/start`, { as: A, body: {} });
   check("bấm bắt đầu lần nữa khi đang làm → tiếp tục đúng lượt đó, không tạo lượt mới", st2.status === 200 && st2.json.attemptId === aid && (await prisma.examAttempt.count({ where: { userId: A.id, examId: ex.id } })) === 1);
@@ -48,6 +51,7 @@ import { prisma } from "@/lib/prisma";
   const p1 = await api("PATCH", `/api/exams/attempts/${aid}/answer`, { as: A, body: { questionId: qMc.id, optionId: "qz-o-ok" } });
   const p2 = await api("PATCH", `/api/exams/attempts/${aid}/answer`, { as: A, body: { questionId: qEs.id, textAnswer: "(x−2)(x−3)=0 ⇒ x=2 hoặc x=3" } });
   check("lưu trắc nghiệm + tự luận → 200", p1.status === 200 && p2.status === 200);
+  check("BU-04 answer: trả savedAt / serverNow / expiresAt (chip lưu dùng giờ máy chủ)", !!p1.json.savedAt && !!p1.json.serverNow && !!p1.json.expiresAt && Math.abs(Date.parse(p1.json.serverNow) - Date.now()) < 10_000, p1.json);
   const resume = await api("GET", `/api/exams/attempts/${aid}`, { as: A });
   check("mở lại (mất tab) thấy đúng bản nháp tự luận và đáp án đã chọn", resume.json.textAnswers?.[qEs.id]?.includes("x=2") && resume.json.answers?.[qMc.id] === "qz-o-ok" && !!resume.json.serverNow, resume.json);
 
@@ -67,7 +71,7 @@ import { prisma } from "@/lib/prisma";
   const again = await api("POST", `/api/exams/attempts/${aid}/submit`, { as: A });
   check("nộp lại (mạng đứt rồi thử lại) → 200, không lỗi, không thưởng thêm", again.status === 200 && again.json.coinsEarned === 0 && again.json.pendingManual === true);
   const late = await api("PATCH", `/api/exams/attempts/${aid}/answer`, { as: A, body: { questionId: qEs.id, textAnswer: "sửa sau khi nộp" } });
-  check("sửa bài sau khi nộp → 409", late.status === 409);
+  check("sửa bài sau khi nộp → 409 code=finished", late.status === 409 && late.json.code === "finished", late.json);
   const getDone = await api("GET", `/api/exams/attempts/${aid}`, { as: A });
   check("GET lượt đã nộp: score null, pendingManual", getDone.json.status === "submitted" && getDone.json.score === null && getDone.json.pendingManual === true, getDone.json);
 
@@ -77,6 +81,7 @@ import { prisma } from "@/lib/prisma";
   check("review 200, score null, canSeeAnswers false, pendingManual", rv.status === 200 && rv.json.score === null && rv.json.canSeeAnswers === false && rv.json.pendingManual === true, { s: rv.json.score, c: rv.json.canSeeAnswers });
   check("review KHÔNG chứa lời giải, không đáp án đúng (isCorrect toàn null), không điểm/nhận xét tự luận", !/LỜI-GIẢI|NHẬN-XÉT-RIÊNG/.test(rv.text) && !rv.text.includes('"isCorrect":true') && !rv.text.includes('"isCorrect":false'), rv.text.slice(0, 400));
   check("review vẫn cho em xem câu trả lời của chính mình", rv.text.includes("x=2"));
+  check("BU-04 review: có exam{id gốc, mode}, answersOpenAt, canRetake (đã hết 1 lượt → false)", rv.json.exam?.id === ex.id && "answersOpenAt" in rv.json && rv.json.canRetake === false, { e: rv.json.exam, c: rv.json.canRetake });
   const cor = await api("GET", `/api/exams/attempts/${aid}/correction`, { as: A });
   check("chữa bài cũng khoá (không lộ đáp án qua đường vòng)", cor.status === 200 && cor.json.available === false && cor.json.items.length === 0, cor.json);
   const hist = await api("GET", `/api/exams/${ex.id}/attempts?mine=true`, { as: A });
@@ -120,6 +125,9 @@ import { prisma } from "@/lib/prisma";
 
   section("Quiz chỉ trắc nghiệm: điểm và đáp án hiện ngay (không hồi quy)");
   const ex2 = await prisma.exam.create({ data: { id: "qz-mc-only", code: "qz-mc-only", title: "Trắc nghiệm", category: "Toán", date: "01/01/2030", time: "08:00", duration: "10 phút", questions: 1, status: "available", createdAt: "2020", ownerId: T.id, totalPoints: 10 } });
+  // STU-001 (ghép với BU-04): đề công khai (không lớp) mà gia sư CHƯA chỉnh gì thì KiN áp 2 lượt + khoá đáp án tới khi hết lượt/hết hạn. Bài này kiểm
+  // "không hồi quy" của đề gia sư ĐÃ cấu hình (đặt số lượt) → tôn trọng trọn bộ cài đặt: đáp án hiện ngay, số lượt theo gia sư. Đề mặc định kiểm ở cuối mục.
+  await prisma.quizAttemptLimit.create({ data: { examId: ex2.id, maxAttempts: 100 } });
   const q2 = await prisma.examQuestion.create({ data: { id: "qz2-q", examId: ex2.id, order: 1, text: "Thủ đô Việt Nam?", type: "MC", points: 1, explanation: "Hà Nội" } });
   await prisma.examOption.create({ data: { id: "qz2-ok", questionId: q2.id, order: 0, text: "Hà Nội", isCorrect: true } });
   await prisma.examOption.create({ data: { id: "qz2-no", questionId: q2.id, order: 1, text: "Huế", isCorrect: false } });
@@ -130,7 +138,24 @@ import { prisma } from "@/lib/prisma";
   const rv2 = await api("GET", `/api/exams/attempts/${s2.json.attemptId}/review`, { as: A });
   check("review: thấy đáp án đúng và lời giải như trước", rv2.json.canSeeAnswers === true && rv2.text.includes('"isCorrect":true') && rv2.text.includes("Hà Nội"));
   const g2 = await api("GET", `/api/exams/${ex2.id}/gate`, { as: A });
-  check("đề không gắn lớp: cổng cho vào, không đòi mã lớp, không giới hạn lượt", g2.json.canStart === true && g2.json.klass === null && g2.json.attempts.max === null, g2.json);
+  check("đề không gắn lớp (gia sư đã đặt lượt): cổng cho vào, không đòi mã lớp, số lượt theo gia sư (100), không bị KiN áp mặc định", g2.json.canStart === true && g2.json.klass === null && g2.json.attempts.max === 100 && g2.json.policy?.guarded === false, g2.json);
+
+  // STU-001 trong luồng BU-04: đề công khai CHƯA chỉnh gì → 2 lượt; đáp án khoá tới khi hết lượt hoặc hết hạn (đề này hạn 2030 nên chưa hết hạn).
+  const ex3 = await prisma.exam.create({ data: { id: "qz-mc-public", code: "qz-mc-public", title: "Trắc nghiệm công khai", category: "Toán", date: "01/01/2030", time: "08:00", duration: "10 phút", questions: 1, status: "available", createdAt: "2020", ownerId: T.id, totalPoints: 10 } });
+  const q3 = await prisma.examQuestion.create({ data: { id: "qz3-q", examId: ex3.id, order: 1, text: "Thủ đô Việt Nam?", type: "MC", points: 1, explanation: "Hà Nội" } });
+  await prisma.examOption.create({ data: { id: "qz3-ok", questionId: q3.id, order: 0, text: "Hà Nội", isCorrect: true } });
+  await prisma.examOption.create({ data: { id: "qz3-no", questionId: q3.id, order: 1, text: "Huế", isCorrect: false } });
+  const g3 = await api("GET", `/api/exams/${ex3.id}/gate`, { as: A });
+  check("đề công khai mặc định: cổng báo 2 lượt, guarded, đáp án khoá tới khi hết hạn", g3.json.canStart === true && g3.json.attempts.max === 2 && g3.json.policy?.guarded === true && g3.json.policy?.answersLockedReason === "until_exam_ends", g3.json);
+  const s3 = await api("POST", `/api/exams/${ex3.id}/start`, { as: A, body: {} });
+  await api("PATCH", `/api/exams/attempts/${s3.json.attemptId}/answer`, { as: A, body: { questionId: q3.id, optionId: "qz3-ok" } });
+  await api("POST", `/api/exams/attempts/${s3.json.attemptId}/submit`, { as: A });
+  const rv3 = await api("GET", `/api/exams/attempts/${s3.json.attemptId}/review`, { as: A });
+  check("đề công khai mặc định: review KHÔNG lộ đáp án đúng/lời giải khi chưa hết hạn và chưa hết lượt; nói rõ vì sao + khi nào", rv3.json.canSeeAnswers === false && !rv3.text.includes('"isCorrect":true') && (rv3.json.questions as { explanation?: string | null }[]).every(q => q.explanation == null) && rv3.json.answersLockedReason === "until_exam_ends" && rv3.json.publicGuarded === true && rv3.json.attemptsMax === 2 && typeof rv3.json.answersOpenAt === "string", rv3.json);
+  const s3b = await api("POST", `/api/exams/${ex3.id}/start`, { as: A, body: {} });
+  await api("POST", `/api/exams/attempts/${s3b.json.attemptId}/submit`, { as: A });
+  const rv3b = await api("GET", `/api/exams/attempts/${s3.json.attemptId}/review`, { as: A });
+  check("hết 2 lượt → đáp án mở (đề công khai mặc định) và không còn lượt thứ 3", rv3b.json.canSeeAnswers === true && rv3b.text.includes('"isCorrect":true') && (rv3b.json.questions as { explanation?: string | null }[]).some(q => q.explanation === "Hà Nội") && (await api("POST", `/api/exams/${ex3.id}/start`, { as: A, body: {} })).status === 409, rv3b.json);
 
   section("Một nguồn sự thật với phía gia sư: công bố mở điểm; đề cũ có tự luận giữ hành vi cũ");
   const aAtt = await prisma.examAttempt.findFirst({ where: { examId: "qz-mix", userId: A.id } });

@@ -125,7 +125,7 @@ async function collect(p: Page, from: string, openMenus: boolean): Promise<Rec[]
 // Chuyển hướng CÓ CHỦ ĐÍCH cho gia sư: trang chủ / đăng nhập / đăng ký → Hộp việc; /admin/* → bí danh /lop-cua-toi/… (BU-00 bước 3, src/lib/tutorRoutes.ts),
 // không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
 const HOME = COMPACT ? "/lop-cua-toi/lich" : "/lop-cua-toi";   // trang đầu của gia sư sau đăng nhập
-const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/quan-lop", "/lop-cua-toi/de-thi/tao-moi": "/lop-cua-toi/de-thi", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
+const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/quan-lop", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
 function expected(reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
   if (/^\/admin(\/|$)/.test(reqPath)) {
@@ -278,7 +278,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     ...(full ? [`/lop-cua-toi/${course1}`, `/lop-cua-toi/${course2}`] : []),
     // BU-00 bước 3: bí danh gia sư của /admin/khoa-hoc*, /admin/thi-thu*; hai đường cũ giữ lại làm hạt giống để kiểm 307 (kỳ vọng ở expected()).
     "/lop-cua-toi/quan-lop", "/lop-cua-toi/quan-lop/tao-moi", ...(full ? [`/lop-cua-toi/quan-lop/${course1}`, ...["chuong-bai", "lich-hoc", "hoc-vien"].map(t => `/lop-cua-toi/quan-lop/${course1}?tab=${t}`), `/lop-cua-toi/quan-lop/${course1}/hoc-vien`, `/lop-cua-toi/quan-lop/${course1}/diem-danh`] : []),
-    "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/tao-moi", ...(full ? [`/lop-cua-toi/de-thi/${full.examId}`] : []), "/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-de-thi",
+    "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/tao-moi", ...(full ? [`/lop-cua-toi/de-thi/${full.examId}`] : []), "/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-de-thi", "/lop-cua-toi/de-thi/ma-tran",
     "/admin/khoa-hoc", "/admin/thi-thu", "/admin/khoa-hoc/danh-muc",
     "/thu-vien", "/khoa-hoc", ...(full ? [`/khoa-hoc/${course1}`] : []), "/giang-vien", `/mentor/${T.id}`, "/thi-thu", "/cong-dong", "/tin-tuc", "/diem-chuan", "/bang-xep-hang", "/cai-dat/chu-de", "/",
   ].map(s => MAIN + s);

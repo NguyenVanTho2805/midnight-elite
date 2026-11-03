@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session";
 import { tutorApplicationStatus, type TutorApplicationStatus } from "@/lib/tutorProfile";
+import { requireSession } from "@/lib/auth-guard";
 import { tutorGateTarget, isTeacher, type GateOptions, type GateSession } from "@/lib/tutorGate";
 
 /** Trạng thái đơn gia sư của người trong phiên; chỉ hỏi DB cho role student (gia sư / quản trị trả "none" ngay). Lỗi DB → "none" (coi như học sinh thường,
@@ -39,4 +40,13 @@ export async function requireTutorOrApplicant(session: SessionPayload | null): P
   const status = await loadTutorStatus(session);
   if (tutorGateTarget(session, status, { path: "/", allowPending: true }) === null) return session;
   return NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403 });
+}
+
+/** API CHỈ của gia sư đã được duyệt (role admin + adminRole teacher): chưa đăng nhập 401, bị khoá 403, gia sư CHỜ DUYỆT / học sinh / quản trị 403.
+ *  Cùng luật với `requireTutor` ở invoiceServer.ts nhưng không nhập tệp tiền — dùng cho các route lớp / duyệt vào lớp (BU-01). */
+export async function requireTutorOnly(): Promise<SessionPayload | NextResponse> {
+  const auth = await requireSession();
+  if (auth instanceof NextResponse) return auth;
+  if (!isTeacher(auth)) return NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403 });
+  return auth;
 }

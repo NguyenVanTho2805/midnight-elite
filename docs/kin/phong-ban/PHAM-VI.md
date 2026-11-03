@@ -23,7 +23,7 @@ COO giao cho phòng chủ hoặc chỉ định một tác tử làm, phòng kia 
 | `src/app/api/tutor/**`, `api/courses/**`, `api/invites/**`, `api/sessions*`, `api/attendance*` | tut-code | — |
 | `api/fees*`, `api/invoices*`, `src/lib/feeCharge*`, `invoiceServer*`, `sessionBook*` | **KHÓA** — chạm TIỀN, chỉ đọc; đổi phải có quyết định của chủ | — |
 | `src/components/tutor/**`, `src/components/shell/LopCuaToiFrame.tsx` | — | tut-dev |
-| `src/lib/tutorGate*.ts`, `tutorRoutes.ts`, `tutorProfile.ts`, `tutorInbox*.ts`, `tutorOverview.ts`, `joinRequest.ts` (BU-01), `enrollServer.ts` (BU-01) | tut-code | — |
+| `src/lib/tutorGate*.ts`, `tutorRoutes.ts`, `tutorProfile.ts`, `tutorInbox*.ts`, `tutorOverview.ts`, `joinRequest.ts` (BU-01), `enrollServer.ts` (BU-01), `classInvite.ts`, `tutorTodo.ts`, `tutorDashboard.ts` | tut-code | — |
 | `src/app/api/auth/register-tutor/**` | tut-code | — |
 
 ## Phòng Học sinh (pb-hoc-sinh)
@@ -33,6 +33,7 @@ COO giao cho phòng chủ hoặc chỉ định một tác tử làm, phòng kia 
 | `src/app/(student)/**` | — | stu-dev |
 | `src/app/(guest)/**` — trang chủ, `/dang-ky`, `/cong-dong`, `/tin-tuc` (đọc), `/giang-vien`, `/khoa-hoc/[slug]`, `/mentor/*` | — | stu-dev |
 | `src/app/api/student/**`, `api/exams/**` phía làm bài, `api/quiz*`, `api/community*`, `api/thread*`, `api/question*`, `api/articles` (đọc), `api/auth/**` trừ register-tutor | stu-code | — |
+| `src/components/exam/**` (phòng thi phía học sinh — COO duyệt 02/11 cho BU-04), `api/exam-results/**` | stu-code (api) | stu-dev (components) |
 | `src/components/student/**`, `src/components/community/**`, `src/components/AuthGuard.tsx`, `src/components/kin/shell/MorePanel.tsx` | — | stu-dev |
 | `src/lib/exam*.ts`, `quiz*.ts`, `community*.ts`, `coin*.ts` (chỉ đọc số dư; không tạo giao dịch nạp) | stu-code | — |
 

@@ -8,13 +8,21 @@ export interface LibDoc { name: string; url: string; type: string }
 
 const MAX_DOCS = 50;
 const isHttp = (u: unknown): u is string => typeof u === "string" && /^https?:\/\//i.test(u.trim());
+/** Tệp tài liệu tải lên KiN (BU-02): đường dẫn nội bộ, chỉ mở được sau khi đăng nhập + vào lớp. */
+const isKinFile = (u: unknown): u is string => typeof u === "string" && /^\/api\/media\/[A-Za-z0-9_-]{8,40}\/file$/.test(u.trim());
+
+export interface ParseDocsOptions {
+  /** Nhận cả `/api/media/<mã>/file` (BU-02, D4). MẶC ĐỊNH TẮT: kho công khai (libraryKhoServer.loadPublicDocs) không được liệt kê tệp cần đăng nhập cho khách. Chỉ Thư viện của học sinh/gia sư bật. */
+  allowKinFiles?: boolean;
+}
 
 /**
  * Tài liệu của bài học (cột Lesson.documents, kiểu chuỗi). Dạng thật trong dữ liệu là MẢNG JSON `[{ name, url, type? }]` (admin tải lên Cloudinary rồi lưu
  * như vậy; trang bài giảng của học viên cũng đọc bằng JSON.parse). Dạng cũ "nhãn|url" mỗi dòng vẫn nhận để không mất dữ liệu cũ.
  * Chỉ nhận địa chỉ http(s): không để "javascript:" hay đường dẫn lạ lọt ra thẻ <a>.
  */
-export function parseLessonDocuments(raw: string | null | undefined): LibDoc[] {
+export function parseLessonDocuments(raw: string | null | undefined, opts: ParseDocsOptions = {}): LibDoc[] {
+  const okUrl = (u: unknown): u is string => isHttp(u) || (opts.allowKinFiles === true && isKinFile(u));
   if (!raw || !raw.trim()) return [];
   const out: LibDoc[] = [];
   const t = raw.trim();
@@ -22,7 +30,7 @@ export function parseLessonDocuments(raw: string | null | undefined): LibDoc[] {
     try {
       const v = JSON.parse(t);
       for (const d of Array.isArray(v) ? v : []) {
-        if (d && typeof d === "object" && isHttp((d as { url?: unknown }).url)) {
+        if (d && typeof d === "object" && okUrl((d as { url?: unknown }).url)) {
           const url = ((d as { url: string }).url).trim();
           const name = typeof (d as { name?: unknown }).name === "string" && (d as { name: string }).name.trim() ? (d as { name: string }).name.trim() : url;
           out.push({ name, url, type: typeof (d as { type?: unknown }).type === "string" ? (d as { type: string }).type : "" });
@@ -33,7 +41,7 @@ export function parseLessonDocuments(raw: string | null | undefined): LibDoc[] {
   }
   for (const line of raw.split("\n")) {
     const [label, url] = line.split("|").map(s => s.trim());
-    if (isHttp(url)) out.push({ name: label || url, url, type: "" });
+    if (okUrl(url)) out.push({ name: label || url, url, type: "" });
   }
   return out.slice(0, MAX_DOCS);
 }

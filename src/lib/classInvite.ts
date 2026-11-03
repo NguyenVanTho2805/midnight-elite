@@ -37,10 +37,14 @@ type ClassInviteRow = {
   revoked: boolean;
   createdBy: string;
   createdAt: Date;
+  /** BU-01: mã cá nhân chỉ tài khoản này dùng được; mã lớp = null. */
+  boundUserId: string | null;
+  /** BU-01: "class" (mã lớp, mặc định) | "personal" (mã cá nhân do R1 cấp). */
+  kind: string;
 };
 
 export interface ClassInviteDelegate {
-  create(args: { data: Omit<ClassInviteRow, "id" | "usedCount" | "createdAt" | "revoked"> & { usedCount?: number } }): Promise<ClassInviteRow>;
+  create(args: { data: Omit<ClassInviteRow, "id" | "usedCount" | "createdAt" | "revoked" | "boundUserId" | "kind"> & { usedCount?: number; boundUserId?: string | null; kind?: string } }): Promise<ClassInviteRow>;
   findUnique(args: { where: { id?: string; code?: string } }): Promise<ClassInviteRow | null>;
   findMany(args: { where?: Partial<ClassInviteRow>; orderBy?: unknown; select?: unknown }): Promise<ClassInviteRow[]>;
   update(args: { where: { id: string }; data: Partial<ClassInviteRow> }): Promise<ClassInviteRow>;

@@ -16,6 +16,8 @@ import { KinCopyButton } from "@/components/kin/CopyButton";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
+import JoinRequests, { type PendingJoinRequest } from "@/components/tutor/JoinRequests";
+import type { JoinPolicy } from "@/lib/joinRequest";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
 import LopHocPhi from "@/components/tutor/LopHocPhi";
 import LopPhiKhac from "@/components/tutor/LopPhiKhac";
@@ -24,7 +26,7 @@ import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
 import { ADD_STUDENTS_MAX } from "@/lib/tutorStudentView";
 import type { FeeMode } from "@/lib/tuitionFee";
-import { contentHref } from "@/lib/tutorRoutes";
+import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "ma-moi" | "hoc-phi" | "cong-dong";
 export interface LopChiTietData {
@@ -41,6 +43,25 @@ export interface LopChiTietData {
   feeMode: FeeMode;
   /** BU-00 (31/10/2026): gia sư thật → lối tắt đi bí danh /lop-cua-toi/quan-lop/…; quản trị xem lớp (roleView "tutor") → /admin/khoa-hoc/… như cũ. Vắng = gia sư. */
   isTeacher?: boolean;
+  /** BU-01: cách vào lớp hiệu lực, nhãn "Miễn phí", có cho "Vào ngay" không, hàng chờ duyệt và kết quả vừa duyệt (?duyet=, ?n=). */
+  joinPolicy: JoinPolicy; isFree: boolean; canOpen: boolean;
+  pending: PendingJoinRequest[]; pendingFailed: boolean;
+  duyet: string | null; duyetN: number | null;
+}
+
+/** Thông báo sau khi duyệt/từ chối (máy chủ chuyển về ?duyet=). Mã lạ thì không hiện gì. */
+function duyetMessage(code: string | null, n: number | null): { tone: "ok" | "err"; text: string } | null {
+  switch (code) {
+    case "ok": return { tone: "ok", text: n && n > 1 ? `Đã duyệt ${n} bạn, các bạn đã vào lớp.` : "Đã duyệt, bạn ấy đã vào lớp." };
+    case "tuchoi": return { tone: "ok", text: "Đã từ chối." };
+    case "day": return { tone: "err", text: "Lớp đã đầy — chưa duyệt được, yêu cầu vẫn đang chờ." };
+    case "goi": return { tone: "err", text: "Gói hiện tại chưa cho thêm học sinh — yêu cầu vẫn đang chờ." };
+    case "mot-phan": return { tone: "err", text: `Đã duyệt ${n ?? 0} bạn, còn lại chờ vì lớp đã đầy.` };
+    case "dong": return { tone: "err", text: "Lớp đang đóng, chưa duyệt thêm được" };
+    case "da-xu-ly": return { tone: "ok", text: "Yêu cầu này đã được xử lý." };
+    case "loi-ghi-chu": return { tone: "err", text: "Lời nhắn quá dài (tối đa 200 ký tự), chưa từ chối." };
+    default: return null;
+  }
 }
 
 const dm = (key: string) => `${key.slice(8, 10)}/${key.slice(5, 7)}`;
@@ -75,11 +96,12 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const n = d.students.length;
   const tabs: KinTabItem<LopTab>[] = [
     { key: "diem-danh", label: "Buổi học & điểm danh" },
-    { key: "hoc-sinh", label: `Học sinh · ${n}` },
+    { key: "hoc-sinh", label: d.pending.length > 0 ? `Học sinh · ${n} · ${d.pending.length} chờ` : `Học sinh · ${n}` },
     { key: "ma-moi", label: "Mã mời" },
     { key: "hoc-phi", label: "Học phí" },
     { key: "cong-dong", label: "Cộng đồng lớp" },
   ];
+  const toast = duyetMessage(d.duyet, d.duyetN);
   const sub = [`${n} học sinh`, d.schedule ?? "Chưa xếp lịch", d.category].filter(Boolean).join(" · ");
 
   return (
@@ -88,11 +110,20 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         actions={<>
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
+          <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </>} />
 
-      {d.justCreated && <KinCallout title="Đã tạo lớp" className="mb-6">Gửi mã mời ở tab Mã mời để học sinh tự vào lớp.</KinCallout>}
+      {d.isFree && <p className="mb-4"><KinStatus tone="xong">Miễn phí</KinStatus></p>}
+
+      {d.justCreated && (
+        <KinCallout title="Đã tạo lớp" className="mb-6">
+          {d.joinPolicy === "approve" ? "Học sinh xin vào lớp bằng mã hoặc link ở tab Mã mời; cô duyệt ở tab Học sinh."
+            : d.joinPolicy === "open" ? "Lớp miễn phí, học sinh bấm Vào lớp ở trang lớp là vào ngay. Link trang lớp có ở tab Mã mời."
+            : "Gửi mã mời ở tab Mã mời để học sinh tự vào lớp."}
+        </KinCallout>
+      )}
       {d.addedStudents != null && d.addedStudents > 0 && <KinCallout title={`Đã thêm ${d.addedStudents} học sinh vào lớp`} className="mb-6">Em vào lớp từ danh sách học sinh của cô. Em mới thì gửi mã mời ở tab Mã mời.</KinCallout>}
       {d.addFailed && <KinCallout title="Lớp đã tạo, nhưng chưa thêm được học sinh" className="mb-6">Cô thêm lại ở nút Thêm học sinh phía trên.</KinCallout>}
       {d.scheduleFailed && (
@@ -160,6 +191,9 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
 
         {tab === "hoc-sinh" && (
           <section className="max-w-2xl">
+            {toast && <div role={toast.tone === "err" ? "alert" : "status"} data-duyet-toast={d.duyet ?? ""}><KinCallout title={toast.text} className="mb-6" /></div>}
+            <JoinRequests courseId={d.courseId} items={d.pending} failed={d.pendingFailed} retryHref={`/lop-cua-toi/${d.courseId}?tab=hoc-sinh`}
+              show={d.pending.length > 0 || d.pendingFailed || d.joinPolicy === "approve"} />
             <KinSectionHead title="Học sinh của lớp" aside={<button type="button" onClick={() => { setAdding(a => !a); setAddNote(null); }} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">{adding ? "Đóng" : "Thêm học sinh"}</button>} />
             {addNote && <p role={addNote.tone === "err" ? "alert" : "status"} className={`pt-3 text-[length:var(--kin-co-goc)] ${addNote.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{addNote.text}</p>}
             {adding && (
@@ -197,7 +231,8 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           <section className="max-w-3xl">
             <KinSectionHead title="Mã mời vào lớp" />
             <p className="py-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Gửi mã hoặc link cho học sinh; các em tự vào lớp, không cần cô thêm từng người.</p>
-            <ClassInvitesPanel courseId={d.courseId} courseName={d.courseName} tutorName={d.viewerName} />
+            <ClassInvitesPanel courseId={d.courseId} courseName={d.courseName} tutorName={d.viewerName}
+              join={{ policy: d.joinPolicy, isFree: d.isFree, canOpen: d.canOpen, pending: d.pending.length }} />
           </section>
         )}
 

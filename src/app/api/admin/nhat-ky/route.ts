@@ -1,4 +1,5 @@
 // QT-02 — trang ĐỌC nhật ký kiểm toán (AuditLog). Chỉ đọc, chỉ quyền MANAGE_ADMINS (quản trị cấp 1).
+// Lọc: ?action=<mã> · ?nhom=duyet|tien|nguoi|noi-dung|he-thong (tên nhóm, ánh xạ tiền tố nằm trong adminOps.ts) · ?from= · ?to= · ?page=.
 // Không trả `metadata` và không trả tên/SĐT/ngày sinh của học sinh: người thực hiện là học sinh/phụ huynh chỉ hiện vai (xem src/lib/adminOps.ts).
 import { NextResponse } from "next/server";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";

@@ -5,7 +5,9 @@ import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
-import { canViewAllMaterials, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
+import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
+import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { canViewAllMaterials, isCourseManager, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,7 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     if (session) {
       if (session.role === "admin") {
-        hasAccess = true;
+        // V7 (BU-02): trước đây MỌI tài khoản admin đều coi là có quyền ⇒ gia sư không phải chủ thấy cây tên bài của lớp ẩn. Nay: quản trị hoặc đúng chủ lớp.
+        hasAccess = isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, course.ownerId);
       } else {
         enrolled = await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.userId, courseId: id } },
@@ -49,7 +52,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // Hidden courses: only admin or enrolled students can access
+    // Hidden courses: only the class manager (admin / owner tutor) or enrolled students can access
     if (!course.status && !hasAccess) {
       return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     }
@@ -72,7 +75,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
     const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: enrolled };
     const tree = redactCourseTree(ctx, course);
-    return NextResponse.json(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree));
+    // BU-01: nhãn "Miễn phí" tính sẵn bằng isFreeClass (cùng điều kiện mọi nơi); joinPolicy đã nằm trong dòng Course.
+    const rated = await loadFeeRateCourseIds([course.id]);
+    const isFree = isFreeClass({ price: course.price, tag: course.tag, hasFeeRate: rated.has(course.id) });
+    return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree });
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -81,7 +87,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnType<typeof requirePermission>>) {
   if (!("userId" in auth)) return auth;
-  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, price: true, originalPrice: true, lessons: true, hours: true, status: true } });
+  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, price: true, originalPrice: true, lessons: true, hours: true, status: true, tag: true } });
   if (!existing) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
   if (!ownsResource(auth, existing.ownerId)) {
     return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
@@ -95,7 +101,7 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
     "name","adminName","shortTitle","category","instructor","teacherAvatar",
     "openDate","types","tag","tagColor","introVideo","zaloGroupLink","bg","strip",
     "price","originalPrice","lessons","hours","status",
-    "capacity","classStatus",
+    "capacity","classStatus","joinPolicy",
   ];
   for (const key of allowed) {
     if (key in body) data[key] = body[key];
@@ -132,6 +138,21 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
     if (v !== "open" && v !== "closed" && v !== "paused") {
       return NextResponse.json({ error: 'classStatus phải là "open" | "closed" | "paused"' }, { status: 400 });
     }
+  }
+
+  // BU-01: cách vào lớp. "open" chỉ cho lớp miễn phí (price 0 + dấu "Miễn phí" + chưa có đơn giá), tính trên giá trị SAU khi sửa.
+  if ("joinPolicy" in data) {
+    const jp = parseJoinPolicy(data.joinPolicy);
+    if (!jp.ok) return NextResponse.json({ error: jp.error }, { status: 400 });
+    if (jp.value === "open") {
+      const rated = await loadFeeRateCourseIds([id]);
+      const price = "price" in data ? Number(data.price) : existing.price;
+      const tag = "tag" in data ? (typeof data.tag === "string" ? data.tag : null) : existing.tag;
+      if (!canUseOpenPolicy({ price, tag, hasFeeRate: rated.has(id) })) {
+        return NextResponse.json({ error: "Vào ngay chỉ dành cho lớp miễn phí" }, { status: 400 });
+      }
+    }
+    data.joinPolicy = jp.value ?? null;
   }
 
   const course = await prisma.course.update({ where: { id }, data });

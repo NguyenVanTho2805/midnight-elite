@@ -70,7 +70,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const code = generateInviteCode();
     try {
       const inv = await invites().create({
-        data: { courseId: id, code, maxUses, expiresAt, createdBy: auth.userId },
+        // BU-01: luôn là mã LỚP; `kind`/`boundUserId` trong body bị bỏ qua (mã cá nhân chỉ do POST /api/courses/[id]/join cấp).
+        data: { courseId: id, code, maxUses, expiresAt, createdBy: auth.userId, kind: "class", boundUserId: null },
       });
       await logAction(auth.userId, "class_invite.create", "ClassInvite", inv.id, {
         courseId: id, code, maxUses, expiresAt,
@@ -92,7 +93,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (r.res) return r.res;
 
   const list = await invites().findMany({
-    where:   { courseId: id },
+    // BU-01: chỉ mã lớp — mã cá nhân của học sinh (kèm boundUserId) không lẫn vào danh sách của gia sư.
+    where:   { courseId: id, kind: "class" },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ items: list });

@@ -1,0 +1,160 @@
+/* BU-05 — khung Cộng đồng: 3 cột / 2 cột / 1 cột kiểu Threads theo CONTAINER QUERY (không theo cửa sổ),
+   vì trong vỏ học sinh còn có thanh bên trái nuốt chiều rộng. Chỉ token --kin-*, không mã hex.
+   Số đo: trái 220 · giữa 540–560 · phải 280–300 · cách 24 · cột đường thread 48 · avatar 36 · hàng hành động 36 (chuột) / 44 (390). */
+
+.kc-root { container-type: inline-size; container-name: kc; width: 100%; }
+
+.kc-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "nav" "main";
+  max-width: 600px;
+  margin-inline: auto;
+  align-items: start;
+}
+.kc-nav  { grid-area: nav;  min-width: 0; }
+.kc-main { grid-area: main; min-width: 0; }
+.kc-rail { grid-area: rail; display: none; min-width: 0; }
+
+/* 2 cột: giữa 560 + phải 280 + khe 24 = 864 → cần vùng nội dung ≥ 880 (lệch nhẹ so với 720 trong đặc tả vì 560+280 không vừa 720). */
+@container kc (min-width: 880px) {
+  .kc-grid {
+    max-width: none;
+    grid-template-columns: minmax(0, 560px) 280px;
+    grid-template-areas: "nav nav" "main rail";
+    column-gap: 24px;
+    justify-content: center;
+  }
+  .kc-rail { display: block; position: sticky; top: var(--kc-sticky-top, 16px); }
+}
+
+/* 3 cột: trái 220 · giữa 540–560 · phải 280–300. Tối thiểu 220+540+280+2×24 = 1088 ≤ 1100. */
+@container kc (min-width: 1100px) {
+  .kc-grid {
+    grid-template-columns: 220px minmax(540px, 560px) minmax(280px, 300px);
+    grid-template-areas: "nav main rail";
+  }
+  .kc-nav { position: sticky; top: var(--kc-sticky-top, 16px); }
+}
+
+/* ── Điều hướng trái: 4 mục. Hẹp = dải chip dính đầu trang; rộng = cột dọc ── */
+.kc-nav-list {
+  display: flex; gap: 8px; align-items: center;
+  overflow-x: auto; scrollbar-width: none;
+  padding: 8px 16px;
+  background: var(--kin-nen-trang);
+  border-bottom: 1px solid var(--kin-vien-thuong);
+  position: sticky; top: var(--kc-sticky-top, 0px); z-index: 5;
+}
+.kc-nav-list::-webkit-scrollbar { display: none; }
+.kc-nav-item {
+  display: inline-flex; align-items: center; flex: none;
+  min-height: var(--kin-cham-toi-thieu);
+  padding: 0 14px;
+  border-radius: var(--kin-bo-tron);
+  border: 1px solid var(--kin-vien-thuong);
+  color: var(--kin-chu-phu);
+  font-size: var(--kin-co-goc); font-weight: 500; white-space: nowrap;
+  background: var(--kin-nen-trang);
+}
+.kc-nav-item:hover { background: var(--kin-nen-re-chuot); }
+.kc-nav-item[aria-current="page"], .kc-nav-item[aria-checked="true"], .kc-nav-item[aria-pressed="true"] {
+  background: var(--kin-nen-dang-chon); color: var(--kin-chu-chinh); font-weight: 600;
+  border-color: var(--kin-vien-o-nhap);
+}
+.kc-nav-select { min-height: var(--kin-cham-toi-thieu); max-width: 200px; }
+
+@container kc (min-width: 1100px) {
+  .kc-nav-list {
+    flex-direction: column; align-items: stretch; gap: 4px; overflow: visible;
+    padding: 0; background: transparent; border-bottom: 0; position: static;
+  }
+  .kc-nav-item { border: 0; border-radius: var(--kin-bo-md); background: transparent; padding: 0 12px; }
+  .kc-nav-select { max-width: none; width: 100%; }
+}
+/* 2 cột (880–1099): dải chip nằm trên cột giữa, canh theo cột giữa */
+@container kc (min-width: 880px) and (max-width: 1099.98px) {
+  .kc-nav-list { position: static; padding-inline: 0; border-bottom: 0; background: transparent; }
+}
+
+/* ── Thẻ bài: lưới 48 | 1fr, kẻ 1px dưới, không viền quanh, không bóng ── */
+.kc-card {
+  display: grid; grid-template-columns: 48px minmax(0, 1fr);
+  padding: 16px; column-gap: 0;
+  border-bottom: 1px solid var(--kin-vien-thuong);
+  background: var(--kin-nen-trang);
+}
+.kc-card[data-flat] { border-bottom: 0; }
+.kc-col1 { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.kc-col1 > .kc-avatar { flex: none; }
+.kc-line { flex: 1 1 auto; width: 1px; min-height: 8px; margin-top: 6px; background: var(--kin-vien-thuong); }
+.kc-body { min-width: 0; padding-left: 4px; }
+.kc-avatar {
+  width: 36px; height: 36px; border-radius: var(--kin-bo-tron);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--kin-nen-bang); color: var(--kin-chu-phu);
+  font-size: 15px; font-weight: 600; user-select: none; flex: none;
+}
+.kc-avatar[data-size="72"] { width: 72px; height: 72px; font-size: 28px; }
+.kc-name { font-size: 15px; font-weight: 600; color: var(--kin-chu-chinh); line-height: 21px; }
+.kc-meta { font-size: 12px; color: var(--kin-chu-mo); line-height: 18px; }
+.kc-text { font-size: 15px; line-height: 21px; color: var(--kin-chu-phu); white-space: pre-wrap; overflow-wrap: anywhere; }
+.kc-text[data-clamp] { display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
+.kc-tag {
+  display: inline-flex; align-items: center; padding: 0 8px; min-height: 20px;
+  border-radius: var(--kin-bo-tron); border: 1px solid var(--kin-vien-thuong);
+  font-size: 12px; line-height: 18px; color: var(--kin-chu-phu); background: var(--kin-nen-bang); white-space: nowrap;
+}
+.kc-reply-indent { padding-left: 48px; }
+
+/* ── Hàng hành động: 44 ở hẹp, 36 ở chuột (≥880) ── */
+.kc-actions { display: flex; align-items: center; gap: 2px; margin: 4px 0 0 -10px; flex-wrap: wrap; }
+.kc-act {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; min-width: 44px; padding: 0 10px;
+  border: 0; background: transparent; border-radius: var(--kin-bo-md);
+  color: var(--kin-chu-mo); font-size: var(--kin-co-small); font-weight: 500; cursor: pointer;
+}
+.kc-act:hover { background: var(--kin-nen-re-chuot); color: var(--kin-chu-chinh); }
+.kc-act[aria-pressed="true"] { color: var(--kin-chu-chinh); font-weight: 600; }
+.kc-act[aria-pressed="true"] svg { fill: currentColor; }
+.kc-act:disabled { opacity: 0.55; cursor: default; }
+.kc-act-report { display: none; }
+.kc-act-more { display: inline-flex; }
+@container kc (min-width: 880px) {
+  .kc-act { min-height: 36px; height: 36px; }
+  .kc-act-report { display: inline-flex; }
+  .kc-act-more { display: none; }
+}
+@media (pointer: coarse) { .kc-act { min-height: 44px; height: auto; } }
+
+/* ── Ảnh: lưới 1 / 2 / 2×2 ── */
+.kc-media { display: grid; gap: 4px; margin-top: 10px; border-radius: var(--kin-bo-md); overflow: hidden; }
+.kc-media[data-n="1"] { grid-template-columns: 1fr; }
+.kc-media:not([data-n="1"]) { grid-template-columns: 1fr 1fr; }
+.kc-media button { padding: 0; border: 0; background: var(--kin-nen-bang); display: block; min-height: 0; cursor: zoom-in; }
+.kc-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.kc-media[data-n="1"] img { max-height: 360px; }
+.kc-media:not([data-n="1"]) button { aspect-ratio: 4 / 3; }
+
+/* ── Khung xám khi tải: đúng lưới 48 | 1fr ── */
+.kc-skel { background: var(--kin-vien-nhat); border-radius: var(--kin-bo-tron); animation: kc-pulse 1.4s ease-in-out infinite; }
+@keyframes kc-pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .kc-skel { animation: none; } }
+
+/* ── Hàng câu hỏi chưa trả lời (chỉ hẹp) ── */
+.kc-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 12px; scrollbar-width: none; }
+.kc-strip::-webkit-scrollbar { display: none; }
+.kc-strip a { flex: none; max-width: 240px; min-height: 44px; display: flex; align-items: center; padding: 8px 12px; border: 1px solid var(--kin-vien-thuong); border-radius: var(--kin-bo-md); font-size: var(--kin-co-small); color: var(--kin-chu-phu); }
+@container kc (min-width: 880px) { .kc-strip { display: none; } }
+
+/* ── Hồ sơ: lưới 3 cột 1:1 ── */
+.kc-pgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
+.kc-pcell { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: var(--kin-nen-bang); display: block; }
+.kc-pcell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.kc-pcell p { margin: 0; padding: 8px; font-size: 12px; line-height: 16px; color: var(--kin-chu-phu); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+
+/* Ô trập chữ bẫy cho khách: ra khỏi màn hình nhưng vẫn là ô thật */
+.kc-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+.kc-focus:focus-visible, .kc-act:focus-visible, .kc-nav-item:focus-visible { outline: 2px solid var(--kin-nhan-link); outline-offset: 1px; }

@@ -22,9 +22,10 @@ import { MathText } from "@/components/MathText";
 import { AiQuotaNote } from "@/components/AiQuotaNote";
 import { api } from "@/lib/api";
 import { duplicateGroups, fmtPoints, QUIZ_TYPE_LABEL, validateQuizQuestion, type QuizQuestionInput } from "@/lib/quizQuestion";
+import { nhapWordHref } from "@/components/tutor/de-thi/deThiClient";
 import QuestionForm from "./QuestionForm";
 import { answerText } from "./QuizEditor";
-import { fileProblem, IMPORT_ACCEPT, qfetch, quizHref, sizeText, type QuizQ } from "./quizClient";
+import { fileProblem, IMPORT_ACCEPT, NEW_QUIZ_HREF, qfetch, quizHref, DE_THI_ROOT, sizeText, type QuizQ } from "./quizClient";
 import { cellText, parseQuizSheet, SHEET_MAX_BYTES, type SheetRowError } from "@/lib/quizSheetImport";
 
 type Step = "chon-tep" | "ra-soat";
@@ -195,7 +196,7 @@ export default function QuizImport() {
 
   return (
     <KinPage>
-      <KinPageHeader title="Nhập đề từ tệp" back={{ href: "/lop-cua-toi/bai-tap", label: "Bài tập" }}
+      <KinPageHeader title="Nhập đề từ tệp" back={{ href: `${DE_THI_ROOT}/tao-moi`, label: "Tạo đề" }}
         sub={step === "chon-tep" ? "Bước 1/2 · Chọn tệp và cấu trúc" : "Bước 2/2 · Rà soát câu hỏi và đáp án · chưa phát hành"} />
       <KinTabs<Step> label="Các bước nhập đề" value={step} onChange={s => { if (s === "chon-tep" || cands.length > 0) setStep(s); }}
         tabs={[{ key: "chon-tep", label: "1. Chọn tệp và cấu trúc" }, { key: "ra-soat", label: "2. Rà soát câu hỏi và đáp án" }]} />
@@ -221,6 +222,12 @@ export default function QuizImport() {
                 </label>
               </div>
               {fileErr && <p role="alert" className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{fileErr}</p>}
+            </section>
+
+            <section aria-labelledby="qi-word" className="rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] p-5">
+              <h2 id="qi-word" className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">Word theo mẫu Azota — không dùng AI</h2>
+              <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Đề Word đã soạn đúng mẫu Azota (Câu 1., A. B. C. D., đáp án gạch chân hoặc bảng đáp án cuối đề): KiN đọc trực tiếp, không tốn lượt AI, rồi cô xem lại và lưu vào ngân hàng câu hỏi.</p>
+              <div className="mt-4"><Link href={nhapWordHref()} className={kinButtonClass("secondary")}>Nhập Word vào ngân hàng</Link></div>
             </section>
 
             <section aria-labelledby="qi-sheet" className="rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] p-5">
@@ -277,10 +284,10 @@ export default function QuizImport() {
               </div>
             </section>
 
-            {extractErr && <div role="alert" className="border-l-2 border-[var(--kin-tt-chu-loi)] pl-4 py-2"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-tt-chu-loi)]">Chưa đọc được tệp</p><p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{extractErr} Cô thử lại, hoặc <Link href="/lop-cua-toi/bai-tap/quiz/moi" className="underline">soạn tay từng câu</Link>.</p></div>}
+            {extractErr && <div role="alert" className="border-l-2 border-[var(--kin-tt-chu-loi)] pl-4 py-2"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-tt-chu-loi)]">Chưa đọc được tệp</p><p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{extractErr} Cô thử lại, hoặc <Link href={NEW_QUIZ_HREF} className="underline">soạn tay từng câu</Link>.</p></div>}
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/lop-cua-toi/bai-tap" className={kinButtonClass("secondary")}>Huỷ nhập</Link>
+              <Link href={`${DE_THI_ROOT}/tao-moi`} className={kinButtonClass("secondary")}>Huỷ nhập</Link>
               {extracting
                 ? <KinButton variant="secondary" onClick={cancelExtract}>Dừng chờ</KinButton>
                 : null}

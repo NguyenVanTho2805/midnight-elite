@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { heldAttemptIds } from "@/lib/examHold";
+import { loadGroup } from "@/lib/examVariantServer";
 
 // GET /api/exams/[id]/attempts?mine=true — lịch sử các lần làm bài của học viên hiện tại
 export async function GET(
@@ -11,15 +12,18 @@ export async function GET(
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
 
-  const { id: examId } = await params;
+  const { id: requestedId } = await params;
   const { searchParams } = new URL(req.url);
   if (searchParams.get("mine") !== "true") {
     return NextResponse.json({ error: "Thiếu tham số mine=true" }, { status: 400 });
   }
 
   try {
+    // BU-04: nhiều mã đề — lịch sử gộp theo CẢ NHÓM (id mã con quy về gốc); không trả mã đề nào của lượt.
+    const group = (await loadGroup(requestedId)) ?? { rootId: requestedId, ids: [requestedId] };
+    const examId = group.rootId;
     const attempts = await prisma.examAttempt.findMany({
-      where: { userId: session.userId, examId, status: { not: "in_progress" } },
+      where: { userId: session.userId, examId: { in: group.ids }, status: { not: "in_progress" } },
       orderBy: { submittedAt: "desc" },
       select: { id: true, status: true, score: true, submittedAt: true, startedAt: true },
     });

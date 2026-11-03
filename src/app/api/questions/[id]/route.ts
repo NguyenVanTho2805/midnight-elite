@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { publicName } from "@/lib/communityRules";
 
 // GET /api/questions/[id] — chi tiết câu hỏi + tất cả câu trả lời
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,11 +13,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const question = await prisma.question.findUnique({
     where:   { id },
     include: {
-      author:  { select: { id: true, name: true } },
+      author:  { select: { id: true, name: true, role: true, adminRole: true, tutorVerified: true } },
       answers: {
         orderBy: { createdAt: "asc" },
         include: {
-          author:  { select: { id: true, name: true } },
+          author:  { select: { id: true, name: true, role: true, adminRole: true, tutorVerified: true } },
           reports: { where: { reporterId: auth.userId }, select: { id: true } },
         },
       },
@@ -32,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     bountyPaid:       question.bountyPaid,
     status:           question.status,
     createdAt:        question.createdAt.toISOString(),
-    author:           question.author,
+    author:           { id: question.author.id, name: publicName(question.author) },
     isOwn:            question.authorId === auth.userId,
     acceptedAnswerId: question.acceptedAnswerId,
     answers: question.answers.map(a => ({
@@ -41,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       isAccepted:    a.id === question.acceptedAnswerId,
       isPenalized:   a.isPenalized,
       createdAt:     a.createdAt.toISOString(),
-      author:        a.author,
+      author:        { id: a.author.id, name: publicName(a.author) },
       isOwn:         a.authorId === auth.userId,
       reportedByMe:  a.reports.length > 0,
     })),

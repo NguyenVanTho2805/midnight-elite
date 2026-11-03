@@ -11,7 +11,9 @@
 interface Family { admin: string; tutor: string; tails: readonly string[]; banned: readonly string[] }
 const FAMILIES: readonly Family[] = [
   { admin: "/admin/thi-thu", tutor: "/lop-cua-toi/de-thi",
-    tails: ["", ":id", "tao-moi", "ngan-hang-cau-hoi", "ngan-hang-cau-hoi/:id", "ngan-hang-cau-hoi/cau-hoi", "ngan-hang-de-thi"], banned: [] },
+    tails: ["", ":id", "tao-moi", "ngan-hang-cau-hoi", "ngan-hang-cau-hoi/:id", "ngan-hang-cau-hoi/cau-hoi", "ngan-hang-de-thi",
+      // BU-03 (02/11/2026) — đuôi mới của luồng đề thi gia sư (chỉ thêm).
+      "ma-tran", "ma-tran/:id", "ngan-hang-cau-hoi/nhap-word", ":id/phien-ban", ":id/giao", ":id/ket-qua", ":id/ma-de", ":id/cham"], banned: [] },
   { admin: "/admin/khoa-hoc", tutor: "/lop-cua-toi/quan-lop",
     tails: ["", ":id", "tao-moi", ":id/hoc-vien", ":id/diem-danh", ":id/diem-danh/in"], banned: ["danh-muc"] },
 ];
@@ -56,6 +58,12 @@ export function contentHref(isTeacher: boolean, adminPath: string): string {
   return isTeacher ? (toTutorPath(adminPath) ?? "/lop-cua-toi") : adminPath;
 }
 
+/** BU-02: màn Giáo trình của một lớp. Gia sư: đường của gia sư. Quản trị không có màn này (đường mới là đường gia sư, không có bản /admin) nên về tab Chương bài của trang quản lớp. */
+export function giaoTrinhHref(courseId: string, isTeacher: boolean): string {
+  const id = encodeURIComponent(courseId);
+  return isTeacher ? `/lop-cua-toi/quan-lop/${id}/giao-trinh` : `/admin/khoa-hoc/${id}?tab=chuong-bai`;
+}
+
 // ─── Dải tab của vỏ nội dung gia sư (src/components/tutor/TutorContentTabs.tsx) ────────────────────────────────────────────────
 export interface ContentTab { label: string; href: string; active: boolean }
 export interface ContentTabGroup { label: string; tabs: ContentTab[] }
@@ -65,8 +73,9 @@ const COURSE_TABS = ["cai-dat", "chuong-bai", "lich-hoc", "hoc-vien"] as const;
 
 /**
  * Dải tab theo đường đang mở (chỉ đường GIA SƯ). `tab` = giá trị ?tab= của trang quản lớp (mặc định "cai-dat" như trang gốc).
- *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ngân hàng đề" (sáng theo tiền tố dài nhất).
- *  - /lop-cua-toi/quan-lop/[id]… → "Cài đặt · Chương bài · Lịch học · Học viên · Điểm danh" (3 tab ?tab= của trang gốc + 2 trang con /hoc-vien, /diem-danh).
+ *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc" (sáng theo tiền tố dài nhất).
+ *  - /lop-cua-toi/quan-lop/[id]… → "Cài đặt · Giáo trình · Chương bài · Lịch học · Học viên · Điểm danh" (3 tab ?tab= của trang gốc + 3 trang con /giao-trinh (BU-02), /hoc-vien, /diem-danh).
+ *    "Chương bài" cũ GIỮ NGUYÊN cho gia sư: bài tập tự nộp (Assignment) chỉ soạn được ở đó cho tới khi BU-03.
  *  - danh sách lớp, tao-moi, đường khác → null (không dải tab).
  */
 export function contentTabsFor(pathname: string, tab: string | null = null): ContentTabGroup | null {
@@ -75,7 +84,8 @@ export function contentTabsFor(pathname: string, tab: string | null = null): Con
     const defs = [
       { label: "Đề thi", href: DE_THI },
       { label: "Ngân hàng câu hỏi", href: `${DE_THI}/ngan-hang-cau-hoi` },
-      { label: "Ngân hàng đề", href: `${DE_THI}/ngan-hang-de-thi` },
+      { label: "Ma trận đề", href: `${DE_THI}/ma-tran` },
+      { label: "Tệp đề gốc", href: `${DE_THI}/ngan-hang-de-thi` },
     ];
     const best = defs.filter(d => isUnder(pathname, d.href)).sort((a, b) => b.href.length - a.href.length)[0];
     return { label: "Đề thi", tabs: defs.map(d => ({ ...d, active: d === best })) };
@@ -89,6 +99,7 @@ export function contentTabsFor(pathname: string, tab: string | null = null): Con
     label: "Quản lớp",
     tabs: [
       { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: current === "cai-dat" },
+      { label: "Giáo trình", href: `${base}/giao-trinh`, active: sub === "giao-trinh" || sub.startsWith("giao-trinh/") },
       { label: "Chương bài", href: `${base}?tab=chuong-bai`, active: current === "chuong-bai" },
       { label: "Lịch học", href: `${base}?tab=lich-hoc`, active: current === "lich-hoc" },
       // "Học viên" là trang danh bạ riêng (/hoc-vien, TK-171); ?tab=hoc-vien ("Học viên đăng ký") của trang gốc cũng sáng tab này.

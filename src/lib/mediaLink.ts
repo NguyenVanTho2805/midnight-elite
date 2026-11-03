@@ -12,7 +12,12 @@
 
 export type MediaKind =
   | "youtube" | "vimeo" | "drive" | "drive_folder" | "google_doc"
-  | "zoom_live" | "zoom_record" | "azota" | "upload" | "other";
+  | "zoom_live" | "zoom_record" | "azota" | "upload" | "other"
+  // BU-02: tệp trực tiếp (.pdf/.docx/ảnh…), phòng Google Meet, Google Form (xếp cùng nhóm Azota).
+  | "file" | "meet_live" | "google_form";
+
+/** Họ tài liệu (BU-02): dùng cho chip loại tệp và cho tên `type` lưu trong Lesson.documents. */
+export type DocType = "pdf" | "word" | "sheet" | "slide" | "image" | "text";
 
 export type MediaSlot = "video" | "live" | "azota" | "document";
 export type SuggestedLessonType = "record" | "live" | "quiz" | "document";
@@ -36,6 +41,8 @@ export interface MediaLinkInfo {
   error: string | null;
   /** Lưu được nhưng cần cho người dùng biết (quyền chia sẻ, không nhúng được...). */
   warning: string | null;
+  /** BU-02: họ tài liệu khi là tệp trực tiếp (`file`) hoặc Google Docs/Sheets/Slides; còn lại null. */
+  docType: DocType | null;
 }
 
 const MAX_URL_LENGTH = 2000;
@@ -44,7 +51,7 @@ const MAX_LINKS = 20;
 const NONE = { embedUrl: null, id: null, vimeoHash: null, suggestedType: null, error: null, warning: null } as const;
 
 function invalid(error: string, url = ""): MediaLinkInfo {
-  return { ok: false, kind: "invalid", label: "Link chưa đúng", url, ...NONE, error };
+  return { ok: false, kind: "invalid", label: "Link chưa đúng", url, ...NONE, error, docType: null };
 }
 
 /** host có phải `domain` hoặc tên miền con của `domain` không (so khớp theo dấu chấm, không so chuỗi con). */
@@ -113,8 +120,39 @@ function driveFileId(u: URL): string | null {
   return id && DRIVE_ID.test(id) ? id : null;
 }
 
+/** Đuôi → họ tài liệu; đuôi ngoài bảng → null. */
+export function docTypeFromExt(ext: string | null | undefined): DocType | null {
+  switch ((ext ?? "").toLowerCase()) {
+    case "pdf": return "pdf";
+    case "doc": case "docx": return "word";
+    case "xls": case "xlsx": return "sheet";
+    case "ppt": case "pptx": return "slide";
+    case "png": case "jpg": case "jpeg": case "webp": case "gif": return "image";
+    case "txt": return "text";
+    default: return null;
+  }
+}
+const DOC_TYPE_LABEL: Record<DocType, string> = { pdf: "PDF", word: "Word", sheet: "Excel", slide: "PowerPoint", image: "Ảnh", text: "Văn bản" };
+export const docTypeLabel = (t: DocType): string => DOC_TYPE_LABEL[t];
+
+/** Đuôi KiN không nhận làm link tệp trực tiếp (chương trình chạy được, nén, tệp có thể chứa mã). `.html/.htm` KHÔNG nằm đây: trang web thường vẫn là link "other". */
+const BANNED_LINK_EXTS = new Set(["exe", "apk", "bat", "sh", "js", "svg", "zip", "rar", "7z", "msi", "cmd", "ps1", "jar", "dmg"]);
+const DIRECT_VIDEO_EXTS = new Set(["mp4", "mov", "webm", "m4v", "mkv", "avi"]);
+
+/** host mạng xã hội không nhúng được video (Facebook, TikTok, Instagram, X). */
+export function isSocialVideoHost(host: string): boolean {
+  return /(^|\.)(facebook|fb|tiktok|instagram|twitter|x)\.(com|watch)$/i.test(host) || /^fb\.watch$/i.test(host);
+}
+
 /** Nhận diện MỘT link. Không quan tâm ô nào đang dán: dùng `checkLinkForSlot` để kiểm theo ô. */
 export function classifyMediaLink(raw: string | null | undefined): MediaLinkInfo {
+  const r = classifyCore(raw);
+  return r.docType === undefined ? { ...r, docType: null } : (r as MediaLinkInfo);
+}
+
+type CoreInfo = Omit<MediaLinkInfo, "docType"> & { docType?: DocType | null };
+
+function classifyCore(raw: string | null | undefined): CoreInfo {
   const input = (raw ?? "").trim();
   if (!input) return invalid("Chưa dán link.");
 
@@ -172,11 +210,25 @@ export function classifyMediaLink(raw: string | null | undefined): MediaLinkInfo
     return invalid("Link Google Drive này chưa trỏ tới một tệp cụ thể. Mở tệp trên Drive, bấm Chia sẻ rồi sao chép link.", url);
   }
   if (hostMatches(host, "docs.google.com")) {
+    const fm = /^\/forms\/d\/(?:e\/)?([^/]+)/.exec(u.pathname);
+    if (fm && DRIVE_ID.test(fm[1])) return googleForm(url, fm[1]);
     const m = /^\/(document|spreadsheets|presentation)\/d\/([^/]+)/.exec(u.pathname);
     if (m && DRIVE_ID.test(m[2]))
       return { ok: true, kind: "google_doc", label: "Google Tài liệu", url, embedUrl: `https://docs.google.com/${m[1]}/d/${m[2]}/preview`, id: m[2], vimeoHash: null,
-        suggestedType: "document", error: null, warning: "Nhớ chia sẻ \"Bất kỳ ai có liên kết\" ở quyền Xem, nếu không học sinh sẽ không mở được." };
+        suggestedType: "document", error: null, warning: "Nhớ chia sẻ \"Bất kỳ ai có liên kết\" ở quyền Xem, nếu không học sinh sẽ không mở được.",
+        docType: m[1] === "document" ? "word" : m[1] === "spreadsheets" ? "sheet" : "slide" };
     return invalid("Link Google Docs này chưa trỏ tới một tài liệu cụ thể.", url);
+  }
+  if (hostMatches(host, "forms.gle")) {
+    const id = u.pathname.split("/").filter(Boolean)[0] ?? "";
+    return /^[A-Za-z0-9_-]{4,}$/.test(id) ? googleForm(url, id) : invalid("Link Google Form này chưa đúng.", url);
+  }
+
+  // ── Google Meet ──
+  if (hostMatches(host, "meet.google.com")) {
+    if (/^\/[a-z]{3,4}-[a-z]{4}-[a-z]{3,4}\/?$/i.test(u.pathname))
+      return { ok: true, kind: "meet_live", label: "Google Meet", url, embedUrl: null, id: null, vimeoHash: null, suggestedType: "live", error: null, warning: null };
+    return invalid("Link Google Meet này chưa trỏ tới một phòng cụ thể (dạng meet.google.com/abc-defg-hij).", url);
   }
 
   // ── Zoom ──
@@ -192,9 +244,21 @@ export function classifyMediaLink(raw: string | null | undefined): MediaLinkInfo
   // ── Azota ──
   if (hostMatches(host, "azota.vn")) return { ok: true, kind: "azota", label: "Azota", url, embedUrl: null, id: null, vimeoHash: null, suggestedType: "quiz", error: null, warning: null };
 
-  // ── nguồn khác ──
+  // ── tệp trực tiếp / nguồn khác ──
+  // Chỉ xét PHẦN ĐƯỜNG DẪN (fileExtOf cắt query/hash): "…/a.pdf?dl=1" là PDF; "…/a?f=x.exe" không phải tệp .exe.
+  const ext = fileExtOf(url);
+  if (ext && BANNED_LINK_EXTS.has(ext)) return invalid("KiN không nhận loại tệp này. Hãy dán link trang web, Google Drive, hoặc tải tài liệu PDF/Word/Excel/PowerPoint/ảnh lên.", url);
+  if (ext && DIRECT_VIDEO_EXTS.has(ext)) return invalid("KiN không phát được link tệp video trực tiếp. Dùng YouTube, Vimeo, Google Drive hoặc tải video lên.", url);
+  const dt = docTypeFromExt(ext);
+  if (dt) return { ok: true, kind: "file", label: DOC_TYPE_LABEL[dt], url, embedUrl: null, id: null, vimeoHash: null, suggestedType: "document", error: null,
+    warning: dt === "pdf" || dt === "image" || dt === "text" ? null : "Học sinh sẽ tải tệp này về hoặc mở ở tab mới.", docType: dt };
   return { ok: true, kind: "other", label: host.replace(/^www\./, ""), url, embedUrl: null, id: null, vimeoHash: null, suggestedType: null, error: null,
     warning: "KiN chưa nhúng được link từ trang này; học sinh sẽ mở ở tab mới." };
+}
+
+function googleForm(url: string, id: string): CoreInfo {
+  return { ok: true, kind: "google_form", label: "Google Form", url, embedUrl: null, id, vimeoHash: null, suggestedType: "quiz", error: null,
+    warning: "Đây là Google Form, không phải Azota. Học sinh vẫn mở được ở tab mới; KiN không thấy câu trả lời." };
 }
 
 export interface SlotCheck {
@@ -223,10 +287,13 @@ export function checkLinkForSlot(raw: string | null | undefined, slot: MediaSlot
     if (info.kind === "azota") return wrong("azota", "link Azota");
     if (info.kind === "zoom_live") return wrong("live", "link phòng Zoom");
     if (info.kind === "google_doc") return wrong("document", "link tài liệu Google");
+    if (info.kind === "meet_live") return wrong("live", "link phòng Google Meet");
+    if (info.kind === "google_form") return wrong("azota", "link Google Form");
+    if (info.kind === "file") return wrong("document", "tệp tài liệu");
     if (info.kind === "drive_folder") return { ok: false, info, moveTo: "document", warning: null, error: "Đây là thư mục Drive, không phải một video. Hãy mở video trong thư mục và dán link của riêng video đó." };
     if (info.kind === "other") {
       const host = info.label;
-      const social = /(^|\.)(facebook|fb|tiktok|instagram|twitter|x)\.(com|watch)$/i.test(host) || /^fb\.watch$/i.test(host);
+      const social = isSocialVideoHost(host);
       return { ok: false, info, moveTo: null, warning: null,
         error: social
           ? `KiN không nhúng được video từ ${host}. Hãy đưa video lên YouTube (chọn "Không công khai") hoặc Google Drive rồi dán link đó.`
@@ -235,24 +302,37 @@ export function checkLinkForSlot(raw: string | null | undefined, slot: MediaSlot
     return { ok: true, error: null, warning: info.warning, info, moveTo: null };
   }
   if (slot === "live") {
-    if (info.kind === "zoom_live") return { ok: true, error: null, warning: null, info, moveTo: null };
+    if (info.kind === "zoom_live" || info.kind === "meet_live") return { ok: true, error: null, warning: null, info, moveTo: null };
+    if (info.kind === "google_form") return wrong("azota", "link Google Form");
     if (info.kind === "zoom_record") return wrong("video", "bản ghi Zoom (xem lại sau buổi học)");
     if (info.kind === "youtube" || info.kind === "vimeo" || info.kind === "drive") return wrong("video", "link video");
     if (info.kind === "azota") return wrong("azota", "link Azota");
     if (info.kind === "other") return { ok: true, error: null, warning: "Chưa nhận ra đây là phòng Zoom; học sinh sẽ mở link này ở tab mới.", info, moveTo: null };
-    return { ok: false, error: "Ô này dành cho link phòng Zoom.", warning: null, info, moveTo: null };
+    return { ok: false, error: "Ô này dành cho link phòng Zoom hoặc Google Meet.", warning: null, info, moveTo: null };
   }
   if (slot === "azota") {
     if (info.kind === "azota") return { ok: true, error: null, warning: null, info, moveTo: null };
+    if (info.kind === "google_form") return { ok: true, error: null, warning: info.warning, info, moveTo: null };
     if (info.kind === "youtube" || info.kind === "vimeo" || info.kind === "drive" || info.kind === "zoom_record") return wrong("video", "link video");
-    if (info.kind === "zoom_live") return wrong("live", "link phòng Zoom");
+    if (info.kind === "zoom_live" || info.kind === "meet_live") return wrong("live", "link phòng học trực tuyến");
     return { ok: true, error: null, warning: "Link này không phải của Azota (azota.vn); học sinh vẫn mở được ở tab mới.", info, moveTo: null };
   }
   // document
   if (info.kind === "youtube" || info.kind === "vimeo") return wrong("video", "link video");
-  if (info.kind === "zoom_live") return wrong("live", "link phòng Zoom");
+  if (info.kind === "zoom_live" || info.kind === "meet_live") return wrong("live", "link phòng học trực tuyến");
   if (info.kind === "azota") return wrong("azota", "link Azota");
+  if (info.kind === "google_form") return wrong("azota", "link Google Form");
   return { ok: true, error: null, warning: info.warning, info, moveTo: null };
+}
+
+/** Ô đúng cho một link đã nhận diện (dùng cho ô tải lên chung: gia sư không phải chọn ô trước). Mọi `kind` đều có ô; link hỏng (`invalid`) rơi vào "document" nhưng người gọi phải xét `ok` trước. */
+export function routeToSlot(info: Pick<MediaLinkInfo, "kind">): MediaSlot {
+  switch (info.kind) {
+    case "youtube": case "vimeo": case "drive": case "zoom_record": case "upload": return "video";
+    case "zoom_live": case "meet_live": return "live";
+    case "azota": case "google_form": return "azota";
+    default: return "document"; // google_doc, drive_folder, file, other, invalid
+  }
 }
 
 /** Kiểm cả danh sách trong một ô, trả lỗi ĐẦU TIÊN kèm số thứ tự để báo "Link thứ 2: …". */
@@ -405,14 +485,29 @@ export function fileExtOf(url: string): string | null {
  * Quyết định cách xem trước một tài liệu. CHỈ nhúng nguồn tin cậy: Cloudinary của KiN, Google Docs/Drive, hoặc đường dẫn nội bộ /api/media.
  * Mọi nguồn khác chỉ cho "mở ở tab mới" (không bao giờ đặt địa chỉ lạ vào iframe).
  */
-export function planDocumentPreview(rawUrl: string | null | undefined): PreviewPlan {
+export interface PreviewOptions {
+  /** Tên kho Cloudinary CỦA KiN. Có truyền (kể cả rỗng) ⇒ chỉ nhúng đường dẫn `/<tên kho>/…`; kho lạ hoặc chưa cấu hình chỉ cho "mở ở tab mới". Không truyền ⇒ như cũ (chỉ xét máy chủ). */
+  cloudName?: string | null;
+  /** Tên hiển thị của tài liệu: lấy ĐUÔI từ đây khi địa chỉ nội bộ `/api/media/<mã>/file` không có đuôi. */
+  name?: string | null;
+}
+
+export function planDocumentPreview(rawUrl: string | null | undefined, opts: PreviewOptions = {}): PreviewPlan {
   const none = (reason: string): PreviewPlan => ({ mode: "none", src: null, downloadHref: null, sandbox: true, reason, ext: null });
   const raw = (rawUrl ?? "").trim();
   if (!raw) return none("Thiếu đường dẫn tài liệu.");
 
   // Đường dẫn nội bộ: chỉ /api/media/<mã>/... (video/tệp KiN lưu). Không nhận "//host" hay "/\host".
   if (raw.startsWith("/")) {
-    if (/^\/api\/media\/[A-Za-z0-9_-]{8,40}\/(stream|file)$/.test(raw))
+    if (/^\/api\/media\/[A-Za-z0-9_-]{8,40}\/file$/.test(raw)) {
+      // Tệp tài liệu riêng tư trên KiN (BU-02). Có tên thì lấy đuôi từ tên: PDF/ảnh/văn bản xem trước được, Office chỉ tải về (Office Viewer không vào được tệp có quyền).
+      const nExt = opts.name ? fileExtOf(opts.name) : null;
+      if (nExt === "pdf") return { mode: "iframe", src: raw, downloadHref: raw, sandbox: false, reason: null, ext: nExt };
+      if (nExt && IMAGE_EXTS.has(nExt)) return { mode: "image", src: raw, downloadHref: raw, sandbox: true, reason: null, ext: nExt };
+      if (nExt && TEXT_EXTS.has(nExt)) return { mode: "iframe", src: raw, downloadHref: raw, sandbox: true, reason: null, ext: nExt };
+      return { mode: "external", src: raw, downloadHref: raw, sandbox: true, reason: nExt && OFFICE_EXTS.has(nExt) ? "Tệp Word, Excel, PowerPoint trên KiN chỉ tải về, không xem trước được." : "Tệp này lưu trên KiN.", ext: nExt };
+    }
+    if (/^\/api\/media\/[A-Za-z0-9_-]{8,40}\/stream$/.test(raw))
       return { mode: "external", src: raw, downloadHref: raw, sandbox: true, reason: "Tệp này lưu trên KiN.", ext: null };
     return none("Đường dẫn tài liệu không hợp lệ.");
   }
@@ -429,6 +524,12 @@ export function planDocumentPreview(rawUrl: string | null | undefined): PreviewP
   }
 
   if (host === "res.cloudinary.com") {
+    if (opts.cloudName !== undefined) {
+      const cloud = (opts.cloudName ?? "").trim();
+      // Kho lạ (hoặc KiN chưa khai tên kho): không nhúng, không đưa vào Office Viewer, chỉ mở ở tab mới.
+      if (!cloud || !u.pathname.startsWith(`/${cloud}/`))
+        return { mode: "external", src: url, downloadHref: null, sandbox: true, reason: "Tài liệu nằm ngoài kho của KiN, KiN không xem trước ở đây. Bấm để mở ở tab mới.", ext };
+    }
     if (ext === "pdf") return { mode: "iframe", src: url, downloadHref: url, sandbox: false, reason: null, ext };
     if (ext && IMAGE_EXTS.has(ext)) return { mode: "image", src: url, downloadHref: url, sandbox: true, reason: null, ext };
     if (ext && TEXT_EXTS.has(ext)) return { mode: "iframe", src: url, downloadHref: url, sandbox: true, reason: null, ext };

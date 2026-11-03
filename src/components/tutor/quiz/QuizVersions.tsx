@@ -16,7 +16,7 @@ import { useKinConfirm } from "@/components/kin/useConfirm";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { dayAt } from "@/lib/baiTap";
 import type { QuizDiff } from "@/lib/quizVersion";
-import { qfetch, quizHref, type QuizDetail } from "./quizClient";
+import { qfetch, quizHref, DE_THI_ROOT, type QuizDetail } from "./quizClient";
 import QuizDeadlines from "./QuizDeadlines";
 
 interface Version { id: string; versionNo: number; status: "draft" | "superseded" | "current"; attemptCount: number; submittedCount: number; date: string; time: string; duration: string; questionCount: number; versionNote: string | null; supersededAt: string | null; title: string }
@@ -37,7 +37,7 @@ function Card({ v, role }: { v: Version; role: "live" | "draft" }) {
   return (
     <section aria-label={`Phiên bản v${v.versionNo}`} className={`min-w-0 rounded-[var(--kin-bo-md)] p-6 ${role === "draft" ? "bg-[var(--kin-nen-bang)]" : "border border-[var(--kin-vien-thuong)]"}`}>
       <h3 className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">v{v.versionNo} · {role === "draft" ? "Bản đề xuất" : v.status === "superseded" ? "Đã thay" : "Đã phát hành"}</h3>
-      <KinStatus tone={s.tone} className="mt-2">{role === "draft" ? STATUS.draft.text : s.text}</KinStatus>
+      <KinStatus tone={s.tone} className="mt-2 !whitespace-normal max-w-full">{role === "draft" ? STATUS.draft.text : s.text}</KinStatus>
       <dl className="mt-4 text-[length:var(--kin-co-goc)]">
         {([
           ["Mở đề", `${v.date} · ${v.time}`],
@@ -100,7 +100,7 @@ export default function QuizVersions({ id }: { id: string }) {
     await load();
   }
 
-  if (gone) return <KinPage><KinEmptyState title="Không tìm thấy quiz này" action={<Link href="/lop-cua-toi/bai-tap" className={kinButtonClass("primary")}>Về Bài tập</Link>}>Quiz có thể đã bị xoá, hoặc không nằm trong các quiz của cô.</KinEmptyState></KinPage>;
+  if (gone) return <KinPage><KinEmptyState title="Không tìm thấy quiz này" action={<Link href={DE_THI_ROOT} className={kinButtonClass("primary")}>Về Đề thi</Link>}>Quiz có thể đã bị xoá, hoặc không nằm trong các quiz của cô.</KinEmptyState></KinPage>;
   if (!data) return <KinPage>{err ? <ErrorStrip message={err} onRetry={() => void load()} /> : <div aria-busy="true" aria-label="Đang tải phiên bản" className="space-y-3"><div className="kin-skel kin-skel--soft h-9 w-64 rounded" /><div className="kin-skel kin-skel--soft h-[260px] rounded" /></div>}</KinPage>;
 
   const cur = data.chain.find(c => c.id === data.currentId) ?? null;

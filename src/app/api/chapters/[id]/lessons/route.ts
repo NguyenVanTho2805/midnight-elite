@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
-import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos } from "@/lib/lessonMediaServer";
+import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
@@ -75,10 +75,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await prisma.lesson.delete({ where: { id: lesson.id } }).catch(() => {});
       return NextResponse.json({ error: `Video bài giảng: ${claimErr}` }, { status: 400 });
     }
+    // V8: tệp tài liệu KiN trong bài mới phải là của chính người tạo.
+    const fileErr = await claimUploadedDocuments({ documents: lesson.documents, lessonId: lesson.id, userId: auth.userId, isTeacher: auth.adminRole === "teacher" });
+    if (fileErr) {
+      await prisma.lesson.delete({ where: { id: lesson.id } }).catch(() => {});
+      return NextResponse.json({ error: `Tài liệu: ${fileErr}` }, { status: 400 });
+    }
 
     return NextResponse.json(lesson, { status: 201 });
   } catch (e) {
     console.error("[POST /api/chapters/[id]/lessons]", e);
-    return NextResponse.json({ error: "Tạo bài học thất bại", detail: String(e) }, { status: 500 });
+    return NextResponse.json({ error: "Tạo bài học thất bại" }, { status: 500 });
   }
 }

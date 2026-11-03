@@ -136,12 +136,16 @@ import { prisma } from "@/lib/prisma";
   section("Quản trị duyệt hồ sơ: vẫn thấy tên, email, số điện thoại, giới thiệu, môn dạy");
   const ca = await ctxFor(A, { width: 1280, height: 900 }); await ca.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   const ap = await ca.newPage(); watch(ap);
-  await ap.goto(`${ADMIN}/admin/ho-so-gia-su`, { waitUntil: "networkidle", timeout: 120000 });
-  const card = ap.locator("li, div").filter({ hasText: "Cô Lan Anh" }).filter({ hasText: tutorEmail }).first();
-  await card.waitFor({ timeout: 90000 });
-  const cardText = await card.innerText();
-  check("thẻ duyệt hiện tên, email, số điện thoại, giới thiệu, môn", cardText.includes("Cô Lan Anh") && cardText.includes(tutorEmail) && cardText.includes("0912345678") && cardText.includes("Cử nhân Toán") && cardText.includes("Vật lý"), cardText.slice(0, 200));
-  check("không hiện tỉnh/thành trống kiểu ' · ' thừa", !/·\s*$/.test(cardText.split("\n")[1] ?? ""));
+  // BU-08: trang /admin/ho-so-gia-su được thay bằng hàng chờ một cửa; thông tin liên hệ nằm trong panel bên của dòng (đơn gia sư là ngoại lệ có đủ tên, email, SĐT).
+  await ap.goto(`${ADMIN}/admin/kiem-duyet?loai=gia-su`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  const row = ap.locator("[data-queue-table] tbody tr").filter({ hasText: "Cô Lan Anh" }).first();
+  await row.waitFor({ timeout: 90000 });
+  await row.locator("[data-row-open]").click();
+  const panelEl = ap.locator("aside[data-side-panel]");
+  await panelEl.waitFor({ timeout: 30000 });
+  const cardText = await panelEl.innerText();
+  check("panel duyệt hiện tên, email, số điện thoại, giới thiệu, môn", cardText.includes("Cô Lan Anh") && cardText.includes(tutorEmail) && cardText.includes("0912345678") && cardText.includes("Cử nhân Toán") && cardText.includes("Vật lý"), cardText.slice(0, 200));
+  check("dòng liên hệ không có tỉnh/thành trống kiểu ' · ' thừa", !/·\s*$/.test(cardText.split("\n").find(l => l.includes(tutorEmail)) ?? ""));
   await ca.close();
 
   check("không lỗi JavaScript / console", errors.length === 0, errors.slice(0, 4));

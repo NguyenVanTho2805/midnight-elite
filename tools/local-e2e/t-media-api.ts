@@ -246,6 +246,76 @@ async function mkTree(courseId: string, lessons: Record<string, unknown>[]) {
   check("tài liệu Cloudinary + Google Docs hợp lệ → 200", okDoc.status === 200, okDoc.json);
   check("tài liệu http (không https) → 400", bad(await api("PUT", `/api/lessons/${L1.id}`, { as: T, body: { documents: JSON.stringify([{ name: "x", url: "http://res.cloudinary.com/x/a.pdf" }]) } })));
   check("documents không phải JSON mảng → 400", bad(await api("PUT", `/api/lessons/${L1.id}`, { as: T, body: { documents: "{}" } })));
+
+  section("9. Tài liệu riêng tư (BU-02): init → PUT → chốt, báo trước, giới hạn, quyền");
+  const dInit = (o: Record<string, unknown> = {}) => ({ courseId: A.id, fileName: "de-cuong.pdf", size: 1000, mimeType: "application/pdf", confirmedNotice: true, ...o });
+  const DI = "/api/media/document/init";
+  const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+  check("khách → 401; học sinh → 403; gia sư lớp khác → 403", (await api("POST", DI, { body: dInit() })).status === 401 && (await api("POST", DI, { as: S, body: dInit() })).status === 403 && (await api("POST", DI, { as: T2, body: dInit() })).status === 403);
+  check("lớp không tồn tại → 404", (await api("POST", DI, { as: T, body: dInit({ courseId: "khong-co" }) })).status === 404);
+  check("không tích xác nhận bản quyền → 400 (và 'true' dạng chuỗi cũng 400)", (await api("POST", DI, { as: T, body: dInit({ confirmedNotice: false }) })).status === 400 && (await api("POST", DI, { as: T, body: dInit({ confirmedNotice: "true" }) })).status === 400);
+  check("25 MB + 1 byte → 400, nêu giới hạn 25 MB", await (async () => { const r = await api("POST", DI, { as: T, body: dInit({ size: 25 * 1024 * 1024 + 1 }) }); return r.status === 400 && /25/.test(r.json?.error ?? ""); })());
+  check("đuôi cấm (.exe, .svg, .html, 'a.pdf.exe') → 400", (await Promise.all(["virus.exe", "hinh.svg", "trang.html", "a.pdf.exe"].map(n => api("POST", DI, { as: T, body: dInit({ fileName: n, mimeType: "" }) })))).every(r => r.status === 400));
+  check("MIME khác họ với đuôi (a.pdf nhưng image/png) → 400; size 0/âm → 400", (await api("POST", DI, { as: T, body: dInit({ mimeType: "image/png" }) })).status === 400 && (await api("POST", DI, { as: T, body: dInit({ size: 0 }) })).status === 400 && (await api("POST", DI, { as: T, body: dInit({ size: -1 }) })).status === 400);
+  check("sau các ca bị chặn: KHÔNG có FileAsset document nào được tạo", (await prisma.fileAsset.count({ where: { kind: "document" } })) === 0);
+  const di = await api("POST", DI, { as: T, body: dInit({ fileName: "../../etc/de cương.pdf" }) });
+  check("init hợp lệ → 200 có assetId, link /api/media/<mã>/file, uploadUrl", di.status === 200 && !!di.json.assetId && di.json.link === `/api/media/${di.json.assetId}/file`, di.json);
+  check("FileAsset ở trạng thái pending, kind document, đúng chủ, khoá lưu không chứa '..'", await (async () => { const a = await prisma.fileAsset.findUnique({ where: { id: di.json.assetId } }); return a?.status === "pending" && a.kind === "document" && a.ownerId === T.id && !a.storageKey.includes(".."); })());
+  const cp = (as: typeof T | undefined, id: string) => api("POST", "/api/media/document/complete", { as, body: { assetId: id } });
+  check("chốt khi CHƯA tải lên → lỗi 4xx, hàng không thành ready", (await cp(T, di.json.assetId)).status >= 400 && (await prisma.fileAsset.findUnique({ where: { id: di.json.assetId } }))?.status !== "ready");
+  check("gia sư B PUT vào phiên của A → 404; học sinh → 403", (await api("PUT", `/api/media/upload/${di.json.assetId}`, { as: T2, raw: pdfBytes })).status === 404 && (await api("PUT", `/api/media/upload/${di.json.assetId}`, { as: S, raw: pdfBytes })).status === 403);
+  const dput = await api("PUT", `/api/media/upload/${di.json.assetId}`, { as: T, raw: pdfBytes });
+  check("PUT tệp PDF thật → 200", dput.status === 200, dput.json);
+  check("gia sư B chốt tệp của A → 403; khách → 401", (await cp(T2, di.json.assetId)).status === 403 && (await cp(undefined, di.json.assetId)).status === 401);
+  const c1 = await cp(T, di.json.assetId);
+  check("chốt → 200, ready, mime application/pdf, bytes khớp thực tế", c1.status === 200 && await (async () => { const a = await prisma.fileAsset.findUnique({ where: { id: di.json.assetId } }); return a?.status === "ready" && a.mimeType === "application/pdf" && a.bytes === pdfBytes.length; })(), c1.json);
+  check("chốt LẦN HAI → vẫn 200 (idempotent), không đổi", (await cp(T, di.json.assetId)).status === 200);
+
+  // CA PHÁ: nội dung giả danh — đuôi .pdf nhưng thân là HTML/script
+  const fake = await api("POST", DI, { as: T, body: dInit({ fileName: "gia-danh.pdf", size: 60 }) });
+  await api("PUT", `/api/media/upload/${fake.json.assetId}`, { as: T, raw: Buffer.from("<html><script>alert(document.cookie)</script></html>") });
+  const cf = await cp(T, fake.json.assetId);
+  check("magic-byte giả (.pdf chứa HTML) → chốt 400 'không phải PDF'", cf.status === 400 && /PDF/.test(cf.json?.error ?? ""), cf.json);
+  const fakeA = await prisma.fileAsset.findUnique({ where: { id: fake.json.assetId } });
+  check("tệp giả: hàng bị XOÁ và tệp trên đĩa bị xoá (không để rác)", fakeA === null && !existsSync(localPathFor(`${A.id.replace(/[^A-Za-z0-9_-]/g, "_")}/${fake.json.assetId}-gia-danh.pdf`)));
+  const fakeZip = await api("POST", DI, { as: T, body: dInit({ fileName: "gia.docx", size: 40, mimeType: "" }) });
+  await api("PUT", `/api/media/upload/${fakeZip.json.assetId}`, { as: T, raw: Buffer.from("PK\x03\x04 không có content types") });
+  check(".docx giả (PK nhưng thiếu [Content_Types].xml) → 400", (await cp(T, fakeZip.json.assetId)).status === 400);
+
+  // CA PHÁ: vượt dung lượng thực (khai nhỏ, gửi lớn) — máy chủ thử đặt KIN_DOC_MAX... dùng giới hạn tải mặc định 25 MB nên gửi 26 MB
+  const over = await api("POST", DI, { as: T, body: dInit({ fileName: "khai-nho.pdf", size: 100 }) });
+  const putOver = await api("PUT", `/api/media/upload/${over.json.assetId}`, { as: T, raw: Buffer.alloc(26 * 1024 * 1024, 0x25) });
+  check("khai 100 byte nhưng gửi 26 MB → PUT 413", putOver.status === 413, putOver.status);
+  check("vượt dung lượng: hàng bị xoá, không còn tệp trên đĩa", (await prisma.fileAsset.findUnique({ where: { id: over.json.assetId } })) === null);
+
+  // Hạn mức 500 MB
+  await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: A.id, kind: "document", driver: "local", storageKey: "q/x.pdf", mimeType: "application/pdf", bytes: 499 * 1024 * 1024, originalName: "to.pdf", status: "ready" } });
+  const q = await api("POST", DI, { as: T, body: dInit({ size: 2 * 1024 * 1024 }) });
+  check("đã dùng 499 MB, xin thêm 2 MB → 413 (hạn mức 500 MB)", q.status === 413, q.json);
+  check("hạn mức chỉ tính của MÌNH: gia sư B vẫn xin được", (await api("POST", DI, { as: T2, body: dInit({ courseId: B.id }) })).status === 200);
+  await prisma.fileAsset.deleteMany({ where: { storageKey: "q/x.pdf" } });
+
+  // Giới hạn tệp chờ (≥10)
+  await prisma.fileAsset.deleteMany({ where: { ownerId: T.id, kind: "document", status: "pending" } });
+  for (let i = 0; i < 10; i++) await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: A.id, kind: "document", driver: "local", storageKey: "", mimeType: "application/pdf", originalName: `cho${i}.pdf`, status: "pending" } });
+  check("đã có 10 tệp chờ, init thứ 11 → 429", (await api("POST", DI, { as: T, body: dInit() })).status === 429);
+  await prisma.fileAsset.deleteMany({ where: { ownerId: T.id, kind: "document", status: "pending" } });
+
+  // A5 DELETE
+  const DEL = (as: typeof T | undefined, id: string) => api("DELETE", `/api/media/document/${id}`, { as });
+  const used = await prisma.lesson.update({ where: { id: L1.id }, data: { documents: JSON.stringify([{ name: "de-cuong.pdf", url: `/api/media/${di.json.assetId}/file`, type: "pdf" }]) } });
+  void used;
+  check("xoá tệp đang dùng ở 1 bài → 409 'Đang dùng ở 1 bài', tệp còn", await (async () => { const r = await DEL(T, di.json.assetId); return r.status === 409 && /1 bài/.test(r.json?.error ?? "") && !!(await prisma.fileAsset.findUnique({ where: { id: di.json.assetId } })); })());
+  check("gia sư B xoá tệp của A → 403; khách → 401; mã lạ → 404", (await DEL(T2, di.json.assetId)).status === 403 && (await DEL(undefined, di.json.assetId)).status === 401 && (await DEL(T, "khong-co-ma")).status === 404);
+  await prisma.lesson.update({ where: { id: L1.id }, data: { documents: "[]" } });
+  check("gỡ khỏi bài rồi xoá → 200, hàng và tệp trên đĩa mất", await (async () => { const key = (await prisma.fileAsset.findUnique({ where: { id: di.json.assetId } }))!.storageKey; const r = await DEL(T, di.json.assetId); return r.status === 200 && (await prisma.fileAsset.findUnique({ where: { id: di.json.assetId } })) === null && !existsSync(localPathFor(key)); })());
+
+  section("10. /api/media/config — khối tài liệu mới, khối video giữ nguyên");
+  const cfgT = (await api("GET", "/api/media/config", { as: T })).json;
+  check("giữ video.enabled + video.maxBytes + document.maxBytes (tương thích máy khách cũ)", cfgT.video?.enabled === true && cfgT.video?.maxBytes === 1024 * 1024 && cfgT.document?.maxBytes === 25 * 1024 * 1024, cfgT);
+  check("document có enabled, driver, exts, quotaBytes 500 MB, usedBytes là số", cfgT.document.enabled === true && cfgT.document.driver === "local" && Array.isArray(cfgT.document.exts) && cfgT.document.exts.includes("pdf") && !cfgT.document.exts.includes("exe") && cfgT.document.quotaBytes === 500 * 1024 * 1024 && typeof cfgT.document.usedBytes === "number", cfgT.document);
+  check("config không có khoá bí mật Cloudinary", !/api_secret|apiSecret|signature/i.test(JSON.stringify(cfgT)));
+
   void BASE; void cookieFor;
 
   await done();
