@@ -6,6 +6,8 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
 import { toSlug } from "@/lib/slug";
 import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
+import { isEnrollmentActive } from "@/lib/enrollment";
+import { isListedToStudent } from "@/lib/examVariantRoute";
 
 // Sinh mã đề duy nhất ở server (không tin mã client tự tính) — client chỉ thấy
 // đề của mình (ownerScopeWhere), nên đếm số đề theo prefix ở phía client dễ bị
@@ -52,12 +54,14 @@ export async function GET(req: NextRequest) {
   // Các query khác (active=true, category, status) yêu cầu session
   let scopeWhere: { ownerId?: string } = {};
   let sessionIsAdmin = false;
+  let studentUserId: string | null = null; // BU-04: phiên không phải quản trị/gia sư → lọc danh sách theo lớp em học
   if (!activeGuestOnly) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
     // Danh sách quản trị (admin panel) — giáo viên chỉ thấy đề của mình.
     // Học viên xem danh sách đề (không phải panel admin) không bị scope này.
     if (session.role === "admin") { scopeWhere = ownerScopeWhere(session); sessionIsAdmin = true; }
+    else studentUserId = session.userId;
   }
 
   try {
@@ -70,19 +74,38 @@ export async function GET(req: NextRequest) {
         // QZ-07: phiên bản cũ (đã bị thay) không hiện ở danh sách. QZ-04: bản nháp chỉ chủ đề thấy ở trang quản lý — danh sách cho học sinh / khách luôn ẩn.
         supersededById: null,
         ...(activeGuestOnly || !sessionIsAdmin ? { isDraft: false } : {}),
+        // BU-04: học sinh / khách không bao giờ thấy hàng mã đề con (vào bằng đường dẫn thì quy về đề gốc).
+        ...(sessionIsAdmin ? {} : { variantOfId: null }),
         ...scopeWhere,
       },
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { examQuestions: true } },
         course: { select: { name: true } },
+        owner: { select: { adminRole: true } },
       },
     });
 
+    // BU-04: danh sách cho học sinh / khách — ẩn đề "giao theo link" (không lớp, chủ đề là gia sư) và đề của lớp em không học
+    // (STU-004: không lộ tên đề lớp khác). Khách (activeGuest) không có lớp nên chỉ lọc giao-theo-link. Quản trị / gia sư: không đổi.
+    let enrolled: Set<string> | null = null;
+    let granted = new Set<string>(); // đề thu phí đã được cấp quyền vào (ExamGuestAccess) vẫn phải hiện
+    if (!sessionIsAdmin && studentUserId) {
+      const [enr, acc] = await Promise.all([
+        prisma.enrollment.findMany({ where: { userId: studentUserId }, select: { courseId: true, status: true } }),
+        prisma.examGuestAccess.findMany({ where: { userId: studentUserId }, select: { examId: true } }),
+      ]);
+      enrolled = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));
+      granted = new Set(acc.map(a => a.examId));
+    }
+    const visible = sessionIsAdmin ? exams : exams.filter(e => granted.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolled));
+
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     return NextResponse.json(
-      exams.map(({ _count, course, ...e }) => ({
+      visible.map(({ _count, course, owner, variantNo, variantOfId, blueprintId, ...e }) => ({
         ...withoutExamSecrets(e),
+        // Học sinh / khách không thấy dấu vết mã đề; quản trị / gia sư giữ nguyên các trường này.
+        ...(sessionIsAdmin ? { variantNo, variantOfId, blueprintId } : {}),
         hasQuestions: _count.examQuestions > 0,
         courseName: course?.name ?? null,
       }))

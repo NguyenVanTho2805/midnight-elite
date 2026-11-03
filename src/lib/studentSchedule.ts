@@ -5,6 +5,8 @@ import { hmOf, vnMinutesOfDay, vnDateKeyOf, addDaysKey, dayOfWeekOfKey } from "@
 import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 import { parseAzotaDeadline } from "@/lib/azotaDeadline";
+import { isListedToStudent } from "@/lib/examVariantRoute";
+import { isEnrollmentActive } from "@/lib/enrollment";
 import { firstHttpLink } from "@/lib/lessonLinks";
 import { effectiveLocation, effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl, type SessionKind, type SessionMode } from "@/lib/sessionBook";
 
@@ -55,10 +57,24 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
   const events: ScheduleEvent[] = [];
 
   // ── Exam events ──────────────────────────────────────────────────────────────
-  const exams = await prisma.exam.findMany({
-    where: { active: true, isDraft: false, supersededById: null, status: { not: "completed" } }, // QZ-04/07: không hiện bản nháp hay phiên bản cũ
-    select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true, duration: true, questions: true },
+  // BU-04: mã đề con (variantOfId) và đề "giao theo link" của gia sư (không lớp, chủ là gia sư) không bao giờ hiện ở lịch —
+  // cùng luật `isListedToStudent` với GET /api/exams (một nguồn). Lọc ở JS, không dùng Prisma `NOT {…owner…}`: hàng không có
+  // chủ (ownerId NULL) sẽ bị SQL loại nhầm.
+  const examRows = await prisma.exam.findMany({
+    where: { active: true, isDraft: false, supersededById: null, variantOfId: null, status: { not: "completed" } }, // QZ-04/07: không hiện bản nháp hay phiên bản cũ
+    select: {
+      id: true, title: true, category: true, date: true, time: true, azotaUrl: true, duration: true, questions: true,
+      variantOfId: true, courseId: true, owner: { select: { adminRole: true } },
+    },
   });
+  // STU-004 (cùng luật GET /api/exams): đề của lớp em không học thì KHÔNG hiện tên ở lịch, trừ đề đã được cấp quyền vào (ExamGuestAccess).
+  const [enr, acc] = await Promise.all([
+    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
+    prisma.examGuestAccess.findMany({ where: { userId }, select: { examId: true } }),
+  ]);
+  const enrolledCourses = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));
+  const grantedExams = new Set(acc.map(a => a.examId));
+  const exams = examRows.filter(e => grantedExams.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolledCourses));
 
   for (const exam of exams) {
     const iso = toISO(exam.date);

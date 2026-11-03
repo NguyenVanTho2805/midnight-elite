@@ -121,7 +121,7 @@ export function buildVariantPlan(questions: readonly PlanQuestion[], opt: PlanOp
 
 // ── Cổng phát hành ──────────────────────────────────────────────────────────────────────────────
 export interface GateQuestion { text: string; explanation?: string | null; options: readonly { text: string }[] }
-export type GateBlock = { status: 422; code: "FORMULA_UNREAD" | "VARIANTS_NOT_READY" | "NEED_SCHEDULE" | "VARIANTS_STALE"; error: string };
+export type GateBlock = { status: 422; code: "FORMULA_UNREAD" | "VARIANTS_NOT_READY" | "VARIANTS_ESSAY" | "NEED_SCHEDULE" | "VARIANTS_STALE"; error: string };
 
 /** Câu nào (1-based) còn nhãn ⟦công thức⟧ — công thức MathType chưa đọc được, gia sư phải gõ tay. */
 export function questionsWithFormulaPlaceholder(questions: readonly GateQuestion[]): number[] {
@@ -134,11 +134,13 @@ export function questionsWithFormulaPlaceholder(questions: readonly GateQuestion
 
 /**
  * Cổng phát hành của đề (mục 6.2): còn ⟦công thức⟧ → FORMULA_UNREAD; N>1 mã mà phòng thi chưa hỗ trợ → VARIANTS_NOT_READY;
- * mode=test thiếu giờ → NEED_SCHEDULE; mã con không còn khớp đề gốc → VARIANTS_STALE. `null` = qua cổng.
+ * mode=test thiếu giờ → NEED_SCHEDULE; mã con không còn khớp đề gốc → VARIANTS_STALE; N>1 mã mà đề CÓ câu tự luận → VARIANTS_ESSAY
+ * (BU-04 rà soát: màn chấm bài của gia sư và quyết định giữ điểm đọc theo TỪNG đề, chưa gom bài của các mã con → học sinh làm mã con kẹt
+ * "chờ gia sư chấm" và gia sư không thấy bài để chấm). `null` = qua cổng.
  */
 export function publishGate(i: {
   questions: readonly GateQuestion[]; variantCount: number; variantStudentSupport: boolean;
-  mode: string | null; hasSchedule: boolean; variantsStale?: boolean;
+  mode: string | null; hasSchedule: boolean; variantsStale?: boolean; hasEssay?: boolean;
 }): GateBlock | null {
   const bad = questionsWithFormulaPlaceholder(i.questions);
   if (bad.length) {
@@ -148,6 +150,9 @@ export function publishGate(i: {
   if (i.variantCount > 1 && i.variantsStale) return { status: 422, code: "VARIANTS_STALE", error: "Đề gốc đã đổi sau khi tạo mã đề nên các mã đề con không còn khớp. Cô tạo lại mã đề rồi phát hành." };
   if (i.variantCount > 1 && !i.variantStudentSupport) {
     return { status: 422, code: "VARIANTS_NOT_READY", error: "Đề nhiều mã chưa phát hành được vì phòng thi của học sinh chưa hỗ trợ mã đề. Cô phát hành đề một mã, hoặc chờ KiN bật tính năng này." };
+  }
+  if (i.variantCount > 1 && i.hasEssay) {
+    return { status: 422, code: "VARIANTS_ESSAY", error: "Đề nhiều mã chưa phát hành được khi đề có câu tự luận: màn chấm bài của cô chưa gom bài của các mã đề. Cô phát hành đề một mã, hoặc tách phần tự luận ra đề riêng." };
   }
   return null;
 }

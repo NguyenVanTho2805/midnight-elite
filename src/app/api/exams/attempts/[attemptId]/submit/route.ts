@@ -7,6 +7,8 @@ import { addQuizRewardCoins } from "@/lib/wallet";
 import { MAX_QUIZ_REWARDS_PER_DAY } from "@/lib/wallet-constants";
 import { loadPublishState } from "@/lib/quizPublication";
 import { receiptCode, resultVisibility } from "@/lib/quizRoom";
+import { answersOpenAtOf } from "@/lib/examWindow";
+import { isExamMode } from "@/lib/deThiAssign";
 
 // POST /api/exams/attempts/[attemptId]/submit — chấm điểm hoàn toàn ở server.
 // Idempotent: nếu attempt đã submitted/expired trước đó, trả lại kết quả đã có thay vì lỗi.
@@ -36,12 +38,16 @@ export async function POST(
       justSubmitted = finalized.status === "submitted";
     }
 
-    const [bestResult, exam] = await Promise.all([
-      prisma.examResult.findUnique({
-        where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
-      }),
-      prisma.exam.findUnique({ where: { id: attempt.examId }, select: { totalPoints: true, ownerId: true } }),
-    ]);
+    // BU-04: ExamResult ghi theo ĐỀ GỐC (một dòng cho cả nhóm mã đề) — tra theo gốc của mã đề lượt này.
+    const exam = await prisma.exam.findUnique({
+      where: { id: attempt.examId },
+      select: { totalPoints: true, ownerId: true, mode: true, variantOfId: true, answerVisibility: true, date: true, time: true, duration: true },
+    });
+    const resultExamId = exam?.variantOfId ?? attempt.examId;
+    const bestResult = await prisma.examResult.findUnique({
+      where: { userId_examId: { userId: attempt.userId, examId: resultExamId } },
+    });
+    const mode = isExamMode(exam?.mode) ? exam!.mode as "practice" | "test" : null;
 
     // Thưởng Coin làm bài: chỉ học sinh, chỉ lượt vừa nộp đúng hạn, không phải đề của chính mình.
     // Lỗi ở đây không được làm hỏng việc nộp bài (điểm đã chốt) nên nuốt lỗi.
@@ -61,7 +67,7 @@ export async function POST(
 
     const rankBase = bestResult?.score ?? finalized.score ?? 0;
     const above = await prisma.examResult.count({
-      where: { examId: attempt.examId, score: { gt: rankBase } },
+      where: { examId: resultExamId, score: { gt: rankBase } },
     });
 
     // QZ-08/11: đề giữ điểm (examHold) mà gia sư chưa công bố lượt này → chỉ trả biên nhận ("đã ghi nhận"), KHÔNG điểm/hạng dở dang (phần tự luận mới tính 0 vì chưa chấm).
@@ -69,7 +75,8 @@ export async function POST(
     return NextResponse.json({
       score: vis.showScore ? finalized.score : null,
       totalPoints: exam?.totalPoints ?? 150,
-      rank: vis.showScore ? above + 1 : null,
+      // Luyện tập không vào bảng xếp hạng → không có hạng.
+      rank: vis.showScore && mode !== "practice" ? above + 1 : null,
       coinsEarned,
       held: vis.pendingManual,
       pendingManual: vis.pendingManual,
@@ -77,6 +84,8 @@ export async function POST(
       submittedAt: finalized.submittedAt,
       expired: finalized.status === "expired" || lateSubmit,
       receipt: receiptCode(attempt.id),
+      mode,
+      answersOpenAt: exam ? answersOpenAtOf(exam.answerVisibility, exam)?.toISOString() ?? null : null,
     });
   } catch (e) {
     console.error("[POST /api/exams/attempts/[attemptId]/submit]", e);

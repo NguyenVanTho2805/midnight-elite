@@ -5,7 +5,12 @@ import { orderQuestionsAndOptionsFull, loadAnswerState } from "@/lib/examGrading
 import { correctionSummary } from "@/lib/examCorrectionServer";
 import { scoreMultiSelect } from "@/lib/quizQuestion";
 import { loadEffectivePolicy, loadPublishState } from "@/lib/quizPublication";
-import { resultVisibility } from "@/lib/quizRoom";
+import { attemptsGate, resultVisibility } from "@/lib/quizRoom";
+import { canStartByDeadline } from "@/lib/quizDeadline";
+import { getOwnDeadline } from "@/lib/quizDeadlineServer";
+import { isExamMode } from "@/lib/deThiAssign";
+import { answersOpenAtOf, startVerdict } from "@/lib/examWindow";
+import { loadGroup } from "@/lib/examVariantServer";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
 // chính mình sau khi đã nộp (điểm từng câu, đáp án đúng nếu đề cho phép xem).
@@ -34,7 +39,10 @@ export async function GET(
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
-    const policy = await loadEffectivePolicy(exam, session.userId);
+    // BU-04: mã con quy về ĐỀ GỐC — chính sách (STU-001) đọc theo gốc, số lượt đếm theo cả nhóm mã đề; câu hỏi/đáp án của lượt vẫn là của mã đã làm.
+    const group = (await loadGroup(exam.id)) ?? { rootId: exam.id, ids: [exam.id], members: [] };
+    const root = group.rootId === exam.id ? exam : await prisma.exam.findUnique({ where: { id: group.rootId } });
+    const policy = await loadEffectivePolicy(root ?? exam, session.userId, { examIds: group.ids });
     // QZ-08/11/12: đề đang GIỮ điểm (examHold — một nguồn) và lượt này chưa được gia sư công bố → không điểm, không điểm/nhận xét tự luận,
     // không đáp án/lời giải (công bố chỉ thu hẹp, không mở rộng chính sách của đề).
     const vis = resultVisibility(await loadPublishState(exam.id, session.userId, attempt.id), policy.canSeeAnswers);
@@ -131,8 +139,22 @@ export async function GET(
       };
     });
 
+    // BU-04: đề gốc (mã con quy về gốc), chế độ, lúc đáp án mở, và có làm lại được không (cùng luật cổng vào đề; số lượt = chính sách hiệu lực STU-001).
+    const mode = isExamMode(root?.mode) ? (root!.mode as "practice" | "test") : null;
+    let canRetake = false;
+    if (root) {
+      const now = new Date();
+      const ownDue = await getOwnDeadline(root.id, session.userId);
+      const open = root.active && !root.isDraft && !root.supersededById && (mode !== "test" || startVerdict(root, now) === "ok");
+      canRetake = open && !policy.inProgressLive && attemptsGate({ used: policy.used, max: policy.maxAttempts, hasInProgress: false }).canStart && canStartByDeadline(ownDue, now, false);
+    }
+
     return NextResponse.json({
       attemptId: attempt.id,
+      exam: { id: group.rootId, title: root?.title ?? exam.title, mode, showLeaderboard: root?.showLeaderboard ?? exam.showLeaderboard },
+      // Mốc mở đáp án theo chính sách HIỆU LỰC (đề công khai chưa chỉnh → "sau khi đề hết hạn"), không theo cột thô của đề.
+      answersOpenAt: answersOpenAtOf(policy.answerVisibility, root ?? exam)?.toISOString() ?? null,
+      canRetake,
       score: vis.showScore ? attempt.score : null,
       held,
       pendingManual: vis.pendingManual,

@@ -1,6 +1,6 @@
 // Bài tập & đề thi của học sinh (Figma "Học sinh · Bài tập và đề thi" 299:114951): mỗi trạng thái có một khu riêng, không lẫn bài đã hoàn thành.
 // Tab "Cần làm · n" (mặc định: Cần làm, Chờ chấm, Kết quả gần đây + cột phải đề thi), "Chờ chấm · n", "Kết quả", "Đề thi".
-// Dữ liệu: /api/student/viec-cua-toi (bài tập, hạn nộp) + /api/schedule (buổi thi). KHÔNG có dữ liệu thật nên bỏ: số bài tự luận, tên tệp đã nộp,
+// Dữ liệu: /api/student/viec-cua-toi (bài tập, hạn nộp) + /api/schedule (buổi thi) + /api/student/de-thi (BU-04: đề được giao, hạn "Còn N ngày", trạng thái, số lượt). KHÔNG có dữ liệu thật nên bỏ: số bài tự luận, tên tệp đã nộp,
 // "Chưa vào bài / đồng hồ chỉ bắt đầu khi bạn xác nhận" (không có trạng thái làm bài ở đây), "Thi thử giữa kỳ" thật chỉ gồm tên, giờ mở, số câu/thời lượng nếu đề có.
 "use client";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { KinStatus } from "@/components/kin/Status";
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import type { ScheduleEvent } from "@/lib/studentSchedule";
 import { choCham, chuaNop, dmOfKey, examTarget, TaskRow, useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
 
 type Tab = "can-lam" | "cho-cham" | "ket-qua" | "de-thi";
 
@@ -79,6 +80,7 @@ function ExamBlock({ e, highlight }: { e: ScheduleEvent; highlight?: boolean }) 
 
 export default function BaiTapDeThi() {
   const { items, events, error, eventsError, load } = useStudentWork();
+  const as = useAssignments();
   const [tab, setTab] = useState<Tab>("can-lam");
   const list = items ?? [];
   const todo = list.filter(i => !i.done && i.kind !== "buoi-hoc");
@@ -93,6 +95,11 @@ export default function BaiTapDeThi() {
     { key: "ket-qua" as const, label: "Kết quả" },
     { key: "de-thi" as const, label: "Đề thi" },
   ];
+  // Đề được giao: ba trạng thái riêng (đang tải / lỗi + Thử lại / rỗng có lối đi tiếp).
+  const assignmentsBody = (limit?: number) => as.error && !as.data
+    ? <ErrorStrip message="Không tải được danh sách đề được giao." onRetry={as.load} />
+    : !as.data ? <div aria-busy="true" aria-label="Đang tải đề được giao" className="mt-4 h-[96px] rounded kin-skel kin-skel--soft" />
+    : <AssignmentList items={as.data.items} serverNow={as.data.serverNow} limit={limit} />;
   const noExams = <KinEmptyState title="Chưa có đề thi sắp mở" action={<Link href="/thi-thu" className={kinButtonClass("secondary")}>Xem các đề thi thử</Link>}>Khi có đề thi thử mới, thời gian mở và thông tin đề sẽ hiện ở đây.</KinEmptyState>;
 
   const todoSection = (
@@ -148,7 +155,11 @@ export default function BaiTapDeThi() {
               )}
             </div>
             <aside aria-label="Đề thi sắp tới" className="lg:col-start-2 lg:row-start-1 min-w-0">
-              {exams[0] ? <ExamBlock e={exams[0]} highlight /> : noExams}
+              <section aria-labelledby="bt-giao" className="mb-8">
+                <KinSectionHead id="bt-giao" title="Đề thi được giao" aside={<button type="button" onClick={() => setTab("de-thi")} className="text-[var(--kin-nhan-link)] underline inline-flex items-center min-h-11">Xem tất cả</button>} />
+                {assignmentsBody(3)}
+              </section>
+              {exams[0] ? <ExamBlock e={exams[0]} highlight /> : as.data && as.data.items.length > 0 ? null : noExams}
               {exams.length > 1 && (
                 <section aria-labelledby="bt-next-exam" className="mt-8">
                   <KinSectionHead id="bt-next-exam" title="Thi thử sắp tới" />
@@ -174,8 +185,14 @@ export default function BaiTapDeThi() {
           </section>
         ) : (
           <section aria-labelledby="bt-exams">
-            <KinSectionHead id="bt-exams" title="Đề thi" aside={<Link href="/thi-thu" className="text-[var(--kin-nhan-link)] underline">Tất cả đề thi thử</Link>} />
-            {exams.length === 0 ? noExams : <KinPanel flush className="mt-4"><ul>{exams.map(e => <ExamBlock key={e.id} e={e} />)}</ul></KinPanel>}
+            <KinSectionHead id="bt-exams" title="Đề thi" aside={<Link href="/thi-thu" className="text-[var(--kin-nhan-link)] underline inline-flex items-center min-h-11">Tất cả đề thi thử</Link>} />
+            {assignmentsBody()}
+            {exams.length > 0 && (
+              <section aria-labelledby="bt-lich-thi" className="mt-8">
+                <KinSectionHead id="bt-lich-thi" title="Lịch thi sắp tới" />
+                <KinPanel flush className="mt-4"><ul>{exams.map(e => <ExamBlock key={e.id} e={e} />)}</ul></KinPanel>
+              </section>
+            )}
           </section>
         )}
       </div>

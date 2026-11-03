@@ -299,18 +299,24 @@ export async function computeRawEarned(tx: Tx, attempt: { id: string; examId: st
 async function upsertBestResult(tx: Tx, attempt: { id: string; userId: string; examId: string }, score: number, totalPoints: number, at: Date) {
   // QZ-08: lượt đang bị giữ chưa công bố thì CHƯA vào bảng xếp hạng/ExamResult (điểm lúc này thiếu phần tự luận). Công bố xong sẽ chấm lại và vào.
   if (await isAttemptHeld(tx, attempt)) return;
+  // BU-04: luyện tập KHÔNG vào bảng xếp hạng/ExamResult (học sinh có thể xem đáp án rồi sửa trước khi nộp — điểm chỉ để tham khảo).
+  // Nhiều mã đề: ExamResult ghi theo ĐỀ GỐC (một dòng cho cả nhóm mã đề — unique userId_examId) để xếp hạng / "bài của tôi" không bị tách theo mã.
+  const meta = await tx.exam.findUnique({ where: { id: attempt.examId }, select: { mode: true, variantOfId: true } });
+  if (meta?.mode === "practice") return;
+  let resultExamId = attempt.examId;
+  if (meta?.variantOfId && (await tx.exam.findUnique({ where: { id: meta.variantOfId }, select: { id: true } }))) resultExamId = meta.variantOfId; // gốc đã bị xoá → giữ id mã con (tránh lỗi khoá ngoại)
   const existing = await tx.examResult.findUnique({
-    where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
+    where: { userId_examId: { userId: attempt.userId, examId: resultExamId } },
   });
 
   if (!existing) {
     await tx.examResult.create({
-      data: { userId: attempt.userId, examId: attempt.examId, score, totalPoints, completedAt: at },
+      data: { userId: attempt.userId, examId: resultExamId, score, totalPoints, completedAt: at },
     });
-    await tx.exam.update({ where: { id: attempt.examId }, data: { participants: { increment: 1 } } });
+    await tx.exam.update({ where: { id: resultExamId }, data: { participants: { increment: 1 } } });
   } else if (score > existing.score) {
     await tx.examResult.update({
-      where: { userId_examId: { userId: attempt.userId, examId: attempt.examId } },
+      where: { userId_examId: { userId: attempt.userId, examId: resultExamId } },
       data: { score, completedAt: at },
     });
   }

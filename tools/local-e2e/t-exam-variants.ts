@@ -189,6 +189,17 @@ const childrenOf = (rootId: string) => prisma.exam.findMany({ where: { variantOf
     const pn2 = await api("POST", `/api/tutor/quiz/${N}/publish`, { as: A });
     check("ĐỐI CHỨNG: có đủ giờ thì phát hành được", pn2.status === 200, [pn2.status, pn2.json]);
 
+    // 2b) BU-04 rà soát: đề nhiều mã + câu tự luận → 422 VARIANTS_ESSAY (màn chấm chỉ đọc đề gốc → học sinh làm mã con sẽ kẹt "chờ chấm")
+    const EM = await mkDraft(A, { n: 4, courseId: courseA.id, title: "Đề nhiều mã có tự luận" });
+    await prisma.examQuestion.create({ data: { id: "essay-" + EM, examId: EM, order: 99, text: "Trình bày cách giải.", type: "ESSAY", points: 2 } });
+    const mdE = await api("POST", MD(EM), { as: A, body: { count: 2 } });
+    const pe = await api("POST", `/api/tutor/quiz/${EM}/publish`, { as: A });
+    check("đề 2 mã CÓ câu tự luận → 422 VARIANTS_ESSAY, cả nhóm vẫn nháp", pe.status === 422 && pe.json?.code === "VARIANTS_ESSAY" && await isDraft(EM) && (await childrenOf(EM)).every(k => k.isDraft && !k.active), [mdE.status, pe.status, pe.json]);
+    const E1 = await mkDraft(A, { n: 4, courseId: courseA.id, title: "Đề một mã có tự luận" });
+    await prisma.examQuestion.create({ data: { id: "essay-" + E1, examId: E1, order: 99, text: "Trình bày cách giải.", type: "ESSAY", points: 2 } });
+    const pe1 = await api("POST", `/api/tutor/quiz/${E1}/publish`, { as: A });
+    check("ĐỐI CHỨNG: đề MỘT mã có tự luận vẫn phát hành được (chỉ chặn nhiều mã)", pe1.status === 200, [pe1.status, pe1.json]);
+
     // 3) mã đề: lỗi thời, rồi cổng phòng thi học sinh
     const V = await mkDraft(A, { n: 4, courseId: courseA.id });
     await api("POST", MD(V), { as: A, body: { count: 2 } });

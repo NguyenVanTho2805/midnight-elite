@@ -87,12 +87,14 @@ check("chưa có lượt thì đổi thoải mái", ok({ mode: "practice", cours
 
 section("Giao theo link (AUDIENCE_LINK_READY)");
 const pub = ctx({ isDraft: false });
-check("đề ĐÃ phát hành bỏ lớp (courseId null) khi cờ tắt → 422 AUDIENCE_LINK_NOT_READY", err({ courseId: null }, pub)?.status === 422 && err({ courseId: "" }, pub)?.code === "AUDIENCE_LINK_NOT_READY");
+const pubOff = { ...pub, audienceLinkReady: false }; // cờ truyền tường minh: ca này kiểm NHÁNH tắt, không phụ thuộc hằng
+check("đề ĐÃ phát hành bỏ lớp (courseId null) khi cờ tắt → 422 AUDIENCE_LINK_NOT_READY", err({ courseId: null }, pubOff)?.status === 422 && err({ courseId: "" }, pubOff)?.code === "AUDIENCE_LINK_NOT_READY");
 check("bản nháp bỏ lớp được (phát hành mới chặn)", ok({ courseId: null }, ctx({ isDraft: true })) !== null);
 check("cờ bật → đề đã phát hành bỏ lớp được", ok({ courseId: null }, { ...pub, audienceLinkReady: true }) !== null);
 check("đề vốn không có lớp, gửi null lại → không đổi gì nên không chặn", ok({ courseId: null }, ctx({ isDraft: false, current: { courseId: null } })) !== null);
-check("đổi sang lớp khác khi cờ tắt: không dính chặn link", ok({ courseId: "c9" }, pub) !== null);
-check("hai cờ cổng đang TẮT (BU-04 chưa xong): đổi một dòng khi D2 xong", VARIANT_STUDENT_SUPPORT === false && AUDIENCE_LINK_READY === false);
+check("đổi sang lớp khác khi cờ tắt: không dính chặn link", ok({ courseId: "c9" }, pubOff) !== null);
+check("cờ mặc định BẬT (BU-04 xong, D2): đề đã phát hành bỏ lớp được khi không truyền cờ", ok({ courseId: null }, { ...pub, audienceLinkReady: undefined }) !== null);
+check("hai cờ cổng đã BẬT (BU-04 xong)", VARIANT_STUDENT_SUPPORT === true && AUDIENCE_LINK_READY === true);
 
 section("Vá mã đề con (api/tutor/quiz)");
 check("pickerWhere luôn loại mã đề con và bản đã bị thay, và khoá theo chủ", (() => { const w = pickerWhere("t1", false); return w.ownerId === "t1" && w.variantOfId === null && w.supersededById === null && !("attempts" in w); })());

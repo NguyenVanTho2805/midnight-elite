@@ -101,7 +101,7 @@ const H = 3_600_000, D = 24 * H;
   await pg.getByRole("tab", { name: "Kết quả" }).click();
   check("tab 'Kết quả': bảng Bài tập / Điểm / Phản hồi với 8,5/10", await pg.getByRole("tabpanel").getByText("8,5/10").isVisible() && await pg.getByRole("link", { name: /Xem nhận xét/ }).isVisible());
   await pg.getByRole("tab", { name: "Đề thi" }).click();
-  check("tab 'Đề thi': liệt kê đề + lối 'Tất cả đề thi thử' → /thi-thu", await pg.getByRole("tabpanel").getByText("Kiểm tra 15 phút").isVisible() && (await pg.getByRole("link", { name: "Tất cả đề thi thử" }).getAttribute("href")) === "/thi-thu");
+  check("tab 'Đề thi': liệt kê đề + lối 'Tất cả đề thi thử' → /thi-thu", await pg.getByRole("tabpanel").getByText("Kiểm tra 15 phút").first().isVisible() && (await pg.getByRole("link", { name: "Tất cả đề thi thử" }).getAttribute("href")) === "/thi-thu");
   await pg.getByRole("tab", { name: "Chờ chấm · 1" }).click();
   check("tab 'Chờ chấm' chỉ có bài đã nộp", await pg.getByRole("tabpanel").getByText("Hàm số").isVisible() && await pg.getByRole("tabpanel").getByText("Phương trình bậc hai").count() === 0);
   await shot(pg, "student-pages-bai-tap");

@@ -71,7 +71,7 @@ import { prisma } from "@/lib/prisma";
 
   section("Hộp xác nhận liệt kê câu chưa làm");
   await pg.getByText("5", { exact: true }).first().click(); // câu 1
-  await pg.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
+  await pg.locator(`[data-nop-bai="bang"]`).getByRole("button", { name: "Nộp bài" }).click();
   const dlg = pg.getByRole("dialog", { name: "Nộp bài ngay?" });
   await dlg.waitFor({ timeout: 15000 });
   const dt = (await dlg.innerText()).replace(/\s+/g, " ");
@@ -80,7 +80,7 @@ import { prisma } from "@/lib/prisma";
   check("'Làm tiếp': lượt vẫn đang làm (DB)", (await prisma.examAttempt.findFirst({ where: { examId: ex.id } }))?.status === "in_progress");
 
   section("Nộp → màn 'đã ghi nhận', không điểm");
-  await pg.locator("footer").getByRole("button", { name: "Nộp bài" }).click();
+  await pg.locator(`[data-nop-bai="bang"]`).getByRole("button", { name: "Nộp bài" }).click();
   await dlg.waitFor({ timeout: 15000 });
   await dlg.getByRole("button", { name: "Nộp bài", exact: true }).click();
   await pg.locator("[data-cho-cham]").waitFor({ timeout: 40000 });
@@ -88,7 +88,7 @@ import { prisma } from "@/lib/prisma";
   check("'Máy chủ KiN đã nhận bài của em' + mã lượt KN-…", doneText.includes("Máy chủ KiN đã nhận bài của em") && /KN-[A-Z0-9]{8}/.test(doneText), doneText.slice(0, 400));
   check("nói rõ chờ gia sư chấm, điểm/đáp án chưa hiển thị", doneText.includes("chờ gia sư chấm") && doneText.includes("chưa hiển thị"));
   check("KHÔNG có điểm dạng 'n/10' (không tính ngày dd/10/yyyy) và KHÔNG có 'Hạng #'", !/(?<![\d\/])\d+(\.\d+)?\s*\/\s*10(?![\d\/])/.test(doneText) && !doneText.includes("Hạng #"), doneText.slice(0, 300));
-  check("hết 1 lượt → không còn nút 'Thi lại đề này'", await pg.getByRole("button", { name: "Thi lại đề này" }).count() === 0);
+  check("hết 1 lượt → nút 'Làm lại' bị khoá (không còn lượt)", await pg.getByRole("button", { name: "Thi lại đề này" }).count() === 0 && (await pg.getByRole("button", { name: /^Làm lại/ }).count() === 0 || await pg.getByRole("button", { name: /^Làm lại/ }).first().isDisabled()));
   await shot(pg, "quiz-hs-da-nop");
   await pg.getByRole("button", { name: /Xem lại câu trả lời của em/ }).click();
   await pg.locator("[data-cho-cong-bo]").waitFor({ timeout: 30000 });
@@ -107,6 +107,8 @@ import { prisma } from "@/lib/prisma";
   check("cổng: không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   check("nút bắt đầu cao ≥ 44px", ((await pm.getByRole("button", { name: /Bắt đầu làm bài/ }).boundingBox())?.height ?? 0) >= 44);
   await pm.getByRole("button", { name: /Bắt đầu làm bài/ }).click();
+  await pm.getByRole("tab", { name: "Cả đề" }).waitFor({ timeout: 60000 }); // 390px mặc định "Từng câu" (đề xáo thứ tự) → chuyển "Cả đề" để thấy ô tự luận
+  await pm.getByRole("tab", { name: "Cả đề" }).click();
   await pm.getByRole("textbox", { name: /Giải x²/ }).waitFor({ timeout: 60000 });
   check("phòng làm: không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await shot(pm, "quiz-hs-mobile");

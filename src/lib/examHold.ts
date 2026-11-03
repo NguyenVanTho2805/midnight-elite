@@ -71,8 +71,12 @@ export async function dropHeldResults<T extends { userId: string; examId: string
   if (rows.length === 0) return rows;
   const holding = await holdingExamIds(rows.map(r => r.examId));
   if (holding.size === 0) return rows;
-  const pubs = await prisma.examAttemptPublish.findMany({ where: { examId: { in: [...holding] } }, select: { attemptId: true } });
+  const kids = await prisma.exam.findMany({ where: { variantOfId: { in: [...holding] } }, select: { id: true } }); // BU-04: mã con của đề giữ điểm
+  const pubs = await prisma.examAttemptPublish.findMany({ where: { examId: { in: [...holding, ...kids.map(k => k.id)] } }, select: { attemptId: true } });
   const owners = pubs.length === 0 ? [] : await prisma.examAttempt.findMany({ where: { id: { in: pubs.map(p => p.attemptId) } }, select: { userId: true, examId: true } });
-  const published = new Set(owners.map(o => `${o.userId}|${o.examId}`));
+  // BU-04: lượt ở MÃ CON được công bố thì tính cho ĐỀ GỐC (ExamResult ghi theo gốc).
+  const ownerExams = owners.length === 0 ? [] : await prisma.exam.findMany({ where: { id: { in: [...new Set(owners.map(o => o.examId))] } }, select: { id: true, variantOfId: true } });
+  const rootOf = new Map(ownerExams.map(e => [e.id, e.variantOfId ?? e.id]));
+  const published = new Set(owners.map(o => `${o.userId}|${rootOf.get(o.examId) ?? o.examId}`));
   return rows.filter(r => !holding.has(r.examId) || published.has(`${r.userId}|${r.examId}`));
 }

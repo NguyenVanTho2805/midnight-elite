@@ -93,18 +93,22 @@ check("PHÁ: gốc thêm câu / bớt câu → không khớp", !variantMatchesRo
 section("Cổng phát hành");
 const gq = (text: string, extra: Partial<{ explanation: string; options: { text: string }[] }> = {}) => ({ text, explanation: null, options: [{ text: "A" }, { text: "B" }], ...extra });
 const gate = (o: Partial<Parameters<typeof publishGate>[0]> = {}) => publishGate({ questions: [gq("Câu 1")], variantCount: 1, variantStudentSupport: false, mode: null, hasSchedule: true, ...o });
-check("đề thường sạch → qua cổng (VARIANT_STUDENT_SUPPORT=false không ảnh hưởng đề 1 mã)", gate() === null);
+check("đề thường sạch → qua cổng (cờ mã đề không ảnh hưởng đề 1 mã)", gate() === null);
 check("còn ⟦công thức⟧ trong đề → 422 FORMULA_UNREAD, nêu số câu", (() => { const g = gate({ questions: [gq("ok"), gq(`Tính ${FORMULA_PLACEHOLDER}`)] }); return g?.status === 422 && g.code === "FORMULA_UNREAD" && /câu 2/.test(g.error); })());
 check("⟦công thức⟧ trong phương án hoặc lời giải cũng bị chặn", gate({ questions: [gq("ok", { options: [{ text: `x = ${FORMULA_PLACEHOLDER}` }] })] })?.code === "FORMULA_UNREAD" && gate({ questions: [gq("ok", { explanation: FORMULA_PLACEHOLDER })] })?.code === "FORMULA_UNREAD");
 check("PHÁ: chữ gần giống (⟦công thức⟧ thiếu ngoặc) KHÔNG bị chặn", gate({ questions: [gq("Công thức ⟦ không đóng")] }) === null);
 check("questionsWithFormulaPlaceholder trả đúng chỉ số 1-based", questionsWithFormulaPlaceholder([gq("a"), gq(FORMULA_PLACEHOLDER), gq("c"), gq(FORMULA_PLACEHOLDER)]).join() === "2,4");
 check("đề 3 mã khi cờ VARIANT_STUDENT_SUPPORT=false → 422 VARIANTS_NOT_READY", (() => { const g = gate({ variantCount: 3 }); return g?.status === 422 && g.code === "VARIANTS_NOT_READY"; })());
 check("cùng đề 3 mã khi cờ = true → qua cổng", gate({ variantCount: 3, variantStudentSupport: true }) === null);
-check("CỜ mặc định đúng đặc tả: VARIANT_STUDENT_SUPPORT=false, AUDIENCE_LINK_READY=false", VARIANT_STUDENT_SUPPORT === false && AUDIENCE_LINK_READY === false);
+check("CỜ sau BU-04: VARIANT_STUDENT_SUPPORT=true, AUDIENCE_LINK_READY=true", VARIANT_STUDENT_SUPPORT === true && AUDIENCE_LINK_READY === true);
 check("mode=test thiếu giờ → NEED_SCHEDULE; có giờ → qua; mode=practice không cần giờ", gate({ mode: "test", hasSchedule: false })?.code === "NEED_SCHEDULE" && gate({ mode: "test", hasSchedule: true }) === null && gate({ mode: "practice", hasSchedule: false }) === null);
 check("mã con cũ không khớp gốc → VARIANTS_STALE (kiểm trước VARIANTS_NOT_READY)", gate({ variantCount: 3, variantsStale: true, variantStudentSupport: true })?.code === "VARIANTS_STALE" && gate({ variantCount: 3, variantsStale: true })?.code === "VARIANTS_STALE");
 check("PHÁ: variantsStale với đề 1 mã không chặn", gate({ variantCount: 1, variantsStale: true }) === null);
 check("công thức thắng mọi lý do khác (gia sư sửa công thức trước)", gate({ questions: [gq(FORMULA_PLACEHOLDER)], variantCount: 3, mode: "test", hasSchedule: false })?.code === "FORMULA_UNREAD");
+// BU-04 rà soát: đề N>1 mã mà có câu tự luận → học sinh làm mã con kẹt "chờ chấm", gia sư không thấy bài (màn chấm chỉ đọc đề gốc) → chặn phát hành.
+check("đề 3 mã CÓ tự luận (cờ = true) → 422 VARIANTS_ESSAY, nói rõ lý do", (() => { const g = gate({ variantCount: 3, variantStudentSupport: true, hasEssay: true }); return g?.status === 422 && g.code === "VARIANTS_ESSAY" && /tự luận/.test(g.error); })());
+check("PHÁ: đề 1 mã CÓ tự luận vẫn qua cổng; đề 3 mã KHÔNG tự luận vẫn qua", gate({ variantCount: 1, hasEssay: true }) === null && gate({ variantCount: 3, variantStudentSupport: true, hasEssay: false }) === null);
+check("thứ tự lý do: VARIANTS_STALE và NOT_READY thắng VARIANTS_ESSAY", gate({ variantCount: 3, variantsStale: true, hasEssay: true, variantStudentSupport: true })?.code === "VARIANTS_STALE" && gate({ variantCount: 3, hasEssay: true })?.code === "VARIANTS_NOT_READY");
 
 section("Tệp đề gốc: chống SSRF");
 check("Cloudinary https → cho phép", isAllowedSourceUrl("https://res.cloudinary.com/demo/raw/upload/v1/de.docx"));
