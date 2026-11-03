@@ -12,6 +12,7 @@ export interface TodoCounts {
   invoiceReminders: number; // F2 (KiN Pro): phiếu đã tới lúc nhắc bước 2–3 (0 nếu không phải Pro)
   unmarkedSessions: number; // ĐX-01: buổi đã qua giờ mà còn em chưa có điểm danh (14 ngày qua)
   joinRequests: number;     // BU-01: học sinh xin vào lớp đang chờ gia sư duyệt
+  unansweredQuestions: number; // TUT-003: câu hỏi của học sinh trong lớp mình chưa được gia sư trả lời (định nghĩa ở tutorQuestions.ts)
 }
 export interface TodoItem { key: string; label: string; count: number; href: string; urgent: boolean }
 
@@ -22,6 +23,7 @@ export function buildTodoItems(c: TodoCounts): TodoItem[] {
     { key: "check", label: "Phụ huynh báo đã chuyển hơn 24 giờ, chưa thấy tiền — kiểm sao kê", count: c.needBankCheck, href: "/lop-cua-toi/hoc-phi", urgent: true },
     { key: "consent", label: "Yêu cầu xác nhận của phụ huynh đang chờ", count: c.pendingConsent, href: "/lop-cua-toi/lop", urgent: true },
     { key: "joinRequests", label: "Học sinh xin vào lớp — duyệt hoặc từ chối", count: c.joinRequests, href: "/lop-cua-toi/lop", urgent: false },
+    { key: "questions", label: "Câu hỏi của học sinh trong lớp chưa trả lời", count: c.unansweredQuestions, href: "/lop-cua-toi/lop", urgent: false },
     { key: "reports", label: "Báo cáo cộng đồng trong lớp của bạn", count: c.classReports, href: "/lop-cua-toi/kiem-duyet", urgent: false },
     { key: "ungraded", label: "Bài tự luận / bài nộp chưa chấm", count: c.ungraded, href: "/lop-cua-toi/lop", urgent: false },
     { key: "reminders", label: "Tin nhắc lịch đã tới hạn, chờ bạn mở Zalo", count: c.remindersDue, href: "/lop-cua-toi/lich", urgent: false },

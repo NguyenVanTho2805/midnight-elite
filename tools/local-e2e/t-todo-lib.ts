@@ -1,6 +1,6 @@
 import { buildTodoItems } from "@/lib/tutorTodo";
 import { check, section, done } from "./h";
-const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0, joinRequests: 0 };
+const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0, joinRequests: 0, unansweredQuestions: 0 };
 section("buildTodoItems");
 check("không việc nào → rỗng", buildTodoItems(zero).length === 0);
 const items = buildTodoItems({ ...zero, draftInvoices: 9, classReports: 3, bankPending: 1, ungraded: 5, needBankCheck: 2 });
@@ -16,4 +16,7 @@ check("ĐX-01: buổi chưa điểm danh là việc thường, nhiều trước 
 const jr = buildTodoItems({ ...zero, joinRequests: 3, draftInvoices: 1 });
 check("BU-01: học sinh xin vào lớp là việc thường, nhiều trước phiếu nháp, dẫn tới danh sách lớp, nhãn không có tên em", jr[0].key === "joinRequests" && !jr[0].urgent && jr[0].count === 3 && jr[0].href === "/lop-cua-toi/lop" && jr[1].key === "draft" && !/\d{4,}|đ\b/.test(jr[0].label), jr.map(i => i.key));
 check("BU-01 (phá): joinRequests = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "joinRequests"));
+const uq = buildTodoItems({ ...zero, unansweredQuestions: 5, draftInvoices: 1 });
+check("TUT-003: câu hỏi học sinh chưa trả lời là việc thường, nhiều trước phiếu nháp, dẫn tới danh sách lớp, nhãn không có tên em", uq[0].key === "questions" && !uq[0].urgent && uq[0].count === 5 && uq[0].href === "/lop-cua-toi/lop" && !/Em |tên/.test(uq[0].label), uq);
+check("TUT-003 (phá): unansweredQuestions = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "questions"));
 done();
