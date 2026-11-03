@@ -312,7 +312,13 @@ function Content() {
             </ul>
           </section>
         )}
-        <section aria-labelledby="lop-join">
+        <section aria-labelledby="lop-tu-hoc" data-self-study>
+          <KinSectionHead id="lop-tu-hoc" title="Tự học" />
+          <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lộ trình Tiếng Anh IELTS, từ vựng, đọc, nghe, viết và thi thử — không cần vào lớp.</p>
+          <Link href="/student/tieng-anh" className={`${kinButtonClass("secondary")} mt-4`}>Mở Tiếng Anh tự học</Link>
+        </section>
+
+        <section aria-labelledby="lop-join" className="mt-8">
           <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
           <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp.</p>
           <Link href="/student/nhap-ma-lop" className={`${kinButtonClass("secondary")} mt-4`}>Nhập mã lớp</Link>
