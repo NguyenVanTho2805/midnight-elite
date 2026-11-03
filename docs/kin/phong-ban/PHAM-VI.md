@@ -23,7 +23,7 @@ COO giao cho phòng chủ hoặc chỉ định một tác tử làm, phòng kia 
 | `src/app/api/tutor/**`, `api/courses/**`, `api/invites/**`, `api/sessions*`, `api/attendance*` | tut-code | — |
 | `api/fees*`, `api/invoices*`, `src/lib/feeCharge*`, `invoiceServer*`, `sessionBook*` | **KHÓA** — chạm TIỀN, chỉ đọc; đổi phải có quyết định của chủ | — |
 | `src/components/tutor/**`, `src/components/shell/LopCuaToiFrame.tsx` | — | tut-dev |
-| `src/lib/tutorGate*.ts`, `tutorRoutes.ts`, `tutorProfile.ts`, `tutorInbox*.ts`, `tutorOverview.ts`, `joinRequest.ts` (BU-01), `enrollServer.ts` (BU-01) | tut-code | — |
+| `src/lib/tutorGate*.ts`, `tutorRoutes.ts`, `tutorProfile.ts`, `tutorInbox*.ts`, `tutorOverview.ts`, `joinRequest.ts` (BU-01), `enrollServer.ts` (BU-01), `classInvite.ts`, `tutorTodo.ts`, `tutorDashboard.ts` | tut-code | — |
 | `src/app/api/auth/register-tutor/**` | tut-code | — |
 
 ## Phòng Học sinh (pb-hoc-sinh)

@@ -34,7 +34,9 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
   // Tải danh sách buổi chưa điểm danh MỘT lần, dùng cho cả bộ đếm lẫn chi tiết từng dòng.
   const unmarkedP = loadUnmarkedSessions(tutorId, now);
   const remindP = loadReminderDue(tutorId, now);
-  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week, remindDue] = await Promise.all([
+  // BU-01: yêu cầu vào lớp gộp THEO LỚP — dòng chỉ có tên lớp và số yêu cầu, KHÔNG tên em.
+  const joinP = prisma.classJoinRequest.groupBy({ by: ["courseId"], where: { status: "pending", course: own }, _count: { _all: true }, _min: { createdAt: true } });
+  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week, remindDue, joinGroups] = await Promise.all([
     loadTutorTodoCounts(tutorId, now, { unmarked: unmarkedP, invoiceRemind: remindP }),
     unmarkedP,
     prisma.classAbsence.findMany({
@@ -80,7 +82,11 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
     }),
     loadTutorSchedule(tutorId, today, addDaysKey(today, 2), now),
     remindP,
+    joinP,
   ]);
+  const joinNames = joinGroups.length
+    ? new Map((await prisma.course.findMany({ where: { id: { in: joinGroups.map(g => g.courseId) } }, select: { id: true, name: true } })).map(x => [x.id, x.name]))
+    : new Map<string, string>();
 
   const expiring = makeups.filter(m => isMakeupExpiringSoon(m, now));
   const reminderRows: InboxRow[] = [];
@@ -139,6 +145,11 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       sub: `buổi ${inboxDateTime(u.startAt)} · thiếu ${u.missing}/${u.total} em${u.missingNames.length ? `: ${u.missingNames.join(", ")}${u.missing > u.missingNames.length ? "…" : ""}` : ""}`,
       href: unmarkedHref(u.courseId, u.dateKey),
     })), unmarked[0]?.startAt),
+    joinRequests: mk(c.joinRequests, joinGroups.slice(0, take).map(g => ({
+      title: joinNames.get(g.courseId) ?? "Lớp",
+      sub: `${g._count._all} yêu cầu đang chờ duyệt`,
+      href: `/lop-cua-toi/${g.courseId}?tab=hoc-sinh`,
+    })), joinGroups.map(g => g._min.createdAt).filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0] ?? null),
     invoiceRemind: invoiceRemindSource(c.invoiceReminders, remindDue),
     draft: mk(c.draftInvoices, drafts.map(i => ({
       title: i.student.name, sub: `Phiếu nháp ${monthText(i.yearMonth)} · ${inboxVnd(i.amountDue)}`, href: "/lop-cua-toi/hoc-phi",

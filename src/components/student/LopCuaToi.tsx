@@ -7,6 +7,7 @@
 // của lớp trước, bản ghi, tab và trạng thái gập của lớp trước không thể lọt sang lớp đang xem. Lỗi tải danh sách lớp nói là lỗi, không coi là "chưa vào lớp nào".
 // BỎ vì chưa có dữ liệu thật: nút "Liên hệ cô …" (chưa có kênh nhắn), "Hoạt động buổi học" (không có bản ghi từng buổi theo lớp), tab "Thông báo",
 // "n học sinh" (không hiện dữ liệu bạn học), dung lượng tệp, "Học trực tuyến". Giữ: mọi liên kết cũ (Tiếp tục học, Xem lớp học, Tài liệu & bản ghi của lớp này).
+// BU-01: khối "Đang chờ duyệt" (yêu cầu vào lớp đã gửi, gia sư chưa duyệt) đứng trên "Tham gia lớp khác"; rỗng thì ẩn, lỗi tải thì báo + thử lại. Huỷ = biểu mẫu POST (máy chủ 303).
 // MD-07/SV-03: tab "Tài liệu & bản ghi" gộp 3 nguồn của CHÍNH lớp này: bản ghi gia sư dán theo buổi (/api/courses/[id]/recordings, chỉ học sinh đã ghi danh),
 // tài liệu đính kèm bài (Lesson.documents) và các bài giảng/bản ghi bài. Không có dung lượng tệp, không "n lượt xem" (KiN không đo).
 "use client";
@@ -78,6 +79,43 @@ function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) 
 interface Chapter { id: string; title: string; order: number; lessons: Lesson[] }
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
 interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[] }
+
+interface MyJoinReq { id: string; status: string; course: { id: string; name: string }; personalCode?: string | null }
+
+/** BU-01: yêu cầu vào lớp đang chờ gia sư duyệt của chính em. Rỗng/đang tải = không hiện gì; lỗi = báo và cho thử lại. */
+function PendingJoinBlock({ className = "" }: { className?: string }) {
+  const [items, setItems] = useState<MyJoinReq[] | "loi" | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/invites/my-requests", { credentials: "same-origin", cache: "no-store" })
+      .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d: { items?: MyJoinReq[] }) => { if (live) setItems((d.items ?? []).filter(i => i.status === "pending")); })
+      .catch(() => { if (live) setItems("loi"); });
+    return () => { live = false; };
+  }, [tick]);
+  if (items === null || (Array.isArray(items) && items.length === 0)) return null;
+  if (items === "loi") return <div className={className}><ErrorStrip message="Không tải được các yêu cầu vào lớp của bạn." onRetry={() => { setItems(null); setTick(t => t + 1); }} /></div>;
+  return (
+    <section aria-labelledby="lop-cho-duyet" data-pending-join className={className}>
+      <KinSectionHead id="lop-cho-duyet" title="Đang chờ duyệt" aside={`${items.length} lớp`} />
+      <ul>
+        {items.map(r => (
+          <li key={r.id} data-pending-join-row className="py-[var(--kin-kc-5)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
+            <p className="min-w-0 break-words text-[var(--kin-chu-chinh)]">{r.course.name}</p>
+            <p className="mt-1"><KinStatus tone="cho">Chờ gia sư duyệt</KinStatus></p>
+            <div className="mt-2 flex flex-wrap gap-3">
+              <Link href={r.personalCode ? `/student/nhap-ma-lop?code=${encodeURIComponent(r.personalCode)}` : "/student/nhap-ma-lop"} className={kinButtonClass("secondary")}>Xem yêu cầu</Link>
+              <form method="post" action={`/api/invites/my-requests/${encodeURIComponent(r.id)}/cancel`}>
+                <button type="submit" aria-label={`Huỷ yêu cầu vào lớp ${r.course.name}`} className={kinButtonClass("ghost")}>Huỷ yêu cầu</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 type Tab = "tong-quan" | "tai-lieu" | "bai-tap";
 const TYPE_LABEL: Record<string, string> = { record: "Bản ghi", live: "Học trực tiếp", quiz: "Bài tập", document: "Tài liệu" };
@@ -151,10 +189,12 @@ function Content() {
       return wrap(<>{head()}
         <KinEmptyState title="Bạn chưa vào lớp nào" action={<Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>}>
           Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp, bài tập và buổi học sẽ hiện ở đây.
-        </KinEmptyState></>);
+        </KinEmptyState>
+        <PendingJoinBlock className="pt-8" /></>);
     }
     return wrap(<>{head(`Bạn đang học ${classes.length} lớp. Chọn một lớp để xem bài học, tài liệu và bản ghi của lớp đó.`)}
       <DanhMucLop classes={classes} doneByCourse={courseCompletion} />
+      <PendingJoinBlock className="pt-8" />
       <div className="pt-6"><Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp khác</Link></div></>);
   }
   if (loading || progressLoading || enrollmentsLoading) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
@@ -318,6 +358,7 @@ function Content() {
           <Link href="/student/tieng-anh" className={`${kinButtonClass("secondary")} mt-4`}>Mở Tiếng Anh tự học</Link>
         </section>
 
+        <PendingJoinBlock className="mt-8" />
         <section aria-labelledby="lop-join" className="mt-8">
           <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
           <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp.</p>

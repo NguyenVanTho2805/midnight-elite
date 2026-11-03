@@ -3,6 +3,18 @@
 Mọi việc "sẵn sàng làm ngay" đã làm hoặc đã ghi rõ vì sao chưa làm. Ghi chú từng việc nằm trong Google Sheet (cột H/I của Thọ; không đụng cột J/K của Thanh).
 Bộ test chạy với Postgres + Next dev + Chromium thật nằm ở `tools/local-e2e/` (xem README ở đó).
 
+## BU-01 (Bigupdate 02/11/2026) — Lớp: joinPolicy, lớp miễn phí, mã mời cá nhân, duyệt vào lớp — LÀM XONG PHẦN MÃ, chờ chạy test tuần tự
+Nhánh `claude/bu-01-lop`, HEAD `446057a`. PR chưa mở. Backlog: `backlog/bigupdate.csv` dòng BU-01.
+- **Vì sao:** lớp chưa có chính sách vào lớp rõ ràng; gia sư cần lớp miễn phí tự vào, lớp duyệt từng người, lớp chỉ vào bằng mã (mã gắn đúng một người).
+- **Đã làm (commit):** `58454e6` đặc tả lớp `joinPolicy` (open|approve|invite_only), mã cá nhân `boundUserId`, `ClassJoinRequest`, duyệt vào lớp; `ac98b4b` thông điệp lớp đóng, chỉ vào bằng mã; `853e3b5` sửa P2 rà soát + P3; `446057a` thông điệp `join=khong-co`; `89e2565` bỏ eslint-disable thừa. Schema chỉ thêm, không thêm `Enrollment.status` mới.
+- **Test đã chạy, xanh:** `tsc` (1 lỗi CÓ SẴN: `ts-fsrs` thiếu node_modules), `eslint`, `t-join-request-lib` 71 pass, `t-todo-lib` 10, `t-tutor-inbox-lib` 41.
+- **CHƯA CHẠY (không tính là xanh):** `t-join-request`, `t-free-class-fee`, `ui-join-request`, `t-invites`, `t-invite-preview`, `t-bulk-invite-lib`, `ui-invite-input`, `ui-bulk-invite`, `ui-lop`, `t-tutor-inbox`, `t-hocphi-schema-additive`, `t-db-push-guard`. Chưa chạy thử trên trình duyệt.
+- **Rà soát (kin-ra-soat):** P1 0. P2 4, đã sửa: (1) `/join` chỉ-mã trả 303 `?join=chi-ma`; (2) duyệt vào lớp đóng ghi `dong`; (3) thông báo cho `pending_consent`; (4) `by-code` chặn gia sư chờ duyệt. P3 4 đã sửa.
+- **Quyết định/giả định:** Q1: lớp miễn phí = `Course.tag='Miễn phí'` + `price 0` + không có `CourseFeeRate` (vì `TaoLop` luôn ghi price 0); `open` chỉ cho lớp miễn phí; bị từ chối chờ 24h mới xin lại.
+- **Lỗi có sẵn:** `tsc` thiếu `ts-fsrs` (node_modules).
+- **Giới hạn còn lại (nợ P3):** capacity chỉ đếm ACTIVE, không đếm `pending_consent` (có sẵn); `/join` chưa giới hạn tần suất; `api/tutor/lop/[courseId]/hoc-sinh` vẫn upsert Enrollment ngoài `enrollInTx`; đổi price/tag sau khi đặt `open` không tự hạ `joinPolicy`; chưa có khung Figma (không có công cụ); chưa cập nhật `t-invites`/`t-invite-preview`/`t-notify-links` (+3 type); nhãn audit `adminOps.ts:95`; chưa có chấm "n chờ duyệt" ở LopHoc và nút "Duyệt tất cả".
+- **Việc của Thọ:** chạy tuần tự các bài chưa chạy ở trên rồi mới merge; xác nhận Q1; kiểm tay 504:5622, 504:5865.
+
 ## BU-00 (Bigupdate 31/10/2026) — Tách 3 giao diện theo vai — LÀM XONG PHẦN MÃ, đang chạy lại test
 Nhánh `claude/bu-00-phan-vai`, HEAD `f3ba8ac`, 8 commit kể từ `main` (`b099289`). Kế hoạch: `rd/BIGUPDATE-KE-HOACH.md` mục BU-00; backlog: `backlog/bigupdate.csv`; mô tả PR: `rd/pr/BU-00.md`. PR chưa mở.
 - **Vì sao:** gia sư mới đăng ký mang `role: "student"` tới khi được duyệt nên thấy vỏ học sinh; gia sư đã duyệt mặc định ở chế độ gọn, tắt Bài tập (không có lối tạo đề); gia sư phải làm việc trong `/admin` (vỏ quản trị) mới soạn được đề và nội dung lớp.

@@ -12,21 +12,21 @@
 //      transaction nên usedCount, Enrollment, auditLog đều không bị chạm.
 //   1. Tìm invite theo code (`findUnique` — code có @unique).
 //   2. Kiểm hợp lệ: !revoked, chưa hết hạn, còn lượt.
-//   3. Trong $transaction + pg_advisory_xact_lock theo invite.id:
-//      a. updateMany tăng `usedCount` NẾU còn lượt (atomic — 2 học viên bấm
-//         cùng giây cuối không vượt maxUses).
-//      b. Kiểm Course.classStatus, Course.capacity (dưới active count).
-//      c. Enrollment.upsert — status qua `deriveStatusForNewEnrollment`.
-//   4. logAction "class_invite.redeem" + "enrollment.create".
+//   3. BU-01: `redeemOutcome` (src/lib/joinRequest.ts) quyết định: mã cá nhân của người khác → 403 (không đụng usedCount);
+//      lớp "approve" → tạo yêu cầu chờ duyệt (submitJoinRequestTx, KHÔNG có Enrollment); còn lại → vào lớp ngay.
+//   4. Vào lớp đi qua `enrollInTx` (src/lib/enrollServer.ts) — đường duy nhất tạo Enrollment — rồi `updateMany` tăng
+//      `usedCount` nguyên tử trong cùng giao dịch (2 học viên bấm cùng giây cuối không vượt maxUses).
+//   5. logAction "class_invite.redeem" + "enrollment.create" (sau commit).
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
-import { deriveStatusForNewEnrollment, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
-import { assertCanAddStudent } from "@/lib/planServer";
-import { CLASS_PAUSED_MESSAGE } from "@/lib/planLimits";
 import { canSelfEnroll, ENROLL_NOT_STUDENT_MESSAGE, ENROLL_TUTOR_PENDING_MESSAGE } from "@/lib/enrollEligibility";
+import { isApplicant } from "@/lib/tutorGate";
+import { loadTutorStatus } from "@/lib/tutorGateServer";
+import { effectivePolicy, redeemOutcome } from "@/lib/joinRequest";
+import { enrollInTx, logEnrollment, submitJoinRequestTx, notifyTutorNewJoinRequest } from "@/lib/enrollServer";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -48,6 +48,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
     return NextResponse.json({ error: ENROLL_NOT_STUDENT_MESSAGE }, { status: 403 });
   }
+  // Người nộp đơn gia sư vẫn là role student nhưng chưa phải học viên của lớp nào qua đường này.
+  if (isApplicant(await loadTutorStatus(session))) {
+    return NextResponse.json({ error: "Tài khoản gia sư chờ duyệt chưa vào lớp bằng cách này" }, { status: 403 });
+  }
 
   const { id: code } = await params;
   if (typeof code !== "string" || code.length < 4 || code.length > 20) {
@@ -55,8 +59,28 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const inv = await invites().findUnique({ where: { code } });
+  // Đã có yêu cầu pending bằng chính mã này (bấm lại / F5): trả lại idempotent, không đòi mã còn lượt (mã cá nhân maxUses 1 đã dùng).
+  if (inv && (!inv.boundUserId || inv.boundUserId === session.userId)) {
+    // Đã là thành viên: trả idempotent dù mã đã hết lượt (mã cá nhân maxUses 1). Mã gắn người khác không vào nhánh này (đi tiếp tới 403).
+    const enrolledAlready = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true } });
+    if (enrolledAlready) return NextResponse.json({ ok: true, alreadyEnrolled: true, courseId: inv.courseId });
+    const mine = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true, status: true, inviteId: true } });
+    if (mine && mine.status === "pending" && mine.inviteId === inv.id && !inv.revoked) {
+      return NextResponse.json({ ok: true, pending: true, requestId: mine.id, courseId: inv.courseId });
+    }
+  }
   const pre = checkInviteValidity(inv);
   if (!pre.ok) return NextResponse.json({ error: pre.error }, { status: pre.status });
+
+  const course = await prisma.course.findUnique({
+    where:  { id: inv!.courseId },
+    select: { id: true, name: true, classStatus: true, capacity: true, ownerId: true, joinPolicy: true },
+  });
+  if (!course) return NextResponse.json({ error: "Lớp không còn tồn tại" }, { status: 404 });
+
+  // Mã cá nhân của người khác: từ chối TRƯỚC mọi thứ khác (không lộ lớp, không tăng lượt, không tạo yêu cầu).
+  const outcome = redeemOutcome({ policy: effectivePolicy(course.joinPolicy), invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
+  if (outcome.action === "deny") return NextResponse.json({ error: outcome.error }, { status: outcome.status });
 
   // Đã đăng ký rồi — không cần redeem nữa, trả 200 idempotent để UI hiển thị
   // "bạn đã trong lớp" chứ không ra 409 lạc đề.
@@ -67,39 +91,32 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, alreadyEnrolled: true, courseId: inv!.courseId });
   }
 
-  const course = await prisma.course.findUnique({
-    where:  { id: inv!.courseId },
-    select: { id: true, name: true, classStatus: true, capacity: true, ownerId: true },
-  });
-  if (!course) return NextResponse.json({ error: "Lớp không còn tồn tại" }, { status: 404 });
   if (course.classStatus !== "open") {
     return NextResponse.json({ error: "Lớp đang đóng, không nhận học viên mới" }, { status: 409 });
   }
 
-  const status = await deriveStatusForNewEnrollment(session.userId);
-
   try {
+    if (outcome.action === "request") {
+      const r = await prisma.$transaction((tx) => submitJoinRequestTx(tx, { userId: session.userId, courseId: course.id, invite: { id: inv!.id, maxUses: inv!.maxUses } }));
+      if (!r.ok) return NextResponse.json({ error: r.error, code: r.code }, { status: r.status });
+      if (r.created) {
+        await logAction(session.userId, "class_join_request.create", "ClassJoinRequest", r.requestId, { courseId: course.id, inviteId: inv!.id });
+        await notifyTutorNewJoinRequest(course);
+      }
+      return NextResponse.json({ ok: true, pending: true, requestId: r.requestId, courseId: course.id });
+    }
+
     const result = await prisma.$transaction(async (tx) => {
-      // Khoá theo invite.id — 2 học viên redeem cùng mã xếp hàng.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`class_invite:${inv!.id}`}))`;
-
-      // Capacity check đọc trong transaction để không race với redeem khác.
-      if (course.capacity !== null) {
-        const activeCount = await tx.enrollment.count({
-          where: { courseId: course.id, status: ENROLLMENT_STATUS.ACTIVE },
-        });
-        if (activeCount >= course.capacity) {
-          throw Object.assign(new Error("CAPACITY_FULL"), { status: 409, body: "Lớp đã đầy" });
-        }
+      const enr = await enrollInTx(tx, { userId: session.userId, course, source: "class_invite", inviteId: inv!.id });
+      if (!enr.ok) throw Object.assign(new Error(enr.code), { status: enr.status, body: enr.error, code: enr.code });
+      if (!enr.created) return enr;
+      // Em đang có yêu cầu pending của lớp này mà lại vào được ngay bằng mã khác ⇒ chuyển yêu cầu thành approved trong CÙNG giao dịch
+      // (không để hàng chờ của gia sư còn một dòng ma). Mã của yêu cầu đã giữ một lượt: nếu chính là mã này thì không tính lượt hai lần.
+      const pendingReq = await tx.classJoinRequest.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { id: true, status: true, inviteId: true } });
+      if (pendingReq?.status === "pending") {
+        await tx.classJoinRequest.update({ where: { id: pendingReq.id }, data: { status: "approved", decidedAt: new Date(), note: null } });
+        if (pendingReq.inviteId === inv!.id) return enr;
       }
-
-      // KiN Pro: hạn mức học viên đang học của gia sư (cổng TẮT mặc định). Chỉ chặn học viên MỚI vào; học viên thấy chữ trung tính, không lộ gói.
-      // Hiện trong cùng giao dịch, có khoá theo gia sư: hai em bấm cùng giây cuối không cùng vượt trần.
-      const gate = await assertCanAddStudent(course.ownerId, { feature: "redeem", studentId: session.userId, db: tx });
-      if (!gate.allow) {
-        throw Object.assign(new Error("CLASS_NOT_ACCEPTING"), { status: 409, body: CLASS_PAUSED_MESSAGE, code: "CLASS_NOT_ACCEPTING" });
-      }
-
       // Atomic increment: KHÔNG tăng nếu đã đạt maxUses — tránh race ở giây cuối.
       const txInvites = invites(tx as unknown as typeof prisma);
       const bumped = await txInvites.updateMany({
@@ -111,21 +128,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       if (bumped.count === 0) {
         throw Object.assign(new Error("INVITE_UNAVAILABLE"), { status: 409, body: "Mã mời đã hết lượt sử dụng" });
       }
-
-      const enr = await tx.enrollment.create({
-        data: { userId: session.userId, courseId: course.id, status },
-      });
       return enr;
     });
 
     await logAction(session.userId, "class_invite.redeem", "ClassInvite", inv!.id, {
-      courseId: course.id, code, enrollmentId: result.id,
+      courseId: course.id, code, enrollmentId: result.enrollmentId,
     });
-    await logAction(session.userId, "enrollment.create", "Enrollment", result.id, {
-      courseId: course.id, status, source: "class_invite", inviteId: inv!.id,
-    });
+    await logEnrollment(session.userId, result, { courseId: course.id, source: "class_invite", inviteId: inv!.id });
 
-    return NextResponse.json({ ok: true, enrollmentId: result.id, courseId: course.id, status });
+    return NextResponse.json({ ok: true, enrollmentId: result.enrollmentId, courseId: course.id, status: result.status });
   } catch (e: unknown) {
     const err = e as { status?: number; body?: string; message?: string; code?: string };
     if (err.status && err.body) return NextResponse.json(err.code === "CLASS_NOT_ACCEPTING" ? { error: err.body, code: err.code } : { error: err.body }, { status: err.status });

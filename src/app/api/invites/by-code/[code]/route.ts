@@ -8,14 +8,17 @@
 // POST redeem đã bắt).
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
+import { isNextResponse } from "@/lib/auth-guard";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { tuitionPreview } from "@/lib/invitePreview";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
+import { effectivePolicy, isFreeClass, redeemOutcome } from "@/lib/joinRequest";
+import { loadFeeRateCourseIds, requireStudentForJoin } from "@/lib/enrollServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  // Học sinh thật (cùng cổng với redeem / my-requests): gia sư chờ duyệt 403, không xem trước được lớp.
+  const session = await requireStudentForJoin();
+  if (isNextResponse(session)) return session;
 
   const { code } = await params;
   if (typeof code !== "string" || code.length < 4 || code.length > 20) {
@@ -34,11 +37,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     where:  { id: inv!.courseId },
     select: {
       id: true, name: true, shortTitle: true, category: true,
-      classStatus: true, capacity: true,
+      classStatus: true, capacity: true, joinPolicy: true, price: true, tag: true,
       owner: { select: { id: true, name: true } },
     },
   });
   if (!course) return NextResponse.json({ status: "invalid", error: "Lớp không còn tồn tại" });
+
+  // BU-01: mã cá nhân của người khác — chỉ báo "gắn với tài khoản khác", KHÔNG trả tên lớp / gia sư / lịch.
+  const policy = effectivePolicy(course.joinPolicy);
+  const outcome = redeemOutcome({ policy, invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
+  if (outcome.action === "deny") return NextResponse.json({ status: "invalid", reason: outcome.status, error: outcome.error });
 
   // Kiểm đã enroll chưa — UI dựa vào để đổi CTA.
   const existing = await prisma.enrollment.findUnique({
@@ -48,7 +56,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
 
   // Xem trước cho học sinh (Figma 32:54): lịch học, số buổi đã học, học phí theo bậc thang SAU KHI vào lớp này.
   // Chỉ đọc. Học phí chỉ có khi lớp có gia sư phụ trách (học phí tính theo gia sư); lớp của trung tâm thì để null.
-  const [slots, taught, otherSubjects, override] = await Promise.all([
+  const [slots, taught, otherSubjects, override, myRequest, rated] = await Promise.all([
     prisma.classSchedule.findMany({ where: { courseId: course.id, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
     // ĐX-00: "đã học" = buổi đã diễn ra (ngày ≤ hôm nay giờ VN, có ít nhất 1 em có mặt/muộn), không đếm phiên rỗng.
     prisma.attendanceSession.count({ where: { courseId: course.id, ...taughtSessionWhere() } }),
@@ -56,7 +64,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
       ? prisma.enrollment.count({ where: { userId: session.userId, status: "active", courseId: { not: course.id }, course: { ownerId: course.owner.id } } })
       : Promise.resolve(0),
     prisma.tuitionOverride.findUnique({ where: { userId: session.userId }, select: { pricePerSession: true } }),
+    prisma.classJoinRequest.findUnique({
+      where: { userId_courseId: { userId: session.userId, courseId: course.id } },
+      select: { id: true, status: true, note: true, createdAt: true, decidedAt: true },
+    }),
+    loadFeeRateCourseIds([course.id]),
   ]);
+  const isFree = isFreeClass({ price: course.price, tag: course.tag, hasFeeRate: rated.has(course.id) });
 
   return NextResponse.json({
     status:          "ok",
@@ -72,10 +86,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
       classStatus: course.classStatus,
       capacity:    course.capacity,
       owner:       course.owner,
+      isFree,
     },
+    joinPolicy:      policy,
+    boundToMe:       inv!.kind === "personal" && inv!.boundUserId === session.userId,
+    pendingRequest:  myRequest?.status === "pending" ? { id: myRequest.id, createdAt: myRequest.createdAt } : null,
+    rejection:       myRequest?.status === "rejected" ? { note: myRequest.note, decidedAt: myRequest.decidedAt } : null,
     alreadyEnrolled: !!existing && existing.status === "active",
     schedule:        slots,
     taught,
-    tuition:         course.owner ? tuitionPreview(otherSubjects, override?.pricePerSession ?? null) : null,
+    tuition:         course.owner && !isFree ? tuitionPreview(otherSubjects, override?.pricePerSession ?? null) : null,
   });
 }

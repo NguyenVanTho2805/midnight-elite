@@ -19,12 +19,22 @@ export type InvitePreviewOk = {
     id: string; name: string; shortTitle: string; category: string;
     classStatus: string; capacity: number | null;
     owner: OwnerLite | null;
+    /** BU-01: lớp miễn phí (máy chủ tính bằng isFreeClass). Vắng = như cũ (không miễn phí). */
+    isFree?: boolean;
   };
   alreadyEnrolled: boolean;
   /** Xem trước (Figma 32:54): lịch cố định hàng tuần, số buổi lớp đã học, học phí/buổi sau khi vào lớp (null nếu lớp không có gia sư phụ trách). */
   schedule?: { dayOfWeek: number; startTime: string; endTime: string }[];
   taught?: number;
   tuition?: { subjectCount: number; pricePerSession: number; override: boolean } | null;
+  /** BU-01: cách vào lớp hiệu lực. Vắng/"invite_only"/"open" = bấm "Vào lớp này" như cũ; "approve" = gửi yêu cầu, gia sư duyệt. */
+  joinPolicy?: "invite_only" | "open" | "approve";
+  /** Mã cá nhân này đúng là của tài khoản đang đăng nhập. */
+  boundToMe?: boolean;
+  /** Đã có yêu cầu đang chờ duyệt cho lớp này. */
+  pendingRequest?: { id: string; createdAt: string } | null;
+  /** Lần gần nhất bị từ chối (còn lưu): lời nhắn của gia sư + lúc quyết định. */
+  rejection?: { note: string | null; decidedAt: string } | null;
 };
 export type InvitePreviewInvalid = { status: "invalid"; error?: string; reason?: number };
 export type InvitePreview = InvitePreviewOk | InvitePreviewInvalid;
