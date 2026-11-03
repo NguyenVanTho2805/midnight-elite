@@ -6,7 +6,7 @@
 //  • Không ghi ExamAttempt.score / ExamAnswer: điểm vẫn chấm lúc nộp theo đáp án cuối (computeRawEarned).
 import { prisma } from "@/lib/prisma";
 import { examHolds } from "@/lib/examHold";
-import { finalizeAttempt } from "@/lib/examGrading";
+import { finalizeAttempt, hasExamWindowEnded } from "@/lib/examGrading";
 import {
   EMPTY_CORRECTION, afterReveal, afterSubmit, canReveal, isFinished, multiAnswerCorrect, shortAnswerCorrect, type CorrectionRow,
 } from "@/lib/examCorrection";
@@ -28,10 +28,10 @@ export async function checkPracticeQuestion(
     return fail(409, "expired", "Đã hết giờ làm bài");
   }
 
-  const exam = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { id: true, mode: true, answerVisibility: true, hideAnswerForWrong: true } });
+  const exam = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { id: true, mode: true, answerVisibility: true, hideAnswerForWrong: true, date: true, time: true, duration: true } });
   if (!exam) return fail(404, "not_found", "Không tìm thấy đề thi");
   if (exam.mode !== "practice") return fail(403, "not_practice", "Đề này là bài kiểm tra, không có chấm từng câu.");
-  const policy = practicePolicy(exam, await examHolds(prisma, exam.id));
+  const policy = practicePolicy(exam, await examHolds(prisma, exam.id), hasExamWindowEnded(exam));
   if (policy.feedback === "none") return fail(403, "no_feedback", "Đề này có phần gia sư chấm, chưa có phản hồi từng câu.");
 
   const action = body.action === undefined ? "check" : body.action;

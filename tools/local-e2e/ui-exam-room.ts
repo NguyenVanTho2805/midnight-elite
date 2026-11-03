@@ -276,6 +276,9 @@ import { SEC, mkExam, mkFiveQuestions } from "./exam-room-fx";
   const resBtn = pp.getByRole("button", { name: /^Làm lại/ });
   check("màn kết quả có nút 'Làm lại' (≥ 44px) và nút xem lại", ((await resBtn.first().boundingBox())?.height ?? 0) >= 44 && await pp.getByRole("button", { name: /Xem lại/ }).count() >= 1);
   await shot(pp, "exam-room-result");
+  // BU-04 rà soát: luyện tập không có ExamResult → trước đây tải lại trang rơi về cổng vào đề và mất kết quả. Nay dựng lại từ lượt nộp gần nhất.
+  await pp.reload({ waitUntil: "domcontentloaded" });
+  await eventually("tải lại trang luyện tập sau khi nộp: vẫn thấy màn kết quả (không rơi về cổng vào đề), không có 'Hạng #'", async () => { const t = await pp.locator("body").innerText(); return !t.includes("Hạng #") && (t.includes("Điểm luyện tập") || t.includes("Chờ gia sư chấm")) && (await pp.getByRole("button", { name: "Bắt đầu làm bài" }).count()) === 0; }, 40000);
   await cp.close();
 
   section("Không lỗi trình duyệt");

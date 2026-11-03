@@ -16,12 +16,14 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
   const [st, setSt] = useState<SaveState>(initialSaveState);
   const [textStatus, setTextStatus] = useState<Record<string, DraftState>>({});
   const ref = useRef<SaveState>(st);
-  const busy = useRef(false);
+  /** Vòng gửi đang chạy (nếu có): người gọi `flush()` trong lúc đang gửi dở nhận lại CHÍNH promise này để chờ hết vòng (kể cả phần bổ sung đến muộn). */
+  const running = useRef<Promise<void> | null>(null);
   const again = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idRef = useRef(attemptId);
   const hk = useRef(hooks);
   useEffect(() => { hk.current = hooks; });
+  const retryFlush = useRef<() => Promise<void>>(() => Promise.resolve()); // hẹn thử lại gọi qua ref: một useCallback không được tự tham chiếu chính nó
 
   const commit = useCallback((n: SaveState) => {
     ref.current = n; setSt(n);
@@ -30,13 +32,13 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
   }, []);
   const setText = (b: SaveAnswerBody, s: DraftState) => { if (b.kind === "text") setTextStatus(m => ({ ...m, [b.questionId]: s })); };
 
-  const flush = useCallback(async (): Promise<void> => {
+  const flush = useCallback((): Promise<void> => {
     const id = idRef.current;
-    if (!id) return;
-    if (busy.current) { again.current = true; return; }
-    busy.current = true;
+    if (!id) return Promise.resolve();
+    // BU-04 rà soát: trước đây trả về NGAY khi đang gửi dở → nộp bài / "Kiểm tra câu này" chạy khi đáp án cuối chưa kịp lên máy chủ (mất đáp án, chấm đáp án cũ).
+    if (running.current) { again.current = true; return running.current; }
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    try {
+    const p = (async () => {
       do {
         again.current = false;
         while (ref.current.queue.length > 0) {
@@ -56,12 +58,19 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
           if (kind === "drop") { commit(dropQueued(ref.current, item.key, item.seq)); setText(item.body, { kind: "idle" }); continue; } // vd. Phần đã khoá: giữ lại chỉ làm chip đỏ mãi
           setText(item.body, { kind: "failed" });
           commit(markFailed(ref.current));
-          timer.current = setTimeout(() => { void flush(); }, backoffMs(ref.current.retries - 1));
+          timer.current = setTimeout(() => { void retryFlush.current(); }, backoffMs(ref.current.retries - 1));
           return;
         }
       } while (again.current);
-    } finally { busy.current = false; }
+    })().finally(() => { running.current = null; });
+    running.current = p;
+    return p;
   }, [commit]);
+
+  useEffect(() => { retryFlush.current = flush; }, [flush]);
+
+  /** Số câu còn trong hàng đợi (chưa lên máy chủ). 0 = mọi đáp án đã lưu. */
+  const pending = useCallback((): number => ref.current.queue.length, []);
 
   const enqueue = useCallback((body: SaveAnswerBody, delayMs = 0) => {
     commit(enqueueAnswer(ref.current, body));
@@ -99,5 +108,5 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const chip: ChipView = { status: st.status, label: chipLabel(st).replace(/ · Thử lại$/, "") };
-  return { chip, textStatus, enqueue, flush, adopt, clearStored };
+  return { chip, textStatus, enqueue, flush, pending, adopt, clearStored };
 }

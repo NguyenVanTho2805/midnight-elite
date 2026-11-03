@@ -21,6 +21,11 @@ check("practice + không giữ điểm → instant", practicePolicy({ mode: "pra
 check("test / đề cũ (mode null) → none", practicePolicy({ mode: "test", answerVisibility: "after_submit", hideAnswerForWrong: false }, false).feedback === "none" && practicePolicy({ mode: null, answerVisibility: "after_submit", hideAnswerForWrong: false }, false).feedback === "none");
 check("đề giữ điểm tới khi công bố → none dù là practice", practicePolicy({ mode: "practice", answerVisibility: "after_submit", hideAnswerForWrong: false }, true).feedback === "none");
 check("answerVisibility never → không được lộ; hideAnswerForWrong → hideWrong", !practicePolicy({ mode: "practice", answerVisibility: "never", hideAnswerForWrong: false }, false).revealAllowed && practicePolicy({ mode: "practice", answerVisibility: "after_submit", hideAnswerForWrong: true }, false).hideWrong);
+// BU-04 rà soát: "chỉ sau khi hết thời hạn" không được mở sớm hơn màn Xem lại; giá trị lạ coi như CHƯA mở (cùng STU-001: rác = never)
+const apx = (v: string, ended?: boolean) => practicePolicy({ mode: "practice", answerVisibility: v, hideAnswerForWrong: false }, false, ended);
+check("after_exam_ends: chưa hết khung → KHÔNG lộ đáp án/lời giải; hết khung → được", !apx("after_exam_ends", false).revealAllowed && !apx("after_exam_ends", false).explainAllowed && apx("after_exam_ends", true).revealAllowed && apx("after_exam_ends", true).explainAllowed);
+check("after_exam_ends mà không truyền windowEnded → mặc định an toàn (chưa mở)", !apx("after_exam_ends").revealAllowed);
+check("PHÁ: giá trị rác ('xyz', '') không lộ đáp án dù windowEnded=true; after_submit không phụ thuộc khung", !apx("xyz", true).revealAllowed && !apx("", true).revealAllowed && apx("after_submit", false).revealAllowed);
 
 section("clusterRightCount");
 const truths = [{ optionId: "a", isTrue: true }, { optionId: "b", isTrue: false }, { optionId: "c", isTrue: true }, { optionId: "d", isTrue: false }];

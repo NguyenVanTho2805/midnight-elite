@@ -80,6 +80,7 @@ export default function MaDe({ id }: { id: string }) {
   const blockers: string[] = [];
   if (hasVariants && formulaQs.length > 0) blockers.push(`${PUBLISH_BLOCK_TEXT.FORMULA_UNREAD} (Câu ${formulaQs.slice(0, 8).join(", ")}${formulaQs.length > 8 ? "…" : ""}.)`);
   if (noSupport) blockers.push(PUBLISH_BLOCK_TEXT.VARIANTS_NOT_READY);
+  if (hasVariants && questions.some(q => q.type === "ESSAY")) blockers.push(PUBLISH_BLOCK_TEXT.VARIANTS_ESSAY); // máy chủ chặn ở cổng phát hành (VARIANTS_ESSAY)
 
   async function create() {
     if (!shufQ && !shufO) { setFormErr("Cô bật ít nhất một kiểu đảo (câu hoặc phương án), nếu không các mã đề giống hệt nhau."); return; }

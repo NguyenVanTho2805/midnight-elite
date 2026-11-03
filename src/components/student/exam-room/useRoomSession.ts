@@ -111,7 +111,13 @@ export function useRoomSession(examId: string) {
     inFlight.current = true; setSubmitting(true); setSubmitErr("");
     try {
       // Gửi nốt phần còn trong hàng đợi (chờ tối đa 5 giây); sau hạn máy chủ từ chối cũng không sao — bản đã lưu trước đó vẫn là bài.
-      if (!isAuto) await Promise.race([q.flush(), new Promise(r => setTimeout(r, 5000))]);
+      // BU-04 rà soát: nộp tay mà còn đáp án chưa lên máy chủ thì KHÔNG nộp (nộp xong, PATCH muộn bị 409 và đáp án cuối mất; clearStored lại xoá luôn hàng đợi).
+      // Nộp tự động khi hết giờ vẫn đi tiếp: máy chủ chốt tại hạn, bản đã lưu trước đó là bài.
+      if (!isAuto) {
+        await Promise.race([q.flush(), new Promise(r => setTimeout(r, 5000))]);
+        const left = q.pending();
+        if (left > 0) { setSubmitErr(`Còn ${left} câu chưa lưu được lên máy chủ. Kiểm tra mạng rồi bấm Nộp bài lại — KiN chưa nộp để em không mất đáp án.`); return; }
+      }
       const r = await examRoomApi.submit(attempt.attemptId);
       if (!r.ok) throw new Error(r.error);
       q.clearStored();
@@ -142,7 +148,7 @@ export function useRoomSession(examId: string) {
   return {
     attempt, start, starting, startErr, setStartErr, questions, selected, text, cluster, flags, tabLeaves, remainingSec,
     sectionIndex, sectionWindows: windows, chip: q.chip, textStatus: q.textStatus, retrySave: () => { void q.flush(); },
-    selectOption, setBool, typeText, blurText, toggleFlag, isAnswered, flush: q.flush,
+    selectOption, setBool, typeText, blurText, toggleFlag, isAnswered, flush: q.flush, pending: q.pending,
     submit: () => doSubmit(false), submitting, submitErr, timeUp, timeUpAt, retryTimeUp, result, nowLabel, isLastSection,
   };
 }

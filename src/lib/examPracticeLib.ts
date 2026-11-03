@@ -21,8 +21,10 @@ export interface PracticePolicy {
  * Chính sách chấm từng câu. `held` = đề đang giữ điểm tới khi gia sư công bố (examHold) ⇒ không phản hồi từng câu.
  * Chỉ `mode === "practice"` mới có phản hồi tức thì; kiểm tra (test) và đề cũ (mode null) thì không.
  */
-export function practicePolicy(exam: { mode: string | null; answerVisibility: string; hideAnswerForWrong: boolean }, held: boolean): PracticePolicy {
-  const reveal = exam.answerVisibility !== "never";
+export function practicePolicy(exam: { mode: string | null; answerVisibility: string; hideAnswerForWrong: boolean }, held: boolean, windowEnded = false): PracticePolicy {
+  // BU-04 rà soát: "chỉ sau khi hết thời hạn" (after_exam_ends) là CHƯA mở cho tới khi hết khung — luyện tập không được mở sớm hơn màn Xem lại (review).
+  // `windowEnded` mặc định false (an toàn); chỉ chỗ chấm từng câu (examPracticeServer) cần giá trị thật, cổng/start chỉ lấy `feedback`.
+  const reveal = exam.answerVisibility === "after_submit" || (exam.answerVisibility === "after_exam_ends" && windowEnded);
   return {
     feedback: exam.mode === "practice" && !held ? "instant" : "none",
     revealAllowed: reveal,
