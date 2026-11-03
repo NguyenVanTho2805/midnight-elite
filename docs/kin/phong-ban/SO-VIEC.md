@@ -20,10 +20,11 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | claude/adm-s1 | #92 | xong | S · giao 01/11 · gộp vào main qua #111 (03/11/2026) |
 | TUT-002 | TUT | Người nộp đơn gia sư không ghi danh lớp được | claude/tut-s1 | #93 | xong | S · giao 01/11 · gộp vào main qua #111 (03/11/2026) |
 | ADM-003 | ADM | Cron english-voa vào CRON_JOBS; bỏ route _template | claude/adm-s1 | #92 | xong | S · giao 01/11 · sau ADM-001 · gộp vào main qua #111 (03/11/2026) |
-| ADM-002 | ADM | Validator server bài viết; thông báo theo tag | | | moi | M |
-| STU-003 | STU | Cache xếp hạng, rank bằng count | | | moi | M |
+| ADM-002 | ADM | Validator server bài viết; thông báo bài mới tối đa một lần | claude/adm-002-bai-viet | #113 | xong | M · 04/11/2026 · phần "theo tag/lớp" CHƯA làm (bài viết không có quan hệ tới lớp; cần chủ quyết nhóm nhận) |
+| STU-003 | STU | Cache xếp hạng, rank bằng count | claude/stu-003-xep-hang | #115 | xong một phần | M · 04/11/2026 · rank bằng count ĐÃ làm; cache `/api/leaderboard` và `/api/honor-leaderboard` KHÔNG làm — hai route không đòi đăng nhập và trả tên + trường học sinh (TRẺ EM), chờ chủ quyết |
+| HQ-0411 | STU | Hồi quy 04/11: cảnh báo React ở `/khoa-hoc` (CAT-01) + 2 ca đỏ giả lối thoát phòng thi | claude/cat-01-hoi-quy | #116 | xong | S · 04/11/2026 · lỗi thật 1 (replaceState trong hàm cập nhật state), sửa bài kiểm 1; `409` khi bấm "Theo dõi lớp" với hồ sơ `pending_consent` CHƯA sửa (chủ quyết) |
 | TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
-| TUT-003 | TUT | Hộp việc: câu hỏi học sinh trong lớp chưa trả lời | | | moi | M · sau BU-05 |
+| TUT-003 | TUT | Hộp việc: câu hỏi học sinh trong lớp chưa trả lời | claude/tut-003-hop-viec | #114 | xong | M · 04/11/2026 · thông báo cho gia sư khi có câu hỏi mới đã có sẵn (thread_new_class) |
 | STU-004 | STU | generateMetadata trang khách + sitemap + lọc thi thử theo ghi danh | | | moi | L · làm chung BU-07 |
 | CHỦ-01 | chủ | Đổi feeMode lớp cũ sang per_session; hai hệ phí một phiếu | | | dung | TIỀN = có — chờ Thọ |
 | CHỦ-02 | chủ | Coin ẩn hẳn hay giữ; bật cổng ≥17 + hỏi ngày sinh | | | dung | chờ Thọ |
