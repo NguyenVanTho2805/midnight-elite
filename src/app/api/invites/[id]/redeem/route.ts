@@ -5,6 +5,11 @@
 //
 // Học viên nhập mã mời để vào lớp. Yêu cầu đăng nhập (không public như backlog
 // gợi ý — public dễ bị dùng để dò mã bằng brute force 31^8). Luồng:
+//   0. Kiểm NGƯỜI trước khi kiểm MÃ (TUT-002): session.role phải là student, rồi đọc
+//      User (tutorAppliedAt/tutorVerified/tutorRejectedAt) → `canSelfEnroll`. Người
+//      đang chờ duyệt gia sư → 403 { code: "TUTOR_PENDING" }; approved nhưng role
+//      còn student (lệch dữ liệu) → 403 không code. Chặn TRƯỚC mọi truy vấn invite /
+//      transaction nên usedCount, Enrollment, auditLog đều không bị chạm.
 //   1. Tìm invite theo code (`findUnique` — code có @unique).
 //   2. Kiểm hợp lệ: !revoked, chưa hết hạn, còn lượt.
 //   3. Trong $transaction + pg_advisory_xact_lock theo invite.id:
@@ -21,12 +26,27 @@ import { deriveStatusForNewEnrollment, ENROLLMENT_STATUS } from "@/lib/enrollmen
 import { logAction } from "@/lib/auditLog";
 import { assertCanAddStudent } from "@/lib/planServer";
 import { CLASS_PAUSED_MESSAGE } from "@/lib/planLimits";
+import { canSelfEnroll, ENROLL_NOT_STUDENT_MESSAGE, ENROLL_TUTOR_PENDING_MESSAGE } from "@/lib/enrollEligibility";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
   if (session.role !== "student") {
-    return NextResponse.json({ error: "Chỉ học viên mới redeem mã mời" }, { status: 403 });
+    return NextResponse.json({ error: ENROLL_NOT_STUDENT_MESSAGE }, { status: 403 });
+  }
+
+  // TUT-002: token phiên không có tutorAppliedAt → đọc DB một lần, TRƯỚC khi đụng mã mời.
+  const me = await prisma.user.findUnique({
+    where:  { id: session.userId },
+    select: { role: true, tutorAppliedAt: true, tutorVerified: true, tutorRejectedAt: true },
+  });
+  if (!me) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const eligible = canSelfEnroll(me);
+  if (!eligible.ok) {
+    if (eligible.reason === "tutor_pending") {
+      return NextResponse.json({ error: ENROLL_TUTOR_PENDING_MESSAGE, code: "TUTOR_PENDING" }, { status: 403 });
+    }
+    return NextResponse.json({ error: ENROLL_NOT_STUDENT_MESSAGE }, { status: 403 });
   }
 
   const { id: code } = await params;
