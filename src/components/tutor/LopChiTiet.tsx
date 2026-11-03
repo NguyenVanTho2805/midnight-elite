@@ -26,7 +26,7 @@ import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
 import { ADD_STUDENTS_MAX } from "@/lib/tutorStudentView";
 import type { FeeMode } from "@/lib/tuitionFee";
-import { contentHref } from "@/lib/tutorRoutes";
+import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "ma-moi" | "hoc-phi" | "cong-dong";
 export interface LopChiTietData {
@@ -110,6 +110,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         actions={<>
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
+          <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </>} />

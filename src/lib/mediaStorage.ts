@@ -109,14 +109,64 @@ export const DOCUMENT_EXTS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"
 export const DOCUMENT_ACCEPT = DOCUMENT_EXTS.map(e => "." + e).join(",");
 export const MAX_DOCUMENTS_PER_LESSON = 30;
 
-export function validateDocumentFile(f: FileFacts): FileCheck {
+/** BU-02: hạn mức tổng tài liệu tải lên KiN của MỘT gia sư (Q3, chỉnh một hằng số). */
+export const DOCUMENT_QUOTA_MB = 500;
+export const DOCUMENT_QUOTA_BYTES = DOCUMENT_QUOTA_MB * 1024 * 1024;
+
+/** Đuôi → MIME do KiN quyết định (không lấy từ trình duyệt); đây cũng là Content-Type khi phát lại tệp. */
+export const DOCUMENT_MIME_BY_EXT: Record<string, string> = {
+  pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint", pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  txt: "text/plain; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
+};
+/** MIME trình duyệt khai mà ta chấp nhận cho từng đuôi (họ của đuôi). Trống / application/octet-stream được bỏ qua: trình duyệt hay khai thế, nội dung thật do fileSniff quyết. */
+const DOCUMENT_MIME_FAMILY: Record<string, string[]> = {
+  pdf: ["application/pdf", "application/x-pdf"], doc: ["application/msword"],
+  docx: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  xls: ["application/vnd.ms-excel"], xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ppt: ["application/vnd.ms-powerpoint"], pptx: ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  txt: ["text/plain"], png: ["image/png"], jpg: ["image/jpeg", "image/pjpeg"], jpeg: ["image/jpeg", "image/pjpeg"], webp: ["image/webp"],
+};
+/** Đuôi (viết thường, không dấu chấm) của tên tệp; "" nếu không có. */
+export const fileNameExt = (name: string): string => extOf(name);
+
+export function validateDocumentFile(f: FileFacts, maxBytes: number = DOCUMENT_MAX_BYTES): FileCheck {
   if (!f.name || !f.name.trim()) return { ok: false, error: "Thiếu tên tệp." };
   if (!Number.isFinite(f.size) || f.size <= 0) return { ok: false, error: `Tệp "${f.name}" rỗng, không tải lên được.` };
   const ext = extOf(f.name);
   if (!(DOCUMENT_EXTS as readonly string[]).includes(ext))
     return { ok: false, error: `Tệp "${f.name}" không đúng loại. Chỉ nhận ${DOCUMENT_EXTS.map(e => "." + e).join(", ")}.` };
-  if (f.size > DOCUMENT_MAX_BYTES) return { ok: false, error: `Tệp "${f.name}" nặng ${formatMegabytes(f.size)}, vượt giới hạn ${DOCUMENT_MAX_MB} MB.` };
+  const mime = (f.type ?? "").split(";")[0].trim().toLowerCase();
+  if (mime && mime !== "application/octet-stream" && !DOCUMENT_MIME_FAMILY[ext].includes(mime))
+    return { ok: false, error: `Tệp "${f.name}" có đuôi .${ext} nhưng nội dung khai là ${mime}. Hãy kiểm tra lại tệp.` };
+  const limit = Math.min(maxBytes, DOCUMENT_MAX_BYTES);
+  if (f.size > limit) return { ok: false, error: `Tệp "${f.name}" nặng ${formatMegabytes(f.size)}, vượt giới hạn ${formatMegabytes(limit)}.` };
   return { ok: true };
+}
+
+export interface DocumentUploadConfig {
+  enabled: boolean;
+  driver: StorageDriverName | "none";
+  maxBytes: number;
+  quotaBytes: number;
+  exts: string[];
+  /** Chữ tiếng Việt giải thích vì sao tắt; null khi bật. */
+  reason: string | null;
+}
+
+/**
+ * Cấu hình tải TÀI LIỆU lên KiN (BU-02, Q1). KHÔNG phụ thuộc cờ KIN_VIDEO_UPLOAD (cờ đó chỉ của video, có chi phí phát theo giờ).
+ *  - production: cần đủ ba biến Cloudinary; thiếu ⇒ TẮT (không rơi về preset không ký, không dùng đĩa vì máy chủ không có ổ bền);
+ *  - máy cục bộ: đĩa cục bộ, hoặc Cloudinary nếu có đủ khoá.
+ */
+export function resolveDocumentUploadConfig(env: Record<string, string | undefined>): DocumentUploadConfig {
+  const production = env.NODE_ENV === "production";
+  const base = { maxBytes: DOCUMENT_MAX_BYTES, quotaBytes: DOCUMENT_QUOTA_BYTES, exts: [...DOCUMENT_EXTS] as string[] };
+  const cloudinary = Boolean(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET);
+  if (cloudinary) return { ...base, enabled: true, driver: "cloudinary", reason: null };
+  if (!production) return { ...base, enabled: true, driver: "local", reason: null };
+  return { ...base, enabled: false, driver: "none", reason: "Tải tệp tài liệu lên chưa bật (kho chưa cấu hình). Hãy dán link Google Drive hoặc link tài liệu." };
 }
 
 /** Tên tệp an toàn để đặt vào đường dẫn lưu: bỏ thư mục, ký tự lạ; không bao giờ rỗng hoặc bắt đầu bằng dấu chấm. */

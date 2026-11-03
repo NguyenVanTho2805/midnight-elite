@@ -1,7 +1,8 @@
 // Học liệu — phần thuần src/lib/mediaLink.ts + mediaStorage.ts + lessonGuard.ts: nhận diện link, báo lỗi sớm, ghi chú theo mốc,
 // xem trước tài liệu an toàn, link bài làm Azota, giới hạn tệp, che nội dung bài. Nhiều ca PHÁ CỐ Ý (link giả mạo máy chủ, scheme nguy hiểm...).
 import { classifyMediaLink, checkLinkForSlot, checkLinkListForSlot, suggestLessonTypes, parseLinkList, serializeLinkList, firstSafeHttpsLink, firstPlayableVideo,
-  parseDeadlineVn, formatStamp, parseStamp, extractNoteStamps, appendStampLine, planDocumentPreview, validateWorkLink, hostMatches, uploadIdOf, uploadLink, fileExtOf } from "@/lib/mediaLink";
+  parseDeadlineVn, formatStamp, parseStamp, extractNoteStamps, appendStampLine, planDocumentPreview, validateWorkLink, hostMatches, uploadIdOf, uploadLink, fileExtOf,
+  routeToSlot, docTypeFromExt, isSocialVideoHost, type MediaKind } from "@/lib/mediaLink";
 import { resolveVideoUploadConfig, validateVideoUpload, validateDocumentFile, safeFileName, parseRangeHeader, formatMegabytes, DEFAULT_VIDEO_MAX_MB, DOCUMENT_MAX_BYTES, VIDEO_UPLOAD_NOTICE } from "@/lib/mediaStorage";
 import { redactLesson, redactCourseTree, canWatchStoredMedia, LESSON_CONTENT_FIELDS } from "@/lib/lessonGuard";
 import { check, section, done } from "./h";
@@ -228,5 +229,76 @@ check("gia sư chủ lớp → được; gia sư KHÁC → KHÔNG", canWatchStor
 check("lớp không có chủ (ownerId null) → gia sư KHÔNG được", !canWatchStoredMedia({ ...base, role: "admin", adminRole: "teacher", userId: "gs1", courseOwnerId: null }));
 check("quản trị cấp 1 / nội dung → được", canWatchStoredMedia({ ...base, role: "admin", adminRole: "admin_super" }) && canWatchStoredMedia({ ...base, role: "admin", adminRole: "admin_content" }));
 check("role admin mà thiếu adminRole → KHÔNG", !canWatchStoredMedia({ ...base, role: "admin", adminRole: null }));
+
+// ═══ BU-02: 12 mẫu link mới (tệp trực tiếp, Meet, Google Form, Zoom phòng, đuôi cấm, video trực tiếp, //host) ═══
+section("BU-02 · 12 mẫu: nhận diện tệp trực tiếp / Meet / Form / Zoom / đuôi cấm");
+type Want = { ok: boolean; kind: string; docType: string | null; slot?: string };
+const SAMPLES: [string, string, Want][] = [
+  ["(1) PDF trực tiếp", "https://cdn.example.vn/de-cuong.pdf", { ok: true, kind: "file", docType: "pdf", slot: "document" }],
+  ["(2) .docx kèm ?dl=1", "https://cdn.example.vn/bai-giang.docx?dl=1", { ok: true, kind: "file", docType: "word", slot: "document" }],
+  ["(3) .PNG viết hoa", "https://cdn.example.vn/so-do.PNG", { ok: true, kind: "file", docType: "image", slot: "document" }],
+  ["(4) .xlsx", "https://cdn.example.vn/bang-diem.xlsx", { ok: true, kind: "file", docType: "sheet", slot: "document" }],
+  ["(5) Google Meet đúng mã", "https://meet.google.com/abc-defg-hij", { ok: true, kind: "meet_live", docType: null, slot: "live" }],
+  ["(6) Meet trang chủ (không có phòng)", "https://meet.google.com/", { ok: false, kind: "invalid", docType: null }],
+  ["(7) Google Form", "https://docs.google.com/forms/d/e/1FAIpQLSdAbCd/viewform", { ok: true, kind: "google_form", docType: null, slot: "azota" }],
+  ["(8) Zoom us02web ?pwd=", "https://us02web.zoom.us/j/81234567890?pwd=AbC", { ok: true, kind: "zoom_live", docType: null, slot: "live" }],
+  ["(9) setup.exe", "https://cdn.example.vn/setup.exe", { ok: false, kind: "invalid", docType: null }],
+  ["(10) tệp video trực tiếp .mp4", "https://cdn.example.vn/bai.mp4", { ok: false, kind: "invalid", docType: null }],
+  ["(11) trang web .html", "https://example.vn/trang-bai-giang.html", { ok: true, kind: "other", docType: null, slot: "document" }],
+  ["(12) //host giả", "//evil.example/a.pdf", { ok: false, kind: "invalid", docType: null }],
+];
+for (const [name, url, w] of SAMPLES) {
+  const r = classifyMediaLink(url);
+  const slot = routeToSlot(r);
+  check(`${name} → ok=${w.ok} kind=${w.kind} docType=${w.docType}${w.slot ? " ô=" + w.slot : ""}`, r.ok === w.ok && r.kind === w.kind && r.docType === w.docType && (!w.slot || slot === w.slot), { ok: r.ok, kind: r.kind, docType: r.docType, slot });
+}
+check("(11) trang .html có cảnh báo 'mở ở tab mới'", /tab mới/.test(classifyMediaLink("https://example.vn/trang-bai-giang.html").warning ?? ""));
+check("(10) lời từ chối video trực tiếp nói rõ cách khác", /YouTube/.test(classifyMediaLink("https://cdn.example.vn/bai.mp4").error ?? ""));
+check("(9) lời từ chối đuôi cấm: 'không nhận loại tệp này'", /không nhận loại tệp này/.test(classifyMediaLink("https://cdn.example.vn/setup.exe").error ?? ""));
+check("(7) Google Form có cảnh báo 'không phải Azota'", /không phải Azota/.test(classifyMediaLink("https://docs.google.com/forms/d/e/1FAIpQLSdAbCd/viewform").warning ?? ""));
+check("Google Form dạng /forms/d/<mã>/edit và forms.gle cũng nhận", classifyMediaLink("https://docs.google.com/forms/d/1AbCdEfGhIjKlMnOp/edit").kind === "google_form" && classifyMediaLink("https://forms.gle/AbCd1234").kind === "google_form");
+check("Meet: mã sai dạng / đường dẫn lạ → từ chối", ["https://meet.google.com/abc", "https://meet.google.com/landing", "https://meet.google.com/abc-defg-hij/extra/x"].every(u => !classifyMediaLink(u).ok));
+check("Meet giả máy chủ: meet.google.com.evil.example, evilmeet.google.com.vn → không phải Meet", classifyMediaLink("https://meet.google.com.evil.example/abc-defg-hij").kind !== "meet_live" && classifyMediaLink("https://evil.example/meet.google.com/abc-defg-hij").kind !== "meet_live");
+check("đuôi cấm trực tiếp: .apk .bat .sh .js .svg .zip .rar .7z đều từ chối; .html .htm KHÔNG bị cấm (trang web thường)", ["apk", "bat", "sh", "js", "svg", "zip", "rar", "7z"].every(e => !classifyMediaLink(`https://x.vn/a.${e}`).ok) && classifyMediaLink("https://x.vn/a.htm").ok && classifyMediaLink("https://x.vn/a.html").ok);
+check("đuôi cấm chỉ xét ĐƯỜNG DẪN: ?f=a.exe trong query không làm hỏng link", classifyMediaLink("https://x.vn/trang?f=a.exe").ok && classifyMediaLink("https://x.vn/a.exe?x=1").ok === false);
+check("video trực tiếp .mov .webm .m4v .mkv .avi đều từ chối", ["mov", "webm", "m4v", "mkv", "avi"].every(e => !classifyMediaLink(`https://x.vn/a.${e}`).ok));
+check("link .pdf trên YouTube/Drive không bị đuôi đánh lừa (host đã biết thắng)", classifyMediaLink(`https://www.youtube.com/watch?v=${YT}&x=a.pdf`).kind === "youtube" && classifyMediaLink("https://azota.vn/de/a.pdf").kind === "azota");
+check("giả cdn: user@host và http:// với .pdf → từ chối", !classifyMediaLink("https://cdn.example.vn@evil.example/a.pdf").ok && classifyMediaLink("https://cdn.example.vn@evil.example/a.pdf").kind === "invalid");
+check("http:// .pdf / javascript:.pdf → từ chối", !classifyMediaLink("http://cdn.example.vn/a.pdf").ok && !classifyMediaLink("javascript:alert(1)//a.pdf").ok);
+check("docTypeFromExt", docTypeFromExt("PDF") === "pdf" && docTypeFromExt("docx") === "word" && docTypeFromExt("xls") === "sheet" && docTypeFromExt("pptx") === "slide" && docTypeFromExt("webp") === "image" && docTypeFromExt("txt") === "text" && docTypeFromExt("exe") === null && docTypeFromExt(null) === null);
+check("Google Docs/Sheets/Slides có docType", classifyMediaLink("https://docs.google.com/document/d/1AbCdEfGhIjKlMnOp/edit").docType === "word" && classifyMediaLink("https://docs.google.com/spreadsheets/d/1AbCdEfGhIjKlMnOp/edit").docType === "sheet" && classifyMediaLink("https://docs.google.com/presentation/d/1AbCdEfGhIjKlMnOp/edit").docType === "slide");
+check("isSocialVideoHost", isSocialVideoHost("www.facebook.com") && isSocialVideoHost("fb.watch") && isSocialVideoHost("x.com") && !isSocialVideoHost("example.vn") && !isSocialVideoHost("notfacebook.com.vn"));
+
+section("BU-02 · routeToSlot đủ 10 kind cũ + 3 kind mới");
+const SLOT_OF: Record<MediaKind, string> = {
+  youtube: "video", vimeo: "video", drive: "video", zoom_record: "video", upload: "video",
+  zoom_live: "live", meet_live: "live", azota: "azota", google_form: "azota",
+  google_doc: "document", drive_folder: "document", other: "document", file: "document",
+};
+for (const [k, slot] of Object.entries(SLOT_OF)) check(`routeToSlot(${k}) = ${slot}`, routeToSlot({ kind: k as MediaKind }) === slot);
+check("routeToSlot(invalid) không ném lỗi (rơi vào document, người gọi phải xét ok trước)", routeToSlot({ kind: "invalid" }) === "document");
+check("mọi MediaKind cũ có trong bảng (10 kind cũ)", ["youtube", "vimeo", "drive", "drive_folder", "google_doc", "zoom_live", "zoom_record", "azota", "upload", "other"].every(k => k in SLOT_OF));
+
+section("BU-02 · checkLinkForSlot với kind mới");
+check("ô live nhận Meet; ô video đưa Meet về live", checkLinkForSlot("https://meet.google.com/abc-defg-hij", "live").ok && checkLinkForSlot("https://meet.google.com/abc-defg-hij", "video").moveTo === "live" && checkLinkForSlot("https://meet.google.com/abc-defg-hij", "document").moveTo === "live");
+check("ô azota nhận Google Form kèm cảnh báo; ô video/ô tài liệu/ô live đưa Form về azota", (() => { const f = "https://docs.google.com/forms/d/e/1FAIpQLSdAbCd/viewform"; const a = checkLinkForSlot(f, "azota"); return a.ok && !!a.warning && checkLinkForSlot(f, "video").moveTo === "azota" && checkLinkForSlot(f, "document").moveTo === "azota" && checkLinkForSlot(f, "live").moveTo === "azota"; })());
+check("ô video: tệp .pdf bị đưa về ô tài liệu; ô tài liệu nhận .pdf", checkLinkForSlot("https://cdn.example.vn/de.pdf", "video").moveTo === "document" && checkLinkForSlot("https://cdn.example.vn/de.pdf", "document").ok);
+check("ô azota: Meet đưa về live", checkLinkForSlot("https://meet.google.com/abc-defg-hij", "azota").moveTo === "live");
+
+section("BU-02 · planDocumentPreview: kiểm TÊN KHO Cloudinary (MD-09 phần hở) và tệp nội bộ");
+const own = "https://res.cloudinary.com/kin-demo/raw/upload/v1/a.pdf";
+check("không truyền tên kho ⇒ như cũ (nhúng)", planDocumentPreview(own).mode === "iframe");
+check("đúng tên kho của KiN ⇒ nhúng PDF", planDocumentPreview(own, { cloudName: "kin-demo" }).mode === "iframe");
+const foreign = planDocumentPreview("https://res.cloudinary.com/ke-la/raw/upload/v1/a.pdf", { cloudName: "kin-demo" });
+check("kho LẠ ⇒ KHÔNG nhúng, không nút tải, chỉ mở tab mới", foreign.mode === "external" && foreign.downloadHref === null && !!foreign.reason, foreign);
+check("kho lạ + Word ⇒ KHÔNG đưa vào Office Viewer", planDocumentPreview("https://res.cloudinary.com/ke-la/raw/upload/a.docx", { cloudName: "kin-demo" }).src?.includes("officeapps") !== true);
+check("chưa khai tên kho ('' hoặc null) ⇒ đóng, không nhúng", planDocumentPreview(own, { cloudName: "" }).mode === "external" && planDocumentPreview(own, { cloudName: null }).mode === "external");
+check("tên kho là TIỀN TỐ của kho lạ (kin-demo-2) ⇒ không nhầm", planDocumentPreview("https://res.cloudinary.com/kin-demo-2/raw/upload/a.pdf", { cloudName: "kin-demo" }).mode === "external");
+const kinPdf = planDocumentPreview("/api/media/ck1abcdEFGH_12/file", { name: "De cuong.PDF" });
+check("tệp KiN + tên .pdf ⇒ nhúng iframe không sandbox", kinPdf.mode === "iframe" && kinPdf.sandbox === false && kinPdf.downloadHref === "/api/media/ck1abcdEFGH_12/file", kinPdf);
+check("tệp KiN + ảnh ⇒ mode ảnh; + .txt ⇒ iframe có sandbox", planDocumentPreview("/api/media/ck1abcdEFGH_12/file", { name: "a.png" }).mode === "image" && (() => { const p = planDocumentPreview("/api/media/ck1abcdEFGH_12/file", { name: "a.txt" }); return p.mode === "iframe" && p.sandbox === true; })());
+check("tệp KiN + Word ⇒ chỉ tải về (không Office Viewer, vì tệp riêng tư)", (() => { const p = planDocumentPreview("/api/media/ck1abcdEFGH_12/file", { name: "a.docx" }); return p.mode === "external" && p.downloadHref === "/api/media/ck1abcdEFGH_12/file" && /tải về/.test(p.reason ?? ""); })());
+check("tệp KiN không có tên ⇒ vẫn an toàn (external)", planDocumentPreview("/api/media/ck1abcdEFGH_12/file").mode === "external");
+check("đường dẫn nội bộ vẫn khoá chặt: /file/../x, /files, mã ngắn, //host", ["/api/media/ck1abcdEFGH_12/file/../x", "/api/media/ck1abcdEFGH_12/files", "/api/media/ab/file", "//evil.example/api/media/ck1abcdEFGH_12/file"].every(u => planDocumentPreview(u, { name: "a.pdf" }).mode === "none"));
 
 done();

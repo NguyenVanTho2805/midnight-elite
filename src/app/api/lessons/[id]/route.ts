@@ -12,7 +12,7 @@ function publicLesson<L extends LessonWithOwner>(lesson: L) {
   const { chapter, ...rest } = lesson;
   return { ...rest, chapter: { ...chapter, section: { courseId: chapter.section.courseId } } };
 }
-import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos } from "@/lib/lessonMediaServer";
+import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -79,6 +79,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (typeof data.documents === "string") {
       const docErr = validateDocumentsJson(data.documents);
       if (docErr) return NextResponse.json({ error: docErr }, { status: 400 });
+      // V8: tệp /api/media/<mã>/file phải có thật và do chính người lưu tải lên (gia sư không ghi mã tệp của người khác vào bài của mình).
+      const fileErr = await claimUploadedDocuments({ documents: data.documents, lessonId: id, userId: auth.userId, isTeacher: auth.adminRole === "teacher", existingDocuments: existing.documents });
+      if (fileErr) return NextResponse.json({ error: `Tài liệu: ${fileErr}` }, { status: 400 });
     }
     if ("videoUrl" in data) {
       const claimErr = await claimUploadedVideos({
