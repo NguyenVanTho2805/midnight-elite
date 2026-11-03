@@ -102,16 +102,20 @@ const err = (r: { error?: string }) => r.error ?? null;
   const read = (f: string) => readFileSync(join(root, f), "utf8");
   const tp = read("src/app/api/users/me/tutor-profile/route.ts"), prefsApi = read("src/app/api/users/me/preferences/route.ts");
   const pubId = read("src/app/api/tutors/[id]/route.ts"), pubList = read("src/app/api/tutors/route.ts");
+  // BU-06: logic danh sách nằm ở tutorSearchServer.ts (đọc khu vực) và tutorSearch.ts (lọc, facet).
+  const pubSrv = read("src/lib/tutorSearchServer.ts"), pubLib = read("src/lib/tutorSearch.ts");
   const form = read("src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx"), reg = read("src/app/(guest)/dang-ky/page.tsx");
   const head = read("src/components/tutor/TutorProfileHeader.tsx"), card = read("src/components/tutor/TutorCard.tsx"), listPage = read("src/app/(guest)/giang-vien/page.tsx");
   check("API hồ sơ gia sư: ghi preferences trong giao dịch, cùng khoá khoá với API giao diện", /\$transaction/.test(tp) && /prefsLockKey\(auth\.userId\)/.test(tp) && /prefsLockKey\(auth\.userId\)/.test(prefsApi) && !/`prefs:\$\{/.test(prefsApi));
   check("API hồ sơ gia sư: không đụng teaching khi thiếu khoá (chỉ ghi khi parsed.teaching !== undefined)", /parsed\.teaching !== undefined/.test(tp) && /parsed\.city !== undefined/.test(tp));
-  check("API công khai (chi tiết + danh sách) chỉ ra khu vực qua publicArea, không tự lấy users.city / preferences.teaching", /publicArea\(t\.city, readPreferences\(t\.preferences\)\.teaching\)/.test(pubId) && /publicArea\(t\.city, readPreferences\(t\.preferences\)\.teaching\)/.test(pubList) && !/teaching\.price|\.showPrice/.test(pubId + pubList));
-  check("danh sách: lọc city / mode bằng matchesArea và trả facets.cities", /matchesArea\(/.test(pubList) && /parseModeFilter\(/.test(pubList) && /facets/.test(pubList) && /cityFacets\(/.test(pubList));
+  check("API công khai (chi tiết + danh sách) chỉ ra khu vực qua publicArea, không tự lấy users.city / preferences.teaching", /publicArea\(t\.city, readPreferences\(t\.preferences\)\.teaching\)/.test(pubId) && /publicArea\(t\.city, prefs\.teaching\)/.test(pubSrv) && !/teaching\.price|\.showPrice/.test(pubId + pubList + pubSrv + pubLib));
+  check("danh sách: lọc city / mode bằng matchesArea và trả facets.cities", /matchesArea\(/.test(pubLib) && /facets/.test(pubLib) && /cityFacets\(/.test(pubLib) && /mode: modeRaw/.test(pubLib));
   check("form ĐĂNG KÝ không có ô khu vực / hình thức (giữ form ngắn — Thọ chốt Q4)", !/Quận\/Huyện|teaching|Hình thức dạy|Tỉnh\/Thành/.test(reg));
   check("form hồ sơ: có đủ năm mục, nói rõ 'tự khai', 'không bao giờ hiện địa chỉ nhà', giá mặc định tắt, không có ô địa chỉ", /Quận\/Huyện/.test(form) && /Hình thức dạy/.test(form) && /tự khai/i.test(form) && /không bao giờ hiện địa chỉ nhà/.test(form) && /useState\(initialTeaching\?\.showPrice === true\)/.test(form) && !/htmlFor="[^"]*(dia-chi|address)/i.test(form));
   check("hiển thị công khai (đầu hồ sơ + thẻ): ghi '(tự khai)' cho trường/bằng cấp, giá kèm 'giá tham khảo', dùng PublicArea", /\(tự khai\)/.test(head) && /giá tham khảo/.test(head) && /hasPublicArea/.test(head) && /hasPublicArea/.test(card));
-  check("trang danh sách: có lọc Tỉnh/Thành + Hình thức, gửi city / mode cho API", /id="tutor-city"/.test(listPage) && /id="tutor-mode"/.test(listPage) && /qs\.set\("city", city\)/.test(listPage) && /qs\.set\("mode", mode\)/.test(listPage));
+  // BU-06: lọc nằm ở tim-gia-su/BoLoc + locUrl (URL <-> API). Ý gốc: có lọc Tỉnh/Thành + Hình thức và gửi city / mode cho API.
+  const tgsLoc = read("src/components/tutor/tim-gia-su/locUrl.ts"), tgsBoLoc = read("src/components/tutor/tim-gia-su/BoLoc.tsx"), tgsApi = read("src/components/tutor/tim-gia-su/goiApi.ts");
+  check("trang danh sách: có lọc Tỉnh/Thành + Hình thức, gửi city / mode cho API", /value=\{value\.city\}/.test(tgsBoLoc) && /set\(\{ city: e\.target\.value/.test(tgsBoLoc) && /value\.mode === k/.test(tgsBoLoc) && /put\("city", f\.city\)/.test(tgsLoc) && /put\("mode", f\.mode\)/.test(tgsLoc) && /mode === "online" \|\| mode === "offline"/.test(tgsLoc) && /\/api\/tutors\?\$\{ghiBoLoc\(/.test(tgsApi));
   check("không còn ký tự vô hình trong mã nguồn mới", ![read("src/lib/tutorArea.ts"), form, head, card].some(s => /[\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/.test(s)));
 
   done();

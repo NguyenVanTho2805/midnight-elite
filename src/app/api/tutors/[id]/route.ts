@@ -12,9 +12,14 @@ import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
 import { recentTaughtSessionWhere } from "@/lib/tutorActivity";
 import { publicArea } from "@/lib/tutorArea";
+import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { effectivePolicy, isFreeClass, type JoinPolicy } from "@/lib/joinRequest";
+import { coverForPublic, introVideoView } from "@/lib/tutorSearchMedia";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // id rác (ký tự NUL làm Postgres báo lỗi ⇒ 500, hoặc quá dài) không thể là id thật: 404 như không tồn tại.
+  if (!id || id.length > 64 || id.includes("\u0000")) return NextResponse.json({ error: "Không tìm thấy gia sư" }, { status: 404 });
 
   const t = await prisma.user.findFirst({
     where: {
@@ -28,6 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select: {
       id: true, name: true, avatarBase64: true, bio: true, subjects: true,
       tutorVerified: true, tutorVerifiedAt: true, phone: true, preferences: true, city: true,
+      coverUrl: true, introVideoUrl: true, // BU-06: tự khai; chỉ trả bản đã kiểm / dẫn xuất (xem dưới)
     },
   });
   // NC2-022: gia sư chọn ẨN hồ sơ → như chưa duyệt / bị khoá (404). /mentor/[id], thẻ og và xem trước của người khác đều đi qua đây.
@@ -45,13 +51,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     select:  {
       id: true, name: true, shortTitle: true, category: true, bg: true, strip: true,
       classStatus: true, capacity: true,
+      // BU-06: chỉ để suy `joinPolicy`/`isFree`; `price` KHÔNG bao giờ được trả ra.
+      joinPolicy: true, price: true, tag: true,
     },
     orderBy: { sortOrder: "asc" },
   });
 
   const courseIds = courses.map(c => c.id);
 
-  const [enrollCounts, reviewAggs, sessionsTaught, recentSession] = await Promise.all([
+  const [enrollCounts, reviewAggs, sessionsTaught, recentSession, feeRated] = await Promise.all([
     courseIds.length === 0 ? [] : prisma.enrollment.groupBy({
       by:     ["courseId"],
       where:  { courseId: { in: courseIds }, status: ENROLLMENT_STATUS.ACTIVE },
@@ -68,6 +76,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     courseIds.length === 0 ? 0 : prisma.attendanceSession.count({ where: { courseId: { in: courseIds }, ...taughtSessionWhere() } }),
     // ĐX-05: "có dạy trong 30 ngày qua" = ít nhất 1 buổi ĐÃ DẠY (cùng định nghĩa với số trên) có ngày trong 30 ngày qua (src/lib/tutorActivity.ts).
     courseIds.length === 0 ? null : prisma.attendanceSession.findFirst({ where: { courseId: { in: courseIds }, ...recentTaughtSessionWhere() }, select: { id: true } }),
+    // BU-06: một truy vấn cho cả danh sách — lớp đã nhập đơn giá thì không còn là "Miễn phí" (cùng luật với POST /api/courses/[id]/join).
+    loadFeeRateCourseIds(courseIds),
   ]);
 
   const activeByCourse = new Map(enrollCounts.map(r => [r.courseId, r._count._all]));
@@ -76,6 +86,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const classes = courses.map(c => {
     const activeCount = activeByCourse.get(c.id) ?? 0;
     const r = reviewByCourse.get(c.id);
+    const isFree = isFreeClass({ price: c.price, tag: c.tag, hasFeeRate: feeRated.has(c.id) });
+    // "open" mà không miễn phí → "invite_only", giống join/route.ts: giao diện không hứa điều máy chủ sẽ từ chối.
+    let joinPolicy: JoinPolicy = effectivePolicy(c.joinPolicy);
+    if (joinPolicy === "open" && !isFree) joinPolicy = "invite_only";
     return {
       id:          c.id,
       name:        c.name,
@@ -87,6 +101,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       capacity:    c.capacity,
       activeCount,
       seatsLeft:   c.capacity === null ? null : Math.max(0, c.capacity - activeCount),
+      joinPolicy,
+      isFree,
       rating:      r ? { avg: r.avg, total: r.total } : { avg: null, total: 0 },
     };
   });
@@ -120,6 +136,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       // ĐX-06: khu vực / hình thức / trường + bằng cấp / giá tham khảo, TỰ KHAI. null khi gia sư chưa lưu mục này (không lộ users.city cũ).
       // Chỉ quận/huyện, không địa chỉ nhà; giá chỉ có khi gia sư tự bật.
       area: publicArea(t.city, readPreferences(t.preferences).teaching),
+      // BU-06: ảnh bìa chỉ khi qua kiểm (data URL jpeg/png/webp ≤ 250 000 ký tự), hỏng → null. Video dẫn xuất lại từ mã YouTube; không trả chuỗi thô.
+      coverUrl: coverForPublic(t.coverUrl),
+      introVideo: introVideoView(t.introVideoUrl),
     },
     stats: {
       classCount:   classes.length,
