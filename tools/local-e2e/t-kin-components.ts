@@ -31,7 +31,9 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("Outlook: nút lệnh dùng KinButton/kinButtonClass, thẻ trạng thái dùng KinStatus (không còn BTN/DOT/TEXT riêng)", /KinButton/.test(outlook) && /kinButtonClass/.test(outlook) && /KinStatus/.test(outlook) && !/const BTN\b|const DOT\b|const TEXT\b/.test(outlook));
   check("Outlook: Command có kiểu 'danger'", /kind: "primary" \| "secondary" \| "danger"/.test(outlook));
   check("AdminShell: tab trang con dùng KIN_TAB_BOX + KinTabInner", /KIN_TAB_BOX/.test(read("src/components/admin/AdminShell.tsx")) && /KinTabInner/.test(read("src/components/admin/AdminShell.tsx")));
-  check("Admin Kiểm duyệt: khung hỏi lại dùng KinButton, 'danger' từ hàng chờ được chuyển thành nút đỏ", /KinButton/.test(read("src/components/admin/KiemDuyet.tsx")) && /danger-solid/.test(read("src/components/admin/KiemDuyet.tsx")));
+  // BU-08: KiemDuyet.tsx nay chỉ re-export; khung xác nhận nội dòng nằm ở queue/QueuePanel.tsx (+ HangCho.tsx dựng bảng).
+  const qp = read("src/components/admin/queue/QueuePanel.tsx"), hc = read("src/components/admin/HangCho.tsx");
+  check("Admin Hàng chờ: khung xác nhận nội dòng dùng KinButton, 'danger' từ hàng chờ được chuyển thành nút đỏ (queue/QueuePanel.tsx, HangCho.tsx)", /KinButton/.test(qp) && /danger-solid/.test(qp) && /KinButton/.test(hc));
   // 24/10/2026 (QT-02): quan-tri-vien/page.tsx bỏ tab "Hồ sơ gia sư chờ duyệt" (duyệt gia sư chỉ còn một cửa: hàng chờ kiểm duyệt) nên không còn KinTabs; thay bằng ô kiểm không tự viết role="tab".
   check("quan-tri-vien/page.tsx: không tự viết role=\"tab\"", !/role="tab"/.test(read("src/app/(admin)/admin/quan-tri-vien/page.tsx")));
   for (const f of ["src/components/admin/TutorApplicationsPanel.tsx", "src/app/lop-cua-toi/(tutor)/hoc-phi/HocPhiClient.tsx", "src/app/lop-cua-toi/(tutor)/ke-hoach-buoi/[id]/KeHoachEditorClient.tsx"])
@@ -45,10 +47,13 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   const raw = src.filter(f => /\.tsx?$/.test(f) && !f.includes("/generated/")).filter(f => /window\.confirm|(^|[^.\w])confirm\(/.test(read(f).replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")));
   check("toàn bộ mã nguồn không còn window.confirm / confirm() — mọi hỏi lại đi qua KinConfirm", raw.length === 0, raw);
   check("useKinConfirm được xuất ở index.ts và trả { ask, dialog }", /useKinConfirm/.test(idx) && /dialog/.test(read("src/components/kin/useConfirm.tsx")) && /Promise<boolean>/.test(read("src/components/kin/useConfirm.tsx")));
-  for (const f of ["src/app/(student)/student/bai-giang/[lessonId]/page.tsx", "src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/ngan-hang-de-thi/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx", "src/app/(admin)/admin/danh-gia/page.tsx"]) {
+  for (const f of ["src/app/(student)/student/bai-giang/[lessonId]/page.tsx", "src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/ngan-hang-de-thi/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx"]) {
     const t = read(f), asks = (t.match(/await ask\(/g) ?? []).length, dialogs = (t.match(/\{dialog\}/g) ?? []).length, hooks = (t.match(/useKinConfirm\(\)/g) ?? []).length;
     check(`${f.split("/").slice(-2).join("/")}: dùng useKinConfirm (${asks} lần hỏi, ${hooks} hook, ${dialogs} hộp) — mỗi thành phần có hook thì có đúng một {dialog}`, asks >= 1 && hooks >= 1 && hooks === dialogs, { asks, hooks, dialogs });
   }
+  // BU-08: danh-gia dùng xác nhận NỘI DÒNG (confirmId) thay cho useKinConfirm/hộp thoại — kiểm đúng điều đó, và không có window.confirm.
+  const dg = read("src/app/(admin)/admin/danh-gia/page.tsx");
+  check("danh-gia/page.tsx: xác nhận xoá nội dòng (confirmId), không useKinConfirm, không window.confirm", /confirmId/.test(dg) && !/useKinConfirm|window\.confirm|[^.\w]confirm\(/.test(dg));
 
   section("Sàn cỡ chữ 11,1px (--kin-co-caption)");
   const small: string[] = [];

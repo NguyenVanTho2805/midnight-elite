@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { addCoins } from "@/lib/wallet";
 import { COIN_REASONS } from "@/lib/wallet-constants";
 import { notify } from "@/lib/notify";
+import { logAction } from "@/lib/auditLog";
 
 // POST /api/admin/answer-reports/[id]/resolve — admin duyệt report: { decision: "approved" | "rejected" }
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +36,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Report này đã được xử lý" }, { status: 409 });
   }
 
+  // BU-08: nhật ký ghi MỘT dòng cho mỗi lần xử lý thật (chỉ bên thắng cuộc đua `updateMany` ở trên mới tới đây).
+  // `coinDeducted` là số nguyên, ghi cả khi 0; metadata không có tên hay nội dung.
+  const audit = (penalized: boolean, coinDeducted: number) =>
+    logAction(auth.userId, decision === "approved" ? "answer_report.approve" : "answer_report.reject", "AnswerReport", id,
+      { answerId: report.answer.id, penalized, coinDeducted });
+
   if (decision === "approved") {
     // Flip isPenalized atomically — nếu đã bị phạt rồi (do report trước đó
     // trên cùng answer đã approved), count=0 → không trừ xu lần 2 và không
@@ -44,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data:  { isPenalized: true },
     });
     if (penalized.count === 0) {
+      await audit(false, 0);
       return NextResponse.json({ success: true });
     }
 
@@ -60,6 +68,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         : `Câu trả lời của bạn bị xác nhận vi phạm chất lượng`,
       link:    `/student/hoi-dap/${report.answer.questionId}`,
     });
+    await audit(true, report.answer.rewardPaid ? Math.trunc(report.answer.rewardPaid) : 0);
+  } else {
+    await audit(false, 0);
   }
 
   return NextResponse.json({ success: true });

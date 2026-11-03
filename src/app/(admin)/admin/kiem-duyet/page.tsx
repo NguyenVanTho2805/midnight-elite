@@ -1,9 +1,15 @@
-// "Chờ kiểm duyệt" (Figma "Vỏ — Quản trị" 11:287): hàng chờ gộp hồ sơ gia sư xin duyệt + các báo cáo, theo quyền từng vai.
+// Hàng chờ một cửa (BU-08): bảng + panel bên, lọc theo loại bằng ?loai=.
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import KiemDuyet from "@/components/admin/KiemDuyet";
+import HangCho from "@/components/admin/HangCho";
+import { QueueSkeleton } from "@/components/admin/queue/shared";
 
-export const metadata: Metadata = { title: "Chờ kiểm duyệt — KiN" };
+export const metadata: Metadata = { title: "Hàng chờ — KiN" };
 
 export default function KiemDuyetPage() {
-  return <KiemDuyet />;
+  return (
+    <Suspense fallback={<div className="p-4 sm:p-6"><QueueSkeleton /></div>}>
+      <HangCho />
+    </Suspense>
+  );
 }

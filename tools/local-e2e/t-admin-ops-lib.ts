@@ -2,9 +2,11 @@
 // nhật ký (không tên trẻ), danh sách việc hôm nay, bảng vai, thẻ hạn mức (không bịa hạn mức).
 import { check, section, done } from "./h";
 import {
-  AUDIT_PAGE_SIZE, CRON_JOBS, auditActionLabel, auditActor, auditRowView, buildTodayList, cronSecretMissingIsFatal, cronSettingKey, cronView, deployEnv, deployFlags,
-  parseAuditFilter, roleSummaries, shortId, whenText, type TodayCounts,
+  AUDIT_ACTION_OPTIONS, AUDIT_PAGE_SIZE, CRON_JOBS, actionInGroup, auditActionLabel, auditActor, auditGroupWhere, auditResourceLabel, auditRowView, buildTodayList, cronSecretMissingIsFatal, cronSettingKey, cronView, deployEnv, deployFlags,
+  groupTodayItems, parseAuditFilter, roleSummaries, shortId, whenText, type AuditGroup, type TodayCounts,
 } from "@/lib/adminOps";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { ROLE_PERMISSIONS } from "@/lib/permissions";
 import { formatBytes, quotaCards } from "@/lib/tutorQuota";
 import { quotaState } from "@/lib/planLimits";
@@ -32,7 +34,10 @@ check("cờ CRON_SECRET thiếu ở production nói rõ 'bị từ chối (503)'
 
 section("Lần gọi cron gần nhất");
 const job = CRON_JOBS[0];
-check("khớp vercel.json: đủ năm tác vụ (thêm lấy bài VOA — ADM-003), khoá cài đặt riêng từng cái", CRON_JOBS.length === 5 && new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === 5 && CRON_JOBS.map(j => j.path).sort().join() === "/api/cron/english-voa,/api/cron/expire-tutor-subscriptions,/api/cron/pro-renewal-reminders,/api/cron/remind-class,/api/cron/remind-exam");
+check("đủ sáu tác vụ (ADM-003 thêm english-voa, BU-08 thêm article-publish), khoá cài đặt riêng từng cái", CRON_JOBS.length === 6 && new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === 6 && CRON_JOBS.map(j => j.path).sort().join() === "/api/cron/article-publish,/api/cron/english-voa,/api/cron/expire-tutor-subscriptions,/api/cron/pro-renewal-reminders,/api/cron/remind-class,/api/cron/remind-exam");
+const ap = CRON_JOBS.find(j => j.key === "article-publish")!;
+check("article-publish: đường /api/cron/article-publish, 'Mỗi 15 phút', maxGapHours 2; quá 2 giờ mới 'Chậm', trong 2 giờ 'Đúng lịch'", ap.path === "/api/cron/article-publish" && ap.schedule === "Mỗi 15 phút" && ap.maxGapHours === 2 && cronView(ap, new Date(NOW.getTime() - 119 * 60_000).toISOString(), NOW).status === "Đúng lịch" && cronView(ap, new Date(NOW.getTime() - 121 * 60_000).toISOString(), NOW).status === "Chậm so với lịch");
+check("mọi tác vụ trong CRON_JOBS có tệp route thật dưới src/app/api/cron", CRON_JOBS.every(j => { try { return statSync(join(process.cwd(), "src/app", j.path, "route.ts")).isFile(); } catch { return false; } }), CRON_JOBS.filter(j => { try { return !statSync(join(process.cwd(), "src/app", j.path, "route.ts")).isFile(); } catch { return true; } }).map(j => j.key));
 check("chưa có lần nào / giá trị hỏng → 'Chưa ghi nhận' (không đoán)", cronView(job, null, NOW).status === "Chưa ghi nhận" && cronView(job, "rác", NOW).status === "Chưa ghi nhận" && cronView(job, "", NOW).tone === "mo");
 check("gọi 5 giờ trước → Đúng lịch, hiện 'hôm nay 07:00'", cronView(job, "2026-10-24T00:00:00Z", NOW).status === "Đúng lịch" && cronView(job, "2026-10-24T00:00:00Z", NOW).lastText === "Gọi gần nhất hôm nay 07:00", cronView(job, "2026-10-24T00:00:00Z", NOW).lastText);
 check("gọi 3 ngày trước (quá 36 giờ) → Chậm so với lịch, tone cho", cronView(job, "2026-10-21T00:00:00Z", NOW).status === "Chậm so với lịch" && cronView(job, "2026-10-21T00:00:00Z", NOW).tone === "cho");
@@ -63,7 +68,48 @@ check("không có gì chờ → danh sách rỗng (không hiện số 0)", build
 const some = buildTodayList({ ...base, tutorsPending: 2, topupsPending: 1, supportOpen: 3 });
 check("chỉ giữ việc có số > 0, đúng số, có đường vào", some.map(i => `${i.key}:${i.count}`).join() === "gia-su:2,nap-coin:1,ho-tro:3" && some.every(i => i.href.startsWith("/admin/") && i.label && i.hint));
 check("null = không có quyền xem loại đó → không hiện dù sau này có số", buildTodayList({ ...base, tutorsPending: 1, topupsPending: null, proOrdersPending: null, supportOpen: null }).map(i => i.key).join() === "gia-su");
-check("báo cáo trả lời dẫn sang trang riêng (có thể trừ thưởng), không xử lý ngay", buildTodayList({ ...base, answerReports: 1 })[0].href === "/admin/cong-dong/bao-cao");
+check("mọi loại hàng chờ dẫn tới /admin/kiem-duyet?loai=<loại>; không còn trỏ /admin/cong-dong/bao-cao hay /admin/topups", (() => {
+  const l = buildTodayList({ ...base, tutorsPending: 1, threadReports: 1, profileReports: 1, answerReports: 1, topupsPending: 1, reviewsPending: 1, guestQuestions: 1, joinSlowCourses: 1 });
+  return l.filter(i => i.group === "duyet" && !["goi-pro", "ho-tro"].includes(i.key)).every(i => i.href === `/admin/kiem-duyet?loai=${i.key}`) && !l.some(i => i.href === "/admin/cong-dong/bao-cao" || i.href === "/admin/topups") && l.find(i => i.key === "vao-lop-cham")!.href === "/admin/kiem-duyet?loai=vao-lop";
+})());
+
+section("Hôm nay: nhóm duyet · theo-doi · he-thong (BU-08)");
+const full = buildTodayList({ ...base, tutorsPending: 2, reviewsPending: 5, topupsPending: 1, guestQuestions: 3, joinSlowCourses: 2, scheduledArticles: 4, cronSlow: 1 });
+check("đủ nhóm: duyet (gia-su, danh-gia, khach-hoi, nap-coin), theo-doi (vao-lop-cham, bai-hen-gio), he-thong (cron-cham)", full.map(i => `${i.group}:${i.key}`).join() === "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,duyet:nap-coin,theo-doi:vao-lop-cham,theo-doi:bai-hen-gio,he-thong:cron-cham", full.map(i => `${i.group}:${i.key}`));
+check("loại không đủ quyền (null / vắng) KHÔNG hiện dù đếm được: reviewsPending vắng + guestQuestions null + cronSlow null", buildTodayList({ ...base, tutorsPending: 1, guestQuestions: null, cronSlow: null, joinSlowCourses: null, scheduledArticles: null }).map(i => i.key).join() === "gia-su");
+check("số 0 không hiện ở bất kỳ nhóm nào", buildTodayList({ ...base, reviewsPending: 0, guestQuestions: 0, joinSlowCourses: 0, scheduledArticles: 0, cronSlow: 0 }).length === 0);
+const groups = groupTodayItems(full);
+check("groupTodayItems: 3 nhóm, thứ tự duyet → theo-doi → he-thong, mỗi nhóm có nhãn tiếng Việt", groups.map(g => g.key).join() === "duyet,theo-doi,he-thong" && groups.map(g => g.label).join() === "Việc chờ,Theo dõi,Hệ thống" && groups[0].items.length === 4);
+check("nhóm rỗng bị bỏ: chỉ có việc duyet → 1 nhóm", groupTodayItems(buildTodayList({ ...base, tutorsPending: 1 })).length === 1 && groupTodayItems([]).length === 0);
+check("KHÔNG có trường tiền tổng nào trong mục Hôm nay (chỉ số lượng)", !/amount|total|tong|vnd|coin\b/i.test(Object.keys(full[0]).join()) && full.every(i => Number.isInteger(i.count)));
+
+section("Nhật ký: nhóm lọc `nhom` (BU-08)");
+const fn = parseAuditFilter(new URLSearchParams("nhom=duyet&action=tutor.approve"));
+check("`nhom` hợp lệ được đọc; kết hợp được với action", fn.nhom === "duyet" && fn.action === "tutor.approve");
+check("`nhom` lạ / chuỗi tự do / rỗng bị bỏ (client không gửi được tiền tố tuỳ ý)", ["tuy-y", "tutor.", "' OR 1=1", "", "DUYET"].every(v => parseAuditFilter(new URLSearchParams({ nhom: v })).nhom === null) && parseAuditFilter(new URLSearchParams("")).nhom === null);
+const G = (a: string) => (["duyet", "tien", "nguoi", "noi-dung", "he-thong"] as AuditGroup[]).filter(g => actionInGroup(a, g)).join();
+check("ánh xạ tiền tố đúng bảng đặc tả", G("tutor.approve") === "duyet" && G("thread_report.reject") === "duyet" && G("answer_report.approve") === "duyet" && G("review.delete") === "duyet" && G("profile_report.lock") === "duyet" && G("community.guest_question.approve") === "duyet"
+  && G("coin_topup.approve") === "tien" && G("pro_order.activate") === "tien" && G("invoice.issue") === "tien" && G("bank_tx.resolve") === "tien" && G("payout_account.update") === "tien"
+  && G("user.role_change") === "nguoi" && G("student_profile.update") === "nguoi" && G("parent_link.verify") === "nguoi" && G("self_consent.grant") === "nguoi" && G("enrollment.create") === "nguoi"
+  && G("article.scheduled_notify") === "noi-dung,he-thong" && G("course.update") === "noi-dung" && G("admission_score.update") === "noi-dung" && G("tutor_subscription.expire") === "he-thong");
+check("`tutor_subscription.expire` KHÔNG lọt nhóm duyet (tiền tố tutor. có dấu chấm)", !actionInGroup("tutor_subscription.expire", "duyet"));
+check("auditGroupWhere dựng OR các tiền tố từ chính bảng (một nguồn)", auditGroupWhere("duyet").OR.length === 6 && JSON.stringify(auditGroupWhere("he-thong").OR).includes('"contains":".scheduled_"'));
+
+section("Nhật ký: nhãn cho mã BU-08 (quét nguồn)");
+const BU08 = ["thread_report.approve", "thread_report.reject", "answer_report.approve", "answer_report.reject", "review.approve", "review.reject", "review.delete", "community.guest_question.approve", "community.guest_question.reject", "article.scheduled_notify"];
+check("mọi mã hành động BU-08 có nhãn tiếng Việt (không rơi về dạng 'a b · c d')", BU08.every(a => !/ · /.test(auditActionLabel(a)) && AUDIT_ACTION_OPTIONS.some(o => o.value === a)), BU08.filter(a => / · /.test(auditActionLabel(a))));
+check("nhãn đúng chữ đặc tả", auditActionLabel("thread_report.approve") === "Gỡ bài viết bị báo cáo" && auditActionLabel("review.delete") === "Xoá đánh giá khoá học" && auditActionLabel("article.scheduled_notify") === "Báo bài hẹn giờ đã lên");
+check("nhãn tài nguyên: ThreadReport · AnswerReport · CourseReview · thread · Article", auditResourceLabel("ThreadReport") === "Báo cáo bài viết" && auditResourceLabel("AnswerReport") === "Báo cáo câu trả lời" && auditResourceLabel("CourseReview") === "Đánh giá khoá học" && auditResourceLabel("thread") === "Bài cộng đồng" && auditResourceLabel("Article") === "Bài viết");
+// Quét nguồn: mọi `logAction(..., "<mã>", ...)` trong src/app/api/admin và src/app/api/cron mà là mã BU-08 thì phải có nhãn (chống thêm mã mới mà quên nhãn).
+const codes = new Set<string>();
+const scan = (dir: string) => { for (const n of readdirSync(dir)) { const p = join(dir, n); if (statSync(p).isDirectory()) scan(p); else if (n === "route.ts") for (const m of readFileSync(p, "utf8").matchAll(/logAction\([^,]+,\s*(?:decision === "approved" \? "([a-z_.]+)" : "([a-z_.]+)"|status === "approved" \? "([a-z_.]+)" : "([a-z_.]+)"|"([a-z_.]+)")/g)) m.slice(1).filter(Boolean).forEach(c => codes.add(c!)); } };
+scan(join(process.cwd(), "src/app/api/admin")); scan(join(process.cwd(), "src/lib"));
+const unlabeled = [...codes].filter(c => /^(thread_report|answer_report|review|community|article)\./.test(c) && / · /.test(auditActionLabel(c)));
+check(`quét ${codes.size} mã logAction trong api/admin + lib: mã thuộc BU-08 đều có nhãn`, codes.size > 5 && unlabeled.length === 0, unlabeled);
+
+section("Cờ KIN_GUEST_QUESTIONS (BU-05 / BU-08): chỉ hiển thị");
+const gq = (env: Record<string, string | undefined>) => deployFlags(env).find(f => f.key === "KIN_GUEST_QUESTIONS")!;
+check("có trong danh sách cờ; mặc định tắt; =1 bật; 'true' vẫn tắt", !!gq({}) && !gq({}).on && gq({ KIN_GUEST_QUESTIONS: "1" }).on && !gq({ KIN_GUEST_QUESTIONS: "true" }).on && gq({}).label === "Cho khách đặt câu hỏi" && /hàng chờ có người xử lý/.test(gq({}).note));
 
 section("Bảng vai (một nguồn: permissions.ts)");
 const roles = roleSummaries();
