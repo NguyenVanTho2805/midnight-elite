@@ -6,19 +6,20 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 |---|---|---|---|---|---|---|
 | COO-000 | COO | Dựng phòng ban (16 tác tử, 4 tài liệu) + báo cáo điểm yếu 01/11 | claude/phong-ban-agent | #90 | cho-gop-pr | Nền cho mọi việc sau |
 | BU-00 | TUT+STU+ADM | Tách 3 giao diện theo vai | claude/bu-00-phan-vai | #88 | cho-gop-pr | Làm trước khi có phòng ban; chờ Thọ gộp |
-| BU-01 | TUT (+STU màn nhập mã) | Lớp: joinPolicy, mã cá nhân, duyệt, lớp miễn phí | claude/bu-01-lop | #103 | cho-gop-pr | Gộp #93 (redeem) trước |
-| BU-02 | TUT (ADM giữ 2 tệp lớn) | Học liệu: tab Giáo trình + ô tải lên chung | claude/bu-02-hoc-lieu | #106 | cho-gop-pr | Rẽ từ BU-01; chờ chủ: Cloudinary/KIN_VIDEO_UPLOAD; tab Chương bài cũ admin còn tải không ký → BU-08 |
-| BU-05 | STU | Cộng đồng 3 cột / Threads | claude/bu-05-cong-dong | #104 | cho-gop-pr | Không bật KIN_GUEST_QUESTIONS ở production tới khi có UI kiểm duyệt (BU-08) |
-| BU-07 | STU (ADM soạn bài) | Tin tức | claude/bu-07-tin-tuc | #102 | cho-gop-pr | Xung đột nhẹ #92; cron bài hẹn giờ = ADM-002 |
-| BU-03 | ADM+TUT | Đề thi kiểu Azota | claude/bu-03-de-thi | #107 | cho-gop-pr | Từ main; chờ chủ: jszip/xmldom (9d0ebca), MathType, nút gốc Môn; đề nhiều mã khoá tới BU-04 |
-| BU-04 | STU | Phòng thi một cột |  |  | dung | TẠM DỪNG 02/11 (hạn mức tuần); chỉ có đặc tả dac-ta/BU-04.md (commit 0ebccdf, worktree wt-bu04, chưa push); duyệt D-a/b/c; chờ chủ: leaderboard lộ tên top 50, participants đếm đôi, múi giờ |
-| BU-06 | STU | Tìm gia sư kiểu sàn | claude/bu-06-tim-gia-su | #105 | cho-gop-pr | Rẽ từ BU-01; còn BU-06b: đường ghi coverUrl/introVideoUrl (phòng Gia sư) |
-| BU-08 | ADM | Quản trị gọn 4 module |  |  | dung | TẠM DỪNG 02/11 (hạn mức tuần); chưa có mã; gồm UI kiểm duyệt cộng đồng, ADM-002, thay tab Chương bài cũ |
-| STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | claude/stu-s1 | #94 | cho-gop-pr | S · giao 01/11 · từ báo cáo điểm yếu mục 4 |
-| STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | claude/stu-s1 | #94 | cho-gop-pr | S · giao 01/11 · chủ xem câu chữ |
-| ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | claude/adm-s1 | #92 | cho-gop-pr | S · giao 01/11 |
-| TUT-002 | TUT | Người nộp đơn gia sư không ghi danh lớp được | claude/tut-s1 | #93 | cho-gop-pr | S · giao 01/11 |
-| ADM-003 | ADM | Cron english-voa vào CRON_JOBS; bỏ route _template | claude/adm-s1 | #92 | cho-gop-pr | S · giao 01/11 · sau ADM-001 |
+| BU-01 | TUT (+STU màn nhập mã) | Lớp: joinPolicy, mã cá nhân, duyệt, lớp miễn phí | claude/bu-01-lop | #103 | xong | Mở sau #88; đặc tả = BIGUPDATE-KE-HOACH.md mục BU-01 · PR mở 01/11 · gộp vào main qua #111 (03/11/2026) |
+| BU-02 | TUT (ADM giữ 2 tệp lớn) | Học liệu: tab Giáo trình + ô tải lên chung | claude/bu-02-hoc-lieu | #106 | xong | Figma 606:5 · xếp chồng trên #103 · gộp vào main qua #111 (03/11/2026) |
+| BU-05 | STU | Cộng đồng 3 cột / Threads | claude/bu-05-cong-dong | #104 | xong | Figma 606:3 · KIN_GUEST_QUESTIONS giữ tắt tới khi #104 + BU-08 cùng lên · gộp vào main qua #111 (03/11/2026) |
+| BU-07 | STU (ADM soạn bài) | Tin tức | claude/bu-07-tin-tuc | #102 | xong | Figma 606:4 · kèm STU-004 · gộp vào main qua #111 (03/11/2026) |
+| BU-03 | ADM+TUT | Đề thi kiểu Azota | claude/bu-03-de-thi | #107 | xong | Sau BU-00 · gộp trước BU-04 · gộp vào main qua #111 (03/11/2026) |
+| BU-04 | STU | Phòng thi một cột | claude/bu-04-phong-thi | #108 | xong | Figma 606:6; sau BU-03 · xếp chồng #107; ghép sẵn #94 ở nhánh -gop-94; múi giờ còn mở · gộp vào main qua #111 (03/11/2026) |
+| BU-06 | STU | Tìm gia sư kiểu sàn | claude/bu-06-tim-gia-su | #105 | xong | Sau BU-01 · xếp chồng #103; BU-06b = #109 · gộp vào main qua #111 (03/11/2026) |
+| BU-06b | STU+TUT | Gia sư ghi ảnh bìa + video giới thiệu (PUT tutor-profile) | claude/bu-06b-anh-bia-video | #109 | xong | xếp chồng #105; ảnh bìa data URL ≤250 000 ký tự · gộp vào main qua #111 (03/11/2026) |
+| BU-08 | ADM | Quản trị gọn 4 module | claude/bu-08-quan-tri | #110 | xong | Figma 606:7; cuối cùng · D2 xử lý khi gộp: cron article-publish chạy HẰNG NGÀY 07:15 giờ VN (không phải 15 phút) vì repo chỉ chấp nhận cron hằng ngày · gộp vào main qua #111 (03/11/2026) |
+| STU-001 | STU | Mặc định phòng thi an toàn (answerVisibility, giới hạn lượt) | claude/stu-s1 | #94 | xong | S · giao 01/11 · từ báo cáo điểm yếu mục 4 · gộp vào main qua #111 (03/11/2026) |
+| STU-002 | STU | Sửa chữ trang chủ khớp sản phẩm thật | claude/stu-s1 | #94 | xong | S · giao 01/11 · chủ xem câu chữ · gộp vào main qua #111 (03/11/2026) |
+| ADM-001 | ADM | Audit Tin tức + authorId từ session + nhãn thiếu; xoá học sinh → ẩn | claude/adm-s1 | #92 | xong | S · giao 01/11 · gộp vào main qua #111 (03/11/2026) |
+| TUT-002 | TUT | Người nộp đơn gia sư không ghi danh lớp được | claude/tut-s1 | #93 | xong | S · giao 01/11 · gộp vào main qua #111 (03/11/2026) |
+| ADM-003 | ADM | Cron english-voa vào CRON_JOBS; bỏ route _template | claude/adm-s1 | #92 | xong | S · giao 01/11 · sau ADM-001 · gộp vào main qua #111 (03/11/2026) |
 | ADM-002 | ADM | Validator server bài viết; thông báo theo tag | | | moi | M |
 | STU-003 | STU | Cache xếp hạng, rank bằng count | | | moi | M |
 | TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
