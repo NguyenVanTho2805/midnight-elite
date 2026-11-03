@@ -6,7 +6,7 @@
 //   - Gia sư ở LẠI tên miền chính: các trang /admin/* mà gia sư dùng (Bài KT, ngân hàng đề, lớp…) chạy ngay trên tên miền chính, cùng phiên, trong vỏ gia sư.
 //     31/10/2026 (BU-00 bước 3): gia sư KHÔNG còn ở lại /admin/* nữa — mở /admin/thi-thu*, /admin/khoa-hoc* thì 307 sang bí danh /lop-cua-toi/de-thi*,
 //     /lop-cua-toi/quan-lop* (src/lib/tutorRoutes.ts, giữ tham số); mọi /admin/... khác (kể cả /admin, /admin/khoa-hoc/danh-muc) → Hộp việc /lop-cua-toi.
-//   - Học viên / gia sư đã đăng nhập mà mở trang chủ, /dang-ky hoặc /dang-nhap thì đi thẳng vào dashboard (không thấy trang giới thiệu của khách).
+//   - Học viên / gia sư đã đăng nhập mà mở /dang-ky hoặc /dang-nhap thì đi thẳng vào dashboard. (Trang chủ "/" từng bị chuyển hướng cùng nhóm này; xem 01/11/2026.)
 //   - Quản trị cấp 1 / cấp nội dung giữ nguyên: /admin trên tên miền riêng.
 // 15/10/2026 (Thọ mở admin.midnightelite-edu.com/dang-nhap: mọi nút công khai quay lại chính trang đăng nhập):
 //   - Tên miền admin không phục vụ trang nào ngoài /admin, nhưng nhiều nút / liên kết trong thư vẫn trỏ tới đường công khai (/khoa-hoc, /quen-mat-khau, /dang-ky…).
@@ -18,6 +18,9 @@
 //     "vĩnh viễn": trình duyệt nhớ luôn. Đã dựng lại bằng Chromium: một người mở midnightelite-edu.com/admin/khoa-hoc lúc CHƯA đăng nhập (bị 308 sang admin), sau đó
 //     đăng nhập gia sư rồi mở đúng địa chỉ ấy → trình duyệt dùng lại bản nhớ và đẩy thẳng sang tên miền admin (nơi gia sư không có phiên), không hỏi máy chủ nữa.
 //     proxy.ts còn đặt Cache-Control: no-store lên mọi chuyển hướng.
+// 01/11/2026 (HOME-01: người đã đăng nhập không xem lại được trang chủ, không gửi được đường dẫn gốc cho người khác):
+//   - Tên miền chính, "/" luôn `next` cho mọi vai và cho khách (trước đây học viên / gia sư bị 307 sang dashboard). Navbar có nút "Vào trang của tôi" thay cho lối đó.
+//   - Vì thế "/" không còn cần giải mã phiên ở tên miền chính (needsSession). Giữ nguyên: /dang-ky và /dang-nhap của người đã đăng nhập vẫn 307 vào dashboard; tên miền admin không đổi.
 import { landingPath } from "@/lib/landing";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { toTutorPath } from "@/lib/tutorRoutes";
@@ -47,7 +50,7 @@ export const isPwaFile = (p: string) => p === "/sw.js" || p === "/manifest.webma
 /** Có cần giải mã phiên để quyết định không? Chỉ vài đường dẫn cần, các đường còn lại (trang khách, API, tệp tĩnh) không tốn gì. */
 export function needsSession(host: string, pathname: string): boolean {
   if (isAdminHost(host)) return !(pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname) || isPwaFile(pathname));
-  return pathname === "/" || isAdminPath(pathname) || AUTH_PAGES.includes(pathname);
+  return isAdminPath(pathname) || AUTH_PAGES.includes(pathname);
 }
 
 export function decideRoute({ host, pathname, search, session }: RouteInput): RouteDecision {
@@ -81,7 +84,8 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     return { kind: "redirect", status: 307, host: "admin", pathname, search };
   }
 
-  if (isLearnerOrTeacher(session) && (pathname === "/" || AUTH_PAGES.includes(pathname))) {
+  // "/" không nằm ở đây từ 01/11/2026: trang chủ mở được cho mọi người (xem đầu tệp).
+  if (isLearnerOrTeacher(session) && AUTH_PAGES.includes(pathname)) {
     const home = landingPath(session!.role, session!.adminRole);
     if (pathname === "/dang-nhap") return { kind: "redirect", status: 307, pathname: safeRedirect(new URLSearchParams(search).get("redirect")) ?? home };
     return { kind: "redirect", status: 307, pathname: home };

@@ -111,7 +111,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
             <CoinBalance />
             <NotificationBell />
             {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()} onOpenMore={() => setMoreOpen(true)}
-              links={[{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
+              links={[{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }, { label: "Trang chủ KiN", href: "/" }]} />}
           </div>
         </div>
         {children}

@@ -40,7 +40,9 @@ const tok = (b: number) => b.toString(16).padStart(2, "0").repeat(16);
   const c1 = await chrome(pg);
   check("KHÔNG có thanh menu, nút 'Bắt đầu miễn phí', link Đăng nhập, chân trang quảng bá", clean(c1), c1);
   check("có thanh trên tối giản: logo KiN + 'Trang riêng cho phụ huynh' (vùng banner)", await pg.getByRole("banner").getByText("Trang riêng cho phụ huynh").isVisible() && (await pg.getByRole("banner").innerText()).replace(/\s+/g, "").includes("KiN"));
-  check("logo KiN KHÔNG phải liên kết (không dẫn phụ huynh ra trang bán khoá)", (await pg.getByRole("banner").getByRole("link").count()) === 0);
+  // HOME-01 (01/11/2026): thêm đúng MỘT liên kết "Trang chủ KiN" (trang công khai); logo vẫn không phải liên kết.
+  const bl = await pg.getByRole("banner").getByRole("link").evaluateAll(els => els.map(e => [e.textContent?.trim(), e.getAttribute("href")]));
+  check("logo KiN KHÔNG phải liên kết; thanh trên chỉ có đúng một liên kết 'Trang chủ KiN' → /", JSON.stringify(bl) === JSON.stringify([["Trang chủ KiN", "/"]]), bl);
   check("chân trang nhắc: đường dẫn riêng, đừng chuyển tiếp", await pg.getByRole("contentinfo").getByText(/Đừng chuyển tiếp cho người khác/).isVisible());
   check("nội dung phiếu vẫn đủ: số tiền 1.200.000đ, nút 'Tôi đã chuyển'", await pg.getByText(/1\.200\.000/).first().isVisible() && await pg.getByRole("button", { name: /Tôi đã chuyển/ }).isVisible());
   check("thẻ xem trước vẫn noindex + tiêu đề chung", /<meta name="robots" content="noindex/.test(await pg.content()) && (await pg.title()).includes("Phiếu học phí — KiN"));

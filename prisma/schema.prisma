@@ -3002,3 +3002,14 @@ model EngMock {
   @@index([userId, skill, takenAt])
   @@map("eng_mocks")
 }
+
+/// Nội dung trang công khai sửa được từ màn quản trị. Mỗi trang một hàng, khoá cố định (hiện chỉ "home").
+/// Không khoá ngoại tới User: xoá người dùng không được kéo theo mất nội dung (updatedBy chỉ là dấu vết).
+model SiteContent {
+  key       String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("site_content")
+}

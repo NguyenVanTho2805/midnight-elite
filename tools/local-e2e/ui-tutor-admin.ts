@@ -76,8 +76,9 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
 
   section("Máy chủ: trang chủ / đăng ký / đăng nhập cho người ĐÃ đăng nhập");
   const h1 = await get("/", sc), h2 = await get("/", tc), h3 = await get("/"), h4 = await get("/", ac);
-  check("học viên mở '/' → /student/viec-cua-toi", h1.status === 307 && path(h1.location) === "/student/viec-cua-toi", h1);
-  check("gia sư mở '/' → /lop-cua-toi", h2.status === 307 && path(h2.location) === "/lop-cua-toi", h2);
+  // HOME-01 (01/11/2026): trang chủ mở được khi đã đăng nhập; trước đó học viên / gia sư bị 307 về dashboard.
+  check("học viên mở '/' → xem trang chủ (200), không bị chuyển", h1.status === 200, h1);
+  check("gia sư mở '/' → xem trang chủ (200), không bị chuyển", h2.status === 200, h2);
   check("khách mở '/' → xem trang chủ (200)", h3.status === 200, h3);
   check("quản trị mở '/' trên tên miền chính → vẫn 200 (không bị đẩy sang tên miền không có phiên)", h4.status === 200, h4);
   const g1 = await get("/dang-ky", sc), g2 = await get("/dang-nhap", tc), g3 = await get("/dang-nhap?redirect=%2Fstudent%2Flich-hoc", sc), g4 = await get("/dang-nhap?redirect=https%3A%2F%2Fevil.example%2Fx", sc);
@@ -162,11 +163,11 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await rail(pg).waitFor({ timeout: 10000 });
   await ctx.close();
 
-  section("Trình duyệt: trang chủ / đăng ký cho người đã đăng nhập → thẳng dashboard");
+  section("Trình duyệt: trang chủ mở được khi đã đăng nhập; /dang-ky vẫn → dashboard");
   const ctxS = await ctxFor(S, { width: 1280, height: 800 });
   const ps = await ctxS.newPage(); watch(ps);
   await ps.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 120000 });
-  check("học viên gõ trang chủ → /student/viec-cua-toi, thấy thanh bên học sinh, không thấy Navbar khách", /\/student\/viec-cua-toi/.test(ps.url()) && await ps.getByRole("navigation", { name: "Module của học sinh" }).isVisible() && (await ps.getByRole("navigation", { name: "Điều hướng chính" }).count()) === 0, ps.url());
+  check("học viên gõ trang chủ → ở lại '/', có Navbar, có 'Vào trang của tôi', không có thanh bên học sinh", new URL(ps.url()).pathname === "/" && await ps.getByRole("navigation", { name: "Điều hướng chính" }).isVisible() && await ps.locator("header").getByRole("link", { name: "Vào trang của tôi" }).isVisible() && (await ps.getByRole("navigation", { name: "Module của học sinh" }).count()) === 0, ps.url());
   await ps.goto(`${BASE}/dang-ky`, { waitUntil: "networkidle", timeout: 120000 });
   check("học viên gõ /dang-ky → dashboard", /\/student\/viec-cua-toi/.test(ps.url()), ps.url());
   await ps.goto(`${BASE}/lop-cua-toi/de-thi`, { waitUntil: "networkidle", timeout: 120000 });

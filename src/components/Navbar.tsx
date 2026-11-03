@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import CoinBalance from "@/components/CoinBalance";
 import NotificationBell from "@/components/NotificationBell";
 import { KinLogo } from "@/components/kin/KinLogo";
+import { landingPath } from "@/lib/landing";
 
 // Figma KiN 146:2 "Header": 4 mục, khách và người đã đăng nhập thấy như nhau.
 const navLinks = [
@@ -22,6 +23,9 @@ const accountLinks = [
   { label: "Lịch học",          href: "/student/lich-hoc",  icon: <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/> },
   { label: "Lớp đang theo dõi", href: "/khoa-hoc-da-luu",   icon: <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/> },
 ];
+
+// Đích có thể nằm ở tên miền admin (quản trị cấp 1 / nội dung): dùng <a> tải cứng, vì next/link tải trước RSC và router.push sang tên miền khác bị CORS chặn.
+const isCrossHostLanding = (href: string) => href === "/admin";
 
 const ghostBtn = "inline-flex items-center justify-center h-11 px-[18px] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] transition-colors hover:bg-[var(--kin-nen-bang)]";
 const solidBtn = "inline-flex items-center justify-center h-11 px-[18px] rounded-[var(--kin-bo-md)] bg-[var(--kin-nhan-nen)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-chu-tren-nen)] transition-colors hover:bg-[var(--kin-nhan-nen-re)]";
@@ -49,6 +53,7 @@ export default function Navbar() {
     logout();
   }
 
+  const myPage = user ? landingPath(user.role ?? "student", user.adminRole) : null;
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   return (
@@ -94,6 +99,10 @@ export default function Navbar() {
             <>
               <CoinBalance />
               <NotificationBell />
+              {/* Nằm NGOÀI role="menu" để không thêm menuitem cho menu tài khoản. */}
+              {myPage && (isCrossHostLanding(myPage)
+                ? <a href={myPage} className={solidBtn}>Vào trang của tôi</a>
+                : <Link href={myPage} className={solidBtn}>Vào trang của tôi</Link>)}
 
               {/* User dropdown */}
               <div ref={dropdownRef} className="relative">
@@ -178,6 +187,9 @@ export default function Navbar() {
           <div className="pt-2 mt-2 border-t border-[var(--kin-vien-thuong)] space-y-1">
             {user ? (
               <>
+                {myPage && (isCrossHostLanding(myPage)
+                  ? <a href={myPage} onClick={() => setMenuOpen(false)} className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">Vào trang của tôi</a>
+                  : <Link href={myPage} onClick={() => setMenuOpen(false)} className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">Vào trang của tôi</Link>)}
                 {accountLinks.map((l) => (
                   <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
                     className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">
