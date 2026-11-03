@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   SIGNUP_BONUS,
   COIN_REASONS,
@@ -25,11 +26,12 @@ function resolveSourceType(reason: string, opts?: CoinOpts): CoinSourceType | nu
   return DEFAULT_SOURCE_TYPE_FOR_REASON[reason as keyof typeof DEFAULT_SOURCE_TYPE_FOR_REASON] ?? null;
 }
 
-// Tạo ví + tặng xu khởi đầu cho user mới — gọi ngay sau khi tạo User.
-export async function grantSignupBonus(userId: string): Promise<void> {
-  await prisma.$transaction([
-    prisma.wallet.create({ data: { userId, balance: SIGNUP_BONUS } }),
-    prisma.coinTransaction.create({
+// Hai thao tác tạo ví + ghi xu khởi đầu. Tách ra để các route đăng ký đặt NGAY TRONG giao dịch tạo User: trước đây User được tạo xong rồi mới tặng xu,
+// nên lỗi ở bước sau để lại tài khoản không ví, không link xác thực và chặn đăng ký lại (409 "Email này đã được đăng ký"). Số xu và lý do không đổi.
+export function signupBonusOps(db: Pick<Prisma.TransactionClient, "wallet" | "coinTransaction">, userId: string) {
+  return [
+    db.wallet.create({ data: { userId, balance: SIGNUP_BONUS } }),
+    db.coinTransaction.create({
       data: {
         userId,
         amount:     SIGNUP_BONUS,
@@ -37,7 +39,12 @@ export async function grantSignupBonus(userId: string): Promise<void> {
         sourceType: resolveSourceType(COIN_REASONS.SIGNUP_BONUS),
       },
     }),
-  ]);
+  ];
+}
+
+// Tạo ví + tặng xu khởi đầu cho user mới — dùng khi User đã có sẵn (đường đăng ký đã chuyển sang signupBonusOps trong cùng giao dịch).
+export async function grantSignupBonus(userId: string): Promise<void> {
+  await prisma.$transaction(signupBonusOps(prisma, userId));
 }
 
 // Trừ xu — atomic, throw InsufficientBalanceError nếu không đủ số dư.

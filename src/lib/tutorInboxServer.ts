@@ -101,8 +101,8 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
 
   const courseOf = (a: { lesson: { chapter: { section: { courseId: string } } } }) => a.lesson.chapter.section.courseId;
   const ungradedRows: InboxRow[] = [
-    ...subs.map(s => ({ title: s.user.name, sub: `${s.assignment.title} · nộp ${inboxDateTime(s.submittedAt)}`, href: `/admin/khoa-hoc/${courseOf(s.assignment)}`, at: s.submittedAt })),
-    ...essays.map(e => ({ title: e.user.name, sub: `${e.question.assignment.title} · câu tự luận`, href: `/admin/khoa-hoc/${courseOf(e.question.assignment)}`, at: e.updatedAt })),
+    ...subs.map(s => ({ title: s.user.name, sub: `${s.assignment.title} · nộp ${inboxDateTime(s.submittedAt)}`, href: `/lop-cua-toi/quan-lop/${courseOf(s.assignment)}`, at: s.submittedAt })),
+    ...essays.map(e => ({ title: e.user.name, sub: `${e.question.assignment.title} · câu tự luận`, href: `/lop-cua-toi/quan-lop/${courseOf(e.question.assignment)}`, at: e.updatedAt })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, take).map(({ title, sub, href }) => ({ title, sub, href }));
   const ungradedAt = [subs[0]?.submittedAt, essays[0]?.updatedAt].filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
@@ -123,7 +123,7 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       href: "/lop-cua-toi/hoc-phi?tab=doi-soat",
     })), banks[0]?.occurredAt),
     consent: mk(c.pendingConsent, consents.map(e => ({
-      title: e.user.name, sub: `${e.course.name} · chờ phụ huynh xác nhận`, href: `/admin/khoa-hoc/${e.courseId}/hoc-vien`,
+      title: e.user.name, sub: `${e.course.name} · chờ phụ huynh xác nhận`, href: `/lop-cua-toi/quan-lop/${e.courseId}/hoc-vien`,
     })), consents[0]?.createdAt),
     reminders: mk(c.remindersDue, reminderRows.slice(0, take), reminderAt),
     makeup: mk(c.makeupExpiring, expiring.slice(0, take).map(m => ({

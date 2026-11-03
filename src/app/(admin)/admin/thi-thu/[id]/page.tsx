@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import PermissionGuard from "@/components/PermissionGuard";
+import { useContentHref } from "@/components/tutor/useContentHref";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { api, type ExamFull, type ExamQuestionFull, type ExamQuestionInput, type ExamGuestAccessFull, type ExamAttemptAdminRow, type ExamAttemptAdminDetail, type QuestionType, type SaveToBankInput, type Difficulty, type QuestionCategoryFull } from "@/lib/api";
@@ -1114,6 +1115,7 @@ function AttemptsPanel({ examId }: { examId: string }) {
 // ─── TRANG CHÍNH ───────────────────────────────────────────────────────────────
 function ThiThuQuestionsPage() {
   const { id } = useParams<{ id: string }>();
+  const href = useContentHref(); // BU-00 bước 3
   const [exam, setExam] = useState<ExamFull | null>(null);
   const [questions, setQuestions] = useState<ExamQuestionFull[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1234,7 +1236,7 @@ function ThiThuQuestionsPage() {
   return (
     <div className="min-h-screen" style={{ background: "var(--kin-nen-bang)" }}>
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <Link href="/admin/thi-thu" className="text-sm mb-3 inline-block" style={{ color: "var(--kin-chu-mo)" }}>← Quay lại danh sách đề thi</Link>
+        <Link href={href("/admin/thi-thu")} className="text-sm mb-3 inline-block" style={{ color: "var(--kin-chu-mo)" }}>← Quay lại danh sách đề thi</Link>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{exam.title}</h1>

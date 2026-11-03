@@ -68,8 +68,13 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
 
 const allowed = (role: AdminRole | undefined | null, s: AdminSub) => !s.permission || checkPermission(role, s.permission);
 
-/** Các module người này thấy, mỗi module kèm các trang con được phép và đường dẫn vào (trang con đầu tiên). */
+/**
+ * Các module người này thấy, mỗi module kèm các trang con được phép và đường dẫn vào (trang con đầu tiên).
+ * BU-00 (31/10/2026): GIA SƯ (`teacher`) không còn dùng vỏ quản trị → trả RỖNG. Quyền API của gia sư (MANAGE_COURSES / MANAGE_CURRICULUM
+ * trong permissions.ts) giữ nguyên — chỉ bỏ lối vào trên thanh quản trị; các trang đề thi / quản lớp sẽ có bí danh dưới /lop-cua-toi (BU-00 bước 3).
+ */
 export function visibleModules(role: AdminRole | undefined | null): AdminModuleView[] {
+  if (role === "teacher") return [];
   const out: AdminModuleView[] = [];
   for (const m of ADMIN_MODULES) {
     const subs = m.subs.filter(s => allowed(role, s));

@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { AuthFrame, AuthAsideBlock, AUTH_CARD } from "@/components/guest/AuthFrame";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinSubmitButton } from "@/components/kin/SubmitButton";
+import { NO_AUTOFIX } from "@/components/kin/noAutofix";
 
 const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus:border-2 focus:px-[13px]";
 const primaryBtn = "w-full h-12 px-4 rounded-[var(--kin-bo-sm)] bg-[var(--kin-nhan-nen)] text-[var(--kin-nhan-chu-tren-nen)] text-[length:var(--kin-co-small)] font-semibold transition-colors hover:bg-[var(--kin-nhan-nen-re)] disabled:opacity-60";
@@ -88,7 +89,7 @@ function QuenMatKhauForm() {
             </div>
             <div className="flex flex-col gap-[6px]">
               <label htmlFor="qmk-email" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Email</label>
-              <input id="qmk-email" ref={inputRef} type="email" inputMode="email" autoComplete="email" value={email}
+              <input id="qmk-email" ref={inputRef} type="email" inputMode="email" autoComplete="email" {...NO_AUTOFIX} value={email}
                 onChange={e => { setEmail(e.target.value); if (error) setError(""); }}
                 placeholder="ten@gmail.com" aria-invalid={error ? true : undefined} aria-describedby={error ? "qmk-loi" : undefined} className={field} />
             </div>

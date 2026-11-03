@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
-import { grantSignupBonus } from "@/lib/wallet";
+import { signupBonusOps } from "@/lib/wallet";
 import { parseTutorProfileInput } from "@/lib/tutorProfile";
 import { normalizeVnPhone } from "@/lib/phone";
 
@@ -55,26 +55,28 @@ export async function POST(req: Request) {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: {
-        name:           name.trim(),
-        email:          normalizedEmail,
-        password:       hashed,
-        phone:          phone.replace(/\s/g, ""),
-        role:           "student",
-        emailVerified:  false,
-        bio:            profile.bio ?? null,
-        subjects:       profile.subjects,
-        tutorAppliedAt: new Date(),
-      },
-    });
-
-    await grantSignupBonus(user.id);
-
+    // Một giao dịch: tài khoản + đơn gia sư + ví + xu khởi đầu + link xác thực (xem lý do ở /api/auth/register).
     const token = randomBytes(32).toString("hex");
-    await prisma.verifyToken.create({
-      data: { token, userId: user.id, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-    });
+    const user = await prisma.$transaction(async tx => {
+      const u = await tx.user.create({
+        data: {
+          name:           name.trim(),
+          email:          normalizedEmail,
+          password:       hashed,
+          phone:          phone.replace(/\s/g, ""),
+          role:           "student",
+          emailVerified:  false,
+          bio:            profile.bio ?? null,
+          subjects:       profile.subjects,
+          tutorAppliedAt: new Date(),
+        },
+      });
+      for (const op of signupBonusOps(tx, u.id)) await op;
+      await tx.verifyToken.create({
+        data: { token, userId: u.id, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+      });
+      return u;
+    }, { timeout: 15_000, maxWait: 10_000 });
 
     let emailSent = true;
     try {
@@ -93,6 +95,7 @@ export async function POST(req: Request) {
       tutorApplication:  "pending",
     }, { status: 201 });
   } catch (e) {
+    if ((e as { code?: string })?.code === "P2002") return NextResponse.json({ error: "Email này đã được đăng ký" }, { status: 409 });
     console.error("[register-tutor]", e);
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
   }

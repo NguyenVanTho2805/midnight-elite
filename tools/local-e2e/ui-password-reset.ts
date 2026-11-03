@@ -161,7 +161,9 @@ const tokenOf = (to: string) => mails(to).at(-1)?.text.match(/token=([0-9a-f]{64
   await g.waitForURL(u => u.pathname.startsWith("/lop-cua-toi"), { timeout: 90000 });
   await g.locator("#kin-rail").waitFor({ timeout: 90000 });
   // 24/10/2026: isVisible() không tự chờ; Hộp việc nay nạp thêm dữ liệu nên nhãn vai trò có lúc chưa kịp vẽ → chờ thay vì đọc ngay (lúc đỏ lúc xanh trước khi sửa).
-  await eventually("gia sư vào /lop-cua-toi, thấy vỏ gia sư 'GIA SƯ'", async () => new URL(g.url()).pathname.startsWith("/lop-cua-toi") && await g.getByText("GIA SƯ", { exact: true }).first().isVisible());
+  // 01/11/2026: nhãn vai nay là `.kin-rail-role`, và ở trang chủ (Hộp việc) nó là `sr-only` (Figma không in nhãn này; còn cho trình đọc màn hình và bài kiểm) nên
+  // `isVisible()` luôn false. Đọc chữ của chính phần tử đó, như ui-journey-new-tutor / ui-tutor-pending đã làm.
+  await eventually("gia sư vào /lop-cua-toi, thấy vỏ gia sư (nhãn vai 'GIA SƯ' ở .kin-rail-role)", async () => new URL(g.url()).pathname.startsWith("/lop-cua-toi") && ((await g.locator("#kin-rail .kin-rail-role").first().textContent().catch(() => "")) ?? "").trim() === "GIA SƯ");
   await c3.close();
 
   // ───────────────────────────── Điện thoại

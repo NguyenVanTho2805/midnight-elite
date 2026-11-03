@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { AuthFrame, AuthAsideBlock, AUTH_CARD } from "@/components/guest/AuthFrame";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinSubmitButton } from "@/components/kin/SubmitButton";
+import { NO_AUTOFIX } from "@/components/kin/noAutofix";
 import { MAX_PASSWORD_LEN, MIN_PASSWORD_LEN, validateNewPassword } from "@/lib/passwordPolicy";
 
 const field = "w-full h-12 px-[14px] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] outline-none focus:border-[var(--kin-nhan-link)] focus:border-2 focus:px-[13px]";
@@ -148,7 +149,7 @@ function DatLaiForm() {
         <div className="flex flex-col gap-[6px]">
           <label htmlFor="dl-mk" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Mật khẩu mới</label>
           <div className="relative">
-            <input id="dl-mk" ref={firstRef} type={show ? "text" : "password"} autoComplete="new-password" value={password} maxLength={MAX_PASSWORD_LEN}
+            <input id="dl-mk" ref={firstRef} type={show ? "text" : "password"} autoComplete="new-password" {...NO_AUTOFIX} value={password} maxLength={MAX_PASSWORD_LEN}
               onChange={e => { setPassword(e.target.value); if (error) setError(""); }} placeholder={`Tối thiểu ${MIN_PASSWORD_LEN} ký tự`} className={`${field} pr-16`} />
             <button type="button" onClick={() => setShow(s => !s)} aria-pressed={show}
               className="absolute right-0 top-[2px] h-11 min-w-11 px-3 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">
@@ -169,7 +170,7 @@ function DatLaiForm() {
 
         <div className="flex flex-col gap-[6px]">
           <label htmlFor="dl-nl" className="text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-phu)]">Nhập lại mật khẩu</label>
-          <input id="dl-nl" type={show ? "text" : "password"} autoComplete="new-password" value={confirm} maxLength={MAX_PASSWORD_LEN}
+          <input id="dl-nl" type={show ? "text" : "password"} autoComplete="new-password" {...NO_AUTOFIX} value={confirm} maxLength={MAX_PASSWORD_LEN}
             onChange={e => { setConfirm(e.target.value); if (error) setError(""); }} placeholder="Nhập lại mật khẩu"
             aria-invalid={mismatch || undefined} className={field}
             style={mismatch ? { borderColor: "var(--kin-tt-chu-loi)" } : undefined} />

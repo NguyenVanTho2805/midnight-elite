@@ -48,7 +48,7 @@ export async function loadBaiTap(tutorId: string, now: Date): Promise<BaiTapData
       id: a.id, kind: "assignment", courseId: c.id, courseName: c.name, title: a.title, mode: a.mode, maxPoints: a.maxPoints,
       submitted, ungraded: un, group: cls.group, statusLabel: cls.label, statusTone: cls.tone,
       sub: assignmentSub({ submitted, enrolled: nEnr.get(c.id) ?? 0, dueAt: a.dueDate, last: last.get(a.id) ?? null }),
-      href: `/admin/khoa-hoc/${c.id}?tab=chuong-bai`,
+      href: `/lop-cua-toi/quan-lop/${c.id}?tab=chuong-bai`,
     };
   });
   // QZ-08: đề có bài nộp còn câu tự luận chưa chấm → "Chờ chấm" (số bài, không đếm câu). Bài bỏ trống không cần chấm.

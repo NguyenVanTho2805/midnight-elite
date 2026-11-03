@@ -43,6 +43,13 @@ import { MAX_PASSWORD_LEN, MIN_PASSWORD_LEN } from "@/lib/passwordPolicy";
   check("đúng 60 giây sau → được gửi lại", planRequest({ expiresAt: exp }, at(60)).action === "send");
   check("link đã hết hạn → được gửi (dù mới hết)", planRequest({ expiresAt: exp }, new Date(exp.getTime() + 1)).action === "send");
 
+  section("Link sống LÂU HƠN 30 phút (chào mừng 24 giờ của quản trị / dòng cũ) không được chặn 'Quên mật khẩu' (01/11/2026)");
+  const long = new Date(t0.getTime() + 24 * 3600_000);
+  check("hạn 24 giờ, vừa tạo → gửi link mới (bản cũ: 'chờ' ~84.660 giây, không thư nào)", planRequest({ expiresAt: long }, t0).action === "send", planRequest({ expiresAt: long }, t0));
+  check("hạn 24 giờ, 10 phút sau → vẫn gửi", planRequest({ expiresAt: long }, at(600)).action === "send");
+  check("hạn dài hơn 30 phút một chút (30 phút + 1 giây) → gửi", planRequest({ expiresAt: new Date(t0.getTime() + RESET_TTL_MS + 1000) }, t0).action === "send");
+  check("đúng hạn 30 phút kể từ bây giờ (link do 'Quên mật khẩu' vừa cấp) → vẫn CHỜ, không gửi trùng", planRequest({ expiresAt: exp }, t0).action === "wait");
+
   section("Kiểm link");
   check("không có bản ghi → invalid", (() => { const c = checkToken(null, t0); return !c.ok && c.reason === "invalid"; })());
   check("còn hạn → ok", checkToken({ expiresAt: exp }, at(60)).ok);

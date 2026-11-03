@@ -44,7 +44,12 @@ export type RequestPlan =
 /** Có được gửi link mới không: đang trong 60 giây kể từ lần gửi trước thì chờ (không gửi thêm, không đổi link đang sống). */
 export function planRequest(existing: { expiresAt: Date } | null, now: Date): RequestPlan {
   if (!existing || existing.expiresAt.getTime() <= now.getTime()) return { action: "send" };
-  const since = now.getTime() - sentAtOf(existing.expiresAt).getTime();
+  const sentAt = sentAtOf(existing.expiresAt).getTime();
+  // Giờ gửi suy ra nằm ở TƯƠNG LAI = link sống LÂU HƠN 30 phút kể từ bây giờ, tức không phải link do luồng "Quên mật khẩu" cấp (nó luôn hạn = giờ gửi + 30 phút):
+  // link chào mừng 24 giờ của quản trị khi thêm học sinh, hoặc dòng cũ cùng loại còn trong DB. Bản cũ coi đó là "vừa gửi, chờ 60 giây" tới ~24 giờ → bấm "Quên mật khẩu"
+  // báo "đã gửi" mà KHÔNG có thư nào. Link như vậy được thay bằng link mới.
+  if (sentAt > now.getTime()) return { action: "send" };
+  const since = now.getTime() - sentAt;
   if (since < RESEND_MS) return { action: "wait", retryAfterSec: Math.max(1, Math.ceil((RESEND_MS - since) / 1000)) };
   return { action: "send" };
 }
