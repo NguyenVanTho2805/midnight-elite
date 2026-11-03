@@ -1,6 +1,6 @@
 // TUT-002 — POST /api/invites/[code]/redeem: người đang nộp đơn gia sư (role student + tutorAppliedAt, chưa duyệt,
 // chưa bị từ chối) bị 403 { code: "TUTOR_PENDING" } TRƯỚC mọi truy vấn mã mời — usedCount, Enrollment, auditLog không đổi.
-// Học sinh thường / bị từ chối vẫn vào được; GET by-code (xem trước) cũng 403 cho người pending (BU-01 #103 dùng chung cổng học sinh với redeem — đã đổi so với TUT-002 gốc); admin thêm thủ công (đường GIỮ #3) vẫn 200.
+// Học sinh thường / bị từ chối vẫn vào được; GET by-code (xem trước) cũng 403 cho người pending (BU-01 PR 103 dùng chung cổng học sinh với redeem — đã đổi so với TUT-002 gốc); admin thêm thủ công (đường GIỮ #3) vẫn 200.
 // Mô hình kẻ tấn công (tut-test bổ): pending → bị từ chối → redeem lại CÙNG mã thì vào (trạng thái chuyển đúng);
 // mã đã thu hồi → pending vẫn 403 TUTOR_PENDING (chặn NGƯỜI trước MÃ, không lộ 410); lớp sĩ số 1 → pending 403 không chiếm
 // chỗ, học sinh thường vẫn vào; pending không leo quyền gia sư/quản trị (DELETE/POST/GET mã mời, POST admin/enrollments → 401/403).
@@ -42,7 +42,7 @@ const logs = (userId: string) => prisma.auditLog.count({ where: { actorId: userI
   const r2 = await api("POST", `/api/invites/ab/redeem`, { as: P });
   check("mã rác 'ab' → vẫn 403 TUTOR_PENDING (chặn người trước chặn mã, không phải 400)", r2.status === 403 && r2.json?.code === "TUTOR_PENDING", r2);
   const pv = await api("GET", `/api/invites/by-code/${code}`, { as: P });
-  // BU-01 (#103): by-code dùng chung cổng học sinh thật với redeem/my-requests → người pending nhận 403 (trước đây 200). Chặt hơn, không lộ tên lớp cho người chưa được vào lớp.
+  // BU-01 (PR 103): by-code dùng chung cổng học sinh thật với redeem/my-requests → người pending nhận 403 (trước đây 200). Chặt hơn, không lộ tên lớp cho người chưa được vào lớp.
   check("GET by-code (xem trước) 403 cho người pending, không lộ thông tin lớp", pv.status === 403 && pv.json?.status === undefined && !JSON.stringify(pv.json).includes("Lớp"), pv);
   check("xem trước không chạm usedCount", (await usedCount(invId)) === 0);
 

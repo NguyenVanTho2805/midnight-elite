@@ -100,7 +100,7 @@ const ACTION_LABEL: Record<string, string> = {
   "self_consent.grant": "Học sinh tự đồng ý", "self_consent.revoke": "Học sinh rút đồng ý",
   "invoice.issue": "Chốt phiếu học phí", "invoice.cancel": "Huỷ phiếu học phí", "invoice.restore": "Khôi phục phiếu học phí", "invoice.record_payment": "Ghi nhận thanh toán phiếu",
   "enrollment.create": "Thêm học viên vào lớp", "class_invite.create": "Tạo mã mời lớp", "class_invite.redeem": "Dùng mã mời lớp", "class_invite.revoke": "Thu hồi mã mời lớp",
-  // BU-01 (#103): cách vào lớp, mã mời cá nhân, yêu cầu vào lớp (ghi trong enrollServer.ts và route redeem). Bài t-adm-001-lib quét nguồn nên phải có nhãn.
+  // BU-01 (PR 103): cách vào lớp, mã mời cá nhân, yêu cầu vào lớp (ghi trong enrollServer.ts và route redeem). Bài t-adm-001-lib quét nguồn nên phải có nhãn.
   "class_invite.personal_issue": "Cấp mã mời cá nhân", "class_join_request.create": "Gửi yêu cầu vào lớp", "class_join_request.approve": "Duyệt yêu cầu vào lớp",
   "class_join_request.reject": "Từ chối yêu cầu vào lớp", "class_join_request.cancel": "Học sinh huỷ yêu cầu vào lớp",
   "class_session.cancel": "Báo nghỉ buổi học", "class_session.move": "Dời buổi học", "class_session.restore": "Khôi phục buổi học",
