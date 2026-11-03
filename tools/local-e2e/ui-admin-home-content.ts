@@ -27,8 +27,9 @@ import { launch, ctxFor, closeAll, ADMIN } from "./ui";
     await ct.close();
     const cc = await ctxFor(CA, { width: 1600, height: 1000, rail: "mac-dinh" });
     const pc = await open(cc);
-    const tabs = pc.getByRole("navigation", { name: "Trang của Nội dung" });
-    check("quản trị nội dung thấy mục 'Trang chủ' ở module Nội dung, đang ở trang đó", await tabs.getByRole("link", { name: "Trang chủ" }).getAttribute("aria-current") === "page");
+    // BU-08: bốn module (Việc chờ · Con người · Học vụ · Vận hành); "Trang chủ" nằm ở Học vụ, nhóm Truyền thông.
+    const tabs = pc.getByRole("navigation", { name: "Trang của Học vụ" });
+    check("quản trị nội dung thấy mục 'Trang chủ' ở module Học vụ (nhóm Truyền thông), đang ở trang đó", await tabs.getByRole("link", { name: "Trang chủ" }).getAttribute("aria-current") === "page");
     await cc.close();
   }
 

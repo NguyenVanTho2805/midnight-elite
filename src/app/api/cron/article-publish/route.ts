@@ -1,4 +1,4 @@
-// BU-08 / ADM-002 — cron báo bài hẹn giờ đã lên. Dòng lịch `*/15 * * * *` do COO thêm vào vercel.json (xem phiếu bàn giao).
+// BU-08 / ADM-002 — cron báo bài hẹn giờ đã lên. Chạy MỖI NGÀY 00:15 UTC (07:15 giờ VN) theo vercel.json — cron hằng ngày là quy ước của kho/gói Hobby; bài vẫn hiện đúng giờ, chỉ thông báo chậm tối đa một ngày.
 // Xác thực như các cron khác (Bearer CRON_SECRET; thiếu khoá → 503). Phản hồi chỉ có số đếm, không tiêu đề, không tên người.
 import { NextRequest, NextResponse } from "next/server";
 import { checkCronAuth } from "@/lib/cronAuth";

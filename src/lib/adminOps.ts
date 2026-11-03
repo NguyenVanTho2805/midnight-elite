@@ -53,7 +53,7 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: năm tác vụ chạy mỗi ngày (23:30, 0:00, 0:30, 1:00 UTC và english-voa). `article-publish` (BU-08) dự định chạy mỗi 15 phút nhưng dòng lịch NÀY CHƯA có trong vercel.json (D2, chờ chủ xác nhận gói Vercel) nên chưa tự chạy trên production. Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: sáu tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
@@ -61,7 +61,8 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "pro-renewal-reminders", label: "Nhắc gia hạn gói KiN Pro", path: "/api/cron/pro-renewal-reminders", schedule: "Mỗi ngày 07:30 giờ VN", maxGapHours: 36 },
   { key: "english-voa", label: "Lấy bài VOA Learning English", path: "/api/cron/english-voa", schedule: "Mỗi ngày 06:30 giờ VN", maxGapHours: 36 },
   // BU-08 (ADM-002): báo học sinh khi bài hẹn giờ đã lên. Bài hẹn giờ vẫn HIỆN đúng giờ nhờ lọc publishedAt; cron chỉ lo THÔNG BÁO.
-  { key: "article-publish", label: "Báo bài hẹn giờ đã lên", path: "/api/cron/article-publish", schedule: "Mỗi 15 phút", maxGapHours: 2 },
+  // Lịch hằng ngày 07:15 giờ VN (00:15 UTC): thông báo chậm tối đa một ngày. Muốn sát giờ hơn (vd */15) cần gói Vercel Pro — đổi cả vercel.json lẫn dòng này (và nới t-adm-003-lib).
+  { key: "article-publish", label: "Báo bài hẹn giờ đã lên", path: "/api/cron/article-publish", schedule: "Mỗi ngày 07:15 giờ VN", maxGapHours: 36 },
 ];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 

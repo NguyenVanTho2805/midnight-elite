@@ -4,6 +4,7 @@
 // Lọc có chủ đích: console.error của React 19 về <script> chủ đề ở src/app/layout.tsx ("Encountered a script tag") — lỗi có sẵn trên main, không thuộc BU-06.
 // Không dùng goto 'networkidle' (trang có kết nối nền): domcontentloaded rồi chờ bộ chọn. So URL bằng pathname+search. Không khẳng định 404 của nhóm (guest) (trả 200).
 import { BASE, mkUser, mkTutor, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
+import { vnDateKeyOf } from "@/lib/classSessions";
 import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -74,7 +75,7 @@ async function gridColumns(page: Page) {
   const cPaid = await mkCourse(T.id, { name: "Toán 9 có học phí" });
   await prisma.course.update({ where: { id: cPaid.id }, data: { joinPolicy: "approve", price: 500000 } });
   await prisma.enrollment.create({ data: { userId: S2.id, courseId: cPaid.id, status: "active" } });
-  await mkAttendanceSession(cPaid.id, T.id, new Date());
+  await mkAttendanceSession(cPaid.id, T.id, new Date(`${vnDateKeyOf(new Date(Date.now() - 86_400_000))}T00:00:00Z`)); // hôm qua (giờ VN): `new Date()` làm bài đỏ khi chạy lúc 00:00–17:00 UTC vì buổi 'ở tương lai' so với 00:00Z của ngày VN
 
   await launch();
   const errors: string[] = [];
