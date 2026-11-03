@@ -36,7 +36,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("Admin Hàng chờ: khung xác nhận nội dòng dùng KinButton, 'danger' từ hàng chờ được chuyển thành nút đỏ (queue/QueuePanel.tsx, HangCho.tsx)", /KinButton/.test(qp) && /danger-solid/.test(qp) && /KinButton/.test(hc));
   // 24/10/2026 (QT-02): quan-tri-vien/page.tsx bỏ tab "Hồ sơ gia sư chờ duyệt" (duyệt gia sư chỉ còn một cửa: hàng chờ kiểm duyệt) nên không còn KinTabs; thay bằng ô kiểm không tự viết role="tab".
   check("quan-tri-vien/page.tsx: không tự viết role=\"tab\"", !/role="tab"/.test(read("src/app/(admin)/admin/quan-tri-vien/page.tsx")));
-  for (const f of ["src/components/admin/TutorApplicationsPanel.tsx", "src/app/lop-cua-toi/(tutor)/hoc-phi/HocPhiClient.tsx", "src/app/lop-cua-toi/(tutor)/ke-hoach-buoi/[id]/KeHoachEditorClient.tsx"])
+  for (const f of ["src/app/lop-cua-toi/(tutor)/hoc-phi/HocPhiClient.tsx", "src/app/lop-cua-toi/(tutor)/ke-hoach-buoi/[id]/KeHoachEditorClient.tsx"])
     check(`${f.split("/").slice(-2).join("/")}: tab dùng KinTabs (không tự viết role="tab")`, /KinTabs/.test(read(f)) && !/role="tab"/.test(read(f)));
   check("ToastProvider hiển thị bằng KinToast, có toast.warn + dòng phụ", /KinToast/.test(read("src/components/ui/Toast.tsx")) && /warn:/.test(read("src/components/ui/Toast.tsx")) && /detail/.test(read("src/components/ui/Toast.tsx")));
   check("ConfirmModal cũ chỉ còn là lớp bọc KinConfirm", /KinConfirm/.test(read("src/components/ui/ConfirmModal.tsx")) && !/fixed inset-0/.test(read("src/components/ui/ConfirmModal.tsx")));

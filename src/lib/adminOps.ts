@@ -207,7 +207,13 @@ export function auditGroupWhere(g: AuditGroup): { OR: { action: { startsWith: st
 export interface AuditFilter { action: string | null; nhom: AuditGroup | null; from: string | null; to: string | null; page: number }
 /** Đọc bộ lọc từ chuỗi truy vấn; giá trị lạ bị bỏ. Ngày dạng yyyy-mm-dd theo giờ VN. */
 export function parseAuditFilter(sp: URLSearchParams): AuditFilter {
-  const date = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(`${s}T00:00:00+07:00`).getTime()) ? s : null);
+  // Ngày phải CÓ THẬT: V8 cho "2026-02-31T00:00:00+07:00" cuộn sang 03/03 chứ không báo sai → so lại năm/tháng/ngày sau khi dựng (31/02, 30/02, 29/02 năm thường bị bỏ).
+  const date = (s: string | null) => {
+    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    const [y, m, d] = s.split("-").map(Number);
+    const t = new Date(Date.UTC(y, m - 1, d));
+    return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d && !Number.isNaN(new Date(`${s}T00:00:00+07:00`).getTime()) ? s : null;
+  };
   const action = sp.get("action");
   const nhomRaw = sp.get("nhom");
   const nhom = nhomRaw && (AUDIT_GROUPS as string[]).includes(nhomRaw) ? (nhomRaw as AuditGroup) : null;

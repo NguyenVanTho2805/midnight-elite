@@ -60,6 +60,11 @@ check("bộ lọc đọc đúng: action, từ, đến, trang", f1.action === "tu
 const f2 = parseAuditFilter(new URLSearchParams("action=%27%3B%20drop--&from=2026-13-45&to=abc&page=-4"));
 check("giá trị lạ / cố tình phá bị bỏ: action không hợp lệ, ngày sai, trang âm → mặc định", f2.action === null && f2.from === null && f2.to === null && f2.page === 1, f2);
 check("trang quá lớn hoặc chữ → 1", parseAuditFilter(new URLSearchParams("page=99999")).page === 1 && parseAuditFilter(new URLSearchParams("page=abc")).page === 1);
+// P3 từ rà soát BU-08: ngày không có thật không được lọt (V8 cuộn 31/02 sang 03/03).
+const bad = ["2026-02-31", "2026-02-30", "2026-02-29", "2026-04-31", "2026-06-31", "2026-00-10", "2026-13-01", "2026-01-00", "2026-01-32", "2025-02-29", "2100-02-29"];
+check("ngày không có thật (31/02, 30/02, 29/02 năm thường, 31/04, tháng 0/13, ngày 0/32) → null", bad.every(d => parseAuditFilter(new URLSearchParams(`from=${d}&to=${d}`)).from === null && parseAuditFilter(new URLSearchParams(`from=${d}&to=${d}`)).to === null), bad.filter(d => parseAuditFilter(new URLSearchParams(`from=${d}`)).from !== null));
+const good = ["2026-02-28", "2024-02-29", "2000-02-29", "2026-01-31", "2026-12-31", "2026-04-30"];
+check("ngày có thật (28/02, 29/02 năm nhuận kể cả 2000, 31/01, 31/12, 30/04) → giữ nguyên", good.every(d => parseAuditFilter(new URLSearchParams(`from=${d}&to=${d}`)).from === d && parseAuditFilter(new URLSearchParams(`from=${d}&to=${d}`)).to === d), good.filter(d => parseAuditFilter(new URLSearchParams(`from=${d}`)).from !== d));
 check("cỡ trang cố định", AUDIT_PAGE_SIZE === 50);
 
 section("Hôm nay cần làm gì");
