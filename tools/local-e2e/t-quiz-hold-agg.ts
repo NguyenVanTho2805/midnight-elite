@@ -26,10 +26,10 @@ const mkResult = (userId: string, examId: string, score: number) => prisma.examR
   await mkResult(A.id, "agg-plain", 6); await mkResult(B.id, "agg-plain", 4);
 
   const snapshot = async () => {
-    const lb = await api("GET", "/api/leaderboard");
+    const lb = await api("GET", "/api/leaderboard", { as: A });   // đã đăng nhập: khách chỉ thấy tên che, không userId (quyết định 1B, 04/11/2026)
     const stA = await api("GET", "/api/users/me/stats", { as: A });
     const stB = await api("GET", "/api/users/me/stats", { as: B });
-    const honor = await api("GET", "/api/honor-leaderboard");
+    const honor = await api("GET", "/api/honor-leaderboard", { as: A });   // bảng vinh danh bắt đăng nhập
     const board = await api("GET", "/api/exam-results?examId=agg-plain", { as: A });
     const month = await loadStudentMonth(T.id, A.id, YM);
     const rank = await api("GET", "/api/exam-results?mine=true", { as: A });

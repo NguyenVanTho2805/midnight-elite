@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { dropHeldResults } from "@/lib/examHold";
 import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/gpa";
+import { getSession } from "@/lib/session";
+import { makeTtlCache, leaderboardCacheMs } from "@/lib/ttlCache";
+
+// Quyết định của Thọ (04/11/2026, "1B"): bảng vinh danh có tên + trường + GPA + huy hiệu của MỌI học sinh đã ghi danh (nhiều em dưới 16 tuổi) nên BẮT ĐĂNG NHẬP.
+// Mọi người đã đăng nhập thấy cùng một nội dung nên đệm chung một bản trong bộ nhớ máy chủ (production 60 giây, dev / bài kiểm tắt); không cho trình duyệt / CDN giữ.
+const NO_STORE = { "Cache-Control": "private, no-store" };
+const cache = makeTtlCache<unknown[]>(leaderboardCacheMs(), { max: 1 });
 
 export async function GET() {
+  if (!(await getSession())) return NextResponse.json({ error: "Cần đăng nhập để xem bảng vinh danh" }, { status: 401, headers: NO_STORE });
+  const cached = cache.get("all");
+  if (cached) return NextResponse.json(cached, { headers: NO_STORE });
   try {
     const students = await prisma.user.findMany({
       where: { role: "student", deletedAt: null, enrollments: { some: {} } },
@@ -100,7 +110,8 @@ export async function GET() {
       .filter(s => s.completion > 0 || s.lastExamScore > 0)
       .sort((a, b) => b.gpa - a.gpa);
 
-    return NextResponse.json(result);
+    cache.set("all", result);
+    return NextResponse.json(result, { headers: NO_STORE });
   } catch (e) {
     console.error("[GET /api/honor-leaderboard]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
