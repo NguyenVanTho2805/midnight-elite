@@ -23,6 +23,10 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | ADM-002 | ADM | Validator server bài viết; thông báo bài mới tối đa một lần | claude/adm-002-bai-viet | #113 | xong | M · 04/11/2026 · phần "theo tag/lớp" CHƯA làm (bài viết không có quan hệ tới lớp; cần chủ quyết nhóm nhận) |
 | STU-003 | STU | Cache xếp hạng, rank bằng count | claude/stu-003-xep-hang | #115 | xong một phần | M · 04/11/2026 · rank bằng count ĐÃ làm; cache `/api/leaderboard` và `/api/honor-leaderboard` KHÔNG làm — hai route không đòi đăng nhập và trả tên + trường học sinh (TRẺ EM), chờ chủ quyết |
 | HQ-0411 | STU | Hồi quy 04/11: cảnh báo React ở `/khoa-hoc` (CAT-01) + 2 ca đỏ giả lối thoát phòng thi | claude/cat-01-hoi-quy | #116 | xong | S · 04/11/2026 · lỗi thật 1 (replaceState trong hàm cập nhật state), sửa bài kiểm 1; `409` khi bấm "Theo dõi lớp" với hồ sơ `pending_consent` CHƯA sửa (chủ quyết) |
+| STU-003b | STU | Quyết định 1B: bảng vinh danh bắt đăng nhập; bảng xếp hạng công khai che tên + top 10; đệm 60 giây | claude/xep-hang-1b | #118 | xong | M · 04/11/2026 · còn mở: `/api/exam-results?examId=` trả tên thật |
+| STU-005 | STU | Quyết định 2A: thẻ lớp "Chờ phụ huynh đồng ý" thay nút Theo dõi (pending_consent) | claude/cho-phu-huynh-2a | #119 | xong | S · 04/11/2026 · `suspended` cũng bị 409 khi theo dõi, chưa xử lý |
+| STU-006 | STU | Quyết định 3A: khách không thấy câu hỏi cũ trong bảng tin cộng đồng | claude/khach-hoi-dap-3a | #120 | xong | S · 04/11/2026 |
+| STU-007 | STU | Quyết định 5A: phòng thi báo "Chưa lưu được" + Thử lại khi máy chủ từ chối đáp án (4xx) | claude/phong-thi-chip-5a | #121 | xong | S · 04/11/2026 · bài kiểm sửa ở PR docs (thứ tự câu bị xáo) |
 | TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
 | TUT-003 | TUT | Hộp việc: câu hỏi học sinh trong lớp chưa trả lời | claude/tut-003-hop-viec | #114 | xong | M · 04/11/2026 · thông báo cho gia sư khi có câu hỏi mới đã có sẵn (thread_new_class) |
 | STU-004 | STU | generateMetadata trang khách + sitemap + lọc thi thử theo ghi danh | | | moi | L · làm chung BU-07 |

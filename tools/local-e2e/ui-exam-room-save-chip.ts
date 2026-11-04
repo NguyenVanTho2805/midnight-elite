@@ -28,6 +28,19 @@ import { prisma } from "@/lib/prisma";
   await mkQ("qc2", 2, "Câu hai dùng để thử chip lưu?", ["Lựa chọn Năm", "Lựa chọn Sáu"]);
 
   await launch();
+  // Nút "Bắt đầu làm bài" có trong HTML trước khi React hydrate xong: bấm quá sớm thì không có gì xảy ra. Bấm lại tới khi phòng thi mở.
+  // Thứ tự câu hỏi (và đáp án) BỊ XÁO mỗi lượt (start/route.ts) nên không được giả định câu 1 hiện trước: chuyển sang "Cả đề" để thấy mọi câu cùng lúc.
+  const startRoom = async (p: any) => {
+    await p.getByRole("button", { name: /Bắt đầu làm bài/ }).waitFor({ timeout: 90000 });
+    for (let i = 0; i < 5; i++) {
+      await p.getByRole("button", { name: /Bắt đầu làm bài/ }).click({ timeout: 5000 }).catch(() => {});
+      if (await p.getByRole("tab", { name: "Cả đề" }).waitFor({ timeout: 12000 }).then(() => true, () => false)) break;
+      if (i === 4) throw new Error("không vào được phòng thi sau 5 lần bấm 'Bắt đầu làm bài'");
+    }
+    await p.getByRole("tab", { name: "Cả đề" }).click();
+    await p.getByText("Câu một dùng để thử chip lưu?").waitFor({ timeout: 30000 });
+    await p.getByText("Câu hai dùng để thử chip lưu?").waitFor({ timeout: 30000 });
+  };
   const errors: string[] = [];
   const watch = (p: { on: (ev: string, cb: (x: never) => void) => unknown }) => {
     p.on("pageerror", ((e: unknown) => errors.push(String(e).slice(0, 200))) as never);
@@ -41,9 +54,7 @@ import { prisma } from "@/lib/prisma";
   const saved = async (qid: string) => (await prisma.examAnswer.findFirst({ where: { questionId: qid } }))?.optionId ?? null;
 
   await pg.goto(`${BASE}/student/thi-thu/${ex.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await pg.getByRole("button", { name: /Bắt đầu làm bài/ }).waitFor({ timeout: 90000 });
-  await pg.getByRole("button", { name: /Bắt đầu làm bài/ }).click();
-  await pg.getByText("Câu một dùng để thử chip lưu?").waitFor({ timeout: 60000 });
+  await startRoom(pg);
   await pg.addStyleTag({ content: "[data-agentation-root]{display:none!important}" });
 
   section("Tiền đề: lưu được → 'Đã lưu'");
@@ -96,9 +107,7 @@ import { prisma } from "@/lib/prisma";
   await pg.getByText("Phương án Một", { exact: true }).click();   // câu 1 bị từ chối
   await eventually("câu 1 bị từ chối → failed", async () => (await state()) === "failed", 20000);
   mode = "pass";
-  const q2Tab = pg.getByRole("button", { name: /Câu 2/ }).first();
-  if (await q2Tab.count()) await q2Tab.click().catch(() => {});
-  await pg.getByText("Lựa chọn Năm", { exact: true }).click({ timeout: 15000 }).catch(async () => { await pg.getByRole("button", { name: /Câu tiếp|Tiếp/ }).first().click(); await pg.getByText("Lựa chọn Năm", { exact: true }).click(); });
+  await pg.getByText("Lựa chọn Năm", { exact: true }).click();
   await eventually("câu 2 lưu được trong DB", async () => (await saved("qc2")) === "qc2-o0", 30000);
   check("…nhưng chip vẫn 'failed' · 1 câu vì câu 1 còn bị từ chối (không 'Đã lưu' giả)", (await state()) === "failed" && /Chưa lưu được · 1 câu/.test(await text()) && !(await text()).includes("Đã lưu"), await text());
   await chip.getByRole("button", { name: "Thử lại" }).click();
@@ -106,17 +115,18 @@ import { prisma } from "@/lib/prisma";
 
   section("Lỗi tạm thời 503 vẫn tự thử lại như cũ (không dính thay đổi)");
   mode = "unavailable";
-  await pg.getByRole("button", { name: /Câu 1/ }).first().click().catch(() => {});
   await pg.getByText("Phương án Hai", { exact: true }).click({ timeout: 15000 });
   await eventually("503 → chip 'Chưa lưu được' rồi tự thử lại sau ~1 giây và 'Đã lưu' (DB qc1-o1) mà không cần bấm", async () => (await state()) === "saved" && (await saved(q1.id)) === "qc1-o1", 40000);
 
   section("390 — điện thoại");
-  const mctx = await ctxFor(S, { width: 390, height: 800 });
+  // Học sinh MỚI (lượt mới, "Bắt đầu làm bài" như ở 1280): cho lượt làm dở của `S` quay lại thì câu hiện ra phụ thuộc lần xem cuối nên bài lúc được lúc không.
+  const S2 = await mkUser({ name: "Em Di Động" });
+  await prisma.enrollment.create({ data: { userId: S2.id, courseId: C.id, status: "active" } });
+  const mctx = await ctxFor(S2, { width: 390, height: 800 });
   const mp = await mctx.newPage(); watch(mp as never);
   await mp.route("**/api/exams/attempts/*/answer", route => route.request().method() === "PATCH" ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: "Phần này đã hết giờ", code: "section_locked" }) }) : route.continue());
   await mp.goto(`${BASE}/student/thi-thu/${ex.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await mp.getByRole("button", { name: /Tiếp tục làm bài/ }).click();
-  await mp.getByText("Câu một dùng để thử chip lưu?").waitFor({ timeout: 60000 });
+  await startRoom(mp);
   await mp.getByText("Phương án Ba", { exact: true }).click();
   await mp.locator('[data-chip-luu="failed"]').waitFor({ timeout: 20000 });
   const box = await mp.locator("[data-chip-luu]").boundingBox();
@@ -127,4 +137,4 @@ import { prisma } from "@/lib/prisma";
   check("không lỗi JS / cảnh báo React", errors.length === 0, errors.slice(0, 3));
   await closeAll();
   await done();
-})().catch(e => { console.error("TEST CRASH", String(e).slice(0, 400)); process.exit(1); });
+})().catch(e => { console.error("TEST CRASH", String(e).slice(0, 900)); process.exit(1); });
