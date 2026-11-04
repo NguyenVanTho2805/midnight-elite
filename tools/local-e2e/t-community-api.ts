@@ -552,8 +552,12 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
     check("câu hỏi đã có trả lời không có mặt; href đúng /cong-dong/<id>", !un.some(x => x.key === `t:${answeredQ.id}`) && un.every(x => /^\/cong-dong\/[A-Za-z0-9_-]+$/.test(x.href)));
     check("câu hỏi chưa trả lời không chứa bài lớp / bài ẩn", !sbq.text.includes(tClassQ.mark) && hiddenMarks.every(m => !sbq.text.includes(m)));
     const legacyOpen = await prisma.question.create({ data: { authorId: sC.id, title: `Câu hỏi cũ chưa trả lời ${mk("LEGOPEN")}`, content: "cũ", bountyPaid: 0, createdAt: new Date(Date.now() + 60_000) } });
-    const sbl = await api("GET", "/api/community/sidebar");
-    check("câu hỏi CŨ chưa trả lời cũng lên cột phải, href /cong-dong/hoi-dap/<id>", sbl.json?.unanswered?.[0]?.href === `/cong-dong/hoi-dap/${legacyOpen.id}`, sbl.json?.unanswered?.[0]);
+    const sbl = await api("GET", "/api/community/sidebar", { as: sB });
+    check("câu hỏi CŨ chưa trả lời cũng lên cột phải của NGƯỜI ĐÃ ĐĂNG NHẬP, href /cong-dong/hoi-dap/<id>", sbl.json?.unanswered?.[0]?.href === `/cong-dong/hoi-dap/${legacyOpen.id}`, sbl.json?.unanswered?.[0]);
+    check("…và bản đó `private, no-store` (không để bộ nhớ đệm dùng chung giữ rồi phát cho khách)", /private/.test(sbl.headers.get("cache-control") ?? "") && /no-store/.test(sbl.headers.get("cache-control") ?? ""), sbl.headers.get("cache-control"));
+    const sbg = await api("GET", "/api/community/sidebar");
+    check("3A: KHÁCH không thấy câu hỏi cũ ở cột phải (không href /cong-dong/hoi-dap/…, không tiêu đề cũ)", !sbg.text.includes("/cong-dong/hoi-dap/") && !sbg.text.includes(legacyOpen.id) && !sbg.text.includes("Câu hỏi cũ chưa trả lời"), sbg.json?.unanswered?.map((x: any) => x.href));
+    check("…và bản của khách vẫn có 5 câu hỏi mới chưa trả lời, cache công khai 5 phút", sbg.json?.unanswered?.length === 5 && /public/.test(sbg.headers.get("cache-control") ?? "") && /s-maxage=300/.test(sbg.headers.get("cache-control") ?? ""), { n: sbg.json?.unanswered?.length, cc: sbg.headers.get("cache-control") });
     await prisma.question.delete({ where: { id: legacyOpen.id } });
     void ar;
   }
@@ -965,10 +969,14 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
   // ═════════════════════════════════════════ 11. Tương thích câu hỏi cũ ═════════════════════════════════════════
   section("11. Tương thích: câu hỏi cũ (bảng Question) và route cũ");
   {
-    const f = await feed(undefined, "tab=hoi-dap&limit=50");
+    // 3A (quyết định của Thọ 04/11/2026): câu hỏi cũ chỉ có trong bảng tin của người ĐÃ ĐĂNG NHẬP; khách không thấy (mở nó luôn bị đưa sang đăng nhập).
+    const fg = await feed(undefined, "tab=hoi-dap&limit=50");
+    check("3A: KHÁCH không thấy câu hỏi cũ ở feed?tab=hoi-dap, tab=all, scope=common (không id, không key q:, không href /cong-dong/hoi-dap/)", ![fg, await feed(undefined, "limit=50"), await feed(undefined, "scope=common&limit=50")].some(r => r.text.includes(legacyQ.id) || r.text.includes('"q:') || r.text.includes("/cong-dong/hoi-dap/") || r.text.includes("Câu hỏi cũ")), fg.json?.items?.length);
+    check("3A: …khách vẫn thấy câu hỏi mới (kind=question) ở tab hoi-dap", fg.status === 200 && fg.json?.items?.some((i: any) => i.source === "thread" && i.kind === "question") && fg.json.items.every((i: any) => i.source === "thread"), fg.json?.items?.map((i: any) => i.source));
+    const f = await feed(sB, "tab=hoi-dap&limit=50");
     const item = f.json?.items?.find((i: any) => i.id === legacyQ.id);
     check("câu hỏi cũ có trong feed?tab=hoi-dap, source 'question', href /cong-dong/hoi-dap/<id>, key q:<id>", item?.source === "question" && item.href === `/cong-dong/hoi-dap/${legacyQ.id}` && item.key === `q:${legacyQ.id}` && item.kind === "question" && item.replyCount === 1, item);
-    check("…và có trong tab 'all' nhưng KHÔNG ở tab kinh-nghiem", feedIds(await feed(undefined, "limit=50")).includes(legacyQ.id) && !feedIds(await feed(undefined, "tab=kinh-nghiem&limit=50")).includes(legacyQ.id));
+    check("…và có trong tab 'all' nhưng KHÔNG ở tab kinh-nghiem", feedIds(await feed(sB, "limit=50")).includes(legacyQ.id) && !feedIds(await feed(sB, "tab=kinh-nghiem&limit=50")).includes(legacyQ.id));
     check("…tên tác giả cũ cũng rút gọn ('Bích T.')", item?.author?.label === "Bích T.");
     check("thích / lưu câu hỏi cũ bằng route mới → 404 (câu hỏi cũ không có bảng thích)", (await post(sB, tPath(legacyQ.id, "/like"))).status === 404);
     // Route cũ vẫn chạy.
@@ -988,7 +996,7 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
     const nAcc = await prisma.notification.findMany({ where: { userId: sA.id, type: "answer_accepted" } });
     check("thông báo 'answer_accepted' cũ KHÔNG còn chữ 'xu'", nAcc.length === 1 && nAcc[0].message === "Một câu trả lời của bạn được chấp nhận" && !/\bxu\b/i.test(nAcc[0].message + nAcc[0].title), nAcc.map(n => n.message));
     check("accept lần hai → 409; HS khác accept → 403", (await post(sB, `/api/answers/${legacyA.id}/accept`)).status === 409 && (await post(sC, `/api/answers/${legacyA.id}/accept`)).status === 403);
-    check("câu hỏi cũ đã chấp nhận: feed answered = true", (await feed(undefined, "tab=hoi-dap&limit=50")).json?.items?.find((i: any) => i.id === legacyQ.id)?.answered === true);
+    check("câu hỏi cũ đã chấp nhận: feed answered = true", (await feed(sB, "tab=hoi-dap&limit=50")).json?.items?.find((i: any) => i.id === legacyQ.id)?.answered === true);
   }
 
   // ═════════════════════════════════════════ 12. Không nhắn riêng (tĩnh) ═════════════════════════════════════════
@@ -1061,8 +1069,9 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
       } while (cursor && guard < 100);
       return { keys, pages };
     }
-    const w10 = await walkAll(undefined, "", 10);
-    check("khách duyệt limit=10 → đúng 59 mục", w10.keys.length === 59, w10.keys.length);
+    // 3A: câu hỏi cũ chỉ có với người đã đăng nhập ⇒ phép duyệt trộn bài + câu hỏi cũ (đồng mili-giây, con trỏ) chạy với `pb` (học sinh ĐÃ ĐĂNG NHẬP, KHÔNG thuộc lớp `pc`); khách duyệt ở cuối mục.
+    const w10 = await walkAll(pb, "", 10);
+    check("thành viên ngoài lớp duyệt limit=10 → đúng 59 mục", w10.keys.length === 59, w10.keys.length);
     check("…không lặp", new Set(w10.keys).size === w10.keys.length);
     check("…không thiếu, không thừa (đúng tập 59 khoá)", expectKeys.every(k => w10.keys.includes(k)) && w10.keys.every(k => expectKeys.includes(k)));
     check("…6 trang (5 × 10 + 9), mọi trang trừ cuối có nextCursor; trang cuối nextCursor null", w10.pages.length === 6 && w10.pages.slice(0, 5).every(p => p.json.items.length === 10 && !!p.json.nextCursor) && w10.pages[5].json.items.length === 9 && w10.pages[5].json.nextCursor === null, w10.pages.map(p => p.json?.items?.length));
@@ -1072,7 +1081,7 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
     const tieAt = items.filter(i => Date.parse(i.createdAt) === TIE.getTime());
     check("…5 mục cùng mili-giây đều có mặt đúng 1 lần (4 bài + 1 câu hỏi cũ)", tieAt.length === 5 && tieAt.filter(i => i.source === "question").length === 1);
     for (const lim of [1, 3, 7, 25, 50]) {
-      const w = await walkAll(undefined, "", lim);
+      const w = await walkAll(pb, "", lim);
       check(`limit=${lim}: 59 mục, không lặp, đúng tập`, w.keys.length === 59 && new Set(w.keys).size === 59 && w.keys.every(k => expectKeys.includes(k)), { got: w.keys.length, uniq: new Set(w.keys).size });
     }
     check("limit=59 > trần 50 → 400 limit_invalid (trần là 50 theo đặc tả, không kẹp)", (await feed(undefined, "limit=59")).status === 400);
@@ -1081,14 +1090,22 @@ const tPath = (id: string, tail = "") => `/api/community/threads/${id}${tail}`;
     const wm = await walkAll(pa, "", 10);
     check("thành viên lớp duyệt hết → 60 mục (thêm bài lớp), không lặp", wm.keys.length === 60 && new Set(wm.keys).size === 60 && wm.keys.includes(`t:${classT.id}`), wm.keys.length);
     // Tab và scope
-    const wq = await walkAll(undefined, "tab=hoi-dap", 4);
+    const wq = await walkAll(pb, "tab=hoi-dap", 4);
     check("tab=hoi-dap: 6 câu hỏi mới + 8 câu hỏi cũ = 14, không lặp", wq.keys.length === 14 && new Set(wq.keys).size === 14, wq.keys.length);
-    const wa = await walkAll(undefined, "tab=hoi-dap-qa", 50);
-    check("tab=hoi-dap-qa là bí danh của hoi-dap (cùng 14 mục)", wa.keys.length === 14 && wa.keys.join() === (await walkAll(undefined, "tab=hoi-dap", 50)).keys.join());
-    const wk = await walkAll(undefined, "tab=kinh-nghiem", 10);
+    const wa = await walkAll(pb, "tab=hoi-dap-qa", 50);
+    check("tab=hoi-dap-qa là bí danh của hoi-dap (cùng 14 mục)", wa.keys.length === 14 && wa.keys.join() === (await walkAll(pb, "tab=hoi-dap", 50)).keys.join());
+    const wk = await walkAll(pb, "tab=kinh-nghiem", 10);
     check("tab=kinh-nghiem: chỉ bài viết thường (45), không câu hỏi", wk.keys.length === 45 && wk.keys.every(k => k.startsWith("t:")), wk.keys.length);
-    const wc = await walkAll(undefined, "scope=common", 10);
+    const wc = await walkAll(pb, "scope=common", 10);
     check("scope=common: 59, không lặp", wc.keys.length === 59 && new Set(wc.keys).size === 59);
+    // Khách duyệt cùng dữ liệu: KHÔNG có 8 câu hỏi cũ ⇒ 51 mục (45 bài thường + 6 câu hỏi mới), không có khoá q:…, phân trang vẫn đúng.
+    const gAll = await walkAll(undefined, "", 10);
+    check("3A: khách duyệt limit=10 → 51 mục (59 - 8 câu hỏi cũ), không lặp, không có khoá q:", gAll.keys.length === 51 && new Set(gAll.keys).size === 51 && gAll.keys.every(k => k.startsWith("t:")) && gAll.keys.every(k => expectKeys.includes(k)), { n: gAll.keys.length, q: gAll.keys.filter(k => k.startsWith("q:")).length });
+    check("3A: …6 trang (5 × 10 + 1), trang cuối nextCursor null", gAll.pages.length === 6 && gAll.pages.slice(0, 5).every(p => p.json.items.length === 10 && !!p.json.nextCursor) && gAll.pages[5].json.items.length === 1 && gAll.pages[5].json.nextCursor === null, gAll.pages.map(p => p.json.items.length));
+    const gQ = await walkAll(undefined, "tab=hoi-dap", 4);
+    check("3A: khách tab=hoi-dap → chỉ 6 câu hỏi mới (không câu hỏi cũ)", gQ.keys.length === 6 && gQ.keys.every(k => k.startsWith("t:")), gQ.keys.length);
+    const gC = await walkAll(undefined, "scope=common", 10);
+    check("3A: khách scope=common → 51", gC.keys.length === 51 && new Set(gC.keys).size === 51, gC.keys.length);
     const wl = await walkAll(pa, `scope=${pc.id}`, 10);
     check("scope=<lớp> của thành viên: chỉ bài lớp (1), không câu hỏi cũ", wl.keys.length === 1 && wl.keys[0] === `t:${classT.id}`, wl.keys);
 
