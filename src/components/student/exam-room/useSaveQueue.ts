@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DraftState } from "@/lib/quizRoom";
 import { examRoomApi, type SaveAnswerBody } from "@/lib/examRoomApi";
-import { backoffMs, chipLabel, classifySaveFailure, dropQueued, enqueue as enqueueAnswer, initialSaveState, markFailed, markSaved, parseQueue, serializeQueue, type SaveState } from "@/lib/examRoomLib";
+import { backoffMs, chipLabel, classifySaveFailure, enqueue as enqueueAnswer, initialSaveState, markFailed, markRejected, markSaved, parseQueue, retryRejected, serializeQueue, type SaveState } from "@/lib/examRoomLib";
 import { queueStorageKey } from "./roomLogic";
 
 export interface SaveQueueHooks { onClock: (serverNow: string | null, expiresAt: string | null) => void; onEnded: () => void }
@@ -54,8 +54,10 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
             continue;
           }
           const kind = classifySaveFailure(r.status, r.code);
-          if (kind === "time_up") { commit({ ...ref.current, queue: [], status: "idle" }); hk.current.onEnded(); return; }
-          if (kind === "drop") { commit(dropQueued(ref.current, item.key, item.seq)); setText(item.body, { kind: "idle" }); continue; } // vd. Phần đã khoá: giữ lại chỉ làm chip đỏ mãi
+          if (kind === "time_up") { commit({ ...ref.current, queue: [], rejected: [], status: "idle" }); hk.current.onEnded(); return; }
+          // 5A (quyết định của Thọ 04/11/2026): máy chủ TỪ CHỐI (4xx, vd. Phần đã khoá) — không thử lại tự động (vô ích, sẽ lặp mãi) nhưng cũng KHÔNG bỏ im lặng: trước đây chip vẫn báo "Đã lưu"
+          // dù đáp án chưa lên máy chủ. Nay chip → "Chưa lưu được · N câu" kèm nút "Thử lại" (retry); em đổi đáp án câu đó thì bản bị từ chối được thay.
+          if (kind === "drop") { commit(markRejected(ref.current, item.key, item.seq)); setText(item.body, { kind: "failed" }); continue; }
           setText(item.body, { kind: "failed" });
           commit(markFailed(ref.current));
           timer.current = setTimeout(() => { void retryFlush.current(); }, backoffMs(ref.current.retries - 1));
@@ -69,7 +71,7 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
 
   useEffect(() => { retryFlush.current = flush; }, [flush]);
 
-  /** Số câu còn trong hàng đợi (chưa lên máy chủ). 0 = mọi đáp án đã lưu. */
+  /** Số câu còn trong hàng đợi (đang gửi / chờ thử lại). Đáp án bị máy chủ từ chối (4xx) KHÔNG tính ở đây — thử lại tự động vô ích và không được chặn nộp bài; chip vẫn báo "Chưa lưu được". */
   const pending = useCallback((): number => ref.current.queue.length, []);
 
   const enqueue = useCallback((body: SaveAnswerBody, delayMs = 0) => {
@@ -92,6 +94,13 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
     return stored.map(q => q.body);
   }, [commit, flush]);
 
+  /** Nút "Thử lại" ở chip: đưa đáp án bị từ chối (4xx) về hàng đợi rồi gửi lại cùng với phần còn lại. */
+  const retry = useCallback((): Promise<void> => {
+    for (const r of ref.current.rejected) setText(r.body, { kind: "saving" });
+    commit(retryRejected(ref.current));
+    return flush();
+  }, [commit, flush]);
+
   const clearStored = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     commit(initialSaveState());
@@ -108,5 +117,5 @@ export function useSaveQueue(attemptId: string | null, hooks: SaveQueueHooks) {
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const chip: ChipView = { status: st.status, label: chipLabel(st).replace(/ · Thử lại$/, "") };
-  return { chip, textStatus, enqueue, flush, pending, adopt, clearStored };
+  return { chip, textStatus, enqueue, flush, retry, pending, adopt, clearStored };
 }

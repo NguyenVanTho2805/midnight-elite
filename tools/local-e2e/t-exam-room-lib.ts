@@ -49,7 +49,7 @@ check("cuộn hết: câu cuối", currentQuestionIndex([-900, -600, -300, 10], 
 
 // ═══ BU-04 · examRoomLib.ts ═══════════════════════════════════════════════════
 import {
-  initialSaveState, enqueue, markSaved, markFailed, dropQueued, backoffMs, classifySaveFailure, chipLabel, answerKey,
+  initialSaveState, enqueue, markSaved, markFailed, dropQueued, markRejected, retryRejected, backoffMs, classifySaveFailure, chipLabel, answerKey,
   serializeQueue, parseQueue, gridCell, toggleFlag, parseFlags, pruneFlags, submitConfirmWithFlags, defaultView, resolveView,
   daysLeftLabel, opensLabel, assignmentState, sortAssignments,
 } from "@/lib/examRoomLib";
@@ -95,6 +95,47 @@ check("trần 15s (kể cả số rất lớn / NaN / âm)", backoffMs(4) === 15
 check("expired/finished → time_up (không phải lỗi mạng)", classifySaveFailure(409, "expired") === "time_up" && classifySaveFailure(409, "finished") === "time_up");
 check("mạng / 5xx / 429 → retry", classifySaveFailure(0, "network") === "retry" && classifySaveFailure(503, undefined) === "retry" && classifySaveFailure(429, undefined) === "retry");
 check("section_locked / 400 → drop (không lặp mãi)", classifySaveFailure(409, "section_locked") === "drop" && classifySaveFailure(400, undefined) === "drop");
+
+section("5A (04/11/2026): máy chủ từ chối đáp án bằng 4xx → chip 'Chưa lưu được', không im lặng 'Đã lưu'");
+// Ca gốc của lỗi: em đã có một lần lưu thành công (savedAt có) rồi một đáp án bị 4xx — trước đây dropQueued đưa chip về "Đã lưu" dù đáp án chưa lên máy chủ.
+let r0 = markSaved(enqueue(initialSaveState(), opt("q1", "a")), "q:q1", 1, "2026-11-05T07:00:00.000Z");
+check("tiền đề: đã lưu câu 1, chip 'Đã lưu 14:00:00'", r0.status === "saved" && chipLabel(r0) === "Đã lưu 14:00:00", chipLabel(r0));
+r0 = enqueue(r0, opt("q2", "b"));
+const old = dropQueued(r0, "q:q2", r0.seq);
+check("(hành vi cũ, còn dùng được ở chỗ khác) dropQueued vẫn đưa chip về 'saved'", old.status === "saved" && old.rejected.length === 0);
+const rj = markRejected(r0, "q:q2", r0.seq);
+check("markRejected: chip → failed, đúng chữ 'Chưa lưu được · 1 câu · Thử lại'", rj.status === "failed" && chipLabel(rj) === "Chưa lưu được · 1 câu · Thử lại", chipLabel(rj));
+check("…hàng đợi rỗng (không thử lại tự động mãi), đáp án bị từ chối được GIỮ, retries không tăng", rj.queue.length === 0 && rj.rejected.length === 1 && rj.rejected[0].key === "q:q2" && rj.retries === r0.retries, rj);
+check("…KHÔNG còn chữ 'Đã lưu'", !chipLabel(rj).includes("Đã lưu"));
+check("markRejected với khoá không có trong hàng đợi → không đổi gì", markRejected(r0, "q:khong-co", 99) === r0);
+check("markRejected lúc CHƯA từng lưu (savedAt rỗng) cũng ra failed, không phải idle", markRejected(enqueue(initialSaveState(), opt("q1", "a")), "q:q1", 1).status === "failed");
+
+// Còn mục khác đang gửi: vẫn 'saving' cho tới khi chúng xong; xong rồi mà còn bị từ chối → failed, KHÔNG 'saved'.
+let two = enqueue(enqueue(initialSaveState(), opt("q1", "a")), opt("q2", "b"));
+two = markRejected(two, "q:q1", 1);
+check("một câu bị từ chối, câu kia còn gửi → vẫn 'saving'", two.status === "saving" && two.queue.length === 1 && two.rejected.length === 1, two);
+two = markSaved(two, "q:q2", 2, "2026-11-05T07:01:00.000Z");
+check("câu kia lưu xong mà câu 1 vẫn bị từ chối → 'failed' (không 'Đã lưu' giả)", two.status === "failed" && chipLabel(two) === "Chưa lưu được · 1 câu · Thử lại" && two.savedAt === "2026-11-05T07:01:00.000Z", two);
+check("2 câu bị từ chối + 1 câu lỗi mạng → chip đếm đủ 3", (() => { let x = enqueue(enqueue(enqueue(initialSaveState(), opt("q1", "a")), opt("q2", "b")), opt("q3", "c")); x = markRejected(x, "q:q1", 1); x = markRejected(x, "q:q2", 2); x = markFailed(x); return chipLabel(x) === "Chưa lưu được · 3 câu · Thử lại"; })());
+
+// Em đổi đáp án đúng câu bị từ chối: lần thử mới thay bản cũ.
+const re = enqueue(rj, opt("q2", "c"));
+check("đổi đáp án câu bị từ chối → bản bị từ chối cũ bị thay, chip 'Đang lưu…'", re.rejected.length === 0 && re.queue.length === 1 && re.status === "saving", re);
+check("…rồi lưu được → 'Đã lưu' trở lại", markSaved(re, "q:q2", re.seq, "2026-11-05T07:02:00.000Z").status === "saved");
+const other = enqueue(rj, opt("q3", "a"));
+check("đổi đáp án câu KHÁC không xoá bản bị từ chối", other.rejected.length === 1 && other.queue.length === 1);
+check("…và khi câu khác lưu xong chip vẫn 'failed' vì câu kia còn bị từ chối", markSaved(other, "q:q3", other.seq, "2026-11-05T07:03:00.000Z").status === "failed");
+
+// Nút Thử lại.
+const rt = retryRejected(rj);
+check("retryRejected: đưa về hàng đợi với seq MỚI lớn hơn mọi seq cũ, rejected rỗng, chip 'Đang lưu…'", rt.status === "saving" && rt.rejected.length === 0 && rt.queue.length === 1 && rt.queue[0].key === "q:q2" && rt.queue[0].seq > rj.seq && rt.seq === rt.queue[0].seq, rt);
+check("…bản thử lại giữ nguyên nội dung đáp án", JSON.stringify(rt.queue[0].body) === JSON.stringify(opt("q2", "b")));
+check("…bị từ chối lần nữa → lại 'failed', không lặp vô hạn (queue rỗng)", (() => { const x = markRejected(rt, "q:q2", rt.queue[0].seq); return x.status === "failed" && x.queue.length === 0 && x.rejected.length === 1; })());
+check("…lưu được → 'Đã lưu'", markSaved(rt, "q:q2", rt.queue[0].seq, "2026-11-05T07:04:00.000Z").status === "saved");
+check("retryRejected khi không có gì bị từ chối → trả nguyên trạng thái", retryRejected(r0) === r0);
+check("retryRejected thay mục cùng khoá còn trong hàng đợi (không trùng khoá)", (() => { const x = { ...rj, queue: [{ key: "q:q2", seq: 50, body: opt("q2", "z") }], seq: 50 }; const y = retryRejected(x); return y.queue.filter(q => q.key === "q:q2").length === 1 && y.queue[0].seq > 50; })());
+check("lỗi mạng (markFailed) và bị từ chối không lẫn nhau: markFailed khi chỉ còn bị từ chối (queue rỗng) vẫn 'failed', retries +1 không đổi trạng thái", (() => { const x = markFailed(rj); return x.status === "failed" && x.rejected.length === 1; })());
+check("Đúng–Sai: ý bị từ chối giữ riêng theo khoá b:<ý>", (() => { let x = enqueue(enqueue(initialSaveState(), bool("o1", true)), bool("o2", false)); x = markRejected(x, "b:o1", 1); return x.rejected.length === 1 && x.rejected[0].key === "b:o1" && x.queue.length === 1; })());
 
 section("BU-04 hàng đợi localStorage");
 const q2 = enqueue(enqueue(enqueue(initialSaveState(), opt("q1", "a")), bool("o1", true)), { kind: "text", questionId: "q9", textAnswer: "xin chào" });

@@ -147,7 +147,7 @@ export function useRoomSession(examId: string) {
 
   return {
     attempt, start, starting, startErr, setStartErr, questions, selected, text, cluster, flags, tabLeaves, remainingSec,
-    sectionIndex, sectionWindows: windows, chip: q.chip, textStatus: q.textStatus, retrySave: () => { void q.flush(); },
+    sectionIndex, sectionWindows: windows, chip: q.chip, textStatus: q.textStatus, retrySave: () => { void q.retry(); },
     selectOption, setBool, typeText, blurText, toggleFlag, isAnswered, flush: q.flush, pending: q.pending,
     submit: () => doSubmit(false), submitting, submitErr, timeUp, timeUpAt, retryTimeUp, result, nowLabel, isLastSection,
   };

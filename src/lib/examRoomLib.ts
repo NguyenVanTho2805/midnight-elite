@@ -17,8 +17,20 @@ export interface SaveState {
   /** Số lần thất bại liên tiếp (cho lùi mũi). */
   retries: number;
   seq: number;
+  /**
+   * 5A (quyết định của Thọ 04/11/2026): đáp án máy chủ TỪ CHỐI bằng lỗi 4xx (vd. Phần đã khoá). Không nằm trong `queue` (thử lại tự động vô ích, không lặp mãi) nhưng KHÔNG được
+   * im lặng bỏ đi: chip phải nói "Chưa lưu được" thay vì "Đã lưu". Bấm "Thử lại" (retryRejected) đưa chúng về hàng đợi; em đổi đáp án câu đó thì bản bị từ chối cũ bị thay.
+   */
+  rejected: QueuedAnswer[];
 }
-export const initialSaveState = (): SaveState => ({ status: "idle", queue: [], savedAt: null, retries: 0, seq: 0 });
+export const initialSaveState = (): SaveState => ({ status: "idle", queue: [], savedAt: null, retries: 0, seq: 0, rejected: [] });
+
+/** Chip theo hàng đợi + đáp án bị từ chối: còn gửi → "saving"; hết gửi mà còn bị từ chối → "failed" (không bao giờ "saved" giả); hết sạch → "saved" nếu từng lưu. */
+function settleStatus(queue: readonly QueuedAnswer[], rejected: readonly QueuedAnswer[], savedAt: string | null): SaveStatus {
+  if (queue.length > 0) return "saving";
+  if (rejected.length > 0) return "failed";
+  return savedAt ? "saved" : "idle";
+}
 
 /** Khoá gộp: câu trắc nghiệm / tự luận theo câu; từng ý Đúng–Sai / ô nhiều đáp án theo ý. */
 export function answerKey(b: SaveAnswerBody): string {
@@ -29,7 +41,8 @@ export function answerKey(b: SaveAnswerBody): string {
 export function enqueue(s: SaveState, body: SaveAnswerBody): SaveState {
   const key = answerKey(body);
   const seq = s.seq + 1;
-  return { ...s, status: "saving", seq, queue: [...s.queue.filter(q => q.key !== key), { key, seq, body }] };
+  // Đáp án mới của cùng câu / ý thay luôn bản bị từ chối trước đó (em đã đổi ý: đây là lần thử mới).
+  return { ...s, status: "saving", seq, queue: [...s.queue.filter(q => q.key !== key), { key, seq, body }], rejected: s.rejected.filter(r => r.key !== key) };
 }
 
 /**
@@ -38,7 +51,7 @@ export function enqueue(s: SaveState, body: SaveAnswerBody): SaveState {
  */
 export function markSaved(s: SaveState, key: string, seq: number, serverNowIso: string): SaveState {
   const queue = s.queue.filter(q => !(q.key === key && q.seq <= seq));
-  return { ...s, queue, retries: 0, savedAt: serverNowIso, status: queue.length === 0 ? "saved" : "saving" };
+  return { ...s, queue, retries: 0, savedAt: serverNowIso, status: settleStatus(queue, s.rejected, serverNowIso) };
 }
 
 /** Gửi thất bại nhưng thử lại được (mạng / 5xx): giữ nguyên hàng đợi, chip "Chưa lưu được". */
@@ -46,10 +59,31 @@ export function markFailed(s: SaveState): SaveState {
   return { ...s, status: s.queue.length > 0 ? "failed" : s.status, retries: s.retries + 1 };
 }
 
-/** Bỏ một mục khỏi hàng đợi (lỗi không thể thử lại như phần đã khoá) để không lặp mãi. */
+/** Bỏ một mục khỏi hàng đợi (lỗi không thể thử lại như phần đã khoá) để không lặp mãi. Phòng thi dùng markRejected (giữ lại để báo "Chưa lưu được"), không dùng hàm này. */
 export function dropQueued(s: SaveState, key: string, seq: number): SaveState {
   const queue = s.queue.filter(q => !(q.key === key && q.seq <= seq));
-  return { ...s, queue, status: queue.length === 0 ? (s.savedAt ? "saved" : "idle") : s.status };
+  return { ...s, queue, status: queue.length === 0 ? settleStatus(queue, s.rejected, s.savedAt) : s.status };
+}
+
+/**
+ * 5A: máy chủ từ chối `key` bằng lỗi 4xx (không thử lại được): chuyển mục đó từ hàng đợi sang `rejected`. Chip → "failed" ngay khi hàng đợi hết (còn mục khác đang gửi thì vẫn "saving"
+ * cho tới khi chúng xong). Không tăng `retries` (không phải lỗi mạng, không lùi mũi).
+ */
+export function markRejected(s: SaveState, key: string, seq: number): SaveState {
+  const gone = s.queue.filter(q => q.key === key && q.seq <= seq);
+  if (gone.length === 0) return s;
+  const queue = s.queue.filter(q => !(q.key === key && q.seq <= seq));
+  const rejected = [...s.rejected.filter(r => r.key !== key), gone[gone.length - 1]];
+  return { ...s, queue, rejected, status: settleStatus(queue, rejected, s.savedAt) };
+}
+
+/** Nút "Thử lại" ở chip: đưa mọi đáp án bị từ chối về hàng đợi với `seq` MỚI (lớn hơn mọi seq cũ), chip → "saving". Không có gì bị từ chối → không đổi. */
+export function retryRejected(s: SaveState): SaveState {
+  if (s.rejected.length === 0) return s;
+  let seq = s.seq;
+  const again: QueuedAnswer[] = s.rejected.map(r => ({ key: r.key, seq: ++seq, body: r.body }));
+  const queue = [...s.queue.filter(q => !again.some(a => a.key === q.key)), ...again];
+  return { ...s, queue, rejected: [], seq, status: "saving" };
 }
 
 /** 1s, 2s, 4s, 8s, rồi trần 15s. */
@@ -79,7 +113,7 @@ function clockOf(iso: string | null): string {
 /** Chữ trên chip (kèm biểu tượng ở giao diện; không chỉ dựa vào màu). */
 export function chipLabel(s: SaveState): string {
   if (s.status === "saving") return "Đang lưu…";
-  if (s.status === "failed") return `Chưa lưu được · ${s.queue.length} câu · Thử lại`;
+  if (s.status === "failed") return `Chưa lưu được · ${s.queue.length + s.rejected.length} câu · Thử lại`;
   if (s.status === "saved") { const c = clockOf(s.savedAt); return c ? `Đã lưu ${c}` : "Đã lưu"; }
   return "";
 }
