@@ -19,8 +19,8 @@ import {
 const CONTROL = "min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] text-[length:var(--kin-co-goc)] px-[var(--kin-kc-6)]";
 const FALLBACK_GRADIENT = "linear-gradient(135deg, var(--kin-nhan-nen), var(--kin-nhan-nen-re))";
 
-function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
-  course: PublicCard; following: boolean; onToggleFollow: () => void; isEnrolled: boolean;
+function CourseCard({ course, following, onToggleFollow, isEnrolled, isPendingConsent }: {
+  course: PublicCard; following: boolean; onToggleFollow: () => void; isEnrolled: boolean; isPendingConsent: boolean;
 }) {
   const p = priceView(course.price, course.originalPrice);
   const tagColor = safeTagColor(course.tagColor) ?? "var(--kin-tt-chu-loi)";
@@ -48,6 +48,8 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={dim ? { opacity: 0.9 } : undefined}>
           <KinStatus tone={seatTone(course.seat)}>{seatLabel(course.seat)}</KinStatus>
+          {/* 2A (quyết định của Thọ 04/11/2026): em đã vào lớp nhưng đang chờ phụ huynh đồng ý → nhãn thay cho nút theo dõi (bấm theo dõi một lớp đã có hồ sơ luôn bị từ chối 409 mà không báo gì). */}
+          {isPendingConsent && !isEnrolled && <KinStatus tone="cho"><span data-pending-consent>Chờ phụ huynh đồng ý</span></KinStatus>}
           {course.tag && (
             <span className="rounded-[var(--kin-bo-tron)] px-2 py-0.5 text-[length:var(--kin-co-caption)] font-semibold"
               style={{ color: tagColor, background: `color-mix(in srgb, ${tagColor} 14%, transparent)` }}>
@@ -70,7 +72,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled }: {
           {isEnrolled ? (
             <Link href={`/student/hoc-tap?course=${encodeURIComponent(course.slug)}`}
               className={`relative z-10 ${kinButtonClass("secondary")}`}>Đang học · Vào học</Link>
-          ) : (
+          ) : isPendingConsent ? null : (   // chờ phụ huynh đồng ý: KHÔNG có nút theo dõi (xem dòng trạng thái phía trên)
             <span className="relative z-10 -mr-2 -mb-2">
               <KinBookmark on={following} onToggle={onToggleFollow} labelOn="Bỏ theo dõi lớp" labelOff="Theo dõi lớp"
                 className="min-w-[var(--kin-cham-toi-thieu)] min-h-[var(--kin-cham-toi-thieu)] flex items-center justify-center" />
@@ -86,7 +88,7 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
   const router = useRouter();
   const { user } = useAuth();
   const { isFollowing, follow, unfollow } = useFollowedCourses();
-  const { enrolledIds } = useEnrollments();
+  const { enrolledIds, pendingConsentIds } = useEnrollments();
   const [f, setF] = useState<CatalogFilters>(initial);
 
   // Không đặt window.history.replaceState trong hàm cập nhật của setF: Next vá replaceState để cập nhật Router, mà hàm cập nhật chạy lúc React đang dựng
@@ -103,6 +105,7 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
   const filtered = isFiltered(f);
 
   function toggle(slug: string) {
+    if (pendingConsentIds.has(slug)) return;   // lớp đang chờ phụ huynh đồng ý: không có gì để theo dõi (thẻ cũng không hiện nút)
     if (!user) {
       const back = `${window.location.pathname}${window.location.search}`;
       router.push(`/dang-nhap?redirect=${encodeURIComponent(back)}`);
@@ -171,7 +174,7 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
       ) : (
         <div data-course-grid className="grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[var(--kin-kc-7)]">
           {shown.map(c => (
-            <CourseCard key={c.slug} course={c} following={isFollowing(c.slug)} onToggleFollow={() => toggle(c.slug)} isEnrolled={enrolledIds.has(c.slug)} />
+            <CourseCard key={c.slug} course={c} following={isFollowing(c.slug)} onToggleFollow={() => toggle(c.slug)} isEnrolled={enrolledIds.has(c.slug)} isPendingConsent={pendingConsentIds.has(c.slug)} />
           ))}
         </div>
       )}

@@ -16,6 +16,9 @@ import { prisma } from "@/lib/prisma";
   await prisma.course.update({ where: { id: d.id }, data: { category: "ĐGNL HCM", price: 0 } });
   const kid = await mkUser({ name: "Em A" });
   await prisma.enrollment.create({ data: { userId: kid.id, courseId: b.id, status: "active" } });
+  // 2A (04/11/2026): em đã vào lớp `a` nhưng đang CHỜ PHỤ HUYNH ĐỒNG Ý → thẻ hiện nhãn, KHÔNG có nút theo dõi (bấm theo dõi bị từ chối 409 mà không báo gì).
+  const waiting = await mkUser({ name: "Em Chờ" });
+  await prisma.enrollment.create({ data: { userId: waiting.id, courseId: a.id, status: "pending_consent" } });
   await prisma.courseCategory.upsert({ where: { name: "ĐGNL HCM" }, update: { sortOrder: 1 }, create: { name: "ĐGNL HCM", slug: "dgnl-hcm", sortOrder: 1 } });
   await prisma.courseCategory.upsert({ where: { name: "ĐGNL HSA" }, update: { sortOrder: 2 }, create: { name: "ĐGNL HSA", slug: "dgnl-hsa", sortOrder: 2 } });
 
@@ -86,8 +89,35 @@ import { prisma } from "@/lib/prisma";
   await sp.locator(`[data-course-card="${b.id}"]`).getByRole("link", { name: /Vào học/ }).waitFor({ timeout: 30000 });
   check("thẻ lớp đang học có 'Vào học' → /student/hoc-tap?course=", (await sp.locator(`[data-course-card="${b.id}"]`).getByRole("link", { name: /Vào học/ }).getAttribute("href"))?.includes(`/student/hoc-tap?course=${b.id}`) === true);
 
+  check("em đã vào lớp (active) không thấy nhãn 'Chờ phụ huynh đồng ý' ở thẻ nào", (await sp.locator("[data-pending-consent]").count()) === 0);
+  await pg.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });   // `pg` đang ở trang đăng nhập sau ca bấm theo dõi
+  await pg.locator("[data-course-card]").first().waitFor({ timeout: 60000 });
+  check("khách không thấy nhãn 'Chờ phụ huynh đồng ý' ở thẻ nào", (await pg.locator("[data-course-card]").count()) === 4 && (await pg.locator("[data-pending-consent]").count()) === 0);
+
+  section("Em đang chờ phụ huynh đồng ý (2A): nhãn thay cho nút theo dõi");
+  const wctx = await ctxFor({ id: waiting.id, role: "student", email: waiting.email, name: waiting.name }, { width: 1280, height: 800 });
+  const wp = await wctx.newPage(); wp.on("pageerror", (e: unknown) => errors.push(String(e))); watchConsole(wp);
+  const followCalls: string[] = [];
+  wp.on("response", r => { if (/\/api\/followed-courses\//.test(r.url())) followCalls.push(`${r.request().method()} ${r.status()}`); });
+  await wp.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
+  const cardA = wp.locator(`[data-course-card="${a.id}"]`);
+  await cardA.locator("[data-pending-consent]").waitFor({ timeout: 30000 });
+  check("thẻ lớp đang chờ có nhãn 'Chờ phụ huynh đồng ý'", /Chờ phụ huynh đồng ý/.test(await cardA.innerText()));
+  check("thẻ đó KHÔNG có nút 'Theo dõi lớp' / 'Bỏ theo dõi lớp'", (await cardA.getByRole("button", { name: /theo dõi lớp/i }).count()) === 0);
+  check("thẻ đó cũng không có lối 'Vào học' (chưa có quyền học)", (await cardA.getByRole("link", { name: /Vào học/ }).count()) === 0);
+  check("chỉ MỘT thẻ có nhãn", (await wp.locator("[data-pending-consent]").count()) === 1);
+  check("3 thẻ còn lại (4 thẻ - 1) vẫn có nút 'Theo dõi lớp'", (await wp.getByRole("button", { name: /Theo dõi lớp/ }).count()) === 3);
+  await wp.getByRole("button", { name: /Theo dõi lớp/ }).first().click();
+  await wp.waitForTimeout(1200);
+  check("bấm theo dõi một lớp KHÁC → POST 200, không có 409 nào", followCalls.length >= 1 && followCalls.every(x => x === "POST 200"), followCalls);
+  await shot(wp, "cat01-cho-phu-huynh").catch(() => {});
+  const wm = await (await ctxFor({ id: waiting.id, role: "student", email: waiting.email, name: waiting.name }, { width: 390, height: 800 })).newPage();
+  await wm.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
+  await wm.locator(`[data-course-card="${a.id}"] [data-pending-consent]`).waitFor({ timeout: 30000 });
+  check("390: nhãn hiện đủ, thẻ không tràn ngang", await wm.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth) && /Chờ phụ huynh đồng ý/.test(await wm.locator(`[data-course-card="${a.id}"]`).innerText()));
+
   check("không lỗi JS trang", errors.length === 0, errors.slice(0, 3));
   check("gõ tìm / chọn chip / đổi lọc không gây cảnh báo React 'cập nhật Router khi đang dựng' (replaceState ngoài hàm cập nhật state)", reactWarns.length === 0, reactWarns.slice(0, 2));
   await closeAll();
   await done();
-})();
+})().catch(e => { console.error("TEST CRASH", String(e).slice(0, 300)); process.exit(1); });

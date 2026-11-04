@@ -67,7 +67,7 @@ const H = 3_600_000;
 
   section("API /api/enrollments: dạng cũ không đổi, ?detail=1 thêm tên lớp, thứ tự theo lúc vào lớp");
   const plain = await api("GET", "/api/enrollments", { as: S });
-  check("không có ?detail: chỉ courseIds, đúng thứ tự vào lớp (Địa, Sử nâng cao, Sử)", Object.keys(plain.json).join() === "courseIds" && plain.json.courseIds.join() === [B.id, C.id, A.id].join(), plain.json);
+  check("không có ?detail: courseIds (+ pendingConsentCourseIds, thêm 04/11/2026 cho nhãn 'Chờ phụ huynh đồng ý'), đúng thứ tự vào lớp (Địa, Sử nâng cao, Sử)", Object.keys(plain.json).sort().join() === "courseIds,pendingConsentCourseIds" && plain.json.pendingConsentCourseIds.length === 0 && plain.json.courseIds.join() === [B.id, C.id, A.id].join(), plain.json);
   const det = await api("GET", "/api/enrollments?detail=1", { as: S });
   check("?detail=1: courses có tên, gia sư, số bài thật (Địa 12 = 2 bài)", det.json.courses.map((x: { name: string; instructor: string; lessonCount: number }) => `${x.name}|${x.instructor}|${x.lessonCount}`).join() === "Địa 12|Cô Hạnh|2,Sử 12 nâng cao|Cô Hạnh|1,Sử 12|Cô Hạnh|1", det.json.courses);
   check("khách (chưa đăng nhập) chỉ nhận danh sách rỗng", (await api("GET", "/api/enrollments?detail=1")).json.courseIds.length === 0);
