@@ -7,6 +7,8 @@ import { COURSE_CATEGORIES } from "@/lib/courseData";
 import { BADGE_RULES, computeRankings, type HonorStudent, type SortKey } from "@/lib/honorData";
 import { GpaBar } from "@/components/GpaBar";
 import { useAuth } from "@/contexts/AuthContext";
+import { kinButtonClass } from "@/components/kin/buttonClass";
+import { loginHref } from "@/components/community/format";
 
 function Avatar({ name, size = 44 }: { name: string; size?: number }) {
   const colors = ["#0055D4", "#7C3AED", "#16a34a", "#EF4444", "#FE9900", "#0891B2"];
@@ -19,8 +21,9 @@ function Avatar({ name, size = 44 }: { name: string; size?: number }) {
   );
 }
 
+// Khách chỉ nhận tên đã che, KHÔNG có userId / school (GET /api/leaderboard, leaderboardPublic.ts) — người đã đăng nhập nhận đủ.
 interface LeaderboardEntry {
-  userId: string; name: string; school: string | null;
+  userId?: string; name: string; school?: string | null;
   best: number; avg: number; count: number;
 }
 
@@ -45,9 +48,12 @@ function TabThiThu() {
   }, [activeFilter]);
 
   const leaderboard = apiData.map((u, i) => ({
-    rank: i + 1, name: u.name, school: u.school ?? "—", score: u.best, maxScore: 150,
+    rank: i + 1, name: u.name, school: u.school ?? (u.userId === undefined ? "" : "—"), score: u.best, maxScore: 150,
   }));
   const top3 = leaderboard.slice(0, 3);
+  // Bản công khai (khách) không có userId ở bất kỳ dòng nào. Dựa vào DỮ LIỆU đã tải chứ không vào trạng thái đăng nhập: trạng thái đăng nhập có thể đã đổi trước khi trang hydrate xong
+  // → HTML máy chủ và máy khách lệch ("Hydration failed"); dữ liệu chỉ có sau khi tải ở máy khách nên không thể lệch.
+  const maskedView = !loading && !fetchError && apiData.length > 0 && apiData.every(r => r.userId === undefined);
 
   return (
     <>
@@ -60,6 +66,12 @@ function TabThiThu() {
           {activeFilter === "Tất cả" ? "Tất cả kỳ thi" : activeFilter}
           {leaderboard.length > 0 && ` · ${leaderboard.length} học viên`}
         </p>
+        {maskedView && (
+          <p data-guest-note className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
+            Khi chưa đăng nhập, tên học viên được viết tắt và chỉ hiện 10 hạng đầu.{" "}
+            <Link href={loginHref("/bang-xep-hang")} className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Đăng nhập để xem đầy đủ</Link>
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-8">
@@ -212,11 +224,13 @@ function TabVinhDanh() {
   const [students, setStudents] = useState<HonorStudent[]>([]);
   const [loading, setLoading]   = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  // 401 = chưa đăng nhập: bảng vinh danh (tên + trường + GPA + huy hiệu của mọi học sinh) bắt đăng nhập (quyết định 04/11/2026), không phải lỗi tải.
+  const [needLogin, setNeedLogin] = useState(false);
 
   useEffect(() => {
     setFetchError(false);
     fetch("/api/honor-leaderboard")
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(r => { if (r.status === 401) { setNeedLogin(true); return []; } if (!r.ok) throw new Error(); return r.json(); })
       .then(setStudents)
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
@@ -228,6 +242,16 @@ function TabVinhDanh() {
     BADGE_RULES.map(rule => ({ ...rule, students: students.filter(rule.check) })),
   [students]);
   const getBadges = (s: HonorStudent) => BADGE_RULES.filter(r => r.check(s));
+
+  if (needLogin) {
+    return (
+      <div data-honor-gate className="text-center py-12 px-4 rounded-xl" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+        <p className="text-base font-semibold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Bảng vinh danh dành cho học viên đã đăng nhập</p>
+        <p className="text-sm mb-5" style={{ color: "var(--kin-chu-mo)" }}>Tên, trường và điểm của học viên chỉ hiện sau khi bạn đăng nhập.</p>
+        <Link href={loginHref("/bang-xep-hang")} className={kinButtonClass("primary")}>Đăng nhập</Link>
+      </div>
+    );
+  }
 
   return (
     <>
