@@ -123,7 +123,9 @@ export async function loadFeedPage(p: FeedParams): Promise<FeedPage | { forbidde
   }
   const categoryWhere: Prisma.ThreadWhereInput = p.tab === "all" ? {} : { category: p.tab };
   const base: Prisma.ThreadWhereInput[] = [publishedThreadWhere, scopeWhere, categoryWhere];
-  const includeLegacy = (p.scope === "all" || p.scope === "common") && (p.tab === "all" || p.tab === "hoi-dap");
+  // 3A (quyết định của Thọ 04/11/2026): KHÁCH không thấy câu hỏi cũ (bảng Question) trong bảng tin — mở /cong-dong/hoi-dap/<id> luôn đưa khách sang đăng nhập (route cũ đòi phiên),
+  // nên liệt kê chúng cho khách chỉ lộ tiêu đề mà không đọc được. Người đã đăng nhập thấy như cũ.
+  const includeLegacy = viewerId !== null && (p.scope === "all" || p.scope === "common") && (p.tab === "all" || p.tab === "hoi-dap");
 
   const [threads, legacy, pinned] = await Promise.all([
     prisma.thread.findMany({
@@ -241,7 +243,8 @@ export async function loadThreadDetail(session: SessionPayload | null, threadId:
 
 const DAY = 24 * 60 * 60 * 1000;
 
-export async function loadSidebar(): Promise<SidebarData> {
+/** `includeLegacy` = người xem đã đăng nhập (3A: khách không thấy câu hỏi cũ, xem loadFeedPage). */
+export async function loadSidebar(includeLegacy: boolean): Promise<SidebarData> {
   const since = new Date(Date.now() - 30 * DAY);
   const grouped = await prisma.threadReply.groupBy({
     by: ["authorId"],
@@ -267,10 +270,12 @@ export async function loadSidebar(): Promise<SidebarData> {
       where: { ...publishedThreadWhere, kind: "question", courseId: null, acceptedReplyId: null, replies: { none: { deletedAt: null } } },
       orderBy: [...byNewest], take: 5, select: { id: true, title: true, content: true, createdAt: true },
     }),
-    prisma.question.findMany({
-      where: { acceptedAnswerId: null, answers: { none: {} } },
-      orderBy: [...byNewest], take: 5, select: { id: true, title: true, createdAt: true },
-    }),
+    includeLegacy
+      ? prisma.question.findMany({
+          where: { acceptedAnswerId: null, answers: { none: {} } },
+          orderBy: [...byNewest], take: 5, select: { id: true, title: true, createdAt: true },
+        })
+      : Promise.resolve([] as { id: string; title: string; createdAt: Date }[]),
   ]);
   const unanswered = [
     ...threadQs.map(q => ({ key: feedKey("thread", q.id), title: q.title ?? excerptOf(q.content, 1, 80), createdAt: q.createdAt, href: `/cong-dong/${q.id}` })),
