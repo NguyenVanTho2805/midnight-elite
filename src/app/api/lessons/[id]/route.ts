@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
 import { isSuspended, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
+import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
 
 // MD-03: ownerId (định danh gia sư) chỉ dùng để kiểm quyền ở máy chủ, KHÔNG đi ra JSON. Trả bản chỉ còn chapter.section.courseId.
 type LessonWithOwner = { chapter: { section: { courseId: string; course: { ownerId: string | null } } } };
@@ -13,7 +14,6 @@ function publicLesson<L extends LessonWithOwner>(lesson: L) {
   const { chapter, ...rest } = lesson;
   return { ...rest, chapter: { ...chapter, section: { courseId: chapter.section.courseId } } };
 }
-import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

@@ -190,11 +190,12 @@ export async function cancelJoinRequest(requestId: string, userId: string): Prom
 
 // ── Duyệt / từ chối (gia sư chủ lớp) ────────────────────────────────────────────────────────────
 
-export type DecideOutcome = "ok" | "tuchoi" | "day" | "dong" | "goi" | "da-xu-ly" | "loi-ghi-chu" | "khong-co";
+export type DecideOutcome = "ok" | "tuchoi" | "day" | "dong" | "goi" | "da-xu-ly" | "loi-ghi-chu" | "khong-co" | "da-nghi";
 export interface DecideCourse { id: string; name: string; ownerId: string | null; capacity: number | null; classStatus: string }
 
 /** Duyệt (`duyet`) hoặc từ chối (`tu-choi`) MỘT yêu cầu của lớp `course`. Người gọi đã kiểm gia sư là chủ lớp.
- *  Yêu cầu không thuộc lớp này ⇒ "khong-co" (404). Lớp đầy / đang đóng / gói chặn ⇒ "day" / "dong" / "goi" và yêu cầu VẪN pending. Đã xử lý ⇒ "da-xu-ly" (không tạo thêm gì). */
+ *  Yêu cầu không thuộc lớp này ⇒ "khong-co" (404). Lớp đầy / đang đóng / gói chặn ⇒ "day" / "dong" / "goi" và yêu cầu VẪN pending. Đã xử lý ⇒ "da-xu-ly" (không tạo thêm gì).
+ *  Học sinh đang tạm dừng (Enrollment suspended) ⇒ "da-nghi": KHÔNG tự mở lại, KHÔNG báo "Bạn đã được vào lớp", yêu cầu VẪN pending — gia sư mở lại ở mục Học sinh rồi duyệt (chỉ gia sư mở lại được). */
 export async function decideJoinRequest(
   course: DecideCourse,
   requestId: string,
@@ -221,6 +222,8 @@ export async function decideJoinRequest(
     if (action === "duyet") {
       const enr = await enrollInTx(tx, { userId: r.userId, course, source: "join_approved", inviteId: r.inviteId });
       if (!enr.ok) return { outcome: enr.code === "CAPACITY_FULL" ? "day" : enr.code === "CLASS_CLOSED" ? "dong" : "goi" };
+      // Đang tạm dừng: enrollInTx giữ nguyên hồ sơ (không mở lại). Không đánh dấu approved, không thông báo "đã vào lớp".
+      if (enr.status === "suspended") return { outcome: "da-nghi" };
       await tx.classJoinRequest.update({ where: { id: requestId }, data: { status: "approved", decidedBy: tutorId, decidedAt: now, note: null } });
       return { outcome: "ok", studentId: r.userId, enrollment: enr };
     }
@@ -257,20 +260,22 @@ export async function decideJoinRequestsBulk(
   action: "duyet" | "tu-choi",
   tutorId: string,
   rawNote?: unknown,
-): Promise<{ done: number; blocked: boolean; closed: boolean; noteError: boolean }> {
+): Promise<{ done: number; blocked: boolean; closed: boolean; noteError: boolean; suspended: number }> {
   const rows = await prisma.classJoinRequest.findMany({
     where: { id: { in: ids }, courseId: course.id, status: "pending" }, orderBy: { createdAt: "asc" }, select: { id: true },
   });
   let done = 0;
   let blocked = false;
   let closed = false;
+  let suspended = 0; // yêu cầu của học sinh đang tạm dừng: bỏ qua (vẫn pending), KHÔNG chặn các yêu cầu còn lại
   for (const r of rows) {
     const o = await decideJoinRequest(course, r.id, action, tutorId, rawNote);
-    if (o === "loi-ghi-chu") return { done, blocked, closed, noteError: true };
-    if (o === "ok" || o === "tuchoi") done++;
+    if (o === "loi-ghi-chu") return { done, blocked, closed, noteError: true, suspended };
+    if (o === "da-nghi") suspended++;
+    else if (o === "ok" || o === "tuchoi") done++;
     else if (o === "day" || o === "dong" || o === "goi") { blocked = true; if (o === "dong") closed = true; if (action === "duyet") break; }
   }
-  return { done, blocked, closed, noteError: false };
+  return { done, blocked, closed, noteError: false, suspended };
 }
 
 // ── Bộ đọc cho trang / route ────────────────────────────────────────────────────────────────────
