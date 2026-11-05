@@ -39,7 +39,11 @@ const FLAG_TEXT: Record<AzotaFlag, { tone: "loi" | "cho" | "xong"; text: string 
   image_unreadable: { tone: "cho", text: "Có hình không hiển thị được" },
   formula_image: { tone: "cho", text: "Công thức này hiện bằng ảnh — cô có thể sửa thành LaTeX nếu muốn" },
   formula_mathtype: { tone: "xong", text: "Công thức đọc từ MathType — kiểm lại" },
+  answer_from_solution: { tone: "cho", text: "Đáp án đọc từ lời giải — kiểm lại" },
 };
+/** Cờ answer_from_solution: nhãn theo việc đáp án có thật sự lấy từ lời giải không (answerSource "loi-giai") hay chỉ phần lời giải chữ. */
+const flagText = (f: AzotaFlag, q: { answerSource: string }): string =>
+  f === "answer_from_solution" && q.answerSource !== "loi-giai" ? "Lời giải đọc từ mục LỜI GIẢI CHI TIẾT — kiểm lại" : FLAG_TEXT[f].text;
 
 /** Lý do một câu (đang được tích lưu) chưa lưu được; null = ổn. */
 function blockReason(it: Item, toExam: boolean): string | null {
@@ -339,7 +343,7 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[length:var(--kin-co-goc)]">
         <span className="text-[var(--kin-chu-phu)]">Đáp án: <b className="font-medium">{answerText}</b> · nguồn: {ANSWER_SOURCE_LABEL[q.answerSource]}</span>
-        {q.flags.map(f => <KinStatus key={f} tone={FLAG_TEXT[f].tone} className="max-w-full whitespace-normal!">{FLAG_TEXT[f].text}</KinStatus>)}
+        {q.flags.map(f => <KinStatus key={f} tone={FLAG_TEXT[f].tone} className="max-w-full whitespace-normal!">{flagText(f, q)}</KinStatus>)}
         {q.flags.includes("answer_conflict") && it.answerTouched && <KinStatus tone="xong" className="max-w-full whitespace-normal!">Cô đã chọn đáp án</KinStatus>}
       </div>
       <KinGuesses it={it} patch={patch} />

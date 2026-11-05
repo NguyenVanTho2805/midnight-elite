@@ -74,7 +74,7 @@ export function flattenCategories(list: readonly CategoryFlat[]): (CategoryFlat 
 }
 
 // ─── P1.3 Kết quả đọc Word  (POST /api/tutor/ngan-hang/nhap-word, multipart) ──────────────────────────────────────────────────
-export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image" | "formula_mathtype";
+export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image" | "formula_mathtype" | "answer_from_solution";
 export type AzotaAnswerSource = "dau-gach-chan" | "bang-het" | "loi-giai" | "mau" | "khong-co";
 export interface AzotaQuestion {
   key: string; number: number; sectionIndex: number; sectionLabel: string;
@@ -92,6 +92,8 @@ export interface AzotaParse {
   errors: { block: number; message: string }[]; // lỗi cứng, câu đó bị bỏ
   warnings: { question: string; code: string; message: string }[];
   stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number; formulaDecoded?: number; formulaFailed?: number; withFormulaImage?: number };
+  /** Mục "LỜI GIẢI CHI TIẾT" không đánh "Câu N.": số lời giải đọc được / ghép được / bị bỏ. Tuỳ chọn. */
+  solutionStats?: { entries: number; matched: number; dropped: number };
   fatal: string | null;
 }
 export type NhapWordRes = AzotaParse & { images: { key: string; url: string }[] };

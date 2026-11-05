@@ -4,6 +4,7 @@
 // (3) công thức MathType hoá học: kiểu "Text" → \text{} đứng, kiểu "Variable" → in nghiêng như bản Word, ⇌/mũi tên có chữ = chưa kiểm → ảnh dự phòng; (4) KaTeX \mathrm{} dựng đúng (đứng, không in nghiêng).
 // Ca phá cố ý (sửa mã → ca tương ứng đỏ):
 //   - azotaDocx.ts SUP: bỏ "–" (U+2013) → ca 'SO₄²– (gạch ngang)' đỏ; SUB: bỏ chữ cái (n,x,…) → ca 'CₙH₂ₙ₊₂' đỏ; bỏ dòng `wrapped` (luôn bọc thêm ngoặc) → ca 'X_(aq)' đỏ;
+//   - aiExamImport.ts: xoá đoạn 'Ký hiệu hoá học' hoặc đổi \\\\mathrm thành \\mathrm (mất backslash) → ca 'Prompt AI' đỏ;
 //   - scriptText bỏ `|| r.formula` bảo vệ công thức / bỏ nhánh dự phòng (mất ký tự lạ) → ca 'không mất chữ' đỏ.
 import JSZip from "jszip";
 import katex from "katex";
@@ -11,6 +12,7 @@ import { check, section, done } from "./h";
 import { readDocx } from "@/lib/azotaDocxRead";
 import { parseAzotaBlocks, type DocBlock } from "@/lib/azotaDocx";
 import { decodeMathTypeOle } from "@/lib/mathtype/mtef";
+import { SYSTEM_INSTRUCTION } from "@/lib/aiExamImport";
 import { chr, line, num, oleOf, sub, sup, sym, text, tmpl, vars, emptyLine, type Bytes } from "./mathtype-fixtures";
 
 const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
@@ -80,6 +82,17 @@ const unscript = (s: string) => [...s].map(c => (SUPB.includes(c) ? SUPA[[...SUP
   }
   check("PHÁ: không bọc \\mathrm thì H_2O dựng chữ nghiêng (mathnormal) — đúng lý do phải bọc", katex.renderToString("H_2O", { throwOnError: true }).includes("mathnormal"));
   check("mọi LaTeX hoá học do bộ giải MathType ra đều dựng được ở KaTeX strict", [h2o, co2, ca, so4, glu, arr, eq, lab].every(r => { try { katex.renderToString(r.latex, { throwOnError: true, strict: "error" }); return true; } catch { return false; } }));
+
+  section("Prompt AI (aiExamImport) có quy tắc ký hiệu hoá học — CHỈ kiểm chuỗi prompt; CHƯA kiểm với khoá Gemini thật (máy này không có GEMINI_API_KEY)");
+  {
+    const rule = SYSTEM_INSTRUCTION.split("\n").find(l => l.startsWith("Ký hiệu hoá học")) ?? "";
+    check("có đoạn 'Ký hiệu hoá học'", rule.length > 0);
+    check("nêu ví dụ Unicode H₂O, CO₂, Ca²⁺, SO₄²⁻, C₆H₁₂O₆ và mũi tên → ⇌", ["H₂O", "CO₂", "Ca²⁺", "SO₄²⁻", "C₆H₁₂O₆", "→", "⇌"].every(x => rule.includes(x)), rule);
+    check("nêu \\mathrm{H_2O} trong $...$ (backslash còn nguyên sau khi qua template literal) và cấm in nghiêng", rule.includes("$\\mathrm{H_2O}$") && rule.includes("KHÔNG in nghiêng"), rule);
+    check("dặn giữ chỉ số trên/dưới, không viết lại H2O/Ca2+", rule.includes("giữ NGUYÊN chỉ số trên/dưới") && rule.includes("H2O") && rule.includes("Ca2+"));
+    check("PHÁ: ví dụ \\mathrm trong prompt dựng được ở KaTeX strict, không nghiêng", ["\\mathrm{H_2O}", "\\mathrm{Ca^{2+}}", "\\mathrm{SO_4^{2-}}", "\\mathrm{CO_2}"].every(f => !katex.renderToString(f, { throwOnError: true, strict: "error" }).includes("mathnormal")));
+    check("quy tắc LaTeX toán cũ còn nguyên (không bị ghi đè)", SYSTEM_INSTRUCTION.includes("Công thức toán: giữ nguyên dạng LaTeX"));
+  }
 
   await done();
 })();

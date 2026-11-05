@@ -7,7 +7,7 @@
 // Giới hạn độ dài (TEXT_MAX…) tính theo `visibleLength`: mỗi token ảnh đếm 1 ký tự và KHÔNG BAO GIỜ bị cắt giữa chừng.
 import type { QuizQuestionInput } from "@/lib/quizQuestion";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
-import { clipVisible, formulaImgRegex } from "@/lib/mathtype/formulaImg";
+import { clipVisible, formulaFieldError, formulaImgRegex } from "@/lib/mathtype/formulaImg";
 
 // ── Kiểu đầu vào (từ azotaDocxRead.ts) ───────────────────────────────────────────────────────
 export type Level = "NB" | "TH" | "VD" | "VDC";
@@ -30,7 +30,7 @@ export type DocBlock = { kind: "p"; runs: DocRun[] } | { kind: "table"; rows: Do
 // ── Kiểu đầu ra (đặc tả P1.3) ────────────────────────────────────────────────────────────────
 export type AzotaType = "MC" | "MC_MULTI" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER" | "ESSAY";
 export type AnswerSource = "dau-gach-chan" | "bang-het" | "loi-giai" | "mau" | "khong-co";
-export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image" | "formula_mathtype";
+export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image" | "formula_mathtype" | "answer_from_solution";
 export interface AzotaQuestion {
   key: string; number: number; sectionIndex: number; sectionLabel: string;
   type: AzotaType;
@@ -51,6 +51,8 @@ export interface AzotaParse {
   stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number; withFormulaImage?: number; formulaDecoded?: number; formulaFailed?: number };
   /** Công thức MathType (máy chủ thêm từ readDocx; UI phải chịu được thiếu). Không chứa nội dung công thức. */
   formulaStats?: { total: number; decoded: number; failed: number; byReason: Record<string, number>; unverified: number; image?: number; imageFailByReason?: Record<string, number> };
+  /** Mục "LỜI GIẢI CHI TIẾT" (không có "Câu N."): số lời giải đọc được / ghép được / bị bỏ (UI phải chịu được thiếu). */
+  solutionStats?: { entries: number; matched: number; dropped: number };
   fatal: string | null;
 }
 
@@ -156,10 +158,12 @@ function findTokens(p: Para, seq: readonly string[], closers: string): Token[] {
 type Item = { kind: "p"; para: Para } | { kind: "t"; lines: string[]; cells: string[][] };
 interface Sec { index: number; label: string; type: AzotaType; known: boolean }
 interface QB { number: number; sec: Sec; items: Item[]; block: number }
-interface Src { src: Exclude<AnswerSource, "khong-co">; val: string; bad?: boolean; display?: string }
+interface Src { src: Exclude<AnswerSource, "khong-co">; val: string; bad?: boolean; display?: string; /** đọc từ mục LỜI GIẢI CHI TIẾT (ghép theo đầu đề) */ fromSol?: boolean }
 interface Draft {
   q: AzotaQuestion; srcs: Src[]; optionLetters: string[]; block: number; unreadableImage: boolean; extraImages: number;
   explFromKey?: string;
+  /** Đầu đề đã chuẩn hoá (normHead) để đối chiếu với lời giải; sec để dựng lại câu giả từ lời giải. */
+  headNorm: string; sec: Sec; solExpl?: boolean;
 }
 const SRC_ORDER: Src["src"][] = ["dau-gach-chan", "mau", "bang-het", "loi-giai"];
 
@@ -211,6 +215,8 @@ function buildDraft(qb: QB, errors: AzotaParse["errors"], state: { tfOrderSeen: 
     answerLines.push(m[1]); return false;
   });
   const contentItems = stripAnswerLines(content), explItems = stripAnswerLines(expl);
+
+  const headNorm = normHead(contentItems.map(it => (it.kind === "p" ? it.para.text : it.lines.join(" "))).join(" "));
 
   // 2) Hình: một hình/câu (hình đầu đọc được); thừa → cảnh báo.
   let imageIndex: number | undefined, extraImages = 0, unreadableImage = false;
@@ -341,7 +347,7 @@ function buildDraft(qb: QB, errors: AzotaParse["errors"], state: { tfOrderSeen: 
 
   return {
     q: { key, number: qb.number, sectionIndex: sec.index, sectionLabel: sec.label, type: sec.type, text: text || "(Câu hỏi bằng hình)", ...(imageIndex !== undefined ? { imageIndex } : {}), options, explanation, difficulty, answerSource: "khong-co", flags },
-    srcs, optionLetters, block: qb.block, unreadableImage, extraImages,
+    srcs, optionLetters, block: qb.block, unreadableImage, extraImages, headNorm, sec,
   };
 }
 
@@ -444,6 +450,134 @@ export function parseAnswerKeyText(text: string): Record<number | string, string
   return out;
 }
 
+// ── Mục "LỜI GIẢI CHI TIẾT" không đánh "Câu N." ────────────────────────────────────────────────────────────
+// Mẫu: sau "PHIẾU TRẢ LỜI" có tiêu đề IN HOA "LỜI GIẢI CHI TIẾT", rồi lại "PHẦN I/II/III"; mỗi lời giải = lặp lại đầu đề (đề + phương án, đáp án đúng GẠCH CHÂN nhãn;
+// ý Đ-S không gạch chân mà ghi "a) Đúng/Sai" sau "Lời giải"; phần III ghi "Trả lời: số") + dòng "Lời giải" + thân. KHÔNG có số câu → ghép theo THỨ TỰ trong từng PHẦN,
+// nhưng MỖI cặp phải ĐỐI CHIẾU được đầu đề với câu tương ứng (headScore ≥ SOL_SIM_MIN); không khớp → BỎ (không đoán, câu đó không có đáp án từ đây, ghi cảnh báo kèm mã câu).
+/** Ngưỡng giống nhau (Dice theo cặp ký tự, trên chữ+số+^_+-=<> đã bỏ khoảng trắng/dấu câu/ký hiệu LaTeX) để coi đầu đề lời giải và đề là MỘT. Bằng nhau hoàn toàn luôn đạt. */
+export const SOL_SIM_MIN = 0.9;
+/** Đầu đề ngắn hơn ngưỡng này (ký tự đã chuẩn hoá) chỉ chấp nhận khi BẰNG NHAU hoàn toàn. */
+export const SOL_MIN_LEN = 30;
+const SOL_HEAD_RE = /^LỜI GIẢI CHI TIẾT[\s.:：]*$/u;
+const ANSWER_SHEET_RE = /^PHIẾU\s+TRẢ\s+LỜI[\s.:：]*$/u;
+const SOL_MARKER_RE = /^(?:Lời giải chi tiết|Lời giải|Hướng dẫn giải)\s*[:：]?\s*$/iu;
+const SOL_ANSWER_RE = /^(?:Trả lời|Đáp án|Đáp số)\s*[:：]\s*(\S.*)$/iu;
+const SOL_NUMBER_RE = /^[-−–]?\d+(?:[.,]\d+)?$/u;
+const SOL_LABEL_ONLY_RE = /^Phần giải chi tiết\s*[:：]?\s*$/iu;
+
+/** Chuẩn hoá đầu đề để so: ảnh công thức → 1 ký hiệu, gạch/trừ Unicode → "-", chỉ giữ chữ, số và ^ _ + - = < >. */
+export function normHead(s: string): string {
+  return s.replace(formulaImgRegex(), "☐").normalize("NFC").replace(/[−–—]/g, "-").toLowerCase().replace(/[^\p{L}\p{N}^_+\-=<>☐]/gu, "");
+}
+/** Độ giống 0..1 của hai đầu đề đã chuẩn hoá: bằng nhau = 1; khác nhau chỉ tính khi đủ dài VÀ dãy chữ số y hệt (một con số khác = câu khác), khi đó lấy Dice cặp ký tự. */
+export function headScore(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (Math.min(a.length, b.length) < SOL_MIN_LEN) return 0;
+  const dig = (x: string) => (x.match(/\d+/g) ?? []).join(",");
+  if (dig(a) !== dig(b)) return 0;
+  const grams = (x: string) => { const m = new Map<string, number>(); for (let i = 0; i + 1 < x.length; i++) { const g = x.slice(i, i + 2); m.set(g, (m.get(g) ?? 0) + 1); } return m; };
+  const ga = grams(a), gb = grams(b);
+  let inter = 0;
+  for (const [g, n] of ga) inter += Math.min(n, gb.get(g) ?? 0);
+  return (2 * inter) / (a.length - 1 + b.length - 1);
+}
+const itemText = (it: Item): string => (it.kind === "p" ? it.para.text : it.lines.join(" "));
+const itemLines = (it: Item): string[] => (it.kind === "p" ? it.para.text.split("\n") : it.lines);
+
+interface SolMatch { d: Draft; lines: string[]; ansIdx: number; ansVal: string; srcs: Src[]; bodyOk: boolean }
+
+/** Ghép lời giải của MỘT phần với các câu của phần đó. Chỉ THÊM nguồn đáp án/lời giải vào bản nháp; không ghi đè gì đã có. */
+function matchSolutionSection(
+  items: Item[], qs: Draft[], secLabel: string, warn: (q: string, c: string, m: string) => void, stats: { entries: number; matched: number; dropped: number },
+): void {
+  const markers: number[] = [];
+  items.forEach((it, i) => { if (it.kind === "p" && SOL_MARKER_RE.test(flat(it.para.text))) markers.push(i); });
+  const M = markers.length, N = qs.length;
+  stats.entries += M;
+  const labelOf = (d: Draft) => `Câu ${d.q.number} (${d.q.sectionLabel || `phần ${d.q.sectionIndex}`})`;
+  const reported = new Set<Draft>();
+  const miss = (d: Draft, why: string) => { reported.add(d); warn(d.q.key, "solution_unmatched", `${labelOf(d)}: không đối chiếu được lời giải trong mục LỜI GIẢI CHI TIẾT (${why}) — bỏ qua; câu này không lấy đáp án hay lời giải từ đó.`); };
+
+  /** Đoạn kết thúc ngay trước dòng "Lời giải" thứ j mà giống đầu đề của câu q nhất (đoạn cuối trước marker là đoạn cuối của đầu đề). */
+  const best = (j: number, q: Draft): { score: number; s: number } => {
+    const rs = j === 0 ? 0 : markers[j - 1] + 1, end = markers[j];
+    let acc = "", b = { score: 0, s: -1 };
+    for (let s = end - 1; s >= rs && end - s <= 80; s--) {
+      acc = normHead(itemText(items[s])) + acc;
+      if (acc.length > q.headNorm.length * 1.6 + 40) break;
+      const sc = headScore(acc, q.headNorm);
+      if (sc > b.score) b = { score: sc, s };
+    }
+    return b.score >= SOL_SIM_MIN ? b : { score: 0, s: -1 };
+  };
+
+  const assign: number[] = new Array(M).fill(-1), startAt: number[] = new Array(M).fill(-1);
+  const orphan: number[] = [];
+  if (M === N) { // cùng số lượng → theo vị trí, mỗi cặp phải khớp đầu đề
+    for (let j = 0; j < M; j++) { const r = best(j, qs[j]); if (r.s >= 0) { assign[j] = j; startAt[j] = r.s; } else orphan.push(j); }
+  } else { // lệch số lượng (thiếu/thừa lời giải) → theo nội dung, tuần tự, duy nhất; mơ hồ thì bỏ
+    let ptr = 0;
+    for (let j = 0; j < M; j++) {
+      const hits = qs.map((q, i) => ({ i, ...best(j, q) })).filter(x => x.s >= 0);
+      if (hits.length === 1 && hits[0].i >= ptr) { assign[j] = hits[0].i; startAt[j] = hits[0].s; ptr = hits[0].i + 1; } else orphan.push(j);
+    }
+  }
+
+  const matches: SolMatch[] = [];
+  for (let j = 0; j < M; j++) {
+    if (assign[j] < 0) continue;
+    const d = qs[assign[j]];
+    // Thân: đến đầu đề của lời giải KẾ (đã khớp), hoặc hết phần nếu là lời giải cuối. Lời giải kế không khớp → ranh giới không chắc → bỏ thân.
+    const last = j === M - 1;
+    const bodyOk = last || assign[j + 1] >= 0;
+    const bodyEnd = last ? items.length : startAt[j + 1] >= 0 ? startAt[j + 1] : markers[j] + 1;
+    const body = bodyOk ? items.slice(markers[j] + 1, bodyEnd) : [];
+    const lines = body.flatMap(itemLines).map(l => l.replace(/[ \t]+/g, " ").trim()).filter(Boolean);
+    const type = d.q.type;
+    const srcs: Src[] = [];
+    let ansIdx = -1, ansVal = "";
+    if (type === "MC" || type === "MC_MULTI") {
+      const pseudo: QB = { number: d.q.number, sec: d.sec, items: [...items.slice(startAt[j], markers[j]), items[markers[j]], ...body], block: d.block };
+      const sd = buildDraft(pseudo, [], { tfOrderSeen: false });
+      if (!sd || sd.optionLetters.join("") !== d.optionLetters.join("")) { miss(d, "không đọc được các phương án A. B. C. D. trong lời giải"); stats.dropped++; continue; }
+      for (const s of sd.srcs) srcs.push({ ...s, src: "loi-giai", fromSol: true });
+    } else if (type === "TRUE_FALSE_CLUSTER") {
+      const vec: Record<string, "Đ" | "S"> = {};
+      for (const l of lines) { const m = /^([a-d])\s*\)\s*(Đúng|Sai)(?![\p{L}\p{N}])/iu.exec(l); if (m) { const w = tfWord(m[2]); if (w) vec[m[1].toLowerCase()] = w; } }
+      if (SUB_SEQ.every(k => vec[k])) srcs.push({ src: "loi-giai", val: SUB_SEQ.map(k => vec[k]).join(""), fromSol: true });
+    } else {
+      for (let i = 0; i < Math.min(2, lines.length); i++) {
+        const m = SOL_ANSWER_RE.exec(lines[i]);
+        if (m) { ansIdx = i; ansVal = m[1].replace(/[−–]/g, "-").replace(/[.\s]+$/, "").trim(); break; }
+      }
+    }
+    matches.push({ d, lines, ansIdx, ansVal, srcs, bodyOk });
+  }
+
+  // Phần "Tự luận" mà MỌI câu đều ghép được và đều ghi "Trả lời: <số>" → trả lời ngắn (cả phần, không từng câu). Còn lại giữ ESSAY.
+  const essayToShort = qs.length > 0 && qs.every(d => d.q.type === "ESSAY") && matches.length === N && matches.every(m => m.bodyOk && m.ansIdx >= 0 && SOL_NUMBER_RE.test(m.ansVal));
+  for (const m of matches) {
+    const { d } = m;
+    let lines = m.lines;
+    if (essayToShort) d.q.type = "SHORT_ANSWER";
+    if (d.q.type === "SHORT_ANSWER" && m.ansIdx >= 0 && m.ansVal) {
+      m.srcs.push({ src: "loi-giai", val: normShort(m.ansVal), display: m.ansVal, fromSol: true });
+      lines = lines.filter((_, i) => i !== m.ansIdx);
+    }
+    d.srcs.push(...m.srcs);
+    const expl = clipVisible(lines.filter(l => !PLACEHOLDER_SOLUTION_RE.test(l) && !SOL_LABEL_ONLY_RE.test(l)).join("\n"), NOTE_MAX);
+    const tooBig = expl ? formulaFieldError(expl, "Lời giải") : null; // quá nhiều ảnh công thức → lưu sẽ bị từ chối; bỏ phần lời giải chữ, giữ đáp án
+    if (tooBig) warn(d.q.key, "solution_too_big", `${labelOf(d)}: ${tooBig}; KiN không đưa phần lời giải chữ vào (đáp án vẫn lấy nếu đọc chắc).`);
+    else if (expl && !d.q.explanation) { d.q.explanation = expl; d.solExpl = true; }
+    stats.matched++;
+  }
+  const done = new Set(matches.map(m => m.d));
+  for (const d of qs) if (!done.has(d) && !reported.has(d)) miss(d, M === N ? "đầu đề lời giải ở cùng vị trí không khớp câu" : `có ${M} lời giải cho ${N} câu; không lời giải nào khớp duy nhất đầu đề câu này`);
+  stats.dropped += orphan.length;
+  if (M !== N) for (const j of orphan) warn(`${secLabel}#${j + 1}`, "solution_unmatched", `${secLabel}: lời giải thứ ${j + 1} không khớp (duy nhất) câu nào — bỏ, không ghép.`);
+}
+
 // ── Hàm chính ───────────────────────────────────────────────────────────────────────────────
 export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
   const errors: AzotaParse["errors"] = [];
@@ -471,14 +605,38 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
   const qbs: QB[] = [];
   const keyItems: { item: Item; block: number }[] = [];
   let cur: QB | null = null, curSec: Sec | null = null, inKey = false, ordinal = 0;
+  // Mục "LỜI GIẢI CHI TIẾT" (lời giải không đánh "Câu N."): gom theo số PHẦN; chỉ vào chế độ này khi ngay sau tiêu đề IN HOA là mốc "PHẦN …".
+  let inSol = false, sheetSkip = false, solSecIdx: number | null = null, solOrdinal = 0;
+  const solAreas = new Map<number, Item[]>();
 
   for (let bi = 0; bi < blocks.length; bi++) {
     const item = toItem(blocks[bi]);
     if (inKey) { keyItems.push({ item, block: bi }); continue; }
+    if (inSol) {
+      if (item.kind === "p") {
+        const ts = flat(item.para.text).normalize("NFC");
+        if (END_RE.test(ts) && ts.toUpperCase().includes("HẾT")) { inSol = false; inKey = true; continue; }
+        const sms = SECTION_RE.exec(ts);
+        if (sms) { solSecIdx = sectionNumber(sms[1]) || ++solOrdinal; if (!solAreas.has(solSecIdx)) solAreas.set(solSecIdx, []); continue; }
+      }
+      if (solSecIdx !== null) solAreas.get(solSecIdx)!.push(item);
+      continue;
+    }
+    if (sheetSkip) { // sau "PHIẾU TRẢ LỜI": bỏ bảng và dòng trống cho tới dòng chữ kế tiếp
+      if (item.kind === "t" || !flat(item.para.text)) continue;
+      sheetSkip = false;
+    }
     if (item.kind === "t") { if (cur) cur.items.push(item); continue; }
     const p = item.para;
     const t = flat(p.text).normalize("NFC");
     if (END_RE.test(t) && t.toUpperCase().includes("HẾT")) { inKey = true; cur = null; continue; }
+    if (ANSWER_SHEET_RE.test(t)) { sheetSkip = true; continue; } // chữ "PHIẾU TRẢ LỜI" đứng riêng một đoạn: không phải nội dung câu cuối
+    if (SOL_HEAD_RE.test(t)) {
+      let k = bi + 1; // chỉ nhận là mục lời giải khi đoạn chữ kế tiếp là mốc "PHẦN …"
+      while (k < blocks.length) { const nb = toItem(blocks[k]); if (nb.kind === "t" || !flat(nb.para.text)) { k++; continue; } break; }
+      const nx = k < blocks.length ? toItem(blocks[k]) : null;
+      if (nx && nx.kind === "p" && SECTION_RE.test(flat(nx.para.text).normalize("NFC"))) { inSol = true; cur = null; continue; }
+    }
     const sm = SECTION_RE.exec(t);
     if (sm) {
       ordinal++;
@@ -518,6 +676,20 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     if (k !== d.q.key) { warn(k, "duplicate_number", `Câu ${d.q.number} xuất hiện hai lần trong ${d.q.sectionLabel || `phần ${d.q.sectionIndex}`}; bảng đáp án chỉ khớp với câu đầu.`); d.q.key = k; }
     usedKeys.add(k);
     drafts.push(d);
+  }
+
+  // Mục LỜI GIẢI CHI TIẾT: ghép theo thứ tự + đối chiếu đầu đề; thêm nguồn đáp án (cờ answer_from_solution), không ghi đè gì đã có.
+  let solutionStats: AzotaParse["solutionStats"];
+  if (solAreas.size > 0) {
+    const st = { entries: 0, matched: 0, dropped: 0 };
+    for (const [idx, its] of solAreas) {
+      const qs = drafts.filter(d => d.q.sectionIndex === idx);
+      const sec = secs.find(x => x.index === idx);
+      if (!sec || qs.length === 0) { if (its.some(it => itemText(it).trim())) warn("", "solution_section_unknown", `Mục LỜI GIẢI CHI TIẾT có PHẦN ${idx} nhưng đề không có phần/câu tương ứng; bỏ qua.`); continue; }
+      matchSolutionSection(its, qs, sec.label || `Phần ${idx}`, warn, st);
+    }
+    solutionStats = st;
+    warn("", "solution_summary", `Mục LỜI GIẢI CHI TIẾT: ghép được ${st.matched}/${drafts.length} câu (đối chiếu đầu đề từng câu), ${drafts.length - st.matched} câu không ghép được. Đáp án và lời giải lấy từ đây cần cô kiểm lại trước khi dùng.`);
   }
 
   // Bảng đáp án.
@@ -565,18 +737,21 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
       if ([...mtTexts].some(t => all.includes(t))) q.flags.push("formula_mathtype");
     }
     if (q.flags.includes("formula_unread")) warn(q.key, "formula_unread", `${label}: có công thức MathType KiN chưa đọc được (đã gắn nhãn ${FORMULA_PLACEHOLDER}). Gõ lại công thức này trước khi phát hành.`);
+    const fromSolFlag = () => { if (!q.flags.includes("answer_from_solution")) q.flags.push("answer_from_solution"); };
+    if (d.solExpl) fromSolFlag();
     if (q.type === "ESSAY") continue;
     const srcs = [...d.srcs].sort((a, b) => SRC_ORDER.indexOf(a.src) - SRC_ORDER.indexOf(b.src));
     if (srcs.length === 0) { q.flags.push("answer_missing"); warn(q.key, "answer_missing", `${label}: chưa có đáp án (không thấy gạch chân, dấu *, bảng đáp án hay "Chọn X" trong lời giải).`); continue; }
     const vals = new Set(srcs.map(s => (s.bad ? "!bad" : s.val)));
     if (vals.size > 1 || vals.has("!bad")) {
       q.flags.push("answer_conflict");
-      warn(q.key, "answer_conflict", `${label}: các nguồn đáp án (${srcs.map(s => s.src).join(", ")}) không khớp nhau — KiN không chọn đáp án nào, cô chọn lại.`);
+      warn(q.key, "answer_conflict", `${label}: các nguồn đáp án (${srcs.map(s => (s.fromSol ? "loi-giai (mục LỜI GIẢI CHI TIẾT)" : s.src)).join(", ")}) không khớp nhau — KiN không chọn đáp án nào, cô chọn lại.`);
       if (q.type === "SHORT_ANSWER") q.options = [];
       continue;
     }
     const first = srcs[0];
     q.answerSource = first.src;
+    if (first.fromSol) fromSolFlag();
     if (q.type === "MC" || q.type === "MC_MULTI") {
       const set = new Set([...first.val]);
       q.options.forEach((o, i) => { o.isCorrect = set.has(d.optionLetters[i]); });
@@ -603,6 +778,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
       withFormulaUnread: questions.filter(q => q.flags.includes("formula_unread")).length,
       withFormulaImage: questions.filter(q => q.flags.includes("formula_image")).length,
     },
+    ...(solutionStats ? { solutionStats } : {}),
     fatal: null,
   };
 }
