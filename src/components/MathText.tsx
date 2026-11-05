@@ -16,7 +16,31 @@ function escapeHtml(s: string): string {
     .replace(/\n/g, "<br/>");
 }
 
+// Token ảnh công thức (BU-03 MathType): {{ctimg:<base64 của SVG>}}. Chỉ hiện qua <img> (không bao giờ chèn SVG thô vào DOM).
+// Định nghĩa cục bộ để không phụ thuộc src/lib; phải khớp makeFormulaImgToken phía máy chủ.
+const IMG_TOKEN_RE = /\{\{ctimg:([A-Za-z0-9+/=]{1,12000})\}\}/g;
+const SVG_B64_PREFIX = "PHN2Zy"; // base64 của "<svg"
+
+function renderImgToken(b64: string): string {
+  // b64 đã qua regex chỉ gồm [A-Za-z0-9+/=] nên đặt vào thuộc tính an toàn.
+  if (!b64.startsWith(SVG_B64_PREFIX)) return '<span class="italic">[công thức (ảnh lỗi)]</span>';
+  return `<img src="data:image/svg+xml;base64,${b64}" alt="công thức (ảnh)" style="display:inline-block;vertical-align:middle;max-width:100%;height:auto;background:white;border-radius:2px" />`;
+}
+
 export function renderMathText(text: string): string {
+  if (!text.includes("{{ctimg:")) return renderMathPlain(text);
+  let out = "";
+  let last = 0;
+  let m: RegExpExecArray | null;
+  const re = new RegExp(IMG_TOKEN_RE.source, "g");
+  while ((m = re.exec(text)) !== null) {
+    out += renderMathPlain(text.slice(last, m.index)) + renderImgToken(m[1]);
+    last = re.lastIndex;
+  }
+  return out + renderMathPlain(text.slice(last));
+}
+
+function renderMathPlain(text: string): string {
   let result = "";
   let lastIndex = 0;
   let match: RegExpExecArray | null;

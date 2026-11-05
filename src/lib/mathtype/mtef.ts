@@ -5,12 +5,14 @@
 import katex from "katex";
 import { readCfbStream } from "./cfb";
 import { MtefFail, emitLatex, type MNode } from "./mtefLatex";
+export { MATHTYPE_STRUCTURES } from "./mtefLatex";
 
 export type MathTypeFailReason =
   | "not_cfb" | "corrupt" | "no_equation_stream" | "bad_header" | "mtef_version"
   | "limit" | `unsupported_record:${number}` | `unsupported_template:${number}.${number}`
   | `unsupported_char:${number}:${string}` | "embell" | "double_script" | "katex_invalid" | "empty";
-export type MathTypeDecode = { ok: true; latex: string; warnings: string[] } | { ok: false; reason: MathTypeFailReason };
+/** `structures`: các loại cấu trúc công thức dùng (xem MATHTYPE_STRUCTURES trong mtefLatex.ts); `unverified`: trong số đó, loại CHƯA có bằng chứng từ mẫu thật (cùng lúc `warnings` có "unverified_structure"). */
+export type MathTypeDecode = { ok: true; latex: string; warnings: string[]; structures: string[]; unverified: string[] } | { ok: false; reason: MathTypeFailReason };
 
 export const MATHTYPE_LIMITS = { maxBin: 64 * 1024, maxStream: 32 * 1024, maxRecords: 2000, maxDepth: 40, maxLatex: 5000, maxFormulaMs: 50, maxFileMs: 3000, maxFormulas: 1000 };
 
@@ -33,7 +35,7 @@ export function parseMtef(b: Buffer): ParsedMtef {
   const futures: { tag: number; raw: Buffer }[] = [];
   const nudge = (o: number) => { if (o & 8) { const a = rd(), c = rd(); if (a === 128 && c === 128) { u16(); u16(); } } };
   const ruler = () => { const n = rd(); for (let i = 0; i < n; i++) { rd(); sint(); } };
-  const lineRuler = () => { if (rd() !== 7) fail("corrupt"); ruler(); };
+  const lineRuler = () => { const n = rd(); for (let i = 0; i < n; i++) { rd(); u16(); } }; // ruler trong LINE/PILE: số điểm dừng, mỗi điểm [loại 1 B][vị trí int16] (KHÔNG có byte 7 đứng trước — theo mẫu thật)
   /** Mảng kích thước/khoảng cách của EQN_PREFS: n phần tử, mỗi phần tử là dãy nibble kết thúc bằng 15 (đơn vị + chữ số). */
   const dimArr = () => {
     const n = rd(); let have = false, cur = 0;
@@ -54,7 +56,7 @@ export function parseMtef(b: Buffer): ParsedMtef {
       case 0: return "END";
       case 1: {
         const o = rd(); nudge(o);
-        if (o & 4) sint();
+        if (o & 4) u16(); // giãn dòng: int16 (mẫu thật 524d0738… có 0x30 0xff)
         if (o & 2) lineRuler();
         if (o & 1) return { t: "LINE", empty: true, k: [] };
         return { t: "LINE", empty: false, k: objs(depth + 1) };
@@ -66,7 +68,7 @@ export function parseMtef(b: Buffer): ParsedMtef {
         if (!(o & 0x20)) c.mt = u16();
         if (o & 4) c.c8 = rd();
         if (o & 0x10) c.c16 = u16();
-        if (o & 1) for (;;) { const e = rec(depth + 1); if (e === "END") break; if (e === null || typeof e === "string" || e.t !== "EMBELL") return fail("corrupt"); c.emb.push(e.code); }
+        if (o & 1) for (;;) { const e = rec(depth + 1); if (e === "END") break; if (e === null) continue; /* COLOR/SIZE... xen giữa các EMBELL (mẫu thật: COLOR trước EMBELL) */ if (typeof e === "string" || e.t !== "EMBELL") return fail("corrupt"); c.emb.push(e.code); }
         return c;
       }
       case 3: {
@@ -110,7 +112,7 @@ export function parseMtef(b: Buffer): ParsedMtef {
   let topEnd = 0;
   while (p < b.length) {
     const r = rec(0);
-    if (r === "END") { if (top.length !== 1 || ++topEnd > 1) fail("corrupt"); continue; }
+    if (r === "END") { if (top.length > 1 || ++topEnd > 1) fail("corrupt"); continue; }
     if (r) { if (top.length > 0 || topEnd > 0) fail("corrupt"); top.push(r); }
   }
   return { top, futures, sawSize };
@@ -136,7 +138,8 @@ export function decodeEquationStream(s: Buffer): MathTypeDecode {
     const warnings: string[] = [];
     if (parsed.futures.some(f => f.tag === 102)) warnings.push("has_tex_input");
     if (parsed.sawSize) warnings.push("size_changed");
-    if (parsed.top.length !== 1 || parsed.top[0].t !== "LINE") return { ok: false, reason: "corrupt" };
+    if (parsed.top.length === 0) return { ok: false, reason: "empty" }; // công thức rỗng (chỉ có khai báo + END)
+    if (parsed.top.length !== 1 || !["LINE", "PILE", "MATRIX"].includes(parsed.top[0].t)) return { ok: false, reason: "corrupt" };
     const e = emitLatex(parsed.top[0]);
     for (const w of e.warnings) if (!warnings.includes(w)) warnings.push(w);
     // bỏ khoảng trắng đầu/cuối; `\ ` (dấu cách thoát) ở CUỐI vô nghĩa và nếu cắt dở sẽ thành `\` treo → bỏ cả cặp.
@@ -145,7 +148,7 @@ export function decodeEquationStream(s: Buffer): MathTypeDecode {
     if (latex.length > MATHTYPE_LIMITS.maxLatex) return { ok: false, reason: "limit" };
     try { katex.renderToString(latex, { throwOnError: true, strict: "error", displayMode: false }); }
     catch { return { ok: false, reason: "katex_invalid" }; }
-    return { ok: true, latex, warnings };
+    return { ok: true, latex, warnings, structures: e.structures, unverified: e.unverified };
   } catch (e) {
     if (e instanceof MtefFail) return { ok: false, reason: e.reason };
     if (e instanceof RangeError) return { ok: false, reason: "limit" };

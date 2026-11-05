@@ -275,6 +275,26 @@ const FAKE_PARSE = {
   check("390px: nút Lưu vẫn khoá khi còn cờ đỏ (khoá cả trên điện thoại)", await mp.getByRole("button", { name: /^Lưu \d+ câu vào ngân hàng/ }).isDisabled());
   await shot(mp, "nhap-word-xem-lai-390");
 
+  // BU-03 MathType: công thức hiện bằng ảnh (token {{ctimg:…}}), chip trong ô sửa, nhãn MathType, KiN đoán LaTeX
+  const svgTok = "{{ctimg:" + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="gray"/></svg>').toString("base64") + "}}";
+  const IMG_PARSE = { ...FAKE_PARSE, questions: [{ key: "s1-1", number: 1, sectionIndex: 0, sectionLabel: "PHẦN I", type: "MC", text: `Tính ${svgTok} biết $x=1$.`, explanation: "", difficulty: "NB", answerSource: "bang-het", flags: ["formula_image", "formula_mathtype"],
+    latexUnverified: [{ imgToken: svgTok, latex: "\\frac{1}{2}" }], options: [opt("1", true), opt("2"), opt("3"), opt("4")] }],
+    stats: { total: 1, byType: { MC: 1 }, withAnswer: 1, withImage: 0, withFormulaUnread: 0 }, warnings: [] };
+  await mp.unroute("**/api/tutor/ngan-hang/nhap-word");
+  await mp.route("**/api/tutor/ngan-hang/nhap-word", r => r.fulfill({ json: IMG_PARSE }));
+  await mp.goto(`${BASE}${NH}/nhap-word?nut=${ch1.id}`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp.locator('input[type="file"][accept=".docx"]').setInputFiles(join(dir, "De_Toan12.docx"));
+  await mp.getByRole("button", { name: "Đọc tệp và xem lại" }).click();
+  await mp.getByText("1 câu đã đọc").waitFor({ timeout: 60000 });
+  const irow = mp.getByRole("list", { name: "Các câu đã đọc" }).locator("> li").first();
+  check("công thức ảnh: hiện <img> (không chuỗi base64 thô), 2 nhãn cờ (ảnh + MathType)", await irow.locator('img[alt="công thức (ảnh)"]').count() >= 1 && !/ctimg/.test(await irow.innerText()) && await irow.getByText(/hiện bằng ảnh — cô có thể sửa thành LaTeX/).isVisible() && await irow.getByText("Công thức đọc từ MathType — kiểm lại").isVisible());
+  check("KiN đoán: hiện ảnh gốc cạnh bản đọc và nút dùng", await irow.getByText("KiN đọc là (chưa chắc đúng)").isVisible() && await irow.getByRole("button", { name: "Dùng công thức KiN đọc" }).isVisible());
+  await irow.getByRole("button", { name: "Sửa câu 1" }).click();
+  check("ô sửa hiện chip '[ảnh công thức 1]', không dán base64", (await irow.getByLabel("Nội dung câu 1").inputValue()).includes("[ảnh công thức 1]") && !(await irow.getByLabel("Nội dung câu 1").inputValue()).includes("ctimg"));
+  await irow.getByRole("button", { name: "Dùng công thức KiN đọc" }).click();
+  check("bấm dùng: ảnh được thay bằng $LaTeX$, vẽ KaTeX", (await irow.getByLabel("Nội dung câu 1").inputValue()).includes("$\\frac{1}{2}$") && await irow.locator(".katex").count() > 0 && await irow.locator('img[alt="công thức (ảnh)"]').count() === 0);
+  check("390px công thức ảnh: không tràn ngang; nút ≥44px", await noOverflow(mp) && (await smallTargets(mp)).length === 0, await smallTargets(mp));
+
   check("không lỗi JS / console.error trong toàn bài (đã lọc lỗi script chủ đề có sẵn của React 19)", errors.length === 0, errors.slice(0, 5));
   await closeAll();
   await done();

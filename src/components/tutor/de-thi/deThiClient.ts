@@ -73,7 +73,7 @@ export function flattenCategories(list: readonly CategoryFlat[]): (CategoryFlat 
 }
 
 // ─── P1.3 Kết quả đọc Word  (POST /api/tutor/ngan-hang/nhap-word, multipart) ──────────────────────────────────────────────────
-export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image";
+export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image" | "formula_mathtype";
 export type AzotaAnswerSource = "dau-gach-chan" | "bang-het" | "loi-giai" | "mau" | "khong-co";
 export interface AzotaQuestion {
   key: string; number: number; sectionIndex: number; sectionLabel: string;
@@ -83,6 +83,8 @@ export interface AzotaQuestion {
   explanation: string; difficulty: Level | null;
   answerSource: AzotaAnswerSource;
   flags: AzotaFlag[];
+  /** Tuỳ chọn: công thức KiN ĐOÁN cho một công thức đang hiện bằng ảnh (chưa kiểm chứng). imgToken = đúng token {{ctimg:…}} trong text/options. */
+  latexUnverified?: { imgToken: string; latex: string }[];
 }
 export interface AzotaParse {
   questions: AzotaQuestion[];
@@ -98,13 +100,45 @@ export const WORD_MAX_QUESTIONS = 200;
 /** Nhãn mà bộ đọc chèn vào chỗ công thức MathType chưa đọc được (P1a). Câu còn nhãn này KHÔNG lưu được cho tới khi sửa tay. */
 export const FORMULA_PLACEHOLDER = "⟦công thức⟧";
 /** Kiểm từng công thức $...$ / $$...$$ bằng KaTeX (cùng bộ vẽ với MathText). Trả lời lỗi tiếng Việt cho công thức đầu tiên không vẽ được; null = ổn. */
-const MATH_RE = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+/** Token ảnh công thức {{ctimg:…}} (khớp MathText). */
+export const IMG_TOKEN_RE = /\{\{ctimg:[A-Za-z0-9+/=]{1,12000}\}\}/g;
+export const hasImgToken = (s: string | null | undefined): boolean => !!s && s.includes("{{ctimg:");
+
+/** Tách các công thức $...$ / $$...$$ bằng quét tuyến tính (không regex lười, tránh ReDoS trên đề dài). */
+function* mathBodies(text: string): Generator<string> {
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    const d = text.indexOf("$", i);
+    if (d < 0) return;
+    if (text[d + 1] === "$") {
+      const j = text.indexOf("$$", d + 3);
+      if (j > 0) { yield text.slice(d + 2, j); i = j + 2; continue; }
+      i = d + 1; continue;
+    }
+    // $ đơn: thân là [^$\n]+ rồi tới $ đóng
+    let k = d + 1;
+    while (k < n && text[k] !== "$" && text[k] !== "\n") k++;
+    if (k < n && text[k] === "$" && k > d + 1) { yield text.slice(d + 1, k); i = k + 1; }
+    else i = k > d + 1 ? k : d + 1;
+  }
+}
+
+const PROBLEM_CACHE = new Map<string, string | null>();
+/** Kiểm từng công thức $...$ / $$...$$ bằng KaTeX (cùng bộ vẽ với MathText). Trả lời lỗi tiếng Việt cho công thức đầu tiên không vẽ được; null = ổn.
+ *  Kết quả nhớ theo nội dung nên gõ phím ở một câu không chạy lại KaTeX trên các câu còn lại. Token ảnh bị bỏ qua. */
 export function formulaProblem(text: string | null | undefined): string | null {
-  if (!text) return null;
-  MATH_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = MATH_RE.exec(text)) !== null) {
-    const body = (m[1] ?? m[2] ?? "").trim();
+  if (!text || !text.includes("$")) return null;
+  const hit = PROBLEM_CACHE.get(text);
+  if (hit !== undefined) return hit;
+  const r = computeFormulaProblem(text.replace(IMG_TOKEN_RE, " "));
+  if (PROBLEM_CACHE.size > 2000) PROBLEM_CACHE.clear();
+  PROBLEM_CACHE.set(text, r);
+  return r;
+}
+function computeFormulaProblem(text: string): string | null {
+  for (const raw of mathBodies(text)) {
+    const body = raw.trim();
     if (!body) return "Có cặp $ $ nhưng bên trong trống. Cô gõ công thức vào giữa hoặc xoá cặp $ đó.";
     try { katex.renderToString(body, { throwOnError: true }); }
     catch {
@@ -112,6 +146,19 @@ export function formulaProblem(text: string | null | undefined): string | null {
     }
   }
   return null;
+}
+
+/** Ô sửa không dán chuỗi base64 dài: token ảnh hiện thành “[ảnh công thức N]”; lưu thì ánh xạ ngược. */
+const CHIP_RE = /\[ảnh công thức (\d+)\]/g;
+export function maskImgTokens(text: string): string {
+  let n = 0;
+  return text.replace(IMG_TOKEN_RE, () => `[ảnh công thức ${++n}]`);
+}
+/** `prev` = nội dung THẬT trước lần gõ này (nguồn các token). */
+export function unmaskImgTokens(shown: string, prev: string): string {
+  const tokens = prev.match(IMG_TOKEN_RE) ?? [];
+  if (tokens.length === 0) return shown;
+  return shown.replace(CHIP_RE, (all, d: string) => tokens[Number(d) - 1] ?? all);
 }
 export const hasFormulaPlaceholder = (s: string | null | undefined): boolean => !!s && s.includes(FORMULA_PLACEHOLDER);
 

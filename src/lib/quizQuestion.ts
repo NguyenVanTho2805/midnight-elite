@@ -2,6 +2,7 @@
 // Hai dạng mới so với bài tập web cũ: "MC_MULTI" (nhiều đáp án đúng, chấm đủ-hoặc-không) và "ESSAY" có tiêu chí chấm (rubric) + hướng dẫn.
 // Các dạng cũ (MC, TRUE_FALSE_CLUSTER, SHORT_ANSWER) giữ đúng luật của validateQuestionOptions để đề cũ và trang /admin/thi-thu không đổi.
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
+import { visibleLength } from "@/lib/mathtype/formulaImg"; // token ảnh công thức {{ctimg:…}} đếm 1 ký tự (BU-03-MATHTYPE)
 
 export type QuizQuestionType = "MC" | "MC_MULTI" | "ESSAY" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER";
 export const QUIZ_QUESTION_TYPES: readonly QuizQuestionType[] = ["MC", "MC_MULTI", "ESSAY", "TRUE_FALSE_CLUSTER", "SHORT_ANSWER"];
@@ -78,14 +79,14 @@ function fmt(n: number): string { return String(round2(n)).replace(".", ","); }
 export function validateQuizQuestion(q: QuizQuestionInput): string | null {
   if (!isQuizType(q.type)) return "Loại câu hỏi không hợp lệ";
   if (typeof q.text !== "string" || !q.text.trim()) return "Thiếu nội dung câu hỏi";
-  if (q.text.length > LIMITS.text) return `Nội dung câu hỏi quá dài (tối đa ${LIMITS.text} ký tự)`;
+  if (visibleLength(q.text) > LIMITS.text) return `Nội dung câu hỏi quá dài (tối đa ${LIMITS.text} ký tự)`;
   if (typeof q.points !== "number" || !Number.isFinite(q.points) || q.points <= 0 || q.points > LIMITS.points) return "Điểm của câu phải là số lớn hơn 0";
   for (const [label, v] of [["Giải thích", q.explanation], ["Hướng dẫn cho học sinh", q.studentGuide], ["Hướng dẫn chấm", q.graderGuide], ["Gợi ý", q.hint]] as const) {
-    if (v != null && (typeof v !== "string" || v.length > LIMITS.note)) return `${label} quá dài (tối đa ${LIMITS.note} ký tự)`;
+    if (v != null && (typeof v !== "string" || visibleLength(v) > LIMITS.note)) return `${label} quá dài (tối đa ${LIMITS.note} ký tự)`;
   }
   const options = Array.isArray(q.options) ? q.options : [];
   if (options.length > LIMITS.maxOptions) return `Tối đa ${LIMITS.maxOptions} lựa chọn`;
-  if (options.some(o => typeof o?.text !== "string" || o.text.length > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
+  if (options.some(o => typeof o?.text !== "string" || visibleLength(o.text) > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
 
   if (q.type === "MC_MULTI") {
     if (options.length < 2) return "Cần ít nhất 2 lựa chọn";
@@ -176,10 +177,10 @@ export function coerceQuestionInput(raw: unknown): QuizQuestionInput | { error: 
 export function validateForDraft(q: QuizQuestionInput): string | null {
   if (!isQuizType(q.type)) return "Loại câu hỏi không hợp lệ";
   if (!q.text.trim()) return "Thiếu nội dung câu hỏi";
-  if (q.text.length > LIMITS.text) return `Nội dung câu hỏi quá dài (tối đa ${LIMITS.text} ký tự)`;
+  if (visibleLength(q.text) > LIMITS.text) return `Nội dung câu hỏi quá dài (tối đa ${LIMITS.text} ký tự)`;
   if (!Number.isFinite(q.points) || q.points <= 0 || q.points > LIMITS.points) return "Điểm của câu phải là số lớn hơn 0";
   if (q.options.length > LIMITS.maxOptions) return `Tối đa ${LIMITS.maxOptions} lựa chọn`;
-  if (q.options.some(o => o.text.length > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
+  if (q.options.some(o => visibleLength(o.text) > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
   return null;
 }
 

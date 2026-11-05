@@ -382,9 +382,10 @@ export async function analyseDocx(buf: Buffer): Promise<Outcome<{ parsed: WordAn
   const parsed = parseAzotaBlocks(read.blocks);
   const fst = read.formulaStats; // MathType (BU-03-MATHTYPE): chỉ ĐẾM theo nhóm lý do, không có nội dung công thức
   if (fst.total > 0) {
-    parsed.formulaStats = { total: fst.total, decoded: fst.decoded, failed: fst.failed, byReason: fst.byReason, unverified: fst.unverified };
+    parsed.formulaStats = { total: fst.total, decoded: fst.decoded, failed: fst.failed, byReason: fst.byReason, unverified: fst.unverified, image: fst.image, imageFailByReason: fst.imageFailByReason };
     parsed.stats.formulaDecoded = fst.decoded; parsed.stats.formulaFailed = fst.failed;
     if (fst.decoded > 0) parsed.warnings.unshift({ question: "", code: "mathtype_summary", message: `KiN đọc được ${fst.decoded}/${fst.total} công thức MathType; kiểm lại trước khi lưu.${fst.unverified > 0 ? ` Có ${fst.unverified} công thức dạng phức tạp (tích phân, tổng, giới hạn, vectơ, ma trận…) KiN chưa kiểm kỹ — xem lại từng cái.` : ""}` });
+    if (fst.image > 0) parsed.warnings.unshift({ question: "", code: "formula_image_summary", message: `${fst.image}/${fst.total} công thức MathType hiển thị bằng ẢNH giống bản Word (KiN chưa chắc cách chuyển thành công thức gõ được). Câu vẫn dùng và phát hành được; cô có thể sửa thành công thức gõ tay nếu muốn. Chữ trên ảnh dùng font của máy người xem nên nét chữ có thể khác nhẹ so với Word.` });
     if (fst.timedOut) parsed.warnings.push({ question: "", code: "mathtype_timeout", message: "Tệp có quá nhiều công thức MathType nên KiN dừng đọc giữa chừng; các công thức còn lại giữ nhãn, cần gõ lại." });
   }
   if (read.extraImages > 0) parsed.warnings.push({ question: "", code: "too_many_images", message: `Tệp có quá ${DOCX_MAX_IMAGES} hình; ${read.extraImages} hình thừa không được lấy. Chèn lại bằng tay ở những câu còn thiếu hình.` });

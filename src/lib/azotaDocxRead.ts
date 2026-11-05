@@ -2,12 +2,15 @@
 // Không AI, không mạng, không ghi DB. Chống tấn công theo mục P1.3: magic `PK\x03\x04`; ≤ 4 MB; ≤ 1500 mục nén (mỗi công thức MathType = 1 .bin + 1 .wmf); tổng giải nén ≤ 30 MB (đo lúc GIẢI NÉN thật,
 // không tin kích thước khai trong tệp); từ chối .docm (vbaProject.bin) và XML có <!DOCTYPE; chỉ đọc word/document.xml + word/_rels/document.xml.rels + word/media/* + word/embeddings/oleObject<số>.bin;
 // mỗi XML ≤ 8 MB; mỗi .bin ≤ 64 KB; tên mục có đường dẫn tuyệt đối hoặc `..` → từ chối.
-// Công thức MathType (OLE): .bin chỉ được ĐỌC BYTE rồi giải bằng mathtype/mtef.ts (không mở/chạy OLE). Giải được → run `$latex$`; không giải được → nhãn ⟦công thức⟧ (câu bị chặn phát hành).
+// Công thức MathType (OLE): .bin chỉ được ĐỌC BYTE rồi giải bằng mathtype/mtef.ts (không mở/chạy OLE). Giải được VÀ chắc chắn → run `$latex$`.
+// Giải được nhưng chưa kiểm (unverified_structure) hoặc không giải được → ĐƯỜNG DỰ PHÒNG: ảnh xem trước WMF trong chính tệp → SVG (mathtype/wmfSvg.ts) → token `{{ctimg:…}}` (cờ formula_image, không chặn phát hành;
+// LaTeX bộ giải đoán được giữ ở `latexUnverified` để đối chiếu cạnh ảnh gốc). Cả ảnh cũng không vẽ được → nhãn ⟦công thức⟧ (câu bị chặn phát hành). WMF chỉ được ĐỌC BYTE rồi đổi sang chuỗi SVG do KiN tự sinh.
 import JSZip from "jszip";
 import { DOMParser } from "@xmldom/xmldom";
 import type { DocBlock, DocCell, DocRun } from "@/lib/azotaDocx";
 import { FORMULA_PLACEHOLDER, ommlToLatexSafe, type XmlNodeLike } from "@/lib/ommlLatex";
 import { MATHTYPE_LIMITS, decodeMathTypeOle, mathTypeReasonGroup } from "@/lib/mathtype/mtef";
+import { wmfToSvg, makeFormulaImgToken } from "@/lib/mathtype/wmfSvg";
 
 export const DOCX_MAX_BYTES = 4 * 1024 * 1024;
 /** Nâng 500 → 1500 (BU-03-MATHTYPE): tệp Toán có ~200+ công thức dùng 2 mục/công thức. Tổng giải nén (DOCX_MAX_UNPACKED) vẫn là chốt chặn thật. */
@@ -17,6 +20,7 @@ export const DOCX_MAX_FORMULAS = MATHTYPE_LIMITS.maxFormulas;
 /** Tổng thời gian giải công thức MathType một tệp; hết giờ → công thức còn lại giữ nhãn (formulaStats.timedOut). */
 export const DOCX_MAX_FORMULA_MS = MATHTYPE_LIMITS.maxFileMs;
 const MAX_OLE_BYTES = MATHTYPE_LIMITS.maxBin;
+const MAX_WMF_BYTES = 64 * 1024;
 export const DOCX_MAX_UNPACKED = 30 * 1024 * 1024;
 export const DOCX_MAX_XML = 8 * 1024 * 1024;
 /** Mốc 2: bật khi đã đối chiếu mẫu Word thật có tích phân/tổng/giới hạn/ma trận/vectơ. */
@@ -38,7 +42,7 @@ export class DocxError extends Error {
 const IMAGE_MIME: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
 
 /** Thống kê công thức MathType (OLE). `byReason` đã gom nhóm (không kèm số/mã ký tự); KHÔNG chứa nội dung công thức. */
-export interface FormulaStats { total: number; decoded: number; failed: number; byReason: Record<string, number>; timedOut: boolean; unverified: number }
+export interface FormulaStats { total: number; decoded: number; failed: number; byReason: Record<string, number>; timedOut: boolean; unverified: number; /** số công thức hiện bằng ảnh WMF→SVG (đường dự phòng) */ image: number; /** nhóm lý do ảnh cũng không vẽ được (đếm, không kèm nội dung) */ imageFailByReason: Record<string, number> }
 export interface DocxRead { blocks: DocBlock[]; images: Buffer[]; mime: string[]; extraImages: number; formulaStats: FormulaStats }
 
 interface ZipStream { on(ev: string, fn: (arg: never) => void): ZipStream; pause(): ZipStream; resume(): ZipStream }
@@ -110,15 +114,17 @@ interface Ctx {
   imageBuf: Map<string, Buffer>;
   extraImages: number;
   /** MathType: r:id → đích `embeddings/oleObjectN.bin`; nội dung đọc sẵn (null = quá lớn/đọc lỗi); kết quả giải theo đích. */
-  oleRels: Map<string, string>; oleBuf: Map<string, Buffer | null>; oleDone: Map<string, { ok: true; latex: string; unverified: boolean } | { ok: false; reason: string }>;
+  oleRels: Map<string, string>; oleBuf: Map<string, Buffer | null>; oleDone: Map<string, { ok: true; latex: string; unverified: boolean } | { ok: false; reason: string; guess?: string }>;
+  /** Ảnh xem trước WMF (đã đọc byte) và kết quả đổi sang token ảnh, theo đích `media/imageN.wmf`. */
+  wmfBuf: Map<string, Buffer | null>; wmfDone: Map<string, { ok: true; token: string } | { ok: false; reason: string }>;
   stats: FormulaStats; clock: number;
 }
 
 /** Giải một công thức OLE theo r:id. Đồng bộ (bin đã đọc sẵn); không bao giờ ném. */
-function decodeOle(ctx: Ctx, relId: string | null): { ok: true; latex: string } | { ok: false; reason: string } {
+function decodeOle(ctx: Ctx, relId: string | null): { ok: true; latex: string } | { ok: false; reason: string; guess?: string } {
   const st = ctx.stats;
   st.total++;
-  const no = (reason: string) => { st.failed++; st.byReason[reason] = (st.byReason[reason] ?? 0) + 1; return { ok: false as const, reason }; };
+  const no = (reason: string, guess?: string) => { st.failed++; st.byReason[reason] = (st.byReason[reason] ?? 0) + 1; return { ok: false as const, reason, ...(guess ? { guess } : {}) }; };
   if (st.total > DOCX_MAX_FORMULAS) return no("limit");
   if (Date.now() - ctx.clock > DOCX_MAX_FORMULA_MS) { st.timedOut = true; return no("timeout"); }
   const target = relId ? ctx.oleRels.get(relId) : undefined;
@@ -129,15 +135,38 @@ function decodeOle(ctx: Ctx, relId: string | null): { ok: true; latex: string } 
     if (!buf) r = { ok: false, reason: "limit" };
     else {
       const d = decodeMathTypeOle(buf);
-      const unv = d.ok && d.warnings.includes("unverified_structure");
+      const unv = d.ok && (d.warnings.includes("unverified_structure") || ((d as { unverified?: string[] }).unverified?.length ?? 0) > 0); // `unverified` (danh sách cấu trúc chưa kiểm) do bộ giải mở rộng cung cấp
       // Cấu trúc chưa có mẫu thật đối chiếu (tích phân, tổng, giới hạn, ma trận…): KHÔNG đoán — giữ nhãn + chặn như cũ cho tới khi có mẫu (mốc 2).
-      r = d.ok && (!unv || MATHTYPE_ACCEPT_UNVERIFIED) ? { ok: true, latex: d.latex, unverified: unv } : d.ok ? { ok: false, reason: "unverified" } : { ok: false, reason: mathTypeReasonGroup(d.reason) };
+      r = d.ok && (!unv || MATHTYPE_ACCEPT_UNVERIFIED) ? { ok: true, latex: d.latex, unverified: unv } : d.ok ? { ok: false, reason: "unverified", guess: d.latex } : { ok: false, reason: mathTypeReasonGroup(d.reason) };
     }
     ctx.oleDone.set(target, r);
   }
-  if (!r.ok) return no(r.reason);
+  if (!r.ok) return no(r.reason, r.guess);
   st.decoded++; if (r.unverified) st.unverified++;
   return r;
+}
+
+/** Ảnh xem trước WMF của một w:object → token ảnh `{{ctimg:…}}`; null nếu không có/không vẽ được (lý do ghi vào stats.imageFailByReason). Không bao giờ ném. */
+function previewToken(ctx: Ctx, obj: XmlNodeLike): string | null {
+  const st = ctx.stats;
+  const fail = (reason: string): null => { st.imageFailByReason[reason] = (st.imageFailByReason[reason] ?? 0) + 1; return null; };
+  const im = findFirst(obj, "imagedata");
+  const relId = im ? attr(im, "r:id", "id") : null;
+  const target = relId ? ctx.rels.get(relId) : undefined;
+  if (!target) return fail("no_preview");
+  if (!/\.wmf$/i.test(target)) return fail("preview_not_wmf");
+  let r = ctx.wmfDone.get(target);
+  if (!r) {
+    const buf = ctx.wmfBuf.get(target);
+    if (!buf) r = { ok: false, reason: "wmf_unread" };
+    else {
+      const w = wmfToSvg(buf);
+      if (!w.ok) r = { ok: false, reason: w.reason.split(":")[0] };
+      else { const tok = makeFormulaImgToken(w.svg); r = tok ? { ok: true, token: tok } : { ok: false, reason: "svg_rejected" }; }
+    }
+    ctx.wmfDone.set(target, r);
+  }
+  return r.ok ? r.token : fail(r.reason);
 }
 
 function runProps(rpr: XmlNodeLike | undefined): Omit<DocRun, "text"> {
@@ -195,7 +224,12 @@ function readRunContent(r: XmlNodeLike, ctx: Ctx, runs: DocRun[], props: Omit<Do
         if (/equation|mathtype/i.test(prog)) {
           const d = decodeOle(ctx, attr(ole, "r:id", "id"));
           if (d.ok) runs.push({ ...props, text: `$${d.latex}$`, formula: "ole", latex: d.latex });
-          else runs.push({ ...props, text: FORMULA_PLACEHOLDER, formula: "ole", mathtypeFail: d.reason });
+          else {
+            // Đường dự phòng: ảnh xem trước. Hiển thị ĐÚNG như trong Word quan trọng hơn là có LaTeX sửa được.
+            const tok = previewToken(ctx, c);
+            if (tok) { ctx.stats.image++; runs.push({ ...props, text: tok, formula: "ole", formulaImage: true, mathtypeFail: d.reason, ...(d.guess ? { latexUnverified: d.guess } : {}) }); }
+            else runs.push({ ...props, text: FORMULA_PLACEHOLDER, formula: "ole", mathtypeFail: d.reason });
+          }
         }
         else {
           // OLE khác (Excel, Visio…): chỉ lấy ảnh xem trước nếu là ảnh đọc được, không thì bỏ qua
@@ -344,8 +378,19 @@ export async function readDocx(buf: Buffer): Promise<DocxRead> {
     catch (err) { if (err instanceof DocxError && err.code === "TOO_LARGE" && budget.left < 0) throw err; oleBuf.set(t, null); }
   }
 
-  const stats: FormulaStats = { total: 0, decoded: 0, failed: 0, byReason: {}, timedOut: false, unverified: 0 };
-  const ctx: Ctx = { rels, zip, images: [], mime: [], imageIndexByTarget: new Map(), imageBuf, extraImages: 0, oleRels, oleBuf, oleDone: new Map(), stats, clock: Date.now() };
+  // Ảnh xem trước WMF (đường dự phòng): chỉ đọc BYTE (≤ 64 KB mỗi cái, ≤ DOCX_MAX_FORMULAS cái); quá lớn/hỏng → công thức đó giữ nhãn, trừ khi tổng giải nén vượt trần.
+  const wmfBuf = new Map<string, Buffer | null>();
+  for (const t of new Set(rels.values())) {
+    if (!/\.wmf$/i.test(t)) continue;
+    if (wmfBuf.size >= DOCX_MAX_FORMULAS) break;
+    const e = zip.file(`word/${t}`);
+    if (!e) continue;
+    try { wmfBuf.set(t, await readEntry(e, MAX_WMF_BYTES, budget)); }
+    catch (err) { if (err instanceof DocxError && err.code === "TOO_LARGE" && budget.left < 0) throw err; wmfBuf.set(t, null); }
+  }
+
+  const stats: FormulaStats = { total: 0, decoded: 0, failed: 0, byReason: {}, timedOut: false, unverified: 0, image: 0, imageFailByReason: {} };
+  const ctx: Ctx = { rels, zip, images: [], mime: [], imageIndexByTarget: new Map(), imageBuf, extraImages: 0, oleRels, oleBuf, oleDone: new Map(), wmfBuf, wmfDone: new Map(), stats, clock: Date.now() };
   const root = parseXml(docXml);
   const body = els(root).find(c => ln(c) === "body");
   const blocks: DocBlock[] = [];

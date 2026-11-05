@@ -2,9 +2,12 @@
 // Luật (đặc tả P1.3): mốc PHẦN → loại câu; "Câu N." → câu mới; phương án A. B. C. D. / ý Đ-S a) b) c) d) (kèm [n, MỨC]); đáp án đúng lấy từ
 // ① gạch chân nhãn ② dấu * ③ bảng đáp án sau "-----HẾT-----" ④ "Chọn X." / "Đáp án: X" ở Lời giải. Các nguồn MÂU THUẪN nhau → KHÔNG chọn đáp án nào
 // (`answer_conflict`) — không bao giờ đoán. Màu một mình KHÔNG đủ. Mức NB/TH/VD/VDC chỉ lấy từ [n, MỨC] của ý Đ-S; còn lại để trống. Điểm không đọc từ tệp.
-// Công thức: OMML → LaTeX (ommlLatex.ts); MathType OLE → LaTeX (mathtype/mtef.ts, đã giải ở azotaDocxRead) hoặc, nếu không giải được, nhãn ⟦công thức⟧ + cờ formula_unread (chặn phát hành).
+// Công thức: OMML → LaTeX (ommlLatex.ts); MathType OLE → LaTeX (mathtype/mtef.ts, đã giải ở azotaDocxRead) nếu bộ giải CHẮC; nếu không chắc/không giải được → ảnh xem trước WMF đổi sang SVG, đi trong chữ
+// dưới dạng token `{{ctimg:<base64 SVG>}}` + cờ formula_image (cảnh báo, KHÔNG chặn phát hành); nếu cả ảnh cũng không vẽ được → nhãn ⟦công thức⟧ + cờ formula_unread (chặn phát hành).
+// Giới hạn độ dài (TEXT_MAX…) tính theo `visibleLength`: mỗi token ảnh đếm 1 ký tự và KHÔNG BAO GIỜ bị cắt giữa chừng.
 import type { QuizQuestionInput } from "@/lib/quizQuestion";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
+import { clipVisible } from "@/lib/mathtype/formulaImg";
 
 // ── Kiểu đầu vào (từ azotaDocxRead.ts) ───────────────────────────────────────────────────────
 export type Level = "NB" | "TH" | "VD" | "VDC";
@@ -14,6 +17,10 @@ export interface DocRun {
   /** Hình trong run: index vào `images` của readDocx; readable=false (wmf/emf, quá giới hạn) = không hiển thị được. */
   image?: { index: number; readable: boolean };
   formula?: "omml" | "ole"; latex?: string;
+  /** Công thức MathType hiện bằng ảnh (text = token `{{ctimg:…}}`). */
+  formulaImage?: boolean;
+  /** LaTeX bộ giải ĐOÁN cho công thức đang hiện bằng ảnh (chưa kiểm chứng) — chỉ để xem trước đối chiếu, KHÔNG BAO GIỜ tự đưa vào nội dung. */
+  latexUnverified?: string;
   /** MathType không giải được: nhóm lý do (vd. "unsupported_template") — CHỈ để đếm/ghi nhật ký, không hiện cho gia sư. */
   mathtypeFail?: string;
 }
@@ -23,7 +30,7 @@ export type DocBlock = { kind: "p"; runs: DocRun[] } | { kind: "table"; rows: Do
 // ── Kiểu đầu ra (đặc tả P1.3) ────────────────────────────────────────────────────────────────
 export type AzotaType = "MC" | "MC_MULTI" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER" | "ESSAY";
 export type AnswerSource = "dau-gach-chan" | "bang-het" | "loi-giai" | "mau" | "khong-co";
-export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable";
+export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image" | "formula_mathtype";
 export interface AzotaQuestion {
   key: string; number: number; sectionIndex: number; sectionLabel: string;
   type: AzotaType;
@@ -34,18 +41,21 @@ export interface AzotaQuestion {
   explanation: string; difficulty: Level | null;
   answerSource: AnswerSource;
   flags: AzotaFlag[];
+  /** Với mỗi công thức hiện bằng ảnh mà bộ giải có đoán LaTeX: token ảnh (đúng chuỗi trong text/options) + LaTeX đoán. Chỉ ở bước xem trước; không lưu. */
+  latexUnverified?: { imgToken: string; latex: string }[];
 }
 export interface AzotaParse {
   questions: AzotaQuestion[];
   errors: { block: number; message: string }[];
   warnings: { question: string; code: string; message: string }[];
-  stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number; formulaDecoded?: number; formulaFailed?: number };
+  stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number; withFormulaImage?: number; formulaDecoded?: number; formulaFailed?: number };
   /** Công thức MathType (máy chủ thêm từ readDocx; UI phải chịu được thiếu). Không chứa nội dung công thức. */
-  formulaStats?: { total: number; decoded: number; failed: number; byReason: Record<string, number>; unverified: number };
+  formulaStats?: { total: number; decoded: number; failed: number; byReason: Record<string, number>; unverified: number; image?: number; imageFailByReason?: Record<string, number> };
   fatal: string | null;
 }
 
 export const AZOTA_MAX_QUESTIONS = 200;
+const IMG_TOKEN_G = /\{\{ctimg:[A-Za-z0-9+/=]+\}\}/g;
 const LEVELS: readonly Level[] = ["NB", "TH", "VD", "VDC"];
 const OPT_SEQ = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
 const SUB_SEQ = ["a", "b", "c", "d"] as const;
@@ -314,16 +324,16 @@ function buildDraft(qb: QB, errors: AzotaParse["errors"], state: { tfOrderSeen: 
   if (sec.type === "SHORT_ANSWER") {
     explLinesOut = explLinesOut.map(l => l.replace(/^Giải thích\s*[:：]?\s*/iu, "")).filter(Boolean);
   }
-  const explanation = explLinesOut.join("\n").slice(0, NOTE_MAX);
+  const explanation = clipVisible(explLinesOut.join("\n"), NOTE_MAX);
 
   // 6) Đề.
-  const text = cleanText(stemParts.join("\n")).slice(0, TEXT_MAX);
+  const text = clipVisible(cleanText(stemParts.join("\n")), TEXT_MAX);
   if (!text && imageIndex === undefined) return fail("không có nội dung câu hỏi.");
   const flags: AzotaFlag[] = [];
   const hasFormula = text.includes(FORMULA_PLACEHOLDER) || options.some(o => o.text.includes(FORMULA_PLACEHOLDER));
   if (hasFormula) flags.push("formula_unread");
   if (unreadableImage) flags.push("image_unreadable");
-  for (const o of options) o.text = o.text.slice(0, OPTION_MAX);
+  for (const o of options) o.text = clipVisible(o.text, OPTION_MAX);
 
   return {
     q: { key, number: qb.number, sectionIndex: sec.index, sectionLabel: sec.label, type: sec.type, text: text || "(Câu hỏi bằng hình)", ...(imageIndex !== undefined ? { imageIndex } : {}), options, explanation, difficulty, answerSource: "khong-co", flags },
@@ -438,6 +448,15 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
   const empty = (fatal: string | null): AzotaParse => ({ questions: [], errors, warnings, stats: { total: 0, byType: {}, withAnswer: 0, withImage: 0, withFormulaUnread: 0 }, fatal });
   if (!Array.isArray(blocks) || blocks.length === 0) return empty("Tệp Word trống — chưa thấy chữ nào.");
 
+  // Công thức hiện bằng ảnh: token → LaTeX đoán (nếu có). Gom một lần từ mọi run, kể cả trong bảng.
+  const imgGuess = new Map<string, string>();
+  const mtTexts = new Set<string>(); // công thức giải từ MathType (gia sư cần kiểm lại)
+  const collectGuess = (runs: DocRun[]) => { for (const r of runs) { if (r.formula === "ole" && r.latex && r.text) mtTexts.add(r.text); } for (const r of runs) if (r.formulaImage && r.latexUnverified && !imgGuess.has(r.text)) imgGuess.set(r.text, r.latexUnverified); };
+  for (const b of blocks) {
+    if (b.kind === "p") collectGuess(b.runs);
+    else for (const row of b.rows) for (const c of row) for (const pr of c.paragraphs) collectGuess(pr);
+  }
+
   const toItem = (b: DocBlock): Item => {
     if (b.kind === "p") return { kind: "p", para: paraFrom(b.runs) };
     const cells = b.rows.map(row => row.map(c => flat(c.paragraphs.map(r => paraFrom(r).text).join(" "))));
@@ -517,7 +536,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
       } else warn(base, "key_type_mismatch", `Câu ${d.q.number} (${d.q.sectionLabel || `phần ${d.q.sectionIndex}`}): bảng đáp án có dạng khác loại câu; bỏ qua.`);
     }
     const e = expl.get(base);
-    if (e && !d.q.explanation && d.q.key === base) d.q.explanation = e.slice(0, NOTE_MAX);
+    if (e && !d.q.explanation && d.q.key === base) d.q.explanation = clipVisible(e, NOTE_MAX);
   }
   for (const k of keys.keys()) if (!consumed.has(k)) warn(k, "orphan_key", `Bảng đáp án có khoá "${k}" nhưng đề không có câu tương ứng.`);
   if (state.tfOrderSeen) warn("", "tf_order_ignored", "Tiền tố [n, MỨC] ở ý Đúng-Sai: KiN chỉ lấy MỨC; số n (thứ tự đảo ý) chưa hỗ trợ nên bị bỏ.");
@@ -528,6 +547,19 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     const label = `Câu ${q.number} (${q.sectionLabel || `phần ${q.sectionIndex}`})`;
     if (d.extraImages > 0) warn(q.key, "extra_images", `${label}: có ${d.extraImages + 1} hình, KiN chỉ giữ 1 hình/câu (hình đầu); thêm hình còn lại bằng tay.`);
     if (d.unreadableImage) warn(q.key, "image_unreadable", `${label}: có hình định dạng WMF/EMF hoặc quá giới hạn — KiN chưa hiển thị được, cần chèn lại hình.`);
+    {
+      const toks = [...new Set([q.text, q.explanation, ...q.options.map(o => o.text)].flatMap(t => t.match(IMG_TOKEN_G) ?? []))];
+      if (toks.length > 0) {
+        q.flags.push("formula_image");
+        const guesses = toks.flatMap(t => (imgGuess.has(t) ? [{ imgToken: t, latex: imgGuess.get(t)! }] : []));
+        if (guesses.length > 0) q.latexUnverified = guesses;
+        warn(q.key, "formula_image", `${label}: có ${toks.length} công thức MathType hiển thị bằng ẢNH (giống bản Word) vì KiN chưa chắc cách chuyển thành công thức gõ được. Câu vẫn dùng được; cô có thể thay bằng công thức gõ tay ($…$) nếu muốn sửa.`);
+      }
+    }
+    if (mtTexts.size > 0) {
+      const all = [q.text, q.explanation, ...q.options.map(o => o.text)].join("\n");
+      if ([...mtTexts].some(t => all.includes(t))) q.flags.push("formula_mathtype");
+    }
     if (q.flags.includes("formula_unread")) warn(q.key, "formula_unread", `${label}: có công thức MathType KiN chưa đọc được (đã gắn nhãn ${FORMULA_PLACEHOLDER}). Gõ lại công thức này trước khi phát hành.`);
     if (q.type === "ESSAY") continue;
     const srcs = [...d.srcs].sort((a, b) => SRC_ORDER.indexOf(a.src) - SRC_ORDER.indexOf(b.src));
@@ -547,7 +579,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     } else if (q.type === "TRUE_FALSE_CLUSTER") {
       q.options.forEach((o, i) => { o.isCorrect = first.val[i] === "Đ"; });
     } else if (q.type === "SHORT_ANSWER") {
-      const disp = (srcs.find(s => s.display)?.display ?? first.val).slice(0, OPTION_MAX);
+      const disp = clipVisible(srcs.find(s => s.display)?.display ?? first.val, OPTION_MAX);
       q.options = [{ text: disp, isCorrect: true }];
     }
   }
@@ -565,6 +597,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
       withAnswer: questions.filter(q => q.type !== "ESSAY" && q.answerSource !== "khong-co" && !q.flags.includes("answer_conflict")).length,
       withImage: questions.filter(q => q.imageIndex !== undefined || q.imageUrl).length,
       withFormulaUnread: questions.filter(q => q.flags.includes("formula_unread")).length,
+      withFormulaImage: questions.filter(q => q.flags.includes("formula_image")).length,
     },
     fatal: null,
   };
@@ -581,7 +614,7 @@ export function toQuizInput(q: AzotaQuestion, overrides: { difficulty?: Level; c
     text: q.text,
     points: 1,
     imageUrl: q.imageUrl ?? null,
-    explanation: q.explanation ? q.explanation.slice(0, NOTE_MAX) : null,
+    explanation: q.explanation ? clipVisible(q.explanation, NOTE_MAX) : null,
     sectionLabel: q.sectionLabel || null,
     options: q.type === "ESSAY" ? [] : q.options.map(o => ({ text: o.text, isCorrect: o.isCorrect, subLabel: o.subLabel ?? null })),
     ...(difficulty ? { difficulty } : {}),

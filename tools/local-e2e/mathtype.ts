@@ -13,10 +13,11 @@ import path from "node:path";
 import JSZip from "jszip";
 import katex from "katex";
 import { readCfbStream } from "@/lib/mathtype/cfb";
-import { MATHTYPE_LIMITS, decodeEquationStream, decodeMathTypeOle, mtefTexInputForTest, type MathTypeDecode } from "@/lib/mathtype/mtef";
+import { MATHTYPE_LIMITS, MATHTYPE_STRUCTURES, decodeEquationStream, decodeMathTypeOle, mtefTexInputForTest, type MathTypeDecode } from "@/lib/mathtype/mtef";
 import { DOCX_MAX_ENTRIES, DocxError, readDocx } from "@/lib/azotaDocxRead";
 import { parseAzotaBlocks } from "@/lib/azotaDocx";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
+import { normTex } from "./mathtype-texnorm";
 import { buildCfb, chr, chr8, emptyLine, equationStream, frac, greek, headRaw, line, matrix, mtef, num, oleOf, oleRaw, paren, pile, sqrt, sub, sup, sym, text, tmpl, vars, type Bytes } from "./mathtype-fixtures";
 
 let pass = 0, failN = 0;
@@ -120,7 +121,7 @@ const UNV = "unverified_structure";
   section("t-mtef-synth) Cấu trúc ĐÃ KIỂM bằng mẫu thật — byte tự dựng");
   check("y=f(x): biến, '=', ngoặc tròn", L([vars("y"), sym(0x3d), vars("f"), paren(vars("x"))].flat()) === "y=f\\left(x\\right)");
   check("(-1;0). : ngoặc + dấu trừ U+2212 + chấm", L([paren([sym(0x2212), num("1"), chr(1, 0x3b), num("0")].flat()), chr(1, 0x2e)].flat()) === "\\left(-1;0\\right).");
-  check("[-1;5] ngoặc vuông", L(paren([sym(0x2212), num("1"), chr(1, 0x3b), num("5")].flat(), 3, 3)) === "\\left[-1;5\\right]");
+  check("[-1;5] ngoặc vuông", L(tmpl(3, 3, line([sym(0x2212), num("1"), chr(1, 0x3b), num("5")].flat()), chr(22, 0x5b), chr(22, 0x5d))) === "\\left[-1;5\\right]");
   check("căn bậc 2: \\sqrt{4x-x^{2}}", L(sqrt([num("4"), vars("x"), sym(0x2212), vars("x"), sup(num("2"))].flat())) === "\\sqrt{4x-x^{2}}");
   check("phân số lồng", L(frac(num("1"), frac(num("2"), num("3")))) === "\\frac{1}{\\frac{2}{3}}");
   check("chỉ số dưới tên chữ: y_{CT}", L([vars("y"), sub(vars("CT"))].flat()) === "y_{CT}");
@@ -147,41 +148,94 @@ const UNV = "unverified_structure";
   const qs = L(vars("x"));
   check("kết quả luôn qua katex.renderToString throwOnError", qs === "x" && renders(qs));
 
-  section("t-mtef-synth) Cấu trúc CHƯA KIỂM BẰNG MẪU THẬT (theo tài liệu MTEF; byte tự dựng + KaTeX; ok:true kèm cảnh báo unverified_structure)");
-  const U = (name: string, content: Bytes, want: string) => {
+  section("Mẫu thật RỘNG: mọi .docx trong thư mục mẫu (không đệ quy; bỏ qua nếu không có) — tỉ lệ giải, KaTeX, chuẩn TeX gốc");
+  {
+    const files = fs.existsSync(dirS) ? fs.readdirSync(dirS).filter(f => /\.docx$/i.test(f) && !f.startsWith("~$")) : [];
+    let total = 0, ok = 0, katexBad = 0, withTex = 0, sameTex = 0, threw = 0, unvFormulas = 0; const seenIds = new Set<string>(); const reasons: Record<string, number> = {};
+    for (const f of files) {
+      let z: JSZip; try { z = await JSZip.loadAsync(fs.readFileSync(path.join(dirS, f))); } catch { continue; }
+      for (const n of Object.keys(z.files).filter(x => /^word\/embeddings\/oleObject\d+\.bin$/.test(x))) {
+        const buf = await z.files[n].async("nodebuffer"); total++;
+        let d: MathTypeDecode; try { d = decodeMathTypeOle(buf); } catch { threw++; continue; }
+        const key = buf.length + ":" + buf.subarray(0, 64).toString("hex"); const first = !seenIds.has(key); seenIds.add(key);
+        if (d.ok) {
+          ok++; if (d.warnings.includes(UNV)) unvFormulas++;
+          if (!renders(d.latex)) katexBad++;
+          if (first) { const tx = mtefTexInputForTest(buf); if (tx !== null) { withTex++; if (normTex(d.latex) === normTex(tx)) sameTex++; } }
+        } else reasons[d.reason] = (reasons[d.reason] ?? 0) + 1;
+      }
+    }
+    if (!total) console.log(`  (SKIP) không có .docx chứa công thức trong ${dirS}`);
+    else {
+      console.log(`  → ${files.length} tệp .docx, ${total} công thức, giải được ${ok} (${(100 * ok / total).toFixed(2)}%), cần cờ unverified: ${unvFormulas}; có TeX gốc: ${withTex}, khớp ${sameTex} (${(100 * sameTex / Math.max(1, withTex)).toFixed(2)}%)`);
+      console.log(`  → thất bại theo lý do: ${Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e.join(":")).join("  ")}`);
+      check("không công thức nào làm decode ném lỗi", threw === 0, { threw });
+      check("MỌI kết quả ok:true đều render được bằng KaTeX strict", katexBad === 0, { katexBad });
+      check("tỉ lệ giải ≥ 95% trên toàn kho mẫu", ok / total >= 0.95, { ok, total });
+      check("tỉ lệ khớp TeX gốc ≥ 98% (trên luồng khác nhau có TeX gốc, đã giải được)", withTex === 0 || sameTex / withTex >= 0.98, { withTex, sameTex });
+    }
+  }
+
+  section("t-mtef-synth2) Cấu trúc CÓ BẰNG CHỨNG từ kho mẫu thật (bố cục ô/bit biến thể lấy từ dữ liệu thật; byte tự dựng) — không được gắn cờ");
+  const L1 = line, X = vars("x");
+  /** Cấu trúc ĐÃ KIỂM: kết quả đúng, KHÔNG cờ unverified_structure, và liệt kê đúng trong `structures`. */
+  const V = (name: string, content: Bytes, want: string, struct: string) => {
     const d = dec(content);
-    check(`${name} (chưa kiểm bằng mẫu thật)`, d.ok && d.latex === want && d.warnings.includes(UNV), lx(d));
+    check(`${name} → ${want}`, d.ok && d.latex === want && !d.warnings.includes(UNV) && d.unverified.length === 0 && d.structures.includes(struct) && renders(d.latex), lx(d));
   };
-  const ang = [0, 2, 4, 5, 6, 7];
-  const PAIRS_OUT: Record<number, [string, string]> = { 0: ["\\langle ", "\\rangle"], 2: ["\\{", "\\}"], 4: ["|", "|"], 5: ["\\|", "\\|"], 6: ["\\lfloor ", "\\rfloor"], 7: ["\\lceil ", "\\rceil"] };
-  for (const sel of ang) U(`ngoặc selector ${sel} hai bên`, paren(vars("x"), sel, 3), `\\left${PAIRS_OUT[sel][0]}x\\right${PAIRS_OUT[sel][1]}`);
-  U("ngoặc nhọn chỉ bên trái (var 1)", paren(vars("x"), 2, 1), "\\left\\{x\\right.");
-  U("ngoặc tròn chỉ bên phải (var 2)", paren(vars("x"), 1, 2), "\\left.x\\right)");
-  U("hệ phương trình: ngoặc nhọn trái + PILE căn trái", paren(pile(1, line([vars("x"), sym(0x2b), vars("y"), sym(0x3d), num("1")].flat()), line([vars("x"), sym(0x2212), vars("y"), sym(0x3d), num("2")].flat())), 2, 1), "\\left\\{\\begin{array}{l}x+y=1\\\\x-y=2\\end{array}\\right.");
-  U("PILE căn giữa đứng riêng", pile(2, line(vars("a")), line(vars("b"))), "\\begin{array}{c}a\\\\b\\end{array}");
-  U("ma trận 2x2 trong ngoặc tròn", paren(matrix(2, 2, 2, [line(num("1")), line(num("0")), line(num("0")), line(num("1"))]), 1, 3), "\\left(\\begin{array}{cc}1&0\\\\0&1\\end{array}\\right)");
-  U("ma trận 1x3 có ô rỗng", matrix(1, 3, 3, [line(num("1")), emptyLine(), line(num("3"))]), "\\begin{array}{rrr}1&&3\\end{array}");
-  U("EMBELL vectơ (11) trên một chữ", chr(3, 0x76, { emb: [11] }), "\\vec{v}");
-  U("EMBELL gạch ngang trên (17), chấm (2), mũ (9), ngã (8)", [chr(3, 0x78, { emb: [17] }), chr(3, 0x79, { emb: [2] }), chr(3, 0x7a, { emb: [9] }), chr(3, 0x77, { emb: [8] })].flat(), "\\bar{x}\\dot{y}\\hat{z}\\tilde{w}");
-  U("EMBELL phẩy (5) → f^{\\prime}; hai EMBELL chồng (chấm + mũ)", [chr(3, 0x66, { emb: [5] }), paren(vars("t")), chr(3, 0x67, { emb: [2, 9] })].flat(), "f^{\\prime}\\left(t\\right)\\hat{\\dot{g}}");
-  U("tích phân ∫_0^1 x dx", [tmpl(15, 1, line(vars("x")), line(num("1")), line(num("0")), sym(0x222b)), vars("dx")].flat(), "\\int _{0}^{1}xdx");
-  U("tích phân không cận", tmpl(15, 1, line(vars("x")), sym(0x222b)), "\\int x");
-  U("tích phân kép ∬ và đường ∮", [tmpl(15, 2, line(vars("f")), sym(0x222b)), tmpl(15, 1, line(vars("g")), sym(0x222e))].flat(), "\\iint f\\oint g");
-  U("tổng ∑_{i=1}^{n} i", tmpl(16, 3, line(vars("i")), line(vars("n")), line([vars("i"), sym(0x3d), num("1")].flat()), sym(0x2211)), "\\sum _{i=1}^{n}i");
-  U("tích ∏ chỉ cận dưới (3 ô, bit 1)", tmpl(17, 1, line(vars("a")), line(vars("k")), sym(0x220f)), "\\prod _{k}a");
-  U("toán tử tự chọn (sel 21) ∑ theo ký tự", tmpl(21, 3, line(vars("a")), line(vars("n")), line(num("0")), sym(0x2211)), "\\sum _{0}^{n}a");
-  U("giới hạn lim_{x→0}", tmpl(23, 0, line(text(2, "lim")), line([vars("x"), sym(0x2192), num("0")].flat())), "\\lim_{x\\to 0}");
-  U("mũi tên phản ứng có chữ trên và dưới", tmpl(14, 12, line(text(1, "xt")), line(text(1, "yd")), sym(0x2192)), "\\xrightarrow[\\text{yd}]{\\text{xt}}");
-  U("mũi tên phản ứng chỉ chữ trên", tmpl(14, 4, line(text(1, "xt")), sym(0x2192)), "\\xrightarrow{\\text{xt}}");
-  U("ký tự → ⇌ ← đứng riêng", [sym(0x2192), sym(0x21cc), sym(0x2190)].flat(), "\\to \\rightleftharpoons \\leftarrow");
-  U("vectơ \\overrightarrow{AB} (var 2) và \\overleftarrow (var 1)", [tmpl(31, 2, line(vars("AB")), sym(0x2192)), tmpl(31, 1, line(vars("CD")), sym(0x2190))].flat(), "\\overrightarrow{AB}\\overleftarrow{CD}");
-  U("căn bậc n: \\sqrt[3]{x}", tmpl(10, 1, line(vars("x")), line(num("3"))), "\\sqrt[3]{x}");
-  U("gạch trên / gạch dưới", [tmpl(13, 0, line(vars("AB"))), tmpl(12, 0, line(vars("C")))].flat(), "\\overline{AB}\\underline{C}");
-  U("mũ ^ và ngã ~ một chữ / nhiều chữ", [tmpl(33, 0, line(vars("A")), chr(2, 0x5e)), tmpl(32, 0, line(vars("AB")), chr(2, 0x7e))].flat(), "\\hat{A}\\widetilde{AB}");
-  U("cung \\overset{\\frown}", tmpl(34, 0, line(vars("AB")), chr(6, 0x2312)), "\\overset{\\frown}{AB}");
-  U("chỉ số dưới+trên một template (SUBSUP 29)", [vars("x"), tmpl(29, 0, line(num("1")), line(num("2")))].flat(), "x_{1}^{2}");
-  U("typeface 7 (vectơ in đậm)", chr(7, 0x76), "\\mathbf{v}");
-  U("ký hiệu bổ sung ⇐ ∂ ∇ ∴ ≡", [sym(0x21d0), sym(0x2202), sym(0x2207), sym(0x2234), sym(0x2261)].flat(), "\\Leftarrow \\partial \\nabla \\therefore \\equiv");
+  /** Cấu trúc CHƯA có bằng chứng: vẫn ra LaTeX nhưng PHẢI kèm cờ + nằm trong `unverified`. */
+  const U = (name: string, content: Bytes, want: string, id: string) => {
+    const d = dec(content);
+    check(`${name} → ${want} (CHƯA có bằng chứng, có cờ)`, d.ok && d.latex === want && d.warnings.includes(UNV) && d.unverified.includes(id), lx(d));
+  };
+  V("tích phân ∫_0^1 (bit 0x10 dưới, 0x20 trên; ô: thân, DƯỚI, TRÊN, ký hiệu)", [tmpl(15, 0x31, L1(X), L1(num("0")), L1(num("1")), sym(0x222b)), vars("dx")].flat(), "\\int_{0}^{1} xdx", "integral");
+  V("tích phân không cận", tmpl(15, 1, L1(X), emptyLine(), emptyLine(), sym(0x222b)), "\\int x", "integral");
+  V("tích phân chỉ cận dưới", tmpl(15, 0x11, L1(X), L1(num("0")), emptyLine(), sym(0x222b)), "\\int_{0} x", "integral");
+  V("tổng ∑_{i=1}^{n} (\\nolimits: cận cạnh ký hiệu)", tmpl(16, 0x31, L1(vars("i")), L1([vars("i"), sym(0x3d), num("1")].flat()), L1(vars("n")), sym(0x2211)), "\\sum\\nolimits_{i=1}^{n} i", "sum");
+  V("tích ∏ chỉ cận dưới", tmpl(17, 0x11, L1(vars("a")), L1(vars("k")), emptyLine(), sym(0x220f)), "\\prod\\nolimits_{k} a", "sum");
+  V("giới hạn lim_{x→0} (biến thể 0x10 = có cận dưới)", tmpl(23, 0x10, L1(text(2, "lim")), L1([X, sym(0x2192), num("0")].flat()), emptyLine()), "\\lim\\limits_{x\\to 0}", "limit");
+  V("chữ trên mũi tên (T23 biến thể 0x20)", tmpl(23, 0x20, L1(sym(0x2192)), emptyLine(), L1(text(1, "xt"))), "\\overset{\\text{xt}}{\\to }", "limit_over");
+  V("mũi tên phản ứng chỉ chữ trên (T14, ký tự mũi tên ở typeface 22)", tmpl(14, 4, L1(text(1, "xt")), emptyLine(), chr(22, 0x2192)), "\\xrightarrow{\\text{xt}}", "arrow_labeled");
+  V("mũi tên phản ứng có chữ trên và dưới", tmpl(14, 12, L1(text(1, "xt")), L1(text(1, "yd")), chr(22, 0x2192)), "\\xrightarrow[\\text{yd}]{\\text{xt}}", "arrow_labeled");
+  V("dấu ngoặc ngang dưới \\underbrace{ab}_{n}", tmpl(24, 0, L1(vars("ab")), L1(vars("n")), chr(22, 0xfe38)), "\\underbrace{ab}_{n}", "hbrace");
+  V("căn bậc n: \\sqrt[3]{x}", tmpl(10, 1, L1(X), L1(num("3"))), "\\sqrt[3]{x}", "root_n");
+  V("ma trận hj 0 = căn trái (ll)", matrix(2, 2, 0, [L1(num("1")), L1(num("0")), L1(num("0")), L1(num("1"))]), "\\begin{array}{ll}1&0\\\\0&1\\end{array}", "matrix");
+  V("ma trận hj 1 = căn giữa (cc)", matrix(2, 2, 1, [L1(num("1")), L1(num("0")), L1(num("0")), L1(num("1"))]), "\\begin{array}{cc}1&0\\\\0&1\\end{array}", "matrix");
+  V("ma trận hj 2 = căn phải (7/7 luồng có TeX gốc khớp)", matrix(1, 2, 2, [L1(num("1")), L1(num("2"))]), "\\begin{array}{rr}1&2\\end{array}", "matrix_right");
+  V("hệ phương trình: ngoặc nhọn TRÁI + PILE căn trái", tmpl(2, 1, L1(pile(1, L1([X, sym(0x2b), vars("y"), sym(0x3d), num("1")].flat()), L1([X, sym(0x2212), vars("y"), sym(0x3d), num("2")].flat()))), chr(22, 0x7b)), "\\left\\{\\begin{array}{l}x+y=1\\\\x-y=2\\end{array}\\right.", "pile");
+  V("EMBELL vectơ (11)", chr(3, 0x76, { emb: [11] }), "\\vec{v}", "embell:vec");
+  V("EMBELL gạch trên (17) và chấm (2)", [chr(3, 0x78, { emb: [17] }), chr(3, 0x79, { emb: [2] })].flat(), "\\bar{x}\\dot{y}", "embell:bar");
+  V("EMBELL phẩy (5): f'(t)", [chr(3, 0x66, { emb: [5] }), paren(vars("t"))].flat(), "f^{\\prime}\\left(t\\right)", "embell:prime");
+  V("vectơ \\overrightarrow{AB} (T31 biến thể 2, 20d7)", tmpl(31, 2, L1(vars("AB")), chr(22, 0x20d7)), "\\overrightarrow{AB}", "vec_arrow");
+  V("mũ ^ rộng một chữ (T33, 302)", tmpl(33, 0, L1(vars("A")), chr(22, 0x302)), "\\hat{A}", "hat");
+  V("gạch trên \\overline{AB}", tmpl(13, 0, L1(vars("AB"))), "\\overline{AB}", "overline");
+  V("SUBSUP một template (T29)", [X, tmpl(29, 0, L1(num("1")), L1(num("2")))].flat(), "x_{1}^{2}", "script_subsup");
+  V("ký tự 8 mã đã kiểm: ∀ ∖ (tf11)/\\ tf1 → \\backslash", chr(1, 0x5c), "\\backslash", "char:symbol");
+  check("structures/unverified luôn là mảng, không trùng, không rỗng khi ok", (() => { const d = dec([tmpl(11, 0, L1(num("1")), L1(num("2"))), sup(num("2"))].flat()); return d.ok && Array.isArray(d.structures) && Array.isArray(d.unverified) && d.structures.includes("frac") && new Set(d.structures).size === d.structures.length; })());
+  check("mọi id trong structures/unverified đều có mục trong MATHTYPE_STRUCTURES (hoặc là 'char:<mã>')", (() => { const d = dec([chr(6, 0x2207), tmpl(34, 0, L1(vars("AB")), chr(22, 0x2322))].flat()); return d.ok && [...d.structures, ...d.unverified].every(i => i in MATHTYPE_STRUCTURES || /^char:[0-9a-f]+$/.test(i)); })());
+
+  section("t-mtef-unverified) Cấu trúc CHƯA có bằng chứng thật (≤ vài mẫu / không có TeX gốc) — ra LaTeX nhưng PHẢI kèm cờ unverified_structure");
+  U("tích phân kép ∬", tmpl(15, 2, L1(X), emptyLine(), emptyLine(), sym(0x222c)), "\\iint x", "integral_multi");
+  U("tích phân đường ∮", tmpl(15, 1, L1(X), emptyLine(), emptyLine(), sym(0x222e)), "\\oint x", "integral_multi");
+  U("∑ cận nằm trên/dưới (bit 0x40) → \\limits", tmpl(16, 0x71, L1(vars("i")), L1(num("1")), L1(vars("n")), sym(0x2211)), "\\sum\\limits_{1}^{n} i", "sum_limits_style");
+  U("toán tử T21 (∫ không thân)", tmpl(21, 0x31, emptyLine(), L1(num("0")), L1(num("1")), L1(sym(0x222b))), "\\int_{0}^{1}", "integral_op");
+  U("toán tử T22 (∑ không thân)", tmpl(22, 0x31, emptyLine(), L1(num("0")), L1(num("1")), L1(sym(0x2211))), "\\sum\\nolimits_{0}^{1}", "sum_op");
+  U("PILE căn giữa", pile(2, L1(vars("a")), L1(vars("b"))), "\\begin{array}{c}a\\\\b\\end{array}", "pile_align");
+  U("PILE căn phải", pile(3, L1(vars("a")), L1(vars("b"))), "\\begin{array}{r}a\\\\b\\end{array}", "pile_align");
+  
+  U("ngoặc nhọn góc ⟨x⟩", tmpl(0, 3, L1(X), chr(22, 0x2329), chr(22, 0x232a)), "\\left\\langle x\\right\\rangle", "fence:other");
+  U("vectơ \\overleftarrow (T31.1)", tmpl(31, 1, L1(vars("CD")), chr(22, 0x20d6)), "\\overleftarrow{CD}", "vec_other");
+  U("ngã rộng (T32)", tmpl(32, 0, L1(vars("AB")), chr(22, 0x303)), "\\widetilde{AB}", "tilde_wide");
+  U("cung ⌢ (T34)", tmpl(34, 0, L1(vars("AB")), chr(22, 0x2322)), "\\overset{\\frown}{AB}", "arc");
+  U("gạch dưới (T12)", tmpl(12, 0, L1(vars("C"))), "\\underline{C}", "underline");
+  U("typeface 7 (in đậm vectơ)", chr(7, 0x76), "\\mathbf{v}", "char:vector_font");
+  U("chữ có dấu đã thấy 1–2 lần (á) trong tf1", chr(1, 0xe1), "\\text{á}", "char:e1");
+  V("chữ có dấu đã kiểm (à) trong tf1", chr(1, 0xe0), "\\text{à}", "char:accented");
+  U("ký hiệu ∇ (không có TeX gốc)", sym(0x2207), "\\nabla", "char:2207");
+  U("ký hiệu ∂ (không có TeX gốc)", sym(0x2202), "\\partial", "char:2202");
+  U("ký hiệu ⇌ ← (không có TeX gốc)", [sym(0x21cc), sym(0x2190)].flat(), "\\rightleftharpoons \\leftarrow", "char:21cc");
+  U("dấu gạch ngang – (U+2013) trong tf1", chr(1, 0x2013), "\\text{–}", "char:2013");
+  check("unverified chỉ chứa phần CHƯA kiểm, không lẫn phần đã kiểm", (() => { const d = dec([frac(vars("a"), vars("b")), sym(0x2207)].flat()); return d.ok && d.unverified.length === 1 && d.unverified[0] === "char:2207" && d.structures.includes("frac"); })());
 
   // ═════════════════════════════════════════════════════════════════════════════════════════════
   section("t-mtef-fail) Gặp gì lạ → thất bại CẢ công thức (không bao giờ trả LaTeX từng phần)");
@@ -207,15 +261,16 @@ const UNV = "unverified_structure";
   F("tổng ký tự lạ ở sel 21 → thất bại", tmpl(21, 3, line(vars("a")), line(vars("n")), line(num("0")), sym(0x2264)), "unsupported_template:21.3");
   F("giới hạn tên hàm không thuộc {lim,max,min,sup,inf}", tmpl(23, 0, line(text(2, "sin")), line(num("0"))), "unsupported_template:23.0");
   F("mũi tên ký tự lạ (↑) → thất bại", tmpl(14, 4, line(text(1, "t")), sym(0x2191)), "unsupported_template:14.4");
-  F("vectơ hướng lạ (harpoon 8) → thất bại", tmpl(31, 8, line(vars("a")), sym(0x2192)), "unsupported_template:31.8");
+  F("vectơ hướng lạ (biến thể 8) → thất bại", tmpl(31, 8, line(vars("a")), chr(22, 0x20d7)), "unsupported_template:31.8");
   F("typeface 23 (marker) → unsupported_char", chr(23, 0x41), "unsupported_char:23:41");
   F("typeface 9 (user) → unsupported_char", chr(9, 0x41), "unsupported_char:9:41");
   F("typeface 22 (expand) ngoài ô ngoặc → unsupported_char", chr(22, 0x28), "unsupported_char:22:28");
   F("tf6 mã lạ (U+2603 ☃) → unsupported_char:6:2603", chr(6, 0x2603), "unsupported_char:6:2603");
   F("tf8 chữ cái → unsupported_char", chr(8, 0x41), "unsupported_char:8:41");
-  F("tf1 chữ Việt (ư) → unsupported_char (chưa có mẫu)", chr(1, 0x1b0), "unsupported_char:1:1b0");
-  F("tf11 ký tự lạ → unsupported_char", chr(11, 0x2200), "unsupported_char:11:2200");
-  F("tf1 '\\' / '~' / '^' → thất bại (không đoán)", chr(1, 0x5c), "unsupported_char:1:5c");
+  F("tf1 chữ Việt (ư) → thất bại (0 mẫu thật, không đoán)", chr(1, 0x1b0), "unsupported_char:1:1b0");
+  F("chữ Việt ạ/ế trong một cụm chữ → thất bại cả công thức", [chr(1, 0x6d), chr(1, 0x1ea1)].flat(), "unsupported_char:1:1ea1");
+  F("tf11 ký tự lạ (ꙮ) → unsupported_char", chr(11, 0xa66e), "unsupported_char:11:a66e");
+  F("tf1 '^' → thất bại (không đoán)", chr(1, 0x5e), "unsupported_char:1:5e");
   F("mã 8-bit không mtcode ở typeface symbol → thất bại", chr8(6, 0x41), "unsupported_char:6:41");
   F("Hy Lạp tf4 ký tự không phải Hy Lạp → thất bại", chr(4, 0x41), "unsupported_char:4:41");
   check("tag lạ 50 → unsupported_record:50", lx(decodeMathTypeOle(oleRaw([...headRaw(), 50, 0]))) === "FAIL:unsupported_record:50");

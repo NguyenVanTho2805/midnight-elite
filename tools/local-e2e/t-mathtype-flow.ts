@@ -1,6 +1,7 @@
 // BU-03 MathType — LUỒNG THẬT bằng tệp ~/Downloads/De_Toan12_GK1_Azota.docx (bỏ qua nếu thiếu):
 // gia sư đăng nhập → POST nhap-word (xem trước thấy $..$, công thức giải được) → luu-nhieu vào ngân hàng → tao-tu-ma-tran → phát hành (200 khi không còn ⟦công thức⟧).
-// Bài ngược: cùng tệp nhưng một phần công thức MathType bị phá hỏng → nhãn ⟦công thức⟧ + cờ formula_unread, lưu/tạo đề được nhưng PHÁT HÀNH bị chặn 422 FORMULA_UNREAD.
+// Bài dự phòng ảnh: bộ giải MathType hỏng nhưng ảnh xem trước WMF còn → công thức hiện bằng token ảnh {{ctimg:…}} + cờ formula_image (KHÔNG chặn phát hành); token độc gửi lên luu-nhieu bị đổi thành nhãn.
+// Bài ngược: cùng tệp nhưng công thức MathType hỏng CẢ .bin lẫn ảnh WMF → nhãn ⟦công thức⟧ + cờ formula_unread, lưu/tạo đề được nhưng PHÁT HÀNH bị chặn 422 FORMULA_UNREAD.
 // Quyền trên nhap-word: khách 401, học sinh 403. Cần máy chủ dev (BASE) + DB RIÊNG; wipe() ở đầu bài.
 import JSZip from "jszip";
 import { existsSync, readFileSync } from "node:fs";
@@ -72,8 +73,47 @@ const hasPh = (q: any) => q.text.includes(PH) || (q.explanation ?? "").includes(
   const ex = await prisma.exam.findUnique({ where: { id: examId } });
   check("DB: đề đã phát hành (isDraft=false, active=true)", ex?.isDraft === false && ex.active === true, ex && [ex.isDraft, ex.active]);
 
-  section("Bài ngược: tệp có công thức MathType hỏng → vẫn bị chặn phát hành");
+  section("Bài dự phòng ảnh: .bin hỏng nhưng WMF còn → ảnh trong chữ câu hỏi, lưu nguyên token, phát hành được");
+  {
+    const z = await JSZip.loadAsync(good);
+    const bs = Object.keys(z.files).filter(n => /^word\/embeddings\/oleObject\d+\.bin$/.test(n)).sort();
+    for (const n of bs) { const num = Number(n.match(/(\d+)\.bin$/)![1]); if (num % 25 === 0) z.file(n, Buffer.from("KHONG-PHAI-OLE-CFB-" + n)); }
+    const imgBuf = await z.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+    const pvI = await uploadDocx(NW, A, imgBuf, "du-phong-anh.docx");
+    const PI = pvI.json, QI: any[] = PI?.questions ?? [];
+    const TOK = /\{\{ctimg:[A-Za-z0-9+/=]+\}\}/;
+    const imgQ = QI.filter(q => TOK.test(q.text + q.options.map((o: any) => o.text).join(" ")));
+    check("xem trước 200, 22 câu; 4 công thức hỏng → hiện bằng ảnh (formulaStats.image = 4), 0 nhãn", pvI.status === 200 && QI.length === 22 && PI.formulaStats?.image === 4 && QI.filter(hasPh).length === 0, [pvI.status, PI?.formulaStats]);
+    check("câu có ảnh mang cờ formula_image (KHÔNG formula_unread); stats.withFormulaImage khớp", imgQ.length > 0 && imgQ.every(q => q.flags.includes("formula_image") && !q.flags.includes("formula_unread")) && PI.stats.withFormulaImage === imgQ.length, PI?.stats);
+    const svI = await api("POST", LN, { as: A, body: { categoryId: tree.c11, items: QI.map(toItem) } });
+    const idsI: string[] = svI.json?.ids ?? [];
+    check("luu-nhieu 201 không bỏ câu nào dù chữ chứa token dài (không bị từ chối vì độ dài, không bị cắt)", svI.status === 201 && svI.json?.saved === 22 && svI.json.skippedInvalid === 0, [svI.status, svI.json && { ...svI.json, ids: idsI.length }]);
+    const rowsI = await prisma.questionBankItem.findMany({ where: { id: { in: idsI } }, include: { options: true } });
+    const dbTok = rowsI.flatMap(r => [r.text, ...r.options.map(o => o.text)]).flatMap(t => t.match(/\{\{ctimg:[A-Za-z0-9+/=]+\}\}/g) ?? []);
+    const sentTok = QI.flatMap(q => [q.text, ...q.options.map((o: any) => o.text)]).flatMap((t: string) => t.match(/\{\{ctimg:[A-Za-z0-9+/=]+\}\}/g) ?? []);
+    check("DB giữ NGUYÊN từng byte mọi token ảnh đã gửi", dbTok.length === sentTok.length && sentTok.length >= 4 && [...dbTok].sort().join() === [...sentTok].sort().join(), [dbTok.length, sentTok.length]);
+    // token độc: tự đóng gói base64
+    const evil = (svg: string) => `{{ctimg:${Buffer.from(svg).toString("base64")}}}`;
+    const evilItem = (text: string) => ({ type: "SHORT_ANSWER", text, points: 1, imageUrl: null, explanation: null, difficulty: "NB", options: [{ text: "1", isCorrect: true, subLabel: null }] });
+    const svE = await api("POST", LN, { as: A, body: { categoryId: tree.c11, items: [
+      evilItem("Độc 1 " + evil('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)" width="1pt" height="1pt"></svg>')),
+      evilItem("Độc 2 " + evil('<svg xmlns="http://www.w3.org/2000/svg" width="1pt" height="1pt"><script>alert(1)</script></svg>')),
+      evilItem("Độc 3 " + evil('<svg xmlns="http://www.w3.org/2000/svg" width="1pt" height="1pt"><foreignObject><div/></foreignObject></svg>')),
+    ] } });
+    const rowsE = await prisma.questionBankItem.findMany({ where: { id: { in: svE.json?.ids ?? [] } } });
+    check("3 token độc (onload / script / foreignObject) → lưu được nhưng bị đổi thành nhãn ⟦công thức⟧; DB không còn chuỗi độc", svE.status === 201 && rowsE.length === 3 && rowsE.every(r => r.text.includes(PH) && !/onload|<script|foreignObject|ctimg/i.test(r.text)), rowsE.map(r => r.text.slice(0, 60)));
+    // phát hành đề có ảnh: tạo đề từ các câu có ảnh → 200
+    const imgIds = rowsI.filter(r => TOK.test(r.text + r.options.map(o => o.text).join(" "))).map(r => r.id).slice(0, 4);
+    const mkI = await api("POST", TAO, { as: A, body: { title: "Đề có công thức bằng ảnh", courseId: course.id, itemIds: imgIds, mode: "practice" } });
+    const exI: string = mkI.json?.examId;
+    check("tạo đề từ câu có token ảnh → 201", mkI.status === 201 && !!exI, [mkI.status, mkI.json]);
+    const pubI = await api("POST", `/api/tutor/quiz/${exI}/publish`, { as: A });
+    check("PHÁT HÀNH đề có công thức hiện bằng ảnh → 200 (cờ formula_image KHÔNG chặn)", pubI.status === 200, [pubI.status, pubI.text.slice(0, 250)]);
+  }
+
+  section("Bài ngược: tệp có công thức MathType hỏng (CẢ .bin lẫn ảnh WMF) → vẫn bị chặn phát hành");
   const zip = await JSZip.loadAsync(good);
+  for (const n of Object.keys(zip.files).filter(n => /^word\/media\/[^/]+\.wmf$/i.test(n))) zip.file(n, Buffer.from("WMF-HONG-" + n + " ".repeat(80))); // ảnh dự phòng cũng hỏng
   const bins = Object.keys(zip.files).filter(n => /^word\/embeddings\/oleObject\d+\.bin$/.test(n)).sort();
   let broken = 0;
   for (const n of bins) { const num = Number(n.match(/(\d+)\.bin$/)![1]); if (num % 25 === 0) { zip.file(n, Buffer.from("KHONG-PHAI-OLE-CFB-" + n)); broken++; } }
