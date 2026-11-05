@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
+import { isSuspended, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 
 // MD-03: ownerId (định danh gia sư) chỉ dùng để kiểm quyền ở máy chủ, KHÔNG đi ra JSON. Trả bản chỉ còn chapter.section.courseId.
 type LessonWithOwner = { chapter: { section: { courseId: string; course: { ownerId: string | null } } } };
@@ -36,13 +37,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Student: chỉ access nếu đang enroll active khoá của bài học này.
-  // "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua
-  // route /context (R01) — route này trả raw lesson nên dùng active làm chuẩn,
-  // nhất quán với progress/[lessonId], assignments/[id]/submit sau PR #6.
+  // "pending_consent" chưa được học; "suspended" (đã nghỉ lớp) cũng không xem được nữa (quyết định 06/11/2026, thay R01) — route này
+  // trả raw lesson nên dùng active làm chuẩn, nhất quán với progress/[lessonId], assignments/[id]/submit.
   const courseId = lesson.chapter.section.courseId;
   const enrolled = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.userId, courseId } },
   });
+  if (isSuspended(enrolled)) return NextResponse.json(suspendedBody(contactTutorHref({ id: courseId, ownerId: lesson.chapter.section.course.ownerId })), { status: 403, headers: { "Cache-Control": "private, no-store" } });
   if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
 
   const ctx: MediaContext = { viewer: { userId: session.userId, role: "student" }, courseOwnerId: lesson.chapter.section.course.ownerId, enrollment: enrolled };

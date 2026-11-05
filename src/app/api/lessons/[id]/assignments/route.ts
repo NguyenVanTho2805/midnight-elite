@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
+import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
 
 // GET /api/lessons/[id]/assignments — danh sách bài tập tự nộp của 1 bài
 // giảng. Bất kỳ ai đã đăng nhập đều xem được danh sách (giống tài liệu đính
@@ -18,6 +19,12 @@ export async function GET(
   if (isNextResponse(auth)) return auth;
 
   const { id: lessonId } = await params;
+
+  // Đã nghỉ lớp (quyết định 06/11/2026): không còn thấy bài tập + bài đã nộp của bài thuộc lớp đó (bài miễn phí thì giữ).
+  if (auth.role === "student") {
+    const blocked = await suspendedLessonBlock(auth.userId, lessonId);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
+  }
 
   try {
     const assignments = await prisma.assignment.findMany({

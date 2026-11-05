@@ -59,6 +59,7 @@ Mục tiêu: thêm trường mới cho báo cáo doanh thu theo lớp + trạng 
 
 - `PUT`/`PATCH /api/courses/[id]`: nhận thêm `capacity`, `classStatus`; `capacity` khi hạ phải ≥ số `Enrollment` đang `active`; `classStatus` validate thuộc 3 giá trị.
 - 10 route Enrollment-aware chuyển sang `isEnrollmentActive`: `courses/[id]` GET (hasAccess), `courses/[id]/reviews` POST, `exams/[id]/start`, `lessons/[id]/context` (nới `"suspended"` đọc nội dung đã mở theo R01), `schedule`, `deadlines`, `assignments/[id]/answer` GET+PATCH, `assignments/[id]/submit`, `progress/[lessonId]` POST+PATCH+DELETE, `enrollments`.
+  - **Cập nhật 06/11/2026 (quyết định của chủ): quy tắc R01 cũ cho `suspended` xem lại bài ĐÃ BỊ THU HỒI.** Học sinh `Enrollment.status = "suspended"` (đã nghỉ lớp) không xem được bài giảng, video / tài liệu lưu trên KiN, bản ghi buổi học, ghi chú, tiến độ và bài tập của lớp đó: 403 JSON `{ error, code: "enrollment_suspended", contactHref }` (API) hoặc trang thông báo "Bạn đã nghỉ lớp này nên chưa xem được bài. Liên hệ gia sư nếu cần tham gia lại." + nút Liên hệ gia sư. Bài miễn phí công khai, `active`, `pending_consent`, gia sư chủ lớp và quản trị giữ nguyên. Mã: `src/lib/suspendedContent.ts` (+ `suspendedContentServer.ts`); bài thử `tools/local-e2e/t-suspended-content-api.ts`, `ui-suspended-content.ts`.
 
 ### Ghi chú
 

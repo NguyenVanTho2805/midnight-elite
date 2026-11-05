@@ -44,7 +44,7 @@ export interface MediaViewer {
  * Ai được xem một video lưu trên KiN.
  *  - quản trị cấp 1 / quản trị nội dung: xem được;
  *  - gia sư: chỉ lớp của chính mình;
- *  - học viên: ghi danh "active", hoặc "suspended" (xem lại nội dung đã mở, như /context), hoặc bài miễn phí.
+ *  - học viên: ghi danh "active", hoặc bài miễn phí. "suspended" (đã nghỉ lớp) KHÔNG còn xem lại (quyết định 06/11/2026, thay R01): chỉ bài miễn phí.
  *  "pending_consent" (chưa có đồng ý của phụ huynh) không tính là đã ghi danh: chỉ xem được bài miễn phí, như mọi người chưa vào lớp.
  */
 export function canWatchStoredMedia(v: MediaViewer): boolean {
@@ -52,6 +52,6 @@ export function canWatchStoredMedia(v: MediaViewer): boolean {
     if (v.adminRole === "admin_super" || v.adminRole === "admin_content") return true;
     return v.adminRole === "teacher" && v.courseOwnerId !== null && v.courseOwnerId === v.userId;
   }
-  if (v.enrollmentStatus === "active" || v.enrollmentStatus === "suspended") return true;
+  if (v.enrollmentStatus === "active") return true;
   return v.lessonIsFree;
 }

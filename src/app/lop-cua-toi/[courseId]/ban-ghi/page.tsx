@@ -8,6 +8,7 @@ import { recordingAccess, listCourseRecordings } from "@/lib/classRecordingsServ
 import { buildWatchTable, groupRecordingsBySession } from "@/lib/classRecordings";
 import { firstPlayableVideo } from "@/lib/mediaLink";
 import BanGhiClient from "./BanGhiClient";
+import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function BanGhiPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session) redirect(`/dang-nhap?redirect=/lop-cua-toi/${courseId}/ban-ghi`);
   const acc = await recordingAccess(session, courseId);
+  if (!acc.ok && acc.suspended) return <SuspendedNotice contactHref={acc.contactHref ?? null} />;
   if (!acc.ok) notFound();
   if (acc.role === "student") redirect(`/student/hoc-tap?course=${encodeURIComponent(courseId)}`);
 

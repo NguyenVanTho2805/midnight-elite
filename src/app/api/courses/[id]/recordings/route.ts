@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionChecked } from "@/lib/session";
+import { suspendedBody } from "@/lib/suspendedContent";
 import { recordingAccess, listCourseRecordings } from "@/lib/classRecordingsServer";
 import { checkRecordingLink, cleanRecordingTitle, MAX_RECORDINGS_PER_COURSE } from "@/lib/classRecordings";
 
@@ -11,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const { session } = await getSessionChecked();
   const acc = await recordingAccess(session, id);
-  if (!acc.ok) return NextResponse.json({ error: acc.error }, { status: acc.status, headers: NO_STORE });
+  if (!acc.ok) return NextResponse.json(acc.suspended ? suspendedBody(acc.contactHref ?? null) : { error: acc.error }, { status: acc.status, headers: NO_STORE });
   const { rows, sessions } = await listCourseRecordings(id);
   return NextResponse.json({ role: acc.role, recordings: rows, sessions }, { headers: NO_STORE });
 }
