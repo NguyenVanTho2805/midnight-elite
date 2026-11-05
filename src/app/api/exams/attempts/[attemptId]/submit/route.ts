@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { attemptWriteBlock } from "@/lib/attemptAccess";
 import { finalizeAttempt } from "@/lib/examGrading";
 import { computeQuizReward } from "@/lib/quizReward";
 import { addQuizRewardCoins } from "@/lib/wallet";
@@ -26,6 +27,9 @@ export async function POST(
     if (!attempt || attempt.userId !== session.userId) {
       return NextResponse.json({ error: "Không tìm thấy bài thi" }, { status: 404 });
     }
+    // Học sinh bị tạm dừng ở lớp giữa chừng thì không ghi thêm vào lượt (cùng quy tắc với /start).
+    const blocked = await attemptWriteBlock(session.userId, attempt.examId);
+    if (blocked) return NextResponse.json({ error: blocked, code: "enrollment_suspended" }, { status: 403 });
 
     let finalized = attempt;
     let justSubmitted = false;

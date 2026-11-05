@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { attemptWriteBlock } from "@/lib/attemptAccess";
 import { finalizeAttempt, isSectionLocked } from "@/lib/examGrading";
 
 // PATCH /api/exams/attempts/[attemptId]/answer-bool — autosave 1 ý (a/b/c/d)
@@ -20,6 +21,9 @@ export async function PATCH(
     if (!attempt || attempt.userId !== session.userId) {
       return NextResponse.json({ error: "Không tìm thấy bài thi" }, { status: 404 });
     }
+    // Học sinh bị tạm dừng ở lớp giữa chừng thì không ghi thêm vào lượt (cùng quy tắc với /start).
+    const blocked = await attemptWriteBlock(session.userId, attempt.examId);
+    if (blocked) return NextResponse.json({ error: blocked, code: "enrollment_suspended" }, { status: 403 });
 
     if (attempt.status === "in_progress" && attempt.expiresAt.getTime() <= Date.now()) {
       await finalizeAttempt(attempt.id, { status: "expired", at: attempt.expiresAt });
