@@ -1,3 +1,4 @@
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { dropHeldResults } from "@/lib/examHold";
@@ -42,7 +43,7 @@ export async function GET() {
     const allCourseIds = [...new Set(students.flatMap(s => s.enrollments.map(e => e.courseId)))];
     const courseLessons = allCourseIds.length > 0
       ? await prisma.lesson.findMany({
-          where: { chapter: { section: { courseId: { in: allCourseIds } } } },
+          where: { ...PUBLISHED_ONLY, chapter: { section: { courseId: { in: allCourseIds } } } },
           select: { id: true, chapter: { select: { section: { select: { courseId: true } } } } },
         })
       : [];

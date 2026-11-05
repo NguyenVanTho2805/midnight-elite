@@ -1,6 +1,7 @@
 // "Việc của tôi": đọc dữ liệu thật của một học sinh rồi đưa cho src/lib/studentTodo.ts quyết định. Chỉ đọc, không ghi.
 import { prisma } from "@/lib/prisma";
 import { loadStudentScheduleEvents } from "@/lib/studentSchedule";
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { buildStudentTodo, OVERDUE_KEEP_MS, DONE_KEEP_MS, type StudentTodoItem, type TodoAssignment } from "@/lib/studentTodo";
 
 export async function loadStudentTodo(userId: string, now: Date = new Date()): Promise<{ items: StudentTodoItem[]; badge: number }> {
@@ -11,7 +12,7 @@ export async function loadStudentTodo(userId: string, now: Date = new Date()): P
   // Chỉ cần bài có hạn trong khoảng còn có thể hiện: quá hạn chưa nộp ≤ 14 ngày, hoặc đã nộp/chấm ≤ 14 ngày (hạn có thể xa hơn lúc nộp sớm).
   const since = new Date(now.getTime() - Math.max(OVERDUE_KEEP_MS, DONE_KEEP_MS) - 14 * 86_400_000);
   const rows = await prisma.assignment.findMany({
-    where: { mode: { not: "azota" }, dueDate: { gte: since }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
+    where: { mode: { not: "azota" }, dueDate: { gte: since }, lesson: { ...PUBLISHED_ONLY, chapter: { section: { courseId: { in: courseIds } } } } },   // BU-02-PHẲNG (R13)
     select: {
       id: true, title: true, instructions: true, fileUrl: true, maxPoints: true, dueDate: true, mode: true, createdAt: true, lessonId: true,
       lesson: { select: { chapter: { select: { section: { select: { course: { select: { id: true, name: true, instructor: true } } } } } } } },

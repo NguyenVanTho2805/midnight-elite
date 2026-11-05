@@ -782,3 +782,16 @@ Thọ trả lời bảng quyết định cuối báo cáo `docs/kin/bao-cao/dem-
 - **3A · #120:** KHÁCH không thấy câu hỏi cũ (bảng `Question`) trong bảng tin cộng đồng: `loadFeedPage` chỉ trộn chúng khi có người đăng nhập; `/api/community/sidebar` bản khách không có (vẫn `public, s-maxage=300`), bản đã đăng nhập có và `private, no-store`. Test: `t-community-api` 512 (+7 ca, 3 ca phá cố ý; các ca phân trang trộn bài + câu hỏi cũ chạy với học sinh đã đăng nhập).
 - **5A · #121:** phòng thi: đáp án máy chủ từ chối bằng 4xx (vd. 409 `section_locked`) vào `SaveState.rejected` thay vì bị bỏ im lặng — chip "Chưa lưu được · N câu" + nút Thử lại (trước đây vẫn "Đã lưu <giờ>"). Không tự thử lại mãi; Thử lại đưa về hàng đợi; đổi đáp án câu đó thì thay; `pending()` vẫn chỉ đếm hàng đợi. Test: `t-exam-room-lib` 102 (5 ca phá cố ý), `ui-exam-room-save-chip` 22 (3 ca phá cố ý; tái hiện đúng lỗi cũ). Bài này chập chờn vì **phòng thi xáo thứ tự câu hỏi mỗi lượt** (`start/route.ts`) — đã sửa bài để dùng chế độ "Cả đề" (10/10 lần xanh).
 
+
+## BU-02-PHẲNG (05/11/2026) — Giáo trình danh sách phẳng: mục có kiểu + trạng thái, video chỉ link YouTube — LÀM XONG PHẦN MÃ; Figma CHƯA ĐỌC/SỬA
+Nhánh `claude/bu02-giao-trinh-phang` (rẽ từ `origin/main`). **Chưa commit** (thay đổi còn ở cây làm việc). Đặc tả: `phong-ban/dac-ta/BU-02-PHANG.md`. Quyết định của chủ 05/11/2026. Cờ: TIỀN không · TRẺ EM có (lọc trạng thái là lớp chặn lộ bài chưa duyệt cho em) · ĐỔI NỀN không (cột chỉ-thêm).
+- **Vì sao:** cây Phần › Chương › Bài bắt gia sư tạo chương dù chỉ có "Phần 1" rồi mới vào bài. Chủ chốt: làm danh sách phẳng, mỗi mục có kiểu + trạng thái, thêm thẳng vào lớp; chương chỉ để nhóm tuỳ chọn.
+- **Đã làm:**
+  - Schema thêm **3 cột**: `Lesson.status` (mặc định `published`), `Section.isImplicit`, `Chapter.isImplicit`. Chỉ thêm, không đổi cột có sẵn.
+  - **Lọc trạng thái ở R1–R19** — mọi đường ĐỌC của học sinh / khách (nháp và ẩn không lộ).
+  - **Video chỉ gắn link YouTube**; giao diện tải video bị ẩn.
+- **Test thật lần cuối** (bản riêng, cổng 3193, DB `kin_giaotrinh`), đều xanh: `t-lesson-status-lib` 38/0 · `t-giao-trinh-lib` 216/0 · `t-giao-trinh` 78/0 · `t-lesson-visibility` 82/0 · `t-media-api` 157/0 · `t-media-security` 114/0 · `t-thu-vien` 38/0 · `t-db-push-guard` 28/0 · `t-no-hex` 16/0 · `ui-giao-trinh` 86/0 (3 lần liền) · `ui-thu-vien-gia-su` 27/0 · `ui-media` 128/0. `ui-media` và `t-lesson-visibility` được **sửa kỳ vọng cũ** cho khớp luật mới.
+- **Lỗi có sẵn:** `t-links` 11/1 đỏ sẵn (báo giả).
+- **Rà soát độc lập (`kin-ra-soat`):** P1 không. P2 đã sửa: chương trống lộ tên. P2 còn lại: **D3** — ẩn tiêu đề Phần/Chương ngầm phía học sinh (`src/components/student`, phòng Học sinh) → **NỢ**. P3 nợ: `media stream/file` dùng `take:20` không `orderBy`; `PUT lessons` thiếu khoá `lesson:<id>`; chưa có cảnh báo giao diện khi gắn vào mục đã đăng.
+- **Giới hạn còn lại / nợ:** **Figma 606:5 chưa đọc/sửa được** (phiên không có công cụ Figma; mục 5.6 đặc tả để trống nodeId, không bịa). **PR chỉ-schema phải gộp trước** các PR còn lại. Chưa chạy thử trên trình duyệt của người dùng, chỉ Chromium trong bộ test cục bộ.
+- **Việc của Thọ:** chốt Q1–Q9 trong đặc tả; gộp PR chỉ-schema trước rồi mới tới PR mã; giao phòng Học sinh làm D3; người có công cụ Figma đọc 606:5 và điền nodeId vào mục 5.6; kiểm tay luồng thêm mục → Nháp → đăng, và xem như học sinh.

@@ -58,6 +58,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       statsViews:    body.statsViews ?? 0,
       order:         body.order ?? (maxOrder._max.order ?? 0) + 1,
       chapterId,
+      // BU-02-PHẲNG: chỉ nhận "draft" (Nhân bản mục nháp); mọi giá trị khác ⇒ mặc định cột "published" (hành vi tab Chương bài cũ không đổi).
+      ...(body.status === "draft" ? { status: "draft" } : {}),
     };
 
     // Course.lessons là số bài quảng cáo admin tự đặt (vd đề mục tiêu "103 bài"

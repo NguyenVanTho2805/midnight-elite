@@ -10,6 +10,8 @@ import { canWatchStoredMedia } from "@/lib/lessonGuard";
 import { DOCUMENT_MIME_BY_EXT, fileNameExt, parseRangeHeader, safeFileName } from "@/lib/mediaStorage";
 import { cloudinaryEnv, cloudinarySignedRawUrl, localPathFor, openLocalRange } from "@/lib/mediaStorageServer";
 import { kinFileLink } from "@/lib/giaoTrinh";
+import { isLearnerVisible } from "@/lib/lessonStatus";
+import { managerOf } from "@/lib/lessonVisibility";
 
 const INLINE_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "webp", "txt"]);
 const base = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes" } as const;
@@ -28,9 +30,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   let allowed = asset.ownerId === session.userId;
   if (!allowed) {
     const link = kinFileLink(id);
-    const select = { id: true, isFree: true, documents: true, chapter: { select: { section: { select: { course: { select: { id: true, ownerId: true } } } } } } } as const;
-    const mayWatch = async (l: { isFree: boolean; chapter: { section: { course: { id: string; ownerId: string | null } } } }): Promise<boolean> => {
+    const select = { id: true, isFree: true, status: true, documents: true, chapter: { select: { section: { select: { course: { select: { id: true, ownerId: true } } } } } } } as const;
+    const mayWatch = async (l: { isFree: boolean; status: string; chapter: { section: { course: { id: string; ownerId: string | null } } } }): Promise<boolean> => {
       const course = l.chapter.section.course;
+      // BU-02-PHẲNG (R18): bài Nháp/Ẩn không làm "bài tham chiếu" cho người học; chỉ quản lý lớp. Tệp còn ở bài Đã đăng khác ⇒ vẫn mở qua bài đó.
+      if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId)) return false;
       const enr = session.role === "student"
         ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { status: true } })
         : null;

@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
+import { isLearnerVisible } from "@/lib/lessonStatus";
 
 // MD-03: ownerId (định danh gia sư) chỉ dùng để kiểm quyền ở máy chủ, KHÔNG đi ra JSON. Trả bản chỉ còn chapter.section.courseId.
 type LessonWithOwner = { chapter: { section: { courseId: string; course: { ownerId: string | null } } } };
@@ -34,6 +35,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const ctx: MediaContext = { viewer: { userId: session.userId, role: "admin", adminRole: session.adminRole }, courseOwnerId: ownerId, enrollment: null };
     return NextResponse.json(lessonFor(ctx, publicLesson(lesson)));
   }
+
+  // BU-02-PHẲNG (R2): bài Nháp/Ẩn không tồn tại với người học — 404 TRƯỚC kiểm ghi danh (không phân biệt "không có" với "nháp").
+  if (!isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   // Student: chỉ access nếu đang enroll active khoá của bài học này.
   // "pending_consent" chưa được học, "suspended" chỉ xem lại nội dung qua

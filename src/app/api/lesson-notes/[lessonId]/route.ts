@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { isLearnerVisible } from "@/lib/lessonStatus";
+
+// BU-02-PHẲNG (R9): bài không tồn tại hoặc không Đã đăng ⇒ 404 (cả GET lẫn PUT). Ghi chú cũ vẫn còn trong DB, hiện lại khi mục được hiện lại.
+async function lessonVisible(lessonId: string): Promise<boolean> {
+  const l = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { status: true } });
+  return !!l && isLearnerVisible(l.status);
+}
+const NOT_FOUND = () => NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
 // GET /api/lesson-notes/[lessonId] — lấy ghi chú cá nhân của học sinh cho bài học
 export async function GET(
@@ -11,6 +19,7 @@ export async function GET(
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
 
   const { lessonId } = await params;
+  if (!(await lessonVisible(lessonId))) return NOT_FOUND();
   const note = await prisma.lessonNote.findUnique({
     where:  { userId_lessonId: { userId: session.userId, lessonId } },
     select: { text: true },
@@ -28,6 +37,7 @@ export async function PUT(
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
 
   const { lessonId } = await params;
+  if (!(await lessonVisible(lessonId))) return NOT_FOUND();
   const { text } = await req.json().catch(() => ({ text: "" }));
   if (typeof text !== "string") {
     return NextResponse.json({ error: "Nội dung ghi chú không hợp lệ" }, { status: 400 });

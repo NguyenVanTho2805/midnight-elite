@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS, splitEnrollmentIds } from "@/lib/enrollment";
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 
 // GET /api/enrollments — danh sách courseId mà student hiện tại đã enroll (xếp theo lúc vào lớp, cũ trước, để "lớp đầu tiên" luôn là một lớp xác định).
 // `courseIds` = CHỈ lớp đang học (status active). `pendingConsentCourseIds` (2A, 04/11/2026) = lớp em đã vào nhưng đang CHỜ PHỤ HUYNH ĐỒNG Ý: không có quyền học, chỉ để thẻ lớp
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
   // Số bài tính từ bài học thật của lớp (Course.lessons là số gõ tay, có thể lệch): MỘT truy vấn cho mọi lớp, cộng số bài theo từng chương.
   const sections = courseIds.length === 0 ? [] : await prisma.section.findMany({
     where: { courseId: { in: courseIds } },
-    select: { courseId: true, chapters: { select: { _count: { select: { lessons: true } } } } },
+    select: { courseId: true, chapters: { select: { _count: { select: { lessons: { where: PUBLISHED_ONLY } } } } } },   // BU-02-PHẲNG (R17): không đếm mục Nháp/Ẩn
   });
   const lessonCount = new Map<string, number>();
   for (const s of sections) lessonCount.set(s.courseId, (lessonCount.get(s.courseId) ?? 0) + s.chapters.reduce((n, c) => n + c._count.lessons, 0));

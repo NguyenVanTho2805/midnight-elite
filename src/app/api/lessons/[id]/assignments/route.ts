@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
+import { isLearnerVisible } from "@/lib/lessonStatus";
+import { managerOf } from "@/lib/lessonVisibility";
 
 // GET /api/lessons/[id]/assignments — danh sách bài tập tự nộp của 1 bài
 // giảng. Bất kỳ ai đã đăng nhập đều xem được danh sách (giống tài liệu đính
@@ -20,6 +22,11 @@ export async function GET(
   const { id: lessonId } = await params;
 
   try {
+    // BU-02-PHẲNG (R4): route mở cho mọi tài khoản đăng nhập ⇒ bài Nháp/Ẩn chỉ quản lý lớp thấy; còn lại 404 (kể cả bài không tồn tại, để không phân biệt được).
+    const owner = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { status: true, chapter: { select: { section: { select: { course: { select: { ownerId: true } } } } } } } });
+    if (!owner) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+    if (!isLearnerVisible(owner.status) && !managerOf(auth, owner.chapter.section.course.ownerId))
+      return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
     const assignments = await prisma.assignment.findMany({
       where: { lessonId, mode: { not: "azota" } }, // bài Azota không còn là Assignment (LessonAzotaDone); lọc phòng dữ liệu cũ
       orderBy: { createdAt: "asc" },

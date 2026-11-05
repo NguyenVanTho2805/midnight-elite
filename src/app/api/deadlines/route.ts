@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ownerScopeWhere } from "@/lib/auth-guard";
 import { calendarDaysLeft, parseAzotaDeadline } from "@/lib/azotaDeadline";
 import { firstHttpLink } from "@/lib/lessonLinks";
+import { learnerLessonWhere } from "@/lib/lessonVisibility";
 
 export async function GET() {
   const session = await getSession();
@@ -29,6 +30,7 @@ export async function GET() {
     const lessons = await prisma.lesson.findMany({
       where: {
         azotaDeadline: { not: null },
+        ...learnerLessonWhere(session.role === "admin"),   // BU-02-PHẲNG (R11): học sinh chỉ thấy hạn của mục Đã đăng (quản trị/gia sư đã bị giới hạn theo phạm vi lớp ở trên)
         chapter: {
           section: { courseId: { in: courseIds } },
         },

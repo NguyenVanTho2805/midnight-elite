@@ -1,3 +1,4 @@
+// BU-02-PHẲNG: đích "Dùng ở lớp khác" = lớp ▸ MỤC MỚI (mặc định, Nháp, không chương) hoặc mục có sẵn (chip trạng thái); hồi quy phần còn lại.
 // BU-02 — "Thư viện của tôi" (/thu-vien, nhánh gia sư), trình duyệt thật, 1280 + 390, có chụp ảnh. Figma: chưa đối chiếu (504:6046 / 299:113561).
 // Kiểm: rỗng / có dữ liệu / lỗi khi thêm (giả lập 500 ở G2), tìm + lọc loại, "Dùng ở lớp khác" (mục xuất hiện ở bài đích, số 'đang dùng ở' tăng), nhóm "Chưa gắn vào bài"
 // (gắn / xoá có hộp xác nhận KiN), nhóm "Đề gốc" chỉ xem, học sinh vẫn thấy thư viện học sinh (D2) và thấy tài liệu tải lên KiN (D4), 390px không tràn ngang, nút >= 44px.
@@ -79,17 +80,23 @@ const seen: Page[] = [];
   const cf = rows(pg).filter({ hasText: "Bảng công thức" });
   await cf.getByRole("button", { name: "Dùng ở lớp khác" }).click();
   await cf.getByLabel("Lớp").selectOption({ label: "Văn 8" });
+  check("đích mặc định là 'Mục mới (Nháp)' và có dòng nói mục mới chỉ bạn thấy", (await cf.getByLabel("Mục", { exact: true }).inputValue()) === "new" && await cf.getByText(/Mục mới ở dạng Nháp, chỉ bạn thấy/).isVisible() && await cf.getByLabel("Mục", { exact: true }).locator("option", { hasText: "Mục mới (Nháp)" }).count() === 1);
   await cf.getByRole("button", { name: "Thêm vào lớp này" }).click();
   await cf.getByRole("alert").getByText("Thêm mục thất bại").waitFor({ timeout: 15000 }).catch(() => undefined);
   check("lỗi máy chủ → báo tại chỗ (role=alert), không mất khung chọn", await cf.getByRole("alert").getByText("Thêm mục thất bại").isVisible());
   await pg.unroute("**/api/tutor/lop/*/giao-trinh/muc");
   await cf.getByRole("button", { name: "Thêm vào lớp này" }).click();
-  await pg.locator("[data-tv-thong-bao]").getByText(/Đã thêm .*Bảng công thức.* vào lớp Văn 8/).waitFor({ timeout: 60000 });
-  await eventually("DB: bài của lớp Văn 8 có thêm 'Bảng công thức' (Bài mới) và số 'đang dùng ở' tăng", async () => {
+  await pg.locator("[data-tv-thong-bao]").getByText(/Đã thêm .*Bảng công thức.* vào lớp Văn 8 thành mục mới ở dạng Nháp/).waitFor({ timeout: 60000 });
+  await eventually("DB: lớp Văn 8 có thêm MỘT mục mới 'Bảng công thức' ở dạng NHÁP (không cần chọn chương) và số 'đang dùng ở' tăng", async () => {
     const lessons = await prisma.lesson.findMany({ where: { chapter: { section: { courseId: B.id } } } });
-    return lessons.some(l => (l.documents ?? "").includes("docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345"));
+    const added = lessons.filter(l => (l.documents ?? "").includes("docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz012345"));
+    return added.length === 1 && added[0].status === "draft";
   });
   await eventually("sau khi làm mới: 'Bảng công thức' dùng ở 2 lớp", async () => /2 lớp/.test(await rows(pg).filter({ hasText: "Bảng công thức" }).locator("[data-tv-dung-o]").innerText()));
+  await eventually("chip trạng thái: mục vừa thêm ở Văn 8 là 'Nháp', bài cũ ở Toán 9 là 'Đã đăng'", async () => {
+    const r = rows(pg).filter({ hasText: "Bảng công thức" });
+    return (await r.locator("li", { hasText: "Văn 8 · " }).locator('[data-gt-chip-trang-thai="draft"]').count()) === 1 && (await r.locator("li", { hasText: "Toán 9 · " }).locator('[data-gt-chip-trang-thai="published"]').count()) === 1;
+  });
 
   section("Gỡ khỏi bài này (G3) — hộp xác nhận KiN");
   let nativeDialog = false; pg.on("dialog", d => { nativeDialog = true; void d.dismiss(); });
@@ -103,10 +110,10 @@ const seen: Page[] = [];
   const lo = pg.locator("[data-tv-chua-gan] li", { hasText: "phieu-chua-gan.pdf" });
   await lo.getByRole("button", { name: "Gắn vào bài" }).click();
   await lo.getByLabel("Lớp").selectOption({ label: "Toán 9" });
-  await lo.getByLabel("Bài", { exact: true }).selectOption({ label: "Bài A" });
+  await lo.getByLabel("Mục", { exact: true }).selectOption({ label: "Bài A · Đã đăng" });
   await lo.getByRole("button", { name: "Thêm vào lớp này" }).click();
-  await pg.locator("[data-tv-thong-bao]").getByText(/Đã thêm .*phieu-chua-gan/).waitFor({ timeout: 60000 });
-  await eventually("DB: tài liệu chưa gắn đã nằm trong bài của Toán 9", async () => ((await prisma.lesson.findUnique({ where: { id: "tv-la" } }))?.documents ?? "").includes(`/api/media/${loose.id}/file`));
+  await pg.locator("[data-tv-thong-bao]").getByText(/Đã thêm .*phieu-chua-gan.* vào mục có sẵn/).waitFor({ timeout: 60000 });
+  await eventually("DB: tài liệu chưa gắn đã nằm trong mục có sẵn của Toán 9 (trạng thái mục không đổi)", async () => ((await prisma.lesson.findUnique({ where: { id: "tv-la" } }))?.documents ?? "").includes(`/api/media/${loose.id}/file`));
   const xd = pg.locator("[data-tv-chua-gan] li", { hasText: "xoa-di.pdf" });
   await xd.getByRole("button", { name: "Xoá tệp" }).click();
   await pg.getByRole("dialog").getByRole("button", { name: "Xoá tệp" }).click();

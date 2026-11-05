@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { LESSON_REWARD, COIN_REASONS, DEFAULT_SOURCE_TYPE_FOR_REASON } from "@/lib/wallet-constants";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { isLearnerVisible } from "@/lib/lessonStatus";
 
 const LESSON_REWARD_REASON = COIN_REASONS.LESSON_REWARD;
 
@@ -28,9 +29,10 @@ export async function POST(
   // Verify lesson thuộc khoá học mà student đang enroll (hoặc bài học thử miễn phí)
   const lesson = await prisma.lesson.findUnique({
     where:  { id: lessonId },
-    select: { isFree: true, chapter: { select: { section: { select: { courseId: true } } } } },
+    select: { isFree: true, status: true, chapter: { select: { section: { select: { courseId: true } } } } },
   });
-  if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+  // BU-02-PHẲNG (R7): bài Nháp/Ẩn ⇒ 404, không ghi LessonProgress, không phát Coin (cả nhánh isFree).
+  if (!lesson || !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   const courseId = lesson.chapter.section.courseId;
   if (!lesson.isFree) {
@@ -102,9 +104,10 @@ export async function PATCH(
   // Verify enrollment (hoặc bài học thử miễn phí, nhất quán với POST/DELETE)
   const lesson = await prisma.lesson.findUnique({
     where:  { id: lessonId },
-    select: { isFree: true, chapter: { select: { section: { select: { courseId: true } } } } },
+    select: { isFree: true, status: true, chapter: { select: { section: { select: { courseId: true } } } } },
   });
-  if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+  // BU-02-PHẲNG (R7): bài Nháp/Ẩn ⇒ 404, không ghi LessonProgress, không phát Coin (cả nhánh isFree).
+  if (!lesson || !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 
   const courseId = lesson.chapter.section.courseId;
   if (!lesson.isFree) {
@@ -138,7 +141,7 @@ export async function DELETE(
   // Verify enrollment (hoặc bài học thử miễn phí) — consistent với POST
   const lesson = await prisma.lesson.findUnique({
     where:  { id: lessonId },
-    select: { isFree: true, chapter: { select: { section: { select: { courseId: true } } } } },
+    select: { isFree: true, status: true, chapter: { select: { section: { select: { courseId: true } } } } },
   });
   if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
 

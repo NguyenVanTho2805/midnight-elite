@@ -3,6 +3,7 @@
 //   Gia sư  : các lớp mình sở hữu (Course.ownerId), kèm số bài nộp / chờ chấm.
 // Chỉ liệt kê bài có gì để xem (video, tài liệu hoặc bài tập); số bài còn trống được đếm riêng để giao diện nói rõ.
 import { prisma } from "@/lib/prisma";
+import { learnerLessonWhere } from "@/lib/lessonVisibility";
 import { assignmentStatus, parseDurationSeconds, parseLessonDocuments, tutorAssignmentSummary, watchLabel, shortDate, type LibDoc, type LibTone } from "@/lib/library";
 
 export interface LibAssignment { id: string; title: string; due: string | null; status: { label: string; tone: LibTone } }
@@ -21,7 +22,8 @@ export interface LibClass { id: string; name: string; category?: string | null; 
 
 const MAX_CLASSES = 50, MAX_LESSONS = 300;
 
-const courseSelect = {
+// BU-02-PHẲNG (R14): `learner` ⇒ chỉ mục Đã đăng (thư viện của học sinh); thư viện của gia sư chủ (learner=false) thấy đủ.
+const courseSelect = (learner: boolean) => ({
   id: true, name: true, category: true,
   sections: {
     orderBy: { order: "asc" as const },
@@ -32,6 +34,7 @@ const courseSelect = {
         select: {
           title: true,
           lessons: {
+            where: learnerLessonWhere(!learner),
             orderBy: { order: "asc" as const },
             select: { id: true, title: true, type: true, duration: true, videoUrl: true, documents: true, assignments: { where: { mode: { not: "azota" } }, select: { id: true, title: true, dueDate: true, maxPoints: true }, orderBy: { createdAt: "asc" as const } } },
           },
@@ -39,11 +42,11 @@ const courseSelect = {
       },
     },
   },
-};
+});
 
 type CourseTree = Awaited<ReturnType<typeof loadTrees>>[number];
-const loadTrees = (where: { id?: { in: string[] }; ownerId?: string }) =>
-  prisma.course.findMany({ where, select: courseSelect, take: MAX_CLASSES, orderBy: { createdAt: "desc" } });
+const loadTrees = (where: { id?: { in: string[] }; ownerId?: string }, learner: boolean) =>
+  prisma.course.findMany({ where, select: courseSelect(learner), take: MAX_CLASSES, orderBy: { createdAt: "desc" } });
 
 function flatten(c: CourseTree) {
   const out: { where: string; l: CourseTree["sections"][number]["chapters"][number]["lessons"][number] }[] = [];
@@ -54,7 +57,7 @@ function flatten(c: CourseTree) {
 export async function loadStudentLibrary(userId: string, now: Date): Promise<LibClass[]> {
   const enr = await prisma.enrollment.findMany({ where: { userId, status: "active" }, select: { courseId: true } });
   if (enr.length === 0) return [];
-  const courses = await loadTrees({ id: { in: enr.map(e => e.courseId) } });
+  const courses = await loadTrees({ id: { in: enr.map(e => e.courseId) } }, true);
   const flat = courses.map(c => ({ c, items: flatten(c) }));
   const lessonIds = flat.flatMap(f => f.items.map(i => i.l.id));
   const assignIds = flat.flatMap(f => f.items.flatMap(i => i.l.assignments.map(a => a.id)));
@@ -81,7 +84,7 @@ export async function loadStudentLibrary(userId: string, now: Date): Promise<Lib
 }
 
 export async function loadTutorLibrary(userId: string): Promise<LibClass[]> {
-  const courses = await loadTrees({ ownerId: userId });
+  const courses = await loadTrees({ ownerId: userId }, false);
   if (courses.length === 0) return [];
   const flat = courses.map(c => ({ c, items: flatten(c) }));
   const assignIds = flat.flatMap(f => f.items.flatMap(i => i.l.assignments.map(a => a.id)));

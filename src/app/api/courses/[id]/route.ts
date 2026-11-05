@@ -7,6 +7,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { pruneTreeForViewer } from "@/lib/lessonStatus";
 import { canViewAllMaterials, isCourseManager, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -56,6 +57,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (!course.status && !hasAccess) {
       return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     }
+
+    // BU-02-PHẲNG (R1): chỉ quản lý lớp (quản trị / gia sư chủ) thấy mục Nháp và Ẩn. Học sinh (kể cả đã ghi danh), khách, gia sư khác chỉ thấy mục Đã đăng.
+    // Lọc TRƯỚC redact để tên/link mục nháp không đi vào bất kỳ nhánh nào của câu trả lời.
+    const isManager = session ? isCourseManager({ userId: session.userId, role: session.role, adminRole: session.adminRole }, course.ownerId) : false;
+    course.sections = pruneTreeForViewer({ sections: course.sections }, isManager).sections;
 
     // Học viên đã mua/đã enroll (hoặc admin) thì mọi bài học đều mở khoá,
     // bất kể cờ isLocked tĩnh trong DB — isLocked chỉ còn ý nghĩa cho khách chưa mua.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 
 // GET /api/progress — bài đã hoàn thành + đếm theo khoá + vị trí xem dở của bài chưa xong (MD-06: tách "đang xem" / "đã xong")
 export async function GET() {
@@ -8,7 +9,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ completedIds: [], byCourse: {}, watching: {}, positions: {} });
 
   const rows = await prisma.lessonProgress.findMany({
-    where:  { userId: session.userId },
+    where:  { userId: session.userId, lesson: PUBLISHED_ONLY },   // BU-02-PHẲNG (R8): bài Ẩn/Nháp không đếm vào completedIds/byCourse/positions
     select: {
       lessonId: true,
       completed: true,
