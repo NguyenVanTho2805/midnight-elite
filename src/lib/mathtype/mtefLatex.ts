@@ -44,18 +44,18 @@ export const MATHTYPE_STRUCTURES: Record<string, { verified: boolean; evidence: 
   "fence:bar": { verified: true, evidence: "3094 luồng khác nhau trong kho mẫu thật; 177 có TeX gốc, 177 khớp" },
   "fence:half": { verified: true, evidence: "12093 luồng khác nhau trong kho mẫu thật; 894 có TeX gốc, 879 khớp" },
   "fence:other": { verified: false, evidence: "1 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; ngoặc nhọn góc: ≤1 mẫu, không có TeX gốc" },
-  "interval": { verified: true, evidence: "2641 luồng khác nhau trong kho mẫu thật; 43 có TeX gốc, 42 khớp" },
+  "interval": { verified: false, evidence: "2641 luồng khác nhau trong kho mẫu thật; 43 có TeX gốc, 42 khớp (97,7%, dưới ngưỡng 98%); 1 lệch: dấu đóng ) trong KiN so với ] trong TeX gốc ([0;+∞) — chưa xác định bên nào sai" },
   "vec_arrow": { verified: true, evidence: "8685 luồng khác nhau trong kho mẫu thật; 1109 có TeX gốc, 1104 khớp" },
   "vec_other": { verified: false, evidence: "17 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; T31.1/3/10: ít mẫu, không có TeX gốc" },
   "hat": { verified: true, evidence: "4096 luồng khác nhau trong kho mẫu thật; 477 có TeX gốc, 468 khớp" },
   "tilde_wide": { verified: false, evidence: "0 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; T32.0: không có TeX gốc" },
   "arc": { verified: false, evidence: "80 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; T34.0 (cung ⌢): không có TeX gốc" },
-  "overline": { verified: true, evidence: "2957 luồng khác nhau trong kho mẫu thật; 37 có TeX gốc, 30 khớp" },
+  "overline": { verified: false, evidence: "2957 luồng khác nhau trong kho mẫu thật; 37 có TeX gốc, 30 khớp (81%, dưới ngưỡng 98%); 7 lệch đều do TeX gốc KHÔNG có gạch trên (MathType bỏ \\overline khi sinh TeX Input) nên KiN có thể đúng nhưng không có bằng chứng độc lập" },
   "underline": { verified: false, evidence: "3 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; T12.0: không có TeX gốc" },
   "embell:prime": { verified: true, evidence: "15177 luồng khác nhau trong kho mẫu thật; 77 có TeX gốc, 77 khớp" },
   "embell:vec": { verified: true, evidence: "2223 luồng khác nhau trong kho mẫu thật; 768 có TeX gốc, 765 khớp" },
   "embell:bar": { verified: true, evidence: "1405 luồng khác nhau trong kho mẫu thật; 420 có TeX gốc, 420 khớp" },
-  "embell:dot": { verified: true, evidence: "7 luồng khác nhau trong kho mẫu thật; 3 có TeX gốc, 3 khớp" },
+  "embell:dot": { verified: false, evidence: "7 luồng khác nhau trong kho mẫu thật; 3 có TeX gốc, 3 khớp (dưới ngưỡng 5 luồng)" },
   "embell:other": { verified: false, evidence: "300 luồng khác nhau trong kho mẫu thật; 4 có TeX gốc, 3 khớp; EMBELL 3,4,6,8,9,12,13,18,24: ≤3 mẫu" },
   "integral": { verified: true, evidence: "5261 luồng khác nhau trong kho mẫu thật; 711 có TeX gốc, 710 khớp" },
   "integral_op": { verified: false, evidence: "66 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; T21.x (∫ không thân): không có TeX gốc" },
@@ -63,10 +63,10 @@ export const MATHTYPE_STRUCTURES: Record<string, { verified: boolean; evidence: 
   "sum": { verified: true, evidence: "57 luồng khác nhau trong kho mẫu thật; 16 có TeX gốc, 16 khớp" },
   "sum_limits_style": { verified: false, evidence: "53 luồng khác nhau trong kho mẫu thật; 16 có TeX gốc, 16 khớp; cận ∑ nằm trên/dưới (bit 0x40): TeX gốc không phân biệt" },
   "sum_op": { verified: false, evidence: "3 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; T22.x (∑ không thân): không có TeX gốc" },
-  "bigunion": { verified: true, evidence: "1 luồng khác nhau trong kho mẫu thật; 1 có TeX gốc, 1 khớp" },
+  "bigunion": { verified: false, evidence: "1 luồng khác nhau trong kho mẫu thật; 1 có TeX gốc, 1 khớp (dưới ngưỡng 5 luồng)" },
   "limit": { verified: true, evidence: "5378 luồng khác nhau trong kho mẫu thật; 687 có TeX gốc, 676 khớp" },
   "limit_over": { verified: true, evidence: "240 luồng khác nhau trong kho mẫu thật; 11 có TeX gốc, 11 khớp" },
-  "arrow_labeled": { verified: true, evidence: "239 luồng khác nhau trong kho mẫu thật; 9 có TeX gốc, 8 khớp" },
+  "arrow_labeled": { verified: false, evidence: "239 luồng khác nhau trong kho mẫu thật; 9 có TeX gốc, 8 khớp (89%, dưới ngưỡng 98%); 1 lệch: TeX gốc ghi thêm ô dưới rỗng [ ] (hiển thị như nhau) nhưng mẫu quá ít để coi là đã kiểm" },
   "hbrace": { verified: true, evidence: "62 luồng khác nhau trong kho mẫu thật; 14 có TeX gốc, 14 khớp" },
   "hbrace_over": { verified: false, evidence: "0 luồng khác nhau trong kho mẫu thật; 0 có TeX gốc, 0 khớp; dấu ngoặc ngang phía trên: không có mẫu" },
   "pile": { verified: true, evidence: "9239 luồng khác nhau trong kho mẫu thật; 262 có TeX gốc, 259 khớp" },
@@ -75,8 +75,17 @@ export const MATHTYPE_STRUCTURES: Record<string, { verified: boolean; evidence: 
   "matrix_right": { verified: true, evidence: "19 luồng khác nhau trong kho mẫu thật; 7 có TeX gốc, 7 khớp" },
 };
 
-interface Cx { warn: Set<string>; used: Set<string>; unv: Set<string> }
-const use = (cx: Cx, id: string) => {
+interface Cx { warn: Set<string>; used: Set<string>; unv: Set<string>; syms: Set<string> }
+/**
+ * NGƯỠNG "ĐÃ KIỂM" DUY NHẤT cho cấu trúc (MATHTYPE_STRUCTURES), ký hiệu (SYM_VERIFIED) và chữ có dấu (ACCENT_VERIFIED):
+ * ≥ VERIFIED_MIN_MATCHED luồng KHÁC NHAU có TeX gốc (do chính MathType ghi) khớp sau chuẩn hoá VÀ tỉ lệ khớp/có-TeX-gốc ≥ VERIFIED_MIN_RATE.
+ * Mỗi luồng lệch phải được điều tra và giải thích trong `evidence`; không đạt → verified:false (đi ảnh dự phòng). tools/local-e2e/mathtype-corpus.ts áp đúng ngưỡng này.
+ */
+export const VERIFIED_MIN_MATCHED = 5;
+export const VERIFIED_MIN_RATE = 0.98;
+export const meetsVerifiedThreshold = (withTex: number, matched: number): boolean => matched >= VERIFIED_MIN_MATCHED && withTex > 0 && matched / withTex >= VERIFIED_MIN_RATE;
+
+const mark = (cx: Cx, id: string) => {
   cx.used.add(id);
   const s = MATHTYPE_STRUCTURES[id];
   if (!s) throw new Error("structure id lạ: " + id);
@@ -101,8 +110,11 @@ const SYM: Record<string, string> = {
   "2113": "\\ell ", "223d": "\\backsim ", "2213": "\\mp ", "2221": "\\measuredangle ", "2250": "\\doteq ", "25cb": "\\bigcirc ", "2016": "\\| ", "2216": "\\setminus ", "22c6": "\\star ", "2197": "\\nearrow ",
   "21a6": "\\mapsto ", "3f5": "\\epsilon ", "2211": "\\sum ", "222b": "\\int ", "131": "\\imath ", "b5": "\\mu ", "2a": "*", "5c": "\\backslash ", "7e": "\\sim ", "7c": "|", "21b7": "\\curvearrowright ",
 };
-/** Ký hiệu đã có ≥ 1 luồng TeX gốc khớp và 0 luồng lệch trong kho mẫu (sinh bởi mathtype-corpus.ts). Còn lại trong SYM = "chưa kiểm" (gắn cờ). */
-export const SYM_VERIFIED = new Set<string>(["2a", "2b", "3c", "3d", "3e", "5c", "7c", "7e", "b0", "b1", "d7", "2016", "2022", "2026", "2032", "2113", "2192", "21d2", "21d4", "2200", "2205", "2208", "2209", "2211", "2212", "221e", "2223", "2225", "2228", "2229", "222a", "222b", "2248", "2260", "2261", "2264", "2265", "2282", "22a5", "22c5", "22ef"]);
+/**
+ * Ký hiệu đạt ngưỡng chung (VERIFIED_MIN_MATCHED luồng, VERIFIED_MIN_RATE) trong kho mẫu — đo bằng mathtype-corpus.ts: "khớp" = cùng số lần lệnh LaTeX của ký hiệu trong KiN và trong TeX gốc.
+ * Còn lại trong SYM = "chưa kiểm" (gắn cờ → ảnh dự phòng). Hạ khỏi bản trước: ℓ(2113) 3 luồng, ∫ rời (222b) 0, | (7c) 0. Thêm: ℕ(2115) 107/107, ℝ(211d) 236/236, ℤ(2124) 270/270 (trước đây luôn coi là đã kiểm mà không có số đo).
+ */
+export const SYM_VERIFIED = new Set<string>(["2a", "2b", "3c", "3d", "3e", "5c", "7e", "b0", "b1", "d7", "2016", "2022", "2026", "2032", "2192", "21d2", "21d4", "2200", "2205", "2208", "2209", "2211", "2212", "221e", "2223", "2225", "2228", "2229", "222a", "2248", "2260", "2261", "2264", "2265", "2282", "22a5", "22c5", "22ef", "2115", "211d", "2124"]);
 const EXTRA: Record<string, string> = { "2124": "\\mathbb{Z}", "211d": "\\mathbb{R}", "2115": "\\mathbb{N}", "211a": "\\mathbb{Q}", "2102": "\\mathbb{C}" };
 const FUNCS = new Set(["sin", "cos", "tan", "cot", "sec", "csc", "log", "ln", "lg", "lim", "max", "min", "arcsin", "arccos", "arctan", "exp", "det", "gcd", "sinh", "cosh", "tanh", "mod"]);
 const LIM_NAMES = new Set(["lim", "max", "min", "sup", "inf"]);
@@ -115,10 +127,11 @@ const isLatin = (c: string) => /^[A-Za-z]$/.test(c);
 const isAccented = (c: string) => /^[À-ÖØ-öø-ɏḀ-ỿ]$/u.test(c);
 
 /** Chữ có dấu. CHỈ nhận chữ đã thấy trong công thức khớp TeX gốc; chữ Việt khác (ư, ơ, ạ, ế…) chưa có bằng chứng → thất bại, không đoán. */
-const ACCENT_VERIFIED = new Set(["e0", "ec", "f3", "ea", "fa"]); // mỗi chữ ≥ 3 luồng khớp TeX gốc, 0 luồng lệch (xem mathtype-corpus.ts)
-const ACCENT_SEEN = new Set(["e1", "ed", "f4", "e2", "f9"]);     // 1–2 luồng khớp: ra LaTeX nhưng gắn cờ
+export const ACCENT_VERIFIED = new Set(["e0", "ec", "f3", "ea"]); // đạt ngưỡng chung (VERIFIED_MIN_*): à 37/37, ì 12/12, ó 11/11, ê 6/6 luồng có TeX gốc; ú chỉ 4 → hạ (xem mathtype-corpus.ts)
+export const ACCENT_SEEN = new Set(["e1", "ed", "f4", "e2", "f9", "fa"]);     // dưới ngưỡng (ú: 4 luồng có TeX gốc; còn lại 1–2): ra LaTeX nhưng gắn cờ
 function accentedText(c: string, h: string, tf: number, cx: Cx): string {
-  if (ACCENT_VERIFIED.has(h)) { use(cx, "char:accented"); return `\\text{${c}}`; }
+  cx.syms.add("acc:" + h);
+  if (ACCENT_VERIFIED.has(h)) { mark(cx, "char:accented"); return `\\text{${c}}`; }
   if (ACCENT_SEEN.has(h)) { cx.used.add("char:accented"); cx.unv.add("char:" + h); cx.warn.add("unverified_structure"); return `\\text{${c}}`; }
   return bad(tf, c.codePointAt(0));
 }
@@ -132,11 +145,17 @@ function codeOf(n: Char): number {
 
 /** Ký hiệu/Hy Lạp theo mã Unicode, dùng chung cho mọi typeface "chữ & ký hiệu". */
 function universal(tf: number, c: string, h: string, cx: Cx): string | null {
-  if (GREEK[c]) { use(cx, "char:greek"); return "\\" + GREEK[c] + " "; }
-  if (GREEK_LATIN[c]) { use(cx, "char:greek"); return GREEK_LATIN[c]; }
-  if (EXTRA[h]) { use(cx, "char:symbol"); return EXTRA[h]; }
+  if (GREEK[c]) { mark(cx, "char:greek"); return "\\" + GREEK[c] + " "; }
+  if (GREEK_LATIN[c]) { mark(cx, "char:greek"); return GREEK_LATIN[c]; }
+  if (EXTRA[h]) {
+    cx.syms.add("sym:" + h);
+    if (SYM_VERIFIED.has(h)) mark(cx, "char:symbol");
+    else { cx.used.add("char:symbol"); cx.unv.add("char:" + h); cx.warn.add("unverified_structure"); }
+    return EXTRA[h];
+  }
   if (SYM[h] !== undefined) {
-    if (SYM_VERIFIED.has(h)) use(cx, "char:symbol");
+    cx.syms.add("sym:" + h);
+    if (SYM_VERIFIED.has(h)) mark(cx, "char:symbol");
     else { cx.used.add("char:symbol"); cx.unv.add("char:" + h); cx.warn.add("unverified_structure"); }
     return SYM[h];
   }
@@ -148,23 +167,23 @@ function ch(n: Char, cx: Cx): string {
   if (code < 0 || code > 0x10ffff) return bad(n.tf, code);
   const c = String.fromCodePoint(code), h = hex(code);
   switch (n.tf) {
-    case 8: if (/^[0-9.,]$/.test(c)) { use(cx, "char:latin"); return c; } if (c === "%") { use(cx, "char:latin"); return "\\%"; } return universal(8, c, h, cx) ?? bad(8, code);
+    case 8: if (/^[0-9.,]$/.test(c)) { mark(cx, "char:latin"); return c; } if (c === "%") { mark(cx, "char:latin"); return "\\%"; } return universal(8, c, h, cx) ?? bad(8, code);
     case 3: {
-      if (isLatin(c)) { use(cx, "char:latin"); return c; }
-      if (c === "'") { use(cx, "char:latin"); return "'"; }
+      if (isLatin(c)) { mark(cx, "char:latin"); return c; }
+      if (c === "'") { mark(cx, "char:latin"); return "'"; }
       if (isAccented(c)) return accentedText(c, h, n.tf, cx);
       return universal(3, c, h, cx) ?? bad(3, code);
     }
     case 4: case 5: return universal(n.tf, c, h, cx) ?? bad(n.tf, code);
     case 6: return universal(6, c, h, cx) ?? bad(6, code);
-    case 7: if (/^[A-Za-z0-9]$/.test(c)) { use(cx, "char:vector_font"); return `\\mathbf{${c}}`; } return bad(7, code);
+    case 7: if (/^[A-Za-z0-9]$/.test(c)) { mark(cx, "char:vector_font"); return `\\mathbf{${c}}`; } return bad(7, code);
     case 11: return universal(11, c, h, cx) ?? bad(11, code);
-    case 24: if (code >= 0xef00 && code <= 0xef0f) { use(cx, "char:space"); return "\\,"; } return bad(24, code);
+    case 24: if (code >= 0xef00 && code <= 0xef0f) { mark(cx, "char:space"); return "\\,"; } return bad(24, code);
     case 1: case 2: {
-      if (c === " " || c === " ") { use(cx, "char:latin"); return "\\ "; }
-      if (isLatin(c)) { use(cx, "char:latin"); return c; }
-      if (/^[0-9;:,.!?()/'[\]|=+<>-]$/.test(c)) { use(cx, "char:latin"); return c; }
-      if (ESC[c]) { use(cx, "char:latin"); return ESC[c]; }
+      if (c === " " || c === " ") { mark(cx, "char:latin"); return "\\ "; }
+      if (isLatin(c)) { mark(cx, "char:latin"); return c; }
+      if (/^[0-9;:,.!?()/'[\]|=+<>-]$/.test(c)) { mark(cx, "char:latin"); return c; }
+      if (ESC[c]) { mark(cx, "char:latin"); return ESC[c]; }
       if (isAccented(c)) return accentedText(c, h, n.tf, cx);
       if (c === "\u2013" || c === "\u2019") { cx.used.add("char:punct"); cx.unv.add("char:" + h); cx.warn.add("unverified_structure"); return `\\text{${c}}`; }
       return universal(n.tf, c, h, cx) ?? bad(n.tf, code);
@@ -172,8 +191,8 @@ function ch(n: Char, cx: Cx): string {
     default:
       // typeface ÂM (-1, -2: kiểu chữ người dùng định nghĩa): chỉ nhận ký hiệu có nghĩa cố định theo Unicode; chữ/số ASCII không rõ in nghiêng hay đứng → thất bại.
       if (n.tf < 0) {
-        if (c === " ") { use(cx, "char:latin"); return "\\ "; }
-        if (/^[;:,.!?()/'[\]=+<>-]$/.test(c)) { use(cx, "char:latin"); return c; }
+        if (c === " ") { mark(cx, "char:latin"); return "\\ "; }
+        if (/^[;:,.!?()/'[\]=+<>-]$/.test(c)) { mark(cx, "char:latin"); return c; }
         const u = /^[A-Za-z0-9]$/.test(c) ? null : universal(n.tf, c, h, cx);
         if (u !== null) return u;
       }
@@ -220,7 +239,7 @@ function letterRun(list: MNode[], i: number, cx: Cx): [string, number] {
     const c = String.fromCodePoint(x.mt as number); if (!isLatin(c)) { accented = true; accentedText(c, hex(x.mt), x.tf, cx); } // ném nếu chưa có bằng chứng
     w += c; j++;
   }
-  if (!accented) use(cx, "char:latin");
+  if (!accented) mark(cx, "char:latin");
   if (!accented && FUNCS.has(w) && (first.o & 2)) return [`\\${w} `, j - i];
   return [first.tf === 1 || accented ? `\\text{${w}}` : `\\mathrm{${w}}`, j - i];
 }
@@ -232,8 +251,8 @@ function embellished(n: Char, cx: Cx): { s: string; sup: boolean } {
   let s = ch(n, cx), sup = false;
   if (!n.emb.length) return { s, sup };
   for (const e of n.emb) {
-    if (EMBELL[e]) { use(cx, EMBELL[e][1]); s = `${EMBELL[e][0]}{${s}}`; }
-    else if (EMBELL_PRIME[e]) { use(cx, EMBELL_PRIME[e][1]); if (sup) return fail("double_script"); s = `${s}^{${EMBELL_PRIME[e][0]}}`; sup = true; }
+    if (EMBELL[e]) { mark(cx, EMBELL[e][1]); s = `${EMBELL[e][0]}{${s}}`; }
+    else if (EMBELL_PRIME[e]) { mark(cx, EMBELL_PRIME[e][1]); if (sup) return fail("double_script"); s = `${s}^{${EMBELL_PRIME[e][0]}}`; sup = true; }
     else return fail("embell");
   }
   return { s, sup };
@@ -262,9 +281,9 @@ function seq(list: MNode[], d: number, cx: Cx): string {
     }
     if (n.t === "TMPL" && (n.sel === 27 || n.sel === 28 || n.sel === 29)) {
       if (n.v !== 0) fail(`unsupported_template:${n.sel}.${n.v}`);
-      if (n.sel === 27) { use(cx, "script_sub"); if (n.k.length < 1) fail("corrupt"); script("sub", slot(n.k, 0, d, cx)); }
-      else if (n.sel === 28) { use(cx, "script_sup"); if (n.k.length < 2) fail("corrupt"); script("sup", slot(n.k, 1, d, cx)); }
-      else { use(cx, "script_subsup"); if (n.k.length < 2) fail("corrupt"); script("sub", slot(n.k, 0, d, cx)); script("sup", slot(n.k, 1, d, cx)); }
+      if (n.sel === 27) { mark(cx, "script_sub"); if (n.k.length < 1) fail("corrupt"); script("sub", slot(n.k, 0, d, cx)); }
+      else if (n.sel === 28) { mark(cx, "script_sup"); if (n.k.length < 2) fail("corrupt"); script("sup", slot(n.k, 1, d, cx)); }
+      else { mark(cx, "script_subsup"); if (n.k.length < 2) fail("corrupt"); script("sub", slot(n.k, 0, d, cx)); script("sup", slot(n.k, 1, d, cx)); }
       i++; continue;
     }
     if (n.t === "TMPL") { const r = tmpl(n, d, cx); atom(r.s, r.sup, r.sub, !!r.block); i++; continue; }
@@ -280,7 +299,7 @@ function pile(n: Extract<MNode, { t: "PILE" }>, d: number, cx: Cx): string {
   const al = n.ha === 1 ? "l" : n.ha === 2 ? "c" : n.ha === 3 ? "r" : null;
   if (!al) return fail("unsupported_record:4");
   if (!n.k.length) return fail("corrupt");
-  use(cx, n.ha === 1 ? "pile" : "pile_align");
+  mark(cx, n.ha === 1 ? "pile" : "pile_align");
   const rows = n.k.map((_, i) => slot(n.k, i, d, cx));
   return `\\begin{array}{${al}}${rows.join("\\\\")}\\end{array}`;
 }
@@ -290,7 +309,7 @@ function matrix(n: Extract<MNode, { t: "MATRIX" }>, d: number, cx: Cx): string {
   if (!al || n.rows < 1 || n.cols < 1) return fail("unsupported_record:5");
   if (n.rp.some(x => x !== 0) || n.cp.some(x => x !== 0)) return fail("unsupported_record:5"); // đường kẻ giữa ô: chưa hỗ trợ
   if (n.k.length !== n.rows * n.cols) return fail("corrupt");
-  use(cx, n.hj === 2 ? "matrix_right" : "matrix");
+  mark(cx, n.hj === 2 ? "matrix_right" : "matrix");
   const rows: string[] = [];
   for (let r = 0; r < n.rows; r++) {
     const cells: string[] = [];
@@ -334,7 +353,7 @@ function tmpl(n: Tmpl, d: number, cx: Cx): TR {
     let l = ".", r = ".", idx = 1;
     if (L) { if (fenceChar(k, idx++) !== known[0]) bad_t(); l = FENCE_L[known[0]]; }
     if (Rr) { if (fenceChar(k, idx++) !== known[1]) bad_t(); r = FENCE_R[known[1]]; }
-    use(cx, known[2] === "fence:other" ? "fence:other" : n.v === 3 ? known[2] : "fence:half");
+    mark(cx, known[2] === "fence:other" ? "fence:other" : n.v === 3 ? known[2] : "fence:half");
     return R(`\\left${l}${slot(k, 0, d, cx)}\\right${r}`);
   }
   switch (n.sel) {
@@ -343,27 +362,27 @@ function tmpl(n: Tmpl, d: number, cx: Cx): TR {
       const lc = fenceChar(k, 1), rc = fenceChar(k, 2);
       const lm: Record<number, string> = { 0x28: "(", 0x5b: "[" }, rm: Record<number, string> = { 0x29: ")", 0x5d: "]" };
       if (!lm[lc] || !rm[rc]) bad_t();
-      use(cx, "interval");
+      mark(cx, "interval");
       return R(`\\left${lm[lc]}${slot(k, 0, d, cx)}\\right${rm[rc]}`);
     }
     case 11:
       if (n.v !== 0 || k.length < 2) bad_t();
-      use(cx, "frac");
+      mark(cx, "frac");
       return R(`\\frac{${slot(k, 0, d, cx)}}{${slot(k, 1, d, cx)}}`);
     case 10:
-      if (n.v === 0) { if (k.length < 1 || (k[1] && !emptySlot(k, 1))) bad_t(); use(cx, "sqrt"); return R(`\\sqrt{${slot(k, 0, d, cx)}}`); }
-      if (n.v === 1) { if (k.length < 2 || emptySlot(k, 1)) bad_t(); use(cx, "root_n"); return R(`\\sqrt[${slot(k, 1, d, cx)}]{${slot(k, 0, d, cx)}}`); }
+      if (n.v === 0) { if (k.length < 1 || (k[1] && !emptySlot(k, 1))) bad_t(); mark(cx, "sqrt"); return R(`\\sqrt{${slot(k, 0, d, cx)}}`); }
+      if (n.v === 1) { if (k.length < 2 || emptySlot(k, 1)) bad_t(); mark(cx, "root_n"); return R(`\\sqrt[${slot(k, 1, d, cx)}]{${slot(k, 0, d, cx)}}`); }
       return bad_t();
     case 12: case 13:
       if (n.v !== 0 || k.length < 1) bad_t();
-      use(cx, n.sel === 12 ? "underline" : "overline");
+      mark(cx, n.sel === 12 ? "underline" : "overline");
       return R(`${n.sel === 12 ? "\\underline" : "\\overline"}{${slot(k, 0, d, cx)}}`);
     case 14: { // mũi tên có chữ trên/dưới (hoá học, "suy ra"): ô = [chữ trên, chữ dưới, ký tự mũi tên]
       if (k.length !== 3) bad_t();
       const code = fenceChar(k, 2);
       const cmd = code === 0x2192 ? "\\xrightarrow" : code === 0x2190 ? "\\xleftarrow" : bad_t();
       const top = emptySlot(k, 0) ? "" : slot(k, 0, d, cx), bottom = emptySlot(k, 1) ? "" : slot(k, 1, d, cx);
-      use(cx, "arrow_labeled");
+      mark(cx, "arrow_labeled");
       return R(`${cmd}${bottom ? `[${bottom}]` : ""}{${top}}`);
     }
     case 15: case 16: case 17: case 18: case 19: case 20: case 21: case 22: return naryOp(n, d, cx);
@@ -374,12 +393,12 @@ function tmpl(n: Tmpl, d: number, cx: Cx): TR {
       const bodyCh = lineChars(k, 0);
       const w = bodyCh && bodyCh.length && bodyCh.every(c => runLetter(c) && (c.mt as number) < 128) ? bodyCh.map(c => String.fromCharCode(c.mt as number)).join("") : "";
       if (w && LIM_NAMES.has(w)) {
-        use(cx, "limit");
+        mark(cx, "limit");
         return R(`\\${w}\\limits${low ? `_{${low}}` : ""}${up ? `^{${up}}` : ""} `, !!up, !!low, true);
       }
       // thân không phải tên giới hạn: ký tự/biểu thức có chữ ghi phía trên/dưới (mũi tên có điều kiện, mũi tên vectơ trên chữ)
       if (emptySlot(k, 0)) bad_t();
-      use(cx, "limit_over");
+      mark(cx, "limit_over");
       let s = slot(k, 0, d, cx);
       if (low) s = `\\underset{${low}}{${s}}`;
       if (up) s = `\\overset{${up}}{${s}}`;
@@ -389,8 +408,8 @@ function tmpl(n: Tmpl, d: number, cx: Cx): TR {
       if (n.v !== 0 || k.length !== 3) bad_t();
       const code = fenceChar(k, 2);
       const lab = emptySlot(k, 1) ? "" : slot(k, 1, d, cx);
-      if (code === 0xfe38) { use(cx, "hbrace"); return R(`\\underbrace{${slot(k, 0, d, cx)}}${lab ? `_{${lab}}` : ""}`, false, !!lab); }
-      if (code === 0xfe37) { use(cx, "hbrace_over"); return R(`\\overbrace{${slot(k, 0, d, cx)}}${lab ? `^{${lab}}` : ""}`, !!lab, false); }
+      if (code === 0xfe38) { mark(cx, "hbrace"); return R(`\\underbrace{${slot(k, 0, d, cx)}}${lab ? `_{${lab}}` : ""}`, false, !!lab); }
+      if (code === 0xfe37) { mark(cx, "hbrace_over"); return R(`\\overbrace{${slot(k, 0, d, cx)}}${lab ? `^{${lab}}` : ""}`, !!lab, false); }
       return bad_t();
     }
     case 31: { // vectơ. Ô: thân, ký tự mũi tên (typeface 22). 20d7 = →, 20d6 = ←, 20e1 = ↔, 20d1 = nửa mũi tên
@@ -402,21 +421,21 @@ function tmpl(n: Tmpl, d: number, cx: Cx): TR {
       else if (n.v === 3 && code === 0x20e1) cmd = "\\overleftrightarrow";
       else if (n.v === 10 && code === 0x20d1) cmd = "\\overset{\\rightharpoonup}";
       if (!cmd) bad_t();
-      use(cx, id);
+      mark(cx, id);
       return R(`${cmd}{${slot(k, 0, d, cx)}}`);
     }
     case 32: case 33: { // ~ và ^ rộng. Ô: thân, ký tự (302 = ̂ , 303 = ̃)
       if (n.v !== 0 || k.length !== 2) bad_t();
       const code = fenceChar(k, 1);
       if ((n.sel === 33 && code !== 0x302) || (n.sel === 32 && code !== 0x303)) bad_t();
-      use(cx, n.sel === 33 ? "hat" : "tilde_wide");
+      mark(cx, n.sel === 33 ? "hat" : "tilde_wide");
       const body = slot(k, 0, d, cx);
       const one = /^[A-Za-z]$/.test(body);
       return R(n.sel === 32 ? (one ? `\\tilde{${body}}` : `\\widetilde{${body}}`) : (one ? `\\hat{${body}}` : `\\widehat{${body}}`));
     }
     case 34: {
       if (n.v !== 0 || k.length !== 2 || fenceChar(k, 1) !== 0x2322) bad_t();
-      use(cx, "arc");
+      mark(cx, "arc");
       return R(`\\overset{\\frown}{${slot(k, 0, d, cx)}}`);
     }
     default: return bad_t();
@@ -442,26 +461,47 @@ function naryOp(n: Tmpl, d: number, cx: Cx): TR {
   const low = emptySlot(k, 1) ? "" : slot(k, 1, d, cx), up = emptySlot(k, 2) ? "" : slot(k, 2, d, cx);
   if ((low && !(n.v & 0x10)) || (up && !(n.v & 0x20))) bad_t();
   const over = !!(n.v & 0x40);
-  if (kind === "int") use(cx, isOp ? "integral_op" : "integral");
-  else if (kind === "int2") use(cx, "integral_multi");
-  else if (kind === "sum") use(cx, isOp ? "sum_op" : "sum");
-  else use(cx, "bigunion");
-  if (over && (low || up) && kind !== "int") use(cx, "sum_limits_style");
+  if (kind === "int") mark(cx, isOp ? "integral_op" : "integral");
+  else if (kind === "int2") mark(cx, "integral_multi");
+  else if (kind === "sum") mark(cx, isOp ? "sum_op" : "sum");
+  else mark(cx, "bigunion");
+  if (over && (low || up) && kind !== "int") mark(cx, "sum_limits_style");
   const mod = (low || up) ? (over ? "\\limits" : (kind === "int" || kind === "int2" ? "" : "\\nolimits")) : "";
   const body = isOp ? "" : slot(k, 0, d, cx);
   return R2(`${info[0]}${mod}${low ? `_{${low}}` : ""}${up ? `^{${up}}` : ""} ${body}`);
 }
 const R2 = (s: string): TR => ({ s, sup: false, sub: false, block: true });
 
-export interface EmitResult { latex: string; warnings: string[]; structures: string[]; unverified: string[] }
+/** `symbols`: ký hiệu/chữ có dấu đã dùng ("sym:<hex>" / "acc:<hex>") — chỉ để công cụ kiểm thống kê bằng chứng. */
+export interface EmitResult { latex: string; warnings: string[]; structures: string[]; unverified: string[]; symbols: string[] }
 export function emitLatex(top: MNode): EmitResult {
   if (top.t !== "LINE" && top.t !== "PILE" && top.t !== "MATRIX") fail("corrupt");
-  const cx: Cx = { warn: new Set(), used: new Set(), unv: new Set() };
+  const cx: Cx = { warn: new Set(), used: new Set(), unv: new Set(), syms: new Set() };
   const latex = top.t === "LINE" ? seq(top.k, 0, cx) : seq([top], 0, cx);
-  return { latex, warnings: [...cx.warn], structures: [...cx.used].sort(), unverified: [...cx.unv].sort() };
+  return { latex, warnings: [...cx.warn], structures: [...cx.used].sort(), unverified: [...cx.unv].sort(), symbols: [...cx.syms].sort() };
 }
 
 /** CHỈ DÙNG TRONG CÔNG CỤ KIỂM: LaTeX của một ký tự đơn (hoặc mã lỗi). */
 export function charLatexForTool(tf: number, mt: number | undefined, c8?: number): string {
-  try { const n = { t: "CHAR", o: 0, tf, mt, c8, emb: [] } as Char; return ch(n, { warn: new Set(), used: new Set(), unv: new Set() }); } catch (e) { return e instanceof MtefFail ? "FAIL:" + e.reason : "FAIL"; }
+  try { const n = { t: "CHAR", o: 0, tf, mt, c8, emb: [] } as Char; return ch(n, { warn: new Set(), used: new Set(), unv: new Set(), syms: new Set() }); } catch (e) { return e instanceof MtefFail ? "FAIL:" + e.reason : "FAIL"; }
+}
+
+/** CHỈ DÙNG TRONG CÔNG CỤ KIỂM: lệnh LaTeX mà "sym:<hex>" / "acc:<hex>" được đổi thành (để đếm số lần xuất hiện trong TeX gốc). */
+export function symbolLatexForTool(id: string): string | null {
+  const [kind, h] = id.split(":");
+  if (kind === "acc") return `\\text{${String.fromCodePoint(parseInt(h, 16))}}`;
+  return EXTRA[h] ?? SYM[h] ?? null;
+}
+
+/** CHỈ DÙNG TRONG CÔNG CỤ KIỂM: lệnh LaTeX mà bộ giải phát ra cho một ký tự Unicode (chữ Hy Lạp/ký hiệu), hoặc null nếu không phải ký hiệu có bảng. */
+export function tokenForCharForTool(ch: string): string | null {
+  const h = hex(ch.codePointAt(0));
+  if (GREEK[ch]) return "\\" + GREEK[ch];
+  if (EXTRA[h]) return EXTRA[h];
+  if (SYM[h] !== undefined) return SYM[h].trim();
+  return null;
+}
+/** CHỈ DÙNG TRONG CÔNG CỤ KIỂM: mọi lệnh LaTeX ứng viên (để suy ngược glyph nào ứng với lệnh nào). */
+export function allTokensForTool(): string[] {
+  return [...new Set([...Object.values(GREEK).map(g => "\\" + g), ...Object.values(EXTRA), ...Object.values(SYM).map(v => v.trim())])];
 }

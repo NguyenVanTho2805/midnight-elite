@@ -12,12 +12,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
-import { wmfToSvg, WMF_LIMITS } from "@/lib/mathtype/wmfSvg";
-import { FORMULA_IMG_RE, FORMULA_SVG_MAX, clipVisible, makeFormulaImgToken, sanitizeFormulaImgTokens, svgFromFormulaImgB64, validateFormulaSvg, visibleLength } from "@/lib/mathtype/formulaImg";
+import { wmfToSvg, WMF_LIMITS, WMF_MAPS_FOR_TOOL } from "@/lib/mathtype/wmfSvg";
+import { FORMULA_IMG_RE, FORMULA_SVG_MAX, FORMULA_B64_MAX, FORMULA_MAX_TOKENS_PER_FIELD, FORMULA_MAX_BYTES_PER_FIELD, formulaFieldError, plainPreview, clipVisible, makeFormulaImgToken, sanitizeFormulaImgTokens, svgFromFormulaImgB64, validateFormulaSvg, visibleLength } from "@/lib/mathtype/formulaImg";
 import { readDocx } from "@/lib/azotaDocxRead";
 import { parseAzotaBlocks } from "@/lib/azotaDocx";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
-import { validateQuizQuestion, LIMITS, type QuizQuestionInput } from "@/lib/quizQuestion";
+import { validateQuizQuestion, validateForDraft, coerceQuestionInput, LIMITS, type QuizQuestionInput } from "@/lib/quizQuestion";
 
 let pass = 0, failN = 0;
 const check = (name: string, cond: unknown, extra?: unknown) => {
@@ -35,6 +35,7 @@ const R = {
   bkMode: () => rec(0x102, u16(1), u16(0)), textAlign: () => rec(0x12e, u16(0x19), u16(0)), textColor: (r = 0, g = 0, b = 0) => rec(0x209, Buffer.from([r, g, b, 2])),
   org: (x: number, y: number) => rec(0x20b, i16(y), i16(x)), ext: (w: number, h: number) => rec(0x20c, i16(h), i16(w)), moveTo: (x: number, y: number) => rec(0x214, i16(y), i16(x)), lineTo: (x: number, y: number) => rec(0x213, i16(y), i16(x)),
   font: (h: number, face = "Times New Roman", italic = false) => rec(0x2fb, i16(h), i16(0), i16(0), i16(0), i16(400), Buffer.from([italic ? 1 : 0, 0, 0, 0, 0, 0, 0, 0]), cstr(face)),
+  fontCs: (h: number, face: string, charset: number) => rec(0x2fb, i16(h), i16(0), i16(0), i16(0), i16(400), Buffer.from([0, 0, 0, charset, 0, 0, 0, 0]), cstr(face)),
   pen: (w = 16) => rec(0x2fa, u16(0), i16(w), i16(0), Buffer.from([0, 0, 0, 2])), select: (i: number) => rec(0x12d, u16(i)), del: (i: number) => rec(0x1f0, u16(i)),
   text: (s: string, dx: number[]) => rec(0xa32, i16(0), i16(0), u16(s.length), u16(0), cstr(s), ...dx.map(i16)),
   poly: (pts: [number, number][]) => rec(0x324, i16(pts.length), ...pts.flatMap(([x, y]) => [i16(x), i16(y)])),
@@ -64,10 +65,31 @@ const GOOD = wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.t
       check("depthPt (dưới đường cơ sở) dương và nhỏ hơn chiều cao", r.depthPt > 0 && r.depthPt < r.heightPt, [r.depthPt, r.heightPt]);
       const col = wmfToSvg(wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.textColor(255, 0, 0), R.moveTo(100, 600), R.font(-400), R.select(0), R.text("a", [200])]));
       check("màu từ SetTextColor → fill=\"#ff0000\"", col.ok && col.svg.includes('fill="#ff0000"'), col);
-      const sym = wmfToSvg(wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.textColor(), R.moveTo(100, 600), R.font(-400, "Symbol"), R.select(0), R.text("pa\xb3\xa5\xd6", [200, 200, 200, 200, 200])]));
-      check("font Symbol → Unicode (π α ≥ ∞ √)", sym.ok && ["π", "α", "≥", "∞", "√"].every(c => sym.svg.includes(`>${c}<`)), sym);
-      const xe = wmfToSvg(wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.textColor(), R.moveTo(100, 600), R.font(-400, "MT Extra"), R.select(0), R.text("\xa1\xa2", [200, 200])]));
-      check("font MT Extra: a1 → ℤ, a2 → ℝ (đã đối chiếu MTEF mẫu thật)", xe.ok && xe.svg.includes(">ℤ<") && xe.svg.includes(">ℝ<"), xe);
+      const txt = (face: string, bytes: string, cs?: number) => wmfToSvg(wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.textColor(), R.moveTo(100, 600), cs === undefined ? R.font(-400, face) : R.fontCs(-400, face, cs), R.select(0), R.text(bytes, [...bytes].map(() => 200))]));
+      const sym = txt("Symbol", "pa\xb3\xa5");
+      check("font Symbol → Unicode (π α ≥ ∞)", sym.ok && ["π", "α", "≥", "∞"].every(c => sym.svg.includes(`>${c}<`)), sym);
+      // ── Đối chiếu kho mẫu thật (tools/local-e2e/mathtype-glyphs.ts, ~372.000 cặp WMF/OLE; chỉ ghi SỐ ĐẾM, không nội dung đề) ──
+      const xe = txt("MT Extra", "\xa1\xa2\xa4\xa5");
+      check("MT Extra: a1 → ℝ (2833/2834 luồng), a2 → ℤ (2141/2141), a4 → ℚ, a5 → ℕ — SỬA bản cũ đảo ℤ/ℝ", xe.ok && xe.svg.includes(">ℝℤℚℕ<") || (xe.ok && ["ℝ", "ℤ", "ℚ", "ℕ"].every(c => xe.svg.includes(c)) && xe.svg.indexOf("ℝ") < xe.svg.indexOf("ℤ")), xe);
+      const eu = txt("Euclid Extra", "\xa1\xa2");
+      check("Euclid Extra cùng bảng: a1 → ℝ (202/203), a2 → ℤ (191/192)", eu.ok && eu.svg.indexOf("ℝ") > 0 && eu.svg.indexOf("ℝ") < eu.svg.indexOf("ℤ"), eu);
+      const phi = txt("Symbol", "fj");
+      check("Symbol 0x66 → ϕ (U+03D5, 8/8) và 0x6a → φ (U+03C6, 488/488) — SỬA bản cũ đảo hai chữ phi", phi.ok && phi.svg.indexOf("\u03d5") > 0 && phi.svg.indexOf("\u03d5") < phi.svg.indexOf("\u03c6"), phi);
+      check("TNR charset ANSI: 0xE0 → à (131/131), 0xF3 → ó (41/41), 0xA0 → NBSP", (() => { const r = txt("Times New Roman", "\xe0\xf3", 0); return r.ok && r.svg.includes("à") && r.svg.includes("ó"); })());
+      const why = (r: ReturnType<typeof wmfToSvg>) => (r.ok ? "OK" : r.reason);
+      check("PHÁ: TNR charset Hy Lạp (161) byte 0xC4 → thất bại (bản cũ vẽ Ä; MathType ghi Δ)", why(txt("Times New Roman", "\xc4", 161)) === "char:Times New Roman:c4");
+      check("PHÁ: TNR charset Đông Âu (238) byte 0xF0 → thất bại (bản cũ vẽ ð; thật là π/đ tuỳ bảng mã)", why(txt("Times New Roman", "\xf0", 238)) === "char:Times New Roman:f0");
+      check("PHÁ: TNR ANSI byte không có bằng chứng (0xE3 ã chỉ 1 luồng, 0xB0 ° 6/7, 0x88 ˆ 0/6) → thất bại", ["\xe3", "\xb0", "\x88"].every(b => why(txt("Times New Roman", b, 0)).startsWith("char:")));
+      check("PHÁ: font Latin khác (Arial) byte ≥ 0x80 → thất bại (không có bằng chứng ngoài Times New Roman)", why(txt("Arial", "\xe0", 0)).startsWith("char:") && why(txt("Cambria Math", "\xb4", 0)).startsWith("char:"));
+      check("PHÁ: Symbol 0xD6 (√ — không có ca khớp), 0xBE (0/249 luồng), 0x40 ≅ (3 ca), 0xA4 ⁄ (3 ca) → thất bại", ["\xd6", "\xbe", "@", "\xa4"].every(b => why(txt("Symbol", b)).startsWith("char:")));
+      check("PHÁ: MT Extra 0xB6 (mũ rộng 21/31 = 68%) và Euclid Extra 0xBC (cung ⌢ chỉ 3 luồng) → thất bại, không vẽ đoán", why(txt("MT Extra", "\xb6")).startsWith("char:") && why(txt("Euclid Extra", "\xbc")).startsWith("char:"));
+      check("PHÁ: VNI-Times 0xF1 (bản cũ đoán đ; MathType tự ghi ñ — 0/29 luồng) → thất bại", why(txt("VNI-Times", "\xf1", 0)).startsWith("char:"));
+      check("Euclid Math One 0xD0 → ↷ (7/7), KHÔNG còn vẽ cung ⌢", (() => { const r = txt("Euclid Math One", "\xd0"); return r.ok && r.svg.includes("↷") && !r.svg.includes("<path"); })());
+      check("MT Extra 0xB7 (mũ rộng 3774/3780) vẫn vẽ được (đặt trên chữ A)", (() => { const r = wmfToSvg(wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.textColor(), R.moveTo(100, 600), R.font(-400), R.font(-400, "MT Extra"), R.select(0), R.text("A", [300]), R.moveTo(100, 300), R.select(1), R.text("\xb7", [300])])); return r.ok && /<path /.test(r.svg); })());
+      const ev = WMF_MAPS_FOR_TOOL;
+      const allEv = [...Object.values(ev.SYMBOL_EVIDENCE), ...Object.values(ev.MTEXTRA_EVIDENCE), ...Object.values(ev.EUCLID_EXTRA_EVIDENCE), ...Object.values(ev.EUCLID_MATH_ONE_EVIDENCE), ...Object.values(ev.ACCENT_HAT_EVIDENCE), ...Object.values(ev.TNR_ANSI_EVIDENCE)];
+      check(`mọi ánh xạ glyph còn lại (${allEv.length}) có >= 5 luồng khớp và tỉ lệ >= 98% theo số liệu ghi kèm`, allEv.every(([, m, t]) => m >= 5 && m / t >= 0.98), allEv.filter(([, m, t]) => !(m >= 5 && m / t >= 0.98)));
+      check("bảng đang dùng khớp bảng bằng chứng (ℝ ở a1, ℤ ở a2 cho cả MT Extra lẫn Euclid Extra)", ev.MTEXTRA[0xa1] === "ℝ" && ev.MTEXTRA[0xa2] === "ℤ" && ev.EUCLID_EXTRA[0xa1] === "ℝ" && ev.EUCLID_EXTRA[0xa2] === "ℤ");
       const lines = wmfToSvg(wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.pen(16), R.select(0), R.moveTo(100, 500), R.lineTo(900, 500), R.lineTo(900, 700)]));
       check("MoveTo/LineTo → một <path> M…L…L…, bề dày nét 16", lines.ok && /<path d="M100 500L900 500L900 700"[^>]*stroke-width="16"/.test(lines.svg), lines);
       const poly = wmfToSvg(wmf([R.bkMode(), R.org(0, 0), R.ext(2000, 1000), R.pen(16), R.select(0), R.poly([[100, 100], [300, 100], [200, 300]])]));
@@ -184,6 +206,51 @@ const GOOD = wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.t
     check("quizQuestion: đề có 400 token vẫn bị từ chối khi vượt LIMITS.text tính theo ký tự hiển thị (token đếm 1)", validateQuizQuestion(q(big(400) + "y".repeat(LIMITS.text), "a")) !== null);
   }
 
+  // ═════════════════════════════════════════════════════════════════════════════════
+  section("formulaImg) PHÁ giới hạn: token lỏng khổng lồ, nhồi hàng nghìn token, token sai danh sách trắng — mọi đường qua coerceQuestionInput");
+  {
+    const okSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="10pt" height="10pt" viewBox="0 0 10 10"><text y="5" font-size="4"><tspan x="1">a</tspan></text></svg>';
+    const tok = makeFormulaImgToken(okSvg)!;
+    const forge = (svg: string) => `{{ctimg:${Buffer.from(svg).toString("base64")}}}`;
+    const loose5 = "{{ctimg:" + "A".repeat(5 * 1024 * 1024) + "}}";
+    check("visibleLength: token LỎNG 5 MB đếm đủ độ dài thật (trước đây đếm 1 ký tự)", visibleLength(loose5) === loose5.length);
+    const justOver = "{{ctimg:" + "A".repeat(FORMULA_B64_MAX + 1) + "}}";
+    check(`visibleLength: base64 dài ${FORMULA_B64_MAX + 1} (vượt trần ${FORMULA_B64_MAX}) đếm đủ độ dài; đúng trần vẫn đếm 1`, visibleLength(justOver) === justOver.length && visibleLength("{{ctimg:" + "A".repeat(FORMULA_B64_MAX) + "}}") === 1);
+    check("visibleLength: token có ký tự ngoài danh sách base64 (khoảng trắng, !) đếm đủ độ dài", visibleLength("{{ctimg:A B}}") === 13 && visibleLength("{{ctimg:A!B}}") === 13);
+    check("clipVisible: token lỏng khổng lồ bị cắt như chữ thường (không giữ nguyên 5 MB)", clipVisible(loose5, 100).length === 100);
+    const t0 = Date.now();
+    const s5 = sanitizeFormulaImgTokens("a " + loose5 + " b");
+    check(`sanitize: token lỏng 5 MB → đúng một nhãn, chữ xung quanh còn, nhanh (${Date.now() - t0} ms < 1500)`, s5 === `a ${FORMULA_PLACEHOLDER} b` && Date.now() - t0 < 1500);
+    const many = Array.from({ length: 10_000 }, () => tok).join("");
+    const t1 = Date.now();
+    const sMany = sanitizeFormulaImgTokens(many);
+    const kept = (sMany.match(new RegExp(FORMULA_IMG_RE.source, "g")) ?? []).length;
+    check(`sanitize: 10.000 token hợp lệ → chỉ giữ ${FORMULA_MAX_TOKENS_PER_FIELD}, phần dư thành nhãn (${Date.now() - t1} ms)`, kept === FORMULA_MAX_TOKENS_PER_FIELD && (sMany.match(/⟦công thức⟧/g) ?? []).length === 10_000 - FORMULA_MAX_TOKENS_PER_FIELD && Date.now() - t1 < 1500);
+    check(`sanitize: đúng ${FORMULA_MAX_TOKENS_PER_FIELD} token giữ nguyên; ${FORMULA_MAX_TOKENS_PER_FIELD + 1} → token cuối thành nhãn`, sanitizeFormulaImgTokens(tok.repeat(FORMULA_MAX_TOKENS_PER_FIELD)) === tok.repeat(FORMULA_MAX_TOKENS_PER_FIELD) && sanitizeFormulaImgTokens(tok.repeat(FORMULA_MAX_TOKENS_PER_FIELD + 1)) === tok.repeat(FORMULA_MAX_TOKENS_PER_FIELD) + FORMULA_PLACEHOLDER);
+    check("sanitize: 10.000 mở '{{ctimg:' không đóng → tuyến tính, không treo, giữ nguyên chữ", (() => { const x = "{{ctimg:".repeat(10_000); const t = Date.now(); const o = sanitizeFormulaImgTokens(x); return o === x && Date.now() - t < 1500; })());
+    check("formulaFieldError: > 20 token → lỗi tiếng Việt; ≤ 20 → null; chữ không token → null", formulaFieldError(tok.repeat(21), "Nội dung")?.includes("quá nhiều ảnh công thức") === true && formulaFieldError(tok.repeat(20), "Nội dung") === null && formulaFieldError("x".repeat(500_000), "Nội dung") === null);
+    check(`formulaFieldError: cỡ thật > ${FORMULA_MAX_BYTES_PER_FIELD / 1024} KB (20 token + chữ) → từ chối`, formulaFieldError("{{ctimg:" + "A".repeat(FORMULA_B64_MAX) + "}}" .repeat(1) + "y".repeat(FORMULA_MAX_BYTES_PER_FIELD), "Nội dung")?.includes("quá nặng") === true);
+    check("plainPreview: token → '[ảnh công thức]', không lòi base64, không cắt giữa token", (() => { const t = "ab " + tok + " cd"; const o = plainPreview(t, 8); return !o.includes("ctimg") && !o.includes("PHN2Zy") && plainPreview(loose5, 30).length <= 31; })());
+
+    // coerceQuestionInput = cổng DUY NHẤT: mọi trường chữ đều được làm sạch
+    const evil = forge(okSvg.replace("<svg ", '<svg onload="alert(1)" '));
+    const raw = { type: "MC", text: `Câu ${evil} ${loose5}`, points: 1, explanation: `giải ${evil}`, hint: `gợi ý ${evil}`, sectionLabel: `phần ${evil}`, options: [{ text: `A ${evil}`, isCorrect: true }, { text: `B ${loose5}`, isCorrect: false }] };
+    const c = coerceQuestionInput(raw);
+    const flat = "error" in c ? "" : JSON.stringify(c);
+    check("coerceQuestionInput: token sai danh sách trắng + token lỏng 5 MB ở text/explanation/hint/sectionLabel/options → toàn nhãn, không còn 'ctimg'", !("error" in c) && !flat.includes("ctimg") && flat.length < 2000 && c.text.includes(FORMULA_PLACEHOLDER) && c.options.every(o => o.text.includes(FORMULA_PLACEHOLDER)), flat.slice(0, 200));
+    const cEssay = coerceQuestionInput({ type: "ESSAY", text: "Tự luận", points: 4, studentGuide: evil, graderGuide: evil, rubric: [{ name: "Ý 1", requirement: "yêu cầu", points: 4 }], options: [] });
+    check("coerceQuestionInput: studentGuide/graderGuide cũng được làm sạch (rubric ≤ 100/300 ký tự nên không thể chứa token hợp lệ)", !("error" in cEssay) && !JSON.stringify(cEssay).includes("ctimg"), JSON.stringify(cEssay).slice(0, 200));
+    const cUrl = coerceQuestionInput({ type: "MC", text: "q", points: 1, imageUrl: `https://x.test/${tok}`, options: [{ text: "a", isCorrect: true }, { text: "b", isCorrect: false }] });
+    check("coerceQuestionInput: imageUrl chứa { } (token) bị bỏ", !("error" in cUrl) && cUrl.imageUrl === null);
+    // validate: nhồi token hợp lệ qua đường KHÔNG sanitize trước (ví dụ gọi thẳng validate) vẫn bị chặn
+    const stuffed: QuizQuestionInput = { type: "MC", text: "Câu " + tok.repeat(21), points: 1, options: [{ text: "a", isCorrect: true }, { text: "b", isCorrect: false }] } as QuizQuestionInput;
+    check("validateQuizQuestion / validateForDraft: > 20 token ở nội dung → từ chối bằng tiếng Việt", /ảnh công thức/.test(validateQuizQuestion(stuffed) ?? "") && /ảnh công thức/.test(validateForDraft(stuffed) ?? ""));
+    const stuffedOpt: QuizQuestionInput = { ...stuffed, text: "Câu", options: [{ text: tok.repeat(21), isCorrect: true }, { text: "b", isCorrect: false }] } as QuizQuestionInput;
+    check("validateQuizQuestion: 21 token ở MỘT đáp án → từ chối", /ảnh công thức/.test(validateQuizQuestion(stuffedOpt) ?? ""));
+    const bigLoose: QuizQuestionInput = { ...stuffed, text: loose5, options: [{ text: "a", isCorrect: true }, { text: "b", isCorrect: false }] } as QuizQuestionInput;
+    check("validateQuizQuestion: nội dung chỉ là token lỏng 5 MB → vượt giới hạn ký tự (không còn lọt)", validateQuizQuestion(bigLoose)?.includes("quá dài") === true && validateForDraft(bigLoose)?.includes("quá dài") === true);
+  }
+
   // ═════════════════════════════════════════════════════════════════════════════════════
   section("readDocx) đường dự phòng bằng docx tự dựng: bộ giải hỏng → ảnh WMF; ảnh cũng hỏng → nhãn + chặn");
   const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"';
@@ -253,7 +320,9 @@ const GOOD = wmf([R.bkMode(), R.textAlign(), R.org(0, 0), R.ext(2000, 1000), R.t
       let ok = 0; const why: Record<string, number> = {};
       for (const n of names) { const r = wmfToSvg(await z.files[n].async("nodebuffer")); if (r.ok) ok++; else why[r.reason] = (why[r.reason] ?? 0) + 1; }
       console.log(`  → (thông tin) ${f}: vẽ được ${ok}/${names.length}; thất bại theo lý do: ${JSON.stringify(why)}`);
-      check(`${f}: vẽ được ${ok}/${names.length} ảnh (kể cả mũ/cung kéo giãn, ước lượng theo chữ bên dưới)`, ok === names.length, why);
+      // Các mã bị CỐ Ý từ chối sau đợt đối chiếu kho mẫu (không đủ bằng chứng): ảnh chứa chúng thất bại thay vì vẽ đoán.
+      const DELIBERATE = new Set(["char:Times New Roman:f0", "char:MT Extra:b6", "char:VNI-Times:f1", "char:Euclid Extra:bc"]);
+      check(`${f}: vẽ được ${ok}/${names.length} ảnh; mọi ảnh thất bại đều do mã CỐ Ý từ chối (thiếu bằng chứng), tối đa 6`, names.length - ok <= 6 && Object.keys(why).every(k => DELIBERATE.has(k)), why);
     }
 
     section("Mẫu thật: TẮT BỘ GIẢI (phá mọi .bin) → 22 câu vẫn đọc được, mọi công thức hiện bằng ảnh");

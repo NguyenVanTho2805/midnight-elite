@@ -339,8 +339,8 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[length:var(--kin-co-goc)]">
         <span className="text-[var(--kin-chu-phu)]">Đáp án: <b className="font-medium">{answerText}</b> · nguồn: {ANSWER_SOURCE_LABEL[q.answerSource]}</span>
-        {q.flags.map(f => <KinStatus key={f} tone={FLAG_TEXT[f].tone}>{FLAG_TEXT[f].text}</KinStatus>)}
-        {q.flags.includes("answer_conflict") && it.answerTouched && <KinStatus tone="xong">Cô đã chọn đáp án</KinStatus>}
+        {q.flags.map(f => <KinStatus key={f} tone={FLAG_TEXT[f].tone} className="max-w-full whitespace-normal!">{FLAG_TEXT[f].text}</KinStatus>)}
+        {q.flags.includes("answer_conflict") && it.answerTouched && <KinStatus tone="xong" className="max-w-full whitespace-normal!">Cô đã chọn đáp án</KinStatus>}
       </div>
       <KinGuesses it={it} patch={patch} />
       {reason && it.include && <p role="alert" className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{reason}</p>}

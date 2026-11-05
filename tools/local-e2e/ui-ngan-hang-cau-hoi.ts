@@ -256,7 +256,7 @@ const FAKE_PARSE = {
   check("390px: bảng ma trận là vùng cuộn ngang có nhãn (tabindex=0)", (await mp.getByRole("region", { name: /Bảng số câu theo chương và mức/ }).getAttribute("tabindex")) === "0");
   await mp.getByRole("button", { name: /^Chọn nút/ }).click();
   await mp.getByRole("tree").waitFor({ timeout: 15000 });
-  check("mở ngăn 'Chọn nút': cây hiện, không tràn ngang, nút cao ≥44px", await mp.getByRole("tree").isVisible() && await noOverflow(mp) && (await smallTargets(mp)).length === 0, await smallTargets(mp));
+  check("mở ngăn 'Chọn nút': cây hiện, không tràn ngang, nút cao ≥44px", await mp.getByRole("tree").isVisible() && await noOverflow(mp) && (await smallTargets(mp)).length === 0, [await smallTargets(mp), await mp.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth, off: [...document.querySelectorAll<HTMLElement>("body *")].filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest("nextjs-portal")).slice(0, 6).map(e => e.tagName + "." + String(e.className).slice(0, 60) + " r=" + Math.round(e.getBoundingClientRect().right) + " w=" + Math.round(e.getBoundingClientRect().width)) }))]);
   await mp.getByRole("tree").getByRole("button", { name: /^Chương 1 Hàm số/ }).first().click();
   check("chọn nút xong ngăn tự đóng, tiêu đề nút hiện", !(await mp.getByRole("tree").isVisible()) && await mp.getByRole("heading", { name: "Chương 1 Hàm số" }).first().isVisible());
   await shot(mp, "ngan-hang-cau-hoi-390");
@@ -264,7 +264,7 @@ const FAKE_PARSE = {
   await mp.route("**/api/tutor/ngan-hang/nhap-word", r => r.fulfill({ json: FAKE_PARSE }));
   await mp.goto(`${BASE}${NH}/nhap-word?nut=${ch1.id}`, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByRole("heading", { name: "Nhập câu hỏi từ Word", level: 1 }).waitFor({ timeout: 90000 });
-  check("390px nhập Word bước 1: không tràn ngang; nút ≥44px", await noOverflow(mp) && (await smallTargets(mp)).length === 0, await smallTargets(mp));
+  check("390px nhập Word bước 1: không tràn ngang; nút ≥44px", await noOverflow(mp) && (await smallTargets(mp)).length === 0, [await smallTargets(mp), await mp.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth, off: [...document.querySelectorAll<HTMLElement>("body *")].filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest("nextjs-portal")).slice(0, 6).map(e => e.tagName + "." + String(e.className).slice(0, 60) + " r=" + Math.round(e.getBoundingClientRect().right) + " w=" + Math.round(e.getBoundingClientRect().width)) }))]);
   await mp.locator('input[type="file"][accept=".docx"]').setInputFiles(join(dir, "De_Toan12.docx"));
   await mp.getByRole("button", { name: "Đọc tệp và xem lại" }).click();
   await mp.getByText("5 câu đã đọc").waitFor({ timeout: 60000 });
@@ -293,7 +293,7 @@ const FAKE_PARSE = {
   check("ô sửa hiện chip '[ảnh công thức 1]', không dán base64", (await irow.getByLabel("Nội dung câu 1").inputValue()).includes("[ảnh công thức 1]") && !(await irow.getByLabel("Nội dung câu 1").inputValue()).includes("ctimg"));
   await irow.getByRole("button", { name: "Dùng công thức KiN đọc" }).click();
   check("bấm dùng: ảnh được thay bằng $LaTeX$, vẽ KaTeX", (await irow.getByLabel("Nội dung câu 1").inputValue()).includes("$\\frac{1}{2}$") && await irow.locator(".katex").count() > 0 && await irow.locator('img[alt="công thức (ảnh)"]').count() === 0);
-  check("390px công thức ảnh: không tràn ngang; nút ≥44px", await noOverflow(mp) && (await smallTargets(mp)).length === 0, await smallTargets(mp));
+  check("390px công thức ảnh: không tràn ngang; nút ≥44px", await noOverflow(mp) && (await smallTargets(mp)).length === 0, [await smallTargets(mp), await mp.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth, off: [...document.querySelectorAll<HTMLElement>("body *")].filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest("nextjs-portal")).slice(0, 6).map(e => e.tagName + "." + String(e.className).slice(0, 60) + " r=" + Math.round(e.getBoundingClientRect().right) + " w=" + Math.round(e.getBoundingClientRect().width)) }))]);
 
   check("không lỗi JS / console.error trong toàn bài (đã lọc lỗi script chủ đề có sẵn của React 19)", errors.length === 0, errors.slice(0, 5));
   await closeAll();

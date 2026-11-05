@@ -8,7 +8,6 @@ import { initialStatusFor } from "@/lib/questionBankWorkflow";
 import type { AdminRole } from "@/lib/permissions";
 import { rollupChapterLevel, type ChapterRow, type StatNode } from "@/lib/deThiTree";
 import { coerceQuestionInput, validateQuizQuestion, type QuizQuestionInput } from "@/lib/quizQuestion";
-import { sanitizeFormulaImgTokens } from "@/lib/mathtype/formulaImg";
 
 export type BankScope = "mine" | "shared" | "all";
 export const BANK_SCOPES: readonly BankScope[] = ["mine", "shared", "all"];
@@ -46,21 +45,11 @@ export type SaveManyOutcome =
   | { ok: false; status: 400 | 404; code?: string; error: string };
 
 /** Một câu thô từ thân yêu cầu → câu hợp lệ + độ khó + (tuỳ chọn) nút riêng. Hỏng → null. */
-/** Token ảnh công thức `{{ctimg:…}}` từ máy khách KHÔNG được tin: mỗi token phải là SVG do KiN sinh (validateFormulaSvg), nếu không bị đổi thành nhãn ⟦công thức⟧ (câu bị chặn phát hành). */
-function sanitizeTokens(raw: unknown): unknown {
-  if (!raw || typeof raw !== "object") return raw;
-  const r = { ...(raw as Record<string, unknown>) };
-  for (const k of ["text", "explanation", "hint", "studentGuide", "graderGuide"]) if (typeof r[k] === "string") r[k] = sanitizeFormulaImgTokens(r[k] as string);
-  if (Array.isArray(r.options)) r.options = r.options.map(o => (o && typeof o === "object" && typeof (o as { text?: unknown }).text === "string" ? { ...(o as object), text: sanitizeFormulaImgTokens((o as { text: string }).text) } : o));
-  return r;
-}
-
 function readItem(rawIn: unknown, defaultDifficulty: Difficulty | null): { q: QuizQuestionInput; difficulty: Difficulty; categoryId: string | null } | null {
-  const raw = sanitizeTokens(rawIn);
-  const q = coerceQuestionInput(raw);
+  const q = coerceQuestionInput(rawIn); // đã làm sạch token ảnh công thức bên trong coerceQuestionInput
   if ("error" in q) return null;
   if (validateQuizQuestion(q)) return null; // vào ngân hàng phải đủ đáp án: câu thiếu/mâu thuẫn đáp án ở lại màn xem lại, không vào kho
-  const r = (raw ?? {}) as Record<string, unknown>;
+  const r = (rawIn ?? {}) as Record<string, unknown>;
   const dRaw = typeof r.difficulty === "string" ? r.difficulty.trim().toUpperCase() : "";
   const difficulty = (DIFFICULTIES as readonly string[]).includes(dRaw) ? (dRaw as Difficulty) : defaultDifficulty;
   if (!difficulty) return null; // KHÔNG đoán mức

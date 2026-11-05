@@ -1,4 +1,5 @@
 import { normalizeHint } from "@/lib/examCorrection";
+import { sanitizeFormulaImgTokens as sanFormula } from "@/lib/mathtype/formulaImg";
 import { blockOldEditIfLocked } from "@/lib/quizServer";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -54,18 +55,18 @@ export async function PUT(
         where: { id: qid, examId }, // QZ-07: câu phải thuộc đúng đề trong đường dẫn
         data: {
           type: questionType,
-          text: text.trim(),
+          text: sanFormula(text.trim()),
           imageUrl: imageUrl?.trim() || null,
           points: typeof points === "number" && points > 0 ? points : 1,
-          explanation: explanation?.trim() || null,
-          hint: hintN.value,
+          explanation: explanation?.trim() ? sanFormula(explanation.trim()) : null,
+          hint: hintN.value == null ? hintN.value : sanFormula(hintN.value),
           sectionLabel: sectionLabel?.trim() || null,
           sectionMinutes: sectionMinutes ?? null,
           options: {
             create: (options ?? []).map((o, idx) => ({
               id: `eo-${crypto.randomUUID()}`,
               order: idx,
-              text: o.text.trim(),
+              text: sanFormula(o.text.trim()),
               isCorrect: !!o.isCorrect,
               subLabel: o.subLabel ?? null,
             })),

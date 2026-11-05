@@ -19,6 +19,7 @@ import { isQuizType, type QuizQuestionInput } from "@/lib/quizQuestion";
 import { VARIANT_STUDENT_SUPPORT } from "@/lib/deThiAssign";
 import { QUIZ_CATEGORY, dmyFromKey, durationText, loadOwnedQuiz, loadQuestions, logChange, newExamCode, newExamId, questionCreateData, statusOf, supersededBlock, syncQuizTotals, todayKeyVN, toSnap, type OwnedQuiz } from "@/lib/quizServer";
 import { isNextResponse } from "@/lib/auth-guard";
+import { clipVisible, visibleLength } from "@/lib/mathtype/formulaImg"; // không cắt giữa token ảnh công thức
 
 export type Fail = { ok: false; status: number; error: string; code?: string; extra?: Record<string, unknown> };
 export type Outcome<T extends object> = ({ ok: true } & T) | Fail;
@@ -97,7 +98,7 @@ export interface ItemPreview { id: string; text: string; type: string; difficult
 async function previews(ids: readonly string[]): Promise<Map<string, ItemPreview>> {
   if (ids.length === 0) return new Map();
   const items = await prisma.questionBankItem.findMany({ where: { id: { in: [...ids] } }, select: { id: true, text: true, type: true, difficulty: true, categoryId: true, imageUrl: true } });
-  return new Map(items.map(i => [i.id, { id: i.id, text: i.text.length > PREVIEW_CHARS ? i.text.slice(0, PREVIEW_CHARS) + "…" : i.text, type: i.type, difficulty: i.difficulty, categoryId: i.categoryId, hasImage: !!i.imageUrl }]));
+  return new Map(items.map(i => [i.id, { id: i.id, text: clipVisible(i.text, PREVIEW_CHARS) + (visibleLength(i.text) > PREVIEW_CHARS ? "…" : ""), type: i.type, difficulty: i.difficulty, categoryId: i.categoryId, hasImage: !!i.imageUrl }]));
 }
 
 const strList = (v: unknown, max = 500): string[] | null => (v == null ? [] : Array.isArray(v) && v.length <= max && v.every(x => typeof x === "string") ? (v as string[]) : null);

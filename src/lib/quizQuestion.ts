@@ -2,7 +2,7 @@
 // Hai dạng mới so với bài tập web cũ: "MC_MULTI" (nhiều đáp án đúng, chấm đủ-hoặc-không) và "ESSAY" có tiêu chí chấm (rubric) + hướng dẫn.
 // Các dạng cũ (MC, TRUE_FALSE_CLUSTER, SHORT_ANSWER) giữ đúng luật của validateQuestionOptions để đề cũ và trang /admin/thi-thu không đổi.
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
-import { visibleLength } from "@/lib/mathtype/formulaImg"; // token ảnh công thức {{ctimg:…}} đếm 1 ký tự (BU-03-MATHTYPE)
+import { visibleLength, sanitizeFormulaImgTokens, formulaFieldError } from "@/lib/mathtype/formulaImg"; // token ảnh công thức {{ctimg:…}} khớp chặt đếm 1 ký tự (BU-03-MATHTYPE)
 
 export type QuizQuestionType = "MC" | "MC_MULTI" | "ESSAY" | "TRUE_FALSE_CLUSTER" | "SHORT_ANSWER";
 export const QUIZ_QUESTION_TYPES: readonly QuizQuestionType[] = ["MC", "MC_MULTI", "ESSAY", "TRUE_FALSE_CLUSTER", "SHORT_ANSWER"];
@@ -75,6 +75,14 @@ export function normalizeRubric(raw: unknown): { ok: true; rows: RubricRow[] } |
 
 function fmt(n: number): string { return String(round2(n)).replace(".", ","); }
 
+/** Trần token ảnh công thức + trần cỡ thật cho TỪNG trường chữ của câu (nội dung, ghi chú, từng lựa chọn). */
+function formulaFieldsError(q: QuizQuestionInput): string | null {
+  const fields: [string, string | null | undefined][] = [["Nội dung câu hỏi", q.text], ["Giải thích", q.explanation], ["Gợi ý", q.hint], ["Hướng dẫn cho học sinh", q.studentGuide], ["Hướng dẫn chấm", q.graderGuide]];
+  for (const [label, v] of fields) if (typeof v === "string") { const e = formulaFieldError(v, label); if (e) return e; }
+  for (const o of Array.isArray(q.options) ? q.options : []) if (typeof o?.text === "string") { const e = formulaFieldError(o.text, "Lựa chọn"); if (e) return e; }
+  return null;
+}
+
 /** Kiểm một câu. Trả chuỗi lỗi đầu tiên (tiếng Việt, nói rõ sửa gì) hoặc null nếu hợp lệ. Luật chạy ở MÁY CHỦ — trình soạn chỉ dùng lại để báo sớm. */
 export function validateQuizQuestion(q: QuizQuestionInput): string | null {
   if (!isQuizType(q.type)) return "Loại câu hỏi không hợp lệ";
@@ -84,6 +92,8 @@ export function validateQuizQuestion(q: QuizQuestionInput): string | null {
   for (const [label, v] of [["Giải thích", q.explanation], ["Hướng dẫn cho học sinh", q.studentGuide], ["Hướng dẫn chấm", q.graderGuide], ["Gợi ý", q.hint]] as const) {
     if (v != null && (typeof v !== "string" || visibleLength(v) > LIMITS.note)) return `${label} quá dài (tối đa ${LIMITS.note} ký tự)`;
   }
+  const fe = formulaFieldsError(q);
+  if (fe) return fe;
   const options = Array.isArray(q.options) ? q.options : [];
   if (options.length > LIMITS.maxOptions) return `Tối đa ${LIMITS.maxOptions} lựa chọn`;
   if (options.some(o => typeof o?.text !== "string" || visibleLength(o.text) > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
@@ -133,6 +143,9 @@ export { fmt as fmtPoints };
 // ── Đọc dữ liệu không tin cậy (thân yêu cầu của API) ─────────────────────────────────────────────
 function str(v: unknown): string | null { return typeof v === "string" ? v : null; }
 function optStr(v: unknown): string | null { const s = str(v); return s && s.trim() ? s.trim() : null; }
+/** Token ảnh công thức từ máy khách KHÔNG được tin: đây là CỔNG DUY NHẤT mọi đường lưu câu hỏi đi qua, nên làm sạch ở đây (token hỏng/độc/quá dài/vượt trần → ⟦công thức⟧). */
+const san = (s: string): string => sanitizeFormulaImgTokens(s);
+const sanOpt = (s: string | null): string | null => (s == null ? s : san(s));
 
 /** Biến thân yêu cầu thành QuizQuestionInput (chưa kiểm hợp lệ — gọi validateQuizQuestion / validateForDraft sau). Trường lạ bị bỏ. */
 export function coerceQuestionInput(raw: unknown): QuizQuestionInput | { error: string } {
@@ -146,26 +159,26 @@ export function coerceQuestionInput(raw: unknown): QuizQuestionInput | { error: 
     if (!o || typeof o !== "object") return { error: "Có lựa chọn không đọc được" };
     const oo = o as Record<string, unknown>;
     const sub = typeof oo.subLabel === "string" && ["a", "b", "c", "d"].includes(oo.subLabel) ? oo.subLabel : null;
-    options.push({ text: typeof oo.text === "string" ? oo.text : "", isCorrect: oo.isCorrect === true, subLabel: sub });
+    options.push({ text: typeof oo.text === "string" ? san(oo.text) : "", isCorrect: oo.isCorrect === true, subLabel: sub });
   }
   let rubric: RubricRow[] | null = null;
   if (r.type === "ESSAY" && r.rubric != null) {
     const n = normalizeRubric(r.rubric);
     if (!n.ok) return { error: n.error };
-    rubric = n.rows.length ? n.rows : null;
+    rubric = n.rows.length ? n.rows.map(row => ({ ...row, name: san(row.name), requirement: san(row.requirement) })) : null;
   }
   return {
     type: r.type,
-    text: typeof r.text === "string" ? r.text.trim() : "",
+    text: typeof r.text === "string" ? san(r.text.trim()) : "",
     points: Number.isFinite(pts) ? round2(pts) : NaN,
-    imageUrl: ((u) => (u && /^https:\/\/[^\s]+$/.test(u) ? u : null))(optStr(r.imageUrl)), // chỉ nhận địa chỉ https (ảnh đề cắt từ tệp được tải lên Cloudinary)
-    explanation: optStr(r.explanation),
-    hint: optStr(r.hint),
+    imageUrl: ((u) => (u && /^https:\/\/[^\s{}]+$/.test(u) ? u : null))(optStr(r.imageUrl)), // chỉ nhận địa chỉ https (ảnh đề cắt từ tệp được tải lên Cloudinary)
+    explanation: sanOpt(optStr(r.explanation)),
+    hint: sanOpt(optStr(r.hint)),
     // Hướng dẫn chỉ có nghĩa với tự luận: dạng khác thì bỏ, để khỏi lưu dữ liệu mồ côi.
-    studentGuide: r.type === "ESSAY" ? optStr(r.studentGuide) : null,
-    graderGuide: r.type === "ESSAY" ? optStr(r.graderGuide) : null,
+    studentGuide: r.type === "ESSAY" ? sanOpt(optStr(r.studentGuide)) : null,
+    graderGuide: r.type === "ESSAY" ? sanOpt(optStr(r.graderGuide)) : null,
     rubric,
-    sectionLabel: optStr(r.sectionLabel),
+    sectionLabel: sanOpt(optStr(r.sectionLabel)),
     options: r.type === "ESSAY" ? [] : options,
   };
 }
@@ -181,7 +194,7 @@ export function validateForDraft(q: QuizQuestionInput): string | null {
   if (!Number.isFinite(q.points) || q.points <= 0 || q.points > LIMITS.points) return "Điểm của câu phải là số lớn hơn 0";
   if (q.options.length > LIMITS.maxOptions) return `Tối đa ${LIMITS.maxOptions} lựa chọn`;
   if (q.options.some(o => visibleLength(o.text) > LIMITS.option)) return `Mỗi lựa chọn tối đa ${LIMITS.option} ký tự`;
-  return null;
+  return formulaFieldsError(q);
 }
 
 // ── Trùng trong cùng một tệp (bước rà soát nhập đề) ─────────────────────────────────────────────

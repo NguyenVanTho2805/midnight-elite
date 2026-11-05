@@ -45,7 +45,7 @@ const hasPh = (q: any) => q.text.includes(PH) || (q.explanation ?? "").includes(
   check("công thức MathType giải được 107/107, không hỏng, không chưa-kiểm", P?.formulaStats?.total === 107 && P.formulaStats.decoded === 107 && P.formulaStats.failed === 0 && P.formulaStats.unverified === 0, P?.formulaStats);
   check("xem trước thấy $..$ (≥ 20 câu có LaTeX) và KHÔNG câu nào còn nhãn ⟦công thức⟧", Q.filter(q => /\$[^$]+\$/.test(q.text + q.options.map((o: any) => o.text).join(" "))).length >= 20 && Q.filter(hasPh).length === 0 && P.stats.withFormulaUnread === 0);
   check("không câu nào mang cờ formula_unread", Q.every(q => !q.flags.includes("formula_unread")));
-  check("câu 1: $y=f\\left(x\\right)$ và đáp án đúng $\\left(-1;\\,0\\right).$", Q[0]?.text.includes("$y=f\\left(x\\right)$") && Q[0].options.find((o: any) => o.isCorrect)?.text === "$\\left(-1;\\,0\\right).$", Q[0]);
+  check("câu 1: $y=f\\left(x\\right)$ và đáp án đúng $\\left(-1;\\,0\\right).$", Q[0]?.text.includes("$y=f\\left(x\\right)$") && Q[0].options.find((o: any) => o.isCorrect)?.text === "$\\left(-1;\\,0\\right).$", Q[0] && { len: Q[0].text.length });
   check("mọi câu có đáp án (22/22) — đề mẫu có gạch chân/bảng", P?.stats?.withAnswer === 22);
   check("xem trước không ghi DB, không tăng bộ đếm AI", (await snapN()) === n0);
 
@@ -85,6 +85,8 @@ const hasPh = (q: any) => q.text.includes(PH) || (q.explanation ?? "").includes(
     const imgQ = QI.filter(q => TOK.test(q.text + q.options.map((o: any) => o.text).join(" ")));
     check("xem trước 200, 22 câu; 4 công thức hỏng → hiện bằng ảnh (formulaStats.image = 4), 0 nhãn", pvI.status === 200 && QI.length === 22 && PI.formulaStats?.image === 4 && QI.filter(hasPh).length === 0, [pvI.status, PI?.formulaStats]);
     check("câu có ảnh mang cờ formula_image (KHÔNG formula_unread); stats.withFormulaImage khớp", imgQ.length > 0 && imgQ.every(q => q.flags.includes("formula_image") && !q.flags.includes("formula_unread")) && PI.stats.withFormulaImage === imgQ.length, PI?.stats);
+    // Phần trên đã lưu cùng tệp cho A → 20/22 câu giống nội dung sẽ bị bỏ trùng (đúng thiết kế). Dọn câu cũ để đo đúng "lưu đủ 22 + token nguyên byte".
+    await prisma.questionBankItem.deleteMany({ where: { id: { in: ids } } });
     const svI = await api("POST", LN, { as: A, body: { categoryId: tree.c11, items: QI.map(toItem) } });
     const idsI: string[] = svI.json?.ids ?? [];
     check("luu-nhieu 201 không bỏ câu nào dù chữ chứa token dài (không bị từ chối vì độ dài, không bị cắt)", svI.status === 201 && svI.json?.saved === 22 && svI.json.skippedInvalid === 0, [svI.status, svI.json && { ...svI.json, ids: idsI.length }]);
@@ -101,7 +103,7 @@ const hasPh = (q: any) => q.text.includes(PH) || (q.explanation ?? "").includes(
       evilItem("Độc 3 " + evil('<svg xmlns="http://www.w3.org/2000/svg" width="1pt" height="1pt"><foreignObject><div/></foreignObject></svg>')),
     ] } });
     const rowsE = await prisma.questionBankItem.findMany({ where: { id: { in: svE.json?.ids ?? [] } } });
-    check("3 token độc (onload / script / foreignObject) → lưu được nhưng bị đổi thành nhãn ⟦công thức⟧; DB không còn chuỗi độc", svE.status === 201 && rowsE.length === 3 && rowsE.every(r => r.text.includes(PH) && !/onload|<script|foreignObject|ctimg/i.test(r.text)), rowsE.map(r => r.text.slice(0, 60)));
+    check("3 token độc (onload / script / foreignObject) → lưu được nhưng bị đổi thành nhãn ⟦công thức⟧; DB không còn chuỗi độc", svE.status === 201 && rowsE.length === 3 && rowsE.every(r => r.text.includes(PH) && !/onload|<script|foreignObject|ctimg/i.test(r.text)), rowsE.map(r => ({ len: r.text.length, coNhan: r.text.includes(PH), conDoc: /onload|<script|foreignObject|ctimg/i.test(r.text) }))); // chỉ số đo, không in chữ đề thật
     // phát hành đề có ảnh: tạo đề từ các câu có ảnh → 200
     const imgIds = rowsI.filter(r => TOK.test(r.text + r.options.map(o => o.text).join(" "))).map(r => r.id).slice(0, 4);
     const mkI = await api("POST", TAO, { as: A, body: { title: "Đề có công thức bằng ảnh", courseId: course.id, itemIds: imgIds, mode: "practice" } });

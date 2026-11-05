@@ -7,7 +7,11 @@ export const FORMULA_IMG_PLACEHOLDER = "⟦công thức⟧";
 /** Trần cỡ một SVG (byte UTF-8). Lớn hơn → coi như thất bại, giữ nhãn + chặn. */
 export const FORMULA_SVG_MAX = 6 * 1024;
 /** Token toàn cục (cờ g). Dùng `new RegExp(FORMULA_IMG_RE.source, "g")` nếu cần vòng lặp độc lập (tránh dùng chung lastIndex). */
-export const FORMULA_IMG_RE = /\{\{ctimg:([A-Za-z0-9+/=]+)\}\}/g;
+export const FORMULA_B64_MAX = Math.ceil(FORMULA_SVG_MAX / 3) * 4; // 8192 ký tự base64 cho 6 KB SVG
+export const FORMULA_IMG_RE = /\{\{ctimg:([A-Za-z0-9+/=]{1,8192})\}\}/g;
+/** Trần số token ảnh MỖI TRƯỜNG chữ và trần cỡ thật (byte UTF-8) MỖI TRƯỜNG — chặn nhồi token để phình dữ liệu. */
+export const FORMULA_MAX_TOKENS_PER_FIELD = 20;
+export const FORMULA_MAX_BYTES_PER_FIELD = 160 * 1024;
 /** Token KHÔNG ràng buộc ký tự: để bắt cả token hỏng khi làm sạch. */
 const LOOSE_RE = /\{\{ctimg:([^{}]*)\}\}/g;
 
@@ -94,22 +98,42 @@ export function svgFromFormulaImgB64(b64: string): string | null {
   return s !== null && validateFormulaSvg(s) ? s : null;
 }
 
-/** Làm sạch khi LƯU: token hỏng/độc → nhãn ⟦công thức⟧. Chuỗi không có token trả nguyên. */
+/** Làm sạch khi LƯU: token hỏng/độc/quá dài/vượt trần số token → nhãn ⟦công thức⟧. Chuỗi không có token trả nguyên. */
 export function sanitizeFormulaImgTokens(text: string, replacement: string = FORMULA_IMG_PLACEHOLDER): string {
   if (!text.includes("{{ctimg:")) return text;
-  return text.replace(LOOSE_RE, (all, b64: string) => (svgFromFormulaImgB64(b64) !== null ? all : replacement));
+  let kept = 0;
+  return text.replace(LOOSE_RE, (all, b64: string) => {
+    if (b64.length > FORMULA_B64_MAX || kept >= FORMULA_MAX_TOKENS_PER_FIELD) return replacement;
+    if (svgFromFormulaImgB64(b64) === null) return replacement;
+    kept++;
+    return all;
+  });
 }
 
-/** Độ dài tính cho giới hạn ký tự: mỗi token ảnh đếm 1 ký tự (nội dung base64 không phải chữ gia sư gõ). */
+const STRICT_RE = new RegExp(FORMULA_IMG_RE.source, "g");
+
+/**
+ * Độ dài tính cho giới hạn ký tự: CHỈ token khớp chặt (base64 ≤ 8192) đếm 1 ký tự; mọi thứ khác (token lỏng/quá dài/sai) đếm đủ độ dài thật,
+ * nên không thể nhét 5 MB vào một "token" mà vẫn qua giới hạn.
+ */
 export function visibleLength(text: string): number {
-  return text.includes("{{ctimg:") ? text.replace(LOOSE_RE, "▯").length : text.length;
+  return text.includes("{{ctimg:") ? text.replace(STRICT_RE, "▯").length : text.length;
 }
 
-/** Cắt theo `visibleLength` ≤ max, KHÔNG BAO GIỜ cắt giữa một token. */
+/** Lỗi tiếng Việt nếu một trường chữ vượt trần số token ảnh hoặc trần cỡ thật; null nếu ổn. Gọi SAU sanitize khi kiểm hợp lệ. */
+export function formulaFieldError(text: string, label: string): string | null {
+  if (typeof text !== "string" || !text.includes("{{ctimg:")) return null;
+  const n = (text.match(STRICT_RE) ?? []).length;
+  if (n > FORMULA_MAX_TOKENS_PER_FIELD) return `${label} có quá nhiều ảnh công thức (tối đa ${FORMULA_MAX_TOKENS_PER_FIELD})`;
+  if (enc(text).length > FORMULA_MAX_BYTES_PER_FIELD) return `${label} quá nặng (tối đa ${FORMULA_MAX_BYTES_PER_FIELD / 1024} KB kể cả ảnh công thức)`;
+  return null;
+}
+
+/** Cắt theo `visibleLength` ≤ max, KHÔNG BAO GIỜ cắt giữa một token hợp quy cách. */
 export function clipVisible(text: string, max: number): string {
   if (!text.includes("{{ctimg:")) return text.length > max ? text.slice(0, max) : text;
   let out = "", vis = 0, last = 0;
-  const re = new RegExp(LOOSE_RE.source, "g");
+  const re = new RegExp(FORMULA_IMG_RE.source, "g");
   let m: RegExpExecArray | null;
   const take = (s: string): boolean => { const room = max - vis; if (s.length <= room) { out += s; vis += s.length; return true; } out += s.slice(0, room); vis = max; return false; };
   while ((m = re.exec(text)) !== null) {
@@ -119,4 +143,10 @@ export function clipVisible(text: string, max: number): string {
   }
   take(text.slice(last));
   return out;
+}
+
+/** Xem trước dạng CHỮ THUẦN (không vẽ ảnh): token ảnh thành "[ảnh công thức]" rồi mới cắt, nên không bao giờ lòi chuỗi base64 hay bị cắt giữa token. */
+export function plainPreview(text: string, max: number): string {
+  const t = text.includes("{{ctimg:") ? text.replace(new RegExp(LOOSE_RE.source, "g"), "[ảnh công thức]") : text;
+  return t.length > max ? t.slice(0, max) + "…" : t;
 }

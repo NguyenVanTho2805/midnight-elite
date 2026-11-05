@@ -24,7 +24,7 @@ const SVG_B64_PREFIX = "PHN2Zy"; // base64 của "<svg"
 function renderImgToken(b64: string): string {
   // b64 đã qua regex chỉ gồm [A-Za-z0-9+/=] nên đặt vào thuộc tính an toàn.
   if (!b64.startsWith(SVG_B64_PREFIX)) return '<span class="italic">[công thức (ảnh lỗi)]</span>';
-  return `<img src="data:image/svg+xml;base64,${b64}" alt="công thức (ảnh)" style="display:inline-block;vertical-align:middle;max-width:100%;height:auto;background:white;border-radius:2px" />`;
+  return `<img src="data:image/svg+xml;base64,${b64}" alt="công thức (ảnh)" style="display:inline-block;vertical-align:middle;max-width:100%;height:auto;background:var(--kin-nen-anh-cong-thuc, white);border-radius:2px" />`;
 }
 
 export function renderMathText(text: string): string {

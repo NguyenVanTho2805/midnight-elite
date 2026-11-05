@@ -15,30 +15,49 @@ export type WmfSvgResult =
 class WmfFail extends Error { constructor(public reason: string) { super(reason); } }
 const fail = (r: string): never => { throw new WmfFail(r); };
 
-// ── Ánh xạ Symbol (Adobe Symbol 0x20–0xFF) → Unicode ─────────────────────────────────────────────
-const SYMBOL_HI: Record<number, string> = {
-  0x20: " ", 0x21: "!", 0x22: "∀", 0x23: "#", 0x24: "∃", 0x25: "%", 0x26: "&", 0x27: "∋", 0x28: "(", 0x29: ")", 0x2a: "∗", 0x2b: "+", 0x2c: ",", 0x2d: "−", 0x2e: ".", 0x2f: "/",
-  0x3a: ":", 0x3b: ";", 0x3c: "<", 0x3d: "=", 0x3e: ">", 0x3f: "?", 0x40: "≅",
-  0x5b: "[", 0x5c: "∴", 0x5d: "]", 0x5e: "⊥", 0x5f: "_", 0x60: "‾", 0x7b: "{", 0x7c: "|", 0x7d: "}", 0x7e: "∼",
-  0xa0: "€", 0xa1: "ϒ", 0xa2: "′", 0xa3: "≤", 0xa4: "⁄", 0xa5: "∞", 0xa6: "ƒ", 0xa7: "♣", 0xa8: "♦", 0xa9: "♥", 0xaa: "♠", 0xab: "↔", 0xac: "←", 0xad: "↑", 0xae: "→", 0xaf: "↓",
-  0xb0: "°", 0xb1: "±", 0xb2: "″", 0xb3: "≥", 0xb4: "×", 0xb5: "∝", 0xb6: "∂", 0xb7: "•", 0xb8: "÷", 0xb9: "≠", 0xba: "≡", 0xbb: "≈", 0xbc: "…", 0xbd: "∣", 0xbe: "―", 0xbf: "↵",
-  0xc0: "ℵ", 0xc1: "ℑ", 0xc2: "ℜ", 0xc3: "℘", 0xc4: "⊗", 0xc5: "⊕", 0xc6: "∅", 0xc7: "∩", 0xc8: "∪", 0xc9: "⊃", 0xca: "⊇", 0xcb: "⊄", 0xcc: "⊂", 0xcd: "⊆", 0xce: "∈", 0xcf: "∉",
-  0xd0: "∠", 0xd1: "∇", 0xd2: "®", 0xd3: "©", 0xd4: "™", 0xd5: "∏", 0xd6: "√", 0xd7: "⋅", 0xd8: "¬", 0xd9: "∧", 0xda: "∨", 0xdb: "⇔", 0xdc: "⇐", 0xdd: "⇑", 0xde: "⇒", 0xdf: "⇓",
-  0xe0: "◊", 0xe1: "⟨", 0xe2: "®", 0xe3: "©", 0xe4: "™", 0xe5: "∑", 0xf1: "⟩", 0xf2: "∫",
+// ── Ánh xạ glyph → Unicode: CHỈ mã có BẰNG CHỨNG từ kho mẫu thật ─────────────────────────────────────
+// Đo bằng tools/local-e2e/mathtype-glyphs.ts trên ~372.000 cặp (ảnh WMF, OLE) khác nhau: đếm glyph (font, mã byte) trong ExtTextOut của WMF và đếm ký tự Unicode
+// (mtcode) do chính MathType ghi trong MTEF của cùng công thức. Một mã được giữ khi >= 5 luồng khớp số lần VÀ tỉ lệ >= 98% (cùng ngưỡng với mtefLatex.meetsVerifiedThreshold).
+// Mỗi mục: [ký tự, số luồng khớp, số luồng có glyph]. Mã không có bằng chứng ĐỦ thì KHÔNG có trong bảng → ảnh thất bại có chủ đích (không đoán).
+// Bản trước dùng bảng "Adobe Symbol" và ghi chú "đã đối chiếu" nhưng sai ở: MT Extra a1/a2 (ℤ/ℝ bị đảo — đo: a1 = ℝ 2833/2834, a2 = ℤ 2141/2141), Symbol 0x6a/0x66 (φ/ϕ bị đảo),
+// font chữ Times New Roman với charset Hy Lạp (0xC4 = Δ chứ không phải Ä...), Symbol 0xBE (không khớp 249/249 luồng), đ trong VNI (MathType tự ghi ñ), cung ⌢ và mũ rộng b6.
+type Ev = readonly [char: string, matched: number, total: number];
+/** Symbol và Euclid Symbol (cùng bảng mã; số liệu gộp hai font). Chữ Hy Lạp theo mtcode của MathType. */
+const SYMBOL_EVIDENCE: Record<number, Ev> = {
+  0x22: ["∀", 2059, 2061], 0x24: ["∃", 42, 42], 0x2a: ["∗", 98, 98], 0x2d: ["−", 78419, 78436], 0x44: ["Δ", 4742, 4745], 0x4e: ["Ν", 11, 11], 0x52: ["Ρ", 15, 15], 0x57: ["Ω", 969, 969], 0x5a: ["Ζ", 15, 15],
+  0x5e: ["⊥", 8582, 8584], 0x61: ["α", 6213, 6213], 0x62: ["β", 824, 824], 0x64: ["δ", 25, 25], 0x66: ["\u03d5", 8, 8], 0x67: ["γ", 125, 125], 0x6a: ["\u03c6", 488, 488], 0x6c: ["λ", 26, 26], 0x6d: ["μ", 28, 28],
+  0x6f: ["ο", 8, 8], 0x70: ["π", 10916, 10919], 0x71: ["θ", 224, 224], 0x72: ["ρ", 8, 8], 0x73: ["σ", 44, 44], 0x77: ["ω", 107, 107],
+  0xa2: ["′", 20866, 21167], 0xa3: ["≤", 3989, 3989], 0xa5: ["∞", 5655, 5655], 0xab: ["↔", 12, 12], 0xae: ["→", 5820, 5822], 0xb0: ["°", 4701, 4702], 0xb1: ["±", 886, 886], 0xb3: ["≥", 2940, 2941],
+  0xb4: ["×", 324, 324], 0xb7: ["•", 101, 101], 0xb9: ["≠", 2527, 2528], 0xba: ["≡", 321, 321], 0xbb: ["≈", 4136, 4136], 0xbc: ["…", 867, 867], 0xc5: ["⊕", 83, 83], 0xc6: ["∅", 115, 115],
+  0xc7: ["∩", 3876, 3880], 0xc8: ["∪", 1119, 1120], 0xc9: ["⊃", 52, 52], 0xcb: ["⊄", 106, 106], 0xcc: ["⊂", 1784, 1784], 0xce: ["∈", 10265, 10269], 0xcf: ["∉", 205, 205], 0xd0: ["∠", 17, 17],
+  0xd7: ["⋅", 4091, 4091], 0xd9: ["∧", 8, 8], 0xda: ["∨", 77, 77], 0xdb: ["⇔", 15046, 15051], 0xde: ["⇒", 19222, 19223], 0xe5: ["∑", 66, 66], 0xf2: ["∫", 5524, 5525],
 };
-const GREEK_UP = "ΑΒΧΔΕΦΓΗΙϑΚΛΜΝΟΠΘΡΣΤΥςΩΞΨΖ"; // 'A'..'Z'
-const GREEK_LO = "αβχδεφγηιϕκλμνοπθρστυϖωξψζ"; // 'a'..'z'
+/** Mã Symbol trùng ASCII (dấu câu/ngoặc/chữ số): đồng nhất theo thiết kế font; không đo được bằng đếm ký tự vì ngoặc và dấu cũng do mẫu (template) sinh ra. */
+const SYMBOL_ASCII = new Set([0x20, 0x21, 0x23, 0x25, 0x26, 0x28, 0x29, 0x2b, 0x2c, 0x2e, 0x2f, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x5b, 0x5d, 0x5f, 0x7b, 0x7c, 0x7d]);
 function symbolChar(c: number): string | null {
   if (c >= 0x30 && c <= 0x39) return String.fromCharCode(c);
-  if (c >= 0x41 && c <= 0x5a) return GREEK_UP[c - 0x41];
-  if (c >= 0x61 && c <= 0x7a) return GREEK_LO[c - 0x61];
-  return SYMBOL_HI[c] ?? null;
+  if (SYMBOL_ASCII.has(c)) return String.fromCharCode(c);
+  const e = SYMBOL_EVIDENCE[c];
+  return e ? e[0] : null;
 }
-// MT Extra: chỉ mã đã đối chiếu với MTEF của chính các công thức mẫu (a1 = ℤ, a2 = ℝ). Mã khác → thất bại.
-const MTEXTRA: Record<number, string> = { 0xa1: "ℤ", 0xa2: "ℝ", 0x6f: "∘" };
-const EUCLID_EXTRA: Record<number, string> = { 0xa2: "ℤ" }; // đối chiếu: công thức k∈ℤ trong mẫu thật
-// Windows-1252 0x80–0x9F (0xA0–0xFF trùng Latin-1). Chỉ dùng cho font Latin có tên trong LATIN_FACES; font mã hoá riêng (VNI-…, .Vn…) mà có byte ≥ 0x80 → thất bại.
-const CP1252: Record<number, string> = { 0x80: "€", 0x82: "‚", 0x83: "ƒ", 0x84: "„", 0x85: "…", 0x86: "†", 0x87: "‡", 0x88: "ˆ", 0x89: "‰", 0x8a: "Š", 0x8b: "‹", 0x8c: "Œ", 0x8e: "Ž", 0x91: "‘", 0x92: "’", 0x93: "“", 0x94: "”", 0x95: "•", 0x96: "–", 0x97: "—", 0x98: "˜", 0x99: "™", 0x9a: "š", 0x9b: "›", 0x9c: "œ", 0x9e: "ž", 0x9f: "Ÿ" };
+/** MT Extra (và Euclid Extra, cùng bảng mã): chữ số tập hợp ℝ ℤ ℚ ℕ và ∘. Bản trước đảo ℝ/ℤ. */
+const MTEXTRA_EVIDENCE: Record<number, Ev> = { 0xa1: ["ℝ", 2833, 2834], 0xa2: ["ℤ", 2141, 2141], 0xa4: ["ℚ", 13, 13], 0xa5: ["ℕ", 916, 916], 0x6f: ["∘", 506, 506] };
+const EUCLID_EXTRA_EVIDENCE: Record<number, Ev> = { 0xa1: ["ℝ", 202, 203], 0xa2: ["ℤ", 191, 192], 0xa5: ["ℕ", 55, 55], 0x6f: ["∘", 31, 31] };
+/** Euclid Math One: chỉ các mã đạt ngưỡng. 0xD0 là ↷ (curvearrowright), KHÔNG phải cung ⌢ như bản trước dựng. */
+const EUCLID_MATH_ONE_EVIDENCE: Record<number, Ev> = { 0x81: ["\\", 9, 9], 0x82: ["∖", 5, 5], 0xd0: ["↷", 7, 7] };
+const MTEXTRA: Record<number, string> = Object.fromEntries(Object.entries(MTEXTRA_EVIDENCE).map(([k, v]) => [k, v[0]]));
+const EUCLID_EXTRA: Record<number, string> = Object.fromEntries(Object.entries(EUCLID_EXTRA_EVIDENCE).map(([k, v]) => [k, v[0]]));
+const EUCLID_MATH_ONE: Record<number, string> = Object.fromEntries(Object.entries(EUCLID_MATH_ONE_EVIDENCE).map(([k, v]) => [k, v[0]]));
+/** Mũ rộng (accent hat) của MT Extra: chỉ 0xB7 đạt ngưỡng (3774/3780). 0xB6 chỉ 21/31 và cung ⌢ chỉ 3 luồng → không vẽ đoán. */
+const ACCENT_HAT_EVIDENCE: Record<string, Ev> = { "mt extra|b7": ["\u0302", 3774, 3780] };
+/**
+ * Chữ có byte >= 0x80 chỉ nhận cho Times New Roman với charset ANSI (lfCharSet = 0): các font cùng tên với charset Hy Lạp (161), Đông Âu (238), Thổ (162)… dùng bảng mã khác
+ * (vd. 0xC4 = Δ, 0xF0 = π trong cp1253 — bản trước vẽ thành Ä, ð). Các mã dưới đây có >= 5 luồng khớp, 0 lệch.
+ */
+const TNR_ANSI_EVIDENCE: Record<number, Ev> = {
+  0x92: ["’", 39, 39], 0x95: ["•", 18, 18], 0x96: ["–", 150, 150], 0xa0: ["\u00a0", 3026, 3028], 0xd0: ["Ð", 20, 20], 0xe0: ["à", 131, 131], 0xe1: ["á", 16, 16], 0xe2: ["â", 9, 9], 0xea: ["ê", 20, 20],
+  0xec: ["ì", 45, 45], 0xed: ["í", 10, 10], 0xef: ["ï", 5, 5], 0xf3: ["ó", 41, 41], 0xf4: ["ô", 10, 10], 0xf9: ["ù", 6, 6], 0xfa: ["ú", 18, 18],
+};
 const LATIN_FACES = new Set(["times new roman", "arial", "calibri", "cambria", "cambria math", "courier new", "tahoma", "verdana", "georgia", "segoe ui"]);
 
 /** Mảnh ngoặc to của Symbol: mã → [họ, vị trí, bên]. */
@@ -55,7 +74,7 @@ const FRAG: Record<number, Frag> = {
 };
 
 // ── Font ────────────────────────────────────────────────────────────────────────────────────────
-interface FontObj { kind: "font"; size: number; italic: boolean; bold: boolean; underline: boolean; strike: boolean; face: string; map: "text" | "symbol" | "mtextra" }
+interface FontObj { kind: "font"; size: number; italic: boolean; bold: boolean; underline: boolean; strike: boolean; face: string; charset: number; map: "text" | "symbol" | "mtextra" }
 interface PenObj { kind: "pen"; none: boolean; width: number; color: string }
 interface BrushObj { kind: "brush"; none: boolean; color: string }
 type Obj = FontObj | PenObj | BrushObj | { kind: "other" };
@@ -160,7 +179,7 @@ function convert(buf: Uint8Array): WmfSvgResult {
         const map: FontObj["map"] = low === "symbol" || low === "euclid symbol" ? "symbol" : low === "mt extra" || low === "euclid extra" || low === "euclid math one" ? "mtextra" : "text";
         // Chiều cao âm = chiều cao ký tự (em). Dương = ô chữ gồm cả khoảng cách dòng → em xấp xỉ 0,87.
         const size = h < 0 ? -h : Math.round(h * 0.87);
-        alloc({ kind: "font", size, italic, bold: wt >= 600, underline: under, strike, face: /^[A-Za-z0-9 _-]{1,40}$/.test(face) ? face : "serif", map });
+        alloc({ kind: "font", size, italic, bold: wt >= 600, underline: under, strike, charset: buf[a + 13], face: /^[A-Za-z0-9 _-]{1,40}$/.test(face) ? face : "serif", map });
         break;
       }
       case 0x02fa: { // CreatePenIndirect: style u16, width (x,y) 2×int16, colorref
@@ -240,19 +259,18 @@ function convert(buf: Uint8Array): WmfSvgResult {
             continue;
           }
           const faceLow = selFont.face.toLowerCase();
-          if ((faceLow === "mt extra" && (c === 0xb6 || c === 0xb7)) || (faceLow === "euclid extra" && c === 0xbc) || (faceLow === "euclid math one" && c === 0xd0)) {
-            ops.push({ acc: c === 0xbc || c === 0xd0 ? "arc" : "hat", x: px, y, size: selFont.size, color: textColor });
+          if (faceLow === "mt extra" && c === 0xb7) { // mũ rộng ^ (accent hat) — mã duy nhất đạt ngưỡng bằng chứng (ACCENT_HAT_EVIDENCE)
+            ops.push({ acc: "hat", x: px, y, size: selFont.size, color: textColor });
             s += "\u0000"; drewAnything = true;
             if (!notes.includes("accent_estimated")) notes.push("accent_estimated");
             continue;
           }
           let ch: string | null;
           if (selFont.map === "symbol") ch = symbolChar(c);
-          else if (selFont.map === "mtextra") ch = (selFont.face.toLowerCase() === "euclid extra" ? EUCLID_EXTRA : MTEXTRA)[c] ?? null;
+          else if (selFont.map === "mtextra") ch = (faceLow === "euclid extra" ? EUCLID_EXTRA : faceLow === "euclid math one" ? EUCLID_MATH_ONE : MTEXTRA)[c] ?? null;
           else if (c >= 0x20 && c < 0x7f) ch = String.fromCharCode(c);
-          else if (/^vni-/i.test(selFont.face)) ch = c === 0xf1 ? "đ" : c === 0xd1 ? "Đ" : null; // VNI: chỉ đ/Đ (mã đơn byte) đã đối chiếu; mã khác → thất bại
-          else if (!LATIN_FACES.has(selFont.face.toLowerCase())) ch = null;
-          else ch = c >= 0xa0 ? String.fromCharCode(c) : CP1252[c] ?? null;
+          else if (faceLow === "times new roman" && selFont.charset === 0) ch = TNR_ANSI_EVIDENCE[c]?.[0] ?? null; // byte >= 0x80: chỉ mã có bằng chứng, chỉ charset ANSI
+          else ch = null; // font khác / charset khác / font mã hoá riêng (VNI…): mã >= 0x80 không có bằng chứng → thất bại, không đoán
           if (ch === null) return fail(`char:${selFont.face}:${c.toString(16)}`);
           s += ch === String.fromCharCode(32) ? String.fromCharCode(0xa0) : ch; // khoảng trắng thường → NBSP để không bị gộp và lệch chỉ số ký tự
         }
@@ -414,3 +432,10 @@ function accentShape(a: AccOp, texts: TextOp[]): string {
   const d = a.acc === "hat" ? `M${r(x0)} ${r(top)}L${r(xm)} ${r(top - 0.2 * a.size)}L${r(x1)} ${r(top)}` : `M${r(x0)} ${r(top)}Q${r(xm)} ${r(top - 0.42 * a.size)} ${r(x1)} ${r(top)}`;
   return `<path d="${d}" fill="none" stroke="#${a.color}" stroke-width="${sw}" stroke-linejoin="miter"/>`;
 }
+
+/** CHỈ DÙNG TRONG CÔNG CỤ KIỂM / TEST (tools/local-e2e/mathtype-glyphs.ts, t-mathtype-img-lib.ts): các bảng ánh xạ glyph và số liệu bằng chứng. */
+export const WMF_MAPS_FOR_TOOL = {
+  symbolChar, MTEXTRA, EUCLID_EXTRA, SYMBOL_EVIDENCE, MTEXTRA_EVIDENCE, EUCLID_EXTRA_EVIDENCE, EUCLID_MATH_ONE_EVIDENCE, ACCENT_HAT_EVIDENCE, TNR_ANSI_EVIDENCE,
+  /** Ký tự mà `convert` ánh xạ cho (font chữ thường, mã ≥ 0x80), hoặc null nếu bị từ chối. Chỉ Times New Roman charset ANSI. */
+  textFaceChar: (face: string, c: number): string | null => (face.toLowerCase() === "times new roman" ? TNR_ANSI_EVIDENCE[c]?.[0] ?? null : null),
+};

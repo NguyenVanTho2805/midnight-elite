@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import JSZip from "jszip";
-import { decodeMathTypeOle, mtefTexInputForTest, MATHTYPE_STRUCTURES } from "@/lib/mathtype/mtef";
+import { decodeMathTypeOle, mtefTexInputForTest, MATHTYPE_STRUCTURES, symbolLatexForTool, SYM_VERIFIED, ACCENT_VERIFIED, meetsVerifiedThreshold, VERIFIED_MIN_MATCHED, VERIFIED_MIN_RATE } from "@/lib/mathtype/mtef";
 import { normTex } from "./mathtype-texnorm";
 
 const roots = process.argv.slice(2).length ? process.argv.slice(2) : ["Downloads", "Documents", "Desktop"].map(d => path.join(os.homedir(), d));
@@ -25,8 +25,8 @@ const walk = (d: string, depth = 0) => {
 roots.forEach(r => walk(r));
 
 (async () => {
-  const seen = new Map<string, { structs: string[]; ok: boolean; reason: string; tex: string | null; same: boolean }>();
-  let nFiles = 0, nFilesOle = 0, nOle = 0, nOk = 0;
+  const seen = new Map<string, { structs: string[]; syms: string[]; confident: boolean; ok: boolean; reason: string; tex: string | null; same: boolean; ours: string; theirs: string }>();
+  let nFiles = 0, nFilesOle = 0, nOle = 0, nOk = 0, nConf = 0;
   const perFile: Record<string, number> = {};
   for (const f of files) {
     let z: JSZip; try { if (fs.statSync(f).size > 200e6) continue; z = await JSZip.loadAsync(fs.readFileSync(f)); } catch { continue; }
@@ -43,11 +43,12 @@ roots.forEach(r => walk(r));
         const d = decodeMathTypeOle(buf);
         const tex = mtefTexInputForTest(buf);
         r = d.ok
-          ? { structs: d.structures, ok: true, reason: "", tex, same: tex !== null && normTex(d.latex) === normTex(tex) }
-          : { structs: [], ok: false, reason: d.reason, tex, same: false };
+          ? { structs: d.structures, syms: d.symbols ?? [], confident: !d.warnings.includes("unverified_structure"), ok: true, reason: "", tex, same: tex !== null && normTex(d.latex) === normTex(tex), ours: normTex(d.latex), theirs: tex === null ? "" : normTex(tex) }
+          : { structs: [], syms: [], confident: false, ok: false, reason: d.reason, tex, same: false, ours: "", theirs: "" };
         seen.set(id, r);
       }
       if (r.ok) nOk++;
+      if (r.ok && r.confident) nConf++;
     }
   }
   const uniq = [...seen.values()];
@@ -56,12 +57,25 @@ roots.forEach(r => walk(r));
   console.log(`tệp .docx: ${nFiles} (có công thức: ${nFilesOle}) · công thức (cả trùng): ${nOle}, giải được ${nOk} (${(100 * nOk / Math.max(1, nOle)).toFixed(2)}%)`);
   console.log(`luồng khác nhau: ${uniq.length}, giải được ${okU.length} (${(100 * okU.length / Math.max(1, uniq.length)).toFixed(2)}%)`);
   console.log(`có TeX gốc: ${withTex.length}; trong đó giải được ${decTex.length}; KHỚP TeX gốc sau chuẩn hoá: ${decTex.filter(x => x.same).length} (${(100 * decTex.filter(x => x.same).length / Math.max(1, decTex.length)).toFixed(2)}% trên số giải được)`);
+  const confU = uniq.filter(x => x.confident).length;
+  console.log(`giải "TỰ TIN" (ok, không cờ unverified_structure): ${nConf}/${nOle} công thức (${(100 * nConf / Math.max(1, nOle)).toFixed(2)}%) · ${confU}/${uniq.length} luồng (${(100 * confU / Math.max(1, uniq.length)).toFixed(2)}%)`);
+  console.log(`NGƯỠNG "đã kiểm": >= ${VERIFIED_MIN_MATCHED} luồng khớp TeX gốc và tỉ lệ >= ${(VERIFIED_MIN_RATE * 100).toFixed(0)}%`);
   const why: Record<string, number> = {};
   for (const x of uniq) if (!x.ok) why[x.reason] = (why[x.reason] ?? 0) + 1;
   console.log("thất bại theo lý do:", Object.entries(why).sort((a, b) => b[1] - a[1]).slice(0, 25).map(e => e.join(":")).join("  "));
-  console.log("\ncấu trúc".padEnd(22), "luồng".padStart(8), "có TeX".padStart(8), "khớp".padStart(8), "  verified?");
+  const verdict = (cur: boolean, t: number, m: number) => { const want = meetsVerifiedThreshold(t, m); return want === cur ? (cur ? "ĐÃ KIỂM" : "chưa") : (want ? "chưa → NÊN LÊN ĐÃ KIỂM" : "ĐÃ KIỂM → PHẢI HẠ"); };
+  console.log("\ncấu trúc".padEnd(22), "luồng".padStart(8), "có TeX".padStart(8), "khớp".padStart(8), "  trạng thái");
   for (const id of Object.keys(MATHTYPE_STRUCTURES)) {
     const u = uniq.filter(x => x.structs.includes(id)), t = u.filter(x => x.tex !== null), m = t.filter(x => x.same);
-    console.log(id.padEnd(22), String(u.length).padStart(8), String(t.length).padStart(8), String(m.length).padStart(8), "  " + (MATHTYPE_STRUCTURES[id].verified ? "ĐÃ KIỂM" : "chưa"));
+    console.log(id.padEnd(22), String(u.length).padStart(8), String(t.length).padStart(8), String(m.length).padStart(8), "  " + verdict(MATHTYPE_STRUCTURES[id].verified, t.length, m.length));
+  }
+  const symIds = [...new Set(uniq.flatMap(x => x.syms))].sort();
+  console.log("\nký hiệu/chữ có dấu (khớp = cùng số lần xuất hiện)".padEnd(22), "luồng".padStart(8), "có TeX".padStart(8), "khớp".padStart(8), "  trạng thái");
+  for (const id of symIds) {
+    // Ký hiệu: "khớp" = số lần lệnh LaTeX của ký hiệu này trong lời giải KiN bằng đúng số lần trong TeX gốc (lệch ở phần KHÁC của công thức, hoặc TeX gốc cũ chưa cập nhật, không đổ cho ký hiệu).
+    const tok = normTex(symbolLatexForTool(id) ?? ""), cnt = (str: string) => (tok ? str.split(tok).length - 1 : 0);
+    const u = uniq.filter(x => x.syms.includes(id)), t = u.filter(x => x.tex !== null), m = t.filter(x => cnt(x.ours) === cnt(x.theirs));
+    const h = id.slice(4), cur = id.startsWith("sym:") ? SYM_VERIFIED.has(h) : ACCENT_VERIFIED.has(h);
+    console.log(id.padEnd(22), String(u.length).padStart(8), String(t.length).padStart(8), String(m.length).padStart(8), "  " + verdict(cur, t.length, m.length));
   }
 })();

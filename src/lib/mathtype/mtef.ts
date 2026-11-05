@@ -5,14 +5,14 @@
 import katex from "katex";
 import { readCfbStream } from "./cfb";
 import { MtefFail, emitLatex, type MNode } from "./mtefLatex";
-export { MATHTYPE_STRUCTURES } from "./mtefLatex";
+export { tokenForCharForTool, allTokensForTool, symbolLatexForTool, MATHTYPE_STRUCTURES, SYM_VERIFIED, ACCENT_VERIFIED, ACCENT_SEEN, VERIFIED_MIN_MATCHED, VERIFIED_MIN_RATE, meetsVerifiedThreshold } from "./mtefLatex";
 
 export type MathTypeFailReason =
   | "not_cfb" | "corrupt" | "no_equation_stream" | "bad_header" | "mtef_version"
   | "limit" | `unsupported_record:${number}` | `unsupported_template:${number}.${number}`
   | `unsupported_char:${number}:${string}` | "embell" | "double_script" | "katex_invalid" | "empty";
 /** `structures`: các loại cấu trúc công thức dùng (xem MATHTYPE_STRUCTURES trong mtefLatex.ts); `unverified`: trong số đó, loại CHƯA có bằng chứng từ mẫu thật (cùng lúc `warnings` có "unverified_structure"). */
-export type MathTypeDecode = { ok: true; latex: string; warnings: string[]; structures: string[]; unverified: string[] } | { ok: false; reason: MathTypeFailReason };
+export type MathTypeDecode = { ok: true; latex: string; warnings: string[]; structures: string[]; unverified: string[]; symbols?: string[] } | { ok: false; reason: MathTypeFailReason };
 
 export const MATHTYPE_LIMITS = { maxBin: 64 * 1024, maxStream: 32 * 1024, maxRecords: 2000, maxDepth: 40, maxLatex: 5000, maxFormulaMs: 50, maxFileMs: 3000, maxFormulas: 1000 };
 
@@ -148,7 +148,7 @@ export function decodeEquationStream(s: Buffer): MathTypeDecode {
     if (latex.length > MATHTYPE_LIMITS.maxLatex) return { ok: false, reason: "limit" };
     try { katex.renderToString(latex, { throwOnError: true, strict: "error", displayMode: false }); }
     catch { return { ok: false, reason: "katex_invalid" }; }
-    return { ok: true, latex, warnings, structures: e.structures, unverified: e.unverified };
+    return { ok: true, latex, warnings, structures: e.structures, unverified: e.unverified, symbols: e.symbols };
   } catch (e) {
     if (e instanceof MtefFail) return { ok: false, reason: e.reason };
     if (e instanceof RangeError) return { ok: false, reason: "limit" };
