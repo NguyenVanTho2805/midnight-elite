@@ -1,7 +1,7 @@
 // BU-01: 3 bước đổi thành Thông tin → Lịch học → Cách vào lớp. Bước 1 có "Học phí: Miễn phí | Có học phí" (Miễn phí ẩn "Cách tính học phí", gửi tag "Miễn phí", không gửi feeMode/feeRate);
 // bước 3 chọn Cô duyệt (mặc định) / Chỉ mã mời / Vào ngay (chỉ khi Miễn phí) và có mục gập "Thêm sẵn em đã học lớp khác" (StudentPicker, không mất tính năng cũ). Figma khung mới: chưa dựng.
 // "Tạo lớp" của gia sư, WIZARD 3 BƯỚC (LO-03; Figma "Gia sư · Tạo lớp đầu tiên" 299:112849, bản cũ: Thông tin → Học sinh → Lịch học); nút cuối "Tạo lớp + N buổi".
-// Bước 1 gồm cả "Cách tính học phí" (HP-15: chọn LÚC TẠO LỚP; mặc định giữ cách hiện tại; không đổi được hình thức của lớp đã tạo; số tiền do máy chủ tính).
+// Bước 1 gồm cả "Cách tính học phí" (HP-15: chọn LÚC TẠO LỚP; HOCPHI-THEO-BUOI: mặc định Theo buổi, Theo giờ/Theo khoá nằm trong mục gập, cách cũ bỏ khỏi lớp mới; không đổi được hình thức của lớp đã tạo; số tiền do máy chủ tính).
 // Bước 2: chỉ thêm được em ĐÃ học một lớp khác của gia sư (StudentPicker); em mới vào lớp bằng mã mời (KiN mở sẵn tab Mã mời sau khi tạo). Không thu thêm dữ liệu trẻ ở đây.
 // Bước 3: một hoặc nhiều khung giờ hằng tuần + ngày buổi đầu + số tuần xem trước. "N buổi" là số buổi lịch lặp sinh ra trong khoảng đó (previewSessionCount) — chỉ để hiển thị;
 // buổi học thật do lịch tuần sinh ra, KiN không ghi sẵn bản ghi từng buổi.
@@ -15,7 +15,7 @@ import { api } from "@/lib/api";
 import { toSlug } from "@/lib/slug";
 import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { FEE_MODES, FEE_MODE_HINT, FEE_RATE_MIN, FEE_MODE_LABEL, FEE_MODE_LEGACY, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type FeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_HINT, FEE_RATE_MIN, FEE_MODE_LABEL, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type NewFeeMode } from "@/lib/tuitionFee";
 import {
   ADD_STUDENTS_MAX, WEEKDAY_LABEL, WIZARD_WEEKS_MAX, WIZARD_WEEKS_MIN, createButtonLabel, previewSessionCount, validateSlots, type WizardSlot,
 } from "@/lib/tutorStudentView";
@@ -48,7 +48,7 @@ export default function TaoLop() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [options, setOptions] = useState<string[]>([...ADMIN_CATEGORIES]);
-  const [feeMode, setFeeMode] = useState<FeeMode>(FEE_MODE_LEGACY); // HP-15: mặc định = cách hiện tại
+  const [feeMode, setFeeMode] = useState<NewFeeMode>("per_session"); // HOCPHI-THEO-BUOI: lớp mới mặc định theo buổi; cách cũ không còn trong lựa chọn
   const [feeRate, setFeeRate] = useState("");
   const [feeMinutes, setFeeMinutes] = useState("90");
   const [free, setFree] = useState(false);                       // BU-01: "Miễn phí" (dấu do gia sư tick) — mặc định "Có học phí" = hành vi cũ
@@ -189,36 +189,47 @@ export default function TaoLop() {
                 </fieldset>
               </section>
 
-              {!free && <section aria-labelledby="tl-phi">
-                <KinSectionHead id="tl-phi" title="Cách tính học phí" aside="Chọn một lần" />
+              {free ? (
+                <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" data-fee-free-note>Lớp miễn phí không có học phí.</p>
+              ) : <section aria-labelledby="tl-phi">
+                <KinSectionHead id="tl-phi" title="Cách tính học phí" aside="Theo buổi là mặc định" />
                 <fieldset className="pt-5">
                   <legend className="sr-only">Cách tính học phí của lớp</legend>
-                  <div className="space-y-2">
-                    {FEE_MODES.map(m => (
-                      <label key={m} className="flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] py-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
-                        <input type="radio" name="tl-fee-mode" className="mt-1" checked={feeMode === m} onChange={() => { setFeeMode(m); setError(null); }} />
-                        <span><span className="font-medium">{FEE_MODE_LABEL[m]}</span>{m === FEE_MODE_LEGACY ? " · mặc định" : ""}
-                          <span className="block text-[var(--kin-chu-mo)]">{FEE_MODE_HINT[m]}</span></span>
-                      </label>
-                    ))}
-                  </div>
+                  <label className="flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                    <input type="radio" name="tl-fee-mode" className="mt-1" checked={feeMode === "per_session"} onChange={() => { setFeeMode("per_session"); setError(null); }} />
+                    <span><span className="font-medium">{FEE_MODE_LABEL.per_session}</span> · mặc định
+                      <span className="block text-[var(--kin-chu-mo)]">{FEE_MODE_HINT.per_session}</span></span>
+                  </label>
                 </fieldset>
-                {isNewFeeMode(feeMode) && (
-                  <div className="pt-4 grid sm:grid-cols-2 gap-5">
-                    <KinInput label={`Đơn giá (${FEE_RATE_UNIT[feeMode]}) *`} inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
-                      placeholder="Ví dụ: 150000" aria-required {...fv.bind("feeRate", feeRate)} />
-                    {feeMode === "per_hour" && (
-                      <KinInput label="Một buổi dài (phút) *" inputMode="numeric" value={feeMinutes} onChange={e => { setFeeMinutes(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
-                        aria-required {...fv.bind("feeMinutes", feeMinutes)} />
-                    )}
-                    <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-                      {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0
-                        ? `Mỗi buổi ${Number(feeMinutes)} phút tính ${hourlyAmount(Number(feeRate), Number(feeMinutes)).toLocaleString("vi-VN")}đ (làm tròn từng buổi). `
-                        : ""}
-                      Học phí kiểu mới chỉ có khi cô bấm Đã dạy xong cho buổi đó, và chỉ tính em có mặt hoặc đi muộn. Phiếu đã chốt không bao giờ đổi khi cô đổi đơn giá sau này.
-                    </p>
-                  </div>
-                )}
+                <div className="pt-4 grid sm:grid-cols-2 gap-5">
+                  <KinInput label={`Đơn giá (${FEE_RATE_UNIT[feeMode]}) *`} inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
+                    placeholder="Ví dụ: 150000" aria-required {...fv.bind("feeRate", feeRate)} />
+                  {feeMode === "per_hour" && (
+                    <KinInput label="Một buổi dài (phút) *" inputMode="numeric" value={feeMinutes} onChange={e => { setFeeMinutes(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
+                      aria-required {...fv.bind("feeMinutes", feeMinutes)} />
+                  )}
+                  <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+                    {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0
+                      ? `Mỗi buổi ${Number(feeMinutes)} phút tính ${hourlyAmount(Number(feeRate), Number(feeMinutes)).toLocaleString("vi-VN")}đ (làm tròn từng buổi). `
+                      : ""}
+                    Học phí sinh ra khi cô bấm Đã dạy xong, cho em có mặt hoặc đi muộn. Em vắng hoặc có phép không tính. Phiếu đã chốt không đổi khi cô đổi đơn giá sau.
+                  </p>
+                </div>
+                <details className="mt-4 border-t border-[var(--kin-vien-nhat)] pt-2" data-fee-other open={feeMode !== "per_session"}>
+                  <summary className="inline-flex items-center min-h-11 cursor-pointer text-[var(--kin-nhan-link)] underline">Cách tính khác (ít dùng){feeMode !== "per_session" ? ` · đang chọn: ${FEE_MODE_LABEL[feeMode]}` : ""}</summary>
+                  <fieldset className="pt-2">
+                    <legend className="sr-only">Cách tính học phí khác</legend>
+                    <div className="space-y-2">
+                      {(["per_hour", "per_course"] as const).map(m => (
+                        <label key={m} className="flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] py-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                          <input type="radio" name="tl-fee-mode" className="mt-1" checked={feeMode === m} onChange={() => { setFeeMode(m); setError(null); }} />
+                          <span><span className="font-medium">{FEE_MODE_LABEL[m]}</span>
+                            <span className="block text-[var(--kin-chu-mo)]">{FEE_MODE_HINT[m]}</span></span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </details>
               </section>}
             </>
           )}

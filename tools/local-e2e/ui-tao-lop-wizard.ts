@@ -28,8 +28,10 @@ import { prisma } from "@/lib/prisma";
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("tên trống → ở lại bước 1, có lỗi", await stepOf() === "1" && await p.locator("p[role=alert]").filter({ hasText: "tên lớp" }).isVisible());
   await p.getByLabel(/Tên lớp/).fill("Toán 9 wizard");
-  await p.getByLabel(/Hình thức|Theo buổi/).first().isVisible().catch(() => false);
-  await p.getByLabel(/Theo giờ/).check();
+  // HOCPHI-THEO-BUOI: mặc định "Theo buổi"; "Theo giờ" nằm trong mục gập "Cách tính khác" nên phải mở trước.
+  check("mặc định là Theo buổi, 'Theo giờ' chưa hiện (đang gập)", await p.getByLabel(/^Theo buổi/).isChecked() && !(await p.getByLabel(/^Theo giờ/).isVisible()));
+  await p.locator("[data-fee-other] summary").click();
+  await p.getByLabel(/^Theo giờ/).check();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("theo giờ mà thiếu đơn giá → lỗi, ở lại bước 1 (học phí kiểu mới được kiểm)", await stepOf() === "1" && await p.locator("p[role=alert]").isVisible());
   await p.getByLabel(/^Đơn giá/).fill("150000");
@@ -115,7 +117,7 @@ import { prisma } from "@/lib/prisma";
   for (const path of ["/lop-cua-toi/lop/tao", `/lop-cua-toi/${old.id}?tab=hoc-sinh`]) {
     await m.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await m.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 90000 });
-    if (path.includes("tao")) { await m.getByLabel(/Tên lớp/).fill("Lớp thử 390"); await m.getByRole("button", { name: "Tiếp tục" }).click(); await m.getByRole("button", { name: "Tiếp tục" }).click(); await m.locator("[data-wizard-students] summary").click(); await m.locator("[data-picker-row]").first().waitFor({ timeout: 30000 }); }
+    if (path.includes("tao")) { await m.getByLabel(/Tên lớp/).fill("Lớp thử 390"); await m.getByLabel(/^Đơn giá/).fill("120000"); await m.getByRole("button", { name: "Tiếp tục" }).click(); await m.getByRole("button", { name: "Tiếp tục" }).click(); await m.locator("[data-wizard-students] summary").click(); await m.locator("[data-picker-row]").first().waitFor({ timeout: 30000 }); }
     else await m.locator("[data-lop-bao-cao]").first().waitFor({ timeout: 30000 });
     const small = await m.evaluate(`[...document.querySelectorAll('main a, main button, main select, main input, [role=tab]')].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5 && e.type !== 'checkbox' && !e.closest('nav') && !e.closest('label')).map(e => e.textContent.trim().slice(0,30) + ':' + Math.round(e.getBoundingClientRect().height))`) as string[];
     check(`${path}: không tràn ngang, nút ≥ 44px`, (await m.evaluate("document.documentElement.scrollWidth")) as number <= 390 && small.length === 0, small);

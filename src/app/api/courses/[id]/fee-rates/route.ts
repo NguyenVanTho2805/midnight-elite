@@ -11,7 +11,10 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { logAction } from "@/lib/auditLog";
 import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
 import { feeOverview, changeRate, type RateChange } from "@/lib/feeChargeServer";
-import { isNewFeeMode, normalizeFeeMode, validateEffectiveFrom, validateFeeSetup } from "@/lib/tuitionFee";
+import { isNewFeeMode, normalizeFeeMode, pickClassRate, pickStudentRate, validateEffectiveFrom, validateFeeSetup } from "@/lib/tuitionFee";
+import { floorViolation } from "@/lib/feeModeFloor";
+import { buildFeeAuditMetadata, buildFeeOverrideNotification, feeAuditAction, isFeeOverride } from "@/lib/feeRuleAudit";
+import { notify } from "@/lib/notify";
 
 const RANGE_DAYS = 400;
 
@@ -62,6 +65,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (eff.dateKey < addDaysKey(today, -RANGE_DAYS) || eff.dateKey > addDaysKey(today, RANGE_DAYS)) {
     return NextResponse.json({ error: `Ngày hiệu lực phải trong khoảng ${RANGE_DAYS} ngày quanh hôm nay` }, { status: 400 });
   }
+  // HOCPHI-THEO-BUOI 3.3.5: lớp đã có mốc tháng chuyển thì không cho ngày hiệu lực lùi trước mốc (nếu không "sàn" bị hạ và hai hệ phí chồng nhau).
+  const classRates = await prisma.courseFeeRate.findMany({ where: { courseId: id }, select: { effectiveFrom: true, rate: true }, orderBy: { effectiveFrom: "asc" } });
+  const below = floorViolation(eff.dateKey, classRates);
+  if (below) return NextResponse.json({ error: below }, { status: 400 });
   const note = typeof body?.note === "string" && body.note.trim() ? body.note.trim().slice(0, 300) : null;
 
   let change: RateChange;
@@ -83,14 +90,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     change = { type: "student", studentId, rate, effectiveFrom: eff.dateKey };
   }
 
+  // Đơn giá đang hiệu lực tại ngày hiệu lực mới, đọc TRƯỚC khi đổi (để audit biết "từ bao nhiêu").
+  let previousRate: number | null = null;
+  if (apply) {
+    if (change.type === "class") previousRate = pickClassRate(classRates, eff.dateKey)?.rate ?? null;
+    else {
+      const sr = await prisma.courseStudentRate.findMany({ where: { courseId: id, studentId: change.studentId }, select: { effectiveFrom: true, rate: true } });
+      previousRate = pickStudentRate(sr, eff.dateKey)?.rate ?? null;
+    }
+  }
+
   const res = await changeRate(id, change, auth.userId, { apply, note });
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status });
+  const ownerId = r.course!.ownerId;
+  const override = apply && isFeeOverride(auth.userId, ownerId);
   if (apply) {
-    await logAction(auth.userId, change.type === "class" ? "course_fee.set_rate" : "course_fee.set_student_rate", "Course", id, {
-      effectiveFrom: eff.dateKey, rate: change.rate, ...(change.type === "student" ? { studentId: change.studentId } : { sessionMinutes: change.sessionMinutes }),
-      repriced: res.plan.changedCount, delta: res.plan.delta, frozen: res.plan.frozenCount,
-    });
+    await logAction(auth.userId, feeAuditAction(change.type), "Course", id, buildFeeAuditMetadata({
+      type: change.type, actorId: auth.userId, adminRole: auth.adminRole, ownerId, effectiveFrom: eff.dateKey, rate: change.rate,
+      ...(change.type === "student" ? { studentId: change.studentId } : { sessionMinutes: change.sessionMinutes }),
+      previousRate, repriced: res.plan.changedCount, delta: res.plan.delta, frozen: res.plan.frozenCount,
+    }));
+    // Quản trị ghi đè → báo chủ lớp (không tên/tiền/tên lớp). Chống dội: đã có thông báo CHƯA ĐỌC cùng loại + liên kết thì không tạo thêm.
+    if (override && ownerId) {
+      const n = buildFeeOverrideNotification(id);
+      const pending = await prisma.notification.findFirst({ where: { userId: ownerId, type: n.type, link: n.link, isRead: false }, select: { id: true } });
+      if (!pending) await notify(ownerId, n);
+    }
   }
   const { updates, ...summary } = res.plan;
-  return NextResponse.json({ ok: true, applied: apply, plan: { ...summary, updates: updates.slice(0, 50) }, perCourse: res.perCourse ?? null });
+  return NextResponse.json({ ok: true, applied: apply, ...(apply ? { override } : {}), plan: { ...summary, updates: updates.slice(0, 50) }, perCourse: res.perCourse ?? null });
 }

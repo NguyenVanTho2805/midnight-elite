@@ -1,2 +1,6 @@
-// BU-00 bước 3 — trang mỏng: bí danh gia sư của khoa-hoc/tao-moi (vỏ gia sư do (tutor)/layout + (noi-dung)/layout cấp). Không sửa gì ở đây; sửa trang gốc.
-export { default } from "@/app/(admin)/admin/khoa-hoc/tao-moi/page";
+// HOCPHI-THEO-BUOI (TUT-001): một cửa tạo lớp của gia sư là TaoLop (chọn được cách tính học phí). Tệp mỏng của gia sư; không sửa trang admin.
+import { redirect } from "next/navigation";
+
+export default function TaoMoiRedirect() {
+  redirect("/lop-cua-toi/lop/tao");
+}
