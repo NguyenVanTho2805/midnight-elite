@@ -19,6 +19,7 @@ const ratesFile = (name: string, content: unknown) => { const p = join(dir, name
 function run(args: string[], env: Record<string, string | undefined> = {}) {
   const e: NodeJS.ProcessEnv = { ...process.env };
   delete e.VERCEL_ENV; delete e.NODE_ENV;
+  e.KIN_FLOOR_WIRED = "1"; // mặc định coi D1 đã nối; ca riêng bên dưới bỏ biến này
   for (const [k, v] of Object.entries(env)) { if (v === undefined) delete e[k]; else e[k] = v; }
   const r = spawnSync("npx", ["tsx", "scripts/chuyen-lop-cu-sang-theo-buoi.ts", ...args], { cwd: process.cwd(), env: e, encoding: "utf8", timeout: 120_000 });
   return { code: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}`, stdout: r.stdout ?? "" };
@@ -117,6 +118,26 @@ const modes = async () => JSON.stringify((await prisma.course.findMany({ orderBy
   check("… và không ghi gì", (await tableCounts()) === c0 && (await modes()) === m0 && (await frozen()) === f0);
   const prev1 = run(full, { VERCEL_ENV: "preview" }), prev2 = run([...full, "--allow-production", "--confirm-month", S], { VERCEL_ENV: "preview" }), prev3 = run(base, { VERCEL_ENV: "preview" });
   check("VERCEL_ENV=preview → luôn mã 2 kể cả có đủ cờ và kể cả dry-run; không ghi", prev1.code === 2 && prev2.code === 2 && prev3.code === 2 && (await tableCounts()) === c0 && (await modes()) === m0, [prev1.code, prev2.code, prev3.code]);
+
+  section("P1: --apply --yes thiếu KIN_FLOOR_WIRED → mã 2, không ghi");
+  const nw = run([...base, "--apply", "--yes"], { KIN_FLOOR_WIRED: undefined });
+  const nw0 = run([...base, "--apply", "--yes"], { KIN_FLOOR_WIRED: "0" });
+  check("KIN_FLOOR_WIRED không đặt (và =0) + --apply --yes → mã 2, báo 'mốc tháng chưa được nối', không dòng ĐÃ ĐỔI", nw.code === 2 && nw0.code === 2 && nw.out.includes("mốc tháng chưa được nối") && !/ĐÃ ĐỔI/.test(nw.out + nw0.out), [nw.code, nw0.code, nw.out.slice(-200)]);
+  check("… đếm 6 bảng trước = sau; phiếu/dòng/feeMode y nguyên", (await tableCounts()) === c0 && (await frozen()) === f0 && (await modes()) === m0);
+  const dr = run(base, { KIN_FLOOR_WIRED: undefined });
+  check("dry-run không cần KIN_FLOOR_WIRED (vẫn mã 0)", dr.code === 0 && dr.out.includes("DRY-RUN"), dr.code);
+
+  section("P2: host DATABASE_URL không phải localhost → coi là production (từ chối TRƯỚC khi kết nối)");
+  const FAKE = "postgresql://u:pw@db.example.invalid:5432/prod";
+  const hostNone = run(full, { DATABASE_URL: FAKE });
+  const hostAllowOnly = run([...full, "--allow-production"], { DATABASE_URL: FAKE });
+  const hostWrongMonth = run([...full, "--allow-production", "--confirm-month", M1], { DATABASE_URL: FAKE });
+  const hostConfirmOnly = run([...full, "--confirm-month", S], { DATABASE_URL: FAKE });
+  const hostAll = [hostNone, hostAllowOnly, hostWrongMonth, hostConfirmOnly];
+  check("host db.example.invalid + --apply --yes thiếu cờ / sai tháng xác nhận → mã 2, in PRODUCTION, 'Từ chối: production'", hostAll.every(r => r.code === 2 && r.out.includes("PRODUCTION") && r.out.includes("Từ chối: production")), hostAll.map(r => [r.code, r.out.slice(-120)]));
+  check("… không lộ mật khẩu, không kết nối (không có dòng 'Kế hoạch'), DB test không đổi", hostAll.every(r => !r.out.includes("pw@") && !r.out.includes(":pw") && !r.out.includes("Kế hoạch")) && (await tableCounts()) === c0 && (await modes()) === m0 && (await frozen()) === f0);
+  const hostDry = run(base, { DATABASE_URL: FAKE });
+  check("dry-run host lạ vẫn chỉ-đọc: không ghi DB test (có thể thoát ≠0 vì host không tồn tại)", hostDry.out.includes("PRODUCTION") && (await tableCounts()) === c0, hostDry.code);
 
   section("--apply --yes: chuyển được");
   const ap = run([...base, "--apply", "--yes"]);

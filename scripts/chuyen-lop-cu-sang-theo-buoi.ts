@@ -168,7 +168,10 @@ async function main(): Promise<number> {
   const parsed = parseArgs(process.argv.slice(2));
   if (typeof parsed === "string") { console.error(`Lỗi: ${parsed}\nXem đầu tệp scripts/chuyen-lop-cu-sang-theo-buoi.ts để biết cách dùng.`); return 1; }
   const a = parsed, S = a.fromMonth;
-  const prod = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+  const host = dbHost();
+  const localDb = /^(localhost|127\.0\.0\.1|\[?::1\]?)(:|$)/.test(host);
+  // Máy cục bộ nhưng DATABASE_URL trỏ máy chủ thật vẫn coi là production.
+  const prod = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production" || !localDb;
 
   console.log(`Cơ sở dữ liệu: ${dbHost()}`);
   console.log(`Chế độ: ${a.apply ? "GHI THẬT (--apply)" : "DRY-RUN (không ghi)"} · từ tháng ${S}${prod ? " · PRODUCTION" : ""}`);
@@ -179,6 +182,11 @@ async function main(): Promise<number> {
     return 2;
   }
 
+  // P1 (rà soát): mốc tháng chưa nối vào invoiceServer/feeChargeServer (D1). Ghi trước khi nối có thể mất hoặc tính đôi học phí tháng trước mốc.
+  if (a.apply && a.yes && process.env.KIN_FLOOR_WIRED !== "1") {
+    console.error("Từ chối ghi: mốc tháng chưa được nối vào issueInvoice/syncSessionCharges (yêu cầu D1 chờ COO). Chỉ đặt KIN_FLOOR_WIRED=1 sau khi D1 đã gộp. Không ghi gì.");
+    return 2;
+  }
   const now = vnMonthKey(new Date());
   if (S !== now && S !== nextMonth(now)) { console.error(`Từ chối cả lượt: --from-month phải là tháng hiện tại (${now}) hoặc tháng kế (${nextMonth(now)}).`); return 1; }
 
