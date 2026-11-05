@@ -98,7 +98,7 @@ function letterRun(list: MNode[], i: number): [string, number] {
     if (!letterChar(x) || x.tf !== first.tf || (j > i && (x.o & 2))) break;
     w += String.fromCharCode(x.mt as number); j++;
   }
-  return [FUNCS.has(w) ? `\\${w} ` : first.tf === 1 ? `\\text{${w}}` : `\\mathrm{${w}}`, j - i];
+  return [FUNCS.has(w) && (first.o & 2) ? `\\${w} ` : first.tf === 1 ? `\\text{${w}}` : `\\mathrm{${w}}`, j - i];
 }
 
 function embellished(n: Char, cx: Cx): { s: string; sup: boolean } {

@@ -107,9 +107,8 @@ export function formulaProblem(text: string | null | undefined): string | null {
     const body = (m[1] ?? m[2] ?? "").trim();
     if (!body) return "Có cặp $ $ nhưng bên trong trống. Cô gõ công thức vào giữa hoặc xoá cặp $ đó.";
     try { katex.renderToString(body, { throwOnError: true }); }
-    catch (e) {
-      const raw = e instanceof Error ? e.message.replace(/^KaTeX parse error:\s*/, "") : "";
-      return `KiN chưa vẽ được công thức “${body.length > 40 ? body.slice(0, 40) + "…" : body}”. Cô kiểm lại dấu { } và lệnh \\ rồi thử lại${raw ? ` (chi tiết kỹ thuật: ${raw.slice(0, 80)})` : ""}.`;
+    catch {
+      return `KiN chưa vẽ được công thức “${body.length > 40 ? body.slice(0, 40) + "…" : body}”. Cô kiểm lại dấu { } và lệnh \\ rồi thử lại.`;
     }
   }
   return null;

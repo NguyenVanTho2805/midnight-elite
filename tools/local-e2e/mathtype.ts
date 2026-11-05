@@ -74,7 +74,7 @@ const UNV = "unverified_structure";
 
   // ═════════════════════════════════════════════════════════════════════════════════════════════
   section("t-mtef-golden) 39 công thức mẫu thật có 'TeX Input Language' (hex luồng + tex) — LaTeX phải khớp sau chuẩn hoá");
-  {
+  if (fs.existsSync(path.join(__dirname, "mathtype-golden.json"))) { // tệp trích từ đề thật của gia sư: KHÔNG vào git (sinh bằng mathtype-gen-golden.ts)
     const gold: { hex: string; tex: string }[] = JSON.parse(fs.readFileSync(path.join(__dirname, "mathtype-golden.json"), "utf8"));
     check("có đủ 39 công thức vàng", gold.length === 39, gold.length);
     let okN = 0, same = 0, viaCfb = 0; const diffs: unknown[] = [];
