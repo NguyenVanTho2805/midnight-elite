@@ -2,6 +2,7 @@
 // Quét chữ NGƯỜI DÙNG THẤY (innerText + aria-label/title/placeholder) ở các route chính của khách, học sinh, gia sư, quản trị:
 // không còn "Coin", "xu" (từ riêng, trừ "xu hướng"), biểu tượng đồng xu. Dữ liệu cũ có sẵn (ví 200 Coin, yêu cầu nạp đang chờ) để chứng minh là ẨN chứ không phải "trống".
 // Kèm: API ghi Coin KHÔNG bị xoá (GET /api/wallet vẫn 200), bảng/dữ liệu còn nguyên, /student/vi và /admin/topups không còn lối vào.
+// Ca phá cố ý (P3-5): bỏ `\\p{M}` khỏi hai lookaround → ca NFD đỏ; bỏ `(?!\\s+(?:hướng|thế)…)` khỏi XU → "Top 10 xu hướng 2025"… đỏ.
 // Ca phá cố ý: đổi COIN_VISIBLE thành true → bài đỏ ở nhiều route.
 // Phần thuần hideCoinText (đầu bài): quay lại regex cũ `\s*[+\-]?\d+\s*(xu|Coin)\b` + `xu` đứng riêng → ca "1.000 xu", "Xu thế", "5 🪙" đỏ.
 import { api, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
@@ -10,7 +11,7 @@ import { BASE } from "./h";
 import { prisma } from "@/lib/prisma";
 import { hideCoinText } from "@/lib/features";
 
-const BAD = /coin|(^|[^\p{L}])xu(?![\p{L}])(?!\s+hướng)|🪙/iu;
+const BAD = /coin|(^|[^\p{L}\p{M}])xu(?![\p{L}\p{M}])(?!\s+(?:hướng|thế)(?![\p{L}\p{M}]))|🪙/iu;
 const GRAB = `(() => {
   const t = document.body.innerText;
   const a = [...document.querySelectorAll('[aria-label],[title],[placeholder]')].map(e => [e.getAttribute('aria-label'), e.getAttribute('title'), e.getAttribute('placeholder')].filter(Boolean).join(' | ')).join('\\n');
@@ -34,6 +35,26 @@ const GRAB = `(() => {
   check("'bạn bị trừ 20 xu' → câu thay thế", H("Câu bị gỡ, bạn bị trừ 20 xu") === "Câu bị gỡ, phần thưởng của câu trả lời này bị trừ lại", H("Câu bị gỡ, bạn bị trừ 20 xu"));
   check("'bạn bị trừ 1.000 xu' (dấu chấm hàng nghìn)", !/\d/.test(H("Câu bị gỡ, bạn bị trừ 1.000 xu")), H("Câu bị gỡ, bạn bị trừ 1.000 xu"));
   check("chuỗi không có gì để ẩn giữ nguyên từng chữ; chạy hai lần ra cùng kết quả", H("Lớp Toán 9 thứ 5 lúc 19:00") === "Lớp Toán 9 thứ 5 lúc 19:00" && H(H("Bạn nhận 1.000 xu.")) === H("Bạn nhận 1.000 xu."));
+
+  // P3-5 (06/11): bảng ca, kể cả số đứng trước "xu hướng"/"xu thế" và chữ NFD. Mỗi dòng [vào, ra]; ra === vào nghĩa là giữ nguyên từng chữ.
+  const nfd = (x: string) => x.normalize("NFD");
+  const KEEP = [
+    "Top 10 xu hướng 2025", "5 xu hướng nổi bật", "Năm 2024 xu thế mới", "Điểm 8,5 xu thế", "Xu thế học tập", "Xu hướng điểm 5 xuống 3", "Điểm xuống 3",
+    "Xuất sắc 5 xuất", "Mùa xuân 5 xuân", "Bitcoin tăng", "Hết xu rồi", "xu", "Lớp Toán 9 thứ 5 lúc 19:00", "5 xuhướng", "5 xu  hướng", "5 xu\nhướng",
+    "bạn bị trừ 5 xu hướng", nfd("Điểm 50 xú"), "Điểm 50 xu\u20DD", "Điểm 50 xu\u0304\u0323", nfd("Top 10 xu hướng"), nfd("Năm 2024 xu thế"),
+  ];
+  const CUT: [string, string][] = [
+    ["Bạn nhận 5 xu", "Bạn nhận"], ["Nhận 1.000 xu.", "Nhận."], ["Số dư 12.500,5 xu", "Số dư"], ["Thưởng 5 🪙", "Thưởng"], ["XU/5 XU", "XU/"], ["5 XU", ""],
+    ["Bitcoin 5 Coin", "Bitcoin"], ["+20 xu hôm nay", "hôm nay"], ["-5 xu", ""], ["\u22125 xu", ""], ["Nhận 🪙 5 hôm nay", "Nhận hôm nay"], ["Chúc mừng 🪙", "Chúc mừng"],
+    ["Câu bị gỡ, bạn bị trừ 20 xu", "Câu bị gỡ, phần thưởng của câu trả lời này bị trừ lại"], ["Nạp Coin thành công", "Nạp điểm thưởng thành công"],
+    [nfd("Bạn nhận 50 xu"), "Bạn nhận"], ["10 xu hướng và 5 xu", "10 xu hướng và"], ["Đã có 5 xu hướng mới, thưởng 20 xu", "Đã có 5 xu hướng mới, thưởng"],
+    ["20 xuống 5 xu", "20 xuống"], ["Xu hướng 5 xu thế 3 xu", "Xu hướng 5 xu thế"], ["5xu", ""], ["1.000.000 xu", ""],
+  ];
+  for (const k of KEEP) check(`giữ nguyên: ${JSON.stringify(k)}`, H(k) === k, H(k));
+  for (const [i, o] of CUT) check(`cắt đúng: ${JSON.stringify(i)} → ${JSON.stringify(o)}`, H(i) === o, H(i));
+  check(`bảng đủ ≥ 41 chuỗi (có ${KEEP.length + CUT.length})`, KEEP.length + CUT.length >= 41);
+  check("NFD 'xú' không để lại dấu kết hợp mồ côi", H(nfd("Điểm 50 xú")).endsWith("xu\u0301") && !/(^|\s)\p{M}/u.test(H(nfd("Điểm 50 xú"))));
+  check("BAD (bộ quét giao diện) cho qua 'xu hướng'/'xu thế', bắt 'xu' đứng riêng và Coin", !BAD.test("Top 10 xu hướng 2025") && !BAD.test("Năm 2024 xu thế mới") && BAD.test("Hết xu rồi") && BAD.test("Nạp Coin"));
 
   await wipe();
   const S = await mkUser({ name: "Trần Thị Bích" });

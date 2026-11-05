@@ -61,9 +61,8 @@ export async function POST(req: NextRequest) {
       await spendCoins(auth.userId, charge, COIN_REASONS.QUESTION_COST);
     } catch (e) {
       if (e instanceof InsufficientBalanceError) {
-        return NextResponse.json({
-          error: COIN_VISIBLE ? `Bạn cần ít nhất ${QUESTION_COST} xu để đặt câu hỏi` : "Chưa đặt được câu hỏi lúc này. Bạn thử lại sau nhé.",
-        }, { status: 402 });
+        // charge > 0 chỉ xảy ra khi COIN_VISIBLE = true (xem trên), nên ở đây luôn được nói rõ số xu.
+        return NextResponse.json({ error: `Bạn cần ít nhất ${QUESTION_COST} xu để đặt câu hỏi` }, { status: 402 });
       }
       throw e;
     }

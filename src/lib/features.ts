@@ -13,12 +13,15 @@ export function hideCoin(s: string): string {
 }
 
 // Ranh giới từ theo Unicode (\b của JS chỉ hiểu ASCII nên "xuống" bị coi là "xu" + "ống").
-const NOT_WORD_BEFORE = "(?<![\\p{L}\\p{N}])";
-const NOT_WORD_AFTER = "(?![\\p{L}\\p{N}])";
+// \p{M} (dấu kết hợp): chữ ở dạng NFD như "xu" + dấu sắc ("xú") vẫn là MỘT từ khác, không được cắt "xu" ra rồi để dấu mồ côi.
+const NOT_WORD_BEFORE = "(?<![\\p{L}\\p{N}\\p{M}])";
+const NOT_WORD_AFTER = "(?![\\p{L}\\p{N}\\p{M}])";
+// "xu" là đơn vị tiền, trừ khi đi liền "hướng"/"thế" ("Top 10 xu hướng", "Năm 2024 xu thế mới", "Điểm 8,5 xu thế" — số đứng trước không biến chúng thành tiền).
+const XU = `xu(?!\\s+(?:hướng|thế)${NOT_WORD_AFTER})`;
 // Số tiền kiểu VN: 20, 1.000, 12.500,5 — dấu chấm/phẩy nằm GIỮA chữ số, không bao giờ kết thúc số.
 const AMOUNT = "[+\\-\u2212]?\\d+(?:[.,]\\d+)*";
-const RE_DEDUCT = new RegExp(`,?\\s*bạn bị trừ ${AMOUNT}\\s*(?:xu|coin)${NOT_WORD_AFTER}`, "giu");
-const RE_AMOUNT_UNIT = new RegExp(`\\s*${NOT_WORD_BEFORE}${AMOUNT}\\s*(?:xu|coin|🪙)${NOT_WORD_AFTER}`, "giu");
+const RE_DEDUCT = new RegExp(`,?\\s*bạn bị trừ ${AMOUNT}\\s*(?:${XU}|coin)${NOT_WORD_AFTER}`, "giu");
+const RE_AMOUNT_UNIT = new RegExp(`\\s*${NOT_WORD_BEFORE}${AMOUNT}\\s*(?:${XU}|coin|🪙)${NOT_WORD_AFTER}`, "giu");
 const RE_COIN_AMOUNT = new RegExp(`\\s*🪙\\s*${AMOUNT}${NOT_WORD_AFTER}`, "gu");
 const RE_COIN_WORD = new RegExp(`${NOT_WORD_BEFORE}coin${NOT_WORD_AFTER}`, "giu");
 
@@ -30,11 +33,13 @@ const RE_COIN_WORD = new RegExp(`${NOT_WORD_BEFORE}coin${NOT_WORD_AFTER}`, "giu"
  */
 export function hideCoinText(s: string): string {
   if (COIN_VISIBLE) return s;
-  const out = s
+  // So khớp trên chuỗi NFC (chữ "hướng"/"thế" gõ dạng tổ hợp vẫn nhận ra); không có gì để ẩn thì trả NGUYÊN chuỗi gốc.
+  const n = s.normalize("NFC");
+  const out = n
     .replace(RE_DEDUCT, ", phần thưởng của câu trả lời này bị trừ lại")
     .replace(RE_AMOUNT_UNIT, "")
     .replace(RE_COIN_AMOUNT, "")
     .replace(/🪙/gu, "")
     .replace(RE_COIN_WORD, "điểm thưởng");
-  return out === s ? s : out.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+  return out === n ? s : out.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
 }
