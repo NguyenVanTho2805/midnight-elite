@@ -23,7 +23,7 @@ type Tx = Prisma.TransactionClient;
 export type EnrollSource = "class_invite" | "join_open" | "join_approved";
 export interface EnrollCourse { id: string; ownerId: string | null; capacity: number | null; classStatus: string }
 export type EnrollResult =
-  | { ok: true; enrollmentId: string; status: "active" | "pending_consent"; created: boolean }
+  | { ok: true; enrollmentId: string; status: "active" | "pending_consent" | "suspended"; created: boolean }
   | { ok: false; code: "CLASS_CLOSED" | "CAPACITY_FULL" | "CLASS_NOT_ACCEPTING"; status: 409; error: string; gate?: EnrollGate };
 
 /** Việc DUY NHẤT tạo Enrollment cho học sinh tự vào / được duyệt. Trong giao dịch `tx` của người gọi: khoá advisory theo LỚP, kiểm classStatus === "open",
@@ -38,7 +38,9 @@ export async function enrollInTx(
 
   const existing = await tx.enrollment.findUnique({ where: { userId_courseId: { userId: i.userId, courseId: i.course.id } }, select: { id: true, status: true } });
   if (existing) {
-    return { ok: true, enrollmentId: existing.id, status: existing.status === ENROLLMENT_STATUS.PENDING_CONSENT ? "pending_consent" : "active", created: false };
+    // Đã nghỉ lớp (suspended) được trả ĐÚNG là "suspended" — không giả làm "active" (người gọi báo "đã trong lớp" sai và có vẻ như đã học lại). Không tự mở lại.
+    const status = existing.status === ENROLLMENT_STATUS.PENDING_CONSENT ? "pending_consent" : existing.status === ENROLLMENT_STATUS.SUSPENDED ? "suspended" : "active";
+    return { ok: true, enrollmentId: existing.id, status, created: false };
   }
 
   const fresh = await tx.course.findUnique({ where: { id: i.course.id }, select: { classStatus: true, capacity: true, ownerId: true } });

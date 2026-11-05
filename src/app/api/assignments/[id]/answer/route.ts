@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { enrollmentDeniedBody } from "@/lib/suspendedContent";
 
 // GET /api/assignments/[id]/answer — học viên lấy toàn bộ câu hỏi + đáp án
 // đã tự lưu của chính mình, kèm % hoàn thiện và trạng thái khoá. Trước khi
@@ -47,7 +48,7 @@ export async function GET(
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
     if (!isEnrollmentActive(enrolled)) {
-      return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+      return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
     }
 
     const locked = !assignment.dueDate || new Date() >= assignment.dueDate;
@@ -115,7 +116,7 @@ export async function PATCH(
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
     if (!isEnrollmentActive(enrolled)) {
-      return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+      return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
     }
 
     if (!assignment.dueDate || new Date() >= assignment.dueDate) {

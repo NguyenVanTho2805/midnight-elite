@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { enrollmentDeniedBody } from "@/lib/suspendedContent";
 import { firstSafeHttpsLink, validateWorkLink } from "@/lib/mediaLink";
 
 // POST /api/lessons/[id]/azota-done — học sinh bấm "Em đã làm xong" cho bài Azota của bài giảng, kèm (không bắt buộc) LINK bài làm.
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const courseId = lesson.chapter.section.courseId;
   const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId } } });
-  if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+  if (!isEnrollmentActive(enrolled)) return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
 
   const body = await req.json().catch(() => ({})) as { linkUrl?: unknown };
   let fileUrl = "", kind: "link" | "done" = "done";

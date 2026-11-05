@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { enrollmentDeniedBody } from "@/lib/suspendedContent";
 import { validateWorkLink } from "@/lib/mediaLink";
 
 // POST /api/assignments/[id]/submit — học viên nộp/nộp lại bài. Nộp lại GHI
@@ -32,7 +33,7 @@ export async function POST(
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
     if (!isEnrollmentActive(enrolled)) {
-      return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+      return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
     }
 
     const body = await req.json().catch(() => ({})) as { fileUrl?: string; fileName?: string; linkUrl?: string };

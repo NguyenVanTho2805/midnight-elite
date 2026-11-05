@@ -26,6 +26,7 @@ import { canSelfEnroll, ENROLL_NOT_STUDENT_MESSAGE, ENROLL_TUTOR_PENDING_MESSAGE
 import { isApplicant } from "@/lib/tutorGate";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
 import { effectivePolicy, redeemOutcome } from "@/lib/joinRequest";
+import { SUSPENDED_REDEEM_MESSAGE, SUSPENDED_CONTENT_CODE, isSuspended } from "@/lib/suspendedContent";
 import { enrollInTx, logEnrollment, submitJoinRequestTx, notifyTutorNewJoinRequest } from "@/lib/enrollServer";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -62,7 +63,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   // Đã có yêu cầu pending bằng chính mã này (bấm lại / F5): trả lại idempotent, không đòi mã còn lượt (mã cá nhân maxUses 1 đã dùng).
   if (inv && (!inv.boundUserId || inv.boundUserId === session.userId)) {
     // Đã là thành viên: trả idempotent dù mã đã hết lượt (mã cá nhân maxUses 1). Mã gắn người khác không vào nhánh này (đi tiếp tới 403).
-    const enrolledAlready = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true } });
+    const enrolledAlready = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true, status: true } });
+    // Đã nghỉ lớp (suspended): không phải "đã trong lớp" — mã mời không tự mở lại lớp.
+    if (isSuspended(enrolledAlready)) return NextResponse.json({ error: SUSPENDED_REDEEM_MESSAGE, code: SUSPENDED_CONTENT_CODE, courseId: inv.courseId }, { status: 403 });
     if (enrolledAlready) return NextResponse.json({ ok: true, alreadyEnrolled: true, courseId: inv.courseId });
     const mine = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: inv.courseId } }, select: { id: true, status: true, inviteId: true } });
     if (mine && mine.status === "pending" && mine.inviteId === inv.id && !inv.revoked) {
@@ -87,6 +90,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const existing = await prisma.enrollment.findUnique({
     where: { userId_courseId: { userId: session.userId, courseId: inv!.courseId } },
   });
+  if (isSuspended(existing)) {
+    return NextResponse.json({ error: SUSPENDED_REDEEM_MESSAGE, code: SUSPENDED_CONTENT_CODE, courseId: inv!.courseId }, { status: 403 });
+  }
   if (existing) {
     return NextResponse.json({ ok: true, alreadyEnrolled: true, courseId: inv!.courseId });
   }
@@ -109,6 +115,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const result = await prisma.$transaction(async (tx) => {
       const enr = await enrollInTx(tx, { userId: session.userId, course, source: "class_invite", inviteId: inv!.id });
       if (!enr.ok) throw Object.assign(new Error(enr.code), { status: enr.status, body: enr.error, code: enr.code });
+      // Đua với một lần khác (hồ sơ vừa chuyển suspended giữa hai bước): vẫn không báo "đã trong lớp", không tăng lượt mã.
+      if (!enr.created && enr.status === "suspended") throw Object.assign(new Error("ENROLLMENT_SUSPENDED"), { status: 403, body: SUSPENDED_REDEEM_MESSAGE, code: SUSPENDED_CONTENT_CODE });
       if (!enr.created) return enr;
       // Em đang có yêu cầu pending của lớp này mà lại vào được ngay bằng mã khác ⇒ chuyển yêu cầu thành approved trong CÙNG giao dịch
       // (không để hàng chờ của gia sư còn một dòng ma). Mã của yêu cầu đã giữ một lượt: nếu chính là mã này thì không tính lượt hai lần.
@@ -139,7 +147,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, enrollmentId: result.enrollmentId, courseId: course.id, status: result.status });
   } catch (e: unknown) {
     const err = e as { status?: number; body?: string; message?: string; code?: string };
-    if (err.status && err.body) return NextResponse.json(err.code === "CLASS_NOT_ACCEPTING" ? { error: err.body, code: err.code } : { error: err.body }, { status: err.status });
+    if (err.status && err.body) return NextResponse.json(err.code === "CLASS_NOT_ACCEPTING" || err.code === SUSPENDED_CONTENT_CODE ? { error: err.body, code: err.code } : { error: err.body }, { status: err.status });
     console.error("[POST /api/invites/<code>/redeem]", e);
     return NextResponse.json({ error: "Redeem mã mời thất bại" }, { status: 500 });
   }

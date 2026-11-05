@@ -9,9 +9,11 @@
 //   - lessonGuard.ts canWatchStoredMedia: thêm lại `|| v.enrollmentStatus === "suspended"` → ca "tệp tài liệu" và "video" đỏ.
 //   - classRecordingsServer.ts: trả ok cho "suspended" → ca "bản ghi 403" đỏ.
 //   - lesson-notes/progress/assignments: bỏ lời gọi suspendedLessonBlock / suspendedCourseIds → ca tương ứng đỏ.
+//   - P3-7: progress/[lessonId]/route.ts, assignments/[id]/answer|submit, lessons/[id]/azota-done: đổi `enrollmentDeniedBody(enrolled, …)` về `{ error: … }` → ca "ghi … 403 code" đỏ.
+//   - P3-4: enrollServer.ts: trả lại `"active"` cho hồ sơ suspended (hoặc bỏ khối isSuspended trong invites/[id]/redeem) → ca "redeem … suspended" đỏ (báo alreadyEnrolled).
 import { api, mkUser, mkTutor, mkCourse, mkSuper, cookieFor, wipe, check, section, done, BASE } from "./h";
 import { prisma } from "@/lib/prisma";
-import { suspendedBlocksLesson, isSuspended, contactTutorHref, SUSPENDED_CONTENT_MESSAGE } from "@/lib/suspendedContent";
+import { suspendedBlocksLesson, isSuspended, enrollmentDeniedBody, SUSPENDED_REDEEM_MESSAGE, contactTutorHref, SUSPENDED_CONTENT_MESSAGE } from "@/lib/suspendedContent";
 import { canWatchStoredMedia } from "@/lib/lessonGuard";
 import { uploadLink } from "@/lib/mediaLink";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -32,6 +34,10 @@ async function page(path: string, as: Awaited<ReturnType<typeof mkUser>> | null)
   check("chặn bài trả phí, không chặn bài miễn phí", suspendedBlocksLesson({ status: "suspended" }, { isFree: false }) && !suspendedBlocksLesson({ status: "suspended" }, { isFree: true }));
   check("active / pending_consent / chưa ghi danh: hàm này không chặn (nhánh khác lo)", ["active", "pending_consent"].every(s => !suspendedBlocksLesson({ status: s }, { isFree: false })) && !suspendedBlocksLesson(null, { isFree: false }));
   check("đích liên hệ: hồ sơ gia sư, lớp không chủ thì trang lớp", contactTutorHref({ id: "c1", ownerId: "t1" }) === "/mentor/t1" && contactTutorHref({ id: "c1", ownerId: null }) === "/khoa-hoc/c1");
+  check("enrollmentDeniedBody: suspended → code + thông điệp nghỉ lớp; chưa ghi danh / chờ đồng ý → chỉ fallback, KHÔNG code",
+    enrollmentDeniedBody({ status: "suspended" }, "x").code === "enrollment_suspended" && enrollmentDeniedBody({ status: "suspended" }, "x").error === MSG
+    && JSON.stringify(enrollmentDeniedBody(null, "Chưa ghi danh")) === JSON.stringify({ error: "Chưa ghi danh" }) && enrollmentDeniedBody({ status: "pending_consent" }, "y").code === undefined);
+  check("thông điệp redeem cho suspended: giọng KiN, không số/tên", /Liên hệ gia sư/.test(SUSPENDED_REDEEM_MESSAGE) && !/\d/.test(SUSPENDED_REDEEM_MESSAGE));
   const v = { userId: "u", role: "student", adminRole: null, courseOwnerId: "t", enrollmentStatus: null as string | null, lessonIsFree: false };
   check("canWatchStoredMedia: suspended không xem video trả phí, bài miễn phí vẫn được", !canWatchStoredMedia({ ...v, enrollmentStatus: "suspended" }) && canWatchStoredMedia({ ...v, enrollmentStatus: "suspended", lessonIsFree: true }) && canWatchStoredMedia({ ...v, enrollmentStatus: "active" }));
 
@@ -146,6 +152,50 @@ async function page(path: string, as: Awaited<ReturnType<typeof mkUser>> | null)
       && (await api("GET", docUrl, { as: u })).status === 200 && (await api("GET", vidUrl, { as: u })).status === 200 && (await api("GET", `/api/courses/${course.id}/recordings`, { as: u })).status === 200);
   }
   check("gia sư vẫn thấy hồ sơ của em đã nghỉ (không đổi dữ liệu)", (await prisma.lessonProgress.count({ where: { userId: sSus.id } })) === 2 && (await prisma.lessonNote.count({ where: { userId: sSus.id } })) === 2);
+
+  section("P3-7: học sinh ĐÃ NGHỈ ghi (tiến độ, nộp bài, báo làm xong) → 403 kèm code, không ghi gì");
+  const az = await mkLesson("az-x", false, { azotaUrl: "https://azota.vn/de-thi/abc", order: 2 });
+  const susBody = (r: { status: number; json: any }) => r.status === 403 && r.json?.code === "enrollment_suspended" && r.json?.error === MSG;
+  const progBefore = await prisma.lessonProgress.findUnique({ where: { userId_lessonId: { userId: sSus.id, lessonId: paid.id } } });
+  const w1 = await api("POST", `/api/progress/${paid.id}`, { as: sSus, body: {} });
+  check("progress POST: 403 + enrollment_suspended", susBody(w1), w1.json);
+  const w2 = await api("PATCH", `/api/progress/${paid.id}`, { as: sSus, body: { watchedSeconds: 99 } });
+  check("progress PATCH: 403 + enrollment_suspended", susBody(w2), w2.json);
+  const w3 = await api("DELETE", `/api/progress/${paid.id}`, { as: sSus });
+  check("progress DELETE: 403 + enrollment_suspended", susBody(w3), w3.json);
+  const progAfter = await prisma.lessonProgress.findUnique({ where: { userId_lessonId: { userId: sSus.id, lessonId: paid.id } } });
+  check("tiến độ trong DB không đổi", progBefore?.completed === progAfter?.completed && progBefore?.watchedSeconds === progAfter?.watchedSeconds, progAfter);
+  const w4 = await api("PATCH", `/api/assignments/${asg.id}/answer`, { as: sSus, body: { questionId: "x", answer: "a" } });
+  check("assignments answer PATCH: 403 + enrollment_suspended", susBody(w4), w4.json);
+  const w5 = await api("POST", `/api/assignments/${asg.id}/submit`, { as: sSus, body: {} });
+  check("assignments submit: 403 + enrollment_suspended", susBody(w5), w5.json);
+  const w6 = await api("POST", `/api/lessons/${az.id}/azota-done`, { as: sSus, body: {} });
+  check("azota-done: 403 + enrollment_suspended", susBody(w6), w6.json);
+  check("không có bài nộp / dấu azota nào được ghi", (await prisma.assignmentSubmission.count({ where: { userId: sSus.id } })) === 0 && (await prisma.lessonAzotaDone.count({ where: { userId: sSus.id } })) === 0);
+  const x1 = await api("PATCH", `/api/assignments/${asg.id}/answer`, { as: sOut, body: { questionId: "x", answer: "a" } });
+  check("chưa ghi danh: vẫn 403 'chưa ghi danh' KHÔNG code nghỉ lớp", x1.status === 403 && x1.json?.code === undefined && /ghi danh/.test(x1.json?.error ?? ""), x1.json);
+  const x2 = await api("POST", `/api/progress/${paid.id}`, { as: sOut, body: {} });
+  check("progress: chưa ghi danh vẫn 403 không code", x2.status === 403 && x2.json?.code === undefined, x2.json);
+  const x3 = await api("POST", `/api/lessons/${az.id}/azota-done`, { as: sPend, body: {} });
+  check("azota-done: chờ đồng ý vẫn 403 không code", x3.status === 403 && x3.json?.code === undefined, x3.json);
+  const x4 = await api("POST", `/api/progress/${paid.id}`, { as: sAct, body: {} });
+  check("progress POST: đang học không bị chặn", x4.status !== 403, x4.json);
+  const x5 = await api("POST", `/api/lessons/${az.id}/azota-done`, { as: sAct, body: {} });
+  check("azota-done: đang học 200", x5.status === 200, x5.json);
+
+  section("P3-4: nhập mã mời khi đã nghỉ lớp → KHÔNG báo 'đã trong lớp', KHÔNG tự học lại");
+  const inv = await api("POST", `/api/courses/${course.id}/invites`, { as: T, body: { maxUses: 5 } });
+  check("gia sư tạo mã mời", inv.status === 201 && !!inv.json?.code, inv.json);
+  const usedBefore = (await prisma.classInvite.findUnique({ where: { id: inv.json.id } }))?.usedCount;
+  const rd = await api("POST", `/api/invites/${inv.json.code}/redeem`, { as: sSus });
+  check("redeem (suspended): 403 enrollment_suspended + thông điệp KiN", rd.status === 403 && rd.json?.code === "enrollment_suspended" && rd.json?.error === SUSPENDED_REDEEM_MESSAGE && rd.json?.alreadyEnrolled === undefined, rd.json);
+  const stillSus = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: sSus.id, courseId: course.id } } });
+  check("hồ sơ vẫn suspended, mã không bị tính thêm lượt", stillSus?.status === "suspended" && (await prisma.classInvite.findUnique({ where: { id: inv.json.id } }))?.usedCount === usedBefore, stillSus);
+  const rdA = await api("POST", `/api/invites/${inv.json.code}/redeem`, { as: sAct });
+  check("redeem (đang học): vẫn 200 alreadyEnrolled", rdA.status === 200 && rdA.json?.alreadyEnrolled === true, rdA.json);
+  const rdN = await api("POST", `/api/invites/${inv.json.code}/redeem`, { as: sOut });
+  check("redeem (chưa ghi danh): vẫn vào lớp 200", rdN.status === 200 && !!rdN.json?.enrollmentId, rdN.json);
+  await prisma.enrollment.delete({ where: { userId_courseId: { userId: sOut.id, courseId: course.id } } });
 
   section("Cho học lại (suspended → active) thì xem được ngay");
   await prisma.enrollment.update({ where: { userId_courseId: { userId: sSus.id, courseId: course.id } }, data: { status: "active" } });

@@ -26,3 +26,12 @@ export function suspendedBody(contactHref: string | null) {
 export function contactTutorHref(course: { id: string; ownerId: string | null }): string {
   return course.ownerId ? `/mentor/${encodeURIComponent(course.ownerId)}` : `/khoa-hoc/${encodeURIComponent(course.id)}`;
 }
+
+/** Dùng mã mời / mã cá nhân khi đã nghỉ lớp (suspended): KHÔNG tự vào lại, cũng không báo "đã trong lớp". Chỉ gia sư mở lại được. */
+export const SUSPENDED_REDEEM_MESSAGE = "Bạn đã nghỉ lớp này nên mã mời không mở lại lớp được. Liên hệ gia sư nếu cần tham gia lại.";
+
+/** Thân JSON 403 cho route GHI (lưu tiến độ, nộp bài, báo làm xong) khi học sinh không còn ghi danh ĐANG HỌC:
+ *  đã nghỉ lớp (suspended) → thân có `code: "enrollment_suspended"` + thông điệp nghỉ lớp; còn lại (chưa ghi danh, chờ phụ huynh…) → `fallbackError` như cũ. */
+export function enrollmentDeniedBody(e: { status: string } | null | undefined, fallbackError: string): { error: string; code?: string; contactHref?: string | null } {
+  return isSuspended(e) ? suspendedBody(null) : { error: fallbackError };
+}
