@@ -41,6 +41,19 @@ const GRAB = `(() => {
   const qa = await api("GET", "/api/admin/kiem-duyet?limit=20", { as: A });
   check("API Hàng chờ không còn liệt kê/đếm 'nap-coin'", qa.status === 200 && !JSON.stringify(qa.json).includes("nap-coin") && !(qa.json?.items ?? []).some((i: { kind: string }) => i.kind === "nap-coin"), qa.json?.counts);
 
+  section("Đặt câu hỏi không trừ xu khi Coin ẩn (chủ quyết 05/11/2026); bật cờ lại thì vẫn trừ");
+  const { QUESTION_COST } = await import("@/lib/wallet");
+  const before = (await prisma.wallet.findUnique({ where: { userId: S.id } }))?.balance ?? 0;
+  const qp = await api("POST", "/api/questions", { as: S, body: { title: "Giải phương trình bậc hai", content: "Em chưa hiểu delta." } });
+  const after = (await prisma.wallet.findUnique({ where: { userId: S.id } }))?.balance ?? 0;
+  const qrow = await prisma.question.findFirst({ where: { authorId: S.id }, orderBy: { createdAt: "desc" } });
+  check("POST /api/questions → 201, ví không đổi, bountyPaid 0", qp.status === 201 && after === before && qrow?.bountyPaid === 0, { s: qp.status, before, after, b: qrow?.bountyPaid });
+  const zero = await mkUser({ name: "Ví rỗng" });
+  const qz = await api("POST", "/api/questions", { as: zero, body: { title: "Hỏi khi ví rỗng", content: "Vẫn hỏi được." } });
+  check("ví 0 vẫn đặt được câu hỏi (không 402)", qz.status === 201, qz.status);
+  const src = (await import("node:fs")).readFileSync("src/app/api/questions/route.ts", "utf8");
+  check("mã: khi cờ bật lại thì vẫn trừ QUESTION_COST (COIN_VISIBLE ? QUESTION_COST : 0) và ghi bountyPaid", /COIN_VISIBLE \? QUESTION_COST : 0/.test(src) && /bountyPaid:\s*charge/.test(src) && QUESTION_COST > 0);
+
   await launch();
   const sizes = [[390, 844], [1280, 900]] as const;
   const guestRoutes = ["/", "/cong-dong", "/tin-tuc", "/khoa-hoc", "/giang-vien", "/thi-thu", "/diem-chuan", "/dang-ky", "/dang-nhap", "/chinh-sach"];
