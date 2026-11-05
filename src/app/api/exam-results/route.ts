@@ -5,6 +5,8 @@ import { loadPublishState, loadPublishStates } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
 import { dropHeldResults, heldAttemptIdsAmong } from "@/lib/examHold";
 import { rootIdOfExam } from "@/lib/examVariantServer";
+import { maskName } from "@/lib/lookupPrivacy";
+import { canSeeFullStudentNames } from "@/lib/examBoardPrivacy";
 
 /** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
 async function rankOf(examId: string, score: number): Promise<number> {
@@ -76,7 +78,10 @@ export async function GET(req: Request) {
       orderBy: { score: "desc" },
       take: 50,
     }));
-    return NextResponse.json(results);
+    // NO-0511 (cùng họ quyết định 1B): tên thật chỉ cho quản trị / gia sư chủ đề / gia sư chủ lớp của đề; người khác thấy tên che (maskName), không trường, không email.
+    const meta = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true, course: { select: { ownerId: true } } } });
+    const full = canSeeFullStudentNames(session, { examOwnerId: meta?.ownerId ?? null, courseOwnerId: meta?.course?.ownerId ?? null });
+    return NextResponse.json(results.map(r => ({ ...r, user: { name: full ? r.user.name : maskName(r.user.name) } })));
   }
 
   return NextResponse.json([]);

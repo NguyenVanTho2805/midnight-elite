@@ -19,6 +19,9 @@ import { prisma } from "@/lib/prisma";
   // 2A (04/11/2026): em đã vào lớp `a` nhưng đang CHỜ PHỤ HUYNH ĐỒNG Ý → thẻ hiện nhãn, KHÔNG có nút theo dõi (bấm theo dõi bị từ chối 409 mà không báo gì).
   const waiting = await mkUser({ name: "Em Chờ" });
   await prisma.enrollment.create({ data: { userId: waiting.id, courseId: a.id, status: "pending_consent" } });
+  // NO-0511: em đã NGHỈ lớp `d` (suspended) → thẻ hiện nhãn trung tính, không nút theo dõi (bấm theo dõi bị từ chối 409).
+  const left = await mkUser({ name: "Em Nghỉ" });
+  await prisma.enrollment.create({ data: { userId: left.id, courseId: d.id, status: "suspended" } });
   await prisma.courseCategory.upsert({ where: { name: "ĐGNL HCM" }, update: { sortOrder: 1 }, create: { name: "ĐGNL HCM", slug: "dgnl-hcm", sortOrder: 1 } });
   await prisma.courseCategory.upsert({ where: { name: "ĐGNL HSA" }, update: { sortOrder: 2 }, create: { name: "ĐGNL HSA", slug: "dgnl-hsa", sortOrder: 2 } });
 
@@ -115,6 +118,17 @@ import { prisma } from "@/lib/prisma";
   await wm.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await wm.locator(`[data-course-card="${a.id}"] [data-pending-consent]`).waitFor({ timeout: 30000 });
   check("390: nhãn hiện đủ, thẻ không tràn ngang", await wm.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth) && /Chờ phụ huynh đồng ý/.test(await wm.locator(`[data-course-card="${a.id}"]`).innerText()));
+
+  section("Em đã nghỉ lớp (NO-0511): nhãn trung tính thay cho nút theo dõi");
+  const lp = await (await ctxFor({ id: left.id, role: "student", email: left.email, name: left.name }, { width: 1280, height: 800 })).newPage(); lp.on("pageerror", (e: unknown) => errors.push(String(e)));
+  await lp.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
+  const cardD = lp.locator(`[data-course-card="${d.id}"]`);
+  await cardD.locator("[data-suspended-enrollment]").waitFor({ timeout: 30000 });
+  check("thẻ lớp đã nghỉ có nhãn 'Đã nghỉ lớp này'", /Đã nghỉ lớp này/.test(await cardD.innerText()));
+  check("thẻ đó KHÔNG có nút theo dõi và KHÔNG có 'Vào học'", (await cardD.getByRole("button", { name: /theo dõi lớp/i }).count()) === 0 && (await cardD.getByRole("link", { name: /Vào học/ }).count()) === 0);
+  check("chỉ MỘT thẻ có nhãn đã nghỉ; không có nhãn 'Chờ phụ huynh'", (await lp.locator("[data-suspended-enrollment]").count()) === 1 && (await lp.locator("[data-pending-consent]").count()) === 0);
+  check("3 thẻ còn lại vẫn có nút 'Theo dõi lớp'", (await lp.getByRole("button", { name: /Theo dõi lớp/ }).count()) === 3);
+  check("khách và em chờ phụ huynh không thấy nhãn 'đã nghỉ'", (await pg.locator("[data-suspended-enrollment]").count()) === 0 && (await wp.locator("[data-suspended-enrollment]").count()) === 0);
 
   check("không lỗi JS trang", errors.length === 0, errors.slice(0, 3));
   check("gõ tìm / chọn chip / đổi lọc không gây cảnh báo React 'cập nhật Router khi đang dựng' (replaceState ngoài hàm cập nhật state)", reactWarns.length === 0, reactWarns.slice(0, 2));

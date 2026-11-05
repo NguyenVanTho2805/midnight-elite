@@ -19,15 +19,16 @@ export function isEnrollmentActive(e: { status: string } | null | undefined): bo
 /**
  * GET /api/enrollments (2A, quyết định của Thọ 04/11/2026): tách hồ sơ của MỘT học sinh thành lớp ĐANG HỌC (`courseIds`, như cũ) và lớp CHỜ PHỤ HUYNH ĐỒNG Ý
  * (`pendingConsentCourseIds`) để thẻ lớp ở /khoa-hoc hiện nhãn "Chờ phụ huynh đồng ý" thay vì nút "Theo dõi lớp" (POST theo dõi bị từ chối 409 với mọi hồ sơ).
- * THUẦN. Giữ thứ tự đầu vào; trạng thái khác (suspended…) không vào danh sách nào; mỗi lớp tối đa một lần.
+ * THUẦN. NO-0511: thêm `suspendedCourseIds` (đã nghỉ). Giữ thứ tự đầu vào; trạng thái lạ không vào danh sách nào; mỗi lớp tối đa một lần.
  */
-export function splitEnrollmentIds(rows: { courseId: string; status: string }[]): { courseIds: string[]; pendingConsentCourseIds: string[] } {
-  const courseIds: string[] = [], pendingConsentCourseIds: string[] = [];
+export function splitEnrollmentIds(rows: { courseId: string; status: string }[]): { courseIds: string[]; pendingConsentCourseIds: string[]; suspendedCourseIds: string[] } {
+  const courseIds: string[] = [], pendingConsentCourseIds: string[] = [], suspendedCourseIds: string[] = [];
   for (const r of rows) {
     if (r.status === ENROLLMENT_STATUS.ACTIVE && !courseIds.includes(r.courseId)) courseIds.push(r.courseId);
     else if (r.status === ENROLLMENT_STATUS.PENDING_CONSENT && !pendingConsentCourseIds.includes(r.courseId)) pendingConsentCourseIds.push(r.courseId);
+    else if (r.status === ENROLLMENT_STATUS.SUSPENDED && !suspendedCourseIds.includes(r.courseId)) suspendedCourseIds.push(r.courseId);   // NO-0511: đã nghỉ → thẻ lớp hiện nhãn trung tính
   }
-  return { courseIds, pendingConsentCourseIds };
+  return { courseIds, pendingConsentCourseIds, suspendedCourseIds };
 }
 
 // Quyết định status cho Enrollment MỚI TẠO — BE-046.
