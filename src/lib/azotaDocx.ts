@@ -64,15 +64,20 @@ const TEXT_MAX = 10_000, OPTION_MAX = 2_000, NOTE_MAX = 3_000;
 interface ParaImg { at: number; index: number; readable: boolean }
 interface Para { text: string; u: boolean[]; imgs: ParaImg[] }
 
-const SUP: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ" };
-const SUB: Record<string, string> = { "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋", "−": "₋", "=": "₌", "(": "₍", ")": "₎" };
+// Chỉ số trên/dưới của CHẠY CHỮ Word (w:vertAlign) → ký tự Unicode (H₂O, Ca²⁺, SO₄²⁻, Cₙ). Chữ cái chỉ số dưới: CHỈ khối U+2090–209C (có trong phông hệ thống phổ biến); ᵢ ᵣ ᵤ ᵥ ⱼ
+// (khối Phonetic Extensions) không dùng vì dễ ra ô vuông. Gạch ngang "–" (U+2013) thường gặp ở điện tích ion (SO₄²–) được coi như dấu trừ.
+// Có ký tự không ánh xạ được → giữ ^(…) / _(…) (đọc được, không mất chữ); không đoán ký tự thay thế.
+const SUP: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻", "−": "⁻", "–": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ" };
+const SUB: Record<string, string> = { "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋", "−": "₋", "–": "₋", "=": "₌", "(": "₍", ")": "₎",
+  a: "ₐ", e: "ₑ", o: "ₒ", x: "ₓ", h: "ₕ", k: "ₖ", l: "ₗ", m: "ₘ", n: "ₙ", p: "ₚ", s: "ₛ", t: "ₜ" };
 function scriptText(r: DocRun): string {
   const t = r.text;
   if (!t || (!r.sup && !r.sub) || r.formula) return t;
   const map = r.sup ? SUP : SUB;
   const out = [...t].map(ch => (/\s/.test(ch) ? ch : map[ch] ?? null));
   if (out.every(x => x !== null)) return out.join("");
-  return r.sup ? `^(${t})` : `_(${t})`;
+  const wrapped = /^\([^()]*\)$/.test(t) ? t : `(${t})`; // "(aq)" → _(aq), không thành _((aq))
+  return (r.sup ? "^" : "_") + wrapped;
 }
 
 function paraFrom(runs: DocRun[]): Para {
