@@ -6,6 +6,7 @@ import { api, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { makeFormulaImgToken, FORMULA_MAX_TOKENS_PER_FIELD } from "@/lib/mathtype/formulaImg";
 import { mkTree } from "./bu03";
+import { computeContentHash } from "@/lib/questionDedup";
 
 const PH = "⟦công thức⟧";
 const okSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="10pt" height="10pt" viewBox="0 0 10 10"><text y="5" font-size="4"><tspan x="1">a</tspan></text></svg>';
@@ -128,13 +129,75 @@ const MC = (text: string, o: { opts?: [string, string]; explanation?: string; hi
     check("luu-nhieu: câu độc + token lỏng 5 MB lưu được dưới dạng nhãn; câu 10.000 token bị bỏ (skippedInvalid)", r.status === 201 && rows.length === 1 && !BAD_RE.test(JSON.stringify(rows)) && !JSON.stringify(rows).includes("ctimg") && r.json.skippedInvalid === 1, [r.status, r.json && { ...r.json, ids: undefined }]);
   }
 
-  section("Route đề cũ POST /api/exams/[id]/questions và /api/question-bank (cùng chống token độc)");
+  // ---- Route đề cũ + ngân hàng + bài tập: mọi ca PHẢI 2xx thật (không còn nhánh "bỏ qua") ----
+  const legacy = await qid(); // đề do chính gia sư T sở hữu (teacher có MANAGE_CURRICULUM, ownsResource đúng)
+  const LEG = (path = "") => `/api/exams/${legacy}/questions${path}`;
+  const dirty = (row: unknown) => { const j = JSON.stringify(row); return BAD_RE.test(j) || j.includes("ctimg") || j.length > 20_000; };
+  const legRow = (qidv: string) => prisma.examQuestion.findUnique({ where: { id: qidv }, include: { options: true } });
+  const LOOSE2 = "{{ctimg:" + "A".repeat(2 * 1024 * 1024) + "}}"; // thân yêu cầu Next tối đa 10 MB → lô nhiều câu dùng 2 MB
+  const body = (t = "Cũ", loose = LOOSE5) => ({ text: `${t} ${EVIL[0]}`, type: "MC", points: 1, explanation: `g ${EVIL[1]}`, options: [{ text: `A ${EVIL[2]}`, isCorrect: true }, { text: `B ${loose}`, isCorrect: false }] });
+
+  section("Route đề cũ POST /api/exams/[id]/questions và PUT /[qid]");
   {
-    const r = await api("POST", `/api/exams/${id}/questions`, { as: T, body: { text: `Cũ ${EVIL[0]}`, type: "MC", points: 1, explanation: `g ${EVIL[1]}`, options: [{ text: `A ${EVIL[2]}`, isCorrect: true }, { text: "B", isCorrect: false }] } });
-    if (r.status === 201) {
-      const row = await prisma.examQuestion.findUnique({ where: { id: r.json.id }, include: { options: true } });
-      check("exams/[id]/questions: token độc ở nội dung/giải thích/đáp án → chỉ còn nhãn", !!row && !BAD_RE.test(JSON.stringify(row)) && !JSON.stringify(row).includes("ctimg"), row);
-    } else console.log(`  – route đề cũ trả ${r.status} cho gia sư (không có quyền) — ca bỏ qua, mã đã được vá nhưng chưa chạy được ở đây`);
+    const r = await api("POST", LEG(), { as: T, body: body() });
+    check("POST: 201 thật", r.status === 201, [r.status, r.json?.error]);
+    const row = r.status === 201 ? await legRow(r.json.id) : null;
+    check("POST: token độc + token lỏng 5 MB ở nội dung/giải thích/đáp án → DB chỉ còn nhãn", !!row && !dirty(row) && row.text === `Cũ ${PH}`, row);
+    const p = await api("PUT", LEG(`/${r.json?.id}`), { as: T, body: { ...body("Sửa"), explanation: `g2 ${EVIL[3]}` } });
+    check("PUT: 200 thật", p.status === 200, [p.status, p.json?.error]);
+    const row2 = await legRow(r.json?.id);
+    check("PUT: token độc/lỏng bị loại ở mọi trường", !!row2 && !dirty(row2) && row2.text === `Sửa ${PH}`, row2);
+  }
+
+  section("Route đề cũ bulk-create và bulk-import");
+  {
+    const r = await api("POST", LEG("/bulk-create"), { as: T, body: { items: [body("Hàng loạt 1", LOOSE2), body("Hàng loạt 2", LOOSE2)] } });
+    check("bulk-create: 2xx thật", r.status >= 200 && r.status < 300, [r.status, r.json?.error]);
+    const rows = await prisma.examQuestion.findMany({ where: { examId: legacy, text: { startsWith: "Hàng loạt" } }, include: { options: true } });
+    check("bulk-create: 2 câu đã lưu, DB sạch token độc/lỏng", rows.length === 2 && !dirty(rows), rows.length);
+    const text = `Nhập chữ ${EVIL[0]}\nA. đ1 ${EVIL[1]}\nB. đ2 ${LOOSE5}\nĐáp án: A`;
+    const r2 = await api("POST", LEG("/bulk-import"), { as: T, body: { text } });
+    check("bulk-import: 2xx thật, imported ≥ 1", r2.status >= 200 && r2.status < 300 && (r2.json?.imported ?? 0) >= 1, [r2.status, r2.json]);
+    const rows2 = await prisma.examQuestion.findMany({ where: { examId: legacy, text: { startsWith: "Nhập chữ" } }, include: { options: true } });
+    check("bulk-import: câu lưu, DB sạch token độc/lỏng", rows2.length >= 1 && !dirty(rows2), rows2.length);
+  }
+
+  section("Ngân hàng POST /api/question-bank, PUT /[id] — lọc + băm trên chuỗi đã lọc");
+  {
+    const bq = (t: string) => ({ type: "MC", text: t, points: 1, categoryId: tree.c11, difficulty: "NB", explanation: `g ${EVIL[1]}`, options: [{ text: `A ${EVIL[2]}`, isCorrect: true }, { text: `B ${LOOSE5}`, isCorrect: false }] });
+    const r = await api("POST", "/api/question-bank", { as: T, body: bq(`Bank ${EVIL[0]}`) });
+    check("POST: 2xx thật", r.status >= 200 && r.status < 300 && !!r.json?.id, [r.status, r.json?.error]);
+    const row = await prisma.questionBankItem.findUnique({ where: { id: r.json?.id ?? "-" }, include: { options: true } });
+    check("POST: DB sạch token độc/lỏng", !!row && !dirty(row) && row.text === `Bank ${PH}`, row);
+    check("POST: contentHash tính trên chuỗi ĐÃ lọc", row?.contentHash === computeContentHash(`Bank ${PH}`), row?.contentHash);
+    const r1b = await api("POST", "/api/question-bank/check-duplicate", { as: T, body: { text: `Bank ${EVIL[0]}`, categoryId: tree.c11 } });
+    check("check-duplicate: so khớp theo chuỗi đã lọc → thấy trùng với câu vừa lưu", r1b.status === 200 && JSON.stringify(r1b.json).includes(r.json?.id ?? "?"), [r1b.status, r1b.json && Object.keys(r1b.json)]);
+    const p = await api("PUT", `/api/question-bank/${r.json?.id}`, { as: T, body: bq(`Bank sửa ${EVIL[3]}`) });
+    check("PUT: 200 thật", p.status === 200, [p.status, p.json?.error]);
+    const row2 = await prisma.questionBankItem.findUnique({ where: { id: r.json?.id ?? "-" }, include: { options: true } });
+    check("PUT: DB sạch + contentHash theo chuỗi đã lọc", !!row2 && !dirty(row2) && row2.text === `Bank sửa ${PH}` && row2.contentHash === computeContentHash(`Bank sửa ${PH}`), row2);
+  }
+
+  section("Bài tập POST /api/lessons/[id]/assignments — token độc / lỏng 5 MB / javascript: / data: thô");
+  {
+    const sec = await prisma.section.create({ data: { id: `sec-tk-${Date.now()}`, title: "P", order: 1, courseId: course.id } });
+    const ch = await prisma.chapter.create({ data: { id: `ch-tk-${Date.now()}`, title: "C", order: 1, sectionId: sec.id } });
+    const les = await prisma.lesson.create({ data: { id: `les-tk-${Date.now()}`, code: "B1", title: "Bài", type: "document", order: 1, chapterId: ch.id, isLocked: false, isFree: false, documents: "[]" } });
+    const JS = "{{ctimg:javascript:alert(1)}}", RAWDATA = "{{ctimg:data:image/svg+xml;base64,PHN2Zz48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ+PC9zdmc+}}";
+    const mk = (qs: unknown[]) => api("POST", `/api/lessons/${les.id}/assignments`, { as: T, body: { title: "BT phá token", mode: "interactive", dueDate: "2030-01-01", questions: qs } });
+    const q = (text: string, a: string, b = "B") => ({ text, type: "MC", points: 1, options: [{ text: a, isCorrect: true }, { text: b, isCorrect: false }] });
+    const r = await mk([q(`Q1 ${EVIL[0]} ${EVIL[4]}`, `A ${EVIL[1]}`, `B ${LOOSE5}`), q(`Q2 ${JS}`, `A ${RAWDATA}`, `B ${EVIL[2]}`), q(`Q3 ${TOK}`, `A ${TOK}`)]);
+    check("201 thật", r.status === 201, [r.status, r.json?.error]);
+    const rows = await prisma.assignmentQuestion.findMany({ where: { assignmentId: r.json?.id ?? "-" }, orderBy: { order: "asc" }, include: { options: true } });
+    const j = JSON.stringify(rows);
+    check("3 câu đã lưu", rows.length === 3, rows.length);
+    check("DB không còn script/onload/href/foreignObject/style/javascript:/data:/alert(1), không dòng 5 MB", rows.length === 3 && !BAD_RE.test(j) && !/javascript:|data:/i.test(j) && j.length < 20_000, j.length);
+    check("token SVG độc → đúng nhãn ⟦công thức⟧ (Q1 nội dung, đáp án)", rows[0]?.text.startsWith(`Q1 ${PH}`) && rows[0].options.some(o => o.text === `A ${PH}`) && rows[0].options.some(o => o.text === `B ${PH}`), rows[0]);
+    check("{{ctimg:javascript:alert(1)}} và data: thô → nhãn", rows[1]?.text === `Q2 ${PH}` && rows[1].options.some(o => o.text === `A ${PH}`), rows[1]);
+    check("token hợp lệ GIỮ NGUYÊN (không phá chức năng)", rows[2]?.text === `Q3 ${TOK}` && rows[2].options.some(o => o.text === `A ${TOK}`), rows[2]?.text.length);
+    const r2 = await mk([q("Q " + TOK.repeat(FORMULA_MAX_TOKENS_PER_FIELD + 30), "A")]);
+    const rows2 = await prisma.assignmentQuestion.findMany({ where: { assignmentId: r2.json?.id ?? "-" } });
+    check("nhồi token quá trần → 400 hoặc cắt về trần, không phình", r2.status === 400 || (r2.status === 201 && count(rows2[0]?.text ?? "", TOKRE) <= FORMULA_MAX_TOKENS_PER_FIELD), [r2.status, r2.json?.error]);
   }
 
   await done();

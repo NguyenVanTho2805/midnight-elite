@@ -9,11 +9,15 @@ export const FORMULA_SVG_MAX = 6 * 1024;
 /** Token toàn cục (cờ g). Dùng `new RegExp(FORMULA_IMG_RE.source, "g")` nếu cần vòng lặp độc lập (tránh dùng chung lastIndex). */
 export const FORMULA_B64_MAX = Math.ceil(FORMULA_SVG_MAX / 3) * 4; // 8192 ký tự base64 cho 6 KB SVG
 export const FORMULA_IMG_RE = /\{\{ctimg:([A-Za-z0-9+/=]{1,8192})\}\}/g;
+/** Nguồn DUY NHẤT cho regex token khớp chặt (b64 ≤ FORMULA_B64_MAX). Mọi nơi khác import, không tự viết lại. Trả bản MỚI cờ g (không chung lastIndex). */
+export const formulaImgRegex = (): RegExp => new RegExp(FORMULA_IMG_RE.source, "g");
 /** Trần số token ảnh MỖI TRƯỜNG chữ và trần cỡ thật (byte UTF-8) MỖI TRƯỜNG — chặn nhồi token để phình dữ liệu. */
 export const FORMULA_MAX_TOKENS_PER_FIELD = 20;
 export const FORMULA_MAX_BYTES_PER_FIELD = 160 * 1024;
 /** Token KHÔNG ràng buộc ký tự: để bắt cả token hỏng khi làm sạch. */
 const LOOSE_RE = /\{\{ctimg:([^{}]*)\}\}/g;
+/** Bản MỚI (cờ g) của regex token lỏng — cho phía hiển thị bắt cả token hỏng/quá dài để thay bằng nhãn. */
+export const formulaImgLooseRegex = (): RegExp => new RegExp(LOOSE_RE.source, "g");
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 

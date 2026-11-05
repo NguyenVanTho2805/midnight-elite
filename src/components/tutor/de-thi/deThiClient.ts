@@ -7,6 +7,7 @@ import { qfetch, type ApiResult } from "@/components/tutor/quiz/quizClient";
 import { toTutorPath } from "@/lib/tutorRoutes";
 import type { QuizQuestionInput, QuizQuestionType } from "@/lib/quizQuestion";
 import { distributePoints } from "@/lib/scoreDistribution";
+import { FORMULA_IMG_RE } from "@/lib/mathtype/formulaImg";
 
 export { qfetch, type ApiResult };
 
@@ -101,7 +102,7 @@ export const WORD_MAX_QUESTIONS = 200;
 export const FORMULA_PLACEHOLDER = "⟦công thức⟧";
 /** Kiểm từng công thức $...$ / $$...$$ bằng KaTeX (cùng bộ vẽ với MathText). Trả lời lỗi tiếng Việt cho công thức đầu tiên không vẽ được; null = ổn. */
 /** Token ảnh công thức {{ctimg:…}} (khớp MathText). */
-export const IMG_TOKEN_RE = /\{\{ctimg:[A-Za-z0-9+/=]{1,12000}\}\}/g;
+export const IMG_TOKEN_RE = FORMULA_IMG_RE; // cùng nguồn với máy chủ/MathText (b64 ≤ 8192); chỉ dùng với replace/match (g → không giữ lastIndex)
 export const hasImgToken = (s: string | null | undefined): boolean => !!s && s.includes("{{ctimg:");
 
 /** Tách các công thức $...$ / $$...$$ bằng quét tuyến tính (không regex lười, tránh ReDoS trên đề dài). */

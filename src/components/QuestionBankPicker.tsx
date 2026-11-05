@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, type QuestionBankItemFull, type ExamQuestionInput, type QuestionType, type Difficulty, type QuestionCategoryFull } from "@/lib/api";
 import { categoryPath } from "@/components/CategoryPicker";
+import { plainPreview } from "@/lib/mathtype/formulaImg";
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "NB",  label: "Nhận biết" },
@@ -141,7 +142,7 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
               style={{ borderColor: selected.has(item.id) ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)" }}>
               <input type="checkbox" className="mt-1" checked={selected.has(item.id)} onChange={() => toggle(item)} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm truncate" style={{ color: "var(--kin-chu-chinh)" }}>{item.text.replace(/\{\{ctimg:[A-Za-z0-9+/=]+\}\}/g, "[ảnh công thức]")}</p>
+                <p className="text-sm truncate" style={{ color: "var(--kin-chu-chinh)" }}>{plainPreview(item.text, 400)}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-xs text-gray-500">{categoryPath(item.categoryId, categories)}</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={DIFFICULTY_COLOR[item.difficulty]}>

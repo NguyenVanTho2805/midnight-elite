@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
         categoryId,
         difficulty,
         tags: tags && tags.length > 0 ? tags : undefined,
-        contentHash: computeContentHash(text),
+        contentHash: computeContentHash(sanFormula(text.trim())), // băm trên chuỗi ĐÃ lọc = chuỗi thật được lưu
         ownerId: auth.userId,
         status: initialStatusFor(auth.adminRole),
         options: {

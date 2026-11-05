@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { computeContentHash } from "@/lib/questionDedup";
+import { sanitizeFormulaImgTokens as sanFormula } from "@/lib/mathtype/formulaImg";
 import { isReviewer } from "@/lib/questionBankWorkflow";
 import { findSimilarBankItems } from "@/lib/questionBankSimilarity";
 import { findSemanticBankItems } from "@/lib/embeddings";
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const statusScope = isReviewer(auth.adminRole) ? {} : { OR: [{ status: "approved" }, { ownerId: auth.userId }] };
     const match = await prisma.questionBankItem.findFirst({
-      where: { ...statusScope, categoryId, contentHash: computeContentHash(text) },
+      where: { ...statusScope, categoryId, contentHash: computeContentHash(sanFormula(text.trim())) },
       include: { options: { orderBy: { order: "asc" } }, owner: { select: { name: true } } },
     });
 

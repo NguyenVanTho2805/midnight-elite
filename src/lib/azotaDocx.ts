@@ -7,7 +7,7 @@
 // Giới hạn độ dài (TEXT_MAX…) tính theo `visibleLength`: mỗi token ảnh đếm 1 ký tự và KHÔNG BAO GIỜ bị cắt giữa chừng.
 import type { QuizQuestionInput } from "@/lib/quizQuestion";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
-import { clipVisible } from "@/lib/mathtype/formulaImg";
+import { clipVisible, formulaImgRegex } from "@/lib/mathtype/formulaImg";
 
 // ── Kiểu đầu vào (từ azotaDocxRead.ts) ───────────────────────────────────────────────────────
 export type Level = "NB" | "TH" | "VD" | "VDC";
@@ -55,7 +55,6 @@ export interface AzotaParse {
 }
 
 export const AZOTA_MAX_QUESTIONS = 200;
-const IMG_TOKEN_G = /\{\{ctimg:[A-Za-z0-9+/=]+\}\}/g;
 const LEVELS: readonly Level[] = ["NB", "TH", "VD", "VDC"];
 const OPT_SEQ = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
 const SUB_SEQ = ["a", "b", "c", "d"] as const;
@@ -548,7 +547,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     if (d.extraImages > 0) warn(q.key, "extra_images", `${label}: có ${d.extraImages + 1} hình, KiN chỉ giữ 1 hình/câu (hình đầu); thêm hình còn lại bằng tay.`);
     if (d.unreadableImage) warn(q.key, "image_unreadable", `${label}: có hình định dạng WMF/EMF hoặc quá giới hạn — KiN chưa hiển thị được, cần chèn lại hình.`);
     {
-      const toks = [...new Set([q.text, q.explanation, ...q.options.map(o => o.text)].flatMap(t => t.match(IMG_TOKEN_G) ?? []))];
+      const toks = [...new Set([q.text, q.explanation, ...q.options.map(o => o.text)].flatMap(t => t.match(formulaImgRegex()) ?? []))];
       if (toks.length > 0) {
         q.flags.push("formula_image");
         const guesses = toks.flatMap(t => (imgGuess.has(t) ? [{ imgToken: t, latex: imgGuess.get(t)! }] : []));

@@ -74,7 +74,7 @@ export async function PUT(
           categoryId,
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,
-          contentHash: computeContentHash(text),
+          contentHash: computeContentHash(sanFormula(text.trim())), // băm trên chuỗi ĐÃ lọc = chuỗi thật được lưu
           // Giai đoạn 6 — sửa nội dung làm mất hiệu lực trạng thái duyệt cũ:
           // teacher sửa → luôn về "draft" (kể cả đang "pending"/"approved",
           // phải gửi duyệt lại) và xoá lý do từ chối cũ (đã sửa theo góp ý);
