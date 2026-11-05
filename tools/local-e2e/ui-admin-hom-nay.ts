@@ -3,6 +3,7 @@
 import { mkUser, mkSuper, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN, adminGet } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { COIN_VISIBLE } from "@/lib/features";
 
 const PHONE = "0987654321";
 
@@ -35,7 +36,7 @@ const PHONE = "0987654321";
   check("h1 'Hôm nay cần làm gì' + dòng phụ có số việc", /\d+ việc đang chờ/.test(await pg.locator("header p").innerText()));
   const hrefs = await pg.locator("[data-todo] a").evaluateAll(els => els.map(e => e.getAttribute("href")));
   check("mọi việc chờ trỏ vào /admin/kiem-duyet?loai=…, không còn /admin/topups hay /admin/cong-dong/bao-cao", hrefs.length > 0 && hrefs.every(h => /^\/admin\/(kiem-duyet\?loai=|goi-pro|ho-tro)/.test(h ?? "")) && !hrefs.some(h => /topups|bao-cao/.test(h ?? "")), hrefs);
-  check("có hàng 'Đánh giá khoá học' và 'nạp Coin' với số đếm", await pg.locator('[data-todo="danh-gia"]').count() === 1 && await pg.locator('[data-todo="nap-coin"]').count() === 1);
+  check("có hàng 'Đánh giá khoá học'; hàng 'nạp Coin' chỉ khi cờ Coin bật (05/11/2026 Coin ẩn)", await pg.locator('[data-todo="danh-gia"]').count() === 1 && await pg.locator('[data-todo="nap-coin"]').count() === (COIN_VISIBLE ? 1 : 0));
   check("mỗi hàng việc cao ≥ 44px", (await pg.locator("[data-todo] a").evaluateAll(els => els.map(e => e.getBoundingClientRect().height))).every(h => h >= 43.5));
   const html = await pg.content();
   check("KHÔNG có số điện thoại học sinh mẫu (văn bản + thuộc tính)", !html.includes(PHONE) && !html.includes("Em Có Số Điện Thoại"));

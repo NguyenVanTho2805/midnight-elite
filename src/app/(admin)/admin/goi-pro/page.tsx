@@ -134,7 +134,7 @@ function GoiProContent() {
       <header className="min-w-0">
         <h1 className="text-[28px] leading-9 font-medium text-[var(--kin-chu-chinh)]">Gói KiN Pro</h1>
         <p className="mt-2 max-w-[68ch] text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
-          Hạn mức, giá và yêu cầu mua. Thu theo kỳ bằng QR chuyển khoản, bạn đối chiếu sao kê rồi kích hoạt; không Coin, không tự động trừ tiền.
+          Hạn mức, giá và yêu cầu mua. Thu theo kỳ bằng QR chuyển khoản, bạn đối chiếu sao kê rồi kích hoạt; không tự động trừ tiền.
         </p>
       </header>
 

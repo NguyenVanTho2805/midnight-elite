@@ -7,7 +7,7 @@ export function TinLienQuan({ bai, hienTai, now }: { bai: TinThe[]; hienTai: str
   const ds = bai.filter((a) => a.slug !== hienTai).slice(0, 4);
   if (ds.length === 0) return null;
   return (
-    <section data-tin-lien-quan aria-labelledby="tlq" className="mt-10">
+    <section data-tin-lien-quan aria-labelledby="tlq" className="mt-10 print:hidden">
       <h2 id="tlq" className="mb-3 text-[length:var(--kin-co-tieu-de)] font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Tin liên quan</h2>
       <ul className="grid gap-4 sm:grid-cols-2">
         {ds.map((a) => (

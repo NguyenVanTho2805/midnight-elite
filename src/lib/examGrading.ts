@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { scoreMultiSelect } from "@/lib/quizQuestion";
 import { isAttemptHeld } from "@/lib/examHold";
+import { examStartInstant } from "@/lib/examData";
 
 type ExamQuestionWithOptions = Prisma.ExamQuestionGetPayload<{ include: { options: true } }>;
 
@@ -108,9 +109,7 @@ export function parseDurationMinutes(duration: string): number {
 // date+time+duration thay vì dựa vào Exam.status (field đó chỉ được cập nhật
 // khi admin sửa đề, có thể cũ so với thời gian thật).
 export function hasExamWindowEnded(exam: { date: string; time: string; duration: string }): boolean {
-  const [day, month, year] = (exam.date || "01/01/2000").split("/");
-  const [hh, mm] = (exam.time || "00:00").split(":");
-  const startsAt = new Date(+year, +month - 1, +day, +hh, +mm);
+  const startsAt = examStartInstant(exam.date, exam.time); // giờ Việt Nam +07:00 cố định, không theo TZ máy chủ
   const endsAt = new Date(startsAt.getTime() + parseDurationMinutes(exam.duration) * 60_000);
   return endsAt.getTime() <= Date.now();
 }

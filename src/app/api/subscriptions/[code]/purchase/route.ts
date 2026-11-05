@@ -96,7 +96,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ co
     return NextResponse.json({ subscription }, { status: 201 });
   } catch (e) {
     if (e instanceof InsufficientBalanceError) {
-      return NextResponse.json({ error: "Số dư xu không đủ để mua gói này" }, { status: 400 });
+      return NextResponse.json({ error: "Chưa mua được gói này lúc này." }, { status: 400 });
     }
     console.error("[POST /api/subscriptions/[code]/purchase]", code, e);
     return NextResponse.json({ error: "Mua gói thất bại" }, { status: 500 });

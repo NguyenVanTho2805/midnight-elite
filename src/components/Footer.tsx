@@ -25,7 +25,7 @@ export default function Footer() {
   return (
     <footer
       data-vung="sang"
-      className="kin-chu-than bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]"
+      className="kin-chu-than print:hidden bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]"
     >
       <div className="mx-auto max-w-[1440px] px-4 sm:px-8 py-14">
         <div className="flex flex-col md:flex-row md:flex-wrap gap-10 lg:gap-[60px]">

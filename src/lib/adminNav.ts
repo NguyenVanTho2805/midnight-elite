@@ -2,6 +2,7 @@
 // PHẦN THUẦN, không đụng React: gom MỌI trang quản trị vào bốn module, giữ nguyên quyền từng trang (có test đối chiếu).
 // Quy tắc: trang không đủ quyền thì KHÔNG hiện lối vào; module không còn trang con nào thì ẩn cả module.
 // `group` (BU-08): nhóm con trong module. Vỏ chỉ hiện dải tab của NHÓM đang ở (≤ 6 tab) và đặt tên nhóm làm tiêu đề phụ ở thanh bên rộng.
+import { COIN_VISIBLE } from "@/lib/features";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
 
 export interface AdminSub { label: string; href: string; permission?: Permission; group?: string }
@@ -59,7 +60,7 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Triển khai và hạn mức", href: "/admin/trien-khai", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" },
       { label: "Gói KiN Pro", href: "/admin/goi-pro", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" },
       // Lịch sử nạp Coin chỉ ĐỌC (việc chờ duyệt nằm ở Hàng chờ). Chỉ quản trị cấp 1, như API duyệt.
-      { label: "Lịch sử nạp Coin", href: "/admin/topups", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" },
+      ...(COIN_VISIBLE ? [{ label: "Lịch sử nạp Coin", href: "/admin/topups", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" }] : []),
       { label: "Hỗ trợ gia sư", href: "/admin/ho-tro", permission: PERMISSIONS.MANAGE_TUTORS, group: "Hệ thống" },
     ],
   },

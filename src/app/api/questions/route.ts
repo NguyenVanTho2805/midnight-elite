@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     await spendCoins(auth.userId, QUESTION_COST, COIN_REASONS.QUESTION_COST);
   } catch (e) {
     if (e instanceof InsufficientBalanceError) {
-      return NextResponse.json({ error: `Bạn cần ít nhất ${QUESTION_COST} xu để đặt câu hỏi` }, { status: 402 });
+      return NextResponse.json({ error: "Chưa đặt được câu hỏi lúc này. Bạn thử lại sau nhé." }, { status: 402 });
     }
     throw e;
   }

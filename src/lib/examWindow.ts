@@ -1,7 +1,7 @@
 // BU-04 — khung giờ làm bài của đề MODE=test. THUẦN (không prisma, không next, không đọc đồng hồ ngầm: `now` luôn do người gọi truyền vào).
 // Mốc giờ dựng bằng +07:00 tường minh (qua classSessions.instantOf) nên KHÔNG phụ thuộc múi giờ (TZ) của máy chủ.
 // Khung = [mở, mở + thời lượng]. Không có cột đóng riêng (câu hỏi 1 của chủ, mặc định: không thêm).
-// Hàm cũ examGrading.hasExamWindowEnded / examData.computeExamStatus dùng múi giờ máy chủ — CHƯA đổi (nợ COO 02/11, chờ chủ quyết); mã mới dùng tệp này.
+// Từ 05/11/2026 các hàm cũ examGrading.hasExamWindowEnded / examData.computeExamStatus cũng dùng +07:00 cố định (examData.examStartInstant).
 import { instantOf, isValidDateKey, parseHm } from "@/lib/classSessions";
 
 const DMY_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;

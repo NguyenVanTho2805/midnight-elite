@@ -9,7 +9,7 @@ import type { QueueAction, QueueItem } from "@/lib/adminQueue";
 import { QueueToolbar, BulkBar, QUEUE_PATH } from "./queue/QueueToolbar";
 import { QueueTable, QueueCards } from "./queue/QueueTable";
 import { QueuePanel, QUEUE_PANEL_GUTTER } from "./queue/QueuePanel";
-import { QueueErrorStrip, QueueSkeleton, kindLabel } from "./queue/shared";
+import { QueueErrorStrip, QueueSkeleton, kindLabel, kindHidden } from "./queue/shared";
 import { useBulk } from "./queue/useBulk";
 
 /** Báo cho thanh module cập nhật số trên badge ngay khi xử lý xong một dòng. */
@@ -31,7 +31,9 @@ function useWide() {
 }
 
 export default function HangCho() {
-  const loai = useSearchParams().get("loai");
+  const loaiRaw = useSearchParams().get("loai");
+  const loai = loaiRaw && kindHidden(loaiRaw) ? null : loaiRaw; // Coin ẩn: địa chỉ ?loai=nap-coin coi như không lọc
+  const visible = <T extends { kind: string }>(a: T[]) => a.filter(i => !kindHidden(i.kind));
   const wide = useWide();
   const [items, setItems] = useState<QueueItem[] | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -56,8 +58,8 @@ export default function HangCho() {
         if (r.status === 403) { setFail(loai ? "kind" : "perm"); setItems([]); return; }
         if (!r.ok) throw new Error(String(r.status));
         const d = (await r.json()) as Partial<Resp>;
-        setItems(Array.isArray(d.items) ? d.items : []);
-        setCounts(d.counts && typeof d.counts === "object" ? d.counts : {});
+        setItems(Array.isArray(d.items) ? visible(d.items) : []);
+        setCounts(d.counts && typeof d.counts === "object" ? Object.fromEntries(Object.entries(d.counts).filter(([k]) => !kindHidden(k))) : {});
         setNext(d.nextCursor ?? null); setFail(null); setNow(Date.now());
       })
       .catch(() => { if (my === seq.current) setFail("net"); });
@@ -74,7 +76,7 @@ export default function HangCho() {
     fetch(`/api/admin/kiem-duyet?${q}`, { credentials: "same-origin", cache: "no-store" })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d: Partial<Resp>) => {
-        setItems(prev => { const seen = new Set((prev ?? []).map(i => i.id)); return [...(prev ?? []), ...(d.items ?? []).filter(i => !seen.has(i.id))]; });
+        setItems(prev => { const seen = new Set((prev ?? []).map(i => i.id)); return [...(prev ?? []), ...visible(d.items ?? []).filter(i => !seen.has(i.id))]; });
         setNext(d.nextCursor ?? null);
       })
       .catch(() => setFail("net"))
@@ -149,7 +151,7 @@ export default function HangCho() {
           Loại việc này thuộc quyền khác. Các loại bạn duyệt được vẫn ở Hàng chờ.
         </KinEmptyState>
       )}
-      {empty && !loai && <KinEmptyState title="Hàng chờ trống">Hồ sơ gia sư, báo cáo, đánh giá và yêu cầu nạp Coin mới sẽ hiện ở đây.</KinEmptyState>}
+      {empty && !loai && <KinEmptyState title="Hàng chờ trống">Hồ sơ gia sư, báo cáo và đánh giá mới sẽ hiện ở đây.</KinEmptyState>}
       {empty && loai && (
         <KinEmptyState title="Không có việc loại này" action={<Link href={QUEUE_PATH} className="inline-flex min-h-11 items-center font-medium text-[var(--kin-nhan-link)] underline">Xoá lọc</Link>}>
           {`Hiện không có việc “${kindLabel(loai)}” nào đang chờ.`}

@@ -69,7 +69,7 @@ export default function HomNay() {
         {loading && !data ? <KinSkeleton widths={[100, 70]} />
           : failed || !data ? <Failed what="danh sách việc" onRetry={() => void load()} />
           : groups.length === 0 ? (
-            <KinEmptyState title="Hôm nay chưa có việc nào chờ bạn">Hồ sơ gia sư, báo cáo, đánh giá, nạp Coin và hỗ trợ đều đã xử lý hết trong phạm vi quyền của bạn.</KinEmptyState>
+            <KinEmptyState title="Hôm nay chưa có việc nào chờ bạn">Hồ sơ gia sư, báo cáo, đánh giá và hỗ trợ đều đã xử lý hết trong phạm vi quyền của bạn.</KinEmptyState>
           ) : groups.map(g => (
             <div key={g.key} data-group={g.key}>
               <KinSectionHead title={GROUP_LABEL[g.key] ?? g.label} aside={`${g.items.length} mục`} />

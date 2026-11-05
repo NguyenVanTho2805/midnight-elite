@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { COIN_VISIBLE } from "@/lib/features";
 import { ANSWER_REWARD } from "@/lib/wallet-constants";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -232,7 +233,7 @@ export default function QuestionModal({
                   {answered ? "✓ Đã giải" : "Đang mở"}
                 </span>
               )}
-              {question && (
+              {COIN_VISIBLE && question && (
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" }}>
                   🪙 {question.bountyPaid}
@@ -308,7 +309,7 @@ export default function QuestionModal({
                         {a.isAccepted && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                             style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>
-                            ✓ Được chấp nhận · +{ANSWER_REWARD} 🪙
+                            ✓ Được chấp nhận{COIN_VISIBLE ? ` · +${ANSWER_REWARD} 🪙` : ""}
                           </span>
                         )}
                         {a.isPenalized && (
@@ -352,7 +353,7 @@ export default function QuestionModal({
                 {/* Answer form */}
                 <div className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
                   <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>
-                    Câu trả lời hay nhất sẽ nhận <span style={{ color: "var(--kin-tt-chu-cho)" }}>+{ANSWER_REWARD} 🪙</span>
+                    Câu trả lời hay nhất sẽ được chọn{COIN_VISIBLE && <> và nhận <span style={{ color: "var(--kin-tt-chu-cho)" }}>+{ANSWER_REWARD} 🪙</span></>}
                   </p>
                   <textarea
                     value={answerText}

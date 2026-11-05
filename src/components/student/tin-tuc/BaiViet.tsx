@@ -4,7 +4,7 @@ import { ChiaSe } from "./ChiaSe";
 import { ChipMuc } from "./ChipMuc";
 import { DemLuotXem } from "./DemLuotXem";
 import { TinLienQuan } from "./TinLienQuan";
-import { type TinThe, hrefBai, hrefMuc, mocBai, ngayGio, nhanMuc, tenTacGia } from "./kieu";
+import { type TinThe, hrefBai, hrefMuc, mocBai, ngayGio, nhanMuc, tenTacGia, thoiLuongDoc } from "./kieu";
 
 export interface BaiDayDu extends TinThe {
   content: string;
@@ -31,9 +31,10 @@ function NoiDung({ text }: { text: string }) {
  * Dùng chung cho trang công khai và xem trước của quản trị (xemTruoc = không đếm lượt xem).
  */
 export function BaiViet({ bai, lienQuan, now, xemTruoc = false }: { bai: BaiDayDu; lienQuan: TinThe[]; now: Date; xemTruoc?: boolean }) {
+  const phutDoc = thoiLuongDoc(bai.excerpt, bai.content);
   return (
     <div className="mx-auto w-full max-w-[680px] px-4 py-8 md:py-12">
-      <nav aria-label="Đường dẫn" className="mb-6 flex flex-wrap items-center gap-x-2 text-[length:var(--kin-co-phu)]" style={{ color: "var(--kin-chu-mo)" }}>
+      <nav aria-label="Đường dẫn" className="mb-6 flex print:hidden flex-wrap items-center gap-x-2 text-[length:var(--kin-co-phu)]" style={{ color: "var(--kin-chu-mo)" }}>
         <Link href="/" className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center hover:underline">Trang chủ</Link><span aria-hidden>/</span>
         <Link href="/tin-tuc" className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center hover:underline">Tin tức</Link><span aria-hidden>/</span>
         <Link href={hrefMuc(bai.category)} className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center hover:underline">{nhanMuc(bai.category)}</Link>
@@ -43,11 +44,12 @@ export function BaiViet({ bai, lienQuan, now, xemTruoc = false }: { bai: BaiDayD
         <header>
           <div data-article-meta className="mb-3 flex flex-wrap items-center gap-2 text-[length:var(--kin-co-phu)]" style={{ color: "var(--kin-chu-mo)" }}>
             <ChipMuc muc={bai.category} /><time>{ngayGio(mocBai(bai))}</time>
+            {phutDoc > 0 && <span data-article-readtime><span aria-hidden>· </span>{phutDoc} phút đọc</span>}
           </div>
           <h1 className="text-[length:var(--kin-co-display)] font-bold leading-tight max-md:text-[length:var(--kin-co-so)]" style={{ color: "var(--kin-chu-chinh)" }}>{bai.title}</h1>
         </header>
 
-        <div className="mt-4"><ChiaSe duongDan={hrefBai(bai.slug)} tieuDe={bai.title} /></div>
+        <div className="mt-4 print:hidden"><ChiaSe duongDan={hrefBai(bai.slug)} tieuDe={bai.title} /></div>
 
         <p data-article-sapo className="mt-5 text-[length:var(--kin-co-body)] font-semibold leading-7" style={{ color: "var(--kin-chu-chinh)" }}>{bai.excerpt}</p>
 
@@ -72,7 +74,7 @@ export function BaiViet({ bai, lienQuan, now, xemTruoc = false }: { bai: BaiDayD
         )}
       </article>
 
-      <div className="mt-8 border-t pt-4" style={{ borderColor: "var(--kin-vien-thuong)" }}>
+      <div className="mt-8 border-t pt-4 print:hidden" style={{ borderColor: "var(--kin-vien-thuong)" }}>
         <Link href={hrefMuc(bai.category)} data-tro-lai className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center text-[length:var(--kin-co-goc)] font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
           ← Trở lại {nhanMuc(bai.category)}
         </Link>
