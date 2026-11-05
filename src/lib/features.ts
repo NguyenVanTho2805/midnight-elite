@@ -12,16 +12,29 @@ export function hideCoin(s: string): string {
   return COIN_VISIBLE ? s : s.replace(/Coin/g, "điểm thưởng");
 }
 
+// Ranh giới từ theo Unicode (\b của JS chỉ hiểu ASCII nên "xuống" bị coi là "xu" + "ống").
+const NOT_WORD_BEFORE = "(?<![\\p{L}\\p{N}])";
+const NOT_WORD_AFTER = "(?![\\p{L}\\p{N}])";
+// Số tiền kiểu VN: 20, 1.000, 12.500,5 — dấu chấm/phẩy nằm GIỮA chữ số, không bao giờ kết thúc số.
+const AMOUNT = "[+\\-\u2212]?\\d+(?:[.,]\\d+)*";
+const RE_DEDUCT = new RegExp(`,?\\s*bạn bị trừ ${AMOUNT}\\s*(?:xu|coin)${NOT_WORD_AFTER}`, "giu");
+const RE_AMOUNT_UNIT = new RegExp(`\\s*${NOT_WORD_BEFORE}${AMOUNT}\\s*(?:xu|coin|🪙)${NOT_WORD_AFTER}`, "giu");
+const RE_COIN_AMOUNT = new RegExp(`\\s*🪙\\s*${AMOUNT}${NOT_WORD_AFTER}`, "gu");
+const RE_COIN_WORD = new RegExp(`${NOT_WORD_BEFORE}coin${NOT_WORD_AFTER}`, "giu");
+
 /**
  * Chữ thông báo đã lưu từ trước (hàng cũ trong bảng thông báo có thể ghi "+20 xu", "bị trừ 20 xu", "Coin"):
- * khi Coin ẩn, bỏ phần số xu/Coin khỏi chữ hiển thị. Không sửa dữ liệu đã lưu.
+ * khi Coin ẩn, bỏ phần "số + xu/Coin/🪙" khỏi chữ hiển thị. Không sửa dữ liệu đã lưu.
+ * Chỉ "xu" là ĐƠN VỊ TIỀN đứng sau số mới bị bỏ: "Xu thế", "xu hướng", "xuống" giữ nguyên; "xu" không đi kèm số cũng giữ nguyên.
+ * Số có dấu chấm hàng nghìn ("1.000 xu") bỏ nguyên số, không để sót "1.".
  */
 export function hideCoinText(s: string): string {
   if (COIN_VISIBLE) return s;
-  return s
-    .replace(/,?\s*bạn bị trừ \d+\s*(xu|Coin)/gi, ", phần thưởng của câu trả lời này bị trừ lại")
-    .replace(/\s*[+\-]?\d+\s*(xu|Coin)\b/gi, "")
-    .replace(/🪙/g, "")
-    .replace(/\bCoin\b/g, "điểm thưởng")
-    .replace(/(^|[^\p{L}])xu(?![\p{L}])(?!\s+hướng)/giu, "$1điểm thưởng");
+  const out = s
+    .replace(RE_DEDUCT, ", phần thưởng của câu trả lời này bị trừ lại")
+    .replace(RE_AMOUNT_UNIT, "")
+    .replace(RE_COIN_AMOUNT, "")
+    .replace(/🪙/gu, "")
+    .replace(RE_COIN_WORD, "điểm thưởng");
+  return out === s ? s : out.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
 }

@@ -3,10 +3,12 @@
 // không còn "Coin", "xu" (từ riêng, trừ "xu hướng"), biểu tượng đồng xu. Dữ liệu cũ có sẵn (ví 200 Coin, yêu cầu nạp đang chờ) để chứng minh là ẨN chứ không phải "trống".
 // Kèm: API ghi Coin KHÔNG bị xoá (GET /api/wallet vẫn 200), bảng/dữ liệu còn nguyên, /student/vi và /admin/topups không còn lối vào.
 // Ca phá cố ý: đổi COIN_VISIBLE thành true → bài đỏ ở nhiều route.
+// Phần thuần hideCoinText (đầu bài): quay lại regex cũ `\s*[+\-]?\d+\s*(xu|Coin)\b` + `xu` đứng riêng → ca "1.000 xu", "Xu thế", "5 🪙" đỏ.
 import { api, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, closeAll, ADMIN } from "./ui";
 import { BASE } from "./h";
 import { prisma } from "@/lib/prisma";
+import { hideCoinText } from "@/lib/features";
 
 const BAD = /coin|(^|[^\p{L}])xu(?![\p{L}])(?!\s+hướng)|🪙/iu;
 const GRAB = `(() => {
@@ -16,6 +18,23 @@ const GRAB = `(() => {
 })()`;
 
 (async () => {
+  section("hideCoinText (thuần): chỉ bỏ 'số + xu/Coin/🪙', không cắt nhầm");
+  const H = hideCoinText;
+  check("'nhận 1.000 xu' → bỏ cả số có dấu chấm hàng nghìn (không sót '1.')", H("Bạn nhận 1.000 xu") === "Bạn nhận", H("Bạn nhận 1.000 xu"));
+  check("câu kết thúc bằng dấu chấm giữ dấu chấm, không dư khoảng trắng", H("Bạn nhận 1.000 xu.") === "Bạn nhận.", H("Bạn nhận 1.000 xu."));
+  check("số thập phân 12.500,5 xu", H("Số dư 12.500,5 xu") === "Số dư", H("Số dư 12.500,5 xu"));
+  check("'+20 xu' đứng giữa câu", H("Bạn được +20 xu vì trả lời hay") === "Bạn được vì trả lời hay", H("Bạn được +20 xu vì trả lời hay"));
+  check("'Xu thế học tập mới' giữ nguyên", H("Xu thế học tập mới") === "Xu thế học tập mới", H("Xu thế học tập mới"));
+  check("'xu hướng', 'xuống' giữ nguyên (kể cả sau số)", H("Xu hướng điểm 5 xuống 3") === "Xu hướng điểm 5 xuống 3", H("Xu hướng điểm 5 xuống 3"));
+  check("'xu' không đi kèm số giữ nguyên (không phải đơn vị tiền)", H("Hết xu rồi") === "Hết xu rồi");
+  check("'Thưởng 5 🪙' → 'Thưởng' (không sót '5')", H("Thưởng 5 🪙") === "Thưởng", H("Thưởng 5 🪙"));
+  check("'🪙 5' và 🪙 trơ trọi", H("Nhận 🪙 5 hôm nay") === "Nhận hôm nay" && H("Chúc mừng 🪙") === "Chúc mừng", [H("Nhận 🪙 5 hôm nay"), H("Chúc mừng 🪙")]);
+  check("'Coin' đứng riêng → 'điểm thưởng'; 'Bitcoin' giữ nguyên", H("Nạp Coin thành công") === "Nạp điểm thưởng thành công" && H("Bitcoin tăng") === "Bitcoin tăng", [H("Nạp Coin thành công"), H("Bitcoin tăng")]);
+  check("'20 Coin' là số + đơn vị → bỏ cả số", H("Nhận 20 Coin") === "Nhận", H("Nhận 20 Coin"));
+  check("'bạn bị trừ 20 xu' → câu thay thế", H("Câu bị gỡ, bạn bị trừ 20 xu") === "Câu bị gỡ, phần thưởng của câu trả lời này bị trừ lại", H("Câu bị gỡ, bạn bị trừ 20 xu"));
+  check("'bạn bị trừ 1.000 xu' (dấu chấm hàng nghìn)", !/\d/.test(H("Câu bị gỡ, bạn bị trừ 1.000 xu")), H("Câu bị gỡ, bạn bị trừ 1.000 xu"));
+  check("chuỗi không có gì để ẩn giữ nguyên từng chữ; chạy hai lần ra cùng kết quả", H("Lớp Toán 9 thứ 5 lúc 19:00") === "Lớp Toán 9 thứ 5 lúc 19:00" && H(H("Bạn nhận 1.000 xu.")) === H("Bạn nhận 1.000 xu."));
+
   await wipe();
   const S = await mkUser({ name: "Trần Thị Bích" });
   const T = await mkTutor("Cô Lan");
