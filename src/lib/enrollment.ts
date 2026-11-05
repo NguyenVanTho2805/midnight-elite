@@ -8,6 +8,10 @@ export const ENROLLMENT_STATUS = {
   SUSPENDED:       "suspended",
 } as const;
 
+// Thông điệp + mã khi học sinh đã nghỉ lớp (suspended) mà đòi xem/vào bài thi của lớp (quyết định của chủ 06/11). Thuần, dùng được cả phía trình duyệt.
+export const ATTEMPT_SUSPENDED_MESSAGE = "Bạn đã nghỉ lớp này nên chưa xem được bài thi. Liên hệ gia sư nếu cần tham gia lại.";
+export const ENROLLMENT_SUSPENDED_CODE = "enrollment_suspended";
+
 export type EnrollmentStatus = (typeof ENROLLMENT_STATUS)[keyof typeof ENROLLMENT_STATUS];
 
 // true khi học viên có quyền hoạt động (xem bài, nộp bài, đánh giá) — hiện

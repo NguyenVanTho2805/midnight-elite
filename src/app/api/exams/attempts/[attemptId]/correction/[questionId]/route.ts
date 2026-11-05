@@ -16,5 +16,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ att
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Dữ liệu không hợp lệ" }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Dữ liệu không hợp lệ" }, { status: 400 });
   const r = await actOnCorrection(session.userId, attemptId, questionId, body);
-  return r.ok ? NextResponse.json({ item: r.item, summary: r.summary }) : NextResponse.json({ error: r.error }, { status: r.status });
+  return r.ok ? NextResponse.json({ item: r.item, summary: r.summary }) : NextResponse.json({ error: r.error, ...(r.code ? { code: r.code } : {}) }, { status: r.status });
 }

@@ -6,9 +6,13 @@
 //   - submit/route.ts: xoá khối `attemptWriteBlock` → ca "submit: suspended → 403" đỏ (và lượt bị chấm dù đã tạm dừng).
 //   - attemptAccess.ts canWriteAttempt: bỏ dòng `if (!i.courseId) return true` → ca "đề không gắn lớp" đỏ.
 //   - attemptAccess.ts: đổi `isEnrollmentActive(i.enrollment)` thành `!!i.enrollment` → ca thuần 'suspended' đỏ.
-import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
+//   - STU-đọc: gỡ từng khối chặn → ca tương ứng đỏ: examPracticeServer.ts (attemptWriteBlock) → "/check"; attempts/[id]/route.ts (attemptViewBlock) → "GET lượt dở";
+//     review/route.ts → "review"; examCorrectionServer.ts loadContext → "correction GET/POST"; examAssignmentsServer.ts (suspendedCourseIds) → "de-thi";
+//     gate/route.ts (suspended ? "enrollment_suspended") → "gate"; start/route.ts (khối ATTEMPT_SUSPENDED_MESSAGE) → "start miễn phí / thu phí".
+import { api, mkTutor, mkSuper, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
-import { canWriteAttempt, ATTEMPT_BLOCKED_MESSAGE } from "@/lib/attemptAccess";
+import { canWriteAttempt, isSuspendedForView, ATTEMPT_BLOCKED_MESSAGE } from "@/lib/attemptAccess";
+import { ATTEMPT_SUSPENDED_MESSAGE } from "@/lib/enrollment";
 
 (async () => {
   section("Hàm thuần canWriteAttempt");
@@ -21,6 +25,15 @@ import { canWriteAttempt, ATTEMPT_BLOCKED_MESSAGE } from "@/lib/attemptAccess";
   check("đề thu phí + có quyền khách → được dù suspended", canWriteAttempt({ courseId: "c", price: 100, enrollment: sus, hasGuestAccess: true }));
   check("đề MIỄN PHÍ + quyền khách → không (như /start)", !canWriteAttempt({ courseId: "c", price: 0, enrollment: sus, hasGuestAccess: true }));
   check("thông điệp giọng KiN, không số tiền/tên", /KiN/.test(ATTEMPT_BLOCKED_MESSAGE) && !/\d/.test(ATTEMPT_BLOCKED_MESSAGE));
+
+  section("Hàm thuần isSuspendedForView (chặn XEM khi đã nghỉ lớp)");
+  check("suspended → chặn xem", isSuspendedForView({ courseId: "c", price: null, enrollment: sus, hasGuestAccess: false }));
+  check("active → không chặn", !isSuspendedForView({ courseId: "c", price: null, enrollment: act, hasGuestAccess: false }));
+  check("chưa ghi danh → không thuộc ca nghỉ lớp (không chặn ở đây)", !isSuspendedForView({ courseId: "c", price: null, enrollment: null, hasGuestAccess: false }));
+  check("không gắn lớp → không chặn", !isSuspendedForView({ courseId: null, price: null, enrollment: sus, hasGuestAccess: false }));
+  check("đề thu phí + quyền khách → vẫn xem được", !isSuspendedForView({ courseId: "c", price: 100, enrollment: sus, hasGuestAccess: true }));
+  check("đề miễn phí + quyền khách → vẫn chặn", isSuspendedForView({ courseId: "c", price: 0, enrollment: sus, hasGuestAccess: true }));
+  check("thông điệp nghỉ lớp giọng KiN, không số", /Liên hệ gia sư/.test(ATTEMPT_SUSPENDED_MESSAGE) && !/\d/.test(ATTEMPT_SUSPENDED_MESSAGE));
 
   await wipe();
   const T = await mkTutor("Cô Lan");
@@ -90,5 +103,89 @@ import { canWriteAttempt, ATTEMPT_BLOCKED_MESSAGE } from "@/lib/attemptAccess";
   const a5 = await start(S5, "sus-cong-khai");
   check("học sinh không ghi danh lớp nào: answer 200", (await api("PATCH", `/api/exams/attempts/${a5}/answer`, { as: S5, body: { questionId: P.mc, optionId: P.ok } })).status === 200);
   check("submit 200", (await api("POST", `/api/exams/attempts/${a5}/submit`, { as: S5 })).status === 200);
+  // ───────── Đọc / xem lại / chữa bài / danh sách / cổng / start (chủ chọn chặt 06/11) ─────────
+  const susView = (r: { status: number; json: any }) => r.status === 403 && r.json?.code === "enrollment_suspended" && r.json?.error === ATTEMPT_SUSPENDED_MESSAGE;
+  const [V1, V2, V3] = [await mk("Em Sáu"), await mk("Em Bảy"), await mk("Em Tám")];
+  for (const u of [V1, V2, V3]) await prisma.enrollment.create({ data: { userId: u.id, courseId: C.id, status: "active" } });
+  const PR = await mkExam("sus-luyen", { courseId: C.id, mode: "practice", answerVisibility: "immediate" });
+  const PAID = await mkExam("sus-thu-phi", { courseId: C.id, price: 100000 });
+  const suspendV = (u: typeof S1) => prisma.enrollment.update({ where: { userId_courseId: { userId: u.id, courseId: C.id } }, data: { status: "suspended" } });
+  const activeV = (u: typeof S1) => prisma.enrollment.update({ where: { userId_courseId: { userId: u.id, courseId: C.id } }, data: { status: "active" } });
+
+  section("/check (chấm từng câu luyện tập) và GET lượt đang làm");
+  const b1 = await start(V1, "sus-luyen");
+  await api("PATCH", `/api/exams/attempts/${b1}/answer`, { as: V1, body: { questionId: PR.mc, optionId: PR.ok } });
+  const chkOk = await api("POST", `/api/exams/attempts/${b1}/check`, { as: V1, body: { questionId: PR.mc } });
+  check("/check khi còn học: 200", chkOk.status === 200, chkOk.json);
+  const getOk = await api("GET", `/api/exams/attempts/${b1}`, { as: V1 });
+  check("GET lượt dở khi còn học: 200 có câu hỏi", getOk.status === 200 && Array.isArray(getOk.json?.questions) && getOk.json.questions.length === 2, getOk.json);
+  await suspendV(V1);
+  const chk = await api("POST", `/api/exams/attempts/${b1}/check`, { as: V1, body: { questionId: PR.mc } });
+  check("/check: suspended → 403 enrollment_suspended", chk.status === 403 && chk.json?.code === "enrollment_suspended", chk.json);
+  check("/check: JSON không lộ đáp án đúng", !/correctOptionIds|correctOptionId|isCorrect/.test(JSON.stringify(chk.json)), chk.json);
+  const rev0 = await api("POST", `/api/exams/attempts/${b1}/check`, { as: V1, body: { questionId: PR.mc, action: "reveal" } });
+  check("/check reveal: suspended → 403", rev0.status === 403 && rev0.json?.code === "enrollment_suspended", rev0.json);
+  const getSus = await api("GET", `/api/exams/attempts/${b1}`, { as: V1 });
+  check("GET lượt dở: suspended → 403 thông điệp KiN, không có questions", susView(getSus) && !("questions" in (getSus.json ?? {})), getSus.json);
+  check("GET lượt dở: người lạ vẫn 404, chưa đăng nhập 401", (await api("GET", `/api/exams/attempts/${b1}`, { as: V2 })).status === 404 && (await api("GET", `/api/exams/attempts/${b1}`)).status === 401);
+  await activeV(V1);
+  check("mở lại → GET lượt dở 200", (await api("GET", `/api/exams/attempts/${b1}`, { as: V1 })).status === 200);
+
+  section("review / correction của bài ĐÃ NỘP");
+  const c2 = await start(V2, "sus-lop");
+  await api("PATCH", `/api/exams/attempts/${c2}/answer`, { as: V2, body: { questionId: E.mc, optionId: "sus-lop-no" } });
+  check("V2 nộp bài", (await api("POST", `/api/exams/attempts/${c2}/submit`, { as: V2 })).status === 200);
+  check("trước khi nghỉ lớp: review 200", (await api("GET", `/api/exams/attempts/${c2}/review`, { as: V2 })).status === 200);
+  check("trước khi nghỉ lớp: correction GET 200", (await api("GET", `/api/exams/attempts/${c2}/correction`, { as: V2 })).status === 200);
+  await suspendV(V2);
+  const rv = await api("GET", `/api/exams/attempts/${c2}/review`, { as: V2 });
+  check("review: suspended → 403 enrollment_suspended", susView(rv), rv.json);
+  check("review: JSON không chứa câu hỏi/đáp án/điểm", !/questions|isCorrect|explanation|score/.test(JSON.stringify(rv.json)), rv.json);
+  const cg = await api("GET", `/api/exams/attempts/${c2}/correction`, { as: V2 });
+  check("correction GET: suspended → 403", susView(cg), cg.json);
+  const cp = await api("POST", `/api/exams/attempts/${c2}/correction/${E.mc}`, { as: V2, body: { action: "reveal" } });
+  check("correction POST: suspended → 403 (không lộ đáp án)", susView(cp) && !/correctOption|explanation/.test(JSON.stringify(cp.json)), cp.json);
+  check("review của người khác: vẫn 404", (await api("GET", `/api/exams/attempts/${c2}/review`, { as: V3 })).status === 404);
+  await activeV(V2);
+  check("mở lại → review 200", (await api("GET", `/api/exams/attempts/${c2}/review`, { as: V2 })).status === 200);
+  const cpOk = await api("POST", `/api/exams/attempts/${c2}/correction/${E.mc}`, { as: V2, body: { action: "reveal" } });
+  check("mở lại → correction POST không còn là enrollment_suspended", cpOk.json?.code !== "enrollment_suspended" && cpOk.status !== 401, cpOk.json);
+
+  section("GET /api/student/de-thi và /gate");
+  const list1 = await api("GET", "/api/student/de-thi", { as: V2 });
+  check("còn học: thấy đề sus-lop (em đã làm)", (list1.json?.items ?? []).some((i: any) => i.id === "sus-lop"), list1.json);
+  await suspendV(V2);
+  const list2 = await api("GET", "/api/student/de-thi", { as: V2 });
+  check("nghỉ lớp: KHÔNG liệt kê đề của lớp (kể cả đề đã làm)", list2.status === 200 && !(list2.json?.items ?? []).some((i: any) => ["sus-lop", "sus-luyen", "sus-thu-phi"].includes(i.id)), list2.json);
+  const listPub = await api("GET", "/api/student/de-thi", { as: S5 });
+  check("đề không gắn lớp em đã làm vẫn liệt kê", (listPub.json?.items ?? []).some((i: any) => i.id === "sus-cong-khai"), listPub.json);
+  const g1 = await api("GET", "/api/exams/sus-lop/gate", { as: V2 });
+  check("gate: suspended → blockReason enrollment_suspended, canStart false", g1.status === 200 && g1.json?.blockReason === "enrollment_suspended" && g1.json?.canStart === false, g1.json);
+  check("gate: đề thu phí + suspended → enrollment_suspended (không phải payment_required)", (await api("GET", "/api/exams/sus-thu-phi/gate", { as: V2 })).json?.blockReason === "enrollment_suspended");
+  const NE = await mk("Em Chín");
+  check("gate: chưa ghi danh vẫn not_enrolled", (await api("GET", "/api/exams/sus-lop/gate", { as: NE })).json?.blockReason === "not_enrolled");
+  check("gate: đề thu phí chưa ghi danh vẫn payment_required", (await api("GET", "/api/exams/sus-thu-phi/gate", { as: NE })).json?.blockReason === "payment_required");
+  check("gate: active → canStart", (await api("GET", "/api/exams/sus-lop/gate", { as: V3 })).json?.canStart === true);
+
+  section("POST /start với học sinh nghỉ lớp");
+  const st1 = await api("POST", "/api/exams/sus-lop/start", { as: V2, body: {} });
+  check("start đề MIỄN PHÍ: 403 enrollment_suspended + thông điệp KiN", susView(st1), st1.json);
+  const st2 = await api("POST", "/api/exams/sus-thu-phi/start", { as: V2, body: {} });
+  check("start đề THU PHÍ: 403 enrollment_suspended (không phải 402)", susView(st2), st2.json);
+  const st3 = await api("POST", "/api/exams/sus-lop/start", { as: NE, body: {} });
+  check("chưa ghi danh vẫn 403 'chỉ dành cho học viên đã ghi danh'", st3.status === 403 && st3.json?.code !== "enrollment_suspended" && /ghi danh/.test(st3.json?.error ?? ""), st3.json);
+  const st4 = await api("POST", "/api/exams/sus-thu-phi/start", { as: NE, body: {} });
+  check("chưa ghi danh đề thu phí vẫn 402", st4.status === 402, st4.json);
+  await prisma.examGuestAccess.create({ data: { userId: V2.id, examId: "sus-thu-phi", grantedBy: T.id } });
+  const st5 = await api("POST", "/api/exams/sus-thu-phi/start", { as: V2, body: {} });
+  check("đề thu phí + quyền khách gia sư duyệt tay → vào được dù nghỉ lớp (đường cũ)", st5.status === 200, st5.json);
+  check("start đề không gắn lớp: không bị chặn", (await api("POST", "/api/exams/sus-cong-khai/start", { as: V2, body: {} })).status === 200);
+  check("start khi active: 200", (await api("POST", "/api/exams/sus-lop/start", { as: V3, body: {} })).status === 200);
+  check("khách chưa đăng nhập: start/gate/de-thi 401", (await api("POST", "/api/exams/sus-lop/start", { body: {} })).status === 401 && (await api("GET", "/api/exams/sus-lop/gate")).status === 401 && (await api("GET", "/api/student/de-thi")).status === 401);
+  const stT = await api("POST", "/api/exams/sus-lop/start", { as: T, body: {} });
+  check("gia sư chủ lớp: cổng không coi là nghỉ lớp (giữ hành vi cũ)", stT.json?.code !== "enrollment_suspended", stT.json);
+  const AD = await mkSuper("Quản trị");
+  check("admin: gate đề lớp không báo enrollment_suspended", (await api("GET", "/api/exams/sus-lop/gate", { as: AD })).json?.blockReason !== "enrollment_suspended");
+  check("admin: de-thi 200", (await api("GET", "/api/student/de-thi", { as: AD })).status === 200);
   done();
 })().catch(e => { console.error("TEST CRASH", e); process.exit(1); });

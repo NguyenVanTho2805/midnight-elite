@@ -618,7 +618,7 @@ export interface ExamGate {
   enrolled: boolean | null;
   attempts: { used: number; max: number | null; remaining: number | null; resumable: boolean; label: string };
   canStart: boolean;
-  blockReason: "not_enrolled" | "payment_required" | "attempts_exhausted" | "no_questions" | "past_deadline" | null;
+  blockReason: "not_enrolled" | "enrollment_suspended" | "payment_required" | "attempts_exhausted" | "no_questions" | "past_deadline" | null;
   /** Hạn nộp RIÊNG của chính học sinh này (gia sư đặt); null = theo lịch chung của đề. */
   deadline?: { dueAt: string; state: "open" | "passed" } | null;
   /** STU-001: chính sách hiệu lực để màn cổng nói trước khi nào đáp án hiện. */

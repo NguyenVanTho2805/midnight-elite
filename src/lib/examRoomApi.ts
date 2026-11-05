@@ -17,13 +17,13 @@ export type ApiResult<T> =
 /** Mã lỗi `code` mà phòng thi cần phân biệt (còn lại coi là lỗi chung). */
 export type RoomErrorCode =
   | "not_open" | "closed" | "attempts_exhausted" | "past_deadline" | "SUPERSEDED"
-  | "expired" | "finished" | "section_locked"
+  | "expired" | "finished" | "section_locked" | "enrollment_suspended"
   | "not_practice" | "no_feedback" | "not_answered" | "not_checkable" | "reveal_too_early" | "already_done" | "not_submitted"
   | "network";
 
 // ── Cổng vào đề: GET /api/exams/[id]/gate ────────────────────────────────────
 export type BlockReason =
-  | "not_enrolled" | "payment_required" | "attempts_exhausted" | "no_questions" | "past_deadline" | "not_open" | "closed";
+  | "not_enrolled" | "enrollment_suspended" | "payment_required" | "attempts_exhausted" | "no_questions" | "past_deadline" | "not_open" | "closed";
 export type WindowState = "none" | "not_open" | "open" | "closed";
 /** "instant" = luyện tập được chấm từng câu; "none" = không (kiểm tra, hoặc đề đang giữ điểm tới khi công bố). */
 export type PracticeFeedbackMode = "instant" | "none";

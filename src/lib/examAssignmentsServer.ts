@@ -37,6 +37,16 @@ export async function listStudentAssignments(userId: string, now: Date): Promise
     take: MAX_ITEMS,
     include: { _count: { select: { examQuestions: true } }, course: { select: { name: true } }, owner: { select: { adminRole: true } } },
   });
+  // Đã nghỉ lớp (suspended): đề của lớp đó không còn trong danh sách — kể cả đề em từng làm. Đề thu phí có quyền khách gia sư duyệt tay thì giữ (như /start).
+  const suspendedCourseIds = new Set(enrollments.filter(e => e.status === "suspended").map(e => e.courseId));
+  if (suspendedCourseIds.size) {
+    const paidIds = exams.filter(e => e.courseId && suspendedCourseIds.has(e.courseId) && e.price && e.price > 0).map(e => e.id);
+    const granted = paidIds.length ? new Set((await prisma.examGuestAccess.findMany({ where: { userId, examId: { in: paidIds } }, select: { examId: true } })).map(g => g.examId)) : new Set<string>();
+    for (let i = exams.length - 1; i >= 0; i--) {
+      const e = exams[i];
+      if (e.courseId && suspendedCourseIds.has(e.courseId) && !granted.has(e.id)) exams.splice(i, 1);
+    }
+  }
   if (exams.length === 0) return [];
   const rootIds = exams.map(e => e.id);
 

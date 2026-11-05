@@ -10,6 +10,7 @@ import { canStartByDeadline } from "@/lib/quizDeadline";
 import { getOwnDeadline } from "@/lib/quizDeadlineServer";
 import { isExamMode } from "@/lib/deThiAssign";
 import { answersOpenAtOf, startVerdict } from "@/lib/examWindow";
+import { attemptViewBlock, ENROLLMENT_SUSPENDED_CODE } from "@/lib/attemptAccess";
 import { loadGroup } from "@/lib/examVariantServer";
 
 // GET /api/exams/attempts/[attemptId]/review — học viên: xem lại bài làm của
@@ -35,6 +36,10 @@ export async function GET(
     if (attempt.status === "in_progress") {
       return NextResponse.json({ error: "Bài thi chưa nộp" }, { status: 409 });
     }
+
+    // Đã nghỉ lớp: không xem lại bài làm của lớp đó (kể cả bài đã nộp).
+    const viewBlocked = await attemptViewBlock(session.userId, attempt.examId);
+    if (viewBlocked) return NextResponse.json({ error: viewBlocked, code: ENROLLMENT_SUSPENDED_CODE }, { status: 403, headers: { "Cache-Control": "no-store" } });
 
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
     if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
