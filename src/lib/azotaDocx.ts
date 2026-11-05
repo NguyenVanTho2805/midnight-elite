@@ -458,29 +458,47 @@ export function parseAnswerKeyText(text: string): Record<number | string, string
 export const SOL_SIM_MIN = 0.9;
 /** Đầu đề ngắn hơn ngưỡng này (ký tự đã chuẩn hoá) chỉ chấp nhận khi BẰNG NHAU hoàn toàn. */
 export const SOL_MIN_LEN = 30;
-const SOL_HEAD_RE = /^LỜI GIẢI CHI TIẾT[\s.:：]*$/u;
+const SOL_HEAD_RE = /^(?:ĐÁP\s+ÁN\s+VÀ\s+)?(?:LỜI\s+GIẢI|HƯỚNG\s+DẪN\s+GIẢI)(?:\s+CHI\s+TIẾT)?[\s.:：]*$/iu;
+/** Dòng IN HOA có chữ "LỜI GIẢI" mà không nhận ra là tiêu đề mục lời giải → phải báo (không im lặng bỏ qua). */
+const SOL_CAPS_HINT_RE = /LỜI\s+GIẢI/u;
+/** Đúng mẫu tiêu đề phần: "PHẦN I…" viết hoa, hoặc "Phần N" kèm loại câu đoán được (không nhận "Phần 2 của bài toán" trong thân lời giải). */
+const isSectionHead = (t: string): boolean => SECTION_RE.test(t) && (t.startsWith("PHẦN") || typeOfSection(t) !== null);
 const ANSWER_SHEET_RE = /^PHIẾU\s+TRẢ\s+LỜI[\s.:：]*$/u;
 const SOL_MARKER_RE = /^(?:Lời giải chi tiết|Lời giải|Hướng dẫn giải)\s*[:：]?\s*$/iu;
 const SOL_ANSWER_RE = /^(?:Trả lời|Đáp án|Đáp số)\s*[:：]\s*(\S.*)$/iu;
 const SOL_NUMBER_RE = /^[-−–]?\d+(?:[.,]\d+)?$/u;
 const SOL_LABEL_ONLY_RE = /^Phần giải chi tiết\s*[:：]?\s*$/iu;
 
-/** Chuẩn hoá đầu đề để so: ảnh công thức → 1 ký hiệu, gạch/trừ Unicode → "-", chỉ giữ chữ, số và ^ _ + - = < >. */
+/** Băm nhanh (FNV-1a 32 bit) của token ảnh công thức → chuỗi chữ số thập phân, để hai ảnh KHÁC nhau cho hai đầu đề KHÁC nhau (cổng chữ số của headScore sẽ chặn). */
+function tokHash(tok: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < tok.length; i++) h = Math.imul(h ^ tok.charCodeAt(i), 16777619) >>> 0;
+  return String(h);
+}
+/** Chuẩn hoá đầu đề để so: ảnh công thức → "☐" + mã băm nội dung ảnh (ảnh khác nhau ⇒ khác nhau), gạch/trừ Unicode → "-", chỉ giữ chữ, số và ^ _ + - = < >. */
 export function normHead(s: string): string {
-  return s.replace(formulaImgRegex(), "☐").normalize("NFC").replace(/[−–—]/g, "-").toLowerCase().replace(/[^\p{L}\p{N}^_+\-=<>☐]/gu, "");
+  return s.replace(formulaImgRegex(), m => `☐${tokHash(m)}`).normalize("NFC").replace(/[−–—]/g, "-").toLowerCase().replace(/[^\p{L}\p{N}^_+\-=<>☐]/gu, "");
+}
+const digitsOf = (x: string): string => (x.match(/\d+/g) ?? []).join(",");
+type GramCache = Map<string, Map<string, number>>;
+function scoreWithDigits(a: string, b: string, da: string, db: string, gc?: GramCache): number {
+  if (Math.min(a.length, b.length) < SOL_MIN_LEN) return 0;
+  if (da !== db) return 0;
+  const grams = (x: string) => {
+    const hit = gc?.get(x); if (hit) return hit;
+    const m = new Map<string, number>(); for (let i = 0; i + 1 < x.length; i++) { const g = x.slice(i, i + 2); m.set(g, (m.get(g) ?? 0) + 1); }
+    gc?.set(x, m); return m;
+  };
+  const ga = grams(a), gb = grams(b);
+  let inter = 0;
+  for (const [g, n] of ga) inter += Math.min(n, gb.get(g) ?? 0);
+  return (2 * inter) / (a.length - 1 + b.length - 1);
 }
 /** Độ giống 0..1 của hai đầu đề đã chuẩn hoá: bằng nhau = 1; khác nhau chỉ tính khi đủ dài VÀ dãy chữ số y hệt (một con số khác = câu khác), khi đó lấy Dice cặp ký tự. */
 export function headScore(a: string, b: string): number {
   if (!a || !b) return 0;
   if (a === b) return 1;
-  if (Math.min(a.length, b.length) < SOL_MIN_LEN) return 0;
-  const dig = (x: string) => (x.match(/\d+/g) ?? []).join(",");
-  if (dig(a) !== dig(b)) return 0;
-  const grams = (x: string) => { const m = new Map<string, number>(); for (let i = 0; i + 1 < x.length; i++) { const g = x.slice(i, i + 2); m.set(g, (m.get(g) ?? 0) + 1); } return m; };
-  const ga = grams(a), gb = grams(b);
-  let inter = 0;
-  for (const [g, n] of ga) inter += Math.min(n, gb.get(g) ?? 0);
-  return (2 * inter) / (a.length - 1 + b.length - 1);
+  return scoreWithDigits(a, b, digitsOf(a), digitsOf(b));
 }
 const itemText = (it: Item): string => (it.kind === "p" ? it.para.text : it.lines.join(" "));
 const itemLines = (it: Item): string[] => (it.kind === "p" ? it.para.text.split("\n") : it.lines);
@@ -488,6 +506,8 @@ const itemLines = (it: Item): string[] => (it.kind === "p" ? it.para.text.split(
 interface SolMatch { d: Draft; lines: string[]; ansIdx: number; ansVal: string; srcs: Src[]; bodyOk: boolean }
 
 /** Ghép lời giải của MỘT phần với các câu của phần đó. Chỉ THÊM nguồn đáp án/lời giải vào bản nháp; không ghi đè gì đã có. */
+/** Mỗi phần tối đa bấy nhiêu mục "Lời giải" được ghép (quá thì bỏ cả phần, không đoán); chặn việc so M×N bình phương. */
+export const AZOTA_MAX_SOLUTION_ENTRIES = 2 * AZOTA_MAX_QUESTIONS;
 function matchSolutionSection(
   items: Item[], qs: Draft[], secLabel: string, warn: (q: string, c: string, m: string) => void, stats: { entries: number; matched: number; dropped: number },
 ): void {
@@ -495,32 +515,71 @@ function matchSolutionSection(
   items.forEach((it, i) => { if (it.kind === "p" && SOL_MARKER_RE.test(flat(it.para.text))) markers.push(i); });
   const M = markers.length, N = qs.length;
   stats.entries += M;
+  if (M > AZOTA_MAX_SOLUTION_ENTRIES) {
+    stats.dropped += M;
+    warn("", "solution_section_too_big", `${secLabel}: mục lời giải có ${M} lời giải, quá giới hạn ${AZOTA_MAX_SOLUTION_ENTRIES}; KiN bỏ cả phần này, không ghép (đáp án và lời giải của phần này cô nhập tay hoặc dùng bảng đáp án).`);
+    return;
+  }
   const labelOf = (d: Draft) => `Câu ${d.q.number} (${d.q.sectionLabel || `phần ${d.q.sectionIndex}`})`;
   const reported = new Set<Draft>();
+  const ambig = new Set<Draft>();
   const miss = (d: Draft, why: string) => { reported.add(d); warn(d.q.key, "solution_unmatched", `${labelOf(d)}: không đối chiếu được lời giải trong mục LỜI GIẢI CHI TIẾT (${why}) — bỏ qua; câu này không lấy đáp án hay lời giải từ đó.`); };
 
-  /** Đoạn kết thúc ngay trước dòng "Lời giải" thứ j mà giống đầu đề của câu q nhất (đoạn cuối trước marker là đoạn cuối của đầu đề). */
-  const best = (j: number, q: Draft): { score: number; s: number } => {
+  // Chuẩn hoá từng đoạn MỘT lần; mỗi lời giải j có danh sách "đoạn cuối trước marker" tích lũy (đầu đề có thể trải nhiều đoạn).
+  const hn: (string | undefined)[] = new Array(items.length);
+  const headOf = (k: number): string => (hn[k] ??= normHead(itemText(items[k])));
+  const qDig = qs.map(q => digitsOf(q.headNorm));
+  const gramCache: GramCache = new Map();
+  const maxLen = qs.reduce((m, q) => Math.max(m, q.headNorm.length), 0) * 1.6 + 40;
+  const candsCache: ({ s: number; acc: string; dig: string }[] | undefined)[] = new Array(M);
+  const candsOf = (j: number) => {
+    if (candsCache[j]) return candsCache[j]!;
     const rs = j === 0 ? 0 : markers[j - 1] + 1, end = markers[j];
-    let acc = "", b = { score: 0, s: -1 };
+    const out: { s: number; acc: string; dig: string }[] = [];
+    let acc = "";
     for (let s = end - 1; s >= rs && end - s <= 80; s--) {
-      acc = normHead(itemText(items[s])) + acc;
-      if (acc.length > q.headNorm.length * 1.6 + 40) break;
-      const sc = headScore(acc, q.headNorm);
-      if (sc > b.score) b = { score: sc, s };
+      acc = headOf(s) + acc;
+      if (acc.length > maxLen) break;
+      out.push({ s, acc, dig: digitsOf(acc) });
     }
-    return b.score >= SOL_SIM_MIN ? b : { score: 0, s: -1 };
+    return (candsCache[j] = out);
+  };
+  /** Các câu i mà lời giải j khớp đầu đề ≥ SOL_SIM_MIN (kèm đoạn bắt đầu s tốt nhất). */
+  const hitsCache: ({ i: number; s: number }[] | undefined)[] = new Array(M);
+  const hitsOf = (j: number): { i: number; s: number }[] => {
+    if (hitsCache[j]) return hitsCache[j]!;
+    const cs = candsOf(j), out: { i: number; s: number }[] = [];
+    for (let i = 0; i < N; i++) {
+      const q = qs[i], lim = q.headNorm.length * 1.6 + 40;
+      let b = { score: 0, s: -1 };
+      for (const c of cs) {
+        if (c.acc.length > lim) break;
+        if (c.dig !== qDig[i]) continue;
+        const la = c.acc.length, lb = q.headNorm.length;
+        if (la !== lb && 2 * (Math.min(la, lb) - 1) / (la - 1 + lb - 1) < SOL_SIM_MIN) continue; // Dice không thể đạt ngưỡng
+        const sc = c.acc === q.headNorm ? 1 : scoreWithDigits(c.acc, q.headNorm, c.dig, qDig[i], gramCache);
+        if (sc > b.score) b = { score: sc, s: c.s };
+      }
+      if (b.score >= SOL_SIM_MIN) out.push({ i, s: b.s });
+    }
+    return (hitsCache[j] = out);
   };
 
   const assign: number[] = new Array(M).fill(-1), startAt: number[] = new Array(M).fill(-1);
   const orphan: number[] = [];
-  if (M === N) { // cùng số lượng → theo vị trí, mỗi cặp phải khớp đầu đề
-    for (let j = 0; j < M; j++) { const r = best(j, qs[j]); if (r.s >= 0) { assign[j] = j; startAt[j] = r.s; } else orphan.push(j); }
+  // Cổng "duy nhất": một lời giải khớp ≥ngưỡng với NHIỀU câu, hoặc một câu bị NHIỀU lời giải khớp → các câu liên quan bị bỏ, không đoán.
+  const allHits = Array.from({ length: M }, (_, j) => hitsOf(j));
+  const qHit: number[] = new Array(N).fill(0);
+  for (const h of allHits) for (const x of h) qHit[x.i]++;
+  for (const h of allHits) if (h.length > 1) for (const x of h) ambig.add(qs[x.i]);
+  for (let i = 0; i < N; i++) if (qHit[i] > 1) ambig.add(qs[i]);
+  if (M === N) { // cùng số lượng → theo vị trí, mỗi cặp phải khớp đầu đề VÀ duy nhất
+    for (let j = 0; j < M; j++) { const h = allHits[j]; if (h.length === 1 && h[0].i === j && qHit[j] === 1) { assign[j] = j; startAt[j] = h[0].s; } else orphan.push(j); }
   } else { // lệch số lượng (thiếu/thừa lời giải) → theo nội dung, tuần tự, duy nhất; mơ hồ thì bỏ
     let ptr = 0;
     for (let j = 0; j < M; j++) {
-      const hits = qs.map((q, i) => ({ i, ...best(j, q) })).filter(x => x.s >= 0);
-      if (hits.length === 1 && hits[0].i >= ptr) { assign[j] = hits[0].i; startAt[j] = hits[0].s; ptr = hits[0].i + 1; } else orphan.push(j);
+      const h = allHits[j];
+      if (h.length === 1 && qHit[h[0].i] === 1 && h[0].i >= ptr) { assign[j] = h[0].i; startAt[j] = h[0].s; ptr = h[0].i + 1; } else orphan.push(j);
     }
   }
 
@@ -573,7 +632,7 @@ function matchSolutionSection(
     stats.matched++;
   }
   const done = new Set(matches.map(m => m.d));
-  for (const d of qs) if (!done.has(d) && !reported.has(d)) miss(d, M === N ? "đầu đề lời giải ở cùng vị trí không khớp câu" : `có ${M} lời giải cho ${N} câu; không lời giải nào khớp duy nhất đầu đề câu này`);
+  for (const d of qs) if (!done.has(d) && !reported.has(d)) miss(d, ambig.has(d) ? "có câu khác gần giống hệt, KiN không đoán lời giải nào của câu nào" : M === N ? "đầu đề lời giải ở cùng vị trí không khớp câu" : `có ${M} lời giải cho ${N} câu; không lời giải nào khớp duy nhất đầu đề câu này`);
   stats.dropped += orphan.length;
   if (M !== N) for (const j of orphan) warn(`${secLabel}#${j + 1}`, "solution_unmatched", `${secLabel}: lời giải thứ ${j + 1} không khớp (duy nhất) câu nào — bỏ, không ghép.`);
 }
@@ -616,7 +675,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
       if (item.kind === "p") {
         const ts = flat(item.para.text).normalize("NFC");
         if (END_RE.test(ts) && ts.toUpperCase().includes("HẾT")) { inSol = false; inKey = true; continue; }
-        const sms = SECTION_RE.exec(ts);
+        const sms = isSectionHead(ts) ? SECTION_RE.exec(ts) : null;
         if (sms) { solSecIdx = sectionNumber(sms[1]) || ++solOrdinal; if (!solAreas.has(solSecIdx)) solAreas.set(solSecIdx, []); continue; }
       }
       if (solSecIdx !== null) solAreas.get(solSecIdx)!.push(item);
@@ -630,12 +689,16 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     const p = item.para;
     const t = flat(p.text).normalize("NFC");
     if (END_RE.test(t) && t.toUpperCase().includes("HẾT")) { inKey = true; cur = null; continue; }
-    if (ANSWER_SHEET_RE.test(t)) { sheetSkip = true; continue; } // chữ "PHIẾU TRẢ LỜI" đứng riêng một đoạn: không phải nội dung câu cuối
-    if (SOL_HEAD_RE.test(t)) {
+    if (ANSWER_SHEET_RE.test(t)) { sheetSkip = true; cur = null; continue; } // chữ "PHIẾU TRẢ LỜI" đứng riêng một đoạn: không phải nội dung câu cuối
+    // Dạng IN HOA luôn được xét; dạng chữ thường/hoa chữ đầu ("Lời giải chi tiết") chỉ khi KHÔNG đang ở trong một câu — nếu không, dòng "Lời giải chi tiết" của câu cuối một phần (đứng ngay trước "PHẦN II") sẽ bị nhận nhầm là mục lời giải.
+    if (SOL_HEAD_RE.test(t) && (cur === null || t === t.toUpperCase())) {
       let k = bi + 1; // chỉ nhận là mục lời giải khi đoạn chữ kế tiếp là mốc "PHẦN …"
       while (k < blocks.length) { const nb = toItem(blocks[k]); if (nb.kind === "t" || !flat(nb.para.text)) { k++; continue; } break; }
       const nx = k < blocks.length ? toItem(blocks[k]) : null;
-      if (nx && nx.kind === "p" && SECTION_RE.test(flat(nx.para.text).normalize("NFC"))) { inSol = true; cur = null; continue; }
+      if (nx && nx.kind === "p" && isSectionHead(flat(nx.para.text).normalize("NFC"))) { inSol = true; cur = null; continue; }
+    }
+    if (t.length <= 120 && t === t.toUpperCase() && SOL_CAPS_HINT_RE.test(t)) {
+      warn("", "solution_section_unrecognized", `Có dòng IN HOA "${t.slice(0, 80)}" trông như tiêu đề mục lời giải nhưng KiN không nhận ra (cần đứng ngay trước mốc "PHẦN I…" và đứng trước dòng HẾT); mục này bị coi là chữ thường của đề, không lấy đáp án từ đó.`);
     }
     const sm = SECTION_RE.exec(t);
     if (sm) {
@@ -663,6 +726,9 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     }
     if (cur) cur.items.push(item);
   }
+
+  // Trần số câu: chặn SỚM, trước khi dựng và ghép (ghép lời giải tốn theo số câu × số lời giải).
+  if (qbs.length > AZOTA_MAX_QUESTIONS) return { ...empty(`Tệp có ${qbs.length} câu, quá giới hạn ${AZOTA_MAX_QUESTIONS} câu một lần. Cô tách thành nhiều tệp.`), errors, warnings };
 
   // Dựng từng câu.
   const state = { tfOrderSeen: false };
@@ -738,7 +804,6 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     }
     if (q.flags.includes("formula_unread")) warn(q.key, "formula_unread", `${label}: có công thức MathType KiN chưa đọc được (đã gắn nhãn ${FORMULA_PLACEHOLDER}). Gõ lại công thức này trước khi phát hành.`);
     const fromSolFlag = () => { if (!q.flags.includes("answer_from_solution")) q.flags.push("answer_from_solution"); };
-    if (d.solExpl) fromSolFlag();
     if (q.type === "ESSAY") continue;
     const srcs = [...d.srcs].sort((a, b) => SRC_ORDER.indexOf(a.src) - SRC_ORDER.indexOf(b.src));
     if (srcs.length === 0) { q.flags.push("answer_missing"); warn(q.key, "answer_missing", `${label}: chưa có đáp án (không thấy gạch chân, dấu *, bảng đáp án hay "Chọn X" trong lời giải).`); continue; }

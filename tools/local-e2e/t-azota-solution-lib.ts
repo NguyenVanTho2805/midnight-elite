@@ -12,7 +12,7 @@
 //   - essayToShort: bỏ `matches.every(... SOL_NUMBER_RE ...)` hoặc `matches.length === N` → ca 'Tự luận giữ ESSAY khi có câu không phải số / thiếu lời giải' đỏ;
 //   - bỏ `if (first.fromSol) fromSolFlag()` và `d.solExpl` → ca 'cờ answer_from_solution' đỏ; đổi src "loi-giai" thành đứng trước 'bang-het' trong SRC_ORDER không ảnh hưởng (vẫn xung đột đúng).
 import { check, section, done } from "./h";
-import { parseAzotaBlocks, headScore, normHead, SOL_SIM_MIN, type DocBlock, type DocRun, type AzotaParse } from "@/lib/azotaDocx";
+import { parseAzotaBlocks, AZOTA_MAX_SOLUTION_ENTRIES, headScore, normHead, SOL_SIM_MIN, type DocBlock, type DocRun, type AzotaParse } from "@/lib/azotaDocx";
 import { makeFormulaImgToken } from "@/lib/mathtype/formulaImg";
 
 const T = (t: string): DocRun => ({ text: t });
@@ -169,7 +169,8 @@ const hasW = (p: AzotaParse, code: string, key?: string) => p.warnings.some(w =>
     const dupEx: DocBlock[] = [P(HDR1), P(`Câu 1.\t${MC[0].stem}`), P(MC[0].opts.map((t, k) => `${"ABCD"[k]}. ${t}`).join("\t")), P(`Câu 2.\t${MC[0].stem}`), P(MC[0].opts.map((t, k) => `${"ABCD"[k]}. ${t}`).join("\t"))];
     const sol = (e: DocBlock[][]): DocBlock[] => [P("LỜI GIẢI CHI TIẾT"), P(HDR1), ...e.flat()];
     const both = parseAzotaBlocks([...dupEx, ...sol([mcEntry(0, 0, ["Lời giải thứ nhất."]), mcEntry(0, 2, ["Lời giải thứ hai."])])]);
-    check("trùng đầu đề, ĐỦ số lời giải → theo vị trí (A rồi C)", letters(both.questions[0]) === "A" && letters(both.questions[1]) === "C" && both.questions[0].explanation === "Lời giải thứ nhất.", both.questions.map(letters));
+    // Cổng "duy nhất" (kiểm thử độc lập P2-1): hai câu giống hệt thì mỗi lời giải khớp CẢ HAI câu → không đoán, bỏ cả hai kèm solution_unmatched.
+    check("trùng đầu đề, ĐỦ số lời giải → mơ hồ: KHÔNG ghép (không gán chéo), cả hai câu solution_unmatched", both.questions.every(q => letters(q) === "" && q.explanation === "" && !q.flags.includes("answer_from_solution")) && both.questions.every(q => hasW(both, "solution_unmatched", q.key)), both.questions.map(letters));
     const less = parseAzotaBlocks([...dupEx, ...sol([mcEntry(0, 0)])]);
     check("trùng đầu đề, THIẾU lời giải → mơ hồ: KHÔNG ghép cho câu nào", less.questions.every(q => q.answerSource === "khong-co" && q.explanation === "") && less.solutionStats?.matched === 0, less.solutionStats);
   }
@@ -188,7 +189,8 @@ const hasW = (p: AzotaParse, code: string, key?: string) => p.warnings.some(w =>
   {
     const one = run({ ...GOOD, es: [esEntry(0, "36"), esEntry(1, "7,5 m")] });
     check("một câu 'Trả lời: 7,5 m' (không thuần số) → cả phần giữ ESSAY", byKey(one, "s3-1").type === "ESSAY" && byKey(one, "s3-2").type === "ESSAY");
-    check("ESSAY vẫn nhận lời giải chữ (kèm dòng Trả lời) + cờ", byKey(one, "s3-1").explanation.includes("Trả lời: 36") && byKey(one, "s3-1").flags.includes("answer_from_solution"));
+    check("ESSAY vẫn nhận lời giải chữ (kèm dòng Trả lời) + cờ", byKey(one, "s3-1").explanation.includes("Trả lời: 36") && !byKey(one, "s3-1").flags.includes("answer_from_solution"));
+    check("ESSAY chỉ lấy lời giải chữ, không có đáp án → KHÔNG bật cờ answer_from_solution (cờ chỉ khi đáp án thật sự từ lời giải)", byKey(one, "s3-1").answerSource === "khong-co");
     const lone = run({ ...GOOD, es: [esEntry(0, "36")] });
     check("thiếu lời giải một câu → phần giữ ESSAY (câu có lời giải cũng không đổi loại)", byKey(lone, "s3-1").type === "ESSAY" && byKey(lone, "s3-2").type === "ESSAY");
     const late = run({ ...GOOD, es: [esEntry(0, "36", ["Bước 1.", "Trả lời: 99"]), esEntry(1, "76,5")] });
@@ -242,7 +244,7 @@ const hasW = (p: AzotaParse, code: string, key?: string) => p.warnings.some(w =>
   section("Không chạm đề kiểu cũ");
   {
     const bare = parseAzotaBlocks([...examBlocks(), P("LỜI GIẢI CHI TIẾT"), P("Chúc cô thi tốt.")]);
-    check("'LỜI GIẢI CHI TIẾT' KHÔNG theo sau bởi mốc PHẦN → không vào chế độ lời giải (hành vi cũ), không solutionStats", bare.solutionStats === undefined && !bare.warnings.some(w => w.code.startsWith("solution")));
+    check("'LỜI GIẢI CHI TIẾT' KHÔNG theo sau bởi mốc PHẦN → không vào chế độ lời giải (hành vi cũ), không solutionStats", bare.solutionStats === undefined && bare.warnings.some(w => w.code === "solution_section_unrecognized") && !bare.warnings.some(w => w.code === "solution_summary"));
     const lower = parseAzotaBlocks([...examBlocks(), P("Lời giải chi tiết"), P(HDR1), P(MC[0].stem)]);
     check("'Lời giải chi tiết' viết thường (lời giải từng câu của Azota) không bị coi là mục lời giải", lower.solutionStats === undefined);
     const plain = parseAzotaBlocks(examBlocks());
@@ -266,6 +268,53 @@ const hasW = (p: AzotaParse, code: string, key?: string) => p.warnings.some(w =>
     }
     const long = run({ ...GOOD, mc: [mcEntry(0, 0, [("Dòng dài ".repeat(200) + "\n").repeat(8)]), mcEntry(1, 1), mcEntry(2, 1)] });
     check("lời giải dài > 3000 ký tự bị cắt về trần 3000", byKey(long, "s1-1").explanation.length <= 3000 && byKey(long, "s1-1").explanation.length > 2000, byKey(long, "s1-1").explanation.length);
+  }
+
+  section("Kiểm thử độc lập (P2/P3): ảnh khác nhau ⇒ đầu đề khác nhau; cổng duy nhất; trần; thời gian");
+  {
+    const svg = (c: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="10pt" height="10pt" viewBox="0 0 10 10"><text y="5" font-size="4"><tspan x="1">${c}</tspan></text></svg>`;
+    const ta = makeFormulaImgToken(svg("a"))!, tb = makeFormulaImgToken(svg("b"))!;
+    const pre = "Giá trị của biểu thức sau đây bằng bao nhiêu khi tính theo đúng yêu cầu của đề bài:";
+    check("normHead: hai ảnh KHÁC nhau cho hai đầu đề khác nhau; cùng ảnh thì bằng nhau", normHead(`${pre} ${ta}`) !== normHead(`${pre} ${tb}`) && normHead(`${pre} ${ta}`) === normHead(`${pre} ${ta}`) && headScore(normHead(`${pre} ${ta}`), normHead(`${pre} ${tb}`)) === 0);
+    const gen = (n: number): { ex: DocBlock[]; sol: DocBlock[] } => {
+      const ex: DocBlock[] = [P(HDR1)], sol: DocBlock[] = [P("LỜI GIẢI CHI TIẾT"), P(HDR1)];
+      for (let i = 0; i < n; i++) {
+        const stem = `Cho dãy số thứ ${i} với công thức tổng quát $u_{n}=${i}n+${i * 7 + 3}$ và điều kiện kèm theo phía dưới đây, hãy tính số hạng thứ ${i + 5} của dãy số đó.`;
+        const o = ["Một.", "Hai.", "Ba.", "Bốn."];
+        ex.push(P(`Câu ${i + 1}.\t${stem}`), optsP(o, null));
+        if (i % 20 !== 7) sol.push(P(stem), optsP(o, 1), P("Lời giải"), P("x")); // thiếu 5% lời giải → M ≠ N
+      }
+      return { ex, sol };
+    };
+    const g = gen(200);
+    let t0 = Date.now();
+    const r200 = parseAzotaBlocks([...g.ex, ...g.sol]);
+    const ms200 = Date.now() - t0;
+    check(`đề 200 câu, lời giải lệch số: ghép đúng ${r200.solutionStats?.matched}/200 trong ${ms200} ms (< 3000)`, ms200 < 3000 && r200.solutionStats?.matched === 190 && r200.questions.filter(q => letters(q) === "B").length === 190, r200.solutionStats);
+    const gb = gen(4000);
+    t0 = Date.now();
+    const r4000 = parseAzotaBlocks([...gb.ex, ...gb.sol]);
+    const ms4000 = Date.now() - t0;
+    check(`4000 câu / ~3800 lời giải: bị chặn sớm (fatal), ${ms4000} ms (< 2000)`, r4000.fatal !== null && ms4000 < 2000, r4000.fatal);
+    // Xấu nhất: 200 câu đầu đề gần giống hệt nhau (chỉ khác một nhóm chữ, không có chữ số) + 399 lời giải → mọi cặp phải tính Dice. Không được bình phương trong chi phí tính.
+    {
+      const code = (i: number) => String.fromCharCode(97 + (i % 26)) + String.fromCharCode(97 + Math.floor(i / 26) % 26) + String.fromCharCode(97 + Math.floor(i / 676));
+      const ex: DocBlock[] = [P(HDR1)], sol: DocBlock[] = [P("LỜI GIẢI CHI TIẾT"), P(HDR1)];
+      for (let i = 0; i < 200; i++) {
+        const stem = `Cho hàm số thuộc họ ${code(i)} có đồ thị như hình vẽ bên dưới đây, hãy xác định số điểm cực trị của hàm số đã cho trên toàn bộ tập xác định của nó theo yêu cầu.`;
+        ex.push(P(`Câu ${i + 1}.\t${stem}`), P("A. Một.\tB. Hai.\tC. Ba.\tD. Bốn."));
+        for (let k = 0; k < 2; k++) if (i < 199 || k === 0) sol.push(P(stem), P("A. Một.\tB. Hai.\tC. Ba.\tD. Bốn."), P("Lời giải"), P("x"));
+      }
+      const t1 = Date.now(), rw = parseAzotaBlocks([...ex, ...sol]), msw = Date.now() - t1;
+      check(`xấu nhất 200 câu gần giống × 399 lời giải: ${msw} ms (< 1000), không đáp án nào bị đoán`, msw < 1000 && rw.questions.every(q => q.answerSource === "khong-co"), rw.solutionStats);
+    }
+    // M > 2×trần cho một phần có ít câu → bỏ cả phần, có cảnh báo, không treo
+    const few = gen(3);
+    const bigSol: DocBlock[] = [P("LỜI GIẢI CHI TIẾT"), P(HDR1)];
+    for (let i = 0; i < AZOTA_MAX_SOLUTION_ENTRIES + 1; i++) bigSol.push(P(`Đề số ${i}`), P("Lời giải"), P("x"));
+    t0 = Date.now();
+    const rBig = parseAzotaBlocks([...few.ex, ...bigSol]);
+    check(`${AZOTA_MAX_SOLUTION_ENTRIES + 1} lời giải cho 3 câu: bỏ cả phần + solution_section_too_big (${Date.now() - t0} ms)`, hasW(rBig, "solution_section_too_big") && rBig.questions.every(q => q.answerSource === "khong-co"), rBig.solutionStats);
   }
 
   await done();

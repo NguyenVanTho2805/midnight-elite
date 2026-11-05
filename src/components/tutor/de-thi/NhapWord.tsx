@@ -41,9 +41,8 @@ const FLAG_TEXT: Record<AzotaFlag, { tone: "loi" | "cho" | "xong"; text: string 
   formula_mathtype: { tone: "xong", text: "Công thức đọc từ MathType — kiểm lại" },
   answer_from_solution: { tone: "cho", text: "Đáp án đọc từ lời giải — kiểm lại" },
 };
-/** Cờ answer_from_solution: nhãn theo việc đáp án có thật sự lấy từ lời giải không (answerSource "loi-giai") hay chỉ phần lời giải chữ. */
-const flagText = (f: AzotaFlag, q: { answerSource: string }): string =>
-  f === "answer_from_solution" && q.answerSource !== "loi-giai" ? "Lời giải đọc từ mục LỜI GIẢI CHI TIẾT — kiểm lại" : FLAG_TEXT[f].text;
+/** Cờ answer_from_solution chỉ bật khi đáp án THỰC SỰ lấy từ lời giải (answerSource "loi-giai"), nên nhãn không cần phân nhánh. */
+const flagText = (f: AzotaFlag, _q: { answerSource: string }): string => FLAG_TEXT[f].text;
 
 /** Lý do một câu (đang được tích lưu) chưa lưu được; null = ổn. */
 function blockReason(it: Item, toExam: boolean): string | null {
@@ -123,6 +122,8 @@ export default function NhapWord() {
   const chosen = items.filter(i => i.include);
   const blocked = chosen.filter(i => reasons.get(i.q.key));
   const noLevel = chosen.filter(i => !i.difficulty).length;
+  // Cảnh báo mục lời giải có khung riêng (không bị cắt ở 6 dòng); phần còn lại giữ danh sách "lưu ý".
+  const restWarnings = (res?.warnings ?? []).filter(w => !(res?.solutionStats && (w.code === "solution_summary" || w.code === "solution_unmatched")));
   const canSave = (toExam ? !!examTitle.trim() : !!target) && chosen.length > 0 && blocked.length === 0 && !saving;
   const whyNot = toExam && !examTitle.trim() ? "Đặt tên cho đề." : !toExam && !target ? "Chọn nút đích trong ngân hàng." : chosen.length === 0 ? "Chưa tích câu nào để lưu." : blocked.length > 0 ? `Còn ${blocked.length} câu cần xử lý hoặc bỏ tích.` : null;
 
@@ -214,10 +215,24 @@ export default function NhapWord() {
               {res.errors.length > 6 && <p className="mt-1">Và {res.errors.length - 6} phần nữa. Cô sửa trong tệp rồi nhập lại, hoặc thêm câu bằng tay sau.</p>}
             </KinCallout>
           )}
-          {res.warnings.length > 0 && (
-            <KinCallout title={`${res.warnings.length} lưu ý`}>
-              <ul className="list-disc pl-5">{res.warnings.slice(0, 6).map((w, i) => <li key={i}>{w.question ? `${w.question}: ` : ""}{w.message}</li>)}</ul>
-              {res.warnings.length > 6 && <p className="mt-1">Và {res.warnings.length - 6} lưu ý nữa.</p>}
+          {res.solutionStats && (
+            <KinCallout title="Mục LỜI GIẢI CHI TIẾT" tone="nhan">
+              <p>
+                Đọc được {res.solutionStats.entries} lời giải · đã ghép {res.solutionStats.matched}/{res.stats.total} câu · bỏ {res.solutionStats.dropped} lời giải không đối chiếu được.
+                {" "}Đáp án và lời giải lấy từ đây cô kiểm lại trước khi dùng.
+              </p>
+              {res.warnings.some(w => w.code === "solution_unmatched" && w.question) && (
+                <>
+                  <p className="mt-2">Câu không ghép được (không lấy đáp án từ lời giải):</p>
+                  <ul className="list-disc pl-5">{res.warnings.filter(w => w.code === "solution_unmatched" && w.question).map((w, i) => <li key={i}>{w.message}</li>)}</ul>
+                </>
+              )}
+            </KinCallout>
+          )}
+          {restWarnings.length > 0 && (
+            <KinCallout title={`${restWarnings.length} lưu ý`}>
+              <ul className="list-disc pl-5">{restWarnings.slice(0, 6).map((w, i) => <li key={i}>{w.question ? `${w.question}: ` : ""}{w.message}</li>)}</ul>
+              {restWarnings.length > 6 && <p className="mt-1">Và {restWarnings.length - 6} lưu ý nữa.</p>}
             </KinCallout>
           )}
 
