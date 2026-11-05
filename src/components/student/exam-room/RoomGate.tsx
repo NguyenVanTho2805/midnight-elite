@@ -7,7 +7,7 @@ import { KinButton, KinCallout } from "@/components/kin";
 import { clockOffsetMs } from "@/lib/quizRoom";
 import { studentDeadlineText } from "@/lib/quizDeadline";
 import type { BlockReason as RoomBlockReason, GateResponse as Gate } from "@/lib/examRoomApi";
-import { ATTEMPT_SUSPENDED_MESSAGE } from "@/lib/enrollment";
+import { ATTEMPT_SUSPENDED_MESSAGE } from "@/lib/enrollmentMessages";
 import { countdownLabel, windowLabel } from "./roomLogic";
 
 export const GATE_REASON: Record<RoomBlockReason, { title: string; body: string }> = {

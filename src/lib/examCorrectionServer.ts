@@ -8,7 +8,7 @@
 //  • Không bao giờ ghi vào ExamAttempt.score / ExamAnswer: chữa bài chỉ để học.
 //  • Mọi thao tác trên một (lượt × câu) khoá bằng advisory lock; hai lần bấm cùng lúc không đếm đôi lượt nộp.
 import { prisma } from "@/lib/prisma";
-import { attemptViewBlock, ENROLLMENT_SUSPENDED_CODE } from "@/lib/attemptAccess";
+import { attemptViewBlock } from "@/lib/attemptAccess";
 import { loadEffectivePolicy, loadPublishState } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
 import { loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
@@ -99,7 +99,7 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
   if (attempt.status === "in_progress") return fail(409, "Bài thi chưa nộp");
   // Đã nghỉ lớp: không xem/chữa bài của lớp đó. correctionSummary (nội bộ cho /review) cũng đi qua đây nhưng /review đã chặn trước.
   const viewBlocked = await attemptViewBlock(userId, attempt.examId);
-  if (viewBlocked) return { ok: false, status: 403, error: viewBlocked, code: ENROLLMENT_SUSPENDED_CODE };
+  if (viewBlocked) return { ok: false, status: 403, error: viewBlocked.error, code: viewBlocked.code };
   const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
   if (!exam) return fail(404, "Không tìm thấy đề thi");
 

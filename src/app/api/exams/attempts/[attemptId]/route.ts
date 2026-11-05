@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { finalizeAttempt, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { loadPublishState } from "@/lib/quizPublication";
-import { attemptViewBlock, ENROLLMENT_SUSPENDED_CODE } from "@/lib/attemptAccess";
+import { attemptViewBlock } from "@/lib/attemptAccess";
 import { resultVisibility } from "@/lib/quizRoom";
 
 // GET /api/exams/attempts/[attemptId] — trạng thái attempt hiện tại (phục vụ resume)
@@ -46,7 +46,7 @@ export async function GET(
 
     // Đã nghỉ lớp giữa chừng: không trả câu hỏi của lượt đang làm dở.
     const viewBlocked = await attemptViewBlock(session.userId, attempt.examId);
-    if (viewBlocked) return NextResponse.json({ error: viewBlocked, code: ENROLLMENT_SUSPENDED_CODE }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    if (viewBlocked) return NextResponse.json({ error: viewBlocked.error, code: viewBlocked.code }, { status: 403, headers: { "Cache-Control": "no-store" } });
 
     const exam = await prisma.exam.findUnique({
       where: { id: attempt.examId },

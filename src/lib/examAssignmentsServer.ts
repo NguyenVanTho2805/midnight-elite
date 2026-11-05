@@ -3,6 +3,7 @@
 // không đáp án, không giá. Điểm tốt nhất chỉ khi quyền xem điểm cho phép (đề giữ điểm chưa công bố → null).
 import { prisma } from "@/lib/prisma";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { isSuspendedForView } from "@/lib/attemptAccess";
 import { loadPublishStates } from "@/lib/quizPublication";
 import { effectiveExamPolicy } from "@/lib/examPolicy";
 import { resultVisibility } from "@/lib/quizRoom";
@@ -37,14 +38,16 @@ export async function listStudentAssignments(userId: string, now: Date): Promise
     take: MAX_ITEMS,
     include: { _count: { select: { examQuestions: true } }, course: { select: { name: true } }, owner: { select: { adminRole: true } } },
   });
-  // Đã nghỉ lớp (suspended): đề của lớp đó không còn trong danh sách — kể cả đề em từng làm. Đề thu phí có quyền khách gia sư duyệt tay thì giữ (như /start).
-  const suspendedCourseIds = new Set(enrollments.filter(e => e.status === "suspended").map(e => e.courseId));
-  if (suspendedCourseIds.size) {
-    const paidIds = exams.filter(e => e.courseId && suspendedCourseIds.has(e.courseId) && e.price && e.price > 0).map(e => e.id);
+  // Đã nghỉ lớp (suspended) HOẶC không còn bản ghi ghi danh nào: đề của lớp đó không còn trong danh sách — kể cả đề em từng làm (cùng luật isSuspendedForView
+  // với xem lượt/review). Đề thu phí có quyền khách gia sư duyệt tay thì giữ; lớp "chờ phụ huynh" không bị chặn ở đây.
+  const enrollmentOf = new Map(enrollments.map(e => [e.courseId, { status: e.status }]));
+  const gated = exams.filter(e => e.courseId && !isEnrollmentActive(enrollmentOf.get(e.courseId)));
+  if (gated.length) {
+    const paidIds = gated.filter(e => e.price && e.price > 0).map(e => e.id);
     const granted = paidIds.length ? new Set((await prisma.examGuestAccess.findMany({ where: { userId, examId: { in: paidIds } }, select: { examId: true } })).map(g => g.examId)) : new Set<string>();
     for (let i = exams.length - 1; i >= 0; i--) {
       const e = exams[i];
-      if (e.courseId && suspendedCourseIds.has(e.courseId) && !granted.has(e.id)) exams.splice(i, 1);
+      if (isSuspendedForView({ courseId: e.courseId, price: e.price, enrollment: e.courseId ? enrollmentOf.get(e.courseId) ?? null : null, hasGuestAccess: granted.has(e.id) })) exams.splice(i, 1);
     }
   }
   if (exams.length === 0) return [];

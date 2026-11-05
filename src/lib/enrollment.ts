@@ -8,9 +8,8 @@ export const ENROLLMENT_STATUS = {
   SUSPENDED:       "suspended",
 } as const;
 
-// Thông điệp + mã khi học sinh đã nghỉ lớp (suspended) mà đòi xem/vào bài thi của lớp (quyết định của chủ 06/11). Thuần, dùng được cả phía trình duyệt.
-export const ATTEMPT_SUSPENDED_MESSAGE = "Bạn đã nghỉ lớp này nên chưa xem được bài thi. Liên hệ gia sư nếu cần tham gia lại.";
-export const ENROLLMENT_SUSPENDED_CODE = "enrollment_suspended";
+// Thông điệp + mã nghỉ lớp nằm ở tệp thuần enrollmentMessages.ts (tệp trình duyệt import từ đó, KHÔNG từ đây — tệp này có nạp muộn prisma). Re-export cho mã máy chủ cũ.
+export { ATTEMPT_SUSPENDED_MESSAGE, ENROLLMENT_SUSPENDED_CODE, ATTEMPT_LEFT_CLASS_MESSAGE, ENROLLMENT_REMOVED_CODE, ATTEMPT_BLOCKED_MESSAGE, ATTEMPT_LEFT_CLASS_BLOCKED_MESSAGE } from "@/lib/enrollmentMessages";
 
 export type EnrollmentStatus = (typeof ENROLLMENT_STATUS)[keyof typeof ENROLLMENT_STATUS];
 

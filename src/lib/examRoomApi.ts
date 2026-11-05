@@ -17,7 +17,7 @@ export type ApiResult<T> =
 /** Mã lỗi `code` mà phòng thi cần phân biệt (còn lại coi là lỗi chung). */
 export type RoomErrorCode =
   | "not_open" | "closed" | "attempts_exhausted" | "past_deadline" | "SUPERSEDED"
-  | "expired" | "finished" | "section_locked" | "enrollment_suspended"
+  | "expired" | "finished" | "section_locked" | "enrollment_suspended" | "enrollment_removed"
   | "not_practice" | "no_feedback" | "not_answered" | "not_checkable" | "reveal_too_early" | "already_done" | "not_submitted"
   | "network";
 

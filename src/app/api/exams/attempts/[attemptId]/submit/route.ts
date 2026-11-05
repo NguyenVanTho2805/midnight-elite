@@ -29,7 +29,7 @@ export async function POST(
     }
     // Học sinh bị tạm dừng ở lớp giữa chừng thì không ghi thêm vào lượt (cùng quy tắc với /start).
     const blocked = await attemptWriteBlock(session.userId, attempt.examId);
-    if (blocked) return NextResponse.json({ error: blocked, code: "enrollment_suspended" }, { status: 403 });
+    if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: 403 });
 
     let finalized = attempt;
     let justSubmitted = false;

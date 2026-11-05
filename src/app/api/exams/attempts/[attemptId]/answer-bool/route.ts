@@ -23,7 +23,7 @@ export async function PATCH(
     }
     // Học sinh bị tạm dừng ở lớp giữa chừng thì không ghi thêm vào lượt (cùng quy tắc với /start).
     const blocked = await attemptWriteBlock(session.userId, attempt.examId);
-    if (blocked) return NextResponse.json({ error: blocked, code: "enrollment_suspended" }, { status: 403 });
+    if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: 403 });
 
     if (attempt.status === "in_progress" && attempt.expiresAt.getTime() <= Date.now()) {
       await finalizeAttempt(attempt.id, { status: "expired", at: attempt.expiresAt });
