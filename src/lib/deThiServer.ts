@@ -380,6 +380,13 @@ export async function analyseDocx(buf: Buffer): Promise<Outcome<{ parsed: WordAn
     throw e;
   }
   const parsed = parseAzotaBlocks(read.blocks);
+  const fst = read.formulaStats; // MathType (BU-03-MATHTYPE): chỉ ĐẾM theo nhóm lý do, không có nội dung công thức
+  if (fst.total > 0) {
+    parsed.formulaStats = { total: fst.total, decoded: fst.decoded, failed: fst.failed, byReason: fst.byReason, unverified: fst.unverified };
+    parsed.stats.formulaDecoded = fst.decoded; parsed.stats.formulaFailed = fst.failed;
+    if (fst.decoded > 0) parsed.warnings.unshift({ question: "", code: "mathtype_summary", message: `KiN đọc được ${fst.decoded}/${fst.total} công thức MathType; kiểm lại trước khi lưu.${fst.unverified > 0 ? ` Có ${fst.unverified} công thức dạng phức tạp (tích phân, tổng, giới hạn, vectơ, ma trận…) KiN chưa kiểm kỹ — xem lại từng cái.` : ""}` });
+    if (fst.timedOut) parsed.warnings.push({ question: "", code: "mathtype_timeout", message: "Tệp có quá nhiều công thức MathType nên KiN dừng đọc giữa chừng; các công thức còn lại giữ nhãn, cần gõ lại." });
+  }
   if (read.extraImages > 0) parsed.warnings.push({ question: "", code: "too_many_images", message: `Tệp có quá ${DOCX_MAX_IMAGES} hình; ${read.extraImages} hình thừa không được lấy. Chèn lại bằng tay ở những câu còn thiếu hình.` });
   if (parsed.questions.length > AZOTA_MAX_QUESTIONS || (parsed.fatal && /quá giới hạn/.test(parsed.fatal))) return fail(422, parsed.fatal ?? `Tệp có quá ${AZOTA_MAX_QUESTIONS} câu.`, "TOO_MANY");
 

@@ -17,7 +17,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { MathText } from "@/components/MathText";
 import { QUIZ_TYPE_LABEL, validateQuizQuestion } from "@/lib/quizQuestion";
 import {
-  ANSWER_SOURCE_LABEL, deThiDetailHref, fetchCategories, flattenCategories, hasFormulaPlaceholder, importSave, LEVEL_LABEL, LEVELS, luuNhieu, nganHangHref, nganHangNodeHref, nhapWordHref,
+  ANSWER_SOURCE_LABEL, deThiDetailHref, fetchCategories, flattenCategories, formulaProblem, hasFormulaPlaceholder, importSave, LEVEL_LABEL, LEVELS, luuNhieu, nganHangHref, nganHangNodeHref, nhapWordHref,
   taoDeHref, tierLabel, toBankInput, toExamInputs, uploadWord, wordFileProblem, WORD_MAX_QUESTIONS, type AzotaFlag, type AzotaQuestion, type Level, type LuuNhieuRes, type NhapWordRes,
 } from "./deThiClient";
 
@@ -37,11 +37,14 @@ const FLAG_TEXT: Record<AzotaFlag, { tone: "loi" | "cho"; text: string }> = {
   answer_conflict: { tone: "loi", text: "Các nguồn đáp án mâu thuẫn, KiN không tự chọn" },
   formula_unread: { tone: "loi", text: "Còn công thức chưa đọc được" },
   image_unreadable: { tone: "cho", text: "Có hình không hiển thị được" },
+  formula_image: { tone: "cho", text: "Công thức này hiện bằng ảnh" },
 };
 
 /** Lý do một câu (đang được tích lưu) chưa lưu được; null = ổn. */
 function blockReason(it: Item, toExam: boolean): string | null {
   if (hasFormulaPlaceholder(it.text) || it.options.some(o => hasFormulaPlaceholder(o.text))) return "Còn nhãn ⟦công thức⟧: bấm “Sửa câu” và gõ lại công thức (dạng $...$).";
+  const fp = formulaProblem(it.text) ?? it.options.map(o => formulaProblem(o.text)).find(Boolean) ?? null;
+  if (fp) return fp;
   if (it.q.type !== "ESSAY" && (it.q.flags.includes("answer_missing") || it.q.flags.includes("answer_conflict")) && !it.answerTouched) return "Chưa có đáp án chắc chắn: bấm “Sửa câu” và chọn đáp án đúng.";
   if (!toExam && !it.difficulty) return "Chọn mức NB / TH / VD / VDC cho câu này (ngân hàng cần mức để bốc đề, KiN không tự đoán).";
   return validateQuizQuestion(toBankInput({ type: it.q.type, text: it.text, imageUrl: it.q.imageUrl, explanation: it.q.explanation, options: it.options }));
@@ -180,7 +183,7 @@ export default function NhapWord() {
               <li>Các phần PHẦN I, II, III…: trắc nghiệm, nhiều đáp án, đúng-sai, trả lời ngắn.</li>
               <li>Đáp án đúng: gạch chân ở nhãn, dấu *, bảng đáp án cuối đề, hoặc lời giải. Nguồn nào được dùng đều hiện rõ ở bước sau.</li>
               <li>Hình ảnh trong đề; bảng trong đề; lời giải.</li>
-              <li>Công thức Word thường (OMML) được chuyển thành $...$. Công thức MathType chưa đọc được: KiN đánh dấu để cô gõ lại.</li>
+              <li>Công thức Word thường (OMML) và công thức MathType được KiN đọc tự động và chuyển thành $...$. Câu nào KiN chưa đọc được vẫn có nhãn ⟦công thức⟧ và bị chặn lưu, cô bấm “Sửa câu” để gõ lại.</li>
             </ul>
             <p className="mt-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mức NB/TH/VD/VDC chỉ lấy từ nhãn [n, MỨC] của ý đúng-sai; còn lại cô đặt ở bước xem lại, KiN không đoán.</p>
           </aside>
@@ -194,6 +197,8 @@ export default function NhapWord() {
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]" role="status">
             <span>{res.stats.total} câu đã đọc · {res.stats.withAnswer} có đáp án</span>
             {res.stats.withImage > 0 && <span>{res.stats.withImage} có hình</span>}
+            {typeof res.stats.formulaDecoded === "number" && (res.stats.formulaDecoded + (res.stats.formulaFailed ?? 0)) > 0 && <span>KiN đọc được {res.stats.formulaDecoded}/{res.stats.formulaDecoded + (res.stats.formulaFailed ?? 0)} công thức MathType</span>}
+            {(res.stats.withFormulaImage ?? 0) > 0 && <KinStatus tone="cho">{res.stats.withFormulaImage} câu có công thức hiện bằng ảnh</KinStatus>}
             {res.stats.withFormulaUnread > 0 && <KinStatus tone="loi">{res.stats.withFormulaUnread} câu còn công thức chưa đọc</KinStatus>}
             {res.errors.length > 0 && <KinStatus tone="cho">{res.errors.length} phần bị bỏ</KinStatus>}
           </div>
@@ -346,7 +351,8 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
           <div>
             <label htmlFor={`${idBase}-tx`} className={`${KIN_LABEL} mb-2`}>Nội dung câu {q.number}</label>
             <textarea id={`${idBase}-tx`} className={`${KIN_FIELD} py-2 min-h-24`} value={it.text} onChange={e => patch({ text: e.target.value })} />
-            <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Công thức gõ trong $...$ (ví dụ $x^2 + 1$).</p>
+            <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Công thức gõ trong $...$ (ví dụ $x^2 + 1$). Bên dưới là bản KiN vẽ ra để cô đối chiếu.</p>
+            <FormulaPreview id={`${idBase}-tx-pv`} text={it.text} />
           </div>
           {q.type !== "ESSAY" && (
             <fieldset className="min-w-0">
@@ -371,8 +377,9 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
                       </span>
                     )}
                     <label htmlFor={`${idBase}-o${i}`} className="sr-only">Nội dung {q.type === "SHORT_ANSWER" ? "đáp án" : `phương án ${i + 1}`}</label>
-                    <input id={`${idBase}-o${i}`} className={`${KIN_FIELD} flex-1 basis-48 min-w-0`} value={o.text}
+                    <input id={`${idBase}-o${i}`} className={`${KIN_FIELD} flex-1 basis-48 min-w-0`} value={o.text} aria-describedby={o.text.includes("$") ? `${idBase}-o${i}-pv` : undefined}
                       onChange={e => patch({ options: it.options.map((x, k) => k === i ? { ...x, text: e.target.value } : x), ...(q.type === "SHORT_ANSWER" ? { answerTouched: true } : {}) })} />
+                    <div className="basis-full min-w-0"><FormulaPreview id={`${idBase}-o${i}-pv`} text={o.text} /></div>
                   </div>
                 ))}
               </div>
@@ -381,5 +388,21 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
         </div>
       )}
     </li>
+  );
+}
+
+/** Xem trước trực tiếp công thức $...$ trong ô sửa; báo lỗi KaTeX bằng lời KiN. Không hiện gì nếu chưa có công thức. */
+function FormulaPreview({ id, text }: { id: string; text: string }) {
+  if (!text.includes("$")) return null;
+  const problem = formulaProblem(text);
+  return (
+    <div id={id} className="mt-2 min-w-0">
+      <div className="rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-bang)] p-3 text-[length:var(--kin-co-body)] text-[var(--kin-chu-chinh)] break-words overflow-x-auto">
+        <MathText text={text} />
+      </div>
+      {problem
+        ? <p role="alert" className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{problem} Câu này chưa lưu được cho tới khi công thức vẽ ra đúng.</p>
+        : <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Công thức vẽ được.</p>}
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 // Luật (đặc tả P1.3): mốc PHẦN → loại câu; "Câu N." → câu mới; phương án A. B. C. D. / ý Đ-S a) b) c) d) (kèm [n, MỨC]); đáp án đúng lấy từ
 // ① gạch chân nhãn ② dấu * ③ bảng đáp án sau "-----HẾT-----" ④ "Chọn X." / "Đáp án: X" ở Lời giải. Các nguồn MÂU THUẪN nhau → KHÔNG chọn đáp án nào
 // (`answer_conflict`) — không bao giờ đoán. Màu một mình KHÔNG đủ. Mức NB/TH/VD/VDC chỉ lấy từ [n, MỨC] của ý Đ-S; còn lại để trống. Điểm không đọc từ tệp.
-// Công thức: OMML → LaTeX (ommlLatex.ts); MathType OLE → nhãn ⟦công thức⟧ + cờ formula_unread (P1a — đọc nội dung MathType là P1b, chưa làm).
+// Công thức: OMML → LaTeX (ommlLatex.ts); MathType OLE → LaTeX (mathtype/mtef.ts, đã giải ở azotaDocxRead) hoặc, nếu không giải được, nhãn ⟦công thức⟧ + cờ formula_unread (chặn phát hành).
 import type { QuizQuestionInput } from "@/lib/quizQuestion";
 import { FORMULA_PLACEHOLDER } from "@/lib/ommlLatex";
 
@@ -14,6 +14,8 @@ export interface DocRun {
   /** Hình trong run: index vào `images` của readDocx; readable=false (wmf/emf, quá giới hạn) = không hiển thị được. */
   image?: { index: number; readable: boolean };
   formula?: "omml" | "ole"; latex?: string;
+  /** MathType không giải được: nhóm lý do (vd. "unsupported_template") — CHỈ để đếm/ghi nhật ký, không hiện cho gia sư. */
+  mathtypeFail?: string;
 }
 export interface DocCell { paragraphs: DocRun[][] }
 export type DocBlock = { kind: "p"; runs: DocRun[] } | { kind: "table"; rows: DocCell[][] };
@@ -37,7 +39,9 @@ export interface AzotaParse {
   questions: AzotaQuestion[];
   errors: { block: number; message: string }[];
   warnings: { question: string; code: string; message: string }[];
-  stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number };
+  stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number; formulaDecoded?: number; formulaFailed?: number };
+  /** Công thức MathType (máy chủ thêm từ readDocx; UI phải chịu được thiếu). Không chứa nội dung công thức. */
+  formulaStats?: { total: number; decoded: number; failed: number; byReason: Record<string, number>; unverified: number };
   fatal: string | null;
 }
 
@@ -524,7 +528,7 @@ export function parseAzotaBlocks(blocks: DocBlock[]): AzotaParse {
     const label = `Câu ${q.number} (${q.sectionLabel || `phần ${q.sectionIndex}`})`;
     if (d.extraImages > 0) warn(q.key, "extra_images", `${label}: có ${d.extraImages + 1} hình, KiN chỉ giữ 1 hình/câu (hình đầu); thêm hình còn lại bằng tay.`);
     if (d.unreadableImage) warn(q.key, "image_unreadable", `${label}: có hình định dạng WMF/EMF hoặc quá giới hạn — KiN chưa hiển thị được, cần chèn lại hình.`);
-    if (q.flags.includes("formula_unread")) warn(q.key, "formula_unread", `${label}: có công thức MathType chưa đọc được (đã gắn nhãn ${FORMULA_PLACEHOLDER}). Sửa tay trước khi phát hành.`);
+    if (q.flags.includes("formula_unread")) warn(q.key, "formula_unread", `${label}: có công thức MathType KiN chưa đọc được (đã gắn nhãn ${FORMULA_PLACEHOLDER}). Gõ lại công thức này trước khi phát hành.`);
     if (q.type === "ESSAY") continue;
     const srcs = [...d.srcs].sort((a, b) => SRC_ORDER.indexOf(a.src) - SRC_ORDER.indexOf(b.src));
     if (srcs.length === 0) { q.flags.push("answer_missing"); warn(q.key, "answer_missing", `${label}: chưa có đáp án (không thấy gạch chân, dấu *, bảng đáp án hay "Chọn X" trong lời giải).`); continue; }

@@ -2,6 +2,7 @@
 // (mục P1.2, P1.3, P1.4, mục 4). tut-code viết API song song theo cùng hợp đồng; tut-dev và tut-code không thêm trường ngoài hợp đồng khi chưa báo nhau.
 // P1 (Ngân hàng câu hỏi + Nhập Word) và P2 (ma trận, bốc/đổi câu, mã đề, tệp đề gốc) đã có ở đây; P3 (giao đề, kết quả) là vòng sau (chỗ mở rộng ở cuối tệp).
 // Lỗi API luôn có dạng { error: "<tiếng Việt>", code?: "MÃ" } (Q3) — qfetch (quizClient.ts) đã trả đúng dạng này, không ném lỗi.
+import katex from "katex";
 import { qfetch, type ApiResult } from "@/components/tutor/quiz/quizClient";
 import { toTutorPath } from "@/lib/tutorRoutes";
 import type { QuizQuestionInput, QuizQuestionType } from "@/lib/quizQuestion";
@@ -72,7 +73,7 @@ export function flattenCategories(list: readonly CategoryFlat[]): (CategoryFlat 
 }
 
 // ─── P1.3 Kết quả đọc Word  (POST /api/tutor/ngan-hang/nhap-word, multipart) ──────────────────────────────────────────────────
-export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable";
+export type AzotaFlag = "answer_missing" | "answer_conflict" | "formula_unread" | "image_unreadable" | "formula_image";
 export type AzotaAnswerSource = "dau-gach-chan" | "bang-het" | "loi-giai" | "mau" | "khong-co";
 export interface AzotaQuestion {
   key: string; number: number; sectionIndex: number; sectionLabel: string;
@@ -87,7 +88,7 @@ export interface AzotaParse {
   questions: AzotaQuestion[];
   errors: { block: number; message: string }[]; // lỗi cứng, câu đó bị bỏ
   warnings: { question: string; code: string; message: string }[];
-  stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number };
+  stats: { total: number; byType: Record<string, number>; withAnswer: number; withImage: number; withFormulaUnread: number; formulaDecoded?: number; formulaFailed?: number; withFormulaImage?: number };
   fatal: string | null;
 }
 export type NhapWordRes = AzotaParse & { images: { key: string; url: string }[] };
@@ -96,6 +97,23 @@ export const WORD_MAX_BYTES = 4 * 1024 * 1024; // Q5: giới hạn thân yêu c�
 export const WORD_MAX_QUESTIONS = 200;
 /** Nhãn mà bộ đọc chèn vào chỗ công thức MathType chưa đọc được (P1a). Câu còn nhãn này KHÔNG lưu được cho tới khi sửa tay. */
 export const FORMULA_PLACEHOLDER = "⟦công thức⟧";
+/** Kiểm từng công thức $...$ / $$...$$ bằng KaTeX (cùng bộ vẽ với MathText). Trả lời lỗi tiếng Việt cho công thức đầu tiên không vẽ được; null = ổn. */
+const MATH_RE = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+export function formulaProblem(text: string | null | undefined): string | null {
+  if (!text) return null;
+  MATH_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = MATH_RE.exec(text)) !== null) {
+    const body = (m[1] ?? m[2] ?? "").trim();
+    if (!body) return "Có cặp $ $ nhưng bên trong trống. Cô gõ công thức vào giữa hoặc xoá cặp $ đó.";
+    try { katex.renderToString(body, { throwOnError: true }); }
+    catch (e) {
+      const raw = e instanceof Error ? e.message.replace(/^KaTeX parse error:\s*/, "") : "";
+      return `KiN chưa vẽ được công thức “${body.length > 40 ? body.slice(0, 40) + "…" : body}”. Cô kiểm lại dấu { } và lệnh \\ rồi thử lại${raw ? ` (chi tiết kỹ thuật: ${raw.slice(0, 80)})` : ""}.`;
+    }
+  }
+  return null;
+}
 export const hasFormulaPlaceholder = (s: string | null | undefined): boolean => !!s && s.includes(FORMULA_PLACEHOLDER);
 
 export const ANSWER_SOURCE_LABEL: Record<AzotaAnswerSource, string> = {

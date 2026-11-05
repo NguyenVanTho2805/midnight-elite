@@ -1,6 +1,7 @@
 // BU-03 P1 — POST /api/tutor/ngan-hang/nhap-word (multipart `file` = .docx mẫu Azota) → AzotaParse + images[{key,url}].
 // CHỈ XEM TRƯỚC: không ghi DB, không AI (không reserveAiExtract, không Gemini, không nhúng), không trừ lượt nào.
 // Hình raster (png/jpg/gif/webp) lấy từ Word được tải lên Cloudinary (uploadImageBufferToCloudinary); mỗi câu giữ 1 hình.
+// Công thức MathType (OLE) giải thành LaTeX ở readDocx; phản hồi có thêm `formulaStats` {total,decoded,failed,byReason,unverified} và stats.formulaDecoded/formulaFailed (chỉ đếm, không có nội dung công thức).
 // 400 NOT_DOCX · 413 TOO_LARGE · 422 TOO_MANY · 429 RATE_LIMITED (20 lần phân tích Word/giờ/gia sư, đếm usage_events kind=word_analyse).
 import { NextRequest, NextResponse } from "next/server";
 import { isNextResponse } from "@/lib/auth-guard";

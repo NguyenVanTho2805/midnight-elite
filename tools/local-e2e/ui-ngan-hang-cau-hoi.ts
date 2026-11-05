@@ -175,6 +175,12 @@ const FAKE_PARSE = {
   await rowAt(3).getByLabel("Nội dung câu 3").fill("Tính giá trị của biểu thức $x^2$ khi $x = 2$.");
   check("gõ lại công thức, hết nhãn ⟦công thức⟧ → mở khoá, nút Lưu bật", await saveBtn.isEnabled() && await wp.getByText(/Còn \d+ câu cần xử lý/).count() === 0);
 
+  // BU-03 MathType: ô sửa LaTeX tay có xem trước trực tiếp; công thức không vẽ được thì khoá lưu
+  await rowAt(3).getByLabel("Nội dung câu 3").fill("Tính $\\frac{1}{$ ngay.");
+  check("LaTeX hỏng → báo lỗi tiếng Việt, nút Lưu khoá", await rowAt(3).getByText(/chưa vẽ được công thức/).first().isVisible() && await saveBtn.isDisabled());
+  await rowAt(3).getByLabel("Nội dung câu 3").fill("Tính giá trị của biểu thức $x^2$ khi $x = 2$.");
+  check("LaTeX đúng → có bản vẽ KaTeX xem trước, Lưu bật lại", await rowAt(3).locator(".katex").count() > 0 && await saveBtn.isEnabled());
+
   // Mức: đặt cho tất cả rồi từng câu
   await wp.getByRole("group", { name: "Đặt mức cho tất cả câu đang tích" }).getByRole("button", { name: "NB", exact: true }).click();
   check("'đặt mức cho tất cả' = NB: mọi câu có mức NB, chú thích 'Mọi câu đang tích đều có mức'", (await rowAt(0).getByLabel("Mức của câu 1").inputValue()) === "NB" && (await rowAt(4).getByLabel("Mức của câu 1").inputValue()) === "NB" && await wp.getByText("Mọi câu đang tích đều có mức.").isVisible());
