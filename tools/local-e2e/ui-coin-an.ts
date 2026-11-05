@@ -3,6 +3,7 @@
 // không còn "Coin", "xu" (từ riêng, trừ "xu hướng"), biểu tượng đồng xu. Dữ liệu cũ có sẵn (ví 200 Coin, yêu cầu nạp đang chờ) để chứng minh là ẨN chứ không phải "trống".
 // Kèm: API ghi Coin KHÔNG bị xoá (GET /api/wallet vẫn 200), bảng/dữ liệu còn nguyên, /student/vi và /admin/topups không còn lối vào.
 // Ca phá cố ý (P3-5): bỏ `\\p{M}` khỏi hai lookaround → ca NFD đỏ; bỏ `(?!\\s+(?:hướng|thế)…)` khỏi XU → "Top 10 xu hướng 2025"… đỏ.
+// Ca phá cố ý (vòng 06/11): bỏ GROUP_SPACE khỏi AMOUNT → 'Phí 500 000 xu' còn 'Phí 500' (đỏ); bỏ RE_LABEL_AMOUNT → 'Coin: 50' ra 'điểm thưởng: 50' (đỏ); bỏ INVISIBLE → ca LRM/RLM đỏ; bỏ nhánh `before` trong RE_DEDUCT → 'Bạn bị trừ 20 xu' đầu câu ra ', phần thưởng…' (đỏ).
 // Ca phá cố ý: đổi COIN_VISIBLE thành true → bài đỏ ở nhiều route.
 // Phần thuần hideCoinText (đầu bài): quay lại regex cũ `\s*[+\-]?\d+\s*(xu|Coin)\b` + `xu` đứng riêng → ca "1.000 xu", "Xu thế", "5 🪙" đỏ.
 import { api, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
@@ -41,17 +42,27 @@ const GRAB = `(() => {
   const KEEP = [
     "Top 10 xu hướng 2025", "5 xu hướng nổi bật", "Năm 2024 xu thế mới", "Điểm 8,5 xu thế", "Xu thế học tập", "Xu hướng điểm 5 xuống 3", "Điểm xuống 3",
     "Xuất sắc 5 xuất", "Mùa xuân 5 xuân", "Bitcoin tăng", "Hết xu rồi", "xu", "Lớp Toán 9 thứ 5 lúc 19:00", "5 xuhướng", "5 xu  hướng", "5 xu\nhướng",
-    "bạn bị trừ 5 xu hướng", nfd("Điểm 50 xú"), "Điểm 50 xu\u20DD", "Điểm 50 xu\u0304\u0323", nfd("Top 10 xu hướng"), nfd("Năm 2024 xu thế"),
+    "bạn bị trừ 5 xu hướng", "xu hướng", "xu thế", "Điểm xuống 50", "xuống", "Coincidence", "Coincidence 50", "20 đồng xu", "Nạp 20 đồng xu vào ví", "Lớp 9 thứ 5", nfd("Điểm 50 xú"), "Điểm 50 xu\u20DD", "Điểm 50 xu\u0304\u0323", nfd("Top 10 xu hướng"), nfd("Năm 2024 xu thế"),
   ];
   const CUT: [string, string][] = [
     ["Bạn nhận 5 xu", "Bạn nhận"], ["Nhận 1.000 xu.", "Nhận."], ["Số dư 12.500,5 xu", "Số dư"], ["Thưởng 5 🪙", "Thưởng"], ["XU/5 XU", "XU/"], ["5 XU", ""],
     ["Bitcoin 5 Coin", "Bitcoin"], ["+20 xu hôm nay", "hôm nay"], ["-5 xu", ""], ["\u22125 xu", ""], ["Nhận 🪙 5 hôm nay", "Nhận hôm nay"], ["Chúc mừng 🪙", "Chúc mừng"],
     ["Câu bị gỡ, bạn bị trừ 20 xu", "Câu bị gỡ, phần thưởng của câu trả lời này bị trừ lại"], ["Nạp Coin thành công", "Nạp điểm thưởng thành công"],
     [nfd("Bạn nhận 50 xu"), "Bạn nhận"], ["10 xu hướng và 5 xu", "10 xu hướng và"], ["Đã có 5 xu hướng mới, thưởng 20 xu", "Đã có 5 xu hướng mới, thưởng"],
-    ["20 xuống 5 xu", "20 xuống"], ["Xu hướng 5 xu thế 3 xu", "Xu hướng 5 xu thế"], ["5xu", ""], ["1.000.000 xu", ""],
+    ["20 xuống 5 xu", "20 xuống"],
+    // Vòng 06/11 (test độc lập): đầu câu không dư dấu phẩy; nhóm nghìn bằng khoảng trắng; nhãn rồi số; ký tự điều hướng; mất ngữ cảnh nhưng không mồ côi dấu.
+    ["Bạn bị trừ 20 xu", "Phần thưởng của câu trả lời này bị trừ lại"], ["Bạn bị trừ 20 xu vì vi phạm", "Phần thưởng của câu trả lời này bị trừ lại vì vi phạm"],
+    ["Câu bị gỡ. Bạn bị trừ 20 xu", "Câu bị gỡ. Phần thưởng của câu trả lời này bị trừ lại"],
+    ["Phí 500 000 xu", "Phí"], ["Phí 500\u00A0000 xu", "Phí"], ["Phí 500\u2009000 xu", "Phí"], ["Phí 500\u202F000 xu", "Phí"], ["Phí 1 000 000 Coin", "Phí"], ["Bài 3 thu 500 000 xu", "Bài 3 thu"],
+    ["Coin: 50", ""], ["Số dư Coin 50", "Số dư"], ["Coin = +50", ""], ["Xu: 50", ""], ["Số dư Coin: 1.000", "Số dư"], ["20 coins", ""],
+    ["20\u200E xu", ""], ["Nhận 20\u200F xu hôm nay", "Nhận hôm nay"], ["Nhận\u200E 20 xu\u200F.", "Nhận."], ["Nhận 20 \u202Axu\u202C hôm nay", "Nhận hôm nay"],
+    ["1 xu rồi 2 xu", "rồi"], ["Thưởng 1 xu, 2 xu", "Thưởng"], ["Nhận (20 xu) hôm nay", "Nhận hôm nay"], ["Phí: 500 xu", "Phí"], ["Điểm 5 10 xu", "Điểm 5"], ["Xu hướng 5 xu thế 3 xu", "Xu hướng 5 xu thế"], ["5xu", ""], ["1.000.000 xu", ""],
   ];
   for (const k of KEEP) check(`giữ nguyên: ${JSON.stringify(k)}`, H(k) === k, H(k));
   for (const [i, o] of CUT) check(`cắt đúng: ${JSON.stringify(i)} → ${JSON.stringify(o)}`, H(i) === o, H(i));
+  // Bất biến quan trọng nhất: đầu ra không chứa chữ số của số xu, không dấu câu mồ côi ở hai đầu, không ngoặc rỗng, không ký tự điều hướng.
+  const LEAKY = ["Bạn bị trừ 20 xu", "Phí 500 000 xu", "Coin: 50", "Coin 50", "20\u200E xu", "1 xu rồi 2 xu", "Thưởng 1 xu, 2 xu", "Nhận (20 xu).", "Phí: 500\u00A0000 xu", "+20 xu 🪙"];
+  for (const k of LEAKY) { const o = H(k); check(`không lộ số: ${JSON.stringify(k)} → ${JSON.stringify(o)}`, !/\d/.test(o), o); check(`  sạch dấu câu & vô hình: ${JSON.stringify(o)}`, !/^[\s,;:.]/.test(o) && !/[\s,;:]$/.test(o) && !/\(\s*\)/.test(o) && !/[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/.test(o) && !/\s{2,}/.test(o), o); }
   check(`bảng đủ ≥ 41 chuỗi (có ${KEEP.length + CUT.length})`, KEEP.length + CUT.length >= 41);
   check("NFD 'xú' không để lại dấu kết hợp mồ côi", H(nfd("Điểm 50 xú")).endsWith("xu\u0301") && !/(^|\s)\p{M}/u.test(H(nfd("Điểm 50 xú"))));
   check("BAD (bộ quét giao diện) cho qua 'xu hướng'/'xu thế', bắt 'xu' đứng riêng và Coin", !BAD.test("Top 10 xu hướng 2025") && !BAD.test("Năm 2024 xu thế mới") && BAD.test("Hết xu rồi") && BAD.test("Nạp Coin"));
