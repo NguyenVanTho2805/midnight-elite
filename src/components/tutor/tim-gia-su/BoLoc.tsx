@@ -10,6 +10,25 @@ const SELECT = "min-h-[var(--kin-cham-toi-thieu)] w-full rounded-[var(--kin-bo-m
 const LABEL = "mb-1.5 block text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-chinh)]";
 const TOGGLE = "flex min-h-[var(--kin-cham-toi-thieu)] w-full items-center justify-between gap-2 rounded-[var(--kin-bo-md)] border px-3 text-left text-[length:var(--kin-co-goc)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
 
+// Chọn một trong danh sách ngắn (môn, lớp): dải nút bấm xuống dòng, thay ô thả xuống. Bấm lại mục đang chọn → về "Tất cả".
+function ChipPicker({ label, allLabel, value, options, onPick }: { label: string; allLabel: string; value: string; options: { value: string; text: string }[]; onPick: (v: string) => void }) {
+  const items = [{ value: "", text: allLabel }, ...options];
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+      {items.map(o => {
+        const on = value === o.value;
+        return (
+          <button key={o.value || "__all"} type="button" role="radio" aria-checked={on} onClick={() => onPick(on ? "" : o.value)}
+            className="min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-tron)] border px-3.5 text-[length:var(--kin-co-goc)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]"
+            style={on ? { background: "var(--kin-nen-dang-chon)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-chinh)", fontWeight: 600 } : { background: "var(--kin-nen-trang)", borderColor: "var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }}>
+            {o.text}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function toggleStyle(on: boolean, dim: boolean) {
   return on
     ? { background: "var(--kin-nen-dang-chon)", borderColor: "var(--kin-nhan-nen)", color: "var(--kin-chu-chinh)" }
@@ -46,18 +65,14 @@ export function BoLoc({ value, onChange, facets, onClear, idPrefix }: BoLocProps
   return (
     <div data-bo-loc className="flex flex-col gap-5">
       <div>
-        <label htmlFor={id("mon")} className={LABEL}>Môn học</label>
-        <select id={id("mon")} className={SELECT} value={value.subject} onChange={e => set({ subject: e.target.value })}>
-          <option value="">Tất cả môn</option>
-          {subjOpts.map(s => <option key={s.value} value={s.value}>{s.value}{s.count ? ` (${s.count})` : ""}</option>)}
-        </select>
+        <span className={LABEL}>Môn học</span>
+        <ChipPicker label="Môn học" allLabel="Tất cả môn" value={value.subject} onPick={v => set({ subject: v })}
+          options={subjOpts.map(s => ({ value: s.value, text: `${s.value}${s.count ? ` (${s.count})` : ""}` }))} />
       </div>
       <div>
-        <label htmlFor={id("lop")} className={LABEL}>Lớp / cấp</label>
-        <select id={id("lop")} className={SELECT} value={value.grade} onChange={e => set({ grade: e.target.value })}>
-          <option value="">Tất cả lớp</option>
-          {gradeOpts.map(g => <option key={g.value} value={g.value}>{g.label}{g.count ? ` (${g.count})` : ""}</option>)}
-        </select>
+        <span className={LABEL}>Lớp / cấp</span>
+        <ChipPicker label="Lớp / cấp" allLabel="Tất cả lớp" value={value.grade} onPick={v => set({ grade: v })}
+          options={gradeOpts.map(g => ({ value: g.value, text: `${g.label}${g.count ? ` (${g.count})` : ""}` }))} />
         <p className="mt-1 text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Suy từ tên môn gia sư ghi (ví dụ &ldquo;Toán 9&rdquo;).</p>
       </div>
       <div>

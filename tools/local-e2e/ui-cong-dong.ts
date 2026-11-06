@@ -54,7 +54,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   check("giữa 540–600", main.width >= 540 && main.width <= 600, main);
   check("phải ≥280", rail.width >= 280, rail);
   check("thứ tự trái < giữa < phải (đúng 3 cột)", nav.x + nav.width <= main.x + 1 && main.x + main.width <= rail.x + 1);
-  const navItems = await g.locator("[data-kc-nav] .kc-nav-item").allInnerTexts();
+  const navItems = await g.locator("[data-kc-nav] .kc-nav-list > .kc-nav-item").allInnerTexts();
   check("khách: ba mục (Bảng tin, Hỏi đáp, Đã lưu); 'Lớp của tôi' ẩn", navItems.join("|") === "Bảng tin|Hỏi đáp|Đã lưu" && (await g.locator("#community-scope").count()) === 0, navItems);
   const card = g.locator("[data-feed-card]").first();
   const cs = await card.evaluate((el: Element) => { const s = getComputedStyle(el); return { shadow: s.boxShadow, top: s.borderTopWidth, left: s.borderLeftWidth, bottom: s.borderBottomWidth }; });
@@ -127,7 +127,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   await s.getByText("Bài của lớp: chỉ lớp thấy").waitFor({ timeout: 90000 });
   const n3 = await box(s.locator("[data-kc-nav]")), m3 = await box(s.locator(".kc-main")), r3 = await box(s.locator(".kc-rail"));
   check("vỏ thu gọn: đủ 3 cột, trái 220±2, giữa 540–600, phải ≥280", Math.abs(n3.width - 220) <= 2 && m3.width >= 540 && m3.width <= 600 && r3.width >= 280 && n3.x < m3.x && m3.x < r3.x, { n3, m3, r3 });
-  check("học sinh: đủ bốn mục điều hướng (Lớp của tôi hiện vì có lớp)", (await s.locator("#community-scope").count()) === 1 && (await s.locator("[data-kc-nav] .kc-nav-item").allInnerTexts()).join("|") === "Bảng tin|Hỏi đáp|Đã lưu");
+  check("học sinh: đủ bốn mục điều hướng (Lớp của tôi hiện vì có lớp)", (await s.locator("#community-scope").count()) === 1 && (await s.locator("[data-kc-nav] .kc-nav-list > .kc-nav-item").allInnerTexts()).join("|") === "Bảng tin|Hỏi đáp|Đã lưu");
   check("thấy cả bài lớp và bài chung", await s.getByText("Bài chung: ai cũng thấy").isVisible());
   check("không cuộn ngang", await noOverflow(s));
   await shot(s, "cong-dong-1280-hoc-sinh");
@@ -229,7 +229,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
     const hs = await mp.locator("[data-feed-card]").first().locator(".kc-act:visible").evaluateAll((els: Element[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
     check("nút hành động cao ≥44", hs.length >= 3 && hs.every((h: number) => h >= 44), hs);
     check("'Báo cáo' ẩn dưới dấu '…' (nút Thêm hiện)", !(await mp.locator("[data-feed-card] [data-act=report]").first().isVisible()) && (await mp.locator("[data-feed-card]", { hasText: "Bài của lớp: chỉ lớp thấy" }).getByRole("button", { name: "Thêm" }).isVisible()));
-    const chips = await mp.locator("[data-kc-nav] .kc-nav-item, [data-kc-nav] select").evaluateAll((els: Element[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
+    const chips = await mp.locator("[data-kc-nav] .kc-nav-item").evaluateAll((els: Element[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
     check("chip điều hướng cao ≥44", chips.length >= 3 && chips.every((h: number) => h >= 44), chips);
     check("không tràn ngang", await noOverflow(mp));
     await mp.addStyleTag({ content: "html{font-size:130% !important}" });

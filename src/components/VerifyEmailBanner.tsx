@@ -8,6 +8,7 @@ export default function VerifyEmailBanner() {
   const [sending,  setSending]  = useState(false);
   const [sent,     setSent]     = useState(false);
   const [dismissed, setDismiss] = useState(false);
+  const [err,      setErr]      = useState("");
 
   if (!user || user.emailVerified || dismissed) return null;
 
@@ -15,7 +16,10 @@ export default function VerifyEmailBanner() {
     setSending(true);
     try {
       const res = await fetch("/api/auth/resend-verification", { method: "POST" });
-      if (res.ok) setSent(true);
+      if (res.ok) { setSent(true); setErr(""); }
+      else setErr(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? "Chưa gửi được email. Thử lại sau.");
+    } catch {
+      setErr("Mất kết nối, chưa gửi được email.");
     } finally {
       setSending(false);
     }
@@ -34,6 +38,7 @@ export default function VerifyEmailBanner() {
           <p className="text-xs mt-0.5" style={{ color: "var(--kin-tt-chu-cho)" }}>
             Kiểm tra hộp thư <strong>{user.email}</strong> và bấm link xác thực
           </p>
+          {err && <p role="alert" className="text-xs mt-0.5 font-semibold" style={{ color: "var(--kin-tt-chu-cho)" }}>{err}</p>}
         </div>
       </div>
 

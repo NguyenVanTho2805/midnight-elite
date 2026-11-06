@@ -28,7 +28,13 @@ export async function POST(req: Request) {
     },
   });
 
-  await sendVerificationEmail(user.email, user.name, token);
+  try {
+    await sendVerificationEmail(user.email, user.name, token);
+  } catch (e) {
+    // Trước đây lỗi gửi thư làm cả route sập 500 và nút "Gửi lại" im lặng; nay báo rõ để người dùng biết thư chưa đi.
+    console.error("[email] Không gửi lại được mail xác thực:", (e as Error).message);
+    return NextResponse.json({ error: "Chưa gửi được email lúc này. Thử lại sau ít phút hoặc liên hệ hỗ trợ." }, { status: 502 });
+  }
 
   return NextResponse.json({ success: true });
 }
