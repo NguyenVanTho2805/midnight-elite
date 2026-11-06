@@ -64,6 +64,53 @@
   --kin-cham-dong: 50px;
   --kin-cham-dap-an: 52px;
 
+  /* --- Chữ: thang Minor Third 1.200, tám bậc (Figma: bộ biến Chữ) ---
+     Không chế thêm cỡ ở giữa; cần to hơn thì lên bậc.
+     Nội dung đề thi BẮT BUỘC dùng body: 16px, dòng 1,6.
+     Dùng gọn nhất:  font: var(--kin-kieu-body);  */
+  --kin-co-display: 39.8px;
+  --kin-co-h1: 33.2px;
+  --kin-co-h2: 27.6px;
+  --kin-co-h3: 23px;
+  --kin-co-h4: 19.2px;
+  --kin-co-body: 16px;
+  --kin-co-small: 13.3px;
+  --kin-co-caption: 11.1px;
+  --kin-dong-display: 1.2;
+  --kin-dong-h1: 1.25;
+  --kin-dong-h2: 1.25;
+  --kin-dong-h3: 1.3;
+  --kin-dong-h4: 1.3;
+  --kin-dong-body: 1.6;
+  --kin-dong-small: 1.5;
+  --kin-dong-caption: 1.4;
+  --kin-dam-display: 600;
+  --kin-dam-h1: 600;
+  --kin-dam-h2: 600;
+  --kin-dam-h3: 600;
+  --kin-dam-h4: 600;
+  --kin-dam-body: 400;
+  --kin-dam-small: 400;
+  --kin-dam-caption: 500;
+  --kin-ho-display: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h1: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h2: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h3: "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-ho-h4: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-body: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-small: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-caption: "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-ho-ma: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  /* kiểu gộp cho thuộc tính font: đậm cỡ/dòng họ */
+  --kin-kieu-display: 600 39.8px/1.2 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h1: 600 33.2px/1.25 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h2: 600 27.6px/1.25 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h3: 600 23px/1.3 "Be Vietnam Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+  --kin-kieu-h4: 600 19.2px/1.3 "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-kieu-body: 400 16px/1.6 "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-kieu-small: 400 13.3px/1.5 "Inter", system-ui, "Segoe UI", sans-serif;
+  --kin-kieu-caption: 500 11.1px/1.4 "Inter", system-ui, "Segoe UI", sans-serif;
+
   /* --- Chủ đề mặc định: Navy, chế độ sáng --- */
   --kin-nhan-nen: #1e3a8a;
   --kin-nhan-nen-re: #172554;

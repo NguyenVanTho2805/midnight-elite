@@ -1,0 +1,393 @@
+{
+  "Màu": {
+    "modes": [
+      "Sáng",
+      "Tối"
+    ],
+    "vars": {
+      "nền/trang": {
+        "Sáng": "#ffffff",
+        "Tối": "#0b0e14"
+      },
+      "nền/bảng": {
+        "Sáng": "#f7f8fa",
+        "Tối": "#10141c"
+      },
+      "nền/rê-chuột": {
+        "Sáng": "#f1f3f6",
+        "Tối": "#171c26"
+      },
+      "nền/đang-chọn": {
+        "Sáng": "#e8edf7",
+        "Tối": "#1b2534"
+      },
+      "nền/nhấn": {
+        "Sáng": "#eff4ff",
+        "Tối": "#101a2c"
+      },
+      "viền/thường": {
+        "Sáng": "#e6e9ef",
+        "Tối": "#232a36"
+      },
+      "viền/nhạt": {
+        "Sáng": "#eef0f4",
+        "Tối": "#1b212c"
+      },
+      "viền/ô-nhập": {
+        "Sáng": "#8b95a5",
+        "Tối": "#565f70"
+      },
+      "chữ/chính": {
+        "Sáng": "#111827",
+        "Tối": "#f3f4f6"
+      },
+      "chữ/phụ": {
+        "Sáng": "#374151",
+        "Tối": "#d1d5db"
+      },
+      "chữ/mờ": {
+        "Sáng": "#6b7280",
+        "Tối": "#9ca3af"
+      },
+      "chữ/mờ-trên-nền-nhấn": {
+        "Sáng": "#5b6675",
+        "Tối": "#9ca3af"
+      },
+      "chữ/trên-nút-chính": {
+        "Sáng": "#ffffff",
+        "Tối": "#0b0e14"
+      },
+      "thương-hiệu/navy": {
+        "Sáng": "#1e3a8a",
+        "Tối": "#3b82f6"
+      },
+      "thương-hiệu/navy-rê": {
+        "Sáng": "#172554",
+        "Tối": "#60a5fa"
+      },
+      "thương-hiệu/xanh-link": {
+        "Sáng": "#2563eb",
+        "Tối": "#60a5fa"
+      },
+      "chữ-trạng-thái/xong": {
+        "Sáng": "#047857",
+        "Tối": "#34d399"
+      },
+      "chữ-trạng-thái/chờ": {
+        "Sáng": "#b45309",
+        "Tối": "#fbbf24"
+      },
+      "chữ-trạng-thái/lỗi": {
+        "Sáng": "#dc2626",
+        "Tối": "#f87171"
+      },
+      "chấm-trạng-thái/xong": {
+        "Sáng": "#059669",
+        "Tối": "#34d399"
+      },
+      "chấm-trạng-thái/chờ": {
+        "Sáng": "#d97706",
+        "Tối": "#fbbf24"
+      },
+      "chấm-trạng-thái/trung-tính": {
+        "Sáng": "#767f8e",
+        "Tối": "#8a93a3"
+      },
+      "thương-hiệu/xanh-trời": {
+        "Sáng": "#38bdf8",
+        "Tối": "#38bdf8"
+      },
+      "thương-hiệu/vàng-nắng": {
+        "Sáng": "#f59e0b",
+        "Tối": "#fbbf24"
+      },
+      "thương-hiệu/bạc-hà": {
+        "Sáng": "#10b981",
+        "Tối": "#34d399"
+      },
+      "thương-hiệu/vàng-doanh-nghiệp": {
+        "Sáng": "#d97706",
+        "Tối": "#d97706"
+      },
+      "thương-hiệu/xám-đá": {
+        "Sáng": "#0f172a",
+        "Tối": "#0f172a"
+      },
+      "phân-hệ/lms": {
+        "Sáng": "#1e3a8a",
+        "Tối": "#38bdf8"
+      },
+      "phân-hệ/exam": {
+        "Sáng": "#2563eb",
+        "Tối": "#60a5fa"
+      },
+      "phân-hệ/class": {
+        "Sáng": "#10b981",
+        "Tối": "#34d399"
+      },
+      "phân-hệ/hub": {
+        "Sáng": "#f59e0b",
+        "Tối": "#fbbf24"
+      },
+      "phân-hệ/enterprise": {
+        "Sáng": "#0f172a",
+        "Tối": "#d97706"
+      }
+    }
+  },
+  "Số đo": {
+    "modes": [
+      "Giá trị"
+    ],
+    "vars": {
+      "khoảng-cách/1": {
+        "Giá trị": 4
+      },
+      "khoảng-cách/2": {
+        "Giá trị": 6
+      },
+      "khoảng-cách/3": {
+        "Giá trị": 8
+      },
+      "khoảng-cách/4": {
+        "Giá trị": 10
+      },
+      "khoảng-cách/5": {
+        "Giá trị": 12
+      },
+      "khoảng-cách/6": {
+        "Giá trị": 14
+      },
+      "khoảng-cách/7": {
+        "Giá trị": 18
+      },
+      "khoảng-cách/8": {
+        "Giá trị": 24
+      },
+      "khoảng-cách/9": {
+        "Giá trị": 32
+      },
+      "bo-góc/sm": {
+        "Giá trị": 8
+      },
+      "bo-góc/md": {
+        "Giá trị": 9
+      },
+      "bo-góc/lg": {
+        "Giá trị": 10
+      },
+      "bo-góc/xl": {
+        "Giá trị": 12
+      },
+      "bo-góc/thẻ": {
+        "Giá trị": 14
+      },
+      "bo-góc/tròn": {
+        "Giá trị": 999
+      },
+      "vùng-chạm/tối-thiểu": {
+        "Giá trị": 44
+      },
+      "vùng-chạm/dòng": {
+        "Giá trị": 50
+      },
+      "vùng-chạm/đáp-án": {
+        "Giá trị": 52
+      }
+    }
+  },
+  "Chủ đề": {
+    "modes": [
+      "Navy · Sáng",
+      "Navy · Tối",
+      "Cổ vịt · Sáng",
+      "Cổ vịt · Tối",
+      "Mận · Sáng",
+      "Mận · Tối",
+      "Cà phê · Sáng",
+      "Cà phê · Tối",
+      "Mực · Sáng",
+      "Mực · Tối"
+    ],
+    "vars": {
+      "nhấn/nền": {
+        "Navy · Sáng": "#1e3a8a",
+        "Navy · Tối": "#1e3a8a",
+        "Cổ vịt · Sáng": "#0e7490",
+        "Cổ vịt · Tối": "#0e7490",
+        "Mận · Sáng": "#6b21a8",
+        "Mận · Tối": "#6b21a8",
+        "Cà phê · Sáng": "#78350f",
+        "Cà phê · Tối": "#78350f",
+        "Mực · Sáng": "#0f172a",
+        "Mực · Tối": "#0f172a"
+      },
+      "nhấn/nền-rê": {
+        "Navy · Sáng": "#172554",
+        "Navy · Tối": "#172554",
+        "Cổ vịt · Sáng": "#155e75",
+        "Cổ vịt · Tối": "#155e75",
+        "Mận · Sáng": "#581c87",
+        "Mận · Tối": "#581c87",
+        "Cà phê · Sáng": "#5c2a0c",
+        "Cà phê · Tối": "#5c2a0c",
+        "Mực · Sáng": "#020617",
+        "Mực · Tối": "#020617"
+      },
+      "nhấn/chữ-trên-nền": {
+        "Navy · Sáng": "#ffffff",
+        "Navy · Tối": "#ffffff",
+        "Cổ vịt · Sáng": "#ffffff",
+        "Cổ vịt · Tối": "#ffffff",
+        "Mận · Sáng": "#ffffff",
+        "Mận · Tối": "#ffffff",
+        "Cà phê · Sáng": "#ffffff",
+        "Cà phê · Tối": "#ffffff",
+        "Mực · Sáng": "#ffffff",
+        "Mực · Tối": "#ffffff"
+      },
+      "nhấn/link": {
+        "Navy · Sáng": "#2563eb",
+        "Navy · Tối": "#60a5fa",
+        "Cổ vịt · Sáng": "#0e7490",
+        "Cổ vịt · Tối": "#38bdf8",
+        "Mận · Sáng": "#7e22ce",
+        "Mận · Tối": "#c084fc",
+        "Cà phê · Sáng": "#7c2d12",
+        "Cà phê · Tối": "#fdba74",
+        "Mực · Sáng": "#334155",
+        "Mực · Tối": "#cbd5e1"
+      },
+      "nhấn/nền-nhạt": {
+        "Navy · Sáng": "#eff4ff",
+        "Navy · Tối": "#101a2c",
+        "Cổ vịt · Sáng": "#eaf6fa",
+        "Cổ vịt · Tối": "#08202b",
+        "Mận · Sáng": "#f7effd",
+        "Mận · Tối": "#1b0f2b",
+        "Cà phê · Sáng": "#fbf1e9",
+        "Cà phê · Tối": "#241408",
+        "Mực · Sáng": "#f1f5f9",
+        "Mực · Tối": "#131a26"
+      },
+      "nhấn/chữ-trên-nhạt": {
+        "Navy · Sáng": "#1e3a8a",
+        "Navy · Tối": "#60a5fa",
+        "Cổ vịt · Sáng": "#0e7490",
+        "Cổ vịt · Tối": "#38bdf8",
+        "Mận · Sáng": "#6b21a8",
+        "Mận · Tối": "#c084fc",
+        "Cà phê · Sáng": "#78350f",
+        "Cà phê · Tối": "#fdba74",
+        "Mực · Sáng": "#0f172a",
+        "Mực · Tối": "#cbd5e1"
+      }
+    }
+  },
+  "Chữ": {
+    "modes": [
+      "Giá trị"
+    ],
+    "vars": {
+      "cỡ/display": {
+        "Giá trị": 39.8
+      },
+      "dòng/display": {
+        "Giá trị": 1.2
+      },
+      "đậm/display": {
+        "Giá trị": 600
+      },
+      "họ/display": {
+        "Giá trị": "Be Vietnam Pro"
+      },
+      "cỡ/h1": {
+        "Giá trị": 33.2
+      },
+      "dòng/h1": {
+        "Giá trị": 1.25
+      },
+      "đậm/h1": {
+        "Giá trị": 600
+      },
+      "họ/h1": {
+        "Giá trị": "Be Vietnam Pro"
+      },
+      "cỡ/h2": {
+        "Giá trị": 27.6
+      },
+      "dòng/h2": {
+        "Giá trị": 1.25
+      },
+      "đậm/h2": {
+        "Giá trị": 600
+      },
+      "họ/h2": {
+        "Giá trị": "Be Vietnam Pro"
+      },
+      "cỡ/h3": {
+        "Giá trị": 23
+      },
+      "dòng/h3": {
+        "Giá trị": 1.3
+      },
+      "đậm/h3": {
+        "Giá trị": 600
+      },
+      "họ/h3": {
+        "Giá trị": "Be Vietnam Pro"
+      },
+      "cỡ/h4": {
+        "Giá trị": 19.2
+      },
+      "dòng/h4": {
+        "Giá trị": 1.3
+      },
+      "đậm/h4": {
+        "Giá trị": 600
+      },
+      "họ/h4": {
+        "Giá trị": "Inter"
+      },
+      "cỡ/body": {
+        "Giá trị": 16
+      },
+      "dòng/body": {
+        "Giá trị": 1.6
+      },
+      "đậm/body": {
+        "Giá trị": 400
+      },
+      "họ/body": {
+        "Giá trị": "Inter"
+      },
+      "cỡ/small": {
+        "Giá trị": 13.3
+      },
+      "dòng/small": {
+        "Giá trị": 1.5
+      },
+      "đậm/small": {
+        "Giá trị": 400
+      },
+      "họ/small": {
+        "Giá trị": "Inter"
+      },
+      "cỡ/caption": {
+        "Giá trị": 11.1
+      },
+      "dòng/caption": {
+        "Giá trị": 1.4
+      },
+      "đậm/caption": {
+        "Giá trị": 500
+      },
+      "họ/caption": {
+        "Giá trị": "Inter"
+      },
+      "họ/mã": {
+        "Giá trị": "JetBrains Mono"
+      }
+    }
+  }
+}
