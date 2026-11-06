@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { sendVerificationEmail } from "@/lib/email";
+import { requestSignupCode } from "@/lib/loginCodeServer";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 import { signupBonusOps } from "@/lib/wallet";
 import { parseTutorProfileInput } from "@/lib/tutorProfile";
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
     let emailSent = true;
     try {
-      await sendVerificationEmail(user.email, user.name, token);
+      await requestSignupCode(user.email, { token }); // mã 6 số + link dự phòng cùng một thư
     } catch (emailErr) {
       emailSent = false;
       console.error("[email] Không gửi được mail xác thực:", (emailErr as Error).message);

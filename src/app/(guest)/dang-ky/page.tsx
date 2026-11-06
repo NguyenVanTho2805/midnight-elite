@@ -8,6 +8,7 @@ import { AuthFrame, AuthAsideBlock } from "@/components/guest/AuthFrame";
 import { KinCallout } from "@/components/kin/Callout";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinInput } from "@/components/kin/Input";
+import { SignupCodeForm } from "@/components/guest/SignupCodeForm";
 import { useFieldValidation } from "@/components/kin/useFieldValidation";
 import { email as emailRule, matches, minLength, phoneVn, required, type FieldRule } from "@/lib/fieldRules";
 
@@ -182,7 +183,7 @@ export default function DangKyPage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-16" style={{ background: "var(--kin-nen-bang)" }}>
         <div className="w-full max-w-md text-center">
-          <div className="rounded-xl p-10" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+          <div className="rounded-xl p-5 sm:p-10" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
             <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-5"
               style={{ background: "var(--kin-nen-nhan)", border: "1px solid var(--kin-nhan-vien)" }}>
               <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -190,43 +191,11 @@ export default function DangKyPage() {
                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
             </div>
-            {emailSent ? (
-              <>
-                <h2 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Kiểm tra hộp thư</h2>
-                <p className="text-sm mb-1" style={{ color: "var(--kin-chu-mo)" }}>Đã gửi email xác thực đến</p>
-                <p className="text-base font-semibold mb-5" style={{ color: "var(--kin-nhan-link)" }}>{s2.email}</p>
-                <p className="text-xs leading-relaxed mb-6" style={{ color: "var(--kin-chu-mo)" }}>
-                  Bấm vào link trong email để kích hoạt tài khoản.<br />
-                  Link có hiệu lực trong <strong>24 giờ</strong>.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>Tài khoản đã tạo!</h2>
-                <div className="rounded-lg px-4 py-3 mb-5 text-left" style={{ background: "var(--kin-tt-nen-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>
-                  <p className="text-xs font-semibold mb-1" style={{ color: "var(--kin-tt-chu-cho)" }}>Không gửi được email xác thực</p>
-                  <p className="text-xs" style={{ color: "var(--kin-tt-chu-cho)" }}>
-                    Hệ thống đang trong quá trình cấu hình email. Vui lòng liên hệ admin để kích hoạt tài khoản theo cách thủ công.
-                  </p>
-                </div>
-              </>
-            )}
-            <div className="rounded-lg p-4 text-left mb-6" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-              {emailSent ? (
-                <>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>Không thấy email?</p>
-                  <ul className="text-xs space-y-1" style={{ color: "var(--kin-chu-mo)" }}>
-                    <li>• Kiểm tra thư mục Spam / Junk</li>
-                    <li>• Đợi vài phút rồi refresh hộp thư</li>
-                    <li>• Kiểm tra lại email đã nhập đúng chưa</li>
-                  </ul>
-                </>
-              ) : (
-                <>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>Tài khoản đã đăng ký với:</p>
-                  <p className="text-xs font-mono" style={{ color: "var(--kin-nhan-link)" }}>{s2.email}</p>
-                </>
-              )}
+            <h2 className="text-xl font-bold mb-2" style={{ color: "var(--kin-chu-chinh)", letterSpacing: "-0.3px" }}>
+              {emailSent ? "Kiểm tra hộp thư" : "Tài khoản đã tạo!"}
+            </h2>
+            <div className="mb-6">
+              <SignupCodeForm email={s2.email.trim().toLowerCase()} initialSent={emailSent} onBack={() => setSubmitted(false)} />
             </div>
             <Link href="/dang-nhap" className="text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
               ← Quay về đăng nhập
