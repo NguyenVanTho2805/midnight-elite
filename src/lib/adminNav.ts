@@ -30,14 +30,14 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
     key: "hoc-vu", label: "Học vụ", icon: "lop",
     subs: [
       { label: "Lớp", href: "/admin/khoa-hoc", permission: PERMISSIONS.MANAGE_COURSES, group: "Lớp" },
-      { label: "Danh mục", href: "/admin/khoa-hoc/danh-muc", permission: PERMISSIONS.MANAGE_COURSES, group: "Lớp" },
-      { label: "Đánh giá khoá học", href: "/admin/danh-gia", permission: PERMISSIONS.MANAGE_COURSES, group: "Lớp" },
+      { label: "Danh mục lớp", href: "/admin/khoa-hoc/danh-muc", permission: PERMISSIONS.MANAGE_COURSES, group: "Lớp" },
+      { label: "Lịch sử đánh giá", href: "/admin/danh-gia", permission: PERMISSIONS.MANAGE_COURSES, group: "Lớp" },
       { label: "Đề thi", href: "/admin/thi-thu", permission: PERMISSIONS.MANAGE_CURRICULUM, group: "Đề và ngân hàng" },
       { label: "Ngân hàng câu hỏi", href: "/admin/thi-thu/ngan-hang-cau-hoi", permission: PERMISSIONS.MANAGE_CURRICULUM, group: "Đề và ngân hàng" },
       { label: "Ngân hàng đề", href: "/admin/thi-thu/ngan-hang-de-thi", permission: PERMISSIONS.MANAGE_CURRICULUM, group: "Đề và ngân hàng" },
       { label: "Tin tức & Blog", href: "/admin/tin-tuc", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
       // HOME-02: chữ trang chủ công khai sửa ở đây, không cần đổi mã.
-      { label: "Trang chủ", href: "/admin/trang-chu", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
+      { label: "Chữ trang chủ", href: "/admin/trang-chu", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
       // NC2-046: video YouTube do quản trị chọn, hiện ở ô tìm của trang Thư viện.
       { label: "Video tham khảo", href: "/admin/thu-vien-video", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
       { label: "Cộng đồng", href: "/admin/cong-dong", permission: PERMISSIONS.MANAGE_COMMUNITY, group: "Truyền thông" },

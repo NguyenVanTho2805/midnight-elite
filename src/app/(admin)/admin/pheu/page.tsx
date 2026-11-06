@@ -1,11 +1,12 @@
-// PH-210 / PH-212 — bảng phễu của quản trị: lượt mở / xem hết hồ sơ công khai theo kênh (?n=) và hàng chờ báo cáo hồ sơ.
+// PH-210 / PH-212 — bảng phễu của quản trị: lượt mở / xem hết hồ sơ công khai theo kênh (?n=) và số báo cáo hồ sơ đang chờ (xử lý ở Hàng chờ).
 // Quản lý trung tâm (admin_super, admin_content). Không đếm được bài đăng trong nhóm Facebook — chỉ đếm lượt bấm link.
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KinButton, KinCallout, KinEmptyState, KinSectionHead, KinSkeleton, KinStateCard, KinStatus, kinButtonClass } from "@/components/kin";
+import Link from "next/link";
+import { KinButton, KinCallout, KinSectionHead, KinSkeleton, KinStateCard, KinStatus } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
-import { Modal, callApi, useNotify } from "@/components/tutor/shared";
+import { callApi } from "@/components/tutor/shared";
 
 interface Row { channel: string; group: string; groupLabel: string; opens: number; fulls: number; fullRate: number | null }
 interface Report { id: string; tutorId: string; tutorName: string; tutorLocked: boolean; reason: string; reasonLabel: string; detail: string | null; channel: string | null; createdAt: string; openForTutor: number }
@@ -22,14 +23,10 @@ export default function PheuPage() {
 }
 
 function PheuContent() {
-  const notify = useNotify();
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [locking, setLocking] = useState<Report | null>(null);
-  const [reason, setReason] = useState("");
   const seq = useRef(0);
 
   const load = useCallback(async (d: number) => {
@@ -45,24 +42,6 @@ function PheuContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load(days);
   }, [load, days]);
-
-  async function dismiss(rep: Report) {
-    setBusy(rep.id);
-    const r = await callApi(`/api/admin/profile-reports/${rep.id}`, { method: "PATCH", body: JSON.stringify({ action: "dismiss" }) });
-    setBusy(null);
-    if (!r.ok) notify.err(r.data.error ?? "Không xử lý được"); else notify.ok("Đã bỏ qua báo cáo.");
-    await load(days);
-  }
-  async function lock() {
-    if (!locking) return;
-    setBusy(locking.id);
-    const r = await callApi(`/api/admin/profile-reports/${locking.id}`, { method: "PATCH", body: JSON.stringify({ action: "lock", reason: reason.trim() }) });
-    setBusy(null);
-    if (!r.ok) { notify.err(r.data.error ?? "Không khoá được"); return; }
-    notify.ok(`Đã khoá hồ sơ công khai của ${locking.tutorName}.`);
-    setLocking(null); setReason("");
-    await load(days);
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8">
@@ -139,52 +118,14 @@ function PheuContent() {
           </section>
 
           <section aria-labelledby="h-bc" className="space-y-1">
-            <KinSectionHead id="h-bc" title={`Báo cáo hồ sơ chờ xử lý (${data.reportsOpen}) · hồ sơ đang bị khoá: ${data.lockedProfiles}`} />
-            {data.reports.length === 0 ? (
-              <KinEmptyState title="Không có báo cáo nào đang chờ.">
-                Khi phụ huynh bấm “Báo cáo hồ sơ này” trên trang công khai của gia sư, báo cáo sẽ hiện ở đây để xem xét.
-              </KinEmptyState>
-            ) : (
-              <ul>
-                {data.reports.map(rep => (
-                  <li key={rep.id} className="py-5 border-b border-[var(--kin-vien-nhat)]">
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="min-w-0 flex-1 basis-[260px]">
-                        <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{rep.tutorName}</p>
-                        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">{rep.reasonLabel}</p>
-                        {rep.detail && <p className="mt-1 text-[length:var(--kin-co-goc)] whitespace-pre-wrap text-[var(--kin-chu-phu)]">{rep.detail}</p>}
-                        <div className="mt-1.5"><KinStatus tone="cho">Chờ xem xét</KinStatus></div>
-                        <p className="mt-1.5 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">
-                          {new Date(rep.createdAt).toLocaleString("vi-VN")}{rep.channel ? ` · kênh ${rep.channel}` : ""}
-                          {rep.openForTutor > 1 ? ` · gia sư này có ${rep.openForTutor} báo cáo đang chờ` : ""}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <a href={`/mentor/${rep.tutorId}`} target="_blank" rel="noreferrer" className={kinButtonClass("secondary")}>Xem hồ sơ</a>
-                        <KinButton variant="secondary" disabled={busy === rep.id} onClick={() => void dismiss(rep)}>Bỏ qua</KinButton>
-                        <KinButton variant="danger-solid" disabled={busy === rep.id} onClick={() => { setLocking(rep); setReason(""); }}>Khoá hồ sơ</KinButton>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <KinSectionHead id="h-bc" title="Báo cáo hồ sơ" />
+            <p data-bao-cao-cho className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">
+              {data.reportsOpen} báo cáo chờ → <Link href="/admin/kiem-duyet?loai=ho-so" className="font-medium underline text-[var(--kin-nhan-link)]">Hàng chờ</Link> · hồ sơ đang bị khoá: {data.lockedProfiles}
+            </p>
           </section>
         </>
       )}
 
-      {locking && (
-        <Modal title={`Khoá hồ sơ công khai — ${locking.tutorName}`} onClose={() => setLocking(null)}>
-          <p className="text-sm mb-2" style={{ color: "var(--kin-chu-phu)" }}>Hồ sơ công khai sẽ trả “không tìm thấy”. Gia sư vẫn dùng sổ lớp bình thường. Mọi báo cáo đang chờ về gia sư này được đóng.</p>
-          <label className="block text-sm" htmlFor="lock-reason">Lý do khoá (bắt buộc)</label>
-          <textarea id="lock-reason" rows={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg text-sm"
-            style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }} />
-          <div className="flex gap-2 justify-end mt-4">
-            <KinButton variant="secondary" onClick={() => setLocking(null)}>Đóng</KinButton>
-            <KinButton variant="danger-solid" disabled={!reason.trim()} loading={busy === locking.id} loadingLabel="Đang khoá…" onClick={() => void lock()}>Khoá hồ sơ</KinButton>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

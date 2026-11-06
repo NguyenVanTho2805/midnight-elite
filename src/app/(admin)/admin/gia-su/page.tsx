@@ -60,7 +60,7 @@ function Body() {
       <header>
         <h1 className="text-[28px] font-medium leading-9 text-[var(--kin-chu-chinh)]">Gia sư</h1>
         <p className="mt-1 max-w-[68ch] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-          Lịch sử đơn xin làm gia sư. Việc duyệt hoặc từ chối đơn mới làm ở <Link href="/admin/kiem-duyet?loai=gia-su" className="font-medium underline text-[var(--kin-nhan-link)]">Hàng chờ</Link>.
+          Lịch sử đơn xin làm gia sư. Đây là nơi xem lại, không phải nơi duyệt đơn mới.
         </p>
       </header>
 

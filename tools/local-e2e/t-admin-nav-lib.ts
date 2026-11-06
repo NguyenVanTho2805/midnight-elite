@@ -47,7 +47,7 @@ check(`bản đồ có trang cần MANAGE_ADMINS (${adminsOnly.length}) và MANA
 check("admin_content KHÔNG thấy trang cần MANAGE_ADMINS (Quản trị viên, Nhật ký)", adminsOnly.every(h => !content.includes(h)), adminsOnly.filter(h => content.includes(h)));
 check("admin_content KHÔNG thấy Gói KiN Pro, Triển khai và hạn mức, Lịch sử nạp Coin (MANAGE_REVENUE)", ["/admin/goi-pro", "/admin/trien-khai", ...(COIN_VISIBLE ? ["/admin/topups"] : [])].every(h => !content.includes(h) && revenueOnly.includes(h)), revenueOnly.filter(h => content.includes(h)));
 check("admin_content KHÔNG thấy Học sinh (MANAGE_STUDENTS) và Doanh thu (VIEW_REVENUE)", !content.includes("/admin/hoc-sinh") && !content.includes("/admin/doanh-thu"));
-check("admin_content vẫn thấy Hàng chờ, Hôm nay, Gia sư, Lớp, Đánh giá khoá học, Đề thi, Tin tức, Cộng đồng, Hỗ trợ gia sư",
+check("admin_content vẫn thấy Hàng chờ, Hôm nay, Gia sư, Lớp, Lịch sử đánh giá, Đề thi, Tin tức, Cộng đồng, Hỗ trợ gia sư",
   ["/admin/kiem-duyet", "/admin", "/admin/gia-su", "/admin/khoa-hoc", "/admin/danh-gia", "/admin/thi-thu", "/admin/tin-tuc", "/admin/cong-dong", "/admin/ho-tro"].every(h => content.includes(h)));
 check("module không còn trang con nào thì ẩn cả module (không có trường hợp này với admin_content: Con người còn Gia sư)", visibleModules("admin_content").some(m => m.key === "con-nguoi") && visibleModules("admin_content").find(m => m.key === "con-nguoi")!.subs.length === 1);
 check("mọi trang admin_content thấy đều đúng quyền của vai đó (không lọt trang ngoài quyền)", allSubs.filter(s => content.includes(s.href)).every(s => !s.permission || checkPermission("admin_content", s.permission)));
@@ -59,10 +59,10 @@ check("null / undefined → chỉ trang không đòi quyền (Hàng chờ, Hôm 
 section("Khớp đường dẫn");
 const at = (p: string) => matchSub(p);
 check("/admin chỉ khớp đúng /admin (Vận hành · Hôm nay); /admin/khong-co không khớp", at("/admin")?.sub.label === "Hôm nay" && at("/admin/khong-co") === null);
-check("khớp dài nhất thắng: /admin/khoa-hoc/danh-muc → Danh mục; /admin/khoa-hoc/abc/diem-danh → Lớp; /admin/thi-thu/ngan-hang-cau-hoi/cau-hoi → Ngân hàng câu hỏi",
-  at("/admin/khoa-hoc/danh-muc")?.sub.label === "Danh mục" && at("/admin/khoa-hoc/abc/diem-danh")?.sub.label === "Lớp" && at("/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi")?.sub.label === "Ngân hàng câu hỏi");
+check("khớp dài nhất thắng: /admin/khoa-hoc/danh-muc → Danh mục lớp; /admin/khoa-hoc/abc/diem-danh → Lớp; /admin/thi-thu/ngan-hang-cau-hoi/cau-hoi → Ngân hàng câu hỏi",
+  at("/admin/khoa-hoc/danh-muc")?.sub.label === "Danh mục lớp" && at("/admin/khoa-hoc/abc/diem-danh")?.sub.label === "Lớp" && at("/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi")?.sub.label === "Ngân hàng câu hỏi");
 check("không khớp nhầm tiền tố chữ: /admin/khoa-hocxyz không phải Lớp", at("/admin/khoa-hocxyz") === null);
 check(COIN_VISIBLE ? "/admin/topups thuộc Vận hành · Lịch sử nạp Coin; /admin/nhat-ky thuộc Vận hành · Nhật ký" : "Coin ẩn: /admin/topups KHÔNG còn trong menu; /admin/nhat-ky thuộc Vận hành · Nhật ký", (COIN_VISIBLE ? at("/admin/topups")?.sub.label === "Lịch sử nạp Coin" && at("/admin/topups")?.moduleKey === "van-hanh" : at("/admin/topups") === null) && at("/admin/nhat-ky")?.moduleKey === "van-hanh");
-check("/admin/danh-gia thuộc Học vụ · Đánh giá khoá học (còn lịch sử + xoá)", at("/admin/danh-gia")?.moduleKey === "hoc-vu" && at("/admin/danh-gia")?.sub.label === "Đánh giá khoá học");
+check("/admin/danh-gia thuộc Học vụ · Lịch sử đánh giá (còn lịch sử + xoá)", at("/admin/danh-gia")?.moduleKey === "hoc-vu" && at("/admin/danh-gia")?.sub.label === "Lịch sử đánh giá");
 
 done();
