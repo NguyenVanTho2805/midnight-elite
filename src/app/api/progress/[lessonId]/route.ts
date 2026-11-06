@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { LESSON_REWARD, COIN_REASONS, DEFAULT_SOURCE_TYPE_FOR_REASON } from "@/lib/wallet-constants";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { enrollmentDeniedBody } from "@/lib/suspendedContent";
 
 const LESSON_REWARD_REASON = COIN_REASONS.LESSON_REWARD;
 
@@ -37,7 +38,7 @@ export async function POST(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json(enrollmentDeniedBody(enrolled, "Chưa đăng ký khoá học"), { status: 403 });
   }
 
   // Thưởng coin chỉ 1 lần/bài học — dựa vào đã từng có giao dịch thưởng cho
@@ -111,7 +112,7 @@ export async function PATCH(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json(enrollmentDeniedBody(enrolled, "Chưa đăng ký khoá học"), { status: 403 });
   }
 
   // MD-06: "đang xem" tách khỏi "đã xong". Hàng MỚI do PATCH tạo là completed=false (trước đây hàng nào có mặt cũng bị đếm là đã xong,
@@ -147,7 +148,7 @@ export async function DELETE(
     const enrolled = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
     });
-    if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Chưa đăng ký khoá học" }, { status: 403 });
+    if (!isEnrollmentActive(enrolled)) return NextResponse.json(enrollmentDeniedBody(enrolled, "Chưa đăng ký khoá học"), { status: 403 });
   }
 
   // "Bỏ đánh dấu xong": giữ lại vị trí xem dở để học sinh vẫn xem tiếp được (trước đây xoá hẳn hàng, mất luôn vị trí).

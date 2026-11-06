@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
+import { isSuspended, contactTutorHref } from "@/lib/suspendedContent";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
@@ -45,9 +46,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         enrolled = await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.userId, courseId: id } },
         });
-        // "pending_consent" chưa được học, "suspended" chỉ xem lại nhưng
-        // không có hoạt động mới — hasAccess ở route này quyết định mở khoá
-        // toàn bộ lessons, nên dùng active làm chuẩn.
+        // "pending_consent" chưa được học, "suspended" (đã nghỉ lớp) cũng không xem được nữa (quyết định 06/11/2026) — hasAccess ở route này
+        // quyết định mở khoá toàn bộ lessons, nên dùng active làm chuẩn.
         hasAccess = isEnrollmentActive(enrolled);
       }
     }
@@ -78,7 +78,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // BU-01: nhãn "Miễn phí" tính sẵn bằng isFreeClass (cùng điều kiện mọi nơi); joinPolicy đã nằm trong dòng Course.
     const rated = await loadFeeRateCourseIds([course.id]);
     const isFree = isFreeClass({ price: course.price, tag: course.tag, hasFeeRate: rated.has(course.id) });
-    return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree });
+    // Đã nghỉ lớp (quyết định 06/11/2026): thêm `suspended` để trang "Lớp của tôi" hiện thông báo + nút liên hệ gia sư thay vì bài học. Chỉ cho CHÍNH em đó.
+    const suspended = isSuspended(enrolled) ? { contactHref: contactTutorHref({ id: course.id, ownerId: course.ownerId }) } : undefined;
+    return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}) });
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

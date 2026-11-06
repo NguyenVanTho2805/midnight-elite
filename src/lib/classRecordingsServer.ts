@@ -1,18 +1,19 @@
 // MD-02 / MD-17 — quyền và đọc dữ liệu Bản ghi của lớp (phần chạm DB). Quy tắc thuần ở classRecordings.ts.
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session";
+import { isSuspended, SUSPENDED_CONTENT_MESSAGE, contactTutorHref } from "@/lib/suspendedContent";
 
 export type RecordingRole = "manager" | "student";
 export type RecordingAccess =
   | { ok: true; role: RecordingRole; course: { id: string; name: string; ownerId: string | null } }
-  | { ok: false; status: 401 | 403 | 404; error: string };
+  | { ok: false; status: 401 | 403 | 404; error: string; suspended?: true; contactHref?: string };
 
 /**
  * Ai làm gì với bản ghi của một lớp:
  *  - không có lớp → 404; chưa đăng nhập → 401;
  *  - gia sư CHỦ lớp, quản trị cấp 1 / nội dung → "manager" (xem, dán, xoá);
  *  - gia sư lớp khác → 403;
- *  - học sinh ghi danh "active" hoặc "suspended" (như video lưu trên KiN) → "student" (chỉ xem); chưa ghi danh / chờ đồng ý → 403.
+ *  - học sinh ghi danh "active" → "student" (chỉ xem); "suspended" (đã nghỉ lớp, quyết định 06/11/2026) → 403 kèm `suspended: true`; chưa ghi danh / chờ đồng ý → 403.
  */
 export async function recordingAccess(session: SessionPayload | null, courseId: string): Promise<RecordingAccess> {
   if (!session) return { ok: false, status: 401, error: "Chưa đăng nhập" };
@@ -25,7 +26,8 @@ export async function recordingAccess(session: SessionPayload | null, courseId: 
     return { ok: false, status: 403, error: "Đây không phải lớp của bạn" };
   }
   const enr = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } }, select: { status: true } });
-  if (enr && (enr.status === "active" || enr.status === "suspended")) return { ok: true, role: "student", course };
+  if (enr && enr.status === "active") return { ok: true, role: "student", course };
+  if (isSuspended(enr)) return { ok: false, status: 403, error: SUSPENDED_CONTENT_MESSAGE, suspended: true, contactHref: contactTutorHref(course) };
   return { ok: false, status: 403, error: "Bản ghi này dành cho học sinh của lớp" };
 }
 

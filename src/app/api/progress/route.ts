@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { suspendedCourseIds } from "@/lib/suspendedContentServer";
 
 // GET /api/progress — bài đã hoàn thành + đếm theo khoá + vị trí xem dở của bài chưa xong (MD-06: tách "đang xem" / "đã xong")
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ completedIds: [], byCourse: {}, watching: {}, positions: {} });
 
-  const rows = await prisma.lessonProgress.findMany({
+  // Đã nghỉ lớp (quyết định 06/11/2026): tiến độ của lớp đó không còn hiện (bài miễn phí thì giữ). Dữ liệu vẫn nằm trong DB cho gia sư / khi cho học lại.
+  const left = new Set(await suspendedCourseIds(session.userId));
+  const all = await prisma.lessonProgress.findMany({
     where:  { userId: session.userId },
     select: {
       lessonId: true,
@@ -15,6 +18,7 @@ export async function GET() {
       watchedSeconds: true,
       lesson: {
         select: {
+          isFree: true,
           chapter: {
             select: {
               section: { select: { courseId: true } },
@@ -24,6 +28,8 @@ export async function GET() {
       },
     },
   });
+
+  const rows = left.size === 0 ? all : all.filter(r => r.lesson?.isFree === true || !left.has(r.lesson?.chapter?.section?.courseId ?? ""));
 
   const byCourse: Record<string, number> = {};
   const watching: Record<string, number> = {};

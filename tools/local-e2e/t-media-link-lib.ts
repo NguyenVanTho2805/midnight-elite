@@ -220,7 +220,7 @@ check("chuỗi JSON trả cho khách của bài trả phí KHÔNG còn chứa li
 section("Ai được xem video lưu trên KiN");
 const base = { userId: "u1", role: "student", adminRole: null, courseOwnerId: "gs1", enrollmentStatus: null as string | null, lessonIsFree: false };
 check("học viên ghi danh active → xem được", canWatchStoredMedia({ ...base, enrollmentStatus: "active" }));
-check("học viên suspended → xem lại được (như /context)", canWatchStoredMedia({ ...base, enrollmentStatus: "suspended" }));
+check("học viên suspended (đã nghỉ lớp) → KHÔNG xem video trả phí (06/11/2026, thay R01); bài miễn phí vẫn được", !canWatchStoredMedia({ ...base, enrollmentStatus: "suspended" }) && canWatchStoredMedia({ ...base, enrollmentStatus: "suspended", lessonIsFree: true }));
 check("chưa ghi danh, bài trả phí → KHÔNG", !canWatchStoredMedia({ ...base }));
 check("pending_consent, bài trả phí → KHÔNG", !canWatchStoredMedia({ ...base, enrollmentStatus: "pending_consent" }));
 check("chưa ghi danh, bài miễn phí → được", canWatchStoredMedia({ ...base, lessonIsFree: true }));

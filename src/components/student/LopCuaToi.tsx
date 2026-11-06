@@ -32,6 +32,7 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
 import { dayTitle, useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import { placeLabel } from "@/lib/sessionBook";
+import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 
 interface Lesson { id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null }
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
@@ -78,7 +79,7 @@ function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) 
 }
 interface Chapter { id: string; title: string; order: number; lessons: Lesson[] }
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
-interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[] }
+interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[]; suspended?: { contactHref: string | null } }
 
 interface MyJoinReq { id: string; status: string; course: { id: string; name: string }; personalCode?: string | null }
 
@@ -203,6 +204,9 @@ function Content() {
       <ErrorStrip message={error || "Không tìm thấy khóa học — có thể bạn đã rời lớp hoặc lớp đã đóng."} onRetry={() => setTick(t => t + 1)} />
       <div className="pt-4"><Link href="/khoa-hoc" className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Về danh sách khóa học</Link></div></>);
   }
+
+  // Đã nghỉ lớp này (quyết định 06/11/2026): không xem bài / bản ghi nữa; thông báo + nút liên hệ gia sư.
+  if (course.suspended) return wrap(<>{head(undefined, classes.length >= 2)}<SuspendedNotice contactHref={course.suspended.contactHref} /></>);
 
   const isEnrolled = enrolledIds.has(courseId);
   const docs = allLessons.filter(l => { const t = parseLessonType(l.type); return t === "document" || t === "record"; });

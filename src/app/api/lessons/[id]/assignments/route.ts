@@ -7,6 +7,7 @@ import { sanitizeFormulaImgTokens, formulaFieldError } from "@/lib/mathtype/form
 
 // Chữ câu hỏi/đáp án đi thẳng vào DB → lọc token ảnh công thức {{ctimg:…}} (BU-03-MATHTYPE) như mọi đường lưu câu hỏi khác.
 const sanFormula = (s: unknown): string => (typeof s === "string" ? sanitizeFormulaImgTokens(s) : "");
+import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
 
 // GET /api/lessons/[id]/assignments — danh sách bài tập tự nộp của 1 bài
 // giảng. Bất kỳ ai đã đăng nhập đều xem được danh sách (giống tài liệu đính
@@ -22,6 +23,12 @@ export async function GET(
   if (isNextResponse(auth)) return auth;
 
   const { id: lessonId } = await params;
+
+  // Đã nghỉ lớp (quyết định 06/11/2026): không còn thấy bài tập + bài đã nộp của bài thuộc lớp đó (bài miễn phí thì giữ).
+  if (auth.role === "student") {
+    const blocked = await suspendedLessonBlock(auth.userId, lessonId);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
+  }
 
   try {
     const assignments = await prisma.assignment.findMany({
