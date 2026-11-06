@@ -44,7 +44,7 @@ const H = 3_600_000, D = 24 * H;
   check("/student chuyển tới /student/viec-cua-toi", new URL(pg.url()).pathname === "/student/viec-cua-toi", pg.url());
 
   section("Thanh module");
-  check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").isVisible());
+  check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").first().isVisible());
   for (const m of ["Việc của tôi", "Lịch học", "Lớp của tôi", "Bài tập"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
   check("module đang ở có aria-current=page (đúng một nút)", await mod("Việc của tôi").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
@@ -68,7 +68,7 @@ const H = 3_600_000, D = 24 * H;
   const send = todoList.getByRole("link", { name: "Nộp bài" }).first();
   check("nút 'Nộp bài' trỏ vào bài giảng chứa bài tập", (await send.getAttribute("href")) === `/student/bai-giang/${lid}`);
   check("bài đã nộp có nút 'Xem bài nộp' (không còn 'Nộp bài' ở đó)", await pg.getByRole("link", { name: "Xem bài nộp" }).count() === 1);
-  check("cột phải: 'Kiểm tra sắp mở' (đề thi) và 'Buổi học' trống có lối sang Lịch học", await pg.getByText("Kiểm tra sắp mở").isVisible() && await pg.getByRole("link", { name: "Mở Lịch học" }).isVisible());
+  check("cột phải: 'Kiểm tra sắp mở' (đề thi) và 'Buổi học' trống có lối sang Lịch học", await pg.getByText("Kiểm tra sắp mở").isVisible() && await pg.getByText("3 ngày tới chưa có buổi học").isVisible() && await pg.getByRole("link", { name: "Mở Lịch học" }).count() === 0);
   check("nút 'Xem lịch tuần' ở góc phải → /student/lich-hoc", (await pg.getByRole("link", { name: "Xem lịch tuần" }).getAttribute("href")) === "/student/lich-hoc");
 
   section("Bố cục: một trang dọc, không còn hai khung");
@@ -80,11 +80,12 @@ const H = 3_600_000, D = 24 * H;
   await mod("Khác").click();
   const dlg = pg.getByRole("dialog", { name: "Các mục khác" });
   check("mở bảng, aria-expanded=true", await dlg.isVisible() && await mod("Khác").getAttribute("aria-expanded") === "true");
-  // BU-00 bước 6 (31/10/2026): bảng "Khác" rút còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp).
-  for (const l of ["Gia sư", "Cộng đồng", "Tin tức", "Hồ sơ", "Học phí", "Chủ đề màu", "Nhập mã lớp", "Tiếng Anh tự học"]) check(`có mục '${l}'`, await dlg.getByRole("link", { name: l, exact: true }).count() === 1);
+  // BU-00 bước 6 (31/10/2026): bảng "Khác" rút còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu); A6 (07/11): "Nhập mã lớp" rút khỏi bảng, Cộng đồng / Tin tức trỏ thẳng.
+  for (const l of ["Gia sư", "Cộng đồng", "Tin tức", "Hồ sơ", "Học phí", "Chủ đề màu", "Tiếng Anh tự học"]) check(`có mục '${l}'`, await dlg.getByRole("link", { name: l, exact: true }).count() === 1);
   check("NC2-048: không còn mục 'Hỏi đáp' riêng (gộp vào Cộng đồng)", await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count() === 0);
   for (const l of ["Thư viện", "Thi thử", "Bảng xếp hạng", "Khoá học đang mở", "Lớp đang theo dõi", "Tra cứu điểm chuẩn", "Ví và Coin"]) check(`BU-00: mục '${l}' đã rời bảng Khác (route vẫn giữ, chỉ ẩn lối vào)`, await dlg.getByRole("link", { name: l, exact: true }).count() === 0);
-  check("bảng Khác đúng 8 mục, 3 nhóm (có Tiếng Anh tự học)", await dlg.getByRole("link").count() === 8);
+  check("A6: bảng Khác không còn 'Nhập mã lớp'; Cộng đồng → /cong-dong, Tin tức → /tin-tuc (không qua chuyển hướng)", await dlg.getByRole("link", { name: "Nhập mã lớp", exact: true }).count() === 0 && (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("href")) === "/cong-dong" && (await dlg.getByRole("link", { name: "Tin tức", exact: true }).getAttribute("href")) === "/tin-tuc");
+  check("bảng Khác đúng 7 mục, 3 nhóm (có Tiếng Anh tự học)", await dlg.getByRole("link").count() === 7);
   check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Minh Anh").isVisible());
   await shot(pg, "student-shell-khac");
   await pg.keyboard.press("Escape");

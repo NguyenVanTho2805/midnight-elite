@@ -1,6 +1,6 @@
 // Vỏ của học sinh (Figma "Vỏ — Học sinh" 11:98): thanh module bên trái (điện thoại: thanh dưới) với 4 module đúng Figma
 // — (23/10/2026, Figma 299:114360 + 299:116497) Việc của tôi, Lịch học, Lớp của tôi, Bài tập — cộng "Khác" cho các trang còn lại. BU-00 bước 6 (31/10/2026):
-// "Khác" chỉ còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp); các lối vào khác bị ẩn, route vẫn chạy.
+// "Khác" chỉ còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu); các lối vào khác bị ẩn, route vẫn chạy.
 // Phòng thi (/student/thi-thu/<mã đề>) KHÔNG có vỏ: toàn màn hình, khoá cứng.
 "use client";
 import Link from "next/link";
@@ -22,12 +22,13 @@ import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components
 // BU-00 bước 6 (31/10/2026): bảng "Khác" rút từ 3 nhóm 15 mục còn 3 nhóm 8 mục (Tiếng Anh tự học được trả lại ngay sau đó) — học sinh chỉ thấy việc học. Bỏ khỏi MENU (route giữ nguyên, chỉ ẩn lối vào):
 // Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn, Ví và Coin. Thi thử / Tiếng Anh
 // vẫn sáng đúng module nhờ `also` của "Bài tập" (/student/thi-thu) và "Lớp của tôi" (/student/tieng-anh).
+// Điều hướng A6 (07/11/2026): "Nhập mã lớp" rút khỏi bảng này — lối vào nằm trong "Lớp của tôi" (màn trống + mục "Tham gia lớp khác"). Cộng đồng / Tin tức trỏ thẳng /cong-dong, /tin-tuc (file chuyển hướng /student/* giữ cho liên kết cũ).
 // NC2-048 (góp ý 28/10): "Hỏi đáp" là tab bên trong Cộng đồng; /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Khám phá", links: [
     { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
-    { label: "Cộng đồng", href: "/student/cong-dong", also: ["/cong-dong"], icon: "nguoi" },
-    { label: "Tin tức", href: "/student/tin-tuc", also: ["/tin-tuc"], icon: "hop-thu" },
+    { label: "Cộng đồng", href: "/cong-dong", also: ["/student/cong-dong"], icon: "nguoi" },
+    { label: "Tin tức", href: "/tin-tuc", also: ["/student/tin-tuc"], icon: "hop-thu" },
   ] },
   { title: "Tự học", links: [
     // Sửa sau BU-00 (01/11/2026): bước 6 đã bỏ mục này mà trang Lớp không có lối thay thế nên Tiếng Anh tự học không còn ai bấm tới được.
@@ -38,8 +39,6 @@ const MORE_GROUPS: MoreGroup[] = [
     { label: "Hồ sơ", href: "/student/ho-so", icon: "nguoi" },
     { label: "Học phí", href: "/student/hoc-phi", icon: "hoc-phi" },
     { label: "Chủ đề màu", href: "/cai-dat/chu-de", icon: "cai-dat" },
-    // Lối tắt: trang này đã thuộc module "Lớp của tôi" (`also`) nên mục này không tô sáng, để chỉ một mục sáng (như "Thêm module" bên gia sư).
-    { label: "Nhập mã lớp", href: "/student/nhap-ma-lop", icon: "lop", active: false },
   ] },
 ];
 // Chỉ các mục KHÔNG phải lối tắt mới làm nút "Khác" sáng (lối tắt `active: false` đã có module cha sáng).
@@ -80,7 +79,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     { key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" },
     // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
     { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/student/tieng-anh", "/lop-cua-toi"], icon: "lop" },
-    { key: "bai-tap", label: "Bài tập", href: "/student/bai-tap", also: ["/student/thi-thu"], icon: "bai-kt" },
+    { key: "bai-tap", label: "Bài tập", href: "/student/bai-tap", also: ["/student/thi-thu", "/thi-thu"], icon: "bai-kt" },
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 

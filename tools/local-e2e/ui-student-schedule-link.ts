@@ -83,7 +83,7 @@ import { launch, ctxFor, closeAll, type Page } from "./ui";
   const buRow = rows.filter({ hasText: "Dạy bù" });
   check("buổi dạy bù ở trang lớp: có giờ, 'Online', nút link học online đúng link", (await buRow.innerText()).includes("16:00–17:00") && (await buRow.innerText()).includes("Online") && (await buRow.locator("[data-course-session-join]").getAttribute("href")) === MK_URL);
   check("buổi lẻ trực tiếp ở trang lớp: có địa chỉ, không nút link online", (await rows.filter({ hasText: "Buổi lẻ" }).innerText()).includes("Offline · 12 Nguyễn Trãi") && (await rows.filter({ hasText: "Buổi lẻ" }).locator("[data-course-session-join]").count()) === 0);
-  check("có lối 'Xem cả lịch học' → /student/lich-hoc", (await box.getByRole("link", { name: "Xem cả lịch học" }).getAttribute("href")) === "/student/lich-hoc");
+  check("A6: không còn nút 'Xem cả lịch học' ở trang lớp (Lịch học đã là module)", (await box.getByRole("link", { name: "Xem cả lịch học" }).count()) === 0);
 
   const octx = await ctxFor(OUT, { width: 1280, height: 900 });
   const po = await octx.newPage(); watch(po);

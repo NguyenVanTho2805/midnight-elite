@@ -94,7 +94,7 @@ export default function ResultView(p: ResultViewProps) {
           </ul>
         </section>
       )}
-      <Link href="/student/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
+      <Link href="/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
     </div>
   );
 }

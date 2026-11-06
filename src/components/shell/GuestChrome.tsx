@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import StudentBottomNav from "@/components/StudentBottomNav";
 import StudentShell from "@/components/student/StudentShell";
 import TutorShellClient from "@/components/shell/TutorShellClient";
 import { shellFor } from "@/lib/signedInShell";
@@ -29,8 +28,8 @@ export default function GuestChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <div data-guest-chrome={cho} className="contents"><Navbar /></div>
-      <main className="flex-1 pb-24 md:pb-0">{children}</main>
-      <div data-guest-chrome={cho} className="contents"><Footer /><StudentBottomNav /></div>
+      <main className="flex-1">{children}</main>
+      <div data-guest-chrome={cho} className="contents"><Footer /></div>
     </>
   );
 }

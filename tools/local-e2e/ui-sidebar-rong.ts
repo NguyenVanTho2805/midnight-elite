@@ -64,9 +64,9 @@ import { prisma } from "@/lib/prisma";
   await nav(ps, "Module của học sinh").first().waitFor({ timeout: 90000 });
   const gs = await groupsOf(ps, "Module của học sinh");
   // BU-00 bước 6 (31/10/2026): bỏ nhóm "Học tập" và rút Khám phá / Tài khoản — học sinh chỉ thấy việc học; lệch Figma 575:5571 CÓ CHỦ ĐÍCH (kế hoạch BIGUPDATE BU-00 ghi cập nhật khung).
-  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tài khoản", gs.map(g => g.title));
-  check("đúng mục BU-00: 4 module; Khám phá = Gia sư, Cộng đồng, Tin tức; Tài khoản = Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập"
-    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Hồ sơ|Học phí|Chủ đề màu|Nhập mã lớp", gs);
+  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tự học|Tài khoản", gs.map(g => g.title));
+  check("đúng mục BU-00: 4 module; Khám phá = Gia sư, Cộng đồng, Tin tức; Tài khoản = Hồ sơ, Học phí, Chủ đề màu (A6: bỏ Nhập mã lớp)", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập"
+    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Tiếng Anh tự học" && gs[3].items.join("|") === "Hồ sơ|Học phí|Chủ đề màu", gs);
   check("nhãn vai 'HỌC SINH', thanh 272px, 'Việc của tôi' đang sáng", (await ps.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "HỌC SINH" && (await wrapW(ps)) === 272 && await nav(ps, "Module của học sinh").first().getByRole("link", { name: /^Việc của tôi/ }).getAttribute("aria-current") === "page");
   await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí", exact: true }).click();
   await ps.waitForURL(/\/student\/hoc-phi/, { timeout: 90000 });

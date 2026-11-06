@@ -73,7 +73,7 @@ export default function ViecCuaToi() {
           {/* Điện thoại: buổi học lên đầu; máy tính: cột phải. */}
           <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
             {sessionBlock || (
-              <KinEmptyState title="3 ngày tới chưa có buổi học" action={<Link href="/student/lich-hoc" className={kinButtonClass("secondary")}>Mở Lịch học</Link>}>
+              <KinEmptyState title="3 ngày tới chưa có buổi học">
                 Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
               </KinEmptyState>
             )}
@@ -83,7 +83,7 @@ export default function ViecCuaToi() {
             <section aria-labelledby="vc-todo">
               <KinSectionHead id="vc-todo" title="Cần làm" aside={todo.length > 0 ? <><span className="md:hidden">{todo.length} bài</span><span className="hidden md:inline">Theo hạn nộp</span></> : undefined} />
               {todo.length === 0 ? (
-                <KinEmptyState title="Bạn không còn bài nào cần làm" action={<Link href="/student/lich-hoc" className={kinButtonClass("secondary")}>Xem lịch học</Link>}>
+                <KinEmptyState title="Bạn không còn bài nào cần làm">
                   Bài mới thầy cô giao và hạn nộp sắp tới sẽ hiện ở đây.
                 </KinEmptyState>
               ) : (

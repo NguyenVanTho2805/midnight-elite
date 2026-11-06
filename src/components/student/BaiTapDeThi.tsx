@@ -1,5 +1,5 @@
 // Bài tập & đề thi của học sinh (Figma "Học sinh · Bài tập và đề thi" 299:114951): mỗi trạng thái có một khu riêng, không lẫn bài đã hoàn thành.
-// Tab "Cần làm · n" (mặc định: Cần làm, Chờ chấm, Kết quả gần đây + cột phải đề thi), "Chờ chấm · n", "Kết quả", "Đề thi".
+// Hai tab: "Cần làm · n" (mặc định: Cần làm, Chờ chấm, Kết quả gần đây tối đa 5 + cột phải đề thi) và "Đề thi". Tab "Chờ chấm"/"Kết quả" đã bỏ vì chỉ lặp lại hai khối này.
 // Dữ liệu: /api/student/viec-cua-toi (bài tập, hạn nộp) + /api/schedule (buổi thi) + /api/student/de-thi (BU-04: đề được giao, hạn "Còn N ngày", trạng thái, số lượt). KHÔNG có dữ liệu thật nên bỏ: số bài tự luận, tên tệp đã nộp,
 // "Chưa vào bài / đồng hồ chỉ bắt đầu khi bạn xác nhận" (không có trạng thái làm bài ở đây), "Thi thử giữa kỳ" thật chỉ gồm tên, giờ mở, số câu/thời lượng nếu đề có.
 "use client";
@@ -18,7 +18,9 @@ import type { ScheduleEvent } from "@/lib/studentSchedule";
 import { choCham, chuaNop, dmOfKey, examTarget, TaskRow, useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
 
-type Tab = "can-lam" | "cho-cham" | "ket-qua" | "de-thi";
+const RESULT_LIMIT = 5; // khối "Kết quả gần đây" trong Cần làm chỉ giữ vài bài mới nhất cho khỏi dài
+
+type Tab = "can-lam" | "de-thi";
 
 function Waiting({ list }: { list: StudentTodoItem[] }) {
   return (
@@ -91,8 +93,6 @@ export default function BaiTapDeThi() {
 
   const tabs = [
     { key: "can-lam" as const, label: `Cần làm${items ? ` · ${todo.length}` : ""}` },
-    { key: "cho-cham" as const, label: `Chờ chấm${items ? ` · ${waiting.length}` : ""}` },
-    { key: "ket-qua" as const, label: "Kết quả" },
     { key: "de-thi" as const, label: "Đề thi" },
   ];
   // Đề được giao: ba trạng thái riêng (đang tải / lỗi + Thử lại / rỗng có lối đi tiếp).
@@ -130,7 +130,7 @@ export default function BaiTapDeThi() {
     <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
       <header className="pb-6">
         <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Bài tập &amp; đề thi</h1>
-        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Mỗi trạng thái có một khu vực riêng, không lẫn bài đã hoàn thành.</p>
+        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bài cần làm, bài chờ chấm và kết quả gần đây ở tab “Cần làm”; đề thi ở tab “Đề thi”.</p>
       </header>
       {error && <ErrorStrip message="Không tải được bài tập." onRetry={load} />}
       {eventsError && !error && <ErrorStrip message="Không tải được danh sách đề thi." onRetry={load} />}
@@ -149,7 +149,7 @@ export default function BaiTapDeThi() {
               {graded.length > 0 && (
                 <section aria-labelledby="bt-res" className="mt-8">
                   <KinSectionHead id="bt-res" title="Kết quả gần đây" />
-                  <ResultTable list={graded} />
+                  <ResultTable list={graded.slice(0, RESULT_LIMIT)} />
                   <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bài đã chấm không xuất hiện trong “Cần làm”.</p>
                 </section>
               )}
@@ -169,20 +169,6 @@ export default function BaiTapDeThi() {
               <KinCallout title="Trước khi làm bài" className="mt-8">Chuẩn bị giấy nháp và kết nối ổn định.</KinCallout>
             </aside>
           </div>
-        ) : tab === "cho-cham" ? (
-          <section aria-labelledby="bt-wait2">
-            <KinSectionHead id="bt-wait2" title="Chờ chấm" />
-            {waiting.length === 0
-              ? <KinEmptyState title="Chưa có bài nào đang chờ chấm" action={<button type="button" onClick={() => setTab("can-lam")} className={kinButtonClass("secondary")}>Xem bài cần làm</button>}>Bài bạn đã nộp mà thầy cô chưa chấm sẽ nằm ở đây.</KinEmptyState>
-              : <Waiting list={waiting} />}
-          </section>
-        ) : tab === "ket-qua" ? (
-          <section aria-labelledby="bt-res2">
-            <KinSectionHead id="bt-res2" title="Kết quả gần đây" />
-            {graded.length === 0
-              ? <KinEmptyState title="Chưa có bài nào được chấm" action={<button type="button" onClick={() => setTab("can-lam")} className={kinButtonClass("secondary")}>Xem bài cần làm</button>}>Khi thầy cô chấm xong, điểm và nhận xét sẽ hiện ở đây (giữ trong 14 ngày gần nhất).</KinEmptyState>
-              : <ResultTable list={graded} />}
-          </section>
         ) : (
           <section aria-labelledby="bt-exams">
             <KinSectionHead id="bt-exams" title="Đề thi" aside={<Link href="/thi-thu" className="text-[var(--kin-nhan-link)] underline inline-flex items-center min-h-11">Tất cả đề thi thử</Link>} />
