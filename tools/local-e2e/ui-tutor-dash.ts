@@ -64,7 +64,7 @@ let seq = 700;
   check("việc khẩn (đối soát) đứng đầu danh sách", todoText.indexOf("Khoản tiền vào cần đối soát") < todoText.indexOf("Báo cáo cộng đồng"));
   check("thẻ lớp Toán 9: 2/2 học viên, đã đầy", await page.getByText("2/2").first().isVisible() && await page.getByText(/đã đầy/).isVisible());
   check("thẻ lớp Lý 9: trạng thái 'Đã đóng'", await page.getByText(/Lý 9/).first().isVisible() && await page.getByText(/Đã đóng/).first().isVisible());
-  check("thẻ có nút Điểm danh / Danh sách HS / Mở lớp", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2);
+  check("thẻ có nút Điểm danh / Danh bạ lớp / Mở lớp", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2);
   await shot(page, "dash-tutor");
   await page.getByRole("navigation", { name: "Lối tắt" }).getByRole("link", { name: "Học phí", exact: true }).click();
   await page.waitForURL(/hoc-phi/);

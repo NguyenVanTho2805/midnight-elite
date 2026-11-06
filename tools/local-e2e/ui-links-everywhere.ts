@@ -47,7 +47,7 @@ const STUDENT_ALIASES: Record<string, string> = {
 };
 // Trang CHỈ để chuyển hướng (page.tsx gọi redirect()): không phải liên kết sai mà là cửa vào cũ / ngắn gọn.
 // BU-00 bước 3: gia sư dùng bí danh /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi*; trang tao-moi của quản lớp chỉ chuyển tiếp; /lop-cua-toi/de-thi/tao-moi (BU-03) là trang thật (bốn lối tạo đề), không chuyển tiếp nữa.
-const PAGE_REDIRECTS: Record<string, string> = { "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/quan-lop" };
+const PAGE_REDIRECTS: Record<string, string> = { "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/quan-lop", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop" };
 function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
   if (PAGE_REDIRECTS[reqPath] === finPath) return true;

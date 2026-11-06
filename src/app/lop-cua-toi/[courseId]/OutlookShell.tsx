@@ -62,8 +62,8 @@ function tutorItems(isTeacher: boolean): Item[] {
     { key: "diem-danh", label: "Điểm danh", icon: "✅",
       render: ({ courseId }) => <OpenPageBlock title="Điểm danh" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/diem-danh`)}
         note="Bấm các em có mặt / muộn / có phép / vắng (AS-191)." /> },
-    { key: "roster", label: "Danh sách HS", icon: "👥",
-      render: ({ courseId }) => <OpenPageBlock title="Danh sách học sinh" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/hoc-vien`)}
+    { key: "roster", label: "Danh bạ lớp", icon: "👥",
+      render: ({ courseId }) => <OpenPageBlock title="Danh bạ lớp" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/hoc-vien`)}
         note="Danh bạ lớp — gọi tên, mở Zalo PH (TK-171)." /> },
     { key: "quan-khoa", label: "Quản khoá", icon: "⚙️",
       render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}`)}

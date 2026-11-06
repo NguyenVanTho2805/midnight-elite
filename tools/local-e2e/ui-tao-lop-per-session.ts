@@ -70,8 +70,8 @@ const SMALL = `[...document.querySelectorAll('main a, main button, main select, 
   }
   const ql = await (await ctxFor(T, { width: 1280, height: 900 })).newPage(); watch(ql);
   await ql.goto(`${BASE}/lop-cua-toi/quan-lop`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await ql.waitForTimeout(1500);
-  check("/lop-cua-toi/quan-lop (không ?tao=1) vẫn là trang quản lớp, không bị chuyển", new URL(ql.url()).pathname === "/lop-cua-toi/quan-lop");
+  await ql.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 90000 });
+  check("A4b: /lop-cua-toi/quan-lop (không ?tao=1) chuyển về danh sách Lớp /lop-cua-toi/lop; quan-lop/[id] vẫn giữ", new URL(ql.url()).pathname === "/lop-cua-toi/lop");
 
   section("Chữ ở trang buổi theo kiểu phí");
   const today = vnDateKeyOf(new Date());

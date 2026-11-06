@@ -46,7 +46,12 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   await pg.goto(`${BASE}/lop-cua-toi/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByRole("heading", { name: "Bài tập & kiểm tra", level: 1 }).waitFor({ timeout: 90000 });
   await pg.getByRole("list", { name: "Bài của Toán 9" }).waitFor({ timeout: 60000 });
-  check("một h1; nút '+ Giao bài' → tab Chương và bài khi có nhiều lớp thì về danh sách Lớp", await pg.getByRole("heading", { level: 1 }).count() === 1 && (await pg.getByRole("link", { name: "+ Giao bài" }).getAttribute("href")) === "/lop-cua-toi/lop");
+  check("một h1; A1: có từ 2 lớp mà chưa chọn lớp thì '+ Giao bài' là NÚT (không đẩy sang danh sách Lớp)", await pg.getByRole("heading", { level: 1 }).count() === 1 && await pg.getByRole("button", { name: "+ Giao bài" }).isVisible() && await pg.getByRole("link", { name: "+ Giao bài" }).count() === 0);
+  await pg.getByRole("button", { name: "+ Giao bài" }).click();
+  check("A1: bấm '+ Giao bài' hiện ô chọn lớp ngay tại trang; chưa chọn thì 'Soạn bài cho lớp này' khoá", await pg.getByLabel("Lớp", { exact: true }).isVisible() && await pg.getByRole("button", { name: "Soạn bài cho lớp này" }).isDisabled());
+  await pg.getByLabel("Lớp", { exact: true }).selectOption({ label: "Văn 8" });
+  check("A1: chọn Văn 8 → 'Soạn bài cho lớp này' dẫn tới tab Bài tập tự nộp của lớp đó", (await pg.getByRole("link", { name: "Soạn bài cho lớp này" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${B.id}?tab=chuong-bai`);
+  check("A5: một nút 'Tạo đề'; không còn 'Tạo quiz' / 'Nhập đề từ tệp'", await pg.getByRole("link", { name: "Tạo đề", exact: true }).isVisible() && await pg.getByRole("link", { name: "Tạo quiz" }).count() === 0 && await pg.getByRole("link", { name: "Nhập đề từ tệp" }).count() === 0);
   check("có 'Quản lý đề thi' → /lop-cua-toi/de-thi (BU-00 bước 3: bí danh gia sư của /admin/thi-thu)", (await pg.getByRole("link", { name: "Quản lý đề thi" }).getAttribute("href")) === "/lop-cua-toi/de-thi");
   const tabTxt = (await pg.getByRole("tablist", { name: "Lọc theo tình trạng" }).innerText()).replace(/\s+/g, " ");
   check("tab: Tất cả · Chờ chấm · 1 · Đang giao · 4 · Đã hoàn tất (5 bài + 1 đề = 6 mục, chia không trùng nhau)", /Tất cả/.test(tabTxt) && /Chờ chấm · 1/.test(tabTxt) && /Đang giao · 4/.test(tabTxt) && /Đã hoàn tất/.test(tabTxt), tabTxt);
@@ -73,7 +78,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   check("tab Đã hoàn tất: bài hết hạn đã chấm hiện, bài đang giao thì không", await pg.getByText("Ôn tập chương 1").isVisible() && await pg.getByText("Viết đoạn văn nghị luận").count() === 0);
   await pg.getByRole("tab", { name: "Tất cả" }).click();
   await pg.getByLabel("Lọc lớp").selectOption({ label: "Văn 8" });
-  check("lọc lớp Văn 8: chỉ còn bài của Văn 8; '+ Giao bài' → tab Chương và bài của lớp đó", await pg.locator("[data-bai-tap-row]").count() === 1 && (await pg.getByRole("link", { name: "+ Giao bài" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${B.id}?tab=chuong-bai`);
+  check("lọc lớp Văn 8: chỉ còn bài của Văn 8; '+ Giao bài' → tab Bài tập tự nộp của lớp đó", await pg.locator("[data-bai-tap-row]").count() === 1 && (await pg.getByRole("link", { name: "+ Giao bài" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${B.id}?tab=chuong-bai`);
   await pg.getByLabel("Lọc lớp").selectOption({ label: "Tất cả lớp" });
   await pg.locator("[data-bai-tap-row]", { hasText: "Bài làm trực tiếp" }).click();
   check("bài làm trực tiếp: chuyển sang chấm ở trang lớp (không chấm điểm tổng ở đây)", await pg.getByRole("link", { name: "Chấm ở trang lớp" }).isVisible());
@@ -86,7 +91,13 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   await mp.goto(`${BASE}/lop-cua-toi/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
   await mp.getByRole("list", { name: "Bài của Toán 9" }).waitFor({ timeout: 90000 });
   check("không tràn ngang ở 390px", await noOverflow(mp));
-  check("nút 'Giao bài' cao ≥ 44px", ((await mp.getByRole("link", { name: "+ Giao bài" }).boundingBox())?.height ?? 0) >= 44);
+  check("nút 'Giao bài' cao ≥ 44px", ((await mp.getByRole("button", { name: "+ Giao bài" }).boundingBox())?.height ?? 0) >= 44);
+  await mp.getByRole("button", { name: "+ Giao bài" }).click();
+  check("390px: ô chọn lớp hiện, không tràn ngang, ô chọn cao ≥ 44px", await mp.getByLabel("Lớp", { exact: true }).isVisible() && await noOverflow(mp) && ((await mp.getByLabel("Lớp", { exact: true }).boundingBox())?.height ?? 0) >= 44);
+  const mp320 = await (await ctxFor(T, { width: 320, height: 640 })).newPage();
+  await mp320.goto(`${BASE}/lop-cua-toi/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
+  await mp320.getByRole("button", { name: "+ Giao bài" }).click();
+  check("320px: hộp chọn lớp mở được, không tràn ngang", await mp320.getByLabel("Lớp", { exact: true }).isVisible() && await noOverflow(mp320));
   await shot(mp, "bai-tap-390");
 
   section("Bài tập: gia sư chưa có gì");

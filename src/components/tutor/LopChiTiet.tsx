@@ -1,4 +1,4 @@
-// Chi tiết một lớp của gia sư (Figma "Gia sư · Chi tiết Toán 9" 299:112581): H1 tên lớp + dòng phụ (sĩ số, lịch), nút "Mời học sinh" và "Cài đặt lớp";
+// Chi tiết một lớp của gia sư (Figma "Gia sư · Chi tiết Toán 9" 299:112581): H1 tên lớp + dòng phụ (sĩ số, lịch), nút "Mời học sinh" (chỉ ở màn hẹp, A4c) và "Cài đặt lớp";
 // dải tab; tab "Buổi học & điểm danh" = điểm danh (thành phần DiemDanh dùng chung) ở cột trái, cột phải "Học sinh", mã mời, "Lịch sử buổi học".
 // Điện thoại: một cột, tab cuộn ngang, nút ≥ 44px. Không có (chưa có tính năng): "Chốt buổi đã dạy", "Xử lý nghỉ muộn" ngay trên trang lớp,
 // báo cáo "Chia sẻ" từng học sinh, "Đơn giá hiện tại", tab Bài tập / Tài liệu theo lớp, "x/y buổi" (chưa có tổng số buổi dự kiến). Đã ghi trong báo cáo.
@@ -110,7 +110,8 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
       <KinPageHeader title={d.courseName} titleClassName="break-words" sub={sub} back={{ href: "/lop-cua-toi/lop", label: "← Lớp học" }}
         actions={<>
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
-          <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>
+          {/* A4c: ở máy rộng đã có tab "Mã mời" ngay dưới → bỏ nút. Ở điện thoại tab "Mã mời" nằm ngoài khung nhìn (đo 320px: x=317..397; 390px: ..397), nên GIỮ nút ở màn hẹp. */}
+          <button type="button" onClick={() => setTab("ma-moi")} className={`${kinButtonClass("secondary")} sm:hidden`}>Mời học sinh</button>
           <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
@@ -221,7 +222,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                   ))}
                 </ul>
                 </KinPanel>
-                <Link href={manage("/hoc-vien")} className={`${kinButtonClass("secondary")} mt-4`}>Mở danh bạ lớp (gọi, Zalo phụ huynh)</Link>
+                <p className="mt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Gọi tên và mở Zalo phụ huynh ở <Link href={manage("/hoc-vien")} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Danh bạ lớp</Link>.</p>
               </>
             )}
             {n > 0 && <LopBaoCao courseId={d.courseId} students={d.students} />}

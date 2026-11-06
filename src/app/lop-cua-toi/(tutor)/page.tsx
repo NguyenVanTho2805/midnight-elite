@@ -61,7 +61,7 @@ export default async function LopCuaToiPage() {
          // BU-00 bước 3: gia sư đi bí danh /lop-cua-toi/quan-lop/…; quản trị (xem danh sách này) giữ /admin/khoa-hoc/….
          actions: [
            { label: "Điểm danh",  href: contentHref(session.adminRole === "teacher", `/admin/khoa-hoc/${c.id}/diem-danh`) },
-           { label: "Danh sách HS", href: contentHref(session.adminRole === "teacher", `/admin/khoa-hoc/${c.id}/hoc-vien`) },
+           { label: "Danh bạ lớp", href: contentHref(session.adminRole === "teacher", `/admin/khoa-hoc/${c.id}/hoc-vien`) },
          ],
          subtitle: c.status ? "Đang mở" : "Đã đóng",
       }))
