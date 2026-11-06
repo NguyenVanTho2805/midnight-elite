@@ -169,7 +169,7 @@ async function main(): Promise<number> {
   if (typeof parsed === "string") { console.error(`Lỗi: ${parsed}\nXem đầu tệp scripts/chuyen-lop-cu-sang-theo-buoi.ts để biết cách dùng.`); return 1; }
   const a = parsed, S = a.fromMonth;
   const host = dbHost();
-  const localDb = /^(localhost|127\.0\.0\.1|\[?::1\]?)(:|$)/.test(host);
+  const localDb = /^(localhost|127\.0\.0\.1|\[?::1\]?)(:|\/|$)/.test(host);   // dbHost() trả "host[:cổng]/tên-db": URL không ghi cổng ("localhost/kin") phải vẫn là máy cục bộ
   // Máy cục bộ nhưng DATABASE_URL trỏ máy chủ thật vẫn coi là production.
   const prod = process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production" || !localDb;
 

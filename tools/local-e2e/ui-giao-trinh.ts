@@ -263,7 +263,8 @@ const seen: Page[] = [];
   await pg.getByRole("dialog").getByRole("button", { name: "Đăng mục này" }).click();
   await eventually("xác nhận → DB published", async () => (await statusOf("d-l4")) === "published");
   const allBtn = pg.getByRole("button", { name: /^Đăng tất cả mục Nháp/ });
-  check("còn 1 mục Nháp đăng được (mục rỗng không tính) ⇒ nút 'Đăng tất cả mục Nháp (1)'", /\(1\)/.test(await allBtn.innerText()));
+  // Đợi giao diện cập nhật số (DB đã published nhưng nút có thể còn hiện số cũ vài trăm ms).
+  await eventually("còn 1 mục Nháp đăng được (mục rỗng không tính) ⇒ nút 'Đăng tất cả mục Nháp (1)'", async () => /\(1\)/.test(await allBtn.innerText()), 15000);
   await allBtn.click();
   await eventually("Đăng tất cả: 'Mục ba nháp' published, 'Mục rỗng' vẫn Nháp", async () => (await statusOf("d-l3")) === "published" && (await statusOf("d-l5")) === "draft");
   await allBtn.waitFor({ state: "detached", timeout: 30000 });
