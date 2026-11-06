@@ -94,3 +94,15 @@ export const tenTacGia = (a: string | null | undefined): string => {
   const t = (a ?? "").trim();
   return !t || t.toLowerCase() === "admin" ? "KiN" : t;
 };
+
+/** Tốc độ đọc trung bình tiếng Việt trên màn hình: ~200 từ mỗi phút. */
+export const TU_MOI_PHUT = 200;
+
+/**
+ * Thời lượng đọc (phút) tính từ NỘI DUNG, hàm thuần. Đếm từ theo khoảng trắng (từ tiếng Việt viết rời nhau), làm tròn lên,
+ * tối thiểu 1 phút khi có chữ; rỗng → 0 (không hiện). Không dùng cột `readTime` lưu sẵn vì người soạn có thể nhập tuỳ ý.
+ */
+export function thoiLuongDoc(...doan: Array<string | null | undefined>): number {
+  const tu = doan.join(" ").trim().split(/\s+/).filter(Boolean).length;
+  return tu === 0 ? 0 : Math.max(1, Math.ceil(tu / TU_MOI_PHUT));
+}

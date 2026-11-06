@@ -209,6 +209,19 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   const doneText = await page.locator("#tin-doi-buoi").inputValue();
   check("tin báo lớp soạn sẵn, không tên em, không tiền; có lưu buổi bù mới", doneText.includes("dạy bù") && !/Em An|học phí/.test(doneText) && (await prisma.attendanceSession.count({ where: { courseId: ly.id, kind: "makeup" } })) === 2, doneText);
 
+  section("HOCPHI-THEO-BUOI 3.6: câu nhắc ở trang buổi đã qua chưa chốt theo kiểu phí của lớp");
+  const pb = await mkCourse(tutor.id, { name: "Lớp theo buổi" });
+  await prisma.course.update({ where: { id: pb.id }, data: { feeMode: "per_session" } });
+  const yesterday = addDaysKey(today, -1);
+  await goto(`/lop-cua-toi/buoi/${pb.id}/${yesterday}`);
+  await page.getByText("Buổi đã qua nhưng chưa chốt").waitFor({ timeout: 60000 });
+  const newTxt = await page.getByText("Buổi đã qua nhưng chưa chốt").locator("xpath=..").innerText();
+  check("lớp theo buổi: câu mới (học phí của buổi được tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi chưa tính), KHÔNG còn câu cũ", newTxt.includes("Đã dạy xong") && newTxt.includes("có mặt hoặc đi muộn") && newTxt.includes("lưu điểm danh thôi chưa tính") && !newTxt.includes("Việc này không tạo hay sửa học phí"), newTxt);
+  await goto(`/lop-cua-toi/buoi/${toan.id}/${yesterday}`);
+  await page.getByText("Buổi đã qua nhưng chưa chốt").waitFor({ timeout: 60000 });
+  const oldTxt = await page.getByText("Buổi đã qua nhưng chưa chốt").locator("xpath=..").innerText();
+  check("lớp cũ: giữ câu 'Việc này không tạo hay sửa học phí.', không có câu mới", oldTxt.includes("Việc này không tạo hay sửa học phí") && !oldTxt.includes("có mặt hoặc đi muộn"), oldTxt);
+
   check("không có lỗi JS trong cả phiên", errors.length === 0, errors.slice(0, 3));
   await closeAll();
   await done();

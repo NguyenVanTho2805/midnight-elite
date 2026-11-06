@@ -67,7 +67,7 @@ export default function LibraryView({ role, classes, search }: { role: "student"
           <div className="rounded-[var(--kin-bo-the)] p-6 text-center text-[length:var(--kin-co-small)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] text-[var(--kin-chu-phu)]">
             {role === "student"
               ? <>Bạn chưa vào lớp nào nên chưa có gì ở đây. <Link href="/student/nhap-ma-lop" className="font-semibold text-[var(--kin-nhan-link)] underline">Nhập mã mời để vào lớp</Link>.</>
-              : <>Bạn chưa mở lớp nào. <Link href="/lop-cua-toi/quan-lop?tao=1" className="font-semibold text-[var(--kin-nhan-link)] underline">Tạo lớp</Link> rồi thêm bài giảng, tài liệu và bài tập.</>}
+              : <>Bạn chưa mở lớp nào. <Link href="/lop-cua-toi/lop/tao" className="font-semibold text-[var(--kin-nhan-link)] underline">Tạo lớp</Link> rồi thêm bài giảng, tài liệu và bài tập.</>}
           </div>
         ) : (
           <div className="flex flex-col gap-8">

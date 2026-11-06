@@ -297,7 +297,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
 
   const L = w.lessons;
   const seeds = ROLE === "student" ? [
-    "/student/viec-cua-toi", "/student/hoc-tap", `/student/hoc-tap?course=${w.C1.id}`, `/student/hoc-tap?course=${w.C3.id}`, "/student/lich-hoc", "/student/hoc-phi", "/student/ho-so", "/student/vi",
+    "/student/viec-cua-toi", "/student/hoc-tap", `/student/hoc-tap?course=${w.C1.id}`, `/student/hoc-tap?course=${w.C3.id}`, "/student/lich-hoc", "/student/hoc-phi", "/student/ho-so",
     "/student/nhap-ma-lop", `/student/nhap-ma-lop?code=${w.invite.code}`,
     `/student/bai-giang/${L.rec.id}`, `/student/bai-giang/${L.paid.id}`, `/student/bai-giang/${L.live.id}`, `/student/bai-giang/${L.doc.id}`,
     "/student", "/student/thi-thu", `/student/thi-thu/${w.E1.id}`, `/student/thi-thu/${w.E2.id}`, "/student/bang-xep-hang", "/student/cong-dong", `/student/cong-dong/${w.th1.id}`, "/student/hoi-dap", `/student/hoi-dap/${w.qA.id}`, "/student/tin-tuc", "/student/tra-cuu",

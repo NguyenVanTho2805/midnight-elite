@@ -1,6 +1,7 @@
 // QT-01/02/03/04 — phần thuần của src/lib/adminOps.ts + GO-08 src/lib/tutorQuota.ts: cờ triển khai (chỉ bật/tắt, không lộ giá trị), lần gọi cron,
 // nhật ký (không tên trẻ), danh sách việc hôm nay, bảng vai, thẻ hạn mức (không bịa hạn mức).
 import { check, section, done } from "./h";
+import { COIN_VISIBLE } from "@/lib/features";
 import {
   AUDIT_ACTION_OPTIONS, AUDIT_PAGE_SIZE, CRON_JOBS, actionInGroup, auditActionLabel, auditActor, auditGroupWhere, auditResourceLabel, auditRowView, buildTodayList, cronSecretMissingIsFatal, cronSettingKey, cronView, deployEnv, deployFlags,
   groupTodayItems, parseAuditFilter, roleSummaries, shortId, whenText, type AuditGroup, type TodayCounts,
@@ -71,7 +72,8 @@ section("Hôm nay cần làm gì");
 const base: TodayCounts = { tutorsPending: 0, threadReports: 0, profileReports: 0, answerReports: 0, topupsPending: 0, proOrdersPending: 0, supportOpen: 0 };
 check("không có gì chờ → danh sách rỗng (không hiện số 0)", buildTodayList(base).length === 0);
 const some = buildTodayList({ ...base, tutorsPending: 2, topupsPending: 1, supportOpen: 3 });
-check("chỉ giữ việc có số > 0, đúng số, có đường vào", some.map(i => `${i.key}:${i.count}`).join() === "gia-su:2,nap-coin:1,ho-tro:3" && some.every(i => i.href.startsWith("/admin/") && i.label && i.hint));
+// Coin ẩn: nạp Coin không vào mục Hôm nay dù có yêu cầu đang chờ.
+check("chỉ giữ việc có số > 0, đúng số, có đường vào", some.map(i => `${i.key}:${i.count}`).join() === (COIN_VISIBLE ? "gia-su:2,nap-coin:1,ho-tro:3" : "gia-su:2,ho-tro:3") && some.every(i => i.href.startsWith("/admin/") && i.label && i.hint));
 check("null = không có quyền xem loại đó → không hiện dù sau này có số", buildTodayList({ ...base, tutorsPending: 1, topupsPending: null, proOrdersPending: null, supportOpen: null }).map(i => i.key).join() === "gia-su");
 check("mọi loại hàng chờ dẫn tới /admin/kiem-duyet?loai=<loại>; không còn trỏ /admin/cong-dong/bao-cao hay /admin/topups", (() => {
   const l = buildTodayList({ ...base, tutorsPending: 1, threadReports: 1, profileReports: 1, answerReports: 1, topupsPending: 1, reviewsPending: 1, guestQuestions: 1, joinSlowCourses: 1 });
@@ -80,11 +82,11 @@ check("mọi loại hàng chờ dẫn tới /admin/kiem-duyet?loai=<loại>; kh�
 
 section("Hôm nay: nhóm duyet · theo-doi · he-thong (BU-08)");
 const full = buildTodayList({ ...base, tutorsPending: 2, reviewsPending: 5, topupsPending: 1, guestQuestions: 3, joinSlowCourses: 2, scheduledArticles: 4, cronSlow: 1 });
-check("đủ nhóm: duyet (gia-su, danh-gia, khach-hoi, nap-coin), theo-doi (vao-lop-cham, bai-hen-gio), he-thong (cron-cham)", full.map(i => `${i.group}:${i.key}`).join() === "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,duyet:nap-coin,theo-doi:vao-lop-cham,theo-doi:bai-hen-gio,he-thong:cron-cham", full.map(i => `${i.group}:${i.key}`));
+check("đủ nhóm: duyet (gia-su, danh-gia, khach-hoi, nap-coin khi cờ Coin bật), theo-doi (vao-lop-cham, bai-hen-gio), he-thong (cron-cham)", full.map(i => `${i.group}:${i.key}`).join() === (COIN_VISIBLE ? "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,duyet:nap-coin," : "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,") + "theo-doi:vao-lop-cham,theo-doi:bai-hen-gio,he-thong:cron-cham", full.map(i => `${i.group}:${i.key}`));
 check("loại không đủ quyền (null / vắng) KHÔNG hiện dù đếm được: reviewsPending vắng + guestQuestions null + cronSlow null", buildTodayList({ ...base, tutorsPending: 1, guestQuestions: null, cronSlow: null, joinSlowCourses: null, scheduledArticles: null }).map(i => i.key).join() === "gia-su");
 check("số 0 không hiện ở bất kỳ nhóm nào", buildTodayList({ ...base, reviewsPending: 0, guestQuestions: 0, joinSlowCourses: 0, scheduledArticles: 0, cronSlow: 0 }).length === 0);
 const groups = groupTodayItems(full);
-check("groupTodayItems: 3 nhóm, thứ tự duyet → theo-doi → he-thong, mỗi nhóm có nhãn tiếng Việt", groups.map(g => g.key).join() === "duyet,theo-doi,he-thong" && groups.map(g => g.label).join() === "Việc chờ,Theo dõi,Hệ thống" && groups[0].items.length === 4);
+check("groupTodayItems: 3 nhóm, thứ tự duyet → theo-doi → he-thong, mỗi nhóm có nhãn tiếng Việt", groups.map(g => g.key).join() === "duyet,theo-doi,he-thong" && groups.map(g => g.label).join() === "Việc chờ,Theo dõi,Hệ thống" && groups[0].items.length === (COIN_VISIBLE ? 4 : 3));
 check("nhóm rỗng bị bỏ: chỉ có việc duyet → 1 nhóm", groupTodayItems(buildTodayList({ ...base, tutorsPending: 1 })).length === 1 && groupTodayItems([]).length === 0);
 check("KHÔNG có trường tiền tổng nào trong mục Hôm nay (chỉ số lượng)", !/amount|total|tong|vnd|coin\b/i.test(Object.keys(full[0]).join()) && full.every(i => Number.isInteger(i.count)));
 

@@ -18,6 +18,7 @@ import { dayAt } from "@/lib/baiTap";
 import type { QuizDiff } from "@/lib/quizVersion";
 import { qfetch, quizHref, DE_THI_ROOT, type QuizDetail } from "./quizClient";
 import QuizDeadlines from "./QuizDeadlines";
+import { plainPreview } from "@/lib/mathtype/formulaImg";
 
 interface Version { id: string; versionNo: number; status: "draft" | "superseded" | "current"; attemptCount: number; submittedCount: number; date: string; time: string; duration: string; questionCount: number; versionNote: string | null; supersededAt: string | null; title: string }
 interface VersionsData { rootId: string; currentId: string | null; draftId: string | null; thisId: string; chain: Version[]; diff: { summary: string; data: QuizDiff } | null; log: { id: string; kind: string; note: string | null; at: string; actorName: string }[] }
@@ -213,7 +214,7 @@ export default function QuizVersions({ id }: { id: string }) {
             return (
               <li key={r.index} className="py-3 border-b border-[var(--kin-vien-nhat)] grid sm:grid-cols-[72px_minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-[length:var(--kin-co-goc)]">
                 <span className="text-[var(--kin-chu-mo)]">Câu {r.index + 1}</span>
-                <span className="min-w-0 break-words text-[var(--kin-chu-chinh)]">{q ? (q.text.length > 120 ? q.text.slice(0, 120) + "…" : q.text) : "—"}</span>
+                <span className="min-w-0 break-words text-[var(--kin-chu-chinh)]">{q ? plainPreview(q.text, 120) : "—"}</span>
                 <KinStatus tone={tone}>{CHANGE_LABEL[r.change]}{r.keyChanged ? " · đổi đáp án hoặc điểm" : ""}</KinStatus>
               </li>
             );

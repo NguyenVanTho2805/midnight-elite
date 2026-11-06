@@ -209,37 +209,33 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   check("Lịch trống nói ĐÚNG chỗ đặt khung giờ (tab 'Lịch học' của trang quản khoá — trang lớp /lop-cua-toi/<lớp> không có tab này) — sửa chữ của NC2-021", (await body()).includes("trang quản khoá") && !(await body()).includes("trong trang lớp"));
   check("Lịch trống chỉ đường: có nút 'Xem các lớp của tôi'", await p.getByRole("link", { name: "Xem các lớp của tôi" }).isVisible());
 
-  section("G2b. Lịch → 'Xem các lớp của tôi' → 'Tạo lớp đầu tiên' → drawer");
+  section("G2b. Lịch → 'Xem các lớp của tôi' → 'Tạo lớp đầu tiên' → cửa tạo lớp duy nhất");
   await click(p.getByRole("link", { name: "Xem các lớp của tôi" }));
   await eventually("tới /lop-cua-toi/lop", () => at().pathname === "/lop-cua-toi/lop", 90000);
   await p.getByText("Cô chưa mở lớp nào").waitFor({ timeout: 60000 });
   await click(p.getByRole("link", { name: "Tạo lớp đầu tiên" }));
-  sub("drawer 'Tạo khoá học mới' (trượt ra trên trang danh sách khoá)");
-  await eventually("tới /lop-cua-toi/quan-lop?tao=1 (drawer; BU-00 bước 3: bí danh gia sư của /admin/khoa-hoc)", () => at().pathname === "/lop-cua-toi/quan-lop", 120000);
-  const drawerTitle = p.getByRole("heading", { name: "Tạo khoá học mới" });
-  await drawerTitle.waitFor({ timeout: 60000 });
-  await p.waitForTimeout(400);   // chờ drawer trượt vào xong rồi mới đếm ô
-  const rCreate = await req(p, "tạo lớp (drawer 'Tạo khoá học mới')", undefined, "div.fixed.right-0");
-  const drawerText = await p.locator("div.fixed.right-0").innerText();
-  const askedPublic = ["Giá bán", "Số bài học", "Ngày khai giảng", "Ảnh nền", "Danh mục", "Slug"].filter(k => drawerText.includes(k));
-  console.log(`    (ô trên drawer liên quan khoá học CÔNG KHAI/bán: ${askedPublic.join(", ")})`);
+  // HOCPHI-THEO-BUOI (05/11/2026): ngăn kéo "Tạo khoá học mới" của /lop-cua-toi/quan-lop?tao=1 đã được thay bằng MỘT cửa tạo lớp (TaoLop, 3 bước) ở /lop-cua-toi/lop/tao.
+  sub("trang 'Tạo lớp học' (3 bước) — cửa duy nhất, mặc định học phí theo buổi");
+  await eventually("tới /lop-cua-toi/lop/tao (liên kết trỏ thẳng, không qua chuyển hướng)", () => at().pathname === "/lop-cua-toi/lop/tao", 120000);
+  await p.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 60000 });
+  const rCreate = await req(p, "tạo lớp (trang 'Tạo lớp học')");
   const courseName = `Toán 9 — lớp đầu tiên ${stamp.slice(-3)}`;
   const today = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
-  const dr = p.locator("div.fixed.right-0");
-  // NC2-029: gia sư chỉ gõ TÊN; ngày khai giảng / giá / số bài học để trống (nhãn ghi "tuỳ chọn").
-  check("drawer của gia sư ghi '(tuỳ chọn)' ở Ngày khai giảng / Giá bán / Số bài học", (drawerText.match(/tuỳ chọn · mặc định/g) ?? []).length === 3, drawerText.slice(0, 400));
-  await typeIn(dr.getByPlaceholder("VD: ĐGNL HSA — Trọn gói lộ trình"), courseName);
-  await click(dr.getByRole("button", { name: "Tạo khoá học" }));
+  await typeIn(p.getByLabel(/Tên lớp/), courseName);
+  await typeIn(p.getByLabel(/^Đơn giá/), "150000");
+  await click(p.getByRole("button", { name: "Tiếp tục" }));
+  await click(p.getByRole("button", { name: "Tiếp tục" }));
+  await click(p.getByRole("button", { name: "Tạo lớp", exact: true }));
   await eventually("DB: lớp có chủ là gia sư vừa đăng ký", async () => !!(await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } })), 90000);
   const course = (await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } }))!;
-  await eventually("NC2-029: tự chuyển tới trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học", () => at().pathname === `/lop-cua-toi/quan-lop/${course.id}` && at().searchParams.get("tab") === "lich-hoc", 120000);
-  await eventually("có thông báo thành công 'Đã tạo khoá học mới' (như cũ)", async () => (await body()).includes("Đã tạo khoá học mới"), 30000);
-  const [dd, mm, yyyy] = [today.slice(8, 10), today.slice(5, 7), today.slice(0, 4)];
-  check("DB: bỏ trống → giá 0, số bài học 0, ngày khai giảng = hôm nay giờ VN", course.price === 0 && course.lessons === 0 && course.openDate === `${dd}/${mm}/${yyyy}`, { price: course.price, lessons: course.lessons, openDate: course.openDate, today });
+  check("DB: lớp mới mặc định học phí THEO BUỔI (feeMode per_session) với đúng một đơn giá 150.000", course.feeMode === "per_session" && (await prisma.courseFeeRate.count({ where: { courseId: course.id, rate: 150000, mode: "per_session" } })) === 1, { feeMode: course.feeMode });
   end();
   check("DB: lớp tạo ra thuộc gia sư (ownerId) và đang mở", course.ownerId === u0!.id && course.status === true, { ownerId: course.ownerId, status: course.status });
-  console.log(`  ghi nhận: ô 'Gia sư' của lớp mới = ${JSON.stringify(course.instructor)} (ĐỀ XUẤT chưa làm: tự điền tên gia sư — ghi tên thật vào thẻ lớp CÔNG KHAI, mâu thuẫn công tắc Ẩn hồ sơ, chờ Thọ quyết)`);
+  console.log(`  ghi nhận: ô 'Gia sư' của lớp mới = ${JSON.stringify(course.instructor)} (ĐỀ XUẤT chưa làm: tự điền tên gia sư — ghi tên thật vào thẻ lớp CÔNG KHAI, mâu thuẫn công tắc Ẩn hồ sơ, chờ Thọ)`);
   check("DB: lớp có người dạy được ghi (giá trị mặc định hiện tại; xem ghi nhận ở trên)", typeof course.instructor === "string" && course.instructor.length > 0, { instructor: course.instructor, avatar: course.teacherAvatar });
+  void rCreate;
+  // Các bước sau (G3…) làm việc ở trang quản khoá cũ của lớp: mở thẳng tab "Lịch học" như trước.
+  await p.goto(`${BASE}/lop-cua-toi/quan-lop/${course.id}?tab=lich-hoc`, GOTO);
 
   // ───────────────────── G3: khung giờ học ở trang quản khoá (tab Lịch học) ─────────────────────
   begin("G3", "lớp → khung giờ học");

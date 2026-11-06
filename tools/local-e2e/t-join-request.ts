@@ -1,4 +1,6 @@
 // BU-01 — API: cách vào lớp (joinPolicy), mã cá nhân gắn tài khoản, xin vào lớp / duyệt / từ chối / huỷ, cô lập giữa hai gia sư, không rò rỉ.
+// CA PHÁ CỐ Ý (mục 18, 06/11): bỏ dòng `if (enr.status === "suspended") return { outcome: "da-nghi" }` trong decideJoinRequest → 'VẪN pending' / 'KHÔNG thông báo' / 'VẪN suspended' đỏ;
+//   bỏ nhánh `r.suspended > 0 ? "da-nghi"` ở hang-loat/route.ts → ca hàng loạt đỏ; bỏ case "da-nghi" ở LopChiTiet.tsx → ca 'HIỆN thông điệp' đỏ.
 // Cần máy chủ Next ở cổng 3100 + Postgres demo (COO chạy tuần tự). Mẫu: h.ts, t-invites.ts.
 import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
@@ -315,6 +317,44 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("vào lớp ngay bằng mã lớp → yêu cầu pending cũ thành approved, có Enrollment", pnRd.status === 200 && pnReq?.status === "approved" && (await prisma.enrollment.count({ where: { userId: C.id, courseId: PN.id } })) === 1, [pnRd.json, pnReq?.status]);
 
   // ── (16) Audit ───────────────────────────────────────────────────────────────
+  // ── (18) Học sinh ĐANG TẠM DỪNG có yêu cầu pending: duyệt KHÔNG tự mở lại, KHÔNG báo "đã vào lớp" (quyết định 06/11) ──
+  section("(18) Duyệt yêu cầu của học sinh đang tạm dừng (suspended): giữ pending, báo gia sư, không thông báo cho em");
+  const SUSP_MSG = "Học sinh này đang tạm dừng ở lớp. Hãy mở lại ở mục Học sinh rồi duyệt.";
+  const [X, Y, Z] = [await mkUser({ name: "Em Xa Tam Dung" }), await mkUser({ name: "Em Yen Binh Thuong" }), await mkUser({ name: "Em Zu Tam Dung" })];
+  const apBase = `/api/tutor/lop/${AP.id}/yeu-cau`;
+  for (const u of [X, Z]) await prisma.enrollment.create({ data: { userId: u.id, courseId: AP.id, status: "suspended" } });
+  const rq: Record<string, string> = {};
+  for (const [k, u] of [["X", X], ["Y", Y], ["Z", Z]] as const) rq[k] = (await prisma.classJoinRequest.create({ data: { userId: u.id, courseId: AP.id, status: "pending" } })).id;
+  const sx = await form(`${apBase}/${rq.X}/duyet`, T);
+  check("duyệt yêu cầu của em suspended → 303 …&duyet=da-nghi", sx.status === 303 && loc(sx) === `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi`, [sx.status, loc(sx)]);
+  check("yêu cầu VẪN pending (không approved, chưa decidedBy)", (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.status === "pending" && (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.decidedBy === null);
+  check("Enrollment VẪN suspended (không tự mở lại), đúng 1 dòng", (await prisma.enrollment.findMany({ where: { userId: X.id, courseId: AP.id } })).map(e => e.status).join() === "suspended");
+  check("em KHÔNG nhận thông báo 'Bạn đã được vào lớp' / join_request_approved", (await prisma.notification.count({ where: { userId: X.id } })) === 0);
+  check("không ghi audit enrollment.create / class_join_request.approve cho em này", (await prisma.auditLog.count({ where: { action: { in: ["enrollment.create", "class_join_request.approve"] }, resourceId: { in: [rq.X] } } })) === 0);
+  const sx2 = await form(`${apBase}/${rq.X}/duyet`, T);
+  check("bấm lại vẫn da-nghi, vẫn pending (không đổi gì)", loc(sx2).endsWith("duyet=da-nghi") && (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.status === "pending");
+  const page = await api("GET", `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi`, { as: T });
+  check("trang lớp đọc ?duyet=da-nghi và HIỆN thông điệp rõ cho gia sư", page.status === 200 && page.text.includes(SUSP_MSG), page.status);
+  check("lớp của gia sư khác: duyệt → 403, không đổi gì", (await form(`${apBase}/${rq.X}/duyet`, T2)).status === 403 && (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.status === "pending");
+
+  section("(18b) Hàng loạt (action=duyet, id lặp): em suspended bị bỏ qua, em thường vẫn được duyệt, không chặn nhau");
+  const bk = await form(`${apBase}/hang-loat`, T, [["action", "duyet"], ["id", rq.X], ["id", rq.Y], ["id", rq.Z]]);
+  check("hàng loạt → duyet=da-nghi&n=1 (chỉ Y được duyệt)", loc(bk).includes("duyet=da-nghi") && loc(bk).includes("n=1"), loc(bk));
+  check("Y approved + Enrollment active", (await prisma.classJoinRequest.findUnique({ where: { id: rq.Y } }))?.status === "approved" && (await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: Y.id, courseId: AP.id } } }))?.status === "active");
+  check("X và Z vẫn pending + vẫn suspended, không thông báo", (await prisma.classJoinRequest.count({ where: { id: { in: [rq.X, rq.Z] }, status: "pending" } })) === 2 && (await prisma.enrollment.count({ where: { userId: { in: [X.id, Z.id] }, courseId: AP.id, status: "suspended" } })) === 2 && (await prisma.notification.count({ where: { userId: { in: [X.id, Z.id] } } })) === 0);
+  const bk0 = await form(`${apBase}/hang-loat`, T, [["action", "duyet"], ["id", rq.X], ["id", rq.Z]]);
+  check("hàng loạt chỉ toàn em suspended → duyet=da-nghi&n=0", loc(bk0).includes("duyet=da-nghi") && loc(bk0).includes("n=0"), loc(bk0));
+  const bkPage = await api("GET", `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi&n=1`, { as: T });
+  check("trang lớp: n=1 → 'Đã duyệt 1 bạn…' + nhắc mở lại ở mục Học sinh", bkPage.text.includes("Đã duyệt 1 bạn") && bkPage.text.includes("mở lại ở mục Học sinh"), bkPage.status);
+
+  section("(18c) Sau khi gia sư MỞ LẠI (active), duyệt mới đi qua và mới thông báo");
+  await prisma.enrollment.update({ where: { userId_courseId: { userId: X.id, courseId: AP.id } }, data: { status: "active" } });
+  const ax = await form(`${apBase}/${rq.X}/duyet`, T);
+  check("mở lại rồi duyệt → duyet=ok, request approved", loc(ax).endsWith("duyet=ok") && (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.status === "approved", loc(ax));
+  check("lúc này em mới nhận đúng 1 thông báo join_request_approved", (await prisma.notification.count({ where: { userId: X.id, type: "join_request_approved" } })) === 1);
+  const rjZ = await form(`${apBase}/${rq.Z}/tu-choi`, T, [["note", "Hẹn kỳ sau"]]);
+  check("từ chối yêu cầu của em suspended vẫn được (không bị chặn nhầm)", loc(rjZ).endsWith("duyet=tuchoi") && (await prisma.classJoinRequest.findUnique({ where: { id: rq.Z } }))?.status === "rejected");
+
   section("(16) Audit");
   for (const act of ["class_join_request.create", "class_join_request.approve", "class_join_request.reject", "class_join_request.cancel", "class_invite.personal_issue", "enrollment.create"]) {
     check(`có audit ${act}`, (await prisma.auditLog.count({ where: { action: act } })) > 0);

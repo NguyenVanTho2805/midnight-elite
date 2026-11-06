@@ -75,9 +75,13 @@ const correct = (q?: AzotaQuestion) => (q ? q.options.map((o, i) => (o.isCorrect
     const buf = await mkDocx(Pt("x"), { files, rels });
     return buf.length < 400_000 && (await rejects(buf))?.code === "TOO_LARGE";
   })());
-  check("> 500 mục nén → TOO_LARGE", await (async () => {
-    const files: Record<string, string> = {}; for (let i = 0; i < 501; i++) files[`word/x${i}.txt`] = "a";
+  check("> 1500 mục nén → TOO_LARGE (trần nâng 500→1500 cho công thức MathType)", await (async () => {
+    const files: Record<string, string> = {}; for (let i = 0; i < 1501; i++) files[`word/x${i}.txt`] = "a";
     return (await rejects(await mkDocx(Pt("x"), { files })))?.code === "TOO_LARGE";
+  })());
+  check("501 mục nén vẫn đọc được (không còn trần 500)", await (async () => {
+    const files: Record<string, string> = {}; for (let i = 0; i < 501; i++) files[`word/x${i}.txt`] = "a";
+    return (await rejects(await mkDocx(Pt("x"), { files }))) === null;
   })());
   check("đường dẫn tuyệt đối / '..' trong zip → từ chối", (await rejects(await mkDocx(Pt("x"), { files: { "../evil.txt": "x" } })))?.code === "NOT_DOCX");
   check("tệp .docx tối thiểu hợp lệ đọc được (1 đoạn chữ)", await (async () => { const r = await readDocx(await mkDocx(Pt("Xin chào"))); return r.blocks.length === 1 && r.blocks[0].kind === "p"; })());
@@ -307,7 +311,7 @@ const correct = (q?: AzotaQuestion) => (q ? q.options.map((o, i) => (o.isCorrect
     check(`${name}: ${total} câu, không lỗi cứng, ${orphans} khoá mồ côi`, p.stats.total === total && p.errors.length === 0 && p.fatal === null && p.warnings.filter(w => w.code === "orphan_key").length === orphans, { stats: p.stats, errors: p.errors, orphan: p.warnings.filter(w => w.code === "orphan_key").length });
     check(`${name}: không câu nào xung đột đáp án`, !p.questions.some(q => q.flags.includes("answer_conflict")));
     if (name.startsWith("De_Su12")) check("Su12: 24 TN + 4 Đ/S, đủ 28 đáp án, 0 cờ", p.stats.byType.MC === 24 && p.stats.byType.TRUE_FALSE_CLUSTER === 4 && p.stats.withAnswer === 28);
-    if (name.startsWith("De_Toan12")) check("Toán12: 12 TN + 4 Đ/S + 6 trả lời ngắn, đủ 22 đáp án; mọi câu còn nhãn công thức MathType", p.stats.byType.MC === 12 && p.stats.byType.TRUE_FALSE_CLUSTER === 4 && p.stats.byType.SHORT_ANSWER === 6 && p.stats.withAnswer === 22 && p.stats.withFormulaUnread === 22);
+    if (name.startsWith("De_Toan12")) check("Toán12: 12 TN + 4 Đ/S + 6 trả lời ngắn, đủ 22 đáp án; công thức MathType đọc được nên không còn câu nào bị chặn (BU-03-MATHTYPE; trước đây 22 câu mang nhãn)", p.stats.byType.MC === 12 && p.stats.byType.TRUE_FALSE_CLUSTER === 4 && p.stats.byType.SHORT_ANSWER === 6 && p.stats.withAnswer === 22 && p.stats.withFormulaUnread === 0);
     if (name.startsWith("mau_de_azota")) check("mẫu v2: 1 MC + 3 nhiều đáp án + 2 Đ/S + 2 trả lời ngắn", p.stats.byType.MC === 1 && p.stats.byType.MC_MULTI === 3 && p.stats.byType.TRUE_FALSE_CLUSTER === 2 && p.stats.byType.SHORT_ANSWER === 2);
   }
 

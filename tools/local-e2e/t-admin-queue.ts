@@ -3,6 +3,10 @@
 // CHƯA CHẠY ĐƯỢC ở máy dựng (cần Next dev cổng 3100 + Postgres thử) — COO chạy tuần tự; xem phiếu bàn giao.
 // Ca phá cố ý: cấp MANAGE_REVENUE cho admin_content (permissions.ts) → ca "admin_content ?loai=nap-coin → 403" đỏ; bỏ `requireCenterAdmin` khỏi route → ca "gia sư → 403" đỏ.
 import { prisma } from "@/lib/prisma";
+import { COIN_VISIBLE } from "@/lib/features";
+// 05/11/2026 (CHỦ-02): Coin ẩn → API Hàng chờ không còn liệt kê/đếm nap-coin và badge không tính nó; API duyệt/từ chối nạp Coin (ghi) vẫn còn. Đổi có chủ đích.
+const KIND6 = ["gia-su", "bai-viet", "ho-so", "tra-loi", "danh-gia", ...(COIN_VISIBLE ? ["nap-coin"] : [])];
+const BADGE0 = COIN_VISIBLE ? 128 : 126;
 import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
 
 (async () => {
@@ -48,10 +52,10 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   section("Quản trị cấp 1: 6 loại thật");
   let r = await get(SA, "/api/admin/kiem-duyet?limit=100");
   check("200; counts đủ 6 khoá thật; KHÔNG có khoá khach-hoi / vao-lop khi nhánh B chưa gộp (vắng khoá, không phải 0)",
-    r.status === 200 && ["gia-su", "bai-viet", "ho-so", "tra-loi", "danh-gia", "nap-coin"].every(k => k in r.json.counts), r.json.counts);
-  check("counts chính xác: gia-su 2, bai-viet 2, ho-so 1, tra-loi 1, danh-gia 120, nap-coin 2", JSON.stringify([2, 2, 1, 1, 120, 2]) === JSON.stringify(["gia-su", "bai-viet", "ho-so", "tra-loi", "danh-gia", "nap-coin"].map(k => r.json.counts[k])), r.json.counts);
-  check("badge = 128 (tổng counts nhóm duyet), KHÔNG bị cắt ở 100", r.json.badge === 128, r.json.badge);
-  check("?badge=1 cho cùng badge và counts, không có items", await (async () => { const b = await get(SA, "/api/admin/kiem-duyet?badge=1"); return b.status === 200 && b.json.badge === 128 && b.json.items === undefined && b.json.counts["danh-gia"] === 120; })());
+    r.status === 200 && KIND6.every(k => k in r.json.counts) && (COIN_VISIBLE || !("nap-coin" in r.json.counts)), r.json.counts);
+  check("counts chính xác: gia-su 2, bai-viet 2, ho-so 1, tra-loi 1, danh-gia 120, nap-coin 2", JSON.stringify([2, 2, 1, 1, 120, ...(COIN_VISIBLE ? [2] : [])]) === JSON.stringify(KIND6.map(k => r.json.counts[k])), r.json.counts);
+  check("badge = 128 (tổng counts nhóm duyet), KHÔNG bị cắt ở 100", r.json.badge === BADGE0, r.json.badge);
+  check("?badge=1 cho cùng badge và counts, không có items", await (async () => { const b = await get(SA, "/api/admin/kiem-duyet?badge=1"); return b.status === 200 && b.json.badge === BADGE0 && b.json.items === undefined && b.json.counts["danh-gia"] === 120; })());
 
   section("Phân trang bằng con trỏ: 120 đánh giá, trang 50");
   const seen: string[] = []; let cursor: string | null = null; let pages = 0;
@@ -75,14 +79,18 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
   r = await get(SA, "/api/admin/kiem-duyet?limit=100");
   // adm-test 02/11: hàng chờ xếp theo thời gian chờ (cũ trước) nên 120 đánh giá cũ chiếm hết 100 dòng đầu — lấy từng loại riêng để khảo sát đủ các loại.
   const perKind: any[] = [];
-  for (const k of ["gia-su", "bai-viet", "ho-so", "tra-loi", "nap-coin"]) perKind.push(...(await get(SA, `/api/admin/kiem-duyet?loai=${k}`)).json.items);
+  for (const k of ["gia-su", "bai-viet", "ho-so", "tra-loi", ...(COIN_VISIBLE ? ["nap-coin"] : [])]) perKind.push(...(await get(SA, `/api/admin/kiem-duyet?loai=${k}`)).json.items);
   const allItems = [...r.json.items, ...perKind.filter(x => !r.json.items.some((y: any) => y.id === x.id))];
   const sample = JSON.stringify(allItems.filter((i: any) => i.kind !== "gia-su"));
   check("không có email / SĐT mẫu của học sinh trong dòng (quét toàn JSON, trừ đơn gia sư)", !sample.includes(A.email) && !sample.includes(B.email) && !sample.includes("0987654321"));
   check("tên học sinh rút gọn: 'Bích T.' (người báo cáo), không có 'Trần Thị Bích' / 'Nguyễn Văn An' ở dòng hàng chờ", sample.includes("Bích T.") && !sample.includes("Trần Thị Bích") && !sample.includes("Nguyễn Văn An"));
   const ntop = allItems.find((i: any) => i.id === `nap-coin:${topupOfA.id}`), ntopSA = allItems.find((i: any) => i.id === `nap-coin:${topupOfSA.id}`);
-  check("nạp Coin: nút Duyệt của yêu cầu do CHÍNH người xem tạo bị khoá; yêu cầu của người khác thì không", !!ntopSA.detail.actions[0].disabled && !ntop.detail.actions[0].disabled);
-  check("JSON không chứa userId người nạp", !JSON.stringify(ntop).includes(A.id));
+  if (COIN_VISIBLE) {
+    check("nạp Coin: nút Duyệt của yêu cầu do CHÍNH người xem tạo bị khoá; yêu cầu của người khác thì không", !!ntopSA.detail.actions[0].disabled && !ntop.detail.actions[0].disabled);
+    check("JSON không chứa userId người nạp", !JSON.stringify(ntop).includes(A.id));
+  } else {
+    check("Coin ẩn: không dòng nap-coin nào trong Hàng chờ, và JSON không chứa userId người nạp", !ntop && !ntopSA && !JSON.stringify(allItems).includes(A.id));
+  }
 
   section("Lệnh gọi đúng API cũ và sinh nhật ký");
   const act = async (as: any, a: any, extra: Record<string, unknown> = {}) => api(a.method, a.url, { as, body: { ...(a.body ?? {}), ...extra } });
@@ -108,7 +116,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } f
     const it = (await get(SA, "/api/admin/kiem-duyet?loai=ho-so")).json.items.find((i: any) => i.id === `ho-so:${pr.id}`);
     return (await act(SA, it.detail.actions[0], { reason: "" })).status === 400 && (await act(SA, it.detail.actions[0], { reason: "Ảnh giả mạo" })).status === 200;
   })());
-  check("sau khi xử lý: badge giảm đúng (còn gia sư 1, bài viết 1, đánh giá 119, nạp Coin 2) = 123", (await get(SA, "/api/admin/kiem-duyet?badge=1")).json.badge === 123, (await get(SA, "/api/admin/kiem-duyet?badge=1")).json);
+  check("sau khi xử lý: badge giảm đúng (còn gia sư 1, bài viết 1, đánh giá 119; nạp Coin 2 chỉ tính khi cờ Coin bật) = 123, hoặc 121 khi ẩn", (await get(SA, "/api/admin/kiem-duyet?badge=1")).json.badge === (COIN_VISIBLE ? 123 : 121), (await get(SA, "/api/admin/kiem-duyet?badge=1")).json);
   void rMine;
 
   await done();

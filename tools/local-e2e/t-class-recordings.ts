@@ -78,7 +78,8 @@ async function page(path: string, as: Awaited<ReturnType<typeof mkUser>> | null)
   }
   check("lớp không có → 404", (await api("GET", `/api/courses/khong-co/recordings`, { as: sIn })).status === 404);
   await prisma.enrollment.update({ where: { userId_courseId: { userId: sIn2.id, courseId: course.id } }, data: { status: "suspended" } });
-  check("học sinh tạm ngưng (suspended) vẫn xem lại được", (await g(sIn2)).status === 200);
+  const gsus = await g(sIn2);
+  check("học sinh tạm ngưng (suspended, đã nghỉ lớp) → 403 kèm code enrollment_suspended (06/11/2026 thay R01), không chuỗi link", gsus.status === 403 && gsus.json?.code === "enrollment_suspended" && !gsus.text.includes("youtu.be"), gsus.json);
   await prisma.enrollment.update({ where: { userId_courseId: { userId: sIn2.id, courseId: course.id } }, data: { status: "active" } });
 
   section("MD-02 · gỡ bản ghi");

@@ -78,11 +78,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
       for (const sec of source.sections) {
         const newSec = await tx.section.create({
-          data: { id: `s-${crypto.randomUUID()}`, title: sec.title, order: sec.order, courseId: course.id },
+          data: { id: `s-${crypto.randomUUID()}`, title: sec.title, order: sec.order, courseId: course.id, isImplicit: sec.isImplicit },
         });
         for (const ch of sec.chapters) {
           const newCh = await tx.chapter.create({
-            data: { id: `c-${crypto.randomUUID()}`, title: ch.title, order: ch.order, sectionId: newSec.id },
+            data: { id: `c-${crypto.randomUUID()}`, title: ch.title, order: ch.order, sectionId: newSec.id, isImplicit: ch.isImplicit },
           });
           for (const l of ch.lessons) {
             await tx.lesson.create({
@@ -95,6 +95,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
                 documents: l.documents, adminNote: l.adminNote,
                 statsVideos: l.statsVideos, statsMaterials: l.statsMaterials, statsViews: 0,
                 chapterId: newCh.id,
+                status: l.status,   // BU-02-PHẲNG (R19): bản sao giữ nguyên Nháp/Đã đăng/Ẩn
               },
             });
           }

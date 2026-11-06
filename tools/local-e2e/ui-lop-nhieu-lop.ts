@@ -65,9 +65,12 @@ const H = 3_600_000;
   const go = (p: Page, path: string) => p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 150000 });
   const courseParam = (p: Page) => new URL(p.url()).searchParams.get("course");
 
+  // Tập khoá của GET /api/enrollments: bắt buộc courseIds + pendingConsentCourseIds; NO-0511 (#123) thêm suspendedCourseIds (lớp đã nghỉ). Bài chấp nhận CẢ HAI dạng để chạy được trước/sau khi gộp #123,
+  // nhưng không cho khoá lạ nào khác lọt vào (vẫn bắt được rò rỉ trường).
+  const hasEnrollmentKeys = (j: Record<string, unknown>) => { const k = Object.keys(j).sort().join(); return k === "courseIds,pendingConsentCourseIds" || k === "courseIds,pendingConsentCourseIds,suspendedCourseIds"; };
   section("API /api/enrollments: dạng cũ không đổi, ?detail=1 thêm tên lớp, thứ tự theo lúc vào lớp");
   const plain = await api("GET", "/api/enrollments", { as: S });
-  check("không có ?detail: courseIds (+ pendingConsentCourseIds, thêm 04/11/2026 cho nhãn 'Chờ phụ huynh đồng ý'), đúng thứ tự vào lớp (Địa, Sử nâng cao, Sử)", Object.keys(plain.json).sort().join() === "courseIds,pendingConsentCourseIds" && plain.json.pendingConsentCourseIds.length === 0 && plain.json.courseIds.join() === [B.id, C.id, A.id].join(), plain.json);
+  check("không có ?detail: courseIds (+ pendingConsentCourseIds, thêm 04/11/2026 cho nhãn 'Chờ phụ huynh đồng ý'), đúng thứ tự vào lớp (Địa, Sử nâng cao, Sử)", hasEnrollmentKeys(plain.json) && plain.json.pendingConsentCourseIds.length === 0 && (plain.json.suspendedCourseIds ?? []).length === 0 && plain.json.courseIds.join() === [B.id, C.id, A.id].join(), plain.json);
   const det = await api("GET", "/api/enrollments?detail=1", { as: S });
   check("?detail=1: courses có tên, gia sư, số bài thật (Địa 12 = 2 bài)", det.json.courses.map((x: { name: string; instructor: string; lessonCount: number }) => `${x.name}|${x.instructor}|${x.lessonCount}`).join() === "Địa 12|Cô Hạnh|2,Sử 12 nâng cao|Cô Hạnh|1,Sử 12|Cô Hạnh|1", det.json.courses);
   check("khách (chưa đăng nhập) chỉ nhận danh sách rỗng", (await api("GET", "/api/enrollments?detail=1")).json.courseIds.length === 0);
@@ -267,6 +270,9 @@ const H = 3_600_000;
   check("cô lập: mở lớp mình KHÔNG học → 'Bạn chưa vào lớp này', không có 'Các lớp của bạn', không lộ tên lớp khác", (await pi.locator("[data-my-classes]").count()) === 0 && !/Sử 12 nâng cao/.test(isoText), isoText.slice(0, 200));
   await ci.close();
   // Lớp 'tạm dừng' không vào danh sách (đồng nhất với quyền học: chỉ 'active').
+  const susPlain = await api("GET", "/api/enrollments", { as: SU });
+  check("học sinh có lớp ĐÃ NGHỈ: khoá đúng; lớp nghỉ KHÔNG nằm trong courseIds/pendingConsentCourseIds; nếu có suspendedCourseIds thì chứa đúng lớp đó", hasEnrollmentKeys(susPlain.json) && susPlain.json.courseIds.join() === A.id && !susPlain.json.pendingConsentCourseIds.includes(B.id) && (susPlain.json.suspendedCourseIds === undefined || susPlain.json.suspendedCourseIds.join() === B.id), susPlain.json);
+  check("khách chưa đăng nhập: khoá đúng và mọi mảng rỗng", hasEnrollmentKeys((await api("GET", "/api/enrollments")).json) && Object.values((await api("GET", "/api/enrollments")).json).every(v => Array.isArray(v) && v.length === 0));
   const sus = await api("GET", "/api/enrollments?detail=1", { as: SU });
   check("lớp 'suspended' không nằm trong danh sách (API)", sus.json.courseIds.join() === A.id && sus.json.courses.length === 1, sus.json);
   const cs = await ctxFor(SU, { width: 1280, height: 900 });

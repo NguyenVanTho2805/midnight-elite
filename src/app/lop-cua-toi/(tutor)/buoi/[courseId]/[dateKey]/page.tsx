@@ -5,13 +5,21 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
 import { isValidDateKey } from "@/lib/classSessions";
+import { prisma } from "@/lib/prisma";
+import { isNewFeeMode } from "@/lib/tuitionFee";
 import BuoiChiTiet from "@/components/tutor/BuoiChiTiet";
 
 export const dynamic = "force-dynamic";
 
 export default async function BuoiPage({ params }: { params: Promise<{ courseId: string; dateKey: string }> }) {
   const { courseId, dateKey } = await params;
-  await redirectIfNotTutor(await getSession(), { path: `/lop-cua-toi/buoi/${courseId}/${dateKey}` });
+  const session = await redirectIfNotTutor(await getSession(), { path: `/lop-cua-toi/buoi/${courseId}/${dateKey}` });
   if (!isValidDateKey(dateKey)) notFound();
-  return <Suspense fallback={<div aria-busy="true" className="p-6">Đang tải buổi học…</div>}><BuoiChiTiet courseId={courseId} dateKey={dateKey} /></Suspense>;
+  // HOCPHI-THEO-BUOI: chữ ở khung "chưa chốt" phụ thuộc kiểu phí. Chỉ đọc cột feeMode của lớp mình; lỗi DB → coi như lớp cũ (câu cũ, không hứa việc tính tiền).
+  let perSessionFee = false;
+  try {
+    const c = await prisma.course.findUnique({ where: { id: courseId }, select: { feeMode: true, ownerId: true } });
+    perSessionFee = !!c && c.ownerId === session.userId && isNewFeeMode(c.feeMode) && c.feeMode !== "per_course";
+  } catch { /* giữ câu cũ */ }
+  return <Suspense fallback={<div aria-busy="true" className="p-6">Đang tải buổi học…</div>}><BuoiChiTiet courseId={courseId} dateKey={dateKey} perSessionFee={perSessionFee} /></Suspense>;
 }

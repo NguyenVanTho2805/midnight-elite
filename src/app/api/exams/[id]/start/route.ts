@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { ATTEMPT_SUSPENDED_MESSAGE, ENROLLMENT_SUSPENDED_CODE } from "@/lib/enrollmentMessages";
 import { examPasswordPatch, hasExamPassword, verifyExamPassword } from "@/lib/examPassword";
 import { loadEffectivePolicy } from "@/lib/quizPublication";
 import { attemptsGate } from "@/lib/quizRoom";
@@ -76,17 +77,21 @@ export async function POST(
     // reports/2026-07-13.md Giai đoạn 3); đề miễn phí gắn khoá thì chặn thẳng,
     // không có đường thoát trả phí.
     if (exam.courseId) {
-      const isEnrolledInExamCourse = isEnrollmentActive(
-        await prisma.enrollment.findUnique({
-          where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
-        }),
-      );
+      const enrollmentRow = await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } },
+      });
+      const isEnrolledInExamCourse = isEnrollmentActive(enrollmentRow);
 
       if (!isEnrolledInExamCourse) {
+        // Đã nghỉ lớp (suspended): báo đúng lý do, kể cả đề thu phí hay miễn phí — không nhập nhằng với "chưa ghi danh" / "yêu cầu phí".
+        // Đề thu phí đã được gia sư duyệt tay quyền khách (ExamGuestAccess) thì vẫn theo đường cũ.
+        const granted = exam.price && exam.price > 0
+          ? await prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId: session.userId, examId } } })
+          : null;
+        if (enrollmentRow?.status === "suspended" && !granted) {
+          return NextResponse.json({ error: ATTEMPT_SUSPENDED_MESSAGE, code: ENROLLMENT_SUSPENDED_CODE }, { status: 403 });
+        }
         if (exam.price && exam.price > 0) {
-          const granted = await prisma.examGuestAccess.findUnique({
-            where: { userId_examId: { userId: session.userId, examId } },
-          });
           if (!granted) {
             return NextResponse.json(
               { error: "Đề thi này yêu cầu phí — liên hệ tư vấn để được duyệt quyền vào thi" },

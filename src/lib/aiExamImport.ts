@@ -107,7 +107,8 @@ const responseSchema = {
   required: ["questions"],
 };
 
-const SYSTEM_INSTRUCTION = `Bạn là trợ lý trích xuất câu hỏi thi trắc nghiệm/tự luận từ file đề thi gốc.
+// BU-03: có quy tắc ký hiệu hoá học (Unicode / \mathrm). CHƯA kiểm với khoá Gemini thật (máy phát triển không có GEMINI_API_KEY) — chỉ kiểm được chuỗi prompt (t-chem-lib).
+export const SYSTEM_INSTRUCTION = `Bạn là trợ lý trích xuất câu hỏi thi trắc nghiệm/tự luận từ file đề thi gốc.
 
 Nhiệm vụ: đọc file đề thi (và file đáp án/hướng dẫn giải nếu có) rồi trả về JSON đúng schema — danh sách câu hỏi đã cấu trúc, xác định đúng loại và đáp án đúng.
 
@@ -121,6 +122,8 @@ Quy tắc xác định đáp án đúng:
 - Nếu không có file đáp án, tự giải bài toán để suy ra đáp án đúng — nhưng đây là fallback kém tin cậy hơn, cần cẩn thận.
 
 Công thức toán: giữ nguyên dạng LaTeX, bọc trong $...$ (inline) hoặc $$...$$ (khối riêng dòng), không tự ý đơn giản hóa hay bỏ qua công thức.
+
+Ký hiệu hoá học: công thức và ion hoá học viết bằng ký tự Unicode có sẵn chỉ số trên/dưới, ví dụ H₂O, CO₂, Ca²⁺, SO₄²⁻, C₆H₁₂O₆, và mũi tên phản ứng → hoặc ⇌ — giữ NGUYÊN chỉ số trên/dưới, không viết lại thành H2O, Ca2+ hay SO42-. Khi công thức hoá học phải nằm trong $...$ thì viết bằng \\mathrm{...} để KHÔNG in nghiêng, ví dụ $\\mathrm{H_2O}$, $\\mathrm{Ca^{2+}}$, $\\mathrm{SO_4^{2-}}$; không bao giờ để công thức hoá học in nghiêng như biến số toán (đúng: $\\mathrm{CO_2}$, sai: $CO_2$). Biến số và hàm số toán học vẫn viết LaTeX thường.
 
 Mức độ (NB/TH/VD/VDC): CHỈ điền trường "difficulty" khi đề gốc có ghi RÕ mức độ ngay cạnh câu hỏi đó (vd "Câu 1: Thông hiểu", "[Vận dụng]"). Nếu đề không ghi rõ mức độ cho câu nào, để trống trường đó — TUYỆT ĐỐI không tự suy đoán/áng chừng mức độ.
 

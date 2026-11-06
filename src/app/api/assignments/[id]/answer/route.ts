@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { enrollmentDeniedBody } from "@/lib/suspendedContent";
+import { isLearnerVisible } from "@/lib/lessonStatus";
 
 // GET /api/assignments/[id]/answer — học viên lấy toàn bộ câu hỏi + đáp án
 // đã tự lưu của chính mình, kèm % hoàn thiện và trạng thái khoá. Trước khi
@@ -24,7 +26,7 @@ export async function GET(
       where: { id: assignmentId },
       select: {
         mode: true, dueDate: true,
-        lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } },
+        lesson: { select: { status: true, chapter: { select: { section: { select: { courseId: true } } } } } },
         questions: {
           orderBy: { order: "asc" },
           select: {
@@ -37,7 +39,8 @@ export async function GET(
         },
       },
     });
-    if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
+    // BU-02-PHẲNG (R10): bài tập thuộc mục Nháp/Ẩn ⇒ 404 TRƯỚC kiểm ghi danh.
+    if (!assignment || !isLearnerVisible(assignment.lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
     if (assignment.mode !== "interactive") {
       return NextResponse.json({ error: "Bài tập này không phải kiểu làm trên web" }, { status: 400 });
     }
@@ -47,7 +50,7 @@ export async function GET(
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
     if (!isEnrollmentActive(enrolled)) {
-      return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+      return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
     }
 
     const locked = !assignment.dueDate || new Date() >= assignment.dueDate;
@@ -102,10 +105,11 @@ export async function PATCH(
       where: { id: assignmentId },
       select: {
         mode: true, dueDate: true,
-        lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } },
+        lesson: { select: { status: true, chapter: { select: { section: { select: { courseId: true } } } } } },
       },
     });
-    if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
+    // BU-02-PHẲNG (R10): bài tập thuộc mục Nháp/Ẩn ⇒ 404 TRƯỚC kiểm ghi danh.
+    if (!assignment || !isLearnerVisible(assignment.lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
     if (assignment.mode !== "interactive") {
       return NextResponse.json({ error: "Bài tập này không phải kiểu làm trên web" }, { status: 400 });
     }
@@ -115,7 +119,7 @@ export async function PATCH(
       where: { userId_courseId: { userId: auth.userId, courseId } },
     });
     if (!isEnrollmentActive(enrolled)) {
-      return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+      return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
     }
 
     if (!assignment.dueDate || new Date() >= assignment.dueDate) {

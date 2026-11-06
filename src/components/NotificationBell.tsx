@@ -6,6 +6,7 @@
 // Rung / nảy bật bằng cách gắn lớp thẳng lên DOM (không qua state) nên không dựng lại thành phần mỗi 30 giây khi thăm dò.
 "use client";
 
+import { hideCoinText } from "@/lib/features";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Notification as BellIcon } from "griddy-icons";
@@ -24,7 +25,7 @@ const TYPE_ICON: Record<string, string> = {
   reply_like:      "❤️",
   article_new:     "📰",
   answer_new:      "🙋",
-  answer_accepted: "🪙",
+  answer_accepted: "✅",
   report_penalty:  "⚠️",
 };
 
@@ -126,8 +127,8 @@ export default function NotificationBell() {
                         style={{ borderBottom: "1px solid var(--kin-vien-thuong)", background: n.isRead ? "transparent" : "var(--kin-nhan-nen-nhat)" }}>
                         <span className="text-lg flex-shrink-0 leading-none mt-0.5">{TYPE_ICON[n.type] ?? "🔔"}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{n.title}</p>
-                          <p className="text-xs mt-0.5 leading-snug" style={{ color: "var(--kin-chu-mo)" }}>{n.message}</p>
+                          <p className="text-sm font-bold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{hideCoinText(n.title)}</p>
+                          <p className="text-xs mt-0.5 leading-snug" style={{ color: "var(--kin-chu-mo)" }}>{hideCoinText(n.message)}</p>
                           <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>{timeAgo(n.createdAt)}</p>
                         </div>
                         <span aria-hidden="true" data-read={n.isRead ? "" : undefined} className="kin-dot w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: "var(--kin-nhan-nen)" }} />

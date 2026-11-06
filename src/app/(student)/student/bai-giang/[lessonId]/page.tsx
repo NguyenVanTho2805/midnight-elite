@@ -21,6 +21,7 @@ import { LessonVideo, type PlayerControl } from "@/components/media/LessonVideo"
 import { DocumentRows, AzotaPanel, StampedNotes, parseMaterials } from "@/components/media/StudentLessonPanels";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
+import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -664,16 +665,22 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
   const [ctx, setCtx]               = useState<LessonContext | null>(null);
   const [ctxStatus, setCtxStatus]   = useState<number | null>(null);
+  const [suspended, setSuspended]   = useState<{ contactHref: string | null } | null>(null);
   const [ctxLoading, setCtxLoading] = useState(true);
 
   useEffect(() => {
     setCtxLoading(true);
     setCtx(null);
     setCtxStatus(null);
+    setSuspended(null);
     fetch(`/api/lessons/${params.lessonId}/context`)
       .then(async r => {
         setCtxStatus(r.status);
-        return r.ok ? r.json() : null;
+        if (r.ok) return r.json();
+        // Đã nghỉ lớp (quyết định 06/11/2026): 403 kèm code → trang thông báo riêng, không phải "chưa vào lớp".
+        const body = r.status === 403 ? await r.json().catch(() => null) as { code?: string; contactHref?: string | null } | null : null;
+        if (body?.code === "enrollment_suspended") setSuspended({ contactHref: body.contactHref ?? null });
+        return null;
       })
       .then(data => setCtx(data))
       .catch(() => setCtxStatus(500))
@@ -687,6 +694,8 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
       </div>
     );
   }
+
+  if (!ctx && suspended) return <SuspendedNotice contactHref={suspended.contactHref} />;
 
   if (!ctx) {
     const isForbidden = ctxStatus === 403;

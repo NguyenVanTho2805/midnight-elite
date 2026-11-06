@@ -3,6 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
+import { sanitizeFormulaImgTokens, formulaFieldError } from "@/lib/mathtype/formulaImg";
+import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
+
+// Chữ câu hỏi/đáp án đi thẳng vào DB → lọc token ảnh công thức {{ctimg:…}} (BU-03-MATHTYPE) như mọi đường lưu câu hỏi khác.
+const sanFormula = (s: unknown): string => (typeof s === "string" ? sanitizeFormulaImgTokens(s) : "");
+import { isLearnerVisible } from "@/lib/lessonStatus";
+import { managerOf } from "@/lib/lessonVisibility";
 
 // GET /api/lessons/[id]/assignments — danh sách bài tập tự nộp của 1 bài
 // giảng. Bất kỳ ai đã đăng nhập đều xem được danh sách (giống tài liệu đính
@@ -19,7 +26,18 @@ export async function GET(
 
   const { id: lessonId } = await params;
 
+  // Đã nghỉ lớp (quyết định 06/11/2026): không còn thấy bài tập + bài đã nộp của bài thuộc lớp đó (bài miễn phí thì giữ).
+  if (auth.role === "student") {
+    const blocked = await suspendedLessonBlock(auth.userId, lessonId);
+    if (blocked) return NextResponse.json(blocked, { status: 403 });
+  }
+
   try {
+    // BU-02-PHẲNG (R4): route mở cho mọi tài khoản đăng nhập ⇒ bài Nháp/Ẩn chỉ quản lý lớp thấy; còn lại 404 (kể cả bài không tồn tại, để không phân biệt được).
+    const owner = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { status: true, chapter: { select: { section: { select: { course: { select: { ownerId: true } } } } } } } });
+    if (!owner) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+    if (!isLearnerVisible(owner.status) && !managerOf(auth, owner.chapter.section.course.ownerId))
+      return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
     const assignments = await prisma.assignment.findMany({
       where: { lessonId, mode: { not: "azota" } }, // bài Azota không còn là Assignment (LessonAzotaDone); lọc phòng dữ liệu cũ
       orderBy: { createdAt: "asc" },
@@ -93,6 +111,8 @@ export async function POST(
         const type = q.type === "ESSAY" ? "ESSAY" : "MC";
         const optionsErr = validateQuestionOptions(type, (q.options ?? []).map(o => ({ text: o.text, isCorrect: !!o.isCorrect })));
         if (optionsErr) return NextResponse.json({ error: `Câu ${i + 1}: ${optionsErr}` }, { status: 400 });
+        const fe = formulaFieldError(sanFormula(q.text), `Câu ${i + 1}`) ?? (q.options ?? []).map((o, j) => formulaFieldError(sanFormula(o.text), `Câu ${i + 1}, đáp án ${j + 1}`)).find(Boolean);
+        if (fe) return NextResponse.json({ error: fe }, { status: 400 });
       }
     }
 
@@ -111,12 +131,12 @@ export async function POST(
           questions: {
             create: questions.map((q, i) => ({
               order: i,
-              text: q.text,
+              text: sanFormula(q.text),
               type: q.type === "ESSAY" ? "ESSAY" : "MC",
               points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
               imageUrl: q.imageUrl || null,
               options: {
-                create: q.options.map((o, j) => ({ order: j, text: o.text, isCorrect: !!o.isCorrect })),
+                create: q.options.map((o, j) => ({ order: j, text: sanFormula(o.text), isCorrect: !!o.isCorrect })),
               },
             })),
           },

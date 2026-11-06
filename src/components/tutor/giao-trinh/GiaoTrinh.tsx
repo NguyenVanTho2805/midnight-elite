@@ -1,7 +1,8 @@
-// BU-02 — màn Giáo trình của một lớp (/lop-cua-toi/quan-lop/[id]/giao-trinh). Figma: chưa đối chiếu (606:5, 607:218, 607:491) — dựng theo mô tả mục 5 của đặc tả + token --kin-*.
-// 1600/1280: ba cột — (a) cây Phần › Chương › Bài, (b) ô tải lên chung + mục của bài đang mở theo kiểu, (c) thông tin bài.
-// 390: một cột — nút "Chọn bài" mở cây, hai nút lớn trong ô tải lên, hàng mục xếp dọc, sắp xếp bằng ▲▼ 44px.
-// Ba trạng thái: đang tải (khung xương), lỗi (+ Thử lại), rỗng (lớp chưa có bài: ô tải phóng lớn). Dữ liệu lấy bằng G1; không đọc tên học sinh ở đây.
+// BU-02-PHẲNG — màn Giáo trình của một lớp (/lop-cua-toi/quan-lop/[id]/giao-trinh): DANH SÁCH PHẲNG, một cột. Khung 606:5 (607:218 máy tính, 607:491 điện thoại) chưa đọc được
+// trực tiếp trong phiên dựng này: làm theo mục 5.1–5.5 của dac-ta/BU-02-PHANG.md (chữ từng nút lấy từ bản đối chiếu 05/11).
+// Mỗi mục = một Lesson, có chip KIỂU + chip TRẠNG THÁI (Nháp · Đã đăng · Ẩn). Thêm thẳng vào lớp, không cần chương; "Thêm chương" là hành động phụ (nhóm tuỳ chọn).
+// Mục mới ở dạng Nháp (chỉ gia sư thấy), đăng bằng một chạm. Video CHỈ gắn link YouTube: không có giao diện tải video.
+// Ba trạng thái: đang tải (khung xương), lỗi (+ Thử lại), rỗng (ô tải phóng lớn, không nhắc Phần/Chương). Không đọc/hiện tên học sinh ở màn này.
 "use client";
 import Link from "next/link";
 import { useState } from "react";
@@ -12,106 +13,30 @@ import { KinStatus } from "@/components/kin/Status";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { useKinConfirm } from "@/components/kin/useConfirm";
-import { viewerHref } from "@/lib/library";
 import { giaoTrinhHref, contentHref } from "@/lib/tutorRoutes";
 import { formatMegabytes } from "@/lib/mediaStorage";
-import type { GtItem, GtLesson, ItemKind } from "@/lib/giaoTrinh";
-import { formatDeadlineVn } from "@/components/media/StudentLessonPanels";
+import { moveEntry, type GtEntry, type GtGroup } from "@/lib/giaoTrinh";
+import type { LessonStatus } from "@/lib/lessonStatus";
 import OTaiLen from "./OTaiLen";
-import { useGiaoTrinh } from "./useGiaoTrinh";
+import MucHang from "./MucHang";
+import NganKeoSua, { type SuaThayDoi } from "./NganKeoSua";
+import ThemChuong from "./ThemChuong";
+import { STATUS_LABEL } from "./ChipTrangThai";
+import { useGiaoTrinh, type GtFilter } from "./useGiaoTrinh";
 
-const KIND_LABEL: Record<ItemKind, string> = { video: "Video", document: "Tài liệu", assignment: "Bài tập/Azota", live: "Buổi live", exam: "Bài kiểm tra" };
-const KIND_ORDER: ItemKind[] = ["video", "document", "assignment", "live"];
-const STORAGE_LABEL: Record<GtItem["storage"], string> = { link: "Link ngoài", kin: "Tệp trên KiN (riêng tư)", cloudinary_cu: "Tệp cũ (công khai)" };
-
-/** Nút ▲▼ vuông 44px. */
-function Arrow({ dir, label, disabled, onClick }: { dir: "up" | "down"; label: string; disabled: boolean; onClick: () => void }) {
-  return (
-    <button type="button" aria-label={label} disabled={disabled} onClick={onClick}
-      className="inline-flex items-center justify-center w-11 h-11 flex-shrink-0 rounded-[var(--kin-bo-md)] border border-transparent text-[var(--kin-chu-mo)] enabled:hover:bg-[var(--kin-nen-re-chuot)] enabled:hover:text-[var(--kin-chu-chinh)] disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]">
-      <span aria-hidden>{dir === "up" ? "▲" : "▼"}</span>
-    </button>
-  );
-}
-
-function ItemRow({ it, courseId, onRemove, busy, lessonId }: { it: GtItem; courseId: string; onRemove: () => void; busy: boolean; lessonId: string }) {
-  const href = it.url ? (it.storage === "link" && /^https:\/\//.test(it.url) ? it.url : null) : null;
-  const view = it.kind === "document" && it.url ? viewerHref(it.name, it.url) : null;
-  const sub = [it.label, STORAGE_LABEL[it.storage]].filter(Boolean).join(" · ");
-  return (
-    <li data-gt-muc={it.kind} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-[var(--kin-vien-nhat)] last:border-b-0">
-      <div className="min-w-0 flex-1">
-        <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] break-words">{it.name}</p>
-        <p className="text-[length:var(--kin-co-caption)] leading-5 text-[var(--kin-chu-mo)] break-words">{sub}</p>
-        {it.broken && <p className="mt-1"><KinStatus tone="loi" className="whitespace-normal">Link cũ bị hỏng, hãy gỡ rồi dán lại</KinStatus></p>}
-        {it.warning && !it.broken && <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">{it.warning}</p>}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {view && <Link href={view} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Xem</Link>}
-        {!view && href && <a href={href} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Mở</a>}
-        <Link href={`${giaoTrinhHref(courseId, true)}/xem/${lessonId}`} className={kinButtonClass("ghost")}>Xem như học sinh</Link>
-        <KinButton type="button" variant="danger" disabled={busy} onClick={onRemove} aria-label={`Gỡ ${it.name} khỏi bài`}>Gỡ</KinButton>
-      </div>
-    </li>
-  );
-}
-
-function LessonInfo({ lesson, courseId, onPatch, onDuplicate, onDelete, busy, examCount }: {
-  lesson: GtLesson; courseId: string; busy: boolean; examCount: number;
-  onPatch: (p: Record<string, unknown>, ok?: string) => void; onDuplicate: () => void; onDelete: () => void;
-}) {
-  const [title, setTitle] = useState(lesson.title);
-  const [duration, setDuration] = useState(lesson.duration ?? "");
-  const deadline = formatDeadlineVn(lesson.azotaDeadline);
-  const selfSubmit = lesson.items.find(i => i.kind === "assignment" && i.url == null);
-  return (
-    <aside aria-label="Thông tin bài" className="min-w-0 space-y-5">
-      <KinSectionHead title="Thông tin bài" as="h2" />
-      <div>
-        <label htmlFor="gt-ten" className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tên bài</label>
-        <div className="mt-2 flex gap-2">
-          <input id="gt-ten" className={KIN_FIELD} value={title} maxLength={200} onChange={e => setTitle(e.target.value)} />
-          <KinButton type="button" variant="secondary" disabled={busy || !title.trim() || title.trim() === lesson.title} onClick={() => onPatch({ title: title.trim() }, "Đã đổi tên bài.")}>Lưu</KinButton>
-        </div>
-      </div>
-      <div>
-        <label htmlFor="gt-tl" className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Thời lượng</label>
-        <div className="mt-2 flex gap-2">
-          <input id="gt-tl" className={KIN_FIELD} value={duration} maxLength={40} placeholder="Ví dụ: 45 phút" onChange={e => setDuration(e.target.value)} />
-          <KinButton type="button" variant="secondary" disabled={busy || duration.trim() === (lesson.duration ?? "")} onClick={() => onPatch({ duration: duration.trim() || null }, "Đã lưu thời lượng.")}>Lưu</KinButton>
-        </div>
-      </div>
-      <div>
-        <label className="flex items-start gap-3 min-h-11 py-2 text-[length:var(--kin-co-goc)] leading-5 cursor-pointer">
-          <input type="checkbox" className="mt-0.5 w-5 h-5 flex-shrink-0" checked={lesson.isLocked} disabled={busy} onChange={e => onPatch({ isLocked: e.target.checked }, e.target.checked ? "Đã khoá bài." : "Đã mở khoá bài.")} />
-          <span>Khoá bài này<span className="block text-[var(--kin-chu-mo)]">Học sinh chưa mở được cho tới khi bạn mở khoá.</span></span>
-        </label>
-        <label className="flex items-start gap-3 min-h-11 py-2 text-[length:var(--kin-co-goc)] leading-5 cursor-pointer">
-          <input type="checkbox" className="mt-0.5 w-5 h-5 flex-shrink-0" checked={lesson.isFree} disabled={busy} onChange={e => onPatch({ isFree: e.target.checked }, e.target.checked ? "Bài này cho học thử miễn phí." : "Đã tắt học thử miễn phí.")} />
-          <span>Cho học thử miễn phí<span className="block text-[var(--kin-chu-mo)]">Người chưa vào lớp xem được bài này (cần đăng nhập để mở tệp).</span></span>
-        </label>
-      </div>
-      {deadline && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Hạn Azota: <b className="font-medium">{deadline.text}</b>{deadline.overdue ? " (đã quá hạn)" : ""}</p>}
-      <div className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
-        <p>Bài tập tự nộp: {selfSubmit?.count ?? 0}</p>
-        <Link href={contentHref(true, `/admin/khoa-hoc/${courseId}?tab=chuong-bai`)} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Soạn bài tập ở tab Chương bài</Link>
-      </div>
-      <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bài kiểm tra của lớp · {examCount}</p>
-      <div className="flex flex-wrap gap-2">
-        <Link href={`${giaoTrinhHref(courseId, true)}/xem/${lesson.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
-        <KinButton type="button" variant="secondary" disabled={busy} onClick={onDuplicate}>Nhân bản bài</KinButton>
-        <KinButton type="button" variant="danger" disabled={busy} onClick={onDelete}>Xoá bài</KinButton>
-      </div>
-    </aside>
-  );
-}
+const FILTERS: { key: GtFilter; label: string }[] = [
+  { key: "all", label: "Tất cả" }, { key: "draft", label: STATUS_LABEL.draft }, { key: "published", label: STATUS_LABEL.published }, { key: "hidden", label: STATUS_LABEL.hidden },
+];
+const EXAM_STATE_TONE: Record<string, "xong" | "cho" | "mo"> = { "Sắp mở": "cho", "Đang mở": "xong", "Đã đóng": "mo" };
+const LIST_BOX = "rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden";
 
 export default function GiaoTrinh({ courseId }: { courseId: string }) {
   const g = useGiaoTrinh(courseId);
   const { ask, dialog } = useKinConfirm();
-  const [treeOpen, setTreeOpen] = useState(false);
-  const [adding, setAdding] = useState<string | null>(null);
-  const [addTitle, setAddTitle] = useState("");
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [pageMenu, setPageMenu] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameTitle, setRenameTitle] = useState("");
   const back = { href: `/lop-cua-toi/${courseId}`, label: "← Lớp" };
 
   if (g.load.phase === "loading") return <KinPageSkeleton label="Đang tải giáo trình" rows={5} />;
@@ -132,141 +57,213 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
   }
 
   const snap = g.load.snap;
-  const hasLessons = g.lessons.length > 0;
-  const cur = g.current;
-  const firstChapterId = snap.sections[0]?.chapters[0]?.id ?? null;
-  const newChapterId = cur?.chapterId ?? firstChapterId;
-  const grouped = cur ? KIND_ORDER.map(k => ({ k, rows: cur.lesson.items.filter(i => i.kind === k) })).filter(x => x.rows.length) : [];
+  const entries = g.entries;
+  const groups = snap.groups;
+  const filter = g.filter;
+  const visible = filter === "all" ? entries : entries.filter(e => e.status === filter);
+  const groupIds = new Set(groups.map(x => x.id));
+  const ungrouped = visible.filter(e => e.groupId == null || !groupIds.has(e.groupId));
+  const publishable = entries.filter(e => e.status === "draft" && e.publishBlock == null);
+  const canReorder = filter === "all";
+  const first = entries[0] ?? null;
+  const busy = !!g.busy;
+  const rowNote = (id: string) => (g.notice?.forId === id ? { tone: g.notice.tone, text: g.notice.text } : null);
+  const pageNotice = g.notice && !g.notice.forId ? g.notice : null;
 
-  async function removeItem(it: GtItem) {
-    if (!cur) return;
-    if (!(await ask({ title: "Gỡ mục này khỏi bài?", message: `“${it.name}” sẽ không còn hiện cho học sinh ở bài này. Tệp đã tải lên KiN vẫn còn trong Thư viện của bạn.`, confirmLabel: "Gỡ khỏi bài" }))) return;
-    await g.removeItem(cur.lesson.id, it.key);
+  async function setStatus(e: GtEntry, to: LessonStatus) {
+    if (to === "published" && e.isFree && !(await ask({
+      title: `Đăng “${e.title}”?`,
+      message: "Mục này đang cho học thử miễn phí: người chưa vào lớp cũng sẽ thấy khi bạn đăng.",
+      confirmLabel: "Đăng mục này", tone: "thuong",
+    }))) return;
+    const text = to === "published" ? (e.status === "hidden" ? `Đã hiện lại “${e.title}” cho học sinh.` : `Đã đăng “${e.title}”. Học sinh đã vào lớp thấy mục này.`)
+      : to === "hidden" ? `Đã ẩn “${e.title}”. Học sinh không còn thấy mục này, tiến độ của họ vẫn được giữ.` : `Đã đưa “${e.title}” về Nháp.`;
+    await g.setStatus(e.id, to, text);
   }
-  async function removeLesson() {
-    if (!cur) return;
-    if (!(await ask({ title: `Xoá bài “${cur.lesson.title}”?`, message: "Mọi mục trong bài (link, tài liệu, bài tập tự nộp) sẽ bị xoá cùng. Việc này không hoàn tác được.", confirmLabel: "Xoá bài" }))) return;
-    await g.deleteLesson(cur.lesson.id);
+  async function publishAll() {
+    const free = publishable.filter(e => e.isFree).length;
+    if (free > 0 && !(await ask({
+      title: `Đăng ${publishable.length} mục Nháp?`,
+      message: `Có ${free} mục đang cho học thử miễn phí: người chưa vào lớp cũng sẽ thấy các mục đó.`,
+      confirmLabel: "Đăng tất cả", tone: "thuong",
+    }))) return;
+    await g.publishMany(publishable.map(e => e.id));
+  }
+  async function removeEntry(e: GtEntry) {
+    if (!(await ask({
+      title: `Xoá mục “${e.title}”?`,
+      message: "Mọi nội dung trong mục (link, tài liệu, bài tập tự nộp) sẽ bị xoá cùng. Việc này không hoàn tác được. Chỉ muốn học sinh không thấy nữa? Dùng Ẩn: không mất gì.",
+      confirmLabel: "Xoá mục",
+    }))) return;
+    if (await g.deleteEntry(e.id)) g.setEditId(null);
+  }
+  async function ungroup(grp: GtGroup) {
+    if (!(await ask({
+      title: `Bỏ nhóm “${grp.title}”?`,
+      message: "Các mục trong nhóm vẫn còn, chuyển về “Chưa nhóm”. Chỉ nhóm bị xoá.",
+      confirmLabel: "Bỏ nhóm", tone: "thuong",
+    }))) return;
+    await g.ungroup(grp.id);
+  }
+  async function saveEdit(e: GtEntry, c: SuaThayDoi) {
+    const fields = c.title !== e.title || c.duration !== (e.duration ?? null) || c.isLocked !== e.isLocked || c.isFree !== e.isFree;
+    if (fields && !(await g.patchLesson(e.id, { title: c.title, duration: c.duration, isLocked: c.isLocked, isFree: c.isFree }, `Đã lưu “${c.title}”.`))) return false;
+    if (c.groupId !== (e.groupId ?? null) && !(await g.moveToGroup(e.id, c.groupId))) return false;
+    g.setEditId(null);
+    return true;
+  }
+  async function removeContent(e: GtEntry, key: string, name: string) {
+    if (!(await ask({ title: "Gỡ nội dung này khỏi mục?", message: `“${name}” sẽ không còn hiện cho học sinh ở mục này. Tệp đã tải lên KiN vẫn còn trong Thư viện của bạn.`, confirmLabel: "Gỡ khỏi mục" }))) return;
+    await g.removeItem(e.id, key);
   }
 
-  const tree = (
-    <nav aria-label="Cây bài của lớp" data-gt-cay className="min-w-0">
-      {snap.sections.map((s, si) => (
-        <div key={s.id} className="mb-5">
-          <div className="flex items-center gap-1">
-            <p className="flex-1 min-w-0 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)] break-words">{s.title}</p>
-            <Arrow dir="up" label={`Đưa phần “${s.title}” lên`} disabled={si === 0 || !!g.busy} onClick={() => g.move("section", s.id, -1)} />
-            <Arrow dir="down" label={`Đưa phần “${s.title}” xuống`} disabled={si === snap.sections.length - 1 || !!g.busy} onClick={() => g.move("section", s.id, 1)} />
-          </div>
-          {s.chapters.map((c, ci) => (
-            <div key={c.id} className="mt-2 pl-3 border-l border-[var(--kin-vien-nhat)]">
-              <div className="flex items-center gap-1">
-                <p className="flex-1 min-w-0 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] break-words">{c.title}</p>
-                <Arrow dir="up" label={`Đưa chương “${c.title}” lên`} disabled={ci === 0 || !!g.busy} onClick={() => g.move("chapter", c.id, -1)} />
-                <Arrow dir="down" label={`Đưa chương “${c.title}” xuống`} disabled={ci === s.chapters.length - 1 || !!g.busy} onClick={() => g.move("chapter", c.id, 1)} />
-              </div>
-              <ul>
-                {c.lessons.map((l, li) => (
-                  <li key={l.id} className="flex items-center gap-1">
-                    <button type="button" aria-current={l.id === g.lessonId ? "true" : undefined} onClick={() => { g.setLessonId(l.id); setTreeOpen(false); }}
-                      className={`flex-1 min-w-0 min-h-11 flex items-center justify-between gap-2 px-2 rounded-[var(--kin-bo-md)] text-left text-[length:var(--kin-co-goc)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] ${l.id === g.lessonId ? "bg-[var(--kin-nen-dang-chon)] font-medium text-[var(--kin-chu-chinh)]" : "text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
-                      <span className="min-w-0 break-words">{l.title}{l.isLocked ? " (khoá)" : ""}</span>
-                      <span className="flex-shrink-0 tabular-nums text-[var(--kin-chu-mo)]" aria-label={`${l.items.length} mục`}>{l.items.length}</span>
-                    </button>
-                    <Arrow dir="up" label={`Đưa bài “${l.title}” lên`} disabled={li === 0 || !!g.busy} onClick={() => g.move("lesson", l.id, -1)} />
-                    <Arrow dir="down" label={`Đưa bài “${l.title}” xuống`} disabled={li === c.lessons.length - 1 || !!g.busy} onClick={() => g.move("lesson", l.id, 1)} />
-                  </li>
-                ))}
-              </ul>
-              {adding === c.id ? (
-                <form className="mt-1 mb-2 flex gap-2" onSubmit={async ev => { ev.preventDefault(); if (await g.addLesson(c.id, addTitle)) { setAdding(null); setAddTitle(""); setTreeOpen(false); } }}>
-                  <label htmlFor={`gt-bai-${c.id}`} className="sr-only">Tên bài mới trong {c.title}</label>
-                  <input id={`gt-bai-${c.id}`} autoFocus className={KIN_FIELD} value={addTitle} maxLength={120} onChange={e => setAddTitle(e.target.value)} placeholder="Tên bài mới" />
-                  <KinButton type="submit" loading={g.busy === `bai:${c.id}`} loadingLabel="Đang thêm…">Thêm</KinButton>
-                  <KinButton type="button" variant="ghost" onClick={() => { setAdding(null); setAddTitle(""); }}>Bỏ</KinButton>
-                </form>
-              ) : (
-                <button type="button" onClick={() => { setAdding(c.id); setAddTitle(""); }} className="min-h-11 px-2 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">+ Bài</button>
-              )}
-            </div>
-          ))}
-        </div>
+  const renderRows = (list: GtEntry[]) => (
+    <ul aria-label="Các mục" className={LIST_BOX}>
+      {list.map(e => (
+        <MucHang key={e.id} entry={e} courseId={courseId} groups={groups}
+          canUp={canReorder && moveEntry(entries, e.id, -1).ok} canDown={canReorder && moveEntry(entries, e.id, 1).ok}
+          busy={busy} note={rowNote(e.id)}
+          onMove={dir => void g.move(e.id, dir)} onEdit={() => g.setEditId(e.id)} onSetStatus={to => void setStatus(e, to)}
+          onDuplicate={() => void g.duplicateEntry(e)} onDelete={() => void removeEntry(e)} onMoveGroup={gid => void g.moveToGroup(e.id, gid)} />
       ))}
-    </nav>
+    </ul>
   );
+
+  const headerActions = (
+    <>
+      <div className="max-md:hidden flex items-center gap-3">
+        <KinButton type="button" variant="secondary" aria-expanded={addingGroup} onClick={() => setAddingGroup(a => !a)}>Thêm chương</KinButton>
+        {first && <Link href={`${giaoTrinhHref(courseId, true)}/xem/${first.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>}
+      </div>
+      <KinButton type="button" variant="secondary" className="md:hidden" aria-expanded={pageMenu} aria-label="Thêm thao tác của trang" onClick={() => setPageMenu(m => !m)}><span aria-hidden>⋯</span></KinButton>
+    </>
+  );
+
+  const empty = entries.length === 0 && groups.length === 0;
+  const showGroupHeads = groups.length > 0;
 
   return (
     <KinPage>
-      <KinPageHeader title="Giáo trình" sub={snap.courseName} back={back}
-        actions={cur ? <Link href={`${giaoTrinhHref(courseId, true)}/xem/${cur.lesson.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link> : undefined} />
+      <KinPageHeader title="Giáo trình" sub={snap.courseName} back={back} actions={headerActions} />
 
-      {g.notice && (
-        <p role={g.notice.tone === "err" ? "alert" : "status"} data-gt-thong-bao className={`mb-4 text-[length:var(--kin-co-goc)] ${g.notice.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{g.notice.text}</p>
+      {pageMenu && (
+        <div data-gt-menu-trang className="md:hidden mb-4 flex flex-col gap-2">
+          <KinButton type="button" variant="secondary" onClick={() => { setAddingGroup(true); setPageMenu(false); }}>Thêm chương</KinButton>
+          {first && <Link href={`${giaoTrinhHref(courseId, true)}/xem/${first.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>}
+        </div>
       )}
 
-      {!hasLessons ? (
-        <div className="max-w-3xl">
-          <KinEmptyState title="Lớp chưa có bài nào">Dán link hoặc thả tệp đầu tiên vào ô bên dưới. KiN sẽ tự tạo Phần 1 › Chương 1 và bài đầu tiên cho bạn.</KinEmptyState>
-          <OTaiLen large courseId={courseId} config={snap.config} currentLesson={null} newChapterId={newChapterId}
-            // Thêm xong lớp có bài ⇒ bố cục đổi, ô tải này bị dựng lại và mất dòng "Đã thêm": báo ở thông báo cấp trang để người dùng vẫn thấy kết quả.
-            onAdd={async (...a: Parameters<typeof g.addItem>) => { const r = await g.addItem(...a); if (r.ok && !r.duplicate) g.setNotice({ tone: "ok", text: `Đã thêm vào ${r.lessonTitle ?? "bài đầu tiên"}. KiN đã tạo Phần 1 › Chương 1 cho lớp.` }); return r; }} onUndo={(l, k) => g.removeItem(l, k)} />
-        </div>
-      ) : (
-        <div className="grid lg:grid-cols-[320px_minmax(0,1fr)_300px] gap-x-[var(--kin-cach-cot)] gap-y-[var(--kin-cach-muc)] items-start">
-          <div className="min-w-0">
-            <KinButton type="button" variant="secondary" block className="lg:hidden justify-between" aria-expanded={treeOpen} onClick={() => setTreeOpen(o => !o)}
-              trailing={<span aria-hidden>{treeOpen ? "▲" : "▼"}</span>}>
-              <span className="truncate">{treeOpen ? "Đóng danh sách bài" : `Chọn bài: ${cur?.lesson.title ?? "—"}`}</span>
-            </KinButton>
-            <div className={`${treeOpen ? "block mt-3" : "hidden"} lg:block`}>
-              <div className="max-lg:hidden"><KinSectionHead title="Bài của lớp" as="h2" /></div>
-              <div className="lg:mt-3">{tree}</div>
-            </div>
-          </div>
+      {pageNotice && (
+        <p role={pageNotice.tone === "err" ? "alert" : "status"} data-gt-thong-bao className={`mb-4 text-[length:var(--kin-co-goc)] ${pageNotice.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{pageNotice.text}</p>
+      )}
 
-          <div className="min-w-0 space-y-[var(--kin-cach-muc)]">
-            <OTaiLen courseId={courseId} config={snap.config} currentLesson={cur ? { id: cur.lesson.id, title: cur.lesson.title } : null} newChapterId={newChapterId}
-              onAdd={g.addItem} onUndo={(l, k) => g.removeItem(l, k)} />
+      {addingGroup && <ThemChuong busy={g.busy === "nhom:moi"} onSubmit={g.createGroup} onClose={() => setAddingGroup(false)} />}
 
-            <section aria-labelledby="gt-muc">
-              <KinSectionHead id="gt-muc" title={cur ? `Mục trong bài: ${cur.lesson.title}` : "Mục trong bài"} as="h2" />
-              {!cur || grouped.length === 0 ? (
-                <KinEmptyState title="Bài này chưa có mục nào">Dán link hoặc thả tệp vào ô phía trên để thêm video, tài liệu, bài tập hoặc buổi live.</KinEmptyState>
-              ) : (
-                <div className="mt-4 space-y-5">
-                  {grouped.map(({ k, rows }) => (
-                    <div key={k}>
-                      <h3 className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{KIND_LABEL[k]} · {rows.length}</h3>
-                      <ul aria-label={KIND_LABEL[k]} className="mt-2 rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
-                        {rows.map(it => <ItemRow key={it.key} it={it} courseId={courseId} lessonId={cur.lesson.id} busy={!!g.busy} onRemove={() => void removeItem(it)} />)}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+      <div className={empty ? "max-w-3xl" : "max-w-[960px] space-y-[var(--kin-cach-muc)]"}>
+        {empty && <KinEmptyState key="gt-rong" title="Lớp chưa có mục nào">Dán link YouTube hoặc thả tệp đầu tiên. Mục mới ở dạng Nháp, bạn đăng khi sẵn sàng.</KinEmptyState>}
+        <OTaiLen key="gt-o-tai" large={empty} courseId={courseId} config={snap.config} entries={entries} onAdd={g.addItem}
+          onUndo={i => (i.createdLesson ? g.deleteEntry(i.lessonId) : g.removeItem(i.lessonId, i.key))} />
+        {!empty && (
+          <>
+
+          <section aria-labelledby="gt-ds">
+            <KinSectionHead id="gt-ds" title={`Các mục · ${entries.length}`} as="h2" />
+            <p data-gt-nhac-nhap className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Mục Nháp và Ẩn chỉ gia sư thấy. Học sinh chỉ thấy mục Đã đăng.</p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div role="group" aria-label="Lọc theo trạng thái" className="flex gap-2 overflow-x-auto max-w-full">
+                {FILTERS.map(f => {
+                  const n = f.key === "all" ? entries.length : snap.counts[f.key];
+                  return (
+                    <KinButton key={f.key} type="button" variant={filter === f.key ? "primary" : "secondary"} aria-pressed={filter === f.key} onClick={() => g.setFilter(f.key)} data-gt-loc={f.key}>
+                      {f.label} {n}
+                    </KinButton>
+                  );
+                })}
+              </div>
+              {publishable.length > 0 && (
+                <KinButton type="button" variant="secondary" loading={g.busy === "tt:lo"} loadingLabel="Đang đăng…" disabled={busy} onClick={() => void publishAll()}>Đăng tất cả mục Nháp ({publishable.length})</KinButton>
               )}
-            </section>
+            </div>
+            {!canReorder && <p className="mt-2 text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Đang lọc theo trạng thái. Chọn “Tất cả” để đổi thứ tự bằng mũi tên.</p>}
 
-            {snap.exams.length > 0 && (
-              <section aria-labelledby="gt-kt">
-                <KinSectionHead id="gt-kt" title={`Bài kiểm tra của lớp · ${snap.exams.length}`} as="h2" />
-                <ul className="mt-3 rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden">
-                  {snap.exams.map(e => (
-                    <li key={e.key} className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--kin-vien-nhat)] last:border-b-0">
-                      <span className="min-w-0 break-words text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">{e.name}</span>
-                      {e.href && <Link href={e.href} className={kinButtonClass("secondary")}>Mở đề</Link>}
+            <div className="mt-4 space-y-5">
+              {visible.length === 0 && (groups.length === 0 || filter !== "all") ? (
+                <KinEmptyState title={`Chưa có mục ${STATUS_LABEL[filter === "all" ? "draft" : filter].toLowerCase()} nào`}
+                  action={<KinButton type="button" variant="secondary" onClick={() => g.setFilter("all")}>Xem tất cả mục</KinButton>}>
+                  Chọn “Tất cả” để thấy mọi mục của lớp.
+                </KinEmptyState>
+              ) : (
+                <>
+                  {ungrouped.length > 0 && (
+                    <div data-gt-khoi="chua-nhom">
+                      {showGroupHeads && <h3 className="mb-2 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Chưa nhóm · {ungrouped.length}</h3>}
+                      {renderRows(ungrouped)}
+                    </div>
+                  )}
+                  {groups.map(grp => {
+                    const rows = visible.filter(e => e.groupId === grp.id);
+                    if (filter !== "all" && rows.length === 0) return null;
+                    return (
+                      <div key={grp.id} data-gt-khoi="nhom" data-gt-nhom={grp.id}>
+                        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                          {renaming === grp.id ? (
+                            <form className="flex flex-1 min-w-0 flex-col sm:flex-row gap-2" onSubmit={async ev => { ev.preventDefault(); if (await g.renameGroup(grp.id, renameTitle)) setRenaming(null); }}>
+                              <label htmlFor={`gt-doi-ten-${grp.id}`} className="sr-only">Tên mới của nhóm {grp.title}</label>
+                              <input id={`gt-doi-ten-${grp.id}`} autoFocus className={KIN_FIELD} value={renameTitle} maxLength={120} onChange={e => setRenameTitle(e.target.value)} />
+                              <KinButton type="submit" loading={g.busy === `nhom:${grp.id}`} loadingLabel="Đang lưu…">Lưu tên</KinButton>
+                              <KinButton type="button" variant="ghost" onClick={() => setRenaming(null)}>Bỏ</KinButton>
+                            </form>
+                          ) : (
+                            <>
+                              <h3 className="flex-1 min-w-0 break-words text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{grp.title} · {rows.length}</h3>
+                              <KinButton type="button" variant="ghost" disabled={busy} onClick={() => { setRenaming(grp.id); setRenameTitle(grp.title); }} aria-label={`Đổi tên nhóm ${grp.title}`}>Đổi tên</KinButton>
+                              <KinButton type="button" variant="ghost" disabled={busy} onClick={() => void ungroup(grp)} aria-label={`Bỏ nhóm ${grp.title}`}>Bỏ nhóm</KinButton>
+                            </>
+                          )}
+                        </div>
+                        {rows.length ? renderRows(rows) : <p className="px-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhóm này chưa có mục. Dùng “Chuyển nhóm” ở một mục để đưa vào đây.</p>}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          </section>
+
+          {snap.exams.length > 0 && (
+            <section aria-labelledby="gt-kt">
+              <KinSectionHead id="gt-kt" title={`Bài kiểm tra của lớp · ${snap.exams.length}`} as="h2" />
+              <ul className={`mt-3 ${LIST_BOX}`}>
+                {snap.exams.map(x => {
+                  const href = x.href ? (x.href.startsWith("/admin") ? contentHref(true, x.href) : x.href) : null;
+                  const tone = EXAM_STATE_TONE[x.label];
+                  return (
+                    <li key={x.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-[var(--kin-vien-nhat)] last:border-b-0">
+                      <div className="min-w-0 flex flex-wrap items-center gap-x-2">
+                        <span className="min-w-0 break-words text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">{x.name}</span>
+                        {tone && <KinStatus tone={tone}>{x.label}</KinStatus>}
+                      </div>
+                      {href && <Link href={href} className={kinButtonClass("secondary")} aria-label={`Mở đề ${x.name}`}>Mở đề</Link>}
                     </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-              Kho tài liệu của bạn: đã dùng {formatMegabytes(snap.config.document.usedBytes)} / {formatMegabytes(snap.config.document.quotaBytes)}. Video chỉ là link tới nơi bạn đăng (YouTube, Drive…) trừ khi KiN bật tải video lên.
-            </p>
-          </div>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+            Kho tài liệu của bạn: đã dùng {formatMegabytes(snap.config.document.usedBytes)} / {formatMegabytes(snap.config.document.quotaBytes)}.
+          </p>
+          </>
+        )}
+      </div>
 
-          {cur && <LessonInfo key={cur.lesson.id} lesson={cur.lesson} courseId={courseId} busy={!!g.busy} examCount={snap.exams.length}
-            onPatch={(p, ok) => void g.patchLesson(cur.lesson.id, p, ok)} onDuplicate={() => void g.duplicateLesson(cur.chapterId, cur.lesson)} onDelete={() => void removeLesson()} />}
-        </div>
+      {g.editing && (
+        <NganKeoSua key={g.editing.id} entry={g.editing} courseId={courseId} groups={groups} busy={busy}
+          error={g.notice?.tone === "err" && g.notice.forId === g.editing.id ? g.notice.text : null}
+          onSave={c => saveEdit(g.editing as GtEntry, c)} onClose={() => g.setEditId(null)}
+          onRemoveItem={it => void removeContent(g.editing as GtEntry, it.key, it.name)}
+          onDuplicate={() => void g.duplicateEntry(g.editing as GtEntry)} onDelete={() => void removeEntry(g.editing as GtEntry)} />
       )}
       {dialog}
     </KinPage>

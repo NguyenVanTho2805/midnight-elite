@@ -1,4 +1,4 @@
-// G2 / G3 (BU-02) — thêm / gỡ MỘT mục nội dung của bài. Quyền: gia sư đã duyệt và là chủ lớp (requireCourseTutor: 401 / 403 / 404).
+// G2 / G3 (BU-02 + BU-02-PHẲNG) — G2: không `lessonId` ⇒ tạo MỤC MỚI (Nháp, hoặc Đã đăng nếu publish:true); có `lessonId` ⇒ gắn thêm nội dung. G3: gỡ một nội dung. Quyền: gia sư đã duyệt và là chủ lớp (requireCourseTutor: 401 / 403 / 404).
 // POST nhận JSON (client fetch) hoặc form (application/x-www-form-urlencoded → 303 + ?ok=1 | ?loi=link|gioi-han|quyen). Cùng một handler, rẽ theo Content-Type.
 import { NextRequest, NextResponse } from "next/server";
 import { requireCourseTutor } from "@/lib/enrollServer";
@@ -28,14 +28,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cou
   const keepLesson = lessonId ? `&lessonId=${encodeURIComponent(lessonId)}` : "";
   if (!url) return isForm ? back(`loi=link${keepLesson}`) : NextResponse.json({ error: "Chưa dán link hoặc chọn tệp." }, { status: 400, headers: NO_STORE });
 
-  const input: AddItemInput = { url, lessonId, chapterId: str(raw.chapterId), newLessonTitle: str(raw.newLessonTitle), name: str(raw.name), from: raw.from === "library" ? "library" : undefined, slot: (["video", "live", "azota", "document"] as const).find(x => x === raw.slot) };
+  const input: AddItemInput = { url, lessonId, chapterId: str(raw.chapterId), newLessonTitle: str(raw.newLessonTitle), name: str(raw.name), from: raw.from === "library" ? "library" : undefined, slot: (["video", "live", "azota", "document"] as const).find(x => x === raw.slot), publish: raw.publish === true || raw.publish === "1" || raw.publish === "true" };
   let r;
   try { r = await addItem(courseId, auth.session.userId, input); }
   catch (e) { console.error("[POST giao-trinh/muc]", courseId, e); return isForm ? back(`loi=link${keepLesson}`) : NextResponse.json({ error: "Thêm mục thất bại, hãy thử lại." }, { status: 500, headers: NO_STORE }); }
 
   if (isForm) return r.ok ? back(`ok=1&lessonId=${encodeURIComponent(r.lessonId)}`) : back(`loi=${r.code === "khong-co" ? "link" : r.code}${keepLesson}`);
   if (!r.ok) return NextResponse.json({ error: r.error, ...(r.moveTo ? { moveTo: r.moveTo } : {}) }, { status: r.status, headers: NO_STORE });
-  return NextResponse.json({ item: r.item, lessonId: r.lessonId, created: r.created, warning: r.warning, ...(r.duplicate ? { duplicate: true } : {}) }, { status: r.status, headers: NO_STORE });
+  return NextResponse.json({ item: r.item, lessonId: r.lessonId, status: r.lessonStatus, created: r.created, warning: r.warning, ...(r.duplicate ? { duplicate: true } : {}) }, { status: r.status, headers: NO_STORE });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {

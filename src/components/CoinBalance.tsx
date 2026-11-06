@@ -2,7 +2,14 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@/hooks/useWallet";
 
+import { COIN_VISIBLE } from "@/lib/features";
+
+/** Ẩn hẳn khi COIN_VISIBLE = false (không gọi ví, không dựng gì). */
 export default function CoinBalance() {
+  return COIN_VISIBLE ? <CoinBalanceInner /> : null;
+}
+
+function CoinBalanceInner() {
   const { balance, loading, refetch } = useWallet();
   const [earned, setEarned] = useState(0);
 

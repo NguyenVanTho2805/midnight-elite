@@ -1,4 +1,5 @@
 import { normalizeHint } from "@/lib/examCorrection";
+import { sanitizeFormulaImgTokens as sanFormula } from "@/lib/mathtype/formulaImg";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
@@ -65,15 +66,15 @@ export async function PUT(
         where: { id },
         data: {
           type: questionType,
-          text: text.trim(),
+          text: sanFormula(text.trim()),
           imageUrl: imageUrl?.trim() || null,
           points: typeof points === "number" && points > 0 ? points : 1,
-          explanation: explanation?.trim() || null,
-          hint: hintN.value,
+          explanation: explanation?.trim() ? sanFormula(explanation.trim()) : null,
+          hint: hintN.value == null ? hintN.value : sanFormula(hintN.value),
           categoryId,
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,
-          contentHash: computeContentHash(text),
+          contentHash: computeContentHash(sanFormula(text.trim())), // băm trên chuỗi ĐÃ lọc = chuỗi thật được lưu
           // Giai đoạn 6 — sửa nội dung làm mất hiệu lực trạng thái duyệt cũ:
           // teacher sửa → luôn về "draft" (kể cả đang "pending"/"approved",
           // phải gửi duyệt lại) và xoá lý do từ chối cũ (đã sửa theo góp ý);
@@ -84,7 +85,7 @@ export async function PUT(
           options: {
             create: (options ?? []).map((o, idx) => ({
               order: idx,
-              text: o.text.trim(),
+              text: sanFormula(o.text.trim()),
               isCorrect: !!o.isCorrect,
               subLabel: o.subLabel ?? null,
             })),

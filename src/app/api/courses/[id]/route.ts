@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
+import { isSuspended, contactTutorHref } from "@/lib/suspendedContent";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { pruneTreeForViewer } from "@/lib/lessonStatus";
 import { canViewAllMaterials, isCourseManager, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -45,9 +47,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         enrolled = await prisma.enrollment.findUnique({
           where: { userId_courseId: { userId: session.userId, courseId: id } },
         });
-        // "pending_consent" chưa được học, "suspended" chỉ xem lại nhưng
-        // không có hoạt động mới — hasAccess ở route này quyết định mở khoá
-        // toàn bộ lessons, nên dùng active làm chuẩn.
+        // "pending_consent" chưa được học, "suspended" (đã nghỉ lớp) cũng không xem được nữa (quyết định 06/11/2026) — hasAccess ở route này
+        // quyết định mở khoá toàn bộ lessons, nên dùng active làm chuẩn.
         hasAccess = isEnrollmentActive(enrolled);
       }
     }
@@ -56,6 +57,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (!course.status && !hasAccess) {
       return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
     }
+
+    // BU-02-PHẲNG (R1): chỉ quản lý lớp (quản trị / gia sư chủ) thấy mục Nháp và Ẩn. Học sinh (kể cả đã ghi danh), khách, gia sư khác chỉ thấy mục Đã đăng.
+    // Lọc TRƯỚC redact để tên/link mục nháp không đi vào bất kỳ nhánh nào của câu trả lời.
+    const isManager = session ? isCourseManager({ userId: session.userId, role: session.role, adminRole: session.adminRole }, course.ownerId) : false;
+    course.sections = pruneTreeForViewer({ sections: course.sections }, isManager).sections;
 
     // Học viên đã mua/đã enroll (hoặc admin) thì mọi bài học đều mở khoá,
     // bất kể cờ isLocked tĩnh trong DB — isLocked chỉ còn ý nghĩa cho khách chưa mua.
@@ -78,7 +84,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // BU-01: nhãn "Miễn phí" tính sẵn bằng isFreeClass (cùng điều kiện mọi nơi); joinPolicy đã nằm trong dòng Course.
     const rated = await loadFeeRateCourseIds([course.id]);
     const isFree = isFreeClass({ price: course.price, tag: course.tag, hasFeeRate: rated.has(course.id) });
-    return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree });
+    // Đã nghỉ lớp (quyết định 06/11/2026): thêm `suspended` để trang "Lớp của tôi" hiện thông báo + nút liên hệ gia sư thay vì bài học. Chỉ cho CHÍNH em đó.
+    const suspended = isSuspended(enrolled) ? { contactHref: contactTutorHref({ id: course.id, ownerId: course.ownerId }) } : undefined;
+    return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}) });
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

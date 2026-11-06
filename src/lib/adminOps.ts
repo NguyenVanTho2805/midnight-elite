@@ -4,6 +4,7 @@
 //  • Nhật ký kiểm toán KHÔNG hiện tên, SĐT, ngày sinh của trẻ: người thực hiện chỉ hiện TÊN khi là nhân sự (role admin), còn lại chỉ hiện vai.
 //    Phần `metadata` của AuditLog không bao giờ được đưa ra giao diện (có thể chứa tên học sinh).
 //  • Không bịa số liệu: mục chưa có dữ liệu thật thì ghi "chưa có".
+import { COIN_VISIBLE, hideCoin } from "@/lib/features";
 import { isTrialMode } from "@/lib/trialMode";
 import { isPlanEnforced } from "@/lib/planLimits";
 import { ROLE_PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
@@ -24,7 +25,7 @@ export function deployFlags(env: Env = process.env): FlagView[] {
   const guest = env.KIN_GUEST_QUESTIONS === "1";
   return [
     { key: "KIN_TRIAL_MODE", label: "Miễn phí toàn bộ (chạy thử)", on: trial, state: trial ? "Đang bật" : "Đang tắt",
-      note: trial ? "Chưa ai cần mua gói hay nạp Coin; các đường tính tiền hiện thông báo miễn phí." : "Các đường mua gói và nạp Coin hoạt động như thiết kế." },
+      note: trial ? (COIN_VISIBLE ? "Chưa ai cần mua gói hay nạp Coin; các đường tính tiền hiện thông báo miễn phí." : "Chưa ai cần mua gói; các đường tính tiền hiện thông báo miễn phí.") : (COIN_VISIBLE ? "Các đường mua gói và nạp Coin hoạt động như thiết kế." : "Các đường mua gói hoạt động như thiết kế.") },
     { key: "KIN_PLAN_ENFORCE", label: "Áp hạn mức gói", on: enforce, state: enforce ? "Đang bật" : "Đang tắt",
       note: enforce ? "Chỉ chặn TẠO MỚI khi chạm trần; lớp, điểm danh, phiếu và xuất dữ liệu luôn giữ nguyên." : preview && env.KIN_PLAN_ENFORCE === "1" ? "Bản xem trước luôn tắt, dù biến đã đặt." : "Không ai bị chặn; hệ thống chỉ ghi số đo để chọn thời điểm bật." },
     { key: "PUSH_ENABLED", label: "Thông báo đẩy", on: push, state: push ? "Đang bật" : "Đang tắt",
@@ -154,12 +155,12 @@ const RESOURCE_LABEL: Record<string, string> = {
   ThreadReport: "Báo cáo bài viết", AnswerReport: "Báo cáo câu trả lời", CourseReview: "Đánh giá khoá học", thread: "Bài cộng đồng",
 };
 export function auditActionLabel(action: string): string {
-  if (ACTION_LABEL[action]) return ACTION_LABEL[action];
+  if (ACTION_LABEL[action]) return hideCoin(ACTION_LABEL[action]);
   const [res, ev] = action.split(".");
   return ev ? `${res.replace(/_/g, " ")} · ${ev.replace(/[._]/g, " ")}` : action;
 }
-export function auditResourceLabel(type: string): string { return RESOURCE_LABEL[type] ?? type; }
-export const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, "vi"));
+export function auditResourceLabel(type: string): string { return hideCoin(RESOURCE_LABEL[type] ?? type); }
+export const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label: hideCoin(label) })).sort((a, b) => a.label.localeCompare(b.label, "vi"));
 
 export interface AuditActorIn { role: string | null; adminRole: string | null; name: string | null }
 const ADMIN_ROLE_LABEL: Record<string, string> = { admin_super: "Quản trị cấp 1", admin_content: "Quản trị nội dung", teacher: "Gia sư" };
@@ -250,7 +251,7 @@ export function buildTodayList(c: TodayCounts): TodayItem[] {
     { key: "tra-loi", group: "duyet", label: "Câu trả lời bị báo cáo", count: c.answerReports, href: queueHref("tra-loi"), hint: "Xác nhận vi phạm có thể trừ lại thưởng; đọc kỹ trước khi bấm" },
     c.reviewsPending == null ? null : { key: "danh-gia", group: "duyet", label: "Đánh giá khoá học chờ duyệt", count: c.reviewsPending, href: queueHref("danh-gia"), hint: "Duyệt hoặc từ chối" },
     c.guestQuestions == null ? null : { key: "khach-hoi", group: "duyet", label: "Câu hỏi của khách chờ duyệt", count: c.guestQuestions, href: queueHref("khach-hoi"), hint: "Đọc kỹ trước khi cho hiện công khai" },
-    c.topupsPending === null ? null : { key: "nap-coin", group: "duyet", label: "Yêu cầu nạp Coin chờ duyệt", count: c.topupsPending, href: queueHref("nap-coin"), hint: "Đối chiếu sao kê rồi duyệt" },
+    c.topupsPending === null || !COIN_VISIBLE ? null : { key: "nap-coin", group: "duyet", label: "Yêu cầu nạp Coin chờ duyệt", count: c.topupsPending, href: queueHref("nap-coin"), hint: "Đối chiếu sao kê rồi duyệt" },
     c.proOrdersPending === null ? null : { key: "goi-pro", group: "duyet", label: "Yêu cầu gói Pro chờ kích hoạt", count: c.proOrdersPending, href: "/admin/goi-pro", hint: "Đối chiếu sao kê rồi kích hoạt" },
     c.supportOpen === null ? null : { key: "ho-tro", group: "duyet", label: "Yêu cầu hỗ trợ gia sư đang chờ", count: c.supportOpen, href: "/admin/ho-tro", hint: "Trả lời trong giờ hành chính" },
     c.joinSlowCourses == null ? null : { key: "vao-lop-cham", group: "theo-doi", label: "Lớp để học sinh chờ vào quá lâu", count: c.joinSlowCourses, href: queueHref("vao-lop"), hint: "Gia sư của lớp chưa duyệt yêu cầu vào lớp" },
@@ -268,7 +269,7 @@ export function groupTodayItems(items: TodayItem[]): { key: TodayGroupKey; label
 
 // ── QT-01: bảng vai ──────────────────────────────────────────────────────────────────────────────
 const PERMISSION_LABEL: Record<Permission, string> = {
-  VIEW_REVENUE: "Xem doanh thu", MANAGE_REVENUE: "Quản lý gói, nạp Coin và tiền", VIEW_STUDENTS: "Xem học sinh", MANAGE_STUDENTS: "Quản lý hồ sơ học sinh",
+  VIEW_REVENUE: "Xem doanh thu", MANAGE_REVENUE: COIN_VISIBLE ? "Quản lý gói, nạp Coin và tiền" : "Quản lý gói và tiền", VIEW_STUDENTS: "Xem học sinh", MANAGE_STUDENTS: "Quản lý hồ sơ học sinh",
   MANAGE_COURSES: "Quản lý khoá học", MANAGE_CURRICULUM: "Quản lý đề thi và ngân hàng câu hỏi", MANAGE_HONOR: "Quản lý bảng vinh danh",
   MANAGE_ADMINS: "Đổi vai và xem nhật ký", MANAGE_NEWS: "Quản lý tin tức, blog, điểm chuẩn", MANAGE_COMMUNITY: "Kiểm duyệt cộng đồng", MANAGE_TUTORS: "Duyệt hồ sơ gia sư và hỗ trợ gia sư",
 };

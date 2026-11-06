@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { enrollmentDeniedBody } from "@/lib/suspendedContent";
 import { firstSafeHttpsLink, validateWorkLink } from "@/lib/mediaLink";
+import { isLearnerVisible } from "@/lib/lessonStatus";
 
 // POST /api/lessons/[id]/azota-done — học sinh bấm "Em đã làm xong" cho bài Azota của bài giảng, kèm (không bắt buộc) LINK bài làm.
 // KiN không biết em đã làm trên Azota chưa nên đây là lời khai của em; gia sư thấy "đã làm / chưa làm" ở màn soạn bài.
@@ -16,14 +18,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { azotaUrl: true, title: true, chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
+    select: { azotaUrl: true, title: true, status: true, chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
   });
-  if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
+  // BU-02-PHẲNG (R5): bài Nháp/Ẩn ⇒ 404 TRƯỚC mọi kiểm khác.
+  if (!lesson || !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
   if (!firstSafeHttpsLink(lesson.azotaUrl)) return NextResponse.json({ error: "Bài học này không có bài Azota" }, { status: 400 });
 
   const courseId = lesson.chapter.section.courseId;
   const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId } } });
-  if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Bạn chưa ghi danh khoá học này" }, { status: 403 });
+  if (!isEnrollmentActive(enrolled)) return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
 
   const body = await req.json().catch(() => ({})) as { linkUrl?: unknown };
   let fileUrl = "", kind: "link" | "done" = "done";
@@ -58,6 +61,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (isNextResponse(auth)) return auth;
   if (auth.role !== "student") return NextResponse.json({ error: "Chỉ học viên" }, { status: 403 });
   const { id: lessonId } = await params;
+  const vis = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { status: true } });
+  if (!vis || !isLearnerVisible(vis.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
   const row = await prisma.lessonAzotaDone.findUnique({ where: { lessonId_userId: { lessonId, userId: auth.userId } }, select: { kind: true, linkUrl: true, doneAt: true } });
   return NextResponse.json({ done: !!row, kind: row?.kind ?? null, link: row?.linkUrl ?? null, submittedAt: row?.doneAt ?? null }, { headers: { "Cache-Control": "no-store" } });
 }

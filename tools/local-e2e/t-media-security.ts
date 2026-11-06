@@ -76,7 +76,7 @@ async function lessonTree(courseId: string, tag: string) {
   const x5 = await ctxOf(L.paid.id, T);
   check("gia sư chủ lớp: đủ link", x5.status === 200 && full(x5.json.lesson));
   const x6 = await ctxOf(L.paid.id, stuSus);
-  check("học viên tạm ngưng: xem lại bài theo quy tắc R01 (200, có link) — không bị nới thêm quyền nộp bài", x6.status === 200 && full(x6.json.lesson));
+  check("học viên tạm ngưng (đã nghỉ lớp): 403 kèm code enrollment_suspended, không lộ link (06/11/2026 thay R01 cũ cho xem lại)", x6.status === 403 && x6.json?.code === "enrollment_suspended" && leaks(x6.json).length === 0, x6.json);
   const x7 = await ctxOf(L.paid.id, stuPend);
   check("học viên chờ đồng ý (pending_consent) xem bài TRẢ PHÍ → 403, không lộ link", x7.status === 403 && leaks(x7.json).length === 0, x7.status);
 
@@ -224,7 +224,7 @@ async function lessonTree(courseId: string, tag: string) {
   const gf = (as?: any, q = "") => api("GET", `${fileUrl}${q}`, { as });
   check("khách → 401", (await gf()).status === 401);
   check("học viên CHƯA ghi danh → 403", (await gf(stuOut)).status === 403);
-  check("học viên chờ đồng ý (pending_consent) → 403; tạm ngưng → 200 (xem lại theo R01, cùng canWatchStoredMedia với video)", (await gf(stuPend)).status === 403 && (await gf(stuSus)).status === 200);
+  check("học viên chờ đồng ý (pending_consent) → 403; tạm ngưng → 403 (đã nghỉ lớp, 06/11/2026 thay R01; cùng canWatchStoredMedia với video)", (await gf(stuPend)).status === 403 && (await gf(stuSus)).status === 403);
   const ok = await gf(stuIn);
   check("học viên đã ghi danh → 200 đúng nội dung", ok.status === 200);
   check("Content-Type theo bảng đuôi (application/pdf), nosniff, riêng tư/no-store", ok.headers.get("content-type") === "application/pdf" && ok.headers.get("x-content-type-options") === "nosniff" && /no-store|private/.test(ok.headers.get("cache-control") ?? ""), [...ok.headers.entries()]);

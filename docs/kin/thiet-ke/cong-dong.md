@@ -1,6 +1,11 @@
 # Đặc tả khu cộng đồng và học thử
 
 Bản giao cho người code. Cập nhật 24/09/2026.
+
+> **Đã thay bằng đặc tả 30/09/2026** ở `../nghiep-vu/pheu-gia-su.md`, mục 4 (cộng đồng kiểu
+> Threads/Instagram, khung C1–C6). Tài liệu này chỉ còn để chắt lọc. Phần còn dùng và phần bỏ
+> được liệt kê ở mục 4 đó. Khi hai tài liệu khác nhau, làm theo bản 30/09.
+
 Bản dựng đối chiếu: `../nguyen-mau/04-hoc-thu.html`.
 
 ---
@@ -20,7 +25,7 @@ Ba điều làm nó chạy được, thiếu một là hỏng:
 3. **Có đường đi từ câu trả lời sang lớp học.** Không có nó thì gia sư trả lời vài
    lần rồi thôi.
 
-**Điều không được làm:** tin nhắn riêng giữa học sinh với học sinh. Diễn đàn công khai
+**(Bỏ từ 30/09, xem đặc tả mới)** ~~Điều không được làm: tin nhắn riêng giữa học sinh với học sinh.~~ Diễn đàn công khai
 thì kiểm duyệt được và có uy tín đi kèm; hộp thư riêng giữa trẻ vị thành niên thì không
 kiểm được, và KiN chịu trách nhiệm.
 
@@ -133,10 +138,11 @@ Căn cứ để **hỏi luật sư**, không phải ý kiến pháp lý.
 | Văn bản | Chạm vào đâu |
 |---|---|
 | Luật Trẻ em 2016 | người dùng dưới 16 |
-| Nghị định 13/2023 | cần đồng ý của **cả** trẻ từ 7 tuổi **và** người giám hộ |
+| Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15 và Nghị định 356/2025/NĐ-CP (thay Nghị định 13/2023 từ 01/01/2026) | đồng ý phải lưu được bằng chứng, không được đặt sẵn là đồng ý; trẻ từ đủ 7 tuổi cần đồng ý của **cả** trẻ **và** người đại diện trong một số trường hợp |
+| Nghị định 147/2024/NĐ-CP | người dưới 16 tuổi đăng ký tài khoản mạng xã hội bằng thông tin cha mẹ; cần hỏi khu cộng đồng của KiN có bị coi là mạng xã hội không |
 | Thông tư 29/2024/TT-BGDĐT | công khai môn học, lịch, mức phí |
 
-Nghị định 13/2023 là chỗ cần chú ý: **đồng ý kép**. Bảng `ParentConsent` hiện chỉ có
+Chỗ cần chú ý là **đồng ý kép** (trước ở Nghị định 13/2023, nay ở Luật 91/2025). Bảng `ParentConsent` hiện chỉ có
 một phía. Phải có cột riêng cho từng bên, không gộp một cờ.
 
 ---

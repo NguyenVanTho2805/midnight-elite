@@ -1,6 +1,6 @@
 // BU-01 (R7) — POST /api/tutor/lop/[courseId]/yeu-cau/[id]/duyet (form): gia sư chủ lớp DUYỆT MỘT yêu cầu vào lớp.
 // Lớp gia sư khác 403, không có lớp 404, yêu cầu không thuộc lớp này 404, học sinh / chưa đăng nhập 403 / 401. Kết quả nghiệp vụ ⇒ 303 về tab Học sinh kèm ?duyet=
-// (ok | tuchoi | day | dong | goi | da-xu-ly | loi-ghi-chu). Lớp đầy / gói chặn ⇒ yêu cầu VẪN pending. Việc ghi nằm ở decideJoinRequest (src/lib/enrollServer.ts).
+// (ok | tuchoi | day | dong | goi | da-xu-ly | da-nghi | loi-ghi-chu). Lớp đầy / gói chặn ⇒ yêu cầu VẪN pending. Việc ghi nằm ở decideJoinRequest (src/lib/enrollServer.ts).
 import { NextRequest, NextResponse } from "next/server";
 import { decideJoinRequest, requireCourseTutor } from "@/lib/enrollServer";
 

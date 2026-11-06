@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { attemptWriteBlock } from "@/lib/attemptAccess";
 
 // PATCH /api/exams/attempts/[attemptId]/tab-event — học viên: ghi nhận 1 lần
 // rời màn hình/chuyển tab khi đang thi (visibilitychange/blur phía client).
@@ -20,6 +21,9 @@ export async function PATCH(
     if (!attempt || attempt.userId !== session.userId) {
       return NextResponse.json({ error: "Không tìm thấy bài thi" }, { status: 404 });
     }
+    // Học sinh bị tạm dừng ở lớp giữa chừng thì không ghi thêm vào lượt (cùng quy tắc với /start).
+    const blocked = await attemptWriteBlock(session.userId, attempt.examId);
+    if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: 403 });
     if (attempt.status !== "in_progress") {
       return NextResponse.json({ success: true, tabSwitchCount: attempt.tabSwitchCount });
     }

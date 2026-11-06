@@ -19,6 +19,7 @@ import { isQuizType, type QuizQuestionInput } from "@/lib/quizQuestion";
 import { VARIANT_STUDENT_SUPPORT } from "@/lib/deThiAssign";
 import { QUIZ_CATEGORY, dmyFromKey, durationText, loadOwnedQuiz, loadQuestions, logChange, newExamCode, newExamId, questionCreateData, statusOf, supersededBlock, syncQuizTotals, todayKeyVN, toSnap, type OwnedQuiz } from "@/lib/quizServer";
 import { isNextResponse } from "@/lib/auth-guard";
+import { clipVisible, visibleLength } from "@/lib/mathtype/formulaImg"; // không cắt giữa token ảnh công thức
 
 export type Fail = { ok: false; status: number; error: string; code?: string; extra?: Record<string, unknown> };
 export type Outcome<T extends object> = ({ ok: true } & T) | Fail;
@@ -97,7 +98,7 @@ export interface ItemPreview { id: string; text: string; type: string; difficult
 async function previews(ids: readonly string[]): Promise<Map<string, ItemPreview>> {
   if (ids.length === 0) return new Map();
   const items = await prisma.questionBankItem.findMany({ where: { id: { in: [...ids] } }, select: { id: true, text: true, type: true, difficulty: true, categoryId: true, imageUrl: true } });
-  return new Map(items.map(i => [i.id, { id: i.id, text: i.text.length > PREVIEW_CHARS ? i.text.slice(0, PREVIEW_CHARS) + "…" : i.text, type: i.type, difficulty: i.difficulty, categoryId: i.categoryId, hasImage: !!i.imageUrl }]));
+  return new Map(items.map(i => [i.id, { id: i.id, text: clipVisible(i.text, PREVIEW_CHARS) + (visibleLength(i.text) > PREVIEW_CHARS ? "…" : ""), type: i.type, difficulty: i.difficulty, categoryId: i.categoryId, hasImage: !!i.imageUrl }]));
 }
 
 const strList = (v: unknown, max = 500): string[] | null => (v == null ? [] : Array.isArray(v) && v.length <= max && v.every(x => typeof x === "string") ? (v as string[]) : null);
@@ -380,6 +381,14 @@ export async function analyseDocx(buf: Buffer): Promise<Outcome<{ parsed: WordAn
     throw e;
   }
   const parsed = parseAzotaBlocks(read.blocks);
+  const fst = read.formulaStats; // MathType (BU-03-MATHTYPE): chỉ ĐẾM theo nhóm lý do, không có nội dung công thức
+  if (fst.total > 0) {
+    parsed.formulaStats = { total: fst.total, decoded: fst.decoded, failed: fst.failed, byReason: fst.byReason, unverified: fst.unverified, image: fst.image, imageFailByReason: fst.imageFailByReason };
+    parsed.stats.formulaDecoded = fst.decoded; parsed.stats.formulaFailed = fst.failed;
+    if (fst.decoded > 0) parsed.warnings.unshift({ question: "", code: "mathtype_summary", message: `KiN đọc được ${fst.decoded}/${fst.total} công thức MathType; kiểm lại trước khi lưu.${fst.unverified > 0 ? ` Có ${fst.unverified} công thức dạng phức tạp (tích phân, tổng, giới hạn, vectơ, ma trận…) KiN chưa kiểm kỹ — xem lại từng cái.` : ""}` });
+    if (fst.image > 0) parsed.warnings.unshift({ question: "", code: "formula_image_summary", message: `${fst.image}/${fst.total} công thức MathType hiển thị bằng ẢNH giống bản Word (KiN chưa chắc cách chuyển thành công thức gõ được). Câu vẫn dùng và phát hành được; cô có thể sửa thành công thức gõ tay nếu muốn. Chữ trên ảnh dùng font của máy người xem nên nét chữ có thể khác nhẹ so với Word.` });
+    if (fst.timedOut) parsed.warnings.push({ question: "", code: "mathtype_timeout", message: "Tệp có quá nhiều công thức MathType nên KiN dừng đọc giữa chừng; các công thức còn lại giữ nhãn, cần gõ lại." });
+  }
   if (read.extraImages > 0) parsed.warnings.push({ question: "", code: "too_many_images", message: `Tệp có quá ${DOCX_MAX_IMAGES} hình; ${read.extraImages} hình thừa không được lấy. Chèn lại bằng tay ở những câu còn thiếu hình.` });
   if (parsed.questions.length > AZOTA_MAX_QUESTIONS || (parsed.fatal && /quá giới hạn/.test(parsed.fatal))) return fail(422, parsed.fatal ?? `Tệp có quá ${AZOTA_MAX_QUESTIONS} câu.`, "TOO_MANY");
 

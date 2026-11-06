@@ -33,7 +33,7 @@ export interface SetupChecklist { steps: SetupStep[]; doneCount: number; total: 
 export function buildSetupChecklist(c: SetupCounts): SetupChecklist {
   const steps: SetupStep[] = [
     { key: "tai-khoan", label: "Thêm tài khoản nhận học phí", hint: "Để phiếu có mã QR chuyển thẳng vào tài khoản của cô.", done: c.payoutAccount, href: "/lop-cua-toi/hoc-phi?tab=nhan-tien" },
-    { key: "lop", label: "Tạo lớp đầu tiên", hint: "Tên lớp, môn và mức học phí.", done: c.classes > 0, href: "/lop-cua-toi/quan-lop?tao=1" },
+    { key: "lop", label: "Tạo lớp đầu tiên", hint: "Tên lớp, môn và mức học phí.", done: c.classes > 0, href: "/lop-cua-toi/lop/tao" },
     { key: "hoc-sinh", label: "Thêm học sinh vào lớp", hint: "Thêm tay hoặc gửi mã mời cho học sinh.", done: c.students > 0, href: "/lop-cua-toi/hoc-sinh/them" },
     { key: "lich", label: "Đặt lịch học cho lớp", hint: "Khung giờ lặp lại hằng tuần.", done: c.schedules > 0, href: "/lop-cua-toi/lich" },
     { key: "diem-danh", label: "Điểm danh một buổi", hint: "Mở lớp, chọn ngày, ghi có mặt hoặc vắng.", done: c.attendanceRecords > 0, href: "/lop-cua-toi/lop" },

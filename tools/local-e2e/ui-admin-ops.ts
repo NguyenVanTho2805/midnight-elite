@@ -3,6 +3,7 @@
 import { BASE, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { COIN_VISIBLE } from "@/lib/features";
 
 (async () => {
   await wipe();
@@ -34,7 +35,7 @@ import { prisma } from "@/lib/prisma";
   await pg.getByRole("heading", { name: "Triển khai và hạn mức" }).waitFor({ timeout: 90000 });
   // BU-08: module "Cài đặt" gộp vào "Vận hành"; "Duyệt nạp Coin" thành "Lịch sử nạp Coin" (chỉ đọc; duyệt ở Hàng chờ).
   const strip = pg.getByRole("navigation", { name: /^Trang của / });
-  check("dải tab 'Vận hành' có 'Lịch sử nạp Coin' và 'Triển khai và hạn mức' (QT-06, QT-03)", await strip.getByRole("link", { name: "Lịch sử nạp Coin" }).isVisible() && await strip.getByRole("link", { name: "Triển khai và hạn mức" }).getAttribute("aria-current") === "page");
+  check("dải tab 'Vận hành' có 'Lịch sử nạp Coin' và 'Triển khai và hạn mức' (QT-06, QT-03)", (await strip.getByRole("link", { name: "Lịch sử nạp Coin" }).isVisible()) === COIN_VISIBLE && await strip.getByRole("link", { name: "Triển khai và hạn mức" }).getAttribute("aria-current") === "page");
 
   section("Triển khai và hạn mức (QT-03)");
   const flags = pg.getByTestId("co-trien-khai");
@@ -82,9 +83,9 @@ import { prisma } from "@/lib/prisma";
   const hn = pg.getByTestId("hom-nay");
   await hn.locator("[data-todo]").first().waitFor({ timeout: 90000 });
   const keys = await hn.locator("[data-todo]").evaluateAll(els => els.map(e => e.getAttribute("data-todo")).sort().join());
-  check("danh sách có đúng việc đang chờ: gia sư xin duyệt + nạp Coin", keys === "gia-su,nap-coin", keys);
-  check("mỗi việc là liên kết tới Hàng chờ đã lọc theo loại (?loai=…)", await hn.locator('[data-todo="nap-coin"] a').getAttribute("href") === "/admin/kiem-duyet?loai=nap-coin" && await hn.locator('[data-todo="gia-su"] a').getAttribute("href") === "/admin/kiem-duyet?loai=gia-su");
-  check("mục chờ lâu nhất vẫn có chữ giải thích (không chỉ số)", /Đối chiếu sao kê rồi duyệt/.test(await hn.innerText()));
+  check("danh sách có đúng việc đang chờ: gia sư xin duyệt + nạp Coin", keys === (COIN_VISIBLE ? "gia-su,nap-coin" : "gia-su"), keys); // 05/11/2026: Coin ẩn → không có việc nạp Coin
+  check("mỗi việc là liên kết tới Hàng chờ đã lọc theo loại (?loai=…)", (!COIN_VISIBLE || await hn.locator('[data-todo="nap-coin"] a').getAttribute("href") === "/admin/kiem-duyet?loai=nap-coin") && await hn.locator('[data-todo="gia-su"] a').getAttribute("href") === "/admin/kiem-duyet?loai=gia-su");
+  check("mục chờ lâu nhất vẫn có chữ giải thích (không chỉ số)", (COIN_VISIBLE ? /Đối chiếu sao kê rồi duyệt/ : /Mở hàng chờ để duyệt hoặc từ chối/).test(await hn.innerText()));
   check("khối 'Nhắc nhở theo lớp' đã rời khỏi Hôm nay (BU-08 Q7)", (await pg.getByRole("button", { name: "Nhắc nhở theo lớp" }).count()) === 0 && (await pg.getByTestId("nhac-chon-lop").count()) === 0);
 
   section("Nhắc cả lớp (QT-07) — nay ở trang Học viên của lớp");
@@ -120,8 +121,13 @@ import { prisma } from "@/lib/prisma";
   await pg.waitForURL(/\/admin\/kiem-duyet\?loai=gia-su/, { timeout: 60000 }).catch(() => {});
   check("đường cũ /admin/ho-so-gia-su → Hàng chờ lọc gia sư (BU-08)", /\/admin\/kiem-duyet\?loai=gia-su/.test(pg.url()), pg.url());
   await pg.goto(`${ADMIN}/admin/topups`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  if (!COIN_VISIBLE) {
+    await pg.waitForURL(u => new URL(u).pathname === "/admin", { timeout: 60000 }).catch(() => {});
+    check("Coin ẩn: /admin/topups chuyển về /admin (không còn trang Lịch sử nạp Coin)", new URL(pg.url()).pathname === "/admin", pg.url());
+  } else {
   await pg.getByRole("heading", { name: "Lịch sử nạp Coin" }).waitFor({ timeout: 90000 });
   check("Lịch sử nạp Coin (chỉ đọc) mở được từ menu cấp 1; không có nút Duyệt/Từ chối; có chỉ dẫn sang Hàng chờ", await pg.getByRole("heading", { name: "Lịch sử nạp Coin" }).isVisible() && (await pg.getByRole("button", { name: /^(Duyệt|Từ chối)/ }).count()) === 0 && /Việc chờ duyệt ở Hàng chờ/.test(await pg.innerText("body")));
+  }
   await ctx.close();
 
   section("Quyền: quản trị nội dung không thấy Nhật ký / Triển khai / Lịch sử nạp Coin");

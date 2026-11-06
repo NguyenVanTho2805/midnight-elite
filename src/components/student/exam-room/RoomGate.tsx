@@ -7,10 +7,12 @@ import { KinButton, KinCallout } from "@/components/kin";
 import { clockOffsetMs } from "@/lib/quizRoom";
 import { studentDeadlineText } from "@/lib/quizDeadline";
 import type { BlockReason as RoomBlockReason, GateResponse as Gate } from "@/lib/examRoomApi";
+import { ATTEMPT_SUSPENDED_MESSAGE } from "@/lib/enrollmentMessages";
 import { countdownLabel, windowLabel } from "./roomLogic";
 
 export const GATE_REASON: Record<RoomBlockReason, { title: string; body: string }> = {
   not_enrolled: { title: "Em chưa vào lớp của đề này", body: "Đề này dành cho học sinh trong lớp. Nhập mã lớp gia sư gửi để vào lớp, rồi quay lại làm bài." },
+  enrollment_suspended: { title: "Em đã nghỉ lớp này", body: ATTEMPT_SUSPENDED_MESSAGE },
   payment_required: { title: "Đề này cần được gia sư mở quyền", body: "Hãy liên hệ gia sư của lớp để được mở quyền vào làm đề này." },
   attempts_exhausted: { title: "Em đã dùng hết số lượt làm bài", body: "Đề này giới hạn số lượt. Cần làm thêm thì hỏi gia sư." },
   past_deadline: { title: "Hạn nộp riêng của em đã qua", body: "Gia sư đã đặt hạn riêng cho em ở quiz này và hạn đó đã qua. Cần làm thêm thì hỏi gia sư." },

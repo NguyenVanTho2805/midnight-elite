@@ -138,7 +138,7 @@ const dmy = (t: number) => { const v = new Date(t + 7 * 3_600_000); return `${St
   const nl = await nctx.newPage();
   await nl.goto(`${BASE}/thu-vien`, { waitUntil: "networkidle", timeout: 120000 });
   await nl.getByText("Bạn chưa mở lớp nào").waitFor({ timeout: 90000 });
-  check("chưa có lớp → câu giải thích + lối 'Tạo lớp' (/lop-cua-toi/quan-lop?tao=1)", (await nl.getByRole("link", { name: "Tạo lớp", exact: true }).first().getAttribute("href")) === "/lop-cua-toi/quan-lop?tao=1");
+  check("chưa có lớp → câu giải thích + lối 'Tạo lớp' (/lop-cua-toi/lop/tao)", (await nl.getByRole("link", { name: "Tạo lớp", exact: true }).first().getAttribute("href")) === "/lop-cua-toi/lop/tao");
 
   check("không có lỗi JS/console", errors.length === 0, errors);
   await closeAll();
