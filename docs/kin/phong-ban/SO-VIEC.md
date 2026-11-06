@@ -27,6 +27,7 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | STU-005 | STU | Quyết định 2A: thẻ lớp "Chờ phụ huynh đồng ý" thay nút Theo dõi (pending_consent) | claude/cho-phu-huynh-2a | #119 | xong | S · 04/11/2026 · `suspended` cũng bị 409 khi theo dõi, chưa xử lý |
 | STU-006 | STU | Quyết định 3A: khách không thấy câu hỏi cũ trong bảng tin cộng đồng | claude/khach-hoi-dap-3a | #120 | xong | S · 04/11/2026 |
 | STU-007 | STU | Quyết định 5A: phòng thi báo "Chưa lưu được" + Thử lại khi máy chủ từ chối đáp án (4xx) | claude/phong-thi-chip-5a | #121 | xong | S · 04/11/2026 · bài kiểm sửa ở PR docs (thứ tự câu bị xáo) |
+| GOP-0611 | COO | Gộp hết nhánh chưa gộp: #123–#129 + BU-02-PHẲNG + HOCPHI-THEO-BUOI + tài liệu bàn giao | claude/gop-het-chua-gop | (PR tích hợp) | xong | L · 06/11/2026 · 2 nhóm xung đột đã giải; `ui-role-everything` 38/0, `ui-links-everywhere` 7/0; ~65 nhánh cũ KHÔNG gộp (xem `bao-cao/gop-het-06-11-2026.md`) |
 | TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
 | TUT-003 | TUT | Hộp việc: câu hỏi học sinh trong lớp chưa trả lời | claude/tut-003-hop-viec | #114 | xong | M · 04/11/2026 · thông báo cho gia sư khi có câu hỏi mới đã có sẵn (thread_new_class) |
 | STU-004 | STU | generateMetadata trang khách + sitemap + lọc thi thử theo ghi danh | | | moi | L · làm chung BU-07 |

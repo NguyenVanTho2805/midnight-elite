@@ -66,7 +66,7 @@ export default function TutorLibrary({ classes }: { classes: LibClass[] }) {
         actions={<Link href={uploadHref} className={kinButtonClass("primary")}>↑ Tải tài liệu</Link>} />
 
       {classes.length === 0 ? (
-        <KinEmptyState title="Bạn chưa mở lớp nào" action={<Link href="/lop-cua-toi/quan-lop?tao=1" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
+        <KinEmptyState title="Bạn chưa mở lớp nào" action={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp</Link>}>
           Tạo lớp rồi thêm bài giảng và tài liệu, chúng sẽ hiện ở đây.
         </KinEmptyState>
       ) : all.length === 0 ? (
