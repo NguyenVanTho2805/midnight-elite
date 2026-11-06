@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartBar, ClipboardList } from "griddy-icons";
 import PermissionGuard from "@/components/PermissionGuard";
+import { COIN_VISIBLE } from "@/lib/features";
 import RevenueByTutorTable, { type TutorRevenueRow } from "@/components/admin/RevenueByTutorTable";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { formatVnd, presetRange, toCsv, vnDateKey } from "@/lib/revenue";
@@ -112,8 +113,10 @@ export default function DoanhThuPage() {
   const cards = [
     { label: "Doanh thu VIP (ròng)", value: T ? formatVnd(T.netVipRevenue) : "—", sub: T ? `${T.vipPurchases} lượt mua${T.refunds ? ` · hoàn ${formatVnd(T.refunds)}` : ""}` : "", color: "var(--kin-nhan-link)" },
     { label: "Gia sư đang VIP", value: T ? `${T.activeVipTutors}/${T.tutorCount}` : "—", sub: "trên tổng số gia sư đã duyệt", color: "var(--kin-tt-chu-xong)" },
+    ...(!COIN_VISIBLE ? [] : [
     { label: "Coin đã nạp", value: T ? formatVnd(T.topupTotal) : "—", sub: "trong khoảng đã chọn", color: "var(--kin-nhan-link)" },
     { label: "Coin đang trong ví", value: T ? formatVnd(T.coinOutstanding) : "—", sub: "toàn bộ người dùng, tại thời điểm xem", color: "var(--kin-tt-chu-cho)" },
+    ]),
   ];
 
   return (
@@ -125,7 +128,7 @@ export default function DoanhThuPage() {
           <div>
             <h1 className="text-2xl font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Doanh thu</h1>
             <p className="text-sm mt-1 max-w-2xl" style={{ color: "var(--kin-chu-mo)" }}>
-              Doanh thu là Coin gia sư trả để mua gói VIP (1 Coin = 1 VND). Học phí phụ huynh chuyển thẳng cho gia sư qua VietQR, KiN không giữ nên không tính ở đây.
+              Doanh thu là khoản gia sư trả để mua gói VIP. Học phí phụ huynh chuyển thẳng cho gia sư qua VietQR, KiN không giữ nên không tính ở đây.
             </p>
           </div>
           <button onClick={() => load(from, to)}
@@ -188,7 +191,7 @@ export default function DoanhThuPage() {
                         </div>
                         <div className="text-right flex-shrink-0 w-32">
                           <div className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>{formatVnd(m.vipRevenue)}</div>
-                          <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{m.vipCount} lượt · nạp {formatVnd(m.topup)}</div>
+                          <div className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{m.vipCount} lượt{COIN_VISIBLE ? ` · nạp ${formatVnd(m.topup)}` : ""}</div>
                         </div>
                       </div>
                     ))}

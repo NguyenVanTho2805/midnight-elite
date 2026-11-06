@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   // Coin của học sinh chỉ kiếm bằng học (thưởng làm bài), không mua bằng tiền. Học phí chuyển khoản
   // đi đường riêng (phiếu học phí + webhook SePay), không qua Coin.
   if (auth.role === "student") {
-    return NextResponse.json({ error: "Coin của học sinh nhận từ làm bài, không nạp bằng tiền. Học phí chuyển khoản theo phiếu của gia sư." }, { status: 403 });
+    return NextResponse.json({ error: "Học sinh không nạp tiền ở đây. Học phí chuyển khoản theo phiếu của gia sư." }, { status: 403 });
   }
 
   // KiN Pro giai đoạn 0: gia sư chưa cần nạp Coin khi đang chạy thử (cùng cờ chạy thử đã chặn mua gói, xem trialMode.ts). Chặn TRƯỚC khi tạo bất kỳ bản ghi nào.

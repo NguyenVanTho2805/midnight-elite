@@ -83,10 +83,14 @@ export function Composer({ userName, scopes, onPosted }: { userName: string; sco
     return (
       <div className="kc-card" data-kc-composer="closed">
         <div className="kc-col1"><CommunityAvatar label={userName} /></div>
-        <button type="button" onClick={() => setOpen(true)}
-          className="kc-focus min-h-11 text-left text-[length:var(--kin-co-body)] text-[var(--kin-chu-mo)]">
-          Bạn muốn hỏi hay chia sẻ gì?
-        </button>
+        <div className="kc-body flex items-center gap-2">
+          <button type="button" onClick={() => setOpen(true)}
+            className="kc-focus min-h-11 min-w-0 flex-1 text-left text-[length:var(--kin-co-body)] text-[var(--kin-chu-mo)]">
+            Bạn muốn hỏi hay chia sẻ gì?
+          </button>
+          {/* Nút "Viết bài" rõ ràng (Figma 608:71 / 608:285): cùng việc với ô gợi ý, nhưng nhìn là biết bấm được. */}
+          <KinButton type="button" variant="secondary" data-kc-viet-bai onClick={() => setOpen(true)}>Viết bài</KinButton>
+        </div>
       </div>
     );
   }

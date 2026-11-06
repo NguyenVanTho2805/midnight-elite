@@ -140,6 +140,11 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   await shot(w, "cong-dong-1280-vo-rong");
 
   section("Học sinh: đăng bài (bấm đúp = một bài), Thích, Lưu, Báo cáo");
+  const vb = s.locator("[data-kc-viet-bai]");
+  check("(05/11) nút 'Viết bài' hiện cạnh ô gợi ý, cao ≥44px", (await vb.isVisible()) && ((await vb.boundingBox())?.height ?? 0) >= 44);
+  await vb.click();
+  check("(05/11) bấm 'Viết bài' mở ô soạn", await s.getByLabel("Nội dung bài viết").isVisible());
+  await s.getByRole("button", { name: "Huỷ" }).click();
   await s.getByText("Bạn muốn hỏi hay chia sẻ gì?").click();
   await s.getByLabel("Nội dung bài viết").fill("Mẹo nhớ công thức lượng giác");
   await s.getByRole("button", { name: "Đăng", exact: true }).dblclick();

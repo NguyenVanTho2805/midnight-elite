@@ -184,7 +184,7 @@ export default function GoiClient() {
               </div>
               {view.foundingPct > 0 && <p className="mt-3 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Giá sáng lập dành cho những người mua đầu tiên và được giữ trong thời hạn đã cấu hình.</p>}
               <p className="mt-3 text-[length:var(--kin-co-small)] leading-5 text-[var(--kin-chu-mo)]">
-                Trả theo kỳ, không tự động trừ tiền, không dùng Coin. Gia hạn thì cộng thêm vào hạn đang có.
+                Trả theo kỳ, không tự động trừ tiền. Gia hạn thì cộng thêm vào hạn đang có.
               </p>
             </>
           )}

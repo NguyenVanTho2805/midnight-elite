@@ -88,7 +88,7 @@ async function take(as: any, exam: { id: string; qs: { id: string; right: string
 
   section("Học sinh không nạp Coin bằng tiền");
   const tp = await api("POST", "/api/wallet/topups", { as: S, body: { amountVnd: 100000, bankRef: "FTQ" } });
-  check("học sinh gửi yêu cầu nạp → 403 kèm lời giải thích", tp.status === 403 && /không nạp bằng tiền/.test(tp.json.error), tp.json);
+  check("học sinh gửi yêu cầu nạp → 403 kèm lời giải thích", tp.status === 403 && /không nạp tiền/.test(tp.json.error), tp.json);
   check("không tạo yêu cầu nạp nào", (await prisma.coinTopupRequest.count({ where: { userId: S.id } })) === 0);
   check("học sinh vẫn xem được ví và danh sách yêu cầu nạp", (await api("GET", "/api/wallet", { as: S })).status === 200 && (await api("GET", "/api/wallet/topups", { as: S })).status === 200);
   const tt = await api("POST", "/api/wallet/topups", { as: tutor, body: { amountVnd: 100000, bankRef: "FTQ2" } });

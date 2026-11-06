@@ -8,6 +8,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { check, section, done } from "./h";
+import { COIN_VISIBLE } from "@/lib/features";
 import {
   JOIN_SLOW_DAYS, MAX_QUEUE_ITEMS, QUEUE_KINDS, QUEUE_KIND_GROUP, SNIPPET, afterCursor, agoLabel, badgeOf, buildAdminQueue, canSeeKind, decodeCursor, encodeCursor,
   formatVndText, isQueueKind, shortName, visibleKinds, waitedText,
@@ -74,8 +75,8 @@ q = run({ answers: [ans(), ans({ id: "a2", rewardPaid: 20, author: "Phạm Thị
 const a1 = q.items.find(i => i.id === "tra-loi:a1")!, a2 = q.items.find(i => i.id === "tra-loi:a2")!;
 check("có 2 lệnh (Xác nhận vi phạm / Giữ câu trả lời) gọi /api/admin/answer-reports/<id>/resolve", [a1, a2].every(i => i.detail.actions.length === 2 && i.detail.actions.every(a => a.url === `/api/admin/answer-reports/${i.id.split(":")[1]}/resolve` && a.method === "POST")) && JSON.stringify(act(a1, "remove").body) === '{"decision":"approved"}' && JSON.stringify(act(a1, "keep").body) === '{"decision":"rejected"}');
 check("không bao giờ hàng loạt, không lệnh nhanh (cả hai dòng)", [a1, a2].every(i => i.bulk.length === 0 && i.quick === undefined));
-check("đã trả thưởng: nút Xác nhận vi phạm đòi tick 'Tôi hiểu sẽ trừ 20 Coin của …' và panel có mục 'Sẽ trừ Coin'", act(a2, "remove").ack === "Tôi hiểu sẽ trừ 20 Coin của Dung P." && a2.detail.sections.some(s => s.title === "Sẽ trừ Coin" && s.text.includes("20 Coin") && s.text.includes("Dung P.")), act(a2, "remove").ack);
-check("chưa trả thưởng: không đòi tick, không mục trừ Coin", !act(a1, "remove").ack && !a1.detail.sections.some(s => s.title === "Sẽ trừ Coin"));
+check("đã trả thưởng: nút Xác nhận vi phạm đòi tick (cờ Coin tắt: 'Tôi hiểu sẽ trừ lại phần thưởng của …', không chữ Coin) và panel có mục trừ thưởng", act(a2, "remove").ack === (COIN_VISIBLE ? "Tôi hiểu sẽ trừ 20 Coin của Dung P." : "Tôi hiểu sẽ trừ lại phần thưởng của Dung P.") && !(!COIN_VISIBLE && /coin/i.test(JSON.stringify(a2.detail.sections) + String(act(a2, "remove").ack))) && a2.detail.sections.some(s => (COIN_VISIBLE ? s.title === "Sẽ trừ Coin" && s.text.includes("20 Coin") : s.title === "Sẽ trừ lại phần thưởng") && s.text.includes("Dung P.")), act(a2, "remove").ack);
+check("chưa trả thưởng: không đòi tick, không mục trừ Coin", !act(a1, "remove").ack && !a1.detail.sections.some(s => s.title === "Sẽ trừ Coin" || s.title === "Sẽ trừ lại phần thưởng"));
 check("lệnh 'Giữ câu trả lời' không bao giờ đòi tick (không trừ gì)", !act(a2, "keep").ack);
 
 section("Đánh giá khoá học (mới)");
@@ -122,8 +123,8 @@ check("vao-lop không tính vào badge của kết quả dựng", run({ joins: [
 section("Quyền từng loại (ma trận vai × loại)");
 const SUPER: AdminRole = "admin_super", CONTENT: AdminRole = "admin_content", TEACHER: AdminRole = "teacher";
 const ext = { joinRequests: true, guestQuestions: true };
-check("admin_super thấy cả 6 loại thật khi chưa có nhánh B (gia-su, bai-viet, ho-so, tra-loi, danh-gia, nap-coin)", visibleKinds(SUPER).join() === "gia-su,bai-viet,ho-so,tra-loi,danh-gia,nap-coin", visibleKinds(SUPER));
-check("admin_super thấy cả 8 khi nhánh B đã gộp", visibleKinds(SUPER, ext).length === 8);
+check("admin_super thấy các loại thật khi chưa có nhánh B (gia-su, bai-viet, ho-so, tra-loi, danh-gia; thêm nap-coin chỉ khi cờ Coin bật)", visibleKinds(SUPER).join() === "gia-su,bai-viet,ho-so,tra-loi,danh-gia" + (COIN_VISIBLE ? ",nap-coin" : ""), visibleKinds(SUPER));
+check("admin_super thấy đủ khi nhánh B đã gộp (8, hoặc 7 khi Coin ẩn)", visibleKinds(SUPER, ext).length === (COIN_VISIBLE ? 8 : 7));
 check("admin_content thấy 5 loại, KHÔNG có nap-coin (cần MANAGE_REVENUE)", visibleKinds(CONTENT).join() === "gia-su,bai-viet,ho-so,tra-loi,danh-gia" && !canSeeKind(CONTENT, "nap-coin"), visibleKinds(CONTENT));
 check("admin_content có khach-hoi và vao-lop khi nhánh B đã gộp", visibleKinds(CONTENT, ext).includes("khach-hoi") && visibleKinds(CONTENT, ext).includes("vao-lop") && visibleKinds(CONTENT, ext).length === 7);
 check("gia sư (teacher) KHÔNG thấy loại nào dù có MANAGE_COURSES (danh-gia) — kể cả khi nhánh B đã gộp", QUEUE_KINDS.every(k => !canSeeKind(TEACHER, k)) && visibleKinds(TEACHER, ext).length === 0 && checkPermission(TEACHER, PERMISSIONS.MANAGE_COURSES));
@@ -204,7 +205,7 @@ const walk = (dir: string, url: string) => {
 };
 walk(root, "/admin");
 const goneFrom = new Set(ADMIN_REDIRECTS.map(r => r.from)); // t-admin-redirects-lib kiểm riêng việc các trang cũ đã bị xoá
-const orphan = routes.filter(r => !goneFrom.has(r) && !matchSub(r)); // ADM-003 (#92): trang mẫu đã chuyển ra docs, không còn ngoại lệ
+const orphan = routes.filter(r => !goneFrom.has(r) && !matchSub(r) && !(r === "/admin/topups" && !COIN_VISIBLE)); // /admin/topups: Coin ẩn, trang còn nhưng không vào menu // ADM-003 (#92): trang mẫu đã chuyển ra docs, không còn ngoại lệ
 check(`${routes.length} trang quản trị tìm thấy; trang mới thêm mà quên đưa vào module sẽ làm ca này đỏ`, routes.length >= 18 && orphan.length === 0, orphan);
 
 done();

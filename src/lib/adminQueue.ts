@@ -7,6 +7,7 @@
 //  • Tiền chỉ ở dạng chuỗi hiển thị; không có phép tính tiền nào ở đây.
 import { addDaysKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
+import { COIN_VISIBLE, COIN_QUEUE_KIND } from "@/lib/features";
 import type { ExternalSupport } from "@/lib/adminQueueExternal";
 
 export const MAX_QUEUE_ITEMS = 100;
@@ -50,12 +51,13 @@ export function canSeeKind(role: AdminRole | undefined | null, kind: QueueKind):
 /** Các loại người này được xem; loại ngoài (B) chỉ có khi `support` báo đã có model. Không truyền `support` = coi như chưa có. */
 export function visibleKinds(role: AdminRole | undefined | null, support?: ExternalSupport): QueueKind[] {
   return QUEUE_KINDS.filter(k => canSeeKind(role, k)
+    && (COIN_VISIBLE || k !== COIN_QUEUE_KIND) // Coin ẩn: không liệt kê, không đếm, không vào badge
     && (k !== "khach-hoi" || !!support?.guestQuestions)
     && (k !== "vao-lop" || !!support?.joinRequests));
 }
 /** Badge = tổng số đếm CHÍNH XÁC của các loại thuộc nhóm `duyet`. Không bao giờ cắt ở số dòng trả về. */
 export function badgeOf(counts: Partial<Record<QueueKind, number>>): number {
-  return QUEUE_KINDS.reduce((s, k) => s + (QUEUE_KIND_GROUP[k] === "duyet" ? counts[k] ?? 0 : 0), 0);
+  return QUEUE_KINDS.reduce((s, k) => s + (QUEUE_KIND_GROUP[k] === "duyet" && (COIN_VISIBLE || k !== COIN_QUEUE_KIND) ? counts[k] ?? 0 : 0), 0);
 }
 
 /** Một việc người duyệt có thể làm trên dòng này. Gọi đúng API xử lý đã có, không có đường xử lý mới. */
@@ -265,11 +267,11 @@ function answerItem(r: AnswerRep, now: Date): QueueItem {
         { title: "Câu trả lời", text: r.content.trim() || "(không có chữ)" },
         { title: "Lý do báo cáo", text: r.reason.trim() || "Người báo cáo không ghi lý do." },
         { title: "Người báo cáo", text: `${reporter} · câu trả lời của ${author}` },
-        ...(paid > 0 ? [{ title: "Sẽ trừ Coin", text: `Sẽ trừ ${paid} Coin của ${author}. Câu trả lời này đã được trả thưởng; xác nhận vi phạm sẽ trừ lại phần thưởng.` }] : []),
+        ...(paid > 0 ? [{ title: COIN_VISIBLE ? "Sẽ trừ Coin" : "Sẽ trừ lại phần thưởng", text: COIN_VISIBLE ? `Sẽ trừ ${paid} Coin của ${author}. Câu trả lời này đã được trả thưởng; xác nhận vi phạm sẽ trừ lại phần thưởng.` : `Câu trả lời này đã được trả thưởng; xác nhận vi phạm sẽ trừ lại phần thưởng của ${author}.` }] : []),
       ],
       actions: [
         { key: "remove", label: "Xác nhận vi phạm", kind: "primary", method: "POST", url: `/api/admin/answer-reports/${r.id}/resolve`, body: { decision: "approved" },
-          ...(paid > 0 ? { ack: `Tôi hiểu sẽ trừ ${paid} Coin của ${author}` } : {}) },
+          ...(paid > 0 ? { ack: COIN_VISIBLE ? `Tôi hiểu sẽ trừ ${paid} Coin của ${author}` : `Tôi hiểu sẽ trừ lại phần thưởng của ${author}` } : {}) },
         { key: "keep", label: "Giữ câu trả lời", kind: "secondary", method: "POST", url: `/api/admin/answer-reports/${r.id}/resolve`, body: { decision: "rejected" } },
       ],
       links: [{ label: "Mở trang cộng đồng", href: "/admin/cong-dong" }],

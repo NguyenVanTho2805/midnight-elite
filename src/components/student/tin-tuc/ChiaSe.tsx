@@ -1,5 +1,5 @@
 "use client";
-// Chia sẻ bài: Sao chép link · Facebook · Web Share (nếu máy hỗ trợ). Không bộ đếm, không script bên thứ ba.
+// Chia sẻ bài: Sao chép link · Facebook · Web Share (nếu máy hỗ trợ) · In bài (hộp thoại in của trình duyệt; bản in ẩn thanh điều hướng/chia sẻ). Không bộ đếm, không script bên thứ ba.
 import { useState } from "react";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 
@@ -47,6 +47,7 @@ export function ChiaSe({ duongDan, tieuDe, kieu = "bai" }: {
       <button type="button" onClick={chepLink} className={kinButtonClass("secondary")}>Sao chép link</button>
       <button type="button" onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url())}`, "_blank", "noopener,noreferrer")} className={kinButtonClass("secondary")}>Facebook</button>
       <button type="button" onClick={chiaSeMay} className={`${kinButtonClass("secondary")} md:hidden`}>Chia sẻ…</button>
+      <button type="button" data-in-bai onClick={() => window.print()} className={kinButtonClass("secondary")}>In bài</button>
       <span role="status" className="text-[length:var(--kin-co-small)]" style={{ color: "var(--kin-chu-mo)" }}>{tb}</span>
     </div>
   );

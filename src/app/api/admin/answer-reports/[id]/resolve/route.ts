@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       type:    "report_penalty",
       title:   "Câu trả lời bị báo cáo",
       message: report.answer.rewardPaid
-        ? `Câu trả lời của bạn bị xác nhận vi phạm, bạn bị trừ ${report.answer.rewardPaid} xu`
+        ? `Câu trả lời của bạn bị xác nhận vi phạm, phần thưởng của câu trả lời này bị trừ lại`
         : `Câu trả lời của bạn bị xác nhận vi phạm chất lượng`,
       link:    `/student/hoi-dap/${report.answer.questionId}`,
     });

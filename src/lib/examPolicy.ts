@@ -12,6 +12,7 @@
 //
 // Mọi mốc giờ là giờ máy chủ (ctx.now); không bao giờ đọc giờ từ trình duyệt. Hạn đề dựng theo +07:00 CỐ ĐỊNH, không theo TZ của tiến trình.
 
+import { examStartInstant } from "@/lib/examData";
 export type AnswerVisibility = "never" | "after_submit" | "after_exam_ends";
 export type AnswersLockedReason = "until_exam_ends" | "until_attempts_exhausted" | "never" | null;
 export const PUBLIC_DEFAULT_MAX_ATTEMPTS = 2;
@@ -101,13 +102,11 @@ export function parseExamWindow(exam: { date: string; time: string; duration: st
 
 /**
  * Bản sao đúng hành vi của examGrading.hasExamWindowEnded (kể cả lỗi của nó: date rỗng → 01/01/2000 → "đã hết hạn"; date rác → Invalid Date →
- * không bao giờ hết hạn; giờ theo TZ tiến trình). CHỈ dùng cho đề không guarded khi hạn không hợp lệ — để không hồi quy đề gắn lớp /
+ * không bao giờ hết hạn; giờ +07:00 cố định). CHỈ dùng cho đề không guarded khi hạn không hợp lệ — để không hồi quy đề gắn lớp /
  * gia sư đã đặt `after_exam_ends`. Nợ §9 câu 4: đợt sau đổi hasExamWindowEnded sang parseExamWindow rồi bỏ hàm này.
  */
 function legacyWindowEnded(exam: { date: string; time: string; duration: string }, now: Date): boolean {
-  const [day, month, year] = (exam.date || "01/01/2000").split("/");
-  const [hh, mm] = (exam.time || "00:00").split(":");
-  const startsAt = new Date(+year, +month - 1, +day, +hh, +mm);
+  const startsAt = examStartInstant(exam.date, exam.time); // +07:00 cố định (trước đây theo TZ tiến trình)
   const endsAt = new Date(startsAt.getTime() + durationMinutes(exam.duration) * 60_000);
   return endsAt.getTime() <= now.getTime();
 }

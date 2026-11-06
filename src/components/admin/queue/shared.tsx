@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type { QueueItem } from "@/lib/adminQueue";
+import { COIN_VISIBLE, COIN_QUEUE_KIND } from "@/lib/features";
 
 /** Thứ tự và nhãn loại. Loại ngoài bảng này vẫn hiện bằng khoá thô — không ném. */
 export const KIND_ORDER = ["gia-su", "bai-viet", "ho-so", "tra-loi", "danh-gia", "nap-coin", "khach-hoi", "vao-lop"] as const;
@@ -10,6 +11,8 @@ export const KIND_LABEL: Record<string, string> = {
   "danh-gia": "Đánh giá khoá", "nap-coin": "Nạp Coin", "khach-hoi": "Câu hỏi của khách", "vao-lop": "Chờ vào lớp",
 };
 export const kindLabel = (k: string) => KIND_LABEL[k] ?? k;
+/** Loại hàng chờ Coin không hiện khi COIN_VISIBLE = false. */
+export const kindHidden = (k: string) => !COIN_VISIBLE && k === COIN_QUEUE_KIND;
 
 /** Hàng chờ chỉ có 2 nút mỗi hàng: "Xem" + (nếu có) một lệnh nhanh. */
 export function quickAction(item: QueueItem) {
