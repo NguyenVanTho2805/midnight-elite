@@ -19,8 +19,9 @@ const dmy = (k: string) => (k === FEE_RATE_FROM_START ? "khi tạo lớp" : `${k
 
 interface Overview {
   feeMode: FeeMode;
-  classRates: Array<{ id: string; rate: number; sessionMinutes: number | null; effectiveFrom: string; note: string | null }>;
-  studentRates: Array<{ id: string; studentId: string; rate: number; effectiveFrom: string; note: string | null }>;
+  // byAdmin: chỉ có khi API báo dòng này do quản trị đặt (ghi đè); chưa có thì không hiện gì.
+  classRates: Array<{ id: string; rate: number; sessionMinutes: number | null; effectiveFrom: string; note: string | null; byAdmin?: boolean }>;
+  studentRates: Array<{ id: string; studentId: string; rate: number; effectiveFrom: string; note: string | null; byAdmin?: boolean }>;
   students: Array<{ id: string; name: string }>;
   today: string;
 }
@@ -29,7 +30,8 @@ interface Plan {
 }
 interface Preview { plan: Plan; perCourse: { pendingStudents: number; beforeEach: number | null; afterEach: number | null } | null }
 
-export default function LopHocPhi({ courseId, feeMode }: { courseId: string; feeMode: FeeMode }) {
+/** adminView: nhúng trong trang quản trị (quản trị không vào được /lop-cua-toi/hoc-phi nên ẩn nút mở đối soát). Gọi đúng API fee-rates. */
+export default function LopHocPhi({ courseId, feeMode, adminView = false }: { courseId: string; feeMode: FeeMode; adminView?: boolean }) {
   const notify = useNotify();
   const [ov, setOv] = useState<Overview | null>(null);
   const [failed, setFailed] = useState(false);
@@ -55,7 +57,7 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
         <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
           Lớp này tính học phí theo số buổi trong tháng, như cách cô đang dùng. Lập phiếu có mã, theo dõi tiền vào, nhận tiền thẳng vào tài khoản của cô.
         </p>
-        <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí</Link>
+        {!adminView && <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí</Link>}
       </section>
     );
   }
@@ -77,6 +79,7 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
     <div className="space-y-[var(--kin-cach-muc)] max-w-3xl">
       <section aria-labelledby="hp-hien-hanh">
         <KinSectionHead id="hp-hien-hanh" title="Cách tính hiện tại" aside={FEE_MODE_LABEL[feeMode]} />
+        <p className="pt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{adminView ? "Quản trị hoặc gia sư chủ lớp đều đổi được đơn giá; mọi lần đổi đều được ghi lại, chủ lớp sẽ được báo." : "Cô hoặc quản trị đều đổi được đơn giá; mọi lần đổi đều được ghi lại."}</p>
         <KinPanel variant="nhan" className="mt-4">
         <p className="text-[length:var(--kin-co-tieu-de)] font-medium tabular-nums text-[var(--kin-chu-chinh)]">
           {cur ? `${vnd(cur.rate)} ${unit.replace("đ ", "")}` : "Chưa có đơn giá"}
@@ -88,21 +91,21 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
             : "Tự sinh khi cô bấm Đã dạy xong cho buổi đó, cho em có mặt hoặc đi muộn. Lưu điểm danh thôi thì chưa sinh. Buổi có phép, vắng hoặc dùng buổi bù không sinh thêm tiền."}
           {" "}Phiếu đã chốt không đổi khi cô đổi đơn giá.
         </p>
-        <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí và đối soát</Link>
+        {!adminView && <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí và đối soát</Link>}
         </KinPanel>
       </section>
 
       <RateForm title="Đổi đơn giá cả lớp" idp="hp-lop" feeMode={feeMode} today={ov.today}
         initial={{ rate: cur?.rate ?? 0, minutes: cur?.sessionMinutes ?? 90 }}
-        run={async (b, apply) => callApi<Preview & { error?: string }>(`/api/courses/${courseId}/fee-rates`, { method: "POST", body: JSON.stringify({ action: apply ? "set_class" : "preview_class", ...b }) })}
-        onApplied={() => { notify.ok("Đã đổi đơn giá."); reload(); }} />
+        run={async (b, apply) => callApi<Preview & { error?: string; override?: boolean }>(`/api/courses/${courseId}/fee-rates`, { method: "POST", body: JSON.stringify({ action: apply ? "set_class" : "preview_class", ...b }) })}
+        onApplied={override => { notify.ok(override ? "Đã đổi đơn giá. Chủ lớp sẽ được báo." : "Đã đổi đơn giá."); reload(); }} />
 
       <section aria-labelledby="hp-lich-su">
         <KinSectionHead id="hp-lich-su" title="Lịch sử đơn giá" />
         <ul className="pt-3">
           {ov.classRates.map(r => (
             <li key={r.id} className="py-3 border-b border-[var(--kin-vien-nhat)] flex justify-between gap-3 flex-wrap text-[length:var(--kin-co-goc)]">
-              <span className="text-[var(--kin-chu-chinh)]">Từ {dmy(r.effectiveFrom)}{cur && r.effectiveFrom === cur.effectiveFrom ? " · đang áp dụng" : ""}</span>
+              <span className="text-[var(--kin-chu-chinh)]">Từ {dmy(r.effectiveFrom)}{cur && r.effectiveFrom === cur.effectiveFrom ? " · đang áp dụng" : ""}{r.byAdmin ? " (quản trị)" : ""}</span>
               <span className="tabular-nums text-[var(--kin-chu-chinh)]">{vnd(r.rate)} {unit.replace("đ ", "")}{r.sessionMinutes ? ` · ${r.sessionMinutes} phút/buổi` : ""}</span>
               {r.note && <span className="w-full text-[var(--kin-chu-mo)]">{r.note}</span>}
             </li>
@@ -120,7 +123,7 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
               const active = pickStudentRate(ov.studentRates.filter(x => x.studentId === r.studentId), ov.today);
               return (
                 <li key={r.id} className="py-3 border-b border-[var(--kin-vien-nhat)] flex justify-between items-center gap-3 flex-wrap text-[length:var(--kin-co-goc)]">
-                  <span className="text-[var(--kin-chu-chinh)]">{nameOf(r.studentId)} · từ {dmy(r.effectiveFrom)}{active?.effectiveFrom === r.effectiveFrom ? " · đang áp dụng" : ""}</span>
+                  <span className="text-[var(--kin-chu-chinh)]">{nameOf(r.studentId)} · từ {dmy(r.effectiveFrom)}{active?.effectiveFrom === r.effectiveFrom ? " · đang áp dụng" : ""}{r.byAdmin ? " (quản trị)" : ""}</span>
                   <span className="tabular-nums text-[var(--kin-chu-chinh)]">{vnd(r.rate)} {unit.replace("đ ", "")}</span>
                   <StudentRemove courseId={courseId} row={r} onDone={() => { notify.ok("Đã xoá mốc đơn giá riêng."); reload(); }} />
                 </li>
@@ -128,7 +131,7 @@ export default function LopHocPhi({ courseId, feeMode }: { courseId: string; fee
             })}
           </ul>
         )}
-        <StudentRateForm courseId={courseId} ov={ov} feeMode={feeMode} onApplied={() => { notify.ok("Đã lưu đơn giá riêng."); reload(); }} />
+        <StudentRateForm courseId={courseId} ov={ov} feeMode={feeMode} onApplied={override => { notify.ok(override ? "Đã lưu đơn giá riêng. Chủ lớp sẽ được báo." : "Đã lưu đơn giá riêng."); reload(); }} />
       </section>
     </div>
   );
@@ -149,7 +152,7 @@ function PlanView({ p, perCourse }: { p: Plan; perCourse: Preview["perCourse"] }
 
 function RateForm({ title, idp, feeMode, today, initial, run, onApplied }: {
   title: string; idp: string; feeMode: FeeMode; today: string; initial: { rate: number; minutes: number };
-  run: (b: Record<string, unknown>, apply: boolean) => Promise<{ ok: boolean; data: Preview & { error?: string } }>; onApplied: () => void;
+  run: (b: Record<string, unknown>, apply: boolean) => Promise<{ ok: boolean; data: Preview & { error?: string; override?: boolean } }>; onApplied: (override: boolean) => void;
 }) {
   const [rate, setRate] = useState(initial.rate ? String(initial.rate) : "");
   const [minutes, setMinutes] = useState(String(initial.minutes || 90));
@@ -166,7 +169,7 @@ function RateForm({ title, idp, feeMode, today, initial, run, onApplied }: {
     const r = await run(body(), apply);
     setBusy(null);
     if (!r.ok) { setErr(r.data.error ?? "Không thực hiện được"); return; }
-    if (apply) { setPrev(null); onApplied(); } else setPrev(r.data);
+    if (apply) { setPrev(null); onApplied(r.data.override === true); } else setPrev(r.data);
   }
   return (
     <section aria-labelledby={`${idp}-t`}>
@@ -204,7 +207,7 @@ function RateForm({ title, idp, feeMode, today, initial, run, onApplied }: {
   );
 }
 
-function StudentRateForm({ courseId, ov, feeMode, onApplied }: { courseId: string; ov: Overview; feeMode: FeeMode; onApplied: () => void }) {
+function StudentRateForm({ courseId, ov, feeMode, onApplied }: { courseId: string; ov: Overview; feeMode: FeeMode; onApplied: (override: boolean) => void }) {
   const [studentId, setStudentId] = useState("");
   const [rate, setRate] = useState("");
   const [from, setFrom] = useState(ov.today);
@@ -214,12 +217,12 @@ function StudentRateForm({ courseId, ov, feeMode, onApplied }: { courseId: strin
   const dirty = () => setPrev(null);
   async function go(apply: boolean) {
     setBusy(apply ? "set" : "prev"); setErr(null);
-    const r = await callApi<Preview & { error?: string }>(`/api/courses/${courseId}/fee-rates`, {
+    const r = await callApi<Preview & { error?: string; override?: boolean }>(`/api/courses/${courseId}/fee-rates`, {
       method: "POST", body: JSON.stringify({ action: apply ? "set_student" : "preview_student", studentId, rate: Number(rate), effectiveFrom: from }),
     });
     setBusy(null);
     if (!r.ok) { setErr(r.data.error ?? "Không thực hiện được"); return; }
-    if (apply) { setPrev(null); setRate(""); onApplied(); } else setPrev(r.data);
+    if (apply) { setPrev(null); setRate(""); onApplied(r.data.override === true); } else setPrev(r.data);
   }
   return (
     <div className="pt-5">

@@ -98,10 +98,12 @@ export async function POST(req: NextRequest) {
 
     // HP-15: hình thức học phí chọn LÚC TẠO LỚP (theo buổi / giờ / khoá). Không gửi, hoặc gửi cách cũ → lớp mặc định, y như trước.
     // Chỉ lớp tạo SAU mới có thể khác mặc định; không có đường nào đổi hình thức của lớp đã tạo.
+    // HOCPHI-THEO-BUOI 3.1: có đơn giá (feeRate) mà không nói feeMode → mặc định theo buổi. Không gửi cả hai → lớp cũ như trước (đường quản trị / ngăn kéo cũ).
+    const feeModeIn: unknown = body.feeMode !== undefined ? body.feeMode : (body.feeRate !== undefined && body.feeRate !== null ? "per_session" : undefined);
     let feeSetup: FeeSetup | null = null;
-    if (body.feeMode !== undefined && body.feeMode !== FEE_MODE_LEGACY) {
+    if (feeModeIn !== undefined && feeModeIn !== FEE_MODE_LEGACY) {
       if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
-      const v = validateFeeSetup({ mode: body.feeMode, rate: body.feeRate, sessionMinutes: body.feeSessionMinutes });
+      const v = validateFeeSetup({ mode: feeModeIn, rate: body.feeRate, sessionMinutes: body.feeSessionMinutes });
       if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
       feeSetup = v.value;
     }

@@ -19,7 +19,9 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   section("Tạo lớp: Cách tính học phí");
   await page.goto(`${BASE}/lop-cua-toi/lop/tao`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Cách tính học phí" }).waitFor({ timeout: 90000 });
-  check("mặc định = cách hiện tại (theo số buổi trong tháng), không có ô đơn giá", await page.getByRole("radio", { name: /Theo số buổi trong tháng/ }).isChecked() && (await page.getByLabel(/Đơn giá/).count()) === 0);
+  // Sửa HOCPHI-THEO-BUOI (Q1): lớp MỚI mặc định "Theo buổi" (có ô đơn giá ngay), cách cũ bỏ khỏi lựa chọn, Theo giờ / Theo khoá nằm trong mục gập "Cách tính khác".
+  check("mặc định = Theo buổi, có ô đơn giá; cách cũ (số buổi trong tháng) không còn trong lựa chọn", await page.getByRole("radio", { name: /^Theo buổi/ }).isChecked() && (await page.getByLabel(/Đơn giá/).count()) >= 1 && (await page.getByRole("radio", { name: /Theo số buổi trong tháng/ }).count()) === 0);
+  await page.locator("[data-fee-other] summary").click();
   await page.getByLabel("Tên lớp *").fill("Lý lớp mới");
   await page.getByRole("radio", { name: /^Theo giờ/ }).check();
   await page.getByLabel(/Đơn giá \(đ \/ giờ\)/).fill("200000");

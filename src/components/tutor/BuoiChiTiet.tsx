@@ -34,7 +34,8 @@ const toForm = (d: SessionDetail): Form => ({
   mode: d.session?.mode === "online" || d.session?.mode === "offline" ? d.session.mode : "", location: d.session?.location ?? "", joinUrl: d.session?.joinUrl ?? "",
 });
 
-export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; dateKey: string }) {
+/** perSessionFee: lớp tính học phí theo buổi/theo giờ (bấm Đã dạy xong là lúc sinh phí); false = lớp cũ hoặc theo khoá. */
+export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }: { courseId: string; dateKey: string; perSessionFee?: boolean }) {
   const notify = useNotify();
   const { ask, dialog } = useKinConfirm();
   const [detail, setDetail] = useState<SessionDetail | null>(null);
@@ -163,7 +164,10 @@ export default function BuoiChiTiet({ courseId, dateKey }: { courseId: string; d
 
       {!closed && past && !detail.cancelled && (
         <KinCallout title="Buổi đã qua nhưng chưa chốt" className="mb-6">
-          Khi dạy xong, bấm <b>Đã dạy xong</b> ở khung bên cạnh để ghi lại trạng thái. Việc này không tạo hay sửa học phí.
+          Khi dạy xong, bấm <b>Đã dạy xong</b> ở khung bên cạnh để ghi lại trạng thái.{" "}
+          {perSessionFee
+            ? "Với lớp tính học phí theo buổi, lúc đó học phí của buổi được tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi chưa tính."
+            : "Việc này không tạo hay sửa học phí."}
         </KinCallout>
       )}
       {detail.cancelled && <KinCallout title="Buổi này đã huỷ trên Lịch" className="mb-6">Bạn vẫn xem và ghi chép được, nhưng buổi huỷ không cần chốt.</KinCallout>}

@@ -1,6 +1,7 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { KinTabs } from "@/components/kin";
+import { KinTabs, kinButtonClass } from "@/components/kin";
 import InvoicesTab from "./InvoicesTab";
 import ReconcileTab from "./ReconcileTab";
 import PayoutTab from "./PayoutTab";
@@ -20,6 +21,7 @@ export default function HocPhiClient({ initialTab, pending }: { initialTab: Tab;
 
   return (
     <div>
+      <p className="mb-4"><Link href="/lop-cua-toi/hoc-phi/thang" className={kinButtonClass("secondary")}>Học phí theo tháng</Link></p>
       <KinTabs
         className="mb-4"
         label="Học phí"

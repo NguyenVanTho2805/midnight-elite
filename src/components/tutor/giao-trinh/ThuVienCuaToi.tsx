@@ -60,7 +60,7 @@ function UseElsewhere({ courses, url, name, onDone, onCancel }: { courses: TvCou
     if (r.ok) onDone(r.json?.duplicate ? `Bài đó đã có “${name}” rồi, không thêm lần nữa.` : `Đã thêm “${name}” vào lớp ${course.name}.`);
     else setErr(r.json?.error ?? (r.status === 0 ? "Mất kết nối. Thử lại." : r.status === 403 ? "Bạn không có quyền với lớp hoặc tệp này." : "Chưa thêm được. Thử lại sau."));
   }
-  if (courses.length === 0) return <p className="py-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bạn chưa có lớp nào để thêm vào. <Link href="/lop-cua-toi/quan-lop?tao=1" className="underline text-[var(--kin-nhan-link)]">Tạo lớp</Link></p>;
+  if (courses.length === 0) return <p className="py-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bạn chưa có lớp nào để thêm vào. <Link href="/lop-cua-toi/lop/tao" className="underline text-[var(--kin-nhan-link)]">Tạo lớp</Link></p>;
   return (
     <div data-tv-dung-lop-khac className="mt-3 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] p-4 space-y-3 md:col-span-4">
       <div>

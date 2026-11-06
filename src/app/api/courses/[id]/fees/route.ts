@@ -9,6 +9,8 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { PERMISSIONS } from "@/lib/permissions";
 import { parseYearMonth, validateSessionCount } from "@/lib/tuition";
 import { logAction } from "@/lib/auditLog";
+import { isNewFeeMode } from "@/lib/tuitionFee";
+import { effectiveFeeModeForMonth } from "@/lib/feeModeFloor";
 
 type FeeRow = { id: string; courseId: string; yearMonth: string; sessionCount: number; freeCount: number; updatedBy: string; updatedAt: Date };
 type FeeDelegate = {
@@ -20,12 +22,12 @@ const fees = () => (prisma as unknown as { monthlyCourseFee: FeeDelegate }).mont
 async function authorize(id: string) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
   if (isNextResponse(auth)) return { res: auth as NextResponse };
-  const course = await prisma.course.findUnique({ where: { id }, select: { ownerId: true } });
+  const course = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, feeMode: true } });
   if (!course) return { res: NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404 }) };
   if (!ownsResource(auth, course.ownerId)) {
     return { res: NextResponse.json({ error: "Bạn không có quyền với lớp này" }, { status: 403 }) };
   }
-  return { auth };
+  return { auth, course };
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -55,6 +57,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const sessionCount = validateSessionCount(body.sessionCount);
   if (sessionCount == null) {
     return NextResponse.json({ error: "sessionCount phải là số nguyên 0–60" }, { status: 400 });
+  }
+  // HOCPHI-THEO-BUOI: lớp đã tính theo buổi/giờ/khoá thì số buổi tháng không còn tác dụng (issueInvoice bỏ qua) → từ chối thay vì nhận ghi vô nghĩa.
+  // Lớp có mốc tháng chuyển: chỉ từ chối các tháng từ mốc trở đi (tháng trước mốc vẫn tính cách cũ).
+  const rates = await prisma.courseFeeRate.findMany({ where: { courseId: id }, select: { effectiveFrom: true } });
+  if (isNewFeeMode(effectiveFeeModeForMonth(r.course!.feeMode, rates, ym.yearMonth))) {
+    return NextResponse.json({ error: "Lớp này tính học phí theo buổi nên không nhập số buổi trong tháng." }, { status: 409 });
   }
   const freeCount = body.freeCount == null ? 0 : validateSessionCount(body.freeCount);
   if (freeCount == null) {
