@@ -67,7 +67,7 @@ function Badge({ n, mobile }: { n: number; mobile: boolean }) {
   );
 }
 
-export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, onCollapse, home, footnote }: {
+export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, onCollapse, home, footnote, mobileMore = false }: {
   roleLabel: string;
   modules: ModuleItem[];
   /** Các mục xếp theo nhóm cho thanh RỘNG (Figma "Điều hướng" 272px). Không truyền thì thanh rộng không có gì để hiện, nên mọi vỏ đều truyền. */
@@ -81,6 +81,9 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
   home?: { href: string; label: string };
   /** Dòng chữ nhỏ cuối thanh (Figma: "Miễn phí ra mắt"). */
   footnote?: string;
+  /** Điều hướng B3 (08/11/2026): bật thì mục `desktopOnly` có `onClick` (nút "Khác" mở bảng) CŨNG nằm trên thanh dưới điện thoại, để các trang còn lại cách 2 bấm thay vì 3
+   *  (Avatar → "Tất cả mục" → mục). Mặc định TẮT: vỏ nào muốn thì tự bật; mục `desktopOnly` là liên kết thường vẫn chỉ ở thanh bên. Số ô thanh dưới do nơi gọi giữ ≤ 5 và đo ≥ 44px ở 320 / 390px. */
+  mobileMore?: boolean;
 }) {
   const pathname = usePathname();
   const [rail] = useRail();
@@ -236,7 +239,7 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
       </div>
       <nav aria-label={ariaLabel}
         className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex items-center gap-2 px-2 z-30 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]">
-        {modules.filter(m => !m.desktopOnly).map((m, i) => renderItem(m, true, i))}
+        {modules.filter(m => !m.desktopOnly || (mobileMore && !!m.onClick)).map((m, i) => renderItem(m, true, i))}
       </nav>
     </>
   );
