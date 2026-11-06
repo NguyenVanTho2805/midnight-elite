@@ -15,6 +15,9 @@
 @import "./kin-motion.css";
 
 :root {
+  /* BU-03-MATHTYPE: nền ảnh công thức {{ctimg}} (SVG nét đen) — trắng ở MỌI chủ đề để nét đen không chìm vào nền tối. Dùng tên màu "white", không hex (t-no-hex). */
+  --kin-nen-anh-cong-thuc: white;
+
   /* Màu (--color-*, --canvas, --ink, --hairline, --tint-*, --semantic-*, --shadow-neu-*…): đã chuyển sang kin-site.css, trỏ về token KiN. */
 
   /* ── Border-radius scale (FE-088) ───────────────────────────────────────

@@ -168,6 +168,28 @@ const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/mai
     check("B có đúng 1 câu của mình trong DB", (await prisma.questionBankItem.count({ where: { ownerId: B.id } })) === 1);
   }
 
+  section("nhap-word: mục LỜI GIẢI CHI TIẾT (không 'Câu N.') → đáp án + lời giải kèm cờ answer_from_solution; QUA HTTP, không ghi DB");
+  {
+    const para = (t: string, u?: boolean) => `<w:p><w:r>${u ? '<w:rPr><w:u w:val="single"/></w:rPr>' : ""}<w:t xml:space="preserve">${t}</w:t></w:r></w:p>`;
+    const optsXml = (corr: number) => `<w:p>${["Tập rỗng", "Một điểm duy nhất", "Hai điểm phân biệt", "Vô số điểm"].map((t, i) => `<w:r>${i === corr ? '<w:rPr><w:u w:val="single"/></w:rPr>' : ""}<w:t xml:space="preserve">${"ABCD"[i]}</w:t></w:r><w:r><w:t xml:space="preserve">. ${t}${i < 3 ? "\t" : ""}</w:t></w:r>`).join("")}</w:p>`;
+    const stem = "Đường thẳng cắt đường tròn bán kính 5 tại bao nhiêu điểm khi khoảng cách từ tâm là 3?";
+    const P1 = "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn. Thí sinh trả lời từ câu 1 đến câu 1.";
+    const body = para(P1) + para(`Câu 1.\t${stem}`) + `<w:p><w:r><w:t xml:space="preserve">${["Tập rỗng", "Một điểm duy nhất", "Hai điểm phân biệt", "Vô số điểm"].map((t, i) => `${"ABCD"[i]}. ${t}`).join("\t")}</w:t></w:r></w:p>`
+      + para("PHIẾU TRẢ LỜI") + para("LỜI GIẢI CHI TIẾT") + para(P1) + para(stem) + optsXml(2) + para("Lời giải") + para("Khoảng cách 3 nhỏ hơn bán kính 5 nên cắt tại hai điểm.");
+    const s0 = await snap(), ai0 = await aiCount();
+    const r = await uploadDocx(NW, A, await mkDocx(body));
+    const q = r.json?.questions?.[0];
+    check("200 + 1 câu, đáp án C lấy từ nhãn gạch chân trong lời giải (nguồn loi-giai)", r.status === 200 && q?.options?.[2]?.isCorrect === true && q.options.filter((o: any) => o.isCorrect).length === 1 && q.answerSource === "loi-giai", [r.status, q]);
+    check("cờ answer_from_solution có (cảnh báo) và KHÔNG có answer_missing/answer_conflict", q?.flags?.includes("answer_from_solution") && !q.flags.includes("answer_missing") && !q.flags.includes("answer_conflict"), q?.flags);
+    check("lời giải vào explanation; 'PHIẾU TRẢ LỜI' không dính vào câu", q?.explanation === "Khoảng cách 3 nhỏ hơn bán kính 5 nên cắt tại hai điểm." && !String(q?.text).includes("PHIẾU"), [q?.explanation, q?.text]);
+    check("solutionStats ghép 1/1 và có cảnh báo tổng solution_summary", r.json?.solutionStats?.matched === 1 && r.json.warnings?.some((w: any) => w.code === "solution_summary"), r.json?.solutionStats);
+    check("bộ đếm AI không tăng, DB không đổi", (await aiCount()) === ai0 && (await snap()) === s0);
+    const at = body.lastIndexOf(stem); // đầu đề trong mục lời giải (lần xuất hiện cuối)
+    const bad = await uploadDocx(NW, A, await mkDocx(body.slice(0, at) + stem.replace("bán kính 5", "bán kính 6") + body.slice(at + stem.length)));
+    const bq = bad.json?.questions?.[0];
+    check("lời giải có đầu đề lệch một con số (5→6) → bỏ: không đáp án, cảnh báo solution_unmatched kèm mã câu s1-1", bq?.answerSource === "khong-co" && bq.flags?.includes("answer_missing") && bad.json?.warnings?.some((w: any) => w.code === "solution_unmatched" && w.question === "s1-1"), [bq?.answerSource, bad.json?.warnings?.filter((w: any) => /solution/.test(w.code))]);
+  }
+
   void mkTutor;
   await done();
 })().catch(e => { console.error(e); process.exit(1); });

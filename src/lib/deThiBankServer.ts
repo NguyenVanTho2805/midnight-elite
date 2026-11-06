@@ -45,11 +45,11 @@ export type SaveManyOutcome =
   | { ok: false; status: 400 | 404; code?: string; error: string };
 
 /** Một câu thô từ thân yêu cầu → câu hợp lệ + độ khó + (tuỳ chọn) nút riêng. Hỏng → null. */
-function readItem(raw: unknown, defaultDifficulty: Difficulty | null): { q: QuizQuestionInput; difficulty: Difficulty; categoryId: string | null } | null {
-  const q = coerceQuestionInput(raw);
+function readItem(rawIn: unknown, defaultDifficulty: Difficulty | null): { q: QuizQuestionInput; difficulty: Difficulty; categoryId: string | null } | null {
+  const q = coerceQuestionInput(rawIn); // đã làm sạch token ảnh công thức bên trong coerceQuestionInput
   if ("error" in q) return null;
   if (validateQuizQuestion(q)) return null; // vào ngân hàng phải đủ đáp án: câu thiếu/mâu thuẫn đáp án ở lại màn xem lại, không vào kho
-  const r = (raw ?? {}) as Record<string, unknown>;
+  const r = (rawIn ?? {}) as Record<string, unknown>;
   const dRaw = typeof r.difficulty === "string" ? r.difficulty.trim().toUpperCase() : "";
   const difficulty = (DIFFICULTIES as readonly string[]).includes(dRaw) ? (dRaw as Difficulty) : defaultDifficulty;
   if (!difficulty) return null; // KHÔNG đoán mức

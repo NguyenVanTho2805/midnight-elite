@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeFormulaImgTokens as sanFormula } from "@/lib/mathtype/formulaImg";
 import { blockOldEditIfLocked } from "@/lib/quizServer";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
@@ -55,7 +56,7 @@ export async function POST(
             examId,
             order,
             type,
-            text: q.text.trim(),
+            text: sanFormula(q.text.trim()),
             imageUrl: q.imageUrl?.trim() || null,
             points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
             sectionLabel: q.sectionLabel?.trim() || null,
@@ -65,7 +66,7 @@ export async function POST(
               create: q.options.map((o, idx) => ({
                 id: `eo-${crypto.randomUUID()}`,
                 order: idx,
-                text: o.text.trim(),
+                text: sanFormula(o.text.trim()),
                 isCorrect: !!o.isCorrect,
                 subLabel: o.subLabel ?? null,
               })),

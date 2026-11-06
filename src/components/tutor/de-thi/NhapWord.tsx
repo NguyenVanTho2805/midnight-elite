@@ -17,8 +17,8 @@ import { KinStatus } from "@/components/kin/Status";
 import { MathText } from "@/components/MathText";
 import { QUIZ_TYPE_LABEL, validateQuizQuestion } from "@/lib/quizQuestion";
 import {
-  ANSWER_SOURCE_LABEL, deThiDetailHref, fetchCategories, flattenCategories, hasFormulaPlaceholder, importSave, LEVEL_LABEL, LEVELS, luuNhieu, nganHangHref, nganHangNodeHref, nhapWordHref,
-  taoDeHref, tierLabel, toBankInput, toExamInputs, uploadWord, wordFileProblem, WORD_MAX_QUESTIONS, type AzotaFlag, type AzotaQuestion, type Level, type LuuNhieuRes, type NhapWordRes,
+  ANSWER_SOURCE_LABEL, deThiDetailHref, fetchCategories, flattenCategories, formulaProblem, hasFormulaPlaceholder, hasImgToken, importSave, LEVEL_LABEL, LEVELS, luuNhieu, maskImgTokens, nganHangHref, nganHangNodeHref, nhapWordHref,
+  taoDeHref, tierLabel, toBankInput, toExamInputs, unmaskImgTokens, uploadWord, wordFileProblem, WORD_MAX_QUESTIONS, type AzotaFlag, type AzotaQuestion, type Level, type LuuNhieuRes, type NhapWordRes,
 } from "./deThiClient";
 
 interface Item {
@@ -32,16 +32,23 @@ interface Item {
 }
 type Step = "chon-tep" | "xem-lai" | "xong";
 
-const FLAG_TEXT: Record<AzotaFlag, { tone: "loi" | "cho"; text: string }> = {
+const FLAG_TEXT: Record<AzotaFlag, { tone: "loi" | "cho" | "xong"; text: string }> = {
   answer_missing: { tone: "loi", text: "Chưa tìm thấy đáp án" },
   answer_conflict: { tone: "loi", text: "Các nguồn đáp án mâu thuẫn, KiN không tự chọn" },
   formula_unread: { tone: "loi", text: "Còn công thức chưa đọc được" },
   image_unreadable: { tone: "cho", text: "Có hình không hiển thị được" },
+  formula_image: { tone: "cho", text: "Công thức này hiện bằng ảnh — cô có thể sửa thành LaTeX nếu muốn" },
+  formula_mathtype: { tone: "xong", text: "Công thức đọc từ MathType — kiểm lại" },
+  answer_from_solution: { tone: "cho", text: "Đáp án đọc từ lời giải — kiểm lại" },
 };
+/** Cờ answer_from_solution chỉ bật khi đáp án THỰC SỰ lấy từ lời giải (answerSource "loi-giai"), nên nhãn không cần phân nhánh. */
+const flagText = (f: AzotaFlag, _q: { answerSource: string }): string => FLAG_TEXT[f].text;
 
 /** Lý do một câu (đang được tích lưu) chưa lưu được; null = ổn. */
 function blockReason(it: Item, toExam: boolean): string | null {
   if (hasFormulaPlaceholder(it.text) || it.options.some(o => hasFormulaPlaceholder(o.text))) return "Còn nhãn ⟦công thức⟧: bấm “Sửa câu” và gõ lại công thức (dạng $...$).";
+  const fp = formulaProblem(it.text) ?? it.options.map(o => formulaProblem(o.text)).find(Boolean) ?? null;
+  if (fp) return fp;
   if (it.q.type !== "ESSAY" && (it.q.flags.includes("answer_missing") || it.q.flags.includes("answer_conflict")) && !it.answerTouched) return "Chưa có đáp án chắc chắn: bấm “Sửa câu” và chọn đáp án đúng.";
   if (!toExam && !it.difficulty) return "Chọn mức NB / TH / VD / VDC cho câu này (ngân hàng cần mức để bốc đề, KiN không tự đoán).";
   return validateQuizQuestion(toBankInput({ type: it.q.type, text: it.text, imageUrl: it.q.imageUrl, explanation: it.q.explanation, options: it.options }));
@@ -115,6 +122,8 @@ export default function NhapWord() {
   const chosen = items.filter(i => i.include);
   const blocked = chosen.filter(i => reasons.get(i.q.key));
   const noLevel = chosen.filter(i => !i.difficulty).length;
+  // Cảnh báo mục lời giải có khung riêng (không bị cắt ở 6 dòng); phần còn lại giữ danh sách "lưu ý".
+  const restWarnings = (res?.warnings ?? []).filter(w => !(res?.solutionStats && (w.code === "solution_summary" || w.code === "solution_unmatched")));
   const canSave = (toExam ? !!examTitle.trim() : !!target) && chosen.length > 0 && blocked.length === 0 && !saving;
   const whyNot = toExam && !examTitle.trim() ? "Đặt tên cho đề." : !toExam && !target ? "Chọn nút đích trong ngân hàng." : chosen.length === 0 ? "Chưa tích câu nào để lưu." : blocked.length > 0 ? `Còn ${blocked.length} câu cần xử lý hoặc bỏ tích.` : null;
 
@@ -180,7 +189,7 @@ export default function NhapWord() {
               <li>Các phần PHẦN I, II, III…: trắc nghiệm, nhiều đáp án, đúng-sai, trả lời ngắn.</li>
               <li>Đáp án đúng: gạch chân ở nhãn, dấu *, bảng đáp án cuối đề, hoặc lời giải. Nguồn nào được dùng đều hiện rõ ở bước sau.</li>
               <li>Hình ảnh trong đề; bảng trong đề; lời giải.</li>
-              <li>Công thức Word thường (OMML) được chuyển thành $...$. Công thức MathType chưa đọc được: KiN đánh dấu để cô gõ lại.</li>
+              <li>Công thức Word thường (OMML) và công thức MathType được KiN đọc tự động và chuyển thành $...$. Câu nào KiN chưa đọc được vẫn có nhãn ⟦công thức⟧ và bị chặn lưu, cô bấm “Sửa câu” để gõ lại.</li>
             </ul>
             <p className="mt-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mức NB/TH/VD/VDC chỉ lấy từ nhãn [n, MỨC] của ý đúng-sai; còn lại cô đặt ở bước xem lại, KiN không đoán.</p>
           </aside>
@@ -194,6 +203,8 @@ export default function NhapWord() {
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]" role="status">
             <span>{res.stats.total} câu đã đọc · {res.stats.withAnswer} có đáp án</span>
             {res.stats.withImage > 0 && <span>{res.stats.withImage} có hình</span>}
+            {typeof res.stats.formulaDecoded === "number" && (res.stats.formulaDecoded + (res.stats.formulaFailed ?? 0)) > 0 && <span>KiN đọc được {res.stats.formulaDecoded}/{res.stats.formulaDecoded + (res.stats.formulaFailed ?? 0)} công thức MathType</span>}
+            {(res.stats.withFormulaImage ?? 0) > 0 && <KinStatus tone="cho">{res.stats.withFormulaImage} câu có công thức hiện bằng ảnh</KinStatus>}
             {res.stats.withFormulaUnread > 0 && <KinStatus tone="loi">{res.stats.withFormulaUnread} câu còn công thức chưa đọc</KinStatus>}
             {res.errors.length > 0 && <KinStatus tone="cho">{res.errors.length} phần bị bỏ</KinStatus>}
           </div>
@@ -204,10 +215,24 @@ export default function NhapWord() {
               {res.errors.length > 6 && <p className="mt-1">Và {res.errors.length - 6} phần nữa. Cô sửa trong tệp rồi nhập lại, hoặc thêm câu bằng tay sau.</p>}
             </KinCallout>
           )}
-          {res.warnings.length > 0 && (
-            <KinCallout title={`${res.warnings.length} lưu ý`}>
-              <ul className="list-disc pl-5">{res.warnings.slice(0, 6).map((w, i) => <li key={i}>{w.question ? `${w.question}: ` : ""}{w.message}</li>)}</ul>
-              {res.warnings.length > 6 && <p className="mt-1">Và {res.warnings.length - 6} lưu ý nữa.</p>}
+          {res.solutionStats && (
+            <KinCallout title="Mục LỜI GIẢI CHI TIẾT" tone="nhan">
+              <p>
+                Đọc được {res.solutionStats.entries} lời giải · đã ghép {res.solutionStats.matched}/{res.stats.total} câu · bỏ {res.solutionStats.dropped} lời giải không đối chiếu được.
+                {" "}Đáp án và lời giải lấy từ đây cô kiểm lại trước khi dùng.
+              </p>
+              {res.warnings.some(w => w.code === "solution_unmatched" && w.question) && (
+                <>
+                  <p className="mt-2">Câu không ghép được (không lấy đáp án từ lời giải):</p>
+                  <ul className="list-disc pl-5">{res.warnings.filter(w => w.code === "solution_unmatched" && w.question).map((w, i) => <li key={i}>{w.message}</li>)}</ul>
+                </>
+              )}
+            </KinCallout>
+          )}
+          {restWarnings.length > 0 && (
+            <KinCallout title={`${restWarnings.length} lưu ý`}>
+              <ul className="list-disc pl-5">{restWarnings.slice(0, 6).map((w, i) => <li key={i}>{w.question ? `${w.question}: ` : ""}{w.message}</li>)}</ul>
+              {restWarnings.length > 6 && <p className="mt-1">Và {restWarnings.length - 6} lưu ý nữa.</p>}
             </KinCallout>
           )}
 
@@ -333,9 +358,10 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[length:var(--kin-co-goc)]">
         <span className="text-[var(--kin-chu-phu)]">Đáp án: <b className="font-medium">{answerText}</b> · nguồn: {ANSWER_SOURCE_LABEL[q.answerSource]}</span>
-        {q.flags.map(f => <KinStatus key={f} tone={FLAG_TEXT[f].tone}>{FLAG_TEXT[f].text}</KinStatus>)}
-        {q.flags.includes("answer_conflict") && it.answerTouched && <KinStatus tone="xong">Cô đã chọn đáp án</KinStatus>}
+        {q.flags.map(f => <KinStatus key={f} tone={FLAG_TEXT[f].tone} className="max-w-full whitespace-normal!">{flagText(f, q)}</KinStatus>)}
+        {q.flags.includes("answer_conflict") && it.answerTouched && <KinStatus tone="xong" className="max-w-full whitespace-normal!">Cô đã chọn đáp án</KinStatus>}
       </div>
+      <KinGuesses it={it} patch={patch} />
       {reason && it.include && <p role="alert" className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{reason}</p>}
 
       <div className="mt-2">
@@ -345,8 +371,10 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
         <div id={`${idBase}-ed`} className="mt-3 space-y-4 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] p-4">
           <div>
             <label htmlFor={`${idBase}-tx`} className={`${KIN_LABEL} mb-2`}>Nội dung câu {q.number}</label>
-            <textarea id={`${idBase}-tx`} className={`${KIN_FIELD} py-2 min-h-24`} value={it.text} onChange={e => patch({ text: e.target.value })} />
-            <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Công thức gõ trong $...$ (ví dụ $x^2 + 1$).</p>
+            <textarea id={`${idBase}-tx`} className={`${KIN_FIELD} py-2 min-h-24`} value={maskImgTokens(it.text)} onChange={e => patch({ text: unmaskImgTokens(e.target.value, it.text) })} />
+            <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Công thức gõ trong $...$ (ví dụ $x^2 + 1$). Bên dưới là bản KiN vẽ ra để cô đối chiếu.</p>
+            {hasImgToken(it.text) && <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chỗ ghi “[ảnh công thức N]” là công thức đang hiện bằng ảnh. Muốn thay bằng LaTeX, cô xoá chữ đó và gõ công thức trong $...$ ngay chỗ ấy; xem trước hiện ngay bên dưới.</p>}
+            <FormulaPreview id={`${idBase}-tx-pv`} text={it.text} />
           </div>
           {q.type !== "ESSAY" && (
             <fieldset className="min-w-0">
@@ -371,8 +399,9 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
                       </span>
                     )}
                     <label htmlFor={`${idBase}-o${i}`} className="sr-only">Nội dung {q.type === "SHORT_ANSWER" ? "đáp án" : `phương án ${i + 1}`}</label>
-                    <input id={`${idBase}-o${i}`} className={`${KIN_FIELD} flex-1 basis-48 min-w-0`} value={o.text}
-                      onChange={e => patch({ options: it.options.map((x, k) => k === i ? { ...x, text: e.target.value } : x), ...(q.type === "SHORT_ANSWER" ? { answerTouched: true } : {}) })} />
+                    <input id={`${idBase}-o${i}`} className={`${KIN_FIELD} flex-1 basis-48 min-w-0`} value={maskImgTokens(o.text)} aria-describedby={o.text.includes("$") || hasImgToken(o.text) ? `${idBase}-o${i}-pv` : undefined}
+                      onChange={e => patch({ options: it.options.map((x, k) => k === i ? { ...x, text: unmaskImgTokens(e.target.value, x.text) } : x), ...(q.type === "SHORT_ANSWER" ? { answerTouched: true } : {}) })} />
+                    <div className="basis-full min-w-0"><FormulaPreview id={`${idBase}-o${i}-pv`} text={o.text} /></div>
                   </div>
                 ))}
               </div>
@@ -381,5 +410,43 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
         </div>
       )}
     </li>
+  );
+}
+
+/** Xem trước trực tiếp công thức $...$ trong ô sửa; báo lỗi KaTeX bằng lời KiN. Không hiện gì nếu chưa có công thức. */
+function FormulaPreview({ id, text }: { id: string; text: string }) {
+  const hasImg = hasImgToken(text);
+  const problem = useMemo(() => formulaProblem(text), [text]);
+  if (!text.includes("$") && !hasImg) return null;
+  return (
+    <div id={id} className="mt-2 min-w-0">
+      <div className="rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-bang)] p-3 text-[length:var(--kin-co-body)] text-[var(--kin-chu-chinh)] break-words overflow-x-auto">
+        <MathText text={text} />
+      </div>
+      {problem
+        ? <p role="alert" className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{problem} Câu này chưa lưu được cho tới khi công thức vẽ ra đúng.</p>
+        : <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{text.includes("$") ? "Công thức vẽ được." : "Công thức hiện bằng ảnh."}</p>}
+    </div>
+  );
+}
+
+/** Công thức KiN đoán cho công thức đang hiện bằng ảnh: xem ảnh gốc cạnh bản đoán; cô bấm dùng thì thay token ảnh bằng $latex$. Chỉ hiện khi máy chủ có gửi. */
+function KinGuesses({ it, patch }: { it: Item; patch: (p: Partial<Item>) => void }) {
+  const guesses = (it.q.latexUnverified ?? []).filter(g => g.latex.trim() && (it.text.includes(g.imgToken) || it.options.some(o => o.text.includes(g.imgToken))));
+  if (guesses.length === 0) return null;
+  const apply = (g: { imgToken: string; latex: string }) => {
+    const latex = `$${g.latex.trim()}$`;
+    patch({ text: it.text.split(g.imgToken).join(latex), options: it.options.map(o => ({ ...o, text: o.text.split(g.imgToken).join(latex) })) });
+  };
+  return (
+    <ul aria-label={`Công thức KiN đoán cho câu ${it.q.number}`} className="mt-2 space-y-2">
+      {guesses.map((g, i) => (
+        <li key={i} className="rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-nhat)] p-3 grid sm:grid-cols-2 gap-3 items-center">
+          <div className="min-w-0"><p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Ảnh gốc</p><MathText text={g.imgToken} /></div>
+          <div className="min-w-0"><p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">KiN đọc là (chưa chắc đúng)</p><div className="break-words overflow-x-auto"><MathText text={`$${g.latex.trim()}$`} /></div></div>
+          <div className="sm:col-span-2"><KinButton variant="secondary" onClick={() => apply(g)}>Dùng công thức KiN đọc</KinButton></div>
+        </li>
+      ))}
+    </ul>
   );
 }

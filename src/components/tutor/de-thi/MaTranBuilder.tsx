@@ -21,6 +21,7 @@ import {
   MA_DE_MAX, MA_DE_MIN, maTranHref, maTranListHref, MODE_LABEL, rutCau, SCOPE_LABEL, taoMaDe, taoTuMaTran, updateBlueprint, variantCodeOf,
   type BlueprintRow, type CategoryFlat, type Counts, type ExamMode, type Level, type PickItem, type RutRes, type Scope, type StatsRes,
 } from "./deThiClient";
+import { clipVisible, visibleLength } from "@/lib/mathtype/formulaImg";
 
 type Cells = Record<string, Partial<Record<Level, string>>>;
 const newSeed = () => Math.random().toString(36).slice(2, 10);
@@ -431,7 +432,7 @@ export default function MaTranBuilder({ id }: { id: string }) {
                       const info = itemInfo[iid];
                       return (
                         <li key={iid} className="px-4 py-3 border-t border-[var(--kin-vien-nhat)]">
-                          <div className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] break-words"><span className="text-[var(--kin-chu-mo)]">{k + 1}. </span>{info?.text ? <MathText text={info.text.length > 220 ? `${info.text.slice(0, 220)}…` : info.text} /> : <span className="text-[var(--kin-chu-mo)]">Nội dung xem được sau khi tạo đề</span>}</div>
+                          <div className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] break-words"><span className="text-[var(--kin-chu-mo)]">{k + 1}. </span>{info?.text ? <MathText text={visibleLength(info.text) > 220 ? `${clipVisible(info.text, 220)}…` : info.text} /> : <span className="text-[var(--kin-chu-mo)]">Nội dung xem được sau khi tạo đề</span>}</div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                             <label className="inline-flex items-center gap-2 min-h-11 text-[length:var(--kin-co-goc)]">
                               <input type="checkbox" className="w-5 h-5" checked={kept.has(iid)} onChange={e => setKept(s => { const n = new Set(s); if (e.target.checked) n.add(iid); else n.delete(iid); return n; })} aria-label={`Giữ câu ${k + 1} của ${catName(r.categoryId)} mức ${r.difficulty} khi bốc lại`} />

@@ -22,6 +22,7 @@ import QuestionForm from "./QuestionForm";
 import SaveToBank from "./SaveToBank";
 import { deThiSubHref } from "@/components/tutor/de-thi/deThiClient";
 import { qfetch, quizHref, versionsHref, DE_THI_ROOT, IMPORT_HREF, type QuizDetail, type QuizQ } from "./quizClient";
+import { clipVisible, visibleLength } from "@/lib/mathtype/formulaImg";
 
 type Tab = "noi-dung" | "dap-an";
 const STATUS_LABEL: Record<string, { tone: StatusTone; text: string }> = {
@@ -262,7 +263,7 @@ export default function QuizEditor({ id }: { id: string }) {
                     return (
                       <li key={q.id} className="py-4 border-b border-[var(--kin-vien-nhat)] grid sm:grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 items-start" data-quiz-q={q.id}>
                         <div className="min-w-0">
-                          <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] break-words"><span className="font-medium">Câu {i + 1}.</span> <MathText text={q.text.length > 220 ? q.text.slice(0, 220) + "…" : q.text} /></p>
+                          <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] break-words"><span className="font-medium">Câu {i + 1}.</span> <MathText text={visibleLength(q.text) > 220 ? clipVisible(q.text, 220) + "…" : q.text} /></p>
                           <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{QUIZ_TYPE_LABEL[q.type]} · {fmtPoints(q.points)} điểm · Đáp án: {answerText(q)}</p>
                           <KinStatus tone={v.ok ? "xong" : "loi"} className="mt-1 !whitespace-normal max-w-full">{v.message}</KinStatus>
                         </div>

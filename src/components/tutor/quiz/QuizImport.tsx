@@ -27,6 +27,7 @@ import QuestionForm from "./QuestionForm";
 import { answerText } from "./QuizEditor";
 import { fileProblem, IMPORT_ACCEPT, NEW_QUIZ_HREF, qfetch, quizHref, DE_THI_ROOT, sizeText, type QuizQ } from "./quizClient";
 import { cellText, parseQuizSheet, SHEET_MAX_BYTES, type SheetRowError } from "@/lib/quizSheetImport";
+import { plainPreview } from "@/lib/mathtype/formulaImg";
 
 type Step = "chon-tep" | "ra-soat";
 interface Cand { key: string; q: QuizQuestionInput; confirmed: boolean }
@@ -343,7 +344,7 @@ export default function QuizImport() {
                       <div className="px-2 grid sm:grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 items-start">
                         <div className="min-w-0">
                           <button type="button" className="block w-full text-left min-h-11 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] break-words" aria-pressed={selected === c.key} onClick={() => { setSelected(c.key); setEditing(null); }}>
-                            <span className="font-medium">{String(i + 1).padStart(2, "0")}.</span> {c.q.text.length > 140 ? c.q.text.slice(0, 140) + "…" : c.q.text}
+                            <span className="font-medium">{String(i + 1).padStart(2, "0")}.</span> {plainPreview(c.q.text, 140)}
                           </button>
                           <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{QUIZ_TYPE_LABEL[c.q.type]} · {answerText(asQuizQ(c, i))} · {fmtPoints(c.q.points)} điểm{dupIdx.has(i) ? " · trùng trong tệp" : ""}</p>
                           <KinStatus tone={issues[i] ? "loi" : c.confirmed ? "xong" : "cho"} className="mt-1">{issues[i] ?? (c.confirmed ? "Đã xác nhận" : "Chưa xác nhận")}</KinStatus>

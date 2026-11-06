@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { computeContentHash } from "@/lib/questionDedup";
+import { sanitizeFormulaImgTokens as sanFormula } from "@/lib/mathtype/formulaImg";
 import { initialStatusFor } from "@/lib/questionBankWorkflow";
 import { setBankItemEmbedding } from "@/lib/embeddings";
 
@@ -59,21 +60,21 @@ export async function POST(
       const created = await tx.questionBankItem.create({
         data: {
           type: question.type,
-          text: question.text,
+          text: sanFormula(question.text), // dữ liệu cũ có thể còn token chưa lọc
           imageUrl: question.imageUrl,
           points: question.points,
-          explanation: question.explanation,
-          hint: question.hint,
+          explanation: question.explanation == null ? null : sanFormula(question.explanation),
+          hint: question.hint == null ? null : sanFormula(question.hint),
           categoryId,
           difficulty,
           tags: tags && tags.length > 0 ? tags : undefined,
-          contentHash: computeContentHash(question.text),
+          contentHash: computeContentHash(sanFormula(question.text)),
           ownerId: auth.userId,
           status: initialStatusFor(auth.adminRole),
           options: {
             create: question.options.map((o, idx) => ({
               order: idx,
-              text: o.text,
+              text: sanFormula(o.text),
               isCorrect: o.isCorrect,
               subLabel: o.subLabel,
             })),
