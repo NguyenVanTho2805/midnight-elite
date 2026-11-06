@@ -21,9 +21,9 @@ async function main() {
   const sp = splitEnrollmentIds(rows);
   check("đang học = a, d (đúng thứ tự, không trùng)", sp.courseIds.join() === "a,d", sp.courseIds);
   check("chờ phụ huynh = b, e", sp.pendingConsentCourseIds.join() === "b,e", sp.pendingConsentCourseIds);
-  check("suspended và trạng thái lạ không vào danh sách nào", ![...sp.courseIds, ...sp.pendingConsentCourseIds].some(x => x === "c" || x === "f"));
+  check("đã nghỉ (c) chỉ vào suspendedCourseIds; trạng thái lạ (f) không vào danh sách nào", sp.suspendedCourseIds.join() === "c" && ![...sp.courseIds, ...sp.pendingConsentCourseIds, ...sp.suspendedCourseIds].includes("f") && ![...sp.courseIds, ...sp.pendingConsentCourseIds].includes("c"), sp);
   const none = splitEnrollmentIds([]);
-  check("rỗng → hai mảng rỗng", none.courseIds.length === 0 && none.pendingConsentCourseIds.length === 0);
+  check("rỗng → ba mảng rỗng", none.courseIds.length === 0 && none.pendingConsentCourseIds.length === 0 && none.suspendedCourseIds.length === 0);
   check("không lớp nào nằm ở cả hai danh sách", sp.courseIds.every(x => !sp.pendingConsentCourseIds.includes(x)));
 
   await wipe();
@@ -39,9 +39,9 @@ async function main() {
   check("200", r.status === 200, r.status);
   check("courseIds chỉ có lớp ĐANG HỌC (A)", JSON.stringify(r.json?.courseIds) === JSON.stringify([A.id]), r.json);
   check("pendingConsentCourseIds có lớp chờ phụ huynh (B)", JSON.stringify(r.json?.pendingConsentCourseIds) === JSON.stringify([B.id]), r.json);
-  check("lớp tạm dừng (C) không có ở đâu cả", !JSON.stringify(r.json).includes(C.id));
+  check("NO-0511: lớp đã nghỉ (C) CHỈ có trong suspendedCourseIds", JSON.stringify(r.json?.suspendedCourseIds) === JSON.stringify([C.id]) && !r.json?.courseIds.includes(C.id) && !r.json?.pendingConsentCourseIds.includes(C.id), r.json);
   check("không lộ hồ sơ của người khác (D)", !JSON.stringify(r.json).includes(D.id));
-  check("chỉ có đúng 2 khoá", Object.keys(r.json ?? {}).sort().join() === "courseIds,pendingConsentCourseIds", Object.keys(r.json ?? {}));
+  check("chỉ có đúng 3 khoá", Object.keys(r.json ?? {}).sort().join() === "courseIds,pendingConsentCourseIds,suspendedCourseIds", Object.keys(r.json ?? {}));
 
   section("API: ?detail=1 (danh mục 'Lớp của tôi')");
   const d = await api("GET", "/api/enrollments?detail=1", { as: S });
@@ -50,13 +50,17 @@ async function main() {
 
   section("API: người khác và khách");
   const o = await api("GET", "/api/enrollments", { as: O });
-  check("em khác: courseIds rỗng, pending chỉ lớp D", o.json?.courseIds.length === 0 && JSON.stringify(o.json?.pendingConsentCourseIds) === JSON.stringify([D.id]), o.json);
+  check("em khác: courseIds rỗng, pending chỉ lớp D, không thấy lớp đã nghỉ của S", o.json?.courseIds.length === 0 && o.json?.suspendedCourseIds?.length === 0 && JSON.stringify(o.json?.pendingConsentCourseIds) === JSON.stringify([D.id]), o.json);
   const g = await api("GET", "/api/enrollments");
-  check("khách: 200 với hai mảng rỗng (không lộ gì)", g.status === 200 && g.json?.courseIds?.length === 0 && g.json?.pendingConsentCourseIds?.length === 0, g.json);
+  check("khách: 200 với ba mảng rỗng (không lộ gì)", g.status === 200 && g.json?.courseIds?.length === 0 && g.json?.pendingConsentCourseIds?.length === 0 && g.json?.suspendedCourseIds?.length === 0, g.json);
   const gd = await api("GET", "/api/enrollments?detail=1");
   check("khách ?detail=1: cũng hai mảng rỗng", gd.status === 200 && gd.json?.courseIds?.length === 0 && gd.json?.pendingConsentCourseIds?.length === 0, gd.json);
   const bad = await api("GET", "/api/enrollments", { headers: { cookie: "midnight_session=khong-phai-phien-that" } });
   check("cookie phiên rác = khách", bad.status === 200 && bad.json?.pendingConsentCourseIds?.length === 0, bad.json);
+
+  section("NO-0511: hồ sơ đã nghỉ vẫn bị từ chối theo dõi (nhãn thay nút chỉ là giao diện)");
+  const fs = await api("POST", `/api/followed-courses/${C.id}`, { as: S });
+  check("POST theo dõi lớp C (đã nghỉ) → 409", fs.status === 409, fs.status);
 
   section("Theo dõi lớp: hồ sơ chờ phụ huynh vẫn bị từ chối (không đổi hành vi máy chủ)");
   const f = await api("POST", `/api/followed-courses/${B.id}`, { as: S });
