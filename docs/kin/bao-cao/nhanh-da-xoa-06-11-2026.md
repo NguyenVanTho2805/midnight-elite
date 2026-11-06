@@ -1,8 +1,15 @@
 # Dọn nhánh — 06/11/2026
 
+> **Trạng thái: CHƯA XOÁ.** Phiên Claude không có quyền xoá nhánh: `git push --delete` và `git push <thẻ>` đều bị GitHub trả **HTTP 403**, và công cụ GitHub của phiên không có thao tác xoá nhánh. Việc phân loại bên dưới đã xong; để xoá, chạy bằng tài khoản có quyền:
+> ```bash
+> bash tools/xoa-nhanh-rac.sh            # in việc sẽ làm
+> bash tools/xoa-nhanh-rac.sh --apply    # làm thật
+> ```
+> Script chỉ xoá nhánh khi đầu nhánh trên GitHub còn đúng SHA đã ghi ở bảng (`--force-with-lease`).
+
 Thọ: "kiểm tra thật kĩ các nhánh mà không cần thiết, nhánh rác có thể bỏ". Kiểm từng nhánh trên GitHub (125 nhánh) bằng bốn cách: (1) có phải tổ tiên của `main` không; (2) PR của nhánh đã **gộp bằng squash** chưa — kiểm đúng commit `(#N)` có trên `main` và đầu nhánh trùng đầu PR; (3) có là tổ tiên của một nhánh mà PR đã gộp không; (4) với phần còn lại, đọc từng commit và đối chiếu mã trên `main`.
 
-**Kết quả:** xoá **119** nhánh (bảng dưới), giữ **6**. Xoá nhánh KHÔNG mất nội dung: 54 nhánh là tổ tiên của `main`; 48 nhánh đã gộp bằng squash; 12 nhánh nằm trong nhánh đã gộp; 5 nhánh còn lại đã xem từng cái (ghi chú ở cột lý do). Hai nhánh có phần riêng được lưu thành **thẻ** `archive/…`; nhánh có PR vẫn giữ commit ở `refs/pull/<số>/head`.
+**Kết quả:** đề nghị xoá **119** nhánh (bảng dưới), giữ **6**. Xoá nhánh KHÔNG mất nội dung: 54 nhánh là tổ tiên của `main`; 48 nhánh đã gộp bằng squash; 12 nhánh nằm trong nhánh đã gộp; 5 nhánh còn lại đã xem từng cái (ghi chú ở cột lý do). Hai nhánh có phần riêng sẽ được lưu thành **thẻ** `archive/…` (script tạo trước khi xoá); nhánh có PR vẫn giữ commit ở `refs/pull/<số>/head`.
 
 ## Khôi phục một nhánh đã xoá
 ```bash
@@ -20,7 +27,7 @@ git push origin <SHA đầy đủ ở bảng>:refs/heads/<tên nhánh>
 | `claude/stoic-meitner-mczn3x` | (c) ở trên bản sớm (`AuthContext.refresh` + `AuthGuard`); phần "đăng xuất tải cứng" đã có trên `main` |
 | `claude/online-learning-platform-tyiyyg` | 9 tài liệu định hướng gia sư–sinh viên (chiến lược, biểu đồ UML, roadmap, 09/2026) chỉ có ở nhánh này — cần Thọ quyết có giữ làm lịch sử không |
 
-## 119 nhánh đã xoá
+## 119 nhánh đề nghị xoá
 | Nhánh | SHA đầu nhánh | PR | Lý do |
 |---|---|---|---|
 | `aodtsix-cmd-patch-1` | `f1f283ac0530d4367e664b96685767331992ba3a` | #1 | đã gộp (tổ tiên của main) |
