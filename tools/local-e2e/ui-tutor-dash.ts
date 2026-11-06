@@ -9,7 +9,11 @@ let seq = 700;
   const T = await mkTutor("Cô Lan"), T0 = await mkTutor("Cô Mới"); // T0: chưa có lớp
   // TT-203: gia sư mới ở chế độ gọn (màn đầu là Lịch). Bài test này kiểm Tổng quan nên bật Hộp việc + Lớp trước.
   const { prisma: pr } = await import("@/lib/prisma");
-  for (const u of [T, T0]) await pr.user.update({ where: { id: u.id }, data: { preferences: { modules: ["hop-viec", "lop"] } } });
+  // B1 (08/11/2026): /tong-quan chỉ còn hiện khi gia sư TẮT Hộp việc; bật thì chuyển 307 về /lop-cua-toi (số liệu đã dời lên đầu Hộp việc).
+  // T: bật Hộp việc (kiểm dải số + chuyển hướng), sau đó tạm tắt để kiểm trang Tổng quan còn lại; T0: tắt Hộp việc sẵn (trạng thái rỗng của Tổng quan).
+  await pr.user.update({ where: { id: T.id }, data: { preferences: { modules: ["hop-viec", "lop"] } } });
+  await pr.user.update({ where: { id: T0.id }, data: { preferences: { modules: ["lop"] } } });
+  const setMods = (mods: string[]) => pr.user.update({ where: { id: T.id }, data: { preferences: { modules: mods } } });
   const s1 = await mkUser({ name: "Trần Gia Bảo" }), s2 = await mkUser({ name: "Đỗ Hà" }), s3 = await mkUser({ name: "Lê Minh" }), rep = await mkUser({ name: "Người Báo" });
   const c1 = await mkCourse(T.id, { name: "Toán 9", capacity: 2 }), c2 = await mkCourse(T.id, { name: "Lý 9", classStatus: "closed" });
   for (const [u, c] of [[s1, c1], [s2, c1], [s1, c2], [s3, c2]] as const) await prisma.enrollment.create({ data: { userId: u.id, courseId: c.id, status: "active" } });
@@ -47,13 +51,30 @@ let seq = 700;
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error" && !/favicon|font|Failed to load resource|vietqr/i.test(m.text())) errors.push(m.text()); });
 
-  section("Tổng quan gia sư /lop-cua-toi/tong-quan");
+  section("B1: Hộp việc là trang chủ duy nhất — /tong-quan chuyển 307, số liệu dời lên đầu Hộp việc");
+  const PAID = invA.amountDue.toLocaleString("vi-VN"); // số tiền đã gạch của phiếu A
+  const raw = await fetch(`${BASE}/lop-cua-toi/tong-quan`, { redirect: "manual", headers: { cookie: await cookieFor(T) } });
+  const rawBody = await raw.text();   // (tutor)/loading.tsx làm trang stream nên mọi redirect() của kho trả 200 + tín hiệu NEXT_REDIRECT mã 307 trong thân (giống các redirect khác của vỏ gia sư), không phải dòng trạng thái HTTP 307
+  check("Hộp việc bật: /lop-cua-toi/tong-quan phát redirect 307 về /lop-cua-toi (NEXT_REDIRECT;replace;/lop-cua-toi;307)", /NEXT_REDIRECT;replace;\/lop-cua-toi;307/.test(rawBody), [raw.status, rawBody.slice(-300)]);
+  await page.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Hộp việc" }).first().waitFor({ timeout: 90000 });
+  check("sau chuyển hướng đang ở đúng /lop-cua-toi", new URL(page.url()).pathname === "/lop-cua-toi", page.url());
+  const stat = (k: string) => page.locator(`[data-hv-stat="${k}"] dd`).first().innerText();
+  check("đầu Hộp việc: Học viên đang học = 3 (s1,s2,s3 — không đếm trùng s1 ở 2 lớp, không đếm 'chờ PH')", (await stat("hoc-vien")) === "3", await stat("hoc-vien"));
+  check("đầu Hộp việc: Lớp đang dạy = 1/2 (1 lớp mở trên tổng 2)", (await stat("lop")) === "1/2", await stat("lop"));
+  check("đầu Hộp việc: Đã thu tháng này = số tiền phiếu A đã gạch (nguyên vẹn, cùng định dạng ...đ)", (await stat("da-thu")).includes(PAID + "đ"), [await stat("da-thu"), PAID]);
+  check("thẻ Đã thu tháng này dẫn tới Doanh thu", (await page.locator('[data-hv-stat="da-thu"]').getAttribute("href")) === "/lop-cua-toi/doanh-thu");
+  check("Hộp việc không còn dải 'Lối tắt' và không có danh sách lớp thứ hai (chỉ 'Lớp thường dùng')", (await page.getByRole("navigation", { name: "Lối tắt" }).count()) === 0 && (await page.getByRole("list", { name: "Danh sách lớp" }).count()) === 0);
+  check("Khác không còn mục 'Tổng quan' khi Hộp việc bật", await (async () => { await page.getByRole("button", { name: "Khác" }).first().click(); const t = await page.locator("#khac-bang").innerText(); await page.keyboard.press("Escape"); return !/Tổng quan/.test(t); })());
+
+  section("Tổng quan còn lại khi gia sư TẮT Hộp việc (lối duy nhất tới các con số)");
+  await setMods(["lop"]);
   await page.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Lớp của tôi" }).waitFor({ timeout: 90000 });
+  check("Hộp việc tắt: /tong-quan KHÔNG chuyển hướng", new URL(page.url()).pathname === "/lop-cua-toi/tong-quan", page.url());
   const dd = (label: string) => page.locator("dt", { hasText: label }).locator("xpath=following-sibling::dd[1]").innerText();
-  const PAID = invA.amountDue.toLocaleString("vi-VN"); // số tiền đã gạch của phiếu A
-  check("Học viên đang học = 3 (s1,s2,s3 — không đếm trùng s1 ở 2 lớp, không đếm 'chờ PH')", (await dd("Học viên đang học")) === "3", await dd("Học viên đang học"));
-  check("Lớp đang dạy = 1/2 (1 lớp mở trên tổng 2)", (await dd("Lớp đang dạy")) === "1/2", await dd("Lớp đang dạy"));
+  check("Học viên đang học = 3", (await dd("Học viên đang học")) === "3", await dd("Học viên đang học"));
+  check("Lớp đang dạy = 1/2", (await dd("Lớp đang dạy")) === "1/2", await dd("Lớp đang dạy"));
   check("Đã thu tháng này = số tiền phiếu A đã gạch", (await dd("Đã thu tháng này")).includes(PAID), [await dd("Đã thu tháng này"), PAID]);
   const todoText = await page.locator("#h-viec").locator("xpath=..").innerText();
   check("việc: 1 khoản chờ đối soát", /Khoản tiền vào cần đối soát\s*\n?\s*1/.test(todoText), todoText);
@@ -64,11 +85,11 @@ let seq = 700;
   check("việc khẩn (đối soát) đứng đầu danh sách", todoText.indexOf("Khoản tiền vào cần đối soát") < todoText.indexOf("Báo cáo cộng đồng"));
   check("thẻ lớp Toán 9: 2/2 học viên, đã đầy", await page.getByText("2/2").first().isVisible() && await page.getByText(/đã đầy/).isVisible());
   check("thẻ lớp Lý 9: trạng thái 'Đã đóng'", await page.getByText(/Lý 9/).first().isVisible() && await page.getByText(/Đã đóng/).first().isVisible());
-  check("thẻ có nút Điểm danh / Danh bạ lớp / Mở lớp", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2);
+  check("thẻ có nút Điểm danh và nhãn 'Danh bạ lớp' (không còn 'Danh sách HS')", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2 && (await page.getByRole("link", { name: "Danh bạ lớp" }).count()) === 2 && (await page.getByText("Danh sách HS").count()) === 0);
+  check("Tổng quan không còn dải 'Lối tắt'", (await page.getByRole("navigation", { name: "Lối tắt" }).count()) === 0);
+  check("Hộp việc tắt: bảng Khác còn mục 'Tổng quan'", await (async () => { await page.getByRole("button", { name: "Khác" }).first().click(); const t = await page.locator("#khac-bang").innerText(); await page.keyboard.press("Escape"); return /Tổng quan/.test(t); })());
   await shot(page, "dash-tutor");
-  await page.getByRole("navigation", { name: "Lối tắt" }).getByRole("link", { name: "Học phí", exact: true }).click();
-  await page.waitForURL(/hoc-phi/);
-  check("lối tắt Học phí hoạt động", true);
+  await setMods(["hop-viec", "lop"]);
 
   section("Trạng thái rỗng + CTA");
   const p0 = await (await ctxFor(T0)).newPage();
@@ -78,7 +99,7 @@ let seq = 700;
   check("không có việc → thông báo", await p0.getByText("Hiện không có việc nào cần xử lý.").isVisible());
   check("mọi số liệu = 0", (await p0.locator("dd").first().innerText()) === "0");
   await p0.getByRole("link", { name: "Tạo lớp đầu tiên" }).click();
-  await eventually("'Tạo lớp đầu tiên' → mở thẳng form 'Tạo khoá học mới' ở trang danh sách (không dừng ở danh sách trống)", async () => new URL(p0.url()).pathname === "/lop-cua-toi/quan-lop" && await p0.getByRole("heading", { name: "Tạo khoá học mới" }).isVisible(), 40000);
+  await eventually("'Tạo lớp đầu tiên' → mở thẳng form 'Tạo lớp học' (/lop-cua-toi/lop/tao; quan-lop?tao=1 cũ đã chuyển về đó)", async () => new URL(p0.url()).pathname === "/lop-cua-toi/lop/tao" && await p0.getByRole("heading", { name: "Tạo lớp học" }).isVisible(), 40000);
 
   section("Doanh thu /lop-cua-toi/doanh-thu");
   await page.goto(`${BASE}/lop-cua-toi/doanh-thu`, { waitUntil: "networkidle" });
