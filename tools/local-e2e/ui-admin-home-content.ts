@@ -29,7 +29,7 @@ import { launch, ctxFor, closeAll, ADMIN } from "./ui";
     const pc = await open(cc);
     // BU-08: bốn module (Việc chờ · Con người · Học vụ · Vận hành); "Trang chủ" nằm ở Học vụ, nhóm Truyền thông.
     const tabs = pc.getByRole("navigation", { name: "Trang của Học vụ" });
-    check("quản trị nội dung thấy mục 'Trang chủ' ở module Học vụ (nhóm Truyền thông), đang ở trang đó", await tabs.getByRole("link", { name: "Trang chủ" }).getAttribute("aria-current") === "page");
+    check("quản trị nội dung thấy mục 'Trang chủ' ở module Học vụ (nhóm Truyền thông), đang ở trang đó", await tabs.getByRole("link", { name: "Chữ trang chủ" }).getAttribute("aria-current") === "page");
     await cc.close();
   }
 

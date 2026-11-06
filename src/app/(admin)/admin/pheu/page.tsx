@@ -9,8 +9,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { callApi } from "@/components/tutor/shared";
 
 interface Row { channel: string; group: string; groupLabel: string; opens: number; fulls: number; fullRate: number | null }
-interface Report { id: string; tutorId: string; tutorName: string; tutorLocked: boolean; reason: string; reasonLabel: string; detail: string | null; channel: string | null; createdAt: string; openForTutor: number }
-interface Payload { days: number; rows: Row[]; totals: { opens: number; fulls: number }; reportsOpen: number; lockedProfiles: number; reports: Report[] }
+interface Payload { days: number; rows: Row[]; totals: { opens: number; fulls: number }; reportsOpen: number; lockedProfiles: number }
 
 const pct = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
 

@@ -242,7 +242,7 @@ function profileItem(r: ProfileRep, now: Date): QueueItem {
         { key: "lock", label: "Khoá hồ sơ công khai", kind: "primary", method: "PATCH", url: `/api/admin/profile-reports/${r.id}`, body: { action: "lock" }, reason: { label: "Lý do khoá hồ sơ", max: 500 } },
         { key: "dismiss", label: "Bỏ qua báo cáo", kind: "secondary", method: "PATCH", url: `/api/admin/profile-reports/${r.id}`, body: { action: "dismiss" } },
       ],
-      links: [{ label: "Mở bảng phễu gia sư", href: "/admin/pheu" }],
+      links: [{ label: "Xem hồ sơ công khai", href: `/mentor/${r.tutorId}` }, { label: "Mở bảng phễu gia sư", href: "/admin/pheu" }],
     },
   };
 }
