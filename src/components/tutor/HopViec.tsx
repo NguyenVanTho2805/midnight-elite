@@ -36,7 +36,7 @@ function Skeleton() {
   );
 }
 
-export default function HopViec() {
+export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
   const [items, setItems] = useState<InboxItem[] | null>(null);
   const [overview, setOverview] = useState<HopViecOverview | null>(null);
   const [error, setError] = useState(false);
@@ -65,6 +65,8 @@ export default function HopViec() {
       <KinPageHeader title="Hộp việc"
         sub={<>{o ? `${o.dateLine} · ` : ""}<span className="md:hidden">Sổ dạy học</span><span className="hidden md:inline">Việc cần cô xử lý trước, việc chờ phụ huynh để riêng.</span></>}
         actions={<><KinMoneyEye /><Link href="/lop-cua-toi/lop/tao" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link></>} />
+
+      {top}
 
       {error && <ErrorStrip message="Không tải được Hộp việc." onRetry={load} />}
       {items === null || !o ? (!error ? <Skeleton /> : null) : (

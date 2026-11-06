@@ -7,7 +7,7 @@
 // Panel phải lazy-render nội dung theo activeKey — không fetch gì
 // nặng ở shell này; mỗi item quyết fetch khi chọn.
 //
-// BU-00 sửa sau test (31/10/2026): ba lối tắt Điểm danh / Danh sách HS / Trang quản khoá đi theo vai qua contentHref (src/lib/tutorRoutes.ts):
+// BU-00 sửa sau test (31/10/2026): ba lối tắt Điểm danh / Danh bạ lớp / Trang quản khoá đi theo vai qua contentHref (src/lib/tutorRoutes.ts):
 // gia sư → bí danh /lop-cua-toi/quan-lop/…; quản trị cấp 1/nội dung xem lớp với role="tutor" → /admin/khoa-hoc/… (trước đây trỏ cứng bí danh gia sư,
 // layout (noi-dung) đẩy quản trị về /admin, mất lớp đang xem).
 "use client";

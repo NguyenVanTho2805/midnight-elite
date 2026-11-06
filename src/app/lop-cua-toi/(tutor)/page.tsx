@@ -7,13 +7,14 @@
 // - Học viên (role=student): các lớp đã Enrollment status="active".
 // - Chưa đăng nhập: redirect về /dang-nhap.
 //
-// Click 1 lớp → trang lớp /lop-cua-toi/[courseId]; hai lối tắt Điểm danh / Danh sách HS đi theo vai (BU-00 bước 3: gia sư → /lop-cua-toi/quan-lop/…,
+// Click 1 lớp → trang lớp /lop-cua-toi/[courseId]; hai lối tắt Điểm danh / Danh bạ lớp đi theo vai (BU-00 bước 3: gia sư → /lop-cua-toi/quan-lop/…,
 // quản trị → /admin/khoa-hoc/…, src/lib/tutorRoutes.ts).
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import HopViec from "@/components/tutor/HopViec";
+import TutorOverviewStats from "@/components/tutor/TutorOverviewStats";
 import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { contentHref } from "@/lib/tutorRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
@@ -29,9 +30,9 @@ export default async function LopCuaToiPage() {
   if (session.role === "admin" && session.adminRole === "teacher") {
     const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true } });
     // TT-203: Hộp việc đã bị gia sư tắt (chế độ gọn tường minh `modules` không có "hop-viec") thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở
-    // /lop-cua-toi/tong-quan. BU-00: `modules` vắng mặt = đủ module nên gia sư mới rơi thẳng vào Hộp việc, không chuyển hướng.
+    // /lop-cua-toi/tong-quan (B1 08/11/2026: trang đó chỉ còn khi Hộp việc tắt; còn bật thì chuyển về đây, nơi số liệu đã dời lên đầu). BU-00: `modules` vắng mặt = đủ module nên gia sư mới rơi thẳng vào Hộp việc, không chuyển hướng.
     if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
-    return <HopViec />;
+    return <HopViec top={<TutorOverviewStats tutorId={session.userId} />} />;
   }
 
   // BU-00 bước 5: gia sư CHỜ DUYỆT (role student + đơn đang chờ) không có lớp nào để liệt kê — trang đầu của họ là Trạng thái hồ sơ.
