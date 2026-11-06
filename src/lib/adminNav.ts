@@ -1,6 +1,7 @@
 // Điều hướng của vỏ quản trị (Figma "Vỏ — Quản trị" 606:7): BỐN module theo HIEN-CO-VA-DINH-VI §4.3 — Việc chờ · Con người · Học vụ · Vận hành.
 // PHẦN THUẦN, không đụng React: gom MỌI trang quản trị vào bốn module, giữ nguyên quyền từng trang (có test đối chiếu).
 // Quy tắc: trang không đủ quyền thì KHÔNG hiện lối vào; module không còn trang con nào thì ẩn cả module.
+// Trang chủ duy nhất của quản trị là "Hôm nay" (/admin): MỘT lối vào là logo ở đầu thanh bên / dải trên; nó không nằm trong module nào (không lặp ở Vận hành).
 // `group` (BU-08): nhóm con trong module. Vỏ chỉ hiện dải tab của NHÓM đang ở (≤ 6 tab) và đặt tên nhóm làm tiêu đề phụ ở thanh bên rộng.
 import { COIN_VISIBLE } from "@/lib/features";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
@@ -9,9 +10,14 @@ export interface AdminSub { label: string; href: string; permission?: Permission
 export interface AdminModuleDef { key: string; label: string; icon: string; subs: AdminSub[] }
 export interface AdminModuleView { key: string; label: string; icon: string; href: string; subs: AdminSub[] }
 
+/** Trang chủ quản trị (đích sau đăng nhập). Không thuộc `subs` của module nào: vào bằng logo; khi đang ở đây thì module Việc chờ sáng (Hôm nay chính là tổng quan việc chờ). */
+export const ADMIN_HOME: AdminSub = { label: "Hôm nay", href: "/admin" };
+export const ADMIN_HOME_MODULE = "viec-cho";
+
 export const ADMIN_MODULES: AdminModuleDef[] = [
   {
-    // Một hàng chờ duy nhất (gia sư, bài viết, hồ sơ, trả lời, đánh giá khoá, nạp Coin, …). Badge của vỏ nằm ở module này.
+    // Một hàng chờ cho các việc DUYỆT (gia sư, bài viết, hồ sơ, trả lời, đánh giá khoá, câu hỏi của khách, nạp Coin khi Coin hiện). Badge của vỏ nằm ở module này và chỉ đếm đúng những loại ấy.
+    // Gói KiN Pro chờ kích hoạt và Hỗ trợ gia sư đang chờ KHÔNG nằm trong Hàng chờ: xử lý ngay ở trang riêng (Vận hành › Hệ thống); "Hôm nay" có đếm và dẫn tới.
     key: "viec-cho", label: "Việc chờ", icon: "kiem-duyet",
     subs: [
       { label: "Hàng chờ", href: "/admin/kiem-duyet" },
@@ -50,7 +56,6 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
   {
     key: "van-hanh", label: "Vận hành", icon: "bao-cao",
     subs: [
-      { label: "Hôm nay", href: "/admin", group: "Theo dõi" },
       { label: "Doanh thu", href: "/admin/doanh-thu", permission: PERMISSIONS.VIEW_REVENUE, group: "Theo dõi" },
       { label: "Phễu gia sư", href: "/admin/pheu", permission: PERMISSIONS.MANAGE_TUTORS, group: "Theo dõi" },
       { label: "Số đo sản phẩm", href: "/admin/so-do", permission: PERMISSIONS.MANAGE_TUTORS, group: "Theo dõi" },
@@ -58,9 +63,11 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Nhật ký", href: "/admin/nhat-ky", permission: PERMISSIONS.MANAGE_ADMINS, group: "Hệ thống" },
       // QT-03: màn xem cờ triển khai + hạn mức (chỉ đọc), cùng quyền với Gói KiN Pro.
       { label: "Triển khai và hạn mức", href: "/admin/trien-khai", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" },
+      // Yêu cầu Pro chờ kích hoạt xử lý Ở ĐÂY (đối chiếu sao kê rồi kích hoạt), không qua Hàng chờ; "Hôm nay" đếm vào tổng việc chờ.
       { label: "Gói KiN Pro", href: "/admin/goi-pro", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" },
       // Lịch sử nạp Coin chỉ ĐỌC (việc chờ duyệt nằm ở Hàng chờ). Chỉ quản trị cấp 1, như API duyệt.
       ...(COIN_VISIBLE ? [{ label: "Lịch sử nạp Coin", href: "/admin/topups", permission: PERMISSIONS.MANAGE_REVENUE, group: "Hệ thống" }] : []),
+      // Yêu cầu hỗ trợ đang chờ trả lời ở trang này (không qua Hàng chờ); "Hôm nay" đếm vào tổng việc chờ.
       { label: "Hỗ trợ gia sư", href: "/admin/ho-tro", permission: PERMISSIONS.MANAGE_TUTORS, group: "Hệ thống" },
     ],
   },
@@ -96,10 +103,11 @@ export function groupSubs(subs: AdminSub[]): { group: string | null; subs: Admin
 
 /** Trang con khớp đường dẫn nhất (khớp dài nhất thắng; "/admin" chỉ khớp đúng "/admin"). Cả những trang không đủ quyền cũng được tính để biết đang ở module nào. */
 export function matchSub(pathname: string): { moduleKey: string; sub: AdminSub } | null {
+  if (pathname === ADMIN_HOME.href) return { moduleKey: ADMIN_HOME_MODULE, sub: ADMIN_HOME };
   let best: { moduleKey: string; sub: AdminSub } | null = null;
   for (const m of ADMIN_MODULES) {
     for (const s of m.subs) {
-      const hit = s.href === "/admin" ? pathname === "/admin" : pathname === s.href || pathname.startsWith(s.href + "/");
+      const hit = pathname === s.href || pathname.startsWith(s.href + "/");
       if (hit && (!best || s.href.length > best.sub.href.length)) best = { moduleKey: m.key, sub: s };
     }
   }

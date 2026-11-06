@@ -104,7 +104,7 @@ export interface QueueItem {
 
 export interface TutorApp { id: string; name: string; email: string; phone: string | null; city: string | null; emailVerified: boolean; bio: string | null; subjects: string[]; appliedAt: Date }
 export interface ThreadRep { id: string; reason: string; createdAt: Date; reporter: string; reporterStaff?: boolean; author: string; authorStaff?: boolean; content: string; course: string | null }
-export interface ProfileRep { id: string; tutorId: string; tutorName: string; reason: string; detail: string | null; channel: string | null; createdAt: Date }
+export interface ProfileRep { id: string; tutorId: string; tutorName: string; reason: string; detail: string | null; channel: string | null; createdAt: Date; /** Số báo cáo đang mở về cùng gia sư (gồm dòng này); vắng = không biết. */ openForTutor?: number }
 export interface AnswerRep { id: string; reason: string; createdAt: Date; reporter: string; reporterStaff?: boolean; author: string; authorStaff?: boolean; content: string; questionTitle: string; rewardPaid: number }
 export interface ReviewRep { id: string; rating: number; comment: string; createdAt: Date; reviewer: string; reviewerStaff?: boolean; courseId: string; courseName: string }
 export interface TopupRep { id: string; requesterId: string; requester: string; requesterStaff?: boolean; amountVnd: number; coinAmount: number; bankRef: string | null; note: string | null; createdAt: Date }
@@ -236,6 +236,7 @@ function profileItem(r: ProfileRep, now: Date): QueueItem {
         { title: "Lý do báo cáo", text: r.reason.trim() },
         ...(r.detail?.trim() ? [{ title: "Chi tiết", text: r.detail.trim() }] : []),
         ...(r.channel ? [{ title: "Báo cáo từ", text: r.channel }] : []),
+        ...((r.openForTutor ?? 0) >= 2 ? [{ title: "Báo cáo về gia sư này", text: `Gia sư này có ${r.openForTutor} báo cáo đang chờ. Xem hết trước khi quyết định khoá hay bỏ qua.` }] : []),
         { title: "Khoá hồ sơ làm gì", text: "Khoá chỉ ẩn hồ sơ công khai của gia sư (người xem thấy trang không tồn tại). Gia sư vẫn dùng sổ lớp bình thường và có thể được mở khoá sau." },
       ],
       actions: [

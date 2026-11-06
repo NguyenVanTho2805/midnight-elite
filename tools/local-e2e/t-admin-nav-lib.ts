@@ -22,13 +22,13 @@ const overGroup: string[] = [];
 for (const m of ADMIN_MODULES) for (const g of groupSubs(m.subs)) if (g.subs.length > 6) overGroup.push(`${m.key}/${g.group}:${g.subs.length}`);
 check("mỗi nhóm trong module ≤ 6 tab (dải tab của vỏ)", overGroup.length === 0, overGroup);
 check("module không có `group` thì cả module ≤ 6 trang con", ADMIN_MODULES.filter(m => m.subs.every(s => !s.group)).every(m => m.subs.length <= 6));
-check("Hàng chờ nằm ở module Việc chờ; Hôm nay nằm ở Vận hành; Gia sư (lịch sử) ở Con người", matchSub("/admin/kiem-duyet")?.moduleKey === "viec-cho" && matchSub("/admin")?.moduleKey === "van-hanh" && matchSub("/admin/gia-su")?.moduleKey === "con-nguoi");
+check("Hàng chờ nằm ở module Việc chờ; Hôm nay (/admin) KHÔNG còn là trang con của module nào nhưng matchSub gán cho Việc chờ; Gia sư (lịch sử) ở Con người", matchSub("/admin/kiem-duyet")?.moduleKey === "viec-cho" && matchSub("/admin")?.moduleKey === "viec-cho" && !allSubs.some(s => s.href === "/admin") && matchSub("/admin/gia-su")?.moduleKey === "con-nguoi");
 check("hai đường đã gỡ không còn là trang con riêng (đã 308)", !allSubs.some(s => s.href === "/admin/ho-so-gia-su" || s.href === "/admin/cong-dong/bao-cao"));
 check("groupSubs giữ thứ tự xuất hiện và gom đúng: Học vụ có 4 nhóm", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group).join("|") === "Lớp|Đề và ngân hàng|Truyền thông|Tuyển sinh", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group));
 
 section("Gia sư (teacher): không dùng vỏ quản trị");
 check("visibleModules('teacher') → [] (không module nào)", visibleModules("teacher").length === 0, visibleModules("teacher").map(m => m.key));
-check("teacher không thấy cả trang không đòi quyền (Hàng chờ, Hôm nay)", !hrefsOf("teacher").includes("/admin/kiem-duyet") && !hrefsOf("teacher").includes("/admin"));
+check("teacher không thấy trang không đòi quyền (Hàng chờ) và không có lối vào Hôm nay", !hrefsOf("teacher").includes("/admin/kiem-duyet") && !hrefsOf("teacher").includes("/admin"));
 check("teacher không thấy Lớp / Đề thi dù permissions.ts vẫn cho MANAGE_COURSES + MANAGE_CURRICULUM (quyền API giữ, chỉ bỏ lối vào)",
   !hrefsOf("teacher").includes("/admin/khoa-hoc") && !hrefsOf("teacher").includes("/admin/thi-thu")
   && checkPermission("teacher", PERMISSIONS.MANAGE_COURSES) && checkPermission("teacher", PERMISSIONS.MANAGE_CURRICULUM));
@@ -38,7 +38,7 @@ section("Quản trị cấp 1 (admin_super): đủ mọi module");
 const sup = visibleModules("admin_super");
 check("admin_super thấy đủ 4 module theo đúng thứ tự", sup.length === 4 && sup.map(m => m.key).join("|") === ADMIN_MODULES.map(m => m.key).join("|"), sup.map(m => m.key));
 check("admin_super thấy đủ mọi trang con (không trang nào bị lọc)", sup.flatMap(m => m.subs).length === allSubs.length);
-check("lối vào module = trang con đầu tiên được phép (Con người → /admin/gia-su; Vận hành → /admin)", sup.find(m => m.key === "con-nguoi")?.href === "/admin/gia-su" && sup.find(m => m.key === "van-hanh")?.href === "/admin");
+check("lối vào module = trang con đầu tiên được phép (Con người → /admin/gia-su; Vận hành → /admin/doanh-thu, không còn /admin vì Hôm nay chỉ vào bằng logo)", sup.find(m => m.key === "con-nguoi")?.href === "/admin/gia-su" && sup.find(m => m.key === "van-hanh")?.href === "/admin/doanh-thu");
 
 section("Quản trị nội dung (admin_content)");
 const content = hrefsOf("admin_content");
@@ -47,18 +47,18 @@ check(`bản đồ có trang cần MANAGE_ADMINS (${adminsOnly.length}) và MANA
 check("admin_content KHÔNG thấy trang cần MANAGE_ADMINS (Quản trị viên, Nhật ký)", adminsOnly.every(h => !content.includes(h)), adminsOnly.filter(h => content.includes(h)));
 check("admin_content KHÔNG thấy Gói KiN Pro, Triển khai và hạn mức, Lịch sử nạp Coin (MANAGE_REVENUE)", ["/admin/goi-pro", "/admin/trien-khai", ...(COIN_VISIBLE ? ["/admin/topups"] : [])].every(h => !content.includes(h) && revenueOnly.includes(h)), revenueOnly.filter(h => content.includes(h)));
 check("admin_content KHÔNG thấy Học sinh (MANAGE_STUDENTS) và Doanh thu (VIEW_REVENUE)", !content.includes("/admin/hoc-sinh") && !content.includes("/admin/doanh-thu"));
-check("admin_content vẫn thấy Hàng chờ, Hôm nay, Gia sư, Lớp, Lịch sử đánh giá, Đề thi, Tin tức, Cộng đồng, Hỗ trợ gia sư",
-  ["/admin/kiem-duyet", "/admin", "/admin/gia-su", "/admin/khoa-hoc", "/admin/danh-gia", "/admin/thi-thu", "/admin/tin-tuc", "/admin/cong-dong", "/admin/ho-tro"].every(h => content.includes(h)));
+check("admin_content vẫn thấy Hàng chờ, Gia sư, Lớp, Lịch sử đánh giá, Đề thi, Tin tức, Cộng đồng, Hỗ trợ gia sư",
+  ["/admin/kiem-duyet", "/admin/gia-su", "/admin/khoa-hoc", "/admin/danh-gia", "/admin/thi-thu", "/admin/tin-tuc", "/admin/cong-dong", "/admin/ho-tro"].every(h => content.includes(h)));
 check("module không còn trang con nào thì ẩn cả module (không có trường hợp này với admin_content: Con người còn Gia sư)", visibleModules("admin_content").some(m => m.key === "con-nguoi") && visibleModules("admin_content").find(m => m.key === "con-nguoi")!.subs.length === 1);
 check("mọi trang admin_content thấy đều đúng quyền của vai đó (không lọt trang ngoài quyền)", allSubs.filter(s => content.includes(s.href)).every(s => !s.permission || checkPermission("admin_content", s.permission)));
-check("hai vai quản lý trung tâm KHÔNG thấy Hôm nay bị lọc (không đòi quyền)", hrefsOf("admin_super").includes("/admin") && hrefsOf("admin_content").includes("/admin"));
+check("Hôm nay chỉ có MỘT đường vào: không vai nào có /admin trong menu (logo dẫn /admin ở vỏ); mọi vai quản lý vẫn thấy Hàng chờ", !hrefsOf("admin_super").includes("/admin") && !hrefsOf("admin_content").includes("/admin") && hrefsOf("admin_super").includes("/admin/kiem-duyet") && hrefsOf("admin_content").includes("/admin/kiem-duyet"));
 
 section("Chưa biết vai");
-check("null / undefined → chỉ trang không đòi quyền (Hàng chờ, Hôm nay), theo thứ tự module", JSON.stringify(hrefsOf(null)) === JSON.stringify(["/admin/kiem-duyet", "/admin"]) && JSON.stringify(hrefsOf(undefined)) === JSON.stringify(["/admin/kiem-duyet", "/admin"]), hrefsOf(null));
+check("null / undefined → chỉ trang không đòi quyền (chỉ Hàng chờ)", JSON.stringify(hrefsOf(null)) === JSON.stringify(["/admin/kiem-duyet"]) && JSON.stringify(hrefsOf(undefined)) === JSON.stringify(["/admin/kiem-duyet"]), hrefsOf(null));
 
 section("Khớp đường dẫn");
 const at = (p: string) => matchSub(p);
-check("/admin chỉ khớp đúng /admin (Vận hành · Hôm nay); /admin/khong-co không khớp", at("/admin")?.sub.label === "Hôm nay" && at("/admin/khong-co") === null);
+check("/admin chỉ khớp đúng /admin (Hôm nay, module Việc chờ); /admin/khong-co không khớp", at("/admin")?.sub.label === "Hôm nay" && at("/admin")?.moduleKey === "viec-cho" && at("/admin/khong-co") === null);
 check("khớp dài nhất thắng: /admin/khoa-hoc/danh-muc → Danh mục lớp; /admin/khoa-hoc/abc/diem-danh → Lớp; /admin/thi-thu/ngan-hang-cau-hoi/cau-hoi → Ngân hàng câu hỏi",
   at("/admin/khoa-hoc/danh-muc")?.sub.label === "Danh mục lớp" && at("/admin/khoa-hoc/abc/diem-danh")?.sub.label === "Lớp" && at("/admin/thi-thu/ngan-hang-cau-hoi/cau-hoi")?.sub.label === "Ngân hàng câu hỏi");
 check("không khớp nhầm tiền tố chữ: /admin/khoa-hocxyz không phải Lớp", at("/admin/khoa-hocxyz") === null);

@@ -4,6 +4,7 @@
 import { mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done, BASE } from "./h";
 import { launch, ctxFor, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { visibleModules } from "@/lib/adminNav";
 
 (async () => {
   await wipe();
@@ -102,13 +103,12 @@ import { prisma } from "@/lib/prisma";
   await pa.goto(`${ADMIN}/admin/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(pa, "Module quản trị").first().waitFor({ timeout: 90000 });
   const ga = await groupsOf(pa, "Module quản trị");
-  check("năm nhóm: Kiểm duyệt · Người dùng · Nội dung · Báo cáo · Cài đặt (tiêu đề hiện CHỮ HOA)", ga.map(g => g.title).join("|") === "Kiểm duyệt|Người dùng|Nội dung|Báo cáo|Cài đặt" && ga.map(g => g.heading).join("|") === "KIỂM DUYỆT|NGƯỜI DÙNG|NỘI DUNG|BÁO CÁO|CÀI ĐẶT", ga);
-  // NC2-050 (28/10/2026): thêm mục "Công thức tính điểm" (trang quản trị công thức tính điểm xét tuyển) vào nhóm Nội dung, ngay sau "Điểm chuẩn"; khung Figma 567:4791 chưa có mục này — cần Thanh cập nhật khung.
-  // NC2-046 (28/10/2026): thêm mục "Video tham khảo" (video YouTube trong kho tài liệu) ngay sau "Công thức tính điểm"; cũng chưa có trong khung Figma 567:4791.
-    check("quản trị cấp 1 thấy đủ mục như Figma 567:4791", ga[0].items.join("|") === "Hàng chờ|Duyệt gia sư|Bài viết cộng đồng|Báo cáo trả lời|Đánh giá khoá học|Nhật ký" && ga[1].items.join("|") === "Hồ sơ học sinh|Quản trị viên"
-    && ga[2].items.join("|") === "Khoá học|Danh mục|Đề thi|Ngân hàng câu hỏi|Ngân hàng đề|Tin tức & Blog|Trang chủ|Điểm chuẩn|Công thức tính điểm|Video tham khảo|Bảng vinh danh" && ga[3].items.join("|") === "Tổng quan|Doanh thu|Phễu gia sư|Số đo sản phẩm" && ga[4].items.join("|") === "Gói KiN Pro|Hỗ trợ gia sư|Triển khai và hạn mức|Duyệt nạp Coin", ga);
+  // Cấu trúc thanh rộng lấy từ adminNav (BU-08: BỐN module Việc chờ · Con người · Học vụ · Vận hành); khung Figma 567:4791 (năm nhóm) đã cũ. "Hôm nay" không còn là mục: chỉ vào bằng logo.
+  const wantG = visibleModules("admin_super");
+  check("bốn nhóm theo adminNav: Việc chờ · Con người · Học vụ · Vận hành (tiêu đề hiện CHỮ HOA)", ga.map(g => g.title).join("|") === wantG.map(m => m.label).join("|") && ga.map(g => g.heading).join("|") === wantG.map(m => m.label.toLocaleUpperCase("vi")).join("|"), ga);
+  check("quản trị cấp 1 thấy đủ mục theo adminNav, đúng thứ tự, KHÔNG có mục 'Hôm nay'", wantG.every((m, k) => ga[k]?.items.join("|") === m.subs.map(x => x.label).join("|")) && !ga.flatMap(g => g.items).includes("Hôm nay"), ga);
   check("nhãn vai 'QUẢN TRỊ', logo dẫn về /admin, thanh 272px", (await pa.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "QUẢN TRỊ" && (await pa.locator("#kin-rail [data-rail-home]").getAttribute("href")) === "/admin" && (await wrapW(pa)) === 272);
-  check("'Khoá học' đang sáng; dải tab các trang con của module 'Nội dung' vẫn hiện ở đầu trang (Figma 567:4791 có cả hai)", await nav(pa, "Module quản trị").first().getByRole("link", { name: "Khoá học", exact: true }).getAttribute("aria-current") === "page" && await pa.getByRole("navigation", { name: "Trang của Nội dung" }).isVisible());
+  check("'Lớp' đang sáng; dải tab các trang con của module 'Học vụ' vẫn hiện ở đầu trang (Figma 567:4791 có cả hai)", await nav(pa, "Module quản trị").first().getByRole("link", { name: "Lớp", exact: true }).getAttribute("aria-current") === "page" && await pa.getByRole("navigation", { name: "Trang của Học vụ" }).isVisible());
   check("dải trên: chữ 'Quản trị KiN' bên trái và ngày hôm nay (Figma); logo KiN chỉ còn ở điện thoại", await pa.locator("[data-top-title]").innerText() === "Quản trị KiN" && await pa.locator("[data-top-date]").isVisible());
   await ctxA.close();
   const ctxC = await ctxFor(AC, { width: 1600, height: 1100, rail: "mac-dinh" });
@@ -117,7 +117,7 @@ import { prisma } from "@/lib/prisma";
   await nav(pc, "Module quản trị").first().waitFor({ timeout: 90000 });
   const gc = await groupsOf(pc, "Module quản trị");
   const flat = gc.flatMap(g => g.items);
-  check("quản trị cấp nội dung KHÔNG thấy mục cần quyền cao (Quản trị viên, Doanh thu, Gói KiN Pro, Duyệt nạp Coin, Nhật ký) — quyền giữ nguyên như dải tab cũ", !["Quản trị viên", "Doanh thu", "Gói KiN Pro", "Duyệt nạp Coin", "Nhật ký"].some(x => flat.includes(x)) && flat.includes("Khoá học") && flat.includes("Hàng chờ"), flat);
+  check("quản trị cấp nội dung KHÔNG thấy mục cần quyền cao (Quản trị viên, Doanh thu, Gói KiN Pro, Lịch sử nạp Coin, Nhật ký) — quyền giữ nguyên như dải tab cũ", !["Quản trị viên", "Doanh thu", "Gói KiN Pro", "Lịch sử nạp Coin", "Nhật ký"].some(x => flat.includes(x)) && flat.includes("Lớp") && flat.includes("Hàng chờ"), flat);
   await ctxC.close();
 
   check("không có lỗi JavaScript trên trang nào", errors.length === 0, errors.slice(0, 3));

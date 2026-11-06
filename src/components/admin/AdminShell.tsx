@@ -78,12 +78,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="md:flex h-screen overflow-hidden bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: `${top}px` }}>
       <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} groups={wide}
-        home={{ href: "/admin", label: "KiN — Tổng quan quản trị" }} footnote="Miễn phí ra mắt" />
+        home={{ href: "/admin", label: "KiN — Hôm nay, tổng quan quản trị" }} footnote="Miễn phí ra mắt" />
       <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-60px)] md:h-screen">
         <div className="flex items-center justify-between gap-3 px-4 border-b border-[var(--kin-vien-thuong)] flex-shrink-0" style={{ height: STRIP }}>
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={badge} />
-            <Link href="/admin" aria-label="KiN — Tổng quan quản trị" className="inline-flex md:hidden items-center min-h-11"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <Link href="/admin" aria-label="KiN — Hôm nay, tổng quan quản trị" className="inline-flex md:hidden items-center min-h-11"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
             <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Quản trị KiN</p>
           </div>
           <div className="flex items-center gap-3 min-w-0">
