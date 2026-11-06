@@ -4,10 +4,10 @@ import { requirePermission, requireSession, isNextResponse, ownsResource } from 
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
 import { sanitizeFormulaImgTokens, formulaFieldError } from "@/lib/mathtype/formulaImg";
+import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
 
 // Chữ câu hỏi/đáp án đi thẳng vào DB → lọc token ảnh công thức {{ctimg:…}} (BU-03-MATHTYPE) như mọi đường lưu câu hỏi khác.
 const sanFormula = (s: unknown): string => (typeof s === "string" ? sanitizeFormulaImgTokens(s) : "");
-import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
 
 // GET /api/lessons/[id]/assignments — danh sách bài tập tự nộp của 1 bài
 // giảng. Bất kỳ ai đã đăng nhập đều xem được danh sách (giống tài liệu đính
