@@ -5,6 +5,7 @@
 //  • Đáp án / lời giải chỉ có trong phản hồi theo practicePolicy; ở trạng thái "hint" không bao giờ có.
 //  • Không ghi ExamAttempt.score / ExamAnswer: điểm vẫn chấm lúc nộp theo đáp án cuối (computeRawEarned).
 import { prisma } from "@/lib/prisma";
+import { attemptWriteBlock } from "@/lib/attemptAccess";
 import { examHolds } from "@/lib/examHold";
 import { finalizeAttempt, hasExamWindowEnded } from "@/lib/examGrading";
 import {
@@ -22,6 +23,9 @@ export async function checkPracticeQuestion(
   const attempt = await prisma.examAttempt.findUnique({ where: { id: attemptId } });
   // 404 (không phải 403) để không lộ lượt thi của người khác có tồn tại hay không.
   if (!attempt || attempt.userId !== userId) return fail(404, "not_found", "Không tìm thấy bài thi");
+  // Đã nghỉ lớp giữa chừng thì không nhận phản hồi đúng/sai (cùng luật với submit/answer).
+  const suspended = await attemptWriteBlock(userId, attempt.examId);
+  if (suspended) return fail(403, suspended.code, suspended.error);
   if (attempt.status !== "in_progress") return fail(409, "finished", "Bài thi đã kết thúc");
   if (attempt.expiresAt.getTime() <= Date.now()) {
     await finalizeAttempt(attempt.id, { status: "expired", at: attempt.expiresAt });

@@ -9,5 +9,5 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ att
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
   const { attemptId } = await params;
   const r = await getCorrection(session.userId, attemptId);
-  return r.ok ? NextResponse.json(r.data) : NextResponse.json({ error: r.error }, { status: r.status });
+  return r.ok ? NextResponse.json(r.data) : NextResponse.json({ error: r.error, ...(r.code ? { code: r.code } : {}) }, { status: r.status });
 }

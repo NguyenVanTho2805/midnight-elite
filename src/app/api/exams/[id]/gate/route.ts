@@ -58,12 +58,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     let blockReason: BlockReason | null = null;
     let enrolled: boolean | null = null;
     if (exam.courseId) {
-      enrolled = isEnrollmentActive(await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } } }));
+      const enrollment = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } } });
+      enrolled = isEnrollmentActive(enrollment);
       if (!enrolled) {
+        const suspended = enrollment?.status === "suspended";
         if (exam.price && exam.price > 0) {
           const granted = await prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId: session.userId, examId } } });
-          if (!granted) blockReason = "payment_required";
-        } else blockReason = "not_enrolled";
+          if (!granted) blockReason = suspended ? "enrollment_suspended" : "payment_required";
+        } else blockReason = suspended ? "enrollment_suspended" : "not_enrolled";
       }
     }
 

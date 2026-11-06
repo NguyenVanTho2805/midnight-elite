@@ -8,6 +8,7 @@
 //  • Không bao giờ ghi vào ExamAttempt.score / ExamAnswer: chữa bài chỉ để học.
 //  • Mọi thao tác trên một (lượt × câu) khoá bằng advisory lock; hai lần bấm cùng lúc không đếm đôi lượt nộp.
 import { prisma } from "@/lib/prisma";
+import { attemptViewBlock } from "@/lib/attemptAccess";
 import { loadEffectivePolicy, loadPublishState } from "@/lib/quizPublication";
 import { resultVisibility } from "@/lib/quizRoom";
 import { loadAnswerState, orderQuestionsAndOptionsFull } from "@/lib/examGrading";
@@ -47,7 +48,7 @@ export interface CorrectionOverview {
   summary: { total: number; solved: number; revealed: number; remaining: number };
 }
 
-type Failure = { ok: false; status: number; error: string };
+type Failure = { ok: false; status: number; error: string; code?: string };
 const fail = (status: number, error: string): Failure => ({ ok: false, status, error });
 
 type Row = CorrectionRow & { lastOptionId: string | null; lastOptionIds: string[]; lastText: string | null; reflection: string | null };
@@ -96,6 +97,9 @@ async function loadContext(userId: string, attemptId: string): Promise<{ ok: tru
   // 404 (không phải 403) để không lộ lượt thi của người khác có tồn tại hay không
   if (!attempt || attempt.userId !== userId) return fail(404, "Không tìm thấy bài thi");
   if (attempt.status === "in_progress") return fail(409, "Bài thi chưa nộp");
+  // Đã nghỉ lớp: không xem/chữa bài của lớp đó. correctionSummary (nội bộ cho /review) cũng đi qua đây nhưng /review đã chặn trước.
+  const viewBlocked = await attemptViewBlock(userId, attempt.examId);
+  if (viewBlocked) return { ok: false, status: 403, error: viewBlocked.error, code: viewBlocked.code };
   const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
   if (!exam) return fail(404, "Không tìm thấy đề thi");
 
