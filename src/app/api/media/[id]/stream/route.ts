@@ -5,6 +5,8 @@ import { canWatchStoredMedia } from "@/lib/lessonGuard";
 import { parseRangeHeader } from "@/lib/mediaStorage";
 import { cloudinaryEnv, cloudinarySignedVideoUrl, localPathFor, openLocalRange } from "@/lib/mediaStorageServer";
 import { uploadLink } from "@/lib/mediaLink";
+import { isLearnerVisible } from "@/lib/lessonStatus";
+import { managerOf } from "@/lib/lessonVisibility";
 
 // GET /api/media/[id]/stream — phát video lưu trên KiN. KHÔNG có địa chỉ công khai: mỗi lượt đều kiểm quyền.
 // Được xem: chủ video (xem trước khi lưu bài), quản trị, gia sư chủ lớp, học viên đã ghi danh hoặc bài miễn phí tham chiếu video này.
@@ -24,11 +26,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Mọi bài đang dùng video này (một video có thể nằm ở bản sao lớp). Đủ MỘT bài cho phép là được.
     const lessons = await prisma.lesson.findMany({
       where: { videoUrl: { contains: uploadLink(id) } },
-      select: { isFree: true, chapter: { select: { section: { select: { course: { select: { id: true, ownerId: true } } } } } } },
+      select: { isFree: true, status: true, chapter: { select: { section: { select: { course: { select: { id: true, ownerId: true } } } } } } },
       take: 20,
     });
     for (const l of lessons) {
       const course = l.chapter.section.course;
+      // BU-02-PHẲNG (R18): bài Nháp/Ẩn chỉ quản lý lớp mới là "bài tham chiếu" hợp lệ.
+      if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId)) continue;
       const enr = session.role === "student"
         ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { status: true } })
         : null;

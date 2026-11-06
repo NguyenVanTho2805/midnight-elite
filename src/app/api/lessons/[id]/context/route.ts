@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { suspendedBlocksLesson, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 import { isCourseManager, lessonFor, type MediaContext, canViewAllMaterials, redactCourseLinks } from "@/lib/mediaAccess";
+import { isLearnerVisible, pruneTreeForViewer } from "@/lib/lessonStatus";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -46,6 +47,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const viewer = { userId: session.userId, role: session.role, adminRole: session.adminRole };
   // MD-03: gia sư chỉ là "quản lý" với lớp của chính mình; lớp người khác đối xử như người ngoài (chỉ bài miễn phí).
   let fullAccess = isCourseManager(viewer, course.ownerId);
+  const isManager = fullAccess;
+  // BU-02-PHẲNG (R3a): bài chính Nháp/Ẩn và người xem không phải quản lý lớp ⇒ 404 TRƯỚC nhánh isFree / 403.
+  if (!isManager && !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
   let enrolled: { status: string } | null = null;
 
   if (!fullAccess) {
@@ -76,7 +80,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // Link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) của lớp chỉ dành cho quản lý lớp và học viên ĐANG HỌC (kể cả khi xem lại bài ở trạng thái
   // tạm ngưng: được xem nội dung đã mở nhưng không cần link nhóm). `course` cũng chính là lesson.chapter.section.course (cùng một đối tượng) nên sửa tại chỗ.
   if (!canViewAllMaterials({ viewer, courseOwnerId: course.ownerId, enrollment: enrolled })) Object.assign(course, redactCourseLinks(course));
-  course.sections = course.sections.map(s => ({
+  // BU-02-PHẲNG (R3b): cây trong câu trả lời chỉ còn mục Đã đăng với người học (không lộ tên/link bài nháp khác).
+  course.sections = pruneTreeForViewer({ sections: course.sections }, isManager).sections.map(s => ({
     ...s,
     chapters: s.chapters.map(c => ({
       ...c,

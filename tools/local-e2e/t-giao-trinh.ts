@@ -35,8 +35,8 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   section("G1 · GET giao-trinh — quyền");
   const g = (id: string, as?: typeof T) => api("GET", `/api/tutor/lop/${id}/giao-trinh`, { as });
   const g1 = await g(A.id, T);
-  check("gia sư chủ lớp → 200, có courseId/courseName/sections/exams/config", g1.status === 200 && g1.json.courseId === A.id && g1.json.courseName === "Lớp A" && Array.isArray(g1.json.sections) && Array.isArray(g1.json.exams) && !!g1.json.config?.video && !!g1.json.config?.document, g1.json);
-  check("cây đủ 3 bài, mỗi bài có items (mảng)", g1.json.sections[0].chapters[0].lessons.length === 3 && g1.json.sections[0].chapters[0].lessons.every((l: any) => Array.isArray(l.items)));
+  check("gia sư chủ lớp → 200, có courseId/courseName/entries/groups/counts/exams/config (KHÔNG còn config.video, KHÔNG còn sections)", g1.status === 200 && g1.json.courseId === A.id && g1.json.courseName === "Lớp A" && Array.isArray(g1.json.entries) && Array.isArray(g1.json.groups) && !!g1.json.counts && g1.json.sections === undefined && Array.isArray(g1.json.exams) && g1.json.config?.video === undefined && !!g1.json.config?.document, g1.json);
+  check("danh sách phẳng đủ 3 mục (cây 'chung' Phần 1/Chương 1 ⇒ không nhóm), mỗi mục có items (mảng), status published (bài cũ), groupId null", g1.json.entries.length === 3 && g1.json.groups.length === 0 && g1.json.entries.every((l: any) => Array.isArray(l.items) && l.status === "published" && l.groupId === null) && g1.json.counts.published === 3 && g1.json.counts.draft === 0);
   check("config.document có maxBytes 25 MB, hạn mức 500 MB, exts, usedBytes số", g1.json.config.document.maxBytes === 25 * 1024 * 1024 && g1.json.config.document.quotaBytes === 500 * 1024 * 1024 && Array.isArray(g1.json.config.document.exts) && typeof g1.json.config.document.usedBytes === "number");
   check("Cache-Control: no-store", /no-store/.test(g1.headers.get("cache-control") ?? ""));
   check("API tổng hợp KHÔNG trả tên học sinh (HS đã ghi danh không xuất hiện)", !JSON.stringify(g1.json).includes("HS đã ghi danh") && !JSON.stringify(g1.json).includes(S.email));
@@ -112,10 +112,10 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   section("G2 · lớp TRỐNG tự có Phần 1 › Chương 1");
   const e1 = await post(E.id, T, { newLessonTitle: "Bài đầu tiên", url: yt(30) });
   const eTree = await prisma.section.findMany({ where: { courseId: E.id }, include: { chapters: { include: { lessons: true } } } });
-  check("lớp chưa có Phần: 201 + tự tạo 1 Phần 'Phần 1' › 1 Chương 'Chương 1' › 1 bài", e1.status === 201 && eTree.length === 1 && eTree[0].title === "Phần 1" && eTree[0].chapters.length === 1 && eTree[0].chapters[0].title === "Chương 1" && eTree[0].chapters[0].lessons.length === 1, eTree);
+  check("lớp chưa có Phần: 201 + tự tạo 1 phần NGẦM › 1 chương NGẦM › 1 mục, mục mới là NHÁP (không còn 'Phần 1/Chương 1' cứng)", e1.status === 201 && e1.json.status === "draft" && eTree.length === 1 && eTree[0].isImplicit === true && eTree[0].chapters.length === 1 && eTree[0].chapters[0].isImplicit === true && eTree[0].chapters[0].lessons.length === 1 && eTree[0].chapters[0].lessons[0].status === "draft", eTree);
   const par = await Promise.all([40, 41, 42].map(n => post(E2.id, T, { newLessonTitle: `Song song ${n}`, url: yt(n) })));
   const e2Tree = await prisma.section.findMany({ where: { courseId: E2.id }, include: { chapters: { include: { lessons: true } } } });
-  check("3 yêu cầu SONG SONG vào lớp trống → 3 bài, nhưng chỉ ĐÚNG 1 Phần và 1 Chương (khoá cây lớp)", par.every(r => r.status === 201) && e2Tree.length === 1 && e2Tree[0].chapters.length === 1 && e2Tree[0].chapters[0].lessons.length === 3, [par.map(r => r.status), e2Tree.length]);
+  check("3 yêu cầu SONG SONG vào lớp trống → 3 mục, nhưng chỉ ĐÚNG 1 phần ngầm và 1 chương ngầm (khoá cây lớp)", par.every(r => r.status === 201) && e2Tree.length === 1 && e2Tree[0].chapters.length === 1 && e2Tree[0].chapters[0].lessons.length === 3, [par.map(r => r.status), e2Tree.length]);
 
   section("G2 · 5 yêu cầu SONG SONG vào MỘT bài → đủ 5 mục");
   const LP = (await mkTree(A.id, ["Bài song song"])).lessons[0];
@@ -142,7 +142,7 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   check("tệp chưa tải xong (pending) → 404; mã không có → 404", (await post(A.id, T, { lessonId: L3.id, url: `/api/media/${pend.id}/file` })).status === 404 && (await post(A.id, T, { lessonId: L3.id, url: "/api/media/ckkhongco12345/file" })).status === 404);
   const vOther = await prisma.fileAsset.create({ data: { ownerId: T2.id, courseId: B.id, kind: "video", driver: "local", storageKey: "x/v.mp4", mimeType: "video/mp4", bytes: 10, originalName: "v.mp4", status: "ready" } });
   const vMine = await prisma.fileAsset.create({ data: { ownerId: T.id, courseId: A.id, kind: "video", driver: "local", storageKey: "x/v2.mp4", mimeType: "video/mp4", bytes: 10, originalName: "v2.mp4", status: "ready" } });
-  check("video tải lên của người khác (kin-media:) → 403; của mình, đúng lớp → 201", (await post(A.id, T, { lessonId: L3.id, url: `kin-media:${vOther.id}` })).status === 403 && (await post(A.id, T, { lessonId: L3.id, url: `kin-media:${vMine.id}` })).status === 201);
+  check("BU-02-PHẲNG: video chỉ YouTube — kin-media: (của người khác HAY của mình) → 400 'Video chỉ nhận link YouTube', cột không đổi", await (async () => { const a = await post(A.id, T, { lessonId: L3.id, url: `kin-media:${vOther.id}` }), b = await post(A.id, T, { lessonId: L3.id, url: `kin-media:${vMine.id}` }); return a.status === 400 && b.status === 400 && /YouTube/.test(b.json.error) && !((await lessonDb(L3.id)).videoUrl ?? "").includes("kin-media"); })());
 
   section("G2 · form (POST thường → 303)");
   const form = (courseId: string, as: typeof T, fields: Record<string, string>) => api("POST", `/api/tutor/lop/${courseId}/giao-trinh/muc`, { as, raw: new URLSearchParams(fields).toString(), headers: { "content-type": "application/x-www-form-urlencoded" } });

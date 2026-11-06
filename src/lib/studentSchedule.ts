@@ -8,6 +8,7 @@ import { parseAzotaDeadline } from "@/lib/azotaDeadline";
 import { isListedToStudent } from "@/lib/examVariantRoute";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { firstHttpLink } from "@/lib/lessonLinks";
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { effectiveLocation, effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl, type SessionKind, type SessionMode } from "@/lib/sessionBook";
 
 export interface ScheduleEvent {
@@ -103,6 +104,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
     const lessons = await prisma.lesson.findMany({
       where: {
         azotaDeadline: { not: null },
+        ...PUBLISHED_ONLY,   // BU-02-PHẲNG (R12): hạn của mục Nháp/Ẩn không vào lịch học sinh
         chapter: { section: { courseId: { in: courseIds } } },
       },
       select: {

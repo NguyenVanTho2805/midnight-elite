@@ -265,7 +265,8 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
       await fc.setFiles(bigPdf);
       await eventually(`${label}: chọn PDF 26 MB → chặn ngay, nêu giới hạn 25 MB`, async () => /vượt giới hạn 25 MB/.test(await drawer.innerText()));
     } else check(`${label}: (bỏ qua chọn tệp: Cloudinary chưa cấu hình ở máy này, chỉ dùng link)`, true);
-    check(`${label}: ghi chú giới hạn tài liệu hiện sẵn (loại tệp, 25 MB, tối đa 30)`, /tối đa 25 MB/.test(await drawer.innerText()) && /tối đa 30 tài liệu/.test(await drawer.innerText()));
+    // Từ 6ec40bec (BU-08) ngăn kéo Chương bài chỉ dán link Drive; tải tệp tài liệu chuyển sang tab Giáo trình ⇒ không còn ghi chú 25 MB ở đây.
+    check(`${label}: ghi chú giới hạn tài liệu hiện sẵn (tối đa 30 tài liệu; tải tệp ở tab Giáo trình)`, /tối đa 30 tài liệu/.test(await drawer.innerText()) && (await drawer.locator("[data-tai-lieu-dong]").count()) === 1);
     await drawer.getByPlaceholder("Hoặc paste link Google Drive...").fill("javascript:alert(1)");
     await drawer.getByRole("button", { name: "+ Thêm link" }).last().click();
     await eventually(`${label}: link tài liệu javascript: bị từ chối ngay`, async () => /Chỉ nhận link bắt đầu bằng https:\/\//.test(await drawer.innerText()));

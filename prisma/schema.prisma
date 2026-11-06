@@ -161,6 +161,8 @@ model Section {
   courseId String
   course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   chapters Chapter[]
+  // BU-02-PHẲNG: "Phần ngầm" chỉ để Chapter có chỗ treo; giao diện không hiện tiêu đề.
+  isImplicit Boolean @default(false)
 
   @@map("sections")
 }
@@ -172,6 +174,8 @@ model Chapter {
   sectionId String
   section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   lessons   Lesson[]
+  // BU-02-PHẲNG: "Chương ngầm" = chỗ chứa các mục không nhóm. Tối đa một chương ngầm mỗi lớp.
+  isImplicit Boolean @default(false)
 
   @@map("chapters")
 }
@@ -200,6 +204,8 @@ model Lesson {
   notes          LessonNote[]
   azotaDone      LessonAzotaDone[]
   assignments    Assignment[]
+  // BU-02-PHẲNG: "draft" | "published" | "hidden". Mặc định "published" ⇒ mọi bài cũ vẫn hiện. Chuỗi, không enum.
+  status         String           @default("published")
 
   @@map("lessons")
 }

@@ -1,3 +1,4 @@
+// BU-02-PHẲNG: "Dùng ở lớp khác" = lớp ▸ MỤC MỚI (mặc định, ở dạng Nháp, không cần chương) hoặc một mục có sẵn (kèm chip trạng thái). Thêm xong báo rõ trạng thái.
 // BU-02 — "Thư viện của tôi" (/thu-vien, nhánh gia sư; Figma 504:6046 / 299:113561 chưa đối chiếu). Thay TutorLibrary: tài liệu dùng lại giữa các lớp.
 // Nguồn (tutorLibraryServer.loadTutorLibrary, mục 4.4): (1) mọi tài liệu trong bài của lớp mình, gộp theo URL ⇒ "đang dùng ở n lớp"; (2) tệp đã tải lên KiN mà chưa bài nào dùng;
 // (3) đề gốc (chỉ xem). Thao tác: tìm, lọc loại và lớp, "Dùng ở lớp khác" (G2 với from:"library"), "Gỡ khỏi bài này" (G3), "Xoá tệp" chưa gắn (A5).
@@ -18,9 +19,10 @@ import { formatMegabytes } from "@/lib/mediaStorage";
 import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
 import { jfetch } from "@/components/tutor/studentUi";
 import { itemKey, type LibUse, type TutorLibrary } from "@/lib/giaoTrinh";
+import { ChipTrangThai, STATUS_LABEL } from "./ChipTrangThai";
 import type { DocType } from "@/lib/mediaLink";
 
-export interface TvCourse { id: string; name: string; chapters: { id: string; title: string; lessons: { id: string; title: string }[] }[] }
+export interface TvCourse { id: string; name: string; lessons: { id: string; title: string; status: string }[] }
 /** `TutorLibrary` (src/lib/giaoTrinh.ts, do tut-code gộp) + cây lớp để chọn đích "Dùng ở lớp khác" + dung lượng kho. tutorLibraryServer.loadTutorLibrary phải trả đủ ba trường thêm này. */
 export interface TutorLibraryView extends TutorLibrary { courses: TvCourse[]; usedBytes: number; quotaBytes: number }
 type Kind = DocType | "link";
@@ -41,11 +43,12 @@ const ACT = "inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] t
 
 type Group = "all" | "unattached" | "exam" | `c:${string}`;
 
-/** Chọn lớp ▸ bài (hoặc bài mới) rồi thêm tài liệu vào đó bằng G2. */
+const statusWord = (s: string) => (s === "draft" || s === "published" || s === "hidden" ? STATUS_LABEL[s] : "Nháp");
+
+/** Chọn lớp ▸ mục mới (mặc định) hoặc mục có sẵn rồi thêm tài liệu vào đó bằng G2. Mục mới ở dạng Nháp; không cần chọn chương. */
 function UseElsewhere({ courses, url, name, onDone, onCancel }: { courses: TvCourse[]; url: string; name: string; onDone: (msg: string) => void; onCancel: () => void }) {
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [lessonId, setLessonId] = useState<string>("new");
-  const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const course = courses.find(c => c.id === courseId);
@@ -53,11 +56,10 @@ function UseElsewhere({ courses, url, name, onDone, onCancel }: { courses: TvCou
     if (!course || busy) return;
     setBusy(true); setErr(null);
     const body: Record<string, unknown> = { url, name, from: "library" };
-    if (lessonId === "new") { const ch = course.chapters[0]?.id; if (ch) body.chapterId = ch; body.newLessonTitle = title.trim() || name.replace(/\.[A-Za-z0-9]{1,5}$/, "").slice(0, 120) || "Bài mới"; }
-    else body.lessonId = lessonId;
+    if (lessonId !== "new") body.lessonId = lessonId;
     const r = await jfetch(`/api/tutor/lop/${course.id}/giao-trinh/muc`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
-    if (r.ok) onDone(r.json?.duplicate ? `Bài đó đã có “${name}” rồi, không thêm lần nữa.` : `Đã thêm “${name}” vào lớp ${course.name}.`);
+    if (r.ok) onDone(r.json?.duplicate ? `Mục đó đã có “${name}” rồi, không thêm lần nữa.` : lessonId === "new" ? `Đã thêm “${name}” vào lớp ${course.name} thành mục mới ở dạng Nháp.` : `Đã thêm “${name}” vào mục có sẵn của lớp ${course.name}.`);
     else setErr(r.json?.error ?? (r.status === 0 ? "Mất kết nối. Thử lại." : r.status === 403 ? "Bạn không có quyền với lớp hoặc tệp này." : "Chưa thêm được. Thử lại sau."));
   }
   if (courses.length === 0) return <p className="py-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bạn chưa có lớp nào để thêm vào. <Link href="/lop-cua-toi/lop/tao" className="underline text-[var(--kin-nhan-link)]">Tạo lớp</Link></p>;
@@ -70,19 +72,14 @@ function UseElsewhere({ courses, url, name, onDone, onCancel }: { courses: TvCou
         </select>
       </div>
       <div>
-        <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`tv-bai-${url}`}>Bài</label>
+        <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`tv-bai-${url}`}>Mục</label>
         <select id={`tv-bai-${url}`} className={`${KIN_FIELD} mt-1`} value={lessonId} onChange={e => setLessonId(e.target.value)}>
-          <option value="new">Bài mới…</option>
-          {course?.chapters.map(ch => <optgroup key={ch.id} label={ch.title}>{ch.lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}</optgroup>)}
+          <option value="new">Mục mới (Nháp)</option>
+          {(course?.lessons.length ?? 0) > 0 && <optgroup label="Gắn vào mục có sẵn">{course?.lessons.map(l => <option key={l.id} value={l.id}>{l.title} · {statusWord(l.status)}</option>)}</optgroup>}
         </select>
+        <p className="mt-1 text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Mục mới ở dạng Nháp, chỉ bạn thấy. Bạn đăng ở Giáo trình của lớp đó.</p>
       </div>
-      {lessonId === "new" && (
-        <div>
-          <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`tv-ten-${url}`}>Tên bài mới (để trống thì lấy theo tên tài liệu)</label>
-          <input id={`tv-ten-${url}`} className={`${KIN_FIELD} mt-1`} value={title} maxLength={120} onChange={e => setTitle(e.target.value)} />
-        </div>
-      )}
-      {err && <p role="alert" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{err}</p>}
+      {err && <p role="alert" data-tv-loi className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{err}</p>}
       <div className="flex flex-wrap gap-2">
         <KinButton type="button" loading={busy} loadingLabel="Đang thêm…" onClick={() => void go()}>Thêm vào lớp này</KinButton>
         <KinButton type="button" variant="ghost" onClick={onCancel}>Bỏ</KinButton>
@@ -233,7 +230,7 @@ export default function ThuVienCuaToi({ view }: { view: TutorLibraryView | null 
                               <ul aria-label={`Bài đang dùng ${i.name}`} className="md:col-span-4 flex flex-col">
                                 {i.usedIn.map(u => (
                                   <li key={u.lessonId} className="flex flex-wrap items-center justify-between gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-                                    <span className="min-w-0 break-words">{u.courseName} · {u.lessonTitle}</span>
+                                    <span className="min-w-0 flex flex-wrap items-center gap-x-2 break-words"><span>{u.courseName} · {u.lessonTitle}</span>{u.status && <ChipTrangThai status={u.status} />}</span>
                                     <button type="button" disabled={busy === `g:${u.lessonId}:${itemKey("document", i.url)}`} onClick={() => void removeUse(u, i.url)} className={`${ACT} disabled:opacity-50`}>Gỡ khỏi bài này</button>
                                   </li>
                                 ))}

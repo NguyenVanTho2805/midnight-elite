@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { enrollmentDeniedBody } from "@/lib/suspendedContent";
+import { isLearnerVisible } from "@/lib/lessonStatus";
 import { validateWorkLink } from "@/lib/mediaLink";
 
 // POST /api/assignments/[id]/submit — học viên nộp/nộp lại bài. Nộp lại GHI
@@ -24,9 +25,10 @@ export async function POST(
   try {
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
-      select: { mode: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
+      select: { mode: true, lesson: { select: { status: true, chapter: { select: { section: { select: { courseId: true } } } } } } },
     });
-    if (!assignment || assignment.mode === "azota" || assignmentId.startsWith("azota-")) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
+    // BU-02-PHẲNG (R10): bài tập thuộc mục Nháp/Ẩn ⇒ 404 TRƯỚC kiểm ghi danh.
+    if (!assignment || !isLearnerVisible(assignment.lesson.status) || assignment.mode === "azota" || assignmentId.startsWith("azota-")) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
     const courseId = assignment.lesson.chapter.section.courseId;
     const enrolled = await prisma.enrollment.findUnique({

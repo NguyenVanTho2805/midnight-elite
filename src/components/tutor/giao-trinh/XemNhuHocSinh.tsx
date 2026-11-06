@@ -2,6 +2,7 @@
 // /api/progress, /api/lesson-notes, azota-done). Chỉ ĐỌC bài bằng GET /api/lessons/[id] (chủ lớp thấy đủ link), rồi cho hai góc nhìn:
 //   • Học sinh đã vào lớp  = bài nguyên bản;
 //   • Người chưa vào lớp   = đi qua đúng lessonFor() của máy chủ với viewer=null (link trống, tài liệu [], trừ bài học thử miễn phí).
+// BU-02-PHẲNG: mục Nháp/Ẩn ⇒ băng cam "Học sinh chưa thấy mục này…" + nút "Đăng mục này" (G4) ngay trong băng; góc nhìn "Người chưa vào lớp" của mục chưa đăng không hiện nội dung.
 // Tài liệu dùng DocumentRows (thuần). Video: YouTube/Vimeo/Drive nhúng bằng embedUrl KiN dựng lại; "kin-media:" phát bằng <video src="/api/media/<mã>/stream">.
 "use client";
 import Link from "next/link";
@@ -16,9 +17,10 @@ import { DocumentRows, parseMaterials, formatDeadlineVn } from "@/components/med
 import { classifyMediaLink, parseLinkList, firstSafeHttpsLink, uploadIdOf } from "@/lib/mediaLink";
 import { giaoTrinhHref } from "@/lib/tutorRoutes";
 import { jfetch } from "@/components/tutor/studentUi";
+import { useKinConfirm } from "@/components/kin/useConfirm";
 
 interface RawLesson {
-  id: string; title: string; type?: string; duration?: string | null; isLocked?: boolean; isFree?: boolean;
+  id: string; title: string; type?: string; duration?: string | null; isLocked?: boolean; isFree?: boolean; status?: string;
   videoUrl?: string | null; zoomUrl?: string | null; azotaUrl?: string | null; azotaDeadline?: string | null; documents?: string | null;
   chapter?: { section?: { courseId?: string } };
 }
@@ -37,6 +39,9 @@ type Load = { phase: "loading" } | { phase: "error"; status: number } | { phase:
 export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string; lessonId: string }) {
   const [load, setLoad] = useState<Load>({ phase: "loading" });
   const [view, setView] = useState<View>("da-vao");
+  const { ask, dialog } = useKinConfirm();
+  const [pubBusy, setPubBusy] = useState(false);
+  const [pubErr, setPubErr] = useState<string | null>(null);
   const back = { href: giaoTrinhHref(courseId, true), label: "← Giáo trình" };
 
   const run = useCallback(async () => {
@@ -52,6 +57,16 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void run(); }, [run]);
 
+  async function publish() {
+    if (load.phase !== "ready" || pubBusy) return;
+    const l = load.lesson;
+    if (l.isFree && !(await ask({ title: `Đăng “${l.title}”?`, message: "Mục này đang cho học thử miễn phí: người chưa vào lớp cũng sẽ thấy khi bạn đăng.", confirmLabel: "Đăng mục này", tone: "thuong" }))) return;
+    setPubBusy(true); setPubErr(null);
+    const r = await jfetch(`/api/tutor/lop/${courseId}/giao-trinh/bai/${lessonId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status: "published" }) });
+    setPubBusy(false);
+    if (r.ok) await run(); else setPubErr(r.json?.error ?? (r.status === 0 ? "Mất kết nối. Thử lại." : "Chưa đăng được. Thử lại sau."));
+  }
+
   const shown = useMemo<RawLesson | null>(() => {
     if (load.phase !== "ready") return null;
     // Cùng hàm với máy chủ: viewer=null → khoá link trừ bài isFree.
@@ -65,10 +80,10 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
       <KinPage>
         <KinPageHeader title="Xem như học sinh" back={back} />
         <div className="max-w-xl">
-          <KinStateCard tone="loi" kicker={gone ? "Không mở được" : "Lỗi · Có thể thử lại"} title={gone ? "Không tìm thấy bài này trong lớp của bạn" : "Chưa tải được bài để xem thử"}
-            status={<KinStatus tone="loi">{gone ? "Bài không tồn tại hoặc không thuộc lớp này" : "Kết nối bị gián đoạn"}</KinStatus>}
+          <KinStateCard tone="loi" kicker={gone ? "Không mở được" : "Lỗi · Có thể thử lại"} title={gone ? "Không tìm thấy mục này trong lớp của bạn" : "Chưa tải được mục để xem thử"}
+            status={<KinStatus tone="loi">{gone ? "Mục không tồn tại hoặc không thuộc lớp này" : "Kết nối bị gián đoạn"}</KinStatus>}
             actions={<>{!gone && <KinButton type="button" onClick={() => void run()}>Thử lại</KinButton>}<Link href={back.href} className={kinButtonClass("secondary")}>Về Giáo trình</Link></>}>
-            {gone ? "Chọn lại một bài ở màn Giáo trình." : "Dữ liệu của bạn không bị ảnh hưởng. Thử lại sau ít giây."}
+            {gone ? "Chọn lại một mục ở màn Giáo trình." : "Dữ liệu của bạn không bị ảnh hưởng. Thử lại sau ít giây."}
           </KinStateCard>
         </div>
       </KinPage>
@@ -77,13 +92,15 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
 
   const full = load.lesson;
   const l = shown!;
-  const hidden = view === "chua-vao" && !full.isFree;
+  const notLive = full.status != null && full.status !== "published";   // Nháp / Ẩn: học sinh chưa thấy
+  const statusWord = full.status === "hidden" ? "Ẩn" : "Nháp";
+  const hidden = view === "chua-vao" && (!full.isFree || notLive);
   const videos = parseLinkList(l.videoUrl).map(u => classifyMediaLink(u));
   const zoom = firstSafeHttpsLink(l.zoomUrl);
   const azota = firstSafeHttpsLink(l.azotaUrl);
   const deadline = formatDeadlineVn(l.azotaDeadline);
   const materials = parseMaterials(l.documents);
-  const nothing = videos.length === 0 && !zoom && !azota && materials.length === 0;
+  const nothing = !(view === "chua-vao" && notLive) && videos.length === 0 && !zoom && !azota && materials.length === 0;
 
   return (
     <KinPage>
@@ -92,18 +109,27 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
 
       <div role="status" data-gt-ban-xem-thu className="mb-5"><KinCallout title="Đây là bản xem thử. Không ghi tiến độ.">Bạn xem đúng thứ học sinh thấy; những gì bạn bấm ở đây không tính vào tiến độ hay bài nộp của ai.</KinCallout></div>
 
+      {notLive && (
+        <div role="status" data-gt-ban-chua-dang className="mb-5 rounded-[var(--kin-bo-md)] border-l-2 border-[var(--kin-tt-cham-cho)] bg-[var(--kin-nen-bang)] px-[var(--kin-kc-7)] py-[var(--kin-kc-6)]">
+          <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-tt-chu-cho)]">Học sinh chưa thấy mục này vì đang ở trạng thái {statusWord}. Đây là bản xem thử của riêng bạn.</p>
+          <div className="mt-3"><KinButton type="button" loading={pubBusy} loadingLabel="Đang đăng…" onClick={() => void publish()}>{full.status === "hidden" ? "Hiện lại mục này" : "Đăng mục này"}</KinButton></div>
+          {pubErr && <p role="alert" data-gt-loi className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{pubErr}</p>}
+        </div>
+      )}
+
       <div role="group" aria-label="Góc nhìn" className="mb-6 flex flex-wrap gap-2">
         <KinButton type="button" variant={view === "da-vao" ? "primary" : "secondary"} aria-pressed={view === "da-vao"} onClick={() => setView("da-vao")}>Học sinh đã vào lớp</KinButton>
         <KinButton type="button" variant={view === "chua-vao" ? "primary" : "secondary"} aria-pressed={view === "chua-vao"} onClick={() => setView("chua-vao")}>Người chưa vào lớp</KinButton>
       </div>
 
-      {view === "da-vao" && full.isLocked && <p className="mb-4"><KinStatus tone="cho" className="whitespace-normal">Bài này đang khoá: học sinh chưa mở được cho tới khi bạn mở khoá ở màn Giáo trình.</KinStatus></p>}
-      {hidden && <div className="mb-5"><KinCallout title="Người chưa vào lớp không thấy nội dung bài này">Link video, Zoom, Azota và tài liệu bị ẩn. Muốn cho học thử, bật “Cho học thử miễn phí” ở màn Giáo trình.</KinCallout></div>}
-      {view === "chua-vao" && full.isFree && <p className="mb-4"><KinStatus tone="xong" className="whitespace-normal">Bài học thử miễn phí: người chưa vào lớp xem được. Mở tệp trên KiN vẫn cần đăng nhập.</KinStatus></p>}
+      {view === "da-vao" && full.isLocked && <p className="mb-4"><KinStatus tone="cho" className="!whitespace-normal">Mục này đang khoá: học sinh chưa mở được cho tới khi bạn mở khoá ở màn Giáo trình.</KinStatus></p>}
+      {hidden && view === "chua-vao" && notLive && <div className="mb-5"><KinCallout title="Người chưa vào lớp không thấy mục này.">Mục đang ở trạng thái {statusWord}. Đăng mục thì mới có người thấy.</KinCallout></div>}
+      {hidden && !(notLive && view === "chua-vao") && <div className="mb-5"><KinCallout title="Người chưa vào lớp không thấy nội dung mục này">Link video, Zoom, Azota và tài liệu bị ẩn. Muốn cho học thử, bật “Cho học thử miễn phí” ở màn Giáo trình.</KinCallout></div>}
+      {view === "chua-vao" && full.isFree && <p className="mb-4"><KinStatus tone="xong" className="!whitespace-normal">Mục học thử miễn phí: người chưa vào lớp xem được. Mở tệp trên KiN vẫn cần đăng nhập.</KinStatus></p>}
 
       {!hidden && nothing && (
         <div role="status" className="py-10 text-center max-w-[44ch] mx-auto">
-          <p className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">Bài này chưa có nội dung</p>
+          <p className="text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-chu-chinh)]">Mục này chưa có nội dung</p>
           <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Học sinh sẽ thấy khung trống. Thêm video, tài liệu hoặc bài tập ở màn Giáo trình.</p>
           <Link href={back.href} className={`${kinButtonClass("primary")} mt-5`}>Thêm nội dung</Link>
         </div>
@@ -153,6 +179,7 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
           <DocumentRows materials={materials} />
         </section>
       )}
+      {dialog}
     </KinPage>
   );
 }

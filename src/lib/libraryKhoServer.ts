@@ -1,5 +1,6 @@
 // Kho tài liệu công khai — phần CÓ DB (NC2-046). Phần thuần: src/lib/libraryKho.ts.
 import { prisma } from "@/lib/prisma";
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { parseLessonDocuments } from "@/lib/library";
 import { isVideoId } from "@/lib/youtubeLink";
 import type { KhoDoc, KhoVideo } from "@/lib/libraryKho";
@@ -13,12 +14,12 @@ const MAX_COURSES = 50, MAX_VIDEOS = 500;
 export async function loadPublicDocs(): Promise<KhoDoc[]> {
   const courses = await prisma.course.findMany({
     where: { status: true },
-    select: { name: true, sections: { select: { chapters: { select: { lessons: { select: { title: true, documents: true, isFree: true } } } } } } },
+    select: { name: true, sections: { select: { chapters: { select: { lessons: { where: PUBLISHED_ONLY, select: { title: true, documents: true, isFree: true } } } } } } },
     take: MAX_COURSES,
   });
   const out: KhoDoc[] = [];
   for (const c of courses) for (const s of c.sections) for (const ch of s.chapters) for (const l of ch.lessons) {
-    if (!l.isFree) continue;
+    if (!l.isFree) continue;   // BU-02-PHẲNG (R15): `where: PUBLISHED_ONLY` ở truy vấn trên — bài miễn phí còn Nháp/Ẩn không được công khai tài liệu
     for (const d of parseLessonDocuments(l.documents)) out.push({ ...d, courseName: c.name, lessonTitle: l.title });
   }
   return out;

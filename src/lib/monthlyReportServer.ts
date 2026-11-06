@@ -6,6 +6,7 @@
 //                Bài không đặt hạn không tính (không có mốc để xét đúng hạn)
 //   Năng lực   — ExamResult của em ở các đề gắn với lớp (Exam.courseId), điểm quy về thang 10
 //   Buổi gia sư dời/huỷ — ClassSessionChange của các lớp em đang học, buổi có NGÀY GỐC (theo lịch tuần) trong tháng; gia sư bấm Dời/Huỷ ở trang Lịch.
+import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { prisma } from "@/lib/prisma";
 import { dropHeldResults } from "@/lib/examHold";
 import { computeAttendanceStats } from "@/lib/attendance";
@@ -73,7 +74,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
       select: { status: true, session: { select: { courseId: true } } },
     }),
     prisma.assignment.findMany({
-      where: { mode: { not: "azota" }, dueDate: { gte: start, lt: end }, lesson: { chapter: { section: { courseId: { in: courseIds } } } } },
+      where: { mode: { not: "azota" }, dueDate: { gte: start, lt: end }, lesson: { ...PUBLISHED_ONLY, chapter: { section: { courseId: { in: courseIds } } } } },   // BU-02-PHẲNG (R16): mẫu số không đếm mục Nháp/Ẩn
       select: { id: true, dueDate: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
     }),
     prisma.examResult.findMany({
@@ -86,7 +87,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
     }),
     // BC-03: chỉ ĐẾM số có sẵn (LessonProgress, LessonAzotaDone) của chính em này, trong các lớp của gia sư này.
     prisma.lesson.findMany({
-      where: { chapter: { section: { courseId: { in: courseIds } } }, OR: [{ videoUrl: { not: null } }, { azotaUrl: { not: null } }] },
+      where: { ...PUBLISHED_ONLY, chapter: { section: { courseId: { in: courseIds } } }, OR: [{ videoUrl: { not: null } }, { azotaUrl: { not: null } }] },   // BU-02-PHẲNG (R16)
       select: { id: true, videoUrl: true, azotaUrl: true, chapter: { select: { section: { select: { courseId: true } } } } },
     }),
     prisma.lessonProgress.findMany({ where: { userId: studentId, completed: true, lesson: { chapter: { section: { courseId: { in: courseIds } } } } }, select: { lessonId: true } }),

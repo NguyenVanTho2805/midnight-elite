@@ -2,11 +2,12 @@
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-giao-trinh-lib.ts   (không cần máy chủ, không cần DB thật)
 // Ca phá cố ý: link độc (javascript:, data:, http://, youtube.com.evil.example) không được đổi cột; 21 link video / 31 tài liệu bị từ chối; tên 300 ký tự bị cắt;
 // tệp .exe/.mp4 khi cờ video tắt; tệp vượt hạn mức; mã tệp KiN lạ trong documents; trùng URL; lessonTypeFor khớp từng ca với deriveTypes+serializeTypes của trang quản trị cũ.
+// BU-02-PHẲNG: thêm buildEntries / isGenericTree / pickUngroupedChapter / moveEntry / entryKind, video chỉ YouTube (routeInput + placeItem), ca "schema" khoá mặc định ba cột.
 // Mutation tự thử: đổi MAX_LINKS_PER_SLOT thành 21 ⇒ ca "21 link" đỏ; bỏ nhánh isSocialVideoHost trong routeInput ⇒ ca Facebook đỏ; itemKey đổi sang phụ thuộc vị trí ⇒ ca "đổi thứ tự" đỏ.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { PROTECTED_LESSON_FIELDS } from "@/lib/mediaAccess";
-import { deriveItems, itemKey, routeInput, placeItem, removeItem, lessonTypeFor, mergeLibrary, docTypeOf, storedDocType, kinFileIdOf, kinFileLink, MAX_LINKS_PER_SLOT, MAX_ITEM_NAME, type GtConfig, type LessonRow } from "@/lib/giaoTrinh";
+import { buildEntries, entryKind, isGenericTree, moveEntry, pickUngroupedChapter, VIDEO_FILE_REFUSED, VIDEO_YOUTUBE_ONLY, DRIVE_UNKNOWN_WARNING, type TreeSection, type GtEntry, deriveItems, itemKey, routeInput, placeItem, removeItem, lessonTypeFor, mergeLibrary, docTypeOf, storedDocType, kinFileIdOf, kinFileLink, MAX_LINKS_PER_SLOT, MAX_ITEM_NAME, type GtConfig, type LessonRow } from "@/lib/giaoTrinh";
 import { resolveDocumentUploadConfig, resolveVideoUploadConfig, validateDocumentFile, DOCUMENT_MAX_BYTES, DOCUMENT_QUOTA_BYTES, DOCUMENT_MIME_BY_EXT, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 import { cloudinaryDocPublicId, cloudinaryDocUploadInit, cloudinarySignedRawUrl, signCloudinaryParams } from "@/lib/mediaStorageServer";
 import { validateDocumentsJson, documentFileIds } from "@/lib/lessonMediaServer";
@@ -21,11 +22,11 @@ const KIN2 = "ck2zzzzZZZZ_99";
 const cfgLocal = (over: Partial<GtConfig["document"]> = {}, vid = true): GtConfig => {
   const v = resolveVideoUploadConfig(vid ? {} : { NODE_ENV: "production" });
   const d = resolveDocumentUploadConfig({});
-  return { video: { enabled: v.enabled, reason: v.reason, maxBytes: v.maxBytes }, document: { enabled: d.enabled, reason: d.reason, maxBytes: d.maxBytes, quotaBytes: d.quotaBytes, usedBytes: 0, exts: d.exts, ...over } };
+  return { document: { enabled: d.enabled, reason: d.reason, maxBytes: d.maxBytes, quotaBytes: d.quotaBytes, usedBytes: 0, exts: d.exts, ...over } };
 };
 const cfgProd = (): GtConfig => {
   const v = resolveVideoUploadConfig({ NODE_ENV: "production" }), d = resolveDocumentUploadConfig({ NODE_ENV: "production" });
-  return { video: { enabled: v.enabled, reason: v.reason, maxBytes: v.maxBytes }, document: { enabled: d.enabled, reason: d.reason, maxBytes: d.maxBytes, quotaBytes: d.quotaBytes, usedBytes: 0, exts: d.exts } };
+  return { document: { enabled: d.enabled, reason: d.reason, maxBytes: d.maxBytes, quotaBytes: d.quotaBytes, usedBytes: 0, exts: d.exts } };
 };
 
 // ─── deriveItems ────────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ const empty: LessonRow = { id: "l", title: "B", type: "document", videoUrl: null
 const p1 = placeItem(empty, { slot: "video", url: `https://youtu.be/${YT}` });
 check("thêm YouTube vào bài trống: patch videoUrl = chuỗi đơn, type = record, mục đúng khoá", p1.ok && !p1.duplicate && p1.patch.videoUrl === `https://youtu.be/${YT}` && p1.patch.type === "record" && p1.item.key === itemKey("video", `https://youtu.be/${YT}`), p1);
 const afterP1 = { ...empty, ...(p1.ok ? p1.patch : {}) };
-const p2 = placeItem(afterP1, { slot: "video", url: "https://vimeo.com/123456789" });
+const p2 = placeItem(afterP1, { slot: "video", url: "https://youtu.be/aaaaaaaaaaa" });
 check("link thứ 2 ⇒ cột thành JSON mảng 2 link", p2.ok && JSON.parse(p2.patch.videoUrl as string).length === 2);
 const dup = placeItem(afterP1, { slot: "video", url: `youtube.com/watch?v=${YT}`.replace("youtube.com/watch?v=" + YT, `https://youtu.be/${YT}`) });
 check("trùng URL ⇒ duplicate:true, patch RỖNG (không đổi gì)", dup.ok && dup.duplicate && Object.keys(dup.patch).length === 0);
@@ -180,11 +181,10 @@ check("PDF mà MIME khai image/png ⇒ lỗi (họ MIME sai đuôi)", !F("a.pdf"
 check("MIME trống hoặc application/octet-stream ⇒ không từ chối oan", F("a.pdf", MB, "").ok && F("a.pdf", MB, "application/octet-stream").ok);
 check("vượt hạn mức kho (đã dùng 499 MB + 2 MB) ⇒ lỗi nêu hạn mức", (() => { const r = routeInput({ file: { name: "a.pdf", size: 2 * MB } }, cfgLocal({ usedBytes: 499 * MB })); return !r.ok && /đầy/.test(r.error); })());
 check("cờ document tắt (production thiếu Cloudinary) ⇒ lỗi + gợi ý dán link Drive, không rơi về cách khác", (() => { const r = F("a.pdf", MB, "", P); return !r.ok && /Drive/.test(r.error); })());
-check("video .mp4 khi cờ video TẮT (production) ⇒ lỗi 'chưa bật', nói dán YouTube", (() => { const r = F("bai1.mp4", 10 * MB, "video/mp4", P); return !r.ok && /chưa bật/.test(r.error) && /YouTube/.test(r.error); })());
+check("video .mp4 khi cờ video TẮT (production) ⇒ lỗi YouTube (BU-02-PHẲNG: không còn nhánh tải video)", (() => { const r = F("bai1.mp4", 10 * MB, "video/mp4", P); return !r.ok && /YouTube/.test(r.error) && r.error === VIDEO_FILE_REFUSED; })());
 check("video .mov/.webm/.m4v khi cờ tắt ⇒ lỗi hết", ["a.mov", "a.webm", "a.m4v"].every(n => !F(n, MB, "", P).ok));
-check("video .mp4 khi cờ BẬT (máy cục bộ) ⇒ ok, via video_file, ô video", (() => { const r = F("bai1.mp4", 10 * MB, "video/mp4", L); return r.ok && r.via === "video_file" && r.slot === "video" && r.kind === "video"; })());
-check("video 200 MB + 1 byte khi cờ bật ⇒ lỗi dung lượng", !F("b.mp4", 200 * MB + 1, "video/mp4", L).ok);
-check("tệp .mp4 với MIME text/html (giả video) khi cờ bật ⇒ lỗi", !F("b.mp4", MB, "text/html", L).ok);
+check("video .mp4 BẤT KỂ CỜ (máy cục bộ cũng vậy) ⇒ lỗi YouTube, không còn via video_file", (() => { const r = F("bai1.mp4", 10 * MB, "video/mp4", L); return !r.ok && r.error === VIDEO_FILE_REFUSED; })());
+check("video nhỏ hay lớn, MIME thật hay giả (.mp4 + text/html) đều cùng một lỗi", [F("b.mp4", 200 * MB + 1, "video/mp4", L), F("b.mp4", MB, "text/html", L), F("b.MP4", 1, "", L), F("c.mov", MB, "video/quicktime", L)].every(r => !r.ok && r.error === VIDEO_FILE_REFUSED));
 check("đuôi kép a.pdf.exe ⇒ lỗi; a.exe.pdf ⇒ ok theo đuôi cuối (nội dung do A2 kiểm)", !F("a.pdf.exe", MB).ok && F("a.exe.pdf", MB).ok);
 check("tên tệp có đường dẫn (C:\\x\\a.pdf) lấy đúng đuôi", F("C:\\x\\a.pdf", MB).ok);
 
@@ -302,6 +302,116 @@ section("XemNhuHocSinh — bản sao redact cho người ngoài lớp khớp PRO
   const have = (m?.[1] ?? "").split(",").map(x => x.trim().replace(/"/g, "")).filter(Boolean).sort().join(",");
   check("danh sách trường khoá khớp mediaAccess.PROTECTED_LESSON_FIELDS", have === [...PROTECTED_LESSON_FIELDS].sort().join(","), have);
   check("component client KHÔNG import @/lib/mediaAccess (kéo prisma vào gói trình duyệt)", !/from "@\/lib\/mediaAccess"/.test(src));
+}
+
+// ═══ BU-02-PHẲNG ═════════════════════════════════════════════════════════════
+section("schema — ba cột chỉ-thêm có MẶC ĐỊNH (khoá việc backfill ngầm)");
+{
+  const sc = readFileSync("prisma/schema.prisma", "utf8");
+  const model = (n: string) => new RegExp(`model ${n} \\{[\\s\\S]*?\\n\\}`).exec(sc)?.[0] ?? "";
+  check('Lesson.status String @default("published")', /\n\s*status\s+String\s+@default\("published"\)/.test(model("Lesson")));
+  check("Section.isImplicit Boolean @default(false)", /\n\s*isImplicit\s+Boolean\s+@default\(false\)/.test(model("Section")));
+  check("Chapter.isImplicit Boolean @default(false)", /\n\s*isImplicit\s+Boolean\s+@default\(false\)/.test(model("Chapter")));
+  check("Lesson.chapterId vẫn bắt buộc (không đổi cột có sẵn)", /\n\s*chapterId\s+String\s*\n/.test(model("Lesson")));
+  check("Lesson.status không phải enum Prisma", !/enum\s+LessonStatus/.test(sc));
+}
+
+section("routeInput — video CHỈ YouTube (BU-02-PHẲNG)");
+{
+  const T2 = (t: string) => routeInput({ text: t }, L);
+  const yt5 = [`https://www.youtube.com/watch?v=${YT}`, `https://youtu.be/${YT}`, `https://www.youtube.com/shorts/${YT}`, `https://www.youtube.com/embed/${YT}`, `https://www.youtube.com/live/${YT}`];
+  check("YouTube 5 dạng (watch, youtu.be, shorts, embed, live) ⇒ video", yt5.every(u => { const r = T2(u); return r.ok && r.kind === "video" && r.slot === "video"; }), yt5.map(u => T2(u).ok));
+  check("Vimeo ⇒ lỗi 'Video chỉ nhận link YouTube'", (() => { const r = T2("https://vimeo.com/123456789"); return !r.ok && r.error === VIDEO_YOUTUBE_ONLY; })());
+  check("Bản ghi Zoom ⇒ lỗi YouTube", (() => { const r = T2("https://zoom.us/rec/share/AbCdEf123"); return !r.ok && r.error === VIDEO_YOUTUBE_ONLY; })());
+  check("kin-media:<mã> (hợp lệ hay hỏng) ⇒ lỗi YouTube", ["kin-media:ck1abcdEFGH_12", "kin-media:x", "KIN-MEDIA:abc"].every(u => { const r = T2(u); return !r.ok && r.error === VIDEO_YOUTUBE_ONLY; }));
+  check("Drive /file/d/… ⇒ TÀI LIỆU kèm cảnh báo 'không biết đây là tệp gì', KHÔNG phải video", (() => { const r = T2("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view"); return r.ok && r.slot === "document" && r.kind === "document" && r.warning === DRIVE_UNKNOWN_WARNING; })());
+  check("Drive open?id= ⇒ tài liệu", (() => { const r = T2("https://drive.google.com/open?id=1AbCdEfGhIjKlMnOpQrSt"); return r.ok && r.slot === "document"; })());
+  check("routeInput không đọc cfg.video (cfg không có khối video mà không ném)", (() => { try { return routeInput({ text: `https://youtu.be/${YT}` }, { document: L.document } as GtConfig).ok; } catch { return false; } })());
+  check("tệp video 4 đuôi, kể cả hoa/thường ⇒ cùng lỗi", ["a.mp4", "a.webm", "a.mov", "a.m4v", "A.MP4"].every(n => { const r = F(n, MB, "video/mp4", L); return !r.ok && r.error === VIDEO_FILE_REFUSED; }));
+  check("placeItem ô video + Vimeo / Zoom-bản-ghi / kin-media ⇒ 400, patch rỗng (máy chủ chặn lại, không tin trình duyệt)", ["https://vimeo.com/123456789", "https://zoom.us/rec/share/AbCdEf123", "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view", "kin-media:ck1abcdEFGH_12"].every(u => { const r = placeItem(empty, { slot: "video", url: u }); return !r.ok && r.error === VIDEO_YOUTUBE_ONLY; }));
+  const old: LessonRow = { ...empty, videoUrl: "https://vimeo.com/123456789", type: "record" };
+  check("dữ liệu CŨ: bài đã có Vimeo, thêm lại đúng URL đó ⇒ duplicate (không lỗi); còn thêm Vimeo khác ⇒ lỗi", (() => { const a = placeItem(old, { slot: "video", url: "https://vimeo.com/123456789" }); const b = placeItem(old, { slot: "video", url: "https://vimeo.com/987654321" }); return a.ok && a.duplicate && !b.ok; })());
+  check("dữ liệu cũ Vimeo vẫn hiện trong deriveItems và gỡ được", (() => { const it = deriveItems(old); const k = it[0].key; return it[0].label === "Vimeo" && !it[0].broken && removeItem(old, k).removed; })());
+  check("thêm YouTube vào bài có Vimeo cũ ⇒ ok, cột thành mảng 2", (() => { const r = placeItem(old, { slot: "video", url: `https://youtu.be/${YT}` }); return r.ok && JSON.parse(r.patch.videoUrl as string).length === 2; })());
+}
+
+// ─── cây thô giả ───
+const lsn = (id: string, status = "published", extra: Partial<LessonRow> = {}) => ({ id, title: `Bài ${id}`, status, type: "document", isLocked: true, isFree: false, documents: "[]", ...extra });
+const doc1 = (n: string) => JSON.stringify([{ name: n, url: `https://x.vn/${n}.pdf`, type: "pdf" }]);
+
+section("isGenericTree / pickUngroupedChapter — cây 'chung' (Phần 1/Chương 1) = không nhóm");
+{
+  const gen: TreeSection[] = [{ id: "s1", title: "Phần 1", chapters: [{ id: "c1", title: "Chương 1", lessons: [lsn("a")] }] }];
+  check("đúng 1 'Phần 1' + 1 'Chương 1', không ngầm ⇒ chung", isGenericTree(gen));
+  check("Phần hoặc Chương đã đổi tên ⇒ KHÔNG còn chung", !isGenericTree([{ ...gen[0], title: "Phần 1 (sửa)" }]) && !isGenericTree([{ ...gen[0], chapters: [{ ...gen[0].chapters[0], title: "Đại số" }] }]));
+  check("2 chương / 2 phần / 0 phần ⇒ không chung", !isGenericTree([{ ...gen[0], chapters: [gen[0].chapters[0], { id: "c2", title: "Chương 2", lessons: [] }] }]) && !isGenericTree([...gen, { id: "s2", title: "Phần 2", chapters: [] }]) && !isGenericTree([]));
+  check("đã lật cờ ngầm ⇒ không còn 'chung' (đã là chương ngầm thật)", !isGenericTree([{ ...gen[0], isImplicit: true, chapters: [{ ...gen[0].chapters[0], isImplicit: true }] }]));
+  check("pickUngroupedChapter: ưu tiên chương ngầm; rồi cây chung; rồi null (phải tạo)", (() => {
+    const imp: TreeSection[] = [{ id: "s0", title: "Nội dung lớp", isImplicit: true, chapters: [{ id: "ci", title: "Bài học", isImplicit: true, lessons: [] }, { id: "cn", title: "Đại số", lessons: [] }] }];
+    return pickUngroupedChapter(imp)?.chapterId === "ci" && pickUngroupedChapter(gen)?.chapterId === "c1" && pickUngroupedChapter([]) === null
+      && pickUngroupedChapter([{ id: "sx", title: "Phần A", chapters: [{ id: "cx", title: "Chương A", lessons: [] }] }]) === null;
+  })());
+  check("có cả chương ngầm lẫn cây chung ở phần khác ⇒ vẫn chọn chương ngầm", pickUngroupedChapter([{ id: "g", title: "Phần 1", chapters: [{ id: "g1", title: "Chương 1", lessons: [] }] }, { id: "i", title: "N", isImplicit: true, chapters: [{ id: "ii", title: "B", isImplicit: true, lessons: [] }] }])?.chapterId === "ii");
+}
+
+section("buildEntries — danh sách phẳng, nhóm, thứ tự, trạng thái");
+{
+  // lớp mới: chỉ chương ngầm
+  const neu: TreeSection[] = [{ id: "s0", title: "Nội dung lớp", isImplicit: true, chapters: [{ id: "ci", title: "Bài học", isImplicit: true, lessons: [lsn("m1", "draft", { videoUrl: `https://youtu.be/${YT}` }), lsn("m2", "published", { documents: doc1("tl") })] }] }];
+  const a = buildEntries(neu, { assignmentsByLesson: {} });
+  check("lớp mới (chỉ chương ngầm) ⇒ groups = [], mọi groupId = null, giữ thứ tự", a.groups.length === 0 && a.entries.length === 2 && a.entries.every(e => e.groupId === null) && a.entries.map(e => e.id).join() === "m1,m2");
+  check("kiểu: có YouTube ⇒ video; chỉ tài liệu ⇒ document; status đọc đúng", a.entries[0].kind === "video" && a.entries[0].status === "draft" && a.entries[1].kind === "document" && a.entries[1].status === "published");
+  check("chapterId là chương thật (kể cả ngầm) để reorder", a.entries.every(e => e.chapterId === "ci"));
+  // lớp cũ nhiều phần
+  const cu: TreeSection[] = [
+    { id: "s1", title: "Phần A", chapters: [{ id: "c1", title: "Đại số", lessons: [lsn("x1"), lsn("x2")] }, { id: "c2", title: "Hình", lessons: [lsn("x3")] }] },
+    { id: "s2", title: "Phần B", chapters: [{ id: "c3", title: "Ôn tập", lessons: [lsn("x4")] }] },
+  ];
+  const b = buildEntries(cu, { assignmentsByLesson: {} });
+  check('lớp cũ nhiều phần ⇒ nhóm "Phần · Chương" đúng thứ tự cây', b.groups.map(g => `${g.id}=${g.title}`).join("|") === "c1=Phần A · Đại số|c2=Phần A · Hình|c3=Phần B · Ôn tập");
+  check("bài đúng nhóm, đúng thứ tự, không mất bài nào", b.entries.map(e => `${e.id}@${e.groupId}`).join() === "x1@c1,x2@c1,x3@c2,x4@c3");
+  // chung
+  const c = buildEntries([{ id: "s1", title: "Phần 1", chapters: [{ id: "c1", title: "Chương 1", lessons: [lsn("g1"), lsn("g2")] }] }], { assignmentsByLesson: {} });
+  check('cây "chung" (Phần 1/Chương 1) ⇒ không nhóm', c.groups.length === 0 && c.entries.every(e => e.groupId === null) && c.entries.length === 2);
+  const d = buildEntries([{ id: "s1", title: "Phần 1", chapters: [{ id: "c1", title: "Chương 1 (đã sửa)", lessons: [lsn("g1")] }] }], { assignmentsByLesson: {} });
+  check("đã đổi tên chương ⇒ thành nhóm bình thường", d.groups.length === 1 && d.entries[0].groupId === "c1");
+  // ngầm + có tên
+  const mix: TreeSection[] = [{ id: "s0", title: "Nội dung lớp", isImplicit: true, chapters: [
+    { id: "cn", title: "Hình học", lessons: [lsn("n1")] },   // chương có tên đứng TRƯỚC trong cây ...
+    { id: "ci", title: "Bài học", isImplicit: true, lessons: [lsn("u1"), lsn("u2")] },
+  ] }];
+  const e = buildEntries(mix, { assignmentsByLesson: {} });
+  check('ngầm + có tên ⇒ khối "chưa nhóm" đứng TRƯỚC dù chương ngầm nằm sau trong cây; tiêu đề nhóm của phần ngầm chỉ là tên chương', e.entries.map(x => x.id).join() === "u1,u2,n1" && e.groups.length === 1 && e.groups[0].title === "Hình học" && e.entries[0].groupId === null && e.entries[2].groupId === "cn");
+  check("nhóm trống vẫn có trong groups (để vẽ tiêu đề / đổi tên)", buildEntries([{ id: "s", title: "N", isImplicit: true, chapters: [{ id: "ce", title: "Trống", lessons: [] }] }], { assignmentsByLesson: {} }).groups.length === 1);
+  // trạng thái lạ + mục rỗng + bài tập
+  const odd = buildEntries([{ id: "s0", title: "N", isImplicit: true, chapters: [{ id: "ci", title: "B", isImplicit: true, lessons: [lsn("o1", "Published"), lsn("o2", "published"), lsn("o3", "draft", { videoUrl: "javascript:alert(1)" }), lsn("o4", "hidden", {})] }] }], { assignmentsByLesson: { o4: 2 } });
+  check('status lạ ("Published") ⇒ hiện là Nháp cho gia sư (phía học sinh đã đóng khi lạ)', odd.entries[0].status === "draft");
+  check("mục rỗng ⇒ kind document + publishBlock; mục chỉ link hỏng ⇒ publishBlock; mục có Bài tập tự nộp ⇒ kind assignment, đăng được", odd.entries[1].publishBlock !== null && odd.entries[2].publishBlock !== null && odd.entries[3].kind === "assignment" && odd.entries[3].publishBlock === null && odd.entries[3].selfSubmitCount === 2);
+  check("mục có nội dung tốt ⇒ publishBlock = null", buildEntries(neu, { assignmentsByLesson: {} }).entries.every(x => x.publishBlock === null));
+}
+
+section("entryKind — video > live > assignment > document");
+{
+  const it = (extra: LessonRow, n = 0) => deriveItems(extra, { assignments: n });
+  const V = `https://youtu.be/${YT}`, Z = "https://zoom.us/j/84012345678", A = "https://azota.vn/de/abc";
+  check("đủ cả bốn ⇒ video", entryKind(it({ videoUrl: V, zoomUrl: Z, azotaUrl: A, documents: doc1("d") }, 1), 1) === "video");
+  check("live + azota + tài liệu ⇒ live", entryKind(it({ zoomUrl: Z, azotaUrl: A, documents: doc1("d") }), 0) === "live");
+  check("azota + tài liệu ⇒ assignment; chỉ Bài tập tự nộp ⇒ assignment", entryKind(it({ azotaUrl: A, documents: doc1("d") }), 0) === "assignment" && entryKind(it({}, 3), 3) === "assignment");
+  check("chỉ tài liệu ⇒ document; không có gì ⇒ document", entryKind(it({ documents: doc1("d") }), 0) === "document" && entryKind([], 0) === "document");
+}
+
+section("moveEntry — ▲▼ trong cùng nhóm, payload order 1..n + parentId");
+{
+  const mk = (id: string, chapterId: string, groupId: string | null): GtEntry => ({ id, title: id, kind: "document", status: "draft", chapterId, groupId, isLocked: true, isFree: false, duration: null, azotaDeadline: null, items: [], selfSubmitCount: 0, publishBlock: null });
+  const es = [mk("u1", "ci", null), mk("u2", "ci", null), mk("u3", "ci", null), mk("g1", "c1", "c1"), mk("g2", "c1", "c1")];
+  const mid = moveEntry(es, "u2", 1);
+  check("giữa xuống: u1,u3,u2 order 1..3 parentId ci; type lesson", mid.ok && mid.type === "lesson" && mid.items.map(i => `${i.id}:${i.order}:${i.parentId}`).join() === "u1:1:ci,u3:2:ci,u2:3:ci");
+  const up = moveEntry(es, "u2", -1);
+  check("giữa lên: u2,u1,u3", up.ok && up.items.map(i => i.id).join() === "u2,u1,u3" && up.items.map(i => i.order).join() === "1,2,3");
+  check("đầu lên / cuối xuống / id lạ ⇒ ok:false (nút bị vô hiệu)", !moveEntry(es, "u1", -1).ok && !moveEntry(es, "u3", 1).ok && !moveEntry(es, "g1", -1).ok && !moveEntry(es, "g2", 1).ok && !moveEntry(es, "khong-co", 1).ok);
+  check("KHÔNG vượt nhóm: u3 xuống không chạm g1; payload nhóm c1 chỉ có g1,g2", !moveEntry(es, "u3", 1).ok && (() => { const r = moveEntry(es, "g1", 1); return r.ok && r.items.map(i => i.id).join() === "g2,g1" && r.items.every(i => i.parentId === "c1"); })());
+  check("hướng sai (0, 2, NaN) ⇒ ok:false, không ném", [0, 2, NaN].every(d => { try { return !moveEntry(es, "u2", d as 1).ok; } catch { return false; } }));
+  check("không đổi mảng gốc", es.map(e => e.id).join() === "u1,u2,u3,g1,g2");
 }
 
 done();
