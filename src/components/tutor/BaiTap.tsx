@@ -238,7 +238,7 @@ export default function BaiTap() {
           <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
             <div className="min-w-0 sm:flex-1 sm:max-w-sm">
               <label htmlFor="bt-giao-lop" className={LABEL}>Lớp</label>
-              <select id="bt-giao-lop" className={FIELD} value={pickId} onChange={e => setPickId(e.target.value)}>
+              <select id="bt-giao-lop" autoFocus className={FIELD} value={pickId} onChange={e => setPickId(e.target.value)}>
                 <option value="">Chọn lớp</option>
                 {data?.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -266,7 +266,7 @@ export default function BaiTap() {
           <div className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-x-8 gap-y-8 items-start">
             <div className="min-w-0">
               <label htmlFor="bt-lop" className={LABEL}>Lọc lớp</label>
-              <select id="bt-lop" className={FIELD} value={courseId} onChange={e => { setCourseId(e.target.value); setSelKey(null); }}>
+              <select id="bt-lop" className={FIELD} value={courseId} onChange={e => { setCourseId(e.target.value); setSelKey(null); setPickOpen(false); }}>
                 <option value="">Tất cả lớp</option>
                 {data.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
