@@ -1,6 +1,8 @@
-// Vỏ của học sinh (Figma "Vỏ — Học sinh" 11:98): thanh module bên trái (điện thoại: thanh dưới) với 4 module đúng Figma
-// — (23/10/2026, Figma 299:114360 + 299:116497) Việc của tôi, Lịch học, Lớp của tôi, Bài tập — cộng "Khác" cho các trang còn lại. BU-00 bước 6 (31/10/2026):
-// "Khác" chỉ còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tài khoản (Hồ sơ, Học phí, Chủ đề màu); các lối vào khác bị ẩn, route vẫn chạy.
+// Vỏ của học sinh (Figma "Vỏ — Học sinh" 11:98): thanh module bên trái (điện thoại: thanh dưới) với 4 module đúng Figma (từ 08/11/2026 còn 3: Bài tập đã gộp vào Việc của tôi, xem dưới)
+// — (23/10/2026, Figma 299:114360 + 299:116497) Việc của tôi, Lịch học, Lớp của tôi, Bài tập — cộng "Khác" cho các trang còn lại.
+// ĐIỀU HƯỚNG B1/B2/B3 (08/11/2026): module "Bài tập" RA KHỎI thanh (còn 3 module: Việc của tôi, Lịch học, Lớp của tôi) — đề thi được giao và thi thử sắp tới nay nằm trong "Việc của tôi";
+// /student/bai-tap giữ làm chuyển hướng. Menu tài khoản chỉ giữ việc về bản thân (Hồ sơ, Học phí, Chủ đề màu, Đăng xuất) nên nhóm "Tài khoản" rút khỏi "Khác". Điện thoại: nút "Khác" lên thanh dưới (mobileMore) — 3 module + Khác = 4 ô. BU-00 bước 6 (31/10/2026):
+// "Khác" chỉ còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tự học; các lối vào khác bị ẩn, route vẫn chạy. (Nhóm Tài khoản ở đây đã rút ngày 08/11/2026, xem trên.)
 // Phòng thi (/student/thi-thu/<mã đề>) KHÔNG có vỏ: toàn màn hình, khoá cứng.
 "use client";
 import Link from "next/link";
@@ -21,7 +23,7 @@ import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components
 // `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
 // BU-00 bước 6 (31/10/2026): bảng "Khác" rút từ 3 nhóm 15 mục còn 3 nhóm 8 mục (Tiếng Anh tự học được trả lại ngay sau đó) — học sinh chỉ thấy việc học. Bỏ khỏi MENU (route giữ nguyên, chỉ ẩn lối vào):
 // Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn, Ví và Coin. Thi thử / Tiếng Anh
-// vẫn sáng đúng module nhờ `also` của "Bài tập" (/student/thi-thu) và "Lớp của tôi" (/student/tieng-anh).
+// vẫn sáng đúng module nhờ `also` của "Việc của tôi" (/student/thi-thu) và "Lớp của tôi" (/student/tieng-anh).
 // Điều hướng A6 (07/11/2026): "Nhập mã lớp" rút khỏi bảng này — lối vào nằm trong "Lớp của tôi" (màn trống + mục "Tham gia lớp khác"). Cộng đồng / Tin tức trỏ thẳng /cong-dong, /tin-tuc (file chuyển hướng /student/* giữ cho liên kết cũ).
 // NC2-048 (góp ý 28/10): "Hỏi đáp" là tab bên trong Cộng đồng; /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
 const MORE_GROUPS: MoreGroup[] = [
@@ -34,11 +36,6 @@ const MORE_GROUPS: MoreGroup[] = [
     // Sửa sau BU-00 (01/11/2026): bước 6 đã bỏ mục này mà trang Lớp không có lối thay thế nên Tiếng Anh tự học không còn ai bấm tới được.
     // Lối tắt `active: false`: /student/tieng-anh đã thuộc module "Lớp của tôi" (`also`) nên chỉ một mục sáng.
     { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "lop", active: false },
-  ] },
-  { title: "Tài khoản", links: [
-    { label: "Hồ sơ", href: "/student/ho-so", icon: "nguoi" },
-    { label: "Học phí", href: "/student/hoc-phi", icon: "hoc-phi" },
-    { label: "Chủ đề màu", href: "/cai-dat/chu-de", icon: "cai-dat" },
   ] },
 ];
 // Chỉ các mục KHÔNG phải lối tắt mới làm nút "Khác" sáng (lối tắt `active: false` đã có module cha sáng).
@@ -75,11 +72,11 @@ export default function StudentShell({ children, preview }: { children: ReactNod
 
   const moreActive = moreOpen || MORE_HREFS.some(h => isUnder(pathname, h));
   const modules: ModuleItem[] = [
-    { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", icon: "viec", badge },
+    // `also` có /student/thi-thu, /thi-thu: đề thi được giao và thi thử sắp tới nay thuộc "Việc của tôi" (B1); phòng thi (/student/thi-thu/<mã đề>) không có vỏ.
+    { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
     { key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" },
     // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
     { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/student/tieng-anh", "/lop-cua-toi"], icon: "lop" },
-    { key: "bai-tap", label: "Bài tập", href: "/student/bai-tap", also: ["/student/thi-thu", "/thi-thu"], icon: "bai-kt" },
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 
@@ -91,7 +88,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
 
   return (
     <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
-      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} groups={wide} onCollapse={closeMore}
+      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} groups={wide} onCollapse={closeMore} mobileMore
         home={{ href: "/student/viec-cua-toi", label: "KiN — Việc của tôi" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
@@ -114,7 +111,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
             <TopDate />
             <CoinBalance />
             <NotificationBell />
-            {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()} onOpenMore={() => setMoreOpen(true)}
+            {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()}
               links={[{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }, { label: "Trang chủ KiN", href: "/" }]} />}
           </div>
         </div>

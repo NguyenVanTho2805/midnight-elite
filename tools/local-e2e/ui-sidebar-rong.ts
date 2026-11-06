@@ -57,20 +57,20 @@ import { prisma } from "@/lib/prisma";
   await ctxT.close();
 
   // ───────────── Học sinh
-  section("Học sinh: Làm việc hằng ngày (4 module) · Khám phá · Tài khoản");
+  section("Học sinh: Làm việc hằng ngày (3 module) · Khám phá · Tự học");
   const ctxS = await ctxFor(S, { width: 1440, height: 1000, rail: "mac-dinh" });
   const ps = await ctxS.newPage(); watch(ps);
   await ps.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(ps, "Module của học sinh").first().waitFor({ timeout: 90000 });
   const gs = await groupsOf(ps, "Module của học sinh");
   // BU-00 bước 6 (31/10/2026): bỏ nhóm "Học tập" và rút Khám phá / Tài khoản — học sinh chỉ thấy việc học; lệch Figma 575:5571 CÓ CHỦ ĐÍCH (kế hoạch BIGUPDATE BU-00 ghi cập nhật khung).
-  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tự học|Tài khoản", gs.map(g => g.title));
-  check("đúng mục BU-00: 4 module; Khám phá = Gia sư, Cộng đồng, Tin tức; Tài khoản = Hồ sơ, Học phí, Chủ đề màu (A6: bỏ Nhập mã lớp)", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập"
-    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Tiếng Anh tự học" && gs[3].items.join("|") === "Hồ sơ|Học phí|Chủ đề màu", gs);
+  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tự học (B2 08/11: nhóm Tài khoản rút, đã có ở menu tài khoản)", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tự học", gs.map(g => g.title));
+  check("đúng mục: 3 module (B1: bỏ Bài tập); Khám phá = Gia sư, Cộng đồng, Tin tức; Tự học = Tiếng Anh tự học", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi"
+    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Tiếng Anh tự học", gs);
   check("nhãn vai 'HỌC SINH', thanh 272px, 'Việc của tôi' đang sáng", (await ps.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "HỌC SINH" && (await wrapW(ps)) === 272 && await nav(ps, "Module của học sinh").first().getByRole("link", { name: /^Việc của tôi/ }).getAttribute("aria-current") === "page");
-  await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí", exact: true }).click();
-  await ps.waitForURL(/\/student\/hoc-phi/, { timeout: 90000 });
-  check("bấm 'Học phí' (nhóm Tài khoản) → vào /student/hoc-phi, mục đó sáng; vẫn ở thanh RỘNG", await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí" }).getAttribute("aria-current") === "page" && (await wrapW(ps)) === 272);
+  await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Lịch học", exact: true }).click();
+  await ps.waitForURL(/\/student\/lich-hoc/, { timeout: 90000 });
+  check("bấm 'Lịch học' → vào /student/lich-hoc, mục đó sáng; vẫn ở thanh RỘNG", await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Lịch học" }).getAttribute("aria-current") === "page" && (await wrapW(ps)) === 272);
   // thu hẹp / thu / mở lại
   await ps.locator("[data-rail-widen]").click();
   await eventually("nút thu hẹp → 79px, <html data-kin-rail=mo>, nhóm ẩn, biểu tượng hiện", async () => (await wrapW(ps)) === 79 && (await attr(ps)) === "mo" && (await ps.locator("#kin-rail .kin-rail-groups").evaluate((e: any) => getComputedStyle(e).display)) === "none");
@@ -92,7 +92,7 @@ import { prisma } from "@/lib/prisma";
   const pp = await ctxP.newPage(); watch(pp);
   await pp.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(pp, "Module của học sinh").last().waitFor({ timeout: 90000 });
-  check("điện thoại 390px: thanh dưới cao 60px đủ 4 tab, không có thanh bên, không tràn ngang", await pp.evaluate(() => { const n = Array.from(document.querySelectorAll("nav")).find(e => getComputedStyle(e).position === "fixed")!; return Math.round(n.getBoundingClientRect().height) === 60 && n.querySelectorAll("a").length === 4 && document.documentElement.scrollWidth <= window.innerWidth; }) && (await pp.locator("#kin-rail").isVisible()) === false);
+  check("điện thoại 390px: thanh dưới cao 60px đủ 4 ô (3 module + Khác), không có thanh bên, không tràn ngang", await pp.evaluate(() => { const n = Array.from(document.querySelectorAll("nav")).find(e => getComputedStyle(e).position === "fixed")!; return Math.round(n.getBoundingClientRect().height) === 60 && n.querySelectorAll("a, button").length === 4 && document.documentElement.scrollWidth <= window.innerWidth; }) && (await pp.locator("#kin-rail").isVisible()) === false);
   await ctxP.close();
 
   // ───────────── Quản trị

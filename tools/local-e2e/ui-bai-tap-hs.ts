@@ -39,8 +39,8 @@ const MIN = 60_000;
   const watch = (p: any) => { p.on("pageerror", (e: unknown) => errors.push(String(e))); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of (4|5)/i.test(m.text())) errors.push(m.text()); }); };
   const hide = async (p: any) => p.addStyleTag({ content: "[data-agentation-root]{display:none!important}" });
   const openTab = async (p: any) => {
-    await p.goto(`${BASE}/student/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
-    await p.getByRole("tab", { name: /^Đề thi/ }).click();
+    // B1 (08/11/2026): "Đề thi được giao" nằm ở cột phải của Việc của tôi (trang Bài tập đã chuyển hướng).
+    await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
     await p.getByRole("list", { name: "Đề thi được giao" }).waitFor({ timeout: 60000 });
     await hide(p);
   };
@@ -69,8 +69,7 @@ const MIN = 60_000;
   section("Học sinh ngoài lớp không thấy đề của lớp");
   const cx = await ctxFor(X, { width: 1280, height: 900 });
   const px = await cx.newPage(); watch(px);
-  await px.goto(`${BASE}/student/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
-  await px.getByRole("tab", { name: /^Đề thi/ }).click();
+  await px.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await px.getByText("Chưa có đề nào được giao").waitFor({ timeout: 60000 });
   const xt = await px.locator("body").innerText();
   check("không thấy tên đề nào của lớp Toán 9", !xt.includes("Đề còn một ngày") && !xt.includes("Đề hết hạn hôm nay") && !xt.includes("Đề đã quá hạn"));
@@ -94,6 +93,28 @@ const MIN = 60_000;
   check("390: vẫn đủ ba nhãn hạn", mHan.length === 3, mHan);
   await shot(pm, "bai-tap-hs-390");
   await cm.close();
+
+  section("Nhiều hơn 3 đề: 'Xem thêm' còn lối xem phần còn lại");
+  for (const [id, title, due] of [["bt-x1", "Đề thêm một", 3], ["bt-x2", "Đề thêm hai", 4]] as const) {
+    await mkExam({ id, ownerId: T.id, courseId: C.id, mode: "practice", title });
+    await mkFiveQuestions(id, id);
+    await prisma.quizStudentDeadline.create({ data: { examId: id, userId: S.id, dueAt: new Date(Date.now() + due * 24 * 3_600_000), setById: T.id } });
+  }
+  const cs = await ctxFor(S, { width: 1280, height: 900 });
+  const ps = await cs.newPage(); watch(ps);
+  await ps.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
+  await ps.getByRole("list", { name: "Đề thi được giao" }).waitFor({ timeout: 60000 });
+  check("5 đề được giao: mặc định hiện 3", await ps.locator("[data-de-thi-hang]").count() === 3, await ps.locator("[data-de-thi-hang]").count());
+  await ps.locator("[data-assign-more]").click();
+  check("'Xem thêm 2 đề' → đủ 5 đề; 'Thu gọn' → về 3", await ps.locator("[data-de-thi-hang]").count() === 5 && (await ps.locator("[data-assign-more]").innerText()).trim() === "Thu gọn");
+  await cs.close();
+  // B1: trang cũ chuyển hướng (thông báo cũ trong cơ sở dữ liệu còn trỏ vào).
+  const cr = await ctxFor(S, { width: 1280, height: 900 });
+  const pr = await cr.newPage(); watch(pr);
+  await pr.goto(`${BASE}/student/bai-tap`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await pr.waitForURL(/\/student\/viec-cua-toi$/, { timeout: 60000 });
+  check("B1: /student/bai-tap → /student/viec-cua-toi", new URL(pr.url()).pathname === "/student/viec-cua-toi");
+  await cr.close();
 
   section("Không lỗi trình duyệt");
   check("không có pageerror / console.error", errors.length === 0, errors.slice(0, 3));

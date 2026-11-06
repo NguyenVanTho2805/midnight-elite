@@ -151,7 +151,7 @@ const H = 3_600_000;
   await pm.addInitScript(`localStorage.setItem("kin.thanh-ben", "thu")`);
   await pm.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await ready(pm);
-  check("<html> có data-kin-rail=thu nhưng thanh DƯỚI vẫn hiện, đủ 4 tab theo Figma 299:116497 (Việc của tôi, Lịch học, Lớp của tôi, Bài tập; 'Khác' chỉ có ở máy tính, điện thoại vào qua menu tài khoản 'Tất cả mục')", (await attr(pm)) === "thu" && await rail(pm, RAIL.student).isVisible() && await rail(pm, RAIL.student).getByRole("link").count() === 4 && await rail(pm, RAIL.student).getByRole("button", { name: /^Khác/ }).count() === 0);
+  check("<html> có data-kin-rail=thu nhưng thanh DƯỚI vẫn hiện, đủ 4 ô (B1+B3 08/11: 3 module Việc của tôi / Lịch học / Lớp của tôi + nút 'Khác')", (await attr(pm)) === "thu" && await rail(pm, RAIL.student).isVisible() && await rail(pm, RAIL.student).getByRole("link").count() === 3 && await rail(pm, RAIL.student).getByRole("button", { name: /^Khác/ }).count() === 1);
   check("không có nút 'Thu gọn' / 'Mở thanh bên' trên điện thoại", !(await closeBtn(pm).isVisible()) && !(await openBtn(pm).isVisible()));
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await ctxM.close();

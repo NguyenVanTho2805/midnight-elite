@@ -808,3 +808,11 @@ Nhánh `claude/dieu-huong-a-hoc-sinh`. **Chưa commit** (còn ở cây làm vi�
 - **Lỗi có sẵn (không do đợt này):** `ui-lop-nhieu-lop` 68/2 · `ui-cong-dong` 70/1 · `t-links` 11/1 · `ui-sidebar-rong` 3 đỏ (900px, 2 ca quản trị) · `ui-student-shell` 63/3 (nhãn HỌC SINH; `aria-current` đếm đúng 1; "Bài tập" sáng 1 nút).
 - **Giới hạn còn lại:** chưa chạy thử trên trình duyệt của người dùng, chỉ bộ test cục bộ. Các mục khác của đề xuất rà soát điều hướng (ngoài A2, A6, A9) chưa làm trong đợt này.
 - **Việc của Thọ:** kiểm tay trên điện thoại: vào Việc của tôi / Lớp của tôi / Bài tập, bảng Khác, màn học sinh mới (phải còn nút nhập mã lớp), trang chủ `/` khi đã đăng nhập.
+
+## ĐIỀU HƯỚNG B — HỌC SINH (08/11/2026) — B1 (học sinh), B2, B3, B6 HS-9, B5 HS-12 — XONG
+Nhánh `claude/dieu-huong-b-hoc-sinh`, chồng lên PR #135 (base = `claude/dieu-huong-a-hoc-sinh`; đổi base sang main sau khi #135 gộp). Chỉ giao diện; schema/API/tiền/Coin/dữ liệu trẻ em không đổi. COO đã chốt phương án.
+- **B1:** "Việc của tôi" là nơi duy nhất cho cần làm / chờ chấm / kết quả. Đề thi được giao (3 đề đầu, "Xem thêm N đề") và thi thử sắp tới sang cột phải. Module "Bài tập" bỏ khỏi thanh (còn 3 module); `/student/bai-tap` giữ làm chuyển hướng 307 về Việc của tôi. `BaiTapDeThi.tsx` xoá (nợ P3 #135 số 3 — nút "Xem lịch học" ở khối rỗng — biến mất theo). "Kết quả gần đây": 5 bài + "Xem thêm N bài" / "Thu gọn" (nợ P3 số 1). Lệch Figma 299:114951 (Bài tập riêng) có chủ đích.
+- **B2:** nhóm "Tài khoản" rút khỏi bảng Khác và thanh rộng; menu tài khoản giữ Hồ sơ, Học phí, Chủ đề màu, Trang chủ KiN (giữ vì HOME-01 có test), Đăng xuất; bỏ "Tất cả mục" khỏi menu học sinh. Học phí chỉ đổi lối vào.
+- **B3:** `ModuleRail` thêm prop `mobileMore` (mặc định tắt) — commit riêng `0201de4a`. Chỉ `StudentShell` bật: thanh dưới = 3 module + Khác = 4 ô (không cần phương án thay thế).
+- **B6 HS-9:** chip "Đang theo dõi (N)" trong `/khoa-hoc` cho người đã đăng nhập, trỏ `/khoa-hoc-da-luu` (lối duy nhất). **HS-7:** không đổi. **B5 HS-12:** `/ban-do` mục Học viên khớp vỏ hiện tại, không xoá trang.
+- **Nợ P3 mới:** chưa có bài 320px riêng cho Việc của tôi / chip; chip HS-9 hiện cho cả gia sư/quản trị đã đăng nhập; chưa có bài cho `/ban-do` mục Học viên.

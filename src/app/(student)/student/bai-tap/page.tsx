@@ -1,9 +1,7 @@
-// Bài tập & đề thi của học sinh (Figma "Học sinh · Bài tập và đề thi" 299:114951).
-import type { Metadata } from "next";
-import BaiTapDeThi from "@/components/student/BaiTapDeThi";
-
-export const metadata: Metadata = { title: "Bài tập & đề thi — KiN" };
+// Điều hướng B1 (08/11/2026): "Bài tập" không còn là module riêng — cần làm / chờ chấm / kết quả / đề thi được giao / thi thử sắp tới đều nằm ở "Việc của tôi".
+// Giữ route này làm CHUYỂN HƯỚNG vì thông báo cũ (đã lưu trong cơ sở dữ liệu) và liên kết cũ còn trỏ vào. 307 (không phải 308): đích có thể đổi sau này.
+import { redirect } from "next/navigation";
 
 export default function BaiTapPage() {
-  return <BaiTapDeThi />;
+  redirect("/student/viec-cua-toi");
 }
