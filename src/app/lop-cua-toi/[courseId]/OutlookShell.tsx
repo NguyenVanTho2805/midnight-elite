@@ -7,7 +7,7 @@
 // Panel phải lazy-render nội dung theo activeKey — không fetch gì
 // nặng ở shell này; mỗi item quyết fetch khi chọn.
 //
-// BU-00 sửa sau test (31/10/2026): ba lối tắt Điểm danh / Danh sách HS / Trang quản khoá đi theo vai qua contentHref (src/lib/tutorRoutes.ts):
+// BU-00 sửa sau test (31/10/2026): ba lối tắt Điểm danh / Danh bạ lớp / Trang quản khoá đi theo vai qua contentHref (src/lib/tutorRoutes.ts):
 // gia sư → bí danh /lop-cua-toi/quan-lop/…; quản trị cấp 1/nội dung xem lớp với role="tutor" → /admin/khoa-hoc/… (trước đây trỏ cứng bí danh gia sư,
 // layout (noi-dung) đẩy quản trị về /admin, mất lớp đang xem).
 "use client";
@@ -62,8 +62,8 @@ function tutorItems(isTeacher: boolean): Item[] {
     { key: "diem-danh", label: "Điểm danh", icon: "✅",
       render: ({ courseId }) => <OpenPageBlock title="Điểm danh" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/diem-danh`)}
         note="Bấm các em có mặt / muộn / có phép / vắng (AS-191)." /> },
-    { key: "roster", label: "Danh sách HS", icon: "👥",
-      render: ({ courseId }) => <OpenPageBlock title="Danh sách học sinh" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/hoc-vien`)}
+    { key: "roster", label: "Danh bạ lớp", icon: "👥",
+      render: ({ courseId }) => <OpenPageBlock title="Danh bạ lớp" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}/hoc-vien`)}
         note="Danh bạ lớp — gọi tên, mở Zalo PH (TK-171)." /> },
     { key: "quan-khoa", label: "Quản khoá", icon: "⚙️",
       render: ({ courseId }) => <OpenPageBlock title="Trang quản khoá" href={contentHref(isTeacher, `/admin/khoa-hoc/${courseId}`)}

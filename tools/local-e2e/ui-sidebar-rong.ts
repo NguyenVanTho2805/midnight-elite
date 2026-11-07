@@ -4,6 +4,7 @@
 import { mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done, BASE } from "./h";
 import { launch, ctxFor, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { visibleModules } from "@/lib/adminNav";
 
 (async () => {
   await wipe();
@@ -35,9 +36,9 @@ import { prisma } from "@/lib/prisma";
   const gt = await groupsOf(pt, "Module của gia sư");
   check("năm nhóm đúng thứ tự Figma: Làm việc hằng ngày · Dạy học · Tiền · Giới thiệu · Tài khoản", gt.map(g => g.title).join("|") === "Làm việc hằng ngày|Dạy học|Tiền|Giới thiệu|Tài khoản", gt.map(g => g.title));
   check("tiêu đề nhóm hiện CHỮ HOA (LÀM VIỆC HẰNG NGÀY…) như Figma", gt.map(g => g.heading).join("|") === "LÀM VIỆC HẰNG NGÀY|DẠY HỌC|TIỀN|GIỚI THIỆU|TÀI KHOẢN", gt.map(g => g.heading));
-  check("chế độ gọn: nhóm đầu chỉ có Lịch; Tiền = Học phí + Doanh thu; Dạy học đủ 5; Giới thiệu 2; Tài khoản 3 (Gói của tôi, Liên hệ hỗ trợ, Cài đặt, + Thêm module khi còn module ẩn)",
-    gt[0].items.join("|") === "Lịch" && gt[1].items.join("|") === "Tổng quan|Kế hoạch buổi|Báo cáo tháng|Sổ điểm|Kiểm duyệt cộng đồng" && gt[2].items.join("|") === "Học phí|Doanh thu"
-    && gt[3].items.join("|") === "Hồ sơ gia sư|Bài đăng tìm học sinh" && gt[4].items.join("|") === "Gói của tôi|Liên hệ hỗ trợ|Cài đặt|Thêm module", gt);
+  check("chế độ gọn: nhóm đầu = Lịch + Học sinh (GS-09: Học sinh không phụ thuộc module Lớp); Tiền = Học phí + Doanh thu; Dạy học đủ 5 (có Tổng quan vì Hộp việc tắt); Giới thiệu 3 (+ Yêu cầu tìm gia sư); Tài khoản 3 (Gói của tôi, Cài đặt, + Thêm module khi còn module ẩn; B2: bỏ Liên hệ hỗ trợ)",
+    gt[0].items.join("|") === "Lịch|Học sinh" && gt[1].items.join("|") === "Tổng quan|Kế hoạch buổi|Báo cáo tháng|Sổ điểm|Kiểm duyệt cộng đồng" && gt[2].items.join("|") === "Học phí|Doanh thu"
+    && gt[3].items.join("|") === "Hồ sơ gia sư|Bài đăng tìm học sinh|Yêu cầu tìm gia sư" && gt[4].items.join("|") === "Gói của tôi|Cài đặt|Thêm module", gt);
   const lichItem = nav(pt, "Module của gia sư").first().getByRole("link", { name: "Lịch", exact: true });
   check("mục đang ở ('Lịch') có aria-current=page, nền 'đang chọn', chữ đậm", await lichItem.getAttribute("aria-current") === "page" && await lichItem.evaluate((e: any) => getComputedStyle(e).backgroundColor !== "rgba(0, 0, 0, 0)" && Number(getComputedStyle(e).fontWeight) >= 600));
   check("chỉ MỘT mục aria-current trong thanh rộng (Hộp việc, Học phí… không sáng theo)", (await nav(pt, "Module của gia sư").first().locator('.kin-rail-groups [aria-current="page"]').count()) === 1);
@@ -57,20 +58,20 @@ import { prisma } from "@/lib/prisma";
   await ctxT.close();
 
   // ───────────── Học sinh
-  section("Học sinh: Làm việc hằng ngày (4 module) · Khám phá · Tài khoản");
+  section("Học sinh: Làm việc hằng ngày (3 module) · Khám phá · Tự học");
   const ctxS = await ctxFor(S, { width: 1440, height: 1000, rail: "mac-dinh" });
   const ps = await ctxS.newPage(); watch(ps);
   await ps.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(ps, "Module của học sinh").first().waitFor({ timeout: 90000 });
   const gs = await groupsOf(ps, "Module của học sinh");
   // BU-00 bước 6 (31/10/2026): bỏ nhóm "Học tập" và rút Khám phá / Tài khoản — học sinh chỉ thấy việc học; lệch Figma 575:5571 CÓ CHỦ ĐÍCH (kế hoạch BIGUPDATE BU-00 ghi cập nhật khung).
-  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tài khoản", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tài khoản", gs.map(g => g.title));
-  check("đúng mục BU-00: 4 module; Khám phá = Gia sư, Cộng đồng, Tin tức; Tài khoản = Hồ sơ, Học phí, Chủ đề màu, Nhập mã lớp", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi|Bài tập"
-    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Hồ sơ|Học phí|Chủ đề màu|Nhập mã lớp", gs);
+  check("ba nhóm: Làm việc hằng ngày · Khám phá · Tự học (B2 08/11: nhóm Tài khoản rút, đã có ở menu tài khoản)", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tự học", gs.map(g => g.title));
+  check("đúng mục: 3 module (B1: bỏ Bài tập); Khám phá = Gia sư, Cộng đồng, Tin tức; Tự học = Tiếng Anh tự học", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi"
+    && gs[1].items.join("|") === "Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Tiếng Anh tự học", gs);
   check("nhãn vai 'HỌC SINH', thanh 272px, 'Việc của tôi' đang sáng", (await ps.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "HỌC SINH" && (await wrapW(ps)) === 272 && await nav(ps, "Module của học sinh").first().getByRole("link", { name: /^Việc của tôi/ }).getAttribute("aria-current") === "page");
-  await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí", exact: true }).click();
-  await ps.waitForURL(/\/student\/hoc-phi/, { timeout: 90000 });
-  check("bấm 'Học phí' (nhóm Tài khoản) → vào /student/hoc-phi, mục đó sáng; vẫn ở thanh RỘNG", await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Học phí" }).getAttribute("aria-current") === "page" && (await wrapW(ps)) === 272);
+  await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Lịch học", exact: true }).click();
+  await ps.waitForURL(/\/student\/lich-hoc/, { timeout: 90000 });
+  check("bấm 'Lịch học' → vào /student/lich-hoc, mục đó sáng; vẫn ở thanh RỘNG", await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Lịch học" }).getAttribute("aria-current") === "page" && (await wrapW(ps)) === 272);
   // thu hẹp / thu / mở lại
   await ps.locator("[data-rail-widen]").click();
   await eventually("nút thu hẹp → 79px, <html data-kin-rail=mo>, nhóm ẩn, biểu tượng hiện", async () => (await wrapW(ps)) === 79 && (await attr(ps)) === "mo" && (await ps.locator("#kin-rail .kin-rail-groups").evaluate((e: any) => getComputedStyle(e).display)) === "none");
@@ -92,7 +93,7 @@ import { prisma } from "@/lib/prisma";
   const pp = await ctxP.newPage(); watch(pp);
   await pp.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(pp, "Module của học sinh").last().waitFor({ timeout: 90000 });
-  check("điện thoại 390px: thanh dưới cao 60px đủ 4 tab, không có thanh bên, không tràn ngang", await pp.evaluate(() => { const n = Array.from(document.querySelectorAll("nav")).find(e => getComputedStyle(e).position === "fixed")!; return Math.round(n.getBoundingClientRect().height) === 60 && n.querySelectorAll("a").length === 4 && document.documentElement.scrollWidth <= window.innerWidth; }) && (await pp.locator("#kin-rail").isVisible()) === false);
+  check("điện thoại 390px: thanh dưới cao 60px đủ 4 ô (3 module + Khác), không có thanh bên, không tràn ngang", await pp.evaluate(() => { const n = Array.from(document.querySelectorAll("nav")).find(e => getComputedStyle(e).position === "fixed")!; return Math.round(n.getBoundingClientRect().height) === 60 && n.querySelectorAll("a, button").length === 4 && document.documentElement.scrollWidth <= window.innerWidth; }) && (await pp.locator("#kin-rail").isVisible()) === false);
   await ctxP.close();
 
   // ───────────── Quản trị
@@ -102,13 +103,12 @@ import { prisma } from "@/lib/prisma";
   await pa.goto(`${ADMIN}/admin/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await nav(pa, "Module quản trị").first().waitFor({ timeout: 90000 });
   const ga = await groupsOf(pa, "Module quản trị");
-  check("năm nhóm: Kiểm duyệt · Người dùng · Nội dung · Báo cáo · Cài đặt (tiêu đề hiện CHỮ HOA)", ga.map(g => g.title).join("|") === "Kiểm duyệt|Người dùng|Nội dung|Báo cáo|Cài đặt" && ga.map(g => g.heading).join("|") === "KIỂM DUYỆT|NGƯỜI DÙNG|NỘI DUNG|BÁO CÁO|CÀI ĐẶT", ga);
-  // NC2-050 (28/10/2026): thêm mục "Công thức tính điểm" (trang quản trị công thức tính điểm xét tuyển) vào nhóm Nội dung, ngay sau "Điểm chuẩn"; khung Figma 567:4791 chưa có mục này — cần Thanh cập nhật khung.
-  // NC2-046 (28/10/2026): thêm mục "Video tham khảo" (video YouTube trong kho tài liệu) ngay sau "Công thức tính điểm"; cũng chưa có trong khung Figma 567:4791.
-    check("quản trị cấp 1 thấy đủ mục như Figma 567:4791", ga[0].items.join("|") === "Hàng chờ|Duyệt gia sư|Bài viết cộng đồng|Báo cáo trả lời|Đánh giá khoá học|Nhật ký" && ga[1].items.join("|") === "Hồ sơ học sinh|Quản trị viên"
-    && ga[2].items.join("|") === "Khoá học|Danh mục|Đề thi|Ngân hàng câu hỏi|Ngân hàng đề|Tin tức & Blog|Trang chủ|Điểm chuẩn|Công thức tính điểm|Video tham khảo|Bảng vinh danh" && ga[3].items.join("|") === "Tổng quan|Doanh thu|Phễu gia sư|Số đo sản phẩm" && ga[4].items.join("|") === "Gói KiN Pro|Hỗ trợ gia sư|Triển khai và hạn mức|Duyệt nạp Coin", ga);
+  // Cấu trúc thanh rộng lấy từ adminNav (BU-08: BỐN module Việc chờ · Con người · Học vụ · Vận hành); khung Figma 567:4791 (năm nhóm) đã cũ. "Hôm nay" không còn là mục: chỉ vào bằng logo.
+  const wantG = visibleModules("admin_super");
+  check("bốn nhóm theo adminNav: Việc chờ · Con người · Học vụ · Vận hành (tiêu đề hiện CHỮ HOA)", ga.map(g => g.title).join("|") === wantG.map(m => m.label).join("|") && ga.map(g => g.heading).join("|") === wantG.map(m => m.label.toLocaleUpperCase("vi")).join("|"), ga);
+  check("quản trị cấp 1 thấy đủ mục theo adminNav, đúng thứ tự, KHÔNG có mục 'Hôm nay'", wantG.every((m, k) => ga[k]?.items.join("|") === m.subs.map(x => x.label).join("|")) && !ga.flatMap(g => g.items).includes("Hôm nay"), ga);
   check("nhãn vai 'QUẢN TRỊ', logo dẫn về /admin, thanh 272px", (await pa.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "QUẢN TRỊ" && (await pa.locator("#kin-rail [data-rail-home]").getAttribute("href")) === "/admin" && (await wrapW(pa)) === 272);
-  check("'Khoá học' đang sáng; dải tab các trang con của module 'Nội dung' vẫn hiện ở đầu trang (Figma 567:4791 có cả hai)", await nav(pa, "Module quản trị").first().getByRole("link", { name: "Khoá học", exact: true }).getAttribute("aria-current") === "page" && await pa.getByRole("navigation", { name: "Trang của Nội dung" }).isVisible());
+  check("'Lớp' đang sáng; dải tab các trang con của module 'Học vụ' vẫn hiện ở đầu trang (Figma 567:4791 có cả hai)", await nav(pa, "Module quản trị").first().getByRole("link", { name: "Lớp", exact: true }).getAttribute("aria-current") === "page" && await pa.getByRole("navigation", { name: "Trang của Học vụ" }).isVisible());
   check("dải trên: chữ 'Quản trị KiN' bên trái và ngày hôm nay (Figma); logo KiN chỉ còn ở điện thoại", await pa.locator("[data-top-title]").innerText() === "Quản trị KiN" && await pa.locator("[data-top-date]").isVisible());
   await ctxA.close();
   const ctxC = await ctxFor(AC, { width: 1600, height: 1100, rail: "mac-dinh" });
@@ -117,7 +117,7 @@ import { prisma } from "@/lib/prisma";
   await nav(pc, "Module quản trị").first().waitFor({ timeout: 90000 });
   const gc = await groupsOf(pc, "Module quản trị");
   const flat = gc.flatMap(g => g.items);
-  check("quản trị cấp nội dung KHÔNG thấy mục cần quyền cao (Quản trị viên, Doanh thu, Gói KiN Pro, Duyệt nạp Coin, Nhật ký) — quyền giữ nguyên như dải tab cũ", !["Quản trị viên", "Doanh thu", "Gói KiN Pro", "Duyệt nạp Coin", "Nhật ký"].some(x => flat.includes(x)) && flat.includes("Khoá học") && flat.includes("Hàng chờ"), flat);
+  check("quản trị cấp nội dung KHÔNG thấy mục cần quyền cao (Quản trị viên, Doanh thu, Gói KiN Pro, Lịch sử nạp Coin, Nhật ký) — quyền giữ nguyên như dải tab cũ", !["Quản trị viên", "Doanh thu", "Gói KiN Pro", "Lịch sử nạp Coin", "Nhật ký"].some(x => flat.includes(x)) && flat.includes("Lớp") && flat.includes("Hàng chờ"), flat);
   await ctxC.close();
 
   check("không có lỗi JavaScript trên trang nào", errors.length === 0, errors.slice(0, 3));

@@ -3,7 +3,7 @@
 import { check, section, done } from "./h";
 import { COIN_VISIBLE } from "@/lib/features";
 import {
-  AUDIT_ACTION_OPTIONS, AUDIT_PAGE_SIZE, CRON_JOBS, actionInGroup, auditActionLabel, auditActor, auditGroupWhere, auditResourceLabel, auditRowView, buildTodayList, cronSecretMissingIsFatal, cronSettingKey, cronView, deployEnv, deployFlags,
+  AUDIT_ACTION_OPTIONS, AUDIT_PAGE_SIZE, CRON_JOBS, actionInGroup, auditActionLabel, auditActor, auditGroupWhere, auditResourceLabel, auditRowView, buildTodayList, cronSecretMissingIsFatal, cronSettingKey, cronView, deployEnv, foldQueueItems, deployFlags,
   groupTodayItems, parseAuditFilter, roleSummaries, shortId, whenText, type AuditGroup, type TodayCounts,
 } from "@/lib/adminOps";
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -88,6 +88,16 @@ check("số 0 không hiện ở bất kỳ nhóm nào", buildTodayList({ ...base
 const groups = groupTodayItems(full);
 check("groupTodayItems: 3 nhóm, thứ tự duyet → theo-doi → he-thong, mỗi nhóm có nhãn tiếng Việt", groups.map(g => g.key).join() === "duyet,theo-doi,he-thong" && groups.map(g => g.label).join() === "Việc chờ,Theo dõi,Hệ thống" && groups[0].items.length === (COIN_VISIBLE ? 4 : 3));
 check("nhóm rỗng bị bỏ: chỉ có việc duyet → 1 nhóm", groupTodayItems(buildTodayList({ ...base, tutorsPending: 1 })).length === 1 && groupTodayItems([]).length === 0);
+section("Hôm nay: gộp việc duyệt thành một dòng tổng → Hàng chờ (điều hướng B1/B4)");
+const mixed = buildTodayList({ ...base, tutorsPending: 2, threadReports: 1, reviewsPending: 5, proOrdersPending: 3, supportOpen: 4, joinSlowCourses: 2, cronSlow: 1 });
+const folded = foldQueueItems(mixed);
+const hc = folded.filter(i => i.key === "hang-cho");
+check("gộp: đúng MỘT dòng hang-cho, đếm = tổng các loại trong Hàng chờ (2+1+5), dẫn tới /admin/kiem-duyet (không ?loai=)", hc.length === 1 && hc[0].count === 8 && hc[0].href === "/admin/kiem-duyet" && hc[0].group === "duyet", hc);
+check("gộp: không còn dòng duyệt nào dẫn ?loai= (gia-su, bai-viet, danh-gia biến mất)", folded.every(i => !(i.group === "duyet" && i.href.includes("?loai="))));
+check("Gói Pro và Hỗ trợ gia sư giữ dòng riêng tới trang của chúng (không qua Hàng chờ) và vẫn đếm vào tổng", folded.some(i => i.key === "goi-pro" && i.href === "/admin/goi-pro" && i.count === 3) && folded.some(i => i.key === "ho-tro" && i.href === "/admin/ho-tro" && i.count === 4) && folded.reduce((s, i) => s + i.count, 0) === mixed.reduce((s, i) => s + i.count, 0));
+check("gộp không đổi tổng; nhóm theo-doi / he-thong giữ nguyên", folded.some(i => i.key === "vao-lop-cham") && folded.some(i => i.key === "cron-cham"));
+check("mô tả dòng tổng chỉ có số theo loại, không tên người / tiền", /2 hồ sơ gia sư/.test(hc[0].hint) && /5 đánh giá/.test(hc[0].hint) && !/đ\b|@/.test(hc[0].hint), hc[0].hint);
+check("không có việc duyệt trong Hàng chờ → không thêm dòng tổng; Pro/hỗ trợ đứng một mình", foldQueueItems(buildTodayList({ ...base, proOrdersPending: 1 })).map(i => i.key).join() === "goi-pro");
 check("KHÔNG có trường tiền tổng nào trong mục Hôm nay (chỉ số lượng)", !/amount|total|tong|vnd|coin\b/i.test(Object.keys(full[0]).join()) && full.every(i => Number.isInteger(i.count)));
 
 section("Nhật ký: nhóm lọc `nhom` (BU-08)");

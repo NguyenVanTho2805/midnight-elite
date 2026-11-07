@@ -33,11 +33,13 @@ const SECTIONS: Section[] = [
     roleNote: "Đang học KiN",
     color: "var(--kin-ph-class)",
     entries: [
-      { href: "/student/viec-cua-toi",   label: "Việc của tôi",  note: "Bài cần nộp, hạn sắp tới" },
-      { href: "/lop-cua-toi",            label: "Lớp của tôi",   note: "Các lớp bạn đang học" },
-      { href: "/student/hoc-tap",        label: "Học tập",        note: "Chương - bài - tiến độ" },
+      // Điều hướng B5/HS-12 (08/11/2026): khớp vỏ học sinh hiện tại — 3 module (Việc của tôi gồm cả đề thi được giao; Lịch học; Lớp của tôi), nút "Khác" (Gia sư, Cộng đồng, Tin tức),
+      // và menu tài khoản (Hồ sơ, Học phí, Chủ đề màu). "Học tập" bỏ vì trùng "Lớp của tôi"; "/lop-cua-toi" là lối của gia sư nên không còn ở đây.
+      { href: "/student/viec-cua-toi",   label: "Việc của tôi",  note: "Bài cần nộp, đề thi được giao, hạn sắp tới" },
       { href: "/student/lich-hoc",       label: "Lịch học",       note: "Buổi tuần này + sắp tới" },
-      { href: "/student/hoc-phi",        label: "Học phí",        note: "Phiếu + VietQR" },
+      { href: "/student/hoc-tap",        label: "Lớp của tôi",   note: "Các lớp bạn đang học: chương, bài, tiến độ" },
+      { href: "/student/ho-so",          label: "Hồ sơ",          note: "Tên, email, mật khẩu (menu tên bạn ở góc trên)" },
+      { href: "/student/hoc-phi",        label: "Học phí",        note: "Phiếu + VietQR (menu tên bạn ở góc trên)" },
       { href: "/cai-dat/chu-de",         label: "Đổi chủ đề",     note: "5 chủ đề × 3 chế độ" },
     ],
   },
@@ -51,8 +53,8 @@ const SECTIONS: Section[] = [
       { href: "/lop-cua-toi/lop",        label: "Lớp",             note: "Danh sách lớp, học viên, mã mời" },
       { href: "/lop-cua-toi/hoc-phi",    label: "Học phí",         note: "Phiếu học phí và đối soát chuyển khoản" },
       // Qua cửa đăng nhập của tên miền chính; gia sư đã đăng nhập thì /dang-nhap?redirect= đưa thẳng tới trang Quản lớp (xem src/lib/hostRouting.ts), nên không thêm bước nào.
-      // BU-00 bước 3: trỏ thẳng bí danh gia sư /lop-cua-toi/quan-lop (không còn /admin/khoa-hoc — gia sư không làm việc trong vỏ quản trị).
-      { href: "/dang-nhap?redirect=%2Flop-cua-toi%2Fquan-lop", label: "Quản khoá", note: "Tạo lớp + chương bài + điểm danh" },
+      // BU-00 bước 3: trỏ thẳng /lop-cua-toi/lop (quan-lop chỉ còn chuyển về đó; không còn /admin/khoa-hoc — gia sư không làm việc trong vỏ quản trị).
+      { href: "/dang-nhap?redirect=%2Flop-cua-toi%2Flop", label: "Quản khoá", note: "Tạo lớp + chương bài + điểm danh" },
     ],
   },
   {

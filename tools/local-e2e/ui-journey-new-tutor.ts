@@ -305,10 +305,10 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   // ───────────────────── NC2-029: kiểm thêm (không tính vào số đo) ─────────────────────
   section("NC2-029. Menu ··· của gia sư có 'Mở lớp'; quản trị tạo lớp vẫn bắt buộc đủ 4 ô");
   await p.goto(`${BASE}/lop-cua-toi/quan-lop`, GOTO);
-  const row2 = p.locator("tr", { hasText: courseName });
-  await row2.getByRole("button", { name: "···" }).click({ timeout: 60000 });
-  const menuLink = p.getByRole("link", { name: /^Mở lớp/ });
-  check("menu ··· (gia sư) có 'Mở lớp' trỏ tới /lop-cua-toi/<lớp>", (await menuLink.count()) === 1 && (await menuLink.getAttribute("href")) === `/lop-cua-toi/${course.id}`);
+  await p.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 60000 });
+  // Lớp CHƯA có học sinh thì dòng lớp hiện "Mời học sinh →" (LopHoc.tsx: empty ? Mời : "Mở lớp →" với aria-label "Mở lớp <tên>"), còn tên lớp luôn là liên kết tới /lop-cua-toi/<lớp>:
+  // lớp của bài này mới tạo, chưa mời ai → kiểm theo liên kết tên lớp (cách cũ tìm "Mở lớp <tên>" nên đỏ ở bản nền #137 vì lớp trống).
+  check("A4b: gia sư mở /lop-cua-toi/quan-lop → về danh sách Lớp; lớp mở được bằng liên kết tên lớp tới /lop-cua-toi/<lớp>", (await p.locator(`a[href="/lop-cua-toi/${course.id}"]`).first().getAttribute("href", { timeout: 15000 }).catch(() => null)) === `/lop-cua-toi/${course.id}`);
   {
     const before = await prisma.course.count();
     const ac = await ctxFor(root, { width: 1280, height: 900 });

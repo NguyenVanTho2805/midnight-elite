@@ -39,13 +39,13 @@ import { prisma } from "@/lib/prisma";
   check("ở đúng /lop-cua-toi, không chuyển sang trang khác", new URL(pg.url()).pathname === "/lop-cua-toi", pg.url());
 
   section("Thanh module");
-  check("nhãn vai trò 'GIA SƯ'", await rail().getByText("GIA SƯ").isVisible());
-  for (const m of ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí", "Cài đặt"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  check("nhãn vai trò 'GIA SƯ'", await rail().getByText("GIA SƯ").evaluateAll(els => els.some(e => !!(e as HTMLElement).offsetParent || e.getClientRects().length > 0))  /* 4 phần tử khớp (nhãn vai có bản sr-only): chỉ cần có một cái đang hiện */);
+  for (const m of ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
   const order = await rail().getByRole("link").allInnerTexts();
-  const idx = ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí", "Cài đặt"].map(l => order.findIndex(t => t.startsWith(l)));
-  check("đúng thứ tự Figma 299:111821: Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện, Học phí, Cài đặt (23/10/2026: thêm Cài đặt, đổi Bài KT thành Bài tập; thêm Học sinh sau Lớp, trỏ /lop-cua-toi/hoc-sinh — trang riêng của gia sư)", idx.every((v, i) => v >= 0 && (i === 0 || v > idx[i - 1])), order);
+  const idx = ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"].map(l => order.findIndex(t => t.startsWith(l)));
+  check("đúng thứ tự Figma 299:111821: Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện, Học phí (23/10/2026: đổi Bài KT thành Bài tập; thêm Học sinh sau Lớp, trỏ /lop-cua-toi/hoc-sinh — trang riêng của gia sư)", idx.every((v, i) => v >= 0 && (i === 0 || v > idx[i - 1])), order);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
-  check("Hộp việc là mục đang ở (aria-current), chỉ một nút", await mod("Hộp việc").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
+  check("Hộp việc là mục đang ở (aria-current), chỉ một nút", await mod("Hộp việc").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]:visible").count() === 1);
   const clipped = await pg.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a span.truncate, nav[aria-label="${RAIL}"] button span.truncate')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth).map(e => e.textContent)`) as string[];
   check("nhãn module hiện đủ chữ, không bị cắt '…'", clipped.length === 0, clipped);
   const small = await pg.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] span.truncate')].filter(e => e.offsetParent).map(e => parseFloat(getComputedStyle(e).fontSize)).filter(f => f < 11.1)`) as number[];
@@ -56,10 +56,10 @@ import { prisma } from "@/lib/prisma";
   const total = (await pg.evaluate(`fetch("/api/tutor/hop-viec").then(r => r.json())`) as any).total as number;
   const badge = mod("Hộp việc").locator(".kin-badge-dem");
   check("số đỏ trên Hộp việc = tổng việc (API) và có nhãn chữ", total === 4 && (await badge.innerText()) === String(total) && (await badge.getAttribute("aria-label")) === `${total} việc cần xử lý`, total);
-  check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem").count() === 1);
+  check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem:visible").count() === 1);
   check("dải trên 48px: logo KiN dẫn về Hộp việc + tên người dùng", await pg.getByRole("link", { name: /KiN — Hộp việc/ }).getAttribute("href") === "/lop-cua-toi" && await pg.getByText("Cô Lan").first().isVisible());
   check("Học sinh → /lop-cua-toi/hoc-sinh (không phải /admin/hoc-sinh)", await mod("Học sinh").getAttribute("href") === "/lop-cua-toi/hoc-sinh");
-  check("Bài tập → /lop-cua-toi/bai-tap (23/10/2026: trang Bài tập và kiểm tra theo Figma 299:113312; đề thi ở /lop-cua-toi/de-thi — BU-00 bước 3); Thư viện → /thu-vien; Cài đặt → /lop-cua-toi/cai-dat", await mod("Bài tập").getAttribute("href") === "/lop-cua-toi/bai-tap" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").getAttribute("href") === "/lop-cua-toi/cai-dat");
+  check("Bài tập → /lop-cua-toi/bai-tap (23/10/2026: trang Bài tập và kiểm tra theo Figma 299:113312; đề thi ở /lop-cua-toi/de-thi — BU-00 bước 3); Thư viện → /thu-vien; B2 08/11/2026: mục Cài đặt lẻ đã bỏ khỏi thanh (còn ở nhóm Tài khoản và menu tài khoản)", await mod("Bài tập").getAttribute("href") === "/lop-cua-toi/bai-tap" && await mod("Thư viện").getAttribute("href") === "/thu-vien" && await mod("Cài đặt").count() === 0);
 
   section("Trang dọc: dải số, Cần cô xử lý, Chờ phụ huynh, cột phải");
   // 23/10/2026: Figma 299:111821 bỏ kiểu hai khung (danh sách + khung đọc). Các ca chọn dòng / aria-selected / phím ↓ Home / bề rộng 330 / "trang không cuộn"
@@ -96,12 +96,14 @@ import { prisma } from "@/lib/prisma";
   const dlg = pg.getByRole("dialog", { name: "Các mục khác" });
   check("mở bảng, aria-expanded=true", await dlg.isVisible() && await mod("Khác").getAttribute("aria-expanded") === "true");
   const want: Record<string, string> = {
-    "Tổng quan": "/lop-cua-toi/tong-quan", "Kế hoạch buổi": "/lop-cua-toi/ke-hoach-buoi", "Báo cáo tháng": "/lop-cua-toi/bao-cao-thang",
+    "Kế hoạch buổi": "/lop-cua-toi/ke-hoach-buoi", "Báo cáo tháng": "/lop-cua-toi/bao-cao-thang",
     "Sổ điểm": "/lop-cua-toi/so-diem", // 24/10: trang có sẵn (PT-05) nhưng trước đây không có đường vào từ menu
     "Kiểm duyệt cộng đồng": "/lop-cua-toi/kiem-duyet", "Doanh thu": "/lop-cua-toi/doanh-thu", "Hồ sơ gia sư": "/lop-cua-toi/ho-so",
-    "Bài đăng tìm học sinh": "/lop-cua-toi/bai-dang", "Cài đặt": "/lop-cua-toi/cai-dat",
+    "Bài đăng tìm học sinh": "/lop-cua-toi/bai-dang", "Yêu cầu tìm gia sư": "/lop-cua-toi/yeu-cau", // B6 GS-09
+    "Gói của tôi": "/lop-cua-toi/goi", "Cài đặt": "/lop-cua-toi/cai-dat",
   };
   for (const [l, href] of Object.entries(want)) check(`mục '${l}' → ${href}`, await dlg.getByRole("link", { name: l, exact: true }).getAttribute("href") === href);
+  check("B1: Hộp việc bật thì KHÔNG còn mục 'Tổng quan'; B2: nhóm Tài khoản không còn 'Liên hệ hỗ trợ' (dấu hỏi trên đỉnh còn)", await dlg.getByRole("link", { name: "Tổng quan", exact: true }).count() === 0 && await dlg.getByRole("link", { name: "Liên hệ hỗ trợ" }).count() === 0 && await pg.locator("[data-help-link]").getAttribute("href") === "/lop-cua-toi/ho-tro");
   check("đủ 4 module bật thì KHÔNG còn mục 'Thêm module'", await dlg.getByRole("link", { name: "Thêm module" }).count() === 0);
   check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Cô Lan").isVisible());
   await shot(pg, "tutor-shell-khac");
@@ -114,11 +116,9 @@ import { prisma } from "@/lib/prisma";
   await mod("Khác").click();
   check("bấm 'Khác' lần nữa khi đang mở → đóng, không đóng rồi mở lại", await dlg.count() === 0);
   await mod("Khác").click();
-  await dlg.getByRole("link", { name: "Tổng quan", exact: true }).click();
-  await pg.waitForURL(/\/lop-cua-toi\/tong-quan/, { timeout: 90000 });
-  await pg.getByRole("heading", { name: "Lớp của tôi" }).waitFor({ timeout: 60000 });
-  check("chọn 'Tổng quan' → sang trang số liệu, bảng tự đóng, 'Khác' sáng, Hộp việc hết sáng", await dlg.count() === 0 && await mod("Khác").getAttribute("aria-current") === "page" && await mod("Hộp việc").getAttribute("aria-current") === null);
-  check("Tổng quan vẫn có số liệu + 'Việc cần làm' như trước", await pg.getByRole("heading", { name: "Việc cần làm" }).isVisible());
+  await dlg.getByRole("link", { name: "Báo cáo tháng", exact: true }).click();
+  await pg.waitForURL(/\/lop-cua-toi\/bao-cao-thang/, { timeout: 90000 });
+  check("chọn 'Báo cáo tháng' → bảng tự đóng, 'Khác' sáng, Hộp việc hết sáng", await dlg.count() === 0 && await mod("Khác").getAttribute("aria-current") === "page" && await mod("Hộp việc").getAttribute("aria-current") === null);
 
   section("Hộp việc chỉ sáng ở đúng /lop-cua-toi");
   await mod("Lịch").click();
@@ -128,7 +128,7 @@ import { prisma } from "@/lib/prisma";
   await lb.waitFor({ timeout: 90000 });
   check("bấm Hộp việc → về lại danh sách", await mod("Hộp việc").getAttribute("aria-current") === "page");
   await pg.goto(`${BASE}/lop-cua-toi/cai-dat`, { waitUntil: "networkidle", timeout: 120000 });
-  check("trang Cài đặt: mục 'Cài đặt' trên thanh sáng (Figma có mục này; trước đây 'Khác' sáng), 'Khác' và Hộp việc không sáng", await mod("Cài đặt").getAttribute("aria-current") === "page" && await mod("Khác").getAttribute("aria-current") === null && await mod("Hộp việc").getAttribute("aria-current") === null);
+  check("trang Cài đặt: không mục nào trên thanh sáng ('Khác' và Hộp việc không sáng)", await rail().locator("[aria-current=page]:visible").count() === 0);
 
   section("Trạng thái tải / lỗi");
   const ctx2 = await ctxFor(T, { width: 1280, height: 800 });
@@ -174,9 +174,10 @@ import { prisma } from "@/lib/prisma";
   await pc.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
   check("Hộp việc đã tắt → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
-  check("thanh chỉ có Lịch + Học phí + Cài đặt (+ logo, + Khác)", (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === 3);
+  check("thanh chỉ có Lịch + Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ) (+ logo, + Khác)", (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === 3);
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();
   check("bảng Khác có 'Thêm module' → /lop-cua-toi/cai-dat#module", await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Thêm module" }).getAttribute("href") === "/lop-cua-toi/cai-dat#module");
+  check("B1: Hộp việc tắt thì bảng Khác CÓ 'Tổng quan' (lối duy nhất tới số liệu) và 'Yêu cầu tìm gia sư' (GS-09)", await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Tổng quan", exact: true }).getAttribute("href") === "/lop-cua-toi/tong-quan" && await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Yêu cầu tìm gia sư" }).getAttribute("href") === "/lop-cua-toi/yeu-cau");
   await pc.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle", timeout: 120000 });
   check("Tổng quan vẫn mở được khi Hộp việc tắt", await pc.getByRole("heading", { name: "Lớp của tôi" }).isVisible());
   await cg.close();
@@ -195,7 +196,7 @@ import { prisma } from "@/lib/prisma";
   check("chỉ MỘT thanh module nhìn thấy", await pm.getByRole("navigation", { name: RAIL }).count() === 1);
   check("điện thoại: một cột — Buổi học sắp tới đứng trước Cần cô xử lý, dải số 2 cột", await pm.evaluate(`document.querySelector('#hv-next').getBoundingClientRect().top < document.querySelector('#hv-todo').getBoundingClientRect().top && Math.abs(document.querySelector('#hv-todo').getBoundingClientRect().left - document.querySelector('#hv-wait').getBoundingClientRect().left) < 2`) as boolean && await pm.getByRole("list", { name: "Việc cần cô xử lý" }).isVisible());
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  check("4 tab theo Figma 299:116033 (Hộp việc, Lịch, Lớp, Học phí), mỗi nút cao ≥ 44px", hit.length === 4 && hit.every(h => h >= 44), hit);
+  check("B3: 5 ô (Hộp việc, Lịch, Lớp, Học phí + Khác), mỗi nút cao ≥ 44px", hit.length === 5 && hit.every(h => h >= 44), hit);
   const wid = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width))`) as number[];
   check("mỗi nút rộng ≥ 44px (390 / 4 ≈ 90)", wid.every(w => w >= 44), wid);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
@@ -212,9 +213,11 @@ import { prisma } from "@/lib/prisma";
   await pm.goBack({ waitUntil: "networkidle" });
   await lbm.waitFor({ timeout: 60000 });
   check("quay lại trình duyệt → về Hộp việc", new URL(pm.url()).pathname === "/lop-cua-toi" && await lbm.isVisible());
-  // Điện thoại theo Figma chỉ có 4 tab: bảng "Khác" mở từ menu tài khoản → "Tất cả mục".
+  // B3 (08/11/2026): "Khác" nằm ngay trên thanh dưới điện thoại (prop mobileMore của ModuleRail); menu tài khoản không còn "Tất cả mục".
   await pm.getByRole("button", { name: /^Tài khoản của/ }).click();
-  await pm.getByRole("menuitem", { name: "Tất cả mục" }).click();
+  check("B2/B3: menu tài khoản trên điện thoại: có Cài đặt, Hồ sơ gia sư, Đăng xuất; không còn 'Tất cả mục'", await pm.getByRole("menuitem", { name: "Cài đặt" }).isVisible() && await pm.getByRole("menuitem", { name: "Hồ sơ gia sư" }).isVisible() && await pm.getByRole("menuitem", { name: "Đăng xuất" }).isVisible() && await pm.getByRole("menuitem", { name: "Tất cả mục" }).count() === 0);
+  await pm.keyboard.press("Escape");
+  await bar.getByRole("button", { name: /^Khác/ }).click();
   const dm = pm.getByRole("dialog", { name: "Các mục khác" });
   const db = await dm.boundingBox();
   check("bảng 'Khác' (mở từ menu tài khoản) nổi trên thanh dưới, không tràn khỏi màn hình", !!db && db.y >= 0 && db.y + db.height <= 800 - 60 + 1 && db.x >= 0 && db.x + db.width <= 390, db);

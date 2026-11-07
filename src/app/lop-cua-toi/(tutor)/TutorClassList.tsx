@@ -51,7 +51,7 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
                   <div className="flex gap-x-4 flex-wrap mt-auto">
                     <Link href={`/lop-cua-toi/${c.id}`} className="text-xs font-semibold min-h-[44px] inline-flex items-center whitespace-nowrap"
                       style={{ color: "var(--kin-nhan-link)" }}>Mở lớp</Link>
-                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Danh sách HS", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].map(([l, h]) => (
+                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Danh bạ lớp", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].map(([l, h]) => (
                       <Link key={h} href={h} className="text-xs min-h-[44px] inline-flex items-center whitespace-nowrap"
                         style={{ color: "var(--kin-chu-phu)" }}>{l}</Link>
                     ))}

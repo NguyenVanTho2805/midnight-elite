@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "crypto";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { sendVerificationEmail } from "@/lib/email";
+import { requestSignupCode } from "@/lib/loginCodeServer";
+import { signupRequestResponse, MAIL_FAILED_MSG } from "@/lib/signupCodeHttp";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -17,18 +17,14 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Không tìm thấy user" }, { status: 404 });
   if (user.emailVerified) return NextResponse.json({ error: "Email đã được xác thực" }, { status: 400 });
 
-  // Xóa token cũ, tạo token mới
-  await prisma.verifyToken.deleteMany({ where: { userId: user.id } });
-  const token = randomBytes(32).toString("hex");
-  await prisma.verifyToken.create({
-    data: {
-      token,
-      userId:    user.id,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    },
-  });
-
-  await sendVerificationEmail(user.email, user.name, token);
-
-  return NextResponse.json({ success: true });
+  // Gửi MÃ 6 số (kèm link dự phòng mới; link cũ trong thư đã gửi vẫn dùng được). Chờ 60 giây giữa hai lần, sai 5 lần thì khoá tạm — cùng lõi với đăng ký.
+  try {
+    const r = await requestSignupCode(user.email.trim().toLowerCase());
+    if (r.status !== "sent") return signupRequestResponse(r);
+    return NextResponse.json({ success: true, resendAfterSec: r.resendAfterSec, expiresInSec: r.expiresInSec });
+  } catch (e) {
+    // Trước đây lỗi gửi thư làm cả route sập 500 và nút "Gửi lại" im lặng; nay báo rõ để người dùng biết thư chưa đi.
+    console.error("[email] Không gửi lại được mail xác thực:", (e as Error).message);
+    return NextResponse.json({ error: MAIL_FAILED_MSG }, { status: 502 });
+  }
 }

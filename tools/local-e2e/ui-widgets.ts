@@ -71,21 +71,22 @@ const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BA
   await cp2.goto(`${MAIN}/cong-dong`, { waitUntil: "networkidle" });
   const sel = cp2.locator("#community-scope");
   await sel.waitFor({ timeout: 60000 });
-  check("học viên có lớp: thấy bộ chọn, mặc định 'all'", (await sel.inputValue()) === "all");
-  check("có lựa chọn 'Chỉ cộng đồng chung' và tên lớp", (await sel.locator("option").allInnerTexts()).some(t => t.includes("Toán 9 Cô Lan")));
+  const picked = async () => (await sel.locator('[role="radio"][aria-checked="true"]').getAttribute("title")) ?? "";
+  check("học viên có lớp: thấy bộ chọn, mặc định 'Tất cả'", (await picked()) === "Tất cả");
+  check("có lựa chọn 'Chỉ chung' và tên lớp", (await sel.locator('[role="radio"]').evaluateAll((els: Element[]) => els.map(e => e.getAttribute("title") ?? ""))).some(t => t.includes("Toán 9 Cô Lan")) && (await sel.getByRole("radio", { name: "Chỉ chung" }).count()) === 1);
   await cp2.getByText("Bài của lớp: chỉ lớp thấy").waitFor({ timeout: 15000 });
   check("'all' thấy cả bài lớp và bài chung", await cp2.getByText("Bài chung: ai cũng thấy").isVisible());
-  await sel.selectOption("common");
+  await sel.getByRole("radio", { name: "Chỉ chung" }).click();
   await eventually("URL có scope=common", () => cp2.url().includes("scope=common"));
   await cp2.getByText("Bài của lớp: chỉ lớp thấy").waitFor({ state: "detached", timeout: 15000 });
   check("'common' chỉ còn bài chung", await cp2.getByText("Bài chung: ai cũng thấy").isVisible());
-  await sel.selectOption(course.id);
+  await sel.getByRole("radio", { name: /Toán 9 Cô Lan/ }).click();
   await cp2.getByText("Bài của lớp: chỉ lớp thấy").waitFor({ timeout: 15000 });
   check("chọn lớp: chỉ bài của lớp", (await cp2.getByText("Bài chung: ai cũng thấy").count()) === 0);
   await shot(cp2, "widget-scope-class");
   await cp2.goto(`${MAIN}/cong-dong?scope=${course.id}`, { waitUntil: "networkidle" });
   await cp2.locator("#community-scope").waitFor({ timeout: 60000 });
-  check("mở thẳng bằng ?scope= vẫn đúng lựa chọn", (await cp2.locator("#community-scope").inputValue()) === course.id);
+  check("mở thẳng bằng ?scope= vẫn đúng lựa chọn", (await cp2.locator("#community-scope [role=radio][aria-checked=true]").getAttribute("title") ?? "").includes("Toán 9 Cô Lan"));
 
   check("không lỗi trang", errors.filter(e => !/favicon|Failed to load resource/.test(e)).length === 0, errors.slice(0, 3));
   await done();

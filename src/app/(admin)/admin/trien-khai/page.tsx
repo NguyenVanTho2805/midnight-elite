@@ -2,7 +2,6 @@
 // Không có nút đổi cờ (cờ nằm ở biến môi trường trên Vercel, đổi xong phải triển khai lại) và không bịa hạn mức chưa có trong cấu hình
 // (mẫu phiếu, dung lượng, Drive chưa có hạn mức: ghi "chưa có"). Hạn mức học sinh / lượt AI sửa ở trang Gói KiN Pro.
 "use client";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { KinButton, KinCallout, KinSectionHead, KinSkeleton, KinStat, KinStatRow, KinStateCard, KinStatus } from "@/components/kin";
 import { KinPage, KinPageHeader, KIN_TABLE_HEAD, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
@@ -44,7 +43,7 @@ function Content() {
     <KinPage>
       <KinPageHeader title="Triển khai và hạn mức"
         sub="Màn này chỉ để XEM trạng thái. Cờ đổi ở biến môi trường trên Vercel rồi triển khai lại; hạn mức sửa ở trang Gói KiN Pro."
-        actions={<>{trial && <KinStatus tone={trial.on ? "xong" : "mo"}>Miễn phí toàn bộ · {trial.state}</KinStatus>}<Link href="/admin/goi-pro" className="inline-flex items-center min-h-11 px-3 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-nhan-link)] hover:underline">Mở Gói KiN Pro</Link></>} />
+        actions={<>{trial && <KinStatus tone={trial.on ? "xong" : "mo"}>Miễn phí toàn bộ · {trial.state}</KinStatus>}</>} />
       {loading && !data ? <KinSkeleton widths={[100, 80, 60]} />
         : failed || !data ? (
           <KinStateCard tone="loi" kicker="Lỗi · Có thể thử lại" title="Chưa tải được trạng thái triển khai" status={<KinStatus tone="loi">Kết nối bị gián đoạn</KinStatus>}

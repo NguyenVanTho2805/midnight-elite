@@ -126,9 +126,11 @@ import { prisma } from "@/lib/prisma";
   const li = page.getByRole("link", { name: /Hàm số bậc nhất/ });
   await li.waitFor({ timeout: 60000 });
   check("danh sách: lớp, 'đã soạn 4/4 hoạt động', 60 phút", /Toán 9/.test(await li.innerText()) && /đã soạn 4\/4 hoạt động/.test(await li.innerText()) && /60 phút/.test(await li.innerText()), await li.innerText());
-  await page.goto(`${BASE}/lop-cua-toi/tong-quan`, { waitUntil: "networkidle" });
-  await page.getByRole("navigation", { name: /Lối tắt/ }).getByRole("link", { name: "Kế hoạch buổi" }).waitFor({ timeout: 60000 });
-  check("Tổng quan có lối tắt 'Kế hoạch buổi'", true);
+  // B1 (08/11/2026): dải Lối tắt của Tổng quan đã bỏ; lối vào Kế hoạch buổi là bảng Khác của vỏ.
+  await page.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /^Khác/ }).first().click();
+  await page.locator("#khac-bang").getByRole("link", { name: "Kế hoạch buổi", exact: true }).waitFor({ timeout: 60000 });
+  check("bảng Khác có 'Kế hoạch buổi'", true);
 
   section("Xoá + học sinh không vào được");
   await page.goto(`${BASE}/lop-cua-toi/ke-hoach-buoi/${planId}`, { waitUntil: "networkidle" });

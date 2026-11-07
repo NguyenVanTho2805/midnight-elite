@@ -9,7 +9,7 @@ import { countSlowJoinCourses, userNotHiddenWhere } from "@/lib/adminQueueExtern
 import { NOT_SYSTEM_ACCOUNT } from "@/lib/adminSystemAccounts";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import {
-  AUDIT_PAGE_SIZE, CRON_JOBS, auditGroupWhere, auditRowView, buildTodayList, cronSettingKey, cronView, groupTodayItems,
+  AUDIT_PAGE_SIZE, CRON_JOBS, auditGroupWhere, auditRowView, buildTodayList, cronSettingKey, cronView, foldQueueItems, groupTodayItems,
   type AuditFilter, type AuditRowView, type CronView, type TodayGroupKey, type TodayItem,
 } from "@/lib/adminOps";
 
@@ -80,6 +80,6 @@ export async function loadTodayList(session: SessionPayload, now: Date = new Dat
   });
   return {
     items, total: items.reduce((s, i) => s + i.count, 0), day: vnDateKeyOf(now),
-    groups: groupTodayItems(items), stats: { students, openClasses, tutors },
+    groups: groupTodayItems(foldQueueItems(items)), stats: { students, openClasses, tutors },
   };
 }

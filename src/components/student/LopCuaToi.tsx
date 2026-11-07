@@ -196,7 +196,7 @@ function Content() {
     return wrap(<>{head(`Bạn đang học ${classes.length} lớp. Chọn một lớp để xem bài học, tài liệu và bản ghi của lớp đó.`)}
       <DanhMucLop classes={classes} doneByCourse={courseCompletion} />
       <PendingJoinBlock className="pt-8" />
-      <div className="pt-6"><Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp khác</Link></div></>);
+      <JoinAnotherClass className="mt-8" /></>);
   }
   if (loading || progressLoading || enrollmentsLoading) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
   if (error || !course) {
@@ -363,11 +363,7 @@ function Content() {
         </section>
 
         <PendingJoinBlock className="mt-8" />
-        <section aria-labelledby="lop-join" className="mt-8">
-          <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
-          <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp.</p>
-          <Link href="/student/nhap-ma-lop" className={`${kinButtonClass("secondary")} mt-4`}>Nhập mã lớp</Link>
-        </section>
+        <JoinAnotherClass className="mt-8" />
         {isEnrolled && (
           <section aria-labelledby="lop-lich" data-course-sessions className="mt-8">
             <KinSectionHead id="lop-lich" title="Buổi học sắp tới" />
@@ -395,7 +391,6 @@ function Content() {
                 })}
               </ul>
             )}
-            <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} mt-4`}>Xem cả lịch học</Link>
           </section>
         )}
         <section aria-labelledby="lop-info" className="mt-8">
@@ -405,12 +400,22 @@ function Content() {
             {course.category && <p className="text-[var(--kin-chu-mo)]">Môn: {course.category}</p>}
             {isEnrolled && work.items && <p className="mt-3 text-[var(--kin-chu-mo)]">Bài cần làm: {needCount}<br />Bài chờ chấm: {waitCount}</p>}
           </div>
-          {isEnrolled && <Link href="/student/bai-tap" className={`${kinButtonClass("secondary")} mt-4`}>Xem bài tập</Link>}
         </section>
         <KinCallout className="mt-8">Tiến độ tính theo số bài bạn đã đánh dấu hoàn thành trong lớp.</KinCallout>
       </aside>
     </div>
   </>);
+}
+
+/** Lối duy nhất vào "Nhập mã lớp" từ Lớp của tôi khi đã có lớp (mục này không còn ở bảng Khác). Màn trống của học sinh mới có nút riêng. */
+function JoinAnotherClass({ className = "" }: { className?: string }) {
+  return (
+    <section aria-labelledby="lop-join" className={className}>
+      <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
+      <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp.</p>
+      <Link href="/student/nhap-ma-lop" className={`${kinButtonClass("secondary")} mt-4`}>Nhập mã lớp</Link>
+    </section>
+  );
 }
 
 /** Dựng lại Content theo ID lớp: đổi lớp là một "trang" mới, không mang state của lớp trước sang. */

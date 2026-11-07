@@ -29,7 +29,6 @@ const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của gia sư, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 const MORE_BASE: MoreGroup[] = [
   { title: "Dạy học", links: [
-    { label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" },
     { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi", icon: "lich" },
     { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang", icon: "bao-cao" },
     { label: "Sổ điểm", href: "/lop-cua-toi/so-diem", icon: "bai-kt" },
@@ -39,6 +38,8 @@ const MORE_BASE: MoreGroup[] = [
   { title: "Giới thiệu", links: [
     { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so", icon: "nguoi" },
     { label: "Bài đăng tìm học sinh", href: "/lop-cua-toi/bai-dang", icon: "hop-thu" },
+    // B6 GS-09 (08/11/2026): trước đây chỉ vào được từ nút trên trang Học sinh (gắn module Lớp) nên tắt Lớp là mất lối vào.
+    { label: "Yêu cầu tìm gia sư", href: "/lop-cua-toi/yeu-cau", icon: "nguoi" },
   ] },
 ];
 
@@ -47,6 +48,7 @@ const MORE_BASE: MoreGroup[] = [
 // chỉ có nghĩa khi đã dạy.
 const PENDING_ITEMS: ModuleItem[] = [
   { key: "cho-duyet", label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH, icon: "nguoi" },
+  // B2: đây là MỘT đường duy nhất của vỏ chờ duyệt tới /ho-tro (đã bỏ dấu hỏi trên đỉnh và liên kết trong băng); trang Trạng thái hồ sơ còn nút riêng.
   { key: "ho-tro", label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro", icon: "khac" },
   { key: "cai-dat", label: "Cài đặt", href: "/cai-dat/chu-de", icon: "cai-dat" },
 ];
@@ -71,11 +73,14 @@ export default function TutorShell({
   // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
   const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => !visible.some(m => m.key === k)).length;
 
+  // B1: Hộp việc là trang chủ duy nhất; "Tổng quan" chỉ còn trong bảng Khác khi gia sư đã tắt Hộp việc (khi đó đó là lối duy nhất tới các con số).
+  const hopViecOn = visible.some(m => m.key === "hop-viec");
   const groups: MoreGroup[] = [
-    ...MORE_BASE,
+    ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn
+      ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
+      : g),
     { title: "Tài khoản", links: [
       { label: "Gói của tôi", href: "/lop-cua-toi/goi", icon: "hoc-phi" },
-      { label: "Liên hệ hỗ trợ", href: "/lop-cua-toi/ho-tro", icon: "khac" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat" },
       ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module", icon: "cai-dat" }] : []),
     ] },
@@ -91,11 +96,12 @@ export default function TutorShell({
       : isUnder(pathname, m.href),
     desktopOnly: !MOBILE_KEYS.has(m.key),
   }));
-  // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp và đi cùng module Lớp: Lớp bật thì Học sinh hiện. Trang riêng của gia sư
-  // (/lop-cua-toi/hoc-sinh), chỉ học sinh thuộc lớp của mình; không dùng /admin/hoc-sinh (trang quản trị).
-  const withStudents = mods.flatMap<ModuleItem>(m => m.key === "lop"
-    ? [m, { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", desktopOnly: true }]
-    : [m]);
+  // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp khi Lớp bật. B6 GS-09 (08/11/2026): KHÔNG còn phụ thuộc module Lớp — tắt Lớp vẫn thấy Học sinh
+  // (đứng cuối các module), vì Yêu cầu tìm gia sư và hồ sơ học sinh vào từ đó. Trang riêng của gia sư (/lop-cua-toi/hoc-sinh), không dùng /admin/hoc-sinh.
+  const studentItem: ModuleItem = { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", active: isUnder(pathname, "/lop-cua-toi/hoc-sinh") || isUnder(pathname, "/lop-cua-toi/yeu-cau"), desktopOnly: true };
+  const withStudents = mods.some(m => m.key === "lop")
+    ? mods.flatMap<ModuleItem>(m => m.key === "lop" ? [m, studentItem] : [m])
+    : [...mods, studentItem];
   // Thanh RỘNG (Figma "Điều hướng"): "Làm việc hằng ngày" = các module đang bật (trừ Học phí); Học phí đứng chung nhóm "Tiền" với Doanh thu; các nhóm còn lại là chính
   // danh sách của bảng "Khác". Module bị tắt vẫn chỉ ẩn khỏi thanh (dữ liệu giữ nguyên) nên nhóm đầu có thể ngắn hơn Figma.
   const asNav = (m: ModuleItem): NavItem => ({ key: m.key, label: m.label, href: m.href ?? "/lop-cua-toi", icon: m.icon, active: m.active, badge: m.badge });
@@ -109,14 +115,14 @@ export default function TutorShell({
   ];
   const items: ModuleItem[] = [
     ...withStudents,
-    { key: "cai-dat", label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat", desktopOnly: true },
+    // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản). B3: "Khác" lên thanh dưới điện thoại qua mobileMore.
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
   ];
 
   return (
     // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
     <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
-      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore}
+      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore} mobileMore
         home={{ href: "/lop-cua-toi", label: "KiN — Hộp việc của gia sư" }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
@@ -136,7 +142,7 @@ export default function TutorShell({
                 <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
               </svg>
             </Link>
-            {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()} onOpenMore={() => setMoreOpen(true)}
+            {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()}
               links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }, { label: "Trang chủ KiN", href: "/" }]} />}
           </div>
         </div>
@@ -165,12 +171,6 @@ function PendingShell({ user, onLogout, children }: { user: { name: string; emai
           <div className="flex items-center gap-2 md:gap-3">
             <TopDate />
             <NotificationBell />
-            <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
-              className="inline-flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-lg border border-[var(--kin-vien-thuong)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-bang)] hover:text-[var(--kin-chu-chinh)] transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
-              </svg>
-            </Link>
             {user && <AccountMenu name={user.name} email={user.email} onLogout={onLogout}
               links={[{ label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH }, { label: "Sửa hồ sơ", href: "/lop-cua-toi/ho-so" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
           </div>
@@ -178,7 +178,7 @@ function PendingShell({ user, onLogout, children }: { user: { name: string; emai
         {/* Băng chờ duyệt: chữ nói rõ trạng thái (không chỉ màu), một liên kết đi tiếp. */}
         <div data-tutor-pending-band className="mx-4 md:mx-10 mt-4">
           <KinCallout title="Hồ sơ gia sư đang chờ duyệt">
-            KiN sẽ báo khi duyệt xong. Trong lúc chờ, bạn xem được trạng thái hồ sơ và gửi câu hỏi cho KiN ở <Link href="/lop-cua-toi/ho-tro" className="underline text-[var(--kin-nhan-link)]">Liên hệ hỗ trợ</Link>.
+            KiN sẽ báo khi duyệt xong. Trong lúc chờ, bạn xem được trạng thái hồ sơ và gửi câu hỏi cho KiN ở mục Liên hệ hỗ trợ bên thanh điều hướng.
           </KinCallout>
         </div>
         {children}

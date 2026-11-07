@@ -36,7 +36,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   const dctx = await ctxFor(T, { width: 1280, height: 900 });
   const pg = await dctx.newPage(); watch(pg);
   await pg.goto(`${BASE}/lop-cua-toi/bai-tap`, { waitUntil: "networkidle", timeout: 120000 });
-  check("trang Bài tập có 'Tạo quiz' và 'Nhập đề từ tệp'", await pg.getByRole("link", { name: "Tạo quiz" }).isVisible() && await pg.getByRole("link", { name: "Nhập đề từ tệp" }).isVisible());
+  check("A5: trang Bài tập có MỘT nút 'Tạo đề' (→ tao-moi), không còn 'Tạo quiz' / 'Nhập đề từ tệp'", await pg.getByRole("link", { name: "Tạo đề", exact: true }).isVisible() && (await pg.getByRole("link", { name: "Tạo đề", exact: true }).getAttribute("href")) === "/lop-cua-toi/de-thi/tao-moi" && await pg.getByRole("link", { name: "Tạo quiz" }).count() === 0 && await pg.getByRole("link", { name: "Nhập đề từ tệp" }).count() === 0);
   await pg.goto(`${BASE}/lop-cua-toi/de-thi/tao-moi?cach=trang`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.getByRole("heading", { name: "Tạo quiz", level: 1 }).waitFor({ timeout: 90000 });
   check("nút tạo khoá khi chưa có tên", await pg.getByRole("button", { name: "Tạo và soạn câu hỏi" }).isDisabled());
