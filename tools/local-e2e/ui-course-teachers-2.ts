@@ -43,9 +43,9 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
   };
   const noOverflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   const small = (p: Page, root: string) => p.evaluate((sel) => [...document.querySelectorAll(`${sel} button:not([disabled]), ${sel} select:not([disabled])`)].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 43.5; }).map(e => (e.textContent ?? "").trim().slice(0, 30)), root);
-  // Máy chủ trả: giao-vien → teachers[].userId (CHỈ chủ/admin) + self.userId (mọi vai); giao-trinh → groups[].teacherId. Shim bù trường CHỈ áp cho chủ lớp;
-  // đồng giảng / bộ môn chạy thẳng không shim (không có userId đồng nghiệp, không phải gap). Cuối bài ca "máy chủ trả đủ" đỏ nếu chủ lớp còn thiếu.
-  const gaps = { teacherUserId: false, selfUserId: false, groupTeacherId: false };
+  // Máy chủ (260f920c) trả: giao-vien → teachers[].userId (CHỈ chủ/admin) + self.userId; giao-trinh → groups[] = { id, title, teacherId (thật CHỈ cho chủ lớp, người khác null), assignedTo "me"|"owner"|"other" }.
+  // Shim bù trường CHỈ áp cho chủ lớp; đồng giảng / bộ môn chạy thẳng không shim. Cuối bài ca "máy chủ trả đủ" đỏ nếu còn thiếu.
+  const gaps = { teacherUserId: false, selfUserId: false, groupTeacherId: false, assignedTo: false };
   const shim = async (p: Page, me: string) => {
     await p.route("**/api/tutor/lop/*/giao-vien", async r => {
       if (r.request().method() !== "GET") return r.continue();
@@ -61,6 +61,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
       if (r.request().method() !== "GET") return r.continue();
       const res = await r.fetch(); const j = await res.json();
       if (Array.isArray(j.groups)) {
+        if (j.groups.some((g: { assignedTo?: string }) => g.assignedTo === undefined)) gaps.assignedTo = true;
         const chs = await prisma.chapter.findMany({ where: { section: { is: { courseId: K.id } } }, select: { id: true, teacherId: true } });
         for (const g of j.groups) if (g.teacherId === undefined) { gaps.groupTeacherId = true; g.teacherId = chs.find(c => c.id === g.id)?.teacherId ?? null; }
       }
@@ -99,7 +100,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     await ps.goto(`${BASE}${GT}`, GOTO);
     await ps.locator(`[data-gt-giao-cho="${chB.id}"]`).waitFor({ timeout: 90000 });
     const blockB = ps.locator(`[data-gt-nhom="${chB.id}"]`), blockA = ps.locator(`[data-gt-nhom="${chA.id}"]`);
-    check(`${tag} bộ môn: nhóm của người khác ghi rõ "Nhóm của giáo viên khác"`, (await blockB.innerText()).includes("Nhóm của giáo viên khác"));
+    check(`${tag} bộ môn: nhóm của chủ lớp ghi rõ "Giao cho chủ lớp", nhóm của mình "Giao cho bạn"`, (await blockB.innerText()).includes("Giao cho chủ lớp") && (await blockA.locator("[data-gt-giao-cho]").innerText()).trim() === "Giao cho bạn");
     check(`${tag} bộ môn: nhóm khác bị khoá (mọi nút tắt)`, await blockB.evaluate(el => (el as HTMLFieldSetElement).disabled && [...el.querySelectorAll("button")].every(b => (b as HTMLButtonElement).matches(":disabled"))));
     check(`${tag} bộ môn: nhóm của mình KHÔNG khoá, có nút Đổi tên bật`, await blockA.getAttribute("data-gt-nhom-khoa") === null && await blockA.getByRole("button", { name: /Đổi tên nhóm/ }).isEnabled());
     check(`${tag} bộ môn: không có ô chọn giao việc`, await ps.locator("[data-gt-giao-cho] select").count() === 0);
@@ -149,7 +150,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     for (const p of [pb, pm, pn]) await p.context().close();
   }
 
-  check("MÁY CHỦ trả đủ userId (giáo viên), self.userId và groups[].teacherId (không cần bổ sung)", !gaps.teacherUserId && !gaps.selfUserId && !gaps.groupTeacherId, gaps);
+  check("MÁY CHỦ trả đủ userId (giáo viên), self.userId, groups[].teacherId và groups[].assignedTo (không cần bổ sung)", !gaps.teacherUserId && !gaps.selfUserId && !gaps.groupTeacherId && !gaps.assignedTo, gaps);
   check("không lỗi JS / console trong cả bài", errors.filter(e => !/script tag while rendering React component/.test(e)).length === 0, errors.slice(0, 5));
   await closeAll();
   await done();

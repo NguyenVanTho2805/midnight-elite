@@ -206,8 +206,8 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
                   {groups.map(grp => {
                     const rows = visible.filter(e => e.groupId === grp.id);
                     if (filter !== "all" && rows.length === 0) return null;
-                    const tid = (grp as GtGroup & { teacherId?: string | null }).teacherId;
-                    const khoa = nhomBiKhoa(gv, tid);
+                    const tid = grp.teacherId; // id thật chỉ có với chủ lớp / quản trị; người khác dùng assignedTo
+                    const khoa = nhomBiKhoa(gv, grp.assignedTo);
                     return (
                       <fieldset key={grp.id} disabled={khoa} data-gt-khoi="nhom" data-gt-nhom={grp.id} data-gt-nhom-khoa={khoa ? "1" : undefined} className="min-w-0 border-0 p-0 m-0">
                         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -226,7 +226,7 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
                             </>
                           )}
                         </div>
-                        <div className="mb-2"><GiaoChoNhom courseId={courseId} chapterId={grp.id} teacherId={tid} info={gv} onChanged={() => g.reload({ silent: true })} /></div>
+                        <div className="mb-2"><GiaoChoNhom courseId={courseId} chapterId={grp.id} teacherId={tid} assignedTo={grp.assignedTo} info={gv} onChanged={() => g.reload({ silent: true })} /></div>
                         {rows.length ? renderRows(rows) : <p className="px-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhóm này chưa có mục. Dùng “Chuyển nhóm” ở một mục để đưa vào đây.</p>}
                       </fieldset>
                     );
