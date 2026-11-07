@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Dữ liệu gửi lên không hợp lệ" }, { status: 400 }); }
-  const b = (body && typeof body === "object" ? body : {}) as { subjects?: unknown; bio?: unknown };
+  const b = (body && typeof body === "object" ? body : {}) as { subjects?: unknown; bio?: unknown; confirmAge18?: unknown };
   if (!Array.isArray(b.subjects) || b.subjects.some(s => typeof s !== "string")) return NextResponse.json({ error: "Cần chọn ít nhất 1 môn dạy" }, { status: 400 });
   const subjects = [...new Set((b.subjects as string[]).map(s => s.trim()).filter(Boolean))];
   if (subjects.length < 1) return NextResponse.json({ error: "Cần chọn ít nhất 1 môn dạy" }, { status: 400 });
@@ -50,11 +50,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     bio = b.bio.trim() || null;
   }
 
+  const confirmAge18 = b.confirmAge18 === true;
+
   try {
     const now = new Date();
     const before = await prisma.user.findUnique({ where: { id }, select: SELECT });
     const no = refusal(before, now);
     if (no) return no;
+    if (!before!.dateOfBirth && !confirmAge18) return NextResponse.json({ error: "Học sinh chưa khai ngày sinh. Hãy xác minh đủ 18 tuổi rồi tick xác nhận.", code: "need_age_confirm" }, { status: 400 });
 
     const flipped = await prisma.user.updateMany({
       where: { id, role: "student", deletedAt: null, banned: false, emailVerified: true, tutorVerified: false, ...NOT_ANONYMIZED },
@@ -70,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const activeEnrollments = await prisma.enrollment.count({ where: { userId: id, status: "active" } });
-    await logAction(auth.userId, "student.promote_tutor", "User", id, { activeEnrollments, hadApplication: before!.tutorAppliedAt !== null });
+    await logAction(auth.userId, "student.promote_tutor", "User", id, { activeEnrollments, hadApplication: before!.tutorAppliedAt !== null, dobKnown: before!.dateOfBirth !== null, ageConfirmedByOperator: before!.dateOfBirth === null && confirmAge18 });
     await notify(id, {
       type: "tutor_approved",
       title: "Hồ sơ gia sư đã được duyệt",

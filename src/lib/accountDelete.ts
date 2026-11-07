@@ -41,6 +41,8 @@ export type BlockerCounts = {
   walletBalance: number;       // Wallet.balance
   approvedTopups: number;      // CoinTopupRequest approved (tiền thật đã nạp)
   activeSubscriptions: number; // gia sư: TutorSubscription active
+  unusedCredits: number;       // TuitionCredit (tutorId hoặc studentId = user) còn amount - usedAmount > 0
+  bankPending: number;         // gia sư: BankTransaction status "pending" (tiền vào chưa xử lý)
 };
 export type Blocker = { code: string; error: string; status: 409; extra?: Record<string, number> };
 
@@ -52,6 +54,8 @@ export function pickBlocker(c: BlockerCounts): Blocker | null {
   if (c.ownedCoursesActive > 0) return { code: "owned_courses_active", status: 409, extra: { count: c.ownedCoursesActive }, error: `Gia sư còn ${c.ownedCoursesActive} lớp đang mở hoặc còn học viên. Đóng lớp và thu hồi học viên trước khi xóa tài khoản.` };
   if (c.openInvoices > 0) return { code: "open_invoices", status: 409, extra: { count: c.openInvoices }, error: `Còn ${c.openInvoices} phiếu học phí chưa tất toán. Tất toán hoặc huỷ phiếu trước khi xóa tài khoản.` };
   if (c.uninvoicedFees > 0) return { code: "uninvoiced_fees", status: 409, extra: { count: c.uninvoicedFees }, error: `Còn ${c.uninvoicedFees} khoản học phí chưa vào phiếu. Lập phiếu hoặc xử lý các khoản này trước khi xóa tài khoản.` };
+  if (c.unusedCredits > 0) return { code: "unused_credit", status: 409, extra: { count: c.unusedCredits }, error: `Còn ${c.unusedCredits} khoản tiền dư học phí chưa dùng hết. Dùng hết hoặc hoàn lại khoản dư trước khi xóa tài khoản.` };
+  if (c.bankPending > 0) return { code: "bank_pending", status: 409, extra: { count: c.bankPending }, error: `Còn ${c.bankPending} khoản tiền vào chưa xử lý. Xử lý xong các khoản này rồi mới xóa tài khoản.` };
   if (c.activePackages > 0) return { code: "active_packages", status: 409, extra: { count: c.activePackages }, error: `Còn ${c.activePackages} gói buổi đang dùng. Hủy hoặc dùng hết gói trước khi xóa tài khoản.` };
   if (c.pendingTopups + c.pendingProOrders > 0) return { code: "pending_money", status: 409, extra: { topups: c.pendingTopups, proOrders: c.pendingProOrders }, error: `Còn ${c.pendingTopups} yêu cầu nạp Coin và ${c.pendingProOrders} đơn gói Pro đang chờ xử lý. Xử lý xong rồi mới xóa tài khoản.` };
   if (c.walletBalance > 0 && c.approvedTopups > 0) return { code: "wallet_from_money", status: 409, extra: { approvedTopups: c.approvedTopups }, error: "Ví còn Coin từ tiền thật đã nạp. Cần xử lý số dư (hoàn hoặc dùng hết) bên ngoài hệ thống trước khi xóa tài khoản." };
@@ -60,9 +64,9 @@ export function pickBlocker(c: BlockerCounts): Blocker | null {
 }
 
 /** Đọc DB (chỉ ĐỌC các bảng tiền). */
-export async function countBlockers(userId: string, kind: AccountKind, db: Pick<typeof prisma, "enrollment" | "course" | "tuitionInvoice" | "feeCharge" | "sessionPackage" | "coinTopupRequest" | "proOrder" | "wallet" | "tutorSubscription"> = prisma): Promise<BlockerCounts> {
+export async function countBlockers(userId: string, kind: AccountKind, db: Pick<typeof prisma, "enrollment" | "course" | "tuitionInvoice" | "feeCharge" | "sessionPackage" | "coinTopupRequest" | "proOrder" | "wallet" | "tutorSubscription" | "tuitionCredit" | "bankTransaction"> = prisma): Promise<BlockerCounts> {
   const isTutor = kind === "tutor";
-  const [activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, wallet, approvedTopups, activeSubscriptions] = await Promise.all([
+  const [activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, wallet, approvedTopups, activeSubscriptions, credits, bankPending] = await Promise.all([
     isTutor ? Promise.resolve(0) : db.enrollment.count({ where: { userId, status: "active" } }),
     isTutor ? db.course.count({ where: { ownerId: userId, OR: [{ enrollments: { some: { status: "active" } } }, { status: true, classStatus: { not: "closed" } }] } }) : Promise.resolve(0),
     db.tuitionInvoice.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], status: { in: [...OPEN_INVOICE_STATUSES] } } }),
@@ -73,8 +77,11 @@ export async function countBlockers(userId: string, kind: AccountKind, db: Pick<
     db.wallet.findUnique({ where: { userId }, select: { balance: true } }),
     db.coinTopupRequest.count({ where: { userId, status: "approved" } }),
     isTutor ? db.tutorSubscription.count({ where: { userId, status: "active" } }) : Promise.resolve(0),
+    db.tuitionCredit.findMany({ where: { OR: [{ tutorId: userId }, { studentId: userId }] }, select: { amount: true, usedAmount: true } }),
+    isTutor ? db.bankTransaction.count({ where: { tutorId: userId, status: "pending" } }) : Promise.resolve(0),
   ]);
-  return { activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, walletBalance: wallet?.balance ?? 0, approvedTopups, activeSubscriptions };
+  const unusedCredits = credits.filter(c => c.amount - c.usedAmount > 0).length;
+  return { activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, walletBalance: wallet?.balance ?? 0, approvedTopups, activeSubscriptions, unusedCredits, bankPending };
 }
 
 /** Ẩn danh hoá trong MỘT giao dịch: khoá hàng User bằng updateMany (có điều kiện vai), ĐẾM LẠI các mã chặn trong cùng giao dịch rồi mới xoá PII.
@@ -99,4 +106,28 @@ export async function anonymizeUser(userId: string, kind: AccountKind): Promise<
     if (e instanceof BlockedError) return { blocker: e.blocker };
     throw e;
   }
+}
+
+export const DELETE_REASONS = ["user_request", "duplicate", "spam_or_abuse", "wrong_account", "other"] as const;
+export type DeleteReason = (typeof DELETE_REASONS)[number];
+/** Body tuỳ chọn `{reason}`: rỗng / không phải JSON / không có reason → {reason:null}; mã lạ → {error}. */
+export async function readDeleteReason(req: Request): Promise<{ reason: DeleteReason | null } | { error: string }> {
+  let raw = "";
+  try { raw = await req.text(); } catch { return { reason: null }; }
+  if (!raw.trim()) return { reason: null };
+  let body: unknown;
+  try { body = JSON.parse(raw); } catch { return { reason: null }; }
+  const r = body && typeof body === "object" ? (body as { reason?: unknown }).reason : undefined;
+  if (r === undefined || r === null || r === "") return { reason: null };
+  if (typeof r !== "string" || !(DELETE_REASONS as readonly string[]).includes(r)) return { error: "Lý do xóa không hợp lệ" };
+  return { reason: r as DeleteReason };
+}
+
+/** "Nguyễn Văn Tuấn" → "Nguyễn T."; một từ → giữ nguyên. */
+export function shortNameOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Học sinh";
+  if (parts.length === 1) return parts[0];
+  const given = parts[parts.length - 1];
+  return `${parts[0]} ${Array.from(given)[0].toUpperCase()}.`;
 }

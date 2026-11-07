@@ -7,6 +7,12 @@
 //   - Bỏ pickBlocker khỏi route xoá → các ca 409 đỏ.
 //   - Bỏ kiểm ageOnKey ở len-gia-su → ca underage đỏ.
 //   - Bỏ logAction ở route xoá → ca audit đỏ.
+//   - Thay anonymizeUser bằng prisma.user.delete (cả hai route xoá) → ca 5 / 13b đỏ.
+//   - Bỏ kiểm ageOnKey ở len-gia-su (hoặc ở tim-hoc-sinh) → ca 17b / 23d / 22e đỏ.
+//   - Bỏ logAction ở tim-hoc-sinh → ca 22g đỏ; thêm email vào metadata → ca 22g đỏ.
+//   - Bỏ `deletedAt` khỏi PUT /api/users/[id]/role → ca 27 đỏ.
+//   - Bỏ kiểm DELETE_REASONS ở readDeleteReason → ca 25b đỏ.
+//   - Bỏ unusedCredits / bankPending khỏi countBlockers → ca 28 / 29 đỏ.
 import { prisma } from "@/lib/prisma";
 import { api, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
 
@@ -203,7 +209,7 @@ const code = () => `KIN${String(++seq).padStart(5, "0")}`;
   check("18a. admin_content chuyển được → 200 { ok, activeEnrollments:0 }", r.status === 200 && r.json.ok === true && r.json.activeEnrollments === 0, r.json);
   check("18b. role admin / adminRole teacher / tutorVerified / người duyệt = CA / subjects trim+dedupe / bio", ad?.role === "admin" && ad.adminRole === "teacher" && ad.tutorVerified === true && ad.tutorVerifiedBy === CA.id && ad.tutorVerifiedAt !== null && ad.tutorAppliedAt !== null && ad.subjects.join() === "Toán,Lý" && ad.bio === "Giới thiệu", ad);
 
-  r = await api("POST", PROMO(P.id), { as: SA, body: { subjects: ["Anh"] } });
+  r = await api("POST", PROMO(P.id), { as: SA, body: { subjects: ["Anh"], confirmAge18: true } }); // P chưa khai ngày sinh → cần cờ (11.2)
   const pu = await prisma.user.findUnique({ where: { id: P.id } });
   check("19a. HS có lớp active → 200, activeEnrollments 1", r.status === 200 && r.json.activeEnrollments === 1, r.json);
   check("19b. Enrollment KHÔNG đổi; bio không gửi thì không ghi", JSON.stringify(await prisma.enrollment.findMany({ where: { userId: P.id } })) === enrBefore && pu?.bio === null && pu?.role === "admin" && pu?.adminRole === "teacher");
@@ -219,10 +225,206 @@ const code = () => `KIN${String(++seq).padStart(5, "0")}`;
   const applied = await mkUser({ name: "HS đã nộp đơn" });
   const when = new Date("2026-10-01T00:00:00Z");
   await prisma.user.update({ where: { id: applied.id }, data: { tutorAppliedAt: when, tutorRejectedAt: new Date(), tutorRejectReason: "thiếu" } });
-  r = await api("POST", PROMO(applied.id), { as: SA, body });
+  r = await api("POST", PROMO(applied.id), { as: SA, body: { ...body, confirmAge18: true } });
   const apu = await prisma.user.findUnique({ where: { id: applied.id } });
   check("21. HS từng nộp đơn và bị từ chối → chuyển được, giữ tutorAppliedAt, xoá tutorRejectedAt/Reason; audit hadApplication true",
     r.status === 200 && apu?.tutorAppliedAt?.getTime() === when.getTime() && apu.tutorRejectedAt === null && apu.tutorRejectReason === null && (await audits({ action: "student.promote_tutor", resourceId: applied.id }))[0]?.metadata != null && ((await audits({ action: "student.promote_tutor", resourceId: applied.id }))[0].metadata as { hadApplication?: boolean }).hadApplication === true);
+
+  // ================= VÒNG 2 (11.1–11.5) =================
+  const LOOK = "/api/admin/gia-su/tim-hoc-sinh";
+  const FOUND_SHAPE = ["activeEnrollments", "candidateId", "dobKnown", "found", "shortName"];
+
+  section("22. tim-hoc-sinh: quyền");
+  const LA = await mkUser({ name: "Biên tập Lộc", role: "admin", adminRole: "admin_content" });
+  const LB = await mkUser({ name: "Biên tập Bảo", role: "admin", adminRole: "admin_content" }), LC = await mkUser({ name: "Biên tập Cúc", role: "admin", adminRole: "admin_content" }); // mỗi người ≤10 lần tìm (giới hạn theo người)
+  const cand = await mkUser({ name: "Nguyễn Văn Tuấn" });
+  await prisma.user.update({ where: { id: cand.id }, data: { phone: "0911222333", school: "THPT Kín", parentName: "PH Kín", dateOfBirth: new Date("2000-03-03T00:00:00Z") } });
+  await prisma.enrollment.create({ data: { userId: cand.id, courseId: C3.id, status: "active" } });
+  const lk = [await api("POST", LOOK, { as: T, body: { email: cand.email } }), await api("POST", LOOK, { as: sv, body: { email: cand.email } })];
+  check("22a. teacher / student → 403", lk.every(x => x.status === 403), lk.map(x => x.status));
+  check("22b. khách → 401", (await api("POST", LOOK, { body: { email: cand.email } })).status === 401);
+  const auditsBeforeLook = await prisma.auditLog.count({ where: { action: "student.lookup_email" } });
+  check("22b2. 401/403 không để lại audit lookup", auditsBeforeLook === 0, auditsBeforeLook);
+
+  section("22. tim-hoc-sinh: kết quả");
+  r = await api("POST", LOOK, { as: LA, body: { email: cand.email } });
+  check("22c. admin_content tìm đúng email → 200 found, candidateId, shortName 'Nguyễn T.', activeEnrollments 1, dobKnown true",
+    r.status === 200 && r.json.found === true && r.json.candidateId === cand.id && r.json.shortName === "Nguyễn T." && r.json.activeEnrollments === 1 && r.json.dobKnown === true, r.json);
+  check("22d. kết quả CHỈ có 5 khoá, không chứa email / SĐT / ngày sinh / trường / tên đầy đủ", Object.keys(r.json).sort().join() === FOUND_SHAPE.join() && noPII(r.json, cand.email, "0911222333", "2000", "THPT Kín", "PH Kín", "Văn", "Tuấn"), r.json);
+  r = await api("POST", LOOK, { as: SA, body: { email: `  ${cand.email.toUpperCase()}  ` } });
+  check("22e. email viết hoa + khoảng trắng → khớp (trim + hạ chữ)", r.status === 200 && r.json.found === true && r.json.candidateId === cand.id, r.json);
+  const partial = await api("POST", LOOK, { as: SA, body: { email: cand.email.slice(0, 6) } });
+  const likeP = await api("POST", LOOK, { as: SA, body: { email: "%" } });
+  check("22f. khớp từng phần / ký tự % → {found:false} (không LIKE, không liệt kê)", partial.json?.found === false && likeP.json?.found === false && Object.keys(partial.json).join() === "found", [partial.json, likeP.json]);
+  const noDob = await mkUser({ name: "Em Chưa Khai" });
+  r = await api("POST", LOOK, { as: LA, body: { email: noDob.email } });
+  check("22f2. học sinh chưa khai ngày sinh → found, dobKnown false", r.json?.found === true && r.json.dobKnown === false && r.json.activeEnrollments === 0, r.json);
+
+  section("22. tim-hoc-sinh: mọi lý do loại → MỘT câu trả lời giống hệt");
+  const lAdult = new Date("2000-01-01T00:00:00Z");
+  const mkLook = async (o: Parameters<typeof mkUser>[0], patch: Record<string, unknown> = {}) => { const x = await mkUser(o); await prisma.user.update({ where: { id: x.id }, data: { dateOfBirth: lAdult, ...patch } }); return x; };
+  const hiddenL = await mkLook({ name: "L ẩn" }, { deletedAt: new Date(), banned: true });
+  const bannedL = await mkLook({ name: "L khoá" }, { banned: true });
+  const unvL = await mkLook({ name: "L chưa xác thực", emailVerified: false });
+  const tutorL = await mkLook({ name: "L đã gia sư" }, { tutorVerified: true });
+  const minorL = await mkLook({ name: "L 15 tuổi" }, { dateOfBirth: new Date(Date.now() - 15 * 365.25 * 864e5) });
+  const adminL = await mkTutor("L là admin");
+  const anonL = await mkLook({ name: "L ẩn danh" });
+  await prisma.user.update({ where: { id: anonL.id }, data: { email: `deleted+${anonL.id}@invalid` } });
+  const rejects = [
+    ["không tồn tại", { email: "khong-co-ai@test.local" }], ["ẩn", { email: hiddenL.email }], ["bị khoá", { email: bannedL.email }], ["chưa xác thực", { email: unvL.email }],
+    ["đã gia sư", { email: tutorL.email }], ["15 tuổi", { email: minorL.email }], ["là admin/gia sư (role)", { email: adminL.email }], ["đã ẩn danh", { email: `deleted+${anonL.id}@invalid` }],
+  ] as const;
+  const resp: string[] = [];
+  for (const [why, b] of rejects) { const x = await api("POST", LOOK, { as: LB, body: b }); resp.push(`${x.status}|${x.text}`); check(`22g0. ${why} → 200 {"found":false}`, x.status === 200 && x.json?.found === false && Object.keys(x.json).length === 1, x.text); }
+  check("22g1. tám lý do → tám phản hồi GIỐNG HỆT từng byte (không lộ lý do/tuổi)", new Set(resp).size === 1, resp);
+  const lookRows = await audits({ action: "student.lookup_email" });
+  check("22g. mỗi lần tìm có 1 dòng audit student.lookup_email {found} đúng người làm; không dòng nào chứa email/tên",
+    lookRows.length >= 12 && lookRows.every(x => [LA.id, LB.id, LC.id, SA.id].includes(x.actorId ?? "")) && lookRows.every(x => noPII(x.metadata, "@test.local", "@invalid", "Nguyễn", "Tuấn") && noPII(x, cand.email, hiddenL.email, "khong-co-ai")) && lookRows.every(x => Object.keys((x.metadata ?? {}) as object).join() === "found"),
+    lookRows.map(x => [x.actorId, x.resourceId, x.metadata]));
+  check("22g2. dòng found=true gắn resourceId = candidateId, found=false KHÔNG lộ id của TK bị loại",
+    lookRows.some(x => (x.metadata as { found?: boolean }).found === true && x.resourceId === cand.id) && lookRows.filter(x => (x.metadata as { found?: boolean }).found === false).every(x => ![hiddenL.id, bannedL.id, unvL.id, tutorL.id, minorL.id].includes(x.resourceId ?? "")), lookRows.map(x => [x.resourceId, x.metadata]));
+  const bad400 = [await api("POST", LOOK, { as: LC, body: {} }), await api("POST", LOOK, { as: LC, body: { email: "   " } }), await api("POST", LOOK, { as: LC, body: { email: 5 } }), await api("POST", LOOK, { as: LC, body: { email: "a".repeat(300) } })];
+  check("22h. thiếu / trống / không phải chuỗi / >254 ký tự → 400 tiếng Việt", bad400.every(x => x.status === 400 && /[à-ỹ]/.test(x.json.error)), bad400.map(x => [x.status, x.json]));
+
+  section("22. tim-hoc-sinh: giới hạn 10 lần / 10 phút theo người thao tác");
+  const RL = await mkUser({ name: "Biên tập đếm", role: "admin", adminRole: "admin_content" });
+  const RL2 = await mkUser({ name: "Biên tập khác", role: "admin", adminRole: "admin_content" });
+  const codes: number[] = [];
+  for (let i = 0; i < 12; i++) codes.push((await api("POST", LOOK, { as: RL, body: { email: `x${i}@test.local` } })).status);
+  check("22i. 10 lần đầu 200, lần 11–12 → 429", codes.slice(0, 10).every(c => c === 200) && codes[10] === 429 && codes[11] === 429, codes);
+  check("22j. người khác vẫn tìm được (khoá theo actorId, không dùng chung)", (await api("POST", LOOK, { as: RL2, body: { email: cand.email } })).status === 200);
+  const rlAudits = await audits({ action: "student.lookup_email", actorId: RL.id });
+  check("22k. 429 không ghi audit (đúng 10 dòng)", rlAudits.length === 10, rlAudits.length);
+
+  section("23. len-gia-su: confirmAge18 (11.2)");
+  const D0 = await mkUser({ name: "HS không ngày sinh" });
+  const before0 = await prisma.auditLog.count({ where: { action: "student.promote_tutor" } });
+  const noFlag = [await api("POST", PROMO(D0.id), { as: LA, body: { subjects: ["Toán"] } }), await api("POST", PROMO(D0.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: false } }), await api("POST", PROMO(D0.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: "true" } }), await api("POST", PROMO(D0.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: 1 } })];
+  check("23a. DOB null, thiếu/false/'true'/1 → 400 need_age_confirm (chỉ boolean true mới qua)", noFlag.every(x => x.status === 400 && x.json.code === "need_age_confirm" && /[à-ỹ]/.test(x.json.error)), noFlag.map(x => [x.status, x.json]));
+  check("23b. 400 không đổi gì: vẫn student, không audit mới", (await prisma.user.findUnique({ where: { id: D0.id } }))?.role === "student" && (await prisma.auditLog.count({ where: { action: "student.promote_tutor" } })) === before0);
+  r = await api("POST", PROMO(D0.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: true } });
+  const d0u = await prisma.user.findUnique({ where: { id: D0.id } });
+  check("23c. DOB null + confirmAge18:true → 200, thành gia sư", r.status === 200 && r.json.ok === true && d0u?.role === "admin" && d0u.adminRole === "teacher" && d0u.tutorVerified === true && d0u.tutorVerifiedBy === LA.id, r.json);
+  let pr = (await audits({ action: "student.promote_tutor", resourceId: D0.id }))[0]?.metadata as Record<string, unknown> | undefined;
+  check("23d. audit: dobKnown false, ageConfirmedByOperator true", pr?.dobKnown === false && pr?.ageConfirmedByOperator === true, pr);
+  const D1 = await mkUser({ name: "HS có ngày sinh" });
+  await prisma.user.update({ where: { id: D1.id }, data: { dateOfBirth: new Date("1999-09-09T00:00:00Z") } });
+  r = await api("POST", PROMO(D1.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: true } });
+  pr = (await audits({ action: "student.promote_tutor", resourceId: D1.id }))[0]?.metadata as Record<string, unknown> | undefined;
+  check("23e. DOB đủ tuổi + có cờ → 200; audit dobKnown true, ageConfirmedByOperator false (cờ không thay ngày sinh)", r.status === 200 && pr?.dobKnown === true && pr?.ageConfirmedByOperator === false, [r.json, pr]);
+  const D2 = await mkUser({ name: "HS có DOB đủ tuổi không cờ" });
+  await prisma.user.update({ where: { id: D2.id }, data: { dateOfBirth: new Date("1999-09-09T00:00:00Z") } });
+  check("23f. DOB đủ tuổi, không cờ → 200 (không đòi cờ)", (await api("POST", PROMO(D2.id), { as: LA, body: { subjects: ["Toán"] } })).status === 200);
+  const D3 = await mkUser({ name: "HS 15 tuổi có cờ" });
+  await prisma.user.update({ where: { id: D3.id }, data: { dateOfBirth: new Date(Date.now() - 15 * 365.25 * 864e5) } });
+  r = await api("POST", PROMO(D3.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: true } });
+  check("23g. DOB <18 + confirmAge18:true → VẪN 409 underage, không đổi role", r.status === 409 && r.json.code === "underage" && (await prisma.user.findUnique({ where: { id: D3.id } }))?.role === "student", r.json);
+  const D4 = await mkUser({ name: "HS đúng 18 tuổi hôm nay" });
+  const t18 = new Date(); await prisma.user.update({ where: { id: D4.id }, data: { dateOfBirth: new Date(Date.UTC(t18.getUTCFullYear() - 18, t18.getUTCMonth(), t18.getUTCDate(), 5)) } });
+  const D5 = await mkUser({ name: "HS 17 tuổi 364 ngày" });
+  await prisma.user.update({ where: { id: D5.id }, data: { dateOfBirth: new Date(Date.UTC(t18.getUTCFullYear() - 18, t18.getUTCMonth(), t18.getUTCDate() + 2, 5)) } });
+  const b18 = await api("POST", PROMO(D4.id), { as: LA, body: { subjects: ["Toán"] } }), b17 = await api("POST", PROMO(D5.id), { as: LA, body: { subjects: ["Toán"] } });
+  check("23h. biên 18 tuổi: đủ 18 hôm nay → 200; thiếu 2 ngày → 409 underage", b18.status === 200 && b17.status === 409 && b17.json.code === "underage", [b18.status, b17.status, b17.json]);
+  const D6 = await mkUser({ name: "HS cờ nhưng chặn khác" });
+  const b6 = await prisma.user.update({ where: { id: D6.id }, data: { banned: true } });
+  r = await api("POST", PROMO(b6.id), { as: LA, body: { subjects: ["Toán"], confirmAge18: true } });
+  check("23i. cờ confirmAge18 không vượt chặn khác: khoá → 409 banned", r.status === 409 && r.json.code === "banned", r.json);
+  check("23j. khách / teacher / student có cờ vẫn 401/403", (await api("POST", PROMO(D0.id), { body: { subjects: ["Toán"], confirmAge18: true } })).status === 401 && (await api("POST", PROMO(D0.id), { as: T, body: { subjects: ["Toán"], confirmAge18: true } })).status === 403 && (await api("POST", PROMO(D0.id), { as: sv, body: { subjects: ["Toán"], confirmAge18: true } })).status === 403);
+
+  section("25. Lý do xoá (11.3)");
+  const R1 = await mkUser({ name: "HS lý do hợp lệ" });
+  r = await api("POST", SX(R1.id), { as: SA, body: { reason: "duplicate" } });
+  let ra = (await audits({ action: "account.delete", resourceId: R1.id }))[0]?.metadata as Record<string, unknown> | undefined;
+  check("25a. reason hợp lệ → 200, audit metadata.reason = 'duplicate'", r.status === 200 && ra?.reason === "duplicate", [r.json, ra]);
+  const R2 = await mkUser({ name: "HS lý do lạ" });
+  const badReasons = [await api("POST", SX(R2.id), { as: SA, body: { reason: "vi_ly_do_khac" } }), await api("POST", SX(R2.id), { as: SA, body: { reason: 7 } }), await api("POST", SX(R2.id), { as: SA, body: { reason: "OTHER" } }), await api("POST", SX(R2.id), { as: SA, body: { reason: "Em đòi xoá vì giận" } })];
+  const r2u = await prisma.user.findUnique({ where: { id: R2.id } });
+  check("25b. mã lạ / không phải chuỗi / sai hoa-thường / văn bản tự do → 400 (tiếng Việt), TK còn nguyên, không audit",
+    badReasons.every(x => x.status === 400 && /[à-ỹ]/.test(x.json.error)) && r2u?.deletedAt === null && r2u.email === R2.email && (await audits({ action: "account.delete", resourceId: R2.id })).length === 0, badReasons.map(x => [x.status, x.json]));
+  r = await api("POST", SX(R2.id), { as: SA });
+  ra = (await audits({ action: "account.delete", resourceId: R2.id }))[0]?.metadata as Record<string, unknown> | undefined;
+  check("25c. không body → 200; audit có khoá reason = null (không bỏ khoá)", r.status === 200 && ra !== undefined && "reason" in ra && ra.reason === null, [r.json, ra]);
+  const R3 = await mkUser({ name: "HS reason null" });
+  const r3 = await api("POST", SX(R3.id), { as: SA, body: { reason: null } });
+  const R4 = await mkUser({ name: "HS reason rỗng" });
+  const r4 = await api("POST", SX(R4.id), { as: SA, body: { reason: "" } });
+  check("25d. reason null / '' → 200, audit reason null", r3.status === 200 && r4.status === 200 && ((await audits({ action: "account.delete", resourceId: R3.id }))[0].metadata as { reason?: unknown }).reason === null && ((await audits({ action: "account.delete", resourceId: R4.id }))[0].metadata as { reason?: unknown }).reason === null);
+  const RT = await mkTutor("GS lý do");
+  r = await api("POST", TX(RT.id), { as: SA, body: { reason: "spam_or_abuse" } });
+  ra = (await audits({ action: "account.delete", resourceId: RT.id }))[0]?.metadata as Record<string, unknown> | undefined;
+  check("25e. route gia sư cũng nhận reason hợp lệ; mã lạ → 400", r.status === 200 && ra?.reason === "spam_or_abuse" && (await api("POST", TX((await mkTutor("GS lý do lạ")).id), { as: SA, body: { reason: "x" } })).status === 400, [r.json, ra]);
+  const RB = await mkUser({ name: "HS bị chặn kèm reason" }); await prisma.enrollment.create({ data: { userId: RB.id, courseId: C3.id, status: "active" } });
+  r = await api("POST", SX(RB.id), { as: SA, body: { reason: "other" } });
+  check("25f. xoá bị chặn 409 → KHÔNG audit dù có reason", r.status === 409 && (await audits({ action: "account.delete", resourceId: RB.id })).length === 0, r.json);
+  const allDel = await audits({ action: "account.delete" });
+  check("25g. quét toàn bộ audit account.delete: không chứa PII, chỉ khoá đếm/cờ/reason", allDel.every(x => noPII(x.metadata, "@test.local", "0911222333", "Bí Mật", "Gia sư", "deleted+")), allDel.map(x => x.metadata).slice(0, 3));
+
+  section("27. PUT /api/users/[id]/role trên TK đã ẩn danh (11.4)");
+  const ROLE = (id: string) => `/api/users/${id}/role`;
+  const anonT = await mkTutor("GS sẽ ẩn danh");
+  await api("POST", TX(anonT.id), { as: SA });
+  const snapRole = async (id: string) => JSON.stringify(await prisma.user.findUnique({ where: { id } }));
+  const beforeRole = await snapRole(anonT.id);
+  const auditBeforeRole = await prisma.auditLog.count();
+  r = await api("PUT", ROLE(anonT.id), { as: SA, body: { role: "admin", adminRole: "admin_super" } });
+  check("27a. đổi vai TK đã ẩn danh → 409 account_deleted, dữ liệu KHÔNG đổi (so nguyên hàng), không thêm audit", r.status === 409 && r.json.code === "account_deleted" && (await snapRole(anonT.id)) === beforeRole && (await prisma.auditLog.count()) === auditBeforeRole, r.json);
+  const anonS = await mkUser({ name: "HS sẽ ẩn danh" }); await api("POST", SX(anonS.id), { as: SA });
+  const bs = await snapRole(anonS.id);
+  r = await api("PUT", ROLE(anonS.id), { as: SA, body: { role: "admin", adminRole: "admin_content" } });
+  check("27b. TK học sinh đã ẩn danh → 409; vẫn student", r.status === 409 && r.json.code === "account_deleted" && (await snapRole(anonS.id)) === bs, r.json);
+  const live = await mkUser({ name: "HS còn sống" });
+  r = await api("PUT", ROLE(live.id), { as: SA, body: { role: "admin", adminRole: "admin_content" } });
+  check("27c. đối chứng: TK còn sống đổi vai được → 200", r.status === 200 && (await prisma.user.findUnique({ where: { id: live.id } }))?.adminRole === "admin_content", [r.status, r.json]);
+  check("27d. admin_content / teacher / khách vẫn không gọi được (403/401)", (await api("PUT", ROLE(live.id), { as: CA, body: { role: "student" } })).status === 403 && (await api("PUT", ROLE(live.id), { body: { role: "student" } })).status === 401);
+
+  section("28. TuitionCredit còn dư → unused_credit (11.5)");
+  const credStu = await mkUser({ name: "HS có tiền dư" });
+  await prisma.tuitionCredit.create({ data: { tutorId: T.id, studentId: credStu.id, amount: 300000, usedAmount: 100000 } });
+  r = await api("POST", SX(credStu.id), { as: SA });
+  check("28a. học sinh có credit dư 200k → 409 unused_credit + tiếng Việt; TK còn nguyên", r.status === 409 && r.json.code === "unused_credit" && /[à-ỹ]/.test(r.json.error) && (await prisma.user.findUnique({ where: { id: credStu.id } }))?.deletedAt === null, r.json);
+  const credTut = await mkTutor("GS giữ tiền dư");
+  await prisma.tuitionCredit.create({ data: { tutorId: credTut.id, studentId: sv.id, amount: 50000, usedAmount: 0 } });
+  r = await api("POST", TX(credTut.id), { as: SA });
+  check("28b. gia sư giữ credit dư → 409 unused_credit", r.status === 409 && r.json.code === "unused_credit", r.json);
+  const creditsBefore = JSON.stringify(await prisma.tuitionCredit.findMany({ orderBy: { id: "asc" } }));
+  await api("POST", SX(credStu.id), { as: SA });
+  check("28c. 409 không đụng TuitionCredit", JSON.stringify(await prisma.tuitionCredit.findMany({ orderBy: { id: "asc" } })) === creditsBefore);
+  const zeroStu = await mkUser({ name: "HS credit đã dùng hết" }), zeroTut = await mkTutor("GS credit dùng hết");
+  await prisma.tuitionCredit.create({ data: { tutorId: zeroTut.id, studentId: zeroStu.id, amount: 80000, usedAmount: 80000 } });
+  const zc1 = await api("POST", SX(zeroStu.id), { as: SA }), zc2 = await api("POST", TX(zeroTut.id), { as: SA });
+  check("28d. dư = 0 (đã dùng hết): cả học sinh lẫn gia sư xoá được → 200; dòng credit còn nguyên", zc1.status === 200 && zc2.status === 200 && (await prisma.tuitionCredit.count({ where: { studentId: zeroStu.id } })) === 1, [zc1.json, zc2.json]);
+  const exact = await mkUser({ name: "HS credit dư 1đ" });
+  await prisma.tuitionCredit.create({ data: { tutorId: T2.id, studentId: exact.id, amount: 1000, usedAmount: 999 } });
+  check("28e. biên: dư 1đ → vẫn chặn", (await api("POST", SX(exact.id), { as: SA })).json?.code === "unused_credit");
+  const both = await mkUser({ name: "HS credit + lớp active" });
+  await prisma.enrollment.create({ data: { userId: both.id, courseId: C3.id, status: "active" } });
+  await prisma.tuitionCredit.create({ data: { tutorId: T.id, studentId: both.id, amount: 5, usedAmount: 0 } });
+  check("28f. vướng cả lớp active và credit → active_enrollments đứng trước", (await api("POST", SX(both.id), { as: SA })).json?.code === "active_enrollments");
+
+  section("29. BankTransaction pending của gia sư → bank_pending (11.5)");
+  let btSeq = 0;
+  const bt = (tutorId: string, status: string) => prisma.bankTransaction.create({ data: { tutorId, provider: "sepay", providerTxId: `tx-${++btSeq}-${tutorId.slice(-6)}`, occurredAt: new Date(), amount: 500000, content: "chuyen khoan", kind: "in", status } });
+  const bpT = await mkTutor("GS tiền vào chờ");
+  const bank = await bt(bpT.id, "pending");
+  r = await api("POST", TX(bpT.id), { as: SA });
+  check("29a. gia sư có BankTransaction pending → 409 bank_pending + tiếng Việt; TK còn nguyên", r.status === 409 && r.json.code === "bank_pending" && /[à-ỹ]/.test(r.json.error) && (await prisma.user.findUnique({ where: { id: bpT.id } }))?.deletedAt === null, r.json);
+  check("29b. 409 không đụng dòng tiền vào (status vẫn pending)", (await prisma.bankTransaction.findUnique({ where: { id: bank.id } }))?.status === "pending");
+  await prisma.bankTransaction.update({ where: { id: bank.id }, data: { status: "resolved", resolvedAt: new Date(), resolution: "not_tuition" } });
+  r = await api("POST", TX(bpT.id), { as: SA });
+  check("29c. đổi sang resolved → xoá được (200); BankTransaction giữ nguyên làm chứng từ", r.status === 200 && (await prisma.bankTransaction.count({ where: { tutorId: bpT.id } })) === 1, r.json);
+  const bpT2 = await mkTutor("GS nhiều trạng thái");
+  await bt(bpT2.id, "matched"); await bt(bpT2.id, "applied"); await bt(bpT2.id, "resolved");
+  check("29d. chỉ các dòng KHÔNG pending (matched/applied/resolved) → KHÔNG chặn", (await api("POST", TX(bpT2.id), { as: SA })).status === 200);
+  const bpT3 = await mkTutor("GS pending + credit");
+  await bt(bpT3.id, "pending"); await prisma.tuitionCredit.create({ data: { tutorId: bpT3.id, studentId: sv.id, amount: 10, usedAmount: 0 } });
+  check("29e. vướng cả credit dư và pending → unused_credit trước, bank_pending sau", (await api("POST", TX(bpT3.id), { as: SA })).json?.code === "unused_credit" && (await prisma.tuitionCredit.deleteMany({ where: { tutorId: bpT3.id } }), (await api("POST", TX(bpT3.id), { as: SA })).json?.code === "bank_pending"));
+  const bpStu = await mkUser({ name: "HS khác có pending của GS?" });
+  await bt(T.id, "pending");
+  check("29f. pending nằm ở gia sư KHÁC không chặn học sinh (bank_pending chỉ tính theo tutorId của chính người bị xoá)", (await api("POST", SX(bpStu.id), { as: SA })).status === 200);
+  const bpWal = await mkTutor("GS pending + ví tiền thật");
+  await bt(bpWal.id, "pending"); await prisma.wallet.create({ data: { userId: bpWal.id, balance: 9 } }); await prisma.coinTopupRequest.create({ data: { userId: bpWal.id, amountVnd: 9, coinAmount: 9, status: "approved" } });
+  check("29g. vướng cả pending và ví từ tiền thật → bank_pending đứng trước wallet_from_money", (await api("POST", TX(bpWal.id), { as: SA })).json?.code === "bank_pending");
 
   await done();
 })().catch(e => { console.error(e); process.exit(1); });

@@ -114,7 +114,7 @@ const ACTION_LABEL: Record<string, string> = {
   // ADM-001 (01/11/2026) — Tin tức và ẩn / khôi phục học sinh (mục 7.1 đặc tả).
   "article.create": "Tạo bài viết", "article.update": "Sửa bài viết", "article.publish": "Đăng bài viết", "article.unpublish": "Gỡ đăng bài viết (về nháp)", "article.delete": "Xoá bài viết",
   "student.hide": "Ẩn học sinh", "student.restore": "Khôi phục học sinh đã ẩn",
-  "account.delete": "Xoá tài khoản (ẩn danh hoá)", "student.promote_tutor": "Chuyển học sinh thành gia sư",
+  "account.delete": "Xoá tài khoản (ẩn danh hoá)", "student.promote_tutor": "Chuyển học sinh thành gia sư", "student.lookup_email": "Tìm học sinh theo email",
   // ADM-001 — mã đang được logAction trong api/admin/** nhưng chưa có nhãn (mục 7.2, bắt buộc). Bài t-adm-001-lib quét nguồn để nhãn không thiếu lại.
   "admission_score.create": "Thêm dòng điểm chuẩn", "admission_score.update": "Sửa dòng điểm chuẩn", "admission_score.delete": "Xoá dòng điểm chuẩn",
   "admission_score.import": "Nhập điểm chuẩn hàng loạt", "admission_score.seed": "Nạp điểm chuẩn khởi đầu",

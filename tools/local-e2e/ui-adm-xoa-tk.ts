@@ -1,6 +1,8 @@
 // ADM — Xoá tài khoản (học sinh + gia sư) và Chuyển học sinh thành gia sư, ngay trong panel (không hộp thoại mới).
 // Kiểm: admin_super thấy cả hai nút; xoá cần gõ XOA (sai chữ → nút khoá); chuyển thành gia sư thật (HS có 1 ghi danh → role admin/teacher, ghi danh còn);
 // xoá TK thật (email "deleted+…"); gia sư còn lớp → 409 nguyên văn, vẫn trong danh sách; admin_content không thấy "Xoá tài khoản"; 390px không tràn, nút ≥ 44px.
+// Thêm vòng 2: ô lý do xoá, tick 18 tuổi (panel + khối email), khối chuyển gia sư theo email ở /admin/gia-su.
+// CA PHÁ CỐ Ý: email không tồn tại -> "Không tìm thấy học sinh phù hợp"; chưa tick 18 -> nút khoá; không lộ email người khác trên trang.
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-adm-xoa-tk.ts  (cần API xoa-tai-khoan / len-gia-su của adm-code)
 import { mkSuper, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
@@ -46,6 +48,9 @@ import { prisma } from "@/lib/prisma";
   const final = grp.getByRole("button", { name: "Xoá vĩnh viễn" });
   check("bước 2: nêu rõ không hoàn tác + giữ bằng chứng + email dùng lại được", await grp.getByText(/Không hoàn tác được/).isVisible() && await grp.getByText(/phiếu thu được giữ lại làm bằng chứng/).isVisible() && await grp.getByText(/dùng lại được/).isVisible());
   check("chưa gõ gì → nút 'Xoá vĩnh viễn' khoá", await final.isDisabled());
+  const sel = grp.locator("[data-xoa-ly-do]");
+  check("có ô 'Lý do (không bắt buộc)' đủ 5 mã + trống", await grp.getByText("Lý do (không bắt buộc)").isVisible() && (await sel.locator("option").count()) === 6);
+  await sel.selectOption("duplicate");
   await grp.locator("[data-xoa-input]").fill("xoo");
   check("gõ sai chữ → vẫn khoá", await final.isDisabled());
   const nb = await final.boundingBox();
@@ -68,6 +73,9 @@ import { prisma } from "@/lib/prisma";
   const go = g2.getByRole("button", { name: "Chuyển thành gia sư" });
   check("chưa nhập môn → nút khoá", await go.isDisabled());
   await g2.locator("[data-len-mon]").fill("Toán, Lý");
+  check("chưa tick 18 tuổi → nút khoá (danh sách không có ngày sinh)", await go.isDisabled());
+  await g2.locator("[data-xac-minh-18]").check();
+  check("tick xong → mở khoá", await go.isEnabled());
   await go.click();
   await eventually("hàng biến khỏi danh sách học sinh", async () => (await row("Em Len Gia Su").count()) === 0, 30000);
   const l = await prisma.user.findUnique({ where: { id: HS_LEN.id } });
@@ -104,6 +112,36 @@ import { prisma } from "@/lib/prisma";
   check("DB: email bắt đầu 'deleted+'", !!gx && gx.email.startsWith("deleted+"), gx?.email);
   await cg.close();
 
+  section("Khối chuyển gia sư theo email (admin_super)");
+  const HS_EMAIL = await mkUser({ name: "Em Tim Theo Email" });
+  const PROBE = (await prisma.user.findUnique({ where: { id: HS_EMAIL.id } }))!.email;
+  const ce = await ctxFor(SA, { width: 1280, height: 900 });
+  const pe = await ce.newPage(); watch(pe);
+  await pe.goto(`${ADMIN}/admin/gia-su`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  const blk = pe.locator("[data-len-email]");
+  await blk.waitFor({ timeout: 120000 });
+  await blk.locator("[data-len-email-input]").fill("khong-co-ai@example.invalid");
+  await blk.getByRole("button", { name: "Tìm", exact: true }).click();
+  await blk.locator("[data-len-email-khong-thay]").waitFor({ timeout: 30000 });
+  check("email lạ → 'Không tìm thấy học sinh phù hợp'", await blk.getByText("Không tìm thấy học sinh phù hợp").isVisible());
+  await blk.locator("[data-len-email-input]").fill(PROBE);
+  await blk.getByRole("button", { name: "Tìm", exact: true }).click();
+  await blk.locator("[data-len-email-ket-qua]").waitFor({ timeout: 30000 });
+  check("kết quả chỉ tên rút gọn + số lớp, không hiện email", await blk.getByText(/đang học 0 lớp/).isVisible() && (await blk.locator("[data-len-email-ket-qua]").innerText()).indexOf(PROBE) < 0);
+  const tiep = blk.getByRole("button", { name: "Tiếp tục" });
+  await blk.locator("[data-len-email-mon]").fill("Toán");
+  const t18 = blk.locator("[data-xac-minh-18]");
+  if (await t18.count()) { check("chưa tick 18 → 'Tiếp tục' khoá", await tiep.isDisabled()); await t18.check(); }
+  await tiep.click();
+  const cf = blk.getByRole("group", { name: "Xác nhận chuyển thành gia sư" });
+  check("bước 2 ngay trong khối, nêu hệ quả, không dialog", await cf.getByText(/không còn vào được phần học sinh/).isVisible() && (await pe.getByRole("dialog").count()) === 0);
+  await shot(pe, "adm-xoa-tk-email-1280");
+  await cf.getByRole("button", { name: "Xác nhận chuyển" }).click();
+  await eventually("thông báo đã chuyển", () => pe.locator("[data-thong-bao]").isVisible(), 30000);
+  const he = await prisma.user.findUnique({ where: { id: HS_EMAIL.id } });
+  check("DB: HS thành gia sư (role admin / teacher)", he?.role === "admin" && he?.adminRole === "teacher", { role: he?.role, adminRole: he?.adminRole });
+  await ce.close();
+
   section("admin_content: không thấy 'Xoá tài khoản'");
   const cc = await ctxFor(CT, { width: 1280, height: 900 });
   const pc = await cc.newPage(); watch(pc);
@@ -112,6 +150,7 @@ import { prisma } from "@/lib/prisma";
   await pc.locator("[data-row-open]").first().click();
   await pc.locator("aside[data-side-panel]").waitFor({ timeout: 30000 });
   check("panel gia sư của admin_content không có 'Xoá tài khoản'", (await pc.getByRole("button", { name: "Xoá tài khoản" }).count()) === 0);
+  check("admin_content vẫn thấy khối chuyển gia sư theo email", await pc.locator("[data-len-email]").isVisible());
   await cc.close();
 
   section("390px");
@@ -127,6 +166,8 @@ import { prisma } from "@/lib/prisma";
   await fm.waitFor();
   const b = await fm.boundingBox();
   check("nút 'Xoá vĩnh viễn' trong màn 390 và ≥ 44px", !!b && b.x >= 0 && b.x + b.width <= 390 && b.height >= 43.5, b);
+  const eb = await pm.locator("[data-len-email-input]").boundingBox();
+  check("390: ô email trong màn, cao ≥ 44px", !!eb && eb.x >= 0 && eb.x + eb.width <= 390 && eb.height >= 43.5, eb);
   check("390: không tràn ngang", (await pm.evaluate(`document.documentElement.scrollWidth - document.documentElement.clientWidth`) as number) <= 0);
   await shot(pm, "adm-xoa-tk-390");
   await cm.close();

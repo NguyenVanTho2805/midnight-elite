@@ -1,4 +1,4 @@
-// Con người → Gia sư (BU-08 mục 5.4): LỊCH SỬ đơn gia sư. Danh sách chỉ để xem; thao tác ghi duy nhất là "Xoá tài khoản" trong panel tab Đã duyệt (người có quyền, xác nhận hai bước). Việc duyệt / từ chối nằm ở Hàng chờ (/admin/kiem-duyet?loai=gia-su),
+// Con người → Gia sư (BU-08 mục 5.4): LỊCH SỬ đơn gia sư. Danh sách để xem; thao tác ghi: "Chuyển học sinh thành gia sư" theo email (đầu trang) và "Xoá tài khoản" trong panel tab Đã duyệt (xác nhận hai bước). Việc duyệt / từ chối nằm ở Hàng chờ (/admin/kiem-duyet?loai=gia-su),
 // nên trang này KHÔNG có nút Duyệt hay Từ chối, kể cả với đơn đang chờ (chỉ có liên kết "Mở trong Hàng chờ").
 // Bảng NN/g: cột đầu là định danh (tên gia sư); ≤ 2 nút mỗi hàng; chi tiết mở ở panel bên (không hộp thoại). Dữ liệu tối thiểu: không email, không số điện thoại.
 "use client";
@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton, kinButtonClass, KinEmptyState, KinStatus, KinTabs } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
-import { DeleteAccountBlock } from "@/components/admin/AccountActions";
+import { DeleteAccountBlock, PromoteByEmailBlock } from "@/components/admin/AccountActions";
 import { QueueErrorStrip, QueueSkeleton } from "@/components/admin/queue/shared";
 
 type Status = "approved" | "rejected" | "pending";
@@ -65,6 +65,8 @@ function Body() {
           Lịch sử đơn xin làm gia sư. Đây là nơi xem lại, không phải nơi duyệt đơn mới.
         </p>
       </header>
+
+      <PromoteByEmailBlock onPromoted={msg => { setNotice(msg); void load(status); }} />
 
       <KinTabs label="Trạng thái đơn gia sư" value={status} onChange={setStatus} tabs={(Object.keys(LABEL) as Status[]).map(s => ({ key: s, label: LABEL[s] }))} />
       <p data-dang-loc className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Đang lọc: <b className="font-semibold text-[var(--kin-chu-chinh)]">{LABEL[status]}</b></p>

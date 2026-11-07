@@ -82,3 +82,27 @@ Nguồn: https://docs.azota.vn/docs/huong-dan-su-dung/ (mục lục), .../phan-q
 - Không tìm thấy: tài liệu công khai về chuyển vai học sinh -> giáo viên, hay về giữ chứng từ tài chính khi xoá. Không suy diễn.
 - Khác KiN: Azota để người dùng tự xoá vĩnh viễn, không đối chiếu tiền/phiếu; KiN do quản trị thực hiện, ẩn danh hoá, giữ chứng từ, có chặn khi còn tiền.
 - Nên áp dụng: tách "gỡ khỏi lớp" khỏi "xoá tài khoản" (KiN đã có qua ghi danh); xác nhận rõ không hoàn tác; xin lý do (nên cân nhắc thêm lý do tuỳ chọn, hiện chưa chốt). Không áp dụng: xoá vĩnh viễn và tự xoá không điều kiện (không hợp ví/phiếu/trẻ em).
+
+## 11. Vòng 2 (07/11/2026, phiếu COO) — quyết định của chủ và hợp đồng bổ sung
+Quyết định chủ: PII nằm trong `StudentProfile`/`FamilyGroup` do gia sư lập, `Notification`, bài cộng đồng được GIỮ MÃI, không xoá khi ẩn danh hoá (ghi trong mô tả PR).
+
+### 11.1 Tìm học sinh theo email để chuyển gia sư (cho admin_content, KHÔNG mở /admin/hoc-sinh)
+- `POST /api/admin/gia-su/tim-hoc-sinh` body `{email}`; `requireCenterAdmin` (admin_super + admin_content). Khớp email CHÍNH XÁC (trim + hạ chữ thường), không LIKE, không liệt kê.
+- Rate limit theo người thao tác (`limitOrBlock`, khoá `tim-hoc-sinh:<actorId>`, 10 lần / 10 phút) -> 429.
+- Trả `{found:true, candidateId, shortName, activeEnrollments, dobKnown}` hoặc `{found:false}` (200) — MỘT câu trả lời chung cho: không có email, không phải học sinh, đã ẩn/xoá, bị khoá, chưa xác thực email, đã là gia sư, chưa đủ 18 tuổi (không lộ lý do/tuổi). `shortName` = họ + chữ cái đầu của tên ("Nguyễn T."). Không trả email, SĐT, ngày sinh, trường.
+- Ghi AuditLog `student.lookup_email` `{found}` (không email) cho mỗi lần tìm.
+- Hợp đồng chuyển vẫn là `POST /api/admin/students/[id]/len-gia-su` (cùng API). UI: ô nhập email -> kết quả (tên rút gọn, số lớp) -> nhập môn dạy -> xác nhận bước 2 (gõ CHUYEN hoặc nút xác nhận riêng) -> gọi API. Nút trong panel /admin/hoc-sinh giữ nguyên cho admin_super.
+
+### 11.2 Học sinh chưa khai ngày sinh
+`len-gia-su` nhận thêm `confirmAge18: boolean`. Nếu `dateOfBirth` null: bắt buộc `confirmAge18 === true`, thiếu -> 400 `code: need_age_confirm`. Nếu có ngày sinh: vẫn kiểm tuổi ≥ 18 như cũ (409 underage), cờ không thay thế. Audit `student.promote_tutor` thêm `{dobKnown, ageConfirmedByOperator}`. UI cả hai nơi có hộp tick "Tôi đã xác minh người này đủ 18 tuổi" chỉ hiện khi chưa biết ngày sinh (panel biết qua dữ liệu có sẵn; ô email biết qua `dobKnown`).
+
+### 11.3 Lý do xoá tài khoản (mã danh mục)
+Hai route xoá nhận body tuỳ chọn `{reason}` thuộc `["user_request","duplicate","spam_or_abuse","wrong_account","other"]`; giá trị khác -> 400. Không văn bản tự do. Audit `account.delete` thêm `reason` (null nếu bỏ trống). UI: ô chọn "Lý do (không bắt buộc)".
+
+### 11.4 PUT /api/users/[id]/role
+Tài khoản `deletedAt != null` -> 409 `code: account_deleted`, không đổi gì.
+
+### 11.5 Mã chặn mới
+- `unused_credit`: `TuitionCredit` của user (tutorId hoặc studentId) còn `amount - usedAmount > 0` (tiền dư gia sư giữ) — xác định chắc chắn từ mô hình.
+- `bank_pending`: `BankTransaction` của gia sư (`tutorId`) có `status = "pending"` (tiền vào chưa xử lý; webhook SePay đặt `pending` khi chưa khớp phiếu). Code phải kiểm trong mã nguồn các giá trị `status` thực tế; nếu `pending` không đúng nghĩa "chưa xử lý" thì bỏ mã này và báo.
+- Đếm trong cùng giao dịch ẩn danh hoá như các mã khác; thứ tự: sau `uninvoiced_fees`.
