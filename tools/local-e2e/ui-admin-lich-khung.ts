@@ -40,7 +40,8 @@ import { prisma } from "@/lib/prisma";
   await pg.getByRole("button", { name: "Huỷ" }).first().click().catch(() => {});
 
   await pg.goto(`${BASE}/admin/khoa-hoc?q=${encodeURIComponent("Toán 9 khung")}`, { waitUntil: "networkidle" });
-  await pg.getByText("Toán 9 khung").first().click();
+  // Có `?q=` thì chữ "Toán 9 khung" xuất hiện nhiều nơi (nhãn lọc, dòng) ⇒ getByText().first() bấm trượt, bảng bên không mở: mở bảng bằng nút "Sửa nhanh" của dòng.
+  await pg.getByRole("button", { name: "Sửa nhanh: Toán 9 khung" }).click();
   await pg.getByRole("button", { name: "Sao chép khoá" }).click();
   await pg.getByText("Đã sao chép khoá học, chép 1 khung giờ").waitFor({ timeout: 20000 });
   check("DB: bản sao có 1 khung", (await prisma.classSchedule.count({ where: { course: { name: { contains: "Toán 9 khung" }, id: { not: c.id } } } })) === 1);

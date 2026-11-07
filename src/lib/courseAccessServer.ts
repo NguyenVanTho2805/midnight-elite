@@ -15,6 +15,14 @@ export type CourseAccess =
   | { ok: false; res: NextResponse };
 
 const NO_STORE = { "Cache-Control": "no-store" };
+/** Id từ URL mà Postgres không nhận được (byte NUL làm driver ném lỗi 22021 ⇒ 500). Coi như "không có" ⇒ 404, không chạm DB. */
+export function unusableId(id: unknown): boolean {
+  return typeof id !== "string" || id.length === 0 || id.length > 200 || id.includes("\u0000");
+}
+function isInvalidTextError(e: unknown): boolean {
+  const x = e as { code?: string; cause?: { code?: string; originalCode?: string } } | null;
+  return x?.code === "22021" || x?.cause?.code === "22021" || x?.cause?.originalCode === "22021";
+}
 const BANNED_MSG = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ.";
 
 export function roleForbidden(): NextResponse {
@@ -43,6 +51,7 @@ export async function loadCourseAccess(session: SessionPayload | null, courseId:
   const isTutor = session.role === "admin" && session.adminRole === "teacher";
   if (!isCenter && !isTutor) return { ok: false, res: NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403, headers: NO_STORE }) };
 
+  if (unusableId(courseId)) return { ok: false, res: NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404, headers: NO_STORE }) };
   const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, ownerId: true, feeMode: true, classStatus: true } });
   if (!course) return { ok: false, res: NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404, headers: NO_STORE }) };
 
@@ -155,6 +164,7 @@ export async function requireScheduleAccess(scheduleId: string): Promise<{ ok: t
   const isCenter = s.session.role === "admin" && (s.session.adminRole === "admin_super" || s.session.adminRole === "admin_content");
   const isTutor = s.session.role === "admin" && s.session.adminRole === "teacher";
   if (!isCenter && !isTutor) return { ok: false, res: NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403, headers: NO_STORE }) };
+  if (unusableId(scheduleId)) return { ok: false, res: NextResponse.json({ error: "Không tìm thấy khung giờ học" }, { status: 404, headers: NO_STORE }) };
   const schedule = await prisma.classSchedule.findUnique({
     where: { id: scheduleId },
     select: { id: true, courseId: true, startTime: true, endTime: true, dayOfWeek: true, teacherId: true, course: { select: { ownerId: true } } },
@@ -172,6 +182,7 @@ export async function requireAttendanceSessionAccess(sessionId: string) {
   const isCenter = s.session.role === "admin" && (s.session.adminRole === "admin_super" || s.session.adminRole === "admin_content");
   const isTutor = s.session.role === "admin" && s.session.adminRole === "teacher";
   if (!isCenter && !isTutor) return { ok: false as const, res: NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403, headers: NO_STORE }) };
+  if (unusableId(sessionId)) return { ok: false as const, res: NextResponse.json({ error: "Không tìm thấy buổi" }, { status: 404, headers: NO_STORE }) };
   const row = await prisma.attendanceSession.findUnique({ where: { id: sessionId } });
   if (!row) return { ok: false as const, res: NextResponse.json({ error: "Không tìm thấy buổi" }, { status: 404, headers: NO_STORE }) };
   const acc = await loadCourseAccess(s.session, row.courseId);
@@ -221,7 +232,11 @@ export async function requireCourseAccessBy(
   const isCenter = s.session.role === "admin" && (s.session.adminRole === "admin_super" || s.session.adminRole === "admin_content");
   const isTutor = s.session.role === "admin" && s.session.adminRole === "teacher";
   if (!isCenter && !isTutor) return { ok: false, res: NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403, headers: NO_STORE }) };
-  const courseId = await resolve();
+  let courseId: string | null;
+  try { courseId = await resolve(); } catch (e) {
+    // Id có byte NUL: Postgres từ chối (22021) ⇒ coi như mục không có. Lỗi DB khác vẫn ném tiếp (không giấu sự cố thành 404).
+    if (isInvalidTextError(e)) courseId = null; else throw e;
+  }
   if (!courseId) return { ok: false, res: NextResponse.json({ error: notFoundMessage }, { status: 404, headers: NO_STORE }) };
   const acc = await loadCourseAccess(s.session, courseId);
   if (!acc.ok) return acc;

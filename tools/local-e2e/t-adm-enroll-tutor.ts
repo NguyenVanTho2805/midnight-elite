@@ -30,17 +30,17 @@ const URL_ = "/api/admin/enrollments";
   const s2 = await stat(tv.id);
   check("2c. không có Enrollment / thông báo", s2.enr === 0 && s2.nt === 0, s2);
   r = await api("POST", URL_, { as: CA, body: { userId: gs.id, courseId: C.id } });
-  check("3. admin_content gọi cũng bị chặn 409 (qua quyền, trúng kiểm gia sư)", r.status === 409 && r.json?.code === "tutor_account", [r.status, r.json]);
+  check("3. admin_content không có MANAGE_STUDENTS → 403 ngay ở tầng quyền (không tới kiểm gia sư, không tạo Enrollment)", r.status === 403 && (await stat(gs.id)).enr === 0, [r.status, r.json]);
 
   section("Học sinh thường vẫn ghi danh được");
   const hs = await mkUser({ name: "Bé Hoa" });
   r = await api("POST", URL_, { as: SA, body: { userId: hs.id, courseId: C.id } });
   check("4. học sinh thường → 200 + Enrollment", r.status === 200 && (await prisma.enrollment.count({ where: { userId: hs.id, courseId: C.id } })) === 1, [r.status, r.json]);
   const hsFlag = await mkUser({ name: "Bé có cờ gia sư lạc", tutorVerified: true });
-  r = await api("POST", URL_, { as: CA, body: { userId: hsFlag.id, courseId: C.id } });
+  r = await api("POST", URL_, { as: SA, body: { userId: hsFlag.id, courseId: C.id } });
   check("4b. role student dù tutorVerified lạc → 200 (chỉ chặn role admin)", r.status === 200, [r.status, r.json]);
   r = await api("POST", URL_, { as: CA, body: { userId: (await mkUser({ name: "Bé Nam" })).id, courseId: C.id } });
-  check("4c. admin_content ghi danh học sinh thường → 200", r.status === 200, [r.status, r.json]);
+  check("4c. admin_content ghi danh học sinh thường → 403 (quyền MANAGE_STUDENTS chỉ có ở admin_super, ma trận có từ trước)", r.status === 403, [r.status, r.json]);
 
   section("Quyền và đầu vào");
   r = await api("POST", URL_, { body: { userId: hs.id, courseId: C.id } });
