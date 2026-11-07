@@ -106,8 +106,9 @@ export default async function LopPage({ params, searchParams }: Props) {
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
       initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi",
-      joinPolicy: effectivePolicy(course.joinPolicy), isFree: isFreeClass(feeInfo), canOpen: canUseOpenPolicy(feeInfo),
-      pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(course.feeMode),
+      // Đồng giảng/bộ môn: giá trị trung tính, không đẩy chính sách vào lớp / miễn phí / feeMode thật xuống client.
+      joinPolicy: co ? effectivePolicy(null) : effectivePolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
+      pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(co ? null : course.feeMode),
     }} />;
   }
 
