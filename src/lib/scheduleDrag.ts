@@ -30,14 +30,16 @@ export interface ScheduleBlock {
   joinUrl?: string | null;
   /** false = đã tắt. Vắng = bật. */
   active?: boolean;
-  /** SLOT cho PR đồng giảng; hôm nay luôn null. */
+  /** Người dạy của khung (ClassSchedule.teacherId): null/vắng = chủ lớp. */
+  teacherId?: string | null;
+  /** Nhãn hiển thị người dạy do cha tính (tên, "bạn", "giáo viên khác", "chủ lớp"); không gửi lên máy chủ. */
   teacherLabel?: string | null;
   /** Chưa lưu. */
   draft?: boolean;
 }
 export interface MinRange { startMin: number; endMin: number }
 
-export type BlockPatch = Partial<Pick<ScheduleBlock, "dayOfWeek" | "startMin" | "endMin" | "note" | "mode" | "location" | "joinUrl" | "active">>;
+export type BlockPatch = Partial<Pick<ScheduleBlock, "dayOfWeek" | "startMin" | "endMin" | "note" | "mode" | "location" | "joinUrl" | "active" | "teacherId">>;
 export type ScheduleOp =
   /** `at`: vị trí chèn trong mảng (dùng khi đảo một thao tác xoá để trả đúng thứ tự). */
   | { type: "create"; block: ScheduleBlock; at?: number }
@@ -47,7 +49,7 @@ export type ScheduleOp =
 export interface Conflict { otherId: string; kind: "cung-lop" | "lop-khac"; courseName: string; text: string }
 export type OpResult = { ok: true } | { ok: false; error: string } | { ok: false; conflicts: Conflict[] };
 
-const PATCH_KEYS: ReadonlyArray<keyof BlockPatch> = ["dayOfWeek", "startMin", "endMin", "note", "mode", "location", "joinUrl", "active"];
+const PATCH_KEYS: ReadonlyArray<keyof BlockPatch> = ["dayOfWeek", "startMin", "endMin", "note", "mode", "location", "joinUrl", "active", "teacherId"];
 
 // ── Làm tròn / đổi đơn vị ──────────────────────────────────────────────────────
 
@@ -205,6 +207,7 @@ export function fromApiRow(row: unknown): ScheduleBlock | null {
     ...(typeof r.courseName === "string" ? { courseName: r.courseName } : {}),
     note: str(r.note), mode, location: str(r.location), joinUrl: str(r.joinUrl),
     active: r.active === false ? false : true,
+    ...(r.teacherId === null || typeof r.teacherId === "string" ? { teacherId: r.teacherId as string | null } : {}),
   };
 }
 

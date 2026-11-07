@@ -16,6 +16,8 @@ import { KinStatus } from "@/components/kin/Status";
 import { jfetch } from "@/components/tutor/studentUi";
 import WeekScheduleEditor from "@/components/tutor/WeekScheduleEditor";
 import { classAccentFor } from "@/lib/classColor";
+import { canDo, canEditSchedule } from "@/lib/courseAccess";
+import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
 import {
   WEEKDAY_NAMES, WEEK_ORDER, applyOp, formatDuration, fromApiRow, invertOp, toApiSlot, weeklyMinutes,
   type Conflict, type OpResult, type ScheduleBlock, type ScheduleOp,
@@ -39,7 +41,9 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
   useEffect(() => { blocksRef.current = blocks; });
   const alias = useRef(new Map<string, string>());           // id tạm (khung mới) -> id máy chủ (sau khi POST xong khối đổi sang id thật)
   const queues = useRef(new Map<string, Promise<unknown>>()); // hàng đợi ghi theo từng khung
-  const seq = useRef(0);                                       // chống lời giải đến muộn khi đổi lớp
+  const seq = useRef(0);
+  // Vai của người xem + danh sách giáo viên đang dạy (GET .../giao-vien). Lỗi tải: không chặn, quay về giao diện cũ (máy chủ vẫn kiểm quyền).
+  const [who, setWho] = useState<{ role: ViewRole; userId: string; teachers: { id: string; label: string }[] } | null>(null);                                       // chống lời giải đến muộn khi đổi lớp
 
   const courseName = courses?.find(c => c.id === current)?.name ?? "Lớp này";
   const accent = classAccentFor(current ?? "", courses?.find(c => c.id === current)?.color);
@@ -82,8 +86,29 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
   // eslint-disable-next-line react-hooks/set-state-in-effect -- tải khung của lớp đang chọn; setState chỉ chạy sau await
   useEffect(() => { if (current) void load(current); }, [current, load]);
 
+  useEffect(() => {
+    if (!current) return;
+    let live = true;
+    void (async () => {
+      const r = await jfetch(`/api/tutor/lop/${encodeURIComponent(current)}/giao-vien`, { method: "GET" });
+      if (!live) return;
+      const self = r.json?.self as { role?: string; userId?: string } | undefined;
+      if (!r.ok || !self?.role || !self.userId) { setWho(null); return; }
+      const rows = Array.isArray(r.json?.teachers) ? r.json.teachers as { userId?: string; name?: string; status?: string }[] : [];
+      const teachers = rows.filter(t => t.status === "active" && typeof t.userId === "string").map((t, i) => ({ id: t.userId as string, label: t.name?.trim() || `Giáo viên ${i + 1}` }));
+      setWho({ role: self.role as ViewRole, userId: self.userId, teachers });
+    })();
+    return () => { live = false; };
+  }, [current]);
+
+  const manager = who ? canManageRole(who.role) : false;
   // Gắn tên lớp vào mọi khung của lớp này (tên đến sau khi danh sách lớp tải xong).
-  const shown = useMemo(() => blocks.map(b => ({ ...b, courseName })), [blocks, courseName]);
+  const shown = useMemo(() => blocks.map(b => {
+    if (!who || (manager && who.teachers.length === 0)) return { ...b, courseName };   // lớp chỉ có chủ: không cần nhãn người dạy
+    const tid = b.teacherId ?? null;
+    const label = manager ? (tid ? who.teachers.find(t => t.id === tid)?.label ?? "giáo viên khác" : "chủ lớp") : tid === null ? "chủ lớp" : tid === who.userId ? "bạn" : "giáo viên khác";
+    return { ...b, courseName, teacherLabel: label };
+  }), [blocks, courseName, who, manager]);
   const ghosts = useMemo(() => ghostRules.filter(g => g.courseId !== current), [ghostRules, current]);
 
 
@@ -100,7 +125,7 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
       const merged = op.type === "update" ? { ...(before.find(b => b.id === op.id) as ScheduleBlock), ...op.patch } : null;
       let res: Awaited<ReturnType<typeof jfetch>>;
       if (op.type === "create") {
-        res = await jfetch(`/api/courses/${encodeURIComponent(cid)}/class-schedules`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...toApiSlot(op.block), checkConflicts: true, ...(o?.force ? { force: true } : {}) }) });
+        res = await jfetch(`/api/courses/${encodeURIComponent(cid)}/class-schedules`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...toApiSlot(op.block), ...(manager ? { teacherId: op.block.teacherId ?? null } : {}), checkConflicts: true, ...(o?.force ? { force: true } : {}) }) });
         if (res.ok && typeof res.json?.id === "string") {
           const tmp = op.block.id, real = res.json.id as string;
           alias.current.set(tmp, real);
@@ -111,9 +136,9 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
         const slot = toApiSlot(merged);
         if ("dayOfWeek" in op.patch) body.dayOfWeek = slot.dayOfWeek;
         if ("startMin" in op.patch || "endMin" in op.patch) { body.startTime = slot.startTime; body.endTime = slot.endTime; }
-        for (const k of ["note", "mode", "location", "joinUrl", "active"] as const) if (k in op.patch) body[k] = op.patch[k] ?? null;
+        for (const k of ["note", "mode", "location", "joinUrl", "active", ...(manager ? ["teacherId"] : [])] as ("note" | "mode" | "location" | "joinUrl" | "active" | "teacherId")[]) if (k in op.patch) body[k] = op.patch[k] ?? null;
         if (typeof body.active !== "boolean") delete body.active;
-        const timeChanged = "dayOfWeek" in body || "startTime" in body || body.active === true;
+        const timeChanged = "dayOfWeek" in body || "startTime" in body || "teacherId" in body || body.active === true;
         if (timeChanged) { body.checkConflicts = true; if (o?.force) body.force = true; }
         res = await jfetch(`/api/class-schedules/${encodeURIComponent(op.id)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       } else if (op.type === "remove") {
@@ -135,7 +160,7 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
     const next = prev.then(run, run);
     queues.current.set(key, next.catch(() => undefined));
     return next;
-  }, [current]);
+  }, [current, manager]);
 
   async function toggle(b: ScheduleBlock) {
     const on = b.active === false;
@@ -182,6 +207,9 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
 
   const editor = (
     <WeekScheduleEditor blocks={shown} ghosts={ghosts} accent={accent} remote courseLabel={courseName}
+      teacher={!who ? undefined : manager ? { mode: "select", options: who.teachers } : { mode: "text", selfId: who.userId }}
+      canAdd={!who || canDo(who.role, "schedule.add.own")}
+      canEdit={who ? (b => canEditSchedule(who.role, who.userId, b.teacherId ?? null)) : undefined}
       state={phase === "ready" ? "ready" : phase === "error" ? "error" : "loading"}
       onRetry={() => current && void load(current)} onOp={onOp}
       emptyNote={<>Học sinh sẽ không thấy buổi nào trong lịch cho tới khi lớp có khung giờ.</>} />
@@ -222,9 +250,10 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
                       <span className="min-w-0">
                         <span className="block font-medium text-[var(--kin-chu-chinh)] tabular-nums">{WEEKDAY_NAMES[b.dayOfWeek]} {hm(b.startMin)}–{hm(b.endMin)}</span>
                         <span className="block text-[var(--kin-chu-mo)]">{formatDuration(b.endMin - b.startMin)}{b.note ? ` · ${b.note}` : ""}</span>
+                        {b.teacherLabel && <span data-rule-teacher className="block text-[var(--kin-chu-mo)]">Người dạy: {b.teacherLabel}</span>}
                         {b.active === false && <KinStatus tone="mo">Đã tắt</KinStatus>}
                       </span>
-                      <button type="button" onClick={() => void toggle(b)} className={kinButtonClass("secondary")} aria-label={`${b.active === false ? "Bật lại" : "Tắt"} khung ${WEEKDAY_NAMES[b.dayOfWeek]} ${hm(b.startMin)}`}>{b.active === false ? "Bật lại" : "Tắt"}</button>
+                      <button type="button" disabled={!!who && !canEditSchedule(who.role, who.userId, b.teacherId ?? null)} onClick={() => void toggle(b)} className={kinButtonClass("secondary")} aria-label={`${b.active === false ? "Bật lại" : "Tắt"} khung ${WEEKDAY_NAMES[b.dayOfWeek]} ${hm(b.startMin)}`}>{b.active === false ? "Bật lại" : "Tắt"}</button>
                     </li>
                   ))}
                 </ul>

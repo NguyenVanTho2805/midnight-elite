@@ -35,7 +35,11 @@ export interface WeekScheduleEditorProps {
   /** Cha ghi (API hoặc cục bộ). Lỗi/trùng giờ thì cha đã HOÀN LẠI trạng thái lạc quan trước khi trả kết quả. `force` = "Vẫn lưu" sau cảnh báo trùng giờ. */
   onOp: (op: ScheduleOp, o?: { force?: boolean }) => Promise<OpResult> | OpResult;
   canEdit?: (b: ScheduleBlock) => boolean;
-  /** Chỗ nhãn giáo viên (PR đồng giảng). Hôm nay không dùng. */
+  /** Người dạy của khung (TUT-dong-giang). Vắng = không có ô người dạy (wizard Tạo lớp: chưa có đồng giảng).
+   *  "select" = chủ/quản trị: ô chọn (mặc định Chủ lớp + các giáo viên đang dạy). "text" = đồng giảng/bộ môn: chỉ nhãn chỉ-đọc, khung mới là của chính mình. */
+  teacher?: { mode: "select"; options: { id: string; label: string }[] } | { mode: "text"; selfId: string };
+  /** false = không được thêm khung (giáo viên bộ môn): ẩn nút Thêm, bấm ô trống không mở bản nháp. */
+  canAdd?: boolean;
   renderBadge?: (b: ScheduleBlock) => ReactNode;
   /** true = khung đã lưu trên máy chủ: Delete chỉ TẮT khung; hoàn tác không xoá cứng. false (wizard) = xoá cục bộ. */
   remote?: boolean;
@@ -99,7 +103,7 @@ function labelFor(op: ScheduleOp, before: readonly ScheduleBlock[]): string {
 }
 
 export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
-  const { blocks, ghosts = [], accent, state, onOp, canEdit, renderBadge, remote = false, courseLabel, emptyNote } = props;
+  const { blocks, ghosts = [], accent, state, onOp, canEdit, renderBadge, remote = false, courseLabel, emptyNote, teacher, canAdd = true } = props;
   const narrow = useNarrow();
   const { ask, dialog: confirmDialog } = useKinConfirm();
 
@@ -213,11 +217,12 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
 
   // ── Mở panel / bản nháp ────────────────────────────────────────────────────
   const openDraft = useCallback((day: number, startMin: number, endMin?: number) => {
+    if (!canAdd) return;
     const start = Math.min(startMin, DAY_END_MIN - SNAP_MIN);
     const end = endMin ?? Math.min(DAY_END_MIN, start + DEFAULT_DURATION_MIN);
-    const d: ScheduleBlock = { id: newTmpId(), dayOfWeek: day, startMin: start, endMin: end, courseName: courseLabel, draft: true, active: true, note: null };
+    const d: ScheduleBlock = { id: newTmpId(), dayOfWeek: day, startMin: start, endMin: end, courseName: courseLabel, draft: true, active: true, note: null, ...(teacher?.mode === "text" ? { teacherId: teacher.selfId, teacherLabel: "bạn" } : {}) };
     setDraft(d); setPanelId("draft"); setSelectedId(d.id); setPreview(null);
-  }, [courseLabel]);
+  }, [courseLabel, canAdd, teacher]);
 
   function addButton() {
     const day = mode === "day" ? selectedDay : 2;
@@ -279,6 +284,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
     const blockEl = t.closest<HTMLElement>("[data-block-id]");
     const colEl = t.closest<HTMLElement>("[data-day-col]");
     if (!blockEl && !colEl) return;
+    if (!blockEl && !canAdd) return;
     let orig: ScheduleBlock | null = null;
     let kind: DragCtx["kind"] = "create";
     if (blockEl) {
@@ -433,7 +439,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
       onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !(e.target as HTMLElement).closest("input,textarea,select")) { e.preventDefault(); void undo(); } }}>
 
       <div className="flex flex-wrap items-center gap-2 pb-3">
-        <button type="button" data-add-block onClick={addButton} className={kinButtonClass("primary")}>Thêm khung giờ</button>
+        {canAdd && <button type="button" data-add-block onClick={addButton} className={kinButtonClass("primary")}>Thêm khung giờ</button>}
         {narrow && (
           <div role="group" aria-label="Kiểu xem" className="inline-flex">
             {(["day", "week"] as const).map(m => (
@@ -451,7 +457,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
 
       {activeOwn.length === 0 && (
         <p data-empty-hint className="mb-3 px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-tt-chu-cho)] text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)]">
-          <b className="font-medium">Lớp chưa có lịch học.</b> Kéo trên lưới để thêm khung giờ, hoặc bấm Thêm khung giờ.{emptyNote ? <> {emptyNote}</> : null}
+          <b className="font-medium">Lớp chưa có lịch học.</b> {canAdd ? "Kéo trên lưới để thêm khung giờ, hoặc bấm Thêm khung giờ." : "Giáo viên bộ môn chỉ xem khung giờ, chủ lớp hoặc đồng giảng đặt giúp."}{emptyNote ? <> {emptyNote}</> : null}
         </p>
       )}
 
@@ -515,7 +521,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
                   const isBusy = busy.has(b.id);
                   const sel = selectedId === b.id;
                   const tags = [conf && !off ? "Trùng giờ" : null, off ? "Đã tắt" : null, isDraft ? "Chưa lưu" : null].filter(Boolean) as string[];
-                  const aria = [describeBlock(b), conf && !off ? conf.map(c => c.text.toLowerCase()).join("; ") : null, off ? "đã tắt" : null, isDraft ? "chưa lưu" : null, isBusy ? "đang lưu" : null].filter(Boolean).join(", ");
+                  const aria = [describeBlock(b), b.teacherLabel ? `người dạy ${b.teacherLabel}` : null, conf && !off ? conf.map(c => c.text.toLowerCase()).join("; ") : null, off ? "đã tắt" : null, isDraft ? "chưa lưu" : null, isBusy ? "đang lưu" : null].filter(Boolean).join(", ");
                   const pad = Math.max(0, Math.ceil((44 - h) / 2));
                   return (
                     <button key={b.id} type="button" data-block-id={b.id} data-day={b.dayOfWeek} data-start={b.startMin} data-end={b.endMin}
@@ -538,6 +544,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
                           <>
                             <span className="block truncate font-medium">{nameOf(b)}</span>
                             <span className="block truncate tabular-nums">{hm(b.startMin)}–{hm(b.endMin)}</span>
+                            {b.teacherLabel && h >= 56 && <span data-teacher-label className="block truncate text-[var(--kin-chu-mo)]">Dạy: {b.teacherLabel}</span>}
                             {tags.length > 0 && <span className="block truncate font-medium text-[var(--kin-tt-chu-loi)]">{conf && !off ? "⚠ " : ""}{tags.join(" · ")}</span>}
                           </>
                         ) : (
@@ -575,7 +582,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
       )}
 
       <p className="mt-3 text-[length:var(--kin-co-small)] leading-4 text-[var(--kin-chu-mo)]">
-        Khung lặp mọi tuần. {narrow ? "Bấm ô trống để thêm khung, bấm khối để sửa; chạm giữ rồi kéo để dời." : "Kéo trên ô trống để thêm khung, kéo khối để dời, kéo mép để đổi độ dài."}{" "}
+        Khung lặp mọi tuần. {!canAdd ? "Bấm khối để xem chi tiết." : narrow ? "Bấm ô trống để thêm khung, bấm khối để sửa; chạm giữ rồi kéo để dời." : "Kéo trên ô trống để thêm khung, kéo khối để dời, kéo mép để đổi độ dài."}{" "}
         Muốn dời một buổi, mở buổi đó ở <Link href="/lop-cua-toi/lich" className="text-[var(--kin-nhan-link)] underline">Lịch dạy</Link> rồi chọn Dời.
       </p>
 
@@ -596,7 +603,7 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
 
       {panelBlock && (
         <BlockPanel key={panelBlock.id} block={panelBlock} others={blocks.filter(b => b.id !== panelBlock.id)} ghosts={ghosts} remote={remote}
-          readOnly={!!canEdit && !canEdit(panelBlock)} accent={accent} onClose={closePanel}
+          readOnly={!!canEdit && !canEdit(panelBlock)} teacher={teacher} accent={accent} onClose={closePanel}
           onSave={async next => {
             if (panelBlock.draft) { const { draft: _d, ...rest } = next; void _d; return commit({ type: "create", block: { ...rest, draft: false } }, { after: closePanel }); }
             const ops = diffBlocks([panelBlock], [next]);
@@ -636,8 +643,8 @@ export default function WeekScheduleEditor(props: WeekScheduleEditorProps) {
 
 // ── Panel sửa chi tiết ────────────────────────────────────────────────────────
 
-function BlockPanel({ block, others, ghosts, remote, readOnly, accent, onClose, onSave, onToggle, onRemove }: {
-  block: ScheduleBlock; others: ScheduleBlock[]; ghosts: ScheduleBlock[]; remote: boolean; readOnly: boolean; accent: string;
+function BlockPanel({ block, others, ghosts, remote, readOnly, teacher, accent, onClose, onSave, onToggle, onRemove }: {
+  block: ScheduleBlock; others: ScheduleBlock[]; ghosts: ScheduleBlock[]; remote: boolean; readOnly: boolean; teacher: WeekScheduleEditorProps["teacher"]; accent: string;
   onClose: () => void;
   onSave: (next: ScheduleBlock) => Promise<boolean>; onToggle: () => Promise<boolean>; onRemove: () => Promise<boolean>;
 }) {
@@ -648,6 +655,7 @@ function BlockPanel({ block, others, ghosts, remote, readOnly, accent, onClose, 
   const [mode, setMode] = useState<"" | "online" | "offline">(block.mode ?? "");
   const [location, setLocation] = useState(block.location ?? "");
   const [joinUrl, setJoinUrl] = useState(block.joinUrl ?? "");
+  const [teacherId, setTeacherId] = useState<string>(block.teacherId ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const field = "w-full min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] px-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]";
@@ -669,7 +677,7 @@ function BlockPanel({ block, others, ghosts, remote, readOnly, accent, onClose, 
     const url = joinUrl.trim();
     if (url && !/^https?:\/\/\S+$/i.test(url)) { setErr("Link vào lớp phải bắt đầu bằng http:// hoặc https://."); return; }
     setErr(null); setSaving(true);
-    const ok = await onSave({ ...block, dayOfWeek: day, startMin: start, endMin: end, note: note.trim() || null, mode: mode || null, location: mode === "offline" ? location.trim() || null : null, joinUrl: url || null });
+    const ok = await onSave({ ...block, dayOfWeek: day, startMin: start, endMin: end, note: note.trim() || null, ...(teacher?.mode === "select" ? { teacherId: teacherId || null } : {}), mode: mode || null, location: mode === "offline" ? location.trim() || null : null, joinUrl: url || null });
     setSaving(false);
     void ok;
   }
@@ -711,6 +719,17 @@ function BlockPanel({ block, others, ghosts, remote, readOnly, accent, onClose, 
           <input value={note} maxLength={NOTE_MAX} disabled={readOnly} onChange={e => setNote(e.target.value)} className={`${field} mt-1`} placeholder="Ví dụ: Toán 9 nhóm sáng" autoComplete="off" />
           <span className="block text-right text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] tabular-nums">{note.length}/{NOTE_MAX}</span>
         </label>
+        {teacher?.mode === "select" && (
+          <label className={lab}>Người dạy
+            <select value={teacherId} disabled={readOnly} onChange={e => setTeacherId(e.target.value)} className={`${field} mt-1`} data-teacher-select>
+              <option value="">Chủ lớp</option>
+              {teacher.options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </label>
+        )}
+        {teacher?.mode === "text" && (
+          <p data-teacher-text className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Người dạy: <b className="font-medium">{block.draft ? "bạn" : block.teacherLabel ?? "chủ lớp"}</b></p>
+        )}
         <label className={lab}>Hình thức
           <select value={mode} disabled={readOnly} onChange={e => setMode(e.target.value as "" | "online" | "offline")} className={`${field} mt-1`}>
             <option value="">Chưa chọn</option><option value="online">Trực tuyến</option><option value="offline">Trực tiếp</option>
