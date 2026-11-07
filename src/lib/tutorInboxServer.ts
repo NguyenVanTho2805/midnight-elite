@@ -90,7 +90,7 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       select: { id: true, title: true, content: true, createdAt: true, course: { select: { name: true } } },
     }),
     // TUT-lich-keo-tha: lớp đang mở chưa có khung giờ — dòng chỉ có tên lớp (không tên em).
-    prisma.course.findMany({ where: noScheduleWhere(tutorId), orderBy: { adminId: "asc" }, take, select: { id: true, name: true } }),
+    prisma.course.findMany({ where: noScheduleWhere(tutorId), orderBy: { createdAt: "asc" }, take, select: { id: true, name: true } }),
   ]);
   const joinNames = joinGroups.length
     ? new Map((await prisma.course.findMany({ where: { id: { in: joinGroups.map(g => g.courseId) } }, select: { id: true, name: true } })).map(x => [x.id, x.name]))

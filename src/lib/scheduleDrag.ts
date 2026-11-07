@@ -280,9 +280,9 @@ export function nudge(b: ScheduleBlock, key: string, mods: { shift?: boolean; al
 
 // ── Kiểm trước khi gửi ─────────────────────────────────────────────────────────
 
-/** Lỗi tiếng Việt đầu tiên hoặc null. Kiểm: trần 14 khung, thứ, giờ nguyên 0-1440 và end > start, ghi chú <= 200, hai khung bật TRÙNG CHÍNH XÁC (cùng thứ + giờ). Chồng nhau một phần KHÔNG là lỗi. */
+/** Lỗi tiếng Việt đầu tiên hoặc null. Kiểm: trần 14 khung ĐANG BẬT (khung tắt không tính), thứ, giờ nguyên 0-1440 và end > start, ghi chú <= 200, hai khung bật TRÙNG CHÍNH XÁC (cùng thứ + giờ). Chồng nhau một phần KHÔNG là lỗi. */
 export function validateBlocks(blocks: readonly ScheduleBlock[]): string | null {
-  if (blocks.length > MAX_BLOCKS_PER_COURSE) return `Một lớp có tối đa ${MAX_BLOCKS_PER_COURSE} khung giờ.`;
+  if (blocks.filter(b => b.active !== false).length > MAX_BLOCKS_PER_COURSE) return `Một lớp có tối đa ${MAX_BLOCKS_PER_COURSE} khung giờ.`;
   const seen = new Set<string>();
   for (const b of blocks) {
     if (!Number.isInteger(b.dayOfWeek) || b.dayOfWeek < 0 || b.dayOfWeek > 6) return "Ngày trong tuần không hợp lệ.";

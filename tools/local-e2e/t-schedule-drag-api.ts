@@ -195,6 +195,16 @@ const snapCourses = async () => (await prisma.course.count());
   await prisma.classSchedule.createMany({ data: Array.from({ length: 14 }, (_, i) => ({ courseId: cM.id, dayOfWeek: i % 7, startTime: i < 7 ? "06:00" : "07:00", endTime: i < 7 ? "07:00" : "08:00" })) });
   const over = await api("POST", `/api/courses/${cM.id}/class-schedules`, { as: A, body: S(1, "20:00", "21:00") });
   check("khung thứ 15 của một lớp (POST class-schedules) → 400 'tối đa 14', không thêm", over.status === 400 && /14/.test(over.json.error) && (await prisma.classSchedule.count({ where: { courseId: cM.id } })) === 14, over.json);
+  // khung TẮT không tính vào trần: 14 bật + 3 tắt vẫn thêm được 1 khung tắt?? -> không: thêm là bật; xoá bớt bật rồi test
+  const cT = await mkCourse(A.id, { name: "13 bật 3 tắt" });
+  await prisma.classSchedule.createMany({ data: [
+    ...Array.from({ length: 13 }, (_, i) => ({ courseId: cT.id, dayOfWeek: i % 7, startTime: i < 7 ? "06:00" : "07:00", endTime: i < 7 ? "07:00" : "08:00" })),
+    ...Array.from({ length: 3 }, (_, i) => ({ courseId: cT.id, dayOfWeek: 0, startTime: `1${i}:00`, endTime: `1${i}:30`, active: false })),
+  ] });
+  const okT = await api("POST", `/api/courses/${cT.id}/class-schedules`, { as: A, body: S(2, "20:00", "21:00") });
+  check("13 bật + 3 tắt (16 dòng) → thêm khung bật thứ 14 được (201)", okT.status === 201 && (await prisma.classSchedule.count({ where: { courseId: cT.id, active: true } })) === 14, okT.json);
+  const overT = await api("POST", `/api/courses/${cT.id}/class-schedules`, { as: A, body: S(3, "20:00", "21:00") });
+  check("đủ 14 bật (còn 3 tắt) → khung bật thứ 15 bị 400", overT.status === 400 && /14/.test(overT.json.error), overT.json);
   const oldMany = await mkCourse(A.id, { name: "Lớp cũ nhiều khung" });
   await prisma.classSchedule.createMany({ data: Array.from({ length: 16 }, (_, i) => ({ courseId: oldMany.id, dayOfWeek: i % 7, startTime: `${String(5 + Math.floor(i / 7)).padStart(2, "0")}:00`, endTime: `${String(5 + Math.floor(i / 7)).padStart(2, "0")}:30` })) });
   const oldRow = await prisma.classSchedule.findFirstOrThrow({ where: { courseId: oldMany.id } });

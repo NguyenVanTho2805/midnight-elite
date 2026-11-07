@@ -64,10 +64,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (end <= start) {
       return NextResponse.json({ error: "Giờ kết thúc phải sau giờ bắt đầu" }, { status: 400 });
     }
-    // TUT-lich-keo-tha: ghi chú <= 200 ký tự và tối đa 14 khung/lớp (chỉ cho lần ghi mới, không đụng dữ liệu cũ).
+    // TUT-lich-keo-tha: ghi chú <= 200 ký tự và tối đa 14 khung ĐANG BẬT/lớp (khung tắt không tính; chỉ cho lần ghi mới, không đụng dữ liệu cũ).
     const ne = noteError(note);
     if (ne) return NextResponse.json({ error: ne }, { status: 400 });
-    if (await prisma.classSchedule.count({ where: { courseId } }) >= SCHEDULES_MAX_PER_COURSE) {
+    if (await prisma.classSchedule.count({ where: { courseId, active: true } }) >= SCHEDULES_MAX_PER_COURSE) {
       return NextResponse.json({ error: `Một lớp có tối đa ${SCHEDULES_MAX_PER_COURSE} khung giờ. Xoá bớt khung không dùng rồi thêm lại.` }, { status: 400 });
     }
     const join = normalizeJoinUrl(joinUrl);
