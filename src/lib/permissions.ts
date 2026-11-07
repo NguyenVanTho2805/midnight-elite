@@ -13,6 +13,7 @@ export const PERMISSIONS = {
   MANAGE_NEWS:          "MANAGE_NEWS",
   MANAGE_COMMUNITY:     "MANAGE_COMMUNITY",
   MANAGE_TUTORS:        "MANAGE_TUTORS", // duyệt/từ chối hồ sơ gia sư (FE-138)
+  DELETE_ACCOUNTS:      "DELETE_ACCOUNTS", // xoá (ẩn danh hoá) tài khoản học sinh/gia sư — chỉ admin_super
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

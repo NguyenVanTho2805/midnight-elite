@@ -20,6 +20,7 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_HEAD } from "@/components/kin/PageLayout";
 import { KinMoney, KinMoneyEye } from "@/components/kin/MoneyVisibility";
 import SetupChecklist from "@/components/tutor/SetupChecklist";
+import DongGiangNhom from "@/components/tutor/DongGiangNhom";
 
 function Skeleton() {
   const sk = "kin-skel kin-skel--soft";
@@ -67,6 +68,9 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
         actions={<><KinMoneyEye /><Link href="/lop-cua-toi/lop/tao" className={`${kinButtonClass("secondary")} max-md:hidden`}>Tạo lớp</Link></>} />
 
       {top}
+
+      {/* TUT-dong-giang 7.3: thẻ lời mời đồng giảng chờ trả lời (rỗng thì không hiện). */}
+      <DongGiangNhom part="invites" />
 
       {error && <ErrorStrip message="Không tải được Hộp việc." onRetry={load} />}
       {items === null || !o ? (!error ? <Skeleton /> : null) : (
@@ -245,6 +249,8 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
           </div>
         </>
       )}
+      {/* TUT-dong-giang 7.3: nhóm "Lớp tôi đồng giảng" dưới lớp riêng (rỗng thì không hiện). */}
+      <DongGiangNhom part="courses" />
     </KinPage>
   );
 }

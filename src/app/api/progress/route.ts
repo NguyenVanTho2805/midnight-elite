@@ -3,11 +3,13 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { suspendedCourseIds } from "@/lib/suspendedContentServer";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
+import { isStudentInDb } from "@/lib/studentOnly";
 
 // GET /api/progress — bài đã hoàn thành + đếm theo khoá + vị trí xem dở của bài chưa xong (MD-06: tách "đang xem" / "đã xong")
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ completedIds: [], byCourse: {}, watching: {}, positions: {} });
+  if (session.role !== "student" || !(await isStudentInDb(session.userId))) return NextResponse.json({ completedIds: [], byCourse: {}, watching: {}, positions: {} });   // H4
 
   // Đã nghỉ lớp (quyết định 06/11/2026): tiến độ của lớp đó không còn hiện (bài miễn phí thì giữ). Dữ liệu vẫn nằm trong DB cho gia sư / khi cho học lại.
   const left = new Set(await suspendedCourseIds(session.userId));

@@ -1,4 +1,4 @@
-// Con người → Gia sư (BU-08 mục 5.4): LỊCH SỬ đơn gia sư, chỉ đọc. Việc duyệt / từ chối nằm ở Hàng chờ (/admin/kiem-duyet?loai=gia-su),
+// Con người → Gia sư (BU-08 mục 5.4): LỊCH SỬ đơn gia sư. Danh sách để xem; thao tác ghi: "Chuyển học sinh thành gia sư" theo email (đầu trang) và "Xoá tài khoản" trong panel tab Đã duyệt (xác nhận hai bước). Việc duyệt / từ chối nằm ở Hàng chờ (/admin/kiem-duyet?loai=gia-su),
 // nên trang này KHÔNG có nút Duyệt hay Từ chối, kể cả với đơn đang chờ (chỉ có liên kết "Mở trong Hàng chờ").
 // Bảng NN/g: cột đầu là định danh (tên gia sư); ≤ 2 nút mỗi hàng; chi tiết mở ở panel bên (không hộp thoại). Dữ liệu tối thiểu: không email, không số điện thoại.
 "use client";
@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton, kinButtonClass, KinEmptyState, KinStatus, KinTabs } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
+import { DeleteAccountBlock, PromoteByEmailBlock } from "@/components/admin/AccountActions";
 import { QueueErrorStrip, QueueSkeleton } from "@/components/admin/queue/shared";
 
 type Status = "approved" | "rejected" | "pending";
@@ -25,6 +26,7 @@ function Body() {
   const [items, setItems] = useState<App[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const seq = useRef(0);
   const opener = useRef<string | null>(null);
 
@@ -64,9 +66,12 @@ function Body() {
         </p>
       </header>
 
+      <PromoteByEmailBlock onPromoted={msg => { setNotice(msg); void load(status); }} />
+
       <KinTabs label="Trạng thái đơn gia sư" value={status} onChange={setStatus} tabs={(Object.keys(LABEL) as Status[]).map(s => ({ key: s, label: LABEL[s] }))} />
       <p data-dang-loc className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Đang lọc: <b className="font-semibold text-[var(--kin-chu-chinh)]">{LABEL[status]}</b></p>
 
+      {notice && <p role="status" data-thong-bao className="rounded-[var(--kin-bo-md)] bg-[var(--kin-tt-nen-xong)] px-3 py-2 text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-tt-chu-xong)]">{notice}</p>}
       {failed && <QueueErrorStrip message="Chưa tải được danh sách gia sư." onRetry={() => void load(status)} />}
       {items === null && !failed && <QueueSkeleton rows={4} />}
       {items !== null && items.length === 0 && (
@@ -122,7 +127,12 @@ function Body() {
             <p className="mb-3 whitespace-pre-wrap break-words">{open.bio?.trim() || "Người nộp đơn chưa viết giới thiệu."}</p>
             {status === "rejected" && open.tutorRejectReason && (<><h3 className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-mo)]">Lý do từ chối</h3><p className="whitespace-pre-wrap break-words">{open.tutorRejectReason}</p></>)}
           </div>
-          <div className="border-t border-[var(--kin-vien-thuong)] px-4 py-3"><KinButton variant="ghost" onClick={close}>Đóng</KinButton></div>
+          <div className="space-y-2 border-t border-[var(--kin-vien-thuong)] px-4 py-3">
+            {status === "approved" && (
+              <DeleteAccountBlock kind="tutors" userId={open.id} onDeleted={msg => { setNotice(msg); void load(status); }} />
+            )}
+            <KinButton variant="ghost" onClick={close}>Đóng</KinButton>
+          </div>
         </aside>
       )}
     </div>

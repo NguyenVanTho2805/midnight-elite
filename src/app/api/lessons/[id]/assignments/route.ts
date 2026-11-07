@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, requireSession, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireSession, isNextResponse } from "@/lib/auth-guard";
+import { requireCourseAccessBy, isActiveHelperOfCourse, roleForbidden } from "@/lib/courseAccessServer";
+import { canEditChapter } from "@/lib/courseAccess";
 import { validateQuestionOptions } from "@/lib/examQuestionParser";
 import { sanitizeFormulaImgTokens, formulaFieldError } from "@/lib/mathtype/formulaImg";
 import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
@@ -34,9 +35,10 @@ export async function GET(
 
   try {
     // BU-02-PHẲNG (R4): route mở cho mọi tài khoản đăng nhập ⇒ bài Nháp/Ẩn chỉ quản lý lớp thấy; còn lại 404 (kể cả bài không tồn tại, để không phân biệt được).
-    const owner = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { status: true, chapter: { select: { section: { select: { course: { select: { ownerId: true } } } } } } } });
+    const owner = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { status: true, chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } } });
     if (!owner) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
-    if (!isLearnerVisible(owner.status) && !managerOf(auth, owner.chapter.section.course.ownerId))
+    // TUT-dong-giang: đồng giảng / bộ môn đang hiệu lực của lớp cũng thấy bài Nháp/Ẩn.
+    if (!isLearnerVisible(owner.status) && !managerOf(auth, owner.chapter.section.course.ownerId) && !(await isActiveHelperOfCourse(auth, owner.chapter.section.courseId, owner.chapter.section.course.ownerId)))
       return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
     const assignments = await prisma.assignment.findMany({
       where: { lessonId, mode: { not: "azota" } }, // bài Azota không còn là Assignment (LessonAzotaDone); lọc phòng dữ liệu cũ
@@ -68,20 +70,15 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id: lessonId } = await params;
+  // TUT-dong-giang: tạo bài tập = soạn (content.edit.own). Chủ / quản trị / đồng giảng mọi bài; bộ môn chỉ bài trong nhóm của mình. Tác giả (ownerId) = người gọi.
+  const acc = await requireCourseAccessBy(async () => (await prisma.lesson.findUnique({ where: { id: lessonId }, select: { chapter: { select: { section: { select: { courseId: true } } } } } }))?.chapter.section.courseId ?? null, "Không tìm thấy bài giảng", "content.edit.own");
+  if (!acc.ok) return acc.res;
+  const auth = acc.session;
 
   try {
-    const lesson = await prisma.lesson.findUnique({
-      where: { id: lessonId },
-      select: { chapter: { select: { section: { select: { course: { select: { ownerId: true } } } } } } },
-    });
-    if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài giảng" }, { status: 404 });
-    if (!ownsResource(auth, lesson.chapter.section.course.ownerId)) {
-      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-    }
+    const lesson = (await prisma.lesson.findUnique({ where: { id: lessonId }, select: { chapter: { select: { teacherId: true } } } }))!;
+    if (!canEditChapter(acc.role, auth.userId, lesson.chapter.teacherId)) return roleForbidden();
 
     const body = await req.json();
     const { title, instructions, fileUrl, fileName, maxPoints, dueDate, mode, questions } = body as {

@@ -13,6 +13,7 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import DongGiangNhom from "@/components/tutor/DongGiangNhom";
 import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TWO_COL, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
 
 const FIELD = KIN_FIELD;
@@ -102,7 +103,10 @@ export default function LopHoc() {
                         )}
                       </div>
                       <p className="tabular-nums"><span className="md:hidden text-[var(--kin-chu-mo)]">Học sinh: </span>{c.students}{c.capacity != null ? `/${c.capacity}` : ""}</p>
-                      <p className={c.schedule ? "tabular-nums" : "text-[var(--kin-chu-mo)]"}>{c.schedule ?? "Chưa xếp lịch"}</p>
+                      {c.schedule
+                        ? <p className="tabular-nums">{c.schedule}</p>
+                        : <p className="text-[var(--kin-chu-mo)]">Chưa xếp lịch{" · "}
+                            <Link href={`/lop-cua-toi/quan-lop/${encodeURIComponent(c.id)}/lich-hoc`} aria-label={`Đặt lịch cho lớp ${c.name}`} className="inline-flex items-center min-h-11 md:min-h-0 text-[var(--kin-nhan-link)] hover:underline">Đặt lịch</Link></p>}
                       <p className={c.sessionsTaught > 0 ? "tabular-nums" : "text-[var(--kin-chu-mo)]"}>{c.sessionsTaught > 0 ? `${c.sessionsTaught} buổi đã điểm danh` : "Chưa bắt đầu"}</p>
                       <div>
                         {empty
@@ -131,6 +135,8 @@ export default function LopHoc() {
           <p className="mt-8 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hiển thị {shown.length}/{all.length} lớp{filtering ? " theo bộ lọc" : ""}.</p>
         </>
       )}
+      {/* TUT-dong-giang 7.3: lớp cô được mời cùng dạy, nhóm riêng dưới lớp của cô. */}
+      <DongGiangNhom part="courses" />
     </KinPage>
   );
 }

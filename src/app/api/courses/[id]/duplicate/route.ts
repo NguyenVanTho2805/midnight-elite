@@ -16,6 +16,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const source = await prisma.course.findUnique({
       where: { id },
       include: {
+        // TUT-lich-keo-tha: chép khung giờ đang BẬT sang bản sao (trước đây bản sao mất lịch).
+        classSchedules: { where: { active: true }, orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] },
         sections: {
           orderBy: { order: "asc" },
           include: {
@@ -102,10 +104,19 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         }
       }
 
+      if (source.classSchedules.length) {
+        await tx.classSchedule.createMany({
+          data: source.classSchedules.map(c => ({
+            courseId: course.id, dayOfWeek: c.dayOfWeek, startTime: c.startTime, endTime: c.endTime,
+            note: c.note, joinUrl: c.joinUrl, mode: c.mode, location: c.location, active: true,
+          })),
+        });
+      }
+
       return course;
     });
 
-    return NextResponse.json({ id: newCourse.id });
+    return NextResponse.json({ id: newCourse.id, schedulesCopied: source.classSchedules.length });
   } catch (e) {
     console.error("[POST /api/courses/[id]/duplicate]", e);
     return NextResponse.json({ error: "Sao chép thất bại" }, { status: 500 });

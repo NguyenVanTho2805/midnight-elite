@@ -25,8 +25,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   const ids = [...new Set(b.userIds)];
   if (!ids.length) return NextResponse.json({ error: "Chọn học sinh cần thêm" }, { status: 400 });
   if (ids.length > ADD_STUDENTS_MAX) return NextResponse.json({ error: `Mỗi lần thêm tối đa ${ADD_STUDENTS_MAX} em` }, { status: 400 });
+  // TUT-dong-giang (H2): không thêm chủ lớp / giáo viên cùng dạy lớp này làm học viên.
+  const teachers = await prisma.courseTeacher.count({ where: { courseId, userId: { in: ids }, status: { in: ["active", "invited"] } } });
+  if (teachers > 0 || ids.includes(auth.userId)) {
+    return NextResponse.json({ error: "Không thêm giáo viên của lớp làm học viên", code: "is_teacher_of_course" }, { status: 403, headers: NO_STORE });
+  }
+  // …và chỉ nhận tài khoản còn là HỌC SINH (người đã chuyển thành gia sư vẫn mang Enrollment cũ nhưng không được thêm lớp mới).
   const known = await prisma.enrollment.findMany({
-    where: { userId: { in: ids }, status: { in: ["active", "suspended"] }, course: { ownerId: auth.userId, NOT: { id: courseId } } }, select: { userId: true },
+    where: { userId: { in: ids }, user: { is: { role: "student" } }, status: { in: ["active", "suspended"] }, course: { ownerId: auth.userId, NOT: { id: courseId } } }, select: { userId: true },
   });
   const knownSet = new Set(known.map(k => k.userId));
   const stranger = ids.filter(i => !knownSet.has(i));

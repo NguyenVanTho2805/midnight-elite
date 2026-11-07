@@ -62,9 +62,14 @@ import { BASE } from "./h";
   await q.getByRole("button", { name: "Tiếp tục" }).click();
   check("bỏ trống tên → lỗi, không tạo lớp, còn ở bước 1", await q.locator("p[role=alert]").isVisible() || await q.getByLabel(/Tên lớp/).evaluate((e: HTMLInputElement) => !e.validity.valid));
   await q.getByLabel(/Tên lớp/).fill("Toán 9 thử");
+  await q.getByLabel(/^Đơn giá/).fill("120000"); // học phí theo buổi (mặc định) bắt buộc có đơn giá
   await q.getByRole("button", { name: "Tiếp tục" }).click();   // BU-01: bước 2 = Lịch học
   await q.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await q.getByLabel("Ngày trong tuần").selectOption("2");
+  // TUT-lich-keo-tha: khung giờ đặt bằng panel của lưới (mặc định 19:00–20:30 là giờ do cô chọn ở đây).
+  await q.locator("[data-block-panel] select").first().selectOption("2");
+  await q.locator("#sched-s").selectOption("1140"); await q.locator("#sched-e").selectOption("1230");
+  await q.getByRole("button", { name: "Lưu khung giờ" }).click();
+  await q.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await q.getByRole("button", { name: "Tiếp tục" }).click();   // BU-01: bước 3 = Cách vào lớp (mặc định Cô duyệt)
   await q.getByRole("button", { name: /^Tạo lớp \+ \d+ buổi$/ }).click();
   await q.waitForURL(/\/lop-cua-toi\/toan-9-thu/, { timeout: 90000 });

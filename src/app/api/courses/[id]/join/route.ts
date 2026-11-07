@@ -43,7 +43,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     case "invite_only": return see(`${page}?join=chi-ma`);
     case "enroll": {
       const r = await prisma.$transaction((tx) => enrollInTx(tx, { userId: session.userId, course, source: "join_open" }));
-      if (!r.ok) return see(`${page}?join=${r.code === "CLASS_CLOSED" ? "dong" : "day"}`);
+      if (!r.ok) {
+        // Tài khoản không còn là học sinh (đổi vai giữa chừng): không phải "lớp đầy" ⇒ không dùng ?join=day.
+        if (r.code === "NOT_STUDENT") return NextResponse.json({ error: "Chỉ học sinh mới dùng chức năng này" }, { status: 403, headers: NO_STORE });
+        return see(`${page}?join=${r.code === "CLASS_CLOSED" ? "dong" : "day"}`);
+      }
       await logEnrollment(session.userId, r, { courseId: id, source: "join_open" });
       return see(`/student/hoc-tap?course=${encodeURIComponent(id)}`);
     }

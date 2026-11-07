@@ -61,7 +61,17 @@ function translate(input: string, from: "admin" | "tutor"): string | null {
 export function toTutorPath(adminPath: string): string | null { return translate(adminPath, "admin"); }
 
 /** Chiều ngược: /lop-cua-toi/quan-lop/abc?tab=lich-hoc → /admin/khoa-hoc/abc?tab=lich-hoc; đường không thuộc hai họ này → null. */
-export function toAdminPath(tutorPath: string): string | null { return translate(tutorPath, "tutor"); }
+export function toAdminPath(tutorPath: string): string | null {
+  // TUT-lich-keo-tha: trang khung giờ kéo-thả của gia sư (/quan-lop/<id>/lich-hoc) không có bản /admin riêng — quản trị dùng tab "Lịch học" của trang quản khoá. Chiều xuôi (toTutorPath) KHÔNG đổi.
+  const [path, search] = splitQuery(tutorPath);
+  const m = /^\/lop-cua-toi\/quan-lop\/([^/]+)\/lich-hoc$/.exec(path);
+  if (m && m[1] !== "tao-moi" && m[1] !== "danh-muc") {
+    const q = new URLSearchParams(search.replace(/^\?/, ""));
+    q.set("tab", "lich-hoc");
+    return `/admin/khoa-hoc/${m[1]}?${q.toString()}`;
+  }
+  return translate(tutorPath, "tutor");
+}
 
 /** Liên kết trong trang DÙNG CHUNG: gia sư đi đường của mình, quản trị giữ /admin/... (không map được thì về Hộp việc của gia sư). */
 export function contentHref(isTeacher: boolean, adminPath: string): string {
@@ -111,7 +121,8 @@ export function contentTabsFor(pathname: string, tab: string | null = null): Con
       { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: current === "cai-dat" },
       { label: "Giáo trình", href: `${base}/giao-trinh`, active: sub === "giao-trinh" || sub.startsWith("giao-trinh/") },
       { label: "Bài tập tự nộp", href: `${base}?tab=chuong-bai`, active: current === "chuong-bai" },
-      { label: "Lịch học", href: `${base}?tab=lich-hoc`, active: current === "lich-hoc" },
+      // TUT-lich-keo-tha: tab "Lịch học" của gia sư là lưới kéo-thả ở trang riêng /lich-hoc; ?tab=lich-hoc (liên kết cũ) vẫn sáng tab này.
+      { label: "Lịch học", href: `${base}/lich-hoc`, active: sub === "lich-hoc" || current === "lich-hoc" },
       // "Danh bạ lớp" là trang danh bạ riêng (/hoc-vien, TK-171); ?tab=hoc-vien ("Học viên đăng ký") của trang gốc cũng sáng tab này. Mọi link tới /hoc-vien dùng đúng nhãn này.
       { label: "Danh bạ lớp", href: `${base}/hoc-vien`, active: sub === "hoc-vien" || current === "hoc-vien" },
       { label: "Điểm danh", href: `${base}/diem-danh`, active: sub === "diem-danh" || sub.startsWith("diem-danh/") },

@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import type { SessionPayload } from "@/lib/session";
-import { canAccessClass, canAccessThread, visibleThreadScope } from "@/lib/classThreadAccess";
+import { activeHelperCourseIds, canAccessClass, canAccessThread, visibleThreadScope } from "@/lib/classThreadAccess";
 import { PERMISSIONS, checkPermission } from "@/lib/permissions";
 import {
   buildReplyTree, encodeCursor, excerptOf, feedKey, legacyQuestionToFeedItem, mergeFeedPages,
@@ -14,7 +14,7 @@ import {
 } from "@/lib/communityFeed";
 import { publicName } from "@/lib/communityRules";
 import type {
-  CommunityErrorCode, CommunityTab, FeedItem, FeedPage, GridItem, ProfileData, SidebarData, ThreadDetail,
+  CommunityErrorCode, CommunityTab, FeedAuthor, FeedItem, FeedPage, GridItem, ProfileData, ReplyNode, SidebarData, ThreadDetail,
 } from "@/lib/communityTypes";
 
 export const NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -37,6 +37,47 @@ export function isCenterAdmin(s: SessionPayload | null): boolean {
 }
 export function canModerateCommunity(s: SessionPayload | null): boolean {
   return !!s && s.role === "admin" && checkPermission(s.adminRole, PERMISSIONS.MANAGE_COMMUNITY);
+}
+
+// ─── Giấu tên đồng giảng khỏi học viên (TUT-dong-giang Q5 = không) ────────────────
+
+export const HELPER_AUTHOR: FeedAuthor = { id: null, label: "Giáo viên của lớp", tag: null, href: null };
+
+/**
+ * Tập khoá `${courseId}:${authorId}` của tác giả là đồng giảng / giáo viên bộ môn (đang hiệu lực HOẶC đã gỡ — bài cũ không được lộ tên) mà NGƯỜI XEM không được thấy tên:
+ * người xem là học viên, khách, hay gia sư không thuộc lớp. Chủ lớp, đồng giảng của chính lớp đó và quản trị trung tâm thấy tên thật. Chủ lớp KHÔNG bị giấu (học viên biết GVCN).
+ */
+export async function helperAuthorsToHide(session: SessionPayload | null, pairs: { courseId: string | null; authorId: string | null }[]): Promise<Set<string>> {
+  const rel = pairs.filter((p): p is { courseId: string; authorId: string } => !!p.courseId && !!p.authorId);
+  if (rel.length === 0 || isCenterAdmin(session)) return new Set();
+  const courseIds = [...new Set(rel.map(p => p.courseId))];
+  const authorIds = [...new Set(rel.map(p => p.authorId))];
+  const [rows, owned, helping] = await Promise.all([
+    prisma.courseTeacher.findMany({
+      where: { courseId: { in: courseIds }, userId: { in: authorIds }, },
+      select: { courseId: true, userId: true },
+    }),
+    session ? prisma.course.findMany({ where: { id: { in: courseIds }, ownerId: session.userId }, select: { id: true } }) : Promise.resolve([]),
+    session && session.role === "admin" && session.adminRole === "teacher" ? activeHelperCourseIds(session.userId) : Promise.resolve([] as string[]),
+  ]);
+  const staff = new Set<string>([...owned.map(c => c.id), ...helping]);
+  const hide = new Set<string>();
+  for (const r of rows) if (!staff.has(r.courseId)) hide.add(`${r.courseId}:${r.userId}`);
+  return hide;
+}
+
+export async function hideHelperNamesInItems<T extends { course: { id: string } | null; author: FeedAuthor }>(session: SessionPayload | null, items: T[]): Promise<T[]> {
+  const hide = await helperAuthorsToHide(session, items.map(i => ({ courseId: i.course?.id ?? null, authorId: i.author.id })));
+  if (hide.size === 0) return items;
+  return items.map(i => (i.course && i.author.id && hide.has(`${i.course.id}:${i.author.id}`) ? { ...i, author: HELPER_AUTHOR } : i));
+}
+
+function hideInReplies(nodes: ReplyNode[], courseId: string, hide: Set<string>): ReplyNode[] {
+  return nodes.map(n => ({
+    ...n,
+    author: n.author.id && hide.has(`${courseId}:${n.author.id}`) ? HELPER_AUTHOR : n.author,
+    children: hideInReplies(n.children, courseId, hide),
+  }));
 }
 
 // ─── Tham số ─────────────────────────────────────────────────────────────────
@@ -151,7 +192,11 @@ export async function loadFeedPage(p: FeedParams): Promise<FeedPage | { forbidde
     [threads.map(t => threadToFeedItem(t, viewerId)), legacy.map(q => legacyQuestionToFeedItem(q, viewerId))],
     p.limit,
   );
-  return { pinned: pinned.map(t => threadToFeedItem(t, viewerId)), items: merged.items, nextCursor: merged.nextCursor };
+  const [pinnedItems, items] = await Promise.all([
+    hideHelperNamesInItems(p.session, pinned.map(t => threadToFeedItem(t, viewerId))),
+    hideHelperNamesInItems(p.session, merged.items),
+  ]);
+  return { pinned: pinnedItems, items, nextCursor: merged.nextCursor };
 }
 
 // "Đã lưu": chỉ bài còn công khai và lớp mà người gọi CÒN là thành viên.
@@ -168,7 +213,7 @@ export async function loadBookmarksPage(session: SessionPayload, cursor: FeedCur
     include: { thread: { include: threadInclude(session.userId) } },
   });
   const page = rows.slice(0, limit);
-  const items = page.map(r => ({ ...threadToFeedItem(r.thread, session.userId), bookmarkedByMe: true }));
+  const items = await hideHelperNamesInItems(session, page.map(r => ({ ...threadToFeedItem(r.thread, session.userId), bookmarkedByMe: true })));
   const last = page[page.length - 1];
   // Con trỏ của "Đã lưu" xếp theo thời điểm LƯU; nguồn luôn "thread".
   const nextCursor = rows.length > limit && last
@@ -231,11 +276,17 @@ export async function loadThreadDetail(session: SessionPayload | null, threadId:
   }));
   const { key: _k, source: _s, href: _h, ...rest } = item;
   void _k; void _s; void _h;
+  const hide = await helperAuthorsToHide(session, [
+    { courseId: t.courseId, authorId: t.authorId },
+    ...t.replies.map(r => ({ courseId: t.courseId, authorId: r.authorId })),
+  ]);
+  const tree = buildReplyTree(flat);
   return {
     ...rest,
+    author: t.courseId && rest.author.id && hide.has(`${t.courseId}:${rest.author.id}`) ? HELPER_AUTHOR : rest.author,
     canAccept: t.kind === "question" && (await canAcceptReply(session, t)),
     acceptedReplyId: t.acceptedReplyId,
-    replies: buildReplyTree(flat),
+    replies: t.courseId && hide.size ? hideInReplies(tree, t.courseId, hide) : tree,
   };
 }
 

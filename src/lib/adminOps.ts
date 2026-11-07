@@ -114,6 +114,7 @@ const ACTION_LABEL: Record<string, string> = {
   // ADM-001 (01/11/2026) — Tin tức và ẩn / khôi phục học sinh (mục 7.1 đặc tả).
   "article.create": "Tạo bài viết", "article.update": "Sửa bài viết", "article.publish": "Đăng bài viết", "article.unpublish": "Gỡ đăng bài viết (về nháp)", "article.delete": "Xoá bài viết",
   "student.hide": "Ẩn học sinh", "student.restore": "Khôi phục học sinh đã ẩn",
+  "account.delete": "Xoá tài khoản (ẩn danh hoá)", "account.delete_blocked": "Xoá tài khoản bị chặn", "course_teacher.invite": "Mời đồng giảng", "course_teacher.invite_noop": "Mời đồng giảng (đã có sẵn)", "course_teacher.accept": "Nhận lời đồng giảng", "course_teacher.decline": "Từ chối đồng giảng", "course_teacher.cancel_invite": "Thu hồi lời mời đồng giảng", "course_teacher.remove": "Gỡ đồng giảng khỏi lớp", "course_teacher.leave": "Đồng giảng rời lớp", "course_teacher.role": "Đổi vai đồng giảng", "attendance_session.request_close": "Xin chốt phiên điểm danh", "student.promote_tutor": "Chuyển học sinh thành gia sư", "student.lookup_email": "Tìm học sinh theo email",
   // ADM-001 — mã đang được logAction trong api/admin/** nhưng chưa có nhãn (mục 7.2, bắt buộc). Bài t-adm-001-lib quét nguồn để nhãn không thiếu lại.
   "admission_score.create": "Thêm dòng điểm chuẩn", "admission_score.update": "Sửa dòng điểm chuẩn", "admission_score.delete": "Xoá dòng điểm chuẩn",
   "admission_score.import": "Nhập điểm chuẩn hàng loạt", "admission_score.seed": "Nạp điểm chuẩn khởi đầu",
@@ -144,7 +145,7 @@ const ACTION_LABEL: Record<string, string> = {
   "article.scheduled_notify": "Báo bài hẹn giờ đã lên",
 };
 const RESOURCE_LABEL: Record<string, string> = {
-  User: "Người dùng", Course: "Lớp", TutorSubscription: "Gói VIP gia sư", PlanConfig: "Cấu hình gói", ProOrder: "Yêu cầu gói Pro", CoinTopupRequest: "Yêu cầu nạp Coin",
+  User: "Người dùng", CourseTeacher: "Đồng giảng", Course: "Lớp", TutorSubscription: "Gói VIP gia sư", PlanConfig: "Cấu hình gói", ProOrder: "Yêu cầu gói Pro", CoinTopupRequest: "Yêu cầu nạp Coin",
   StudentProfile: "Hồ sơ học sinh", ParentLink: "Liên kết phụ huynh", Invoice: "Phiếu học phí", Enrollment: "Ghi danh", ClassInvite: "Mã mời lớp", ClassJoinRequest: "Yêu cầu vào lớp", ClassSessionChange: "Đổi buổi học",
   TutorProfileReport: "Báo cáo hồ sơ gia sư", SiteContent: "Nội dung trang công khai", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng", CourseCategory: "Danh mục khoá học",
   // ADM-001 (mục 7.3): resourceType đang được ghi nhưng chưa có nhãn. Giữ `Invoice` cũ; các route thật ghi `TuitionInvoice`.
@@ -292,7 +293,7 @@ export function groupTodayItems(items: TodayItem[]): { key: TodayGroupKey; label
 const PERMISSION_LABEL: Record<Permission, string> = {
   VIEW_REVENUE: "Xem doanh thu", MANAGE_REVENUE: COIN_VISIBLE ? "Quản lý gói, nạp Coin và tiền" : "Quản lý gói và tiền", VIEW_STUDENTS: "Xem học sinh", MANAGE_STUDENTS: "Quản lý hồ sơ học sinh",
   MANAGE_COURSES: "Quản lý khoá học", MANAGE_CURRICULUM: "Quản lý đề thi và ngân hàng câu hỏi", MANAGE_HONOR: "Quản lý bảng vinh danh",
-  MANAGE_ADMINS: "Đổi vai và xem nhật ký", MANAGE_NEWS: "Quản lý tin tức, blog, điểm chuẩn", MANAGE_COMMUNITY: "Kiểm duyệt cộng đồng", MANAGE_TUTORS: "Duyệt hồ sơ gia sư và hỗ trợ gia sư",
+  MANAGE_ADMINS: "Đổi vai và xem nhật ký", MANAGE_NEWS: "Quản lý tin tức, blog, điểm chuẩn", MANAGE_COMMUNITY: "Kiểm duyệt cộng đồng", MANAGE_TUTORS: "Duyệt hồ sơ gia sư và hỗ trợ gia sư", DELETE_ACCOUNTS: "Xoá tài khoản học sinh và gia sư",
 };
 export interface RoleSummary { role: AdminRole; label: string; who: string; can: string[] }
 /** Bảng vai đọc THẲNG từ ROLE_PERMISSIONS (một nguồn): thêm quyền ở permissions.ts là bảng đổi theo. Không tự bịa quyền. */

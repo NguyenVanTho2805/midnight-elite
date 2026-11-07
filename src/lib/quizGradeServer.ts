@@ -8,6 +8,7 @@ import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import type { SessionPayload } from "@/lib/session";
 import { computeRawEarned, regradeAttempt } from "@/lib/examGrading";
 import { logAction } from "@/lib/auditLog";
+import { tutorMayAssignToCourse } from "@/lib/courseAccessServer";
 import {
   buildQuizAnalytics, essayNeedsGrading, gradeState, normalizeComment, planPublishBatch, validateEssayPoints,
   type GradeState,
@@ -34,6 +35,10 @@ export async function requireOwnedExam(examId: string): Promise<{ auth: SessionP
   const exam = await findExam(examId);
   if (!exam) return NextResponse.json({ error: "Không tìm thấy đề" }, { status: 404 });
   if (exam.ownerId !== auth.userId) return NextResponse.json({ error: "Đề này không phải của bạn" }, { status: 403 });
+  // TUT-dong-giang: đề gắn lớp ⇒ tác giả phải CÒN là chủ lớp hoặc đồng giảng đang hiệu lực. Bị gỡ / đổi sang bộ môn ⇒ 403 (kết quả có tên + điểm học sinh của lớp).
+  if (exam.courseId && !(await tutorMayAssignToCourse(auth.userId, exam.courseId))) {
+    return NextResponse.json({ error: "Cô không còn dạy lớp của đề này nên không xem được kết quả." }, { status: 403 });
+  }
   return { auth, exam };
 }
 

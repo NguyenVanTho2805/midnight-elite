@@ -16,12 +16,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Thiếu userId hoặc courseId" }, { status: 400 });
   }
   const [user, course] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true, deletedAt: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true, deletedAt: true, role: true, adminRole: true, tutorVerified: true } }),
     prisma.course.findUnique({ where: { id: courseId }, select: { id: true } }),
   ]);
   if (!user)   return NextResponse.json({ error: "Không tìm thấy học viên" }, { status: 404 });
   // ADM-001 (4.8): em vừa ẩn không được kích hoạt lớp lại từ panel còn mở.
   if (user.deletedAt) return NextResponse.json({ error: "Học sinh đã ẩn, không ghi danh được. Khôi phục trước.", code: "hidden" }, { status: 409 });
+  // Tài khoản gia sư không phải học viên: không ghi danh vào lớp (D4a).
+  if (user.role === "admin" && (user.adminRole === "teacher" || user.tutorVerified === true)) {
+    return NextResponse.json({ error: "Đây là tài khoản gia sư, không ghi danh làm học viên được. Dùng tài khoản học sinh riêng.", code: "tutor_account" }, { status: 409 });
+  }
   if (!course) return NextResponse.json({ error: "Không tìm thấy khoá học" }, { status: 404 });
 
   // Status cho enrollment MỚI đi qua helper chung (BE-046). D04 chốt không có

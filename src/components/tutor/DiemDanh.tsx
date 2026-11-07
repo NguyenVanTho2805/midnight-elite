@@ -50,7 +50,8 @@ type RosterRow = {
   parentPhone:     string | null;
   zaloOpenedAt:    string | null;                       // TT-199: gia sư đã mở Zalo nhắn phụ huynh (trạng thái hiện tại)
 };
-type Session = { id: string; courseId: string; date: string; note: string | null };
+type Session = { id: string; courseId: string; date: string; note: string | null; state?: string | null; taughtBy?: string | null };
+export const CLOSED_OWNER_ONLY_TEXT = "Buổi đã chốt: chỉ chủ lớp sửa được.";
 
 // yyyy-mm-dd theo local — HTML <input type=date>.
 function todayISO(): string {
@@ -61,7 +62,9 @@ function todayISO(): string {
 // ĐX-01: Hộp việc dẫn tới `?date=YYYY-MM-DD` (buổi chưa điểm danh xong) — mở sẵn đúng ngày đó; thiếu / sai định dạng thì như cũ (hôm nay).
 // useSearchParams cần Suspense khi dựng sẵn trang: nơi dùng phải bọc <Suspense>.
 // `fixedDate` (trang buổi học BU-01, Lịch LI-05): đã biết đúng ngày → bỏ ô chọn ngày. `onChanged`: báo trang chứa sau khi tạo buổi / lưu điểm danh (để làm mới bộ đếm, trạng thái).
-export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, onChanged }: { courseId: string; embedded?: boolean; fixedDate?: string; onChanged?: () => void }) {
+// TUT-dong-giang: `limited` = đồng giảng / giáo viên bộ môn. Ẩn mọi thứ chạm tiền hoặc liên hệ phụ huynh: xuất bảng tháng, nhắn nhóm Zalo lớp, "Nhắn phụ huynh",
+// ô cho phụ huynh xem nhận xét, buổi bù, điểm buổi. Khi lưu không gửi `parentVisible` / `makeupCreditId` (máy chủ trả 403 nếu có).
+export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, onChanged, limited = false, onSession }: { courseId: string; embedded?: boolean; fixedDate?: string; onChanged?: () => void; limited?: boolean; onSession?: (s: { state: string | null; taughtBy: string | null } | null) => void }) {
   const queryDate = useSearchParams().get("date");
   const href = useContentHref(); // BU-00 bước 3: trang in dùng chung — gia sư /lop-cua-toi/quan-lop/…, quản trị /admin/khoa-hoc/…
   // useNotify (danh tính ổn định) chứ không phải useToast(): useToast() trả object mới mỗi lần render, đưa vào
@@ -78,6 +81,9 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
   const [zaloGroupUrl, setZaloGroupUrl] = useState<string | null>(null);
   const [groupText, setGroupText] = useState<string | null>(null); // PH-216: tin chung vào nhóm Zalo lớp
   const [compose, setCompose]     = useState<{ row: RosterRow; text: string } | null>(null);
+  // Đồng giảng / bộ môn không sửa được buổi đã chốt (máy chủ trả 409 SESSION_CLOSED_OWNER_ONLY): khoá mọi ô, hiện lời giải thích.
+  const locked = limited && session?.state === "closed";
+  useEffect(() => { onSession?.(session ? { state: session.state ?? null, taughtBy: session.taughtBy ?? null } : null); }, [session, onSession]);
 
   const load = useCallback(async () => {
     await Promise.resolve();
@@ -165,6 +171,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
       .map(r => {
         const present = r.status === "present" || r.status === "late";
         const makeupCreditId = present && r.useMakeup ? (r.makeupUsedId ?? r.makeupAvailable[0]?.id ?? null) : null;
+        if (limited) return { userId: r.userId, status: r.status, note: r.note };
         return { userId: r.userId, status: r.status, note: r.note, parentVisible: !!r.note && r.parentVisible, ...(makeupCreditId ? { makeupCreditId } : {}) };
       });
     if (records.length === 0) { toast.info("Chưa có thay đổi để lưu"); return; }
@@ -176,7 +183,10 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
         body:    JSON.stringify({ records }),
       });
       const d = await r.json();
-      if (!r.ok) { toast.err(d.error ?? "Lưu thất bại"); return; }
+      if (!r.ok) {
+        if (d.code === "SESSION_CLOSED_OWNER_ONLY") { toast.err(CLOSED_OWNER_ONLY_TEXT); await load(); onChanged?.(); return; }
+        toast.err(d.error ?? "Lưu thất bại"); return;
+      }
       toast.ok(`Đã lưu ${d.count} học viên`);
       if (typeof d.warning === "string") toast.info(d.warning);
       await load(); // làm mới danh sách buổi bù (đã dùng / được trả lại)
@@ -245,7 +255,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
             <input id="dd-date" type="date" value={date} onChange={e => setDate(e.target.value)}
               className="mt-2 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] tabular-nums" />
           </div>
-          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0}>Tất cả có mặt</KinButton>
+          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0 || locked}>Tất cả có mặt</KinButton>
         </div>
       ) : (
         <>
@@ -263,14 +273,14 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
       {!embedded && (
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--kin-vien-nhat)]">
           <h2 className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Điểm danh</h2>
-          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0}>Tất cả có mặt</KinButton>
+          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0 || locked}>Tất cả có mặt</KinButton>
         </div>
       )}
       {embedded && (
         <KinSectionHead title="Điểm danh" aside={session && roster.length > 0 ? `${roster.length - (counts.none ?? 0)}/${roster.length} em đã chọn` : undefined} />
       )}
 
-      {embedded && exportBlock}
+      {embedded && !limited && exportBlock}
 
       {/* State: loading / no-session / session */}
       {loading ? (
@@ -294,8 +304,9 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
       ) : roster.length === 0 ? (
         <div className="rounded-xl p-10 text-center text-body-sm" style={{ background: "var(--kin-nen-bang)" }}>
           <p>Lớp chưa có học sinh đang học.</p>
+          {limited ? <p className="mt-2" style={{ color: "var(--kin-chu-mo)" }}>Chủ lớp sẽ thêm học sinh. Khi có em vào lớp, cô quay lại điểm danh.</p> : <>
           <p className="mt-2" style={{ color: "var(--kin-chu-mo)" }}>Gửi mã mời để học sinh tự vào lớp, rồi quay lại điểm danh.</p>
-          <Link href={`/lop-cua-toi/${courseId}?tab=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mở mã mời của lớp</Link>
+          <Link href={`/lop-cua-toi/${courseId}?tab=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mở mã mời của lớp</Link></>}
         </div>
       ) : (
         <>
@@ -305,7 +316,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
           </p>
 
           {/* PH-216: tin điểm danh CHUNG vào nhóm Zalo lớp — không nêu em nào vắng */}
-          <div className="flex items-center justify-between gap-3 flex-wrap px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-vien-thuong)]">
+          {!limited && <div className="flex items-center justify-between gap-3 flex-wrap px-[var(--kin-kc-7)] py-[var(--kin-kc-6)] bg-[var(--kin-nen-bang)] border-l-2 border-[var(--kin-vien-thuong)]">
             <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>
               {allMarked ? "Tin chung cho nhóm Zalo lớp (không nêu tên em nào)." : "Điểm danh và lưu đủ các em rồi mới nhắn nhóm."}
               {" "}{zaloGroupUrl ? "Đã gắn nhóm Zalo của lớp." : "Chưa gắn nhóm Zalo (Cài đặt → Kết nối)."}
@@ -313,13 +324,14 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
             <button type="button" onClick={startGroupCompose} disabled={!allMarked}
               className="px-3 py-2 rounded-lg text-body-sm font-medium min-h-[44px] disabled:opacity-50"
               style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>Nhắn nhóm Zalo lớp</button>
-          </div>
+          </div>}
 
+          {locked && <p role="status" data-dd-da-chot className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{CLOSED_OWNER_ONLY_TEXT}</p>}
           {/* Roster rows */}
           <div>
             {roster.map(r => (
               <RosterRowView key={r.userId} r={r} onPick={setStatus} onToggleMakeup={setUseMakeup}
-                unsaved={dirty.has(r.userId)} onZalo={startCompose} onNote={setNote} onShare={setShare} />
+                unsaved={dirty.has(r.userId)} onZalo={startCompose} onNote={setNote} onShare={setShare} limited={limited} locked={locked} />
             ))}
           </div>
 
@@ -334,19 +346,19 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
               ))}
             </dl>
             <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
-              <KinButton variant="secondary" onClick={saveAll} disabled={dirty.size === 0} loading={saving} loadingLabel="Đang lưu...">Lưu điểm danh</KinButton>
+              <KinButton variant="secondary" onClick={saveAll} disabled={dirty.size === 0 || locked} loading={saving} loadingLabel="Đang lưu...">Lưu điểm danh</KinButton>
               <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" aria-live="polite">
-                {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Chưa điểm danh {tally.none}. Lưu điểm danh không tính học phí; lớp kiểu mới chỉ có học phí khi bấm Đã dạy xong.
+                {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Chưa điểm danh {tally.none}.{limited ? " Điểm danh xong thì báo chủ lớp chốt buổi." : " Lưu điểm danh không tính học phí; lớp kiểu mới chỉ có học phí khi bấm Đã dạy xong."}
               </span>
             </div>
           </div>
 
           {/* BU-11: điểm 0-10 và % BTVN từng em (chỉ khi hồ sơ của em có đồng ý) */}
-          <DiemBuoi sessionId={session.id} />
+          {!limited && <DiemBuoi sessionId={session.id} />}
         </>
       )}
 
-      {!embedded && exportBlock}
+      {!embedded && !limited && exportBlock}
 
       {groupText !== null && (
         <Modal title="Nhắn nhóm Zalo lớp" onClose={() => setGroupText(null)}>
@@ -383,7 +395,8 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
   );
 }
 
-function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onShare }: {
+function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onShare, limited = false, locked = false }: {
+  limited?: boolean; locked?: boolean;
   r: RosterRow;
   onPick: (userId: string, status: AttendanceStatus) => void;
   onToggleMakeup: (userId: string, on: boolean) => void;
@@ -410,7 +423,7 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onS
           const picked = r.status === s;
           return (
             // Mobile <sm giấu hệ số để nhãn gọn; vẫn giữ aria-label (có hệ số) cho trình đọc màn hình + title khi rê chuột.
-            <button key={s} type="button" onClick={() => onPick(r.userId, s)} aria-pressed={picked}
+            <button key={s} type="button" onClick={() => onPick(r.userId, s)} aria-pressed={picked} disabled={locked}
               title={`${ATTENDANCE_LABEL[s]} (hệ số ×${ATTENDANCE_COEFFICIENT[s]})`}
               aria-label={`${ATTENDANCE_LABEL[s]} hệ số ${ATTENDANCE_COEFFICIENT[s]}`}
               className={`min-h-11 px-1 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] whitespace-nowrap transition-colors ${picked
@@ -426,21 +439,21 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onS
       <div className="basis-full" data-dd-note>
         <button type="button" onClick={() => setNoteOpen(o => !o)} aria-expanded={noteOpen}
           className="min-h-11 flex items-center text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">
-          {r.note ? "Nhận xét riêng" : "Thêm nhận xét riêng"}{r.note && r.parentVisible ? " · phụ huynh xem được" : ""}
+          {r.note ? "Nhận xét riêng" : "Thêm nhận xét riêng"}{!limited && r.note && r.parentVisible ? " · phụ huynh xem được" : ""}
         </button>
         {noteOpen && <div className="pt-1 space-y-2">
           <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`nx-${r.userId}`}>Nhận xét riêng cho {r.name}</label>
-          <textarea id={`nx-${r.userId}`} rows={2} maxLength={STUDENT_NOTE_MAX} value={r.note ?? ""} disabled={!r.status}
+          <textarea id={`nx-${r.userId}`} rows={2} maxLength={STUDENT_NOTE_MAX} value={r.note ?? ""} disabled={!r.status || locked}
             onChange={e => onNote(r.userId, e.target.value)} placeholder={r.status ? "Ví dụ: em làm đúng dạng cơ bản, cần luyện thêm…" : "Chọn trạng thái điểm danh trước"}
             className="w-full px-3 py-2 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] disabled:opacity-60" />
-          <label className="flex items-center gap-2 min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+          {!limited && <label className="flex items-center gap-2 min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
             <input type="checkbox" checked={r.parentVisible && !!r.note} disabled={!r.note} onChange={e => onShare(r.userId, e.target.checked)} />
             <span>Cho phụ huynh của em này xem nhận xét (qua link Sổ của con)</span>
-          </label>
+          </label>}
           <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Học sinh khác và phụ huynh khác không thấy. Lưu cùng điểm danh.</p>
         </div>}
       </div>
-      {hasMakeup && (
+      {hasMakeup && !limited && (
         <label className="basis-full flex items-center gap-2 text-[length:var(--kin-co-goc)] min-h-11" style={{ color: present ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
           <input type="checkbox" checked={!!r.useMakeup && present} disabled={!present}
             onChange={e => onToggleMakeup(r.userId, e.target.checked)} />
@@ -451,7 +464,7 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onS
           </span>
         </label>
       )}
-      {r.status && !unsaved && (
+      {r.status && !unsaved && !limited && (
         <div className="basis-full flex items-center gap-2 flex-wrap">
           <button type="button" onClick={() => onZalo(r)} aria-label={`Nhắn phụ huynh của ${r.name} qua Zalo`}
             className="min-h-11 font-medium text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">

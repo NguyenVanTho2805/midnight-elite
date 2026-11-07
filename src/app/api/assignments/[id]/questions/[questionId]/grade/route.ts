@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireAssignmentAccess } from "@/lib/courseAccessServer";
 import { logAction } from "@/lib/auditLog";
 
 // PATCH /api/assignments/[id]/questions/[questionId]/grade — giáo viên chấm
@@ -20,8 +19,10 @@ export async function PATCH(
     });
     if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
-    const auth = await requireOwnedResource(PERMISSIONS.MANAGE_CURRICULUM, assignment.ownerId);
-    if (isNextResponse(auth)) return auth;
+    // TUT-dong-giang: chủ lớp / quản trị / đồng giảng theo lớp chứa bài; bộ môn chỉ bài của mình hoặc nhóm của mình.
+    const acc = await requireAssignmentAccess(assignmentId, "grade");
+    if (!acc.ok) return acc.res;
+    const auth = acc.session;
 
     const question = await prisma.assignmentQuestion.findUnique({
       where: { id: questionId },

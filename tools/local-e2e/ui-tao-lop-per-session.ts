@@ -12,6 +12,13 @@ const SMALL = `[...document.querySelectorAll('main a, main button, main select, 
   return e.offsetParent && r.height < 43.5 && e.type !== 'checkbox' && e.type !== 'radio' && !e.closest('nav') && !e.closest('label') && !e.closest('nextjs-portal') && !e.closest('[data-kin-toast]') && e.getAttribute('aria-label') !== 'Mở rộng thanh bên';
 }).map(e => (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 30) + ':' + Math.round(e.getBoundingClientRect().height))`;
 
+// TUT-lich-keo-tha: bước Lịch học nay BẮT BUỘC. Bài này kiểm học phí, không kiểm lịch → đi bằng lối thoát duy nhất "Lớp này học buổi lẻ" (qua KinConfirm), rồi Tiếp tục.
+async function skipSchedule(p: import("./ui").Page) {
+  await p.locator("[data-one-off]").click();
+  await p.getByRole("button", { name: "Vẫn tạo không lịch" }).click();
+  await p.getByRole("button", { name: "Tiếp tục" }).click();
+}
+
 (async () => {
   await wipe();
   const T = await mkTutor("Cô Lan");
@@ -33,7 +40,7 @@ const SMALL = `[...document.querySelectorAll('main a, main button, main select, 
   check("không nhập đơn giá → ở lại bước 1, báo lỗi đơn giá", await stepOf(p) === "1" && await p.locator("p[role=alert]").first().isVisible());
   await p.getByLabel(/^Đơn giá/).fill("150000");
   await p.getByRole("button", { name: "Tiếp tục" }).click();
-  await p.getByRole("button", { name: "Tiếp tục" }).click();
+  await skipSchedule(p);
   check("sang bước 3 'Cách vào lớp'", await stepOf(p) === "3");
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();
   await p.waitForURL(/\/lop-cua-toi\/toan-9-theo-buoi/, { timeout: 90000 });
@@ -53,7 +60,7 @@ const SMALL = `[...document.querySelectorAll('main a, main button, main select, 
     await p.locator("[data-fee-free-note]").isVisible() && (await p.getByRole("heading", { name: "Cách tính học phí" }).count()) === 0 && (await p.getByLabel(/^Đơn giá/).count()) === 0);
   await p.getByLabel(/Tên lớp/).fill("Lớp miễn phí UI");
   await p.getByRole("button", { name: "Tiếp tục" }).click();
-  await p.getByRole("button", { name: "Tiếp tục" }).click();
+  await skipSchedule(p);
   check("Miễn phí đi thẳng qua bước 1 không cần đơn giá", await stepOf(p) === "3");
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();
   await p.waitForURL(/\/lop-cua-toi\/lop-mien-phi-ui/, { timeout: 90000 });

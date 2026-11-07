@@ -7,6 +7,7 @@ import { cloudinaryEnv, cloudinarySignedVideoUrl, localPathFor, openLocalRange }
 import { uploadLink } from "@/lib/mediaLink";
 import { isLearnerVisible } from "@/lib/lessonStatus";
 import { managerOf } from "@/lib/lessonVisibility";
+import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 
 // GET /api/media/[id]/stream — phát video lưu trên KiN. KHÔNG có địa chỉ công khai: mỗi lượt đều kiểm quyền.
 // Được xem: chủ video (xem trước khi lưu bài), quản trị, gia sư chủ lớp, học viên đã ghi danh hoặc bài miễn phí tham chiếu video này.
@@ -32,11 +33,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const l of lessons) {
       const course = l.chapter.section.course;
       // BU-02-PHẲNG (R18): bài Nháp/Ẩn chỉ quản lý lớp mới là "bài tham chiếu" hợp lệ.
-      if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId)) continue;
+      const helper = await isActiveHelperOfCourse(session, course.id, course.ownerId); // TUT-dong-giang
+      if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId) && !helper) continue;
       const enr = session.role === "student"
         ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { status: true } })
         : null;
-      if (canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: l.isFree })) { allowed = true; break; }
+      if (canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: l.isFree, coTeacher: helper })) { allowed = true; break; }
     }
   }
   if (!allowed) return NextResponse.json({ error: "Video này dành cho học sinh của lớp" }, { status: 403 });

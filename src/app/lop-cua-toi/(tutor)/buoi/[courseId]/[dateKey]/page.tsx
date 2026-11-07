@@ -8,6 +8,7 @@ import { isValidDateKey } from "@/lib/classSessions";
 import { prisma } from "@/lib/prisma";
 import { isNewFeeMode } from "@/lib/tuitionFee";
 import BuoiChiTiet from "@/components/tutor/BuoiChiTiet";
+import { courseRoleForPage } from "@/lib/courseAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +22,11 @@ export default async function BuoiPage({ params }: { params: Promise<{ courseId:
     const c = await prisma.course.findUnique({ where: { id: courseId }, select: { feeMode: true, ownerId: true } });
     perSessionFee = !!c && c.ownerId === session.userId && isNewFeeMode(c.feeMode) && c.feeMode !== "per_course";
   } catch { /* giữ câu cũ */ }
-  return <Suspense fallback={<div aria-busy="true" className="p-6">Đang tải buổi học…</div>}><BuoiChiTiet courseId={courseId} dateKey={dateKey} perSessionFee={perSessionFee} /></Suspense>;
+  // TUT-dong-giang: vai trong lớp (đồng giảng / bộ môn → màn bớt nút chốt, không chữ học phí). Quyền thật vẫn do API kiểm; lỗi đọc vai → coi như chủ (API sẽ 403 nếu không phải).
+  let viewRole: "co_teacher" | "subject_teacher" | undefined;
+  try {
+    const cr = await courseRoleForPage(session, courseId);
+    if (cr && (cr.role === "co_teacher" || cr.role === "subject_teacher")) { viewRole = cr.role; perSessionFee = false; }
+  } catch { /* giữ mặc định */ }
+  return <Suspense fallback={<div aria-busy="true" className="p-6">Đang tải buổi học…</div>}><BuoiChiTiet courseId={courseId} dateKey={dateKey} perSessionFee={perSessionFee} viewRole={viewRole} /></Suspense>;
 }

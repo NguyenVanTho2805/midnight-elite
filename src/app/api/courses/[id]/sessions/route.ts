@@ -8,22 +8,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { conflictText, extraSessionNotice, parseExtraSession } from "@/lib/sessionBook";
 import { notifyMany } from "@/lib/notify";
-import { authorizeCourse, conflictsForSlot, dayDate } from "@/lib/sessionBookServer";
+import { conflictsForSlot, dayDate } from "@/lib/sessionBookServer";
+import { requireCourseAccess, createdByFor, taughtByFor, isHelperRole } from "@/lib/courseAccessServer";
 import { logAction } from "@/lib/auditLog";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await authorizeCourse(id);
-  if ("res" in r) return r.res;
+  // TUT-dong-giang: đồng giảng tạo buổi lẻ / bù của MÌNH (taughtBy = me, createdBy = chủ lớp); bộ môn không (session.add.own ✘).
+  const acc = await requireCourseAccess(id, "session.add.own");
+  if (!acc.ok) return acc.res;
+  const r = { course: acc.course, auth: acc.session };
+  const personId = isHelperRole(acc.role) ? acc.session.userId : acc.course.ownerId;
+  const taughtBy = taughtByFor(acc);
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const p = parseExtraSession(body, new Date());
   if (!p.ok) return NextResponse.json({ error: p.error }, { status: 400 });
   const v = p.value;
 
-  if (body?.force !== true && r.course.ownerId) {
-    const conflicts = await conflictsForSlot(r.course.ownerId, { courseId: id, dateKey: v.dateKey, startTime: v.startTime, endTime: v.endTime });
+  if (body?.force !== true && personId) {
+    const conflicts = await conflictsForSlot(personId, { courseId: id, dateKey: v.dateKey, startTime: v.startTime, endTime: v.endTime });
     if (conflicts.length) {
       return NextResponse.json({
         error: "Buổi này trùng lịch. Kiểm tra lại hoặc chọn vẫn thêm.", needsConfirm: true,
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   try {
     const s = await prisma.attendanceSession.create({
-      data: { courseId: id, date: dayDate(v.dateKey), createdBy: r.auth.userId, kind: v.kind, startTime: v.startTime, endTime: v.endTime, mode: v.mode, location: v.location, joinUrl: v.joinUrl },
+      data: { courseId: id, date: dayDate(v.dateKey), createdBy: createdByFor(acc), ...(taughtBy ? { taughtBy } : {}), kind: v.kind, startTime: v.startTime, endTime: v.endTime, mode: v.mode, location: v.location, joinUrl: v.joinUrl },
       select: { id: true },
     });
     await logAction(r.auth.userId, "attendance_session.create_extra", "AttendanceSession", s.id, { courseId: id, kind: v.kind });

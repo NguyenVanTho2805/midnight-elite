@@ -9,6 +9,8 @@ import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
 import { pruneTreeForViewer } from "@/lib/lessonStatus";
+import { loadCourseAccess } from "@/lib/courseAccessServer";
+import { redactCourseForRole, canSeeMoney, type CourseRole } from "@/lib/courseAccess";
 import { canViewAllMaterials, isCourseManager, redactCourseLinks, redactCourseTree, type MediaContext, type MediaViewer } from "@/lib/mediaAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,9 +40,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const session = await getSession();
     let hasAccess = false;
     let enrolled: { status: string } | null = null;
+    // TUT-dong-giang: đồng giảng / bộ môn ĐANG HIỆU LỰC (đọc lại User từ DB) xem lớp như quản lý, nhưng KHÔNG thấy tiền / link nhóm phụ huynh.
+    let coRole: CourseRole | null = null;
 
     if (session) {
-      if (session.role === "admin") {
+      if (session.role === "admin" && session.adminRole === "teacher" && course.ownerId !== session.userId) {
+        const acc = await loadCourseAccess(session, id);
+        if (acc.ok && (acc.role === "co_teacher" || acc.role === "subject_teacher")) coRole = acc.role;
+      }
+      if (coRole) {
+        hasAccess = true;
+      } else if (session.role === "admin") {
         // V7 (BU-02): trước đây MỌI tài khoản admin đều coi là có quyền ⇒ gia sư không phải chủ thấy cây tên bài của lớp ẩn. Nay: quản trị hoặc đúng chủ lớp.
         hasAccess = isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, course.ownerId);
       } else {
@@ -60,7 +70,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     // BU-02-PHẲNG (R1): chỉ quản lý lớp (quản trị / gia sư chủ) thấy mục Nháp và Ẩn. Học sinh (kể cả đã ghi danh), khách, gia sư khác chỉ thấy mục Đã đăng.
     // Lọc TRƯỚC redact để tên/link mục nháp không đi vào bất kỳ nhánh nào của câu trả lời.
-    const isManager = session ? isCourseManager({ userId: session.userId, role: session.role, adminRole: session.adminRole }, course.ownerId) : false;
+    const isManager = session ? isCourseManager({ userId: session.userId, role: session.role, adminRole: session.adminRole }, course.ownerId, coRole !== null) : false;
     course.sections = pruneTreeForViewer({ sections: course.sections }, isManager).sections;
 
     // Học viên đã mua/đã enroll (hoặc admin) thì mọi bài học đều mở khoá,
@@ -79,13 +89,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Khách / chưa ghi danh vẫn thấy tên Phần, Chương, Bài để quyết định đăng ký, nhưng link bị bỏ trống.
     // Cùng quyền với link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) của lớp: chỉ quản lý lớp và học viên đang học.
     const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
-    const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: enrolled };
+    const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: enrolled, coTeacher: coRole !== null };
     const tree = redactCourseTree(ctx, course);
     // BU-01: nhãn "Miễn phí" tính sẵn bằng isFreeClass (cùng điều kiện mọi nơi); joinPolicy đã nằm trong dòng Course.
     const rated = await loadFeeRateCourseIds([course.id]);
     const isFree = isFreeClass({ price: course.price, tag: course.tag, hasFeeRate: rated.has(course.id) });
     // Đã nghỉ lớp (quyết định 06/11/2026): thêm `suspended` để trang "Lớp của tôi" hiện thông báo + nút liên hệ gia sư thay vì bài học. Chỉ cho CHÍNH em đó.
     const suspended = isSuspended(enrolled) ? { contactHref: contactTutorHref({ id: course.id, ownerId: course.ownerId }) } : undefined;
+    if (coRole) {
+      // Đồng giảng: bỏ price / originalPrice / feeMode / tag / link nhóm Zalo và cả nhãn isFree (suy từ giá) — tiền và liên hệ phụ huynh chờ chủ (Q2–Q4).
+      const view = redactCourseForRole(coRole, tree as unknown as Record<string, unknown>);
+      return NextResponse.json({ ...view, role: coRole, canSeeMoney: canSeeMoney(coRole) }, { headers: { "Cache-Control": "private, no-store" } });
+    }
     return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}) });
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);

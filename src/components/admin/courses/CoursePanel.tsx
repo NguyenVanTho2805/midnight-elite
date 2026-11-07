@@ -23,7 +23,7 @@ export function CoursePanel({ row, categories, isTeacher, hrefFor, onClose, onSa
   onClose: () => void;
   onSaved: (id: string, patch: CoursePatch) => void;
   onRemoved: (id: string) => void;
-  onDuplicated: () => void;
+  onDuplicated: (schedulesCopied?: number) => void;
 }) {
   // Panel được dựng lại (key = slug) khi đổi khoá, nên state khởi tạo từ row là đủ.
   const [name, setName] = useState(row.name);
@@ -76,7 +76,8 @@ export function CoursePanel({ row, categories, isTeacher, hrefFor, onClose, onSa
     try {
       const res = await fetch(`/api/courses/${row.id}/duplicate`, { method: "POST", credentials: "same-origin" });
       if (!res.ok) { setError("Sao chép thất bại. Thử lại nhé."); return; }
-      onDuplicated();
+      const d = await res.json().catch(() => ({})) as { schedulesCopied?: unknown };
+      onDuplicated(typeof d.schedulesCopied === "number" ? d.schedulesCopied : undefined);
     } catch { setError("Mất kết nối, chưa sao chép được."); } finally { setBusy(""); }
   }
 
