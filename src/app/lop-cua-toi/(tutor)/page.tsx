@@ -9,6 +9,7 @@
 //
 // Click 1 lớp → trang lớp /lop-cua-toi/[courseId]; hai lối tắt Điểm danh / Danh bạ lớp đi theo vai (BU-00 bước 3: gia sư → /lop-cua-toi/quan-lop/…,
 // quản trị → /admin/khoa-hoc/…, src/lib/tutorRoutes.ts).
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
@@ -32,7 +33,7 @@ export default async function LopCuaToiPage() {
     // TT-203: Hộp việc đã bị gia sư tắt (chế độ gọn tường minh `modules` không có "hop-viec") thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở
     // /lop-cua-toi/tong-quan (B1 08/11/2026: trang đó chỉ còn khi Hộp việc tắt; còn bật thì chuyển về đây, nơi số liệu đã dời lên đầu). BU-00: `modules` vắng mặt = đủ module nên gia sư mới rơi thẳng vào Hộp việc, không chuyển hướng.
     if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
-    return <HopViec top={<TutorOverviewStats tutorId={session.userId} />} />;
+    return <HopViec top={<Suspense fallback={null}><TutorOverviewStats tutorId={session.userId} /></Suspense>} />;
   }
 
   // BU-00 bước 5: gia sư CHỜ DUYỆT (role student + đơn đang chờ) không có lớp nào để liệt kê — trang đầu của họ là Trạng thái hồ sơ.
