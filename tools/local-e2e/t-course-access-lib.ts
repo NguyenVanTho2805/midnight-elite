@@ -135,7 +135,9 @@ const goodUser: CoTeacherUserRow = { role: "admin", adminRole: "teacher", tutorV
   check("studentNamesVisible: bộ môn trong nhóm mình thấy", studentNamesVisible("subject_teacher", ME, ME));
   check("studentNamesVisible: bộ môn ngoài nhóm / nhóm chưa giao ẩn", !studentNamesVisible("subject_teacher", ME, OTHER) && !studentNamesVisible("subject_teacher", ME, null));
   check("studentNamesVisible: vai lạ ẩn", !studentNamesVisible("none", ME, ME));
-  check("anonymousStudentLabel: 'Học viên N' 1-based", anonymousStudentLabel(0) === "Học viên 1" && anonymousStudentLabel(9) === "Học viên 10");
+  check("anonymousStudentLabel: băm ổn định theo mã, đúng dạng 'Học viên XXXXX'", /^Học viên [0-9A-F]{5}$/.test(anonymousStudentLabel("u1")) && anonymousStudentLabel("u1") === anonymousStudentLabel("u1"));
+  check("anonymousStudentLabel: mã khác ⇒ nhãn khác; không lộ mã gốc", anonymousStudentLabel("u1") !== anonymousStudentLabel("u2") && !anonymousStudentLabel("userABC").includes("userABC"));
+  check("anonymousStudentLabel: không phụ thuộc vị trí trong danh sách (CA PHÁ: nhãn kiểu chỉ số 'Học viên 1' bị cấm)", anonymousStudentLabel("u1") !== "Học viên 1");
 
   section("canEditSchedule");
   check("owner sửa khung bất kỳ", canEditSchedule("owner", ME, null) && canEditSchedule("owner", ME, OTHER));

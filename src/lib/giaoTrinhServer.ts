@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma";
 import { documentUploadConfig } from "./mediaStorageServer";
 import {
-  buildEntries, deriveItems, isGenericTree, kinFileIdOf, MAX_ITEM_NAME, pickUngroupedChapter, placeItem, removeItem, routeInput,
+  buildEntries, groupsForViewer, deriveItems, isGenericTree, kinFileIdOf, MAX_ITEM_NAME, pickUngroupedChapter, placeItem, removeItem, routeInput,
   type GiaoTrinhSnapshot, type GtConfig, type GtItem, type LessonRow, type TreeSection,
 } from "./giaoTrinh";
 import { isLessonStatus, publishBlockFor, transitionError, type LessonStatus } from "./lessonStatus";
@@ -36,7 +36,7 @@ const TREE_SELECT = {
 };
 
 /** Bản chụp Giáo trình (danh sách phẳng) của MỘT lớp (G1). null = không có lớp. Quyền do người gọi kiểm. Chủ lớp thấy cả Nháp/Ẩn. */
-export async function loadGiaoTrinh(courseId: string): Promise<GiaoTrinhSnapshot | null> {
+export async function loadGiaoTrinh(courseId: string, viewer: { userId: string; seeTeacherIds: boolean }): Promise<GiaoTrinhSnapshot | null> {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     select: { id: true, name: true, ownerId: true, sections: { orderBy: { order: "asc" }, select: TREE_SELECT } },
@@ -54,7 +54,8 @@ export async function loadGiaoTrinh(courseId: string): Promise<GiaoTrinhSnapshot
       lessons: ch.lessons.map(l => { assignmentsByLesson[l.id] = l._count.assignments; return l; }),
     })),
   }));
-  const { entries, groups } = buildEntries(tree, { assignmentsByLesson });
+  const { entries, groups: rawGroups } = buildEntries(tree, { assignmentsByLesson });
+  const groups = groupsForViewer(rawGroups, viewer.userId, viewer.seeTeacherIds);   // userId giáo viên bộ môn chỉ chủ lớp / quản trị thấy; người khác nhận assignedTo
   const counts = { draft: 0, published: 0, hidden: 0 };
   for (const e of entries) counts[e.status]++;
   return {

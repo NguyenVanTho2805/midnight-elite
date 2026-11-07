@@ -12,9 +12,6 @@ export async function GET(
   const { id: assignmentId } = await params;
 
   try {
-    const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId }, select: { ownerId: true } });
-    if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
-
     // TUT-dong-giang: chủ lớp / quản trị / đồng giảng theo lớp chứa bài; bộ môn chỉ bài của mình hoặc nhóm của mình.
     const acc = await requireAssignmentAccess(assignmentId, "grade");
     if (!acc.ok) return acc.res;
@@ -27,9 +24,8 @@ export async function GET(
     });
 
     if (acc.namesVisible) return NextResponse.json(submissions);
-    // Bộ môn ngoài nhóm: ẩn tên + mã học sinh, nhãn theo thứ tự ổn định của người nộp (không theo bảng chữ cái).
-    const order = [...new Set(submissions.map(x => x.userId))].sort();
-    return NextResponse.json(submissions.map(x => ({ ...x, user: { id: x.user.id, name: anonymousStudentLabel(order.indexOf(x.userId)), studentId: null } })));
+    // Bộ môn ngoài nhóm: ẩn tên + mã học sinh, nhãn băm ổn định theo mã người nộp (không theo thứ tự danh sách).
+    return NextResponse.json(submissions.map(x => ({ ...x, user: { id: x.user.id, name: anonymousStudentLabel(x.userId), studentId: null } })));
   } catch (e) {
     console.error("[GET /api/assignments/[id]/submissions]", assignmentId, e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

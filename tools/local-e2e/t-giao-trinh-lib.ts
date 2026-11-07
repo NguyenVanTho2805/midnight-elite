@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { PROTECTED_LESSON_FIELDS } from "@/lib/mediaAccess";
-import { buildEntries, entryKind, isGenericTree, moveEntry, pickUngroupedChapter, VIDEO_FILE_REFUSED, VIDEO_YOUTUBE_ONLY, DRIVE_UNKNOWN_WARNING, type TreeSection, type GtEntry, deriveItems, itemKey, routeInput, placeItem, removeItem, lessonTypeFor, mergeLibrary, docTypeOf, storedDocType, kinFileIdOf, kinFileLink, MAX_LINKS_PER_SLOT, MAX_ITEM_NAME, type GtConfig, type LessonRow } from "@/lib/giaoTrinh";
+import { buildEntries, groupsForViewer, entryKind, isGenericTree, moveEntry, pickUngroupedChapter, VIDEO_FILE_REFUSED, VIDEO_YOUTUBE_ONLY, DRIVE_UNKNOWN_WARNING, type TreeSection, type GtEntry, deriveItems, itemKey, routeInput, placeItem, removeItem, lessonTypeFor, mergeLibrary, docTypeOf, storedDocType, kinFileIdOf, kinFileLink, MAX_LINKS_PER_SLOT, MAX_ITEM_NAME, type GtConfig, type LessonRow } from "@/lib/giaoTrinh";
 import { resolveDocumentUploadConfig, resolveVideoUploadConfig, validateDocumentFile, DOCUMENT_MAX_BYTES, DOCUMENT_QUOTA_BYTES, DOCUMENT_MIME_BY_EXT, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
 import { cloudinaryDocPublicId, cloudinaryDocUploadInit, cloudinarySignedRawUrl, signCloudinaryParams } from "@/lib/mediaStorageServer";
 import { validateDocumentsJson, documentFileIds } from "@/lib/lessonMediaServer";
@@ -384,6 +384,12 @@ section("buildEntries — danh sách phẳng, nhóm, thứ tự, trạng thái")
   check('ngầm + có tên ⇒ khối "chưa nhóm" đứng TRƯỚC dù chương ngầm nằm sau trong cây; tiêu đề nhóm của phần ngầm chỉ là tên chương', e.entries.map(x => x.id).join() === "u1,u2,n1" && e.groups.length === 1 && e.groups[0].title === "Hình học" && e.entries[0].groupId === null && e.entries[2].groupId === "cn");
   const tg = buildEntries([{ id: "s", title: "N", isImplicit: true, chapters: [{ id: "g1", title: "Của bộ môn", teacherId: "u-bm", lessons: [] }, { id: "g2", title: "Của chủ", lessons: [] }, { id: "g3", title: "Null", teacherId: null, lessons: [] }] }], { assignmentsByLesson: {} }).groups;
   check("groups[].teacherId = userId được giao, thiếu/null ⇒ null, chỉ có id/title/teacherId", JSON.stringify(tg.map(g => g.teacherId)) === JSON.stringify(["u-bm", null, null]) && tg.every(g => Object.keys(g).sort().join() === "id,teacherId,title"));
+  // P2-1: che teacherId theo người xem
+  const gv = (viewer: string, see: boolean) => groupsForViewer(tg, viewer, see);
+  check("groupsForViewer: chủ (seeIds) thấy userId thật; assignedTo: người khác 'other', chưa giao 'owner'", JSON.stringify(gv("owner1", true).map(g => [g.teacherId, g.assignedTo])) === JSON.stringify([["u-bm", "other"], [null, "owner"], [null, "owner"]]));
+  check("groupsForViewer: người khác (không seeIds) ⇒ teacherId null mọi nhóm, KHÔNG còn 'u-bm' trong JSON (ca phá: lộ id ⇒ đỏ)", !JSON.stringify(gv("co1", false)).includes("u-bm") && gv("co1", false).every(g => g.teacherId === null));
+  check("groupsForViewer: bộ môn u-bm thấy nhóm của mình = 'me', không có id; người khác u-x = 'other'", gv("u-bm", false)[0].assignedTo === "me" && gv("u-bm", false)[0].teacherId === null && gv("u-x", false)[0].assignedTo === "other");
+  check("groupsForViewer: khoá đúng 4 khoá id/title/teacherId/assignedTo", gv("x", false).every(g => Object.keys(g).sort().join() === "assignedTo,id,teacherId,title"));
   check("nhóm trống vẫn có trong groups (để vẽ tiêu đề / đổi tên)", buildEntries([{ id: "s", title: "N", isImplicit: true, chapters: [{ id: "ce", title: "Trống", lessons: [] }] }], { assignmentsByLesson: {} }).groups.length === 1);
   // trạng thái lạ + mục rỗng + bài tập
   const odd = buildEntries([{ id: "s0", title: "N", isImplicit: true, chapters: [{ id: "ci", title: "B", isImplicit: true, lessons: [lsn("o1", "Published"), lsn("o2", "published"), lsn("o3", "draft", { videoUrl: "javascript:alert(1)" }), lsn("o4", "hidden", {})] }] }], { assignmentsByLesson: { o4: 2 } });
