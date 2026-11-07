@@ -8,12 +8,13 @@
 //   - Đổi anonEmail thành "del+..." → ca "anonEmail" đỏ.
 //   - Đổi chỗ unused_credit / bank_pending với pending_money trong pickBlocker → ca "thứ tự" đỏ.
 //   - Bỏ DELETE_REASONS.includes ở readDeleteReason → ca "mã lạ" đỏ.
+//   - Đổi chỗ co_teaching_active với open_invoices trong pickBlocker → ca "thứ tự" và ca co_teaching_active đỏ.
 //   - Đổi `Array.from(given)[0]` trong shortNameOf thành cả tên → ca shortNameOf đỏ.
 import { check, section, done } from "./h";
 import { ANON_NAME, anonEmail, isAnonEmail, NOT_ANONYMIZED, buildAnonymizedUserData, pickBlocker, shortNameOf, readDeleteReason, DELETE_REASONS, type BlockerCounts } from "@/lib/accountDelete";
 import { ROLE_PERMISSIONS, checkPermission, PERMISSIONS } from "@/lib/permissions";
 
-const ZERO: BlockerCounts = { activeEnrollments: 0, ownedCoursesActive: 0, openInvoices: 0, uninvoicedFees: 0, activePackages: 0, pendingTopups: 0, pendingProOrders: 0, walletBalance: 0, approvedTopups: 0, activeSubscriptions: 0, unusedCredits: 0, bankPending: 0 };
+const ZERO: BlockerCounts = { activeEnrollments: 0, ownedCoursesActive: 0, coTeachingActive: 0, openInvoices: 0, uninvoicedFees: 0, activePackages: 0, pendingTopups: 0, pendingProOrders: 0, walletBalance: 0, approvedTopups: 0, activeSubscriptions: 0, unusedCredits: 0, bankPending: 0 };
 const NOW = new Date("2026-11-07T00:00:00Z");
 
 section("anonEmail / isAnonEmail");
@@ -38,19 +39,20 @@ for (const kind of ["student", "tutor"] as const) {
 section("pickBlocker: từng mã + thứ tự");
 check("không vướng → null", pickBlocker(ZERO) === null);
 const one: [string, Partial<BlockerCounts>][] = [
-  ["active_enrollments", { activeEnrollments: 2 }], ["owned_courses_active", { ownedCoursesActive: 1 }], ["open_invoices", { openInvoices: 3 }], ["uninvoiced_fees", { uninvoicedFees: 4 }],
+  ["active_enrollments", { activeEnrollments: 2 }], ["owned_courses_active", { ownedCoursesActive: 1 }], ["co_teaching_active", { coTeachingActive: 2 }], ["open_invoices", { openInvoices: 3 }], ["uninvoiced_fees", { uninvoicedFees: 4 }],
   ["unused_credit", { unusedCredits: 2 }], ["bank_pending", { bankPending: 3 }],
   ["active_packages", { activePackages: 1 }], ["pending_money", { pendingTopups: 1 }], ["pending_money", { pendingProOrders: 1 }],
   ["wallet_from_money", { walletBalance: 10, approvedTopups: 1 }], ["active_subscription", { activeSubscriptions: 1 }],
 ];
 for (const [code, c] of one) { const b = pickBlocker({ ...ZERO, ...c }); check(`${code} (${JSON.stringify(c)}) → 409 + tiếng Việt`, b?.code === code && b.status === 409 && /[à-ỹ]/.test(b.error) && b.error.length > 20, b); }
+check("co_teaching_active: extra.count + lời Việt, đứng ngay sau owned_courses_active, trước open_invoices", (() => { const b = pickBlocker({ ...ZERO, coTeachingActive: 2, openInvoices: 1 })!; const o = pickBlocker({ ...ZERO, coTeachingActive: 1, ownedCoursesActive: 1 })!; return b.code === "co_teaching_active" && b.extra?.count === 2 && /2 lớp đang đồng giảng/.test(b.error) && /Rời lớp/.test(b.error) && o.code === "owned_courses_active"; })());
 check("số lượng nằm trong câu: 2 lớp / 3 phiếu", /2 lớp/.test(pickBlocker({ ...ZERO, activeEnrollments: 2 })!.error) && /3 phiếu/.test(pickBlocker({ ...ZERO, openInvoices: 3 })!.error));
 check("ví có Coin nhưng chưa từng nạp tiền thật (thưởng đăng ký) → KHÔNG chặn", pickBlocker({ ...ZERO, walletBalance: 500, approvedTopups: 0 }) === null);
 check("đã nạp tiền thật nhưng ví 0 → KHÔNG chặn", pickBlocker({ ...ZERO, walletBalance: 0, approvedTopups: 2 }) === null);
-const c: BlockerCounts = { activeEnrollments: 1, ownedCoursesActive: 1, openInvoices: 1, uninvoicedFees: 1, activePackages: 1, pendingTopups: 1, pendingProOrders: 1, walletBalance: 1, approvedTopups: 1, activeSubscriptions: 1, unusedCredits: 1, bankPending: 1 };
-const order = ["active_enrollments", "owned_courses_active", "open_invoices", "uninvoiced_fees", "unused_credit", "bank_pending", "active_packages", "pending_money", "wallet_from_money", "active_subscription"];
+const c: BlockerCounts = { activeEnrollments: 1, ownedCoursesActive: 1, coTeachingActive: 1, openInvoices: 1, uninvoicedFees: 1, activePackages: 1, pendingTopups: 1, pendingProOrders: 1, walletBalance: 1, approvedTopups: 1, activeSubscriptions: 1, unusedCredits: 1, bankPending: 1 };
+const order = ["active_enrollments", "owned_courses_active", "co_teaching_active", "open_invoices", "uninvoiced_fees", "unused_credit", "bank_pending", "active_packages", "pending_money", "wallet_from_money", "active_subscription"];
 const clear: Record<string, (x: BlockerCounts) => void> = {
-  active_enrollments: x => { x.activeEnrollments = 0; }, owned_courses_active: x => { x.ownedCoursesActive = 0; }, open_invoices: x => { x.openInvoices = 0; }, uninvoiced_fees: x => { x.uninvoicedFees = 0; },
+  active_enrollments: x => { x.activeEnrollments = 0; }, owned_courses_active: x => { x.ownedCoursesActive = 0; }, co_teaching_active: x => { x.coTeachingActive = 0; }, open_invoices: x => { x.openInvoices = 0; }, uninvoiced_fees: x => { x.uninvoicedFees = 0; },
   unused_credit: x => { x.unusedCredits = 0; }, bank_pending: x => { x.bankPending = 0; },
   active_packages: x => { x.activePackages = 0; }, pending_money: x => { x.pendingTopups = 0; x.pendingProOrders = 0; }, wallet_from_money: x => { x.walletBalance = 0; }, active_subscription: x => { x.activeSubscriptions = 0; },
 };

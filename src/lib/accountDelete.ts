@@ -33,6 +33,7 @@ export function buildAnonymizedUserData(id: string, kind: AccountKind, now: Date
 export type BlockerCounts = {
   activeEnrollments: number;   // học sinh: Enrollment active của chính em
   ownedCoursesActive: number;  // gia sư: lớp còn học viên active hoặc còn mở
+  coTeachingActive: number;    // gia sư: CourseTeacher status active trên lớp chưa đóng (đồng giảng lớp người khác)
   openInvoices: number;        // phiếu draft|sent|parent_reported|partial
   uninvoicedFees: number;      // FeeCharge amount>0 chưa vào phiếu
   activePackages: number;      // gói buổi đang dùng
@@ -52,6 +53,7 @@ export const OPEN_INVOICE_STATUSES = ["draft", "sent", "parent_reported", "parti
 export function pickBlocker(c: BlockerCounts): Blocker | null {
   if (c.activeEnrollments > 0) return { code: "active_enrollments", status: 409, extra: { count: c.activeEnrollments }, error: `Học sinh còn ${c.activeEnrollments} lớp đang học. Thu hồi lớp trước khi xóa tài khoản.` };
   if (c.ownedCoursesActive > 0) return { code: "owned_courses_active", status: 409, extra: { count: c.ownedCoursesActive }, error: `Gia sư còn ${c.ownedCoursesActive} lớp đang mở hoặc còn học viên. Đóng lớp và thu hồi học viên trước khi xóa tài khoản.` };
+  if (c.coTeachingActive > 0) return { code: "co_teaching_active", status: 409, extra: { count: c.coTeachingActive }, error: `Gia sư còn ${c.coTeachingActive} lớp đang đồng giảng. Rời lớp hoặc nhờ chủ lớp gỡ trước khi xóa tài khoản.` };
   if (c.openInvoices > 0) return { code: "open_invoices", status: 409, extra: { count: c.openInvoices }, error: `Còn ${c.openInvoices} phiếu học phí chưa tất toán. Tất toán hoặc huỷ phiếu trước khi xóa tài khoản.` };
   if (c.uninvoicedFees > 0) return { code: "uninvoiced_fees", status: 409, extra: { count: c.uninvoicedFees }, error: `Còn ${c.uninvoicedFees} khoản học phí chưa vào phiếu. Lập phiếu hoặc xử lý các khoản này trước khi xóa tài khoản.` };
   if (c.unusedCredits > 0) return { code: "unused_credit", status: 409, extra: { count: c.unusedCredits }, error: `Còn ${c.unusedCredits} khoản tiền dư học phí chưa dùng hết. Dùng hết hoặc hoàn lại khoản dư trước khi xóa tài khoản.` };
@@ -64,11 +66,12 @@ export function pickBlocker(c: BlockerCounts): Blocker | null {
 }
 
 /** Đọc DB (chỉ ĐỌC các bảng tiền). */
-export async function countBlockers(userId: string, kind: AccountKind, db: Pick<typeof prisma, "enrollment" | "course" | "tuitionInvoice" | "feeCharge" | "sessionPackage" | "coinTopupRequest" | "proOrder" | "wallet" | "tutorSubscription" | "tuitionCredit" | "bankTransaction"> = prisma): Promise<BlockerCounts> {
+export async function countBlockers(userId: string, kind: AccountKind, db: Pick<typeof prisma, "enrollment" | "course" | "courseTeacher" | "tuitionInvoice" | "feeCharge" | "sessionPackage" | "coinTopupRequest" | "proOrder" | "wallet" | "tutorSubscription" | "tuitionCredit" | "bankTransaction"> = prisma): Promise<BlockerCounts> {
   const isTutor = kind === "tutor";
-  const [activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, wallet, approvedTopups, activeSubscriptions, credits, bankPending] = await Promise.all([
+  const [activeEnrollments, ownedCoursesActive, coTeachingActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, wallet, approvedTopups, activeSubscriptions, credits, bankPending] = await Promise.all([
     isTutor ? Promise.resolve(0) : db.enrollment.count({ where: { userId, status: "active" } }),
     isTutor ? db.course.count({ where: { ownerId: userId, OR: [{ enrollments: { some: { status: "active" } } }, { status: true, classStatus: { not: "closed" } }] } }) : Promise.resolve(0),
+    isTutor ? db.courseTeacher.count({ where: { userId, status: "active", course: { classStatus: { not: "closed" } } } }) : Promise.resolve(0),
     db.tuitionInvoice.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], status: { in: [...OPEN_INVOICE_STATUSES] } } }),
     db.feeCharge.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], amount: { gt: 0 }, invoiceId: null } }),
     db.sessionPackage.count({ where: { studentId: userId, status: "active" } }),
@@ -81,7 +84,7 @@ export async function countBlockers(userId: string, kind: AccountKind, db: Pick<
     isTutor ? db.bankTransaction.count({ where: { tutorId: userId, status: "pending" } }) : Promise.resolve(0),
   ]);
   const unusedCredits = credits.filter(c => c.amount - c.usedAmount > 0).length;
-  return { activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, walletBalance: wallet?.balance ?? 0, approvedTopups, activeSubscriptions, unusedCredits, bankPending };
+  return { activeEnrollments, ownedCoursesActive, coTeachingActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, walletBalance: wallet?.balance ?? 0, approvedTopups, activeSubscriptions, unusedCredits, bankPending };
 }
 
 /** Ẩn danh hoá trong MỘT giao dịch: khoá hàng User bằng updateMany (có điều kiện vai), ĐẾM LẠI các mã chặn trong cùng giao dịch rồi mới xoá PII.
