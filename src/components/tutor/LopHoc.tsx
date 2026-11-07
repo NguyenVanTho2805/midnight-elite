@@ -13,6 +13,7 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
+import DongGiangNhom from "@/components/tutor/DongGiangNhom";
 import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TWO_COL, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
 
 const FIELD = KIN_FIELD;
@@ -131,6 +132,8 @@ export default function LopHoc() {
           <p className="mt-8 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hiển thị {shown.length}/{all.length} lớp{filtering ? " theo bộ lọc" : ""}.</p>
         </>
       )}
+      {/* TUT-dong-giang 7.3: lớp cô được mời cùng dạy, nhóm riêng dưới lớp của cô. */}
+      <DongGiangNhom part="courses" />
     </KinPage>
   );
 }
