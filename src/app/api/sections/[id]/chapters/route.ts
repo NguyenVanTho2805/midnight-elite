@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccessBy } from "@/lib/courseAccessServer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id: sectionId } = await params;
-  const section = await prisma.section.findUnique({ where: { id: sectionId }, include: { course: { select: { ownerId: true } } } });
-  if (!section) return NextResponse.json({ error: "Không tìm thấy phần" }, { status: 404 });
-  if (!ownsResource(auth, section.course.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
+  // TUT-dong-giang: chủ / quản trị / đồng giảng tạo nhóm chung; giáo viên bộ môn tạo nhóm thì nhóm đó LUÔN giao cho chính họ (teacherId = me).
+  const acc = await requireCourseAccessBy(async () => (await prisma.section.findUnique({ where: { id: sectionId }, select: { courseId: true } }))?.courseId ?? null, "Không tìm thấy phần", "content.edit.own");
+  if (!acc.ok) return acc.res;
 
   const { title, order }  = await req.json();
   if (!title?.trim()) return NextResponse.json({ error: "Thiếu tiêu đề" }, { status: 400 });
@@ -27,6 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       title:     title.trim(),
       order:     order ?? (maxOrder._max.order ?? 0) + 1,
       sectionId,
+      ...(acc.role === "subject_teacher" ? { teacherId: acc.session.userId } : {}),
     },
   });
   return NextResponse.json(chapter, { status: 201 });

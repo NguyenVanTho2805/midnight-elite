@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccessBy, roleForbidden } from "@/lib/courseAccessServer";
+import { canEditChapter } from "@/lib/courseAccess";
 import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
+  const { id: chapterId } = await params;
+  // TUT-dong-giang: chủ / quản trị / đồng giảng soạn mọi nhóm; bộ môn chỉ nhóm giao cho mình (tác giả bài = người gọi).
+  const auth0 = await requireCourseAccessBy(async () => (await prisma.chapter.findUnique({ where: { id: chapterId }, select: { section: { select: { courseId: true } } } }))?.section.courseId ?? null, "Không tìm thấy chương", "content.edit.own");
+  if (!auth0.ok) return auth0.res;
+  const auth = auth0.session;
 
   try {
-    const { id: chapterId } = await params;
-
     const chapterWithCourse = await prisma.chapter.findUnique({
       where: { id: chapterId },
       include: { section: { include: { course: { select: { ownerId: true } } } } },
     });
     if (!chapterWithCourse) return NextResponse.json({ error: "Không tìm thấy chương" }, { status: 404 });
-    if (!ownsResource(auth, chapterWithCourse.section.course.ownerId)) {
-      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-    }
+    if (!canEditChapter(auth0.role, auth.userId, chapterWithCourse.teacherId)) return roleForbidden();
 
     const body = await req.json();
 

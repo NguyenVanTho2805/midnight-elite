@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccess, isHelperRole } from "@/lib/courseAccessServer";
 import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
 import { conflictText, parseSessionPatch } from "@/lib/sessionBook";
 import { conflictsForRule } from "@/lib/sessionBookServer";
@@ -9,18 +8,12 @@ import { conflictsForRule } from "@/lib/sessionBookServer";
 // GET /api/courses/[id]/class-schedules — danh sách khung giờ học cố định
 // hàng tuần của 1 khoá (dùng cho tab "Lịch học" trong trang sửa khoá học).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
-  if (isNextResponse(auth)) return auth;
-
   const { id: courseId } = await params;
+  // TUT-dong-giang: đồng giảng / bộ môn xem mọi khung (course.view).
+  const acc = await requireCourseAccess(courseId, "course.view");
+  if (!acc.ok) return acc.res;
 
   try {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
-    if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
-    if (!ownsResource(auth, course.ownerId)) {
-      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-    }
-
     const schedules = await prisma.classSchedule.findMany({
       where: { courseId },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
@@ -35,18 +28,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 // POST /api/courses/[id]/class-schedules — thêm 1 khung giờ học cố định mới.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
-  if (isNextResponse(auth)) return auth;
-
   const { id: courseId } = await params;
+  // TUT-dong-giang: chủ / quản trị thêm khung (có thể giao cho một giáo viên của lớp); đồng giảng thêm khung của MÌNH (teacherId luôn = me, bỏ qua giá trị client gửi);
+  // giáo viên bộ môn không lập khung (schedule.add.own ✘ ⇒ 403 ROLE_FORBIDDEN).
+  const acc = await requireCourseAccess(courseId, "schedule.add.own");
+  if (!acc.ok) return acc.res;
+  const course = { ownerId: acc.course.ownerId };
 
   try {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
-    if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
-    if (!ownsResource(auth, course.ownerId)) {
-      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-    }
-
     const body = await req.json();
     const { dayOfWeek, startTime, endTime, note, joinUrl } = body as {
       dayOfWeek?: number; startTime?: string; endTime?: string; note?: string; joinUrl?: string | null;
@@ -68,9 +57,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // LI-16: hình thức + địa chỉ của khung giờ (không bắt buộc; vắng = như cũ).
     const mp = parseSessionPatch({ mode: body.mode ?? null, location: body.location ?? null });
     if (!mp.ok) return NextResponse.json({ error: mp.error }, { status: 400 });
+    // Người dạy của khung: đồng giảng = chính họ; chủ / quản trị = tuỳ chọn (null = chủ lớp), chỉ nhận chủ lớp hoặc giáo viên đang `active` của lớp.
+    let teacherId: string | null = null;
+    if (isHelperRole(acc.role)) teacherId = acc.session.userId;
+    else if (typeof body.teacherId === "string" && body.teacherId && body.teacherId !== course.ownerId) {
+      const ok = await prisma.courseTeacher.findFirst({ where: { courseId, userId: body.teacherId, status: "active" }, select: { id: true } });
+      if (!ok) return NextResponse.json({ error: "Người dạy phải là giáo viên đang dạy trong lớp" }, { status: 400 });
+      teacherId = body.teacherId;
+    }
     // LI-10: kiểm xung đột trước khi lưu — chỉ khi gọi xin kiểm (checkConflicts) và chưa chọn "vẫn lưu" (force); gọi cũ không đổi hành vi.
-    if (body.checkConflicts === true && body.force !== true && course.ownerId) {
-      const conflicts = await conflictsForRule(course.ownerId, { courseId, dayOfWeek, startTime: start, endTime: end });
+    const personId = teacherId ?? course.ownerId;
+    if (body.checkConflicts === true && body.force !== true && personId) {
+      const conflicts = await conflictsForRule(personId, { courseId, dayOfWeek, startTime: start, endTime: end });
       if (conflicts.length) return NextResponse.json({ error: "Khung giờ này trùng lịch.", needsConfirm: true, conflicts: conflicts.map(c => ({ kind: c.kind, text: conflictText(c), sharedStudents: c.sharedStudents })) }, { status: 409 });
     }
 
@@ -82,6 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         joinUrl: join.value,
         mode: mp.value.mode ?? null,
         location: mp.value.location ?? null,
+        teacherId,
       },
     });
 

@@ -2,6 +2,7 @@
 // Quyền (Q1/Q2) do route gác bằng requireTutor(); ở đây: đề không có → 404, của gia sư khác → 403, id mã đề con → 400 IS_VARIANT.
 // CHỈ `loadBangDiem` và `loadXlsx` đọc tên học sinh; `loadKetQua` không chọn cột tên nào. Giám sát rời màn hình: chỉ ĐỌC tabSwitchCount.
 import { prisma } from "@/lib/prisma";
+import { tutorMayAssignToCourse } from "@/lib/courseAccessServer";
 import type { Fail, Outcome } from "@/lib/deThiServer";
 import { RESULTS_MAX_ATTEMPTS, capRows, buildKetQua, buildScoreTable, type Chon, type KetQua, type ResultsInput, type ScoreRow } from "@/lib/deThiResults";
 import { resultsXlsx, resultsXlsxFilename } from "@/lib/deThiResultsXlsx";
@@ -9,9 +10,11 @@ import { resultsXlsx, resultsXlsxFilename } from "@/lib/deThiResultsXlsx";
 const fail = (status: number, error: string, code?: string): Fail => ({ ok: false, status, error, ...(code ? { code } : {}) });
 
 async function loadInput(tutorId: string, examId: string): Promise<Outcome<{ input: ResultsInput; title: string; userIds: string[]; truncated: boolean }>> {
-  const root = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true, ownerId: true, title: true, totalPoints: true, variantOfId: true } });
+  const root = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true, ownerId: true, title: true, totalPoints: true, variantOfId: true, courseId: true } });
   if (!root) return fail(404, "Không tìm thấy đề này.");
   if (root.ownerId !== tutorId) return fail(403, "Đề này không thuộc lớp của cô.");
+  // TUT-dong-giang: đề gắn lớp ⇒ tác giả phải CÒN là chủ lớp / đồng giảng đang hiệu lực (bị gỡ hoặc đổi sang bộ môn ⇒ 403, không lộ tên + điểm).
+  if (root.courseId && !(await tutorMayAssignToCourse(tutorId, root.courseId))) return fail(403, "Cô không còn dạy lớp của đề này nên không xem được kết quả.");
   if (root.variantOfId) return { ...fail(400, "Đây là mã đề con. Xem kết quả ở đề gốc.", "IS_VARIANT"), extra: { variantOfId: root.variantOfId } };
   const kids = await prisma.exam.findMany({ where: { variantOfId: examId }, select: { id: true, variantNo: true, totalPoints: true }, orderBy: { variantNo: "asc" } });
   const exams = [{ id: root.id, variantNo: 1, totalPoints: root.totalPoints }, ...kids.map(k => ({ id: k.id, variantNo: k.variantNo ?? 0, totalPoints: k.totalPoints }))];

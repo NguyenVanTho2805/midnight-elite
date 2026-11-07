@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireAssignmentAccess } from "@/lib/courseAccessServer";
 
 // PUT /api/assignments/[id] — sửa bài tập. Chỉ chủ sở hữu (hoặc
 // admin_content/admin_super) được sửa.
@@ -15,8 +14,10 @@ export async function PUT(
     const existing = await prisma.assignment.findUnique({ where: { id }, select: { ownerId: true, mode: true } });
     if (!existing) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
-    const auth = await requireOwnedResource(PERMISSIONS.MANAGE_CURRICULUM, existing.ownerId);
-    if (isNextResponse(auth)) return auth;
+    // TUT-dong-giang: chủ lớp / quản trị / đồng giảng theo lớp chứa bài; bộ môn chỉ bài của mình hoặc nhóm của mình.
+    const acc = await requireAssignmentAccess(id, "content.edit.own");
+    if (!acc.ok) return acc.res;
+    const auth = acc.session;
 
     const body = await req.json();
     const { title, instructions, fileUrl, fileName, maxPoints, dueDate } = body as {
@@ -65,8 +66,10 @@ export async function DELETE(
     const existing = await prisma.assignment.findUnique({ where: { id }, select: { ownerId: true } });
     if (!existing) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
-    const auth = await requireOwnedResource(PERMISSIONS.MANAGE_CURRICULUM, existing.ownerId);
-    if (isNextResponse(auth)) return auth;
+    // TUT-dong-giang: chủ lớp / quản trị / đồng giảng theo lớp chứa bài; bộ môn chỉ bài của mình hoặc nhóm của mình.
+    const acc = await requireAssignmentAccess(id, "content.edit.own");
+    if (!acc.ok) return acc.res;
+    const auth = acc.session;
 
     await prisma.assignment.delete({ where: { id } });
     return NextResponse.json({ success: true });

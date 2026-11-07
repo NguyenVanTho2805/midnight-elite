@@ -17,21 +17,23 @@ export interface MediaContext {
   courseOwnerId: string | null;
   /** Học viên có Enrollment của lớp này và status = "active"? (admin để false cũng được) */
   enrollment: { status: string } | null | undefined;
+  /** TUT-dong-giang: người xem là đồng giảng / giáo viên bộ môn ĐANG HIỆU LỰC của lớp (route đã kiểm qua loadCourseAccess). Xem học liệu như quản lý lớp; KHÔNG sửa được gì thêm. */
+  coTeacher?: boolean;
 }
 
 /** Cột chứa link / nội dung học liệu: bị xoá khỏi bài khi người xem không có quyền. */
 export const PROTECTED_LESSON_FIELDS = ["videoUrl", "zoomUrl", "azotaUrl", "documents", "adminNote"] as const;
 
 /** Quản trị toàn quyền hoặc gia sư đúng là chủ lớp. Cùng nghĩa với ownsResource() ở auth-guard nhưng KHÔNG coi không-chủ là của mọi gia sư. */
-export function isCourseManager(viewer: MediaViewer | null, courseOwnerId: string | null): boolean {
+export function isCourseManager(viewer: MediaViewer | null, courseOwnerId: string | null, coTeacher = false): boolean {
   if (!viewer || viewer.role !== "admin") return false;
-  if (viewer.adminRole === "teacher") return courseOwnerId !== null && courseOwnerId === viewer.userId;
+  if (viewer.adminRole === "teacher") return coTeacher || (courseOwnerId !== null && courseOwnerId === viewer.userId);
   return true;
 }
 
 /** Có quyền xem học liệu của MỌI bài trong lớp (quản lý lớp hoặc học viên đang học). */
 export function canViewAllMaterials(ctx: MediaContext): boolean {
-  if (isCourseManager(ctx.viewer, ctx.courseOwnerId)) return true;
+  if (isCourseManager(ctx.viewer, ctx.courseOwnerId, ctx.coTeacher === true)) return true;
   if (ctx.viewer?.role === "student" && isEnrollmentActive(ctx.enrollment)) return true;
   return false;
 }

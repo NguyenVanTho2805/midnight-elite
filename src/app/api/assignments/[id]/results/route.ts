@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireAssignmentAccess } from "@/lib/courseAccessServer";
+import { anonymousStudentLabel } from "@/lib/courseAccess";
 
 // GET /api/assignments/[id]/results — giáo viên xem % hoàn thiện + bài làm của
 // TỪNG học viên đã ghi danh khoá học (kể cả học viên chưa mở bài — 0%), dùng
@@ -14,6 +14,10 @@ export async function GET(
   const { id: assignmentId } = await params;
 
   try {
+    // Kiểm quyền TRƯỚC (chưa đăng nhập 401 / lớp người khác 403 / không có 404) rồi mới đọc bài.
+    // TUT-dong-giang: chủ lớp / quản trị / đồng giảng theo lớp chứa bài; bộ môn chỉ bài của mình hoặc nhóm của mình.
+    const acc = await requireAssignmentAccess(assignmentId, "grade");
+    if (!acc.ok) return acc.res;
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       select: {
@@ -29,9 +33,6 @@ export async function GET(
       },
     });
     if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
-
-    const auth = await requireOwnedResource(PERMISSIONS.MANAGE_CURRICULUM, assignment.ownerId);
-    if (isNextResponse(auth)) return auth;
 
     if (assignment.mode !== "interactive") {
       return NextResponse.json({ error: "Bài tập này không phải kiểu làm trên web" }, { status: 400 });
@@ -57,7 +58,9 @@ export async function GET(
     }
 
     const totalPoints = assignment.questions.reduce((s, q) => s + q.points, 0);
-    const students = enrollments.map(({ user }) => {
+    // Giáo viên bộ môn xem bài NGOÀI nhóm mình: ẩn tên + mã học sinh (nhãn "Học viên N", xếp theo nhãn băm của id để không lộ thứ tự chữ cái), vẫn chấm được qua userId.
+    const rows = acc.namesVisible ? enrollments : [...enrollments].sort((a, b) => anonymousStudentLabel(a.user.id).localeCompare(anonymousStudentLabel(b.user.id)));
+    const students = rows.map(({ user }) => {
       const mine = byUser.get(user.id) ?? [];
       const byQuestion = new Map(mine.map(a => [a.questionId, a]));
       let answered = 0, score = 0;
@@ -75,7 +78,9 @@ export async function GET(
         }
       }
       return {
-        userId: user.id, name: user.name, studentId: user.studentId,
+        userId: user.id,
+        name: acc.namesVisible ? user.name : anonymousStudentLabel(user.id),
+        studentId: acc.namesVisible ? user.studentId : null,
         completion: { answered, total: assignment.questions.length },
         score, answers: answersOut,
       };

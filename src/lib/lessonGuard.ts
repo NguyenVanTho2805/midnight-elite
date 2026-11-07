@@ -38,6 +38,8 @@ export interface MediaViewer {
   /** Trạng thái ghi danh của người xem trong lớp đó, null nếu chưa ghi danh. */
   enrollmentStatus: string | null;
   lessonIsFree: boolean;
+  /** TUT-dong-giang: người xem là đồng giảng / bộ môn ĐANG HIỆU LỰC của lớp (route đã kiểm qua isActiveHelperOfCourse): được xem như chủ lớp (chỉ xem). */
+  coTeacher?: boolean;
 }
 
 /**
@@ -50,7 +52,7 @@ export interface MediaViewer {
 export function canWatchStoredMedia(v: MediaViewer): boolean {
   if (v.role === "admin") {
     if (v.adminRole === "admin_super" || v.adminRole === "admin_content") return true;
-    return v.adminRole === "teacher" && v.courseOwnerId !== null && v.courseOwnerId === v.userId;
+    return v.adminRole === "teacher" && (v.coTeacher === true || (v.courseOwnerId !== null && v.courseOwnerId === v.userId));
   }
   if (v.enrollmentStatus === "active") return true;
   return v.lessonIsFree;

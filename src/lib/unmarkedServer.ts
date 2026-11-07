@@ -6,6 +6,7 @@
 // Bộ đếm này chạy mỗi lần tải số đỏ trên thanh module (loadTutorTodoCounts) nên: thoát sớm khi chưa có buổi nào tới hạn,
 // và mọi truy vấn khoá theo gia sư + chỉ các lớp/ngày có buổi tới hạn.
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, UNMARKED_GRACE_MIN, UNMARKED_WINDOW_DAYS, vnDateKeyOf } from "@/lib/classSessions";
 import { applyChanges } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
@@ -19,14 +20,25 @@ import {
 const sessionDate = (dateKey: string) => new Date(`${dateKey}T00:00:00Z`);
 
 export async function loadUnmarkedSessions(tutorId: string, now: Date = new Date()): Promise<UnmarkedSession[]> {
+  return loadUnmarkedFor({ ownerId: tutorId }, { active: true }, now);
+}
+
+/** TUT-dong-giang: buổi chưa điểm danh của các lớp tôi ĐỒNG GIẢNG — chỉ các khung giờ mình được giao (`ClassSchedule.teacherId = tôi`). Không đụng lớp riêng. */
+export async function loadUnmarkedSessionsAsCoTeacher(userId: string, now: Date = new Date()): Promise<UnmarkedSession[]> {
+  return loadUnmarkedFor({ courseTeachers: { some: { userId, status: "active" } } }, { active: true, teacherId: userId }, now);
+}
+
+async function loadUnmarkedFor(
+  courseWhere: Prisma.CourseWhereInput, scheduleWhere: Prisma.ClassScheduleWhereInput, now: Date,
+): Promise<UnmarkedSession[]> {
   const today = vnDateKeyOf(now);
   const from = addDaysKey(today, -UNMARKED_WINDOW_DAYS);
 
   const courses = await prisma.course.findMany({
-    where: { ownerId: tutorId },
+    where: courseWhere,
     select: {
       id: true, name: true, classStatus: true,
-      classSchedules: { where: { active: true }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, createdAt: true } },
+      classSchedules: { where: scheduleWhere, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, createdAt: true } },
     },
   });
   const rules = courses.flatMap(c => c.classSchedules);

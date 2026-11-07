@@ -7,15 +7,18 @@ import { prisma } from "@/lib/prisma";
 import { isClassColorKey } from "@/lib/classColor";
 import { normalizeJoinUrl } from "@/lib/classSessions";
 import { authorizeCourse } from "@/lib/sessionBookServer";
+import { requireCourseAccess } from "@/lib/courseAccessServer";
 import { logAction } from "@/lib/auditLog";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await authorizeCourse(id);
-  if ("res" in r) return r.res;
-  return NextResponse.json({ calendarColor: r.course.calendarColor, classJoinUrl: r.course.classJoinUrl }, { headers: { "Cache-Control": "no-store" } });
+  // TUT-dong-giang: đồng giảng / bộ môn xem được (course.view); PATCH (màu / link CHUNG của lớp) vẫn chỉ chủ — authorizeCourse.
+  const acc = await requireCourseAccess(id, "course.view");
+  if (!acc.ok) return acc.res;
+  const c = await prisma.course.findUnique({ where: { id }, select: { calendarColor: true, classJoinUrl: true } });
+  return NextResponse.json({ calendarColor: c?.calendarColor ?? null, classJoinUrl: c?.classJoinUrl ?? null }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

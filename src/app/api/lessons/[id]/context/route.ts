@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 import { suspendedBlocksLesson, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 import { isCourseManager, lessonFor, type MediaContext, canViewAllMaterials, redactCourseLinks } from "@/lib/mediaAccess";
 import { isLearnerVisible, pruneTreeForViewer } from "@/lib/lessonStatus";
@@ -46,7 +47,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const viewer = { userId: session.userId, role: session.role, adminRole: session.adminRole };
   // MD-03: gia sư chỉ là "quản lý" với lớp của chính mình; lớp người khác đối xử như người ngoài (chỉ bài miễn phí).
-  let fullAccess = isCourseManager(viewer, course.ownerId);
+  // TUT-dong-giang: đồng giảng / bộ môn đang hiệu lực xem như quản lý lớp.
+  const helper = await isActiveHelperOfCourse(session, courseId, course.ownerId);
+  let fullAccess = isCourseManager(viewer, course.ownerId, helper);
   const isManager = fullAccess;
   // BU-02-PHẲNG (R3a): bài chính Nháp/Ẩn và người xem không phải quản lý lớp ⇒ 404 TRƯỚC nhánh isFree / 403.
   if (!isManager && !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });

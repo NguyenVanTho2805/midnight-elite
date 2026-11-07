@@ -12,6 +12,7 @@ import { cloudinaryEnv, cloudinarySignedRawUrl, localPathFor, openLocalRange } f
 import { kinFileLink } from "@/lib/giaoTrinh";
 import { isLearnerVisible } from "@/lib/lessonStatus";
 import { managerOf } from "@/lib/lessonVisibility";
+import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 
 const INLINE_EXTS = new Set(["pdf", "png", "jpg", "jpeg", "webp", "txt"]);
 const base = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes" } as const;
@@ -34,11 +35,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const mayWatch = async (l: { isFree: boolean; status: string; chapter: { section: { course: { id: string; ownerId: string | null } } } }): Promise<boolean> => {
       const course = l.chapter.section.course;
       // BU-02-PHẲNG (R18): bài Nháp/Ẩn không làm "bài tham chiếu" cho người học; chỉ quản lý lớp. Tệp còn ở bài Đã đăng khác ⇒ vẫn mở qua bài đó.
-      if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId)) return false;
+      const helper = await isActiveHelperOfCourse(session, course.id, course.ownerId); // TUT-dong-giang: đồng giảng / bộ môn đang hiệu lực
+      if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId) && !helper) return false;
       const enr = session.role === "student"
         ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { status: true } })
         : null;
-      return canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: l.isFree });
+      return canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: l.isFree, coTeacher: helper });
     };
     // Bài đã ghi trên tệp trước (rẻ), rồi mới quét theo nội dung. Chỉ tính bài THẬT SỰ còn chứa đường dẫn này (gỡ khỏi hết bài ⇒ không còn ai ngoài chủ mở được).
     const tried: string[] = [];

@@ -21,11 +21,12 @@ import { normalizeFeeMode } from "@/lib/tuitionFee";
 import { effectivePolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
 import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
+import { courseRoleForPage } from "@/lib/courseAccessServer";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string; them?: string; duyet?: string; n?: string }> };
-const TABS: LopTab[] = ["diem-danh", "hoc-sinh", "ma-moi", "hoc-phi", "cong-dong"];
+const TABS: LopTab[] = ["diem-danh", "hoc-sinh", "giao-vien", "ma-moi", "hoc-phi", "cong-dong"];
 
 export default async function LopPage({ params, searchParams }: Props) {
   const { courseId } = await params;
@@ -49,7 +50,14 @@ export default async function LopPage({ params, searchParams }: Props) {
   const isElevated = isAdmin && session.adminRole !== "teacher";
   const isTeacher  = isAdmin && session.adminRole === "teacher"; // BU-00: lối tắt trong OutlookShell đi bí danh gia sư hay /admin/khoa-hoc tuỳ vai thật
 
-  if (!isOwner && !isElevated) {
+  // TUT-dong-giang: gia sư không phải chủ lớp có thể là đồng giảng / giáo viên bộ môn (CourseTeacher active, đọc lại User từ DB). Người lạ vẫn 404 như cũ.
+  let coRole: "co_teacher" | "subject_teacher" | null = null;
+  if (!isOwner && !isElevated && isTeacher) {
+    const cr = await courseRoleForPage(session, courseId);
+    if (cr && (cr.role === "co_teacher" || cr.role === "subject_teacher")) coRole = cr.role;
+  }
+
+  if (!isOwner && !isElevated && !coRole) {
     if (session.role !== "student") notFound();
     const enr = await prisma.enrollment.findUnique({
       where: { userId_courseId: { userId: session.userId, courseId } },
@@ -58,7 +66,7 @@ export default async function LopPage({ params, searchParams }: Props) {
     if (!enr || enr.status !== "active") notFound();
   }
 
-  const roleView: "tutor" | "student" = isOwner || isElevated ? "tutor" : "student";
+  const roleView: "tutor" | "student" = isOwner || isElevated || coRole ? "tutor" : "student";
 
   // Tên người đang xem để tin mời phụ huynh tự giới thiệu gia sư; học viên không cần.
   const viewerName = roleView === "tutor"
@@ -68,30 +76,39 @@ export default async function LopPage({ params, searchParams }: Props) {
   // Gia sư (chủ lớp hoặc quản trị): trang chi tiết lớp theo Figma 299:112581. Học sinh giữ vỏ cũ.
   if (roleView === "tutor") {
     const now = new Date();
+    const co = coRole !== null;
     // BU-01: hàng chờ duyệt qua enrollServer (trang không gọi prisma.classJoinRequest). Lỗi tải chỉ làm khối này báo lỗi, danh sách em vẫn hiện.
     let pending: PendingJoinRequest[] = [], pendingFailed = false;
     try {
-      pending = (await loadPendingJoinRequests(courseId)).map(r => ({ id: r.id, studentName: r.studentName, sentOn: `${vnDateKeyOf(r.createdAt).slice(8, 10)}/${vnDateKeyOf(r.createdAt).slice(5, 7)}` }));
+      if (!co) pending = (await loadPendingJoinRequests(courseId)).map(r => ({ id: r.id, studentName: r.studentName, sentOn: `${vnDateKeyOf(r.createdAt).slice(8, 10)}/${vnDateKeyOf(r.createdAt).slice(5, 7)}` }));
     } catch { pendingFailed = true; }
-    const hasFeeRate = (await prisma.courseFeeRate.count({ where: { courseId } })) > 0;
+    const hasFeeRate = co ? false : (await prisma.courseFeeRate.count({ where: { courseId } })) > 0; // đồng giảng không đọc cấu hình học phí
     const feeInfo = { price: course.price, tag: course.tag, hasFeeRate };
     const [students, rules, sessions, taught, invites] = await Promise.all([
       prisma.enrollment.findMany({ where: { courseId, status: "active" }, select: { userId: true, user: { select: { name: true } } }, orderBy: { createdAt: "asc" } }),
       prisma.classSchedule.findMany({ where: { courseId, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
-      prisma.attendanceSession.findMany({ where: { courseId }, orderBy: { date: "desc" }, take: 5, select: { id: true, date: true, note: true, _count: { select: { records: true } } } }),
-      prisma.attendanceSession.count({ where: { courseId } }),
-      prisma.classInvite.findMany({ where: { courseId, revoked: false, kind: "class" }, orderBy: { createdAt: "desc" }, take: 10, select: { code: true, maxUses: true, usedCount: true, expiresAt: true } }),
+      prisma.attendanceSession.findMany({ where: co ? { courseId, taughtBy: session.userId } : { courseId }, orderBy: { date: "desc" }, take: 5, select: { id: true, date: true, note: true, _count: { select: { records: true } } } }),
+      prisma.attendanceSession.count({ where: co ? { courseId, taughtBy: session.userId } : { courseId } }),
+      co ? Promise.resolve([]) : prisma.classInvite.findMany({ where: { courseId, revoked: false, kind: "class" }, orderBy: { createdAt: "desc" }, take: 10, select: { code: true, maxUses: true, usedCount: true, expiresAt: true } }),
     ]);
+    // Giáo viên bộ môn chưa được giao gì (khung, nhóm bài, buổi) chỉ thấy số học sinh (ma trận 4.3, điều kiện a).
+    const rosterHidden = coRole === "subject_teacher"
+      && (await Promise.all([
+        prisma.classSchedule.count({ where: { courseId, teacherId: session.userId } }),
+        prisma.chapter.count({ where: { section: { courseId }, teacherId: session.userId } }),
+        prisma.attendanceSession.count({ where: { courseId, taughtBy: session.userId } }),
+      ])).every(c => c === 0);
     const usable = invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
     return <LopChiTiet d={{
       courseId: course.id, courseName: course.name, category: course.category, viewerName, isTeacher,
       schedule: formatScheduleRules(rules),
-      students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })),
+      students: rosterHidden ? [] : students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })), studentCount: students.length, rosterHidden, viewRole: coRole ?? undefined,
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
       initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi",
-      joinPolicy: effectivePolicy(course.joinPolicy), isFree: isFreeClass(feeInfo), canOpen: canUseOpenPolicy(feeInfo),
-      pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(course.feeMode),
+      // Đồng giảng/bộ môn: giá trị trung tính, không đẩy chính sách vào lớp / miễn phí / feeMode thật xuống client.
+      joinPolicy: co ? effectivePolicy(null) : effectivePolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
+      pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(co ? null : course.feeMode),
     }} />;
   }
 

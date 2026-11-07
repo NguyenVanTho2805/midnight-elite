@@ -27,12 +27,16 @@ import { jfetch } from "@/components/tutor/studentUi";
 import { ADD_STUDENTS_MAX } from "@/lib/tutorStudentView";
 import type { FeeMode } from "@/lib/tuitionFee";
 import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
+import GiaoVienLop, { RoleBadge } from "@/components/tutor/GiaoVienLop";
+import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
 
-export type LopTab = "diem-danh" | "hoc-sinh" | "ma-moi" | "hoc-phi" | "cong-dong";
+export type LopTab = "diem-danh" | "hoc-sinh" | "giao-vien" | "ma-moi" | "hoc-phi" | "cong-dong";
 export interface LopChiTietData {
   courseId: string; courseName: string; category: string; viewerName: string | null;
   schedule: string | null;
   students: { id: string; name: string }[];
+  /** Sĩ số thật khi `students` bị ẩn tên (rosterHidden). Vắng = students.length. */
+  studentCount?: number;
   history: { id: string; dateKey: string; note: string | null; marked: number }[];
   sessionsTaught: number;
   inviteCode: string | null;
@@ -47,6 +51,10 @@ export interface LopChiTietData {
   joinPolicy: JoinPolicy; isFree: boolean; canOpen: boolean;
   pending: PendingJoinRequest[]; pendingFailed: boolean;
   duyet: string | null; duyetN: number | null;
+  /** TUT-dong-giang: vai của người xem trong lớp. Vắng = chủ lớp / quản trị. Đồng giảng (co_teacher / subject_teacher) KHÔNG thấy: Mã mời, Học phí, nút mời/thêm/sửa/xoá lớp, liên hệ phụ huynh, tên chủ lớp. */
+  viewRole?: ViewRole;
+  /** Giáo viên bộ môn chưa được giao gì: chỉ thấy số học sinh, không thấy tên (ma trận 4.3 điều kiện a). */
+  rosterHidden?: boolean;
 }
 
 /** Thông báo sau khi duyệt/từ chối (máy chủ chuyển về ?duyet=). Mã lạ thì không hiện gì. */
@@ -59,6 +67,7 @@ function duyetMessage(code: string | null, n: number | null): { tone: "ok" | "er
     case "mot-phan": return { tone: "err", text: `Đã duyệt ${n ?? 0} bạn, còn lại chờ vì lớp đã đầy.` };
     case "dong": return { tone: "err", text: "Lớp đang đóng, chưa duyệt thêm được" };
     case "da-nghi": return { tone: "err", text: n && n > 0 ? `Đã duyệt ${n} bạn. Có học sinh đang tạm dừng ở lớp nên chưa duyệt được — hãy mở lại ở mục Học sinh rồi duyệt.` : "Học sinh này đang tạm dừng ở lớp. Hãy mở lại ở mục Học sinh rồi duyệt." };
+    case "khong-phai-hs": return { tone: "err", text: "Tài khoản này đã chuyển thành gia sư nên đơn được huỷ." };
     case "da-xu-ly": return { tone: "ok", text: "Yêu cầu này đã được xử lý." };
     case "loi-ghi-chu": return { tone: "err", text: "Lời nhắn quá dài (tối đa 200 ký tự), chưa từ chối." };
     default: return null;
@@ -80,7 +89,7 @@ function OpenPage({ title, href, note, action }: { title: string; href: string; 
 export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const router = useRouter();
   const manage = (sub = "") => contentHref(d.isTeacher !== false, `/admin/khoa-hoc/${d.courseId}${sub}`);
-  const [tab, setTab] = useState<LopTab>(d.initialTab);
+  const [tab, setTab] = useState<LopTab>(d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab) ? "diem-danh" : d.initialTab);
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [addBusy, setAddBusy] = useState(false);
@@ -94,13 +103,13 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
     if (r.ok) { setAddNote({ tone: "ok", text: r.json.added > 0 ? `Đã thêm ${r.json.added} em vào lớp.` : "Các em đã chọn đã ở trong lớp." }); setPicked([]); setAdding(false); router.refresh(); }
     else setAddNote({ tone: "err", text: r.json?.error ?? "Chưa thêm được, thử lại sau." });
   }
-  const n = d.students.length;
+  const mgr = canManageRole(d.viewRole);
+  const n = d.studentCount ?? d.students.length;
   const tabs: KinTabItem<LopTab>[] = [
-    { key: "diem-danh", label: "Buổi học & điểm danh" },
-    { key: "hoc-sinh", label: d.pending.length > 0 ? `Học sinh · ${n} · ${d.pending.length} chờ` : `Học sinh · ${n}` },
-    { key: "ma-moi", label: "Mã mời" },
-    { key: "hoc-phi", label: "Học phí" },
-    { key: "cong-dong", label: "Cộng đồng lớp" },
+    { key: "diem-danh", label: mgr ? "Buổi học & điểm danh" : "Buổi tôi dạy" },
+    { key: "hoc-sinh", label: mgr && d.pending.length > 0 ? `Học sinh · ${n} · ${d.pending.length} chờ` : `Học sinh · ${n}` },
+    { key: "giao-vien", label: "Giáo viên" },
+    ...(mgr ? [{ key: "ma-moi", label: "Mã mời" }, { key: "hoc-phi", label: "Học phí" }, { key: "cong-dong", label: "Cộng đồng lớp" }] as KinTabItem<LopTab>[] : []),
   ];
   const toast = duyetMessage(d.duyet, d.duyetN);
   const sub = [`${n} học sinh`, d.schedule ?? "Chưa xếp lịch", d.category].filter(Boolean).join(" · ");
@@ -108,27 +117,37 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   return (
     <KinPage>
       <KinPageHeader title={d.courseName} titleClassName="break-words" sub={sub} back={{ href: "/lop-cua-toi/lop", label: "← Lớp học" }}
-        actions={<>
+        actions={mgr ? <>
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           {/* A4c: ở máy rộng đã có tab "Mã mời" ngay dưới → bỏ nút. Ở điện thoại tab "Mã mời" nằm ngoài khung nhìn (đo 320px: x=317..397; 390px: ..397), nên GIỮ nút ở màn hẹp. */}
           <button type="button" onClick={() => setTab("ma-moi")} className={`${kinButtonClass("secondary")} sm:hidden`}>Mời học sinh</button>
           <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
+        </> : <>
+          {/* TUT-dong-giang: đồng giảng chỉ xem giáo trình và bản ghi; không thêm/mời học sinh, không sửa lớp. */}
+          <Link href={giaoTrinhHref(d.courseId, true)} className={kinButtonClass("secondary")}>Giáo trình</Link>
+          <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
         </>} />
 
-      {d.isFree && <p className="mb-4"><KinStatus tone="xong">Miễn phí</KinStatus></p>}
+      {!mgr && d.viewRole && (
+        <p className="mb-4 flex items-center gap-3 flex-wrap text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" data-dong-giang-dau>
+          <RoleBadge role={d.viewRole} /><span>Lớp bạn đồng giảng</span>
+        </p>
+      )}
 
-      {d.justCreated && (
+      {mgr && d.isFree && <p className="mb-4"><KinStatus tone="xong">Miễn phí</KinStatus></p>}
+
+      {mgr && d.justCreated && (
         <KinCallout title="Đã tạo lớp" className="mb-6">
           {d.joinPolicy === "approve" ? "Học sinh xin vào lớp bằng mã hoặc link ở tab Mã mời; cô duyệt ở tab Học sinh."
             : d.joinPolicy === "open" ? "Lớp miễn phí, học sinh bấm Vào lớp ở trang lớp là vào ngay. Link trang lớp có ở tab Mã mời."
             : "Gửi mã mời ở tab Mã mời để học sinh tự vào lớp."}
         </KinCallout>
       )}
-      {d.addedStudents != null && d.addedStudents > 0 && <KinCallout title={`Đã thêm ${d.addedStudents} học sinh vào lớp`} className="mb-6">Em vào lớp từ danh sách học sinh của cô. Em mới thì gửi mã mời ở tab Mã mời.</KinCallout>}
-      {d.addFailed && <KinCallout title="Lớp đã tạo, nhưng chưa thêm được học sinh" className="mb-6">Cô thêm lại ở nút Thêm học sinh phía trên.</KinCallout>}
-      {d.scheduleFailed && (
+      {mgr && d.addedStudents != null && d.addedStudents > 0 && <KinCallout title={`Đã thêm ${d.addedStudents} học sinh vào lớp`} className="mb-6">Em vào lớp từ danh sách học sinh của cô. Em mới thì gửi mã mời ở tab Mã mời.</KinCallout>}
+      {mgr && d.addFailed && <KinCallout title="Lớp đã tạo, nhưng chưa thêm được học sinh" className="mb-6">Cô thêm lại ở nút Thêm học sinh phía trên.</KinCallout>}
+      {mgr && d.scheduleFailed && (
         <KinCallout title="Lớp đã tạo, nhưng khung giờ chưa lưu" className="mb-6">
           Cô thêm lại khung giờ ở <Link href={manage("?tab=lich-hoc")} className="underline text-[var(--kin-nhan-link)]">trang cài đặt lớp</Link>.
         </KinCallout>
@@ -141,15 +160,17 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         {tab === "diem-danh" && (
           <div className={KIN_TWO_COL}>
             <div className="min-w-0">
-              <Suspense fallback={null}><DiemDanhPanel courseId={d.courseId} embedded /></Suspense>
+              <Suspense fallback={null}><DiemDanhPanel courseId={d.courseId} embedded limited={!mgr} /></Suspense>
             </div>
             <aside className="min-w-0 space-y-[var(--kin-cach-muc)]">
               <section aria-labelledby="lop-hs">
-                <KinSectionHead id="lop-hs" title="Học sinh" aside={<Link href={manage("/hoc-vien")} className="text-[var(--kin-nhan-link)] hover:underline">Danh bạ lớp →</Link>} />
+                <KinSectionHead id="lop-hs" title="Học sinh" aside={mgr ? <Link href={manage("/hoc-vien")} className="text-[var(--kin-nhan-link)] hover:underline">Danh bạ lớp →</Link> : undefined} />
                 {n === 0 ? (
-                  <KinEmptyState title="Lớp chưa có học sinh" action={<button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button>}>
-                    Gửi mã mời để học sinh tự vào lớp.
+                  <KinEmptyState title="Lớp chưa có học sinh" action={mgr ? <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("secondary")}>Mời học sinh</button> : undefined}>
+                    {mgr ? "Gửi mã mời để học sinh tự vào lớp." : "Chủ lớp sẽ thêm học sinh vào lớp."}
                   </KinEmptyState>
+                ) : d.rosterHidden ? (
+                  <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Lớp có {n} học sinh. Tên các em hiện khi chủ lớp giao cho cô buổi dạy hoặc nhóm bài.</p>
                 ) : (
                   <KinPanel flush className="mt-4">
                   <ul aria-label="Học sinh của lớp">
@@ -159,11 +180,11 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                   </ul>
                   </KinPanel>
                 )}
-                <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] flex items-center gap-2 flex-wrap">
+                {mgr && <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] flex items-center gap-2 flex-wrap">
                   {d.inviteCode ? (<>Mã mời lớp: <b className="font-medium text-[var(--kin-chu-chinh)] tabular-nums">{d.inviteCode}</b>
                     <KinCopyButton text={d.inviteCode} label="Chép mã mời lớp" appearance="icon" size="sm" /></>)
                     : <>Lớp chưa có mã mời còn dùng được. <button type="button" onClick={() => setTab("ma-moi")} className="min-h-11 text-[var(--kin-nhan-link)] underline">Tạo mã mời</button></>}
-                </p>
+                </p>}
               </section>
 
               <section aria-labelledby="lop-ls">
@@ -193,12 +214,12 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
 
         {tab === "hoc-sinh" && (
           <section className="max-w-2xl">
-            {toast && <div role={toast.tone === "err" ? "alert" : "status"} data-duyet-toast={d.duyet ?? ""}><KinCallout title={toast.text} className="mb-6" /></div>}
-            <JoinRequests courseId={d.courseId} items={d.pending} failed={d.pendingFailed} retryHref={`/lop-cua-toi/${d.courseId}?tab=hoc-sinh`}
-              show={d.pending.length > 0 || d.pendingFailed || d.joinPolicy === "approve"} />
-            <KinSectionHead title="Học sinh của lớp" aside={<button type="button" onClick={() => { setAdding(a => !a); setAddNote(null); }} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">{adding ? "Đóng" : "Thêm học sinh"}</button>} />
-            {addNote && <p role={addNote.tone === "err" ? "alert" : "status"} className={`pt-3 text-[length:var(--kin-co-goc)] ${addNote.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{addNote.text}</p>}
-            {adding && (
+            {mgr && toast && <div role={toast.tone === "err" ? "alert" : "status"} data-duyet-toast={d.duyet ?? ""}><KinCallout title={toast.text} className="mb-6" /></div>}
+            {mgr && <JoinRequests courseId={d.courseId} items={d.pending} failed={d.pendingFailed} retryHref={`/lop-cua-toi/${d.courseId}?tab=hoc-sinh`}
+              show={d.pending.length > 0 || d.pendingFailed || d.joinPolicy === "approve"} />}
+            <KinSectionHead title="Học sinh của lớp" aside={mgr ? <button type="button" onClick={() => { setAdding(a => !a); setAddNote(null); }} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">{adding ? "Đóng" : "Thêm học sinh"}</button> : undefined} />
+            {mgr && addNote && <p role={addNote.tone === "err" ? "alert" : "status"} className={`pt-3 text-[length:var(--kin-co-goc)] ${addNote.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{addNote.text}</p>}
+            {mgr && adding && (
               <div data-lop-them className="pt-4">
                 <p className="pb-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Chọn em đã học lớp khác của cô để thêm vào lớp này. Em mới thì{" "}
                   <button type="button" onClick={() => setTab("ma-moi")} className="min-h-11 text-[var(--kin-nhan-link)] underline">gửi mã mời</button>.</p>
@@ -207,9 +228,11 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
               </div>
             )}
             {n === 0 ? (
-              <KinEmptyState title="Lớp chưa có học sinh" action={<button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("primary")}>Mời học sinh</button>}>
-                Gửi mã mời để học sinh tự vào lớp. Học sinh vào xong sẽ hiện ở đây.
+              <KinEmptyState title="Lớp chưa có học sinh" action={mgr ? <button type="button" onClick={() => setTab("ma-moi")} className={kinButtonClass("primary")}>Mời học sinh</button> : undefined}>
+                {mgr ? "Gửi mã mời để học sinh tự vào lớp. Học sinh vào xong sẽ hiện ở đây." : "Chủ lớp sẽ thêm học sinh vào lớp. Học sinh vào xong sẽ hiện ở đây."}
               </KinEmptyState>
+            ) : d.rosterHidden ? (
+              <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Lớp có {n} học sinh. Tên các em hiện khi chủ lớp giao cho cô buổi dạy hoặc nhóm bài.</p>
             ) : (
               <>
                 <KinPanel flush className="mt-4">
@@ -217,19 +240,21 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
                   {d.students.map(s => (
                     <li key={s.id} className={`flex items-center justify-between gap-3 ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>
                       <span className="min-w-0 break-words">{s.name}</span>
-                      <Link href={`/lop-cua-toi/hoc-sinh/em/${s.id}`} aria-label={`Hồ sơ của ${s.name}`} className="inline-flex items-center min-h-11 flex-shrink-0 text-[var(--kin-nhan-link)] underline">Hồ sơ</Link>
+                      {mgr && <Link href={`/lop-cua-toi/hoc-sinh/em/${s.id}`} aria-label={`Hồ sơ của ${s.name}`} className="inline-flex items-center min-h-11 flex-shrink-0 text-[var(--kin-nhan-link)] underline">Hồ sơ</Link>}
                     </li>
                   ))}
                 </ul>
                 </KinPanel>
-                <p className="mt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Gọi tên và mở Zalo phụ huynh ở <Link href={manage("/hoc-vien")} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Danh bạ lớp</Link>.</p>
+                {mgr && <p className="mt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Gọi tên và mở Zalo phụ huynh ở <Link href={manage("/hoc-vien")} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Danh bạ lớp</Link>.</p>}
               </>
             )}
-            {n > 0 && <LopBaoCao courseId={d.courseId} students={d.students} />}
+            {mgr && n > 0 && <LopBaoCao courseId={d.courseId} students={d.students} />}
           </section>
         )}
 
-        {tab === "ma-moi" && (
+        {tab === "giao-vien" && <GiaoVienLop courseId={d.courseId} viewRole={d.viewRole ?? "owner"} />}
+
+        {mgr && tab === "ma-moi" && (
           <section className="max-w-3xl">
             <KinSectionHead title="Mã mời vào lớp" />
             <p className="py-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Gửi mã hoặc link cho học sinh; các em tự vào lớp, không cần cô thêm từng người.</p>
@@ -238,7 +263,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           </section>
         )}
 
-        {tab === "hoc-phi" && (
+        {mgr && tab === "hoc-phi" && (
           <div className="space-y-[var(--kin-cach-muc)]">
             <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />
             <LopPhiKhac courseId={d.courseId} />
@@ -246,7 +271,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           </div>
         )}
 
-        {tab === "cong-dong" && (
+        {mgr && tab === "cong-dong" && (
           <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"
             note="Xem báo cáo bài viết trong các lớp của cô, xoá bài vi phạm hoặc bỏ qua." />
         )}
