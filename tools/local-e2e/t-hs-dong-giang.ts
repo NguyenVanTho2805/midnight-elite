@@ -62,6 +62,9 @@ const has = (r: { text: string }, s: string) => r.text.includes(s);
     const r = await post(u, "Tôi muốn đăng bài");
     check(`${who} đăng bài vào lớp ⇒ 403`, r.status === 403, r);
   }
+  check("Coin chỉ cho học sinh: đồng giảng / bộ môn đăng bài, trả lời không nhận Coin", (await prisma.coinTransaction.count({ where: { userId: { in: [C.id, S.id] } } })) === 0);
+  const pH = await post(H, "Học viên đăng bài lớp để thử thưởng xu");
+  check("học viên đăng bài lớp vẫn được thưởng như cũ", pH.status === 201 && (await prisma.coinTransaction.count({ where: { userId: H.id } })) === 1, pH);
   const noName = await prisma.notification.findMany({ where: { userId: O.id } });
   const ntext = noName.map(n => `${n.title} ${n.message}`).join(" ");
   check("chủ lớp nhận thông báo bài mới của đồng giảng, không tên người", noName.length >= 2 && ![C, S, H].some(u => ntext.includes(u.name)) && !ntext.includes("@"), ntext);
@@ -99,6 +102,7 @@ const has = (r: { text: string }, s: string) => r.text.includes(s);
   const replyOfC = await api("POST", `/api/community/threads/${qHS.id}/reply`, { as: C, body: { content: "Đáp án là 4" } });
   const replyId = J(replyOfC).id ?? J(replyOfC).reply?.id;
   check("chủ lớp có canAccept", J(await detail(O, qHS.id)).canAccept === true);
+  check("Coin: đồng giảng trả lời không nhận Coin", (await prisma.coinTransaction.count({ where: { userId: C.id } })) === 0);
   const acc = await api("POST", `/api/community/threads/${qHS.id}/accept-reply`, { as: C, body: { replyId } });
   check("đồng giảng chọn là đúng ⇒ 403/404", acc.status === 403 || acc.status === 404, acc);
   const del = await api("DELETE", `/api/community/threads/${tHS.id}`, { as: C });
@@ -145,6 +149,9 @@ const has = (r: { text: string }, s: string) => r.text.includes(s);
   await prisma.courseTeacher.update({ where: { courseId_userId: { courseId: K1.id, userId: C.id } }, data: { status: "removed" } });
   const afterRm = await api("GET", `/api/community/feed?scope=${K1.id}`, { as: H });
   check("đồng giảng đã bị gỡ: bài cũ vẫn không lộ tên với học viên", afterRm.status === 200 && !has(afterRm, "Sương"));
+  await prisma.courseTeacher.update({ where: { courseId_userId: { courseId: K1.id, userId: C.id } }, data: { status: "invited" } });
+  const reInv = await api("GET", `/api/community/feed?scope=${K1.id}`, { as: H });
+  check("bị gỡ rồi MỜI LẠI (status invited): bài cũ vẫn không lộ tên với học viên", reInv.status === 200 && !has(reInv, "Sương") && has(reInv, "Giáo viên của lớp"));
   const rmRead = await list(C);
   check("đồng giảng đã bị gỡ không đọc được lớp nữa ⇒ 403", rmRead.status === 403, rmRead);
 

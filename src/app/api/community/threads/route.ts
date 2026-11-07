@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
 
     // Thưởng xu như cũ CHỈ cho bài viết thường (câu hỏi mới không thưởng/không trừ). UI không hiển thị.
     let coinsEarned = 0;
-    if (kind === "post") {
+    if (kind === "post" && auth.role === "student") {   // Coin chỉ cho học sinh (gia sư / đồng giảng không nhận)
       const awarded = await addDailyCappedCoins(
         auth.userId, THREAD_REWARD, COIN_REASONS.THREAD_REWARD, thread.id, MAX_THREAD_REWARDS_PER_DAY,
       );

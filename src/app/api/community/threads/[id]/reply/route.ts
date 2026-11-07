@@ -69,7 +69,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Thưởng xu như cũ (logic ví không đổi trong BU-05); UI không hiển thị.
-  const awarded = await addDailyCappedCoins(auth.userId, REPLY_REWARD, COIN_REASONS.REPLY_REWARD, reply.id, MAX_REPLY_REWARDS_PER_DAY);
+  // Coin là điểm thưởng của HỌC SINH: gia sư / đồng giảng / quản trị đăng, trả lời không nhận.
+  const awarded = auth.role === "student" && await addDailyCappedCoins(auth.userId, REPLY_REWARD, COIN_REASONS.REPLY_REWARD, reply.id, MAX_REPLY_REWARDS_PER_DAY);
 
   const node: ReplyNode & { coinsEarned: number } = {
     id: reply.id, content: reply.content, imageUrls: reply.imageUrls, createdAt: reply.createdAt.toISOString(),

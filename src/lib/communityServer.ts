@@ -54,7 +54,7 @@ export async function helperAuthorsToHide(session: SessionPayload | null, pairs:
   const authorIds = [...new Set(rel.map(p => p.authorId))];
   const [rows, owned, helping] = await Promise.all([
     prisma.courseTeacher.findMany({
-      where: { courseId: { in: courseIds }, userId: { in: authorIds }, status: { in: ["active", "removed"] } },
+      where: { courseId: { in: courseIds }, userId: { in: authorIds }, },
       select: { courseId: true, userId: true },
     }),
     session ? prisma.course.findMany({ where: { id: { in: courseIds }, ownerId: session.userId }, select: { id: true } }) : Promise.resolve([]),
