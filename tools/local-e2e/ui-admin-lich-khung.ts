@@ -43,7 +43,6 @@ import { prisma } from "@/lib/prisma";
   await pg.getByText("Toán 9 khung").first().click();
   await pg.getByRole("button", { name: "Sao chép khoá" }).click();
   await pg.getByText("Đã sao chép khoá học, chép 1 khung giờ").waitFor({ timeout: 20000 });
-  check("toast nhân bản nêu 1 khung giờ", true);
   check("DB: bản sao có 1 khung", (await prisma.classSchedule.count({ where: { course: { name: { contains: "Toán 9 khung" }, id: { not: c.id } } } })) === 1);
   void c0;
   await closeAll();
