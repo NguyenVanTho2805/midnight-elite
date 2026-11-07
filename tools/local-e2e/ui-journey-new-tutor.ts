@@ -206,7 +206,8 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await click(p.getByRole("link", { name: "Xem lịch hôm nay" }));
   await eventually("tới /lop-cua-toi/lich", () => at().pathname === "/lop-cua-toi/lich", 90000);
   await p.getByText("Tuần này chưa có buổi học nào").waitFor({ timeout: 60000 });
-  check("Lịch trống nói ĐÚNG chỗ đặt khung giờ (tab 'Lịch học' của trang quản khoá — trang lớp /lop-cua-toi/<lớp> không có tab này) — sửa chữ của NC2-021", (await body()).includes("trang quản khoá") && !(await body()).includes("trong trang lớp"));
+  // TUT-lich-keo-tha: Lịch trống nay chỉ tới lưới khung giờ kéo-thả (/lop-cua-toi/lich/khung), không còn bảo gia sư vào "trang quản khoá".
+  check("Lịch trống nói ĐÚNG chỗ đặt khung giờ (lưới khung giờ kéo-thả /lop-cua-toi/lich/khung) — không còn 'trang quản khoá', không 'trong trang lớp'", (await body()).includes("lưới khung giờ kéo-thả") && await p.getByRole("link", { name: "lưới khung giờ kéo-thả" }).getAttribute("href") === "/lop-cua-toi/lich/khung" && !(await body()).includes("trong trang lớp"));
   check("Lịch trống chỉ đường: có nút 'Xem các lớp của tôi'", await p.getByRole("link", { name: "Xem các lớp của tôi" }).isVisible());
 
   section("G2b. Lịch → 'Xem các lớp của tôi' → 'Tạo lớp đầu tiên' → cửa tạo lớp duy nhất");
@@ -224,12 +225,22 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await typeIn(p.getByLabel(/Tên lớp/), courseName);
   await typeIn(p.getByLabel(/^Đơn giá/), "150000");
   await click(p.getByRole("button", { name: "Tiếp tục" }));
+  // TUT-lich-keo-tha: bước Lịch học BẮT BUỘC. Chưa có khung → "Tiếp tục" bị chặn; thêm một khung 17:00–18:00 (hôm nay) bằng nút + panel rồi mới đi tiếp.
+  sub("bước 2 'Lịch học' (bắt buộc ≥ 1 khung): Tiếp tục bị chặn khi chưa có khung");
   await click(p.getByRole("button", { name: "Tiếp tục" }));
-  await click(p.getByRole("button", { name: "Tạo lớp", exact: true }));
+  check("chưa có khung giờ → ở lại bước 2 và báo 'ít nhất một khung giờ'", await p.locator("p[role=alert]").filter({ hasText: "ít nhất một khung giờ" }).isVisible());
+  await click(p.getByRole("button", { name: "Thêm khung giờ" }));
+  await pick(p.locator("[data-block-panel] select").first(), dayOfWeekOfKey(vnDateKeyOf(new Date())));
+  await pick(p.locator("#sched-s"), 17 * 60);
+  await pick(p.locator("#sched-e"), 18 * 60);
+  await click(p.getByRole("button", { name: "Lưu khung giờ" }));
+  await click(p.getByRole("button", { name: "Tiếp tục" }));
+  await click(p.getByRole("button", { name: /^Tạo lớp \+ \d+ buổi$/ }));
   await eventually("DB: lớp có chủ là gia sư vừa đăng ký", async () => !!(await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } })), 90000);
   const course = (await prisma.course.findFirst({ where: { name: courseName, ownerId: u0!.id } }))!;
   check("DB: lớp mới mặc định học phí THEO BUỔI (feeMode per_session) với đúng một đơn giá 150.000", course.feeMode === "per_session" && (await prisma.courseFeeRate.count({ where: { courseId: course.id, rate: 150000, mode: "per_session" } })) === 1, { feeMode: course.feeMode });
   end();
+  check("DB: khung giờ 17:00–18:00 được tạo CÙNG lúc với lớp (một giao dịch, không còn bước gửi riêng)", (await prisma.classSchedule.count({ where: { courseId: course.id, startTime: "17:00", endTime: "18:00" } })) === 1);
   check("DB: lớp tạo ra thuộc gia sư (ownerId) và đang mở", course.ownerId === u0!.id && course.status === true, { ownerId: course.ownerId, status: course.status });
   console.log(`  ghi nhận: ô 'Gia sư' của lớp mới = ${JSON.stringify(course.instructor)} (ĐỀ XUẤT chưa làm: tự điền tên gia sư — ghi tên thật vào thẻ lớp CÔNG KHAI, mâu thuẫn công tắc Ẩn hồ sơ, chờ Thọ)`);
   check("DB: lớp có người dạy được ghi (giá trị mặc định hiện tại; xem ghi nhận ở trên)", typeof course.instructor === "string" && course.instructor.length > 0, { instructor: course.instructor, avatar: course.teacherAvatar });

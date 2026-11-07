@@ -102,7 +102,10 @@ export default function LopHoc() {
                         )}
                       </div>
                       <p className="tabular-nums"><span className="md:hidden text-[var(--kin-chu-mo)]">Học sinh: </span>{c.students}{c.capacity != null ? `/${c.capacity}` : ""}</p>
-                      <p className={c.schedule ? "tabular-nums" : "text-[var(--kin-chu-mo)]"}>{c.schedule ?? "Chưa xếp lịch"}</p>
+                      {c.schedule
+                        ? <p className="tabular-nums">{c.schedule}</p>
+                        : <p className="text-[var(--kin-chu-mo)]">Chưa xếp lịch{" · "}
+                            <Link href={`/lop-cua-toi/quan-lop/${encodeURIComponent(c.id)}/lich-hoc`} aria-label={`Đặt lịch cho lớp ${c.name}`} className="inline-flex items-center min-h-11 md:min-h-0 text-[var(--kin-nhan-link)] hover:underline">Đặt lịch</Link></p>}
                       <p className={c.sessionsTaught > 0 ? "tabular-nums" : "text-[var(--kin-chu-mo)]"}>{c.sessionsTaught > 0 ? `${c.sessionsTaught} buổi đã điểm danh` : "Chưa bắt đầu"}</p>
                       <div>
                         {empty
