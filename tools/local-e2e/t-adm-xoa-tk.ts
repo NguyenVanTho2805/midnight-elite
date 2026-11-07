@@ -13,6 +13,8 @@
 //   - Bỏ `deletedAt` khỏi PUT /api/users/[id]/role → ca 27 đỏ.
 //   - Bỏ kiểm DELETE_REASONS ở readDeleteReason → ca 25b đỏ.
 //   - Bỏ unusedCredits / bankPending khỏi countBlockers → ca 28 / 29 đỏ.
+//   - Bỏ `status: "active"` hoặc `classStatus: { not: "closed" }` khỏi nhánh courseTeacher.count → ca 30c / 30d đỏ; bỏ `isTutor ?` → ca 30e đỏ.
+//   - Bỏ logAction "account.delete_blocked" ở route xoá → ca 30b đỏ.
 import { prisma } from "@/lib/prisma";
 import { api, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
 
@@ -425,6 +427,27 @@ const code = () => `KIN${String(++seq).padStart(5, "0")}`;
   const bpWal = await mkTutor("GS pending + ví tiền thật");
   await bt(bpWal.id, "pending"); await prisma.wallet.create({ data: { userId: bpWal.id, balance: 9 } }); await prisma.coinTopupRequest.create({ data: { userId: bpWal.id, amountVnd: 9, coinAmount: 9, status: "approved" } });
   check("29g. vướng cả pending và ví từ tiền thật → bank_pending đứng trước wallet_from_money", (await api("POST", TX(bpWal.id), { as: SA })).json?.code === "bank_pending");
+
+  section("30. Đồng giảng active trên lớp chưa đóng → co_teaching_active");
+  const owner = await mkTutor("GS chủ lớp");
+  const coC = await mkCourse(owner.id, { name: "Lớp chủ" }), coClosed = await mkCourse(owner.id, { name: "Lớp đã đóng", classStatus: "closed" });
+  const ct = (courseId: string, userId: string, status: string) => prisma.courseTeacher.create({ data: { courseId, userId, role: "co_teacher", status, invitedBy: owner.id } });
+  const coT = await mkTutor("GS đồng giảng");
+  await ct(coC.id, coT.id, "active");
+  r = await api("POST", TX(coT.id), { as: SA });
+  check("30a. đồng giảng active lớp chưa đóng → 409 co_teaching_active, count=1, tiếng Việt; TK còn nguyên", r.status === 409 && r.json.code === "co_teaching_active" && r.json.count === 1 && /đồng giảng/.test(r.json.error) && (await prisma.user.findUnique({ where: { id: coT.id } }))?.deletedAt === null, r.json);
+  const bl = await audits({ action: "account.delete_blocked", resourceId: coT.id });
+  check("30b. ghi nhật ký account.delete_blocked {kind, code}, actor SA; KHÔNG có account.delete", bl.length === 1 && bl[0].actorId === SA.id && (bl[0].metadata as { code?: string; kind?: string }).code === "co_teaching_active" && (bl[0].metadata as { kind?: string }).kind === "tutor" && (await audits({ action: "account.delete", resourceId: coT.id })).length === 0, bl);
+  for (const st of ["invited", "removed", "declined"]) {
+    const g = await mkTutor(`GS đồng giảng ${st}`); await ct(coC.id, g.id, st);
+    check(`30c. đồng giảng ${st} → KHÔNG chặn (200)`, (await api("POST", TX(g.id), { as: SA })).status === 200);
+  }
+  const gc = await mkTutor("GS đồng giảng lớp đóng"); await ct(coClosed.id, gc.id, "active");
+  check("30d. đồng giảng active nhưng lớp đã đóng → KHÔNG chặn (200)", (await api("POST", TX(gc.id), { as: SA })).status === 200);
+  const stuCt = await mkUser({ name: "HS có hàng CourseTeacher" }); await ct(coC.id, stuCt.id, "active");
+  check("30e. học sinh không bị đếm co_teaching_active (200)", (await api("POST", SX(stuCt.id), { as: SA })).status === 200);
+  await prisma.courseTeacher.updateMany({ where: { userId: coT.id }, data: { status: "removed" } });
+  check("30f. chủ lớp gỡ (removed) → xoá được (200)", (await api("POST", TX(coT.id), { as: SA })).status === 200);
 
   await done();
 })().catch(e => { console.error(e); process.exit(1); });

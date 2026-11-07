@@ -20,11 +20,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const counts = await countBlockers(id, "student");
     const blocker = pickBlocker(counts);
-    if (blocker) return NextResponse.json({ error: blocker.error, code: blocker.code, ...(blocker.extra ?? {}) }, { status: blocker.status });
+    if (blocker) { await logAction(auth.userId, "account.delete_blocked", "User", id, { kind: "student", code: blocker.code }); return NextResponse.json({ error: blocker.error, code: blocker.code, ...(blocker.extra ?? {}) }, { status: blocker.status }); }
 
     const did = await anonymizeUser(id, "student");
     if (!did) return NextResponse.json({ ok: true, alreadyDeleted: true });
-    if ("blocker" in did) return NextResponse.json({ error: did.blocker.error, code: did.blocker.code, ...(did.blocker.extra ?? {}) }, { status: did.blocker.status });
+    if ("blocker" in did) { await logAction(auth.userId, "account.delete_blocked", "User", id, { kind: "student", code: did.blocker.code }); return NextResponse.json({ error: did.blocker.error, code: did.blocker.code, ...(did.blocker.extra ?? {}) }, { status: did.blocker.status }); }
     // Metadata chỉ có số đếm — không tên, email, SĐT.
     await logAction(auth.userId, "account.delete", "User", id, { kind: "student", walletBalance: counts.walletBalance, approvedTopups: counts.approvedTopups, openInvoices: counts.openInvoices, reason: rs.reason });
     return NextResponse.json({ ok: true });

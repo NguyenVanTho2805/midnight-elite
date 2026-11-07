@@ -5,13 +5,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useContentHref } from "@/components/tutor/useContentHref";
-import { api, type AssignmentFull, type AssignmentInput, type AssignmentQuestionInput, type AssignmentSubmissionFull, type AssignmentResultsData, type ClassScheduleFull, type ExamQuestionInput } from "@/lib/api";
+import { api, type AssignmentFull, type AssignmentInput, type AssignmentQuestionInput, type AssignmentSubmissionFull, type AssignmentResultsData, type ExamQuestionInput } from "@/lib/api";
 import { Toggle } from "@/components/Toggle";
 import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
 import { MathText } from "@/components/MathText";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
-import { DAY_LABELS_VI } from "@/lib/types";
+import LichKhung from "@/components/tutor/LichKhung";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { useAuth } from "@/contexts/AuthContext";
@@ -2069,8 +2069,6 @@ function TabHocVienKhoaHoc({ courseSlug }: { courseSlug: string }) {
 }
 
 // ─── TAB: LỊCH HỌC ─────────────────────────────────────────────────────────────
-const DAY_LABELS = DAY_LABELS_VI;
-const SCHEDULE_FORM_INIT = { dayOfWeek: 1, startTime: "19:00", endTime: "21:00", note: "", joinUrl: "", mode: "", location: "" };
 
 // LI-02 / LI-17: màu lớp trên Lịch (bảng 25 màu token) và link học online chung của lớp (ưu tiên thấp nhất: riêng buổi > khung giờ > chung lớp).
 function LopLichCaiDat({ courseSlug }: { courseSlug: string }) {
@@ -2119,178 +2117,11 @@ function LopLichCaiDat({ courseSlug }: { courseSlug: string }) {
   );
 }
 
-function TabLichHoc({ courseSlug }: { courseSlug: string }) {
-  const [schedules, setSchedules] = useState<ClassScheduleFull[]>([]);
-  const { ask, dialog } = useKinConfirm();
-  const [loading, setLoading]     = useState(true);
-  const [adding, setAdding]       = useState(false);
-  const [form, setForm]           = useState(SCHEDULE_FORM_INIT);
-  const [saving, setSaving]       = useState(false);
-  const [err, setErr]             = useState("");
-  const [clash, setClash]         = useState<string[] | null>(null); // LI-10: xung đột lịch khi lưu khung giờ
-
-  const load = useCallback(() => {
-    setLoading(true);
-    api.classSchedules.listByCourse(courseSlug).then(setSchedules).catch(() => {}).finally(() => setLoading(false));
-  }, [courseSlug]);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function handleAdd() {
-    setErr("");
-    setSaving(true);
-    try {
-      // LI-10: xin máy chủ kiểm xung đột trước khi lưu; có xung đột thì hiện danh sách và cho chọn "Vẫn lưu" (gửi lại với force).
-      const res = await fetch(`/api/courses/${courseSlug}/class-schedules`, {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...form, mode: form.mode || null, location: form.mode === "offline" ? form.location : null, checkConflicts: true, force: clash !== null }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (res.status === 409 && d.needsConfirm) { setClash((d.conflicts as { text: string }[]).map(c => c.text)); return; }
-      if (!res.ok) throw new Error(d.error ?? "Thêm khung giờ thất bại");
-      setForm(SCHEDULE_FORM_INIT);
-      setClash(null);
-      setAdding(false);
-      load();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Thêm khung giờ thất bại");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleToggle(s: ClassScheduleFull) {
-    setErr("");
-    try {
-      await api.classSchedules.update(s.id, { active: !s.active });
-      load();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Cập nhật thất bại");
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (!(await ask({ title: "Xoá khung giờ học này?", message: "Việc này không hoàn tác được." }))) return;
-    setErr("");
-    try {
-      await api.classSchedules.remove(id);
-      load();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Xoá thất bại");
-    }
-  }
-
+function TabLichHoc({ courseId }: { courseId: string }) {
   return (
     <div>
-      {dialog}
-      <LopLichCaiDat courseSlug={courseSlug} />
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div>
-          <p className="text-sm font-bold text-gray-800">Khung giờ học cố định hàng tuần</p>
-          <p className="text-xs text-gray-400 mt-0.5">Hệ thống tự tính buổi học sắp tới cho học viên đã đăng ký khoá này, dựa vào khung giờ dưới đây — không cần nhập tay từng buổi.</p>
-        </div>
-        {!adding && (
-          <button onClick={() => setAdding(true)} className="px-3 py-2 text-xs font-semibold rounded-lg text-white flex-shrink-0" style={{ background: "var(--kin-nhan-nen)" }}>
-            + Thêm khung giờ
-          </button>
-        )}
-      </div>
-
-      {err && !adding && <p className="text-xs text-red-500 mb-3">{err}</p>}
-
-      {adding && (
-        <div className="mb-4 p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Thứ</label>
-              <select value={form.dayOfWeek} onChange={e => { setClash(null); setForm(f => ({ ...f, dayOfWeek: Number(e.target.value) })); }}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
-                {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Giờ bắt đầu</label>
-              <input type="time" value={form.startTime} onChange={e => { setClash(null); setForm(f => ({ ...f, startTime: e.target.value })); }}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Giờ kết thúc</label>
-              <input type="time" value={form.endTime} onChange={e => { setClash(null); setForm(f => ({ ...f, endTime: e.target.value })); }}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Ghi chú (tuỳ chọn)</label>
-            <input type="text" placeholder="VD: Học live qua Zoom" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="lich-mode" className="block text-xs font-medium text-gray-500 mb-1">Hình thức (tuỳ chọn)</label>
-              <select id="lich-mode" value={form.mode} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)]">
-                <option value="">Chưa chọn</option><option value="online">Online</option><option value="offline">Offline</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="lich-loc" className="block text-xs font-medium text-gray-500 mb-1">Địa chỉ học offline</label>
-              <input id="lich-loc" type="text" disabled={form.mode !== "offline"} placeholder={form.mode === "offline" ? "Số nhà, đường, quận" : "Chỉ dùng khi học offline"} value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none disabled:opacity-60" />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="lich-join-url" className="block text-xs font-medium text-gray-500 mb-1">Link vào lớp (Meet/Zoom, tuỳ chọn)</label>
-            <input id="lich-join-url" type="url" placeholder="https://meet.google.com/..." value={form.joinUrl} onChange={e => setForm(f => ({ ...f, joinUrl: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none" />
-            <p className="text-xs text-gray-400 mt-1">In vào tin nhắc lịch gửi phụ huynh và học sinh. Để trống thì tin bỏ dòng link.</p>
-          </div>
-          {clash && clash.length > 0 && (
-            <div role="alert" data-conflicts className="p-3 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700 space-y-1">
-              <p className="font-semibold">Khung giờ này trùng lịch</p>
-              <ul className="list-disc pl-5">{clash.map((t, i) => <li key={i}>{t}</li>)}</ul>
-              <p>Đổi thứ/giờ cho khỏi trùng, hoặc vẫn lưu nếu bạn chắc chắn.</p>
-            </div>
-          )}
-          {err && <p className="text-xs text-red-500">{err}</p>}
-          <div className="flex gap-2">
-            <button onClick={() => { setAdding(false); setErr(""); setClash(null); }} className="px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Huỷ</button>
-            <button onClick={handleAdd} disabled={saving} className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50" style={{ background: "var(--kin-nhan-nen)" }}>
-              {saving ? "Đang lưu..." : clash ? "Vẫn lưu khung giờ" : "Lưu khung giờ"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-12 flex justify-center">
-          <KinLoader size={36} />
-        </div>
-      ) : schedules.length === 0 ? (
-        <div className="py-12 text-center text-gray-400 text-sm">Chưa có khung giờ học nào — học viên sẽ không thấy buổi học nào trong lịch cho tới khi thêm.</div>
-      ) : (
-        <div className="space-y-2">
-          {schedules.map(s => (
-            <div key={s.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200">
-              <span className="px-2.5 py-1 text-xs font-semibold rounded-full flex-shrink-0" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>
-                {DAY_LABELS[s.dayOfWeek]}
-              </span>
-              <span className="text-sm font-medium text-gray-700 flex-shrink-0">{s.startTime} – {s.endTime}</span>
-              {s.mode && <span className="text-xs text-gray-500 flex-shrink-0">{s.mode === "offline" ? `Offline${s.location ? ` · ${s.location}` : ""}` : "Online"}</span>}
-              {s.note && <span className="text-xs text-gray-400 truncate flex-1">{s.note}</span>}
-              {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline flex-shrink-0" style={{ color: "var(--kin-nhan-link)" }}>Link vào lớp</a>}
-              {!s.active && <span className="text-xs text-gray-400 flex-shrink-0">(đã tắt)</span>}
-              <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-                <button onClick={() => handleToggle(s)} className="px-2 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
-                  {s.active ? "Tắt" : "Bật"}
-                </button>
-                <button onClick={() => handleDelete(s.id)} className="px-2 py-1 text-xs rounded-lg border border-red-200 text-red-500 hover:bg-red-50">
-                  Xoá
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <LopLichCaiDat courseSlug={courseId} />
+      <LichKhung courseId={courseId} />
     </div>
   );
 }
@@ -2411,7 +2242,7 @@ export default function KhoaHocDetailPage() {
       <div className="p-5 flex-1 min-h-0 overflow-y-auto">
         {activeTab === "cai-dat"    && <TabCaiDat courseSlug={courseSlug} course={course} />}
         {activeTab === "chuong-bai" && <TabChuongBai courseSlug={courseSlug} initialSections={course.sections} />}
-        {activeTab === "lich-hoc"   && <TabLichHoc courseSlug={courseSlug} />}
+        {activeTab === "lich-hoc"   && <TabLichHoc courseId={course.id} />}
         {activeTab === "hoc-vien"   && <TabHocVienKhoaHoc courseSlug={courseSlug} />}
       </div>
     </div>
