@@ -110,9 +110,11 @@ export function studentNamesVisible(r: CourseRole, me: string, chapterTeacherId:
   return false;
 }
 
-/** Nhãn ẩn danh ổn định theo thứ tự (1-based) — vẫn chấm được từng em, không lộ tên / mã học sinh. */
-export function anonymousStudentLabel(index: number): string {
-  return `Học viên ${index + 1}`;
+/** Nhãn ẩn danh ổn định theo MÃ học sinh (băm FNV-1a, 5 ký tự hex) — không đổi khi lớp có người vào/ra, không lộ tên / mã gốc, vẫn chấm được từng em. */
+export function anonymousStudentLabel(userId: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < userId.length; i++) { h ^= userId.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return `Học viên ${(h >>> 0).toString(16).toUpperCase().padStart(8, "0").slice(0, 5)}`;
 }
 
 /** Khung lịch: sửa / xoá khung của MÌNH (teacherId = me) hoặc, nếu có quyền `schedule.edit.other`, khung bất kỳ. Khung teacherId null là của chủ lớp. */

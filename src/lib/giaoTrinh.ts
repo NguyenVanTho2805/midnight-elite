@@ -33,7 +33,20 @@ export interface GtEntry {
   selfSubmitCount: number;
   publishBlock: string | null;         // null = đăng được; còn lại là câu tiếng Việt vì sao chưa đăng được
 }
-export interface GtGroup { id: string; title: string; teacherId: string | null }   // teacherId: userId giáo viên bộ môn được giao nhóm (chỉ id, không tên/email); null = chủ/đồng giảng soạn   // chương có tên, theo thứ tự cây. Rỗng = lớp không dùng nhóm
+/** Nhóm thô từ cây (CHƯA che theo người xem): teacherId thật. Chỉ dùng ở máy chủ; ra khỏi API phải qua `groupsForViewer`. */
+export interface GtGroupRaw { id: string; title: string; teacherId: string | null }
+/** Nhóm trả cho giao diện. `assignedTo` tính theo NGƯỜI XEM: "me" = giao cho chính người xem · "owner" = chưa giao (chủ/đồng giảng soạn) · "other" = giao cho giáo viên bộ môn khác.
+ *  `teacherId` (userId thật) CHỈ có với chủ lớp / quản trị; người khác luôn null — không lộ userId của giáo viên bộ môn. */
+export interface GtGroup extends GtGroupRaw { assignedTo: "me" | "owner" | "other" }
+
+/** Che teacherId theo người xem (thuần). `seeIds` = chủ lớp / quản trị. */
+export function groupsForViewer(groups: readonly GtGroupRaw[], viewerId: string, seeIds: boolean): GtGroup[] {
+  return groups.map(g => ({
+    id: g.id, title: g.title,
+    teacherId: seeIds ? g.teacherId : null,
+    assignedTo: !g.teacherId ? "owner" : g.teacherId === viewerId ? "me" : "other",
+  }));
+}
 
 export interface GiaoTrinhSnapshot {
   courseId: string; courseName: string;
@@ -340,11 +353,11 @@ export function pickUngroupedChapter(sections: readonly TreeSection[]): { chapte
  * Cây thô → danh sách phẳng. Chương ngầm (và cả cây "chung") ⇒ không nhóm; chương có tên ⇒ nhóm, tiêu đề "Phần · Chương" (phần ngầm: chỉ tên chương).
  * Thứ tự: khối không nhóm trước, rồi từng nhóm theo thứ tự cây; trong mỗi khối theo (section.order, chapter.order, lesson.order) vì `sections` đã sắp sẵn.
  */
-export function buildEntries(sections: readonly TreeSection[], extra: { assignmentsByLesson: Record<string, number> }): { entries: GtEntry[]; groups: GtGroup[] } {
+export function buildEntries(sections: readonly TreeSection[], extra: { assignmentsByLesson: Record<string, number> }): { entries: GtEntry[]; groups: GtGroupRaw[] } {
   const generic = isGenericTree(sections);
   const ungrouped: GtEntry[] = [];
   const grouped: GtEntry[] = [];
-  const groups: GtGroup[] = [];
+  const groups: GtGroupRaw[] = [];
   for (const sec of sections) for (const ch of sec.chapters) {
     const isGroup = !generic && !ch.isImplicit;
     if (isGroup) groups.push({ id: ch.id, title: sec.isImplicit ? ch.title : `${sec.title} · ${ch.title}`, teacherId: ch.teacherId ?? null });

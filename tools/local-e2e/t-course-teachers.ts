@@ -213,8 +213,9 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   const gtO = await api("GET", `/api/tutor/lop/${K1.id}/giao-trinh`, { as: O });
   const gtC = await api("GET", `/api/tutor/lop/${K1.id}/giao-trinh`, { as: C });
   const grp = (r: { json: unknown }, id: string) => (J(r).groups as any[] | undefined)?.find(g => g.id === id);
-  check("MÁY CHỦ trả đủ: groups[].teacherId = S cho nhóm Vật lý, null cho nhóm chung (chủ và đồng giảng đều thấy)", grp(gtO, J(chB).id)?.teacherId === S.id && grp(gtO, J(chA).id)?.teacherId === null && grp(gtC, J(chB).id)?.teacherId === S.id, J(gtO).groups);
-  check("groups[] chỉ có id/title/teacherId — không tên, không email", (J(gtO).groups as any[]).every(g => Object.keys(g).sort().join() === "id,teacherId,title") && !JSON.stringify(J(gtO).groups).includes(S.email), J(gtO).groups);
+  check("P2-1 chủ thấy teacherId THẬT: nhóm Vật lý = S (assignedTo other), nhóm chung = null (assignedTo owner)", grp(gtO, J(chB).id)?.teacherId === S.id && grp(gtO, J(chB).id)?.assignedTo === "other" && grp(gtO, J(chA).id)?.teacherId === null && grp(gtO, J(chA).id)?.assignedTo === "owner", J(gtO).groups);
+  check("P2-1 đồng giảng C KHÔNG thấy userId của S: teacherId null + assignedTo 'other' (ca phá: trả id thật cho người không phải chủ ⇒ đỏ)", grp(gtC, J(chB).id)?.teacherId === null && grp(gtC, J(chB).id)?.assignedTo === "other" && !JSON.stringify(J(gtC).groups).includes(S.id), J(gtC).groups);
+  check("groups[] chỉ có id/title/teacherId/assignedTo — không tên, không email", (J(gtO).groups as any[]).every(g => Object.keys(g).sort().join() === "assignedTo,id,teacherId,title") && (J(gtC).groups as any[]).every(g => Object.keys(g).sort().join() === "assignedTo,id,teacherId,title") && !JSON.stringify(J(gtO).groups).includes(S.email), J(gtO).groups);
   const schO = await api("POST", `/api/courses/${K1.id}/class-schedules`, { as: O, body: { dayOfWeek: 2, startTime: "19:00", endTime: "20:30" } });
   check("(chủ) tạo khung của chủ ⇒ 201, teacherId null", schO.status === 201 && J(schO).teacherId === null, schO.json);
   const feeRows0 = await moneySnapshot();
@@ -362,7 +363,7 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   await prisma.chapter.update({ where: { id: J(chB).id }, data: { teacherId: null } });
   const resOut = await api("GET", `/api/assignments/${J(aS).id}/results`, { as: S });
   check("S (tác giả, bài ngoài nhóm) xem kết quả ⇒ 200 nhưng KHÔNG có tên / mã học sinh nào", resOut.status === 200 && J(resOut).students.length === stu.length && !stu.some(u => resOut.text.includes(u.name) || (u.email && resOut.text.includes(u.email))), resOut.status);
-  check("…nhãn ẩn danh 'Học viên N', studentId null, vẫn có userId để chấm", J(resOut).students.every((x: any) => /^Học viên \d+$/.test(x.name) && x.studentId === null && typeof x.userId === "string"));
+  check("…nhãn ẩn danh 'Học viên N', studentId null, vẫn có userId để chấm", J(resOut).students.every((x: any) => /^Học viên [0-9A-F]{5}$/.test(x.name) && x.studentId === null && typeof x.userId === "string"));
   const subOut = await api("GET", `/api/assignments/${J(aS).id}/submissions`, { as: S });
   check("S xem bài nộp ngoài nhóm ⇒ 200 và không lộ tên", subOut.status === 200 && !stu.some(u => subOut.text.includes(u.name)), subOut.status);
   check("S sửa / xoá BT do mình soạn nhưng nhóm đã rút ⇒ 403", (await api("PUT", `/api/assignments/${J(aS).id}`, { as: S, body: { title: "x" } })).status === 403 && (await api("DELETE", `/api/assignments/${J(aS).id}`, { as: S })).status === 403 && !!(await prisma.assignment.findUnique({ where: { id: J(aS).id } })));
@@ -459,6 +460,9 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   await prisma.chapter.update({ where: { id: J(chA).id }, data: { teacherId: C.id } });
   const prev = await api("DELETE", `/api/tutor/lop/${K1.id}/giao-vien/${idC}?preview=1`, { as: O });
   check("xem trước gỡ C: đếm khung / nhóm sẽ về chủ, KHÔNG ghi gì", prev.status === 200 && J(prev).reassignedSchedules === scBefore && J(prev).reassignedChapters === 1 && J(prev).previewOnly === true && (await prisma.courseTeacher.findUnique({ where: { id: idC } }))?.status === "active", prev.json);
+  // P1-1: đề của C gắn K1 — khi C còn là đồng giảng ⇒ xem được kết quả như cũ
+  await prisma.exam.update({ where: { id: "de-c" }, data: { courseId: K1.id } });
+  check("P1-1 C (đồng giảng đang hiệu lực) xem quiz-cham + bang-diem đề của C ở K1 ⇒ 200 như cũ", (await api("GET", `/api/tutor/quiz-cham/de-c`, { as: C })).status === 200 && (await api("GET", `/api/tutor/de-thi/de-c/ket-qua/bang-diem`, { as: C })).status === 200);
   const rm = await api("DELETE", `/api/tutor/lop/${K1.id}/giao-vien/${idC}`, { as: O });
   check("chủ gỡ C ⇒ 200, removed, removedBy = chủ, trả số khung / nhóm đã đặt lại", rm.status === 200 && J(rm).reassignedSchedules === scBefore && J(rm).reassignedChapters === 1, rm.json);
   const afterC = await prisma.courseTeacher.findUnique({ where: { id: idC } });
@@ -466,6 +470,9 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   check("C gọi route M ngay sau khi bị gỡ ⇒ 403 (students, PUT điểm danh, giao-trinh, de-nghi-chot)", (await api("GET", `/api/courses/${K1.id}/students`, { as: C })).status === 403
     && (await api("PUT", `/api/attendance-sessions/${sessC.id}`, { as: C, body: { records: recs } })).status === 403 && (await api("GET", `/api/tutor/lop/${K1.id}/giao-trinh`, { as: C })).status === 403
     && (await api("POST", `/api/tutor/lop/${K1.id}/buoi/${D1}/de-nghi-chot`, { as: C })).status === 403);
+  check("P1-1 C bị gỡ: quiz-cham/[examId] và de-thi/[id]/ket-qua (bang-diem, xuat-xlsx, ket-qua) của đề cũ ở K1 ⇒ 403, không lộ tên/điểm", (await api("GET", `/api/tutor/quiz-cham/de-c`, { as: C })).status === 403
+    && (await api("GET", `/api/tutor/quiz-cham/de-c/theo-doi`, { as: C })).status === 403 && (await api("GET", `/api/tutor/de-thi/de-c/ket-qua/bang-diem`, { as: C })).status === 403
+    && (await api("GET", `/api/tutor/de-thi/de-c/ket-qua/xuat-xlsx`, { as: C })).status === 403 && (await api("GET", `/api/tutor/de-thi/de-c/ket-qua`, { as: C })).status === 403);
   check("buổi và điểm danh C đã ghi còn NGUYÊN (đếm trước / sau), taughtBy vẫn là C", (await prisma.attendanceSession.count({ where: { courseId: K1.id } })) === nSess && (await prisma.attendanceRecord.count()) === nRec && (await prisma.attendanceSession.findUnique({ where: { id: sessC.id } }))?.taughtBy === C.id);
   check("khung teacherId = C và nhóm teacherId = C đã về null", (await prisma.classSchedule.count({ where: { courseId: K1.id, teacherId: C.id } })) === 0 && (await prisma.chapter.findUnique({ where: { id: J(chA).id } }))?.teacherId === null);
   check("C nhận co_teacher_removed (không tên); GET dong-giang không còn lớp K1", !!(await prisma.notification.findFirst({ where: { userId: C.id, type: "co_teacher_removed" } })) && J(await api("GET", "/api/tutor/dong-giang", { as: C })).courses.length === 0);
@@ -484,6 +491,7 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   check("sau khi nhận lại C vào được route M", (await api("GET", `/api/courses/${K1.id}/students`, { as: C })).status === 200);
   const dem = await api("PATCH", `/api/tutor/lop/${K1.id}/giao-vien/${idC}`, { as: O, body: { role: "subject_teacher" } });
   check("chủ hạ C xuống bộ môn ⇒ 200 + thông báo co_teacher_role_changed (không tên)", dem.status === 200 && !!(await prisma.notification.findFirst({ where: { userId: C.id, type: "co_teacher_role_changed" } })));
+  check("P1-1 C đổi sang bộ môn: quiz-cham + bang-diem đề của C ở K1 ⇒ 403 (an toàn nhất: bộ môn ngoài nhóm không xem tên/điểm)", (await api("GET", `/api/tutor/quiz-cham/de-c`, { as: C })).status === 403 && (await api("GET", `/api/tutor/de-thi/de-c/ket-qua/bang-diem`, { as: C })).status === 403);
   check("…C (nay là bộ môn) tạo phần ⇒ 403 ROLE_FORBIDDEN, tạo khung ⇒ 403", (await api("POST", `/api/courses/${K1.id}/sections`, { as: C, body: { title: "x" } })).status === 403 && (await api("POST", `/api/courses/${K1.id}/class-schedules`, { as: C, body: { dayOfWeek: 5, startTime: "08:00", endTime: "09:00" } })).status === 403);
   await api("PATCH", `/api/tutor/lop/${K1.id}/giao-vien/${idC}`, { as: O, body: { role: "co_teacher" } });
   await prisma.user.update({ where: { id: C.id }, data: { banned: true } });

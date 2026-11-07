@@ -1,12 +1,13 @@
 // TUT-dong-giang — "Giao cho…" ở mỗi nhóm/chương của giáo trình.
 // Chủ lớp / quản trị: ô chọn giáo viên bộ môn đang dạy lớp (hoặc "Chủ lớp / không giao"); gọi PATCH .../giao-trinh/chuong/[chapterId] { teacherId }.
-// Đồng giảng / bộ môn: chỉ nhãn chỉ-đọc "Giao cho giáo viên khác" (máy chủ không trả userId đồng nghiệp ⇒ không có tên) / "Giao cho bạn" / "Giao cho chủ lớp". Bộ môn thấy nhóm của người khác bị khoá bằng chữ rõ ràng (máy chủ vẫn chặn 403 song song).
-// Hợp đồng dữ liệu máy chủ mong đợi (thiếu thì UI lùi về an toàn: không hiện ô chọn / khoá nhóm có người được giao):
-//   GET giao-vien: self.userId (người xem), teachers[].userId (khoá để giao); GET giao-trinh: groups[].teacherId.
+// Đồng giảng / bộ môn: chỉ nhãn chỉ-đọc theo `assignedTo` ("Giao cho bạn" / "Giao cho chủ lớp" / "Giao cho giáo viên khác"); không có tên hay userId đồng nghiệp. Bộ môn thấy nhóm không phải của mình bị khoá bằng chữ rõ ràng (máy chủ vẫn chặn 403 song song).
+// Hợp đồng dữ liệu máy chủ (260f920c): GET giao-trinh groups[] = { id, title, teacherId, assignedTo: "me"|"owner"|"other" }; teacherId là id thật CHỈ cho chủ lớp / quản trị, người khác nhận null ⇒ người không phải chủ KHÔNG được suy từ teacherId, chỉ đọc assignedTo.
+//   GET giao-vien: self.role, teachers[].userId (chỉ chủ/admin, khoá để giao). Thiếu assignedTo ⇒ coi như "other" (khoá an toàn).
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi } from "@/components/tutor/shared";
+import type { GtGroup } from "@/lib/giaoTrinh";
 import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
 
 export interface GiaoVienLopRow { id: string; userId?: string; name?: string; role: string; status: string }
@@ -32,29 +33,29 @@ export function useGiaoVienLop(courseId: string): GiaoVienLopInfo {
   return s;
 }
 
-/** Nhóm có bị khoá với người xem không: chỉ bộ môn, và chỉ khi nhóm đã giao cho người khác mình (thiếu thông tin ⇒ khoá, an toàn). */
-export function nhomBiKhoa(info: GiaoVienLopInfo, teacherId: string | null | undefined): boolean {
+/** Nhóm có bị khoá với người xem không: chỉ bộ môn, và chỉ khi nhóm không giao cho chính mình ("owner" = của chủ lớp, "other" = giáo viên khác; thiếu thông tin ⇒ khoá, an toàn). */
+export function nhomBiKhoa(info: GiaoVienLopInfo, assignedTo: GtGroup["assignedTo"] | undefined): boolean {
   if (info.role !== "subject_teacher") return false;
-  if (!teacherId) return true; // chưa giao ai = của chủ lớp
-  return !info.selfUserId || teacherId !== info.selfUserId;
+  return assignedTo !== "me";
 }
 
-export default function GiaoChoNhom({ courseId, chapterId, teacherId, info, onChanged }: {
-  courseId: string; chapterId: string; teacherId: string | null | undefined; info: GiaoVienLopInfo; onChanged: () => void | Promise<void>;
+export default function GiaoChoNhom({ courseId, chapterId, teacherId, assignedTo, info, onChanged }: {
+  courseId: string; chapterId: string; teacherId: string | null | undefined; assignedTo: GtGroup["assignedTo"] | undefined; info: GiaoVienLopInfo; onChanged: () => void | Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   if (info.phase !== "ready") return null;
   const manage = canManageRole(info.role ?? undefined);
   const owner = info.active.find(t => t.userId && t.userId === teacherId);
-  // Đồng giảng / bộ môn không nhận userId người khác ⇒ không tra được tên: nhóm của chính mình = "bạn", nhóm giao người khác = "giáo viên khác" (không tên).
-  const nameOf = owner?.name ?? (!teacherId ? "chủ lớp" : teacherId === info.selfUserId ? "bạn" : manage ? "giáo viên bộ môn" : "giáo viên khác");
+  // Chủ lớp có teacherId thật ⇒ tra được tên. Người khác chỉ có assignedTo: không tên đồng nghiệp.
+  const nameOf = owner?.name ?? (!teacherId ? "chủ lớp" : "giáo viên bộ môn");
 
   if (!manage) {
-    const khoa = nhomBiKhoa(info, teacherId);
+    const khoa = nhomBiKhoa(info, assignedTo);
+    const nhan = assignedTo === "me" ? "Giao cho bạn" : assignedTo === "owner" ? "Giao cho chủ lớp" : "Giao cho giáo viên khác";
     return (
       <p data-gt-giao-cho={chapterId} data-gt-khoa={khoa ? "1" : undefined} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-        {khoa ? <>Nhóm của giáo viên khác{teacherId ? "" : ` (giao cho ${nameOf})`}; bạn chỉ xem được.</> : <>Giao cho {nameOf}</>}
+        {khoa ? <>Nhóm của {assignedTo === "owner" ? "chủ lớp" : "giáo viên khác"}; bạn chỉ xem được. ({nhan})</> : nhan}
       </p>
     );
   }
