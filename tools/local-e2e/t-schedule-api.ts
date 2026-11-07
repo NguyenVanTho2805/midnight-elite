@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { api, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 
 (async () => {
@@ -42,6 +43,19 @@ import { api, mkTutor, mkCourse, wipe, check, section, done } from "./h";
   r = await put({ joinUrl: null });
   check("null xoá link", r.status === 200 && r.json.joinUrl === null);
   check("gia sư khác → 403", (await put({ joinUrl: "https://a.b" }, other)).status === 403);
+
+  section("TUT-lich-keo-tha: PATCH ≡ PUT, ghi chú ≤ 200 ký tự, trần 14 khung");
+  r = await api("PATCH", `/api/class-schedules/${id}`, { as: tutor, body: { note: "ôn thi", startTime: "9:30" } });
+  check("PATCH sửa từng phần như PUT", r.status === 200 && r.json.note === "ôn thi" && r.json.startTime === "09:30", r.json);
+  check("PATCH: gia sư khác → 403", (await api("PATCH", `/api/class-schedules/${id}`, { as: other, body: { note: "x" } })).status === 403);
+  check("PUT note 201 ký tự → 400; đúng 200 → 200", (await put({ note: "x".repeat(201) })).status === 400 && (await put({ note: "x".repeat(200) })).status === 200);
+  check("POST note 201 ký tự → 400", (await post({ dayOfWeek: 3, startTime: "14:00", endTime: "15:00", note: "x".repeat(201) })).status === 400);
+  const have = await prisma.classSchedule.count({ where: { courseId: course.id, active: true } });
+  await prisma.classSchedule.createMany({ data: Array.from({ length: 14 - have }, (_, i) => ({ courseId: course.id, dayOfWeek: 5, startTime: `${String(6 + i).padStart(2, "0")}:00`, endTime: `${String(6 + i).padStart(2, "0")}:30` })) });
+  await prisma.classSchedule.createMany({ data: [0, 1, 2].map(i => ({ courseId: course.id, dayOfWeek: 0, startTime: `2${i}:00`, endTime: `2${i}:30`, active: false })) });
+  check("14 bật + 3 tắt: khung bật thứ 15 vẫn → 400 (khung tắt không giải phóng chỗ, cũng không chiếm chỗ)", (await post({ dayOfWeek: 6, startTime: "14:00", endTime: "15:00" })).status === 400);
+  await prisma.classSchedule.deleteMany({ where: { courseId: course.id, active: false, startTime: { in: ["20:00", "21:00", "22:00"] } } });
+  check("đủ 14 khung rồi thì khung thứ 15 → 400", (await post({ dayOfWeek: 6, startTime: "14:00", endTime: "15:00" })).status === 400 && (await prisma.classSchedule.count({ where: { courseId: course.id, active: true } })) === 14);
 
   await done();
 })().catch(e => { console.error("TEST CRASH", e); process.exit(1); });
