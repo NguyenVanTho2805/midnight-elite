@@ -8,7 +8,7 @@ import { loadUnmarkedSessions } from "@/lib/unmarkedServer";
 import { unmarkedHref } from "@/lib/unmarkedSessions";
 import { questionRowTitle, unansweredQuestionWhere } from "@/lib/tutorQuestions";
 import { addDaysKey, isMakeupExpiringSoon, MAKEUP_WARN_DAYS, vnDateKeyOf } from "@/lib/classSessions";
-import { INBOX_DETAIL_LIMIT, inboxDateTime, inboxVnd, type InboxRaw, type InboxRow, type InboxSource } from "@/lib/tutorInbox";
+import { INBOX_DETAIL_LIMIT, noScheduleWhere, inboxDateTime, inboxVnd, type InboxRaw, type InboxRow, type InboxSource } from "@/lib/tutorInbox";
 
 const take = INBOX_DETAIL_LIMIT;
 const mk = (count: number, rows: InboxRow[], at: Date | null | undefined): InboxSource => ({ count, rows, at: at ? at.toISOString() : null });
@@ -37,7 +37,7 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
   const remindP = loadReminderDue(tutorId, now);
   // BU-01: yêu cầu vào lớp gộp THEO LỚP — dòng chỉ có tên lớp và số yêu cầu, KHÔNG tên em.
   const joinP = prisma.classJoinRequest.groupBy({ by: ["courseId"], where: { status: "pending", course: own }, _count: { _all: true }, _min: { createdAt: true } });
-  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week, remindDue, joinGroups, questions] = await Promise.all([
+  const [c, unmarked, absences, banks, checks, drafts, consents, reports, subs, essays, makeups, week, remindDue, joinGroups, questions, noSchedCourses] = await Promise.all([
     loadTutorTodoCounts(tutorId, now, { unmarked: unmarkedP, invoiceRemind: remindP }),
     unmarkedP,
     prisma.classAbsence.findMany({
@@ -89,6 +89,8 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       where: unansweredQuestionWhere(tutorId), orderBy: { createdAt: "asc" }, take,
       select: { id: true, title: true, content: true, createdAt: true, course: { select: { name: true } } },
     }),
+    // TUT-lich-keo-tha: lớp đang mở chưa có khung giờ — dòng chỉ có tên lớp (không tên em).
+    prisma.course.findMany({ where: noScheduleWhere(tutorId), orderBy: { createdAt: "asc" }, take, select: { id: true, name: true } }),
   ]);
   const joinNames = joinGroups.length
     ? new Map((await prisma.course.findMany({ where: { id: { in: joinGroups.map(g => g.courseId) } }, select: { id: true, name: true } })).map(x => [x.id, x.name]))
@@ -159,6 +161,9 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
     questions: mk(c.unansweredQuestions, questions.map(q => ({
       title: questionRowTitle(q), sub: `${q.course?.name ?? "Lớp"} · hỏi lúc ${inboxDateTime(q.createdAt)}`, href: `/cong-dong/${q.id}`,
     })), questions[0]?.createdAt),
+    noSchedule: mk(c.noSchedule, noSchedCourses.map(x => ({
+      title: x.name, sub: "Chưa có khung giờ học hằng tuần · Đặt lịch", href: `/lop-cua-toi/quan-lop/${x.id}/lich-hoc`,
+    })), null),
     invoiceRemind: invoiceRemindSource(c.invoiceReminders, remindDue),
     draft: mk(c.draftInvoices, drafts.map(i => ({
       title: i.student.name, sub: `Phiếu nháp ${monthText(i.yearMonth)} · ${inboxVnd(i.amountDue)}`, href: "/lop-cua-toi/hoc-phi",

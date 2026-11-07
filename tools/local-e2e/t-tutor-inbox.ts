@@ -7,8 +7,20 @@ import { loadTutorTodoTotal } from "@/lib/tutorDashboard";
   await wipe();
   const T = await mkTutor("Cô Lan"), T2 = await mkTutor("Cô Hoa"), S = await mkUser({ name: "Em An" }), S2 = await mkUser({ name: "Em Bình" }), R = await mkUser({ name: "Người Báo" });
   const c1 = await mkCourse(T.id, { name: "Toán 9" }), c2 = await mkCourse(T2.id, { name: "Văn 9" });
+  // TUT-lich-keo-tha: lớp đang mở KHÔNG có khung giờ nay tự thành một dòng Hộp việc ('noSchedule'); hai lớp này có lịch để các ca bên dưới vẫn kiểm "rỗng" như cũ.
+  for (const c of [c1, c2]) await prisma.classSchedule.create({ data: { courseId: c.id, dayOfWeek: 2, startTime: "19:00", endTime: "20:30" } });
   for (const [u, c] of [[S, c1], [S2, c1], [S, c2]] as const) await prisma.enrollment.create({ data: { userId: u.id, courseId: c.id, status: "active" } });
   const YM = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 7);
+
+  section("TUT-lich-keo-tha: lớp mở chưa có lịch");
+  const cNoSched = await mkCourse(T.id, { name: "Lớp chưa lịch" });
+  const ns0 = await api("GET", "/api/tutor/hop-viec", { as: T });
+  const nsItem = (ns0.json.items as any[]).find(i => i.id === "noSchedule");
+  check("có lớp mở không khung → dòng noSchedule 'Lớp chưa lịch', không khẩn, tính vào total", !!nsItem && nsItem.urgent === false && nsItem.detail.rows[0].title === "Lớp chưa lịch" && ns0.json.total === 1, ns0.json);
+  check("gia sư khác không thấy lớp này", (await api("GET", "/api/tutor/hop-viec", { as: T2 })).json.total === 0);
+  await prisma.course.update({ where: { id: cNoSched.id }, data: { classStatus: "closed" } });
+  check("đóng lớp → dòng biến mất (chỉ lớp ĐANG MỞ)", (await api("GET", "/api/tutor/hop-viec", { as: T })).json.total === 0);
+  await prisma.course.delete({ where: { id: cNoSched.id } });
 
   section("Quyền");
   const anon = await api("GET", "/api/tutor/hop-viec");

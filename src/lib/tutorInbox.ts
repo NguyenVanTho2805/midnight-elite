@@ -4,7 +4,9 @@
 //
 // Chỉ hiện việc có thật và cần gia sư ra tay (bo-cuc-outlook.md: số đỏ chỉ đếm việc cần ra tay). Không có dòng "đã xong"
 // giả; không có loại việc nào không có nguồn dữ liệu thật.
-export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "invoiceRemind" | "draft" | "joinRequests" | "questions";
+export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "invoiceRemind" | "draft" | "joinRequests" | "questions" | "noSchedule";
+/** TUT-lich-keo-tha: lớp ĐANG MỞ của gia sư không có khung giờ hằng tuần nào đang bật. Một điều kiện cho cả bộ đếm (số đỏ) lẫn danh sách chi tiết. */
+export const noScheduleWhere = (tutorId: string) => ({ ownerId: tutorId, classStatus: "open", classSchedules: { none: { active: true } } });
 export type InboxTone = "xong" | "cho" | "loi" | "mo";
 
 export interface InboxRow { title: string; sub: string; href?: string }
@@ -97,6 +99,12 @@ const META: Record<InboxKind, Meta> = {
     hint: "Học sinh hỏi trong cộng đồng lớp của bạn và bạn chưa trả lời (câu đã có câu trả lời được chọn đúng thì không tính). Mở câu hỏi để trả lời.",
     commands: [],
     action: "Mở câu hỏi và trả lời",
+  },
+  noSchedule: {
+    urgent: false, title: n => `${n} lớp chưa có lịch học`, status: { label: "Chưa có lịch", tone: "cho" },
+    hint: "Lớp chưa có khung giờ học hằng tuần nên học sinh không thấy buổi nào trong lịch và KiN không nhắc lịch được. Mở lớp, kéo trên lưới để thêm khung giờ. Lớp học buổi lẻ thì thêm buổi ở Lịch.",
+    commands: [],
+    action: "Đặt lịch học cho lớp",
   },
   reports: {
     urgent: false, title: n => `${n} báo cáo trong cộng đồng lớp`, status: { label: "Chờ xử lý", tone: "cho" },

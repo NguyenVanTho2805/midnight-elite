@@ -332,6 +332,7 @@ export default function LichClient() {
         sub={<>Tuần {ddmm(from)} – {ddmm(addDaysKey(from, 6))}/{addDaysKey(from, 6).slice(0, 4)} · Giờ Việt Nam (GMT+7)</>}
         actions={<>
           <KinButton variant="secondary" onClick={() => setFrom(thisWeek)}>Hôm nay</KinButton>
+          <Link href="/lop-cua-toi/lich/khung" className={kinButtonClass("secondary")}>Sửa khung giờ</Link>
           <KinButton onClick={() => void openQuickAdd({ dateKey: todayKey })}>+ Thêm buổi</KinButton>
         </>} />
 
@@ -394,7 +395,7 @@ export default function LichClient() {
         </div>
       ) : data && allOccs.length === 0 ? (
         <KinEmptyState title="Tuần này chưa có buổi học nào" action={<Link href="/lop-cua-toi/lop" className={kinButtonClass("secondary")}>Xem các lớp của tôi</Link>}>
-          Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học ở tab <b>Lịch học</b> của trang quản khoá (mở lớp → Quản khoá).
+          Buổi học lấy từ khung giờ hằng tuần của lớp. Thêm giờ học bằng <Link href="/lop-cua-toi/lich/khung" className="text-[var(--kin-nhan-link)] underline">lưới khung giờ kéo-thả</Link>: kéo trên ô trống để đặt giờ cho lớp.
         </KinEmptyState>
       ) : wide ? (
         <div className={KIN_TWO_COL}>

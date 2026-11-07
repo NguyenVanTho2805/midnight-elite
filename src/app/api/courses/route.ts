@@ -10,6 +10,7 @@ import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from
 import { courseFor, type MediaViewer } from "@/lib/mediaAccess";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { SCHEDULES_MAX_PER_COURSE, parseScheduleInput, type ScheduleInput } from "@/lib/scheduleInput";
 
 export async function GET(req: NextRequest) {
   try {
@@ -118,6 +119,24 @@ export async function POST(req: NextRequest) {
       data.joinPolicy = jp.value ?? null;
     }
 
+    // TUT-lich-keo-tha: khung giờ hằng tuần tạo CÙNG LÚC với lớp (một giao dịch). Không gửi `schedules` và không bật `requireSchedule` → hành vi cũ 100%.
+    // Một khung sai → 400 kèm `index`, KHÔNG tạo gì. `requireSchedule` (wizard gửi) mà không có khung và không `noFixedSchedule` → 400 `schedule_required`.
+    const scheduleRows: ScheduleInput[] = [];
+    if (body.schedules !== undefined && body.schedules !== null) {
+      if (!Array.isArray(body.schedules)) return NextResponse.json({ error: "schedules phải là danh sách khung giờ", field: "schedules" }, { status: 400 });
+      if (body.schedules.length > SCHEDULES_MAX_PER_COURSE) {
+        return NextResponse.json({ error: `Một lớp có tối đa ${SCHEDULES_MAX_PER_COURSE} khung giờ.`, field: "schedules" }, { status: 400 });
+      }
+      for (let i = 0; i < body.schedules.length; i++) {
+        const p = parseScheduleInput(body.schedules[i]);
+        if (!p.ok) return NextResponse.json({ error: p.error, field: "schedules", index: i }, { status: 400 });
+        scheduleRows.push(p.value);
+      }
+    }
+    if (body.requireSchedule === true && scheduleRows.length === 0 && body.noFixedSchedule !== true) {
+      return NextResponse.json({ error: "Lớp cần ít nhất một khung giờ học hằng tuần, hoặc chọn lớp học buổi lẻ.", code: "schedule_required" }, { status: 400 });
+    }
+
     // Mã trùng tên một trang cố định của KiN (vd "lich") thì trang lớp không bao giờ mở được — xem src/lib/courseIds.ts.
     if (isReservedCourseId(data.id)) {
       return NextResponse.json({ error: `Mã "${data.id}" trùng tên một trang của KiN. Hãy đặt tên lớp khác để tạo mã khác.` }, { status: 400 });
@@ -142,9 +161,10 @@ export async function POST(req: NextRequest) {
       if (feeSetup) data.feeMode = feeSetup.mode;
       const created = await tx.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
       if (feeSetup) await createInitialFeeRate(tx, created.id, feeSetup, auth.userId);
+      if (scheduleRows.length) await tx.classSchedule.createMany({ data: scheduleRows.map(r => ({ courseId: created.id, ...r })) });
       return created;
     });
-    return NextResponse.json(course, { status: 201 });
+    return NextResponse.json({ ...course, scheduleCount: scheduleRows.length }, { status: 201 });
   } catch (e) {
     console.error("[POST /api/courses]", e);
     return NextResponse.json({ error: "Tạo khóa học thất bại" }, { status: 400 });

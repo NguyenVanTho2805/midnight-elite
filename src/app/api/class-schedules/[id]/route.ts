@@ -5,6 +5,7 @@ import { canEditSchedule } from "@/lib/courseAccess";
 import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
 import { conflictText, parseSessionPatch } from "@/lib/sessionBook";
 import { conflictsForRule } from "@/lib/sessionBookServer";
+import { noteError } from "@/lib/scheduleInput";
 
 // PUT /api/class-schedules/[id] — sửa 1 khung giờ học cố định.
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const data: Record<string, unknown> = {};
     if (typeof dayOfWeek === "number") {
-      if (dayOfWeek < 0 || dayOfWeek > 6) {
+      if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
         return NextResponse.json({ error: "Thứ trong tuần không hợp lệ" }, { status: 400 });
       }
       data.dayOfWeek = dayOfWeek;
@@ -49,7 +50,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (nextEnd <= nextStart) {
       return NextResponse.json({ error: "Giờ kết thúc phải sau giờ bắt đầu" }, { status: 400 });
     }
-    if (note !== undefined) data.note = note?.trim() || null;
+    if (note !== undefined) {
+      if (note !== null && typeof note !== "string") return NextResponse.json({ error: "Ghi chú phải là chữ" }, { status: 400 });
+      const ne = noteError(note);
+      if (ne) return NextResponse.json({ error: ne }, { status: 400 });
+      data.note = note?.trim() || null;
+    }
     if (joinUrl !== undefined) {
       const j = normalizeJoinUrl(joinUrl);
       if (!j.ok) return NextResponse.json({ error: "Link vào lớp phải là địa chỉ http(s) hợp lệ" }, { status: 400 });
@@ -88,6 +94,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Cập nhật khung giờ học thất bại" }, { status: 400 });
   }
 }
+
+// PATCH = PUT (cùng hợp đồng: sửa từng phần, chỉ field có trong thân) — cho khớp thói quen API chị em.
+export const PATCH = PUT;
 
 // DELETE /api/class-schedules/[id]
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -89,6 +89,8 @@ function OpenPage({ title, href, note, action }: { title: string; href: string; 
 export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const router = useRouter();
   const manage = (sub = "") => contentHref(d.isTeacher !== false, `/admin/khoa-hoc/${d.courseId}${sub}`);
+  // Trang khung giờ kéo-thả (gia sư). Quản trị xem lớp vẫn dùng tab Lịch học của trang quản khoá.
+  const lichHref = d.isTeacher !== false ? `/lop-cua-toi/quan-lop/${encodeURIComponent(d.courseId)}/lich-hoc` : manage("?tab=lich-hoc");
   const [tab, setTab] = useState<LopTab>(d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab) ? "diem-danh" : d.initialTab);
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -121,6 +123,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           <button type="button" onClick={openAdd} className={kinButtonClass("secondary")}>Thêm học sinh</button>
           {/* A4c: ở máy rộng đã có tab "Mã mời" ngay dưới → bỏ nút. Ở điện thoại tab "Mã mời" nằm ngoài khung nhìn (đo 320px: x=317..397; 390px: ..397), nên GIỮ nút ở màn hẹp. */}
           <button type="button" onClick={() => setTab("ma-moi")} className={`${kinButtonClass("secondary")} sm:hidden`}>Mời học sinh</button>
+          <Link href={lichHref} className={kinButtonClass("secondary")}>Lịch học</Link>
           <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
@@ -137,6 +140,15 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
       )}
 
       {mgr && d.isFree && <p className="mb-4"><KinStatus tone="xong">Miễn phí</KinStatus></p>}
+
+      {d.schedule == null && (
+        <div data-no-schedule-callout>
+          <KinCallout title="Lớp chưa có lịch học" className="mb-6">
+            Học sinh sẽ không thấy buổi nào trong lịch cho tới khi lớp có khung giờ hằng tuần, và KiN không nhắc lịch được.
+            <span className="mt-3 block"><Link href={lichHref} className={kinButtonClass("primary")}>Đặt lịch bằng lưới kéo-thả</Link></span>
+          </KinCallout>
+        </div>
+      )}
 
       {mgr && d.justCreated && (
         <KinCallout title="Đã tạo lớp" className="mb-6">

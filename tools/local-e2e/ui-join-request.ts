@@ -155,7 +155,13 @@ async function mobileReport(page: Page) {
   check("3 bước: Thông tin → Lịch học → Cách vào lớp", JSON.stringify(steps) === JSON.stringify(["Thông tin", "Lịch học", "Cách vào lớp"]), steps);
   await wz.getByLabel(/Tên lớp/).fill("Lớp thử wizard");
   check("mặc định 'Có học phí': thấy mục 'Cách tính học phí'", await wz.getByRole("heading", { name: "Cách tính học phí" }).isVisible());
+  const donGia = wz.getByLabel(/^Đơn giá/); if (await donGia.count()) await donGia.fill("120000");
   await wz.getByRole("button", { name: "Tiếp tục" }).click();
+  // TUT-lich-keo-tha: bước Lịch học bắt buộc có khung giờ.
+  await wz.getByRole("button", { name: "Thêm khung giờ" }).click();
+  await wz.locator("[data-block-panel] select").first().selectOption("2");
+  await wz.getByRole("button", { name: "Lưu khung giờ" }).click();
+  await wz.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await wz.getByRole("button", { name: "Tiếp tục" }).click();
   const openCard = wz.locator("[data-policy='open'] input");
   check("bước 3, có học phí: thẻ 'Vào ngay' bị khoá; 'Cô duyệt' chọn sẵn", await openCard.isDisabled() && await wz.locator("[data-policy='approve'] input").isChecked());
