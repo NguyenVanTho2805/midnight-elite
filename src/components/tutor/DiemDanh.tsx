@@ -50,7 +50,8 @@ type RosterRow = {
   parentPhone:     string | null;
   zaloOpenedAt:    string | null;                       // TT-199: gia sư đã mở Zalo nhắn phụ huynh (trạng thái hiện tại)
 };
-type Session = { id: string; courseId: string; date: string; note: string | null };
+type Session = { id: string; courseId: string; date: string; note: string | null; state?: string | null; taughtBy?: string | null };
+export const CLOSED_OWNER_ONLY_TEXT = "Buổi đã chốt: chỉ chủ lớp sửa được.";
 
 // yyyy-mm-dd theo local — HTML <input type=date>.
 function todayISO(): string {
@@ -63,7 +64,7 @@ function todayISO(): string {
 // `fixedDate` (trang buổi học BU-01, Lịch LI-05): đã biết đúng ngày → bỏ ô chọn ngày. `onChanged`: báo trang chứa sau khi tạo buổi / lưu điểm danh (để làm mới bộ đếm, trạng thái).
 // TUT-dong-giang: `limited` = đồng giảng / giáo viên bộ môn. Ẩn mọi thứ chạm tiền hoặc liên hệ phụ huynh: xuất bảng tháng, nhắn nhóm Zalo lớp, "Nhắn phụ huynh",
 // ô cho phụ huynh xem nhận xét, buổi bù, điểm buổi. Khi lưu không gửi `parentVisible` / `makeupCreditId` (máy chủ trả 403 nếu có).
-export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, onChanged, limited = false }: { courseId: string; embedded?: boolean; fixedDate?: string; onChanged?: () => void; limited?: boolean }) {
+export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, onChanged, limited = false, onSession }: { courseId: string; embedded?: boolean; fixedDate?: string; onChanged?: () => void; limited?: boolean; onSession?: (s: { state: string | null; taughtBy: string | null } | null) => void }) {
   const queryDate = useSearchParams().get("date");
   const href = useContentHref(); // BU-00 bước 3: trang in dùng chung — gia sư /lop-cua-toi/quan-lop/…, quản trị /admin/khoa-hoc/…
   // useNotify (danh tính ổn định) chứ không phải useToast(): useToast() trả object mới mỗi lần render, đưa vào
@@ -80,6 +81,9 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
   const [zaloGroupUrl, setZaloGroupUrl] = useState<string | null>(null);
   const [groupText, setGroupText] = useState<string | null>(null); // PH-216: tin chung vào nhóm Zalo lớp
   const [compose, setCompose]     = useState<{ row: RosterRow; text: string } | null>(null);
+  // Đồng giảng / bộ môn không sửa được buổi đã chốt (máy chủ trả 409 SESSION_CLOSED_OWNER_ONLY): khoá mọi ô, hiện lời giải thích.
+  const locked = limited && session?.state === "closed";
+  useEffect(() => { onSession?.(session ? { state: session.state ?? null, taughtBy: session.taughtBy ?? null } : null); }, [session, onSession]);
 
   const load = useCallback(async () => {
     await Promise.resolve();
@@ -179,7 +183,10 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
         body:    JSON.stringify({ records }),
       });
       const d = await r.json();
-      if (!r.ok) { toast.err(d.error ?? "Lưu thất bại"); return; }
+      if (!r.ok) {
+        if (d.code === "SESSION_CLOSED_OWNER_ONLY") { toast.err(CLOSED_OWNER_ONLY_TEXT); await load(); onChanged?.(); return; }
+        toast.err(d.error ?? "Lưu thất bại"); return;
+      }
       toast.ok(`Đã lưu ${d.count} học viên`);
       if (typeof d.warning === "string") toast.info(d.warning);
       await load(); // làm mới danh sách buổi bù (đã dùng / được trả lại)
@@ -248,7 +255,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
             <input id="dd-date" type="date" value={date} onChange={e => setDate(e.target.value)}
               className="mt-2 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] tabular-nums" />
           </div>
-          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0}>Tất cả có mặt</KinButton>
+          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0 || locked}>Tất cả có mặt</KinButton>
         </div>
       ) : (
         <>
@@ -266,7 +273,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
       {!embedded && (
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--kin-vien-nhat)]">
           <h2 className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Điểm danh</h2>
-          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0}>Tất cả có mặt</KinButton>
+          <KinButton variant="secondary" onClick={markAllPresent} disabled={!session || roster.length === 0 || locked}>Tất cả có mặt</KinButton>
         </div>
       )}
       {embedded && (
@@ -319,11 +326,12 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
               style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>Nhắn nhóm Zalo lớp</button>
           </div>}
 
+          {locked && <p role="status" data-dd-da-chot className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{CLOSED_OWNER_ONLY_TEXT}</p>}
           {/* Roster rows */}
           <div>
             {roster.map(r => (
               <RosterRowView key={r.userId} r={r} onPick={setStatus} onToggleMakeup={setUseMakeup}
-                unsaved={dirty.has(r.userId)} onZalo={startCompose} onNote={setNote} onShare={setShare} limited={limited} />
+                unsaved={dirty.has(r.userId)} onZalo={startCompose} onNote={setNote} onShare={setShare} limited={limited} locked={locked} />
             ))}
           </div>
 
@@ -338,7 +346,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
               ))}
             </dl>
             <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
-              <KinButton variant="secondary" onClick={saveAll} disabled={dirty.size === 0} loading={saving} loadingLabel="Đang lưu...">Lưu điểm danh</KinButton>
+              <KinButton variant="secondary" onClick={saveAll} disabled={dirty.size === 0 || locked} loading={saving} loadingLabel="Đang lưu...">Lưu điểm danh</KinButton>
               <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" aria-live="polite">
                 {dirty.size > 0 ? `${dirty.size} thay đổi chưa lưu. ` : "Đã lưu tất cả. "}Chưa điểm danh {tally.none}.{limited ? " Điểm danh xong thì báo chủ lớp chốt buổi." : " Lưu điểm danh không tính học phí; lớp kiểu mới chỉ có học phí khi bấm Đã dạy xong."}
               </span>
@@ -387,8 +395,8 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
   );
 }
 
-function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onShare, limited = false }: {
-  limited?: boolean;
+function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onShare, limited = false, locked = false }: {
+  limited?: boolean; locked?: boolean;
   r: RosterRow;
   onPick: (userId: string, status: AttendanceStatus) => void;
   onToggleMakeup: (userId: string, on: boolean) => void;
@@ -415,7 +423,7 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onS
           const picked = r.status === s;
           return (
             // Mobile <sm giấu hệ số để nhãn gọn; vẫn giữ aria-label (có hệ số) cho trình đọc màn hình + title khi rê chuột.
-            <button key={s} type="button" onClick={() => onPick(r.userId, s)} aria-pressed={picked}
+            <button key={s} type="button" onClick={() => onPick(r.userId, s)} aria-pressed={picked} disabled={locked}
               title={`${ATTENDANCE_LABEL[s]} (hệ số ×${ATTENDANCE_COEFFICIENT[s]})`}
               aria-label={`${ATTENDANCE_LABEL[s]} hệ số ${ATTENDANCE_COEFFICIENT[s]}`}
               className={`min-h-11 px-1 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] whitespace-nowrap transition-colors ${picked
@@ -435,7 +443,7 @@ function RosterRowView({ r, onPick, onToggleMakeup, unsaved, onZalo, onNote, onS
         </button>
         {noteOpen && <div className="pt-1 space-y-2">
           <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`nx-${r.userId}`}>Nhận xét riêng cho {r.name}</label>
-          <textarea id={`nx-${r.userId}`} rows={2} maxLength={STUDENT_NOTE_MAX} value={r.note ?? ""} disabled={!r.status}
+          <textarea id={`nx-${r.userId}`} rows={2} maxLength={STUDENT_NOTE_MAX} value={r.note ?? ""} disabled={!r.status || locked}
             onChange={e => onNote(r.userId, e.target.value)} placeholder={r.status ? "Ví dụ: em làm đúng dạng cơ bản, cần luyện thêm…" : "Chọn trạng thái điểm danh trước"}
             className="w-full px-3 py-2 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] disabled:opacity-60" />
           {!limited && <label className="flex items-center gap-2 min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">

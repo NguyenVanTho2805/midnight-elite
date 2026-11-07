@@ -49,6 +49,7 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
   const [saving, setSaving] = useState(false);
   const [closing, setClosing] = useState(false);
   const [share, setShare] = useState<string | null>(null);
+  const [mySession, setMySession] = useState<{ state: string | null; taughtBy: string | null } | null>(null); // buổi điểm danh (đồng giảng chỉ nhận về buổi MÌNH dạy + buổi chưa gán)
   const [asked, setAsked] = useState(false); // đã báo chủ chốt buổi (vô hiệu 1 ngày, nhớ trong máy)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { try { const t = Number(localStorage.getItem(askKey)); if (t && Date.now() - t < 86_400_000) setAsked(true); } catch { /* không có localStorage */ } }, [askKey]);
@@ -187,7 +188,7 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
             : "Việc này không tạo hay sửa học phí."}
         </KinCallout>
       )}
-      {!mgr && closed && <KinCallout title="Buổi đã chốt" className="mb-6" ><span data-bu-da-chot>Buổi đã chốt, nhờ chủ lớp mở lại nếu cần sửa.</span></KinCallout>}
+      {!mgr && closed && <KinCallout title="Buổi đã chốt" className="mb-6" ><span data-bu-da-chot>Buổi đã chốt: chỉ chủ lớp sửa được. Nhờ chủ lớp mở lại nếu cần sửa.</span></KinCallout>}
       {detail.cancelled && <KinCallout title="Buổi này đã huỷ trên Lịch" className="mb-6">Bạn vẫn xem và ghi chép được, nhưng buổi huỷ không cần chốt.</KinCallout>}
 
       <KinTwoCol>
@@ -195,7 +196,7 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
           <section aria-labelledby="bu-dd" id="diem-danh">
             <KinSectionHead id="bu-dd" title="Điểm danh và nhận xét từng em" />
             <div className="pt-4">
-              <DiemDanhPanel courseId={courseId} embedded fixedDate={dateKey} onChanged={() => void load(true)} limited={!mgr} />
+              <DiemDanhPanel courseId={courseId} embedded fixedDate={dateKey} onChanged={() => void load(true)} limited={!mgr} onSession={setMySession} />
             </div>
           </section>
 
@@ -248,11 +249,12 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
             {closed && detail.session?.closedAt && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã chốt lúc {vnWhen(detail.session.closedAt)}.</p>}
             {!closed && detail.session?.reopenedAt && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã mở lại lúc {vnWhen(detail.session.reopenedAt)}.</p>}
             <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Có mặt {detail.tally.present + detail.tally.late}/{detail.rosterCount} · Vắng {detail.tally.absent} · Có phép {detail.tally.excused} · Chưa điểm danh {Math.max(0, detail.rosterCount - detail.tally.total)}</p>
-            {!mgr ? (closed ? null : (
+            {!mgr ? (closed ? null : (mySession?.taughtBy ? (
               <>
-                <KinButton onClick={() => void requestClose()} loading={closing} loadingLabel="Đang báo..." disabled={asked || !past || detail.cancelled}>{asked ? "Đã báo chủ lớp" : "Đề nghị chủ chốt buổi"}</KinButton>
+                <KinButton onClick={() => void requestClose()} loading={closing} loadingLabel="Đang báo..." disabled={asked || !past || detail.cancelled}>{asked ? "Đã báo chủ lớp" : "Đề nghị chủ lớp chốt"}</KinButton>
                 <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Cô điểm danh xong thì báo chủ lớp chốt buổi. Chỉ chủ lớp chốt và mở lại buổi.</p>
               </>
+            ) : <p data-bu-khong-phai-buoi-minh className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chỉ giáo viên dạy buổi này mới đề nghị chủ lớp chốt. Chủ lớp sẽ chốt buổi.</p>
             )) : closed
               ? <KinButton variant="secondary" onClick={() => void reopen()} loading={closing} loadingLabel="Đang mở lại...">Mở lại buổi</KinButton>
               : <KinButton onClick={() => void close()} loading={closing} loadingLabel="Đang chốt..." disabled={!past || detail.cancelled}>Đã dạy xong</KinButton>}

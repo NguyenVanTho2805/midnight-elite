@@ -2,7 +2,7 @@
 //   G1  chủ lớp: tab "Giáo viên" (rỗng → mời bằng email → thấy "Chờ nhận lời"), email sai báo lỗi, gửi xong hiện câu chung, gỡ qua KinConfirm có chữ "giữ nguyên"
 //   G2  trang lời mời /lop-cua-toi/dong-giang: Nhận lời → lớp hiện ở nhóm "Lớp tôi đồng giảng" cả Hộp việc lẫn danh sách Lớp; Từ chối; rỗng
 //   G3  trong lớp (co_teacher): không tab Mã mời/Học phí, không nút Thêm học sinh/Cài đặt lớp, có huy hiệu vai, tab Giáo viên chỉ đọc + "Rời lớp này";
-//       quét main không có "@"/số điện thoại học viên; trang buổi có "Đề nghị chủ chốt buổi", không "Đã dạy xong", không chữ học phí
+//       quét main không có "@"/số điện thoại học viên; trang buổi có "Đề nghị chủ lớp chốt", không "Đã dạy xong", không chữ học phí
 //   G4  người lạ mở lớp → 404; ba trạng thái: chặn mạng (lỗi + Thử lại hoạt động), dữ liệu rỗng
 //   G5  390px: không tràn ngang, nút trong khối đồng giảng ≥ 44px; mọi href không phải /admin/; thanh bên chỉ 1 mục sáng
 // Bẻ X thì ca Y đỏ: bỏ `limited` ở DiemDanhPanel → G3 "Nhắn phụ huynh"; bỏ `mgr &&` ở tab Học phí → G3 "không tab Học phí"; đổi INVITE_SENT_TEXT → G1 "câu chung".
@@ -171,9 +171,9 @@ const CONTENT = ".kin-chu-than > .flex-1 > :nth-child(n+2)";
   await pb.locator("[data-bu-close]").waitFor({ timeout: 90000 });
   await pb.locator("[data-dd-bar]").waitFor({ timeout: 90000 }); // danh sách điểm danh đã tải xong (chữ ở thanh dưới cũng được quét)
   const tb = await mainText(pb);
-  check("trang buổi: có 'Đề nghị chủ chốt buổi', KHÔNG 'Đã dạy xong', KHÔNG 'Mở lại buổi'", await pb.getByRole("button", { name: "Đề nghị chủ chốt buổi" }).isVisible() && await pb.getByRole("button", { name: "Đã dạy xong" }).count() === 0 && await pb.getByRole("button", { name: "Mở lại buổi" }).count() === 0);
+  check("trang buổi: có 'Đề nghị chủ lớp chốt', KHÔNG 'Đã dạy xong', KHÔNG 'Mở lại buổi'", await pb.getByRole("button", { name: "Đề nghị chủ lớp chốt" }).isVisible() && await pb.getByRole("button", { name: "Đã dạy xong" }).count() === 0 && await pb.getByRole("button", { name: "Mở lại buổi" }).count() === 0);
   check("trang buổi: không chữ học phí, không Chia sẻ báo cáo (Zalo), không '@'/SĐT", !/học phí/i.test(tb) && await pb.getByRole("button", { name: "Chia sẻ báo cáo buổi" }).count() === 0 && !tb.includes("@") && !/\b0\d{9}\b/.test(tb), tb.match(/.{20}học phí.{20}/i)?.[0]);
-  await pb.getByRole("button", { name: "Đề nghị chủ chốt buổi" }).click();
+  await pb.getByRole("button", { name: "Đề nghị chủ lớp chốt" }).click();
   await pb.getByRole("button", { name: "Đã báo chủ lớp" }).waitFor({ timeout: 60000 });
   check("bấm đề nghị → nút đổi 'Đã báo chủ lớp' và vô hiệu; chủ lớp nhận đúng 1 thông báo", await pb.getByRole("button", { name: "Đã báo chủ lớp" }).isDisabled() && await prisma.notification.count({ where: { userId: O.id, type: "session_close_request" } }) === 1);
   check("thông báo không chứa tên người", !(await prisma.notification.findMany({ where: { userId: O.id, type: "session_close_request" } })).some(n => /Cô Đồng Giảng|Em Học Sinh/.test(`${n.title} ${n.message}`)));

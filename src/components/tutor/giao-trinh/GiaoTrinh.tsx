@@ -23,6 +23,7 @@ import NganKeoSua, { type SuaThayDoi } from "./NganKeoSua";
 import ThemChuong from "./ThemChuong";
 import { STATUS_LABEL } from "./ChipTrangThai";
 import { useGiaoTrinh, type GtFilter } from "./useGiaoTrinh";
+import GiaoChoNhom, { nhomBiKhoa, useGiaoVienLop } from "./GiaoChoNhom";
 
 const FILTERS: { key: GtFilter; label: string }[] = [
   { key: "all", label: "Tất cả" }, { key: "draft", label: STATUS_LABEL.draft }, { key: "published", label: STATUS_LABEL.published }, { key: "hidden", label: STATUS_LABEL.hidden },
@@ -32,6 +33,7 @@ const LIST_BOX = "rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuo
 
 export default function GiaoTrinh({ courseId }: { courseId: string }) {
   const g = useGiaoTrinh(courseId);
+  const gv = useGiaoVienLop(courseId);
   const { ask, dialog } = useKinConfirm();
   const [addingGroup, setAddingGroup] = useState(false);
   const [pageMenu, setPageMenu] = useState(false);
@@ -204,8 +206,10 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
                   {groups.map(grp => {
                     const rows = visible.filter(e => e.groupId === grp.id);
                     if (filter !== "all" && rows.length === 0) return null;
+                    const tid = (grp as GtGroup & { teacherId?: string | null }).teacherId;
+                    const khoa = nhomBiKhoa(gv, tid);
                     return (
-                      <div key={grp.id} data-gt-khoi="nhom" data-gt-nhom={grp.id}>
+                      <fieldset key={grp.id} disabled={khoa} data-gt-khoi="nhom" data-gt-nhom={grp.id} data-gt-nhom-khoa={khoa ? "1" : undefined} className="min-w-0 border-0 p-0 m-0">
                         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                           {renaming === grp.id ? (
                             <form className="flex flex-1 min-w-0 flex-col sm:flex-row gap-2" onSubmit={async ev => { ev.preventDefault(); if (await g.renameGroup(grp.id, renameTitle)) setRenaming(null); }}>
@@ -222,8 +226,9 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
                             </>
                           )}
                         </div>
+                        <div className="mb-2"><GiaoChoNhom courseId={courseId} chapterId={grp.id} teacherId={tid} info={gv} onChanged={() => g.reload({ silent: true })} /></div>
                         {rows.length ? renderRows(rows) : <p className="px-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhóm này chưa có mục. Dùng “Chuyển nhóm” ở một mục để đưa vào đây.</p>}
-                      </div>
+                      </fieldset>
                     );
                   })}
                 </>
